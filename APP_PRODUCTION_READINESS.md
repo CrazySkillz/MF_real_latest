@@ -41,12 +41,60 @@ saved source configuration.
 
 | Order | Section | Program state |
 | ---: | --- | --- |
-| 1 | Overview | `NEXT` |
+| 1 | Overview | `IN_PROGRESS` |
 | 2 | KPIs | `QUEUED` |
 | 3 | Benchmarks | `QUEUED` |
 | 4 | Ad Comparison | `QUEUED` |
 | 5 | Insights | `QUEUED` |
 | 6 | Reports | `QUEUED` |
+
+#### GA4 Overview certification breakdown
+
+Overview remains `UNVERIFIED` until every category below passes independently.
+Historical evidence remains available to accelerate a fresh check, but does not
+silently advance a row to `CERTIFIED`. Work state and certification status are
+separate: `IN_PROGRESS` never means production-ready.
+
+| Order | Overview section or subsection | Work state | Certification status | Current evidence disposition |
+| ---: | --- | --- | --- | --- |
+| - | Overview (whole tab) | `IN_PROGRESS` | `UNVERIFIED` | Every enabled subsection and combined Overview gate must pass. |
+| 1 | Summary | `QUEUED` | `UNVERIFIED` | Requires a fresh current-runtime certification. |
+| - | Revenue & Financials (parent section) | `IN_PROGRESS` | `UNVERIFIED` | Revenue, Spend, Performance, combined totals, and provenance must all pass. |
+| 2 | Revenue & Financials - Revenue | `IN_PROGRESS` | `UNVERIFIED` | Source-family status is tracked below. |
+| 3 | Revenue & Financials - Spend | `QUEUED` | `UNVERIFIED` | Source-family status is tracked below. |
+| - | Revenue & Financials - Performance (`Profit`, `ROAS`, `ROI`, `CPA`) | `QUEUED` | `UNVERIFIED` | Must reconcile to the finally certified Revenue, Spend, and GA4 Conversion inputs. |
+| 4 | Campaign Breakdown | `QUEUED` | `UNVERIFIED` | Earlier bounded validation is preserved; the fresh pass remains required. |
+| 5 | Landing Pages | `QUEUED` | `UNVERIFIED` | Requires a fresh current-runtime certification. |
+| 6 | Conversion Events | `QUEUED` | `UNVERIFIED` | Requires a fresh current-runtime certification. |
+
+Revenue source families:
+
+| Source | Work state | Certification status | Required disposition |
+| --- | --- | --- | --- |
+| HubSpot, including Pipeline Proxy | `COMPLETE` | `CERTIFIED` | Production-ready, clean-certified, and no-overclaiming for only the exact runtime, active sources, exercised configurations, and exclusions in the controlling HubSpot certificate. |
+| Shopify | `IN_PROGRESS` | `UNVERIFIED` | Nearly validated is not certified; close the remaining named provider/deployed gates. |
+| Salesforce, including Pipeline Proxy | `IN_PROGRESS` | `UNVERIFIED` | Nearly validated is not certified; close the remaining named gates and issue/refresh the controlling certificate. |
+| Google Sheets | `COMPLETE` | `CERTIFIED` | Clean-certified and production-ready for the documented deployed single-runtime V1 scope in `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md`; required V1 steps remaining: 0. |
+| Upload CSV | `QUEUED` | `UNVERIFIED` | Run the fresh complete source-family validation. |
+
+Spend source families:
+
+| Source | Work state | Certification status | Required disposition |
+| --- | --- | --- | --- |
+| Google Sheets | `QUEUED` | `UNVERIFIED` | Run the fresh complete source-family validation. |
+| Upload CSV | `QUEUED` | `UNVERIFIED` | Run the fresh complete source-family validation. |
+| Google Ads | `QUEUED` | `UNVERIFIED` | Run the fresh live-provider source-family validation; test mode is not certification evidence. |
+
+The Performance gate includes zero, unavailable, stale/last-good, currency, and
+downstream states. Source-family passes alone cannot certify the full Revenue &
+Financials parent section.
+
+For every revenue or spend source family, use the same fixed lifecycle order:
+add/save, edit/update, delete/deactivate, refresh/scheduler (or documented manual
+snapshot behavior), source-modal display, totals/recompute, damaged-data inventory,
+and downstream propagation. A source moves to `CERTIFIED` only after every
+applicable lifecycle path and external gate is recorded in its controlling
+certificate.
 
 Each GA4 section must independently pass the complete no-overclaim standard at
 an exact current runtime: visible/downstream value inventory, provider/query and
@@ -106,7 +154,11 @@ certificate identifies a real code or evidence gap.
 
 | Status | Meaning |
 | --- | --- |
-| `CERTIFIED` | The controlling certificate explicitly records production readiness for an exact runtime and scope. |
+| `COMPLETE` | The work packet is complete; certification still depends on the separate certification-status column. |
+| `NEXT` | The next program unit to begin; it is not certified. |
+| `IN_PROGRESS` | Validation or fixes are underway; the unit is not certified. |
+| `QUEUED` | The fresh certification has not started or has not yet been accepted. |
+| `CERTIFIED` | Production-ready, clean-certified, and no-overclaiming for only the exact runtime and scope recorded by the controlling certificate. |
 | `RELEASE_CANDIDATE` | Local and bounded deployed evidence exists, but a named production/provider gate remains. |
 | `LOCAL_ONLY` | The implemented local/test path is called ready, but its live provider path is not certified. |
 | `UNVERIFIED` | The controlling current document or machine record explicitly withholds certification. |
@@ -144,7 +196,7 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 | HubSpot Revenue and Pipeline Proxy | `CERTIFIED` | `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md` | Five exact active GA4 sources and exercised configurations at deployed runtime `490c8ae685821389d1f433a5943f856478f52e5c`; this evidence set is not a five-source product limit. |
 | Shopify Revenue | `RELEASE_CANDIDATE` | `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` | First timer-fired scheduler refresh and deployed expiring-token renewal evidence remain named gates. |
 | Upload CSV Revenue | `CERTIFIED` | `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md` | Exact enabled source and bounded CSV lifecycle inside its recorded Overview boundary. |
-| Google Sheets Revenue | `UNVERIFIED` | `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md` | Last committed record excludes it from certification; current uncommitted work remains in progress. |
+| Google Sheets Revenue | `CERTIFIED` | `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md` | Documentation commit `f4a648a8`; deployed runtime `f8061d135a85fbe2c4c11433fffb3f80dedceae8`; clean-certified for the documented single-runtime V1 scope with required steps remaining: 0. |
 | Salesforce Revenue and Pipeline Proxy | `NO_CERTIFICATE` | `GA4/CRM_REVENUE_SOURCE_PATTERN.md` | Strong bounded implementation and user evidence is recorded, but that document explicitly says it is not a production-readiness certificate. |
 | GA4 Google Sheets/CSV Spend family | `RELEASE_CANDIDATE` | `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md` | Configured spend values have bounded evidence; the general Google Sheets provider/scheduler lifecycle is not independently clean-certified. |
 | Whole GA4 financial model | `UNVERIFIED` | `GA4/OVERVIEW_PRODUCTION_READINESS.md` | Component certificates remain preserved, but whole-Overview status controls the combined visible financial surface. |

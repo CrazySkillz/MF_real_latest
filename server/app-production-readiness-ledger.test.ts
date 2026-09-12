@@ -74,7 +74,7 @@ describe("application production-readiness ledger", () => {
     }
   });
 
-  it("preserves current fail-closed GA4 and exact HubSpot decisions", () => {
+  it("preserves current fail-closed GA4 and exact financial-source decisions", () => {
     expect(ledger).toContain("| GA4 Overview | `UNVERIFIED`");
     expect(ledger).toContain("| GA4 KPIs | `UNVERIFIED`");
     expect(ledger).toContain("| GA4 Ad Comparison | `UNVERIFIED`");
@@ -83,6 +83,19 @@ describe("application production-readiness ledger", () => {
     expect(ledger).toContain("| GA4 Insights | `CERTIFIED`");
     expect(ledger).toContain("| HubSpot Revenue and Pipeline Proxy | `CERTIFIED`");
     expect(ledger).toContain("490c8ae685821389d1f433a5943f856478f52e5c");
+    expect(ledger).toContain("| Google Sheets Revenue | `CERTIFIED`");
+    expect(ledger).toContain("f8061d135a85fbe2c4c11433fffb3f80dedceae8");
+  });
+
+  it("records separate work and certification status for every Overview subsection", () => {
+    expect(ledger).toContain("| - | Overview (whole tab) | `IN_PROGRESS` | `UNVERIFIED`");
+    expect(ledger).toContain("| 1 | Summary | `QUEUED` | `UNVERIFIED`");
+    expect(ledger).toContain("| 2 | Revenue & Financials - Revenue | `IN_PROGRESS` | `UNVERIFIED`");
+    expect(ledger).toContain("| 3 | Revenue & Financials - Spend | `QUEUED` | `UNVERIFIED`");
+    expect(ledger).toContain("| 4 | Campaign Breakdown | `QUEUED` | `UNVERIFIED`");
+    expect(ledger).toContain("| 5 | Landing Pages | `QUEUED` | `UNVERIFIED`");
+    expect(ledger).toContain("| 6 | Conversion Events | `QUEUED` | `UNVERIFIED`");
+    expect(ledger).toContain("| Google Sheets | `COMPLETE` | `CERTIFIED`");
   });
 
   it("requires impact-based carry-forward instead of blanket recertification", () => {

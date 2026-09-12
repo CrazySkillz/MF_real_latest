@@ -8,7 +8,7 @@ A previous production-ready statement is not evidence. A passing test suite is n
 
 This file accepts only evidence independently traced for Google Sheets Revenue or Upload CSV Revenue. Spend, Shopify, HubSpot, Salesforce, GA4-native revenue, Meta, LinkedIn, Google Ads, Manual revenue, KPI, Benchmark, Reports, and every other source family are not substitute proof. A downstream consumer is evidence only when the value path from the named Google Sheets or CSV revenue source is explicitly traced to that consumer.
 
-Current controlling whole-tab decision: **GA4 Overview is PRODUCTION_READY for certified runtime boundary `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`; the enabled Upload CSV Revenue source retains its exact-source certification inside that recorded boundary.** Evidence-only deployment `e175ac5c` does not change production runtime code. Source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5` remains materialized, USD, and `$600`. Google Sheets Revenue is available in setup but is not configured in the certified target, so its independent future provider lifecycle remains excluded rather than silently certified.
+Current controlling Google Sheets Revenue decision: **Google Sheets Revenue is clean-certified and production-ready for the bounded normal and pre-mutation-failure forward/active-source lifecycle and its direct GA4 Overview source-list, breakdown, and imported-total surfaces on deployed runtime `25516c722f8106505a5a9f4cf556e025d030823a`.** The claim includes the documented supported amount/date formats, tabs with at most 50,000 allocated rows, and the currently observed single-runtime Render topology. It excludes horizontally scaled/multi-worker deployments, concurrent duplicate creates, post-commit derived-recompute failure response semantics, imports above 50,000 allocated rows, ambiguous locale values/dates, deployed Profit/ROAS/ROI/CPA parity, report/email artifacts, other source families, and the globally clean historical-database claim described below. The prior whole-Overview and Upload CSV Revenue decisions retain only their separately recorded boundaries.
 
 ## Purpose
 
@@ -21,16 +21,16 @@ It separates these two source families from whole-Overview and spend certificati
 
 ## Current Status
 
-- **Google Sheets Revenue is enabled but excluded from the current configured-source certification.** Foreground add/edit and scheduler refresh remain campaign/source-scoped, currency-guarded, and transactional. A future Google Sheets Revenue source needs its own provider packet before its boundary can be added.
+- **Google Sheets Revenue is clean-certified for the bounded normal and pre-mutation-failure forward/active-source lifecycle and direct GA4 Overview source-list, breakdown, and imported-total surfaces on deployed runtime `25516c722f8106505a5a9f4cf556e025d030823a`.** Foreground add/edit/delete, exact-source provider refresh, automatic refresh, OAuth renewal, direct source-list/totals propagation, refresh/edit overlap protection, pre-mutation failure retention, large-sheet rejection, and exact tab identity are covered by the evidence below. The certification does not extend to excluded formats, consumers, failure modes, or deployment topologies.
 - **Upload CSV Revenue is clean-certified for the current enabled source and the previously validated bounded CSV lifecycle.** The deployed import boundary rejects a supplied currency that differs from the campaign, persists normalized campaign currency, distinguishes valid zero from missing materialization, and preserves authoritative aggregate totals by record presence.
 - **Current Commit 12 CSV certification decision is historical only.** Its deployed invalid-file packet and local evidence remain useful within their exact revision boundary and do not certify the current code or current persisted state.
-- **The prior Google Sheets Revenue hold is superseded.** Current Commit 21 restores setup without modifying existing production sources. Re-enablement does not close the remaining source-family evidence gates.
+- **The prior Google Sheets Revenue hold is superseded.** Current Commit 21 restored setup without modifying existing production sources; the later closure packets below, not re-enablement alone, close the bounded certification gates.
 - Current Commit 7 has user-confirmed deployed UI validation for the normal exact-source deletion flow. Rollback remains deterministically transaction-tested because the normal UI intentionally has no unsafe database-failure injection control; this is not represented as an observed production failure.
 - Current Commit 1 was documentation only. Current Commits 2 through 4, 7, and the CSV-only portions of 8 and 9 are bounded source fixes/evidence and do not certify either source.
 
 ### 2026-09-11 current `main` validation addendum
 
-Baseline: this validation sequence began with local `main`, `HEAD == origin/main == bce06348`; local checkpoints preserve the completed safety fixes. **Google Sheets Revenue remains NOT PRODUCTION READY as a general source-family claim.** The current trace confirmed and locally fixed five forward-path defects without changing GA4 formulas or public response shapes:
+Baseline: this validation sequence began with local `main`, `HEAD == origin/main == bce06348`; local checkpoints preserve the completed safety fixes. At that starting revision, **Google Sheets Revenue was NOT PRODUCTION READY as a general source-family claim.** The final closure packet below supersedes that starting status only for its explicitly bounded claim. The trace confirmed and locally fixed five forward-path defects without changing GA4 formulas or public response shapes:
 
 - scheduler date materialization used `Date#toISOString()` while foreground processing used `normalizeFinancialSourceDateKey`, so an offset timestamp could move to another calendar day;
 - scheduler refresh trusted saved source currency without rechecking current campaign currency;
@@ -54,20 +54,26 @@ The user then deleted that exact disposable source through the deployed Overview
 
 The final combined deployed packet ran on exact runtime `b6a6947cc561ae9687096ecd84a85683181ab6e1` with disposable source `8d1db4d1-be69-4a0c-83dd-ca049600ae24`. Baseline was two records, `$30,300` source revenue, `$33,756.90` imported revenue, and four active imported sources. A real mapping edit changed the selected campaign value from `3012` to `3014`; the same source ID materialized `$4,144`, imported revenue changed to `$7,600.90`, and an already-open Revenue Sources modal converged to `$4,144.00` without reload. Restoring `3012` returned the same source to two records, `$30,300`, and `$33,756.90`. Two simultaneous exact-source refresh requests returned one safe `502` conflict and one `200` success; the final source ID, two-record materialization, source total, imported total, and four-source count were unchanged. The connection was originally established at `2026-09-11T20:24:12.668Z`; after the deployment scheduler started at `2026-09-12T09:07:09.545Z`, its UTC expiry was `2026-09-12T10:07:19.148Z`, providing exact startup renewal evidence, and live preview/provider reads succeeded. Cleanup returned `200`, deactivated only that source, removed its two records, restored imported revenue to `$3,456.90`, and removed the ID from source-list and breakdown responses. The final read-only inventory at `2026-09-12T09:28:07.117Z` found zero active Google Sheets Revenue sources and 67 records solely in the same three historical inactive groups.
 
-Still blocked or only partially proven:
+The final closure packet on `2026-09-12` safely invalidated only the access-token portion of inactive disposable connection `e594e347-06d8-4815-8ebb-965f86e33676` while retaining its encrypted refresh credential and setting a non-expiring test timestamp so the deployed provider request had to encounter a real `401`. Runtime `2b3a2d223fc24bfcd4e2600f3f08bf492ee4bcbb` renewed the credential, returned the expected `ROI_ROAS_Calculations` tab, succeeded again using the stored refreshed credential, advanced the UTC expiry, retained encrypted-at-rest storage, and left every non-credential connection field plus revenue source/record fingerprint unchanged. The initial verifier correctly restored its exact backup after a local-time interpretation rejected the UTC expiry; the corrected verifier then passed at `2026-09-12T09:56:52.242Z`.
 
-- metadata-driven full-width chunking is locally guarded but lacks live provider/deployed large-sheet evidence; tabs with more than 50,000 allocated grid rows fail closed even when rows beyond the used data are blank;
+The same runtime read a public read-only fixture whose `Output Logfile` tab has 100,000 allocated rows. The deployed Revenue preview returned `413` with the exact 50,000-row limit message before revenue mutation, and the disposable connection plus revenue fingerprint were restored unchanged at `2026-09-12T10:02:56.606Z`. That discovery also exposed an exact tab-identity defect for a valid title ending in a space. Commit `25516c72` removed only the destructive trim from exact tab matching and added a focused regression. The six-file packet passed 52/52, TypeScript passed, and the production build passed. On deployed runtime `25516c722f8106505a5a9f4cf556e025d030823a`, the public 100,000-row `Calculations (Do Not Edit) ` tab resolved with its trailing space intact and returned the expected fail-closed `413`; the inactive connection was restored and revenue persistence remained unchanged at `2026-09-12T10:16:02.533Z`.
+
+One hundred deployed `/health/scheduler` requests returned `200` and one identical auto-refresh start time (`2026-09-12T09:36:07.872Z`) plus GA4-daily start time (`2026-09-12T09:36:07.885Z`). Together with the single-process `npm run start` command and the absence of repository scaling configuration, this supports only the currently observed single-runtime boundary. It is not evidence for horizontal scaling; any multi-worker deployment must be recertified before this claim is extended.
+
+Final evidence boundaries and explicit exclusions:
+
+- metadata-driven full-width chunking is locally guarded, and the deployed 100,000-row public fixture proves the greater-than-50,000 boundary fails closed with `413` before mutation; successful import remains supported only through 50,000 allocated rows;
 - complete campaign-value discovery is locally guarded through 300 distinct values but lacks live provider/deployed evidence; higher-cardinality columns fail closed and require a lower-cardinality identifier or an unfiltered import;
 - sheet currency semantics remain user-declared rather than provider-verified; selected GA4 Google Sheets amounts now fail closed locally unless blank, finite numeric, plain decimal, dollar-prefixed, or valid US-grouped values, while decimal-comma, space-grouped, and partial numeric strings are rejected before mutation. Live provider locale behavior and ambiguous locale dates remain unsupported and unverified;
 - the existing bounded Google Sheets financial timer has deployed success, invalid-value retention, restored-value recovery, and already-open browser convergence after a valid mapped-value change for the exact fixtures;
-- one deployed overlapping exact-source refresh pair safely produced one conflict and one success without record or total drift; concurrent additive creates still have no server idempotency key, and OAuth token refreshes are not serialized across workers;
-- a fast derived-recompute failure can occur after a successful source transaction but before the foreground response, which can return failure for an already-committed add;
+- one deployed overlapping exact-source refresh pair safely produced one conflict and one success without record or total drift. Concurrent additive creates still have no server idempotency key, and OAuth token refreshes are not serialized across workers; those paths are excluded from the current single-runtime certification and require recertification before horizontal scaling;
+- a fast derived-recompute failure can occur after a successful source transaction but before the foreground response, which can return failure for an already-committed add; that response-semantics path is explicitly excluded from the bounded certification rather than represented as proven;
 - the Google-Sheets-specific inventory covers locally persisted connection ownership/status, mapping roles and identity, currency, record linkage/grain, campaign-value totals, and `lastSyncedAt`; exact-fixture provider access and OAuth startup renewal passed, while general provider tab existence, allocated-row boundaries, and unlisted sheet shapes remain explicitly unverified;
 - the read-only target scan at `2026-09-11T20:57:38.177Z` found one active fixture source plus eight inactive sources and the same three inactive-source retained-record groups containing 67 records. The active source had no mapping, connection, ownership, currency, attribution-total, sync, date, amount, duplicate, orphan, or cross-campaign finding. No cleanup was performed or authorized;
 - the post-delete read-only scan at `2026-09-11T22:21:50.450Z` found the disposable source inactive with zero records, 67 total Google Sheets records, and no new finding beyond the same three known inactive retained-record groups;
-- live provider reads, mapping edit/restore, repeated refresh, invalid-provider-value last-good retention, startup OAuth renewal, already-open changed-value convergence, same-runtime overlapping refresh, and exact-source deletion passed for the exact fixtures. A forced `401` renewal, a deployed large-sheet boundary, genuine multi-worker refresh, and a generated report/email artifact packet remain unproven.
+- live provider reads, mapping edit/restore, repeated refresh, invalid-provider-value last-good retention, startup renewal, forced-`401` renewal, already-open changed-value convergence, same-runtime overlapping refresh, greater-than-50,000-row rejection, exact trailing-space tab identity, and exact-source deletion passed for the exact fixtures. Genuine multi-worker refresh and generated report/email artifacts remain unproven and excluded.
 
-This audit is complete as an evidence inventory, but Google Sheets Revenue is not clean-certified or production-ready. A future certification still requires a safe forced-`401` renewal packet, a deployed greater-than-50,000-row boundary fixture, genuine multi-worker OAuth/source overlap evidence, and any report/email artifact claim desired outside the current Overview boundary. The three historical inactive record groups do not feed live totals and remain preserved; no cleanup is authorized or required for current numeric correctness.
+This audit is complete as an evidence inventory. Google Sheets Revenue is clean-certified and production-ready for the bounded normal and pre-mutation-failure forward/active-source lifecycle and direct GA4 Overview source-list, breakdown, and imported-total surfaces on deployed runtime `25516c722f8106505a5a9f4cf556e025d030823a`. The claim must always retain its supported-format, maximum-row, current single-runtime, failure-mode, and consumer exclusions. The read-only inventory at `2026-09-12T10:04:41.952Z` still reports `pass: false` solely because 67 records remain attached to three known inactive historical sources in other campaigns. They do not feed active totals and no new finding was introduced, but they mean the production database as a whole is **not** clean-certified; no destructive cleanup is implied or authorized by the forward-path certification.
 
 ## Explicit Scope
 
@@ -291,8 +297,9 @@ Use isolated commits in this order:
 | 8 | Google Sheets/CSV Revenue-specific downstream propagation automation | Both source-specific local suites implemented and validated; deployed numeric propagation remains open |
 | 9 | Read-only damaged-data inventory | CSV scan complete; Google Sheets scan found only three inactive-source retained-record groups (67 records); no cleanup applied or authorized |
 | 10 | Deployed CSV lifecycle/reconciliation evidence | Normal add/repeated-edit/delete lifecycle and invalid-file no-mutation user-confirmed; console-runner, source-ID, endpoint-parity, and exact deployed derived-card packets were not supplied and are excluded from the claim |
-| 11 | Deployed Google Sheets automatic mutation/failure/OAuth durability evidence | Resumed; open |
-| 12 | Final certification rerun and documentation update | CSV-only rerun completed and final invalid-file confirmation received; Upload CSV Revenue clean-certified for the validated documented scope; Google Sheets certification remains open |
+| 11 | Deployed Google Sheets automatic mutation/failure/OAuth durability evidence | Completed by the exact provider, timer, failure-retention, forced-`401`, and cleanup packets recorded above |
+| 12 | Final certification rerun and documentation update | Historical CSV-only rerun completed; the later Google Sheets closure packet supersedes only the historical open Google Sheets status |
+| 13 | Final Google Sheets closure and exact-tab fix | Forced-`401`, 100,000-row rejection, current-runtime topology sampling, trailing-space tab fix, 52/52 focused tests, TypeScript, build, deployment, and deployed exact-tab rerun completed |
 
 ## Proven Locally
 
@@ -313,7 +320,7 @@ Use isolated commits in this order:
 - The current UI shared individual revenue-source delete transaction rechecks the active source ID, campaign, and platform context; source deactivation and exact campaign/source record deletion roll back together locally.
 - Normal deployed exact-source deletion behavior is user-confirmed for Current Commit 7; the confirmation has no archived numeric/source-ID or forced-failure packet.
 - CSV Revenue locally propagates its exact filtered delta once through the active campaign/GA4 source-backed total, breakdown, source list, Total Revenue, Profit, ROAS, and ROI paths; CPA remains spend divided by conversions and does not change with revenue.
-- Google Sheets Revenue now has the equivalent exact local numeric propagation guard, including aggregate-over-attribution-detail selection so the source delta is not counted twice; deployed endpoint and rendered-card values remain unproven.
+- Google Sheets Revenue has the equivalent exact local numeric propagation guard, including aggregate-over-attribution-detail selection so the source delta is not counted twice. Deployed source-list, breakdown, imported-total, and already-open modal convergence are proven for the recorded fixtures; exact deployed Profit/ROAS/ROI/CPA parity remains excluded.
 - The existing campaign-access-guarded Overview source-damage GET route now reports CSV-only source/record counts and exact candidate IDs for active zero-record sources, inactive-source records, proven CSV missing/cross-campaign/wrong-type source links, incomplete retained mapping metadata, stored-total mismatch, dated-row loss, duplicate materialized row grains, and suspicious duplicate active sources. It never cleans or mutates data.
 - The static deployed-browser helper now records compact active CSV source IDs/amounts, exact target presence and amount changes, source-count and total deltas, revenue endpoint parity, unchanged spend, and the documented read-only inventory boundary. The helper itself performs no source mutation; add/edit/delete remain deliberate UI actions.
 
@@ -323,31 +330,27 @@ Use isolated commits in this order:
 - Historical Google Sheets add/edit/run-now/delete reconciliation for the exact sources, campaign, property, amounts, and timestamps recorded above.
 - Stable source identity and preservation of the specifically named counterpart source within those packets.
 - Immediate query refresh after a successful foreground source mutation.
-- Daily and bounded shared-timer wiring for active GA4 Google Sheets Revenue sources; automatic deployed execution remains unproven.
+- Daily and bounded shared-timer wiring plus natural deployed execution for the exact GA4 Google Sheets Revenue fixtures.
 
-## Unproven
+## Unproven And Excluded
 
-- Clean certification for Google Sheets Revenue.
-- Deployed CSV Revenue negative-case behavior and unusual/unlisted file, header, date, and mapping shapes beyond the local fixtures.
-- Deployed/provider proof of Google Sheets Revenue fail-before-mutation behavior and unusual/unlisted sheet, tab, header, mapping, filter, and date shapes beyond the local fixtures.
-- Deployed PostgreSQL proof of Google Sheets add/edit/scheduler rollback and optimistic-conflict behavior; the scoped transaction and forced conflict are locally guarded.
-- Deployed PostgreSQL rollback evidence for the current UI shared individual revenue-source delete; the uncalled legacy bulk-delete route remains non-transactional and excluded.
-- Deployed PostgreSQL proof of GA4 CSV add/edit rollback and last-valid-value retention.
-- Google Sheets last-valid-value retention after provider, source-update, record-delete, or record-insert failure.
-- Repeated deployed refresh idempotency, concurrent additive-create idempotency, and cross-worker OAuth refresh serialization; stale source replacement is now locally guarded.
-- Deployed bounded Google Sheets Revenue-only automatic polling and already-open Overview convergence within the intended low-latency window.
-- Exact deployed automatic Google Sheets provider mutation propagation through source, records, endpoints, Overview, and every claimed downstream consumer; current local/static paths include refreshed campaign-value attribution metadata.
-- Console-runner endpoint-parity output, raw source IDs, and exact deployed Profit/ROAS/ROI/CPA values beyond the bounded UI confirmation; these are excluded from the current CSV claim and require fresh evidence if separately claimed.
-- Unlisted files, delimiters, encodings, duplicate headers, locale numbers, ambiguous dates, large-file boundaries, sheets, tabs, mappings, filters, campaigns, properties, and currencies.
-- Future target-database changes after the recorded Current Commit 9 read-only scan.
+- Horizontally scaled or genuine multi-worker OAuth/source overlap behavior; the current certification is limited to the observed single-runtime deployment.
+- Concurrent duplicate add requests without a server idempotency key; tested overlap covers refresh/edit replacement, not two independent creates.
+- Imports above 50,000 allocated rows; the supported production behavior is the deployed fail-closed `413` rejection.
+- Decimal-comma, space-grouped, partial numeric, and ambiguous locale-date inputs; these are rejected or excluded rather than interpreted.
+- Unlisted provider sheets, headers, mappings, filters, campaigns, currencies, permission changes, quota conditions, and future Google API behavior.
+- Exact deployed Profit/ROAS/ROI/CPA parity and downstream KPI, Benchmark, alert, notification, report, PDF, email, and inbox-delivery artifacts.
+- Forced production database insertion failure; transactional rollback is deterministic local evidence because no unsafe deployed failure injector is exposed.
+- A fast post-commit derived-recompute rejection after a successful source transaction; direct source data remains committed, but the foreground error response semantics are not claimed.
+- A globally clean historical database: 67 retained records on three inactive sources are excluded from active totals but remain intentionally untouched without separate destructive authorization.
+- Future code, provider, infrastructure, or database changes after the recorded packets.
 
 ## Not Locally Verifiable
 
-- Live Google Sheets contents, permissions, API availability, provider latency, quota behavior, OAuth consent state, refresh-token renewal, revocation, and durability beyond the observed period.
-- Deployed scheduler execution at the configured time and future low-latency timer execution.
-- Production database contents after the recorded scan or outside the CSV-only Current Commit 9 boundary.
-- Browser rendering and already-open-page convergence under deployed runtime conditions.
-- Provider acceptance, generated artifact content, or delivery for any downstream report/email path unless separately captured.
+- Future Google Sheets contents, permissions, latency, quota behavior, OAuth revocation, or durability beyond the recorded deployed packets.
+- Future scheduler executions, Render topology/scaling changes, and browser behavior after the recorded runtime.
+- Production database changes after the `2026-09-12T10:04:41.952Z` read-only scan.
+- Provider acceptance, generated artifact content, or delivery for any excluded downstream report/email path.
 - Future provider, infrastructure, database, or code behavior.
 
 ## Damaged-Data Inventory And Cleanup Boundary
@@ -362,7 +365,7 @@ Prior non-transactional behavior may have persisted damaged or ambiguous state. 
 - dated retained CSV rows whose selected positive revenue has a blank/invalid date;
 - active CSV mapping configs missing complete stored rows, headers, row count, or unique Revenue/Campaign/Date role metadata needed for a safe edit.
 
-Google Sheets connection ownership/status, mapping identity, currency, linked record shape, campaign-value total, and `lastSyncedAt` checks now have a separate read-only local inspector and target scan. The scan found no active Google Sheets Revenue source and therefore does not prove a current active lifecycle. Provider contents, remote row completeness, and live OAuth behavior remain open and are not Current Commit 9 CSV evidence.
+Google Sheets connection ownership/status, mapping identity, currency, linked record shape, campaign-value total, and `lastSyncedAt` checks have a separate read-only inspector and target scan. The final scan found no active Google Sheets Revenue source; active lifecycle, provider, row-boundary, and OAuth proof instead comes from the exact disposable-source deployed packets recorded above and is not Current Commit 9 CSV evidence.
 
 Current Commit 9 inventory is read-only, campaign-access guarded, excludes non-GA4 CSV and every non-CSV family from its CSV result, and returns `automaticCleanupAllowed: false`. Missing legacy retained rows are reported as incomplete rather than guessed. Do not deactivate, delete, merge, rewrite, backfill, or invent dates/allocations during inventory. Any cleanup requires a separate targeted plan listing exact campaign IDs, source IDs, record IDs/counts, the proven damage rule, expected before/after totals, rollback, and unrelated-source checks.
 
@@ -419,4 +422,4 @@ Any new defect immediately lowers the affected source/path to unproven until roo
 
 Use only when the question is limited to GA4 Overview Google Sheets Revenue and Upload CSV Revenue:
 
-Upload CSV Revenue is clean-certified for the validated documented scope. The evidence includes deterministic fail-before-mutation validation, transactional add/edit/delete, local downstream propagation, refreshed target inventory with no active/reconciliation damage, deployed `$150` / `$1,250` / `$150` add/repeated-edit/delete behavior without duplicates, Revenue baseline restoration, unchanged Spend, and user-confirmed invalid-file error/no-source/no-metric-change behavior. Console-runner output, raw source IDs, exact deployed Profit/ROAS/ROI/CPA values, unlisted CSV shapes, and future code/data changes are not claimed without fresh evidence. Google Sheets Revenue is re-enabled but not clean-certified. Spend and all other source families are excluded as proof.
+Upload CSV Revenue is clean-certified for its separately validated documented scope. Google Sheets Revenue is clean-certified and production-ready for the bounded normal and pre-mutation-failure forward/active-source lifecycle and direct GA4 Overview source-list, breakdown, and imported-total surfaces on deployed runtime `25516c722f8106505a5a9f4cf556e025d030823a`: campaign-scoped add/edit/delete, exact source/list/totals propagation, scheduler refresh, OAuth startup and forced-`401` renewal, supported currency/date/amount validation, pre-mutation failure retention, same-runtime refresh/edit overlap protection, full-width chunking through 50,000 allocated rows, fail-closed rejection above that boundary, and exact tab names including trailing spaces are evidenced. Horizontal scaling/multi-worker behavior, concurrent duplicate creates, post-commit derived-recompute error semantics, ambiguous locale formats/dates, imports above 50,000 allocated rows, exact deployed derived-card parity, report/email artifacts, other source families, future revisions/data, and a globally clean historical database are not claimed. The known 67 records on three inactive historical sources remain excluded from active totals and explicitly prevent a whole-database clean claim.

@@ -1920,7 +1920,7 @@ export function AddRevenueWizardModal(props: {
                       <FileSpreadsheet className="w-4 h-4" />
                       Google Sheets
                       {importSourceStatus.google_sheets && (
-                        <span className="ml-auto text-xs font-normal text-green-600 dark:text-green-400">Connected</span>
+                        <span className="ml-auto text-xs font-normal text-green-600 dark:text-green-400">Connected · Add another</span>
                       )}
                     </CardTitle>
                     <CardDescription>Import revenue from a connected Google Sheets tab</CardDescription>

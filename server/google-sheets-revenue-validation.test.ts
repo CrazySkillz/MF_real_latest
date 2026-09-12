@@ -83,6 +83,9 @@ describe("GA4 Overview Google Sheets revenue deterministic validation", () => {
     expect(resolveGoogleSheetsRevenueGrid([
       { properties: { title: "Revenue", index: 0, hidden: false, gridProperties: { rowCount: 6000 } } },
     ], "Missing")).toBeNull();
+    expect(resolveGoogleSheetsRevenueGrid([
+      { properties: { title: "Revenue ", index: 0, hidden: false, gridProperties: { rowCount: 6000 } } },
+    ], "Revenue ")).toEqual({ sheetName: "Revenue ", rowCount: 6000 });
     expect(buildGoogleSheetsRevenueRowRanges(grid!.sheetName, grid!.rowCount)).toEqual([
       "'Revenue''s Data'!1:5000",
       "'Revenue''s Data'!5001:6000",

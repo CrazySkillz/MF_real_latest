@@ -12,8 +12,8 @@ export function resolveGoogleSheetsRevenueGrid(
       return String(properties?.title || "").trim() && Number.isSafeInteger(rowCount) && rowCount > 0;
     })
     .sort((a: any, b: any) => Number(a?.index || 0) - Number(b?.index || 0));
-  const requested = String(requestedSheetName || "").trim();
-  const selected = requested
+  const requested = String(requestedSheetName || "");
+  const selected = requested.trim()
     ? grids.find((properties: any) => String(properties.title) === requested)
     : grids.find((properties: any) => properties?.hidden !== true);
   return selected

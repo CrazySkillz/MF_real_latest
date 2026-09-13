@@ -6,17 +6,15 @@ Base revision: `51f04fe2e25b01ba79e4d20383f33f9ed7f3a092` on `main`, plus the un
 
 ## Anti-Overclaim Status
 
-Current decision: **not clean-certified; deployed edit evidence exposed a blank unsupported-header choice and the localized correction is not yet deployed**.
+Current decision: **not clean-certified; the corrected artifact passed the reversible deployed CSV packet, but the 10 MiB path returns HTTP 500 and cross-owner, forced-failure, configured KPI/Benchmark, and report/PDF evidence remain open**.
 
-The committed patch passed the focused lifecycle/downstream packet, TypeScript validation, production build, and a read-only target-database inventory. Commit `5329fe2516afaf64963be0826f2aaa05967486e8` was pushed to `main`; production `/api/health` returned HTTP 200 with that exact commit at `2026-09-13T06:07:51.426Z`. The current artifact has not yet been exercised through the deployed browser/runtime. Historical deployed CSV checks from 2026-07-12 were performed against an older revision and are not current-artifact evidence.
+The committed patch passed the focused lifecycle/downstream packet, TypeScript validation, production build, and a read-only target-database inventory. Production `/api/health` returned HTTP 200 with correction commit `8735e778ba843c89e506717c3430040458b50ef7` at `2026-09-13T06:41:44.600Z`. The corrected artifact has not yet completed deployed browser/runtime validation. Historical deployed CSV checks from 2026-07-12 were performed against an older revision and are not current-artifact evidence.
 
-Three certification gates remain:
+One certification gate remains:
 
-1. authorization to commit/push and deployment of the localized edit-preview correction;
-2. corrected-artifact deployed lifecycle, negative-case, concurrency, and downstream validation;
-3. final deployed read-only inventory plus documentation of the stable certification decision.
+1. resolve or explicitly accept the deployed 10 MiB HTTP 500 behavior and obtain the still-open cross-owner, forced-failure, configured KPI/Benchmark, and report/PDF evidence listed below.
 
-Do not describe CSV Revenue as clean-certified until all three remaining gates are closed.
+Do not describe CSV Revenue as clean-certified until the remaining gate is closed.
 
 ## Scope
 
@@ -178,6 +176,7 @@ Boundaries: the in-memory duplicate guard is intentionally limited to one server
 7. Simultaneous identical add requests could create two additive sources. One-runtime in-flight fingerprinting now rejects the duplicate with 409.
 8. A quick derived recompute rejection after commit could return HTTP 500 even though upload/delete had committed. CSV-only post-commit recompute failures now log while preserving accurate mutation success.
 9. The deployed edit modal rebuilt retained rows from mapped fields only but continued to display every original CSV header. That exposed blank, unusable choices such as an initially unmapped `description` column. GA4 edit mode now limits a no-file retained preview to the fields actually retained; re-upload continues to expose the new file's full headers.
+10. The deployed 10 MiB limit safely rejects an oversized file before mutation, but Multer's `LIMIT_FILE_SIZE` error has no HTTP status and the shared global handler therefore renders it as HTTP 500. A local GA4-only correction is not available at that shared pre-body boundary without changing excluded upload paths, so no further application edit was made.
 
 Files changed for these fixes/evidence:
 
@@ -189,6 +188,7 @@ Files changed for these fixes/evidence:
 - `server/csv-revenue-transaction.test.ts`
 - `server/csv-revenue-damaged-data-inventory.test.ts`
 - `scripts/csv-revenue-inventory-readonly.ts`
+- `scripts/csv-revenue-deployed-authorized-validation.ts`
 - this document
 
 No GA4 formula, other revenue-source implementation, public response shape, or `APP_PRODUCTION_READINESS.md` was changed.
@@ -206,6 +206,7 @@ No GA4 formula, other revenue-source implementation, public response shape, or `
 - `npm run check`: passed after final code changes.
 - `npm run build`: passed after final code changes; Vite transformed 3,470 modules and the server bundle completed.
 - Follow-up edit-preview correction on 2026-09-13: focused CSV packet passed 15/15, `npm run check` passed, and the production build passed with 3,470 modules transformed.
+- The authorized deployed validation runner passed `npm run check` before execution and again after its evidence-field normalization correction.
 - Broad source-safety packet: all CSV preview/process and individual revenue-delete ownership assertions passed. The file overall passed 78/88 and failed 10 unrelated stale Instagram/Google Ads/static-shape assertions.
 - Expanded adjacent packet: 137/138 tests passed. The sole failure is an unrelated stale Salesforce static expectation in `latest-day-revenue-regression.test.ts`; `git show HEAD` proves its expected string was already absent from the base modal, and the CSV diff does not touch Salesforce behavior.
 
@@ -248,6 +249,21 @@ Final scan: `2026-09-12T23:08:08.851Z` (`2026-09-13` Europe/Amsterdam), inside `
 
 Those inactive rows are excluded from live reads by the active-source join. Their existence is still a persisted-data finding, so the inventory's overall `pass` is false. No active analytics discrepancy was found.
 
+Final post-deployed-test scan: `2026-09-13T06:47:42.852Z`, inside `BEGIN TRANSACTION READ ONLY`, followed by `ROLLBACK`.
+
+- 57 campaigns, 13 GA4 CSV source definitions, 1 active source, and 19 linked records were scanned.
+- Active-source, currency, record-currency, retained-amount, retained-date, duplicate-active-source, orphan, cross-campaign, wrong-type, mapping, stored/materialized-total, dated-row-loss, and duplicate-record findings were all zero.
+- The same five pre-existing inactive legacy groups retained the same 17 records; no new inactive record group was created.
+- Compared with the pre-test scan, the two controlled add/delete runs left two inactive zero-record source definitions, while the active count and linked-record count returned to their exact pre-test values. This matches the current soft-delete-source/hard-delete-record contract and does not affect live reads.
+- No cleanup was performed or authorized.
+
+Final post-automated-validation scan: `2026-09-13T07:13:41.188Z`, inside `BEGIN TRANSACTION READ ONLY`, followed by `ROLLBACK`.
+
+- 57 campaigns, 16 GA4 CSV source definitions, 1 active source, and 19 linked records were scanned.
+- Active-source and supplemental findings remained zero; the same five pre-existing inactive groups retained the same 17 records.
+- The authorized automated run added and then deleted three exact temporary sources. It moved the target campaign from 2 to 5 inactive zero-record definitions while restoring its active source IDs, active revenue, and active record count exactly to `[]`, `0`, and `0`.
+- Global active source and linked-record counts remained exactly at their pre-test values. No new inactive record group or cleanup candidate was created.
+
 ## Manual Deployed Evidence
 
 Historical only:
@@ -261,10 +277,14 @@ Current artifact:
 - A temporary dated CSV source was added through the deployed browser, its edit modal was opened, and the exact temporary source was subsequently deleted by the user.
 - The edit screenshot showed `date` and `amount` retained but an initially unmapped `description` header displayed with blank values. This is failed deployed evidence for that edit-preview state, not clean lifecycle evidence.
 - Root cause: `csvStoredRevenueRows` intentionally retains mapped fields, while the client used the broader original `csvHeaders` list when reconstructing the no-file edit preview.
-- The localized client correction and regression guard pass locally but are not committed, pushed, or deployed.
-- No complete current browser/API lifecycle packet has run.
-- No current deployed concurrency or cross-owner packet has run.
-- No current generated report/PDF content has been inspected.
+- The localized client correction was committed as `8735e778ba843c89e506717c3430040458b50ef7`; production `/api/health` confirmed that exact SHA at `2026-09-13T06:41:44.600Z`.
+- After a hard refresh, the user repeated the temporary add/edit/delete flow on `8735e778` and confirmed that the no-file edit preview showed only retained `date` and `amount`; the blank `description` header no longer appeared. The temporary source was deleted.
+- Authorized target campaign: `eee3e654-b736-4e8e-86ec-1050e4d905c0`; run completed at `2026-09-13T07:12:34.990Z` against exact SHA `8735e778ba843c89e506717c3430040458b50ef7`.
+- Proven through authenticated deployed API plus read-only database before/after evidence: all 30 preview rows including campaign values after row 25; exact campaign-filtered dated add; daily records; campaign-selection edit without re-upload; exact-source replacement by re-upload; no-date snapshot materialization; revenue-to-date delta; unchanged spend; source-list/breakdown value parity; over-5,000 UI row rejection; over-50,000 process-row rejection; ambiguous structure, amount, date, currency, and no-positive-row rejection without mutation; simultaneous identical add `200/409`; overlapping edit `200/409`; exact-source cleanup and baseline restoration.
+- The source-list assertion initially reported a validation-helper false negative because it omitted the existing `lastTotalRevenue` field. The captured source row and breakdown row both contained `75`; the helper now reads that field and passes TypeScript validation. No application contract or response changed.
+- The 10 MiB request was rejected without mutation but returned HTTP 500 with `File too large`; size-limit error rendering therefore fails clean certification.
+- Unauthenticated campaign access was rejected. Cross-owner evidence remains unvalidated because no separate non-owner identity was authorized.
+- KPI, Benchmark, and report endpoints returned HTTP 200, but the disposable campaign has zero configured KPIs, Benchmarks, and reports. Configured-value propagation and current report/PDF content therefore remain unvalidated rather than inferred.
 - No deployed forced database failure hook exists; transactional rollback remains local mocked evidence unless an approved safe staging failure injection is provided.
 
 ## Damaged-Data And Cleanup Boundary
@@ -290,4 +310,4 @@ CSV Revenue can receive a stable clean-certification answer only when the exact 
 
 Until then, the stable answer is:
 
-> CSV Revenue is not clean-certified. Exact commit `5329fe25` was deployed, but deployed edit evidence exposed a blank unsupported-header choice. The localized correction is locally validated and still requires commit, deployment, corrected lifecycle evidence, and a final read-only inventory.
+> CSV Revenue is not clean-certified. Correction commit `8735e778` passed the reversible deployed lifecycle, negative, concurrency, totals, and cleanup packet, and final inventory found no new active or record-level damage. Oversized files return HTTP 500, while cross-owner, deployed forced rollback, configured KPI/Benchmark propagation, and current report/PDF content remain unvalidated.

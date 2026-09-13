@@ -4,7 +4,7 @@
 
 **Overall clean-certification status: PENDING — NOT CLEAN-CERTIFIED.**
 
-The Spend release candidate passes its focused automated, type-check, and production-build gates and is deployed as `a77342289492440b628e5b72b9f5d16b88d51750`. That exact revision passes a read-only target-campaign inventory, reconciliation, access-control, and natural Google Sheets refresh observation. Current-revision production lifecycle mutation, provider-failure injection, and controlled provider-value downstream propagation remain open.
+The Spend release candidate passes its focused automated, type-check, and production-build gates and is deployed within current production SHA `f13238114b703119e93d4ae8006bc79284912994`. That exact revision passes read-only inventory, reconciliation, access-control, natural Google Sheets refresh, and an authorized isolated production lifecycle packet for both source types. Google transport/token failure injection, controlled provider-value mutation, and live configured KPI/Benchmark/Report propagation remain open.
 
 This packet does not revoke, reopen, overwrite, invalidate, or recertify any earlier certification. Existing Revenue implementations were consulted only as architectural patterns; no Revenue implementation, Revenue test contract, Revenue evidence, or existing certificate was changed or counted as Spend evidence. `GA4/certifications/ga4-overview.json`, `GA4/OVERVIEW_PRODUCTION_READINESS.md`, and `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md` remain unchanged.
 
@@ -161,15 +161,44 @@ Additional gates:
 
 The broad aggregate-source file is not claimed as a passing suite. Its two failures are not Spend evidence and were not fixed, reopened, or invalidated.
 
+## Authorized Campaign2 Lifecycle Evidence
+
+Target: Campaign2 (`d9c8a3b7c4d0`), deployed SHA `f13238114b703119e93d4ae8006bc79284912994`, currency `USD`, reporting timezone `Europe/Amsterdam`, completed end date `2026-09-12`.
+
+Safety baseline:
+
+- `0` active Spend sources, `0` Spend records, and `$0` campaign Spend
+- `0` GA4 KPIs, `0` GA4 Benchmarks, `0` KPI alerts, and `0` notifications
+- no existing Spend-purpose Google Sheets connection
+- the existing Revenue-purpose connection was not modified or counted as Spend evidence; the product's existing append flow created a separate temporary Spend-purpose connection
+
+Final accepted lifecycle run:
+
+- all `30` named checks passed with no failure
+- Google Sheets add materialized one dated `$180.20` source; edit preserved its source ID
+- a missing mapped header returned `SHEET_MAPPING_CHANGED` and preserved the exact last-good source and records
+- a forged Sheets currency returned `SPEND_CURRENCY_MISMATCH` and preserved last-good data
+- CSV preview returned the exact three headers and four rows
+- CSV add filtered to `$5.00`; edit without re-upload changed the same source to `$11.00`; manual re-upload replaced that source with `$13.00`
+- a forged CSV currency returned `SPEND_CURRENCY_MISMATCH` and preserved last-good data
+- source list, breakdown, spend-to-date, daily financials, and campaign Spend reconciled at every accepted transition
+- the combined temporary state was exactly `2` sources and `$193.20`
+- natural Google Sheets refresh completed in `120` observed seconds with the same source ID and `$180.20` value
+- the CSV mapping and records remained unchanged during the scheduler observation
+- CSV and Sheets delete routes returned success, deactivated only their exact source, removed its records, and removed the dedicated Spend connection from active use
+- cleanup removed only the validator-created inactive audit rows and connection so Campaign2 returned exactly to its original source, record, connection, campaign-Spend, alert, and notification structure
+
+Two preliminary executions are excluded from passing evidence: the first completed cleanup but hit a local result-reporting variable typo; the second proved the product's soft-delete behavior but used an incorrect hard-delete test expectation. Both runs restored Campaign2 before the final corrected run. The final run above is the accepted packet.
+
 ## Remaining Steps Before Clean Certification
 
-Completed after the initial packet: the exact candidate was committed, pushed, deployed, and verified at full SHA `a77342289492440b628e5b72b9f5d16b88d51750`. The `180`-second validator passed after observing a natural refresh in `50` seconds, with the exact `$2,759.75` total, four stable source IDs, unchanged CSV mappings, clean integrity checks, and denied unauthenticated/cross-owner access.
+Completed after the initial packet: the exact candidate was committed, pushed, deployed, and verified. The read-only validator passed with the exact `$2,759.75` retained-source total, four stable source IDs, unchanged CSV mappings, clean integrity checks, and denied unauthenticated/cross-owner access. The separate Campaign2 lifecycle packet above then passed add, edit, manual refresh, natural refresh, failure preservation, reconciliation, delete, and exact cleanup.
 
 Still required:
 
-1. In an authorized disposable campaign or isolated staging fixture, execute add, edit/manual refresh, and delete for both source families and reconcile source list, source count, records, Total Spend, dates, and stable IDs after every transition.
-2. Inject a Google Sheets provider/mapping failure in that isolated boundary and prove the previous source, records, total, and downstream values remain unchanged.
-3. Make a controlled mapped Google Sheets Spend value change and a controlled CSV manual refresh, then prove the exact delta reaches Overview, KPI/Benchmark current values, alerts, snapshots, reports, and scheduled PDF inputs without cross-campaign leakage.
-4. Record the final SHA and evidence in a new certification artifact. Do not overwrite or recertify a protected artifact without explicit permission.
+1. If transport-failure evidence is required beyond the passed missing-mapping negative case, inject a Google Sheets transport/token failure in an isolated provider boundary and prove the previous source, records, total, and downstream values remain unchanged.
+2. Make a controlled mapped value change in the external Google Sheet and prove that exact provider delta propagates automatically; this packet changed source lifecycle state but did not alter the protected provider sheet.
+3. Validate live persisted KPI, Benchmark, alert, snapshot, report, and scheduled-PDF values in a disposable configured boundary. Campaign2 has none of those consumers, and creating them would modify protected certified areas without explicit permission.
+4. Record final certification only after the required remaining boundaries are explicitly authorized and closed. Do not overwrite or recertify a protected artifact without explicit permission.
 
-Until these four gates are closed, the accurate status is **deployed read boundary healthy; clean certification pending**.
+Until these remaining boundaries are closed or explicitly excluded, the accurate status is **deployed Spend source lifecycle validated; full clean certification pending**.

@@ -2,9 +2,9 @@
 
 ## Decision
 
-**Overall clean-certification status: PENDING — NOT CLEAN-CERTIFIED.**
+**Overall clean-certification status: CLEAN-CERTIFIED — BOUNDED TO GA4 OVERVIEW GOOGLE SHEETS SPEND AND CSV SPEND.**
 
-The Spend release candidate passes its focused automated, type-check, and production-build gates and is deployed within current production SHA `f13238114b703119e93d4ae8006bc79284912994`. That exact revision passes read-only inventory, reconciliation, access-control, natural Google Sheets refresh, and an authorized isolated production lifecycle packet for both source types. Google transport/token failure injection, controlled provider-value mutation, and live configured KPI/Benchmark/Report propagation remain open.
+The Spend release candidate passes its focused automated, type-check, and production-build gates. Production runtime SHA `cc2273c560b41c21c6b6fc19f77f4261e7bc2667` passes read-only inventory, reconciliation, access control, isolated source lifecycles, a Google Sheets provider-transport failure with exact last-good preservation, a value-changing natural Sheets refresh, CSV manual replacement, and exact downstream KPI/Benchmark/alert/snapshot/report/PDF propagation. The accepted run restored Campaign2 exactly, and an independent read-only postflight confirmed the restoration.
 
 This packet does not revoke, reopen, overwrite, invalidate, or recertify any earlier certification. Existing Revenue implementations were consulted only as architectural patterns; no Revenue implementation, Revenue test contract, Revenue evidence, or existing certificate was changed or counted as Spend evidence. `GA4/certifications/ga4-overview.json`, `GA4/OVERVIEW_PRODUCTION_READINESS.md`, and `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md` remain unchanged.
 
@@ -29,8 +29,7 @@ Excluded:
 - all Google Ads behavior and readiness
 - all Revenue readiness and Revenue evidence
 - modification or recertification of any protected implementation, test contract, readiness document, or certificate
-- production provider-value mutation
-- production provider-failure injection
+- writing or changing an external Google Sheet cell (the configured product OAuth scope is read-only)
 - production add/edit/delete mutation of the currently retained sources
 - production UI pixel/layout certification
 
@@ -63,7 +62,7 @@ These are confirmed code-path defects. They are not represented as proof that ev
 - New Spend-only tests cover the corrected route/storage/scheduler/UI contracts, transaction rollback and stable identity, and deterministic downstream Spend propagation.
 - A new read-only production validator inventories and reconciles only CSV/Google Sheets Spend, access boundaries, integrity, and natural refresh behavior.
 
-No source was deleted or rewritten. No production business row was mutated. No dependency, schema, response shape, field meaning, architecture, Revenue implementation, or Google Ads implementation changed.
+The runtime correction commit did not delete or rewrite a production source or mutate a production business row. The later authorized validation changed only disposable Campaign2 fixtures and restored them as documented below. No dependency, schema, response shape, field meaning, architecture, Revenue implementation, or Google Ads implementation changed.
 
 ## Evidence Matrix
 
@@ -80,10 +79,10 @@ No source was deleted or rewritten. No production business row was mutated. No d
 | Ownership/isolation | Unauthenticated and cross-owner endpoint requests were denied. Database scan found `0` orphan, cross-campaign, or inactive-source records. | Passed for the recorded target and read paths. |
 | Transactional replacement | CSV and Sheets rollback tests prove source/record changes roll back together. Storage predicates now include the exact campaign and context boundaries. | Passed locally. |
 | Duplicate prevention | Target scan found `0` duplicate source/date rows and `0` duplicate active source signatures. Edit/refresh preserves identity rather than inserting a replacement source. | Passed within stable edit/refresh scope. Deliberate repeated add-mode imports remain additive by product design; no global uniqueness claim is made. |
-| Sheets automatic refresh | A natural scheduler observation advanced the retained Sheets source `lastSyncedAt` while source IDs, source count, CSV mappings, and exact total remained stable. | Passed for one current provider/no-value-change observation; no exact cadence SLA or provider-value-delta claim. |
-| Sheets last-good data | Provider/preview errors occur before replacement; new header/currency/role failures also occur before replacement; transaction failures roll back. | Passed by local trace/tests. A deployed provider-failure injection remains open. |
+| Sheets automatic refresh | Earlier evidence proved stable no-change refresh. The final strengthened Campaign2 packet then switched only the temporary source's selected provider campaign value; the natural scheduler fetched the existing provider sheet and changed that same source from `$180.20` to `$1,103.00` in `170` observed seconds. Total Spend changed by exactly `$922.80`, source count stayed `2`, source identity stayed stable, and CSV stayed unchanged. | Passed for the exact deployed scheduler/provider/mapping boundary. No generalized cadence SLA or external-cell-write claim. |
+| Sheets last-good data | Provider/preview errors occur before replacement; new header/currency/role failures also occur before replacement; transaction failures roll back. The Campaign2 packet temporarily pointed only its disposable Spend connection at a nonexistent spreadsheet; the deployed refresh returned failure and preserved the exact source, records, totals, and downstream state, then succeeded after guarded restoration. | Passed locally and in the isolated deployed provider-transport boundary. |
 | CSV manual refresh | Scheduler trace/test contains no CSV processing path. During Sheets automatic observation, all CSV mapping hashes remained unchanged. | Passed for architecture and observed non-participation. |
-| Downstream Spend | Deterministic runtime tests propagate Spend `250` to ROAS `4`, ROI `300`, CPA `5`, and the performance summary's canonical Spend input. Static trace covers KPI/Benchmark jobs, current-value resolution, alerts, snapshots, reports, and scheduled PDFs. | Passed locally for the canonical Spend input; a deployed controlled source-value mutation remains open. |
+| Downstream Spend | Deterministic runtime tests propagate Spend `250` to ROAS `4`, ROI `300`, CPA `5`, and the performance summary's canonical Spend input. In Campaign2, deployed source totals of `$193.20`, `$1,116.00`, and `$2,116.00` produced exact persisted KPI/Benchmark CPA values of `$7.73`, `$44.64`, and `$84.64`; snapshot Benchmark values and generated report PDFs matched. A `$64.64` alert threshold created at `$44.64` and resolved at `$84.64`. | Passed for Google Sheets and CSV source changes through the deployed persisted consumers and shared scheduled-PDF builder. Scheduled email delivery was not invoked or claimed. |
 
 ## Production Read-Only Evidence
 
@@ -190,15 +189,33 @@ Final accepted lifecycle run:
 
 Two preliminary executions are excluded from passing evidence: the first completed cleanup but hit a local result-reporting variable typo; the second proved the product's soft-delete behavior but used an incorrect hard-delete test expectation. Both runs restored Campaign2 before the final corrected run. The final run above is the accepted packet.
 
-## Remaining Steps Before Clean Certification
+## Authorized Campaign2 Downstream And Provider-Failure Evidence
 
-Completed after the initial packet: the exact candidate was committed, pushed, deployed, and verified. The read-only validator passed with the exact `$2,759.75` retained-source total, four stable source IDs, unchanged CSV mappings, clean integrity checks, and denied unauthenticated/cross-owner access. The separate Campaign2 lifecycle packet above then passed add, edit, manual refresh, natural refresh, failure preservation, reconciliation, delete, and exact cleanup.
+Target: Campaign2 (`d9c8a3b7c4d0`), deployed SHA `cc2273c560b41c21c6b6fc19f77f4261e7bc2667`, currency `USD`, completed end date `2026-09-12`.
 
-Still required:
+The accepted isolated run passed all `18` checks:
 
-1. If transport-failure evidence is required beyond the passed missing-mapping negative case, inject a Google Sheets transport/token failure in an isolated provider boundary and prove the previous source, records, total, and downstream values remain unchanged.
-2. Make a controlled mapped value change in the external Google Sheet and prove that exact provider delta propagates automatically; this packet changed source lifecycle state but did not alter the protected provider sheet.
-3. Validate live persisted KPI, Benchmark, alert, snapshot, report, and scheduled-PDF values in a disposable configured boundary. Campaign2 has none of those consumers, and creating them would modify protected certified areas without explicit permission.
-4. Record final certification only after the required remaining boundaries are explicitly authorized and closed. Do not overwrite or recertify a protected artifact without explicit permission.
+- A disposable Google Sheets Spend connection and source materialized `$180.20`; a disposable CSV source materialized `$13.00`; every source-list, breakdown, spend-to-date, daily-financial, and campaign value reconciled at `$193.20`.
+- Only the disposable Spend connection's spreadsheet ID was temporarily replaced with a nonexistent provider ID. The deployed source-scoped refresh failed closed and preserved the exact last-good source, records, and totals. Restoring that one connection field made the same refresh path succeed.
+- Only the disposable Sheets source's selected provider campaign value was switched. The final strengthened natural scheduler run completed in `170` observed seconds, retained the same Sheets source ID and two-source count, left CSV unchanged, and changed Sheets Spend from `$180.20` to `$1,103.00`; combined Spend became `$1,116.00`, an exact `$922.80` Sheets delta.
+- A CSV manual replacement retained the same CSV source ID and changed CSV Spend from `$13.00` to `$1,013.00`; combined Spend became `$2,116.00`, an exact `$1,000.00` CSV delta.
+- The live GA4 financial denominator was `25` conversions. Persisted KPI, persisted Benchmark, immutable Benchmark snapshot content, report output, and PDF output matched exact CPA values of `$7.73`, `$44.64`, and `$84.64` at the three Spend states.
+- An in-app KPI alert was created at CPA `$44.64` against threshold `$64.64`, then resolved/read at CPA `$84.64`. Email notifications were disabled and no email was sent.
+- The deployed manual snapshot and snapshot-download routes execute the same GA4 PDF builder used by scheduled reports. This proves the shared scheduled-PDF value builder, not scheduler timing or email delivery.
+- Cleanup removed only the disposable Spend sources/records/connection, KPI/progress/alert/period, Benchmark/history, report/snapshots/send events, email audit rows, and notification. Every fixture-specific residue count was `0`; Campaign Spend returned to `$0`; the four original Revenue-purpose connection rows, Revenue facts, and all `29` GA4 daily facts were unchanged.
+- A separate read-only postflight confirmed `0` Spend sources, `0` Spend records, `$0` Spend, `0` GA4 KPIs, `0` GA4 Benchmarks, `0` alerts/notifications, and the unchanged original connection inventory.
 
-Until these remaining boundaries are closed or explicitly excluded, the accurate status is **deployed Spend source lifecycle validated; full clean certification pending**.
+One intermediate strengthened run is excluded from passing evidence. Its product checks passed and its parent-table cleanup completed, but its new restoration assertion compared raw Revenue refresh metadata and regenerated record IDs while the normal Revenue scheduler ran concurrently. The validator was corrected to compare protected Revenue business facts while still checking every temporary fixture by exact ID; the final run above then passed all product, zero-residue, protected-fact, and connection-structure checks.
+
+## Certification Boundary And Remaining Steps
+
+No blocking step remains inside the requested Google Sheets Spend and CSV Spend scope. The correct status is **clean-certified for the documented GA4 Overview Spend boundary at runtime SHA `cc2273c560b41c21c6b6fc19f77f4261e7bc2667`**.
+
+Explicit exclusions and future evidence boundaries:
+
+1. The product's Google Sheets OAuth contract is read-only, so the validator did not write an external Sheet cell. The value-changing automatic refresh used two existing live provider campaign selections on the disposable source. No external-write capability or claim is introduced.
+2. The single final `170`-second observation is not a scheduler SLA or proof of every future provider timing condition.
+3. Scheduled email orchestration, inbox delivery, and provider delivery confirmation were not invoked and are not required or claimed for this Spend subsection. Only the shared scheduled-PDF value builder was exercised through deployed snapshot routes.
+4. Unlisted Sheet layouts, CSV shapes, currencies, campaigns, future provider behavior, and future code revisions remain outside this bounded certification.
+5. Existing Revenue implementations/evidence and every prior certificate remain untouched and retain their prior status. This packet certifies only Spend; it does not recertify the whole GA4 Overview.
+6. Google Ads remains **NOT CONFIGURED / EXCLUDED** with no testing, modification, or readiness claim.

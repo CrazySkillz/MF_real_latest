@@ -153,6 +153,7 @@ describe("Shopify revenue regression guard", () => {
       deleteRoute.indexOf("const source = await storage.getRevenueSource(campaignId, sourceId);")
     );
     expect(deleteRoute).toContain("await recomputeCampaignDerivedValues(campaignId, { platformContext: sourcePlatformContext });");
+    expect(deleteRoute).toContain("[Shopify Revenue] Post-delete GA4 recompute failed after source commit:");
   });
 
   it("includes TikTok scoped revenue sources in the source picker inventory", () => {

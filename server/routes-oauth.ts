@@ -3913,7 +3913,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      if (sourceType === "csv" && ["", "ga4"].includes(sourcePlatformContext.toLowerCase())) {
+      if (sourceType === "shopify" && ["", "ga4"].includes(sourcePlatformContext.toLowerCase())) {
+        try {
+          await recomputeCampaignDerivedValues(campaignId, { platformContext: sourcePlatformContext });
+        } catch (error) {
+          console.error("[Shopify Revenue] Post-delete GA4 recompute failed after source commit:", error);
+        }
+      } else if (sourceType === "csv" && ["", "ga4"].includes(sourcePlatformContext.toLowerCase())) {
         try {
           await recomputeCampaignDerivedValues(campaignId, { platformContext: sourcePlatformContext });
         } catch (error) {

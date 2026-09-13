@@ -366,7 +366,7 @@ Revenue source families for future/broader configurations:
 
 - Shopify — the exact enabled source is clean-certified inside the recorded Overview boundary; future stores remain unverified
 - HubSpot — the former three-source clean certification is historical bounded evidence; the current implementation is unverified after `f4a3e8d7` and later shared CRM changes, with revenue-only five-minute parity still open
-- Salesforce — current reference CRM flow through `5987024a`; the exercised lifecycle/five-minute behavior is not a whole-source production certificate
+- Salesforce — clean-certified only for exact active GA4 source `72ca7970-c6fd-4a67-af12-339897b2cb9f` and its exercised lifecycle/configuration boundary at runtime `d4f1ec0e`; other configurations, whole-provider readiness, and global scheduler health remain excluded. See `GA4/OVERVIEW_REVENUE_SALESFORCE_PRODUCTION_READINESS.md`
 - Google Sheets — chooser is deployed; an unconfigured future Revenue source is outside the certification
 - CSV — the exact enabled source is clean-certified inside the recorded Overview boundary; unlisted variants remain unverified
 - existing legacy Manual revenue, if present

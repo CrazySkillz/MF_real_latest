@@ -402,7 +402,7 @@ Important meaning:
 
 ## Revenue Source 3: Salesforce Journey
 
-Current implementation note: Salesforce is enabled in the GA4 revenue-source chooser and is the reference CRM flow documented in `GA4/CRM_REVENUE_SOURCE_PATTERN.md`. This description is not a whole-source or whole-Overview production-readiness claim.
+Current implementation note: Salesforce is enabled in the GA4 revenue-source chooser and is the reference CRM flow documented in `GA4/CRM_REVENUE_SOURCE_PATTERN.md`. Exact-source readiness is controlled by `GA4/OVERVIEW_REVENUE_SALESFORCE_PRODUCTION_READINESS.md`; this broader workflow description does not expand that boundary to other Salesforce configurations or whole-Overview readiness.
 
 Every Salesforce request requires an explicit supported platform context. GA4 passes `ga4`; the server searches only that context, rejects mapping-context mismatches, and fails closed when no exact scoped active Salesforce source exists.
 
@@ -476,7 +476,7 @@ Production validation:
 - opening `Total Revenue -> Sources -> Salesforce edit` should show the saved `Total Revenue (to date)` immediately and must not flash a misleading `$0.00`
 - without changing settings and without a changed live Salesforce total, `Update revenue` should remain disabled
 - after a meaningful wizard setting change, or after the live Salesforce preview total differs from the saved source total, `Update revenue` should become enabled
-- current exercised evidence covers Salesforce add/edit/delete, itemized confirmed opportunity provenance, open-stage-to-Closed-Won movement, and five-minute revenue-only amount refresh; the full daily external-source scheduler remains a separate pending validation and this does not certify every Salesforce configuration
+- Salesforce is clean-certified only for exact active GA4 source `72ca7970-c6fd-4a67-af12-339897b2cb9f` and the exercised boundary recorded in `GA4/OVERVIEW_REVENUE_SALESFORCE_PRODUCTION_READINESS.md` at runtime `d4f1ec0e`. Add/edit/delete, itemized provenance, open-stage-to-Closed-Won movement, five-minute revenue-only refresh, exact-source daily refresh, and current read-only integrity checks passed. Other Salesforce configurations and global scheduler health remain excluded.
 
 ## Revenue Source 4: Google Sheets Journey
 

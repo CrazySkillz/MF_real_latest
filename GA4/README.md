@@ -42,6 +42,7 @@ Current GA4 tab production-readiness status:
 - Shopify Revenue status: **UNVERIFIED for the current candidate** after a same-UTC-day order was omitted from the default Total Revenue and Revenue Breakdown windows. The 2026-08-10 exact-source certification remains historical bounded evidence; deployed card/source parity for the corrected window is pending.
 - Upload CSV Revenue status (2026-08-10): **clean-certified for exact enabled source `d4421cb9-8298-4d96-8697-c82ef5f0b7b5` inside the recorded Overview boundary**. Unlisted CSV variants and an unconfigured future Google Sheets Revenue source remain excluded.
 - HubSpot Revenue status: **CLEAN-CERTIFIED for five exact active GA4 HubSpot sources and their exercised configurations** at runtime `490c8ae6`. Provider transition, Pipeline-enabled and revenue-only five-minute refresh, open-Overview update, item/source lifecycle, renewal, and current source integrity checks passed. Legacy/test sources, unexercised configurations, and global scheduler health remain excluded. Use `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md` for exact evidence.
+- Salesforce Revenue status: **CLEAN-CERTIFIED for one exact active GA4 Salesforce source and its exercised lifecycle/configuration boundary** at runtime `d4f1ec0e`. Add/edit/delete, Pipeline-to-confirmed movement, revenue-only five-minute refresh, exact-source daily refresh, and current read-only integrity checks passed. Other Salesforce configurations and global scheduler health remain excluded. Use `GA4/OVERVIEW_REVENUE_SALESFORCE_PRODUCTION_READINESS.md` for exact evidence.
 - Google Sheets Revenue is no longer on hold. Current Commit 21 deployed its existing GA4 chooser/API entry point without changing production data; an unconfigured future Revenue source is not certified by chooser availability.
 
 - Insights has no source chooser. Overview owns the GA4 financial-source chooser and Insights audits must not change it. Google Ads has no live-test evidence and is excluded from Insights certification; LinkedIn, Meta/Facebook, and Instagram are not enabled as Insights inputs for this release.
@@ -93,6 +94,8 @@ Important meaning:
   Covers the GA4 Overview tab, tables, card-population rules, and GA4 campaign scope.
 - `GA4/CRM_REVENUE_SOURCE_PATTERN.md`
   Canonical implementation handoff for the current Salesforce revenue-source reference flow, shared CRM invariants, scheduler behavior, exact HubSpot parity gaps, and validation boundary. It is not a production-readiness certificate.
+- `GA4/OVERVIEW_REVENUE_SALESFORCE_PRODUCTION_READINESS.md`
+  Canonical clean-certification boundary for the exact active GA4 Salesforce Revenue source; it does not certify other Salesforce configurations or global scheduler health.
 - `GA4/OVERVIEW_PRODUCTION_READINESS.md`
   Concise canonical current-status index. Current section status: **UNVERIFIED**. Campaign Breakdown is validated for deployed runtime `08d7abe535c9ea4f57f57d8cbdbb072fba64052e`; remaining Overview value families and the natural scheduler gate retain their separate validation status.
 - `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`
@@ -139,7 +142,8 @@ Important meaning:
 - `GA4/OVERVIEW.md` explains what the Overview tab contains and how its cards/tables should be understood
 - `GA4/OVERVIEW_PRODUCTION_READINESS.md` states the current decision and active gates; its evidence and history companion ledgers preserve the detailed record
 - `GA4/FINANCIAL_SOURCES.md` explains the underlying revenue/spend source system that feeds Overview and other GA4 tabs
-- HubSpot-specific readiness is clean-certified only for the five exact active GA4 sources and exercised configurations recorded in `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`; use `GA4/CRM_REVENUE_SOURCE_PATTERN.md` for the Salesforce reference and preserved CRM contracts.
+- HubSpot-specific readiness is clean-certified only for the five exact active GA4 sources and exercised configurations recorded in `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`.
+- Salesforce-specific readiness is clean-certified only for the exact active GA4 source and exercised boundary recorded in `GA4/OVERVIEW_REVENUE_SALESFORCE_PRODUCTION_READINESS.md`; use `GA4/CRM_REVENUE_SOURCE_PATTERN.md` for preserved shared CRM contracts.
 - Shopify-specific readiness is canonical in `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md`; current readiness is unverified pending deployed same-day card/source parity and the corrected OAuth expiring-token provider read/renewal gates, while non-GA4 sources and future stores remain excluded.
 
 Why this file is separate:

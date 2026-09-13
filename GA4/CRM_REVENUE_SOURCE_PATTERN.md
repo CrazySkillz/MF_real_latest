@@ -4,7 +4,7 @@
 
 This document is the implementation handoff for GA4 child revenue sources backed by a CRM. It describes the code behavior introduced through Salesforce code commit `5987024a` and the HubSpot automation work committed in `f4a3e8d7`.
 
-It is a behavior and parity reference, not a production-readiness certificate. Salesforce is the reference implementation. HubSpot follows the exercised Salesforce lifecycle and refresh pattern and is clean-certified only for the five exact active GA4 sources and configurations recorded in the canonical HubSpot readiness document. Historical source-family certificates remain bounded to their recorded runtime, source IDs, campaign, and configuration.
+It is a behavior and parity reference, not a production-readiness certificate. Salesforce is the reference implementation and is clean-certified only for the exact active GA4 source and exercised boundary recorded in `GA4/OVERVIEW_REVENUE_SALESFORCE_PRODUCTION_READINESS.md`. HubSpot follows the exercised Salesforce lifecycle and refresh pattern and is clean-certified only for the five exact active GA4 sources and configurations recorded in the canonical HubSpot readiness document. Historical source-family certificates remain bounded to their recorded runtime, source IDs, campaign, and configuration.
 
 Read this with:
 
@@ -125,8 +125,18 @@ A zero proxy after the transition is a valid configured `$0.00`, not `Unavailabl
 | Five-minute refresh with Pipeline enabled | Yes | Deployed natural-timer refresh and provider transition passed for three exact sources |
 | Five-minute refresh with Pipeline disabled | Yes | Deployed natural-timer refresh passed for two exact sources |
 | Open-stage to Closed Won automation | User-validated for the exercised Salesforce source; local regression covered | User-validated for the exercised HubSpot source; local regression covered |
-| Full daily external-source run | Code path exists; final current-cycle validation was intentionally deferred | Natural run fired and exact HubSpot sources refreshed; global success is unproven because unrelated jobs failed |
-| Current production-readiness status | Scoped exercised behavior only; no whole-source or whole-Overview certification claim | Clean-certified for five exact active GA4 sources/configurations; no whole-provider or whole-Overview claim |
+| Full daily external-source run | Exact active source refreshed; global success remains excluded because unrelated jobs failed | Natural run fired and exact HubSpot sources refreshed; global success is unproven because unrelated jobs failed |
+| Current production-readiness status | Clean-certified for one exact active GA4 source/exercised boundary; no whole-provider or whole-Overview claim | Clean-certified for five exact active GA4 sources/configurations; no whole-provider or whole-Overview claim |
+
+## Final Salesforce Certification Gate (Closed)
+
+Runtime `d4f1ec0e` closed the exact-source gate without changing application behavior:
+
+1. the current Salesforce regression packet passed 111/111, the exact ownership/destructive guards passed 3/3, and TypeScript/build passed
+2. the natural full external-source run refreshed stable source `72ca7970-c6fd-4a67-af12-339897b2cb9f` at `$251` with six materialized rows and no unmatched selected values
+3. the Revenue Sources modal showed one provider subtotal and three itemized values reconciling to `$251`
+4. a read-only rolled-back production inventory proved one active source, zero inactive duplicates, exact source-ID/currency/ownership parity, and zero duplicate grains or orphan/cross-campaign records
+5. the normal `22:30 UTC` schedule was restored; unrelated provider failures remain excluded from this exact Salesforce source certificate
 
 ## Final HubSpot Certification Gate (Closed)
 
@@ -167,12 +177,12 @@ Primary focused regressions include:
 
 ## Validation Boundary At This Handoff
 
-Current Salesforce evidence includes focused local regressions and TypeScript validation, plus user-observed deployed add/edit/delete, itemized provenance, open-stage-to-Closed-Won movement, and five-minute revenue-only amount refresh. The exercised transition moved `$200` from Pipeline Proxy into confirmed revenue; a later revenue-only amount edit from `$50` to `$51` refreshed without a wizard resave.
+Current Salesforce evidence is clean-certified only for exact active source `72ca7970-c6fd-4a67-af12-339897b2cb9f` and the exercised boundary recorded in `GA4/OVERVIEW_REVENUE_SALESFORCE_PRODUCTION_READINESS.md` at runtime `d4f1ec0e`. User-observed add/edit/delete, itemized provenance, open-stage-to-Closed-Won movement, and five-minute revenue-only amount refresh are supplemented by exact-source daily refresh and current read-only production integrity evidence. The exercised transition moved `$200` from Pipeline Proxy into confirmed revenue; a later revenue-only amount edit from `$50` to `$51` refreshed without a wizard resave.
 
 Current HubSpot evidence at deployed runtime `490c8ae6` includes user-observed add/edit/delete, exact item removal, itemized provenance, provider-authoritative open-stage-to-Closed-Won movement, open-Overview updates, automatic OAuth renewal, and five-minute refresh for five exact active GA4 sources, including three Pipeline-enabled and two revenue-only sources. Use the canonical HubSpot readiness document for exact IDs and exclusions.
 
 Not proven by that evidence:
 
-- global success of the full daily external-source scheduler; its current run contained unrelated job failures
+- global success of the full daily external-source scheduler; the exact Salesforce source succeeded but the run contained unrelated job failures
 - every Salesforce org, stage configuration, attribution field, mapping, currency, or date-field variant
 - whole GA4 Overview or whole CRM source production readiness

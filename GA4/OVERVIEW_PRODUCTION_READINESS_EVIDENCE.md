@@ -6,7 +6,7 @@ This ledger preserves the detailed audit scope, inventories, traces, blocker ana
 
 Use [`OVERVIEW_PRODUCTION_READINESS.md`](./OVERVIEW_PRODUCTION_READINESS.md) for the current certification decision and active gates. Use [`OVERVIEW_PRODUCTION_READINESS_HISTORY.md`](./OVERVIEW_PRODUCTION_READINESS_HISTORY.md) for the chronological Commit 0-20 record.
 
-Current CRM boundary note (2026-09-11): Salesforce revenue is now visible and implemented through reference code commit `5987024a`; HubSpot Pipeline automation was committed in `f4a3e8d7`, followed by shared CRM/Overview changes. Those changes are outside the exact historical inventories and certificates preserved below. Current Salesforce behavior and HubSpot parity gaps are documented in [`CRM_REVENUE_SOURCE_PATTERN.md`](./CRM_REVENUE_SOURCE_PATTERN.md). They do not upgrade the complete Overview status from **UNVERIFIED**.
+Current CRM boundary note (2026-09-13): Salesforce revenue is clean-certified only for the exact active source and exercised boundary recorded in [`OVERVIEW_REVENUE_SALESFORCE_PRODUCTION_READINESS.md`](./OVERVIEW_REVENUE_SALESFORCE_PRODUCTION_READINESS.md) at runtime `d4f1ec0e`; HubSpot retains its separate exact-source certificate. Shared CRM behavior remains documented in [`CRM_REVENUE_SOURCE_PATTERN.md`](./CRM_REVENUE_SOURCE_PATTERN.md). These source-specific certificates do not upgrade the complete Overview status from **UNVERIFIED**.
 
 The moved content below is preserved verbatim so the documentation split does not discard or rewrite historical evidence.
 

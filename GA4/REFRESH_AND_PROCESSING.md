@@ -370,7 +370,7 @@ CRM auto-reprocess rule:
 - Overview Pipeline Proxy visibility should be anchored to the active saved CRM revenue source config; refreshed endpoint data may update the amount/provenance, but a stale endpoint response must not hide an otherwise configured active Pipeline Proxy card
 - an open Overview should poll the saved HubSpot and Salesforce Pipeline results every minute and refetch Total Revenue, Revenue Sources, and Revenue Breakdown when either provider refresh timestamp changes
 - if both HubSpot and Salesforce have active Pipeline Proxy configuration, the Overview card should aggregate both providers' exact proxy totals while keeping provider-specific provenance in the read-only Pipeline Proxy sources modal
-- the five-minute CRM loop and full daily external-source run are distinct validation gates. Passing one does not prove the other; the current Salesforce user cycle intentionally leaves the full daily run for validation after HubSpot parity work
+- the five-minute CRM loop and full daily external-source run are distinct validation gates. Passing one does not prove the other. Both gates passed for the exact Salesforce source and exercised boundary recorded in `GA4/OVERVIEW_REVENUE_SALESFORCE_PRODUCTION_READINESS.md`; unrelated failures in the same daily process remain excluded from that exact-source result
 
 Shopify auto-reprocess rule:
 

@@ -2207,6 +2207,7 @@ export function AddRevenueWizardModal(props: {
                             setCsvCampaignValues([]);
                             setCsvCampaignDisplayName("");
                             setCsvCampaignQuery("");
+                            setRevenueCampaignMappings([]);
                             setCsvPrefill(null);
                           }}
                         />

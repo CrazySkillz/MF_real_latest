@@ -167,6 +167,20 @@ describe("GA4 CSV Revenue current-main certification guards", () => {
     expect(modal).toContain('step === "csv_map" ? (isEditing ? "Edit CSV revenue" : "Map CSV columns")');
   });
 
+  it("clears retained campaign crosswalks when a replacement CSV is selected", () => {
+    const fileInputStart = modal.indexOf('id="revenue-csv-file"');
+    const requiredColumnsStart = modal.indexOf("Required columns: Revenue", fileInputStart);
+    const replacementFileInput = modal.slice(fileInputStart, requiredColumnsStart);
+
+    expect(fileInputStart).toBeGreaterThan(-1);
+    expect(requiredColumnsStart).toBeGreaterThan(fileInputStart);
+    expect(replacementFileInput).toContain("setCsvCampaignValues([]);");
+    expect(replacementFileInput).toContain("setRevenueCampaignMappings([]);");
+    expect(replacementFileInput.indexOf("setRevenueCampaignMappings([]);")).toBeLessThan(
+      replacementFileInput.indexOf("setCsvPrefill(null);"),
+    );
+  });
+
   it("rejects oversized GA4 files in the browser before preview or process requests", () => {
     const previewStart = modal.indexOf("const handleCsvPreview = async");
     const processStart = modal.indexOf("const handleCsvProcess = async", previewStart);

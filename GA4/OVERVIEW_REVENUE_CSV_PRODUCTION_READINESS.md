@@ -2,11 +2,11 @@
 
 Last updated: 2026-09-13 (Europe/Amsterdam)
 
-Certified application revision: `c71677a06cb924c758cb374e1cfe8e3fabc9032f` on `main`. Evidence is recorded through `53840fcc9dfd0ff275ba2285b2b280b793930175`; the current candidate adds the CSV edit-entry correction described below.
+Certified application revision: `c71677a06cb924c758cb374e1cfe8e3fabc9032f` on `main`. Evidence is recorded through `53840fcc9dfd0ff275ba2285b2b280b793930175`; the current candidate includes the CSV edit-entry and replacement-file mapping corrections described below.
 
 ## Anti-Overclaim Status
 
-Current decision: the deployed CSV data lifecycle remains clean-certified at exact application commit `c71677a06cb924c758cb374e1cfe8e3fabc9032f`, but **complete current-candidate certification is temporarily withheld** for one newly reported edit-entry UI defect. The correction makes the CSV pencil open the upload/re-upload step before mapping. It is locally proven but not yet deployed or manually verified.
+Current decision: the deployed CSV data lifecycle remains clean-certified at exact application commit `c71677a06cb924c758cb374e1cfe8e3fabc9032f`, but **complete current-candidate certification is temporarily withheld** for the CSV edit-entry and replacement-file remapping corrections. Both are locally proven; neither is yet deployed or manually verified.
 
 The browser guard passed all 36 focused CSV Revenue tests, TypeScript validation, and the production build. Production `/api/health` returned HTTP 200 with exact evidence commit `a9f7bc49b3213a73241ff7fd9520def82fd577c4` at `2026-09-13T08:23:28.357Z`. An authorized headless browser check completed at `2026-09-13T08:04:10.075Z`: the oversized warning rendered, the upload step stayed open, and zero preview requests reached the server. A cross-owner check completed at `2026-09-13T08:25:12.414Z`: source list, total, preview, process, and delete all returned privacy-preserving HTTP 404, and the foreign campaign's CSV source/record state was unchanged.
 
@@ -15,7 +15,7 @@ At `2026-09-13T08:46:08.199Z`, the user accepted both remaining limitations for 
 - direct requests above 10 MiB are rejected before mutation but render HTTP 500; the supported GA4 browser flow blocks them before making a request;
 - rollback is proven by focused transaction tests, but no deployed fault injection was performed because no safe production hook exists.
 
-That acceptance is not being used as clean evidence. Both former limitations are now closed by current evidence below. One release-validation step remains for the new edit-entry correction: deploy/manual verification.
+That acceptance is not being used as clean evidence. Both former limitations are now closed by current evidence below. One release-validation step remains for the current corrections: deploy/manual verification.
 
 ## Scope
 
@@ -179,6 +179,7 @@ Boundaries: the in-memory duplicate guard is intentionally limited to one server
 9. The deployed edit modal rebuilt retained rows from mapped fields only but continued to display every original CSV header. That exposed blank, unusable choices such as an initially unmapped `description` column. GA4 edit mode now limits a no-file retained preview to the fields actually retained; re-upload continues to expose the new file's full headers.
 10. The deployed 10 MiB limit safely rejects an oversized file before mutation, but Multer's `LIMIT_FILE_SIZE` error has no HTTP status and the shared global handler therefore renders it as HTTP 500. The smallest safe server correction wraps only the two revenue CSV routes, returns the existing `{ message }` error shape with HTTP 413 only when an already-parsed multipart field proves `platformContext=ga4`, and forwards every other upload error unchanged. The GA4 client places that marker before its file; non-GA4 multipart order remains unchanged. The shared upload configuration, spend routes, formulas, and normal response contracts are untouched.
 11. The CSV edit prefill unconditionally selected `csv_map`, so the Revenue Sources pencil bypassed the upload/re-upload step. The localized correction changes only that initial CSV edit step to `csv`; successful preview still advances to `csv_map`, and retained mapping state is unchanged.
+12. Selecting a replacement file cleared its column choices and campaign-value selection but did not clear the retained platform campaign crosswalk. The localized correction adds the missing crosswalk reset to the replacement file input only, so each newly selected file requires deliberate campaign remapping while unrelated source state and API behavior remain unchanged.
 
 Files changed for these fixes/evidence:
 
@@ -215,6 +216,7 @@ No GA4 formula, other revenue-source implementation, public response shape, or `
 - Final current CSV packet: 7 files, 38/38 tests passed.
 - Final deployed-runner assertions passed 3/3 and `npm run check` passed after requiring HTTP 413 for both oversized endpoints, exact before/after database equality, and distinct source-count evidence.
 - CSV edit-entry correction on 2026-09-13: the CSV certification and validation suites passed 19/19; the new regression proves edit initialization enters `csv` while successful preview still advances to `csv_map`; `npm run check` and the production build passed with 3,470 modules transformed. No deployed browser claim is made for this correction.
+- Replacement-file mapping reset on 2026-09-13: the CSV certification and validation suites passed 20/20; the focused regression proves the replacement file input clears both selected campaign values and the retained platform campaign crosswalk before mapping; `npm run check` and the production build passed with 3,470 modules transformed. No deployed browser claim is made for this correction.
 - The adjacent Google Ads CSV and Meta packet passed 67/71. Its four failures are stale static expectations already absent from committed `HEAD`: the platform enum now includes `custom_integration`, campaign filtering is intentionally optional, the mapping condition also includes GA4, and Create Campaign uses a recorded dynamic back step. None intersects this correction; they were not edited.
 - The authorized deployed validation runner passed `npm run check` before execution and again after its evidence-field normalization correction.
 - Broad source-safety packet: all CSV preview/process and individual revenue-delete ownership assertions passed. The file overall passed 78/88 and failed 10 unrelated stale Instagram/Google Ads/static-shape assertions.

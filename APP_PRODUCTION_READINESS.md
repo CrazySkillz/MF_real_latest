@@ -75,7 +75,7 @@ Revenue source families:
 | Shopify | `IN_PROGRESS` | `UNVERIFIED` | Nearly validated is not certified; close the remaining named provider/deployed gates. |
 | Salesforce, including Pipeline Proxy | `IN_PROGRESS` | `UNVERIFIED` | Nearly validated is not certified; close the remaining named gates and issue/refresh the controlling certificate. |
 | Google Sheets | `COMPLETE` | `CERTIFIED` | Clean-certified and production-ready for the documented deployed single-runtime V1 scope in `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md`; required V1 steps remaining: 0. |
-| Upload CSV | `QUEUED` | `UNVERIFIED` | Run the fresh complete source-family validation. |
+| Upload CSV | `COMPLETE` | `CERTIFIED` | Clean-certified for the documented GA4 CSV Revenue scope on deployed application commit `b2fd97a9`; evidence commit `4476e807`; manual source-refresh scheduler behavior is inapplicable; required steps remaining: 0. |
 
 Spend source families:
 
@@ -195,7 +195,7 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 | --- | --- | --- | --- |
 | HubSpot Revenue and Pipeline Proxy | `CERTIFIED` | `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md` | Five exact active GA4 sources and exercised configurations at deployed runtime `490c8ae685821389d1f433a5943f856478f52e5c`; this evidence set is not a five-source product limit. |
 | Shopify Revenue | `RELEASE_CANDIDATE` | `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` | First timer-fired scheduler refresh and deployed expiring-token renewal evidence remain named gates. |
-| Upload CSV Revenue | `CERTIFIED` | `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md` | Exact enabled source and bounded CSV lifecycle inside its recorded Overview boundary. |
+| Upload CSV Revenue | `CERTIFIED` | `GA4/OVERVIEW_REVENUE_CSV_PRODUCTION_READINESS.md` | Deployed application commit `b2fd97a9`; evidence commit `4476e807`; clean-certified for the documented GA4 scope with source-refresh scheduling inapplicable and required steps remaining: 0. |
 | Google Sheets Revenue | `CERTIFIED` | `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md` | Documentation commit `f4a648a8`; deployed runtime `f8061d135a85fbe2c4c11433fffb3f80dedceae8`; clean-certified for the documented single-runtime V1 scope with required steps remaining: 0. |
 | Salesforce Revenue and Pipeline Proxy | `NO_CERTIFICATE` | `GA4/CRM_REVENUE_SOURCE_PATTERN.md` | Strong bounded implementation and user evidence is recorded, but that document explicitly says it is not a production-readiness certificate. |
 | GA4 Google Sheets/CSV Spend family | `RELEASE_CANDIDATE` | `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md` | Configured spend values have bounded evidence; the general Google Sheets provider/scheduler lifecycle is not independently clean-certified. |

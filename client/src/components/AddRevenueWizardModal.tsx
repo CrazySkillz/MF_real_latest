@@ -35,6 +35,13 @@ const isCsvDateLikeValue = (value: unknown) => {
   if (!raw || /^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(raw)) return false;
   return !Number.isNaN(new Date(raw).getTime());
 };
+const isGa4CsvRevenueDateLikeValue = (value: unknown) => {
+  const raw = String(value ?? "").trim();
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2})(?:(?:T| )(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,9})?)?(?:Z|[+-](?:[01]\d|2[0-3]):?[0-5]\d)?)?$/);
+  if (!match) return false;
+  const parsed = new Date(`${match[1]}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === match[1];
+};
 const isCsvDateLikeHeader = (header: string) =>
   /(^|[_\s-])(date|day|timestamp)($|[_\s-])/i.test(header.trim());
 
@@ -853,7 +860,17 @@ export function AddRevenueWizardModal(props: {
         campaignDisplayName: String(config?.campaignDisplayName || ""),
       });
       const savedHeaders = Array.isArray(config?.csvHeaders) ? config.csvHeaders.map(String).filter(Boolean) : [];
-      const savedSampleRows = Array.isArray(config?.csvSampleRows) ? config.csvSampleRows : [];
+      const storedRows = Array.isArray(config?.csvStoredRevenueRows) ? config.csvStoredRevenueRows : [];
+      const storedRevenueColumn = String(config?.storedRevenueColumn || config?.revenueColumn || "");
+      const storedCampaignColumn = String(config?.storedCampaignColumn || config?.campaignColumn || "");
+      const storedDateColumn = String(config?.storedDateColumn || config?.dateColumn || "");
+      const savedSampleRows = storedRows.length > 0
+        ? storedRows.map((row: any) => ({
+            ...(storedRevenueColumn ? { [storedRevenueColumn]: String(row?.revenueRaw ?? row?.revenue ?? "") } : {}),
+            ...(storedCampaignColumn ? { [storedCampaignColumn]: String(row?.campaignKey ?? "") } : {}),
+            ...(storedDateColumn ? { [storedDateColumn]: String(row?.dateRaw ?? "") } : {}),
+          }))
+        : Array.isArray(config?.csvSampleRows) ? config.csvSampleRows : [];
       const savedRowCount = Number.isFinite(Number(config?.csvRowCount)) ? Number(config.csvRowCount) : 0;
       if (savedHeaders.length) {
         setCsvPreview({
@@ -1054,7 +1071,7 @@ export function AddRevenueWizardModal(props: {
         .map((row) => String(row?.[header] ?? "").trim())
         .filter(Boolean);
       if (nonEmptyValues.length === 0) return header === csvDateCol;
-      return nonEmptyValues.every(isCsvDateLikeValue);
+      return nonEmptyValues.every(isGa4CsvRevenueDateLikeValue);
     });
   }, [platformContext, csvHeaders, csvPreview, csvRevenueCol, csvCampaignCol, csvDateCol]);
 
@@ -1170,10 +1187,8 @@ export function AddRevenueWizardModal(props: {
   }, [csvPreview, csvCampaignCol, csvCampaignValues]);
 
   const requiresCsvCampaignValueSelection = useMemo(() => {
-    if (!csvCampaignCol) return false;
-    const available = uniqueValuesFromPreview(csvPreview, csvCampaignCol);
-    return available.length > 0 && (!Array.isArray(csvCampaignValues) || csvCampaignValues.length === 0);
-  }, [csvPreview, csvCampaignCol, csvCampaignValues]);
+    return Boolean(csvCampaignCol && (!Array.isArray(csvCampaignValues) || csvCampaignValues.length === 0));
+  }, [csvCampaignCol, csvCampaignValues]);
 
   const canRecalculateCsvRevenueEditWithoutReupload = useMemo(() => {
     if (!isEditing || csvFile) return true;
@@ -1428,6 +1443,7 @@ export function AddRevenueWizardModal(props: {
     try {
       const fd = new FormData();
       fd.append("file", file);
+      fd.append("platformContext", platformContext);
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/csv/preview`, { method: "POST", credentials: "include", body: fd });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to preview CSV");
@@ -1477,11 +1493,7 @@ export function AddRevenueWizardModal(props: {
       });
       return;
     }
-    if (!csvCampaignCol) {
-      toast({ title: "Select a campaign column", description: "Campaign is required for revenue imports.", variant: "destructive" });
-      return;
-    }
-    if (!Array.isArray(csvCampaignValues) || csvCampaignValues.length === 0) {
+    if (csvCampaignCol && (!Array.isArray(csvCampaignValues) || csvCampaignValues.length === 0)) {
       toast({ title: "Select at least 1 campaign value", description: "Choose which campaign rows to import.", variant: "destructive" });
       return;
     }
@@ -1500,15 +1512,16 @@ export function AddRevenueWizardModal(props: {
     setCsvProcessing(true);
     try {
       const valueSource: 'revenue' = 'revenue';
+      const hasCampaignScope = Boolean(csvCampaignCol && csvCampaignValues.length > 0);
       const campaignMappings = mappedRevenueCampaignsForValues(csvCampaignValues);
       const mapping = {
         revenueColumn: csvRevenueCol || null,
         conversionValueColumn: null,
         valueSource,
-        campaignColumn: csvCampaignCol,
-        campaignValue: csvCampaignValues.length === 1 ? csvCampaignValues[0] : null,
-        campaignValues: csvCampaignValues,
-        campaignDisplayName: csvCampaignValues.length > 0 ? (csvCampaignDisplayName.trim() || null) : null,
+        campaignColumn: hasCampaignScope ? csvCampaignCol : null,
+        campaignValue: hasCampaignScope && csvCampaignValues.length === 1 ? csvCampaignValues[0] : null,
+        campaignValues: hasCampaignScope ? csvCampaignValues : null,
+        campaignDisplayName: hasCampaignScope ? (csvCampaignDisplayName.trim() || null) : null,
         dateColumn: csvDateCol || null,
         currency,
         displayName: csvFile?.name || csvPrefill?.displayName || initialSource?.displayName || "CSV",
@@ -2151,7 +2164,7 @@ export function AddRevenueWizardModal(props: {
                     </div>
                     {isEditing && (
                       <div className="text-xs text-muted-foreground/70">
-                        To edit a CSV import, please re-upload the same (or updated) file. We'll re-process revenue using your updated mappings after preview.
+                        Re-upload to replace the stored rows. Campaign selections can be updated from the retained file data without re-uploading.
                       </div>
                     )}
 
@@ -2188,6 +2201,7 @@ export function AddRevenueWizardModal(props: {
                           Required columns: Revenue
                         </p>
                       </div>
+                      <p className="text-xs text-muted-foreground/70">Maximum 10 MB and 5,000 data rows in the upload flow.</p>
                     </div>
 
                     <div className="flex justify-end gap-2">
@@ -2268,7 +2282,7 @@ export function AddRevenueWizardModal(props: {
                         <div className="pt-2 border-t space-y-3">
                           <div className="grid gap-4 md:grid-cols-2">
                             <div className="space-y-2">
-                              <Label className="font-normal">Campaign identifier</Label>
+                              <Label className="font-normal">Campaign identifier (optional)</Label>
                               <Select
                                 value={csvCampaignCol || SELECT_NONE}
                                 onValueChange={(v) => {
@@ -2283,7 +2297,7 @@ export function AddRevenueWizardModal(props: {
                                   <SelectValue placeholder="Search values..." />
                                 </SelectTrigger>
                                 <SelectContent className="z-[10000]">
-                                  <SelectItem value={SELECT_NONE}>Search values...</SelectItem>
+                                  <SelectItem value={SELECT_NONE}>None — import the full file</SelectItem>
                                   {csvHeaders.map((h) => (
                                     <SelectItem key={h} value={h}>{h}</SelectItem>
                                   ))}
@@ -2301,7 +2315,7 @@ export function AddRevenueWizardModal(props: {
                               />
                               <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-2">
                                 {!csvCampaignCol ? (
-                                  <div className="text-xs text-muted-foreground/70">Upload/preview data to see campaign values.</div>
+                                  <div className="text-xs text-muted-foreground/70">Select a campaign column only when you want to filter the file.</div>
                                 ) : uniqueValuesFromPreview(csvPreview, csvCampaignCol).length === 0 ? (
                                   <div className="text-xs text-muted-foreground/70">No values found in the preview.</div>
                                 ) : (

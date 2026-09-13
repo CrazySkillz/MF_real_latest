@@ -15,7 +15,7 @@ import { assertProductionTokenEncryptionConfigured, resolveOAuthStateSigningSecr
 import { buildGoogleAdsOAuthAuthorization, resolveGoogleAdsOAuthAuthorization } from './google-ads-oauth-authorization';
 import { buildGA4GoogleAdsSpendMaterialization } from './ga4-google-ads-spend';
 import multer from "multer";
-import { aggregateCsvRevenueRows, aggregateCsvSpendRows, normalizeFinancialSourceDateKey, parseCsvText } from "./utils/csv";
+import { aggregateCsvRevenueRows, aggregateCsvSpendRows, findInvalidGa4CsvRevenueAmountRows, findInvalidGa4CsvRevenueDateRows, GA4_CSV_MAX_REVENUE_TOTAL, normalizeFinancialSourceDateKey, parseCsvText } from "./utils/csv";
 import { inspectGa4CsvRevenueDamage } from "./utils/csv-revenue-damage-inventory";
 import { findHubspotConnectionSourceMappingMismatches, inspectGa4HubspotRevenueDamage } from "./utils/hubspot-revenue-damage-inventory";
 import { selectRevenueRecordTotal } from "./utils/revenue-record-total";
@@ -3902,7 +3902,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      await recomputeCampaignDerivedValues(campaignId, { platformContext: sourcePlatformContext });
+      if (sourceType === "csv" && ["", "ga4"].includes(sourcePlatformContext.toLowerCase())) {
+        try {
+          await recomputeCampaignDerivedValues(campaignId, { platformContext: sourcePlatformContext });
+        } catch (error) {
+          console.error("[CSV Revenue] Post-delete GA4 recompute failed after source commit:", error);
+        }
+      } else {
+        await recomputeCampaignDerivedValues(campaignId, { platformContext: sourcePlatformContext });
+      }
       res.json({ success: true, revenueTrackingDisabled: activeRemaining.length === 0 });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to delete revenue source" });
@@ -4377,6 +4385,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  const inFlightGa4CsvRevenueAdds = new Set<string>();
+
   app.post(
     "/api/campaigns/:id/revenue/csv/preview",
     importRateLimiter,
@@ -4387,25 +4397,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
         const file = (req as any).file as any;
         const csvText = Buffer.from(file.buffer).toString("utf-8");
-        // Hard cap lines up-front to avoid expensive parsing of huge files.
-        const approxLines = countLinesUpTo(csvText, MAX_CSV_ROWS_PREVIEW + 5);
-        if (approxLines > MAX_CSV_ROWS_PREVIEW + 5) {
-          return res.status(413).json({
-            success: false,
-            error: `CSV too large. Please upload a smaller file (max ~${MAX_CSV_ROWS_PREVIEW.toLocaleString()} rows for preview).`,
-            code: "CSV_TOO_LARGE",
-          });
+        const platformContext = parseCsvRevenuePlatformContext((req.body as any)?.platformContext, "ga4", res);
+        if (!platformContext) return;
+        if (platformContext !== "ga4") {
+          // Preserve the established parser behavior for non-GA4 revenue contexts.
+          const approxLines = countLinesUpTo(csvText, MAX_CSV_ROWS_PREVIEW + 5);
+          if (approxLines > MAX_CSV_ROWS_PREVIEW + 5) {
+            return res.status(413).json({
+              success: false,
+              error: `CSV too large. Please upload a smaller file (max ~${MAX_CSV_ROWS_PREVIEW.toLocaleString()} rows for preview).`,
+              code: "CSV_TOO_LARGE",
+            });
+          }
         }
-        const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PREVIEW);
+        const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PREVIEW, { strict: platformContext === "ga4" });
         res.json({
           success: true,
           fileName: file.originalname,
           headers: parsed.headers,
-          sampleRows: parsed.rows.slice(0, 25),
+          sampleRows: platformContext === "ga4" ? parsed.rows : parsed.rows.slice(0, 25),
           rowCount: parsed.rows.length,
         });
       } catch (e: any) {
-        res.status(500).json({ success: false, error: e?.message || "Failed to preview CSV" });
+        const status = e?.code === "CSV_TOO_LARGE" ? 413 : e?.code === "CSV_MALFORMED" ? 400 : 500;
+        res.status(status).json({ success: false, error: e?.message || "Failed to preview CSV" });
       }
     });
 
@@ -4415,6 +4430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     requireCampaignAccessParamId,
     uploadCsv.single("file"),
     async (req, res) => {
+      let addRequestKey: string | null = null;
       try {
         const campaignId = req.params.id;
         const platformContext = parseCsvRevenuePlatformContext((req.body as any)?.platformContext, "ga4", res);
@@ -4434,6 +4450,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const file = (req as any).file as any;
         const existingSourceId = mapping?.sourceId ? String(mapping.sourceId) : "";
         if (!file && !existingSourceId) return res.status(400).json({ success: false, error: "No CSV file provided" });
+        if (platformContext === "ga4" && !existingSourceId && file) {
+          addRequestKey = createHash("sha256")
+            .update(campaignId)
+            .update(JSON.stringify(normalizeOverviewInventoryConfigValue(mapping)))
+            .update(file.buffer)
+            .digest("hex");
+          if (inFlightGa4CsvRevenueAdds.has(addRequestKey)) {
+            return res.status(409).json({ success: false, error: "This CSV revenue import is already processing." });
+          }
+          inFlightGa4CsvRevenueAdds.add(addRequestKey);
+        }
 
         const valueSource: "revenue" | "conversion_value" =
           platformContext === "linkedin" ? parseValueSource(mapping?.valueSource, "revenue") : "revenue";
@@ -4453,22 +4480,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let parsedHeaders: string[] = [];
         let rowCountForResponse = 0;
         let existingSourceForEdit: any = null;
+        if (platformContext === "ga4" && existingSourceId) {
+          existingSourceForEdit = await storage.getRevenueSource(campaignId, existingSourceId);
+          if (
+            !existingSourceForEdit
+            || String(existingSourceForEdit?.sourceType || "").trim().toLowerCase() !== "csv"
+            || String(existingSourceForEdit?.platformContext || "ga4").trim().toLowerCase() !== "ga4"
+          ) {
+            return res.status(404).json({ success: false, error: "Revenue source not found" });
+          }
+        }
         if (file) {
           const csvText = Buffer.from(file.buffer).toString("utf-8");
-          const approxLines = countLinesUpTo(csvText, MAX_CSV_ROWS_PROCESS + 5);
-          if (approxLines > MAX_CSV_ROWS_PROCESS + 5) {
-            return res.status(413).json({
-              success: false,
-              error: `CSV too large. Please reduce rows (max ~${MAX_CSV_ROWS_PROCESS.toLocaleString()} rows).`,
-              code: "CSV_TOO_LARGE",
-            });
+          if (platformContext !== "ga4") {
+            const approxLines = countLinesUpTo(csvText, MAX_CSV_ROWS_PROCESS + 5);
+            if (approxLines > MAX_CSV_ROWS_PROCESS + 5) {
+              return res.status(413).json({
+                success: false,
+                error: `CSV too large. Please reduce rows (max ~${MAX_CSV_ROWS_PROCESS.toLocaleString()} rows).`,
+                code: "CSV_TOO_LARGE",
+              });
+            }
           }
-          const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PROCESS);
+          const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PROCESS, { strict: platformContext === "ga4" });
           parsedRows = parsed.rows;
           parsedHeaders = parsed.headers;
           rowCountForResponse = parsed.rows.length;
         } else {
-          const existingSource = await storage.getRevenueSource(campaignId, existingSourceId);
+          const existingSource = existingSourceForEdit || await storage.getRevenueSource(campaignId, existingSourceId);
           if (!existingSource) {
             return res.status(404).json({ success: false, error: "Revenue source not found" });
           }
@@ -4552,11 +4591,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
         if (platformContext === "ga4") {
+          for (const [column, label] of [[revenueColumn, "Revenue"], [campaignCol, "Campaign"], [dateCol, "Date"]] as const) {
+            if (column && !parsedHeaders.includes(column)) return sendBadRequest(res, `${label} column was not found in the CSV.`);
+          }
           if (campaignCol === revenueColumn) {
             return sendBadRequest(res, "Revenue column must be different from the Campaign column.");
           }
           if (dateCol && (dateCol === revenueColumn || dateCol === campaignCol)) {
             return sendBadRequest(res, "Date column must be different from the Revenue and Campaign columns.");
+          }
+          const invalidAmountRows = findInvalidGa4CsvRevenueAmountRows(parsedRows, {
+            revenueColumn,
+            campaignCurrency: String((req as any)._campaign?.currency || "USD").trim().toUpperCase(),
+            campaignColumn: campaignCol,
+            campaignValue,
+            campaignValues,
+          });
+          if (invalidAmountRows.length > 0) {
+            return sendBadRequest(res, `Selected revenue rows contain unsupported or ambiguous amounts (CSV row${invalidAmountRows.length === 1 ? "" : "s"} ${invalidAmountRows.slice(0, 10).join(", ")}). Use plain numbers or US-style separators with at most two decimal places; use $ only for USD campaigns.`);
+          }
+          if (dateCol) {
+            const invalidDateRows = findInvalidGa4CsvRevenueDateRows(parsedRows, {
+              revenueColumn,
+              dateColumn: dateCol,
+              campaignColumn: campaignCol,
+              campaignValue,
+              campaignValues,
+            });
+            if (invalidDateRows.length > 0) {
+              return sendBadRequest(res, `Selected positive-revenue rows contain blank, invalid, or ambiguous dates (CSV row${invalidDateRows.length === 1 ? "" : "s"} ${invalidDateRows.slice(0, 10).join(", ")}). Use YYYY-MM-DD or an ISO-style timestamp.`);
+            }
           }
           const validation = aggregateCsvRevenueRows(parsedRows, {
             revenueColumn,
@@ -4567,6 +4631,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           if (validation.keptRows === 0) {
             return sendBadRequest(res, "No valid revenue rows found for the selected mapping");
+          }
+          if (validation.totalRevenue > GA4_CSV_MAX_REVENUE_TOTAL) {
+            return sendBadRequest(res, `Selected CSV revenue exceeds the supported total of ${GA4_CSV_MAX_REVENUE_TOTAL.toFixed(2)}.`);
           }
           if (dateCol && validation.undatedRevenue > 0) {
             return sendBadRequest(res, "Selected revenue rows contain blank or invalid dates. Fix those dates or clear the Date mapping before importing.");
@@ -4736,8 +4803,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               isActive: true,
             } as any,
             revenueRecordsToInsert,
+            existingSourceForEdit ? String(existingSourceForEdit.mappingConfig || "") : undefined,
           );
-          await recomputeCampaignDerivedValues(campaignId, { platformContext });
+          try {
+            await recomputeCampaignDerivedValues(campaignId, { platformContext });
+          } catch (error) {
+            console.error("[CSV Revenue] Post-import GA4 recompute failed after source commit:", error);
+          }
           return res.json({
             success: true,
             sourceId: source.id,
@@ -4887,7 +4959,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       } catch (e: any) {
-        res.status(500).json({ success: false, error: e?.message || "Failed to process CSV revenue" });
+        const status = e?.code === "CSV_TOO_LARGE" ? 413 : e?.code === "CSV_MALFORMED" ? 400 : e?.code === "CSV_REVENUE_SOURCE_CHANGED" ? 409 : 500;
+        res.status(status).json({ success: false, error: e?.message || "Failed to process CSV revenue" });
+      } finally {
+        if (addRequestKey) inFlightGa4CsvRevenueAdds.delete(addRequestKey);
       }
     });
 

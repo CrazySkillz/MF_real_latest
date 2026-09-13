@@ -101,4 +101,17 @@ describe("CSV Revenue damaged-data inventory", () => {
     expect(route).not.toContain("createRevenue");
     expect(route).not.toContain("deleteRevenue");
   });
+
+  it("keeps the target-database inventory in an explicit read-only transaction", () => {
+    const script = readFileSync(join(process.cwd(), "scripts", "csv-revenue-inventory-readonly.ts"), "utf-8");
+    expect(script).toContain('client.query("BEGIN TRANSACTION READ ONLY")');
+    expect(script).toContain('client.query("ROLLBACK")');
+    expect(script).toContain("sourceCurrencyMismatches");
+    expect(script).toContain("recordCurrencyMismatches");
+    expect(script).toContain("unsupportedStoredAmountSources");
+    expect(script).toContain("unsupportedStoredDateSources");
+    expect(script).toContain("duplicateActiveSourceGroups");
+    expect(script).toContain("automaticCleanupAllowed: false");
+    expect(script).not.toMatch(/client\.query\(`\s*(INSERT|UPDATE|DELETE|TRUNCATE|ALTER|DROP)/i);
+  });
 });

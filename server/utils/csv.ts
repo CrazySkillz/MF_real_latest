@@ -5,6 +5,16 @@ export type ParsedCsv = {
   rows: Array<Record<string, string>>;
 };
 
+export type CsvParseOptions = {
+  strict?: boolean;
+};
+
+const csvParseError = (message: string, code = "CSV_MALFORMED") => {
+  const error: any = new Error(message);
+  error.code = code;
+  return error;
+};
+
 export const normalizeFinancialSourceDateKey = (value: unknown): string | null => {
   const raw = String(value ?? "").trim();
   if (!raw || /^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(raw)) return null;
@@ -26,6 +36,46 @@ export type CsvRevenueAggregation = {
   dailyRevenue: Array<{ date: string; revenue: number }>;
   undatedRevenue: number;
 };
+
+const GA4_CSV_REVENUE_AMOUNT = /^[+-]?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{0,2})?|\.\d{1,2})$/;
+export const GA4_CSV_MAX_REVENUE_TOTAL = 9_999_999_999.99;
+
+export const isSupportedGa4CsvRevenueAmount = (value: unknown, campaignCurrency: string): boolean => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return true;
+  const hasDollarSymbol = raw.includes("$");
+  if (hasDollarSymbol && String(campaignCurrency || "").trim().toUpperCase() !== "USD") return false;
+  const withoutCurrency = raw
+    .replace(/^([+-]?)\$\s*/, "$1")
+    .replace(/^\$\s*([+-])/, "$1");
+  const amount = Number(withoutCurrency.replace(/,/g, ""));
+  return GA4_CSV_REVENUE_AMOUNT.test(withoutCurrency)
+    && Number.isFinite(amount)
+    && Math.abs(amount) <= GA4_CSV_MAX_REVENUE_TOTAL;
+};
+
+export function findInvalidGa4CsvRevenueAmountRows(
+  rows: Array<Record<string, unknown>>,
+  mapping: {
+    revenueColumn: string;
+    campaignCurrency: string;
+    campaignColumn?: string | null;
+    campaignValue?: string | null;
+    campaignValues?: readonly unknown[] | null;
+  },
+): number[] {
+  const selectedCampaigns = Array.isArray(mapping.campaignValues) && mapping.campaignValues.length > 0
+    ? new Set(mapping.campaignValues.map((value) => String(value ?? "").trim()).filter(Boolean))
+    : null;
+  const campaignValue = String(mapping.campaignValue || "").trim();
+  return rows.flatMap((row, index) => {
+    if (mapping.campaignColumn && (selectedCampaigns || campaignValue)) {
+      const value = String(row[mapping.campaignColumn] ?? "").trim();
+      if (selectedCampaigns ? !selectedCampaigns.has(value) : value !== campaignValue) return [];
+    }
+    return isSupportedGa4CsvRevenueAmount(row[mapping.revenueColumn], mapping.campaignCurrency) ? [] : [index + 2];
+  });
+}
 
 export function aggregateCsvRevenueRows(
   rows: Array<Record<string, any>>,
@@ -77,6 +127,37 @@ export function aggregateCsvRevenueRows(
     })),
     undatedRevenue: Number(undatedRevenue.toFixed(2)),
   };
+}
+
+export const isSupportedGa4CsvRevenueDate = (value: unknown): boolean => {
+  const raw = String(value ?? "").trim();
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2})(?:(?:T| )(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,9})?)?(?:Z|[+-](?:[01]\d|2[0-3]):?[0-5]\d)?)?$/);
+  return Boolean(match && normalizeStrictUtcDateKey(match[1]) === match[1]);
+};
+
+export function findInvalidGa4CsvRevenueDateRows(
+  rows: Array<Record<string, unknown>>,
+  mapping: {
+    revenueColumn: string;
+    dateColumn: string;
+    campaignColumn?: string | null;
+    campaignValue?: string | null;
+    campaignValues?: readonly unknown[] | null;
+  },
+): number[] {
+  const selectedCampaigns = Array.isArray(mapping.campaignValues) && mapping.campaignValues.length > 0
+    ? new Set(mapping.campaignValues.map((value) => String(value ?? "").trim()).filter(Boolean))
+    : null;
+  const campaignValue = String(mapping.campaignValue || "").trim();
+  return rows.flatMap((row, index) => {
+    if (mapping.campaignColumn && (selectedCampaigns || campaignValue)) {
+      const value = String(row[mapping.campaignColumn] ?? "").trim();
+      if (selectedCampaigns ? !selectedCampaigns.has(value) : value !== campaignValue) return [];
+    }
+    const revenue = Number.parseFloat(String(row[mapping.revenueColumn] ?? "").replace(/[$,]/g, "").trim());
+    if (!Number.isFinite(revenue) || revenue <= 0) return [];
+    return isSupportedGa4CsvRevenueDate(row[mapping.dateColumn]) ? [] : [index + 2];
+  });
 }
 
 export function aggregateCsvSpendRows(
@@ -132,12 +213,16 @@ export function aggregateCsvSpendRows(
 }
 
 // Simple, robust-enough delimited text parser for typical exports (handles quotes and delimiter chars in quotes).
-export function parseCsvText(csvText: string, maxRows?: number): ParsedCsv {
+export function parseCsvText(csvText: string, maxRows?: number, options?: CsvParseOptions): ParsedCsv {
+  const strict = options?.strict === true;
   const text = String(csvText || "")
     .replace(/^\uFEFF/, "") // strip BOM
     // Normalize line endings. Some exports use CR-only which would otherwise collapse rows.
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n");
+  if (strict && /[\u0000\uFFFD]/.test(text)) {
+    throw csvParseError("CSV contains unsupported binary or non-UTF-8 data.");
+  }
 
   // Detect delimiter from the first non-empty line(s). Many "CSV" exports use ; or tabs depending on locale.
   const detectDelimiter = (): string => {
@@ -163,6 +248,14 @@ export function parseCsvText(csvText: string, maxRows?: number): ParsedCsv {
 
     // Strong hint: if the header line clearly uses one delimiter, prefer it.
     const headerLine = lines[0] || "";
+    const headerCounts = candidates.map((delimiter) => ({ delimiter, count: countDelims(headerLine, delimiter) }));
+    const maxHeaderCount = Math.max(...headerCounts.map(({ count }) => count));
+    if (strict && maxHeaderCount > 0 && headerCounts.filter(({ count }) => count === maxHeaderCount).length > 1) {
+      throw csvParseError("CSV header uses ambiguous delimiters.");
+    }
+    if (strict && maxHeaderCount > 0) {
+      return headerCounts.find(({ count }) => count === maxHeaderCount)!.delimiter;
+    }
     for (const d of candidates) {
       const headerCount = countDelims(headerLine, d);
       if (headerCount >= 2) return d;
@@ -186,14 +279,23 @@ export function parseCsvText(csvText: string, maxRows?: number): ParsedCsv {
   let cur: string[] = [];
   let cell = "";
   let inQuotes = false;
+  let afterQuote = false;
 
   const pushCell = () => {
     cur.push(cell);
     cell = "";
+    afterQuote = false;
   };
   const pushRow = () => {
+    if (strict && cur.every((value) => String(value ?? "").trim() === "")) {
+      cur = [];
+      return;
+    }
     rows.push(cur);
     cur = [];
+    if (strict && maxRows && rows.length > maxRows + 1) {
+      throw csvParseError(`CSV too large. Please reduce rows (max ${maxRows.toLocaleString()} data rows).`, "CSV_TOO_LARGE");
+    }
   };
 
   for (let i = 0; i < text.length; i++) {
@@ -208,13 +310,29 @@ export function parseCsvText(csvText: string, maxRows?: number): ParsedCsv {
       }
       if (ch === '"') {
         inQuotes = false;
+        afterQuote = true;
         continue;
       }
       cell += ch;
       continue;
     }
 
+    if (strict && afterQuote) {
+      if (ch === " " || ch === "\t") continue;
+      if (ch === delim) {
+        pushCell();
+        continue;
+      }
+      if (ch === "\n") {
+        pushCell();
+        pushRow();
+        continue;
+      }
+      throw csvParseError("CSV contains characters after a closing quote.");
+    }
+
     if (ch === '"') {
+      if (strict && cell.length > 0) throw csvParseError("CSV contains a quote inside an unquoted field.");
       inQuotes = true;
       continue;
     }
@@ -228,11 +346,13 @@ export function parseCsvText(csvText: string, maxRows?: number): ParsedCsv {
     if (ch === "\n") {
       pushCell();
       pushRow();
-      if (maxRows && rows.length >= maxRows) break;
+      if (!strict && maxRows && rows.length >= maxRows) break;
       continue;
     }
     cell += ch;
   }
+
+  if (strict && inQuotes) throw csvParseError("CSV contains an unclosed quoted field.");
 
   // last cell/row
   if (cell.length > 0 || cur.length > 0) {
@@ -243,7 +363,14 @@ export function parseCsvText(csvText: string, maxRows?: number): ParsedCsv {
   const headerRow = rows[0] || [];
   // Fallback: if we parsed only one column, try to recover by splitting on a common delimiter present in the header.
   let headers = headerRow.map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
-  if (headers.length === 1) {
+  if (strict) {
+    if (rows.length < 2) throw csvParseError("CSV must include a header and at least one data row.");
+    if (headerRow.some((header) => !String(header ?? "").trim())) throw csvParseError("CSV headers cannot be blank.");
+    headers = headerRow.map((header) => String(header).trim());
+    if (new Set(headers).size !== headers.length) throw csvParseError("CSV headers must be unique.");
+    const invalidWidth = rows.slice(1).findIndex((row) => row.length !== headers.length);
+    if (invalidWidth >= 0) throw csvParseError(`CSV row ${invalidWidth + 2} has a different number of columns than the header.`);
+  } else if (headers.length === 1) {
     const firstLine = (text.split("\n")[0] || "");
     const candidates = [",", ";", "\t", "|"];
     const headerCell = String(headerRow[0] ?? "");

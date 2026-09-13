@@ -217,6 +217,7 @@ export interface IStorage {
     existingSourceId: string | null,
     source: InsertRevenueSource,
     records: Array<Omit<InsertRevenueRecord, "revenueSourceId">>,
+    expectedSourceMappingConfig?: string,
   ): Promise<RevenueSource>;
   replaceGa4HubspotRevenueSourceWithRecords(
     campaignId: string,
@@ -1966,6 +1967,7 @@ export class DatabaseStorage implements IStorage {
     existingSourceId: string | null,
     source: InsertRevenueSource,
     records: Array<Omit<InsertRevenueRecord, "revenueSourceId">>,
+    expectedSourceMappingConfig?: string,
   ): Promise<RevenueSource> {
     if (!records.length) throw new Error("No valid revenue records to save");
     return await db.transaction(async (tx: any) => {
@@ -1987,9 +1989,16 @@ export class DatabaseStorage implements IStorage {
             eq(revenueSources.sourceType, "csv"),
             eq(revenueSources.isActive, true),
             or(eq(revenueSources.platformContext, "ga4" as any), isNull(revenueSources.platformContext)),
+            ...(expectedSourceMappingConfig ? [eq(revenueSources.mappingConfig, expectedSourceMappingConfig)] : []),
           ))
           .returning();
-        if (!savedSource) throw new Error("Revenue source not found");
+        if (!savedSource) {
+          const error: any = new Error(expectedSourceMappingConfig
+            ? "CSV revenue source changed. Refresh and try again."
+            : "Revenue source not found");
+          if (expectedSourceMappingConfig) error.code = "CSV_REVENUE_SOURCE_CHANGED";
+          throw error;
+        }
       } else {
         [savedSource] = await tx
           .insert(revenueSources)
@@ -1999,11 +2008,15 @@ export class DatabaseStorage implements IStorage {
 
       if (!savedSource) throw new Error("Failed to save CSV revenue source");
       const sourceId = String(savedSource.id);
-      await tx.delete(revenueRecords).where(eq(revenueRecords.revenueSourceId, sourceId));
+      await tx.delete(revenueRecords).where(and(
+        eq(revenueRecords.revenueSourceId, sourceId),
+        eq(revenueRecords.campaignId, campaignId),
+      ));
       await tx.insert(revenueRecords).values(records.map((record) => ({
         ...record,
         campaignId,
         revenueSourceId: sourceId,
+        sourceType: "csv",
       })) as any);
 
       return savedSource;

@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => {
     source: { ...originalSource },
     records: originalRecords.map((record) => ({ ...record })),
     createdSource: null as any,
-    failureStage: "records" as "source" | "delete" | "records",
+    failureStage: "records" as "source" | "delete" | "records" | "stale",
   };
   const tx = {
     update: vi.fn(() => ({
@@ -29,6 +29,7 @@ const mocks = vi.hoisted(() => {
         where: vi.fn(() => ({
           returning: vi.fn(async () => {
             if (state.failureStage === "source") throw new Error("forced source update failure");
+            if (state.failureStage === "stale") return [];
             state.source = { ...state.source, ...values };
             return [{ ...state.source }];
           }),
@@ -172,6 +173,24 @@ describe("GA4 CSV revenue transaction rollback", () => {
     )).rejects.toThrow("forced revenue record delete failure");
 
     expect(mocks.tx.update).toHaveBeenCalledTimes(1);
+    expect(mocks.tx.insert).not.toHaveBeenCalled();
+    expect(mocks.state.source).toEqual(mocks.originalSource);
+    expect(mocks.state.records).toEqual(mocks.originalRecords);
+  });
+
+  it("rejects an overlapping edit before deleting last-good records", async () => {
+    const storage = new DatabaseStorage();
+    mocks.state.failureStage = "stale";
+
+    await expect(storage.replaceGa4CsvRevenueSourceWithRecords(
+      "campaign-1",
+      "source-1",
+      { ...mocks.originalSource, displayName: "Overlapping CSV" } as any,
+      [{ campaignId: "campaign-1", date: "2026-07-02", revenue: "250.00", currency: "USD" } as any],
+      mocks.originalSource.mappingConfig,
+    )).rejects.toMatchObject({ code: "CSV_REVENUE_SOURCE_CHANGED" });
+
+    expect(mocks.tx.delete).not.toHaveBeenCalled();
     expect(mocks.tx.insert).not.toHaveBeenCalled();
     expect(mocks.state.source).toEqual(mocks.originalSource);
     expect(mocks.state.records).toEqual(mocks.originalRecords);

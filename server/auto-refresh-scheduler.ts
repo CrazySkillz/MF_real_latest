@@ -639,7 +639,7 @@ export async function runGoogleSheetsSpendSourceRefreshForValidation(campaignId:
   }
 
   const cfgRaw = safeJsonParse(source?.mappingConfig);
-  const mappingConfig = cfgRaw ? { ...cfgRaw, platformContext: (cfgRaw as any).platformContext || (source as any).platformContext || undefined } : null;
+  const mappingConfig = cfgRaw ? { ...cfgRaw, platformContext: (cfgRaw as any).platformContext || (source as any).platformContext || "ga4" } : null;
   if (!mappingConfig?.connectionId || !mappingConfig?.spendColumn) {
     return { success: false, reason: "missing_google_sheets_spend_mapping", campaignId: normalizedCampaignId, sourceId: normalizedSourceId, platformContext: (source as any).platformContext || undefined };
   }
@@ -837,6 +837,7 @@ export async function runGoogleSheetsSpendAutoRefreshOnce(): Promise<void> {
         for (const source of sheetSpendSources) {
           const mappingConfig = safeJsonParse(source?.mappingConfig);
           if (!mappingConfig?.connectionId || !mappingConfig?.spendColumn) continue;
+          mappingConfig.platformContext = String(mappingConfig?.platformContext || source?.platformContext || "ga4").trim().toLowerCase();
           await reprocessGoogleSheetsSpend(campaignId, source, mappingConfig);
         }
       } catch (e: any) {

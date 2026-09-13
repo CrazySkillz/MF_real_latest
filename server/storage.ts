@@ -1351,16 +1351,18 @@ export class DatabaseStorage implements IStorage {
     records: Array<Omit<InsertSpendRecord, "spendSourceId">>,
   ): Promise<SpendSource> {
     return await db.transaction(async (tx: any) => {
+      const platformContext = String((source as any)?.platformContext || "").trim() as SpendPlatformContext;
       let savedSource: SpendSource | undefined;
       if (existingSourceId) {
         [savedSource] = await tx
           .update(spendSources)
-          .set(source as any)
+          .set({ ...source, campaignId, sourceType: "csv" } as any)
           .where(and(
             sql`${spendSources.id}::text = ${existingSourceId}`,
             eq(spendSources.campaignId, campaignId),
             eq(spendSources.sourceType, "csv"),
             eq(spendSources.isActive, true),
+            platformContext ? spendPlatformContextPredicate(platformContext) : undefined,
           ))
           .returning();
         if (!savedSource) throw new Error("Spend source not found");
@@ -1373,7 +1375,7 @@ export class DatabaseStorage implements IStorage {
 
       if (!savedSource) throw new Error("Failed to save CSV spend source");
       const sourceId = String(savedSource.id);
-      await tx.delete(spendRecords).where(eq(spendRecords.spendSourceId, sourceId));
+      await tx.delete(spendRecords).where(and(eq(spendRecords.spendSourceId, sourceId), eq(spendRecords.campaignId, campaignId)));
       await tx.insert(spendRecords).values(records.map((record) => ({
         ...record,
         campaignId,

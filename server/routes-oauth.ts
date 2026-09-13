@@ -6308,9 +6308,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: "Select at least one campaign value, or clear campaignColumn to import the full sheet",
         });
       }
+      if (!campaignCol && (campaignValueSet || campaignValue)) {
+        return res.status(400).json({ success: false, error: "campaignColumn is required when campaign values are selected" });
+      }
 
       const spendCol = String(mapping.spendColumn);
       const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
+      if (campaignCol && campaignCol === spendCol) {
+        return res.status(400).json({ success: false, error: "Spend and Campaign columns must be different." });
+      }
       if (dateCol && (dateCol === spendCol || dateCol === campaignCol)) {
         return res.status(400).json({
           success: false,
@@ -6338,7 +6344,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const campaign = await storage.getCampaign(campaignId);
-      const currency = mapping.currency || (campaign as any)?.currency || "USD";
+      const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
+      const requestedCurrency = String(mapping.currency || campaignCurrency).trim().toUpperCase();
+      if (platformContext === "ga4" && requestedCurrency !== campaignCurrency) {
+        return res.status(400).json({
+          success: false,
+          code: "SPEND_CURRENCY_MISMATCH",
+          error: `Currency mismatch: CSV spend is in ${requestedCurrency}, but this campaign is set to ${campaignCurrency}.`,
+          sourceCurrency: requestedCurrency,
+          campaignCurrency,
+        });
+      }
+      const currency = platformContext === "ga4" ? campaignCurrency : requestedCurrency;
       const existingSourceId = mapping?.sourceId || null;
       const previewHeadersForStorage = Array.isArray(mapping?.csvHeaders) && mapping.csvHeaders.length > 0
         ? mapping.csvHeaders.map((h: any) => String(h ?? ""))
@@ -6716,6 +6733,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let kept = 0;
       const spendCol = String(mapping.spendColumn);
       const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
+      if (campaignCol && !campaignValueSet && !campaignValue) {
+        return res.status(400).json({ success: false, error: "Select at least one campaign value, or clear campaignColumn to import the full sheet" });
+      }
+      if (!campaignCol && (campaignValueSet || campaignValue)) {
+        return res.status(400).json({ success: false, error: "campaignColumn is required when campaign values are selected" });
+      }
+      const mappedHeaders = [spendCol, campaignCol, dateCol].filter((header): header is string => Boolean(header));
+      if (new Set(mappedHeaders).size !== mappedHeaders.length) {
+        return res.status(400).json({ success: false, error: "Spend, Date, and Campaign columns must be different." });
+      }
+      const unavailableMappedHeaders = mappedHeaders.filter((header) => headers.filter((candidate) => candidate === header).length !== 1);
+      if (unavailableMappedHeaders.length > 0) {
+        return res.status(400).json({
+          success: false,
+          code: "SHEET_MAPPING_CHANGED",
+          error: `Mapped Google Sheets column is missing or duplicated: ${unavailableMappedHeaders.join(", ")}. Update the mapping before refreshing.`,
+        });
+      }
       let totalSpend = 0;
       let undatedSpend = 0;
       const dailySpendMap = new Map<string, number>(); // date -> spend
@@ -6747,7 +6782,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const campaign = await storage.getCampaign(campaignId);
-      const currency = mapping.currency || (campaign as any)?.currency || "USD";
+      const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
+      const requestedCurrency = String(mapping.currency || campaignCurrency).trim().toUpperCase();
+      if (platformContext === "ga4" && requestedCurrency !== campaignCurrency) {
+        return res.status(400).json({
+          success: false,
+          code: "SPEND_CURRENCY_MISMATCH",
+          error: `Currency mismatch: Google Sheets spend is in ${requestedCurrency}, but this campaign is set to ${campaignCurrency}.`,
+          sourceCurrency: requestedCurrency,
+          campaignCurrency,
+        });
+      }
+      const currency = platformContext === "ga4" ? campaignCurrency : requestedCurrency;
       const existingSourceId = mapping?.sourceId ? String(mapping.sourceId) : null;
 
       const mappingForStorage = {

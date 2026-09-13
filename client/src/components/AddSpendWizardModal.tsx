@@ -448,7 +448,7 @@ export function AddSpendWizardModal(props: {
         if (nonEmptyValues.length === 0) return header === spendDateColumn;
         return nonEmptyValues.every(isCsvDateLikeValue);
       })
-    : headers;
+    : headers.filter((header: string) => header !== spendColumn && header !== effectiveCampaignColumn);
 
   useEffect(() => {
     if (
@@ -2485,7 +2485,7 @@ export function AddSpendWizardModal(props: {
                               >
                                 <SelectTrigger><SelectValue placeholder="Select spend column" /></SelectTrigger>
                                 <SelectContent className="z-[10000]">
-                                  {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                                  {headers.filter((h) => h !== effectiveCampaignColumn && h !== spendDateColumn).map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                                 </SelectContent>
                               </Select>
                               <p className="text-xs text-muted-foreground/70">
@@ -2538,7 +2538,7 @@ export function AddSpendWizardModal(props: {
                                 <SelectTrigger><SelectValue placeholder="Search values..." /></SelectTrigger>
                                 <SelectContent className="z-[10000]">
                                   <SelectItem value={CAMPAIGN_COL_NONE}>Search values...</SelectItem>
-                                  {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                                  {headers.filter((h) => h !== spendColumn && h !== spendDateColumn).map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                                 </SelectContent>
                               </Select>
                             </div>

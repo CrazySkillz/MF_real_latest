@@ -10,10 +10,13 @@ const EXPECTED_SHA = String(process.env.GA4_OVERVIEW_EXPECTED_SHA || '').trim();
 const CAMPAIGN_ID = String(process.env.GA4_OVERVIEW_CAMPAIGN_ID || '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458').trim();
 const PROPERTY_ID = String(process.env.GA4_OVERVIEW_PROPERTY_ID || '542352127').trim();
 const clerkSecret = String(process.env.CLERK_SECRET_KEY || '').trim();
+const AUDIT_SCOPE = String(process.env.GA4_OVERVIEW_AUDIT_SCOPE || 'complete').trim().toLowerCase();
+const revenueOnly = AUDIT_SCOPE === 'revenue';
 
 if (!pool) throw new Error('DATABASE_URL is required');
 if (!clerkSecret) throw new Error('CLERK_SECRET_KEY is required');
 if (!/^[0-9a-f]{40}$/i.test(EXPECTED_SHA)) throw new Error('GA4_OVERVIEW_EXPECTED_SHA must be a full Git SHA');
+if (!['complete', 'revenue'].includes(AUDIT_SCOPE)) throw new Error('GA4_OVERVIEW_AUDIT_SCOPE must be complete or revenue');
 
 const hash = (value: unknown) => createHash('sha256').update(String(value || '')).digest('hex').slice(0, 12);
 const round2 = (value: unknown) => Number((Number(value) || 0).toFixed(2));
@@ -160,13 +163,19 @@ try {
     hubspotPipeline: `/api/hubspot/${CAMPAIGN_ID}/pipeline-proxy?platformContext=ga4`,
     salesforcePipeline: `/api/salesforce/${CAMPAIGN_ID}/pipeline-proxy?platformContext=ga4`,
   };
-  for (const path of [paths.daily, paths.breakdown, paths.landing, paths.conversions, paths.revenueTotal, paths.spendTotal]) {
+  const unauthenticatedPaths = revenueOnly
+    ? [paths.revenueTotal]
+    : [paths.daily, paths.breakdown, paths.landing, paths.conversions, paths.revenueTotal, paths.spendTotal];
+  for (const path of unauthenticatedPaths) {
     const response = await fetch(`${BASE_URL}${path}`, { redirect: 'manual' });
     exact(response.status, 401, `unauthenticated denial for ${path.split('?')[0]}`);
   }
   const entries = await Promise.all(Object.entries(paths).map(async ([name, path]) => [name, await api(page, path)] as const));
   const responses: Record<string, any> = Object.fromEntries(entries);
-  for (const [name, response] of Object.entries(responses).filter(([name]) => !name.endsWith('Pipeline'))) {
+  const requiredResponseNames = revenueOnly
+    ? new Set(['native', 'revenueTotal', 'revenueSources', 'revenueBreakdown'])
+    : new Set(Object.keys(paths).filter((name) => !name.endsWith('Pipeline')));
+  for (const [name, response] of Object.entries(responses).filter(([name]) => requiredResponseNames.has(name))) {
     assert(
       response.ok && response.body?.success !== false,
       `${name} endpoint failed (${response.status}): ${JSON.stringify(response.body)}`,
@@ -174,39 +183,43 @@ try {
   }
   exact(isolationInventory.rowCount, 1, 'cross-owner isolation fixture');
   const otherCampaign = isolationInventory.rows[0];
-  for (const path of [
-    `/api/campaigns/${otherCampaign.id}/ga4-daily?days=30&propertyId=${otherCampaign.property_id}&readOnly=1`,
-    `/api/campaigns/${otherCampaign.id}/revenue-to-date`,
-  ]) {
+  const crossOwnerPaths = revenueOnly
+    ? [`/api/campaigns/${otherCampaign.id}/revenue-to-date`]
+    : [
+      `/api/campaigns/${otherCampaign.id}/ga4-daily?days=30&propertyId=${otherCampaign.property_id}&readOnly=1`,
+      `/api/campaigns/${otherCampaign.id}/revenue-to-date`,
+    ];
+  for (const path of crossOwnerPaths) {
     const response = await api(page, path);
     assert(response.status === 403 || response.status === 404, `cross-owner request was not denied for ${path.split('?')[0]}`);
   }
 
-  for (const name of ['breakdown', 'landing', 'conversions']) {
-    exact(responses[name].body?.startDate, expectedWindow!.startDate, `${name} start date`);
-    exact(responses[name].body?.endDate, expectedWindow!.endDate, `${name} end date`);
-  }
-  exact(responses.daily.body?.overviewStartDate, expectedWindow!.startDate, 'Summary start date');
-  exact(responses.daily.body?.dataThroughDate, expectedWindow!.endDate, 'Summary end date');
-  exact(responses.daily.body?.refreshIsStale, false, 'Summary freshness');
-
-  const summary = responses.daily.body.overviewTotals;
+  const summary = responses.daily.body?.overviewTotals;
   const persisted = dailyInventory.rows[0];
-  exact(Number(persisted.rows), Number(persisted.unique_dates), 'duplicate persisted GA4 daily dates');
-  exact(Number(persisted.simulated_rows), 0, 'simulated production daily rows');
-  assert(String(persisted.min_date) >= expectedWindow!.startDate, 'persisted GA4 data predates the import boundary');
-  assert(String(persisted.max_date) <= expectedWindow!.endDate, 'persisted GA4 data exceeds the latest completed day');
-  for (const metric of ['sessions', 'users', 'conversions', 'pageviews'] as const) {
-    exact(Number(persisted[metric]), Number(summary?.[metric]), `persisted/Summary ${metric}`);
-  }
-  exact(round2(persisted.revenue), round2(summary?.revenue), 'persisted/Summary revenue');
-  exact(Number(persisted.engaged_sessions), Number(summary?.engagedSessions), 'persisted/Summary engaged sessions');
   const campaignRows = Array.isArray(responses.breakdown.body?.rows) ? responses.breakdown.body.rows : [];
-  for (const metric of ['sessions', 'users', 'conversions'] as const) {
-    exact(total(campaignRows, metric), Number(summary?.[metric]), `Campaign Breakdown/Summary ${metric} reconciliation`);
-    exact(Number(responses.breakdown.body?.totals?.[metric]), Number(summary?.[metric]), `Campaign aggregate/Summary ${metric} reconciliation`);
+  if (!revenueOnly) {
+    for (const name of ['breakdown', 'landing', 'conversions']) {
+      exact(responses[name].body?.startDate, expectedWindow!.startDate, `${name} start date`);
+      exact(responses[name].body?.endDate, expectedWindow!.endDate, `${name} end date`);
+    }
+    exact(responses.daily.body?.overviewStartDate, expectedWindow!.startDate, 'Summary start date');
+    exact(responses.daily.body?.dataThroughDate, expectedWindow!.endDate, 'Summary end date');
+    exact(responses.daily.body?.refreshIsStale, false, 'Summary freshness');
+    exact(Number(persisted.rows), Number(persisted.unique_dates), 'duplicate persisted GA4 daily dates');
+    exact(Number(persisted.simulated_rows), 0, 'simulated production daily rows');
+    assert(String(persisted.min_date) >= expectedWindow!.startDate, 'persisted GA4 data predates the import boundary');
+    assert(String(persisted.max_date) <= expectedWindow!.endDate, 'persisted GA4 data exceeds the latest completed day');
+    for (const metric of ['sessions', 'users', 'conversions', 'pageviews'] as const) {
+      exact(Number(persisted[metric]), Number(summary?.[metric]), `persisted/Summary ${metric}`);
+    }
+    exact(round2(persisted.revenue), round2(summary?.revenue), 'persisted/Summary revenue');
+    exact(Number(persisted.engaged_sessions), Number(summary?.engagedSessions), 'persisted/Summary engaged sessions');
+    for (const metric of ['sessions', 'users', 'conversions'] as const) {
+      exact(total(campaignRows, metric), Number(summary?.[metric]), `Campaign Breakdown/Summary ${metric} reconciliation`);
+      exact(Number(responses.breakdown.body?.totals?.[metric]), Number(summary?.[metric]), `Campaign aggregate/Summary ${metric} reconciliation`);
+    }
+    exact(responses.breakdown.body?.meta?.overviewCampaignAttribution?.selected, true, 'Overview campaign attribution guard');
   }
-  exact(responses.breakdown.body?.meta?.overviewCampaignAttribution?.selected, true, 'Overview campaign attribution guard');
 
   const revenueSources = Array.isArray(responses.revenueSources.body?.sources) ? responses.revenueSources.body.sources : [];
   const revenueRows = Array.isArray(responses.revenueBreakdown.body?.sources) ? responses.revenueBreakdown.body.sources : [];
@@ -216,90 +229,106 @@ try {
   const nativeRevenue = round2(responses.native.body?.totals?.revenue);
   const financialConversions = Number(responses.native.body?.totals?.conversions || 0);
   const financialRevenue = round2(nativeRevenue + importedRevenue);
-  exact(responses.breakdown.body?.revenueWindow?.source, 'ga4', 'Campaign Breakdown native revenue source');
-  exact(responses.breakdown.body?.revenueWindow?.startDate, responses.native.body?.startDate, 'Campaign Breakdown native revenue start date');
-  exact(responses.breakdown.body?.revenueWindow?.endDate, responses.native.body?.endDate, 'Campaign Breakdown native revenue end date');
-  exact(total(campaignRows, 'revenue'), nativeRevenue, 'Campaign Breakdown/GA4 Revenue native reconciliation');
-  exact(round2(responses.breakdown.body?.totals?.revenue), nativeRevenue, 'Campaign aggregate/GA4 Revenue native reconciliation');
+  if (!revenueOnly) {
+    exact(responses.breakdown.body?.revenueWindow?.source, 'ga4', 'Campaign Breakdown native revenue source');
+    exact(responses.breakdown.body?.revenueWindow?.startDate, responses.native.body?.startDate, 'Campaign Breakdown native revenue start date');
+    exact(responses.breakdown.body?.revenueWindow?.endDate, responses.native.body?.endDate, 'Campaign Breakdown native revenue end date');
+    exact(total(campaignRows, 'revenue'), nativeRevenue, 'Campaign Breakdown/GA4 Revenue native reconciliation');
+    exact(round2(responses.breakdown.body?.totals?.revenue), nativeRevenue, 'Campaign aggregate/GA4 Revenue native reconciliation');
+  }
   const financialSpend = round2(responses.spendBreakdown.body?.totalSpend ?? responses.spendTotal.body?.spendToDate);
   exact(total(revenueRows, 'revenue'), importedRevenue, 'Revenue breakdown/total reconciliation');
   exact(round2(responses.revenueBreakdown.body?.totalRevenue), importedRevenue, 'Revenue aggregate/total reconciliation');
-  exact(total(spendRows, 'spend'), financialSpend, 'Spend breakdown/total reconciliation');
-  exact(round2(responses.spendTotal.body?.spendToDate), financialSpend, 'Spend aggregate/total reconciliation');
   assert(revenueSources.every((source: any) => source?.isActive !== false), 'Revenue source response contains an inactive source');
-  assert(spendSources.every((source: any) => source?.isActive !== false), 'Spend source response contains an inactive source');
   const revenueIds = new Set(revenueSources.map((source: any) => String(source?.id || source?.sourceId || '')));
   const spendIds = new Set(spendSources.map((source: any) => String(source?.id || source?.sourceId || '')));
   assert(revenueRows.every((row: any) => revenueIds.has(String(row?.sourceId || ''))), 'Revenue breakdown contains an unknown source');
-  assert(spendRows.every((row: any) => spendIds.has(String(row?.sourceId || ''))), 'Spend breakdown contains an unknown source');
   exact(revenueInventory.rows.length, revenueSources.length, 'database/API revenue source count');
-  exact(spendInventory.rows.length, spendSources.length, 'database/API spend source count');
   const revenueRowsById = new Map(revenueRows.map((row: any) => [String(row?.sourceId || ''), row]));
   for (const source of revenueInventory.rows) {
     const expected = round2(Number(source.aggregate_records) > 0 ? source.aggregate_amount : source.attributed_amount);
     exact(round2(revenueRowsById.get(String(source.id))?.revenue), expected, `database/API revenue source ${hash(source.id)}`);
   }
   const spendRowsById = new Map(spendRows.map((row: any) => [String(row?.sourceId || ''), row]));
-  for (const source of spendInventory.rows) {
-    exact(round2(spendRowsById.get(String(source.id))?.spend), round2(source.amount), `database/API spend source ${hash(source.id)}`);
-  }
   const persistedImportedRevenue = round2(revenueInventory.rows.reduce((sum: number, source: any) =>
     sum + Number(Number(source.aggregate_records) > 0 ? source.aggregate_amount : source.attributed_amount), 0));
   exact(persistedImportedRevenue, importedRevenue, 'database/API imported revenue');
-  exact(round2(spendInventory.rows.reduce((sum: number, source: any) => sum + Number(source.amount || 0), 0)), financialSpend, 'database/API imported spend');
-  assert([...revenueInventory.rows, ...spendInventory.rows].every((source: any) =>
+  assert(revenueInventory.rows.every((source: any) =>
     Number(source.cross_campaign_records) === 0 && Number(source.wrong_currency_records) === 0 &&
     (!source.currency || String(source.currency).toUpperCase() === String(record.currency).toUpperCase())),
-  'Active financial source integrity or currency mismatch');
+  'Active revenue source integrity or currency mismatch');
+  if (!revenueOnly) {
+    exact(total(spendRows, 'spend'), financialSpend, 'Spend breakdown/total reconciliation');
+    exact(round2(responses.spendTotal.body?.spendToDate), financialSpend, 'Spend aggregate/total reconciliation');
+    assert(spendSources.every((source: any) => source?.isActive !== false), 'Spend source response contains an inactive source');
+    assert(spendRows.every((row: any) => spendIds.has(String(row?.sourceId || ''))), 'Spend breakdown contains an unknown source');
+    exact(spendInventory.rows.length, spendSources.length, 'database/API spend source count');
+    for (const source of spendInventory.rows) {
+      exact(round2(spendRowsById.get(String(source.id))?.spend), round2(source.amount), `database/API spend source ${hash(source.id)}`);
+    }
+    exact(round2(spendInventory.rows.reduce((sum: number, source: any) => sum + Number(source.amount || 0), 0)), financialSpend, 'database/API imported spend');
+    assert(spendInventory.rows.every((source: any) =>
+      Number(source.cross_campaign_records) === 0 && Number(source.wrong_currency_records) === 0 &&
+      (!source.currency || String(source.currency).toUpperCase() === String(record.currency).toUpperCase())),
+    'Active spend source integrity or currency mismatch');
+  }
   const damage = damageInventory.rows[0];
   exact(Number(damage.orphan_revenue_records), 0, 'orphan revenue records');
-  exact(Number(damage.orphan_spend_records), 0, 'orphan spend records');
   exact(Number(damage.duplicate_external_revenue_keys), 0, 'duplicate external revenue keys');
+  if (!revenueOnly) exact(Number(damage.orphan_spend_records), 0, 'orphan spend records');
 
   const campaignRowCounts = new Map<string, number>();
   const campaignNameByKey = new Map<string, string>();
-  for (const row of campaignRows) {
-    const key = normalizeGA4CampaignAllocationKey(row?.campaign);
-    if (!key) continue;
-    campaignRowCounts.set(key, (campaignRowCounts.get(key) || 0) + 1);
-    if (!campaignNameByKey.has(key)) campaignNameByKey.set(key, String(row.campaign));
-  }
   const matchedImportedRevenue = new Map<string, number>();
-  for (const source of revenueSources) {
-    let mapping: any = source?.mappingConfig || {};
-    if (typeof mapping === 'string') try { mapping = JSON.parse(mapping); } catch { mapping = {}; }
-    const campaignByValue = new Map<string, string>();
-    for (const item of Array.isArray(mapping?.campaignMappings) ? mapping.campaignMappings : []) {
-      const valueKey = normalizeGA4CampaignAllocationKey(item?.crmValue);
-      const campaignName = String(item?.linkedinCampaignName || item?.linkedinCampaignUrn || '').trim();
-      if (valueKey && campaignName) campaignByValue.set(valueKey, campaignName);
+  if (!revenueOnly) {
+    for (const row of campaignRows) {
+      const key = normalizeGA4CampaignAllocationKey(row?.campaign);
+      if (!key) continue;
+      campaignRowCounts.set(key, (campaignRowCounts.get(key) || 0) + 1);
+      if (!campaignNameByKey.has(key)) campaignNameByKey.set(key, String(row.campaign));
     }
-    for (const item of Array.isArray(mapping?.campaignValueRevenueTotals) ? mapping.campaignValueRevenueTotals : []) {
-      const valueKey = normalizeGA4CampaignAllocationKey(item?.campaignValue);
-      const key = normalizeGA4CampaignAllocationKey(campaignByValue.get(valueKey) || item?.campaignValue);
-      const amount = Number(item?.revenue || 0);
-      if (campaignRowCounts.get(key) !== 1 || !Number.isFinite(amount) || amount <= 0) continue;
-      const campaignName = campaignNameByKey.get(key)!;
-      matchedImportedRevenue.set(campaignName, (matchedImportedRevenue.get(campaignName) || 0) + amount);
+    for (const source of revenueSources) {
+      let mapping: any = source?.mappingConfig || {};
+      if (typeof mapping === 'string') try { mapping = JSON.parse(mapping); } catch { mapping = {}; }
+      const campaignByValue = new Map<string, string>();
+      for (const item of Array.isArray(mapping?.campaignMappings) ? mapping.campaignMappings : []) {
+        const valueKey = normalizeGA4CampaignAllocationKey(item?.crmValue);
+        const campaignName = String(item?.linkedinCampaignName || item?.linkedinCampaignUrn || '').trim();
+        if (valueKey && campaignName) campaignByValue.set(valueKey, campaignName);
+      }
+      for (const item of Array.isArray(mapping?.campaignValueRevenueTotals) ? mapping.campaignValueRevenueTotals : []) {
+        const valueKey = normalizeGA4CampaignAllocationKey(item?.campaignValue);
+        const key = normalizeGA4CampaignAllocationKey(campaignByValue.get(valueKey) || item?.campaignValue);
+        const amount = Number(item?.revenue || 0);
+        if (campaignRowCounts.get(key) !== 1 || !Number.isFinite(amount) || amount <= 0) continue;
+        const campaignName = campaignNameByKey.get(key)!;
+        matchedImportedRevenue.set(campaignName, (matchedImportedRevenue.get(campaignName) || 0) + amount);
+      }
     }
+    exact(round2(Array.from(matchedImportedRevenue.values()).reduce((sum, amount) => sum + amount, 0)), importedRevenue, 'Campaign Breakdown mapped imported revenue reconciliation');
+    exact(round2(total(campaignRows, 'revenue') + importedRevenue), financialRevenue, 'Campaign Breakdown displayed/Total Revenue reconciliation');
   }
-  exact(round2(Array.from(matchedImportedRevenue.values()).reduce((sum, amount) => sum + amount, 0)), importedRevenue, 'Campaign Breakdown mapped imported revenue reconciliation');
-  exact(round2(total(campaignRows, 'revenue') + importedRevenue), financialRevenue, 'Campaign Breakdown displayed/Total Revenue reconciliation');
 
   const landingRows = Array.isArray(responses.landing.body?.rows) ? responses.landing.body.rows : [];
-  exact(responses.landing.body?.meta?.sessionScopedAttributionAvailable, landingRows.length > 0, 'Landing attribution state');
-  assert(landingRows.every((row: any) => String(row?.landingPage || '').trim()), 'Landing Pages contains an empty landing-page key');
   const conversionRows = Array.isArray(responses.conversions.body?.rows) ? responses.conversions.body.rows : [];
-  assert(conversionRows.every((row: any) => Number(row?.conversions || 0) > 0), 'Conversion Events contains a zero-conversion row');
-  exact(total(conversionRows, 'conversions'), Number(summary?.conversions), 'Conversion Events/Summary conversion reconciliation');
+  if (!revenueOnly) {
+    exact(responses.landing.body?.meta?.sessionScopedAttributionAvailable, landingRows.length > 0, 'Landing attribution state');
+    assert(landingRows.every((row: any) => String(row?.landingPage || '').trim()), 'Landing Pages contains an empty landing-page key');
+    assert(conversionRows.every((row: any) => Number(row?.conversions || 0) > 0), 'Conversion Events contains a zero-conversion row');
+    exact(total(conversionRows, 'conversions'), Number(summary?.conversions), 'Conversion Events/Summary conversion reconciliation');
+  }
 
   await page.goto(`${BASE_URL}/campaigns/${CAMPAIGN_ID}/ga4-metrics?tab=overview`, {
     waitUntil: 'domcontentloaded', timeout: 60000,
   });
-  await page.getByText('Campaign Breakdown', { exact: true }).waitFor({ timeout: 120000 });
-  await page.getByText('purchase', { exact: true }).waitFor({ timeout: 120000 });
-  if (landingRows.length === 0) {
-    await page.getByText('GA4 did not provide session-scoped landing-page attribution for this campaign selection.', { exact: true }).waitFor({ timeout: 120000 });
+  if (!revenueOnly) {
+    await page.getByText('Campaign Breakdown', { exact: true }).waitFor({ timeout: 120000 });
+    await page.getByText('purchase', { exact: true }).waitFor({ timeout: 120000 });
+    if (landingRows.length === 0) {
+      await page.getByText('GA4 did not provide session-scoped landing-page attribution for this campaign selection.', { exact: true }).waitFor({ timeout: 120000 });
+    }
+  } else {
+    await page.getByText('Total Revenue', { exact: true }).first().waitFor({ timeout: 120000 });
   }
 
   const cardText = async (label: string) => {
@@ -308,16 +337,19 @@ try {
     return compact(await card.innerText());
   };
   const renderedCards: Record<string, string> = {};
-  for (const label of ['Sessions', 'Users', 'Conversions', 'Engagement Rate', 'Conv. Rate', 'Total Revenue', 'Pipeline Proxy', 'Total Spend', 'Profit', 'ROAS', 'ROI', 'CPA']) {
+  const cardLabels = revenueOnly
+    ? ['Total Revenue', 'Pipeline Proxy']
+    : ['Sessions', 'Users', 'Conversions', 'Engagement Rate', 'Conv. Rate', 'Total Revenue', 'Pipeline Proxy', 'Total Spend', 'Profit', 'ROAS', 'ROI', 'CPA'];
+  for (const label of cardLabels) {
     renderedCards[label] = await cardText(label);
   }
 
   const expectedDisplay = {
-    Sessions: Number(summary.sessions).toLocaleString('en-US'),
-    Users: Number(summary.users).toLocaleString('en-US'),
-    Conversions: Number(summary.conversions).toLocaleString('en-US'),
-    'Engagement Rate': `${((Number(summary.engagementRate) || 0) * 100).toFixed(1).replace(/\.0$/, '')}%`,
-    'Conv. Rate': `${((Number(summary.conversions) / Number(summary.sessions)) * 100).toFixed(1).replace(/\.0$/, '')}%`,
+    Sessions: Number(summary?.sessions).toLocaleString('en-US'),
+    Users: Number(summary?.users).toLocaleString('en-US'),
+    Conversions: Number(summary?.conversions).toLocaleString('en-US'),
+    'Engagement Rate': `${((Number(summary?.engagementRate) || 0) * 100).toFixed(1).replace(/\.0$/, '')}%`,
+    'Conv. Rate': `${((Number(summary?.conversions) / Number(summary?.sessions)) * 100).toFixed(1).replace(/\.0$/, '')}%`,
     'Total Revenue': `$${financialRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     'Total Spend': `$${financialSpend.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     Profit: `$${round2(financialRevenue - financialSpend).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
@@ -327,7 +359,7 @@ try {
       ? `$${round2(financialSpend / financialConversions).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       : '—',
   };
-  for (const [label, value] of Object.entries(expectedDisplay)) {
+  for (const [label, value] of Object.entries(expectedDisplay).filter(([label]) => cardLabels.includes(label))) {
     for (let attempt = 0; attempt < 120 && !renderedCards[label].includes(value); attempt += 1) {
       await page.waitForTimeout(1000);
       renderedCards[label] = await cardText(label);
@@ -336,34 +368,48 @@ try {
   }
   const nativeRevenueConfigured = Boolean(String(responses.native.body?.revenueMetric || '').trim()) || nativeRevenue !== 0;
   assert(renderedCards['Total Revenue'].includes(`Sources (${revenueRows.length + (nativeRevenueConfigured ? 1 : 0)})`), 'Total Revenue source count mismatch');
-  assert(renderedCards['Total Spend'].includes(`Sources (${spendRows.length})`), 'Total Spend source count mismatch');
-  if (!responses.hubspotPipeline.ok && !responses.salesforcePipeline.ok) {
+  if (!revenueOnly) assert(renderedCards['Total Spend'].includes(`Sources (${spendRows.length})`), 'Total Spend source count mismatch');
+  const successfulPipelineResponses = [responses.hubspotPipeline, responses.salesforcePipeline]
+    .filter((response: any) => response.ok && response.body?.success === true);
+  if (successfulPipelineResponses.length === 0) {
     for (let attempt = 0; attempt < 120 && !renderedCards['Pipeline Proxy'].includes('Unavailable'); attempt += 1) {
       await page.waitForTimeout(1000);
       renderedCards['Pipeline Proxy'] = await cardText('Pipeline Proxy');
     }
     assert(renderedCards['Pipeline Proxy'].includes('Unavailable'), 'Pipeline Proxy did not fail closed as unavailable');
+  } else {
+    const pipelineTotal = round2(successfulPipelineResponses.reduce(
+      (sum: number, response: any) => sum + Number(response.body?.totalToDate || 0), 0,
+    ));
+    const expectedPipeline = `$${pipelineTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    for (let attempt = 0; attempt < 120 && !renderedCards['Pipeline Proxy'].includes(expectedPipeline); attempt += 1) {
+      await page.waitForTimeout(1000);
+      renderedCards['Pipeline Proxy'] = await cardText('Pipeline Proxy');
+    }
+    assert(renderedCards['Pipeline Proxy'].includes(expectedPipeline), `Pipeline Proxy card does not contain ${expectedPipeline}`);
   }
 
   const renderedCampaignRows: Record<string, string[]> = {};
-  for (const row of campaignRows) {
-    const name = String(row?.campaign || '').trim();
-    const rendered = page.locator('tr').filter({ hasText: name }).first();
-    await rendered.waitFor({ timeout: 120000 });
-    const cells = (await rendered.locator('td').allTextContents()).map((value) => value.trim());
-    renderedCampaignRows[name] = cells;
-    exact(cells[1], Number(row.sessions).toLocaleString('en-US'), `${name} rendered sessions`);
-    exact(cells[2], Number(row.users).toLocaleString('en-US'), `${name} rendered users`);
-    exact(cells[3], Number(row.conversions).toLocaleString('en-US'), `${name} rendered conversions`);
-    const conversionRate = Number(row.sessions) > 0 ? (Number(row.conversions) / Number(row.sessions)) * 100 : 0;
-    exact(cells[4], `${conversionRate.toFixed(1).replace(/\.0$/, '')}%`, `${name} rendered conversion rate`);
-    const displayedRevenue = round2(Number(row.revenue) + Number(matchedImportedRevenue.get(name) || 0));
-    exact(cells[5], `$${displayedRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, `${name} rendered revenue`);
-  }
-  for (const row of conversionRows) {
-    const rendered = page.locator('tr').filter({ hasText: String(row.eventName) }).first();
-    const cells = (await rendered.locator('td').allTextContents()).map((value) => value.trim());
-    exact(cells.slice(0, 4).join('|'), [row.eventName, row.conversions, row.eventCount, row.users].join('|'), `${row.eventName} rendered conversion row`);
+  if (!revenueOnly) {
+    for (const row of campaignRows) {
+      const name = String(row?.campaign || '').trim();
+      const rendered = page.locator('tr').filter({ hasText: name }).first();
+      await rendered.waitFor({ timeout: 120000 });
+      const cells = (await rendered.locator('td').allTextContents()).map((value) => value.trim());
+      renderedCampaignRows[name] = cells;
+      exact(cells[1], Number(row.sessions).toLocaleString('en-US'), `${name} rendered sessions`);
+      exact(cells[2], Number(row.users).toLocaleString('en-US'), `${name} rendered users`);
+      exact(cells[3], Number(row.conversions).toLocaleString('en-US'), `${name} rendered conversions`);
+      const conversionRate = Number(row.sessions) > 0 ? (Number(row.conversions) / Number(row.sessions)) * 100 : 0;
+      exact(cells[4], `${conversionRate.toFixed(1).replace(/\.0$/, '')}%`, `${name} rendered conversion rate`);
+      const displayedRevenue = round2(Number(row.revenue) + Number(matchedImportedRevenue.get(name) || 0));
+      exact(cells[5], `$${displayedRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, `${name} rendered revenue`);
+    }
+    for (const row of conversionRows) {
+      const rendered = page.locator('tr').filter({ hasText: String(row.eventName) }).first();
+      const cells = (await rendered.locator('td').allTextContents()).map((value) => value.trim());
+      exact(cells.slice(0, 4).join('|'), [row.eventName, row.conversions, row.eventCount, row.users].join('|'), `${row.eventName} rendered conversion row`);
+    }
   }
 
   const revenueCard = page.getByText('Total Revenue', { exact: true }).first().locator("xpath=ancestor::div[contains(@class,'rounded-2xl')][1]");
@@ -381,50 +427,104 @@ try {
   }
   await page.keyboard.press('Escape');
 
-  const spendCard = page.getByText('Total Spend', { exact: true }).first().locator("xpath=ancestor::div[contains(@class,'rounded-2xl')][1]");
-  await spendCard.getByText(/^Sources \(/).click();
-  const spendDialog = page.getByRole('dialog').filter({ hasText: 'Spend Sources' });
-  await spendDialog.waitFor({ timeout: 30000 });
-  const spendDialogText = compact(await spendDialog.innerText());
-  for (const row of spendRows) {
-    const amount = `$${round2(row.spend).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const sourceText = String(row.displayName || row.sourceType || '').trim();
-    const sourceEntry = spendDialog.locator('div.rounded-md.border').filter({ hasText: sourceText }).filter({ hasText: amount });
-    assert(await sourceEntry.count() > 0, `Spend Sources modal is missing ${sourceText} ${amount}`);
+  if (!revenueOnly) {
+    const spendCard = page.getByText('Total Spend', { exact: true }).first().locator("xpath=ancestor::div[contains(@class,'rounded-2xl')][1]");
+    await spendCard.getByText(/^Sources \(/).click();
+    const spendDialog = page.getByRole('dialog').filter({ hasText: 'Spend Sources' });
+    await spendDialog.waitFor({ timeout: 30000 });
+    const spendDialogText = compact(await spendDialog.innerText());
+    for (const row of spendRows) {
+      const amount = `$${round2(row.spend).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const sourceText = String(row.displayName || row.sourceType || '').trim();
+      const sourceEntry = spendDialog.locator('div.rounded-md.border').filter({ hasText: sourceText }).filter({ hasText: amount });
+      assert(await sourceEntry.count() > 0, `Spend Sources modal is missing ${sourceText} ${amount}`);
+    }
+    await page.keyboard.press('Escape');
+
+    const bodyText = await page.locator('body').innerText();
+    assert(!bodyText.includes('Some Overview data could not refresh'), 'Rendered Overview is using last-good data after a failed refresh');
+
+    await page.getByRole('tab', { name: 'Reports', exact: true }).click();
+    await page.getByRole('button', { name: 'Create Report', exact: true }).click();
+    const reportDialog = page.getByRole('dialog').filter({ hasText: 'Report Type' });
+    await reportDialog.locator('h4').filter({ hasText: /^Overview$/ }).click();
+    const downloadPromise = page.waitForEvent('download', { timeout: 120000 });
+    await reportDialog.getByRole('button', { name: /Generate & Download Report/ }).click();
+    const download = await downloadPromise;
+    const stream = await download.createReadStream();
+    assert(stream, 'Overview report download stream is unavailable');
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
+    const parser = new PDFParse({ data: Buffer.concat(chunks) });
+    const reportText = compact((await parser.getText()).text);
+    await parser.destroy();
+    for (const expected of ['Performance Overview', 'Summary', 'Campaign Breakdown', 'Conversion Events',
+      ...(landingRows.length > 0 ? ['Landing Pages'] : []),
+      expectedDisplay.Sessions, expectedDisplay.Users, expectedDisplay.Conversions,
+      financialRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      financialSpend.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      ...campaignRows.flatMap((row: any) => [
+        String(row.campaign),
+        round2(Number(row.revenue) + Number(matchedImportedRevenue.get(String(row.campaign)) || 0))
+          .toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      ]), ...conversionRows.map((row: any) => String(row.eventName))]) {
+      assert(reportText.includes(expected), `Downloaded Overview report is missing ${expected}`);
+    }
   }
-  await page.keyboard.press('Escape');
 
-  const bodyText = await page.locator('body').innerText();
-  assert(!bodyText.includes('Some Overview data could not refresh'), 'Rendered Overview is using last-good data after a failed refresh');
-
-  await page.getByRole('tab', { name: 'Reports', exact: true }).click();
-  await page.getByRole('button', { name: 'Create Report', exact: true }).click();
-  const reportDialog = page.getByRole('dialog').filter({ hasText: 'Report Type' });
-  await reportDialog.locator('h4').filter({ hasText: /^Overview$/ }).click();
-  const downloadPromise = page.waitForEvent('download', { timeout: 120000 });
-  await reportDialog.getByRole('button', { name: /Generate & Download Report/ }).click();
-  const download = await downloadPromise;
-  const stream = await download.createReadStream();
-  assert(stream, 'Overview report download stream is unavailable');
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
-  const parser = new PDFParse({ data: Buffer.concat(chunks) });
-  const reportText = compact((await parser.getText()).text);
-  await parser.destroy();
-  for (const expected of ['Performance Overview', 'Summary', 'Campaign Breakdown', 'Conversion Events',
-    ...(landingRows.length > 0 ? ['Landing Pages'] : []),
-    expectedDisplay.Sessions, expectedDisplay.Users, expectedDisplay.Conversions,
-    financialRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-    financialSpend.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-    ...campaignRows.flatMap((row: any) => [
-      String(row.campaign),
-      round2(Number(row.revenue) + Number(matchedImportedRevenue.get(String(row.campaign)) || 0))
-        .toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-    ]), ...conversionRows.map((row: any) => String(row.eventName))]) {
-    assert(reportText.includes(expected), `Downloaded Overview report is missing ${expected}`);
-  }
-
-  console.log(JSON.stringify({
+  if (revenueOnly) {
+    console.log(JSON.stringify({
+      status: 'passed',
+      certificationStatus: 'validation_output_only',
+      auditScope: 'revenue',
+      deployedSha: health.commit,
+      campaignHash: hash(CAMPAIGN_ID),
+      clientHash: hash(record.client_id),
+      ownerHash: hash(record.owner_id),
+      propertyId: PROPERTY_ID,
+      currency: record.currency,
+      financials: {
+        nativeWindow: { startDate: responses.native.body?.startDate, endDate: responses.native.body?.endDate },
+        importedWindow: { startDate: responses.revenueTotal.body?.startDate, endDate: responses.revenueTotal.body?.endDate },
+        nativeRevenue,
+        importedRevenue,
+        totalRevenue: financialRevenue,
+      },
+      sourceInventory: revenueRows.map((source: any) => ({
+        idHash: hash(source?.sourceId),
+        type: source?.sourceType,
+        displayName: source?.displayName,
+        revenue: round2(source?.revenue),
+      })),
+      productionDataIntegrity: {
+        orphanRevenueRecords: Number(damage.orphan_revenue_records),
+        duplicateExternalRevenueKeys: Number(damage.duplicate_external_revenue_keys),
+        sourceCountMatchesDatabase: revenueInventory.rows.length === revenueSources.length,
+        importedTotalMatchesDatabase: persistedImportedRevenue === importedRevenue,
+        campaignCurrencyMatches: revenueInventory.rows.every((source: any) =>
+          Number(source.wrong_currency_records) === 0
+          && (!source.currency || String(source.currency).toUpperCase() === String(record.currency).toUpperCase())),
+        crossCampaignRecordsAbsent: revenueInventory.rows.every((source: any) => Number(source.cross_campaign_records) === 0),
+      },
+      pipeline: {
+        hubspot: {
+          status: responses.hubspotPipeline.status,
+          success: responses.hubspotPipeline.body?.success === true,
+          totalToDate: responses.hubspotPipeline.body?.success === true ? round2(responses.hubspotPipeline.body?.totalToDate) : null,
+        },
+        salesforce: {
+          status: responses.salesforcePipeline.status,
+          success: responses.salesforcePipeline.body?.success === true,
+          totalToDate: responses.salesforcePipeline.body?.success === true ? round2(responses.salesforcePipeline.body?.totalToDate) : null,
+        },
+      },
+      renderedCards,
+      modalParity: { revenue: true },
+      accessControl: { unauthenticated: 'denied', crossOwner: 'denied' },
+      databaseTransaction: 'read only and rolled back',
+      excludedFromThisRun: ['Summary', 'Spend', 'Performance', 'Campaign Breakdown', 'Landing Pages', 'Conversion Events', 'Reports'],
+    }, null, 2));
+  } else console.log(JSON.stringify({
     status: 'passed',
     certificationStatus: 'validation_output_only',
     deployedSha: health.commit,

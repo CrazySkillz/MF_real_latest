@@ -60,7 +60,7 @@ separate: `IN_PROGRESS` never means production-ready.
 | - | Overview (whole tab) | `IN_PROGRESS` | `UNVERIFIED` | Every enabled subsection and combined Overview gate must pass. |
 | 1 | Summary | `QUEUED` | `UNVERIFIED` | Requires a fresh current-runtime certification. |
 | - | Revenue & Financials (parent section) | `IN_PROGRESS` | `UNVERIFIED` | Revenue, Spend, Performance, combined totals, and provenance must all pass. |
-| 2 | Revenue & Financials - Revenue | `IN_PROGRESS` | `UNVERIFIED` | Source-family status is tracked below. |
+| 2 | Revenue & Financials - Revenue | `COMPLETE` | `CERTIFIED` | Clean-certified for the exact combined GA4 Overview Revenue boundary at deployed application commit `8a4b463b`; controlling certificate: `GA4/OVERVIEW_REVENUE_SECTION_PRODUCTION_READINESS.md`; required steps remaining: 0. |
 | 3 | Revenue & Financials - Spend | `QUEUED` | `UNVERIFIED` | Source-family status is tracked below. |
 | - | Revenue & Financials - Performance (`Profit`, `ROAS`, `ROI`, `CPA`) | `QUEUED` | `UNVERIFIED` | Must reconcile to the finally certified Revenue, Spend, and GA4 Conversion inputs. |
 | 4 | Campaign Breakdown | `QUEUED` | `UNVERIFIED` | Earlier bounded validation is preserved; the fresh pass remains required. |
@@ -193,6 +193,7 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 
 | Source family | Durable status | Controlling authority | Exact boundary or open gate |
 | --- | --- | --- | --- |
+| GA4 Overview Revenue subsection | `CERTIFIED` | `GA4/OVERVIEW_REVENUE_SECTION_PRODUCTION_READINESS.md` | Exact combined Revenue boundary at deployed application commit `8a4b463b`; all five source certificates are preserved without broadening; required steps remaining: 0. |
 | HubSpot Revenue and Pipeline Proxy | `CERTIFIED` | `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md` | Five exact active GA4 sources and exercised configurations at deployed runtime `490c8ae685821389d1f433a5943f856478f52e5c`; this evidence set is not a five-source product limit. |
 | Shopify Revenue | `CERTIFIED` | `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` | Deployed application commit `ea516f3a`; evidence commit `bc46d0a4`; clean-certified for the exact documented GA4 Overview, USD, OAuth `read_orders`, recent-order-window scope; OAuth renewal and timer-fired scheduled refresh are proven; required steps remaining: 0. |
 | Upload CSV Revenue | `CERTIFIED` | `GA4/OVERVIEW_REVENUE_CSV_PRODUCTION_READINESS.md` | Deployed application commit `b2fd97a9`; evidence commit `4476e807`; clean-certified for the documented GA4 scope with source-refresh scheduling inapplicable and required steps remaining: 0. |
@@ -339,6 +340,7 @@ The following records are preserved and indexed by this ledger:
 - `GA4/OVERVIEW_REVENUE_CSV_PRODUCTION_READINESS.md`
 - `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`
 - `GA4/OVERVIEW_REVENUE_SALESFORCE_PRODUCTION_READINESS.md`
+- `GA4/OVERVIEW_REVENUE_SECTION_PRODUCTION_READINESS.md`
 - `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md`
 - `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md`
 - `GA4/KPIS_PRODUCTION_READINESS.md`

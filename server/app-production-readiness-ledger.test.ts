@@ -16,6 +16,7 @@ const certificateRecords = [
   "GA4/OVERVIEW_REVENUE_CSV_PRODUCTION_READINESS.md",
   "GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md",
   "GA4/OVERVIEW_REVENUE_SALESFORCE_PRODUCTION_READINESS.md",
+  "GA4/OVERVIEW_REVENUE_SECTION_PRODUCTION_READINESS.md",
   "GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md",
   "GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md",
   "GA4/KPIS_PRODUCTION_READINESS.md",
@@ -92,7 +93,7 @@ describe("application production-readiness ledger", () => {
   it("records separate work and certification status for every Overview subsection", () => {
     expect(ledger).toContain("| - | Overview (whole tab) | `IN_PROGRESS` | `UNVERIFIED`");
     expect(ledger).toContain("| 1 | Summary | `QUEUED` | `UNVERIFIED`");
-    expect(ledger).toContain("| 2 | Revenue & Financials - Revenue | `IN_PROGRESS` | `UNVERIFIED`");
+    expect(ledger).toContain("| 2 | Revenue & Financials - Revenue | `COMPLETE` | `CERTIFIED`");
     expect(ledger).toContain("| 3 | Revenue & Financials - Spend | `QUEUED` | `UNVERIFIED`");
     expect(ledger).toContain("| 4 | Campaign Breakdown | `QUEUED` | `UNVERIFIED`");
     expect(ledger).toContain("| 5 | Landing Pages | `QUEUED` | `UNVERIFIED`");

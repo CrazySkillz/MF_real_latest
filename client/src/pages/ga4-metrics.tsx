@@ -6920,8 +6920,9 @@ export default function GA4Metrics() {
                           const cfg = typeof s.mappingConfig === "string" ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return null; } })() : s.mappingConfig;
                           const sourceType = String(s.sourceType || "").trim().toLowerCase();
                           const isGoogleSheets = sourceType === "google_sheets";
-                          const hasSingleSourceBreakdown = sourceType === "shopify" || isGoogleSheets;
-                          const sourceDisplayText = isGoogleSheets ? "Google Sheets" : revenueSourceDisplayLabel(s);
+                          const isCsv = sourceType === "csv";
+                          const hasSingleSourceBreakdown = sourceType === "shopify" || isGoogleSheets || isCsv;
+                          const sourceDisplayText = isGoogleSheets ? "Google Sheets" : isCsv ? "CSV" : revenueSourceDisplayLabel(s);
                           const isCrm = sourceType === "hubspot" || sourceType === "salesforce";
                           const materializedRevenueUnavailable = s.materializedRevenueStatus === "unavailable";
                           const isPipelineOnlyRevenueSource = isCrm && cfg?.pipelineEnabled === true && Number(s.revenue || 0) === 0;
@@ -6937,7 +6938,8 @@ export default function GA4Metrics() {
                           const sourceTypeText = mappedCampaignText
                             ? isPipelineOnlyRevenueSource ? `${mappedCampaignText} - Pipeline Proxy only` : mappedCampaignText
                             : isPipelineOnlyRevenueSource ? `${revenueSourceTypeLabel(s.sourceType)} - Pipeline Proxy only` : revenueSourceTypeLabel(s.sourceType);
-                          const sourceDetailText = isGoogleSheets && String(cfg?.sheetName || "").trim() ? String(cfg.sheetName) : sourceTypeText;
+                          const csvFileName = String(s.displayName || cfg?.displayName || "CSV").trim() || "CSV";
+                          const sourceDetailText = isGoogleSheets && String(cfg?.sheetName || "").trim() ? String(cfg.sheetName) : isCsv ? csvFileName : sourceTypeText;
                           const dateLabel = isCrm && cfg?.dateField && cfg.dateField !== "closedate" && cfg.dateField !== "CloseDate"
                             ? ` - ${cfg.dateField === "hs_lastmodifieddate" || cfg.dateField === "LastModifiedDate" ? "Modified Date" : cfg.dateField === "createdate" || cfg.dateField === "CreatedDate" ? "Created Date" : "Close Date"}`
                             : "";
@@ -7012,7 +7014,7 @@ export default function GA4Metrics() {
                                         }}
                                         className="rounded p-1 text-muted-foreground/70 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                                         title="Remove revenue source"
-                                        aria-label={`Remove ${isGoogleSheets ? "Google Sheets" : "Shopify"} revenue source`}
+                                        aria-label={`Remove ${isGoogleSheets ? "Google Sheets" : isCsv ? "CSV" : "Shopify"} revenue source`}
                                       >
                                         <Trash2 className="h-3.5 w-3.5" />
                                       </button>

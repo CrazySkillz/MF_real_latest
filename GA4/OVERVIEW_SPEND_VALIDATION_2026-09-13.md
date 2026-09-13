@@ -4,7 +4,7 @@
 
 **Overall clean-certification status: PENDING — NOT CLEAN-CERTIFIED.**
 
-The local Spend release candidate passes its focused automated, type-check, and production-build gates. The exact currently deployed revision passes a read-only target-campaign inventory, reconciliation, access-control, and natural Google Sheets refresh observation. The corrective code in this packet is uncommitted and undeployed by instruction, however, so deployed evidence cannot prove that corrective revision. Current-revision production lifecycle mutation, provider-failure injection, and controlled provider-value downstream propagation also remain open.
+The Spend release candidate passes its focused automated, type-check, and production-build gates and is deployed as `a77342289492440b628e5b72b9f5d16b88d51750`. That exact revision passes a read-only target-campaign inventory, reconciliation, access-control, and natural Google Sheets refresh observation. Current-revision production lifecycle mutation, provider-failure injection, and controlled provider-value downstream propagation remain open.
 
 This packet does not revoke, reopen, overwrite, invalidate, or recertify any earlier certification. Existing Revenue implementations were consulted only as architectural patterns; no Revenue implementation, Revenue test contract, Revenue evidence, or existing certificate was changed or counted as Spend evidence. `GA4/certifications/ga4-overview.json`, `GA4/OVERVIEW_PRODUCTION_READINESS.md`, and `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md` remain unchanged.
 
@@ -163,11 +163,13 @@ The broad aggregate-source file is not claimed as a passing suite. Its two failu
 
 ## Remaining Steps Before Clean Certification
 
-1. With explicit permission, commit and deploy the exact reviewed Spend release candidate. Until then the corrective revision has no deployed evidence.
-2. Verify the deployed full SHA, then rerun the Spend-only read-only validator with its full `180`-second natural-refresh window.
-3. In an authorized disposable campaign or isolated staging fixture, execute add, edit/manual refresh, and delete for both source families and reconcile source list, source count, records, Total Spend, dates, and stable IDs after every transition.
-4. Inject a Google Sheets provider/mapping failure in that isolated boundary and prove the previous source, records, total, and downstream values remain unchanged.
-5. Make a controlled mapped Google Sheets Spend value change and a controlled CSV manual refresh, then prove the exact delta reaches Overview, KPI/Benchmark current values, alerts, snapshots, reports, and scheduled PDF inputs without cross-campaign leakage.
-6. Record the final SHA and evidence in a new certification artifact. Do not overwrite or recertify a protected artifact without explicit permission.
+Completed after the initial packet: the exact candidate was committed, pushed, deployed, and verified at full SHA `a77342289492440b628e5b72b9f5d16b88d51750`. The `180`-second validator passed after observing a natural refresh in `50` seconds, with the exact `$2,759.75` total, four stable source IDs, unchanged CSV mappings, clean integrity checks, and denied unauthenticated/cross-owner access.
 
-Until all six gates are closed, the accurate status is **local release candidate validated; current deployed read boundary healthy; clean certification pending**.
+Still required:
+
+1. In an authorized disposable campaign or isolated staging fixture, execute add, edit/manual refresh, and delete for both source families and reconcile source list, source count, records, Total Spend, dates, and stable IDs after every transition.
+2. Inject a Google Sheets provider/mapping failure in that isolated boundary and prove the previous source, records, total, and downstream values remain unchanged.
+3. Make a controlled mapped Google Sheets Spend value change and a controlled CSV manual refresh, then prove the exact delta reaches Overview, KPI/Benchmark current values, alerts, snapshots, reports, and scheduled PDF inputs without cross-campaign leakage.
+4. Record the final SHA and evidence in a new certification artifact. Do not overwrite or recertify a protected artifact without explicit permission.
+
+Until these four gates are closed, the accurate status is **deployed read boundary healthy; clean certification pending**.

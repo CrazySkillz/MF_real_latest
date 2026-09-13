@@ -181,6 +181,28 @@ describe("GA4 CSV Revenue current-main certification guards", () => {
     );
   });
 
+  it("removes a picker CSV only when one exact active source is revalidated", () => {
+    const removeStart = modal.indexOf("const handleCsvSourceRemove = async");
+    const removeEnd = modal.indexOf("const resetAll =", removeStart);
+    const remove = modal.slice(removeStart, removeEnd);
+    const cardStart = modal.indexOf("Upload CSV", removeEnd);
+    const cardEnd = modal.indexOf("Manual attribution", cardStart);
+    const card = modal.slice(cardStart, cardEnd);
+
+    expect(modal).toContain('const csvSources = revSources.filter((s: any) => matchesRevenuePlatformContext(s, "csv"));');
+    expect(modal).toContain("setActiveCsvSources(csvSources);");
+    expect(remove).toContain("activeCsvSources.length === 1");
+    expect(remove).toContain('fetch(`/api/campaigns/${campaignId}/all-data-sources`');
+    expect(remove).toContain('currentJson.revenueSources.filter((source: any) => matchesRevenuePlatformContext(source, "csv"))');
+    expect(remove).toContain("currentCsvSources.length !== 1");
+    expect(remove).toContain("String(currentCsvSources[0]?.id || \"\").trim() !== sourceId");
+    expect(remove).toContain("?platformContext=${encodeURIComponent(platformContext)}");
+    expect(remove).not.toContain("for (const");
+    expect(card).toContain("activeCsvSources.length === 1");
+    expect(card).toContain("Remove CSV revenue source?");
+    expect(card).toContain("Choose the exact CSV file");
+  });
+
   it("rejects oversized GA4 files in the browser before preview or process requests", () => {
     const previewStart = modal.indexOf("const handleCsvPreview = async");
     const processStart = modal.indexOf("const handleCsvProcess = async", previewStart);

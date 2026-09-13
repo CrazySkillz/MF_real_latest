@@ -370,6 +370,8 @@ export function AddRevenueWizardModal(props: {
     : salesforcePickerEditSource;
   const isSalesforceEditing = !!salesforceEditSource;
   const [importSourceStatus, setImportSourceStatus] = useState<{ google_sheets: boolean; csv: boolean }>({ google_sheets: false, csv: false });
+  const [activeCsvSources, setActiveCsvSources] = useState<any[]>([]);
+  const [csvRemoving, setCsvRemoving] = useState(false);
   const [crmConnecting, setCrmConnecting] = useState<string | null>(null);
   const matchesRevenuePlatformContext = (source: any, sourceType?: string) => {
     const sourceContext = String(source?.platformContext || 'ga4').trim().toLowerCase();
@@ -397,12 +399,14 @@ export function AddRevenueWizardModal(props: {
       const sourcesResolved = dsResp?.success === true && Array.isArray(dsResp?.revenueSources);
       const revSources: any[] = sourcesResolved ? dsResp.revenueSources : [];
       const hasSource = (type: string) => revSources.some((s: any) => matchesRevenuePlatformContext(s, type));
+      const csvSources = revSources.filter((s: any) => matchesRevenuePlatformContext(s, "csv"));
       setActiveSalesforceSources(revSources.filter((s: any) => matchesRevenuePlatformContext(s, "salesforce")));
+      setActiveCsvSources(csvSources);
       setHubspotSourcesResolved(sourcesResolved);
       setSalesforceSourcesResolved(sourcesResolved);
       setImportSourceStatus({
         google_sheets: hasSource("google_sheets"),
-        csv: hasSource("csv"),
+        csv: csvSources.length > 0,
       });
       if (hideCrmSources) return;
       setCrmOAuth({ hubspot: hubspotOAuth, salesforce: salesforceOAuth, shopify: shopifyOAuth });
@@ -635,6 +639,38 @@ export function AddRevenueWizardModal(props: {
       toast({ title: "Disconnect failed", description: err?.message || "Please try again.", variant: "destructive" });
     } finally {
       setCrmDisconnecting(null);
+    }
+  };
+
+  const handleCsvSourceRemove = async () => {
+    const sourceId = activeCsvSources.length === 1 ? String(activeCsvSources[0]?.id || "").trim() : "";
+    if (!sourceId) return;
+    setCsvRemoving(true);
+    try {
+      const currentResp = await fetch(`/api/campaigns/${campaignId}/all-data-sources`, { credentials: "include", cache: "no-store" });
+      const currentJson = await currentResp.json().catch(() => ({}));
+      if (!currentResp.ok || currentJson?.success !== true || !Array.isArray(currentJson?.revenueSources)) {
+        throw new Error("Revenue sources are unavailable. Refresh and try again.");
+      }
+      const currentCsvSources = currentJson.revenueSources.filter((source: any) => matchesRevenuePlatformContext(source, "csv"));
+      if (currentCsvSources.length !== 1 || String(currentCsvSources[0]?.id || "").trim() !== sourceId) {
+        throw new Error("CSV sources changed. Open Revenue Sources and choose the exact file to remove.");
+      }
+      const response = await fetch(
+        `/api/campaigns/${campaignId}/revenue-sources/${encodeURIComponent(sourceId)}?platformContext=${encodeURIComponent(platformContext)}`,
+        { method: "DELETE", credentials: "include" },
+      );
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || body?.success !== true) throw new Error(body?.error || "Failed to remove CSV revenue source");
+      setActiveCsvSources([]);
+      setImportSourceStatus((current) => ({ ...current, csv: false }));
+      invalidateAfterRevenueChange();
+      onSuccess?.();
+      toast({ title: "CSV revenue source removed", description: "Total Revenue has been recalculated." });
+    } catch (error: any) {
+      toast({ title: "Delete failed", description: error?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setCsvRemoving(false);
     }
   };
 
@@ -2004,13 +2040,43 @@ export function AddRevenueWizardModal(props: {
                   </CardHeader>
                 </Card>
 
-                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("csv")}>
+                <Card className={`cursor-pointer hover:border-blue-500 transition-colors ${csvRemoving ? "opacity-60 pointer-events-none" : ""}`} onClick={() => setStep("csv")}>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Upload className="w-4 h-4" />
                       Upload CSV
                       {importSourceStatus.csv && (
-                        <span className="ml-auto text-xs font-normal text-green-600 dark:text-green-400">Uploaded</span>
+                        <span className="ml-auto flex items-center gap-1 text-xs font-normal text-green-600 dark:text-green-400">
+                          <span>Uploaded</span>
+                          {activeCsvSources.length === 1 ? (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button type="button" className="rounded p-0.5 hover:bg-red-100 dark:hover:bg-red-900/30" title="Remove CSV revenue source" aria-label="Remove CSV revenue source" onClick={(event) => event.stopPropagation()}>
+                                  <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent onClick={(event) => event.stopPropagation()}>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Remove CSV revenue source?</AlertDialogTitle>
+                                  <AlertDialogDescription>This removes {String(activeCsvSources[0]?.displayName || "this CSV upload")}. Total Revenue will be recalculated.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction className="bg-red-600 hover:bg-red-700" disabled={csvRemoving} onClick={() => void handleCsvSourceRemove()}>
+                                    {csvRemoving ? "Removing…" : "Remove"}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          ) : (
+                            <button type="button" className="rounded p-0.5 hover:bg-red-100 dark:hover:bg-red-900/30" title="Choose a CSV file in Revenue Sources" aria-label="Choose a CSV file to remove" onClick={(event) => {
+                              event.stopPropagation();
+                              toast({ title: "Choose the exact CSV file", description: "Open Revenue Sources and use the trash icon beside the file you want to remove." });
+                            }}>
+                              <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                            </button>
+                          )}
+                        </span>
                       )}
                     </CardTitle>
                     <CardDescription>

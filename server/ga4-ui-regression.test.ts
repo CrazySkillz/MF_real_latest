@@ -87,7 +87,7 @@ describe("GA4 UI regression guard", () => {
 
     expect(revenueModal).toContain("setImportSourceStatus({");
     expect(revenueModal).toContain('google_sheets: hasSource("google_sheets"),');
-    expect(revenueModal).toContain('csv: hasSource("csv"),');
+    expect(revenueModal).toContain('csv: csvSources.length > 0,');
     expect(revenueModal).toContain("importSourceStatus.google_sheets");
     expect(revenueModal).toContain("<span>Connected</span>");
     expect(revenueModal).toContain('<span aria-hidden="true">|</span>');

@@ -282,13 +282,16 @@ describe("source safety regression guards", () => {
     const revenueEnd = routesSource.indexOf('"/api/campaigns/:id/revenue/csv/process"', revenueStart);
     const spendStart = routesSource.indexOf('app.post("/api/campaigns/:id/spend/csv/preview"');
     const spendEnd = routesSource.indexOf('app.post("/api/campaigns/:id/spend/csv/process"', spendStart);
-    const routes = [routesSource.slice(revenueStart, revenueEnd), routesSource.slice(spendStart, spendEnd)];
+    const revenueRoute = routesSource.slice(revenueStart, revenueEnd);
+    const spendRoute = routesSource.slice(spendStart, spendEnd);
 
-    for (const route of routes) {
+    for (const route of [revenueRoute, spendRoute]) {
       expect(route).toContain("requireCampaignAccessParamId");
-      expect(route).toContain('uploadCsv.single("file")');
-      expect(route.indexOf("requireCampaignAccessParamId")).toBeLessThan(route.indexOf('uploadCsv.single("file")'));
     }
+    expect(revenueRoute).toContain("uploadRevenueCsv");
+    expect(revenueRoute.indexOf("requireCampaignAccessParamId")).toBeLessThan(revenueRoute.indexOf("uploadRevenueCsv"));
+    expect(spendRoute).toContain('uploadCsv.single("file")');
+    expect(spendRoute.indexOf("requireCampaignAccessParamId")).toBeLessThan(spendRoute.indexOf('uploadCsv.single("file")'));
   });
 
   it("connected data source list and preview routes require campaign access", () => {

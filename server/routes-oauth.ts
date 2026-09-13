@@ -1315,6 +1315,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   });
 
+  const uploadRevenueCsv = (req: any, res: any, next: any) => {
+    uploadCsv.single("file")(req, res, (error: any) => {
+      if (!error) return next();
+      const platformContext = String((req.body as any)?.platformContext || "").trim().toLowerCase();
+      if (platformContext === "ga4" && error?.code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({ message: error.message });
+      }
+      return next(error);
+    });
+  };
+
   const parseNum = (val: any): number => {
     if (val === null || val === undefined || val === "") return 0;
     const str = String(val).replace(/[$,]/g, "").trim();
@@ -4391,7 +4402,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "/api/campaigns/:id/revenue/csv/preview",
     importRateLimiter,
     requireCampaignAccessParamId,
-    uploadCsv.single("file"),
+    uploadRevenueCsv,
     async (req, res) => {
       try {
         if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
@@ -4428,7 +4439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "/api/campaigns/:id/revenue/csv/process",
     importRateLimiter,
     requireCampaignAccessParamId,
-    uploadCsv.single("file"),
+    uploadRevenueCsv,
     async (req, res) => {
       let addRequestKey: string | null = null;
       try {

@@ -1449,8 +1449,9 @@ export function AddRevenueWizardModal(props: {
     setCsvPreviewing(true);
     try {
       const fd = new FormData();
+      if (platformContext === "ga4") fd.append("platformContext", platformContext);
       fd.append("file", file);
-      fd.append("platformContext", platformContext);
+      if (platformContext !== "ga4") fd.append("platformContext", platformContext);
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/csv/preview`, { method: "POST", credentials: "include", body: fd });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to preview CSV");
@@ -1544,9 +1545,10 @@ export function AddRevenueWizardModal(props: {
         ...(isEditing && initialSource?.id ? { sourceId: String(initialSource.id) } : {}),
       };
       const fd = new FormData();
+      if (platformContext === "ga4") fd.append("platformContext", platformContext);
       if (csvFile) fd.append("file", csvFile);
       fd.append("mapping", JSON.stringify(mapping));
-      fd.append("platformContext", platformContext);
+      if (platformContext !== "ga4") fd.append("platformContext", platformContext);
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/csv/process`, { method: "POST", credentials: "include", body: fd });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to process CSV");

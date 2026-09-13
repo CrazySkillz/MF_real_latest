@@ -166,6 +166,27 @@ describe("GA4 CSV Revenue current-main certification guards", () => {
     expect(process.indexOf("GA4_CSV_MAX_FILE_SIZE_BYTES")).toBeLessThan(process.indexOf("setCsvProcessing(true)"));
   });
 
+  it("returns 413 for canonical oversized GA4 multipart requests without changing other platform errors", () => {
+    const uploadStart = routes.indexOf("const uploadRevenueCsv =");
+    const uploadEnd = routes.indexOf("const parseNum =", uploadStart);
+    const upload = routes.slice(uploadStart, uploadEnd);
+    const previewStart = modal.indexOf("const handleCsvPreview = async");
+    const processStart = modal.indexOf("const handleCsvProcess = async", previewStart);
+    const sheetsStart = modal.indexOf("const handleSheetsPreview = async", processStart);
+    const preview = modal.slice(previewStart, processStart);
+    const process = modal.slice(processStart, sheetsStart);
+    const previewForm = preview.slice(preview.indexOf("const fd = new FormData()"));
+    const processForm = process.slice(process.indexOf("const fd = new FormData()"));
+
+    expect(upload).toContain('platformContext === "ga4" && error?.code === "LIMIT_FILE_SIZE"');
+    expect(upload).toContain("res.status(413).json({ message: error.message })");
+    expect(upload).toContain("return next(error)");
+    expect(previewForm.indexOf('if (platformContext === "ga4")')).toBeLessThan(previewForm.indexOf('fd.append("file", file)'));
+    expect(processForm.indexOf('if (platformContext === "ga4")')).toBeLessThan(processForm.indexOf('fd.append("file", csvFile)'));
+    expect(previewForm.indexOf('if (platformContext !== "ga4")')).toBeGreaterThan(previewForm.indexOf('fd.append("file", file)'));
+    expect(processForm.indexOf('if (platformContext !== "ga4")')).toBeGreaterThan(processForm.indexOf('fd.append("file", csvFile)'));
+  });
+
   it("keeps CSV manual and outside all revenue refresh selections", () => {
     const sheetsRefreshStart = scheduler.indexOf("export async function runGoogleSheetsRevenueAutoRefreshOnce");
     const sheetsRefreshEnd = scheduler.indexOf("export async function runHubSpotPipelineAutoRefreshOnce", sheetsRefreshStart);

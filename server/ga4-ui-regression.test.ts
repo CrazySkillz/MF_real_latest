@@ -63,6 +63,8 @@ describe("GA4 UI regression guard", () => {
 
     expect(revenueModal).toContain("Import revenue from a connected Google Sheets tab");
     expect(revenueModal).toContain("Import revenue from a CSV. Requires manual re-upload to update.");
+    expect(revenueModal).toContain("Each additional file is a separate source and adds to Total Revenue.");
+    expect(revenueModal).toContain("To replace a file, use its pencil in Revenue Sources.");
     expect(revenueModal).not.toContain("With a date column this behaves like daily history");
     expect(revenueModal).not.toContain("This is a one-time import and does not auto-sync");
   });

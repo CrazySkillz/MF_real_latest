@@ -2048,6 +2048,17 @@ export function AddRevenueWizardModal(props: {
                       {importSourceStatus.csv && (
                         <span className="ml-auto flex items-center gap-1 text-xs font-normal text-green-600 dark:text-green-400">
                           <span>Uploaded</span>
+                          {!isEditing && (
+                            <>
+                              <span aria-hidden="true">|</span>
+                              <button type="button" className="hover:underline" onClick={(event) => {
+                                event.stopPropagation();
+                                setStep("csv");
+                              }}>
+                                Add another file
+                              </button>
+                            </>
+                          )}
                           {activeCsvSources.length === 1 ? (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
@@ -2082,7 +2093,9 @@ export function AddRevenueWizardModal(props: {
                     <CardDescription>
                       <div className="flex items-start gap-2">
                         <span className="text-amber-600 dark:text-amber-500 font-medium">⚠️</span>
-                        <span>Import revenue from a CSV. Requires manual re-upload to update.</span>
+                        <span>{importSourceStatus.csv && !isEditing
+                          ? "Each additional file is a separate source and adds to Total Revenue. To replace a file, use its pencil in Revenue Sources."
+                          : "Import revenue from a CSV. Requires manual re-upload to update."}</span>
                       </div>
                     </CardDescription>
                   </CardHeader>

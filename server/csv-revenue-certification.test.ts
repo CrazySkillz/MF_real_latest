@@ -201,6 +201,10 @@ describe("GA4 CSV Revenue current-main certification guards", () => {
     expect(card).toContain("activeCsvSources.length === 1");
     expect(card).toContain("Remove CSV revenue source?");
     expect(card).toContain("Choose the exact CSV file");
+    expect(card).toContain("Add another file");
+    expect(card).toContain("Each additional file is a separate source and adds to Total Revenue.");
+    expect(card).toContain("To replace a file, use its pencil in Revenue Sources.");
+    expect(card).toContain("importSourceStatus.csv && !isEditing");
   });
 
   it("rejects oversized GA4 files in the browser before preview or process requests", () => {

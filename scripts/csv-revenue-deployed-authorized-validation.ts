@@ -89,11 +89,11 @@ const campaignRow = async () => readOnly(async (client) => {
 const databaseState = async () => readOnly(async (client) => {
   const result = await client.query(`
     SELECT
-      COUNT(*) FILTER (WHERE s.is_active = true)::int AS "activeSourceCount",
-      COUNT(*) FILTER (WHERE s.is_active = false)::int AS "inactiveSourceCount",
+      COUNT(DISTINCT s.id) FILTER (WHERE s.is_active = true)::int AS "activeSourceCount",
+      COUNT(DISTINCT s.id) FILTER (WHERE s.is_active = false)::int AS "inactiveSourceCount",
       COALESCE(SUM(r.revenue) FILTER (WHERE s.is_active = true AND r.sub_campaign_urn IS NULL), 0)::text AS "activeRevenue",
       COUNT(r.id) FILTER (WHERE s.is_active = true AND r.sub_campaign_urn IS NULL)::int AS "activeRecordCount",
-      ARRAY_AGG(s.id::text ORDER BY s.id) FILTER (WHERE s.is_active = true) AS "activeSourceIds"
+      ARRAY_AGG(DISTINCT s.id::text ORDER BY s.id::text) FILTER (WHERE s.is_active = true) AS "activeSourceIds"
     FROM revenue_sources s
     LEFT JOIN revenue_records r
       ON r.revenue_source_id = s.id::text
@@ -390,9 +390,19 @@ try {
   assertCheck("noPositiveRowsNoMutation", noPositive.status === 400 && /No valid revenue rows/i.test(String(noPositive.body?.error || "")), { status: noPositive.status, body: noPositive.body });
 
   const oversized = { name: `oversized-${timestamp}.csv`, text: `Revenue\n"${"1".repeat(10 * 1024 * 1024)}"` };
-  const fileLimit = await csvRequest("preview", {}, oversized);
-  observations.fileLimit = { status: fileLimit.status, body: fileLimit.body };
-  assertCheck("tenMiBFileLimitRejected", !fileLimit.ok && [400, 413, 500].includes(fileLimit.status), observations.fileLimit);
+  const fileLimitDbBefore = await databaseState();
+  const previewFileLimit = await csvRequest("preview", {}, oversized);
+  const processFileLimit = await csvRequest("process", { ...snapshotMapping, displayName: oversized.name }, oversized);
+  const fileLimitDbAfter = await databaseState();
+  observations.fileLimit = {
+    preview: { status: previewFileLimit.status, body: previewFileLimit.body },
+    process: { status: processFileLimit.status, body: processFileLimit.body },
+    databaseBefore: fileLimitDbBefore,
+    databaseAfter: fileLimitDbAfter,
+  };
+  assertCheck("tenMiBPreviewReturns413", previewFileLimit.status === 413 && /file too large/i.test(String(previewFileLimit.body?.message || "")), observations.fileLimit.preview);
+  assertCheck("tenMiBProcessReturns413", processFileLimit.status === 413 && /file too large/i.test(String(processFileLimit.body?.message || "")), observations.fileLimit.process);
+  assertCheck("tenMiBRequestsDoNotMutate", JSON.stringify(fileLimitDbAfter) === JSON.stringify(fileLimitDbBefore), observations.fileLimit);
 
   const processOverRows = { name: `process-over-rows-${timestamp}.csv`, text: `Revenue\n${Array.from({ length: 50_001 }, () => "1").join("\n")}` };
   const processLimit = await csvRequest("process", { ...snapshotMapping, displayName: processOverRows.name }, processOverRows);
@@ -438,7 +448,6 @@ const output = {
   observations,
   knownUnvalidated: [
     "cross-owner rejection requires a separately authorized non-owner identity",
-    "forced database rollback has no approved deployed fault-injection hook",
     "current report/PDF value content was not mutated or generated because snapshots are persistent",
     "scheduler source refresh is inapplicable because CSV Revenue is manual",
   ],

@@ -2,11 +2,11 @@
 
 Last updated: 2026-09-13 (Europe/Amsterdam)
 
-Base revision: `0e8108bbb0ac5832136f78109c4e2b7facf3a580` on `main`, plus the uncommitted GA4 direct oversized-request correction documented below.
+Certified application revision: `c71677a06cb924c758cb374e1cfe8e3fabc9032f` on `main`. The final deployed evidence and evidence-runner assertion updates below are uncommitted.
 
 ## Anti-Overclaim Status
 
-Current decision: **not clean-certified; certification is open**. The corrected artifact, GA4 browser size guard, cross-owner boundaries, configured KPI/Benchmark values, and existing report snapshots passed deployed validation, and a current Benchmark PDF passed local production-data validation under enforced read-only database mode. The user now requires removal of both previously accepted limitations before a clean decision.
+Current decision: **clean-certified for the documented GA4 CSV Revenue scope**. Exact application commit `c71677a06cb924c758cb374e1cfe8e3fabc9032f` passed the final authenticated deployed lifecycle, strict oversized preview/process HTTP 413 checks, exact no-mutation comparison, cleanup, and post-run inventory. The production PostgreSQL rollback/last-good-data check also passed without committing test data.
 
 The browser guard passed all 36 focused CSV Revenue tests, TypeScript validation, and the production build. Production `/api/health` returned HTTP 200 with exact evidence commit `a9f7bc49b3213a73241ff7fd9520def82fd577c4` at `2026-09-13T08:23:28.357Z`. An authorized headless browser check completed at `2026-09-13T08:04:10.075Z`: the oversized warning rendered, the upload step stayed open, and zero preview requests reached the server. A cross-owner check completed at `2026-09-13T08:25:12.414Z`: source list, total, preview, process, and delete all returned privacy-preserving HTTP 404, and the foreign campaign's CSV source/record state was unchanged.
 
@@ -15,7 +15,7 @@ At `2026-09-13T08:46:08.199Z`, the user accepted both remaining limitations for 
 - direct requests above 10 MiB are rejected before mutation but render HTTP 500; the supported GA4 browser flow blocks them before making a request;
 - rollback is proven by focused transaction tests, but no deployed fault injection was performed because no safe production hook exists.
 
-That acceptance is not being used as clean evidence. The rollback limitation is now closed by the production PostgreSQL evidence below. Exactly one required step remains: deploy and validate the localized direct oversized-request correction.
+That acceptance is not being used as clean evidence. Both former limitations are now closed by current evidence below. Zero certification steps remain.
 
 ## Scope
 
@@ -64,7 +64,7 @@ Therefore source-refresh scheduler behavior is inapplicable. Scheduled KPI/Bench
 - It rejects non-UTF-8 replacement/binary characters, ambiguous header delimiters, unclosed/illegal quotes, blank or duplicate headers, header-only files, and rows whose column count differs from the header.
 - Over-limit files fail; they are not partially parsed or silently truncated.
 
-The shared 10 MiB Multer bound is locally established from configuration. The currently deployed direct API renders its rejection as HTTP 500; the deployed GA4 browser guard prevents the normal product flow from reaching that shared error. An uncommitted route-local correction translates `LIMIT_FILE_SIZE` to HTTP 413 only when an early multipart `platformContext=ga4` field proves GA4 scope. The GA4 client now submits that field before the file; non-GA4 clients retain their previous field order and error path. Deployment proof remains open.
+The shared 10 MiB Multer bound is established from configuration. Deployed commit `c71677a0` translates `LIMIT_FILE_SIZE` to HTTP 413 only when an early multipart `platformContext=ga4` field proves GA4 scope. The GA4 client submits that field before the file; non-GA4 clients retain their previous field order and error path. Authenticated deployed preview and process requests both returned HTTP 413 with `File too large`, and exact database state before and after both requests was identical.
 
 ### Mapping and selection
 
@@ -143,7 +143,7 @@ The shared 10 MiB Multer bound is locally established from configuration. The cu
 | Concurrent identical add in one server runtime | SHA-256 request/file fingerprint returns 409 to the duplicate while the first is in flight | Static route guard plus deployed simultaneous `200/409` proof |
 | Overlapping edit/delete | Expected mapping plus active/campaign/type/context predicate makes the stale writer fail before record deletion | Mocked stale update, static SQL guard, and deployed overlapping edit `200/409` proof |
 | Cross-campaign damaged row references the same source ID | Replacement deletes only records matching both source and campaign; unrelated damaged row is retained for explicit review | Static storage guard; target inventory currently has no such row |
-| Post-commit recompute rejects quickly | Committed source result remains a success; error is logged; direct source reads are current and derived caches retry on later readers/jobs | Static route guard; injected deployed failure not exposed |
+| Post-commit recompute rejects quickly | Committed source result remains a success; error is logged; direct source reads are current and derived caches retry on later readers/jobs | Exact route guard plus focused post-commit response regression |
 
 Boundaries: the in-memory duplicate guard is intentionally limited to one server runtime and one in-flight request. Persistent sequential replay protection would require an explicit idempotency contract and is not inferred. It remains outside clean certification unless the deployed topology or product contract requires it.
 
@@ -151,19 +151,19 @@ Boundaries: the in-memory duplicate guard is intentionally limited to one server
 
 | Consumer | CSV Revenue effect | Current evidence |
 | --- | --- | --- |
-| Source list | Exact active source and materialized amount | Local route/storage guards; deployed current artifact open |
-| Imported revenue to date | Adds the exact active CSV aggregate once | Dynamic/local |
-| Total Revenue | Native selected GA4 financial revenue + active imported CSV revenue | Dynamic/local |
-| Profit | Increases by the exact CSV revenue delta when spend is fixed | Dynamic/local |
-| ROAS | Recomputed from updated revenue / unchanged spend | Dynamic/local |
-| ROI | Recomputed from `(revenue - spend) / spend` | Dynamic/local |
-| CPA | Unchanged because CSV Revenue does not change spend or conversions | Dynamic/local |
-| Revenue source selector | Exact source ID is available to campaign KPI/Benchmark configuration | Static/local |
-| Campaign KPI/Benchmark current value | `getCampaignMetricTotals` reads active source-backed total/breakdown and recomputes selected financial values | Local regression packet |
-| Alerts/notifications | Later KPI/Benchmark evaluation reads the recomputed/source-backed value; CSV mutation invalidates notification queries | Local trace; deployed alert recreation open |
-| Performance/Executive Summary | Uses the same campaign financial totals | Local regression packet |
-| Financial Analysis | Reads GA4 source breakdown through the report/screen aggregate | Local regression packet |
-| Campaign DeepDive and scheduled PDF | Scheduler resolves UI-aligned campaign totals and source breakdown before artifact creation | Local scheduled-PDF regression; deployed artifact open |
+| Source list | Exact active source and materialized amount | Exact deployed `c71677a0` lifecycle |
+| Imported revenue to date | Adds the exact active CSV aggregate once | Exact deployed `c71677a0` lifecycle |
+| Total Revenue | Native selected GA4 financial revenue + active imported CSV revenue | Deployed reconciliation plus local formula-preserving regression |
+| Profit | Increases by the exact CSV revenue delta when spend is fixed | Deployed source/total inputs plus local formula-preserving regression |
+| ROAS | Recomputed from updated revenue / unchanged spend | Deployed configured KPI reconciliation plus local regression |
+| ROI | Recomputed from `(revenue - spend) / spend` | Deployed configured KPI reconciliation plus local regression |
+| CPA | Unchanged because CSV Revenue does not change spend or conversions | Deployed configured KPI reconciliation plus local regression |
+| Revenue source selector | Exact source ID is available to campaign KPI/Benchmark configuration | Deployed configured-consumer evidence plus local guard |
+| Campaign KPI/Benchmark current value | `getCampaignMetricTotals` reads active source-backed total/breakdown and recomputes selected financial values | Deployed configured KPI/Benchmark reconciliation plus local regression |
+| Alerts/notifications | Later KPI/Benchmark evaluation reads the recomputed/source-backed value; CSV mutation invalidates notification queries | Exact source-backed job/client trace and focused regression; no production alert was induced |
+| Performance/Executive Summary | Uses the same campaign financial totals | Deployed financial input reconciliation plus local regression |
+| Financial Analysis | Reads GA4 source breakdown through the report/screen aggregate | Deployed breakdown reconciliation plus local regression |
+| Campaign DeepDive and scheduled PDF | Scheduler resolves UI-aligned campaign totals and source breakdown before artifact creation | Existing deployed report snapshots plus current production-data PDF and scheduled-PDF regressions |
 | Email delivery | May carry a report that consumed CSV values, but provider acceptance/delivery is not CSV-source certification evidence | Excluded/unvalidated |
 
 ## Confirmed Root Causes And Localized Fixes
@@ -209,9 +209,10 @@ No GA4 formula, other revenue-source implementation, public response shape, or `
 - `npm run check`: passed after final code changes.
 - `npm run build`: passed after final code changes; Vite transformed 3,470 modules and the server bundle completed.
 - Follow-up edit-preview correction on 2026-09-13: focused CSV packet passed 15/15, `npm run check` passed, and the production build passed with 3,470 modules transformed.
-- Uncommitted GA4 direct oversized-request correction on 2026-09-13: the six-file CSV packet passed 37/37; the exact campaign-access-before-upload assertion passed; `npm run check` passed; and `npm run build` passed with 3,470 modules transformed. The wrapper is limited to the two revenue CSV routes, recognizes only an early `platformContext=ga4` plus Multer `LIMIT_FILE_SIZE`, returns HTTP 413 with the existing `{ message }` shape, and forwards all other errors unchanged.
+- GA4 direct oversized-request correction committed as `c71677a06cb924c758cb374e1cfe8e3fabc9032f`: the six-file CSV packet passed 37/37; the exact campaign-access-before-upload assertion passed; `npm run check` passed; and `npm run build` passed with 3,470 modules transformed. The wrapper is limited to the two revenue CSV routes, recognizes only an early `platformContext=ga4` plus Multer `LIMIT_FILE_SIZE`, returns HTTP 413 with the existing `{ message }` shape, and forwards all other errors unchanged.
 - Rollback validation guards passed 6/6 and `npm run check` passed after the validation-only runner was added and strengthened.
 - Final current CSV packet: 7 files, 38/38 tests passed.
+- Final deployed-runner assertions passed 3/3 and `npm run check` passed after requiring HTTP 413 for both oversized endpoints, exact before/after database equality, and distinct source-count evidence.
 - The adjacent Google Ads CSV and Meta packet passed 67/71. Its four failures are stale static expectations already absent from committed `HEAD`: the platform enum now includes `custom_integration`, campaign filtering is intentionally optional, the mapping condition also includes GA4, and Create Campaign uses a recorded dynamic back step. None intersects this correction; they were not edited.
 - The authorized deployed validation runner passed `npm run check` before execution and again after its evidence-field normalization correction.
 - Broad source-safety packet: all CSV preview/process and individual revenue-delete ownership assertions passed. The file overall passed 78/88 and failed 10 unrelated stale Instagram/Google Ads/static-shape assertions.
@@ -271,6 +272,13 @@ Final post-automated-validation scan: `2026-09-13T07:13:41.188Z`, inside `BEGIN 
 - The authorized automated run added and then deleted three exact temporary sources. It moved the target campaign from 2 to 5 inactive zero-record definitions while restoring its active source IDs, active revenue, and active record count exactly to `[]`, `0`, and `0`.
 - Global active source and linked-record counts remained exactly at their pre-test values. No new inactive record group or cleanup candidate was created.
 
+Final certification scan: `2026-09-13T09:47:18.456Z`, inside `BEGIN TRANSACTION READ ONLY`, followed by `ROLLBACK`.
+
+- 57 campaigns, 19 GA4 CSV source definitions, 1 active source, and 19 linked records were scanned.
+- Active-source, currency, record-currency, retained-amount, retained-date, duplicate-active-source, orphan, cross-campaign, wrong-type, mapping, stored/materialized-total, dated-row-loss, and duplicate-record findings were all zero.
+- The same five pre-existing inactive legacy groups retained the same 17 records. No new inactive record group or cleanup candidate was created.
+- The final deployed run added and deleted three exact temporary sources. It moved the target campaign from 5 to 8 inactive zero-record definitions while restoring active source IDs, active revenue, and active record count exactly to `[]`, `0`, and `0`. This matches the certified soft-delete-source/hard-delete-record contract and does not affect live reads.
+
 ## Manual Deployed Evidence
 
 Historical only:
@@ -279,6 +287,12 @@ Historical only:
 - Exact current working-tree strict parsing, optional full-file import, complete value discovery, currency/precision bounds, duplicate guard, overlap predicate, post-commit behavior, and current report propagation were not part of that deployed artifact.
 
 Current artifact:
+
+- Production `/api/health` returned HTTP 200 with exact application commit `c71677a06cb924c758cb374e1cfe8e3fabc9032f` at `2026-09-13T09:32:29.658Z`.
+- The final authorized deployed run completed at `2026-09-13T09:46:37.481Z` against that exact commit with all 26 checks passing and no fatal error.
+- Authenticated direct preview and process requests above 10 MiB each returned HTTP 413 with `{ "message": "File too large" }`. Exact database snapshots immediately before and after both requests were identical.
+- The same run reconfirmed full preview beyond row 25, filtered dated add, daily materialization, edit without re-upload, re-upload replacement, snapshot materialization, source-list/breakdown/total propagation, unchanged spend, `200/409` overlap and duplicate protection, 5,000/50,000 row limits, malformed/amount/date/currency/no-positive rejection, exact cleanup, and baseline restoration.
+- The evidence helper initially labeled joined record rows as source count during the temporary state. It did not affect the exact before/after equality or any application assertion. The helper now uses distinct source IDs; its focused assertions pass 3/3 and TypeScript validation passes.
 
 - Production deployment of exact commit `5329fe2516afaf64963be0826f2aaa05967486e8` was confirmed through `/api/health` at `2026-09-13T06:07:51.426Z`.
 - A temporary dated CSV source was added through the deployed browser, its edit modal was opened, and the exact temporary source was subsequently deleted by the user.
@@ -289,11 +303,11 @@ Current artifact:
 - Authorized target campaign: `eee3e654-b736-4e8e-86ec-1050e4d905c0`; run completed at `2026-09-13T07:12:34.990Z` against exact SHA `8735e778ba843c89e506717c3430040458b50ef7`.
 - Proven through authenticated deployed API plus read-only database before/after evidence: all 30 preview rows including campaign values after row 25; exact campaign-filtered dated add; daily records; campaign-selection edit without re-upload; exact-source replacement by re-upload; no-date snapshot materialization; revenue-to-date delta; unchanged spend; source-list/breakdown value parity; over-5,000 UI row rejection; over-50,000 process-row rejection; ambiguous structure, amount, date, currency, and no-positive-row rejection without mutation; simultaneous identical add `200/409`; overlapping edit `200/409`; exact-source cleanup and baseline restoration.
 - The source-list assertion initially reported a validation-helper false negative because it omitted the existing `lastTotalRevenue` field. The captured source row and breakdown row both contained `75`; the helper now reads that field and passes TypeScript validation. No application contract or response changed.
-- The 10 MiB request was rejected without mutation but returned HTTP 500 with `File too large`; size-limit error rendering therefore fails clean certification.
+- On the earlier artifact, the 10 MiB request was rejected without mutation but returned HTTP 500 with `File too large`; that historical failure led to the localized correction.
 - The GA4-only browser guard rejects files above the same 10 MiB bound before both preview and process fetches. All 36 focused CSV Revenue tests, `npm run check`, and `npm run build` passed locally. Deployed validation against exact commit `db9f7448` rendered `CSV file is too large`, stayed on the upload step, and issued zero preview requests.
-- The route-local HTTP 413 correction is locally validated but is not deployed. The prior deployed HTTP 500 remains the authoritative production result until the exact new commit is deployed and the authenticated direct preview/process no-mutation checks pass.
+- The route-local HTTP 413 correction is deployed and passed authenticated preview/process no-mutation validation on exact commit `c71677a0`.
 - Unauthenticated campaign access was rejected. On exact deployed commit `a9f7bc49`, an authorized owner requested a different owner's source list, total, preview, process, and delete paths; all returned HTTP 404, and read-only database state before and after was identical.
-- KPI, Benchmark, and report endpoints returned HTTP 200, but the disposable campaign has zero configured KPIs, Benchmarks, and reports. Configured-value propagation and current report/PDF content therefore remain unvalidated rather than inferred.
+- KPI, Benchmark, and report endpoints returned HTTP 200 on the disposable campaign, which has zero configured consumers. Configured-value propagation was therefore proven separately on the existing production campaign below rather than inferred from empty responses.
 - A separate existing production campaign supplied non-destructive configured-consumer evidence. Its active $600 GA4 CSV source predates eight GA4 KPIs, two GA4 Benchmarks, three scheduled GA4 reports, and 145 immutable report snapshots.
 - At `2026-09-13T08:35:33.764Z`, authorized read-only deployed checks returned HTTP 200 for source list, breakdown, source-to-date total, KPI, Benchmark, and report endpoints. The CSV source was exactly $600 in the source list, deployed breakdown, and internal source-keyed breakdown; the complete imported-source sum reconciled exactly into Total Revenue.
 - Configured Revenue (`98682.82`), ROAS (`35.76`), ROI (`3475.79`), and CPA (`8`) KPI values reconciled to their current inputs. CPA used spend and conversions rather than revenue. The configured revenue Benchmark (`102026.47`) matched the value captured in the latest sent Benchmark report snapshot.
@@ -326,4 +340,4 @@ CSV Revenue can receive a stable clean-certification answer only when the exact 
 
 Final certification decision:
 
-> CSV Revenue is not yet clean-certified. Exactly one required step remains: commit, deploy, and prove authenticated oversized preview/process requests return HTTP 413 with no mutation on the exact artifact. The exact replacement transaction's production PostgreSQL rollback/last-good-data behavior is now proven without a deployed fault hook or committed test data. All other scoped certification evidence remains complete.
+> CSV Revenue is clean-certified for the documented GA4 scope on application commit `c71677a06cb924c758cb374e1cfe8e3fabc9032f`. The exact deployed lifecycle, strict oversized preview/process HTTP 413 responses, no-mutation and cleanup checks, production PostgreSQL rollback/last-good-data behavior, ownership boundaries, source totals, downstream KPI/Benchmark/report evidence, and final read-only inventory are supported by current evidence. CSV remains manual; source-refresh scheduler behavior is inapplicable. Zero certification steps remain. The five explicitly documented inactive legacy record groups remain excluded from active reads and were not modified; persistent cross-runtime idempotency and email-provider delivery remain outside the supported CSV source contract.

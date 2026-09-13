@@ -152,6 +152,20 @@ describe("GA4 CSV Revenue current-main certification guards", () => {
     expect(modal).toContain("Campaign identifier (optional)");
   });
 
+  it("rejects oversized GA4 files in the browser before preview or process requests", () => {
+    const previewStart = modal.indexOf("const handleCsvPreview = async");
+    const processStart = modal.indexOf("const handleCsvProcess = async", previewStart);
+    const sheetsStart = modal.indexOf("const handleSheetsPreview = async", processStart);
+    const preview = modal.slice(previewStart, processStart);
+    const process = modal.slice(processStart, sheetsStart);
+
+    expect(modal).toContain("const GA4_CSV_MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;");
+    expect(preview).toContain('platformContext === "ga4" && file.size > GA4_CSV_MAX_FILE_SIZE_BYTES');
+    expect(process).toContain('platformContext === "ga4" && csvFile && csvFile.size > GA4_CSV_MAX_FILE_SIZE_BYTES');
+    expect(preview.indexOf("GA4_CSV_MAX_FILE_SIZE_BYTES")).toBeLessThan(preview.indexOf("setCsvPreviewing(true)"));
+    expect(process.indexOf("GA4_CSV_MAX_FILE_SIZE_BYTES")).toBeLessThan(process.indexOf("setCsvProcessing(true)"));
+  });
+
   it("keeps CSV manual and outside all revenue refresh selections", () => {
     const sheetsRefreshStart = scheduler.indexOf("export async function runGoogleSheetsRevenueAutoRefreshOnce");
     const sheetsRefreshEnd = scheduler.indexOf("export async function runHubSpotPipelineAutoRefreshOnce", sheetsRefreshStart);

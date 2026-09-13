@@ -19,6 +19,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 type Step = "select" | "manual" | "csv" | "csv_map" | "sheets_choose" | "sheets_map" | "hubspot" | "salesforce" | "shopify";
 const SELECT_NONE = "__none__";
+const GA4_CSV_MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const ENABLE_SALESFORCE_REVENUE_SOURCE = String(import.meta.env.VITE_ENABLE_SALESFORCE_REVENUE_SOURCE || "").toLowerCase() === "true";
 type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration';
 type PlatformCampaignMapping = { crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string };
@@ -1441,6 +1442,10 @@ export function AddRevenueWizardModal(props: {
   };
 
   const handleCsvPreview = async (file: File) => {
+    if (platformContext === "ga4" && file.size > GA4_CSV_MAX_FILE_SIZE_BYTES) {
+      toast({ title: "CSV file is too large", description: "Choose a CSV file no larger than 10 MB.", variant: "destructive" });
+      return;
+    }
     setCsvPreviewing(true);
     try {
       const fd = new FormData();
@@ -1485,6 +1490,10 @@ export function AddRevenueWizardModal(props: {
   };
 
   const handleCsvProcess = async () => {
+    if (platformContext === "ga4" && csvFile && csvFile.size > GA4_CSV_MAX_FILE_SIZE_BYTES) {
+      toast({ title: "CSV file is too large", description: "Choose a CSV file no larger than 10 MB.", variant: "destructive" });
+      return;
+    }
     if (!csvFile && !canRecalculateCsvRevenueEditWithoutReupload) {
       toast({
         title: isEditing ? "Re-upload CSV required" : "CSV file required",

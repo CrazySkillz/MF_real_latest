@@ -2,13 +2,13 @@
 
 Last updated: 2026-09-13 (Europe/Amsterdam)
 
-Base revision: `51f04fe2e25b01ba79e4d20383f33f9ed7f3a092` on `main`, plus the uncommitted CSV-only working-tree changes listed below.
+Base revision: `ffb12f8d7c316be757f8490e5ede9298cdebf8a` on `main`, plus the uncommitted CSV-only working-tree changes listed below.
 
 ## Anti-Overclaim Status
 
-Current decision: **not clean-certified; the corrected artifact passed the reversible deployed CSV packet, but the 10 MiB path returns HTTP 500 and cross-owner, forced-failure, configured KPI/Benchmark, and report/PDF evidence remain open**.
+Current decision: **not clean-certified; the corrected artifact passed the reversible deployed CSV packet, but the new GA4 browser size guard is only locally proven, the direct 10 MiB API path still returns HTTP 500, and cross-owner, forced-failure, configured KPI/Benchmark, and report/PDF evidence remain open**.
 
-The committed patch passed the focused lifecycle/downstream packet, TypeScript validation, production build, and a read-only target-database inventory. Production `/api/health` returned HTTP 200 with correction commit `8735e778ba843c89e506717c3430040458b50ef7` at `2026-09-13T06:41:44.600Z`. The corrected artifact has not yet completed deployed browser/runtime validation. Historical deployed CSV checks from 2026-07-12 were performed against an older revision and are not current-artifact evidence.
+The current uncommitted browser guard passed all 36 focused CSV Revenue tests, TypeScript validation, and the production build. Production `/api/health` returned HTTP 200 with evidence commit `ffb12f8d7c316be757f8490e5ede9298cdebf8a` at `2026-09-13T07:46:09.889Z`; that deployment does not yet include the browser guard.
 
 One certification gate remains:
 
@@ -55,7 +55,7 @@ Therefore source-refresh scheduler behavior is inapplicable. Scheduled KPI/Bench
 
 ### File and structural limits
 
-- Upload middleware accepts CSV MIME types or a `.csv` filename and caps the file at 10 MiB.
+- Upload middleware accepts CSV MIME types or a `.csv` filename and caps the file at 10 MiB. The uncommitted GA4 browser guard applies the same bound before preview and again before process submission.
 - The browser preview/import flow supports at most 5,000 non-empty logical data rows and displays that bound.
 - The process endpoint independently caps GA4 CSV parsing at 50,000 non-empty logical data rows as a defensive API bound.
 - The strict GA4 parser counts logical records, so embedded newlines inside quoted fields do not create false row-limit failures.
@@ -63,7 +63,7 @@ Therefore source-refresh scheduler behavior is inapplicable. Scheduled KPI/Bench
 - It rejects non-UTF-8 replacement/binary characters, ambiguous header delimiters, unclosed/illegal quotes, blank or duplicate headers, header-only files, and rows whose column count differs from the header.
 - Over-limit files fail; they are not partially parsed or silently truncated.
 
-The 10 MiB Multer bound is locally established from configuration. Its exact deployed HTTP error rendering remains part of deployed negative-case validation.
+The shared 10 MiB Multer bound is locally established from configuration. The deployed direct API renders its rejection as HTTP 500; the GA4 browser guard that prevents the normal product flow from reaching that shared error is locally proven but not yet deployed-validated.
 
 ### Mapping and selection
 
@@ -176,7 +176,7 @@ Boundaries: the in-memory duplicate guard is intentionally limited to one server
 7. Simultaneous identical add requests could create two additive sources. One-runtime in-flight fingerprinting now rejects the duplicate with 409.
 8. A quick derived recompute rejection after commit could return HTTP 500 even though upload/delete had committed. CSV-only post-commit recompute failures now log while preserving accurate mutation success.
 9. The deployed edit modal rebuilt retained rows from mapped fields only but continued to display every original CSV header. That exposed blank, unusable choices such as an initially unmapped `description` column. GA4 edit mode now limits a no-file retained preview to the fields actually retained; re-upload continues to expose the new file's full headers.
-10. The deployed 10 MiB limit safely rejects an oversized file before mutation, but Multer's `LIMIT_FILE_SIZE` error has no HTTP status and the shared global handler therefore renders it as HTTP 500. A local GA4-only correction is not available at that shared pre-body boundary without changing excluded upload paths, so no further application edit was made.
+10. The deployed 10 MiB limit safely rejects an oversized file before mutation, but Multer's `LIMIT_FILE_SIZE` error has no HTTP status and the shared global handler therefore renders it as HTTP 500. Changing that shared pre-body boundary would affect excluded upload paths, so the smallest safe fix adds GA4-only browser guards before both preview and process requests. The direct API response remains unchanged and unclean.
 
 Files changed for these fixes/evidence:
 
@@ -283,6 +283,7 @@ Current artifact:
 - Proven through authenticated deployed API plus read-only database before/after evidence: all 30 preview rows including campaign values after row 25; exact campaign-filtered dated add; daily records; campaign-selection edit without re-upload; exact-source replacement by re-upload; no-date snapshot materialization; revenue-to-date delta; unchanged spend; source-list/breakdown value parity; over-5,000 UI row rejection; over-50,000 process-row rejection; ambiguous structure, amount, date, currency, and no-positive-row rejection without mutation; simultaneous identical add `200/409`; overlapping edit `200/409`; exact-source cleanup and baseline restoration.
 - The source-list assertion initially reported a validation-helper false negative because it omitted the existing `lastTotalRevenue` field. The captured source row and breakdown row both contained `75`; the helper now reads that field and passes TypeScript validation. No application contract or response changed.
 - The 10 MiB request was rejected without mutation but returned HTTP 500 with `File too large`; size-limit error rendering therefore fails clean certification.
+- The uncommitted GA4-only browser guard rejects files above the same 10 MiB bound before both preview and process fetches. All 36 focused CSV Revenue tests, `npm run check`, and `npm run build` passed locally; deployed browser validation is still required.
 - Unauthenticated campaign access was rejected. Cross-owner evidence remains unvalidated because no separate non-owner identity was authorized.
 - KPI, Benchmark, and report endpoints returned HTTP 200, but the disposable campaign has zero configured KPIs, Benchmarks, and reports. Configured-value propagation and current report/PDF content therefore remain unvalidated rather than inferred.
 - No deployed forced database failure hook exists; transactional rollback remains local mocked evidence unless an approved safe staging failure injection is provided.
@@ -310,4 +311,4 @@ CSV Revenue can receive a stable clean-certification answer only when the exact 
 
 Until then, the stable answer is:
 
-> CSV Revenue is not clean-certified. Correction commit `8735e778` passed the reversible deployed lifecycle, negative, concurrency, totals, and cleanup packet, and final inventory found no new active or record-level damage. Oversized files return HTTP 500, while cross-owner, deployed forced rollback, configured KPI/Benchmark propagation, and current report/PDF content remain unvalidated.
+> CSV Revenue is not clean-certified. Evidence commit `ffb12f8d` passed the reversible deployed lifecycle, negative, concurrency, totals, and cleanup packet, and final inventory found no new active or record-level damage. The uncommitted GA4 browser size guard is locally proven, but the direct oversized-file API response remains HTTP 500; cross-owner, deployed forced rollback, configured KPI/Benchmark propagation, and current report/PDF content also remain unvalidated.

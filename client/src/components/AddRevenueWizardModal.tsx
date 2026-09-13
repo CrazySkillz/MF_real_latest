@@ -842,7 +842,7 @@ export function AddRevenueWizardModal(props: {
     if (type === "csv") {
       const vsRaw = String(config?.valueSource || config?.mode || "").trim().toLowerCase();
       const vs: 'revenue' | 'conversion_value' = vsRaw === 'conversion_value' ? 'conversion_value' : 'revenue';
-      setStep("csv_map");
+      setStep("csv");
       setCsvPrefill({
         displayName: String(config?.displayName || sourceToEdit?.displayName || ""),
         revenueColumn: String(config?.revenueColumn || ""),

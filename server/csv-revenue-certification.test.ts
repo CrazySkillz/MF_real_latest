@@ -152,6 +152,21 @@ describe("GA4 CSV Revenue current-main certification guards", () => {
     expect(modal).toContain("Campaign identifier (optional)");
   });
 
+  it("opens an existing CSV source on the upload step before column mapping", () => {
+    const csvEditStart = modal.indexOf('if (type === "csv")');
+    const salesforceEditStart = modal.indexOf('if (type === "salesforce")', csvEditStart);
+    const csvEdit = modal.slice(csvEditStart, salesforceEditStart);
+
+    expect(csvEditStart).toBeGreaterThan(-1);
+    expect(salesforceEditStart).toBeGreaterThan(csvEditStart);
+    expect(csvEdit).toContain('setStep("csv")');
+    expect(csvEdit).not.toContain('setStep("csv_map")');
+    const csvPreviewStart = modal.indexOf("const handleCsvPreview = async");
+    const csvProcessStart = modal.indexOf("const handleCsvProcess = async", csvPreviewStart);
+    expect(modal.slice(csvPreviewStart, csvProcessStart)).toContain('setStep("csv_map")');
+    expect(modal).toContain('step === "csv_map" ? (isEditing ? "Edit CSV revenue" : "Map CSV columns")');
+  });
+
   it("rejects oversized GA4 files in the browser before preview or process requests", () => {
     const previewStart = modal.indexOf("const handleCsvPreview = async");
     const processStart = modal.indexOf("const handleCsvProcess = async", previewStart);

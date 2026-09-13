@@ -2,17 +2,17 @@
 
 Last updated: 2026-09-13 (Europe/Amsterdam)
 
-Base revision: `db9f744814a97b912698c4ef089cab67db486708` on `main`, plus the uncommitted deployed-evidence update below.
+Base revision: `a9f7bc49b3213a73241ff7fd9520def82fd577c4` on `main`, plus the uncommitted cross-owner and configured-consumer evidence updates below.
 
 ## Anti-Overclaim Status
 
-Current decision: **not clean-certified; the corrected artifact and GA4 browser size guard passed deployed validation, but the direct 10 MiB API path still returns HTTP 500, and cross-owner, forced-failure, configured KPI/Benchmark, and report/PDF evidence remain open**.
+Current decision: **not clean-certified; the corrected artifact, GA4 browser size guard, cross-owner boundaries, configured KPI/Benchmark values, and existing report snapshots passed deployed validation, but the direct 10 MiB API path still returns HTTP 500, and deployed forced-failure plus current PDF-content evidence remain open**.
 
-The browser guard passed all 36 focused CSV Revenue tests, TypeScript validation, and the production build. Production `/api/health` returned HTTP 200 with exact guard commit `db9f744814a97b912698c4ef089cab67db486708` at `2026-09-13T07:57:35.534Z`. An authorized headless browser check completed at `2026-09-13T08:04:10.075Z`: the oversized warning rendered, the upload step stayed open, and zero preview requests reached the server.
+The browser guard passed all 36 focused CSV Revenue tests, TypeScript validation, and the production build. Production `/api/health` returned HTTP 200 with exact evidence commit `a9f7bc49b3213a73241ff7fd9520def82fd577c4` at `2026-09-13T08:23:28.357Z`. An authorized headless browser check completed at `2026-09-13T08:04:10.075Z`: the oversized warning rendered, the upload step stayed open, and zero preview requests reached the server. A cross-owner check completed at `2026-09-13T08:25:12.414Z`: source list, total, preview, process, and delete all returned privacy-preserving HTTP 404, and the foreign campaign's CSV source/record state was unchanged.
 
 One certification gate remains:
 
-1. resolve or explicitly accept the deployed 10 MiB HTTP 500 behavior and obtain the still-open cross-owner, forced-failure, configured KPI/Benchmark, and report/PDF evidence listed below.
+1. resolve or explicitly accept the deployed 10 MiB HTTP 500 behavior and obtain the still-open deployed forced-failure and current PDF-content evidence listed below.
 
 Do not describe CSV Revenue as clean-certified until the remaining gate is closed.
 
@@ -284,8 +284,12 @@ Current artifact:
 - The source-list assertion initially reported a validation-helper false negative because it omitted the existing `lastTotalRevenue` field. The captured source row and breakdown row both contained `75`; the helper now reads that field and passes TypeScript validation. No application contract or response changed.
 - The 10 MiB request was rejected without mutation but returned HTTP 500 with `File too large`; size-limit error rendering therefore fails clean certification.
 - The GA4-only browser guard rejects files above the same 10 MiB bound before both preview and process fetches. All 36 focused CSV Revenue tests, `npm run check`, and `npm run build` passed locally. Deployed validation against exact commit `db9f7448` rendered `CSV file is too large`, stayed on the upload step, and issued zero preview requests.
-- Unauthenticated campaign access was rejected. Cross-owner evidence remains unvalidated because no separate non-owner identity was authorized.
+- Unauthenticated campaign access was rejected. On exact deployed commit `a9f7bc49`, an authorized owner requested a different owner's source list, total, preview, process, and delete paths; all returned HTTP 404, and read-only database state before and after was identical.
 - KPI, Benchmark, and report endpoints returned HTTP 200, but the disposable campaign has zero configured KPIs, Benchmarks, and reports. Configured-value propagation and current report/PDF content therefore remain unvalidated rather than inferred.
+- A separate existing production campaign supplied non-destructive configured-consumer evidence. Its active $600 GA4 CSV source predates eight GA4 KPIs, two GA4 Benchmarks, three scheduled GA4 reports, and 145 immutable report snapshots.
+- At `2026-09-13T08:35:33.764Z`, authorized read-only deployed checks returned HTTP 200 for source list, breakdown, source-to-date total, KPI, Benchmark, and report endpoints. The CSV source was exactly $600 in the source list, deployed breakdown, and internal source-keyed breakdown; the complete imported-source sum reconciled exactly into Total Revenue.
+- Configured Revenue (`98682.82`), ROAS (`35.76`), ROI (`3475.79`), and CPA (`8`) KPI values reconciled to their current inputs. CPA used spend and conversions rather than revenue. The configured revenue Benchmark (`102026.47`) matched the value captured in the latest sent Benchmark report snapshot.
+- Overview, Ads, and Benchmark reports each had an existing sent event and immutable snapshot after the CSV source was connected. The CSV source/record count and revenue were identical before and after the entire check. Actual current PDF bytes were not requested because the deployed PDF route runs KPI/Benchmark preflight writes; PDF value content remains unvalidated rather than risking production mutation.
 - No deployed forced database failure hook exists; transactional rollback remains local mocked evidence unless an approved safe staging failure injection is provided.
 
 ## Damaged-Data And Cleanup Boundary
@@ -311,4 +315,4 @@ CSV Revenue can receive a stable clean-certification answer only when the exact 
 
 Until then, the stable answer is:
 
-> CSV Revenue is not clean-certified. Commit `db9f7448` passed the deployed GA4 browser size check in addition to the earlier reversible lifecycle, negative, concurrency, totals, and cleanup packet, and final inventory found no new active or record-level damage. The direct oversized-file API response remains HTTP 500; cross-owner, deployed forced rollback, configured KPI/Benchmark propagation, and current report/PDF content also remain unvalidated.
+> CSV Revenue is not clean-certified. Exact deployed commit `a9f7bc49` passed cross-owner and configured KPI/Benchmark/report-snapshot checks, and application commit `db9f7448` passed the GA4 browser size check in addition to the earlier reversible lifecycle, negative, concurrency, totals, and cleanup packet. The direct oversized-file API response remains HTTP 500; deployed forced rollback and current PDF value content remain unvalidated.

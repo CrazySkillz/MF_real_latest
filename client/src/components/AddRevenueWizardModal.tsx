@@ -859,11 +859,13 @@ export function AddRevenueWizardModal(props: {
         campaignMappings: Array.isArray(config?.campaignMappings) ? config.campaignMappings : [],
         campaignDisplayName: String(config?.campaignDisplayName || ""),
       });
-      const savedHeaders = Array.isArray(config?.csvHeaders) ? config.csvHeaders.map(String).filter(Boolean) : [];
       const storedRows = Array.isArray(config?.csvStoredRevenueRows) ? config.csvStoredRevenueRows : [];
       const storedRevenueColumn = String(config?.storedRevenueColumn || config?.revenueColumn || "");
       const storedCampaignColumn = String(config?.storedCampaignColumn || config?.campaignColumn || "");
       const storedDateColumn = String(config?.storedDateColumn || config?.dateColumn || "");
+      const savedHeaders = platformContext === "ga4" && storedRows.length > 0
+        ? [storedRevenueColumn, storedCampaignColumn, storedDateColumn].filter(Boolean)
+        : Array.isArray(config?.csvHeaders) ? config.csvHeaders.map(String).filter(Boolean) : [];
       const savedSampleRows = storedRows.length > 0
         ? storedRows.map((row: any) => ({
             ...(storedRevenueColumn ? { [storedRevenueColumn]: String(row?.revenueRaw ?? row?.revenue ?? "") } : {}),

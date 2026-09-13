@@ -144,6 +144,8 @@ describe("GA4 CSV Revenue current-main certification guards", () => {
     expect(modal).toContain('fd.append("platformContext", platformContext);');
     expect(routes).toContain('sampleRows: platformContext === "ga4" ? parsed.rows : parsed.rows.slice(0, 25)');
     expect(modal).toContain("const storedRows = Array.isArray(config?.csvStoredRevenueRows)");
+    expect(modal).toContain('platformContext === "ga4" && storedRows.length > 0');
+    expect(modal).toContain("[storedRevenueColumn, storedCampaignColumn, storedDateColumn].filter(Boolean)");
     expect(modal).toContain("const hasCampaignScope = Boolean(csvCampaignCol && csvCampaignValues.length > 0);");
     expect(modal).toContain("campaignColumn: hasCampaignScope ? csvCampaignCol : null");
     expect(modal).not.toContain('if (!csvCampaignCol) {\n      toast({ title: "Select a campaign column"');

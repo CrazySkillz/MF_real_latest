@@ -6,17 +6,17 @@ Base revision: `51f04fe2e25b01ba79e4d20383f33f9ed7f3a092` on `main`, plus the un
 
 ## Anti-Overclaim Status
 
-Current decision: **locally proven for the documented scope; not yet clean-certified for the current deployed artifact**.
+Current decision: **not clean-certified; deployed edit evidence exposed a blank unsupported-header choice and the localized correction is not yet deployed**.
 
-The current working tree has passed the focused lifecycle/downstream packet, TypeScript validation, production build, and a read-only target-database inventory. The changed artifact has not been committed, pushed, deployed, or exercised in the deployed browser/runtime. Historical deployed CSV checks from 2026-07-12 were performed against an older revision and are not current-artifact evidence.
+The committed patch passed the focused lifecycle/downstream packet, TypeScript validation, production build, and a read-only target-database inventory. Commit `5329fe2516afaf64963be0826f2aaa05967486e8` was pushed to `main`; production `/api/health` returned HTTP 200 with that exact commit at `2026-09-13T06:07:51.426Z`. The current artifact has not yet been exercised through the deployed browser/runtime. Historical deployed CSV checks from 2026-07-12 were performed against an older revision and are not current-artifact evidence.
 
 Three certification gates remain:
 
-1. user authorization to commit/push and deployment of the exact reviewed patch;
-2. current-artifact deployed lifecycle, negative-case, concurrency, and downstream validation, issued one simple instruction at a time;
+1. authorization to commit/push and deployment of the localized edit-preview correction;
+2. corrected-artifact deployed lifecycle, negative-case, concurrency, and downstream validation;
 3. final deployed read-only inventory plus documentation of the stable certification decision.
 
-Do not describe CSV Revenue as clean-certified until all three gates are closed.
+Do not describe CSV Revenue as clean-certified until all three remaining gates are closed.
 
 ## Scope
 
@@ -177,6 +177,7 @@ Boundaries: the in-memory duplicate guard is intentionally limited to one server
 6. Two overlapping edits had no compare-and-swap boundary. The route reads the exact source before processing and the transaction requires the same mapping configuration.
 7. Simultaneous identical add requests could create two additive sources. One-runtime in-flight fingerprinting now rejects the duplicate with 409.
 8. A quick derived recompute rejection after commit could return HTTP 500 even though upload/delete had committed. CSV-only post-commit recompute failures now log while preserving accurate mutation success.
+9. The deployed edit modal rebuilt retained rows from mapped fields only but continued to display every original CSV header. That exposed blank, unusable choices such as an initially unmapped `description` column. GA4 edit mode now limits a no-file retained preview to the fields actually retained; re-upload continues to expose the new file's full headers.
 
 Files changed for these fixes/evidence:
 
@@ -204,6 +205,7 @@ No GA4 formula, other revenue-source implementation, public response shape, or `
 - Final post-provenance CSV transaction/downstream packet: 3 files, 22/22 tests passed.
 - `npm run check`: passed after final code changes.
 - `npm run build`: passed after final code changes; Vite transformed 3,470 modules and the server bundle completed.
+- Follow-up edit-preview correction on 2026-09-13: focused CSV packet passed 15/15, `npm run check` passed, and the production build passed with 3,470 modules transformed.
 - Broad source-safety packet: all CSV preview/process and individual revenue-delete ownership assertions passed. The file overall passed 78/88 and failed 10 unrelated stale Instagram/Google Ads/static-shape assertions.
 - Expanded adjacent packet: 137/138 tests passed. The sole failure is an unrelated stale Salesforce static expectation in `latest-day-revenue-regression.test.ts`; `git show HEAD` proves its expected string was already absent from the base modal, and the CSV diff does not touch Salesforce behavior.
 
@@ -255,8 +257,12 @@ Historical only:
 
 Current artifact:
 
-- Not deployed.
-- No current browser/API lifecycle packet has run.
+- Production deployment of exact commit `5329fe2516afaf64963be0826f2aaa05967486e8` was confirmed through `/api/health` at `2026-09-13T06:07:51.426Z`.
+- A temporary dated CSV source was added through the deployed browser, its edit modal was opened, and the exact temporary source was subsequently deleted by the user.
+- The edit screenshot showed `date` and `amount` retained but an initially unmapped `description` header displayed with blank values. This is failed deployed evidence for that edit-preview state, not clean lifecycle evidence.
+- Root cause: `csvStoredRevenueRows` intentionally retains mapped fields, while the client used the broader original `csvHeaders` list when reconstructing the no-file edit preview.
+- The localized client correction and regression guard pass locally but are not committed, pushed, or deployed.
+- No complete current browser/API lifecycle packet has run.
 - No current deployed concurrency or cross-owner packet has run.
 - No current generated report/PDF content has been inspected.
 - No deployed forced database failure hook exists; transactional rollback remains local mocked evidence unless an approved safe staging failure injection is provided.
@@ -284,4 +290,4 @@ CSV Revenue can receive a stable clean-certification answer only when the exact 
 
 Until then, the stable answer is:
 
-> CSV Revenue is locally proven for the documented current-working-tree scope, and the current active persisted source is clean in the read-only inventory. The changed artifact is not yet deployed-validated, so clean production certification remains open.
+> CSV Revenue is not clean-certified. Exact commit `5329fe25` was deployed, but deployed edit evidence exposed a blank unsupported-header choice. The localized correction is locally validated and still requires commit, deployment, corrected lifecycle evidence, and a final read-only inventory.

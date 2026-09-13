@@ -2,19 +2,20 @@
 
 Last updated: 2026-09-13 (Europe/Amsterdam)
 
-Base revision: `a9f7bc49b3213a73241ff7fd9520def82fd577c4` on `main`, plus the uncommitted cross-owner and configured-consumer evidence updates below.
+Base revision: `09668bba5307bb7d0f25d9289d63e626f108f016` on `main`, plus the uncommitted final certification decision below.
 
 ## Anti-Overclaim Status
 
-Current decision: **not clean-certified; the corrected artifact, GA4 browser size guard, cross-owner boundaries, configured KPI/Benchmark values, and existing report snapshots passed deployed validation, but the direct 10 MiB API path still returns HTTP 500, and deployed forced-failure plus current PDF-content evidence remain open**.
+Current decision: **certification complete — PASS WITH ACCEPTED LIMITATIONS, not clean-certified**. The corrected artifact, GA4 browser size guard, cross-owner boundaries, configured KPI/Benchmark values, and existing report snapshots passed deployed validation, and a current Benchmark PDF passed local production-data validation under enforced read-only database mode.
 
 The browser guard passed all 36 focused CSV Revenue tests, TypeScript validation, and the production build. Production `/api/health` returned HTTP 200 with exact evidence commit `a9f7bc49b3213a73241ff7fd9520def82fd577c4` at `2026-09-13T08:23:28.357Z`. An authorized headless browser check completed at `2026-09-13T08:04:10.075Z`: the oversized warning rendered, the upload step stayed open, and zero preview requests reached the server. A cross-owner check completed at `2026-09-13T08:25:12.414Z`: source list, total, preview, process, and delete all returned privacy-preserving HTTP 404, and the foreign campaign's CSV source/record state was unchanged.
 
-One certification gate remains:
+At `2026-09-13T08:46:08.199Z`, the user explicitly accepted both remaining limitations:
 
-1. resolve or explicitly accept the deployed 10 MiB HTTP 500 behavior and obtain the still-open deployed forced-failure and current PDF-content evidence listed below.
+- direct requests above 10 MiB are rejected before mutation but render HTTP 500; the supported GA4 browser flow blocks them before making a request;
+- rollback is proven by focused transaction tests, but no deployed fault injection was performed because no safe production hook exists.
 
-Do not describe CSV Revenue as clean-certified until the remaining gate is closed.
+No certification validation steps remain. Do not describe the two accepted limitations as clean behavior.
 
 ## Scope
 
@@ -289,7 +290,8 @@ Current artifact:
 - A separate existing production campaign supplied non-destructive configured-consumer evidence. Its active $600 GA4 CSV source predates eight GA4 KPIs, two GA4 Benchmarks, three scheduled GA4 reports, and 145 immutable report snapshots.
 - At `2026-09-13T08:35:33.764Z`, authorized read-only deployed checks returned HTTP 200 for source list, breakdown, source-to-date total, KPI, Benchmark, and report endpoints. The CSV source was exactly $600 in the source list, deployed breakdown, and internal source-keyed breakdown; the complete imported-source sum reconciled exactly into Total Revenue.
 - Configured Revenue (`98682.82`), ROAS (`35.76`), ROI (`3475.79`), and CPA (`8`) KPI values reconciled to their current inputs. CPA used spend and conversions rather than revenue. The configured revenue Benchmark (`102026.47`) matched the value captured in the latest sent Benchmark report snapshot.
-- Overview, Ads, and Benchmark reports each had an existing sent event and immutable snapshot after the CSV source was connected. The CSV source/record count and revenue were identical before and after the entire check. Actual current PDF bytes were not requested because the deployed PDF route runs KPI/Benchmark preflight writes; PDF value content remains unvalidated rather than risking production mutation.
+- Overview, Ads, and Benchmark reports each had an existing sent event and immutable snapshot after the CSV source was connected. The CSV source/record count and revenue were identical before and after the entire check. The deployed PDF route was not requested because it runs KPI/Benchmark preflight writes.
+- At `2026-09-13T08:43:15.527Z`, the exact current Benchmark PDF builder was run locally against production data with every database connection forced to `default_transaction_read_only=on`. It produced a valid 7,980-byte PDF whose parsed text contained the Revenue Benchmark value (`102026.47`) already reconciled to the imported-source total containing the exact $600 CSV source. Database state was identical before and after. A broader Overview PDF attempt failed closed because current provider sections were unavailable; it also made no writes. This is local production-data evidence, not a deployed HTTP-route claim.
 - No deployed forced database failure hook exists; transactional rollback remains local mocked evidence unless an approved safe staging failure injection is provided.
 
 ## Damaged-Data And Cleanup Boundary
@@ -313,6 +315,6 @@ CSV Revenue can receive a stable clean-certification answer only when the exact 
 - exact-source delete and restoration to the pre-test baseline;
 - final deployed read-only inventory with no new active or inactive damage created by the test.
 
-Until then, the stable answer is:
+Final certification decision:
 
-> CSV Revenue is not clean-certified. Exact deployed commit `a9f7bc49` passed cross-owner and configured KPI/Benchmark/report-snapshot checks, and application commit `db9f7448` passed the GA4 browser size check in addition to the earlier reversible lifecycle, negative, concurrency, totals, and cleanup packet. The direct oversized-file API response remains HTTP 500; deployed forced rollback and current PDF value content remain unvalidated.
+> CSV Revenue certification is complete: PASS WITH ACCEPTED LIMITATIONS, not clean-certified. Exact deployed commit `a9f7bc49` passed cross-owner and configured KPI/Benchmark/report-snapshot checks, application commit `db9f7448` passed the GA4 browser size check, and the current Benchmark PDF passed local production-data validation under enforced read-only database mode. The accepted limitations are the direct oversized-file HTTP 500 response and the absence of deployed rollback fault injection.

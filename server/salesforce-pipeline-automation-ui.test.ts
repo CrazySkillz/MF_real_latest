@@ -140,8 +140,8 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     );
 
     expect(sourceDialog).toContain('grid-cols-[minmax(0,1fr)_6rem_3.5rem]');
-    expect(sourceDialog).toContain('confirmedRevenueItems.length > 0 || sourceType === "shopify" ? "col-span-2" : ""');
-    expect(sourceDialog).toContain('confirmedRevenueItems.length === 0 && sourceType !== "shopify" && (');
+    expect(sourceDialog).toContain('confirmedRevenueItems.length > 0 || hasSingleSourceBreakdown ? "col-span-2" : ""');
+    expect(sourceDialog).toContain('confirmedRevenueItems.length === 0 && !hasSingleSourceBreakdown && (');
     expect(sourceDialog).toContain('ga4ConnectionUsable && s.sourceType !== "manual"');
     expect(sourceDialog).toContain('aria-label={sourceType === "salesforce" ? "Edit Salesforce revenue source" : "Edit revenue source"}');
     expect(sourceDialog).not.toContain('focusedRevenueValue: item.name');
@@ -187,16 +187,17 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     );
     const shopifyBreakdown = sliceBetween(
       sourceDialog,
-      '{sourceType === "shopify" && (',
+      '{hasSingleSourceBreakdown && (',
       '{confirmedRevenueItems.length > 0 && (',
     );
 
-    expect(sourceDialog).toContain('confirmedRevenueItems.length > 0 || sourceType === "shopify" ? "col-span-2" : ""');
+    expect(sourceDialog).toContain('const hasSingleSourceBreakdown = sourceType === "shopify" || isGoogleSheets || isCsv;');
+    expect(sourceDialog).toContain('confirmedRevenueItems.length > 0 || hasSingleSourceBreakdown ? "col-span-2" : ""');
     expect(shopifyBreakdown).toContain('className="mt-2 border-t border-border pt-2"');
     expect(shopifyBreakdown).toContain('className="grid grid-cols-[minmax(0,1fr)_6rem_3.5rem] items-center gap-x-2 text-xs"');
     expect(shopifyBreakdown).toContain('className="text-right tabular-nums text-foreground"');
     expect(shopifyBreakdown).not.toContain('font-medium tabular-nums');
-    expect(shopifyBreakdown).toContain('aria-label="Remove Shopify revenue source"');
+    expect(shopifyBreakdown).toContain('aria-label={`Remove ${isGoogleSheets ? "Google Sheets" : isCsv ? "CSV" : "Shopify"} revenue source`}');
   });
 
   it("shows selected Salesforce campaign mappings in review before save", () => {

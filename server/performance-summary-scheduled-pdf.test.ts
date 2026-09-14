@@ -109,6 +109,7 @@ describe("scheduled Performance Summary PDF", () => {
       users: 1184,
       sessions: 1183,
       conversions: 152,
+      financialConversions: 251,
       revenue: 72766.69,
       ga4Revenue: 55966.7,
       spend: 2699.75,
@@ -118,6 +119,7 @@ describe("scheduled Performance Summary PDF", () => {
       spendAvailable: true,
       ga4Available: true,
       ga4RevenueAvailable: true,
+      financialConversionsAvailable: true,
     });
     aggregateCampaignMetricsMock.mockResolvedValue({ detailedMetrics: { performanceSummary } });
   });
@@ -228,5 +230,32 @@ describe("scheduled Performance Summary PDF", () => {
     expect(buffer?.length).toBeGreaterThan(100);
     expect(pdfTextCalls).toContain("- Total Revenue: Unavailable - Performance Summary UI value unavailable");
     expect(pdfTextCalls).not.toContain("- Total Revenue: $51,072.99");
+  });
+
+  it("scores CPA from paired financial conversions instead of Summary traffic conversions", async () => {
+    storageMock.getPlatformKPIs.mockResolvedValueOnce([
+      { id: "kpi-cpa", name: "CPA", metric: "cpa", currentValue: null, targetValue: "15", unit: "$", priority: "critical" },
+    ]);
+
+    await buildPdfAttachmentForReport({
+      report: {
+        id: "report-cpa",
+        name: "Performance CPA report",
+        platformType: "campaign_deepdive",
+        campaignId: "campaign-1",
+        reportType: "custom",
+        configuration: { reportType: "performance-summary", selectedSections: ["performance-summary:overview"] },
+      },
+      windowStart: "2026-07-29",
+      windowEnd: "2026-08-27",
+      campaignName: "Campaign",
+      isTest: true,
+    });
+
+    expect(2699.75 / 251).toBeLessThan(15);
+    expect(2699.75 / 152).toBeGreaterThan(15);
+    expect(pdfTextCalls.some((text) => text.includes("Cost Per Acquisition on target") && text.includes("$10.76"))).toBe(true);
+    expect(pdfTextCalls.some((text) => text.includes("$17.76"))).toBe(false);
+    expect(pdfTextCalls.some((text) => text.includes("KPI below target: CPA"))).toBe(false);
   });
 });

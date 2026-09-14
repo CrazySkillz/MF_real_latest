@@ -1191,9 +1191,9 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       subheading("Performance");
       metricCards([
         ["Profit", formatMoney(payload.financialRevenue - payload.financialSpend)],
-        ["ROAS", `${Number(payload.financialROAS || 0).toFixed(2)}x`],
-        ["ROI", formatPct(payload.financialROI)],
-        ["CPA", payload.financialConversions > 0 ? formatMoney(payload.financialCPA) : "—"],
+        ["ROAS", payload.financialSpend > 0 ? `${Number(payload.financialROAS || 0).toFixed(2)}x` : "—"],
+        ["ROI", payload.financialSpend > 0 ? formatPct(payload.financialROI) : "—"],
+        ["CPA", payload.financialSpend > 0 && payload.financialConversions > 0 ? formatMoney(payload.financialCPA) : "—"],
       ], 4);
     }
     if (includeCampaignBreakdown) {
@@ -1394,7 +1394,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         ["Revenue", formatMoney(payload.financialRevenue)],
         ["Spend", formatMoney(payload.financialSpend)],
         ["Profit", formatMoney(payload.financialRevenue - payload.financialSpend)],
-        ["ROAS", `${Number(payload.financialROAS || 0).toFixed(2)}x`],
+        ["ROAS", payload.financialSpend > 0 ? `${Number(payload.financialROAS || 0).toFixed(2)}x` : "—"],
         ["Days of Data", formatNumber(payload.insightsRollups.availableDays || 0)],
       ], 3);
     }
@@ -1435,7 +1435,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
           ["Revenue", formatMoney(payload.financialRevenue), "Total across revenue sources"],
           ...(payload.financialSpend > 0 ? [["Total Spend", formatMoney(payload.financialSpend), ""]] : []),
           ...(payload.financialSpend > 0 ? [["Profit", formatMoney(payload.financialRevenue - payload.financialSpend), ""]] : []),
-          ...(payload.financialSpend > 0 ? [["CPA", formatMoney(payload.financialCPA), ""]] : []),
+          ...(payload.financialSpend > 0 && payload.financialConversions > 0 ? [["CPA", formatMoney(payload.financialCPA), ""]] : []),
         ],
         [52, 46, 76],
         COLORS.insights

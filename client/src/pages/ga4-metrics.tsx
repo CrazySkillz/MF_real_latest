@@ -2880,6 +2880,22 @@ export default function GA4Metrics() {
     if (ga4ToDateError) return "unavailable";
     return "loading";
   })();
+  const breakdownFinancialKpiInputState: GA4KpiInputState = (() => {
+    if (ga4ConnectionError) return ga4Connection === undefined ? "unavailable" : "stale";
+    if (ga4ConnLoading || (ga4Connection?.connected && !selectedGA4PropertyId)) return "loading";
+    if (!ga4ConnectionUsable) return "unavailable";
+    if (breakdownPlaceholder) return "loading";
+    if (breakdownError) return ga4Breakdown === undefined ? "unavailable" : "stale";
+    if (breakdownLoading || ga4Breakdown === undefined) return "loading";
+    return "ready";
+  })();
+  const financialConversionsKpiInputState: GA4KpiInputState = ga4FinancialTotalsSource === (ga4ToDateResp as any)?.totals
+    ? nativeRevenueKpiInputState
+    : ga4FinancialTotalsSource === dailySummedTotals
+      ? kpiTrafficInputState
+      : ga4FinancialTotalsSource === ga4BreakdownTotals
+        ? breakdownFinancialKpiInputState
+        : "unavailable";
   const importedRevenueKpiInputState: GA4KpiInputState = (() => {
     if (revenueSourcesError) return revenueSourcesResp === undefined ? "unavailable" : "stale";
     if (revenueSourceDefinitionsKnownEmpty) return "ready";
@@ -2951,6 +2967,7 @@ export default function GA4Metrics() {
       trafficState: kpiTrafficInputState,
       revenueState: revenueKpiInputState,
       spendState: spendKpiInputState,
+      financialConversionsState: financialConversionsKpiInputState,
       missingDependencies: deps.missing,
       sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
     });
@@ -2983,6 +3000,7 @@ export default function GA4Metrics() {
       trafficState: trafficKpiInputState,
       revenueState: revenueKpiInputState,
       spendState: spendKpiInputState,
+      financialConversionsState: financialConversionsKpiInputState,
       missingDependencies: deps.missing,
       sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
       entityLabel: "Benchmark",
@@ -3458,9 +3476,9 @@ export default function GA4Metrics() {
       subheading("Performance");
       metricCards([
         ["Profit", fC(rev - spend)],
-        ["ROAS", `${Number(financialROAS || 0).toFixed(2)}x`],
-        ["ROI", fP(roi)],
-        ["CPA", convTot > 0 ? fC(cpa) : "—"],
+        ["ROAS", spend > 0 ? `${Number(financialROAS || 0).toFixed(2)}x` : "—"],
+        ["ROI", spend > 0 ? fP(roi) : "—"],
+        ["CPA", spend > 0 && convTot > 0 ? fC(cpa) : "—"],
       ], 4);
       y += 2;
       }
@@ -3787,8 +3805,8 @@ export default function GA4Metrics() {
         ["Spend", fC(Number(financialSpend || 0))],
         ["Revenue", fC(Number(financialRevenue || 0))],
         ["Profit", fC(Number(financialRevenue || 0) - Number(financialSpend || 0))],
-        ["ROAS", `${Number(financialROAS || 0).toFixed(2)}x`],
-        ["ROI", fP(Number(financialROI || 0))],
+        ["ROAS", financialSpend > 0 ? `${Number(financialROAS || 0).toFixed(2)}x` : "—"],
+        ["ROI", financialSpend > 0 ? fP(Number(financialROI || 0)) : "—"],
       ];
       renderInsightsFreshness();
       if (includeInsightsSummaryCards) {

@@ -450,6 +450,7 @@ export default function CampaignPerformanceSummary() {
         : performanceGA4ConnectionsError || performanceGA4SummaryError || !performanceGA4PropertyId || !performanceGA4SummaryResponse || performanceGA4SummaryResponse?.providerRefreshWarning
         ? "unavailable"
         : "ready";
+  const nativeFinancialConversions = Number(performanceGA4RevenueResponse?.native?.totals?.conversions);
   const nativeRevenue = Number(performanceGA4RevenueResponse?.native?.totals?.revenue);
   const importedRevenue = Number(performanceGA4RevenueResponse?.imported?.totalRevenue);
   const hasNativeRevenue = !!String(performanceGA4RevenueResponse?.native?.revenueMetric || '').trim() || (Number.isFinite(nativeRevenue) && nativeRevenue !== 0);
@@ -463,7 +464,15 @@ export default function CampaignPerformanceSummary() {
       : performanceGA4ConnectionsError || performanceGA4SummaryError || performanceGA4RevenueError || !performanceGA4PropertyId || !performanceGA4RevenueResponse || performanceGA4RevenueResponse?.native?.endDate !== performanceGA4FinancialEndDate || performanceGA4RevenueResponse?.imported?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(nativeRevenue) || !Number.isFinite(importedRevenue) || (!hasNativeRevenue && !hasImportedRevenue)
         ? "unavailable"
         : "ready";
-  const financialConversionsInputState: GA4KpiInputState = trafficInputState;
+  const financialConversionsInputState: GA4KpiInputState = demoMode
+    ? "ready"
+    : performanceGA4ConnectionsLoading || performanceGA4SummaryLoading || performanceGA4SummaryPlaceholder || (!!performanceGA4PropertyId && (performanceGA4RevenueLoading || performanceGA4RevenuePlaceholder))
+      ? "loading"
+      : (performanceGA4SummaryError && performanceGA4SummaryResponse) || (performanceGA4RevenueError && performanceGA4RevenueResponse)
+        ? "stale"
+        : performanceGA4ConnectionsError || performanceGA4SummaryError || performanceGA4RevenueError || !performanceGA4PropertyId || !performanceGA4RevenueResponse || performanceGA4RevenueResponse?.native?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(nativeFinancialConversions)
+          ? "unavailable"
+          : "ready";
   const spendSummaryMetric = performanceSummary?.totals?.spend;
   const scoringSpendToDate = Number(performanceGA4SpendResponse?.spendToDate);
   const spendInputState: GA4KpiInputState = demoMode
@@ -506,7 +515,7 @@ export default function CampaignPerformanceSummary() {
     : scoringTrafficTotals.sessions;
   const scoringFinancialConversions = demoMode
     ? parseNum(effectiveGA4?.metrics?.conversions)
-    : scoringTrafficTotals.conversions;
+    : Number(performanceGA4RevenueResponse?.native?.totals?.conversions);
   const scoringSpend = demoMode ? totalSpend : scoringSpendToDate;
   const scoringRevenue = demoMode ? parseNum(effectiveGA4?.metrics?.revenue) : nativeRevenue + importedRevenue;
   const getLiveScoringValue = (item: any) => resolvePerformanceConfiguredMetricValue(item) ?? resolvePerformanceLiveMetricValue({
@@ -533,7 +542,6 @@ export default function CampaignPerformanceSummary() {
   }).comparable;
   const getScoringTrafficInputState = (item: any): GA4KpiInputState => {
     const identity = resolveGA4KpiMetricIdentity(item?.metric, item?.metricName, item?.name);
-    if (identity === "cpa") return financialConversionsInputState;
     return identity && scoringTrafficMetricAvailability[identity] === false ? "unavailable" : trafficInputState;
   };
   const recommendedActions = buildPerformanceRecommendedActions({
@@ -574,6 +582,7 @@ export default function CampaignPerformanceSummary() {
       trafficState: getScoringTrafficInputState(kpi),
       revenueState: revenueInputState,
       spendState: spendInputState,
+      financialConversionsState: financialConversionsInputState,
       missingDependencies: getScoringMissingDependencies(kpi),
       sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
     });
@@ -604,6 +613,7 @@ export default function CampaignPerformanceSummary() {
       trafficState: getScoringTrafficInputState(benchmark),
       revenueState: revenueInputState,
       spendState: spendInputState,
+      financialConversionsState: financialConversionsInputState,
       missingDependencies: getScoringMissingDependencies(benchmark),
       sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
       entityLabel: "Benchmark",

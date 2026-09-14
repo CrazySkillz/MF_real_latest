@@ -1205,6 +1205,10 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       ])
     : [null, null];
   const performancePageTrafficTotals = Array.isArray(performancePageRows) ? summarizeGA4TrafficRows(performancePageRows) : null;
+  const performanceFinancialConversions = Number(performancePageTotals?.financialConversions);
+  const performanceFinancialConversionsAvailable = performancePageTotals?.financialConversionsAvailable === true
+    && Number.isFinite(performanceFinancialConversions)
+    && performanceFinancialConversions >= 0;
   if (needsUiAlignedTraffic && cumulativeGA4Connection && cumulativeGA4Window && !performancePageTrafficTotals) {
     throw new Error("Campaign DeepDive UI-aligned traffic values are unavailable");
   }
@@ -1246,8 +1250,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       value = key === "roas"
         ? financialValue("revenue") / financialValue("spend")
         : ((financialValue("revenue") - financialValue("spend")) / financialValue("spend")) * 100;
-    } else if (key === "cpa" && performancePageTotals.spendAvailable === true && trafficValue("conversions") > 0) {
-      value = financialValue("spend") / trafficValue("conversions");
+    } else if (key === "cpa" && performancePageTotals.spendAvailable === true && performanceFinancialConversionsAvailable && performanceFinancialConversions > 0) {
+      value = financialValue("spend") / performanceFinancialConversions;
     } else return aggregateMetric;
     const resolvedAvailable = value !== null && available(value);
     return { ...aggregateMetric, available: resolvedAvailable, value: resolvedAvailable ? value : null, unavailableReasons: resolvedAvailable ? [] : ["Executive Summary UI value unavailable"] };
@@ -1602,13 +1606,13 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       || (identity === "engagement_rate" && (!trafficAvailable("sessions") || performancePageTrafficTotals === null))
       || (identity === "revenue" && !performanceMetricAvailable("revenue"))
       || (["roas", "roi"].includes(identity) && (!performanceMetricAvailable("revenue") || !performanceMetricAvailable("spend")))
-      || (identity === "cpa" && (!performanceMetricAvailable("spend") || !performanceMetricAvailable("conversions")))) return null;
+      || (identity === "cpa" && (!performanceMetricAvailable("spend") || !performanceFinancialConversionsAvailable))) return null;
     return resolvePerformanceLiveMetricValue({
       item: row,
       trafficTotals: performanceTrafficTotals,
       financialRevenue: performanceMetricNumber("revenue"),
       financialSpend: performanceMetricNumber("spend"),
-      financialConversions: performanceMetricNumber("conversions"),
+      financialConversions: performanceFinancialConversions,
     });
   };
   const performanceScoringValue = (row: any) =>
@@ -1658,7 +1662,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     trafficState: performanceTrafficState,
     revenueState: performanceMetricAvailable("revenue") ? "ready" : "unavailable",
     spendState: performanceMetricAvailable("spend") ? "ready" : "unavailable",
-    financialConversionsState: performanceMetricAvailable("conversions") ? "ready" : "unavailable",
+    financialConversionsState: performanceFinancialConversionsAvailable ? "ready" : "unavailable",
     trafficTotals: performanceTrafficTotals,
     trafficMetricAvailability: {
       sessions: performanceMetricAvailable("sessions"), users: performanceMetricAvailable("users"), conversions: performanceMetricAvailable("conversions"),
@@ -1666,7 +1670,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     },
     financialRevenue: performanceMetricNumber("revenue"),
     financialSpend: performanceMetricNumber("spend"),
-    financialConversions: performanceMetricNumber("conversions"),
+    financialConversions: performanceFinancialConversions,
   });
   const performancePriorityAction = () => {
     if (!["users", "sessions", "conversions", "revenue", "spend"].some((key) => performanceMetricAvailable(key))) {

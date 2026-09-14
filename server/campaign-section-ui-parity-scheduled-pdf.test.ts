@@ -147,6 +147,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
       users: 1184,
       sessions: 1183,
       conversions: 152,
+      financialConversions: 251,
       revenue: 72766.69,
       ga4Revenue: 55966.7,
       spend: 2699.75,
@@ -156,6 +157,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
       spendAvailable: true,
       ga4Available: true,
       ga4RevenueAvailable: true,
+      financialConversionsAvailable: true,
     });
     evaluateExecutiveSummaryTrajectoryMock.mockReturnValue({ available: true, trajectory: "accelerating", trendPercentage: 12.5, reason: null });
     aggregateCampaignMetricsMock.mockResolvedValue({

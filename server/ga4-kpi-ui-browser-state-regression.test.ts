@@ -39,6 +39,7 @@ describe("GA4 KPI Commit 7 UI/browser state contract", () => {
     expect(resolveGA4KpiConsumerState({ ...readyInputs, metric: "Revenue", spendState: "unavailable" }).eligible).toBe(true);
     expect(resolveGA4KpiConsumerState({ ...readyInputs, metric: "ROAS", spendState: "unavailable" }).code).toBe("unavailable");
     expect(resolveGA4KpiConsumerState({ ...readyInputs, metric: "CPA", trafficState: "stale" }).code).toBe("stale");
+    expect(resolveGA4KpiConsumerState({ ...readyInputs, metric: "CPA", trafficState: "ready", financialConversionsState: "stale" }).code).toBe("stale");
     expect(resolveGA4KpiConsumerState({ ...readyInputs, metric: "__custom__", trafficState: "unavailable", revenueState: "unavailable", spendState: "unavailable" }).eligible).toBe(true);
   });
 

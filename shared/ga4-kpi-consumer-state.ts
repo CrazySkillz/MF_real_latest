@@ -76,6 +76,7 @@ export function resolveGA4KpiConsumerState(input: {
   trafficState: GA4KpiInputState;
   revenueState: GA4KpiInputState;
   spendState: GA4KpiInputState;
+  financialConversionsState?: GA4KpiInputState;
   missingDependencies?: string[];
   sufficiencyReason?: string | null;
   entityLabel?: "KPI" | "Benchmark";
@@ -95,7 +96,7 @@ export function resolveGA4KpiConsumerState(input: {
   const requiredStates: GA4KpiInputState[] = [];
   if (identity === "revenue") requiredStates.push(input.revenueState);
   else if (identity === "roas" || identity === "roi") requiredStates.push(input.revenueState, input.spendState);
-  else if (identity === "cpa") requiredStates.push(input.trafficState, input.spendState);
+  else if (identity === "cpa") requiredStates.push(input.financialConversionsState ?? input.trafficState, input.spendState);
   else if (identity) requiredStates.push(input.trafficState);
 
   if (requiredStates.includes("unavailable")) {

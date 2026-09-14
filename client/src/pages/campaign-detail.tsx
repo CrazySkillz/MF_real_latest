@@ -427,7 +427,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     const platforms = ot?.platforms || {};
     if (sourceId === 'total_revenue') return parseNumSafe((kpiConnectedPlatformTotals as any)?.revenue) || parseNumSafe(ot?.revenue?.totalRevenue);
     if (sourceId === 'total_spend') return parseNumSafe((kpiConnectedPlatformTotals as any)?.spend) || parseNumSafe(ot?.spend?.unifiedSpend);
-    if (sourceId === 'total_conversions') return parseNumSafe((kpiConnectedPlatformTotals as any)?.conversions) || getUnifiedConversions();
+    if (sourceId === 'total_conversions') return parseNumSafe((kpiConnectedPlatformTotals as any)?.conversions);
     if (sourceId === 'total_users') return parseNumSafe((kpiConnectedPlatformTotals as any)?.users);
     if (sourceId === 'total_sessions') return parseNumSafe((kpiConnectedPlatformTotals as any)?.sessions);
 
@@ -990,7 +990,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     const offsiteRevenue = parseNumSafe(rev?.offsiteRevenue);
     const totalRevenue = parseNumSafe(financials?.totalRevenue ?? rev?.totalRevenue);
     const conversions = parseNumSafe(web?.conversions);
-    const totalConversions = parseNumSafe(financials?.conversions) || getUnifiedConversions();
+    const totalConversions = parseNumSafe(financials?.conversions ?? getUnifiedConversions());
     const sessions = parseNumSafe(web?.sessions);
     const users = parseNumSafe(web?.users);
 
@@ -1040,7 +1040,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     const offsiteRevenue = parseNumSafe(rev?.offsiteRevenue);
     const totalRevenue = parseNumSafe(financials?.totalRevenue ?? rev?.totalRevenue);
     const conversions = parseNumSafe(web?.conversions);
-    const totalConversions = parseNumSafe(financials?.conversions) || getUnifiedConversions();
+    const totalConversions = parseNumSafe(financials?.conversions ?? getUnifiedConversions());
     const sessions = parseNumSafe(web?.sessions);
     const users = parseNumSafe(web?.users);
 
@@ -2713,7 +2713,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
 
     if (sourceId === 'total_revenue') return parseNumSafe((benchConnectedPlatformTotals as any)?.revenue) || parseNumSafe(ot?.revenue?.totalRevenue);
     if (sourceId === 'total_spend') return parseNumSafe((benchConnectedPlatformTotals as any)?.spend) || parseNumSafe(spend?.unifiedSpend);
-    if (sourceId === 'total_conversions') return parseNumSafe((benchConnectedPlatformTotals as any)?.conversions) || getUnifiedConversions();
+    if (sourceId === 'total_conversions') return parseNumSafe((benchConnectedPlatformTotals as any)?.conversions);
     if (sourceId === 'total_sessions') return parseNumSafe((benchConnectedPlatformTotals as any)?.sessions);
     if (sourceId === 'total_users') return parseNumSafe((benchConnectedPlatformTotals as any)?.users);
     if (sourceId === 'total_engagement_rate') return parseNumSafe((benchConnectedPlatformTotals as any)?.engagementRate);
@@ -3081,7 +3081,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     const webConversions = parseNumSafe(web?.conversions);
     const sessions = parseNumSafe(web?.sessions);
     const users = parseNumSafe(web?.users);
-    const totalConversions = parseNumSafe((benchConnectedPlatformTotals as any)?.conversions) || getUnifiedConversions();
+    const totalConversions = parseNumSafe((benchConnectedPlatformTotals as any)?.conversions);
     const { clicks, impressions } = getAdClicksImpressions();
     const adConversions = getAdConversions();
 
@@ -3141,7 +3141,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     const webUsers = parseNumSafe(web?.users);
     const engagementRate = parseNumSafe((benchConnectedPlatformTotals as any)?.engagementRate);
     const { clicks, impressions } = getAdClicksImpressions();
-    const totalConversions = parseNumSafe((benchConnectedPlatformTotals as any)?.conversions) || getUnifiedConversions();
+    const totalConversions = parseNumSafe((benchConnectedPlatformTotals as any)?.conversions);
     const adConversions = getAdConversions();
 
     const needs = template.requires || [];

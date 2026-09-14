@@ -60,4 +60,22 @@ describe("GA4 Spend source edit entry", () => {
     expect(csvUpload).toContain('isEditing && csvPreview?.success && canRecalculateCsvEditWithoutReupload');
     expect(csvUpload).toContain('setStep("csv_map");');
   });
+
+  it("labels CSV by file name and Google Sheets by saved sheet name in Spend Sources", () => {
+    const overview = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf8",
+    );
+    const sourceList = sliceBetween(
+      overview,
+      "{spendDisplaySources.map((s: any) => {",
+      "<Dialog open={showPipelineProxySourcesDialog}",
+    );
+
+    expect(sourceList).toContain('const primaryLabel = sourceType === "csv" || sourceType === "google_sheets"');
+    expect(sourceList).toContain('String(s.displayName || cfg?.displayName || sourceTypeLabel)');
+    expect(sourceList).toContain('String(cfg?.sheetName || sourceTypeLabel)');
+    expect(sourceList).toContain('{primaryLabel}');
+    expect(sourceList).toContain('{detailLabel}');
+  });
 });

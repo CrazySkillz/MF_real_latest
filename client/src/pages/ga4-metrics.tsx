@@ -7086,13 +7086,24 @@ export default function GA4Metrics() {
                         {spendSourcesUnavailable && (
                           <div className="text-sm text-destructive">Spend sources are unavailable. Refresh the page to try again.</div>
                         )}
-                        {spendDisplaySources.map((s: any) => (
-                          <div key={s.sourceId} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
+                        {spendDisplaySources.map((s: any) => {
+                          const sourceType = String(s.sourceType || "").trim().toLowerCase();
+                          const sourceTypeLabel = spendSourceTypeLabel(sourceType);
+                          const cfg = typeof s.mappingConfig === "string" ? (() => { try { return JSON.parse(s.mappingConfig); } catch { return {}; } })() : (s.mappingConfig || {});
+                          const primaryLabel = sourceType === "csv" || sourceType === "google_sheets"
+                            ? sourceTypeLabel
+                            : String(s.displayName || sourceTypeLabel);
+                          const detailLabel = sourceType === "csv"
+                            ? String(s.displayName || cfg?.displayName || sourceTypeLabel).trim() || sourceTypeLabel
+                            : sourceType === "google_sheets"
+                              ? String(cfg?.sheetName || sourceTypeLabel).trim() || sourceTypeLabel
+                              : sourceTypeLabel;
+                          return <div key={s.sourceId} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
                             <div className="min-w-0">
-                              <p className="truncate font-medium text-foreground" title={s.displayName || spendSourceTypeLabel(s.sourceType)}>
-                                {s.displayName || spendSourceTypeLabel(s.sourceType)}
+                              <p className="truncate font-medium text-foreground" title={primaryLabel}>
+                                {primaryLabel}
                               </p>
-                              <p className="text-xs text-muted-foreground/70">{spendSourceTypeLabel(s.sourceType)}</p>
+                              <p className="truncate text-xs text-muted-foreground/70" title={detailLabel}>{detailLabel}</p>
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="font-medium tabular-nums text-foreground">
@@ -7122,8 +7133,8 @@ export default function GA4Metrics() {
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
                             </div>
-                          </div>
-                        ))}
+                          </div>;
+                        })}
                       </div>
                     </DialogContent>
                   </Dialog>

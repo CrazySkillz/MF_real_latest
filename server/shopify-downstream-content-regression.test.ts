@@ -132,6 +132,11 @@ const revenueSource = {
     campaignValueRevenueTotals: [
       { campaignValue: "shopify_campaign", revenue: 199.98, orderCount: 2 },
     ],
+    campaignMappings: [{
+      crmValue: "shopify_campaign",
+      linkedinCampaignUrn: "shopify_campaign",
+      linkedinCampaignName: "shopify_campaign",
+    }],
   },
 };
 
@@ -268,6 +273,7 @@ describe("Shopify downstream value/content regression guard", () => {
     expect(buffer?.length).toBeGreaterThan(100);
     expect(text).toContain("TOTAL REVENUE");
     expect(text).toContain("USD 299.98");
+    expect(pdfTextCalls.filter((value) => value === "USD 299.98").length).toBeGreaterThanOrEqual(2);
     expect(text).toContain("Revenue Sources");
     expect(text).toContain("Shopify");
     expect(text).toContain("USD 199.98");
@@ -300,7 +306,10 @@ describe("Shopify downstream value/content regression guard", () => {
   });
 
   it("keeps scheduled Ad Comparison on import-to-date rows without changing Overview rows", async () => {
-    storageMock.getCampaign.mockResolvedValue({ ...campaign, ga4CampaignFilter: "" });
+    storageMock.getCampaign.mockResolvedValue({
+      ...campaign,
+      ga4CampaignFilter: JSON.stringify(["overview_window", "ad_import_to_date", "ad_email", "ad_social"]),
+    });
     ga4ServiceMock.getAcquisitionBreakdown.mockReset()
       .mockResolvedValueOnce({
         rows: [{ campaign: "overview_window", sessions: 7, users: 7, conversions: 1, revenue: 700 }],
@@ -358,7 +367,7 @@ describe("Shopify downstream value/content regression guard", () => {
       "2026-07-02",
       "properties/123",
       2000,
-      undefined,
+      ["overview_window", "ad_import_to_date", "ad_email", "ad_social"],
       "2026-07-04",
       false,
       false,
@@ -372,7 +381,7 @@ describe("Shopify downstream value/content regression guard", () => {
       "2026-07-02",
       "properties/123",
       2000,
-      undefined,
+      ["overview_window", "ad_import_to_date", "ad_email", "ad_social"],
       "2026-07-04",
     );
     expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenNthCalledWith(
@@ -382,13 +391,82 @@ describe("Shopify downstream value/content regression guard", () => {
       "2026-06-01",
       "properties/123",
       2000,
-      undefined,
+      ["overview_window", "ad_import_to_date", "ad_email", "ad_social"],
       "2026-07-04",
       false,
       false,
       "USD",
       true,
     );
+  });
+
+  it("keeps an unmatched unavailable source outside scheduled Campaign Breakdown rows and exports every row", async () => {
+    const campaignNames = Array.from({ length: 16 }, (_, index) => index === 0 ? "shopify_campaign" : `campaign-${index + 1}`);
+    const rows = campaignNames.map((name, index) => ({
+      campaign: name,
+      sessions: 16 - index,
+      users: 16 - index,
+      conversions: index === 15 ? 0 : 1,
+      revenue: index === 0 ? 100 : 0,
+    }));
+    storageMock.getCampaign.mockResolvedValue({ ...campaign, ga4CampaignFilter: JSON.stringify(campaignNames) });
+    storageMock.getRevenueSources.mockResolvedValue([
+      revenueSource,
+      {
+        id: "unmatched-source",
+        sourceType: "csv",
+        displayName: "Unmatched",
+        currency: "USD",
+        isActive: true,
+        mappingConfig: { campaignValueRevenueTotals: [{ campaignValue: "outside", revenue: 50 }] },
+      },
+    ]);
+    ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
+      rows,
+      totals: { sessions: 136, users: 136, conversions: 15, revenue: 100 },
+    });
+
+    await buildGA4ScheduledPdfAttachment({
+      report: {
+        id: "report-breakdown-only",
+        campaignId: campaign.id,
+        name: "Campaign Breakdown only",
+        reportType: "custom",
+        configuration: JSON.stringify({
+          sections: { overview: true },
+          subsections: { overview: { campaignBreakdown: true } },
+        }),
+      },
+      reportName: "Campaign Breakdown only",
+      windowStart: "2026-06-01",
+      windowEnd: "2026-07-04",
+      campaignName: campaign.name,
+    });
+
+    expect(pdfTextCalls).toContain("Campaign Breakdown");
+    expect(pdfTextCalls).toContain("campaign-16");
+    expect(pdfTextCalls.filter((value) => value === "USD 299.98")).toHaveLength(1);
+  });
+
+  it("fails scheduled Campaign Breakdown closed when a selected mapped source is not materialized", async () => {
+    storageMock.getRevenueBreakdownBySource.mockResolvedValue([]);
+
+    await expect(buildGA4ScheduledPdfAttachment({
+      report: {
+        id: "report-breakdown-missing-materialization",
+        campaignId: campaign.id,
+        name: "Campaign Breakdown missing materialization",
+        reportType: "custom",
+        configuration: JSON.stringify({
+          sections: { overview: true },
+          subsections: { overview: { campaignBreakdown: true } },
+        }),
+      },
+      reportName: "Campaign Breakdown missing materialization",
+      windowStart: "2026-06-01",
+      windowEnd: "2026-07-04",
+      campaignName: campaign.name,
+    })).rejects.toThrow("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: Campaign Breakdown");
   });
 
   it("fails the deterministic scheduled Ad Comparison path closed when GA4 rows are unavailable", async () => {

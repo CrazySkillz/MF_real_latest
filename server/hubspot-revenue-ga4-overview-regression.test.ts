@@ -23,6 +23,9 @@ const hubspotDamageInventoryFile = () =>
 const ga4ScheduledReportPdfFile = () =>
   readFileSync(join(process.cwd(), "server", "ga4-scheduled-report-pdf.ts"), "utf-8");
 
+const ga4CampaignBreakdownFile = () =>
+  readFileSync(join(process.cwd(), "shared", "ga4-campaign-breakdown.ts"), "utf-8");
+
 const reportSchedulerFile = () =>
   readFileSync(join(process.cwd(), "server", "report-scheduler.ts"), "utf-8");
 
@@ -747,6 +750,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
 
   it("keeps GA4 report payload formulas aligned with HubSpot mapped revenue", () => {
     const pdf = ga4ScheduledReportPdfFile();
+    const campaignBreakdown = ga4CampaignBreakdownFile();
     const payloadBlock = sliceBetween(
       pdf,
       "const importedRevenueForFinancials",
@@ -762,11 +766,11 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(payloadBlock).toContain("const financialRevenue = Number((ga4RevenueForFinancials + importedRevenueForFinancials).toFixed(2));");
     expect(payloadBlock).toContain("const revenueDisplaySources = revenueBreakdown.length > 0");
     expect(payloadBlock).toContain("mappingConfig: revenueSources.find");
-    expect(payloadBlock).toContain("const campaignBreakdownMatchedExternalRevenue = new Map<string, number>();");
+    expect(payloadBlock).toContain("const campaignBreakdownMatchedExternalRevenue = resolveExactGA4CampaignBreakdownRevenue(");
     expect(payloadBlock).toContain("campaignValueRevenueTotals");
-    expect(payloadBlock).toContain("campaignMappings");
-    expect(payloadBlock).toContain("mappedCampaignByValue");
-    expect(payloadBlock).toContain("mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn");
+    expect(campaignBreakdown).toContain("campaignMappings");
+    expect(campaignBreakdown).toContain("targetByValue");
+    expect(campaignBreakdown).toContain("mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn");
     expect(overviewReportBlock).toContain("[\"Total Revenue\", formatMoney(payload.financialRevenue)]");
     expect(overviewReportBlock).toContain("payload.revenueDisplaySources.map");
     expect(overviewReportBlock).toContain("payload.campaignBreakdownMatchedExternalRevenue.get");
@@ -814,6 +818,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
   it("keeps HubSpot-backed GA4 report values on the scheduled and test email attachment path", () => {
     const scheduler = reportSchedulerFile();
     const pdf = ga4ScheduledReportPdfFile();
+    const campaignBreakdown = ga4CampaignBreakdownFile();
     const ga4BuilderBlock = sliceBetween(
       scheduler,
       'if (String((report as any)?.platformType || "") === "google_analytics")',
@@ -857,7 +862,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(payloadBlock).toContain("const financialRevenue = Number((ga4RevenueForFinancials + importedRevenueForFinancials).toFixed(2));");
     expect(payloadBlock).toContain("const revenueDisplaySources = revenueBreakdown.length > 0");
     expect(payloadBlock).toContain("campaignValueRevenueTotals");
-    expect(payloadBlock).toContain("campaignMappings");
+    expect(campaignBreakdown).toContain("campaignMappings");
     expect(payloadBlock).toContain("campaignBreakdownMatchedExternalRevenue");
     expect(payloadBlock).toContain("sourceRevenueBreakdowns");
     expect(payloadBlock).not.toContain("pipelineTotalToDate");

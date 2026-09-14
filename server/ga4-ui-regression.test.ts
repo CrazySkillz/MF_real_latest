@@ -489,7 +489,7 @@ describe("GA4 UI regression guard", () => {
     const matchStart = ga4Metrics.indexOf("const campaignBreakdownMatchedExternalRevenue", aggStart);
     const clientAgg = ga4Metrics.slice(aggStart, matchStart);
     const pdfStart = pdf.indexOf("const filteredCampaignRows = Array.from(byCampaign.values())");
-    const pdfMatchStart = pdf.indexOf("const rowNameByKey = new Map<string, string>();", pdfStart);
+    const pdfMatchStart = pdf.indexOf("const campaignBreakdownMatchedExternalRevenue", pdfStart);
     const pdfAgg = pdf.slice(pdfStart, pdfMatchStart);
 
     expect(aggStart).toBeGreaterThan(-1);

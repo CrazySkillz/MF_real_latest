@@ -932,6 +932,13 @@ describe("GA4 campaign value picker", () => {
     expect(trafficBodies.map((body) => body?.dimensionFilter?.filter?.stringFilter?.matchType)).toEqual([
       'FULL_REGEXP', 'FULL_REGEXP',
     ]);
+    const trafficPatterns = trafficBodies.map((body) => body?.dimensionFilter?.filter?.stringFilter?.value);
+    expect(trafficPatterns).toEqual([
+      '.*[?&]utm_campaign=campaign-a(?:[&#].*)?$',
+      '.*[?&]utm_campaign=campaign-b(?:[&#].*)?$',
+    ]);
+    expect(new RegExp(trafficPatterns[0]).test('https://example.test/?utm_campaign=campaign-a&utm_source=x')).toBe(true);
+    expect(new RegExp(trafficPatterns[0]).test('https://example.test/?utm_campaign=campaign-ab&utm_source=x')).toBe(false);
   });
 
   it("does not relabel pageLocation rows as landing pages when session attribution is empty", async () => {

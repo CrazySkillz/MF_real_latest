@@ -657,6 +657,19 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
   });
 
+  it("fails Overview Campaign Breakdown closed before provider work without exact saved scope", async () => {
+    vi.useRealTimers();
+    const missingProperty = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-breakdown?window=import-to-date&overviewCampaignBreakdown=1&readOnly=1");
+    expect(missingProperty.status).toBe(400);
+    expect(await missingProperty.json()).toMatchObject({ error: "GA4_PROPERTY_SCOPE_REQUIRED" });
+
+    storageMock.getCampaign.mockResolvedValueOnce({ ...campaign, ga4CampaignFilter: "" });
+    const missingCampaign = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-breakdown?window=import-to-date&overviewCampaignBreakdown=1&propertyId=" + encodeURIComponent(connection.propertyId) + "&readOnly=1");
+    expect(missingCampaign.status).toBe(409);
+    expect(await missingCampaign.json()).toMatchObject({ error: "GA4_CAMPAIGN_SCOPE_REQUIRED" });
+    expect(ga4ServiceMock.getAcquisitionBreakdown).not.toHaveBeenCalled();
+  });
+
   it("keeps Overview traffic import-to-date while replacing native row revenue with exact campaign-to-date GA4 revenue", async () => {
     storageMock.getCampaign.mockResolvedValue({ ...campaign, startDate: null, createdAt: "2026-06-24T00:00:00.000Z" });
     ga4ServiceMock.getAcquisitionBreakdown

@@ -5,6 +5,7 @@ import { computeCpa, computeRoiPercent, normalizeRateToPercent } from "../shared
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
 import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
 import { mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
+import { resolveExactGA4CampaignBreakdownRevenue } from "../shared/ga4-campaign-breakdown";
 import { computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "../shared/kpi-math";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 
@@ -445,6 +446,15 @@ async function buildGA4ReportPayload(report: any) {
   const connection = await choosePrimaryConnection(campaignId);
   const propertyId = String(connection.propertyId);
   const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+  const importedCampaignNames = new Set(
+    (Array.isArray(campaignFilter) ? campaignFilter : campaignFilter ? [campaignFilter] : [])
+      .map(normalizeCampaignKey)
+      .filter(Boolean),
+  );
+  const overviewRequirements = getOverviewReportRequirements(report);
+  if (overviewRequirements.campaignBreakdown && importedCampaignNames.size === 0) {
+    throw new Error("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: Campaign Breakdown");
+  }
   const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
   const lookbackDays = [30, 60, 90].includes(Number(connection?.lookbackDays)) ? Number(connection.lookbackDays) : 90;
   const configuredImportStartDate = String((connection as any)?.importStartDate || "").trim();
@@ -566,7 +576,6 @@ async function buildGA4ReportPayload(report: any) {
   if (overviewDailyRows.length === 0 && overviewStartDate === dailyStart) {
     overviewDailyRows = dailyRows;
   }
-  const overviewRequirements = getOverviewReportRequirements(report);
   const activeRevenueSources = revenueSources.filter((source: any) => source?.isActive !== false);
   const hasMaterializedRevenue = (row: any) => row?.revenue != null && Number.isFinite(Number(row.revenue));
   const revenueBreakdownSourceIds = new Set(revenueBreakdown.filter(hasMaterializedRevenue).map((row: any) => String(row?.sourceId || "")));
@@ -574,6 +583,26 @@ async function buildGA4ReportPayload(report: any) {
   const overviewMaterializedRevenueUnavailable = activeRevenueSources.some(
     (source: any) => !revenueBreakdownSourceIds.has(String(source?.id || "")),
   );
+  const campaignBreakdownRevenueBySourceId = new Map(
+    revenueBreakdown.map((row: any) => [String(row?.sourceId || ""), row?.revenue]),
+  );
+  const campaignBreakdownRevenueSources = activeRevenueSources.map((source: any) => ({
+    ...source,
+    sourceId: String(source?.id || ""),
+    revenue: campaignBreakdownRevenueBySourceId.has(String(source?.id || ""))
+      ? campaignBreakdownRevenueBySourceId.get(String(source?.id || ""))
+      : null,
+  }));
+  const campaignBreakdownRevenueResolution = resolveExactGA4CampaignBreakdownRevenue(
+    Array.from(importedCampaignNames).map((name) => ({ name })),
+    campaignBreakdownRevenueSources,
+    campaignCurrency,
+  );
+  const overviewCampaignBreakdownMaterializedRevenueUnavailable =
+    campaignBreakdownRevenueResolution.ambiguous || campaignBreakdownRevenueResolution.currencyMismatch ||
+    campaignBreakdownRevenueResolution.materializationMismatch || activeRevenueSources.some((source: any) =>
+      campaignBreakdownRevenueResolution.mappedSourceIds.has(String(source?.id || "")) &&
+      !revenueBreakdownSourceIds.has(String(source?.id || "")));
   const adComparisonMaterializedRevenueUnavailable = activeRevenueSources.some(
     (source: any) => !adComparisonRevenueBreakdownSourceIds.has(String(source?.id || "")),
   );
@@ -600,8 +629,7 @@ async function buildGA4ReportPayload(report: any) {
     failedParts.has("acquisition breakdown") ||
     failedParts.has("campaign revenue breakdown") ||
     failedParts.has("revenue sources") ||
-    failedParts.has("revenue breakdown") ||
-    overviewMaterializedRevenueUnavailable
+    overviewCampaignBreakdownMaterializedRevenueUnavailable
   )) {
     unavailableOverviewParts.push("Campaign Breakdown");
   }
@@ -759,26 +787,6 @@ async function buildGA4ReportPayload(report: any) {
   }
   const executiveFinancialsDescription = buildExecutiveFinancialsDescription(spendSourceLabels, revenueSourceLabels);
 
-  const importedCampaignNames = new Set<string>();
-  const rawFilter = (campaign as any)?.ga4CampaignFilter;
-  const filterValues = rawFilter === null || rawFilter === undefined
-    ? []
-    : (() => {
-        const s = String(rawFilter || "").trim();
-        if (!s) return [] as string[];
-        if (s.startsWith("[") && s.endsWith("]")) {
-          try {
-            const parsed = JSON.parse(s);
-            if (Array.isArray(parsed)) return parsed.map((value) => String(value || "").trim()).filter(Boolean);
-          } catch {}
-        }
-        return [s];
-      })();
-  for (const value of filterValues) {
-    const key = normalizeCampaignKey(value);
-    if (key) importedCampaignNames.add(key);
-  }
-
   const byCampaign = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
   for (const row of Array.isArray((breakdown as any)?.rows) ? (breakdown as any).rows : []) {
     const name = String((row as any)?.campaign || "(not set)").trim();
@@ -805,34 +813,11 @@ async function buildGA4ReportPayload(report: any) {
     })
     .sort((a, b) => b.sessions - a.sessions);
 
-  const rowCounts = new Map<string, number>();
-  const rowNameByKey = new Map<string, string>();
-  for (const row of campaignBreakdownAgg) {
-    const key = normalizeCampaignKey(row.name);
-    if (!key) continue;
-    rowCounts.set(key, (rowCounts.get(key) || 0) + 1);
-    if (!rowNameByKey.has(key)) rowNameByKey.set(key, row.name);
-  }
-  const campaignBreakdownMatchedExternalRevenue = new Map<string, number>();
-  for (const source of revenueDisplaySources) {
-    const cfg = parseMappingConfig((source as any)?.mappingConfig);
-    const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];
-    const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];
-    const mappedCampaignByValue = new Map<string, string>();
-    for (const mapping of mappings) {
-      const valueKey = normalizeCampaignKey(mapping?.crmValue);
-      const mappedName = String(mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn || "").trim();
-      if (valueKey && mappedName) mappedCampaignByValue.set(valueKey, mappedName);
-    }
-    for (const item of totals) {
-      const valueKey = normalizeCampaignKey(item?.campaignValue);
-      const key = normalizeCampaignKey(mappedCampaignByValue.get(valueKey) || item?.campaignValue);
-      const revenue = Number(item?.revenue || 0);
-      if (rowCounts.get(key) !== 1) continue;
-      const rowName = rowNameByKey.get(key);
-      if (rowName && revenue > 0) campaignBreakdownMatchedExternalRevenue.set(rowName, (campaignBreakdownMatchedExternalRevenue.get(rowName) || 0) + revenue);
-    }
-  }
+  const campaignBreakdownMatchedExternalRevenue = resolveExactGA4CampaignBreakdownRevenue(
+    campaignBreakdownAgg,
+    revenueDisplaySources,
+    campaignCurrency,
+  ).revenueByCampaign;
 
   const adComparisonByCampaign = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
   for (const row of Array.isArray((adComparisonBreakdown as any)?.rows) ? (adComparisonBreakdown as any).rows : []) {
@@ -1200,7 +1185,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       addSimpleTable(
         "Campaign Breakdown",
         ["CAMPAIGN", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE", "REVENUE"],
-        payload.campaignBreakdownAgg.slice(0, 15).map((row: any) => [
+        payload.campaignBreakdownAgg.map((row: any) => [
           String(row?.name || "(not set)"),
           formatNumber(row?.sessions || 0),
           formatNumber(row?.users || 0),

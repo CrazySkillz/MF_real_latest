@@ -13,6 +13,7 @@ const ga4Page = readFileSync(join(process.cwd(), "client", "src", "pages", "ga4-
 const kpiJobs = readFileSync(join(process.cwd(), "server", "ga4-kpi-benchmark-jobs.ts"), "utf8");
 const alertValues = readFileSync(join(process.cwd(), "server", "utils", "ga4-alert-current-value.ts"), "utf8");
 const scheduledReport = readFileSync(join(process.cwd(), "server", "ga4-scheduled-report-pdf.ts"), "utf8");
+const campaignBreakdown = readFileSync(join(process.cwd(), "shared", "ga4-campaign-breakdown.ts"), "utf8");
 
 const sheetsRevenueRoute = () => {
   const start = routes.indexOf('app.post("/api/campaigns/:id/revenue/sheets/process"');
@@ -205,7 +206,9 @@ describe("GA4 Overview Google Sheets revenue deterministic validation", () => {
     expect(alertValues).toContain('storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4")');
     expect(scheduledReport).toContain('storage.getRevenueBreakdownBySource(campaignId, importedRevenueStartDate, importedRevenueEndDate, "ga4")');
     expect(ga4Page).toContain("const financialRevenue = ga4RevenueForFinancials + importedRevenueForFinancials;");
-    expect(ga4Page).toContain("const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];");
+    expect(ga4Page).toContain("resolveExactGA4CampaignBreakdownRevenue(");
+    expect(campaignBreakdown).toContain("const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];");
+    expect(campaignBreakdown).toContain("const targetKey = targetByValue.get(valueKey);");
 
     const invalidationStart = revenueModal.indexOf("const invalidateAfterRevenueChange");
     const invalidationEnd = revenueModal.indexOf("const resetAll = () =>", invalidationStart);

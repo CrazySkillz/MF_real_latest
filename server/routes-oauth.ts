@@ -13117,6 +13117,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
       const requestedPropertyId = propertyId ? String(propertyId) : '';
+      const selectedCampaignNames = (Array.isArray(campaignFilter) ? campaignFilter : campaignFilter ? [campaignFilter] : [])
+        .map((name) => String(name || '').trim()).filter(Boolean);
+      if (overviewCampaignBreakdown && !requestedPropertyId) {
+        return res.status(400).json({ success: false, error: 'GA4_PROPERTY_SCOPE_REQUIRED' });
+      }
+      if (overviewCampaignBreakdown && selectedCampaignNames.length === 0) {
+        return res.status(409).json({ success: false, error: 'GA4_CAMPAIGN_SCOPE_REQUIRED' });
+      }
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
       let importToDateWindow: ReturnType<typeof resolveGA4ImportToDateWindow> = null;
       let resolvedPropertyId = propertyId;
@@ -13214,8 +13222,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               String((campaign as any)?.currency || ''), true,
             )
           : { rows: [], totals: { revenue: 0 }, meta: { revenueMetric: '' } } as any;
-        const selectedCampaignNames = (Array.isArray(campaignFilter) ? campaignFilter : campaignFilter ? [campaignFilter] : [])
-          .map((name) => String(name || '').trim()).filter(Boolean);
         const rows = mergeGA4OverviewCampaignRevenueRows(result.rows, revenueResult.rows, selectedCampaignNames);
         const rowRevenue = Number(rows.reduce((sum, row) => sum + Number(row?.revenue || 0), 0).toFixed(2));
         const providerRevenue = Number(Number(revenueResult.totals?.revenue || 0).toFixed(2));

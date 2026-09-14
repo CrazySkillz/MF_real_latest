@@ -133,7 +133,7 @@ export class GoogleAnalytics4Service {
           fieldName,
           stringFilter: {
             matchType: 'FULL_REGEXP',
-            value: `.*[?&]utm_campaign=${escapeRegex(candidate)}(?:[&#].*)?`,
+            value: `.*[?&]utm_campaign=${escapeRegex(candidate)}(?:[&#].*)?$`,
             caseSensitive: false,
           },
         },

@@ -36,6 +36,7 @@ import { useClient } from "@/lib/clientContext";
 import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent, normalizeRateToPercent, formatPct } from "@shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
 import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "@shared/ga4-financial-source";
+import { resolveExactGA4CampaignBreakdownRevenue } from "@shared/ga4-campaign-breakdown";
 import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy, resolveKpiDataSufficiency, computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "@shared/kpi-math";
 import { resolveGA4KpiLiveValue } from "@shared/ga4-kpi-live-value";
 import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "@shared/ga4-kpi-metric-identity";
@@ -2818,10 +2819,18 @@ export default function GA4Metrics() {
     String(campaignRevenueWindow?.endDate || "") === String((ga4ToDateResp as any)?.endDate || "") &&
     Math.abs(Number((ga4Breakdown as any)?.totals?.revenue || 0) - Number((ga4ToDateResp as any)?.totals?.revenue || 0)) < 0.01
   );
+  const campaignBreakdownRevenueResolution = resolveExactGA4CampaignBreakdownRevenue(
+    selectedGa4CampaignFilterList.map((name) => ({ name })),
+    revenueDisplaySources,
+    campaignCurrency,
+  );
   const campaignBreakdownImportedRevenueUnavailable =
-    (revenueSourcesError && revenueSourcesResp === undefined) ||
-    (revenueBreakdownError && revenueBreakdownResp === undefined) ||
-    revenueDisplaySources.some((source: any) => source?.materializedRevenueStatus === "unavailable" || source?.revenue == null);
+    revenueSourcesResp === undefined ||
+    campaignBreakdownRevenueResolution.ambiguous || campaignBreakdownRevenueResolution.currencyMismatch ||
+    campaignBreakdownRevenueResolution.materializationMismatch ||
+    revenueDisplaySources.some((source: any) =>
+      campaignBreakdownRevenueResolution.mappedSourceIds.has(String(source?.sourceId || source?.id || "")) &&
+      (source?.materializedRevenueStatus === "unavailable" || source?.revenue == null));
   const campaignBreakdownUnavailable =
     !ga4ConnectionUsable ||
     breakdownPlaceholder ||
@@ -3487,7 +3496,7 @@ export default function GA4Metrics() {
         addSimpleTable(
           "Campaign Breakdown",
           ["CAMPAIGN", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE", "REVENUE"],
-          (Array.isArray(campaignBreakdownAgg) ? campaignBreakdownAgg : []).slice(0, 15).map((c: any) => [
+          (Array.isArray(campaignBreakdownAgg) ? campaignBreakdownAgg : []).map((c: any) => [
             String(c?.name || "(not set)"),
             fN(Number(c?.sessions || 0)),
             fN(Number(c?.users || 0)),
@@ -5745,37 +5754,12 @@ export default function GA4Metrics() {
   }, [adComparisonBreakdown, adComparisonBreakdownPlaceholder, importedGA4CampaignNames]);
 
   const campaignBreakdownMatchedExternalRevenue = useMemo(() => {
-    const rowCounts = new Map<string, number>();
-    const rowNameByKey = new Map<string, string>();
-    for (const row of campaignBreakdownAgg) {
-      const key = normalizeCampaignKey(row.name);
-      if (!key) continue;
-      rowCounts.set(key, (rowCounts.get(key) || 0) + 1);
-      if (!rowNameByKey.has(key)) rowNameByKey.set(key, row.name);
-    }
-    const matched = new Map<string, number>();
-    for (const source of revenueDisplaySources) {
-      const rawCfg = (source as any)?.mappingConfig;
-      const cfg = typeof rawCfg === "string" ? (() => { try { return JSON.parse(rawCfg); } catch { return null; } })() : rawCfg;
-      const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];
-      const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];
-      const mappedCampaignByValue = new Map<string, string>();
-      for (const mapping of mappings) {
-        const valueKey = normalizeCampaignKey(mapping?.crmValue);
-        const mappedName = String(mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn || "").trim();
-        if (valueKey && mappedName) mappedCampaignByValue.set(valueKey, mappedName);
-      }
-      for (const item of totals) {
-        const valueKey = normalizeCampaignKey(item?.campaignValue);
-        const key = normalizeCampaignKey(mappedCampaignByValue.get(valueKey) || item?.campaignValue);
-        const revenue = Number(item?.revenue || 0);
-        if (rowCounts.get(key) !== 1) continue;
-        const rowName = rowNameByKey.get(key);
-        if (rowName && revenue > 0) matched.set(rowName, (matched.get(rowName) || 0) + revenue);
-      }
-    }
-    return matched;
-  }, [campaignBreakdownAgg, revenueDisplaySources]);
+    return resolveExactGA4CampaignBreakdownRevenue(
+      campaignBreakdownAgg,
+      revenueDisplaySources,
+      campaignCurrency,
+    ).revenueByCampaign;
+  }, [campaignBreakdownAgg, campaignCurrency, revenueDisplaySources]);
 
   const sourceRevenueBreakdowns = useMemo(() => {
     return new Map<string, any[]>(
@@ -6659,7 +6643,8 @@ export default function GA4Metrics() {
                       </div>
                       <Card>
                         <CardContent className="p-6">
-                          {(breakdownLoading || ga4ToDateLoading) && (ga4Breakdown === undefined || ga4ToDateResp === undefined) ? (
+                          {(breakdownLoading || ga4ToDateLoading || revenueSourcesLoading || revenueBreakdownLoading) &&
+                          (ga4Breakdown === undefined || ga4ToDateResp === undefined || revenueSourcesResp === undefined || revenueBreakdownResp === undefined) ? (
                             <div className="h-32 bg-muted rounded animate-pulse" />
                           ) : campaignBreakdownUnavailable ? (
                             <div className="text-sm text-destructive">

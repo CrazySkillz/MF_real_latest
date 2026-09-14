@@ -89,7 +89,7 @@ try {
   assert(expectedTrafficWindow, 'Initial-import window is unavailable');
   const expectedNativeStart = new Date(record.start_date || record.created_at).toISOString().slice(0, 10);
 
-  const [isolationInventory, revenueIntegrity] = await Promise.all([
+  const [isolationInventory, revenueIntegrity, scheduledSnapshotInventory] = await Promise.all([
     client.query(`
       SELECT c.id, g.property_id
       FROM campaigns c
@@ -116,6 +116,23 @@ try {
       LEFT JOIN revenue_records r ON r.revenue_source_id = s.id::text
       WHERE s.campaign_id = $1 AND s.is_active = true AND COALESCE(s.platform_context, 'ga4') = 'ga4'
     `, [CAMPAIGN_ID, currency]),
+    client.query(`
+      SELECT r.id AS report_id, s.id AS snapshot_id, s.generated_at
+      FROM linkedin_reports r
+      JOIN LATERAL (
+        SELECT id, generated_at
+        FROM report_snapshots
+        WHERE report_id = r.id
+        ORDER BY generated_at DESC
+        LIMIT 1
+      ) s ON true
+      WHERE r.campaign_id = $1
+        AND LOWER(r.platform_type) = 'google_analytics'
+        AND LOWER(r.report_type) = 'overview'
+        AND LOWER(r.status) = 'active'
+      ORDER BY s.generated_at DESC
+      LIMIT 1
+    `, [CAMPAIGN_ID]),
   ]);
 
   const healthResponse = await fetch(`${BASE_URL}/api/health`);
@@ -288,6 +305,33 @@ try {
       `Browser PDF is missing ${campaignName} revenue`);
   }
 
+  exact(scheduledSnapshotInventory.rowCount, 1, 'existing GA4 Overview scheduled-PDF snapshot fixture');
+  const scheduledSnapshot = scheduledSnapshotInventory.rows[0];
+  const authToken = await page.evaluate(() => (window as any).Clerk?.session?.getToken());
+  assert(authToken, 'Clerk session token is unavailable for scheduled-PDF validation');
+  const scheduledPdfResponse = await context.request.get(
+    `${BASE_URL}/api/report-snapshots/${encodeURIComponent(String(scheduledSnapshot.snapshot_id))}/pdf`,
+    { headers: { Authorization: `Bearer ${authToken}` } },
+  );
+  exact(scheduledPdfResponse.status(), 200, 'scheduled-PDF snapshot download status');
+  assert(String(scheduledPdfResponse.headers()['content-type'] || '').includes('application/pdf'), 'scheduled-PDF response is not a PDF');
+  const scheduledParser = new PDFParse({ data: await scheduledPdfResponse.body() });
+  const scheduledReportText = compact((await scheduledParser.getText()).text);
+  await scheduledParser.destroy();
+  for (const header of ['Campaign Breakdown', 'CAMPAIGN', 'SESSIONS', 'USERS', 'CONVERSIONS', 'CONV. RATE', 'REVENUE']) {
+    assert(scheduledReportText.includes(header), `Scheduled PDF is missing Campaign Breakdown header ${header}`);
+  }
+  for (const row of rows) {
+    const campaignName = String(row?.campaign || '').trim();
+    const rowRevenue = round2(Number(row.revenue) + Number(revenueResolution.revenueByCampaign.get(campaignName) || 0));
+    assert(scheduledReportText.includes(campaignName), `Scheduled PDF is missing campaign ${campaignName}`);
+    for (const value of [formatNumber(row.sessions), formatNumber(row.users), formatNumber(row.conversions), formatPercent(Number(row.sessions) > 0 ? (Number(row.conversions) / Number(row.sessions)) * 100 : 0)]) {
+      assert(scheduledReportText.includes(value), `Scheduled PDF is missing ${campaignName} value ${value}`);
+    }
+    assert(scheduledReportText.includes(`${currency} ${rowRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`),
+      `Scheduled PDF is missing ${campaignName} revenue`);
+  }
+
   console.log(JSON.stringify({
     status: 'passed',
     certificationStatus: 'deployed_validation_only',
@@ -314,7 +358,14 @@ try {
     providerAttribution: responses.breakdown.body?.meta?.overviewCampaignAttribution,
     providerDimensionDiagnostics: responses.breakdown.body?.meta?.dimensionDiagnostics,
     refreshEvidence: { pageReload: '200', windowFocus: '200', automaticInterval: '200 after ten-minute clock advance' },
-    consumerParity: { api: true, renderedUi: true, browserPdf: true, scheduledPdf: 'focused local regression only' },
+    consumerParity: {
+      api: true,
+      renderedUi: true,
+      browserPdf: true,
+      scheduledPdf: true,
+      scheduledSnapshotHash: hash(scheduledSnapshot.snapshot_id),
+      scheduledSnapshotGeneratedAt: new Date(scheduledSnapshot.generated_at).toISOString(),
+    },
     accessControl: { unauthenticated: 'denied', crossOwner: 'denied' },
     productionDataIntegrity: {
       crossCampaignRecords: Number(integrity.cross_campaign_records),

@@ -97,4 +97,20 @@ describe("GA4 Spend source edit entry", () => {
       ));
     }
   });
+
+  it("hides the Spend sheet-list scrollbar without disabling mouse scrolling", () => {
+    const sheetsAuth = readFileSync(
+      join(process.cwd(), "client", "src", "components", "SimpleGoogleSheetsAuth.tsx"),
+      "utf8",
+    );
+    const sheetList = sliceBetween(
+      sheetsAuth,
+      '<div className={`space-y-2 max-h-64 min-h-24 overflow-y-auto',
+      "{isLoadingSheets ? (",
+    );
+
+    expect(sheetList).toContain('overflow-y-auto');
+    expect(sheetList).toContain('${isRevenueConnector ? "scrollbar-hide" : ""}');
+    expect(sheetList).toContain('${purpose === "spend" ? "scrollbar-hide" : ""}');
+  });
 });

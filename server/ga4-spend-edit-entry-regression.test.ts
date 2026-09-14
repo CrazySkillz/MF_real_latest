@@ -229,20 +229,30 @@ describe("GA4 Spend source edit entry", () => {
     expect(processCsv).toContain("campaignValues: hasCampaignScope ? campaignKeyValues : null");
   });
 
-  it("shows the saved CSV filename separately from the replacement file picker", () => {
+  it("shows the saved or previewed CSV filename separately from the file picker", () => {
     const csvUpload = sliceBetween(
       modal,
       '{step === "csv" && (',
       '{step === "paste" && (',
+    );
+    const backHandler = sliceBetween(
+      modal,
+      "const handleBack = () => {",
+      "  const title =",
     );
 
     expect(modal).toContain('String(props.initialSource?.displayName || csvPrefillMapping?.displayName || csvPreview?.fileName || "").trim()');
     expect(csvUpload).toContain("{currentCsvFileName && !csvFile && (");
     expect(csvUpload).toContain("Current file:");
     expect(csvUpload).toContain("{currentCsvFileName}");
+    expect(csvUpload).toContain("{csvFile && csvPreview?.success && (");
+    expect(csvUpload).toContain("Selected file:");
+    expect(csvUpload).toContain("{csvFile.name}");
     expect(csvUpload).toContain('{isEditing ? "Choose replacement file (CSV)" : "Upload file (CSV)"}');
     expect(csvUpload).toContain("You can map the columns next");
     expect(csvUpload).not.toContain("Required columns: Spend");
     expect(csvUpload).not.toContain('value={currentCsvFileName}');
+    expect(backHandler).toContain('if (step === "csv_map") return setStep("csv");');
+    expect(backHandler).not.toContain("setCsvFile(null)");
   });
 });

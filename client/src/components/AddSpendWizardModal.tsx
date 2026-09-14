@@ -2424,6 +2424,12 @@ export function AddSpendWizardModal(props: {
                         <span className="font-medium break-all">{currentCsvFileName}</span>
                       </div>
                     )}
+                    {csvFile && csvPreview?.success && (
+                      <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                        <span className="text-muted-foreground">Selected file:</span>{" "}
+                        <span className="font-medium break-all">{csvFile.name}</span>
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
                         <Label htmlFor="csv-file">{isEditing ? "Choose replacement file (CSV)" : "Upload file (CSV)"}</Label>

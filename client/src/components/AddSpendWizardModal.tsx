@@ -2689,7 +2689,7 @@ export function AddSpendWizardModal(props: {
 
                           <div className="grid gap-4 md:grid-cols-2">
                             <div className="space-y-2">
-                              <Label className="font-normal">Campaign identifier</Label>
+                              <Label className="font-normal">Campaign identifier (optional)</Label>
                               <Select
                                 value={campaignKeyColumn || CAMPAIGN_COL_NONE}
                                 onValueChange={(v) => {
@@ -2701,7 +2701,7 @@ export function AddSpendWizardModal(props: {
                               >
                                 <SelectTrigger><SelectValue placeholder="Search values..." /></SelectTrigger>
                                 <SelectContent className="z-[10000]">
-                                  <SelectItem value={CAMPAIGN_COL_NONE}>Search values...</SelectItem>
+                                  <SelectItem value={CAMPAIGN_COL_NONE}>None — import the full file</SelectItem>
                                   {headers.filter((h) => h !== spendColumn && h !== spendDateColumn).map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                                 </SelectContent>
                               </Select>
@@ -2716,7 +2716,7 @@ export function AddSpendWizardModal(props: {
                               />
                               <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-2">
                                 {!effectiveCampaignColumn ? (
-                                  <div className="text-xs text-muted-foreground/70">Upload/preview data to see campaign values.</div>
+                                  <div className="text-xs text-muted-foreground/70">Select a campaign column only when you want to filter the file.</div>
                                 ) : uniqueCampaignKeyValues.length === 0 ? (
                                   <div className="text-xs text-muted-foreground/70">No values found in the preview.</div>
                                 ) : (

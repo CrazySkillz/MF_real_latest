@@ -207,4 +207,25 @@ describe("GA4 Spend source edit entry", () => {
     expect(handler).toContain('method: "DELETE"');
     expect(handler).toContain("props.onProcessed?.();");
   });
+
+  it("makes unfiltered full-file CSV Spend import explicit without changing its payload contract", () => {
+    const mappingUi = sliceBetween(
+      modal,
+      '<Label className="font-normal">Campaign identifier (optional)</Label>',
+      "{previewRows.length > 0 && (",
+    );
+    const processCsv = sliceBetween(
+      modal,
+      "const processCsv = async () => {",
+      "  const processSheets = async () => {",
+    );
+
+    expect(mappingUi).toContain('value={campaignKeyColumn || CAMPAIGN_COL_NONE}');
+    expect(mappingUi).toContain('<SelectItem value={CAMPAIGN_COL_NONE}>None — import the full file</SelectItem>');
+    expect(mappingUi).toContain('setCampaignKeyColumn(v === CAMPAIGN_COL_NONE ? "" : v);');
+    expect(mappingUi).toContain("Select a campaign column only when you want to filter the file.");
+    expect(processCsv).toContain("const hasCampaignScope = !!effectiveCampaignColumn && campaignKeyValues.length > 0;");
+    expect(processCsv).toContain("campaignColumn: hasCampaignScope ? effectiveCampaignColumn : null");
+    expect(processCsv).toContain("campaignValues: hasCampaignScope ? campaignKeyValues : null");
+  });
 });

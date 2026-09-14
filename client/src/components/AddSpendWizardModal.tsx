@@ -86,8 +86,8 @@ export function AddSpendWizardModal(props: {
     const targetStep: Step = (() => {
       if (!props.initialSource?.id) return props.initialStep || "select";
       const st = String((props.initialSource as any)?.sourceType || "").toLowerCase();
-      if (st === "google_sheets") return "sheets_map";
-      if (st === "csv") return "csv_map";
+      if (st === "google_sheets") return "sheets_choose";
+      if (st === "csv") return "csv";
       if (st === "linkedin_api" || st === "meta_api" || st === "google_ads_api" || st === "ad_platforms") return "ad_platform";
       if (st === "manual") return "manual";
       return "select";
@@ -266,7 +266,7 @@ export function AddSpendWizardModal(props: {
       : (mapping?.campaignValue ? [String(mapping.campaignValue).trim()] : []);
 
     if (sourceType === "google_sheets") {
-      setStep("sheets_map");
+      setStep("sheets_choose");
       if (mapSpend) setSpendColumn(mapSpend);
       if (mapDate) setSpendDateColumn(mapDate);
       if (mapCampaignCol) {
@@ -297,10 +297,10 @@ export function AddSpendWizardModal(props: {
     }
 
     if (sourceType === "csv") {
-      setStep("csv_map");
+      setStep("csv");
       setCsvFile(null);
       setCsvPrefillMapping(mapping);
-      setCsvEditNotice("To edit a CSV import, please re-upload the same (or updated) file. We'll re-process spend using your updated mappings after preview.");
+      setCsvEditNotice("Re-upload to replace the stored rows, or continue with the saved data to update campaign selections.");
       // If we saved preview metadata (headers + sample rows) in mappingConfig, hydrate it so the mapping UI renders immediately.
       const savedHeaders = Array.isArray(mapping?.csvHeaders) ? mapping.csvHeaders.map((h: any) => String(h ?? "")).filter(Boolean) : [];
       const savedSampleRows = Array.isArray(mapping?.csvSampleRows) ? mapping.csvSampleRows : [];
@@ -2233,7 +2233,7 @@ export function AddSpendWizardModal(props: {
                       </div>
                     )}
                     <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
+                      <Button variant="outline" onClick={() => isEditing ? props.onOpenChange(false) : setStep("select")}>Cancel</Button>
                       {!showSheetsConnect && sheetsConnections.length > 0 && (
                         <Button onClick={() => previewSheet()} disabled={!selectedSheetConnectionId || isSheetsLoading}>
                           Next
@@ -2295,8 +2295,19 @@ export function AddSpendWizardModal(props: {
                       </p>
                     </div>
                     <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
-                      <Button onClick={previewCsv} disabled={!csvFile || isCsvPreviewing}>
+                      <Button variant="outline" onClick={() => isEditing ? props.onOpenChange(false) : setStep("select")}>Cancel</Button>
+                      <Button
+                        onClick={() => {
+                          if (csvFile) {
+                            void previewCsv();
+                            return;
+                          }
+                          if (isEditing && csvPreview?.success && canRecalculateCsvEditWithoutReupload) {
+                            setStep("csv_map");
+                          }
+                        }}
+                        disabled={(!csvFile && !(isEditing && csvPreview?.success && canRecalculateCsvEditWithoutReupload)) || isCsvPreviewing}
+                      >
                         {isCsvPreviewing ? "Previewing..." : "Next"}
                       </Button>
                     </div>

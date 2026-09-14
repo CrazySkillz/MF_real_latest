@@ -61,7 +61,7 @@ separate: `IN_PROGRESS` never means production-ready.
 | 1 | Summary | `QUEUED` | `UNVERIFIED` | Requires a fresh current-runtime certification. |
 | - | Revenue & Financials (parent section) | `IN_PROGRESS` | `UNVERIFIED` | Revenue, Spend, Performance, combined totals, and provenance must all pass. |
 | 2 | Revenue & Financials - Revenue | `COMPLETE` | `CERTIFIED` | Clean-certified for the exact combined GA4 Overview Revenue boundary at deployed application commit `8a4b463b`; controlling certificate: `GA4/OVERVIEW_REVENUE_SECTION_PRODUCTION_READINESS.md`; required steps remaining: 0. |
-| 3 | Revenue & Financials - Spend | `QUEUED` | `UNVERIFIED` | Source-family status is tracked below. |
+| 3 | Revenue & Financials - Spend | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the documented Google Sheets and CSV Spend boundary at deployed runtime `002a7caa`; evidence commit `8d3da627`; required steps remaining: 0. Google Ads is not configured and remains excluded. |
 | - | Revenue & Financials - Performance (`Profit`, `ROAS`, `ROI`, `CPA`) | `QUEUED` | `UNVERIFIED` | Must reconcile to the finally certified Revenue, Spend, and GA4 Conversion inputs. |
 | 4 | Campaign Breakdown | `QUEUED` | `UNVERIFIED` | Earlier bounded validation is preserved; the fresh pass remains required. |
 | 5 | Landing Pages | `QUEUED` | `UNVERIFIED` | Requires a fresh current-runtime certification. |
@@ -81,9 +81,9 @@ Spend source families:
 
 | Source | Work state | Certification status | Required disposition |
 | --- | --- | --- | --- |
-| Google Sheets | `QUEUED` | `UNVERIFIED` | Run the fresh complete source-family validation. |
-| Upload CSV | `QUEUED` | `UNVERIFIED` | Run the fresh complete source-family validation. |
-| Google Ads | `QUEUED` | `UNVERIFIED` | Run the fresh live-provider source-family validation; test mode is not certification evidence. |
+| Google Sheets | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact documented GA4 Overview Spend boundary at deployed runtime `002a7caa`; evidence commit `8d3da627`; required steps remaining: 0. |
+| Upload CSV | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact documented GA4 Overview Spend boundary at deployed runtime `002a7caa`; evidence commit `8d3da627`; required steps remaining: 0. |
+| Google Ads | `NOT_CONFIGURED` | `EXCLUDED` | Not configured and outside this certification boundary; no Google Ads readiness claim is made. |
 
 The Performance gate includes zero, unavailable, stale/last-good, currency, and
 downstream states. Source-family passes alone cannot certify the full Revenue &
@@ -199,7 +199,7 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 | Upload CSV Revenue | `CERTIFIED` | `GA4/OVERVIEW_REVENUE_CSV_PRODUCTION_READINESS.md` | Deployed application commit `b2fd97a9`; evidence commit `4476e807`; clean-certified for the documented GA4 scope with source-refresh scheduling inapplicable and required steps remaining: 0. |
 | Google Sheets Revenue | `CERTIFIED` | `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md` | Documentation commit `f4a648a8`; deployed runtime `f8061d135a85fbe2c4c11433fffb3f80dedceae8`; clean-certified for the documented single-runtime V1 scope with required steps remaining: 0. |
 | Salesforce Revenue and Pipeline Proxy | `CERTIFIED` | `GA4/OVERVIEW_REVENUE_SALESFORCE_PRODUCTION_READINESS.md` | Deployed application commit `d4f1ec0e`; evidence commit `6fa4bff2`; clean-certified for the exact documented GA4 source, configuration, and exercised lifecycle with required steps remaining: 0. Other Salesforce configurations, organisations, currencies, fields, non-GA4 contexts, and global scheduler health remain excluded. |
-| GA4 Google Sheets/CSV Spend family | `RELEASE_CANDIDATE` | `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md` | Configured spend values have bounded evidence; the general Google Sheets provider/scheduler lifecycle is not independently clean-certified. |
+| GA4 Google Sheets/CSV Spend family | `CERTIFIED` | `GA4/OVERVIEW_SPEND_POST_DEPLOYMENT_RECERTIFICATION_2026-09-14.md` | Evidence commit `8d3da627834184b5e751caef2e00240db157c1ab`; `CLEAN-CERTIFIED / PRODUCTION_READY` for Google Sheets and CSV Spend at validated deployed runtime `002a7caae7cc01b5a815799f8ddc05a2f9e0fe86`; required steps remaining: 0. Google Ads is `NOT CONFIGURED / EXCLUDED`. |
 | Whole GA4 financial model | `UNVERIFIED` | `GA4/OVERVIEW_PRODUCTION_READINESS.md` | Component certificates remain preserved, but whole-Overview status controls the combined visible financial surface. |
 
 ## Campaign DeepDive Ledger

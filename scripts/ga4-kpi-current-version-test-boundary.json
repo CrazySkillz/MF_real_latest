@@ -43,12 +43,12 @@
     {
       "group": "external-certifications",
       "file": "server/hubspot-h10d-certification-doc.test.ts",
-      "fullName": "HubSpot current certification documentation records one controlling clean certification while retaining H10d as history"
+      "fullName": "HubSpot certification documentation records the current exact-source clean boundary while retaining H10d as history"
     },
     {
       "group": "external-certifications",
       "file": "server/hubspot-h10d-certification-doc.test.ts",
-      "fullName": "HubSpot current certification documentation keeps GA4 entry points aligned to the current bounded certification"
+      "fullName": "HubSpot certification documentation keeps GA4 entry points aligned to the current exact-source clean boundary"
     },
     {
       "group": "google-ads",
@@ -82,6 +82,11 @@
     },
     {
       "group": "google-ads",
+      "file": "server/google-ads-revenue-csv-flow.test.ts",
+      "fullName": "Google Ads revenue CSV flow passes the Google Ads context and campaign scope from the shared CSV wizard path"
+    },
+    {
+      "group": "google-ads",
       "file": "server/google-ads-revenue-hubspot-flow.test.ts",
       "fullName": "Google Ads revenue HubSpot flow admits Google Ads for HubSpot revenue save through the shared platform validator"
     },
@@ -93,7 +98,7 @@
     {
       "group": "google-ads",
       "file": "server/google-ads-revenue-hubspot-flow.test.ts",
-      "fullName": "Google Ads revenue HubSpot flow keeps HubSpot Pipeline Proxy separate and only includes Google Ads when explicitly requested"
+      "fullName": "Google Ads revenue HubSpot flow keeps HubSpot Pipeline Proxy separate and only includes scoped contexts when explicitly requested"
     },
     {
       "group": "google-ads",

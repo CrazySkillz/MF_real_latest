@@ -55,7 +55,7 @@ export type CurrentVersionClassification = {
 const MANIFEST_PATH = "scripts/ga4-kpi-current-version-test-boundary.json";
 const EXPECTED_GROUP_COUNTS: Record<DeferredTestGroup, number> = {
   "future-platforms": 21,
-  "google-ads": 26,
+  "google-ads": 27,
   "ga4-ad-comparison": 1,
   "external-certifications": 2,
 };

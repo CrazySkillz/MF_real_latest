@@ -252,7 +252,7 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("mappedCampaignFilter.values");
     expect(page).toContain("formatGoogleSheetsScopeValues");
     expect(revenueModal).toContain("campaignDisplayName: hasCampaignScope ? (sheetsCampaignDisplayName.trim() || null) : null");
-    expect(revenueModal).toContain("campaignDisplayName: csvCampaignValues.length > 0 ? (csvCampaignDisplayName.trim() || null) : null");
+    expect(revenueModal).toContain("campaignDisplayName: hasCampaignScope ? (csvCampaignDisplayName.trim() || null) : null");
     expect((spendModal.match(/campaignDisplayName: hasCampaignScope \? \(campaignDisplayName\.trim\(\) \|\| null\) : null/g) || []).length).toBeGreaterThanOrEqual(2);
     expect(hubspotWizard).toContain("campaignDisplayName: selectedValues.length > 0 ? (campaignDisplayName.trim() || null) : null");
     expect(salesforceWizard).toContain("campaignDisplayName: selectedValues.length > 0 ? (campaignDisplayName.trim() || null) : null");
@@ -278,7 +278,8 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(revenueModal).toContain("&& shouldAutoSelectExistingSheet");
     expect(revenueModal).toContain('const shouldShowGoogleSheetsCreatePicker = !isEditing && (platformContext === "google_sheets" || platformContext === "custom_integration") && !sheetsConnectionId;');
     expect(revenueModal).toContain("sheetsConnections.length === 0 || shouldShowGoogleSheetsCreatePicker");
-    expect(revenueModal).toContain("if (!initialSource) return;");
+    expect(revenueModal).toContain("const sourceToEdit = initialSource || salesforcePickerEditSource;");
+    expect(revenueModal).toContain("if (!sourceToEdit) return;");
     expect(spendModal).toContain("if (props.open && props.initialSource) return;");
     expect(spendModal).toContain('setSelectedSheetConnectionId("");');
     expect(spendModal).toContain("if (!props.initialSource) return;");

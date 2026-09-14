@@ -339,7 +339,7 @@ describe("Latest Day Revenue regression guard", () => {
     expect(clientFile).toContain("setDateField((cfg as any).dateField ? String((cfg as any).dateField) : \"CloseDate\");");
     expect(clientFile).toContain("setPreviewTotalRevenue(null);");
     expect(clientFile).toContain("setPreviewKey(null);");
-    expect(modalFile).toContain("lastTotalRevenue: initialSource?.revenue != null && Number.isFinite(Number(initialSource.revenue)) ? Number(initialSource.revenue)");
+    expect(modalFile).toContain("lastTotalRevenue: sourceToEdit?.revenue != null && Number.isFinite(Number(sourceToEdit.revenue)) ? Number(sourceToEdit.revenue)");
     expect(clientFile).toContain("const hasCurrentPreview = previewKey === reviewPreviewKey;");
     expect(clientFile).toContain("if (hasCurrentPreview && Number.isFinite(Number(previewTotalRevenue))) return Number(previewTotalRevenue);");
     expect(clientFile).toContain("Math.abs(currentPreviewTotal - storedTotal) >= 0.01");

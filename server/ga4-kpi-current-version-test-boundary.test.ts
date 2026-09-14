@@ -33,14 +33,14 @@ function report(
 describe("GA4 KPI current-version test boundary", () => {
   it("keeps the exact documented deferred inventory visible and unique", () => {
     const manifest = readCurrentVersionManifest(root);
-    expect(manifest.tests).toHaveLength(50);
+    expect(manifest.tests).toHaveLength(51);
     expect(manifest.tests.filter((test) => test.group === "future-platforms")).toHaveLength(21);
-    expect(manifest.tests.filter((test) => test.group === "google-ads")).toHaveLength(26);
+    expect(manifest.tests.filter((test) => test.group === "google-ads")).toHaveLength(27);
     expect(manifest.tests.filter((test) => test.group === "ga4-ad-comparison")).toHaveLength(1);
     expect(manifest.tests.filter((test) => test.group === "external-certifications")).toHaveLength(2);
     expect(
       new Set(manifest.tests.map((test) => `${test.file}\u0000${test.fullName}`)).size,
-    ).toBe(50);
+    ).toBe(51);
     for (const test of manifest.tests.filter((item) => item.group === "external-certifications")) {
       const source = readFileSync(resolve(root, test.file), "utf8");
       const suiteName = source.match(/\bdescribe\("([^"]+)"/)?.[1];
@@ -105,7 +105,7 @@ describe("GA4 KPI current-version test boundary", () => {
   it("fails closed when a deferred identity is renamed or not executed", () => {
     const manifest = readCurrentVersionManifest(root);
     const result = classifyCurrentVersionResults(report([]), manifest, root);
-    expect(result.missingDeferred).toHaveLength(50);
+    expect(result.missingDeferred).toHaveLength(51);
     expect(result.currentFailures).toEqual([]);
   });
 

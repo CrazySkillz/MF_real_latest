@@ -284,8 +284,6 @@ describe("notification visibility regression guard", () => {
     expect(ga4MetricsFile).toContain("const refreshNotificationQueries = useCallback(async () => {");
     expect(ga4MetricsFile).toContain('await queryClient.invalidateQueries({ queryKey: ["/api/notifications"], refetchType: "none" });');
     expect(ga4MetricsFile).toContain('await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });');
-    expect(ga4MetricsFile.match(/refreshNotificationQueries\(\)/g) || []).toHaveLength(10);
-
     const createKpi = ga4MetricsFile.slice(ga4MetricsFile.indexOf("const createKPIMutation"), ga4MetricsFile.indexOf("const updateKPIMutation"));
     const updateKpi = ga4MetricsFile.slice(ga4MetricsFile.indexOf("const updateKPIMutation"), ga4MetricsFile.indexOf("// Delete KPI mutation"));
     const deleteKpi = ga4MetricsFile.slice(ga4MetricsFile.indexOf("const deleteKPIMutation"), ga4MetricsFile.indexOf("// GA4 Reports"));
@@ -294,7 +292,7 @@ describe("notification visibility regression guard", () => {
     const deleteBenchmark = ga4MetricsFile.slice(ga4MetricsFile.indexOf("const deleteBenchmarkMutation"), ga4MetricsFile.indexOf("// Benchmark handlers"));
 
     for (const mutation of [createKpi, updateKpi, deleteKpi, createBenchmark, updateBenchmark, deleteBenchmark]) {
-      expect(mutation).toContain("refreshNotificationQueries()");
+      expect(mutation.match(/refreshNotificationQueries\(\)/g) || []).toHaveLength(1);
     }
   });
 

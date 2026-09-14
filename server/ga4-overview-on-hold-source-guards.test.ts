@@ -24,7 +24,7 @@ describe("GA4 Overview source availability guards", () => {
     expect(revenueModal).toContain('Import revenue from a connected Google Sheets tab');
     expect(spendModal).toContain('Import spend from a connected Google Sheet tab.');
     expect(revenueModal).toContain('if (type === "google_sheets")');
-    expect(spendModal).toContain('if (st === "google_sheets") return "sheets_map";');
+    expect(spendModal).toContain('if (st === "google_sheets") return "sheets_choose";');
   });
 
   it("allows scoped new GA4 Google Sheets creation while preserving required platform context", () => {

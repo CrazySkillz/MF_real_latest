@@ -119,6 +119,8 @@ export function AddSpendWizardModal(props: {
 
   const [sheetsConnections, setSheetsConnections] = useState<Array<any>>([]);
   const [hasGoogleSheetsSpendSource, setHasGoogleSheetsSpendSource] = useState(false);
+  const [activeCsvSpendSources, setActiveCsvSpendSources] = useState<Array<any>>([]);
+  const [isRemovingCsvSpendSource, setIsRemovingCsvSpendSource] = useState(false);
   const [selectedSheetConnectionId, setSelectedSheetConnectionId] = useState<string>("");
   const [sheetsPreview, setSheetsPreview] = useState<any>(null);
   const [isSheetsLoading, setIsSheetsLoading] = useState(false);
@@ -415,6 +417,7 @@ export function AddSpendWizardModal(props: {
     if (!props.open) return;
     let mounted = true;
     setHasGoogleSheetsSpendSource(false);
+    setActiveCsvSpendSources([]);
     (async () => {
       try {
         const contextQuery = props.platformContext ? `?platformContext=${encodeURIComponent(props.platformContext)}` : "";
@@ -423,6 +426,7 @@ export function AddSpendWizardModal(props: {
         if (!mounted || !resp.ok || json?.success !== true) return;
         const sources = Array.isArray(json?.sources) ? json.sources : [];
         setHasGoogleSheetsSpendSource(sources.some((source: any) => source?.isActive !== false && String(source?.sourceType || "").toLowerCase() === "google_sheets"));
+        setActiveCsvSpendSources(sources.filter((source: any) => source?.isActive !== false && String(source?.sourceType || "").toLowerCase() === "csv"));
       } catch {
         // Do not show Connected unless the active Spend source is confirmed.
       }
@@ -892,6 +896,30 @@ export function AddSpendWizardModal(props: {
       toast({ title: "Disconnect failed", description: error?.message || "Please try again.", variant: "destructive" });
     } finally {
       setIsRemovingSheet(false);
+    }
+  };
+
+  const handleCsvSpendSourceRemove = async () => {
+    const sourceId = activeCsvSpendSources.length === 1 ? String(activeCsvSpendSources[0]?.id || "").trim() : "";
+    if (!sourceId) return;
+    setIsRemovingCsvSpendSource(true);
+    try {
+      const contextQuery = props.platformContext ? `?platformContext=${encodeURIComponent(props.platformContext)}` : "";
+      const currentResp = await fetch(`/api/campaigns/${props.campaignId}/spend-sources${contextQuery}`, { credentials: "include", cache: "no-store" });
+      const currentJson = await currentResp.json().catch(() => null);
+      if (!currentResp.ok || currentJson?.success !== true || !Array.isArray(currentJson?.sources)) throw new Error("Spend sources are unavailable. Refresh and try again.");
+      const currentCsvSources = currentJson.sources.filter((source: any) => source?.isActive !== false && String(source?.sourceType || "").toLowerCase() === "csv");
+      if (currentCsvSources.length !== 1 || String(currentCsvSources[0]?.id || "").trim() !== sourceId) throw new Error("CSV sources changed. Open Spend Sources and choose the exact file to remove.");
+      const resp = await fetch(`/api/campaigns/${props.campaignId}/spend-sources/${encodeURIComponent(sourceId)}${contextQuery}`, { method: "DELETE", credentials: "include" });
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok || json?.success !== true) throw new Error(json?.error || "Failed to remove CSV Spend source");
+      setActiveCsvSpendSources([]);
+      props.onProcessed?.();
+      toast({ title: "CSV Spend source removed", description: "Total Spend has been recalculated." });
+    } catch (error: any) {
+      toast({ title: "Delete failed", description: error?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setIsRemovingCsvSpendSource(false);
     }
   };
 
@@ -1625,16 +1653,58 @@ export function AddSpendWizardModal(props: {
                   </CardHeader>
                 </Card>
 
-                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("csv")}>
+                <Card className={`cursor-pointer hover:border-blue-500 transition-colors ${isRemovingCsvSpendSource ? "opacity-60 pointer-events-none" : ""}`} onClick={() => setStep("csv")}>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Upload className="w-4 h-4" />
                       Upload CSV
+                      {activeCsvSpendSources.length > 0 && (
+                        <span className="ml-auto flex items-center gap-1 text-xs font-normal text-green-600 dark:text-green-400">
+                          <span>Uploaded</span>
+                          <span aria-hidden="true">|</span>
+                          <button type="button" className="hover:underline" onClick={(event) => {
+                            event.stopPropagation();
+                            setStep("csv");
+                          }}>
+                            Add another file
+                          </button>
+                          {activeCsvSpendSources.length === 1 ? (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button type="button" className="rounded p-0.5 hover:bg-red-100 dark:hover:bg-red-900/30" title="Remove CSV Spend source" aria-label="Remove CSV Spend source" onClick={(event) => event.stopPropagation()}>
+                                  <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent onClick={(event) => event.stopPropagation()}>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Remove CSV Spend source?</AlertDialogTitle>
+                                  <AlertDialogDescription>This removes {String(activeCsvSpendSources[0]?.displayName || "this CSV upload")}. Total Spend will be recalculated.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction className="bg-red-600 hover:bg-red-700" disabled={isRemovingCsvSpendSource} onClick={() => void handleCsvSpendSourceRemove()}>
+                                    {isRemovingCsvSpendSource ? "Removing…" : "Remove"}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          ) : (
+                            <button type="button" className="rounded p-0.5 hover:bg-red-100 dark:hover:bg-red-900/30" title="Choose a CSV file in Spend Sources" aria-label="Choose a CSV file to remove" onClick={(event) => {
+                              event.stopPropagation();
+                              toast({ title: "Choose the exact CSV file", description: "Open Spend Sources and use the trash icon beside the file you want to remove." });
+                            }}>
+                              <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                            </button>
+                          )}
+                        </span>
+                      )}
                     </CardTitle>
                     <CardDescription>
                       <div className="flex items-start gap-2">
                         <span className="text-amber-600 dark:text-amber-500 font-medium">⚠️</span>
-                        <span>Import spend from a CSV. Requires manual re-upload to update.</span>
+                        <span>{activeCsvSpendSources.length > 0
+                          ? "Each additional file is a separate source and adds to Total Spend. To replace a file, use its pencil in Spend Sources."
+                          : "Import spend from a CSV. Requires manual re-upload to update."}</span>
                       </div>
                     </CardDescription>
                   </CardHeader>

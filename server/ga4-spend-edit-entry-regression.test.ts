@@ -174,4 +174,37 @@ describe("GA4 Spend source edit entry", () => {
     expect(route).toContain('await recalcCampaignSpend(campaignId);');
     expect(route).toContain('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");');
   });
+
+  it("shows uploaded CSV status and keeps add/delete behavior additive and exact", () => {
+    const statusCheck = sliceBetween(
+      modal,
+      "setHasGoogleSheetsSpendSource(false);",
+      "  }, [props.open, props.campaignId, props.platformContext]);",
+    );
+    const handler = sliceBetween(
+      modal,
+      "const handleCsvSpendSourceRemove = async () => {",
+      "  const processCsv = async () => {",
+    );
+    const csvCard = sliceBetween(
+      modal,
+      'className={`cursor-pointer hover:border-blue-500 transition-colors ${isRemovingCsvSpendSource',
+      '<Card className="hidden" onClick={() => setStep("manual")}>',
+    );
+
+    expect(statusCheck).toContain("setActiveCsvSpendSources(sources.filter");
+    expect(statusCheck).toContain('source?.sourceType || "").toLowerCase() === "csv"');
+    expect(csvCard).toContain("<span>Uploaded</span>");
+    expect(csvCard).toContain("Add another file");
+    expect(csvCard).toContain('setStep("csv");');
+    expect(csvCard).toContain("activeCsvSpendSources.length === 1");
+    expect(csvCard).toContain('aria-label="Remove CSV Spend source"');
+    expect(csvCard).toContain("Open Spend Sources and use the trash icon beside the file you want to remove.");
+    expect(csvCard).toContain("Each additional file is a separate source and adds to Total Spend.");
+    expect(handler).toContain('cache: "no-store"');
+    expect(handler).toContain("currentCsvSources.length !== 1");
+    expect(handler).toContain('/spend-sources/${encodeURIComponent(sourceId)}${contextQuery}');
+    expect(handler).toContain('method: "DELETE"');
+    expect(handler).toContain("props.onProcessed?.();");
+  });
 });

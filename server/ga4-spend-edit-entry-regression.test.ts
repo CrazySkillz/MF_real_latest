@@ -228,4 +228,19 @@ describe("GA4 Spend source edit entry", () => {
     expect(processCsv).toContain("campaignColumn: hasCampaignScope ? effectiveCampaignColumn : null");
     expect(processCsv).toContain("campaignValues: hasCampaignScope ? campaignKeyValues : null");
   });
+
+  it("shows the saved CSV filename separately from the replacement file picker", () => {
+    const csvUpload = sliceBetween(
+      modal,
+      '{step === "csv" && (',
+      '{step === "paste" && (',
+    );
+
+    expect(modal).toContain('String(props.initialSource?.displayName || csvPrefillMapping?.displayName || csvPreview?.fileName || "").trim()');
+    expect(csvUpload).toContain("{currentCsvFileName && !csvFile && (");
+    expect(csvUpload).toContain("Current file:");
+    expect(csvUpload).toContain("{currentCsvFileName}");
+    expect(csvUpload).toContain('{isEditing ? "Choose replacement file (CSV)" : "Upload file (CSV)"}');
+    expect(csvUpload).not.toContain('value={currentCsvFileName}');
+  });
 });

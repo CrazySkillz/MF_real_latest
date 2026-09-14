@@ -188,6 +188,9 @@ export function AddSpendWizardModal(props: {
   const autoDateDecisionRef = useRef<string | null>(null);
   const [csvPrefillMapping, setCsvPrefillMapping] = useState<any>(null);
   const [csvEditNotice, setCsvEditNotice] = useState<string>("");
+  const currentCsvFileName = isEditing && String(props.initialSource?.sourceType || "").toLowerCase() === "csv"
+    ? String(props.initialSource?.displayName || csvPrefillMapping?.displayName || csvPreview?.fileName || "").trim()
+    : "";
   const editingExistingUndatedGa4Csv = isEditing
     && String(props.initialSource?.sourceType || "").toLowerCase() === "csv"
     && !!csvPrefillMapping
@@ -2415,9 +2418,15 @@ export function AddSpendWizardModal(props: {
                         {csvEditNotice}
                       </div>
                     )}
+                    {currentCsvFileName && !csvFile && (
+                      <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                        <span className="text-muted-foreground">Current file:</span>{" "}
+                        <span className="font-medium break-all">{currentCsvFileName}</span>
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
-                        <Label htmlFor="csv-file">Upload file (CSV)</Label>
+                        <Label htmlFor="csv-file">{isEditing ? "Choose replacement file (CSV)" : "Upload file (CSV)"}</Label>
                         {csvFile && (
                           <Button type="button" variant="outline" size="sm" onClick={clearCsvFile}>
                             Remove file

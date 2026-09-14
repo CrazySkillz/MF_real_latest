@@ -7075,7 +7075,7 @@ export default function GA4Metrics() {
                     </DialogContent>
                   </Dialog>
                   <Dialog open={showSpendSourcesDialog} onOpenChange={setShowSpendSourcesDialog}>
-                    <DialogContent className="bg-card border-border max-w-lg">
+                    <DialogContent data-spend-sources-dialog className="bg-card border-border max-w-lg">
                       <DialogHeader>
                         <DialogTitle className="text-foreground">Spend Sources</DialogTitle>
                         <DialogDescription className="text-muted-foreground/70">

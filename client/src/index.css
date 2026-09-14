@@ -79,6 +79,14 @@
     margin-right: 0 !important;
   }
 
+  body[data-scroll-locked]:has([data-spend-sources-dialog]) {
+    margin-right: 0 !important;
+  }
+
+  body[data-scroll-locked]:has([data-add-spend-dialog]) {
+    margin-right: 0 !important;
+  }
+
   body[data-scroll-locked]:has([data-create-client-dialog]) {
     margin-right: 0 !important;
   }

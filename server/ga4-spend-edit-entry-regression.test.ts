@@ -78,4 +78,23 @@ describe("GA4 Spend source edit entry", () => {
     expect(sourceList).toContain('{primaryLabel}');
     expect(sourceList).toContain('{detailLabel}');
   });
+
+  it("prevents Spend dialogs from shifting the page during scroll lock", () => {
+    const overview = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf8",
+    );
+    const styles = readFileSync(
+      join(process.cwd(), "client", "src", "index.css"),
+      "utf8",
+    );
+
+    expect(modal).toContain("<DialogContent data-add-spend-dialog");
+    expect(overview).toContain('<DialogContent data-spend-sources-dialog className="bg-card border-border max-w-lg">');
+    for (const marker of ["data-spend-sources-dialog", "data-add-spend-dialog"]) {
+      expect(styles).toMatch(new RegExp(
+        `body\\[data-scroll-locked\\]:has\\(\\[${marker}\\]\\)\\s*\\{\\s*margin-right:\\s*0\\s*!important;\\s*\\}`,
+      ));
+    }
+  });
 });

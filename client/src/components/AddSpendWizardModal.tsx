@@ -1498,7 +1498,7 @@ export function AddSpendWizardModal(props: {
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="w-[980px] max-w-[95vw] h-[95vh] max-h-[95vh] p-0 flex flex-col min-h-0 overflow-hidden">
+      <DialogContent data-add-spend-dialog className="w-[980px] max-w-[95vw] h-[95vh] max-h-[95vh] p-0 flex flex-col min-h-0 overflow-hidden">
         <div className="flex flex-col h-full">
           {/* ── Header ── */}
           <DialogHeader className="px-6 py-4 border-b">

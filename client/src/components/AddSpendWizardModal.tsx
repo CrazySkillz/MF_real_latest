@@ -2453,7 +2453,7 @@ export function AddSpendWizardModal(props: {
                         }}
                       />
                       <p className="text-xs text-muted-foreground/70">
-                        Required columns: Spend
+                        You can map the columns next
                       </p>
                     </div>
                     <div className="flex justify-end gap-2">

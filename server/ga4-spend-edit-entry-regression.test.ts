@@ -241,6 +241,8 @@ describe("GA4 Spend source edit entry", () => {
     expect(csvUpload).toContain("Current file:");
     expect(csvUpload).toContain("{currentCsvFileName}");
     expect(csvUpload).toContain('{isEditing ? "Choose replacement file (CSV)" : "Upload file (CSV)"}');
+    expect(csvUpload).toContain("You can map the columns next");
+    expect(csvUpload).not.toContain("Required columns: Spend");
     expect(csvUpload).not.toContain('value={currentCsvFileName}');
   });
 });

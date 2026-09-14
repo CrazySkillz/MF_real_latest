@@ -113,4 +113,32 @@ describe("GA4 Spend source edit entry", () => {
     expect(sheetList).toContain('${isRevenueConnector ? "scrollbar-hide" : ""}');
     expect(sheetList).toContain('${purpose === "spend" ? "scrollbar-hide" : ""}');
   });
+
+  it("shows a source-backed Connected status and opens the additive Spend sheet picker", () => {
+    const statusCheck = sliceBetween(
+      modal,
+      "setHasGoogleSheetsSpendSource(false);",
+      "  }, [props.open, props.campaignId, props.platformContext]);",
+    );
+    const sheetsCard = sliceBetween(
+      modal,
+      'className={`${hasGoogleSheetsSpendSource ? "cursor-default"',
+      '<CardDescription>Import spend from a connected Google Sheet tab.</CardDescription>',
+    );
+    const sheetsChooser = sliceBetween(
+      modal,
+      '{step === "sheets_choose" && (',
+      '{step === "csv" && (',
+    );
+
+    expect(statusCheck).toContain('/spend-sources${contextQuery}');
+    expect(statusCheck).toContain('source?.isActive !== false');
+    expect(statusCheck).toContain('source?.sourceType || "").toLowerCase() === "google_sheets"');
+    expect(sheetsCard).toContain('<span>Connected</span>');
+    expect(sheetsCard).toContain('Add another sheet');
+    expect(sheetsCard).toContain('setShowSheetsConnect(true);');
+    expect(sheetsCard).toContain('setStep("sheets_choose");');
+    expect(sheetsChooser).toContain('selectionMode="append"');
+    expect(sheetsChooser).toContain('purpose="spend"');
+  });
 });

@@ -117,6 +117,7 @@ export function AddSpendWizardModal(props: {
   const [manualAmount, setManualAmount] = useState<string>("");
 
   const [sheetsConnections, setSheetsConnections] = useState<Array<any>>([]);
+  const [hasGoogleSheetsSpendSource, setHasGoogleSheetsSpendSource] = useState(false);
   const [selectedSheetConnectionId, setSelectedSheetConnectionId] = useState<string>("");
   const [sheetsPreview, setSheetsPreview] = useState<any>(null);
   const [isSheetsLoading, setIsSheetsLoading] = useState(false);
@@ -408,6 +409,25 @@ export function AddSpendWizardModal(props: {
     })();
     return () => { mounted = false; };
   }, [props.open, props.campaignId]);
+
+  useEffect(() => {
+    if (!props.open) return;
+    let mounted = true;
+    setHasGoogleSheetsSpendSource(false);
+    (async () => {
+      try {
+        const contextQuery = props.platformContext ? `?platformContext=${encodeURIComponent(props.platformContext)}` : "";
+        const resp = await fetch(`/api/campaigns/${props.campaignId}/spend-sources${contextQuery}`, { credentials: "include" });
+        const json = await resp.json().catch(() => null);
+        if (!mounted || !resp.ok || json?.success !== true) return;
+        const sources = Array.isArray(json?.sources) ? json.sources : [];
+        setHasGoogleSheetsSpendSource(sources.some((source: any) => source?.isActive !== false && String(source?.sourceType || "").toLowerCase() === "google_sheets"));
+      } catch {
+        // Do not show Connected unless the active Spend source is confirmed.
+      }
+    })();
+    return () => { mounted = false; };
+  }, [props.open, props.campaignId, props.platformContext]);
 
   const savedSheetHeaders = useMemo(() => {
     if (!isEditing || step !== "sheets_map") return [];
@@ -1532,11 +1552,30 @@ export function AddSpendWizardModal(props: {
                   </CardHeader>
                 </Card>
 
-                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("sheets_choose")}>
+                <Card
+                  className={`${hasGoogleSheetsSpendSource ? "cursor-default" : "cursor-pointer hover:border-blue-500"} transition-colors`}
+                  onClick={() => {
+                    if (hasGoogleSheetsSpendSource) return;
+                    setStep("sheets_choose");
+                  }}
+                >
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <FileSpreadsheet className="w-4 h-4" />
                       Google Sheets
+                      {hasGoogleSheetsSpendSource && (
+                        <span className="ml-auto flex items-center gap-1 text-xs font-normal text-green-600 dark:text-green-400">
+                          <span>Connected</span>
+                          <span aria-hidden="true">|</span>
+                          <button type="button" className="hover:underline" onClick={(event) => {
+                            event.stopPropagation();
+                            setShowSheetsConnect(true);
+                            setStep("sheets_choose");
+                          }}>
+                            Add another sheet
+                          </button>
+                        </span>
+                      )}
                     </CardTitle>
                     <CardDescription>Import spend from a connected Google Sheet tab.</CardDescription>
                   </CardHeader>

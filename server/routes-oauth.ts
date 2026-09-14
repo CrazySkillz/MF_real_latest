@@ -2446,6 +2446,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/campaigns/:id/ga4/google-sheets-spend/disconnect', requireCampaignAccessParamId, async (req, res) => {
+    try {
+      const campaignId = String(req.params.id || '');
+      const result = await storage.disconnectGa4GoogleSheetsSpend(campaignId);
+      await recalcCampaignSpend(campaignId);
+      await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");
+      res.json({ success: true, removedSourceIds: result.sourceIds, removedConnectionIds: result.connectionIds });
+    } catch (error: any) {
+      if (error?.code === 'GOOGLE_SHEETS_SPEND_CONNECTION_NOT_FOUND') {
+        return res.status(404).json({ success: false, error: error.message });
+      }
+      res.status(500).json({ success: false, error: error?.message || 'Failed to disconnect Google Sheets Spend' });
+    }
+  });
+
   app.get("/api/campaigns/:id/spend-totals", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;

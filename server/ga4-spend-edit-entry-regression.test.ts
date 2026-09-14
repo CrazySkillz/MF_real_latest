@@ -141,4 +141,37 @@ describe("GA4 Spend source edit entry", () => {
     expect(sheetsChooser).toContain('selectionMode="append"');
     expect(sheetsChooser).toContain('purpose="spend"');
   });
+
+  it("confirms and campaign-scopes the atomic Google Sheets Spend disconnect", () => {
+    const routes = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf8",
+    );
+    const handler = sliceBetween(
+      modal,
+      "const handleGoogleSheetsSpendDisconnect = async () => {",
+      "  const processCsv = async () => {",
+    );
+    const sheetsCard = sliceBetween(
+      modal,
+      'className={`${hasGoogleSheetsSpendSource ? "cursor-default"',
+      '<CardDescription>Import spend from a connected Google Sheet tab.</CardDescription>',
+    );
+    const route = sliceBetween(
+      routes,
+      "app.delete('/api/campaigns/:id/ga4/google-sheets-spend/disconnect'",
+      'app.get("/api/campaigns/:id/spend-totals"',
+    );
+
+    expect(handler).toContain('/ga4/google-sheets-spend/disconnect');
+    expect(handler).toContain('setHasGoogleSheetsSpendSource(false);');
+    expect(handler).toContain('props.onProcessed?.();');
+    expect(sheetsCard).toContain('aria-label="Disconnect Google Sheets Spend"');
+    expect(sheetsCard).toContain('<AlertDialogTitle>Disconnect Google Sheets Spend</AlertDialogTitle>');
+    expect(sheetsCard).toContain('Sheet connections used by Revenue or another platform will be preserved.');
+    expect(route).toContain('requireCampaignAccessParamId');
+    expect(route).toContain('storage.disconnectGa4GoogleSheetsSpend(campaignId)');
+    expect(route).toContain('await recalcCampaignSpend(campaignId);');
+    expect(route).toContain('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");');
+  });
 });

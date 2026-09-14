@@ -180,6 +180,7 @@ export interface IStorage {
   updateSpendSource(sourceId: string, source: Partial<InsertSpendSource>): Promise<SpendSource | undefined>;
   deleteSpendSource(sourceId: string): Promise<boolean>;
   deleteSpendSourceWithRecords(campaignId: string, sourceId: string, platformContext: SpendPlatformContext): Promise<boolean>;
+  disconnectGa4GoogleSheetsSpend(campaignId: string): Promise<{ sourceIds: string[]; connectionIds: string[] }>;
   hardDeleteInactiveSpendSource(campaignId: string, sourceId: string): Promise<boolean>;
   deleteSpendRecordsBySource(sourceId: string): Promise<boolean>;
   countSpendRecordsBySource(sourceId: string): Promise<number>;
@@ -1272,6 +1273,96 @@ export class DatabaseStorage implements IStorage {
       .delete(spendSources)
       .where(and(sql`${spendSources.id}::text = ${sourceId}`, eq(spendSources.campaignId, campaignId), eq(spendSources.isActive, false)));
     return (result.rowCount || 0) > 0;
+  }
+
+  async disconnectGa4GoogleSheetsSpend(campaignId: string): Promise<{ sourceIds: string[]; connectionIds: string[] }> {
+    return await db.transaction(async (tx: any) => {
+      const activeSources = await tx
+        .select({ id: spendSources.id, platformContext: spendSources.platformContext, mappingConfig: spendSources.mappingConfig })
+        .from(spendSources)
+        .where(and(eq(spendSources.campaignId, campaignId), eq(spendSources.sourceType, 'google_sheets'), eq(spendSources.isActive, true)));
+      const targetSources = activeSources.filter((source: any) => String(source.platformContext || 'ga4').toLowerCase() === 'ga4');
+      const sourceIds = targetSources.map((source: any) => String(source.id));
+      const readConnectionId = (source: any): string => {
+        try {
+          const config = source?.mappingConfig ? JSON.parse(String(source.mappingConfig)) : null;
+          return String(config?.connectionId || '').trim();
+        } catch {
+          return '';
+        }
+      };
+      const mappedConnectionIds = new Set(targetSources.map(readConnectionId).filter(Boolean));
+      const sharedSpendConnectionIds = new Set(activeSources
+        .filter((source: any) => String(source.platformContext || 'ga4').toLowerCase() !== 'ga4')
+        .map(readConnectionId)
+        .filter(Boolean));
+      const activeRevenueSources = await tx
+        .select({ mappingConfig: revenueSources.mappingConfig })
+        .from(revenueSources)
+        .where(and(eq(revenueSources.campaignId, campaignId), eq(revenueSources.sourceType, 'google_sheets'), eq(revenueSources.isActive, true)));
+      const sharedRevenueConnectionIds = new Set(activeRevenueSources.map(readConnectionId).filter(Boolean));
+      const activeConnections = await tx
+        .select({ id: googleSheetsConnections.id, purpose: googleSheetsConnections.purpose, isPrimary: googleSheetsConnections.isPrimary })
+        .from(googleSheetsConnections)
+        .where(and(eq(googleSheetsConnections.campaignId, campaignId), eq(googleSheetsConnections.isActive, true)));
+      const targetConnections = activeConnections.filter((connection: any) => {
+        const id = String(connection.id);
+        const purpose = String(connection.purpose || '').toLowerCase();
+        const belongsToGa4Spend = purpose === 'spend' || (!purpose && mappedConnectionIds.has(id));
+        return belongsToGa4Spend && !sharedSpendConnectionIds.has(id) && !sharedRevenueConnectionIds.has(id);
+      });
+      const connectionIds = targetConnections.map((connection: any) => String(connection.id));
+      if (sourceIds.length === 0 && connectionIds.length === 0) {
+        throw Object.assign(new Error('No active Google Sheets Spend connection found'), { code: 'GOOGLE_SHEETS_SPEND_CONNECTION_NOT_FOUND' });
+      }
+
+      if (sourceIds.length > 0) {
+        const disabledSources = await tx
+          .update(spendSources)
+          .set({ isActive: false } as any)
+          .where(and(
+            eq(spendSources.campaignId, campaignId),
+            eq(spendSources.sourceType, 'google_sheets'),
+            eq(spendSources.isActive, true),
+            or(eq(spendSources.platformContext, 'ga4' as any), isNull(spendSources.platformContext)),
+            inArray(spendSources.id, sourceIds),
+          ))
+          .returning({ id: spendSources.id });
+        if (disabledSources.length !== sourceIds.length) throw new Error('Google Sheets Spend sources changed during disconnect');
+        await tx.delete(spendRecords).where(and(
+          eq(spendRecords.campaignId, campaignId),
+          inArray(spendRecords.spendSourceId, sourceIds),
+        ));
+      }
+
+      if (connectionIds.length > 0) {
+        const disabledConnections = await tx
+          .update(googleSheetsConnections)
+          .set({ isActive: false, isPrimary: false, columnMappings: null, cachedData: null, lastDataRefreshAt: null } as any)
+          .where(and(
+            eq(googleSheetsConnections.campaignId, campaignId),
+            eq(googleSheetsConnections.isActive, true),
+            inArray(googleSheetsConnections.id, connectionIds),
+          ))
+          .returning({ id: googleSheetsConnections.id });
+        if (disabledConnections.length !== connectionIds.length) throw new Error('Google Sheets Spend connections changed during disconnect');
+
+        const remainingConnections = activeConnections.filter((connection: any) => !connectionIds.includes(String(connection.id)));
+        if (targetConnections.some((connection: any) => connection.isPrimary === true) && !remainingConnections.some((connection: any) => connection.isPrimary === true) && remainingConnections[0]?.id) {
+          const [promoted] = await tx
+            .update(googleSheetsConnections)
+            .set({ isPrimary: true })
+            .where(and(
+              eq(googleSheetsConnections.id, String(remainingConnections[0].id)),
+              eq(googleSheetsConnections.campaignId, campaignId),
+              eq(googleSheetsConnections.isActive, true),
+            ))
+            .returning({ id: googleSheetsConnections.id });
+          if (!promoted) throw new Error('Google Sheets primary connection changed during Spend disconnect');
+        }
+      }
+      return { sourceIds, connectionIds };
+    });
   }
 
   async deleteSpendRecordsBySource(sourceId: string): Promise<boolean> {

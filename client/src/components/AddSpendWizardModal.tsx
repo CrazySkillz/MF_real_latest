@@ -9,11 +9,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import {
   Loader2, AlertCircle, Clock,
-  ArrowLeft, Upload, FileSpreadsheet, Zap,
+  ArrowLeft, Upload, FileSpreadsheet, Trash2, Zap,
 } from "lucide-react";
 
 type Step =
@@ -872,6 +873,28 @@ export function AddSpendWizardModal(props: {
     }
   };
 
+  const handleGoogleSheetsSpendDisconnect = async () => {
+    setIsRemovingSheet(true);
+    try {
+      const resp = await fetch(`/api/campaigns/${props.campaignId}/ga4/google-sheets-spend/disconnect`, { method: "DELETE", credentials: "include" });
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok || json?.success !== true) throw new Error(json?.error || "Failed to disconnect Google Sheets Spend");
+      const removedConnectionIds = new Set(Array.isArray(json?.removedConnectionIds) ? json.removedConnectionIds.map(String) : []);
+      setHasGoogleSheetsSpendSource(false);
+      setSheetsConnections((current) => current.filter((connection: any) => !removedConnectionIds.has(String(connection?.id || ""))));
+      setSelectedSheetConnectionId("");
+      setSheetsPreview(null);
+      setCsvPreview(null);
+      setShowSheetsConnect(false);
+      props.onProcessed?.();
+      toast({ title: "Google Sheets disconnected", description: "Spend sources and unused sheet connections removed." });
+    } catch (error: any) {
+      toast({ title: "Disconnect failed", description: error?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setIsRemovingSheet(false);
+    }
+  };
+
   const processCsv = async () => {
     if (!csvFile && !canRecalculateCsvEditWithoutReupload) {
       toast({
@@ -1553,7 +1576,7 @@ export function AddSpendWizardModal(props: {
                 </Card>
 
                 <Card
-                  className={`${hasGoogleSheetsSpendSource ? "cursor-default" : "cursor-pointer hover:border-blue-500"} transition-colors`}
+                  className={`${hasGoogleSheetsSpendSource ? "cursor-default" : "cursor-pointer hover:border-blue-500"} transition-colors ${isRemovingSheet ? "opacity-60 pointer-events-none" : ""}`}
                   onClick={() => {
                     if (hasGoogleSheetsSpendSource) return;
                     setStep("sheets_choose");
@@ -1574,6 +1597,27 @@ export function AddSpendWizardModal(props: {
                           }}>
                             Add another sheet
                           </button>
+                          {props.platformContext === "ga4" && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button type="button" className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30" title="Disconnect Google Sheets Spend" aria-label="Disconnect Google Sheets Spend" onClick={(event) => event.stopPropagation()}>
+                                  <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent onClick={(event) => event.stopPropagation()}>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Disconnect Google Sheets Spend</AlertDialogTitle>
+                                  <AlertDialogDescription>This removes all GA4 Google Sheets Spend sources for this campaign. Sheet connections used by Revenue or another platform will be preserved.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction className="bg-red-600 hover:bg-red-700" disabled={isRemovingSheet} onClick={() => void handleGoogleSheetsSpendDisconnect()}>
+                                    {isRemovingSheet ? "Disconnecting…" : "Disconnect"}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
                         </span>
                       )}
                     </CardTitle>

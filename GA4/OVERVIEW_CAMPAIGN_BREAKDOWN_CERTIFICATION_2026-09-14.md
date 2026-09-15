@@ -2,7 +2,7 @@
 
 ## Decision
 
-**CLEAN-CERTIFIED / PRODUCTION_READY only for the GA4 Overview `Campaign Breakdown` subsection at deployed application revision `96552fa5757a9fdeeecc6bfc20c89941148c8bd6`.**
+**CLEAN-CERTIFIED / PRODUCTION_READY only for the GA4 Overview `Campaign Breakdown` subsection. The certified implementation was introduced at runtime revision `96552fa5757a9fdeeecc6bfc20c89941148c8bd6` and was revalidated unchanged at deployed evidence revision `a5d4e85ac90d27011fb64ac3acb810c7e536e186`.**
 
 Required steps remaining for this exact subsection boundary: **0**.
 
@@ -31,7 +31,7 @@ The certified rules are:
 - GA4 page-location UTM matching uses a full regular-expression boundary ending at `&`, `#`, or the URL end, never substring matching;
 - traffic uses the saved initial-import boundary through the latest completed day in the campaign reporting timezone;
 - native row revenue uses campaign start through the same latest completed day;
-- native row revenue must reconcile to the native GA4 Revenue total for that window or Campaign Breakdown fails closed;
+- native row revenue must reconcile to Campaign Breakdown's own native provider total or the subsection fails closed; the certified Campaign2 result also independently reconciles to the protected native GA4 Revenue total for the same window;
 - imported revenue is added only through exact saved campaign mappings;
 - unmatched imported revenue remains outside the rows and is never proportionally allocated;
 - displayed rows reconcile to Total Revenue only when all imported revenue is exactly mapped;
@@ -46,7 +46,7 @@ Three distinct Campaign Breakdown defects were confirmed rather than inferred:
 
 1. The unavailable-table condition treated every active imported revenue source as if it had to be materialized for Campaign Breakdown. An unrelated or unmatched source could therefore suppress otherwise valid rows. The availability check was narrowed to sources participating in exact saved campaign mappings.
 2. The shared GA4 UTM page-location filter used substring matching. The saved value `yesop_retargeti` could therefore also match `yesop_retargeting`. The filter now requires an exact UTM value boundary.
-3. The protected native GA4 Revenue total used the exact UTM scope, while Campaign Breakdown row financials unconditionally used GA4 `campaignName`. On Campaign2 this produced `$6,411.30` native GA4 Revenue but only `$4,631.10` across the old rows. Campaign Breakdown now uses per-saved-campaign exact UTM financial queries when the combined exact UTM scope contains financial values. The existing exact `campaignName` compatibility fallback remains only for a combined exact UTM scope with no conversion or revenue values. Row totals must reconcile to the selected combined financial scope or the subsection fails closed with `GA4_OVERVIEW_CAMPAIGN_ATTRIBUTION_UNVERIFIED`.
+3. The protected native GA4 Revenue total used the exact UTM scope, while Campaign Breakdown row financials unconditionally used GA4 `campaignName`. On Campaign2 this produced `$6,411.30` native GA4 Revenue but only `$4,631.10` across the old rows. During the Campaign Breakdown exact-UTM rebuild, the implementation now uses per-saved-campaign exact UTM financial queries when the combined exact UTM scope contains financial values; the exact `campaignName` compatibility fallback remains for a combined exact UTM scope with no conversion or revenue values. The rebuilt rows are adopted only when they improve session coverage and their Conversion and Revenue totals reconcile to the selected combined financial scope; otherwise the compatible campaign-dimension result remains in use. An unreconciled rebuilt result fails closed with `GA4_OVERVIEW_CAMPAIGN_ATTRIBUTION_UNVERIFIED`.
 
 The corrections preserve the existing response shape and do not allocate, rename, or approximate any value.
 
@@ -71,7 +71,8 @@ The deployed happy-path provider response contained two rows, so multi-page, dup
 
 The authenticated audit used:
 
-- deployed application revision: `96552fa5757a9fdeeecc6bfc20c89941148c8bd6`
+- functional runtime revision: `96552fa5757a9fdeeecc6bfc20c89941148c8bd6`
+- exact deployed follow-up evidence revision with unchanged runtime code: `a5d4e85ac90d27011fb64ac3acb810c7e536e186`
 - campaign hash: `d9c8a3b7c4d0`
 - client hash: `28653e2984ab`
 - owner hash: `1900b95d7361`
@@ -168,6 +169,6 @@ No recertification is claimed for:
 
 ## Final decision
 
-The GA4 Overview Campaign Breakdown subsection is clean-certified at deployed application revision `96552fa5757a9fdeeecc6bfc20c89941148c8bd6` for the exact saved-scope, query/filter, time-window, row merge, revenue mapping/reconciliation, failure, isolation, UI, browser-PDF, scheduled-PDF builder value-parity, and refresh boundaries documented above.
+The GA4 Overview Campaign Breakdown subsection is clean-certified for the implementation introduced at runtime revision `96552fa5757a9fdeeecc6bfc20c89941148c8bd6` and revalidated unchanged at deployed evidence revision `a5d4e85ac90d27011fb64ac3acb810c7e536e186`, within the exact saved-scope, query/filter, time-window, row merge, revenue mapping/reconciliation, failure, isolation, UI, browser-PDF, scheduled-PDF builder value-parity, and refresh boundaries documented above.
 
 No broader certification is made.

@@ -7,7 +7,7 @@ This file defines the GA4 `Overview` tab and the GA4-specific scope rules that f
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: UNVERIFIED -->
 
-Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview remains **UNVERIFIED** overall, but Campaign Breakdown is validated for deployed runtime `08d7abe535c9ea4f57f57d8cbdbb072fba64052e` and the recorded property/configuration. Its fixed `2026-07-02` through `2026-09-06` traffic rows total 1,505 Sessions, 1,507 Users, and 193 Conversions. Native revenue for `2026-06-24` through `2026-09-06` reconciles to the `$65,362.20` GA4 Revenue card; exact mapped imports add `$16,799.99`, producing displayed row revenue of `$20,415.39`, `$43,035.20`, and `$18,711.60` (`$82,162.19` total). Authenticated API, rendered UI, and downloaded browser-PDF parity passed. Remaining Overview tables, financial paths, and the natural scheduler gate retain their separate validation status.
+Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview remains **UNVERIFIED** overall. Only Campaign Breakdown is clean-certified under `GA4/OVERVIEW_CAMPAIGN_BREAKDOWN_CERTIFICATION_2026-09-14.md`: the implementation introduced by runtime `96552fa5757a9fdeeecc6bfc20c89941148c8bd6` was revalidated unchanged at deployed evidence revision `a5d4e85ac90d27011fb64ac3acb810c7e536e186` for Campaign2/property `542352127`. The certified fixed traffic window is `2026-08-09` through `2026-09-14`; native revenue uses `2026-09-08` through `2026-09-14`. Native row revenue is `$6,411.30`, exact mapped imports add `$57,656.90`, displayed rows total `$64,068.20`, and `$20.00` of unmatched imported revenue remains outside the rows. API, rendered UI, browser-PDF, scheduled-PDF-builder value parity, refresh, access-control, and exact-cleanup gates passed only for that subsection boundary.
 
 <!-- /ga4-overview-current-status -->
 
@@ -73,8 +73,8 @@ Important clarification:
 - Summary starts with those 30 completed historical days and appends later completed-day facts; it must not discard the oldest imported day merely because the calendar advances
 - the cards remain computed from current persisted facts for that fixed import boundary through the latest completed day; they are not frozen UI values
 - the GA4 daily scheduler persists completed-day daily facts, but it is not the only Overview fetch path
-- `Campaign Breakdown`, `Landing Pages`, and `Conversion Events` are live GA4 Data API views for the selected property and saved campaign scope. Their traffic/conversion metrics use the fixed initial-import boundary through the latest completed day; Campaign Breakdown native Revenue separately uses the campaign start through that same completed day so it reconciles to the GA4 Revenue card
-- when GA4 campaign dimensions expose only conversion-bearing sessions, Overview Campaign Breakdown may use each exact saved `pageLocation` `utm_campaign` scope for Sessions, Users, and Engaged Sessions while retaining exact `campaignName` Conversions. Native campaign-to-date Revenue must be queried per exact saved campaign and reconcile to the GA4 Revenue card; no proportional allocation is allowed
+- `Campaign Breakdown`, `Landing Pages`, and `Conversion Events` are live GA4 Data API views for the selected property and saved campaign scope. Their traffic/conversion metrics use the fixed initial-import boundary through the latest completed day; Campaign Breakdown native Revenue separately uses the campaign start through that same completed day. Campaign Breakdown validates its row revenue against its own native provider total without making its availability depend on the protected GA4 Revenue card; the certified Campaign2 values independently reconcile to that card
+- when GA4 campaign dimensions expose less session coverage than exact saved `pageLocation` `utm_campaign` queries, Overview Campaign Breakdown may rebuild rows from each exact saved UTM scope. If the combined exact UTM scope contains Conversions or Revenue, the rebuild uses per-campaign exact UTM financial values; otherwise it retains the compatible exact `campaignName` financial fallback. Rebuilt rows are selected only when they improve session coverage and their Conversions and Revenue reconcile to the selected combined provider scope; no proportional allocation is allowed
 - Landing Pages uses only GA4's session-scoped `landingPagePlusQueryString` result; ordinary `pageLocation` rows must never be relabeled as landing pages, and missing session-scoped attribution renders an unavailable/empty state
 - Conversion Events renders only event rows with nonzero GA4 Conversions; when `sessionCampaignName` is empty it may use the compatible exact `firstUserCampaignName` or `firstUserManualCampaignName` scope, but it must never substitute zero-conversion page-view traffic
 - new live GA4 events appear in Overview only after GA4 has processed them and the page query refetches; page load/window focus can refetch immediately, and the to-date/breakdown queries also refetch periodically while the page is open
@@ -313,8 +313,8 @@ Important clarification:
 
 - the visible column label is `Revenue`, not `GA4 Revenue`, because the value can include exact campaign-matched imported revenue
 - the visible subtitle states `Traffic metrics are cumulative from the initial GA4 import; Revenue is native GA4 campaign-to-date plus exact campaign-mapped imported revenue.`
-- `Campaign Breakdown` revenue starts with exact GA4 campaign-to-date revenue attributed to each saved GA4 campaign row; the native row sum must reconcile to the GA4 Revenue card before rendering
-- Campaign Breakdown row `Sessions`, `Users`, and `Conversions` retain the fixed import-to-date GA4 values and reconcile to Summary; native `Revenue` uses the separate campaign-start-to-latest-completed-day GA4 query and is not scaled or allocated
+- `Campaign Breakdown` revenue starts with exact GA4 campaign-to-date revenue attributed to each saved GA4 campaign row; the native row sum must reconcile to Campaign Breakdown's own provider total before rendering. The currently certified Campaign2 result also independently reconciles to the protected GA4 Revenue card, but that cross-endpoint comparison is deployed evidence rather than a UI availability dependency
+- Campaign Breakdown row `Sessions`, `Users`, and `Conversions` retain the fixed import-to-date GA4 values. They are independently queried row values and are not forced to reconcile to differently grained Summary values; native `Revenue` uses the separate campaign-start-to-latest-completed-day GA4 query and is not scaled or allocated
 - exact campaign-matched imported revenue may be added only when a source saves real campaign-value mappings that match a GA4 campaign row
 - the imported campaign-matched amount is source-to-date and is added only by exact saved campaign mapping
 - it is not a proportional allocation of imported external revenue
@@ -414,7 +414,7 @@ This failure-state contract does not close the later GA4 spend-context/cache, so
 
 ## Overview Tables Deployed Validation Checklist
 
-The current recorded Overview boundary is **PRODUCTION_READY** at certified runtime `b8c7362121593502955d41e522d32396a963fdcc`. The following checklist is retained for future campaigns, source configurations, and scope expansions.
+The Overview tab is not certified as a whole. Campaign Breakdown alone has the current subsection certificate linked at the top of this document. The following checklist is retained for all other Overview values and for future campaigns, source configurations, and scope expansions.
 
 Connection and scope:
 

@@ -115,7 +115,7 @@ Authenticated deployed validation proved:
 - a temporary GA4 Custom Report with only `Overview > Campaign Breakdown` selected created a manual snapshot and downloaded its PDF through the same production `buildGA4ScheduledPdfAttachment` path used by scheduled reports;
 - that server-generated PDF contained the exact headers and both rows' Sessions, Users, Conversions, Conv. Rate, and Revenue values;
 - the temporary report had scheduling disabled, created no send event, triggered no email, and was deleted with its snapshot;
-- final report, snapshot, and send-event counts returned exactly to baseline, and the audited Revenue, Spend, GA4 daily, KPI, and Benchmark state hash was unchanged.
+- final report, snapshot, and send-event counts returned exactly to baseline, and the audited nonvolatile Revenue, Spend, GA4 daily, KPI, and Benchmark state hash was unchanged; automatic `lastSyncedAt` metadata was intentionally excluded from the value-integrity hash.
 
 This proves Campaign Breakdown **value parity in the scheduled-PDF builder consumer**. It deliberately does not certify scheduler timing, dispatch, provider acceptance, email delivery, inbox receipt, snapshot immutability, or Reports as a section because those are outside the requested subsection.
 

@@ -32,6 +32,17 @@ const stable = (value: any): any => Array.isArray(value)
     ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, stable(value[key])]))
     : value;
 const stableJson = (value: unknown) => JSON.stringify(stable(value));
+const withoutVolatileSyncMetadata = (rows: any[]) => rows.map((raw) => {
+  const row = { ...raw };
+  if (typeof row.mapping_config === "string") {
+    try {
+      const mapping = JSON.parse(row.mapping_config || "{}");
+      delete mapping.lastSyncedAt;
+      row.mapping_config = mapping;
+    } catch {}
+  }
+  return row;
+});
 const responseResult = async (response: APIResponse): Promise<Result> => {
   const raw = await response.text();
   let body: any = null;
@@ -83,7 +94,16 @@ const readProtectedState = async () => {
     dbClient.query(`SELECT id::text, name, metric, current_value, target_value, status FROM kpis WHERE campaign_id = $1 ORDER BY id`, [CAMPAIGN_ID]),
     dbClient.query(`SELECT id::text, name, metric, current_value, benchmark_value, status FROM benchmarks WHERE campaign_id = $1 ORDER BY id`, [CAMPAIGN_ID]),
   ]);
-  return hash(stableJson(queries.map((result) => result.rows)));
+  const groups = {
+    revenueSources: withoutVolatileSyncMetadata(queries[0].rows),
+    revenueRecords: queries[1].rows,
+    spendSources: withoutVolatileSyncMetadata(queries[2].rows),
+    spendRecords: queries[3].rows,
+    ga4Daily: queries[4].rows,
+    kpis: queries[5].rows,
+    benchmarks: queries[6].rows,
+  };
+  return Object.fromEntries(Object.entries(groups).map(([name, rows]) => [name, hash(stableJson(rows))]));
 };
 const readCounts = async () => (await dbClient.query(`
   SELECT
@@ -257,7 +277,7 @@ try {
 
   const finalCounts = await readCounts();
   exact(stableJson(finalCounts), stableJson(baselineCounts), "temporary report/snapshot count cleanup");
-  exact(await readProtectedState(), baselineProtectedHash, "protected analytics state after validation");
+  exact(stableJson(await readProtectedState()), stableJson(baselineProtectedHash), "protected analytics state after validation");
   console.log(JSON.stringify({ cleanup: { exact: true, counts: finalCounts, protectedAnalyticsStateUnchanged: true } }, null, 2));
 } finally {
   if (snapshotId && reportId) {

@@ -191,8 +191,7 @@ try {
   };
   await page.route(`**/api/campaigns/${CAMPAIGN_ID}/ga4-landing-pages?**`, failureRoute);
   await page.evaluate(() => {
-    window.dispatchEvent(new Event("focus"));
-    document.dispatchEvent(new Event("visibilitychange"));
+    window.dispatchEvent(new Event("visibilitychange"));
   });
   for (let attempt = 0; attempt < 80 && injectedFailureRequests === 0; attempt += 1) await page.waitForTimeout(250);
   assert(injectedFailureRequests > 0, "focus did not refetch Landing Pages");

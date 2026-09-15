@@ -269,6 +269,8 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
     expect(audit).toContain("unauthenticated denial");
     expect(audit).toContain("cross-owner denial");
     expect(audit).toContain("different-property denial");
+    expect(audit).toContain('window.dispatchEvent(new Event("visibilitychange"))');
+    expect(audit).not.toContain('document.dispatchEvent(new Event("visibilitychange"))');
     expect(audit).toContain("focus did not refetch Landing Pages");
     expect(audit).toContain("reload row parity");
     expect(audit).toContain('getByText("Custom Report", { exact: true })');

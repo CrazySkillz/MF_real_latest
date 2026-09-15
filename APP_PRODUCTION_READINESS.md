@@ -65,7 +65,7 @@ separate: `IN_PROGRESS` never means production-ready.
 | - | Revenue & Financials - Performance (`Profit`, `ROAS`, `ROI`, `CPA`) | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact four-card Performance boundary at deployed runtime `0c49cc6a`; controlling certificate: `GA4/OVERVIEW_PERFORMANCE_CERTIFICATION_2026-09-14.md`; evidence commit `93a69edc`; required steps remaining: 0. Google Ads remains excluded. |
 | 4 | Campaign Breakdown | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact documented Campaign Breakdown boundary at current deployed commit `9b2a090d9b3673a94dae7891b3e355e3bc269b4f`; controlling certificate: `GA4/OVERVIEW_CAMPAIGN_BREAKDOWN_CERTIFICATION_2026-09-14.md`; required steps remaining: 0. |
 | 5 | Landing Pages | `QUEUED` | `UNVERIFIED` | Requires a fresh current-runtime certification. |
-| 6 | Conversion Events | `QUEUED` | `UNVERIFIED` | Requires a fresh current-runtime certification. |
+| 6 | Conversion Events | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact documented campaign, property, date, provider-to-API-to-UI-to-PDF, refresh, failure, pagination, and ownership boundary at application runtime `176d02ef00a65091917136f1ed2bd8c7cc817fcb`; controlling certificate: `GA4/OVERVIEW_CONVERSION_EVENTS_CERTIFICATION_2026-09-15.md`; latest documentation commit: `9ec5ba5d6c2153c90b02b004f6068cb3488cd5d3`; required steps remaining: 0. The user-accepted `48 / 48 / 48` display is UI smoke evidence only; independent Google Analytics reconciliation remains deferred. |
 
 Revenue source families:
 

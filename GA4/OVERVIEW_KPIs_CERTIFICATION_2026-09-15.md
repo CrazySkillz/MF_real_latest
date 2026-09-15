@@ -2,6 +2,8 @@
 
 ## Controlling Decision
 
+<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
+
 **Status: CLEAN-CERTIFIED / PRODUCTION_READY for the GA4 KPIs section only, at deployed application runtime `1c949dc9710f36b1760a3fbf7253037236b52e00` and the exact dependency boundary below.**
 
 This dated file is the controlling certificate for this KPI validation. It does not certify GA4 Overview as a whole. Overview is a read-only upstream dependency. Revenue, Spend, Performance, Campaign Breakdown, Conversion Events, Landing Pages, and every other GA4 section are excluded and were not modified or re-certified. `APP_PRODUCTION_READINESS.md` is separate, is not a KPI dependency, and was not modified.

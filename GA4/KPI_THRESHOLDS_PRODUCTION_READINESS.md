@@ -6,7 +6,7 @@ Before using this document to answer an audit, review, or production-readiness q
 > HISTORICAL THRESHOLD-SLICE RECORD ONLY.
 > Do not use this file to answer whether the GA4 `KPIs` tab is production-ready.
 > Use `GA4/KPIS_PRODUCTION_READINESS.md` for the durable whole-tab production-readiness answer.
-> Current durable whole-tab answer: GA4 KPIs are **PRODUCTION_READY** for exact deployed runtime `a96ba06e21c9344c1767c960e702ac4a647dc5f1`; use `GA4/KPIS_PRODUCTION_READINESS.md` for the controlling evidence and limitations. Threshold behavior itself was not changed, and this historical threshold evidence cannot broaden the current boundary.
+> Current durable whole-tab answer: GA4 KPIs are **PRODUCTION_READY** only for deployed application runtime `1c949dc9710f36b1760a3fbf7253037236b52e00`; use `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md` for the controlling evidence and limitations. Threshold behavior itself was not changed, and this historical threshold evidence cannot broaden the current boundary.
 
 ## Purpose
 

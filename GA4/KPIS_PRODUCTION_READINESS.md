@@ -22,15 +22,19 @@ This file defines whether the current implementation is production-ready, what h
 
 ## Current Status
 
-<!-- ga4-kpi-certification-status: UNVERIFIED -->
+<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
 
-### September 7, 2026 current decision (controlling)
+### September 15, 2026 current decision
 
-**Result: UNVERIFIED for the current candidate.** The Overview table-accuracy correction changed shared analytics, route, browser, and scheduled-report dependencies. KPI behavior is not intentionally changed, but the September 6, 2026 evidence applies only to historical runtime `a96ba06e21c9344c1767c960e702ac4a647dc5f1`; exact-current KPI certification evidence has not been rerun.
+**Result: PRODUCTION_READY only for deployed application runtime `1c949dc9710f36b1760a3fbf7253037236b52e00` and the exact dependency boundary in `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md`.**
 
-The exact deployed manual daily run updated all eight `ga4_mock` KPIs and both Benchmarks with zero skipped or failed rows and no cross-campaign updates. The production timer remained armed for 22:00 UTC; no exact-`a96ba06e` natural timer firing is claimed. A scoped temporary custom KPI and Benchmark each passed create, update, immediate breach handling, and delete without changing existing rows. Mailgun recorded provider-confirmed delivery for exactly two alerts with the required `KPI threshold` and `Benchmark threshold` subjects; inbox receipt is not claimed. Normal audit events were retained and all temporary rows and visible temporary notifications were removed.
+The authenticated production lifecycle passed create/read/edit/delete, duplicate prevention, invalid-edit preservation, campaign/client/owner isolation, source-computed-value protection, manual scheduler recomputation, alert reconciliation, card/Executive Snapshot/Notifications/Insights parity, and browser-PDF parity. The post-run inventory found 16 active canonical GA4 KPI rows and zero duplicates; no cleanup was required.
 
-Browser evidence is deliberately non-Playwright: the deployed bundle contains the current conflict, modal-stability, and `Immediate (once per breach)` contracts, backed by the exact-current UI/static regression packet. Reports remain separately certified, and no new rendered-browser or PDF parity claim is made. The alert-enabled lifecycle timings included synchronous alert reconciliation/provider work (KPI create/update `21.8s`/`16.6s`; Benchmark create/update `5.1s`/`6.0s`), so this certification makes no general save-latency SLO claim. Future provider availability, inbox placement, new source mixes, and later dependency changes remain outside this revision-specific certification.
+Local gates passed: 11 focused files / 165 tests; current-version 2,025 total / 1,983 passed / 42 declared deferred or external failures / zero blocking failures; TypeScript; production build; and the KPI certification integrity gate.
+
+Limits: no exact-current natural timer firing, alert/report email delivery, inbox receipt, or live server-scheduled report delivery is claimed. Those paths are not required to interpret the proven in-app KPI status. Overview is a read-only upstream dependency and is not certified as a whole by this decision.
+
+The dated certificate is controlling. The synchronized machine record is `GA4/certifications/ga4-kpis.json`; `npm run check:ga4-kpi-certification` must pass. Everything below `Historical Status And Evidence (non-authoritative)` is retained history and cannot override this section.
 
 ## Historical Status And Evidence (non-authoritative)
 
@@ -736,7 +740,7 @@ Chronological smallest-safe validation-closure queue (current evidence status):
 5. **Report/delivery Gate 5 — historical report pass; exact-final-SHA external report parity and KPI-alert delivery pending.** Commit 13 closes the local Insights/report copy regression without runtime changes, but later live UI, Insights, Reports, scheduled-PDF, route, and reporting-timezone changes still require external revalidation after the final SHA deploys. Deployed `1166b9f2` KPI alert attempts are rejected by Mailgun HTTP `429`; no exact-final-SHA delivered audit with provider response ID and delivered timestamp exists.
 6. **Final regression Gate 6 -- current-version boundary implemented and locally green.** Commit 13 exact-clean validation executed all 1,366 tests, passed 1,325, classified exactly 41 manifest-bound deferred failures, and left zero blocking current-version failures. The focused and affected Commit 13 packets, TypeScript, production build, and certification checks pass. Exact-final-SHA external revalidation remains Commit 14 work.
 
-**Final certification closure rule:** the included GA4 KPI scope may be changed to `PRODUCTION_READY` only when the current-version required suite is explicit and passes, the remaining GA4 KPI failure is closed and the complete applicable packet passes, deferred tests remain visible and are not represented as passed, Gates 1, 2, 4, and report parity are revalidated on the final dependency boundary, Gate 5 records provider-confirmed KPI-alert delivery for the exact final deployment, and Gate 3 records a completed natural timer run for that same SHA with updated/skipped/failed KPI hashes. Missing evidence, a SHA change, or a new in-scope defect keeps status `UNVERIFIED`.
+**Historical certification closure rule (superseded on September 15, 2026):** the included GA4 KPI scope could be changed to `PRODUCTION_READY` only when the then-listed gates passed. The current controlling boundary and explicit exclusions are now recorded in `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md`.
 
 #### August 4, 2026 invalidated closure evidence
 

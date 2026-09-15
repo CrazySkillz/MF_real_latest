@@ -6,13 +6,13 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 ## Production Readiness Status
 
-<!-- ga4-kpi-certification-status: UNVERIFIED -->
+<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
 
-The GA4 KPIs tab is **UNVERIFIED** for the current candidate because the Overview table-accuracy correction changed shared dependencies. The September 6, 2026 certification for `a96ba06e21c9344c1767c960e702ac4a647dc5f1` is historical until exact-current KPI evidence is rerun.
+The GA4 KPIs tab is **PRODUCTION_READY** only for deployed application runtime `1c949dc9710f36b1760a3fbf7253037236b52e00` and the dependency manifest recorded in `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md`.
 
-The exact-current full-suite blocker check, focused regressions, production value/provider parity, duplicate inventory, scoped lifecycle, manual scheduler run, ownership isolation, and provider-confirmed alert delivery passed. No exact-current natural timer, inbox receipt, Playwright, rendered-PDF, future-provider, or general save-latency SLO claim is made.
+The exact-current blocker check, focused regressions, authenticated production value parity, duplicate inventory, scoped lifecycle, manual scheduler run, ownership isolation, KPI Executive Snapshot, alerts/Notifications, Insights, and browser PDF passed. No exact-current natural timer firing, alert/report email delivery, inbox receipt, future-provider behavior, or general save-latency SLO is claimed.
 
-The functional contract below remains authoritative; exact certification evidence and limitations are tracked in `GA4/KPIS_PRODUCTION_READINESS.md`.
+The functional contract below remains authoritative. The dated certificate is the controlling decision; `GA4/KPIS_PRODUCTION_READINESS.md` preserves the current summary and historical evidence.
 
 ## KPI Tab Structure
 
@@ -288,6 +288,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 KPI tab is **PRODUCTION_READY** for exact deployed runtime `a96ba06e21c9344c1767c960e702ac4a647dc5f1`. Earlier certified boundaries remain revision-specific supporting history.
+The GA4 KPI tab is **PRODUCTION_READY** only for deployed application runtime `1c949dc9710f36b1760a3fbf7253037236b52e00` and the recorded dependency boundary. Earlier certified boundaries remain revision-specific supporting history.
 
-The controlling evidence and final-certification limitations are documented in `GA4/KPIS_PRODUCTION_READINESS.md`.
+The controlling evidence, exact Overview dependency manifest, and limitations are documented in `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md`.

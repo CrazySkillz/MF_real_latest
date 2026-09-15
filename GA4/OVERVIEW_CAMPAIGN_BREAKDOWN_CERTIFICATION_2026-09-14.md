@@ -2,15 +2,17 @@
 
 ## Decision
 
-**CLEAN-CERTIFIED / PRODUCTION_READY only for the GA4 Overview `Campaign Breakdown` subsection documented below, at deployed application revision `87f951206a60358fd25e3145ba10ea097151800f`.**
+**CLEAN-CERTIFIED / PRODUCTION_READY only for the GA4 Overview `Campaign Breakdown` subsection at deployed application revision `96552fa5757a9fdeeecc6bfc20c89941148c8bd6`.**
 
-Required steps remaining within this exact deployed runtime boundary: **0**.
+Required steps remaining for this exact subsection boundary: **0**.
 
-This certificate does not certify Summary, Landing Pages, Conversion Events, Reports as a section, the parent Revenue & Financials section, or the whole Overview tab. Google Ads remains excluded.
+This replaces the earlier certificate in this file. Later Campaign2 defects invalidated that older evidence and the subsection remained unproven until the fresh validation recorded here passed.
 
-## Certified visible contract
+This decision does not certify Summary, Landing Pages, Conversion Events, Reports as a section, report scheduling or delivery, the parent Revenue & Financials section, the whole Overview tab, or any other campaign. Google Ads remains excluded.
 
-The certified table has exactly these columns, in this order:
+## Certified contract
+
+The table has exactly these columns, in this order:
 
 1. Campaign
 2. Sessions
@@ -19,194 +21,153 @@ The certified table has exactly these columns, in this order:
 5. Conv. Rate
 6. Revenue
 
-Only normalized exact matches to the saved GA4 campaign scope are rendered. Empty, unrelated, duplicate-normalized, other-property, other-campaign, other-client, and other-owner values are rejected or excluded rather than merged into the table.
+The certified data path is:
 
-Traffic metrics use the saved initial-import start date through the latest completed day in the campaign reporting timezone. Native row revenue uses campaign start through that same completed day. Conversion rate is `Conversions / Sessions * 100`, with a safe zero-session result and no `NaN` or `Infinity` display.
+`saved GA4 property and campaign scope -> provider query and exact filtering -> traffic/financial row merge -> exact imported-revenue attribution -> campaign API -> rendered table -> browser PDF and server scheduled-PDF builder consumers`
 
-Users are directional GA4 row values. They are not forced to equal the Summary Users card. Sessions can also be non-additive across separately filtered GA4 report grains; this certificate does not invent a row allocation or force summed campaign rows to equal a differently grained Summary query.
+The certified rules are:
 
-## Revenue attribution contract
+- only exact normalized matches to the saved GA4 campaign values are returned; a campaign such as `yesop_retargeting` cannot match the saved value `yesop_retargeti`;
+- GA4 page-location UTM matching uses a full regular-expression boundary ending at `&`, `#`, or the URL end, never substring matching;
+- traffic uses the saved initial-import boundary through the latest completed day in the campaign reporting timezone;
+- native row revenue uses campaign start through the same latest completed day;
+- native row revenue must reconcile to the native GA4 Revenue total for that window or Campaign Breakdown fails closed;
+- imported revenue is added only through exact saved campaign mappings;
+- unmatched imported revenue remains outside the rows and is never proportionally allocated;
+- displayed rows reconcile to Total Revenue only when all imported revenue is exactly mapped;
+- Conv. Rate is `Conversions / Sessions * 100`, with zero sessions returning `0%`;
+- row Users remain directional GA4 row values and are not forced to equal the separately grained Summary Users card;
+- current row order remains Sessions descending;
+- cached last-good table data remains visible during a refetch error; a first-load failure with no last-good response shows the unavailable state.
 
-Each displayed row contains:
+## Confirmed root causes and corrections
 
-`native GA4 revenue for the exact saved campaign + imported revenue mapped through an exact saved campaign mapping`
+Three distinct Campaign Breakdown defects were confirmed rather than inferred:
 
-The certified behavior is:
+1. The unavailable-table condition treated every active imported revenue source as if it had to be materialized for Campaign Breakdown. An unrelated or unmatched source could therefore suppress otherwise valid rows. The availability check was narrowed to sources participating in exact saved campaign mappings.
+2. The shared GA4 UTM page-location filter used substring matching. The saved value `yesop_retargeti` could therefore also match `yesop_retargeting`. The filter now requires an exact UTM value boundary.
+3. The protected native GA4 Revenue total used the exact UTM scope, while Campaign Breakdown row financials unconditionally used GA4 `campaignName`. On Campaign2 this produced `$6,411.30` native GA4 Revenue but only `$4,631.10` across the old rows. Campaign Breakdown now uses per-saved-campaign exact UTM financial queries when the combined exact UTM scope contains financial values. The existing exact `campaignName` compatibility fallback remains only for a combined exact UTM scope with no conversion or revenue values. Row totals must reconcile to the selected combined financial scope or the subsection fails closed with `GA4_OVERVIEW_CAMPAIGN_ATTRIBUTION_UNVERIFIED`.
 
-- native row revenue reconciles to native GA4 Revenue for the campaign-start window;
-- imported revenue is added only when a source has an exact saved mapping from its source campaign value to a displayed GA4 campaign value;
-- source/display-name coincidence is not a mapping;
-- unmatched imported revenue remains outside Campaign Breakdown rows;
-- imported revenue is never proportionally allocated;
-- displayed row revenue reconciles to Total Revenue only when every imported-revenue amount is exactly mapped;
-- relevant duplicate or ambiguous mappings, currency mismatches, invalid values, unavailable source materialization, and materialization-total mismatches fail the subsection closed;
-- unrelated or unmatched imported sources do not suppress otherwise valid rows;
-- zero and negative exact adjustments are handled without converting them into missing values.
+The corrections preserve the existing response shape and do not allocate, rename, or approximate any value.
 
-## Root cause and correction
+## Query, fallback, and isolation evidence
 
-The confirmed code-level cause of the unavailable-table symptom was a blanket frontend availability condition over every active imported revenue source. An unavailable source could suppress the entire Campaign Breakdown even when that source had no exact mapping to any displayed GA4 campaign. Historical logs do not retain enough state to prove which individual source produced the exact screenshot-time response, so this certificate does not claim that unobservable detail.
+Focused code trace and regression evidence cover:
 
-The smallest safe correction scopes availability and materialization checks to exact saved campaign mappings used by the table. The same resolver is used by the UI and scheduled-PDF consumer. Related Campaign Breakdown defects corrected in the same bounded change were:
+- explicit saved property and nonempty saved campaign scope before provider access;
+- exact campaign filter construction and the negative prefix case `yesop_retargeti` versus `yesop_retargeting`;
+- provider dimension candidates and the exact UTM fallback/rebuild path;
+- separate traffic and native-revenue windows;
+- provider pagination completeness, caller limits, aggregate totals, row merging, ordering, duplicate-normalized scope rejection, and empty responses;
+- conversion/revenue metric fallback order and campaign-currency verification;
+- fail-closed behavior for incomplete pagination, provider errors without last-good data, unverifiable row/native reconciliation, ambiguous mappings, materialization mismatch, and currency mismatch;
+- exact campaign merge keys and rejection of unrelated rows;
+- unauthenticated denial and cross-owner/campaign isolation;
+- UI last-good behavior and reload, focus/reconnect, and ten-minute automatic refetch configuration.
 
-- removal of direct same-name imported-revenue fallback;
-- exact UTM campaign boundary anchoring;
-- explicit property and nonempty saved-campaign guards before provider access;
-- removal of the 15-row truncation in browser and scheduled Overview PDF Campaign Breakdown tables.
+The deployed happy-path provider response contained two rows, so multi-page, duplicate, empty, and provider-failure branches are established by focused regression tests rather than claimed as live production fault injections.
 
-No public API response field was renamed or removed. No Revenue, Spend, Performance, HubSpot, Salesforce, Shopify, Google Sheets, or CSV producer/persistence/source-management behavior was changed.
+## Exact deployed Campaign2 reconciliation
 
-## End-to-end path certified
+The authenticated audit used:
 
-`saved GA4 property and campaign scope -> completed-day/import boundary resolution -> GA4 provider queries and fixed fallback order -> exact campaign filtering -> native row-revenue merge -> exact imported-revenue mapping -> campaign-scoped API -> rendered table -> browser Overview PDF -> scheduled Overview PDF builder`
-
-The current route and focused negative tests cover:
-
-- explicit property and saved campaign scope requirements;
-- fixed traffic and native-revenue windows;
-- provider query shapes, currency verification, pagination completion, query limits, fallback selection, and empty/error behavior;
-- normalized exact merge keys and duplicate rejection;
-- native row/provider/card revenue reconciliation;
-- exact imported-revenue mapping, unmatched values, ambiguity, stale/unavailable materialization, and currency failures;
-- conversion-rate zero handling;
-- campaign/property/client/owner isolation;
-- API, UI, browser PDF, and scheduled PDF parity;
-- reload, focus/visibility refetch, and ten-minute automatic refresh behavior;
-- all Campaign Breakdown rows being retained in both PDF consumers.
-
-## Exact deployed reconciliation
-
-The authenticated production audit used:
-
-- deployed application revision: `87f951206a60358fd25e3145ba10ea097151800f`
-- campaign hash: `fc734ddaf728`
-- client hash: `613d89abb175`
+- deployed application revision: `96552fa5757a9fdeeecc6bfc20c89941148c8bd6`
+- campaign hash: `d9c8a3b7c4d0`
+- client hash: `28653e2984ab`
 - owner hash: `1900b95d7361`
 - GA4 property: `542352127`
+- saved GA4 campaign values: `yesop_retargeti`, `yesop_email_nurture`
 - campaign currency: `USD`
-- campaign reporting timezone: `Europe/Amsterdam`
-- traffic window: `2026-07-02` through `2026-09-14`
-- native-revenue window: `2026-06-24` through `2026-09-14`
-- database transaction: read only and rolled back
-- authentication: temporary Clerk session revoked after the run
+- reporting timezone: `Europe/Amsterdam`
+- traffic window: `2026-08-09` through `2026-09-14`
+- native-revenue window: `2026-09-08` through `2026-09-14`
 
-Exact rendered rows:
+Exact row values:
 
-| Campaign | Sessions | Users | Conversions | Conv. Rate | Displayed Revenue |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| `yesop_paid_social` | 899 | 900 | 83 | 9.2% | $32,989.60 |
-| `yesop_retargeting` | 674 | 677 | 115 | 17.1% | $42,807.70 |
-| `yesop_email_nurture` | 596 | 596 | 82 | 13.8% | $23,897.40 |
+| Campaign | Sessions | Users | Conversions | Conv. Rate | Native GA4 | Exact mapped imports | Displayed Revenue |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `yesop_retargeti` | 71 | 71 | 71 | 100% | $6,411.30 | $57,556.90 | $63,968.20 |
+| `yesop_email_nurture` | 357 | 358 | 0 | 0% | $0.00 | $100.00 | $100.00 |
+| **Rows total** | **428** | **429** | **71** | — | **$6,411.30** | **$57,656.90** | **$64,068.20** |
 
 Revenue reconciliation:
 
 | Value | Amount |
 | --- | ---: |
-| Native GA4 Revenue | $82,994.70 |
-| Imported revenue total | $22,700.00 |
-| Imported revenue exactly mapped to displayed rows | $16,700.00 |
-| Unmatched imported revenue retained outside rows | $6,000.00 |
-| Displayed row revenue | $99,694.70 |
-| Total Revenue | $105,694.70 |
-| Total Revenue minus displayed rows | $6,000.00 |
+| Native GA4 Revenue | $6,411.30 |
+| Imported revenue total | $57,676.90 |
+| Imported revenue exactly mapped to rows | $57,656.90 |
+| Unmatched imported revenue outside rows | $20.00 |
+| Displayed row revenue | $64,068.20 |
+| Total Revenue | $64,088.20 |
+| Total Revenue minus displayed rows | $20.00 |
 
-The `$6,000.00` difference is the exact unmatched imported amount. Because not all imported revenue is mapped, the displayed rows correctly do not reconcile to Total Revenue.
-
-## Sessions and conversions discrepancy diagnosis
-
-The earlier deployed comparison showed Campaign Breakdown at `2,169 sessions / 280 conversions` and persisted Summary at `2,068 / 267`. Read-only persistence evidence later showed that the scheduled daily refresh had replaced the stale rows, bringing the persisted completed-day values through `2026-09-13` to `2,171 / 280`.
-
-Current provider diagnostics independently returned `280` conversions for all supported campaign-name attribution dimensions. The remaining session differences are observed GA4 query-grain non-additivity:
-
-- exact per-campaign aggregate row sum: `2,169`
-- combined selected-UTM aggregate total: `2,164`
-- combined selected-UTM date-row sum: `2,171`
-- exact per-campaign date-row sum: `2,172`
-
-The table preserves each campaign's exact provider aggregate. It does not proportionally adjust, duplicate, or discard sessions merely to match a differently grained total. Summary remains outside this certificate.
+The `$20.00` difference is the exact unmatched imported amount. The rows correctly do not claim reconciliation to Total Revenue while that amount remains unmapped.
 
 ## Consumer parity and refresh evidence
 
-The exact deployed audit proved:
+Authenticated deployed validation proved:
 
-- API response values matched the expected saved scope and source reconciliation;
-- rendered UI values and column order matched the API-derived values;
-- browser-generated Overview PDF contained every row and matching values;
-- authenticated GET of an existing GA4 Overview snapshot invoked the deployed scheduled-PDF builder and contained every Campaign Breakdown row and matching Sessions, Users, Conversions, Conv. Rate, and Revenue values;
-- page reload returned a fresh successful Campaign Breakdown response;
-- focus/visibility refetch returned a fresh successful response;
-- the automatic ten-minute interval returned a fresh successful response;
-- unauthenticated and cross-owner requests were denied.
+- the campaign API returned the exact property, windows, saved campaign rows, native revenue, and reconciliation above;
+- the rendered UI had the exact six columns and values above;
+- page reload, focus/visibility, and a ten-minute automatic interval each issued a fresh successful Campaign Breakdown request;
+- the browser-generated Overview PDF contained every Campaign Breakdown row and matching values;
+- a temporary GA4 Custom Report with only `Overview > Campaign Breakdown` selected created a manual snapshot and downloaded its PDF through the same production `buildGA4ScheduledPdfAttachment` path used by scheduled reports;
+- that server-generated PDF contained the exact headers and both rows' Sessions, Users, Conversions, Conv. Rate, and Revenue values;
+- the temporary report had scheduling disabled, created no send event, triggered no email, and was deleted with its snapshot;
+- final report, snapshot, and send-event counts returned exactly to baseline, and the audited Revenue, Spend, GA4 daily, KPI, and Benchmark state hash was unchanged.
 
-The scheduled-PDF proof certifies only Campaign Breakdown value rendering in that consumer. It does not certify report configuration, scheduling, dispatch, provider acceptance, email delivery, inbox receipt, snapshot immutability, or Reports as a section.
+This proves Campaign Breakdown **value parity in the scheduled-PDF builder consumer**. It deliberately does not certify scheduler timing, dispatch, provider acceptance, email delivery, inbox receipt, snapshot immutability, or Reports as a section because those are outside the requested subsection.
 
-## Automated validation
+## Validation gates
 
-Focused Campaign Breakdown and protected-source regression packet:
-
-- test files: **12/12 passed**
-- tests: **225/225 passed**
-
-Current-version suite:
-
-- total: **1,982**
-- passed: **1,941**
-- explicitly deferred future-platform failures: **41**
-- blocking failures: **0**
-
-Additional gates:
-
+- focused Campaign Breakdown final rerun: **44/44 passed**
+- wider adjacent regression packet at the runtime revision: **171/171 passed**
+- current-version suite: **1,984 total; 1,943 passed; 41 explicitly deferred; 0 blocking current-version failures**
 - TypeScript (`npm run check`): **passed**
 - production build (`npm run build`): **passed**
-- staged/worktree whitespace validation (`git diff --check`): **passed**
-- exact-SHA authenticated deployed audit: **passed**
-- deployed API/UI/browser-PDF/scheduled-PDF value parity: **passed**
+- whitespace validation (`git diff --check`): **passed**
+- authenticated deployed API/UI/browser-PDF audit: **passed for every asserted Campaign Breakdown gate before the separately executed server-PDF gate**
+- authenticated deployed server scheduled-PDF builder parity: **passed**
+- temporary production fixture cleanup: **exact; no report, snapshot, send-event, or protected analytics residue**
 
-The 41 deferred current-version failures belong to explicitly excluded future or unconfigured platform boundaries, including Google Ads. They are not evidence for this certificate and are not represented as globally passing tests.
+The 41 deferred tests are visible future/unconfigured platform boundaries. They include Google Ads and are not counted as passing evidence for this certificate.
 
-## Files in deployed application revision `87f9512`
+## Files changed for this remediation and evidence
 
-Runtime and shared logic:
+Runtime/focused regression changes already deployed across commits `e87bcbe0`, `6ee3078a`, and `96552fa5`:
 
 - `client/src/pages/ga4-metrics.tsx`
 - `server/analytics.ts`
-- `server/routes-oauth.ts`
 - `server/ga4-scheduled-report-pdf.ts`
-- `shared/ga4-campaign-breakdown.ts`
-
-Focused evidence and protected-source regression coverage:
-
-- `scripts/ga4-overview-campaign-breakdown-audit.ts`
-- `scripts/ga4-overview-campaign-discrepancy-readonly.ts`
-- `server/ga4-overview-campaign-breakdown-regression.test.ts`
 - `server/ga4-filter.test.ts`
-- `server/ga4-kpi-real-path-parity-regression.test.ts`
-- `server/ga4-ui-regression.test.ts`
-- `server/google-sheets-revenue-validation.test.ts`
-- `server/hubspot-mapping-downstream-matrix.test.ts`
-- `server/hubspot-revenue-ga4-overview-regression.test.ts`
-- `server/shopify-downstream-content-regression.test.ts`
+- `server/ga4-overview-campaign-breakdown-regression.test.ts`
+- `server/ga4-overview-initial-import-window-regression.test.ts`
 
-The post-deployment scheduled-PDF assertion added to the read-only audit script is evidence-only and does not alter deployed runtime behavior.
+Final evidence and certificate:
 
-## Explicit exclusions
+- `scripts/ga4-overview-campaign-breakdown-scheduled-pdf-authorized-validation.ts`
+- `GA4/OVERVIEW_CAMPAIGN_BREAKDOWN_CERTIFICATION_2026-09-14.md`
 
-- Summary
-- Landing Pages
-- Conversion Events
-- Reports as a section
-- report scheduling, dispatch, provider acceptance, email delivery, and inbox receipt
-- the parent Revenue & Financials section
-- the whole GA4 Overview tab
-- Revenue, Spend, and Performance recertification
-- HubSpot, Salesforce, Shopify, Google Sheets, and CSV source-family recertification
-- Google Ads
-- values outside the exact audited campaign/property/currency boundary
-- future provider, configuration, data, mapping, or code changes
-- a globally clean historical database
+`APP_PRODUCTION_READINESS.md` was not modified.
+
+## Protected behavior and explicit exclusions
+
+The Campaign Breakdown row-attribution correction did not change Total Revenue arithmetic or imported-source producer/persistence behavior. The exact UTM matcher is shared by its existing GA4 UTM-scope callers and changed their filter semantics from substring to exact boundary matching, as required by the saved-scope contract. At the deployed Campaign2 boundary, native GA4 Revenue remained `$6,411.30`, imported Revenue remained `$57,676.90`, and Total Revenue remained `$64,088.20`.
+
+No recertification is claimed for:
+
+- Summary, Landing Pages, or Conversion Events;
+- Reports as a section or any report lifecycle/delivery behavior;
+- Revenue & Financials as a parent section;
+- the whole GA4 Overview tab;
+- Revenue, Spend, or Performance sections;
+- HubSpot, Salesforce, Shopify, Google Sheets, or CSV source families;
+- other clients, owners, campaigns, properties, currencies, or future data changes;
+- Google Ads.
 
 ## Final decision
 
-The GA4 Overview Campaign Breakdown subsection is clean-certified for the exact saved-scope, time-window, mapping, reconciliation, availability, isolation, UI, browser-PDF, and scheduled-PDF value boundary documented above at deployed runtime revision `87f951206a60358fd25e3145ba10ea097151800f`.
+The GA4 Overview Campaign Breakdown subsection is clean-certified at deployed application revision `96552fa5757a9fdeeecc6bfc20c89941148c8bd6` for the exact saved-scope, query/filter, time-window, row merge, revenue mapping/reconciliation, failure, isolation, UI, browser-PDF, scheduled-PDF builder value-parity, and refresh boundaries documented above.
 
-No broader GA4 Overview or Reports certification is made.
+No broader certification is made.

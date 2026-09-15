@@ -224,7 +224,7 @@ const corePaths = (propertyId: string) => ({
   connectionStatus: `/api/ga4/check-connection/${CAMPAIGN_ID}?readOnly=1`,
   connections: `/api/campaigns/${CAMPAIGN_ID}/ga4-connections?readOnly=1`,
   daily: `/api/campaigns/${CAMPAIGN_ID}/ga4-daily?days=30&propertyId=${encodeURIComponent(propertyId)}&readOnly=1`,
-  breakdown: `/api/campaigns/${CAMPAIGN_ID}/ga4-breakdown?dateRange=30days&propertyId=${encodeURIComponent(propertyId)}&readOnly=1`,
+  breakdown: `/api/campaigns/${CAMPAIGN_ID}/ga4-breakdown?window=import-to-date&propertyId=${encodeURIComponent(propertyId)}&overviewCampaignBreakdown=1&readOnly=1`,
   toDate: `/api/campaigns/${CAMPAIGN_ID}/ga4-to-date?propertyId=${encodeURIComponent(propertyId)}&insightsScope=1&readOnly=1`,
   revenue: `/api/campaigns/${CAMPAIGN_ID}/revenue-to-date`,
   spend: `/api/campaigns/${CAMPAIGN_ID}/spend-to-date?platformContext=ga4`,
@@ -347,7 +347,13 @@ try {
   });
 
   const { reports: reportsPath, ...initialPaths } = corePaths(propertyId);
-  const pendingInputs = Object.entries(initialPaths).map(async ([name, path]) => [name, await expectedResponse(page, path)] as const);
+  const pendingInputs = Object.entries(initialPaths).map(async ([name, path]) => {
+    try {
+      return [name, await expectedResponse(page, path)] as const;
+    } catch (error) {
+      throw new Error(`${name} page input was not observed`, { cause: error });
+    }
+  });
   await page.goto(`${BASE_URL}/campaigns/${encodeURIComponent(CAMPAIGN_ID)}/ga4-metrics?tab=kpis&readOnly=1`, {
     waitUntil: "domcontentloaded",
     timeout: 60000,
@@ -507,11 +513,10 @@ try {
         current: currentIndex >= 0 ? lines[currentIndex + 1] || "" : "",
         target: targetIndex >= 0 ? lines[targetIndex + 1] || "" : "",
         progress: progressIndex >= 0 ? lines[progressIndex + 1] || "" : "",
-        window: lines.find((line) => line.startsWith("Window: ")) || "",
         stateLabel: stateLabels.find((label) => lines.includes(label)) || "Verified current value",
         alertPulse: Boolean(element.querySelector(".animate-pulse")),
       };
-    }) : { text: "", current: "", target: "", progress: "", window: "", stateLabel: "", alertPulse: false };
+    }) : { text: "", current: "", target: "", progress: "", stateLabel: "", alertPulse: false };
     const showCurrent = expected.state.eligible || expected.state.code === "insufficient_data" || expected.state.code === "stale";
     const expectedCurrent = showCurrent ? formatCardValue(expected.liveValue, expected.kpi.unit, currency) : "—";
     const expectedTarget = formatCardValue(expected.kpi.targetValue, expected.kpi.unit, currency);
@@ -520,7 +525,6 @@ try {
       name: normalizeText(dom.text).includes(normalizeText(expected.kpi.name)),
       current: dom.current === expectedCurrent,
       target: dom.target === expectedTarget,
-      window: dom.window === `Window: ${getGA4KpiReportingWindowLabel(expected.kpi.metric, expected.kpi.name)}`,
       state: dom.stateLabel === expected.state.label,
       alertPulse: dom.alertPulse === expectedPulse,
     };

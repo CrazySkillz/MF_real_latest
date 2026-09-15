@@ -350,7 +350,7 @@ Important meaning:
 - it uses the same fixed initial-import-to-latest-completed-day boundary as Summary and Campaign Breakdown, not a rolling 30-day window or the app campaign's start/created date
 - revenue is intentionally not shown in `Landing Pages`; page-level rows remain traffic and conversion context only
 - numeric live or live-test GA4 property IDs use the live GA4 Data API path; zero row-level conversions are correct when GA4 returns zero conversions for the exact landing-page/source/medium grain
-- when GA4 returns primary landing-page traffic rows or same-scope `pageLocation` traffic-fallback rows with missing conversion values, conversions may be supplemented from conversion-prioritized same-scope `pageLocation` UTM rows only by exact `Landing page + Source/Medium` match
+- only GA4 `landingPagePlusQueryString + sessionSource + sessionMedium` rows can create Landing Pages rows; when one of those existing rows has no conversions, a conversion-prioritized same-scope `pageLocation + sessionSource + sessionMedium` query may supplement only its Conversions through an exact, case-sensitive `Landing page + Source/Medium` match
 - campaign-level conversions and campaign-matched imported revenue are not allocated into landing-page rows unless a future source provides real landing-page-level identifiers that can be matched safely
 - if GA4 cannot provide an exact row-level conversion match, `Conversions` and `Conv. rate` can correctly remain zero for that row
 - `Users` in this table is a row-level GA4 breakdown value, not a deduplicated page-level total
@@ -388,8 +388,8 @@ Current code-path meaning:
 - production table population uses the real GA4 query path, not a mock-refresh design
 - numeric GA4 property IDs must not be classified as the Yesop simulator; Overview values for live or mock-live numeric properties should come from the GA4 live import/query path plus persisted selected-campaign daily facts, not a deterministic simulation baseline
 - all three Overview tables use the selected connection's fixed initial-import boundary through the latest completed day; the 30-day setting defines only the initial historical import and does not become a rolling display window
-- `Landing Pages` and `Conversion Events` are not reconstructed from scheduler-populated `ga4_daily_metrics`; they fetch row-level GA4 views directly and use exact-match fallback supplementation only when GA4 returns compatible row-level values
-- when attribution dimensions are empty or partial for fresh live traffic, table queries may fall back to same-scope `pageLocation` `utm_campaign`; landing page source/medium and conversion-event counts can then be supplemented only by exact row-level match
+- `Landing Pages` and `Conversion Events` are not reconstructed from scheduler-populated `ga4_daily_metrics`; they fetch row-level GA4 views directly
+- `Landing Pages` never creates traffic rows from `pageLocation`; `pageLocation` can only supplement Conversions on an existing session-scoped row through the exact row-level match above. Conversion Events retains its separately documented behavior and is not changed or certified by this Landing Pages rule
 
 Important meaning:
 
@@ -437,7 +437,7 @@ Campaign Breakdown:
 Landing Pages:
 
 - confirm rows populate for the same GA4 property, fixed initial-import-to-latest-completed-day window, and campaign scope
-- confirm `Source/Medium`, `Sessions`, `Users`, `Conversions`, and `Conv. rate` look coherent for that scope, including the case where primary campaign dimensions are empty and rows come from `pageLocation` UTM traffic fallback
+- confirm `Source/Medium`, `Sessions`, `Users`, `Conversions`, and `Conv. rate` match session-scoped `landingPagePlusQueryString` rows for that scope; if those rows are absent, confirm the table stays empty/unavailable and does not relabel `pageLocation` traffic
 - confirm row-level `Conversions = 0` is accepted only when GA4 itself returns zero for the exact landing-page/source/medium grain, not because campaign-level conversions failed to allocate into page rows
 - confirm campaign-only imported revenue is not allocated into landing-page rows
 - confirm page rows are not unexpectedly mixing unrelated campaigns due to bad GA4 campaign tagging/filtering

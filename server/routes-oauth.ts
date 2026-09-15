@@ -12897,6 +12897,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // GA4 Landing Pages (Phase 1: GA4-only, high value)
   app.get("/api/campaigns/:id/ga4-landing-pages", async (req, res) => {
+    const validationReadOnly = String(req.query.readOnly || '').trim() === '1';
+    res.setHeader('Cache-Control', 'no-store');
+    if (validationReadOnly) {
+      res.setHeader("X-GA4-Validation-Read-Only", "1");
+      res.setHeader("X-GA4-Credential-Refresh-Allowed", "0");
+    }
     try {
       const campaignId = req.params.id;
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
@@ -12984,19 +12990,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totals: { sessions: totalSessions, users: totalUsers, conversions: totalConversions, revenue: Number(totalRevenue.toFixed(2)) },
           revenueMetric: 'totalRevenue',
           meta: { usersAreNonAdditive: true, isSimulated: true },
+          ...(validationReadOnly ? { validationReadOnly: true } : {}),
           lastUpdated: new Date().toISOString(),
         });
       }
 
-      const result = await ga4Service.getLandingPagesReport(campaignId, storage, ga4DateRange, resolvedPropertyId, limit, campaignFilter, importToDateWindow?.endDate);
-      res.json({ success: true, dateRange, ...(importToDateWindow ? { window: 'import-to-date', ...importToDateWindow } : {}), ...result, lastUpdated: new Date().toISOString() });
+      const result = await ga4Service.getLandingPagesReport(campaignId, storage, ga4DateRange, resolvedPropertyId, limit, campaignFilter, importToDateWindow?.endDate, validationReadOnly);
+      res.json({ success: true, dateRange, ...(importToDateWindow ? { window: 'import-to-date', ...importToDateWindow } : {}), ...(validationReadOnly ? { validationReadOnly: true } : {}), ...result, lastUpdated: new Date().toISOString() });
     } catch (error: any) {
       console.error('[GA4 Landing Pages] Error:', error);
       if (error instanceof Error && error.message === 'NO_GA4_CONNECTION') {
         return res.status(404).json({ success: false, error: 'NO_GA4_CONNECTION' });
       }
       if (error instanceof Error && (error.message === 'TOKEN_EXPIRED' || (error as any).isTokenExpired)) {
-        return res.status(401).json({ success: false, error: 'TOKEN_EXPIRED' });
+        return res.status(401).json({ success: false, error: 'TOKEN_EXPIRED', ...(validationReadOnly ? { validationReadOnly: true } : {}) });
       }
       res.status(500).json({ success: false, error: error?.message || 'Failed to fetch GA4 landing pages' });
     }

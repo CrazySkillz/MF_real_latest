@@ -1202,12 +1202,12 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       addSimpleTable(
         "Landing Pages",
         ["LANDING PAGE", "SOURCE/MEDIUM", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE"],
-        (payload.landingPages?.rows || []).slice(0, 15).map((row: any) => [
+        (payload.landingPages?.rows || []).slice(0, 20).map((row: any) => [
           String(row?.landingPage || "(not set)"),
           `${String(row?.source || "(not set)")}/${String(row?.medium || "(not set)")}`,
-          formatNumber(row?.sessions || 0),
-          formatNumber(row?.users || 0),
-          formatNumber(row?.conversions || 0),
+          Number(row?.sessions || 0).toLocaleString("en-US"),
+          Number(row?.users || 0).toLocaleString("en-US"),
+          Number(row?.conversions || 0).toLocaleString("en-US"),
           formatPct(Number(row?.sessions || 0) > 0 ? (Number(row?.conversions || 0) / Number(row?.sessions || 0)) * 100 : 0),
         ]),
         [52, 44, 22, 20, 28, 26],

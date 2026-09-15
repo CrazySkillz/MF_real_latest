@@ -134,14 +134,14 @@ export class GoogleAnalytics4Service {
     }
   }
 
-  private extractUrlPath(value: string) {
+  private extractUrlPathAndQuery(value: string) {
     const raw = String(value || '').trim();
     if (!raw) return '';
     try {
       const url = raw.startsWith('/') ? new URL(raw, 'https://example.invalid') : new URL(raw);
-      return url.pathname || '/';
+      return `${url.pathname || '/'}${url.search || ''}`;
     } catch {
-      return raw.split('?')[0] || raw;
+      return '';
     }
   }
 
@@ -152,7 +152,8 @@ export class GoogleAnalytics4Service {
     propertyId?: string,
     limit: number = 50,
     campaignFilter?: CampaignFilter,
-    endDate = 'yesterday'
+    endDate = 'yesterday',
+    validationReadOnly = false
   ): Promise<{
     propertyId: string;
     revenueMetric: 'totalRevenue' | 'purchaseRevenue';
@@ -172,7 +173,7 @@ export class GoogleAnalytics4Service {
     const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
     const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
     const dims = [{ name: 'landingPagePlusQueryString' }, { name: 'sessionSource' }, { name: 'sessionMedium' }];
-    const pageLocationDims = [{ name: 'pageLocation' }];
+    const pageLocationDims = [{ name: 'pageLocation' }, { name: 'sessionSource' }, { name: 'sessionMedium' }];
 
     const run = async (
       accessToken: string,
@@ -180,15 +181,21 @@ export class GoogleAnalytics4Service {
       scopeFilter: any = campaignDimensionFilter,
       dimensions: Array<{ name: string }> = dims,
       reportLimit: number = limit,
-      orderMetric: 'sessions' | 'conversions' = 'sessions'
+      orderMetric: 'sessions' | 'conversions' = 'sessions',
+      offset = 0
     ) => {
+      const boundedLimit = Math.min(Math.max(reportLimit, 1), 10000);
       const requestBody = {
         dateRanges: [{ startDate: dateRange, endDate }],
         dimensions,
         ...(scopeFilter ? scopeFilter : {}),
         metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'conversions' }, { name: revenueMetric }],
-        orderBys: [{ metric: { metricName: orderMetric }, desc: true }],
-        limit: Math.min(Math.max(reportLimit, 1), 10000),
+        orderBys: [
+          { metric: { metricName: orderMetric }, desc: true },
+          ...dimensions.map((dimension) => ({ dimension: { dimensionName: dimension.name } })),
+        ],
+        limit: boundedLimit,
+        offset,
       };
       const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
@@ -213,18 +220,13 @@ export class GoogleAnalytics4Service {
 
       for (const r of rows) {
         const firstDim = String(r?.dimensionValues?.[0]?.value || '').trim();
-        const landingPage = parseUtmFromPageLocation
-          ? (this.extractUrlPath(firstDim) || '(not set)')
-          : (firstDim || '(not set)');
-        const source = parseUtmFromPageLocation
-          ? (this.extractUrlSearchParam(firstDim, 'utm_source') || '(not set)')
-          : (String(r?.dimensionValues?.[1]?.value || '').trim() || '(not set)');
-        const medium = parseUtmFromPageLocation
-          ? (this.extractUrlSearchParam(firstDim, 'utm_medium') || '(not set)')
-          : (String(r?.dimensionValues?.[2]?.value || '').trim() || '(not set)');
+        const landingPage = parseUtmFromPageLocation ? this.extractUrlPathAndQuery(firstDim) : firstDim;
+        if (!landingPage || landingPage.toLowerCase() === '(not set)') continue;
+        const source = String(r?.dimensionValues?.[1]?.value || '').trim() || '(not set)';
+        const medium = String(r?.dimensionValues?.[2]?.value || '').trim() || '(not set)';
         const sessions = parseInt(String(r?.metricValues?.[0]?.value || '0'), 10) || 0;
         const users = parseInt(String(r?.metricValues?.[1]?.value || '0'), 10) || 0;
-        const conversions = parseInt(String(r?.metricValues?.[2]?.value || '0'), 10) || 0;
+        const conversions = Number.parseFloat(String(r?.metricValues?.[2]?.value || '0')) || 0;
         const revenue = Number.parseFloat(String(r?.metricValues?.[3]?.value || '0')) || 0;
         totalSessions += sessions;
         totalUsers += users;
@@ -250,24 +252,65 @@ export class GoogleAnalytics4Service {
       return t.includes('"code": 401') || t.includes('unauthenticated') || t.includes('invalid authentication credentials') || t.includes('invalid_grant');
     };
 
+    const incompletePaginationError = (message: string) =>
+      new Error(`GA4_LANDING_PAGE_PAGINATION_INCOMPLETE: ${message}`);
     const fetchRows = async (
       accessToken: string,
       scopeFilter: any,
       parseUtmFromPageLocation = false,
       reportLimit: number = limit,
-      orderMetric: 'sessions' | 'conversions' = 'sessions'
+      orderMetric: 'sessions' | 'conversions' = 'sessions',
+      paginate = false
     ) => {
+      const dimensions = parseUtmFromPageLocation ? pageLocationDims : dims;
+      const fetchMetric = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
+        const firstPage = await run(accessToken, revenueMetric, scopeFilter, dimensions, reportLimit, orderMetric, 0);
+        const pageSize = Math.min(Math.max(reportLimit, 1), 10000);
+        const firstRows = Array.isArray(firstPage?.rows) ? firstPage.rows : [];
+        if (!paginate) {
+          const hasRowCount = firstPage?.rowCount !== undefined && firstPage?.rowCount !== null;
+          if (hasRowCount && firstRows.length !== Math.min(Number(firstPage.rowCount), pageSize)) {
+            throw incompletePaginationError('provider returned an incomplete bounded page');
+          }
+          if (!hasRowCount && firstRows.length >= pageSize) {
+            throw incompletePaginationError('provider rowCount is unavailable at the requested limit');
+          }
+          return parseRows(firstPage, revenueMetric, parseUtmFromPageLocation);
+        }
+
+        const expectedRows = Number(firstPage?.rowCount);
+        const rows = [...firstRows];
+        if (!Number.isFinite(expectedRows)) {
+          if (rows.length >= pageSize) throw incompletePaginationError('provider rowCount is unavailable');
+          return parseRows(firstPage, revenueMetric, parseUtmFromPageLocation);
+        }
+        if (expectedRows > 100000) {
+          throw incompletePaginationError(`rowCount ${expectedRows} exceeds safe maximum 100000`);
+        }
+        if (rows.length > expectedRows) throw incompletePaginationError('provider returned more rows than rowCount');
+        while (rows.length < expectedRows) {
+          const page = await run(accessToken, revenueMetric, scopeFilter, dimensions, reportLimit, orderMetric, rows.length);
+          if (Number(page?.rowCount) !== expectedRows) {
+            throw incompletePaginationError('rowCount changed during pagination');
+          }
+          const pageRows = Array.isArray(page?.rows) ? page.rows : [];
+          if (pageRows.length === 0) {
+            throw incompletePaginationError(`provider returned an empty page at offset ${rows.length}`);
+          }
+          rows.push(...pageRows);
+          if (rows.length > expectedRows) throw incompletePaginationError('provider returned more rows than rowCount');
+        }
+        return parseRows({ ...firstPage, rows }, revenueMetric, parseUtmFromPageLocation);
+      };
+
       try {
-        const json = await run(accessToken, 'totalRevenue', scopeFilter, parseUtmFromPageLocation ? pageLocationDims : dims, reportLimit, orderMetric);
-        const parsed = parseRows(json, 'totalRevenue', parseUtmFromPageLocation);
-        return parsed;
+        return await fetchMetric('totalRevenue');
       } catch (e: any) {
         const msg = String(e?.message || e || '');
+        if (isAuthErrorText(msg)) throw e;
         // Some properties don't allow totalRevenue; try purchaseRevenue.
         if (msg.toLowerCase().includes('totalrevenue') || msg.toLowerCase().includes('metric') || msg.toLowerCase().includes('invalid')) {
-          const json2 = await run(accessToken, 'purchaseRevenue', scopeFilter, parseUtmFromPageLocation ? pageLocationDims : dims, reportLimit, orderMetric);
-          const parsed = parseRows(json2, 'purchaseRevenue', parseUtmFromPageLocation);
-          return parsed;
+          return fetchMetric('purchaseRevenue');
         }
         throw e;
       }
@@ -277,58 +320,64 @@ export class GoogleAnalytics4Service {
       ((Number(res?.totals?.sessions || 0) + Number(res?.totals?.users || 0) + Number(res?.totals?.conversions || 0) + Number(res?.totals?.revenue || 0)) <= 0);
     const hasTrafficRows = (res: any) =>
       Array.isArray(res?.rows) && res.rows.some((r: any) => Number(r?.sessions || 0) > 0 || Number(r?.users || 0) > 0);
-    const rowHasConversionRevenue = (row: any) =>
-      Number(row?.conversions || 0) > 0 || Number(row?.revenue || 0) > 0;
-    const hasConversionRevenueRows = (res: any) =>
-      Array.isArray(res?.rows) && res.rows.some(rowHasConversionRevenue);
-    const hasMissingConversionRevenueTrafficRows = (res: any) =>
+    const hasConversionRows = (res: any) =>
+      Array.isArray(res?.rows) && res.rows.some((row: any) => Number(row?.conversions || 0) > 0);
+    const hasMissingConversionTrafficRows = (res: any) =>
       Array.isArray(res?.rows) && res.rows.some((r: any) =>
-        (Number(r?.sessions || 0) > 0 || Number(r?.users || 0) > 0) && !rowHasConversionRevenue(r)
+        (Number(r?.sessions || 0) > 0 || Number(r?.users || 0) > 0) && Number(r?.conversions || 0) === 0
       );
     const rowKey = (row: any) =>
-      `${String(row?.landingPage || '').trim()}|${String(row?.source || '').trim()}|${String(row?.medium || '').trim()}`.toLowerCase();
+      JSON.stringify([
+        String(row?.landingPage || '').trim(),
+        String(row?.source || '').trim(),
+        String(row?.medium || '').trim(),
+      ]);
+    const assertUniqueBaseRows = (base: any) => {
+      const keys = new Set<string>();
+      for (const row of base?.rows || []) {
+        const key = rowKey(row);
+        if (keys.has(key)) throw new Error('GA4_LANDING_PAGE_DUPLICATE_ROWS');
+        keys.add(key);
+      }
+    };
     const supplementMissingConversionRows = (base: any, supplement: any) => {
-      if (!hasTrafficRows(base) || !hasConversionRevenueRows(supplement)) return base;
-      const supplementByKey = new Map<string, { conversions: number; revenue: number }>();
+      if (!hasTrafficRows(base) || !hasConversionRows(supplement)) return base;
+      const supplementByKey = new Map<string, number>();
       for (const row of supplement.rows || []) {
         const key = rowKey(row);
         if (!key) continue;
-        const current = supplementByKey.get(key) || { conversions: 0, revenue: 0 };
-        supplementByKey.set(key, {
-          conversions: current.conversions + (Number(row?.conversions || 0) || 0),
-          revenue: current.revenue + (Number(row?.revenue || 0) || 0),
-        });
+        supplementByKey.set(key, (supplementByKey.get(key) || 0) + (Number(row?.conversions || 0) || 0));
       }
       let changed = false;
       const rows = (base.rows || []).map((row: any) => {
-        if (rowHasConversionRevenue(row)) return row;
+        if (Number(row?.conversions || 0) !== 0) return row;
         const match = supplementByKey.get(rowKey(row));
-        if (!match || (match.conversions <= 0 && match.revenue <= 0)) return row;
+        if (!match || match <= 0) return row;
         changed = true;
-        return { ...row, conversions: match.conversions, revenue: Number(match.revenue.toFixed(2)) };
+        return { ...row, conversions: match };
       });
       if (!changed) return base;
       return {
         ...base,
-        revenueMetric: supplement.revenueMetric || base.revenueMetric,
         rows,
         totals: {
           ...base.totals,
           conversions: rows.reduce((sum: number, row: any) => sum + (Number(row?.conversions || 0) || 0), 0),
-          revenue: Number(rows.reduce((sum: number, row: any) => sum + (Number(row?.revenue || 0) || 0), 0).toFixed(2)),
         },
       };
     };
 
     const supplementFromConversionFallback = async (accessToken: string, base: any) => {
-      if (!pageLocationCampaignFilter || !hasMissingConversionRevenueTrafficRows(base)) return base;
-      const conversionRes = await fetchRows(accessToken, pageLocationCampaignFilter, true, 10000, 'conversions').catch(() => null);
+      if (!hasMissingConversionTrafficRows(base)) return base;
+      const conversionRes = await fetchRows(accessToken, pageLocationCampaignFilter, true, 10000, 'conversions', true);
       if (!conversionRes || isEmptyResult(conversionRes)) return base;
       return supplementMissingConversionRows(base, conversionRes);
     };
 
     const tryFetch = async (accessToken: string) => {
-      return fetchRows(accessToken, campaignDimensionFilter, false, limit, 'sessions');
+      const base = await fetchRows(accessToken, campaignDimensionFilter, false, limit, 'sessions');
+      assertUniqueBaseRows(base);
+      return supplementFromConversionFallback(accessToken, base);
     };
 
     try {
@@ -336,6 +385,11 @@ export class GoogleAnalytics4Service {
       return { propertyId: normalizedPropertyId, ...res, meta: { usersAreNonAdditive: true, sessionScopedAttributionAvailable: !isEmptyResult(res) } };
     } catch (e: any) {
       const msg = String(e?.message || '');
+      if (isAuthErrorText(msg) && validationReadOnly) {
+        const tokenExpiredError = new Error('TOKEN_EXPIRED');
+        (tokenExpiredError as any).isTokenExpired = true;
+        throw tokenExpiredError;
+      }
       if (isAuthErrorText(msg) && connection.refreshToken) {
         const refresh = await this.refreshAccessToken(
           String(connection.refreshToken),

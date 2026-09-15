@@ -997,7 +997,7 @@ describe("GA4 campaign value picker", () => {
     expect(result.meta.sessionScopedAttributionAvailable).toBe(false);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
-  it("keeps provider landing-page rows without merging ordinary page locations", async () => {
+  it("supplements only existing session-scoped landing rows by exact landing/source/medium match", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
       const dimensions = (body?.dimensions || []).map((d: any) => d?.name);
@@ -1011,29 +1011,35 @@ describe("GA4 campaign value picker", () => {
                 {
                   dimensionValues: [
                     { value: "https://example.com/landing?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale" },
+                    { value: "facebook" },
+                    { value: "paid_social" },
                   ],
                   metricValues: [{ value: "318" }, { value: "318" }, { value: "39" }, { value: "7068.9" }],
                 },
                 {
                   dimensionValues: [
                     { value: "https://example.com/pricing?utm_source=google&utm_medium=display&utm_campaign=summer_sale" },
+                    { value: "google" },
+                    { value: "display" },
                   ],
                   metricValues: [{ value: "151" }, { value: "151" }, { value: "6" }, { value: "100" }],
                 },
                 {
                   dimensionValues: [
                     { value: "https://example.com/other?utm_source=google&utm_medium=display&utm_campaign=summer_sale" },
+                    { value: "google" },
+                    { value: "display" },
                   ],
                   metricValues: [{ value: "10" }, { value: "10" }, { value: "99" }, { value: "990" }],
                 },
               ]
             : [
                 {
-                  dimensionValues: [{ value: "/landing" }, { value: "facebook" }, { value: "paid_social" }],
+                  dimensionValues: [{ value: "/landing?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale" }, { value: "facebook" }, { value: "paid_social" }],
                   metricValues: [{ value: "318" }, { value: "318" }, { value: "0" }, { value: "0" }],
                 },
                 {
-                  dimensionValues: [{ value: "/pricing" }, { value: "google" }, { value: "display" }],
+                  dimensionValues: [{ value: "/pricing?utm_source=google&utm_medium=display&utm_campaign=summer_sale" }, { value: "google" }, { value: "display" }],
                   metricValues: [{ value: "151" }, { value: "151" }, { value: "0" }, { value: "0" }],
                 },
               ],
@@ -1054,14 +1060,18 @@ describe("GA4 campaign value picker", () => {
     const result = await ga4Service.getLandingPagesReport("campaign-1", storage, "90daysAgo", "123", 200, "summer_sale");
 
     expect(result.rows).toHaveLength(2);
-    expect(result.rows[0]).toMatchObject({ landingPage: "/landing", source: "facebook", medium: "paid_social", sessions: 318, users: 318, conversions: 0, revenue: 0 });
-    expect(result.rows[1]).toMatchObject({ landingPage: "/pricing", source: "google", medium: "display", sessions: 151, users: 151, conversions: 0, revenue: 0 });
-    expect(result.totals).toMatchObject({ sessions: 469, users: 469, conversions: 0, revenue: 0 });
+    expect(result.rows[0]).toMatchObject({ landingPage: "/landing?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale", source: "facebook", medium: "paid_social", sessions: 318, users: 318, conversions: 39, revenue: 0 });
+    expect(result.rows[1]).toMatchObject({ landingPage: "/pricing?utm_source=google&utm_medium=display&utm_campaign=summer_sale", source: "google", medium: "display", sessions: 151, users: 151, conversions: 6, revenue: 0 });
+    expect(result.totals).toMatchObject({ sessions: 469, users: 469, conversions: 45, revenue: 0 });
     expect(result.meta.sessionScopedAttributionAvailable).toBe(true);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const supplementBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body || "{}"));
+    expect(supplementBody.dimensions.map((dimension: any) => dimension.name)).toEqual([
+      "pageLocation", "sessionSource", "sessionMedium",
+    ]);
   });
 
-  it("does not infer landing-page conversions from pageLocation rows", async () => {
+  it("does not supplement case-variant or otherwise unmatched pageLocation rows", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
       const dimensions = (body?.dimensions || []).map((d: any) => d?.name);
@@ -1079,12 +1089,16 @@ describe("GA4 campaign value picker", () => {
                   {
                     dimensionValues: [
                       { value: "https://example.com/landing?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale" },
+                      { value: "facebook" },
+                      { value: "paid_social" },
                     ],
                     metricValues: [{ value: "0" }, { value: "0" }, { value: "39" }, { value: "7068.9" }],
                   },
                   {
                     dimensionValues: [
                       { value: "https://example.com/other?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale" },
+                      { value: "facebook" },
+                      { value: "paid_social" },
                     ],
                     metricValues: [{ value: "0" }, { value: "0" }, { value: "99" }, { value: "990" }],
                   },
@@ -1099,11 +1113,11 @@ describe("GA4 campaign value picker", () => {
                 ]
             : [
                 {
-                  dimensionValues: [{ value: "/landing" }, { value: "facebook" }, { value: "paid_social" }],
+                  dimensionValues: [{ value: "/Landing?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale" }, { value: "Facebook" }, { value: "paid_social" }],
                   metricValues: [{ value: "318" }, { value: "318" }, { value: "0" }, { value: "0" }],
                 },
                 {
-                  dimensionValues: [{ value: "/pricing" }, { value: "facebook" }, { value: "paid_social" }],
+                  dimensionValues: [{ value: "/pricing?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale" }, { value: "facebook" }, { value: "paid_social" }],
                   metricValues: [{ value: "161" }, { value: "161" }, { value: "0" }, { value: "0" }],
                 },
               ],
@@ -1124,10 +1138,10 @@ describe("GA4 campaign value picker", () => {
     const result = await ga4Service.getLandingPagesReport("campaign-1", storage, "90daysAgo", "123", 50, "summer_sale");
 
     expect(result.rows).toHaveLength(2);
-    expect(result.rows[0]).toMatchObject({ landingPage: "/landing", source: "facebook", medium: "paid_social", sessions: 318, users: 318, conversions: 0, revenue: 0 });
-    expect(result.rows[1]).toMatchObject({ landingPage: "/pricing", source: "facebook", medium: "paid_social", sessions: 161, users: 161, conversions: 0, revenue: 0 });
+    expect(result.rows[0]).toMatchObject({ landingPage: "/Landing?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale", source: "Facebook", medium: "paid_social", sessions: 318, users: 318, conversions: 0, revenue: 0 });
+    expect(result.rows[1]).toMatchObject({ landingPage: "/pricing?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale", source: "facebook", medium: "paid_social", sessions: 161, users: 161, conversions: 0, revenue: 0 });
     expect(result.totals).toMatchObject({ sessions: 479, users: 479, conversions: 0, revenue: 0 });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
   it("fails closed when only pageLocation traffic exists for Landing Pages", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {

@@ -32,6 +32,17 @@ describe("GA4 campaign filter builder", () => {
     expect(expr[0].filter.stringFilter.value).toBe("a");
     expect(expr[1].filter.stringFilter.value).toBe("b");
   });
+
+  it("requires a complete UTM campaign value in page-location fallbacks", () => {
+    const svc: any = ga4Service as any;
+    const filter = svc.buildUtmCampaignPageLocationFilter("yesop_retargeti", "pageLocation");
+    const stringFilter = filter?.dimensionFilter?.filter?.stringFilter;
+    expect(stringFilter?.matchType).toBe("FULL_REGEXP");
+    const pattern = new RegExp(stringFilter?.value);
+    expect(pattern.test("https://example.test/?utm_campaign=yesop_retargeti")).toBe(true);
+    expect(pattern.test("https://example.test/?utm_campaign=yesop_retargeti&utm_source=email")).toBe(true);
+    expect(pattern.test("https://example.test/?utm_campaign=yesop_retargeting")).toBe(false);
+  });
 });
 
 describe("GA4 campaign value picker", () => {

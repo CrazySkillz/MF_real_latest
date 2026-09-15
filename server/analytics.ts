@@ -97,28 +97,7 @@ export class GoogleAnalytics4Service {
   }
 
   private buildUtmCampaignPageLocationFilter(filter: CampaignFilter, fieldName = 'pageLocation') {
-    const values = this.normalizeCampaignFilter(filter);
-    if (values.length === 0) return null;
-
-    const expressions = values.flatMap((value) => {
-      const encoded = encodeURIComponent(value);
-      const plusEncoded = encoded.replace(/%20/g, '+');
-      return Array.from(new Set([value, encoded, plusEncoded])).map((v) => ({
-        filter: {
-          fieldName,
-          stringFilter: {
-            matchType: 'CONTAINS',
-            value: `utm_campaign=${v}`,
-            caseSensitive: false,
-          }
-        }
-      }));
-    });
-
-    if (expressions.length === 1) {
-      return { dimensionFilter: expressions[0] };
-    }
-    return { dimensionFilter: { orGroup: { expressions } } };
+    return this.buildExactUtmCampaignPageLocationFilter(filter, fieldName);
   }
 
   private buildExactUtmCampaignPageLocationFilter(filter: CampaignFilter, fieldName = 'pageLocation') {

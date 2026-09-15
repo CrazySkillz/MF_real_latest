@@ -57,7 +57,7 @@ describe("immediate alert email route durability regression guard", () => {
     expect(updateRoute).toContain("toLowerCase() === 'google_analytics' && (okKpi as any)?.campaignId");
     expectBefore(createRoute, "const kpi = await storage.createKPI(validatedKPI);", "scheduleGA4KpiCreatePostResponseProcessing(");
     expectBefore(createRoute, "scheduleGA4KpiCreatePostResponseProcessing(", "return res.json(responseKpi || kpi);");
-    expectBefore(updateRoute, "const updatedKPI = await storage.updateKPI(kpiId, validated);", 'await runImmediateKPIEmailAlertCheck(kpiId, "KPI Update");');
+    expectBefore(updateRoute, "const updatedKPI = String((okKpi as any)?.platformType", 'await runImmediateKPIEmailAlertCheck(kpiId, "KPI Update");');
     expectBefore(updateRoute, 'await runImmediateKPIEmailAlertCheck(kpiId, "KPI Update");', "res.json(responseKPI || updatedKPI);");
   });
 

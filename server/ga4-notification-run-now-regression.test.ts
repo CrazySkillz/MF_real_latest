@@ -12,6 +12,12 @@ describe("GA4 campaign run-now notification reconciliation", () => {
     expect(kpi).toContain('String(kpi?.campaignId || "") === requestedCampaignId && String(kpi?.platformType || "") === "google_analytics"');
     expect(benchmark).toContain('eq(benchmarks.campaignId, requestedCampaignId), eq(benchmarks.platformType, "google_analytics")');
     expect(kpi).toContain("providerCoverageThroughDate");
+    const scopedAlertCheck = kpi.slice(
+      kpi.indexOf("async function checkPerformanceAlertsForScope"),
+      kpi.indexOf("export async function captureEndOfPeriod"),
+    );
+    expect(scopedAlertCheck).toContain("requireCurrentTrafficFreshness: true");
+    expect(scopedAlertCheck).toContain("providerCoverageThroughDate,");
     expect(benchmark).toContain("providerCoverageThroughDate");
   });
 

@@ -9,7 +9,9 @@ describe("campaign alert current-value regression guard", () => {
 
     expect(scheduler).toContain('import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";');
     expect(scheduler).toContain("const campaignMetricCache = new Map");
-    expect(scheduler).toMatch(/const kpi = rawKpi.alertsEnabled && rawKpi.alertThreshold != null\s*\? await resolveAlertCurrentValueForDecision\(rawKpi, campaignMetricCache\)\s*: rawKpi;/);
+    expect(scheduler).toContain("await resolveAlertCurrentValueForDecision(rawKpi, campaignMetricCache, {");
+    expect(scheduler).toContain("requireCurrentTrafficFreshness: true");
+    expect(scheduler).toContain("providerCoverageThroughDate");
     expect(scheduler).toContain("shouldTriggerAlert(kpi)");
     expect(scheduler).toContain("await createKPIAlert(kpi)");
     expect(kpiNotifications).toContain('import { isAlertDecisionBreached } from "./utils/alert-decision";');

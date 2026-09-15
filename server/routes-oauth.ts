@@ -8,7 +8,7 @@ import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
 import { computeKpiValue, getGA4KPIFinancialSourceWindow, getGA4KPIReportingWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
-import { GA4_KPI_ACTIVE_METRIC_CONFLICT } from "./utils/ga4-kpi-create-guard";
+import { assertValidGA4KPIUpdate, GA4_KPI_ACTIVE_METRIC_CONFLICT, GA4_KPI_INVALID_CONFIGURATION, stripSourceComputedGA4KPIEditValue } from "./utils/ga4-kpi-create-guard";
 import { buildShopifyRepairConfirmation, deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, getShopifyOrderUtm, resolveShopifyGa4RevenueCurrency, shopifyRepairConfirmationMatches, shouldPreserveShopifyDevelopmentStoreLastGood } from './utils/shopify-revenue';
 import { fetchShopifyOrderCustomerJourneyUtms, getShopifyApiVersion, hasShopifyAllOrdersScope, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain, parseShopifyExpiringOfflineToken, refreshShopifyOfflineAccessToken, requireShopifyCampaignOrderWindow, requireShopifyOrderScope, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, resolveShopifyCampaignOrderWindow, SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE, SHOPIFY_RECENT_ORDER_WINDOW_DAYS, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
 import { assertProductionTokenEncryptionConfigured, resolveOAuthStateSigningSecret } from './utils/tokenVault';
@@ -27840,9 +27840,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metric: req.body.metric === '' ? null : req.body.metric,
         targetValue: toDecimalStringOrUndefined(req.body.targetValue),
         currentValue: toDecimalStringOrUndefined(req.body.currentValue),
-        alertThreshold: (req.body.alertThreshold === '' || req.body.alertThreshold === null || typeof req.body.alertThreshold === 'undefined')
-          ? null
-          : (typeof req.body.alertThreshold === 'number' ? String(req.body.alertThreshold) : String(req.body.alertThreshold)),
+        alertThreshold: typeof req.body.alertThreshold === 'undefined'
+          ? undefined
+          : (req.body.alertThreshold === '' || req.body.alertThreshold === null)
+            ? null
+            : (typeof req.body.alertThreshold === 'number' ? String(req.body.alertThreshold) : String(req.body.alertThreshold)),
         emailRecipients: req.body.emailRecipients === '' ? null : req.body.emailRecipients,
         targetDate: req.body.targetDate ? new Date(req.body.targetDate) : req.body.targetDate === null ? null : undefined
       };
@@ -27856,8 +27858,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }) as any;
       delete validated.campaignId;
       delete validated.platformType;
+      for (const key of Object.keys(validated)) {
+        if (typeof validated[key] === "undefined") delete validated[key];
+      }
 
-      const updatedKPI = await storage.updateKPI(kpiId, validated);
+      if (String((okKpi as any)?.platformType || "").trim().toLowerCase() === "google_analytics") {
+        const kpiCampaign = await storage.getCampaign(String((okKpi as any).campaignId || ""));
+        if (!kpiCampaign) return res.status(404).json({ message: "Campaign not found" });
+        assertValidGA4KPIUpdate(okKpi as any, validated, (kpiCampaign as any).currency);
+      }
+      const persistenceUpdate = stripSourceComputedGA4KPIEditValue(okKpi as any, validated);
+      const updatedKPI = String((okKpi as any)?.platformType || "").trim().toLowerCase() === "google_analytics"
+        ? await storage.updateCanonicalGA4KPI(kpiId, persistenceUpdate)
+        : await storage.updateKPI(kpiId, persistenceUpdate);
       if (!updatedKPI) {
         return res.status(404).json({ message: "KPI not found" });
       }
@@ -27895,6 +27908,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(responseKPI || updatedKPI);
     } catch (error) {
+      if ((error as any)?.code === GA4_KPI_INVALID_CONFIGURATION) {
+        return res.status(400).json({ code: (error as any).code, message: (error as Error).message });
+      }
+      if ((error as any)?.code === GA4_KPI_ACTIVE_METRIC_CONFLICT) {
+        return res.status(409).json({ code: (error as any).code, message: (error as Error).message });
+      }
       console.error('Platform KPI update error:', error);
       if (error instanceof z.ZodError) {
         res.status(400).json({ message: "Invalid KPI data", errors: error.errors });

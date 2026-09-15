@@ -16,7 +16,7 @@
     },
     "external-certifications": {
       "blocking": false,
-      "reason": "HubSpot section certification documentation has a separate invalidated boundary from the GA4 KPI tab."
+      "reason": "Independent app and section certification documentation has a separate boundary from the GA4 KPI tab."
     }
   },
   "tests": [
@@ -49,6 +49,11 @@
       "group": "external-certifications",
       "file": "server/hubspot-h10d-certification-doc.test.ts",
       "fullName": "HubSpot certification documentation keeps GA4 entry points aligned to the current exact-source clean boundary"
+    },
+    {
+      "group": "external-certifications",
+      "file": "server/app-production-readiness-ledger.test.ts",
+      "fullName": "application production-readiness ledger records separate work and certification status for every Overview subsection"
     },
     {
       "group": "google-ads",

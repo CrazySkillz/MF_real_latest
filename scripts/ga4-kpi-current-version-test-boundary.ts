@@ -57,7 +57,7 @@ const EXPECTED_GROUP_COUNTS: Record<DeferredTestGroup, number> = {
   "future-platforms": 21,
   "google-ads": 27,
   "ga4-ad-comparison": 1,
-  "external-certifications": 2,
+  "external-certifications": 3,
 };
 
 function normalizePath(value: string): string {

@@ -8,7 +8,7 @@ import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationCompl
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 import { getReportingComparisonBoundary } from "./utils/reporting-timezone";
 import { executiveSummaryDailySnapshotInputSchema, type ExecutiveSummaryDailySnapshotInput } from "./utils/executive-summary-daily-snapshot";
-import { createActiveCanonicalGA4KPI, isActiveGA4KPI } from "./utils/ga4-kpi-create-guard";
+import { createActiveCanonicalGA4KPI, isActiveGA4KPI, updateCanonicalGA4KPI as updateCanonicalGA4KPIWithGuard } from "./utils/ga4-kpi-create-guard";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 
 const isProd = String(process.env.NODE_ENV || "").toLowerCase() === "production";
@@ -408,6 +408,7 @@ export interface IStorage {
   getKPI(id: string): Promise<KPI | undefined>;
   createKPI(kpi: InsertKPI): Promise<KPI>;
   updateKPI(id: string, kpi: Partial<InsertKPI>): Promise<KPI | undefined>;
+  updateCanonicalGA4KPI(id: string, kpi: Partial<InsertKPI>): Promise<KPI | undefined>;
   deleteKPI(id: string, notificationHides?: KPINotificationHide[]): Promise<boolean>;
 
   // KPI Progress
@@ -4642,6 +4643,16 @@ export class DatabaseStorage implements IStorage {
       .where(eq(kpis.id, id))
       .returning();
     return kpi || undefined;
+  }
+
+  async updateCanonicalGA4KPI(id: string, kpiData: Partial<InsertKPI>): Promise<KPI | undefined> {
+    return updateCanonicalGA4KPIWithGuard(id, kpiData, {
+      withTransaction: (run) => db.transaction(run),
+      getById: async (tx: any, kpiId) => (await tx.select().from(kpis).where(eq(kpis.id, kpiId)).limit(1))[0],
+      lockCampaign: async (tx: any, campaignId) => (await tx.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, campaignId)).for("update")).length === 1,
+      listCampaignGA4KPIs: (tx: any, campaignId) => tx.select().from(kpis).where(and(eq(kpis.platformType, "google_analytics"), eq(kpis.campaignId, campaignId))),
+      update: async (tx: any, kpiId, update) => (await tx.update(kpis).set({ ...update, updatedAt: new Date() }).where(eq(kpis.id, kpiId)).returning())[0],
+    });
   }
 
   async deleteKPI(id: string, notificationHides: KPINotificationHide[] = []): Promise<boolean> {

@@ -266,7 +266,10 @@ async function checkPerformanceAlertsForScope(campaignId?: string, providerCover
         continue;
       }
       const kpi = rawKpi.alertsEnabled && rawKpi.alertThreshold != null
-        ? await resolveAlertCurrentValueForDecision(rawKpi, campaignMetricCache)
+        ? await resolveAlertCurrentValueForDecision(rawKpi, campaignMetricCache, {
+            requireCurrentTrafficFreshness: true,
+            providerCoverageThroughDate,
+          })
         : rawKpi;
       const platformType = String((kpi as any)?.platformType || "").trim().toLowerCase();
       const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";

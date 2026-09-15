@@ -1635,20 +1635,23 @@ export class GoogleAnalytics4Service {
       const standardSessions = reportMetricTotal(data, 0);
       const standardConversions = reportMetricTotal(data, 2);
       const standardRevenue = reportMetricTotal(data, 3);
+      const exactPageLocationScope = await fetchWithRevenueFallback([], pageLocationCampaignFilter);
+      const exactPageLocationConversions = reportMetricTotal(exactPageLocationScope.data, 2);
+      const exactPageLocationRevenue = reportMetricTotal(exactPageLocationScope.data, 3);
+      const useExactPageLocationFinancials = exactPageLocationConversions !== 0 || exactPageLocationRevenue !== 0;
       const rebuiltRows: any[] = [];
       let rebuiltRevenueMetric = chosenRevenueMetric;
       for (const campaignName of this.normalizeCampaignFilter(campaignFilter)) {
-        const traffic = await fetchReport(
-          'totalRevenue',
-          [],
-          undefined,
-          this.buildExactUtmCampaignPageLocationFilter(campaignName),
-          endDate || 'yesterday',
+        const exactPageLocationFilter = this.buildExactUtmCampaignPageLocationFilter(campaignName);
+        const exactPageLocation = useExactPageLocationFinancials
+          ? await fetchWithRevenueFallback([], exactPageLocationFilter)
+          : null;
+        const traffic = exactPageLocation?.data || await fetchReport(
+          'totalRevenue', [], undefined, exactPageLocationFilter, endDate || 'yesterday',
           [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'engagedSessions' }],
         );
-        const financial = await fetchWithRevenueFallback(
-          [{ name: 'campaignName' }],
-          this.buildCampaignDimensionFilter(campaignName, 'campaignName'),
+        const financial = exactPageLocation || await fetchWithRevenueFallback(
+          [{ name: 'campaignName' }], this.buildCampaignDimensionFilter(campaignName, 'campaignName'),
         );
         rebuiltRevenueMetric = financial.revenueMetric;
         rebuiltRows.push({
@@ -1658,7 +1661,7 @@ export class GoogleAnalytics4Service {
             { value: String(reportMetricTotal(traffic, 1)) },
             { value: String(reportMetricTotal(financial.data, 2)) },
             { value: String(reportMetricTotal(financial.data, 3)) },
-            { value: String(reportMetricTotal(traffic, 2)) },
+            { value: String(reportMetricTotal(traffic, exactPageLocation ? 4 : 2)) },
           ],
         });
       }
@@ -1679,7 +1682,9 @@ export class GoogleAnalytics4Service {
         rebuiltRevenue: Number(rebuiltTotals[3].toFixed(2)),
       };
       if (rebuiltTotals[0] > standardSessions) {
-        if (rebuiltTotals[2] !== standardConversions || Math.abs(rebuiltTotals[3] - standardRevenue) >= 0.01) {
+        const expectedConversions = useExactPageLocationFinancials ? exactPageLocationConversions : standardConversions;
+        const expectedRevenue = useExactPageLocationFinancials ? exactPageLocationRevenue : standardRevenue;
+        if (rebuiltTotals[2] !== expectedConversions || Math.abs(rebuiltTotals[3] - expectedRevenue) >= 0.01) {
           throw new Error('GA4_OVERVIEW_CAMPAIGN_ATTRIBUTION_UNVERIFIED');
         }
         data = {

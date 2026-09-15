@@ -892,29 +892,29 @@ describe("GA4 campaign value picker", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it('reconciles Overview campaign rows from exact UTM traffic and campaign financial totals', async () => {
+  it('uses exact UTM native revenue when campaignName reports a conflicting smaller total', async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || '{}'));
       const dimensions = (body?.dimensions || []).map((item: any) => item?.name);
       const filterText = JSON.stringify(body?.dimensionFilter || {});
       const totals = dimensions.length === 0
-        ? filterText.includes('campaign-a')
-          ? ['60', '61', '40']
-          : ['40', '39', '30']
+        ? filterText.includes('yesop_retargeti') && filterText.includes('yesop_email_nurture')
+          ? ['384', '385', '35', '6411.3', '286']
+          : filterText.includes('yesop_retargeti')
+            ? ['204', '204', '35', '6411.3', '148']
+            : ['180', '181', '0', '0', '138']
         : dimensions.length === 1 && dimensions[0] === 'campaignName'
-          ? filterText.includes('campaign-a')
-            ? ['3', '3', '3', '60', '3']
-            : ['2', '2', '2', '40', '2']
-          : ['20', '20', '5', '100', '20'];
+          ? ['23', '23', '23', '4631.1', '23']
+          : ['23', '23', '23', '4631.1', '23'];
       return {
         ok: true,
         json: async () => ({
           metadata: { currencyCode: 'USD' },
           rowCount: dimensions.length > 1 ? 1 : 0,
           rows: dimensions.length > 1 ? [{
-            dimensionValues: ['20260618', 'Paid Search', 'google', 'cpc', 'campaign-a', 'desktop', 'NL']
+            dimensionValues: ['20260618', 'Email', 'newsletter', 'email', 'yesop_email_nurture', 'desktop', 'NL']
               .map((value) => ({ value })),
-            metricValues: ['20', '20', '5', '100', '20'].map((value) => ({ value })),
+            metricValues: ['23', '23', '23', '4631.1', '23'].map((value) => ({ value })),
           }] : [],
           totals: [{ metricValues: totals.map((value) => ({ value })) }],
         }),
@@ -927,29 +927,37 @@ describe("GA4 campaign value picker", () => {
 
     const result = await ga4Service.getAcquisitionBreakdown(
       'campaign-1', storage, '2026-06-01', '123', 2000,
-      ['campaign-a', 'campaign-b'], '2026-06-30', true, false, 'USD', true,
+      ['yesop_retargeti', 'yesop_email_nurture'], '2026-06-30', true, false, 'USD', true,
     );
 
     expect(result.rows).toEqual([
-      expect.objectContaining({ campaign: 'campaign-a', sessions: 60, users: 61, conversions: 3, revenue: 60, engagedSessions: 40 }),
-      expect.objectContaining({ campaign: 'campaign-b', sessions: 40, users: 39, conversions: 2, revenue: 40, engagedSessions: 30 }),
+      expect.objectContaining({ campaign: 'yesop_retargeti', sessions: 204, users: 204, conversions: 35, revenue: 6411.3, engagedSessions: 148 }),
+      expect.objectContaining({ campaign: 'yesop_email_nurture', sessions: 180, users: 181, conversions: 0, revenue: 0, engagedSessions: 138 }),
     ]);
-    expect(result.totals).toMatchObject({ sessions: 100, users: 100, conversions: 5, revenue: 100, engagedSessions: 70 });
-    expect(result.meta.overviewCampaignAttribution).toMatchObject({ selected: true, rebuiltSessions: 100, rebuiltConversions: 5, rebuiltRevenue: 100 });
+    expect(result.totals).toMatchObject({ sessions: 384, users: 385, conversions: 35, revenue: 6411.3, engagedSessions: 286 });
+    expect(result.meta.overviewCampaignAttribution).toMatchObject({
+      selected: true,
+      standardRevenue: 4631.1,
+      rebuiltSessions: 384,
+      rebuiltConversions: 35,
+      rebuiltRevenue: 6411.3,
+    });
     const trafficBodies = fetchMock.mock.calls
       .map(([, init]) => JSON.parse(String((init as any)?.body || '{}')))
       .filter((body) => (body?.dimensions || []).length === 0);
-    expect(trafficBodies).toHaveLength(2);
-    expect(trafficBodies.map((body) => body?.dimensionFilter?.filter?.stringFilter?.matchType)).toEqual([
+    expect(trafficBodies).toHaveLength(3);
+    const campaignTrafficBodies = trafficBodies.filter((body) => body?.dimensionFilter?.filter);
+    expect(campaignTrafficBodies).toHaveLength(2);
+    expect(campaignTrafficBodies.map((body) => body?.dimensionFilter?.filter?.stringFilter?.matchType)).toEqual([
       'FULL_REGEXP', 'FULL_REGEXP',
     ]);
-    const trafficPatterns = trafficBodies.map((body) => body?.dimensionFilter?.filter?.stringFilter?.value);
+    const trafficPatterns = campaignTrafficBodies.map((body) => body?.dimensionFilter?.filter?.stringFilter?.value);
     expect(trafficPatterns).toEqual([
-      '.*[?&]utm_campaign=campaign-a(?:[&#].*)?$',
-      '.*[?&]utm_campaign=campaign-b(?:[&#].*)?$',
+      '.*[?&]utm_campaign=yesop_retargeti(?:[&#].*)?$',
+      '.*[?&]utm_campaign=yesop_email_nurture(?:[&#].*)?$',
     ]);
-    expect(new RegExp(trafficPatterns[0]).test('https://example.test/?utm_campaign=campaign-a&utm_source=x')).toBe(true);
-    expect(new RegExp(trafficPatterns[0]).test('https://example.test/?utm_campaign=campaign-ab&utm_source=x')).toBe(false);
+    expect(new RegExp(trafficPatterns[0]).test('https://example.test/?utm_campaign=yesop_retargeti&utm_source=x')).toBe(true);
+    expect(new RegExp(trafficPatterns[0]).test('https://example.test/?utm_campaign=yesop_retargeting&utm_source=x')).toBe(false);
   });
 
   it("does not relabel pageLocation rows as landing pages when session attribution is empty", async () => {

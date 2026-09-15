@@ -415,30 +415,37 @@ export class GoogleAnalytics4Service {
     propertyId?: string,
     limit: number = 50,
     campaignFilter?: CampaignFilter,
-    endDate = 'yesterday'
+    endDate = 'yesterday',
+    validationReadOnly = false
   ): Promise<{
     propertyId: string;
     revenueMetric: 'totalRevenue' | 'purchaseRevenue';
     rows: Array<{ eventName: string; conversions: number; eventCount: number; users: number; revenue: number }>;
     totals: { conversions: number; eventCount: number; users: number; revenue: number };
   }> {
+    const requestedPropertyId = this.normalizeGA4PropertyId(propertyId || '');
+    if (!requestedPropertyId) throw new Error('GA4_PROPERTY_SCOPE_REQUIRED');
     const connection = await storage.getGA4Connection(campaignId, propertyId);
     if (!connection) throw new Error('NO_GA4_CONNECTION');
+    if (this.normalizeGA4PropertyId(connection.propertyId) !== requestedPropertyId) throw new Error('NO_GA4_CONNECTION');
     if (!connection.accessToken) {
       const tokenExpiredError = new Error('TOKEN_EXPIRED');
       (tokenExpiredError as any).isTokenExpired = true;
       throw tokenExpiredError;
     }
+    if (this.normalizeCampaignFilter(campaignFilter).length === 0) {
+      throw new Error('GA4_CAMPAIGN_SCOPE_REQUIRED');
+    }
 
     const normalizedPropertyId = this.normalizeGA4PropertyId(connection.propertyId);
     const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
-    const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
 
     const run = async (
       accessToken: string,
       revenueMetric: 'totalRevenue' | 'purchaseRevenue',
       scopeFilter: any = campaignDimensionFilter,
-      reportLimit: number = limit
+      reportLimit: number = limit,
+      offset = 0
     ) => {
       const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
@@ -448,15 +455,19 @@ export class GoogleAnalytics4Service {
           dimensions: [{ name: 'eventName' }],
           ...(scopeFilter ? scopeFilter : {}),
           metrics: [{ name: 'conversions' }, { name: 'eventCount' }, { name: 'totalUsers' }, { name: revenueMetric }],
-          orderBys: [{ metric: { metricName: 'conversions' }, desc: true }],
+          orderBys: [
+            { metric: { metricName: 'conversions' }, desc: true },
+            { dimension: { dimensionName: 'eventName' } },
+          ],
           limit: Math.min(Math.max(reportLimit, 1), 10000),
+          offset,
         }),
       });
       if (!resp.ok) {
         const txt = await resp.text();
         throw new Error(txt);
       }
-      const json = await resp.json().catch(() => ({} as any));
+      const json = await resp.json();
       return json;
     };
 
@@ -468,18 +479,29 @@ export class GoogleAnalytics4Service {
       let totalUsers = 0;
       let totalRevenue = 0;
 
+      const metricValue = (raw: unknown, metric: string, integer = false, allowNegative = false) => {
+        const text = String(raw ?? '').trim();
+        const value = Number(text);
+        if (!text || !Number.isFinite(value) || (!allowNegative && value < 0) || (integer && !Number.isInteger(value))) {
+          throw new Error(`GA4_CONVERSION_EVENT_PROVIDER_VALUE_UNSAFE: ${metric}`);
+        }
+        return value;
+      };
+
       for (const r of rows) {
-        const eventName = String(r?.dimensionValues?.[0]?.value || '').trim() || '(not set)';
-        const conversions = parseInt(String(r?.metricValues?.[0]?.value || '0'), 10) || 0;
-        const eventCount = parseInt(String(r?.metricValues?.[1]?.value || '0'), 10) || 0;
-        const users = parseInt(String(r?.metricValues?.[2]?.value || '0'), 10) || 0;
-        const revenue = Number.parseFloat(String(r?.metricValues?.[3]?.value || '0')) || 0;
+        const eventName = String(r?.dimensionValues?.[0]?.value ?? '').trim();
+        if (!eventName) throw new Error('GA4_CONVERSION_EVENT_PROVIDER_VALUE_UNSAFE: eventName');
+        const conversions = metricValue(r?.metricValues?.[0]?.value, 'conversions');
+        const eventCount = metricValue(r?.metricValues?.[1]?.value, 'eventCount', true);
+        const users = metricValue(r?.metricValues?.[2]?.value, 'users', true);
+        const revenue = metricValue(r?.metricValues?.[3]?.value, revenueMetric, false, true);
         totalConversions += conversions;
         totalEventCount += eventCount;
         totalUsers += users;
         totalRevenue += revenue;
         out.push({ eventName, conversions, eventCount, users, revenue: Number(revenue.toFixed(2)) });
       }
+      out.sort((a, b) => b.conversions - a.conversions || (a.eventName < b.eventName ? -1 : a.eventName > b.eventName ? 1 : 0));
       return {
         revenueMetric,
         rows: out,
@@ -492,32 +514,46 @@ export class GoogleAnalytics4Service {
       return t.includes('"code": 401') || t.includes('unauthenticated') || t.includes('invalid authentication credentials') || t.includes('invalid_grant');
     };
 
+    const incompletePaginationError = (message: string) =>
+      new Error(`GA4_CONVERSION_EVENT_PAGINATION_INCOMPLETE: ${message}`);
     const fetchRows = async (accessToken: string, scopeFilter: any, reportLimit: number = limit) => {
+      const fetchMetric = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
+        const firstPage = await run(accessToken, revenueMetric, scopeFilter, reportLimit, 0);
+        const hasRowCount = firstPage?.rowCount !== undefined && firstPage?.rowCount !== null;
+        const expectedRows = hasRowCount ? Number(firstPage.rowCount) : Number.NaN;
+        const rows = Array.isArray(firstPage?.rows) ? [...firstPage.rows] : [];
+        if (!Number.isInteger(expectedRows) || expectedRows < 0) {
+          throw incompletePaginationError('provider rowCount is unavailable');
+        }
+        if (expectedRows > 100000) throw incompletePaginationError(`rowCount ${expectedRows} exceeds safe maximum 100000`);
+        if (rows.length > expectedRows) throw incompletePaginationError('provider returned more rows than rowCount');
+        while (rows.length < expectedRows) {
+          const page = await run(accessToken, revenueMetric, scopeFilter, reportLimit, rows.length);
+          if (Number(page?.rowCount) !== expectedRows) throw incompletePaginationError('rowCount changed during pagination');
+          const pageRows = Array.isArray(page?.rows) ? page.rows : [];
+          if (pageRows.length === 0) throw incompletePaginationError(`provider returned an empty page at offset ${rows.length}`);
+          rows.push(...pageRows);
+          if (rows.length > expectedRows) throw incompletePaginationError('provider returned more rows than rowCount');
+        }
+        return parseRows({ ...firstPage, rows }, revenueMetric);
+      };
       try {
-        const json = await run(accessToken, 'totalRevenue', scopeFilter, reportLimit);
-        return parseRows(json, 'totalRevenue');
+        return await fetchMetric('totalRevenue');
       } catch (e: any) {
         const msg = String(e?.message || e || '');
-        if (msg.toLowerCase().includes('totalrevenue') || msg.toLowerCase().includes('metric') || msg.toLowerCase().includes('invalid')) {
-          const json2 = await run(accessToken, 'purchaseRevenue', scopeFilter, reportLimit);
-          return parseRows(json2, 'purchaseRevenue');
+        if (isAuthErrorText(msg)) throw e;
+        if (msg.toLowerCase().includes('totalrevenue')) {
+          return fetchMetric('purchaseRevenue');
         }
         throw e;
       }
     };
-    const isEmptyResult = (res: any) =>
-      !Array.isArray(res?.rows) || res.rows.length === 0 ||
-      ((Number(res?.totals?.conversions || 0) + Number(res?.totals?.eventCount || 0) + Number(res?.totals?.users || 0) + Number(res?.totals?.revenue || 0)) <= 0);
-    const hasEventRows = (res: any) =>
-      Array.isArray(res?.rows) && res.rows.some((r: any) => Number(r?.eventCount || 0) > 0 || Number(r?.users || 0) > 0);
-    const rowHasConversionRevenue = (row: any) =>
-      Number(row?.conversions || 0) > 0 || Number(row?.revenue || 0) > 0;
-    const hasConversionRevenueRows = (res: any) =>
-      Array.isArray(res?.rows) && res.rows.some(rowHasConversionRevenue);
     const hasConversionRows = (res: any) =>
       Array.isArray(res?.rows) && res.rows.some((row: any) => Number(row?.conversions || 0) > 0);
     const conversionRowsOnly = (res: any) => {
-      const rows = (Array.isArray(res?.rows) ? res.rows : []).filter((row: any) => Number(row?.conversions || 0) > 0);
+      const rows = (Array.isArray(res?.rows) ? res.rows : [])
+        .filter((row: any) => Number(row?.conversions || 0) > 0)
+        .slice(0, limit);
       return {
         ...res,
         rows,
@@ -529,53 +565,26 @@ export class GoogleAnalytics4Service {
         },
       };
     };
-    const hasMissingConversionRevenueEventRows = (res: any) =>
-      Array.isArray(res?.rows) && res.rows.some((r: any) =>
-        (Number(r?.eventCount || 0) > 0 || Number(r?.users || 0) > 0) && !rowHasConversionRevenue(r)
-      );
-    const eventKey = (row: any) => String(row?.eventName || '').trim().toLowerCase();
-    const supplementMissingConversionRows = (base: any, supplement: any) => {
-      if (!hasEventRows(base) || !hasConversionRevenueRows(supplement)) return base;
-      const supplementByKey = new Map<string, { conversions: number; revenue: number }>();
-      for (const row of supplement.rows || []) {
-        const key = eventKey(row);
-        if (!key) continue;
-        const current = supplementByKey.get(key) || { conversions: 0, revenue: 0 };
-        supplementByKey.set(key, {
-          conversions: current.conversions + (Number(row?.conversions || 0) || 0),
-          revenue: current.revenue + (Number(row?.revenue || 0) || 0),
-        });
+    const assertUniqueEventRows = (res: any) => {
+      const names = new Set<string>();
+      for (const row of res?.rows || []) {
+        const name = String(row?.eventName || '').trim();
+        if (names.has(name)) throw new Error('GA4_CONVERSION_EVENT_DUPLICATE_ROWS');
+        names.add(name);
       }
-      let changed = false;
-      const rows = (base.rows || []).map((row: any) => {
-        if (rowHasConversionRevenue(row)) return row;
-        const match = supplementByKey.get(eventKey(row));
-        if (!match || (match.conversions <= 0 && match.revenue <= 0)) return row;
-        changed = true;
-        return { ...row, conversions: match.conversions, revenue: Number(match.revenue.toFixed(2)) };
-      });
-      if (!changed) return base;
-      return {
-        ...base,
-        revenueMetric: supplement.revenueMetric || base.revenueMetric,
-        rows,
-        totals: {
-          ...base.totals,
-          conversions: rows.reduce((sum: number, row: any) => sum + (Number(row?.conversions || 0) || 0), 0),
-          revenue: Number(rows.reduce((sum: number, row: any) => sum + (Number(row?.revenue || 0) || 0), 0).toFixed(2)),
-        },
-      };
     };
 
     const tryFetch = async (accessToken: string) => {
       const res = await fetchRows(accessToken, campaignDimensionFilter);
-      if (hasConversionRows(res) || !campaignFilter) return conversionRowsOnly(res);
+      assertUniqueEventRows(res);
+      if (hasConversionRows(res)) return conversionRowsOnly(res);
       for (const dimension of ['firstUserCampaignName', 'firstUserManualCampaignName']) {
         const fallback = await fetchRows(
           accessToken,
           this.buildCampaignDimensionFilter(campaignFilter, dimension),
-        ).catch(() => null);
-        if (fallback && hasConversionRows(fallback)) return conversionRowsOnly(fallback);
+        );
+        assertUniqueEventRows(fallback);
+        if (hasConversionRows(fallback)) return conversionRowsOnly(fallback);
       }
       return conversionRowsOnly(res);
     };
@@ -585,6 +594,11 @@ export class GoogleAnalytics4Service {
       return { propertyId: normalizedPropertyId, ...res };
     } catch (e: any) {
       const msg = String(e?.message || '');
+      if (isAuthErrorText(msg) && validationReadOnly) {
+        const tokenExpiredError = new Error('TOKEN_EXPIRED');
+        (tokenExpiredError as any).isTokenExpired = true;
+        throw tokenExpiredError;
+      }
       if (isAuthErrorText(msg) && connection.refreshToken) {
         const refresh = await this.refreshAccessToken(
           String(connection.refreshToken),

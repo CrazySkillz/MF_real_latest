@@ -1218,9 +1218,9 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       addSimpleTable(
         "Conversion Events",
         ["EVENT", "CONVERSIONS", "EVENT COUNT", "USERS"],
-        (payload.conversionEvents?.rows || []).slice(0, 15).map((row: any) => [
+        (payload.conversionEvents?.rows || []).slice(0, 25).map((row: any) => [
           String(row?.eventName || "(not set)"),
-          formatNumber(row?.conversions || 0),
+          Number(row?.conversions || 0).toLocaleString("en-US", { maximumFractionDigits: 20 }),
           formatNumber(row?.eventCount || 0),
           formatNumber(row?.users || 0),
         ]),

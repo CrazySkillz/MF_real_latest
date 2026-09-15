@@ -1202,6 +1202,7 @@ describe("GA4 campaign value picker", () => {
       return {
         ok: true,
         json: async () => ({
+          rowCount: isPageLocationFallback ? 3 : 2,
           rows: isPageLocationFallback
             ? [
                 {
@@ -1260,6 +1261,7 @@ describe("GA4 campaign value picker", () => {
       return {
         ok: true,
         json: async () => ({
+          rowCount: filterText.includes("firstUserCampaignName") ? 2 : 0,
           rows: filterText.includes("firstUserCampaignName") ? [
             {
               dimensionValues: [{ value: "purchase" }],
@@ -1293,7 +1295,7 @@ describe("GA4 campaign value picker", () => {
   it("passes explicit cumulative start and end dates to Overview row reports", async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,
-      json: async () => ({ rows: [] }),
+      json: async () => ({ rowCount: 0, rows: [] }),
     }) as any);
     vi.stubGlobal("fetch", fetchMock);
     const storage = {
@@ -1305,10 +1307,10 @@ describe("GA4 campaign value picker", () => {
     };
 
     await ga4Service.getLandingPagesReport("campaign-1", storage, "2026-07-02", "123", 50, undefined, "2026-08-04");
-    await ga4Service.getConversionEventsReport("campaign-1", storage, "2026-07-02", "123", 50, undefined, "2026-08-04");
+    await ga4Service.getConversionEventsReport("campaign-1", storage, "2026-07-02", "123", 50, "summer_sale", "2026-08-04");
 
     const requestBodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
-    expect(requestBodies).toHaveLength(2);
+    expect(requestBodies).toHaveLength(4);
     expect(requestBodies.every((body) => JSON.stringify(body.dateRanges) === JSON.stringify([
       { startDate: "2026-07-02", endDate: "2026-08-04" },
     ]))).toBe(true);

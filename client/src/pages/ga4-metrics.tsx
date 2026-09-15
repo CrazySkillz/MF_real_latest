@@ -2052,17 +2052,25 @@ export default function GA4Metrics() {
 
   const { data: ga4ConversionEvents, isLoading: conversionEventsLoading, isError: conversionEventsError } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", "import-to-date", selectedGA4PropertyId],
-    enabled: !insightsValidationReadOnly && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
+    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
+    placeholderData: (previousData: any, previousQuery: any) => {
+      const previousKey = previousQuery?.queryKey;
+      return previousKey?.[1] === campaignId && previousKey?.[3] === "import-to-date" && previousKey?.[4] === selectedGA4PropertyId
+        ? previousData
+        : undefined;
+    },
     staleTime: 0,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    placeholderData: keepPreviousData,
+    refetchInterval: 10 * 60 * 1000,
+    refetchIntervalInBackground: true,
     queryFn: async () => {
       const params = new URLSearchParams({
         propertyId: String(selectedGA4PropertyId),
         window: 'import-to-date',
         limit: '50',
       });
+      if (insightsValidationReadOnly) params.set('readOnly', '1');
       const resp = await fetch(
         `/api/campaigns/${campaignId}/ga4-conversion-events?${params.toString()}`
       );
@@ -3186,7 +3194,7 @@ export default function GA4Metrics() {
       if (needsSpend && (!financialSpendAvailable || spendSourcesError || (spendToDateError && spendBreakdownError))) unavailable.push("Spend");
       if (needsCampaignBreakdown && campaignBreakdownUnavailable) unavailable.push("Campaign Breakdown");
       if (needsLandingPages && landingPagesUnavailable) unavailable.push("Landing Pages");
-      if (needsConversionEvents && conversionEventsError) unavailable.push("Conversion Events");
+      if (needsConversionEvents && conversionEventsUnavailable) unavailable.push("Conversion Events");
       if (unavailable.length > 0) {
         throw new Error(`Cannot generate the Overview report while these sections are unavailable: ${Array.from(new Set(unavailable)).join(", ")}. Refresh the page and try again.`);
       }
@@ -3545,9 +3553,9 @@ export default function GA4Metrics() {
       if (includeOverviewConversionEvents) addSimpleTable(
         "Conversion Events",
         ["EVENT", "CONVERSIONS", "EVENT COUNT", "USERS"],
-        (Array.isArray(ga4ConversionEvents?.rows) ? ga4ConversionEvents.rows : []).slice(0, 15).map((r: any) => [
+        (Array.isArray(ga4ConversionEvents?.rows) ? ga4ConversionEvents.rows : []).slice(0, 25).map((r: any) => [
           String(r?.eventName || "(not set)"),
-          fN(Number(r?.conversions || 0)),
+          Number(r?.conversions || 0).toLocaleString("en-US", { maximumFractionDigits: 20 }),
           fN(Number(r?.eventCount || 0)),
           fN(Number(r?.users || 0)),
         ]),
@@ -6848,7 +6856,7 @@ export default function GA4Metrics() {
                                           {String(r?.eventName || "(not set)")}
                                         </div>
                                       </td>
-                                      <td className="p-3 text-right">{formatNumber(Number(r?.conversions || 0))}</td>
+                                      <td className="p-3 text-right">{Number(r?.conversions || 0).toLocaleString("en-US", { maximumFractionDigits: 20 })}</td>
                                       <td className="p-3 text-right">{formatNumber(Number(r?.eventCount || 0))}</td>
                                       <td className="p-3 text-right">{formatNumber(Number(r?.users || 0))}</td>
                                     </tr>

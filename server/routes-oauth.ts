@@ -13011,6 +13011,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // GA4 Conversion Events (Phase 1: GA4-only, high value)
   app.get("/api/campaigns/:id/ga4-conversion-events", async (req, res) => {
+    const validationReadOnly = String(req.query.readOnly || '').trim() === '1';
+    res.setHeader('Cache-Control', 'no-store');
+    if (validationReadOnly) {
+      res.setHeader("X-GA4-Validation-Read-Only", "1");
+      res.setHeader("X-GA4-Credential-Refresh-Allowed", "0");
+    }
     try {
       const campaignId = req.params.id;
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
@@ -13021,10 +13027,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 500);
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
       const requestedPropertyId = propertyId ? String(propertyId) : '';
+      if (!requestedPropertyId) return res.status(400).json({ success: false, error: 'GA4_PROPERTY_SCOPE_REQUIRED' });
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
 
       // Use current campaign's ga4CampaignFilter only (not cross-client)
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+      if (!campaignFilter || (Array.isArray(campaignFilter) ? campaignFilter.length === 0 : !String(campaignFilter).trim())) {
+        return res.status(409).json({ success: false, error: 'GA4_CAMPAIGN_SCOPE_REQUIRED' });
+      }
 
       let importToDateWindow: ReturnType<typeof resolveGA4ImportToDateWindow> = null;
       let resolvedPropertyId = propertyId;
@@ -13060,8 +13070,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         let cRemain = totalConversions;
         let rRemain = totalRevenue;
-        let eventCountSum = 0;
-
         const rows = events.map((e, idx) => {
           const share = e.weight / wSum;
           const isLast = idx === events.length - 1;
@@ -13074,33 +13082,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           cRemain -= conversions;
           rRemain -= revenue;
           const eventCount = Math.max(conversions, Math.floor(conversions * (2.1 + idx * 0.35)));
-          eventCountSum += eventCount;
           const users = Math.min(totalUsers, Math.max(0, Math.floor(conversions * (2.2 + idx * 0.25))));
           return { eventName: e.name, conversions, eventCount, users, revenue: Number(revenue.toFixed(2)) };
         });
+        const conversionRows = rows.filter((row) => row.conversions > 0).slice(0, limit);
 
         return res.json({
           success: true,
           propertyId: resolvedPropertyId || requestedPropertyId || 'yesop',
           dateRange,
           ...(importToDateWindow ? { window: 'import-to-date', ...importToDateWindow } : {}),
-          rows: rows.slice(0, limit),
-          totals: { conversions: totalConversions, eventCount: eventCountSum, users: totalUsers, revenue: Number(totalRevenue.toFixed(2)) },
+          rows: conversionRows,
+          totals: {
+            conversions: conversionRows.reduce((sum, row) => sum + row.conversions, 0),
+            eventCount: conversionRows.reduce((sum, row) => sum + row.eventCount, 0),
+            users: conversionRows.reduce((sum, row) => sum + row.users, 0),
+            revenue: Number(conversionRows.reduce((sum, row) => sum + row.revenue, 0).toFixed(2)),
+          },
           revenueMetric: 'totalRevenue',
           meta: { isSimulated: true },
+          ...(validationReadOnly ? { validationReadOnly: true } : {}),
           lastUpdated: new Date().toISOString(),
         });
       }
 
-      const result = await ga4Service.getConversionEventsReport(campaignId, storage, ga4DateRange, resolvedPropertyId, limit, campaignFilter, importToDateWindow?.endDate);
-      res.json({ success: true, dateRange, ...(importToDateWindow ? { window: 'import-to-date', ...importToDateWindow } : {}), ...result, lastUpdated: new Date().toISOString() });
+      const result = await ga4Service.getConversionEventsReport(campaignId, storage, ga4DateRange, resolvedPropertyId, limit, campaignFilter, importToDateWindow?.endDate, validationReadOnly);
+      res.json({ success: true, dateRange, ...(importToDateWindow ? { window: 'import-to-date', ...importToDateWindow } : {}), ...(validationReadOnly ? { validationReadOnly: true } : {}), ...result, lastUpdated: new Date().toISOString() });
     } catch (error: any) {
       console.error('[GA4 Conversion Events] Error:', error);
       if (error instanceof Error && error.message === 'NO_GA4_CONNECTION') {
         return res.status(404).json({ success: false, error: 'NO_GA4_CONNECTION' });
       }
       if (error instanceof Error && (error.message === 'TOKEN_EXPIRED' || (error as any).isTokenExpired)) {
-        return res.status(401).json({ success: false, error: 'TOKEN_EXPIRED' });
+        return res.status(401).json({ success: false, error: 'TOKEN_EXPIRED', ...(validationReadOnly ? { validationReadOnly: true } : {}) });
       }
       res.status(500).json({ success: false, error: error?.message || 'Failed to fetch GA4 conversion events' });
     }

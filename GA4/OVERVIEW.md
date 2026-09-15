@@ -76,8 +76,8 @@ Important clarification:
 - `Campaign Breakdown`, `Landing Pages`, and `Conversion Events` are live GA4 Data API views for the selected property and saved campaign scope. Their traffic/conversion metrics use the fixed initial-import boundary through the latest completed day; Campaign Breakdown native Revenue separately uses the campaign start through that same completed day. Campaign Breakdown validates its row revenue against its own native provider total without making its availability depend on the protected GA4 Revenue card; the certified Campaign2 values independently reconcile to that card
 - when GA4 campaign dimensions expose less session coverage than exact saved `pageLocation` `utm_campaign` queries, Overview Campaign Breakdown may rebuild rows from each exact saved UTM scope. If the combined exact UTM scope contains Conversions or Revenue, the rebuild uses per-campaign exact UTM financial values; otherwise it retains the compatible exact `campaignName` financial fallback. Rebuilt rows are selected only when they improve session coverage and their Conversions and Revenue reconcile to the selected combined provider scope; no proportional allocation is allowed
 - Landing Pages uses only GA4's session-scoped `landingPagePlusQueryString` result; ordinary `pageLocation` rows must never be relabeled as landing pages, and missing session-scoped attribution renders an unavailable/empty state
-- Conversion Events renders only event rows with nonzero GA4 Conversions; when `sessionCampaignName` is empty it may use the compatible exact `firstUserCampaignName` or `firstUserManualCampaignName` scope, but it must never substitute zero-conversion page-view traffic
-- new live GA4 events appear in Overview only after GA4 has processed them and the page query refetches; page load/window focus can refetch immediately, and the to-date/breakdown queries also refetch periodically while the page is open
+- Conversion Events renders only event rows with nonzero GA4 Conversions; when `sessionCampaignName` has no positive conversion rows it uses the compatible exact `firstUserCampaignName` and then `firstUserManualCampaignName` scope in that fixed order, but it never substitutes zero-conversion page-view traffic or `pageLocation` rows
+- new live GA4 events appear in Overview only after GA4 has processed them and the page query refetches; Conversion Events refetches on page load, browser focus/reconnect, and every 10 minutes while the page is open
 
 ## Source-Of-Truth Hierarchy
 
@@ -371,9 +371,12 @@ Important meaning:
 
 - revenue is intentionally not shown in `Conversion Events`; event rows remain conversion-volume context only
 - it uses the same fixed initial-import-to-latest-completed-day boundary as Summary and Campaign Breakdown, not a rolling 30-day window or the app campaign's start/created date
-- when GA4 returns primary event rows with missing conversion values, conversions may be supplemented from conversion-prioritized same-scope `pageLocation` UTM rows only by exact `Event` name match; rows that already have conversions or revenue are not overwritten
+- the provider query starts with an exact, case-insensitive match to the saved campaign values on `sessionCampaignName`; only when that complete result has no positive conversion rows does it try `firstUserCampaignName` and then `firstUserManualCampaignName` with the same exact saved values
+- the fallback order is fixed and fail-closed: attribution models are not merged, maximum values are not selected, and `pageLocation` is never used to create or supplement Conversion Events rows
+- only rows with native GA4 `Conversions > 0` are returned and displayed. Zero-conversion rows, including ordinary `page_view` traffic, are deliberately omitted; a successful empty result means all three complete exact-scope queries contained no positive conversion rows
+- `Conversions` preserves GA4 fractional attribution credit; `Event count` and `Users` remain the native values on that same event row
+- all provider pages are retrieved with deterministic conversion/event ordering before the API limit is applied; a missing or changing provider row count, incomplete page, malformed response, or duplicate exact event name makes the table unavailable rather than returning partial values
 - campaign-matched imported revenue is not allocated into event rows unless a future source provides real event-level identifiers that can be matched safely
-- if GA4 cannot provide an exact event-level conversion match, `Conversions` can correctly remain zero for that row
 - `Users` in this table is a row-level GA4 breakdown value, not a deduplicated page-level total
 - the same person can appear in more than one conversion-event row, so row `Users` values are directional and are not expected to sum or reconcile exactly to the top `Users` card
 
@@ -445,7 +448,9 @@ Landing Pages:
 Conversion Events:
 
 - confirm rows populate for the same GA4 property, fixed initial-import-to-latest-completed-day window, and campaign scope
-- confirm `Conversions`, `Event count`, and `Users` are coherent with GA4 event tracking for that scope
+- confirm the complete exact session-campaign result or, only when it has no positive conversion rows, the first successful positive fixed-order exact first-user fallback supplies the rows without cross-model merging
+- confirm every displayed row has `Conversions > 0`, fractional conversion credit is preserved, and `Event count` and `Users` match the same provider row
+- confirm provider pagination is complete, event names are unique, and the UI and both PDF builders preserve the same first 25 API rows and four columns
 - confirm campaign-only imported revenue is not allocated into conversion-event rows
 - confirm conversion-event naming and totals reflect real GA4 configuration rather than stale or misconfigured events
 

@@ -520,8 +520,17 @@ export class GoogleAnalytics4Service {
       const fetchMetric = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
         const firstPage = await run(accessToken, revenueMetric, scopeFilter, reportLimit, 0);
         const hasRowCount = firstPage?.rowCount !== undefined && firstPage?.rowCount !== null;
-        const expectedRows = hasRowCount ? Number(firstPage.rowCount) : Number.NaN;
         const rows = Array.isArray(firstPage?.rows) ? [...firstPage.rows] : [];
+        const dimensionHeaderNames = Array.isArray(firstPage?.dimensionHeaders)
+          ? firstPage.dimensionHeaders.map((header: any) => String(header?.name || ''))
+          : [];
+        const metricHeaderNames = Array.isArray(firstPage?.metricHeaders)
+          ? firstPage.metricHeaders.map((header: any) => String(header?.name || ''))
+          : [];
+        const canonicalEmptyResponse = rows.length === 0
+          && JSON.stringify(dimensionHeaderNames) === JSON.stringify(['eventName'])
+          && JSON.stringify(metricHeaderNames) === JSON.stringify(['conversions', 'eventCount', 'totalUsers', revenueMetric]);
+        const expectedRows = hasRowCount ? Number(firstPage.rowCount) : canonicalEmptyResponse ? 0 : Number.NaN;
         if (!Number.isInteger(expectedRows) || expectedRows < 0) {
           throw incompletePaginationError('provider rowCount is unavailable');
         }

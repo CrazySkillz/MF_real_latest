@@ -226,8 +226,19 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     )).rejects.toThrow("GA4_PROPERTY_SCOPE_REQUIRED");
   });
 
-  it("fails closed when provider rowCount is absent or changes between pages", async () => {
+  it("accepts GA4's canonical empty default but rejects noncanonical or changing row counts", async () => {
     const storage = { getGA4Connection: vi.fn(async () => connection) };
+    const canonicalEmpty = {
+      dimensionHeaders: [{ name: "eventName" }],
+      metricHeaders: ["conversions", "eventCount", "totalUsers", "totalRevenue"].map((name) => ({ name })),
+    };
+    const canonicalFetch = vi.fn(async () => ({ ok: true, json: async () => canonicalEmpty }));
+    vi.stubGlobal("fetch", canonicalFetch);
+    await expect(ga4Service.getConversionEventsReport(
+      "campaign-1", storage, "2026-08-01", "987654", 1, "saved-a", "2026-09-14",
+    )).resolves.toMatchObject({ rows: [], totals: { conversions: 0, eventCount: 0, users: 0, revenue: 0 } });
+    expect(canonicalFetch).toHaveBeenCalledTimes(3);
+
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ rows: [] }) })));
     await expect(ga4Service.getConversionEventsReport(
       "campaign-1", storage, "2026-08-01", "987654", 1, "saved-a", "2026-09-14",

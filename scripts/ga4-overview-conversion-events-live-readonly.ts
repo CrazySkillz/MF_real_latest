@@ -117,7 +117,7 @@ try {
   exact(wrongProperty.status, 404, "different-property denial");
 
   const direct = await api(page, conversionPath);
-  exact(direct.status, 200, "Conversion Events API status");
+  assert(direct.status === 200, `Conversion Events API status ${direct.status}: ${JSON.stringify(direct.body)}`);
   exact(direct.headers["x-ga4-validation-read-only"], "1", "read-only response header");
   exact(direct.headers["x-ga4-credential-refresh-allowed"], "0", "credential-refresh response header");
   exact(direct.body?.validationReadOnly, true, "read-only response body");

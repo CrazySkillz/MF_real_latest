@@ -375,7 +375,7 @@ Important meaning:
 - the fallback order is fixed and fail-closed: attribution models are not merged, maximum values are not selected, and `pageLocation` is never used to create or supplement Conversion Events rows
 - only rows with native GA4 `Conversions > 0` are returned and displayed. Zero-conversion rows, including ordinary `page_view` traffic, are deliberately omitted; a successful empty result means all three complete exact-scope queries contained no positive conversion rows
 - `Conversions` preserves GA4 fractional attribution credit; `Event count` and `Users` remain the native values on that same event row
-- all provider pages are retrieved with deterministic conversion/event ordering before the API limit is applied; a missing or changing provider row count, incomplete page, malformed response, or duplicate exact event name makes the table unavailable rather than returning partial values
+- all provider pages are retrieved with deterministic conversion/event ordering before the API limit is applied; GA4's header-complete canonical empty response is accepted as zero rows, while a missing row count on any other response, changing row count, incomplete page, malformed response, or duplicate exact event name makes the table unavailable rather than returning partial values
 - campaign-matched imported revenue is not allocated into event rows unless a future source provides real event-level identifiers that can be matched safely
 - `Users` in this table is a row-level GA4 breakdown value, not a deduplicated page-level total
 - the same person can appear in more than one conversion-event row, so row `Users` values are directional and are not expected to sum or reconcile exactly to the top `Users` card

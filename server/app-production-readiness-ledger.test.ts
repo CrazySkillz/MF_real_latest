@@ -95,7 +95,7 @@ describe("application production-readiness ledger", () => {
     expect(ledger).toContain("| 1 | Summary | `QUEUED` | `UNVERIFIED`");
     expect(ledger).toContain("| 2 | Revenue & Financials - Revenue | `COMPLETE` | `CERTIFIED`");
     expect(ledger).toContain("| 3 | Revenue & Financials - Spend | `COMPLETE` | `CERTIFIED`");
-    expect(ledger).toContain("| 4 | Campaign Breakdown | `QUEUED` | `UNVERIFIED`");
+    expect(ledger).toContain("| 4 | Campaign Breakdown | `COMPLETE` | `CERTIFIED`");
     expect(ledger).toContain("| 5 | Landing Pages | `QUEUED` | `UNVERIFIED`");
     expect(ledger).toContain("| 6 | Conversion Events | `QUEUED` | `UNVERIFIED`");
     expect(ledger).toContain("| Google Sheets | `COMPLETE` | `CERTIFIED`");

@@ -63,7 +63,7 @@ separate: `IN_PROGRESS` never means production-ready.
 | 2 | Revenue & Financials - Revenue | `COMPLETE` | `CERTIFIED` | Clean-certified for the exact combined GA4 Overview Revenue boundary at deployed application commit `8a4b463b`; controlling certificate: `GA4/OVERVIEW_REVENUE_SECTION_PRODUCTION_READINESS.md`; required steps remaining: 0. |
 | 3 | Revenue & Financials - Spend | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the documented Google Sheets and CSV Spend boundary at deployed runtime `002a7caa`; evidence commit `8d3da627`; required steps remaining: 0. Google Ads is not configured and remains excluded. |
 | - | Revenue & Financials - Performance (`Profit`, `ROAS`, `ROI`, `CPA`) | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact four-card Performance boundary at deployed runtime `0c49cc6a`; controlling certificate: `GA4/OVERVIEW_PERFORMANCE_CERTIFICATION_2026-09-14.md`; evidence commit `93a69edc`; required steps remaining: 0. Google Ads remains excluded. |
-| 4 | Campaign Breakdown | `QUEUED` | `UNVERIFIED` | Earlier bounded validation is preserved; the fresh pass remains required. |
+| 4 | Campaign Breakdown | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact documented Campaign Breakdown boundary at current deployed commit `9b2a090d9b3673a94dae7891b3e355e3bc269b4f`; controlling certificate: `GA4/OVERVIEW_CAMPAIGN_BREAKDOWN_CERTIFICATION_2026-09-14.md`; required steps remaining: 0. |
 | 5 | Landing Pages | `QUEUED` | `UNVERIFIED` | Requires a fresh current-runtime certification. |
 | 6 | Conversion Events | `QUEUED` | `UNVERIFIED` | Requires a fresh current-runtime certification. |
 

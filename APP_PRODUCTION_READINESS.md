@@ -175,7 +175,7 @@ known broken. They mean the app-wide production-ready claim is not yet proven.
 | Section | Durable status | Controlling authority | Exact boundary or open gate |
 | --- | --- | --- | --- |
 | GA4 Overview | `UNVERIFIED` | `GA4/certifications/ga4-overview.json`; `GA4/OVERVIEW_PRODUCTION_READINESS.md` | Current machine record is fail-closed; separately certified source components do not certify the whole tab. |
-| GA4 KPIs | `UNVERIFIED` | `GA4/certifications/ga4-kpis.json`; `GA4/KPIS_PRODUCTION_READINESS.md` | Exact-current certification was not rerun after later shared dependency changes. |
+| GA4 KPIs | `CERTIFIED` | `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact documented KPI boundary at deployed runtime `1c949dc9`; documentation commit `6ea70599`; required steps remaining: 0. GA4 Overview remains a read-only upstream dependency and is not recertified by this entry. |
 | GA4 Benchmarks | `CERTIFIED` | `GA4/certifications/ga4-benchmarks.json`; `GA4/BENCHMARKS_PRODUCTION_READINESS.md` | Exact deployed runtime `a96ba06e21c9344c1767c960e702ac4a647dc5f1` and recorded campaign/property/source boundary. |
 | GA4 Ad Comparison | `UNVERIFIED` | `GA4/certifications/ga4-ad-comparison.json`; `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` | Later shared dependencies changed after the previous exact certificate. |
 | GA4 Insights | `CERTIFIED` | `GA4/certifications/ga4-insights.json`; `GA4/INSIGHTS_PRODUCTION_READINESS.md` | Exact live-tab runtime `4be16c54c550a45dbf3104313c820ea47b453604`. |

@@ -8,6 +8,8 @@ Use [`OVERVIEW_PRODUCTION_READINESS.md`](./OVERVIEW_PRODUCTION_READINESS.md) for
 
 Current CRM boundary note (2026-09-13): Salesforce revenue is clean-certified only for the exact active source and exercised boundary recorded in [`OVERVIEW_REVENUE_SALESFORCE_PRODUCTION_READINESS.md`](./OVERVIEW_REVENUE_SALESFORCE_PRODUCTION_READINESS.md) at runtime `d4f1ec0e`; HubSpot retains its separate exact-source certificate. Shared CRM behavior remains documented in [`CRM_REVENUE_SOURCE_PATTERN.md`](./CRM_REVENUE_SOURCE_PATTERN.md). These source-specific certificates do not upgrade the complete Overview status from **UNVERIFIED**.
 
+Current Conversion Events boundary note (2026-09-15): Overview `Conversion Events` is **PRODUCTION_READY only for the exact section boundary** recorded in [`OVERVIEW_CONVERSION_EVENTS_CERTIFICATION_2026-09-15.md`](./OVERVIEW_CONVERSION_EVENTS_CERTIFICATION_2026-09-15.md), at application runtime `176d02ef00a65091917136f1ed2bd8c7cc817fcb` and deployed documentation revision `8dd0856bc2b63a65f56e90f45f8ec562b881f6fc`. The final authenticated result covered `2026-07-02` through `2026-09-14` and contained only `purchase` at 295 Conversions, 295 Event Count, and 295 Users. Older 193-conversion rows below are preserved historical evidence and are not the current Conversion Events certification. The complete Overview remains **UNVERIFIED**, and Landing Pages populated-row production accuracy remains pending.
+
 The moved content below is preserved verbatim so the documentation split does not discard or rewrite historical evidence.
 
 ## Mandatory Anti-Overclaim Rule
@@ -32,7 +34,7 @@ Required references reviewed for this audit include `AGENTS.md`, `ARCHITECTURE_U
 
 ## Current Status
 
-**Current status: UNVERIFIED.** Campaign Breakdown passed exact-current authenticated API/UI/browser-PDF validation at deployed runtime `08d7abe535c9ea4f57f57d8cbdbb072fba64052e` for the recorded configuration; direct database checks ran inside a read-only transaction. The complete current-version suite passed with 1,727 passing tests and zero blocking failures. Other Overview value families and the natural `22:00 UTC` daily-timer observation retain their separate validation status. The exact controlling status and exclusions remain in `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
+**Current status: UNVERIFIED for the complete Overview.** Campaign Breakdown retains its exact recorded certification, and Conversion Events is production-ready only for the exact section boundary linked above. Other Overview value families and the natural `22:00 UTC` daily-timer observation retain their separate validation status. The exact controlling status and exclusions remain in `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
 
 Current evidence captured on `2026-09-07` proves:
 

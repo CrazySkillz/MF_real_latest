@@ -146,9 +146,15 @@ Not claimed:
 - report scheduling, snapshots, email delivery, inbox receipt, or report-library lifecycle;
 - behavior for a different deployed SHA, property configuration, campaign filter, timezone, or future provider schema.
 
+## User UI Follow-Up
+
+On 2026-09-15, the user supplied a deployed UI screenshot showing the expected cumulative scope label and exactly the four certified columns. The visible positive row was `purchase` with 48 Conversions, 48 Event Count, and 48 Users; no Revenue column or zero-conversion row was displayed. The user accepted closing Conversion Events under this existing exact certification boundary and deferred an independent Google Analytics Explore reconciliation of that separate 48-value observation.
+
+The screenshot is recorded as a visual UI smoke check only. It does not replace the authenticated provider/API/UI/PDF evidence above and does not promote 48 to a separately provider-reconciled value.
+
 ## Repository Actions
 
 - Implementation commit: `4b5f14af895451c26827be2a19452d0c10626825`.
 - Canonical-empty follow-up commit and certified runtime: `176d02ef00a65091917136f1ed2bd8c7cc817fcb`.
-- The GA4 Overview master readiness ledger was not updated.
+- The GA4 current-status and testing documentation was subsequently aligned with this certificate. The app-wide master ledger `APP_PRODUCTION_READINESS.md` was not modified.
 - No production application data was rewritten or cleaned up.

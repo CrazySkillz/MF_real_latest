@@ -19,6 +19,8 @@ Campaign-level KPI/Benchmark production-readiness is tracked separately in `CAMP
 
 Shopify Revenue current status (2026-08-10): **clean-certified and production-ready for exact enabled source `3a68fcce-fffd-4dbf-ab03-7a63e46c5372` inside the recorded GA4 Overview boundary**. `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md` is canonical. Dormant OAuth, non-GA4 Shopify sources, future stores, and generalized provider behavior are excluded.
 
+Conversion Events supersession note (2026-09-15): the older exact-key supplementation checklist below is historical and is not the current implementation contract. The certified implementation uses complete, exact-campaign `sessionCampaignName`, `firstUserCampaignName`, and `firstUserManualCampaignName` reports in that fixed fallback order; it never merges models or supplements rows by event name or `pageLocation`, and it displays only rows with `Conversions > 0`. See `GA4/OVERVIEW_CONVERSION_EVENTS_CERTIFICATION_2026-09-15.md`.
+
 ## May 2026 GA4 Report-Template Scope
 
 - [x] Update the stale report regression test so it covers the current scheduler behavior for already-skipped scheduled reports with `Campaign not found` or `No recipients configured`.

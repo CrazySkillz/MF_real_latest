@@ -513,10 +513,15 @@ If using the mock system, each "Run Refresh" injects one daily data point with t
 - Users column has non-additivity tooltip
 - Date range = campaign lifetime (startDate → yesterday)
 
-#### Conversion Events (ga4-conversion-events, campaign lifetime)
+#### Conversion Events (`ga4-conversion-events`, fixed initial-import boundary through latest completed day)
 
-- Top 25 events by conversion count
-- Date range = campaign lifetime
+- The API requests up to 50 rows; the UI renders the first 25 in deterministic Conversions-descending, Event-ascending order
+- Columns are exactly Event, Conversions, Event Count, and Users; Revenue is not displayed
+- Only rows with `Conversions > 0` are displayed; a successful empty state means no positive-conversion rows were found, not that the request failed
+- Scope must remain the selected campaign's exact saved GA4 property and campaign values
+- Attribution fallback order is fixed: exact `sessionCampaignName`, then exact `firstUserCampaignName`, then exact `firstUserManualCampaignName`, stopping at the first complete result with positive conversion rows
+- Attribution models are never merged, and `pageLocation` or event-name supplementation must not create Conversion Events rows
+- Date range = saved `importStartDate` through the latest completed day in the campaign reporting timezone
 
 ---
 

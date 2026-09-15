@@ -24,7 +24,7 @@ Current GA4 tab production-readiness status:
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: UNVERIFIED -->
 
-- GA4 Overview remains **UNVERIFIED** overall. Campaign Breakdown is validated at deployed runtime `08d7abe535c9ea4f57f57d8cbdbb072fba64052e`: authenticated API/UI/browser-PDF parity confirmed 1,505 Sessions, 1,507 Users, 193 Conversions, `$65,362.20` native GA4 revenue, `$16,799.99` exact mapped imports, and `$82,162.19` displayed revenue. Landing Pages, Conversion Events, Revenue, Spend, and the natural scheduler gate retain their separate validation status.
+- GA4 Overview remains **UNVERIFIED** overall. Campaign Breakdown retains its exact recorded certification. Conversion Events is **PRODUCTION_READY only for the exact boundary** in `GA4/OVERVIEW_CONVERSION_EVENTS_CERTIFICATION_2026-09-15.md`: application runtime `176d02ef00a65091917136f1ed2bd8c7cc817fcb`, deployed with the documentation-only certification revision `8dd0856bc2b63a65f56e90f45f8ec562b881f6fc`. Landing Pages populated-row production accuracy remains pending; Revenue, Spend, and the natural scheduler gate retain their separate validation status.
 
 - The concise current decision lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`; detailed evidence lives in `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`; chronological Current Commits 0–24 live in `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md`. No production cleanup was performed or authorized.
 
@@ -97,7 +97,9 @@ Important meaning:
 - `GA4/OVERVIEW_REVENUE_SALESFORCE_PRODUCTION_READINESS.md`
   Canonical clean-certification boundary for the exact active GA4 Salesforce Revenue source; it does not certify other Salesforce configurations or global scheduler health.
 - `GA4/OVERVIEW_PRODUCTION_READINESS.md`
-  Concise canonical current-status index. Current section status: **UNVERIFIED**. Campaign Breakdown is validated for deployed runtime `08d7abe535c9ea4f57f57d8cbdbb072fba64052e`; remaining Overview value families and the natural scheduler gate retain their separate validation status.
+  Concise canonical current-status index. Current section status: **UNVERIFIED**. Campaign Breakdown retains its recorded certification, Conversion Events is production-ready only for its exact 2026-09-15 certified boundary, and the remaining Overview gates retain their separate status.
+- `GA4/OVERVIEW_CONVERSION_EVENTS_CERTIFICATION_2026-09-15.md`
+  Exact clean-certification boundary for Overview `Conversion Events`, including provider/API/UI/PDF parity, positive-conversion-only behavior, pagination, failures, refresh, and ownership isolation.
 - `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`
   Detailed Overview evidence ledger containing the preserved audit scope, inventories, end-to-end traces, blocker analyses, production-data findings, negative cases, and validation packets.
 - `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md`

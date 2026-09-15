@@ -1007,7 +1007,7 @@ For each add/edit/delete action above, validate all related revenue surfaces:
 - [ ] Overview revenue source rows/microcopy show the correct source amount and do not duplicate edited sources
 - [ ] Overview `Campaign Breakdown` uses the column label `Revenue` and includes exact campaign-matched imported revenue only when saved source campaign values match GA4 campaign rows
 - [ ] Overview `Landing Pages` has no revenue column; campaign-only imported revenue is not allocated into landing-page rows, and missing row conversions are supplemented only from conversion-prioritized same-scope `pageLocation` rows by exact landing page + source/medium match when available
-- [ ] Overview `Conversion Events` has no revenue column; campaign-only imported revenue is not allocated into event rows, and missing row conversions are supplemented only by exact event-name matches when available
+- [ ] Overview `Conversion Events` has exactly Event, Conversions, Event Count, and Users columns; campaign-only imported revenue is not allocated into event rows, only rows with `Conversions > 0` display, and the fixed exact-campaign fallback order is `sessionCampaignName` -> `firstUserCampaignName` -> `firstUserManualCampaignName` without merging or event-name/`pageLocation` supplementation
 - [ ] Overview top `Users` card follows the same coherent selected-campaign source hierarchy as the other Summary cards; daily facts can use summed daily users, while to-date totals use the GA4 to-date user count
 - [ ] Overview table `Users` values are treated as row-level directional counts and are not expected to sum or reconcile exactly to the top `Users` card
 - [ ] KPIs tab: Revenue KPI current value matches Overview `Total Revenue`

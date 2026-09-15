@@ -4910,15 +4910,24 @@ export class DatabaseStorage implements IStorage {
 
   async recordBenchmarkHistory(historyData: InsertBenchmarkHistory): Promise<BenchmarkHistory> {
     const benchmarkId = String((historyData as any)?.benchmarkId || "").trim();
-    const [existing] = await db.select({ id: benchmarks.id }).from(benchmarks).where(eq(benchmarks.id, benchmarkId)).limit(1);
-    if (!existing) {
-      throw new Error("Benchmark not found");
-    }
-    const [history] = await db
-      .insert(benchmarkHistory)
-      .values(historyData)
-      .returning();
-    return history;
+    const notes = String((historyData as any)?.notes || "");
+    const isAutomaticGA4Daily = notes.startsWith("auto:ga4_daily:");
+    return await db.transaction(async (tx: any) => {
+      if (isAutomaticGA4Daily) {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`benchmark_history:${benchmarkId}`}, 0))`);
+      }
+      const [existing] = await tx.select({ id: benchmarks.id }).from(benchmarks).where(eq(benchmarks.id, benchmarkId)).limit(1);
+      if (!existing) throw new Error("Benchmark not found");
+      if (isAutomaticGA4Daily) {
+        const [recorded] = await tx.select().from(benchmarkHistory).where(and(
+          eq(benchmarkHistory.benchmarkId, benchmarkId),
+          eq(benchmarkHistory.notes, notes),
+        )).limit(1);
+        if (recorded) return recorded;
+      }
+      const [history] = await tx.insert(benchmarkHistory).values(historyData).returning();
+      return history;
+    });
   }
 
   // Metric Snapshot methods

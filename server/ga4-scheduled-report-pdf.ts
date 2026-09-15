@@ -543,8 +543,8 @@ async function buildGA4ReportPayload(report: any) {
     const rows = mergeGA4OverviewCampaignRevenueRows((breakdownTraffic as any)?.rows, (nativeCampaignRevenueBreakdown as any)?.rows, selectedCampaignNames);
     const rowRevenue = Number(rows.reduce((sum, row) => sum + Number(row?.revenue || 0), 0).toFixed(2));
     const providerRevenue = Number(Number((nativeCampaignRevenueBreakdown as any)?.totals?.revenue || 0).toFixed(2));
-    const cardRevenue = Number(Number((ga4ToDate as any)?.totals?.revenue || 0).toFixed(2));
-    if (Math.abs(rowRevenue - providerRevenue) >= 0.01 || Math.abs(providerRevenue - cardRevenue) >= 0.01) {
+    // Keep Campaign Breakdown validation independent from protected report totals.
+    if (Math.abs(rowRevenue - providerRevenue) >= 0.01) {
       throw new Error("GA4_OVERVIEW_CAMPAIGN_REVENUE_UNVERIFIED");
     }
     breakdown = { ...breakdownTraffic, rows, totals: { ...(breakdownTraffic as any)?.totals, revenue: providerRevenue } };

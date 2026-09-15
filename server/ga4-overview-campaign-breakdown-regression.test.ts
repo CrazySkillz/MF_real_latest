@@ -197,6 +197,16 @@ describe("GA4 Overview Campaign Breakdown", () => {
     expect(table).toContain("campaignBreakdownAgg.map");
   });
 
+  it("keeps Campaign Breakdown validation isolated from protected GA4 Revenue totals", () => {
+    const validation = between(client, "const campaignRevenueWindow", "const campaignBreakdownRevenueResolution");
+    const scheduledValidation = between(scheduledPdf, "let breakdown: any = breakdownTraffic", "let dailyRows =");
+    expect(validation).toContain("campaignBreakdownNativeRowRevenue");
+    expect(validation).toContain("(ga4Breakdown as any)?.totals?.revenue");
+    expect(validation).not.toContain("ga4ToDateResp");
+    expect(scheduledValidation).toContain("Math.abs(rowRevenue - providerRevenue) >= 0.01");
+    expect(scheduledValidation).not.toContain("cardRevenue");
+  });
+
   it("retains last-good rows and refetches on reload, focus, reconnect, and interval", () => {
     const query = between(client, "data: ga4Breakdown", "data: adComparisonBreakdown");
     expect(query).toContain("staleTime: 0");

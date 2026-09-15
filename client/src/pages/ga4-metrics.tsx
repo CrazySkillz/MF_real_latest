@@ -2812,12 +2812,23 @@ export default function GA4Metrics() {
     (hubspotPipelineProxyError && hubspotPipelineProxyData !== undefined) ||
     (salesforcePipelineProxyError && salesforcePipelineProxyData !== undefined)
   );
+  // Campaign Breakdown is an independently scoped provider response. Validate its
+  // native rows against its own provider total without changing protected cards.
   const campaignRevenueWindow = (ga4Breakdown as any)?.revenueWindow;
+  const campaignBreakdownNativeRows = Array.isArray((ga4Breakdown as any)?.rows) ? (ga4Breakdown as any).rows : [];
+  const campaignBreakdownNativeRevenueValid = campaignBreakdownNativeRows.every(
+    (row: any) => Number.isFinite(Number(row?.revenue)),
+  );
+  const campaignBreakdownNativeRowRevenue = campaignBreakdownNativeRows.reduce(
+    (sum: number, row: any) => sum + Number(row?.revenue || 0), 0,
+  );
   const campaignBreakdownRevenueVerified = (ga4Breakdown as any)?.isSimulated === true || (
     campaignRevenueWindow?.source === "ga4" &&
-    String(campaignRevenueWindow?.startDate || "") === String((ga4ToDateResp as any)?.startDate || "") &&
-    String(campaignRevenueWindow?.endDate || "") === String((ga4ToDateResp as any)?.endDate || "") &&
-    Math.abs(Number((ga4Breakdown as any)?.totals?.revenue || 0) - Number((ga4ToDateResp as any)?.totals?.revenue || 0)) < 0.01
+    /^\d{4}-\d{2}-\d{2}$/.test(String(campaignRevenueWindow?.startDate || "")) &&
+    String(campaignRevenueWindow?.startDate || "") <= String(campaignRevenueWindow?.endDate || "") &&
+    String(campaignRevenueWindow?.endDate || "") === String((ga4Breakdown as any)?.endDate || "") &&
+    campaignBreakdownNativeRevenueValid &&
+    Math.abs(campaignBreakdownNativeRowRevenue - Number((ga4Breakdown as any)?.totals?.revenue || 0)) < 0.01
   );
   const campaignBreakdownRevenueResolution = resolveExactGA4CampaignBreakdownRevenue(
     selectedGa4CampaignFilterList.map((name) => ({ name })),
@@ -6643,8 +6654,8 @@ export default function GA4Metrics() {
                       </div>
                       <Card>
                         <CardContent className="p-6">
-                          {(breakdownLoading || ga4ToDateLoading || revenueSourcesLoading || revenueBreakdownLoading) &&
-                          (ga4Breakdown === undefined || ga4ToDateResp === undefined || revenueSourcesResp === undefined || revenueBreakdownResp === undefined) ? (
+                          {(breakdownLoading || revenueSourcesLoading || revenueBreakdownLoading) &&
+                          (ga4Breakdown === undefined || revenueSourcesResp === undefined || revenueBreakdownResp === undefined) ? (
                             <div className="h-32 bg-muted rounded animate-pulse" />
                           ) : campaignBreakdownUnavailable ? (
                             <div className="text-sm text-destructive">

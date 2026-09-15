@@ -81,7 +81,8 @@ describe('GA4 Overview initial historical import boundary', () => {
     expect(route).toContain('revenueWindow: nativeRevenueWindow');
     expect(route).toContain("throw new Error('GA4_OVERVIEW_CAMPAIGN_REVENUE_UNVERIFIED')");
     expect(page).toContain('campaignBreakdownRevenueVerified');
-    expect(page).toContain('Math.abs(Number((ga4Breakdown as any)?.totals?.revenue || 0) - Number((ga4ToDateResp as any)?.totals?.revenue || 0)) < 0.01');
+    expect(page).toContain('Math.abs(campaignBreakdownNativeRowRevenue - Number((ga4Breakdown as any)?.totals?.revenue || 0)) < 0.01');
+    expect(page).not.toContain('Math.abs(Number((ga4Breakdown as any)?.totals?.revenue || 0) - Number((ga4ToDateResp as any)?.totals?.revenue || 0)) < 0.01');
     expect(scheduledReport).toContain('overviewStartDate');
     expect(scheduledReport).toContain('getLandingPagesReport(campaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, dailyEnd)');
     expect(scheduledReport).toContain('getConversionEventsReport(campaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, dailyEnd)');

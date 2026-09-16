@@ -108,6 +108,8 @@ Fields consumed: `totals.revenue`, `totals.conversions`, `totals.sessions`, `tot
 
 Only the aggregate fallback contract is in scope: `totals.sessions`, `totals.users`, `totals.conversions`, `totals.revenue`, and row fields needed to derive those totals when `totals` is absent. Row-level attribution and the rendered Campaign Breakdown table are excluded.
 
+Current availability preconditions: import-to-date requests fail closed without an explicit selected property or saved campaign filter. Populated `overviewCampaignBreakdown=1` provider rows also require a finite `sessionKeyEventRate` between 0 and 1 when sessions are positive. Benchmarks do not calculate from that rate, but a missing/invalid rate makes this bounded breakdown fallback unavailable; it must not be treated as a verified financial zero. This was added by the shared Campaign Breakdown/Ad Comparison delta after the original Benchmark runtime.
+
 ### Window and precedence
 
 - Native financial start: campaign `startDate`, falling back to `createdAt` under the existing route/job contract.

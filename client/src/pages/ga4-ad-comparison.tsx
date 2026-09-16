@@ -227,7 +227,7 @@ export default function GA4AdComparison({
         <div className="min-w-[220px] sm:max-w-[280px] md:w-full md:justify-self-end">
           <Select value={selectedMetric} onValueChange={onMetricChange}>
             <SelectTrigger className="h-9"><SelectValue placeholder="Sort by metric" /></SelectTrigger>
-            <SelectContent>
+            <SelectContent data-ga4-ad-comparison-metric-select>
               {METRIC_OPTIONS.map(opt => (
                 <SelectItem key={opt.value} value={opt.value}>{opt.label} (High to Low)</SelectItem>
               ))}

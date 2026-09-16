@@ -6,7 +6,7 @@
 
 - Validated runtime baseline: `dd9cd51ea755e896838c78be8cab020fc0249eba`, confirmed by `/api/health` after the Revenue Breakdown scheduled-PDF fix was pushed. The later certificate/test commit changes no runtime code.
 - Read-only reconciliation target: Campaign2 `eee3e654-b736-4e8e-86ec-1050e4d905c0`, GA4 property `542352127`, saved campaign values `yesop_retargeti` and `yesop_email_nurture`, currency USD, reporting zone `Europe/Amsterdam`.
-- GA4 Overview → Revenue & Financials was read-only. Its imported-source definitions and materialized records are the source of truth for the five imported lines. Ad Comparison's native GA4 line uses its own documented comparison window and the exact selected campaign rows from GA4. No cross-window Total Revenue or native parity is claimed.
+- GA4 Overview → Revenue & Financials was read-only. The Overview and Ad Comparison UI use the same campaign-scoped `revenue-sources` and `revenue-breakdown` responses for imported-source definitions and materialized records. Ad Comparison's native GA4 line uses its own documented comparison window and the exact selected campaign rows from GA4. No cross-window Total Revenue or native parity is claimed.
 - All database inventory checks used `BEGIN TRANSACTION READ ONLY` and `ROLLBACK`. Browser report generation used the unsaved download flow. No source, report, snapshot, schedule, or email was created or changed.
 
 ## Amount, ID, currency, and window reconciliation
@@ -20,9 +20,9 @@
 | Shopify (linkedin-revenue.myshopify.com) | `d11a829b-d4a0-4c40-b724-3590ca1cb949` | $5.90 | brand_search_q1 $5.90 |
 | HubSpot (Deals) | `38049121-4b3f-475a-a82c-0c766f8bf18d` | $3,200.00 | yesop_prospecting $3,200.00 |
 
-The native Ad Comparison API returned `totalRevenue` rows for **2026-08-09 through 2026-09-15**. Its two selected rows summed to the provider total, **$15,841.20**. The read-only Overview native financial API returned **$7,740.00** for **2026-09-08 through 2026-09-15**. The starts differ; these native amounts must not be substituted for one another.
+The native Ad Comparison API queried GA4's `totalRevenue` metric for **2026-08-09 through 2026-09-15**. Its two selected rows summed to the provider total, **$15,841.20**. The read-only Overview native financial API returned **$7,740.00** for **2026-09-08 through 2026-09-15**. The starts differ; these native amounts must not be substituted for one another.
 
-The five active imported source IDs, source API amounts, materialized source-breakdown amounts, and stored exact subsection totals matched. Their source-to-date query window was **1900-01-01 through 2026-09-16 UTC**, and their separate imported sum was **$57,676.90** in both `revenue-breakdown` and Overview's `revenue-to-date` API. Every active source was available and configured in USD; no record/source currency mismatch was found. Revenue Breakdown displays the source lines separately and makes no combined Total Revenue claim.
+The five active imported source IDs, source API amounts, materialized source-breakdown amounts, and stored exact subsection totals matched. Their source-to-date query window was **1900-01-01 through 2026-09-16 UTC**, and their separate imported sum was **$57,676.90** in both `revenue-breakdown` and Overview's `revenue-to-date` API. The `revenue-breakdown` response's `totalRevenue` field sums imported sources only; the UI does not display it as native plus imported revenue. Every active source was available and configured in USD; no record/source currency mismatch was found. Revenue Breakdown displays the source lines separately and makes no combined Total Revenue claim.
 
 HubSpot and Salesforce each store aggregate records and corresponding per-campaign detail records. Raw addition of both representations would double-count them. The storage read selects the aggregate representation when present, producing the $3,200.00 and $251.00 source amounts above. Exact external-key duplicates, cross-campaign records among these source IDs, and source/record currency mismatches were all **zero** in the read-only inventory.
 

@@ -4,8 +4,10 @@
 
 ## Controlling Current Status
 
-**Full-tab status: UNVERIFIED.** All Campaigns and Revenue Breakdown are outside
-the current subsection review; the full-tab machine record remains UNVERIFIED.
+**Full-tab status: UNVERIFIED.** All Campaigns remains outside the current
+subsection review; the full-tab machine record remains UNVERIFIED. Revenue
+Breakdown is separately `CLEAN-CERTIFIED` only for the exact boundary recorded
+in `GA4/AD_COMPARISON_REVENUE_BREAKDOWN_CERTIFICATION_2026-09-16.md`.
 
 **Current narrow status: CLEAN-CERTIFIED / PRODUCTION_READY** only for the
 Client2 / Campaign2 metric dropdown, Top Campaigns chart, three leader cards,

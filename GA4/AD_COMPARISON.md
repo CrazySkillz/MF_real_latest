@@ -15,6 +15,11 @@ scope and evidence are in `GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md`.
 The full Ad Comparison tab and its machine record remain `UNVERIFIED`; the
 older boundary below is historical.
 
+Revenue Breakdown is separately `CLEAN-CERTIFIED` for the exact Campaign2,
+source, UI, and PDF value boundary in
+`GA4/AD_COMPARISON_REVENUE_BREAKDOWN_CERTIFICATION_2026-09-16.md`.
+This does not certify All Campaigns or the full tab.
+
 Historical whole-tab status (superseded by the narrow current status above):
 
 `PRODUCTION_READY` for certified runtime boundary
@@ -294,10 +299,16 @@ Columns:
 
 Rules:
 
-- `GA4 Revenue (imported to date)` is the sum of native All Campaigns rows.
-- active imported sources show exact materialized source-to-date amounts and
-  remain separate from native All Campaigns rows; uniquely mapped amounts can
-  appear in the Overview-based chart and leader cards.
+- `GA4 Revenue (imported to date)` sums the native All Campaigns rows from the
+  selected GA4 property and saved campaign values, using the saved initial-import
+  boundary through the latest completed reporting day. It is not the Overview
+  native Revenue & Financials amount when that section uses a different window.
+- active imported sources use the same campaign-scoped source definitions and
+  materialized revenue records as Overview Revenue & Financials. The
+  `revenue-breakdown` API reads records from `1900-01-01` through the current
+  UTC date. These source-to-date amounts remain separate from native All
+  Campaigns rows; uniquely mapped amounts can appear in the Overview-based
+  chart and leader cards.
 - source rows can include indented per-campaign subsections from saved exact `campaignValueRevenueTotals`.
 - subsection rows must use stored exact source values only.
 - do not invent or proportionally allocate subsection values.
@@ -306,6 +317,11 @@ Rules:
   materialized values are unavailable.
 - do not render a combined `Total Revenue`; its inputs do not share a proven
   window.
+- when both native comparison and chart rows are empty, the page renders its
+  no-campaign-data state instead of the Revenue Breakdown table.
+- if source definitions load but a source has no materialized amount, its row
+  displays `Unavailable`; a failed refresh with cached data displays a last-good
+  warning. A verified materialized zero stays zero.
 
 ## State Contract
 
@@ -319,14 +335,14 @@ Rules:
 ## Reports Ownership Boundary
 
 PDF generation, downloads, saved reports, snapshots, scheduling, and delivery
-belong to the Reports section. They are not part of the Ad Comparison tab
-certification boundary.
+belong to the Reports section. The separate Revenue Breakdown certificate
+validates its browser PDF values and the scheduled PDF source-window fix for
+the recorded campaign; it does not certify report saving, scheduling, or delivery.
 
 The live tab path certified here is `client/src/pages/ga4-ad-comparison.tsx`,
-with its data preparation in `client/src/pages/ga4-metrics.tsx`. Any Reports
-output that presents Ad Comparison data must be validated under
-`GA4/REPORTS_PRODUCTION_READINESS.md` and cannot expand or invalidate the
-tab-only claim unless it changes a shared live-tab dependency.
+with its data preparation in `client/src/pages/ga4-metrics.tsx`. Broader Reports
+output and delivery remain governed by `GA4/REPORTS_PRODUCTION_READINESS.md`;
+the Revenue Breakdown certificate covers only its named PDF value paths.
 
 ## Refresh Pattern
 

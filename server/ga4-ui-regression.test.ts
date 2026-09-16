@@ -523,7 +523,7 @@ describe("GA4 UI regression guard", () => {
 
     expect(comparisonStart).toBeGreaterThan(-1);
     expect(cardSelectorStart).toBeGreaterThan(comparisonStart);
-    expect(adComparison).toContain("const revenue = Number(row.revenue.toFixed(2));");
+    expect(adComparison).toContain("const ga4RevenueForBreakdown = Number(ga4Revenue.toFixed(2));");
     expect(ga4Metrics).toContain("const nativeRevenue = Number(Number(row?.revenue || 0).toFixed(2));");
     expect(scheduledPdf).toContain("const nativeRevenue = Number(Number(row?.revenue || 0).toFixed(2));");
     expect(adComparison).not.toContain("allocationSummary");
@@ -583,29 +583,18 @@ describe("GA4 UI regression guard", () => {
     expect(pdfBreakdownSection).toContain("comparisonRows.reduce");
   });
 
-  it("keeps GA4 Ad Comparison All Campaigns independent from the metric dropdown", () => {
+  it("removes All Campaigns from the live tab and new reports while preserving explicit legacy PDFs", () => {
     const adComparison = readClient("pages/ga4-ad-comparison.tsx");
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
-    const tableStart = adComparison.indexOf("{/* Full comparison table */}");
-    const breakdownStart = adComparison.indexOf("{/* Revenue Breakdown sub-table */}", tableStart);
-    const tableSection = adComparison.slice(tableStart, breakdownStart);
-    const browserPdfTableStart = ga4Metrics.indexOf("// All Campaigns table");
-    const browserPdfTableEnd = ga4Metrics.indexOf("if (includeAdsRevenueBreakdown)", browserPdfTableStart);
-    const browserPdfTableSection = ga4Metrics.slice(browserPdfTableStart, browserPdfTableEnd);
+    const scheduledPdf = readServer("ga4-scheduled-report-pdf.ts");
 
-    expect(tableStart).toBeGreaterThan(-1);
-    expect(breakdownStart).toBeGreaterThan(tableStart);
-    expect(browserPdfTableStart).toBeGreaterThan(-1);
-    expect(browserPdfTableEnd).toBeGreaterThan(browserPdfTableStart);
-    expect(tableSection).not.toContain("Full comparison sorted by");
-    expect(tableSection).toContain('<CardHeader className="pb-3">');
-    expect(tableSection).toContain("<CardContent className=\"px-6 pb-6 pt-0\">");
-    expect(tableSection).not.toContain("<CardContent className=\"p-6\">");
-    expect(tableSection).toContain("{comparisonRows.map((c, idx) => {");
-    expect(tableSection).not.toContain("{sortedByMetric.map((c, idx) => {");
-    expect(browserPdfTableSection).toContain("for (let i = 0; i < comparisonRows.length; i++)");
-    expect(browserPdfTableSection).toContain("const r = comparisonRows[i] as any;");
-    expect(browserPdfTableSection).not.toContain("const r = sortedByMetric[i] as any;");
+    expect(adComparison).not.toContain("All Campaigns");
+    expect(adComparison).toContain("Revenue Breakdown");
+    expect(ga4Metrics).not.toContain('["allCampaigns", "All Campaigns"]');
+    expect(ga4Metrics).toContain('const includeAdsAllCampaigns = reportType === "custom" && adsSubsections.allCampaigns === true;');
+    expect(scheduledPdf).toContain('const includeAllCampaigns = reportType === "custom" && s.allCampaigns === true;');
+    expect(ga4Metrics).toContain('if (includeAdsAllCampaigns)');
+    expect(scheduledPdf).toContain('if (includeAllCampaigns)');
   });
 
   it("keeps GA4 Ad Comparison summary labels and tooltips readable", () => {
@@ -617,7 +606,6 @@ describe("GA4 UI regression guard", () => {
     expect(summarySection).toContain("Overall Conversion Rate");
     expect(summarySection).not.toContain("Total Conversion Rate");
     expect(adComparison).toContain("User counts are approximate. GA4 users are non-additive - the same user visiting across multiple days");
-    expect(adComparison).toContain("Approximate - users are non-additive across breakdown dimensions");
     expect(adComparison).not.toContain("Ã");
     expect(adComparison).not.toContain("â");
   });

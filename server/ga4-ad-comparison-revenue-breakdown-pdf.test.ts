@@ -64,3 +64,22 @@ it("includes a same-UTC-day imported source amount in Revenue Breakdown's schedu
   expect(pdfText.join("\n")).toContain("USD 15.00");
   expect(pdfText.join("\n")).not.toContain("USD 10.00");
 });
+
+it("omits All Campaigns from a new standard Ad Comparison PDF", async () => {
+  await buildGA4ScheduledPdfAttachment({
+    report: { id: "report-2", campaignId: "campaign-1", reportType: "ads", configuration: "{}" },
+    reportName: "Ad Comparison", windowStart: "2026-09-01", windowEnd: "2026-09-15", campaignName: "Campaign",
+  });
+
+  expect(pdfText.join("\n")).toContain("Revenue Breakdown");
+  expect(pdfText.join("\n")).not.toContain("All Campaigns");
+});
+
+it("retains All Campaigns in an explicitly saved legacy custom PDF", async () => {
+  await buildGA4ScheduledPdfAttachment({
+    report: { id: "report-3", campaignId: "campaign-1", reportType: "custom", configuration: JSON.stringify({ sections: { ads: true }, subsections: { ads: { allCampaigns: true } } }) },
+    reportName: "Legacy comparison", windowStart: "2026-09-01", windowEnd: "2026-09-15", campaignName: "Campaign",
+  });
+
+  expect(pdfText.join("\n")).toContain("All Campaigns");
+});

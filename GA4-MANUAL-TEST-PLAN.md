@@ -18,9 +18,9 @@ Important:
 
 Ad Comparison status for future reference:
 
-- GA4 Ad Comparison is `PRODUCTION_READY` for exact deployed revision
-  `7374e824ee625032cd6967f81edb22fb1001a15e` and the recorded live-tab
-  dependency/configuration boundary
+- GA4 Ad Comparison is `UNVERIFIED` as a whole. Chart/cards/summary and Revenue
+  Breakdown have separate bounded certificates. The local All Campaigns
+  removal and combined page require validation at one deployed runtime
 - Reports-owned PDF, delivery, scheduling, snapshot, and library behavior is a
   separate section and is not a deferred Ad Comparison validation item
 - use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` as the source of truth
@@ -960,15 +960,15 @@ Checkpoint after Journey 8:
 
 - [ ] Open the **Ad Comparison** tab
 - [ ] Switch metrics: Sessions, Conversions, Revenue, CR, Users
-- [ ] Ranking cards use exact values: Best Performing follows the selected metric, Most Efficient uses highest exact CR among rows with sessions, and Needs Attention uses lowest exact CR among meaningful-volume rows
-- [ ] Metric dropdown renders in the Ad Comparison header and controls leader cards, chart ranking, and selected-metric summary
-- [ ] All Campaigns title sits directly above the table without an empty descriptor gap when no revenue-provenance description is shown
-- [ ] Best Performing may equal Needs Attention when the same campaign is highest for the selected metric but lowest exact CR; validate the card detail CR values instead of forcing distinct campaign names
+- [ ] Ranking cards use exact values: Most Key Events ranks positive GA4 key events, Highest Conversion Rate ranks positive exact CR among rows with sessions, and Needs Attention uses lowest exact CR among meaningful-volume rows
+- [ ] Metric dropdown renders in the Ad Comparison header and controls chart ranking and selected-metric summary, not the ranking-card rules
+- [ ] `All Campaigns` is absent from the live tab and new report choices; explicitly saved legacy custom reports still render their selected table
+- [ ] Most Key Events may equal Needs Attention when the same campaign has the most key events but the lowest exact CR; validate the card detail CR values instead of forcing distinct campaign names
 - [ ] Needs Attention does not choose a tiny trivial campaign when a larger weak performer exists, and close CR decisions display two decimal places on the cards
 - [ ] Users: tooltip explains that the same person can appear in more than one campaign row, so row totals may be higher than the true number of unique users
 - [ ] If imported revenue exists, `Revenue Breakdown` lists every active
-  GA4-context source separately; ranking, chart, summary, and `All Campaigns`
-  remain GA4-native
+  GA4-context source separately; chart/card revenue uses only exact mapped
+  imported amounts alongside its native GA4 campaign rows
 - [ ] An available imported source shows its exact materialized source-to-date
   amount and the `excluded from ranking` provenance
 - [ ] An unavailable imported source remains listed as `Unavailable`, does not
@@ -984,7 +984,7 @@ Checkpoint after Journey 8:
 - [ ] Revenue Breakdown preserves valid source zero and never falls back to a
   source-definition or configuration total
 - [ ] Ad Comparison does not render imported, unallocated, or combined
-  all-source financial rows in `All Campaigns`
+  all-source financial rows in Revenue Breakdown
 - [ ] Ad Comparison does not render a combined `Total Revenue`, because native
   and imported source values do not share a proven identical window
 
@@ -1016,10 +1016,8 @@ For each add/edit/delete action above, validate all related revenue surfaces:
 - [ ] Benchmarks tab: Revenue Benchmark current value matches Overview `Total Revenue`
 - [ ] Benchmarks tab: ROAS and ROI Benchmark current values use Overview all-source revenue as the numerator
 - [ ] Benchmarks tab: Revenue/ROAS/ROI blocked or enabled states update when revenue availability changes
-- [ ] Ad Comparison `All Campaigns`: rows use only native GA4 values from the
-  saved initial-import boundary through the latest completed day
-- [ ] Ad Comparison `All Campaigns`: imported source revenue does not create,
-  increase, or adjust campaign rows
+- [ ] Ad Comparison native comparison rows use the saved initial-import boundary
+  through the latest completed day; imported source revenue does not alter them
 - [ ] Ad Comparison `Revenue Breakdown`: every active source has one top-level
   row; available amounts match exact materialized source values
 - [ ] Ad Comparison `Revenue Breakdown`: unavailable sources show
@@ -1028,8 +1026,8 @@ For each add/edit/delete action above, validate all related revenue surfaces:
   `campaignValueRevenueTotals` show exact indented subsection values only
 - [ ] Ad Comparison `Revenue Breakdown`: no inferred, proportional,
   unallocated, or combined all-source value is rendered
-- [ ] Ad Comparison native GA4 revenue equals the sum of the native
-  `All Campaigns` row revenue for the displayed comparison window
+- [ ] Ad Comparison native GA4 revenue equals the sum of the saved-scope native
+  comparison rows for the displayed comparison window
 - [ ] Insights Executive Financials revenue matches Overview `Total Revenue`
 - [ ] Reports generated after the change use the updated revenue values from the current tab state
 - [ ] Campaign DeepDive Performance Summary Key Outcomes matches the authoritative cumulative traffic and campaign-to-date financial values
@@ -1048,7 +1046,7 @@ Latest mapped-revenue validation evidence:
 Required reconciliation checks:
 
 - [ ] `Overview Total Revenue = GA4 Revenue + sum(active imported revenue source amounts)`
-- [ ] `Ad Comparison native GA4 Revenue = sum(native All Campaigns row revenue)`
+- [ ] `Ad Comparison native GA4 Revenue = sum(saved-scope native comparison row revenue)`
 - [ ] Each Ad Comparison imported source row equals its exact materialized
   source-breakdown value or shows `Unavailable`; do not combine it with native
   revenue because the windows are not proven identical

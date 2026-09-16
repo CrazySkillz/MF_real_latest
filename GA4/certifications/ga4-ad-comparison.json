@@ -4,7 +4,7 @@
   "status": "UNVERIFIED",
   "lastReviewedSha": "be3b51058b82c3632b68f269e637d777dd12d051",
   "certifiedSha": null,
-  "invalidationReason": "The GA4 Overview table-accuracy correction changed shared analytics, route, and browser dependencies after the certified Ad Comparison boundary. Ad Comparison behavior is not intentionally changed, but exact-current regression and deployed parity evidence have not been rerun.",
+  "invalidationReason": "Chart/cards/summary and Revenue Breakdown have separate bounded certificates, but the local All Campaigns removal and combined page/PDF contract have not been verified at one exact deployed runtime.",
   "configurationBoundary": {
     "platformType": "google_analytics",
     "scope": "GA4 platform-level live Ad Comparison tab for one authorized campaign, selected active property, and saved campaign filter",

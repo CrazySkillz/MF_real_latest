@@ -96,13 +96,6 @@ export default function GA4AdComparison({
     );
   }, [revenueDisplaySources]);
 
-  const comparisonRows = useMemo(() => {
-    return campaignBreakdownAgg.map((row) => {
-      const revenue = Number(row.revenue.toFixed(2));
-      return { ...row, revenue, revenuePerSession: row.sessions > 0 ? revenue / row.sessions : 0 };
-    });
-  }, [campaignBreakdownAgg]);
-
   const chartSummaryRows = useMemo(() => {
     const byName = new Map<string, CampaignAgg>();
     for (const row of chartCampaignRows) {
@@ -374,62 +367,6 @@ export default function GA4AdComparison({
       ) : campaignBreakdownAgg.length === 0 ? (
         <Card><CardContent className="p-8 text-center text-muted-foreground">No native Ad Comparison detail available.</CardContent></Card>
       ) : <>
-      {/* Full comparison table */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">All Campaigns</CardTitle>
-        </CardHeader>
-        <CardContent className="px-6 pb-6 pt-0">
-          <div className="overflow-hidden border rounded-md">
-            <div className="max-h-[480px] overflow-y-auto">
-              <table className="w-full text-sm table-fixed">
-                <thead className="sticky top-0 z-10 bg-muted border-b">
-                  <tr>
-                    <th className="text-left font-medium px-2 py-2 w-[40px]">#</th>
-                    <th className="text-left font-medium px-2 py-2">Campaign</th>
-                    <th className="text-right font-medium px-2 py-2 w-[90px]">Sessions</th>
-                    <th className="text-right font-medium px-2 py-2 w-[80px]">
-                      <div className="flex items-center justify-end gap-1">
-                        Users
-                        <UITooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="w-3 h-3 text-amber-500 cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
-                            <p className="text-xs">Approximate - users are non-additive across breakdown dimensions (dates, devices, sources). Actual unique users may be lower.</p>
-                          </TooltipContent>
-                        </UITooltip>
-                      </div>
-                    </th>
-                    <th className="text-right font-medium px-2 py-2 w-[100px]">Conversions</th>
-                    <th className="text-right font-medium px-2 py-2 w-[90px]">Conv Rate</th>
-                    <th className="text-right font-medium px-2 py-2 w-[100px]">Revenue</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {comparisonRows.map((c, idx) => {
-                    return (
-                      <tr
-                        key={c.name || idx}
-                        className="border-b last:border-b-0"
-                      >
-                        <td className="px-2 py-2 text-muted-foreground tabular-nums">{idx + 1}</td>
-                        <td className="px-2 py-2 truncate font-medium text-foreground" title={c.name}>{c.name}</td>
-                        <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.sessions)}</td>
-                        <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.users)}</td>
-                        <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.conversions)}</td>
-                        <td className="px-2 py-2 text-right tabular-nums">{formatPct(c.conversionRate)}</td>
-                        <td className="px-2 py-2 text-right tabular-nums">{formatMoney(c.revenue)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Revenue Breakdown sub-table */}
       <Card>
         <CardHeader className="pb-2">

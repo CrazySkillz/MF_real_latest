@@ -149,7 +149,7 @@ describe('GA4 Ad Comparison accumulation window', () => {
     const scheduledPdf = read('server/ga4-scheduled-report-pdf.ts');
     const componentScope = component.slice(
       component.indexOf('const METRIC_OPTIONS'),
-      component.indexOf('{/* Full comparison table */}'),
+      component.indexOf('{/* Revenue Breakdown sub-table */}'),
     );
     const browserPdfScope = page.slice(
       page.indexOf('// ========== AD COMPARISON =========='),
@@ -187,7 +187,7 @@ describe('GA4 Ad Comparison accumulation window', () => {
     expect(componentScope).toContain('Overall Conversion Rate');
     expect(componentScope).toContain('{chartSummaryRows.length}');
     expect(componentScope).toContain('const chartSummaryRows = useMemo');
-    expect(component).toContain('{comparisonRows.map((c, idx) => {');
+    expect(component).not.toContain('{comparisonRows.map((c, idx) => {');
     expect(adAggregateScope).toContain('byName.get(name)');
     expect(adAggregateScope).not.toContain('nameKey');
     expect(scheduledAggregateScope).toContain('adComparisonByCampaign.get(name)');

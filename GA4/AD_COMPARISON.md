@@ -18,7 +18,9 @@ older boundary below is historical.
 Revenue Breakdown is separately `CLEAN-CERTIFIED` for the exact Campaign2,
 source, UI, and PDF value boundary in
 `GA4/AD_COMPARISON_REVENUE_BREAKDOWN_CERTIFICATION_2026-09-16.md`.
-This does not certify All Campaigns or the full tab.
+The local candidate removes `All Campaigns` from the live tab and new report
+choices. Existing custom reports that explicitly saved it retain their PDF
+output. The combined tab still needs validation at one deployed runtime.
 
 Historical whole-tab status (superseded by the narrow current status above):
 
@@ -103,7 +105,6 @@ The current tab contains:
   plus metric-based chart and selected-metric summary
 - comparison chart limited to the top 10 rows for the selected metric
 - selected-metric total and `Campaigns Compared` summary cards
-- `All Campaigns` table
 - `Revenue Breakdown` table
 
 Supported dropdown metrics:
@@ -119,7 +120,7 @@ Supported dropdown metrics:
 The tab is built from:
 
 - GA4 Overview Campaign Breakdown rows for the chart, leader cards, and two summary cards
-- separate native GA4 Ad Comparison rows for All Campaigns and Revenue Breakdown
+- separate native GA4 Ad Comparison rows for Revenue Breakdown
 - selected GA4 campaign/property scope from campaign setup
 - active, materialized revenue source rows for the same campaign and GA4
   platform context; only revenue uniquely matched by the normalized allocation key is added to the
@@ -132,7 +133,7 @@ It must not use:
 - unscoped revenue or spend sources
 - guessed external attribution
 - proportional revenue allocation
-- source-to-date imported revenue in native All Campaigns rows
+- source-to-date imported revenue in native comparison rows
 - source definitions or saved configuration totals as a value fallback
 - display-only source labels as attribution keys when stable campaign identity is available
 
@@ -169,12 +170,12 @@ Row rules:
 
 ## Revenue Window Boundary
 
-Native All Campaigns rows use one provider window from the saved
+Native comparison rows use one provider window from the saved
 initial historical import boundary through the latest completed reporting day
 in the campaign timezone. The chart, leader cards, and summary cards match the GA4 Overview
 Campaign Breakdown table: traffic uses its saved import window, and Revenue adds
 uniquely mapped imported revenue to its native campaign-start revenue. Imported
-revenue remains separate from native All Campaigns values.
+revenue remains separate from native comparison values.
 
 Imported revenue cannot determine Most Key Events, which ranks by observed
 GA4 key events. The Highest Conversion Rate card displays Overview row revenue.
@@ -268,26 +269,6 @@ Rules:
 - Every selected-metric total uses all compared rows, even though the chart shows at most 10.
 - `Campaigns Compared` counts distinct case-folded Overview campaign names, not just the visible bars.
 
-## All Campaigns Table
-
-The `All Campaigns` table includes:
-
-- `Campaign`
-- `Sessions`
-- `Users`
-- `Conversions`
-- `Conv Rate`
-- `Revenue`
-
-Rules:
-
-- keep the normalized GA4 breakdown's stable sessions-descending order; do not re-sort this table when the metric dropdown changes
-- when no revenue-provenance description is shown, the table should sit directly under the `All Campaigns` title without a blank descriptor gap
-- use GA4-native normalized rows
-- revenue means GA4 campaign-row revenue for the common import-to-latest-completed-day window
-- users remain directional because GA4 user counts are not perfectly additive across rows
-- do not add imported, unallocated, or all-source financial rows
-
 ## Revenue Breakdown
 
 The `Revenue Breakdown` table shows source provenance, not row attribution.
@@ -299,7 +280,7 @@ Columns:
 
 Rules:
 
-- `GA4 Revenue (imported to date)` sums the native All Campaigns rows from the
+- `GA4 Revenue (imported to date)` sums the native comparison rows from the
   selected GA4 property and saved campaign values, using the saved initial-import
   boundary through the latest completed reporting day. It is not the Overview
   native Revenue & Financials amount when that section uses a different window.

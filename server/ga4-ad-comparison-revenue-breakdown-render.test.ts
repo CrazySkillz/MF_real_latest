@@ -33,10 +33,11 @@ function renderRevenueBreakdown(
     sourceId: string; displayName: string; sourceType: string; revenue: number | null;
     mappingConfig?: unknown; materializedRevenueStatus?: "available" | "unavailable";
   }>,
+  chartCampaignRows = nativeRows,
 ) {
   return renderToStaticMarkup(React.createElement(GA4AdComparison, {
     campaignBreakdownAgg: nativeRows,
-    chartCampaignRows: nativeRows,
+    chartCampaignRows,
     breakdownLoading: false,
     chartBreakdownLoading: false,
     chartBreakdownUnavailable: false,
@@ -51,6 +52,19 @@ function renderRevenueBreakdown(
 }
 
 describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
+  it("keeps both retained subsections together without the retired table", () => {
+    const html = renderRevenueBreakdown("ready", [], [
+      { ...nativeRows[0], name: "campaign-a", sessions: 10, conversions: 2, conversionRate: 20 },
+      { ...nativeRows[0], name: "campaign-b", sessions: 20, conversions: 0, conversionRate: 0 },
+    ]);
+
+    expect(html).toContain("Most Key Events");
+    expect(html).toContain("Top Campaigns by Sessions");
+    expect(html).toContain("Campaigns Compared");
+    expect(html).toContain("Revenue Breakdown");
+    expect(html).not.toContain("All Campaigns");
+  });
+
   it("preserves a materialized zero source amount", () => {
     const html = renderRevenueBreakdown("ready", [{
       sourceId: "zero-source", displayName: "Exact zero source", sourceType: "csv",
@@ -59,6 +73,8 @@ describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
     }]);
 
     expect(html).toContain("Revenue Breakdown");
+    expect(html).toContain("Top Campaigns by Sessions");
+    expect(html).not.toContain("All Campaigns");
     expect(html).toMatch(/GA4 Revenue \(imported to date\)<\/td>\s*<td[^>]*>\$0\.00<\/td>/);
     expect(html).toMatch(/Exact zero source<\/td>\s*<td[^>]*>\$0\.00<\/td>/);
     expect(html).toMatch(/native_campaign<\/td>\s*<td[^>]*>\$0\.00<\/td>/);

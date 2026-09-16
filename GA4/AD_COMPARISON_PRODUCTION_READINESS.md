@@ -4,10 +4,23 @@
 
 ## Controlling Current Status
 
-**Full-tab status: UNVERIFIED.** All Campaigns remains outside the current
-subsection review; the full-tab machine record remains UNVERIFIED. Revenue
-Breakdown is separately `CLEAN-CERTIFIED` only for the exact boundary recorded
-in `GA4/AD_COMPARISON_REVENUE_BREAKDOWN_CERTIFICATION_2026-09-16.md`.
+**Full-tab status: UNVERIFIED.** The local candidate removes All Campaigns
+from the live tab and new report choices while retaining explicitly selected
+legacy custom-report output. Both retained subsections have separate certificates,
+but their combined page and the removal need validation at one exact deployed
+runtime before the full-tab machine record or ledger can be certified. Revenue
+Breakdown's exact boundary is recorded in
+`GA4/AD_COMPARISON_REVENUE_BREAKDOWN_CERTIFICATION_2026-09-16.md`.
+
+Local candidate evidence: the affected Ad Comparison/source/report/ledger packet
+passed 260 tests across 10 files; a further combined-subsections render test
+passed. TypeScript, production build, `git diff --check`, and the machine
+checker passed. The checker confirms only that the current `UNVERIFIED` record
+is internally consistent. Required steps remaining for a whole-tab certificate:
+deploy the isolated removal, verify its exact SHA and Campaign2 saved scope,
+reconcile both retained subsections and their browser/scheduled PDF value paths
+on that same runtime, then update the controlling certificate and machine record.
+No Reports delivery claim follows from that value-path check.
 
 **Current narrow status: CLEAN-CERTIFIED / PRODUCTION_READY** only for the
 Client2 / Campaign2 metric dropdown, Top Campaigns chart, three leader cards,

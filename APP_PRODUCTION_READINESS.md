@@ -44,7 +44,7 @@ saved source configuration.
 | 1 | Overview | `IN_PROGRESS` |
 | 2 | KPIs | `COMPLETE` |
 | 3 | Benchmarks | `COMPLETE` |
-| 4 | Ad Comparison | `IN_PROGRESS` |
+| 4 | Ad Comparison | `COMPLETE` |
 | 5 | Insights | `QUEUED` |
 | 6 | Reports | `QUEUED` |
 
@@ -98,16 +98,18 @@ certificate.
 
 #### GA4 Ad Comparison certification breakdown
 
-Ad Comparison remains `UNVERIFIED` until both retained subsections below pass
-independently, the planned All Campaigns removal is verified, and their combined
-page contract is reconciled. Existing GA4 Overview, KPI, Benchmark, and source
-certifications remain read-only dependencies and are not reopened by this work.
+Both retained subsections below are certified for their separate documented
+boundaries. The local candidate removes All Campaigns from the live tab and new
+reports; Ad Comparison as a whole remains `UNVERIFIED` until that removal and
+their combined page contract are verified at one exact deployed runtime.
+Existing GA4 Overview, KPI, Benchmark, and source certifications remain read-only
+dependencies and are not reopened by this work.
 
 | Order | Ad Comparison subsection | Work state | Certification status | Required validation boundary |
 | ---: | --- | --- | --- | --- |
-| - | Ad Comparison (whole section) | `IN_PROGRESS` | `UNVERIFIED` | Both retained subsections, the planned All Campaigns removal, and the combined page contract must pass at one exact deployed runtime. |
+| - | Ad Comparison (whole section) | `COMPLETE` | `UNVERIFIED` | Both retained subsections have separate certificates; the local All Campaigns removal and combined page contract remain pending at one exact deployed runtime. |
 | 1 | Ad Comparison (chart and summary) | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` only for the documented Campaign2/property/saved-campaign boundary at deployed runtime `3013ec6b52a93eaca01cd14c538dd0a20f350fac`: metric dropdown, chart, three ranking cards, two summary cards, and matching PDF values. Controlling certificate: `GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md`. All Campaigns, Revenue Breakdown, and Reports delivery remain excluded. |
-| 2 | Revenue Breakdown | `QUEUED` | `UNVERIFIED` | Native GA4 ranking revenue, imported-source provenance, exclusion from ranking, source/item totals, currency, refresh, failure, ownership, and consumer parity require fresh validation. |
+| 2 | Revenue Breakdown | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` only for the exact documented Campaign2/property/source boundary at runtime `dd9cd51ea755e896838c78be8cab020fc0249eba`; controlling certificate: `GA4/AD_COMPARISON_REVENUE_BREAKDOWN_CERTIFICATION_2026-09-16.md`. Native comparison-window revenue and imported source-to-date amounts remain separate; no cross-window Total Revenue or report-delivery claim. |
 
 Each GA4 section must independently pass the complete no-overclaim standard at
 an exact current runtime: visible/downstream value inventory, provider/query and
@@ -190,7 +192,7 @@ known broken. They mean the app-wide production-ready claim is not yet proven.
 | GA4 Overview | `UNVERIFIED` | `GA4/certifications/ga4-overview.json`; `GA4/OVERVIEW_PRODUCTION_READINESS.md` | Current machine record is fail-closed; separately certified source components do not certify the whole tab. |
 | GA4 KPIs | `CERTIFIED` | `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact documented KPI boundary at deployed runtime `f7afeb2b`; documentation commit `47180dcf`; required steps remaining: 0. GA4 Overview remains a read-only upstream dependency and is not recertified by this entry. |
 | GA4 Benchmarks | `CERTIFIED` | `GA4/OVERVIEW_BENCHMARKs_CERTIFICATION_2026-09-15.md`; `GA4/OVERVIEW_BENCHMARKS_DEPENDENCY_MANIFEST_2026-09-15.md`; `GA4/BENCHMARKS_PRODUCTION_READINESS.md` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact documented Benchmark boundary at application runtime `47180dcf96586fa4fff9a83e7a097e33e42c0721`; deployed evidence commit `bdecb67142bdbe505084d397f195e252db40a4f8` changed Benchmark documentation only. The earlier `236afff9` runtime and `a96ba06e` machine record remain historical. GA4 Overview and KPIs are not recertified by this entry. |
-| GA4 Ad Comparison | `UNVERIFIED` | `GA4/certifications/ga4-ad-comparison.json`; `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`; `GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md` | The chart-and-summary subsection is clean-certified only at its documented deployed boundary; Revenue Breakdown, planned All Campaigns removal, and the combined tab remain unverified. Reports delivery is excluded. |
+| GA4 Ad Comparison | `UNVERIFIED` | `GA4/certifications/ga4-ad-comparison.json`; `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`; `GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md`; `GA4/AD_COMPARISON_REVENUE_BREAKDOWN_CERTIFICATION_2026-09-16.md` | Chart-and-summary and Revenue Breakdown are independently clean-certified only at their documented boundaries; local All Campaigns removal and the combined tab need deployed verification. Reports delivery is excluded. |
 | GA4 Insights | `CERTIFIED` | `GA4/certifications/ga4-insights.json`; `GA4/INSIGHTS_PRODUCTION_READINESS.md` | Exact live-tab runtime `4be16c54c550a45dbf3104313c820ea47b453604`. |
 | GA4 Reports | `UNVERIFIED` | `GA4/certifications/ga4-reports.json`; `GA4/REPORTS_PRODUCTION_READINESS.md` | Exact-current scheduled/server Campaign Breakdown artifact parity remains pending. |
 | GA4 reporting timezone | `RECONCILE` | `GA4/REPORTING_TIMEZONE_PRODUCTION_READINESS.md` | Individual validation commits are recorded, but the document has no single current whole-path certificate. |

@@ -31,7 +31,7 @@ Current GA4 tab production-readiness status:
 <!-- /ga4-overview-current-status -->
 - Current Commit 7's deployed validation also confirmed that an active OAuth placeholder with an empty GA4 Property ID fails closed instead of rendering permanent skeletons, while persisted campaign-scoped financial sources remain reachable for exact reviewed removal.
 - GA4 KPIs are **PRODUCTION_READY** only for deployed application runtime `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` and the exact manifest in `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md`. GA4 Benchmarks are separately **CLEAN-CERTIFIED / PRODUCTION_READY** for application behavior at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d` and the exact manifest in `GA4/OVERVIEW_BENCHMARKS_DEPENDENCY_MANIFEST_2026-09-15.md`; evidence-only revision `d3d1cfa0c0b34a44b405a74d8970c1d9ac9c1e7f` was subsequently deployed healthy without changing that behavior.
-- GA4 Ad Comparison remains **UNVERIFIED as a full tab**. Its Campaign2 metric dropdown, chart, three leader cards, two summary cards, and matching PDF values are **CLEAN-CERTIFIED only at the recorded runtime and scope** in `GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md`; All Campaigns and Revenue Breakdown are excluded. The earlier `4be16c54c550a45dbf3104313c820ea47b453604` full-tab certification is historical.
+- GA4 Ad Comparison remains **UNVERIFIED as a full tab**. Its chart/cards/summary and Revenue Breakdown have separate bounded certificates in `GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md` and `GA4/AD_COMPARISON_REVENUE_BREAKDOWN_CERTIFICATION_2026-09-16.md`. The local candidate removes All Campaigns from the live tab and new reports; combined-page deployed validation remains pending. The earlier `4be16c54c550a45dbf3104313c820ea47b453604` full-tab certification is historical.
 - GA4 Reports is **UNVERIFIED** for the current candidate. The deployed browser Overview Campaign Breakdown artifact passed at `08d7abe5`; exact-current scheduled/server artifact parity remains pending. The earlier `94f1096f3d08c1443f27a032bc5a44c8468c1a7e` certification is historical only. Campaign DeepDive remains excluded.
 - The combined GA4 release-certification audit is complete for the recorded section boundaries. This does not certify excluded platforms, Campaign DeepDive, future configurations, future provider availability, or obsolete campaigns outside the active boundary.
 - Absent later code changes, failed validation, contradictory deployed evidence, or changed requirements, future readiness reviews should use the tab-specific readiness doc for each GA4 section and must not infer KPI production readiness from Overview or Benchmark readiness.
@@ -124,10 +124,9 @@ Important meaning:
   Explicit Overview-facing Benchmark dependency contract. Changes outside the manifested fields, windows, freshness/currency rules, formulas, lifecycle paths, and consumers do not automatically invalidate Benchmark certification.
 - `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`
   Canonical whole-tab Ad Comparison production-readiness source of truth.
-  Current status: `PRODUCTION_READY` for certified runtime boundary `4be16c54`
-  and the recorded dependency/configuration boundary. The live tab uses the
-  saved initial-import boundary through the latest completed day. Reports-owned
-  PDFs and all other Reports behavior are separate.
+  Current status: `UNVERIFIED` for the whole tab; the chart/cards/summary and
+  Revenue Breakdown have separate bounded certificates. Combined-page deployed
+  validation remains pending. Reports delivery is separate.
 - `GA4/INSIGHTS.md`
   Short functional overview of the live GA4 Insights tab, including sections, scope contract, and refresh pattern.
 - `GA4/INSIGHTS_PRODUCTION_READINESS.md`

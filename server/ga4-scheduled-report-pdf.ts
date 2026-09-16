@@ -1254,7 +1254,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
   if (sections.ads) {
     const s = cfg.subsections?.ads || {};
     const includeTopCampaigns = reportType !== "custom" || s.topCampaigns === true || s.summary === true;
-    const includeAllCampaigns = reportType !== "custom" || s.allCampaigns !== false;
+    const includeAllCampaigns = reportType === "custom" && s.allCampaigns === true;
     const includeBestWorst = reportType !== "custom" || s.bestWorst !== false;
     const includeRevenueBreakdown = reportType !== "custom" || s.revenueBreakdown !== false;
     sectionTitle("Ad Comparison", COLORS.ads, 24);

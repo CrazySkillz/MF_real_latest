@@ -3587,7 +3587,7 @@ export default function GA4Metrics() {
       sectionTitle("Ad Comparison", C.ads, 24);
       const adsSubsections = customSubsections.ads || {};
       const includeAdsTopCampaigns = reportType !== "custom" || adsSubsections.topCampaigns === true || adsSubsections.summary === true;
-      const includeAdsAllCampaigns = reportType !== "custom" || adsSubsections.allCampaigns !== false;
+      const includeAdsAllCampaigns = reportType === "custom" && adsSubsections.allCampaigns === true;
       const includeAdsBestWorst = reportType !== "custom" || adsSubsections.bestWorst !== false;
       const includeAdsRevenueBreakdown = reportType !== "custom" || adsSubsections.revenueBreakdown !== false;
       const rows = Array.isArray(adComparisonBreakdownAgg) ? adComparisonBreakdownAgg : [];
@@ -10544,7 +10544,6 @@ export default function GA4Metrics() {
                       { key: "ads", label: "Ad Comparison", subsections: [
                         ["bestWorst", "Most Key Events / Highest Conversion Rate / Needs Attention"],
                         ["topCampaigns", "Top Campaigns"],
-                        ["allCampaigns", "All Campaigns"],
                         ["revenueBreakdown", "Revenue Breakdown"],
                       ] as Array<[string, string]> },
                       { key: "insights", label: "Insights", subsections: [
@@ -10578,7 +10577,7 @@ export default function GA4Metrics() {
                                   : (s.key === "ads")
                                     ? [
                                         [["bestWorst", "Most Key Events / Highest Conversion Rate / Needs Attention"], ["topCampaigns", "Top Campaigns"]],
-                                        [["allCampaigns", "All Campaigns"], ["revenueBreakdown", "Revenue Breakdown"]],
+                                        [["revenueBreakdown", "Revenue Breakdown"]],
                                       ]
                                     : (s.key === "insights")
                                       ? [

@@ -8,6 +8,11 @@ Use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` for the durable production-readi
 
 Current status:
 
+`UNVERIFIED` for the local chart/dropdown/two-summary-card candidate that reads
+GA4 Overview Campaign Breakdown. The certification record is
+`GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md`. The boundary below is
+historical and does not certify this candidate.
+
 `PRODUCTION_READY` for certified runtime boundary
 `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627` and the recorded dependency and
 configuration boundary. Current revalidation proved that later changes in the
@@ -103,7 +108,8 @@ Supported dropdown metrics:
 
 The tab is built from:
 
-- GA4 campaign-breakdown aggregate rows
+- GA4 Overview Campaign Breakdown rows for the chart and two summary cards
+- separate native GA4 Ad Comparison rows for leader cards, All Campaigns, and Revenue Breakdown
 - selected GA4 campaign/property scope from campaign setup
 - active, exact materialized revenue source rows for the same campaign and GA4
   platform context, shown as separate source-to-date provenance
@@ -121,7 +127,8 @@ It must not use:
 
 ## Normalized Comparison Rows
 
-All visible comparison outputs are built from normalized comparison rows.
+The chart and two summary cards use GA4 Overview Campaign Breakdown rows.
+The other Ad Comparison outputs use separate native comparison rows.
 
 A normalized comparison row has:
 
@@ -140,20 +147,21 @@ Row rules:
 - start at the selected connection's saved initial historical import boundary
 - end at the latest completed reporting day in the campaign timezone
 - calculate conversion rate as `conversions / sessions * 100`
-- use only native GA4 row revenue in `revenue`
+- use only native GA4 row revenue in the separate native comparison rows
 - never create a comparison row from imported-source configuration
 - never infer, merge, or proportionally allocate source-to-date revenue into the
   native rows
 
 ## Revenue Window Boundary
 
-GA4 comparison rows and rankings use one common provider window from the saved
+Native Ad Comparison rows and leader rankings use one provider window from the saved
 initial historical import boundary through the latest completed reporting day
-in the campaign timezone. Imported revenue currently has source-to-date
-materialization, not a proven identical boundary. It is therefore shown only in Revenue
-Breakdown with `source-to-date; excluded from ranking` provenance.
+in the campaign timezone. The chart and summary cards match the GA4 Overview
+Campaign Breakdown table: traffic uses its saved import window, and Revenue adds
+exact mapped imported revenue to its native campaign-start revenue. Imported
+revenue remains separate from native leader rankings and All Campaigns values.
 
-Imported revenue may enter campaign rankings only after a future implementation
+Imported revenue may enter native leader rankings only after a future implementation
 proves exact campaign identity, active materialization, currency, timezone, and
 the identical comparison window across all live tab surfaces.
 
@@ -232,13 +240,13 @@ The first summary card follows the selected dropdown metric.
 
 Rules:
 
-- `Revenue` renders as `GA4 Revenue (Imported to Date)` and sums the
-  normalized native comparison rows.
+- `Revenue` renders as `Campaign Breakdown Revenue` and sums the exact values
+  displayed in GA4 Overview Campaign Breakdown.
 - `Conversion Rate` renders as `Overall Conversion Rate`.
 - `Overall Conversion Rate` is calculated as total conversions divided by total sessions across comparison rows.
 - Do not average campaign-row conversion rates for the summary card unless the product explicitly changes the metric definition.
 - `Users` keeps a tooltip because GA4 user counts are non-additive across campaign rows.
-- `Campaigns Compared` is the count of normalized comparison rows.
+- `Campaigns Compared` is the count of chart rows from GA4 Overview Campaign Breakdown.
 
 ## All Campaigns Table
 

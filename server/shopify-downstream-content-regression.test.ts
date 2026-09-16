@@ -349,7 +349,7 @@ describe("Shopify downstream value/content regression guard", () => {
     const text = pdfTextCalls.join("\n");
     expect(text).toContain("overview_window");
     expect(text).toContain("ad_import_to_date");
-    expect(text).toContain("138");
+    expect(pdfTextCalls.slice(pdfTextCalls.indexOf("Top Campaigns by Sessions"), pdfTextCalls.indexOf("All Campaigns"))).toContain("7");
     expect(text).toContain("USD 30,839.00");
     expect(text).toContain("GA4 Revenue (Imported to Date)");
     expect(text).toContain("BEST PERFORMING");
@@ -423,6 +423,7 @@ describe("Shopify downstream value/content regression guard", () => {
         { campaign: "Beta", sessions: 10, users: 9, conversions: 5, revenue: 25 },
         ...descendingFractionalRows,
       ],
+      totals: { revenue: 175 },
     });
 
     await buildGA4ScheduledPdfAttachment({
@@ -459,7 +460,7 @@ describe("Shopify downstream value/content regression guard", () => {
   it("deduplicates chart/summary case variants without changing scheduled All Campaigns rows", async () => {
     storageMock.getCampaign.mockResolvedValue({
       ...campaign,
-      ga4CampaignFilter: JSON.stringify(["Alpha", "alpha", "Beta"]),
+      ga4CampaignFilter: JSON.stringify(["Alpha", "Beta"]),
     });
     ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
       rows: [
@@ -467,6 +468,7 @@ describe("Shopify downstream value/content regression guard", () => {
         { campaign: "alpha", sessions: 40, users: 20, conversions: 7, revenue: 50 },
         { campaign: "Beta", sessions: 10, users: 9, conversions: 5, revenue: 25 },
       ],
+      totals: { revenue: 175 },
     });
 
     await buildGA4ScheduledPdfAttachment({
@@ -527,12 +529,13 @@ describe("Shopify downstream value/content regression guard", () => {
         { campaign: "Alpha", sessions: 10, users: 100, conversions: 1, revenue: 5 },
         { campaign: "Beta", sessions: 20, users: 50, conversions: 5, revenue: 100 },
       ],
+      totals: { revenue: 105 },
     });
     const cases = [
       { metric: "sessions", label: "Sessions", summary: "TOTAL SESSIONS", total: "30", first: "Beta" },
       { metric: "users", label: "Users", summary: "TOTAL USERS", total: "150", first: "Alpha" },
       { metric: "conversions", label: "Conversions", summary: "TOTAL CONVERSIONS", total: "6", first: "Beta" },
-      { metric: "revenue", label: "Revenue", summary: "GA4 REVENUE (IMPORTED TO DATE)", total: "USD 105.00", first: "Beta" },
+      { metric: "revenue", label: "Revenue", summary: "CAMPAIGN BREAKDOWN REVENUE", total: "USD 105.00", first: "Beta" },
       { metric: "conversionRate", label: "Conversion Rate", summary: "OVERALL CONVERSION RATE", total: "20%", first: "Beta" },
     ];
 
@@ -567,6 +570,31 @@ describe("Shopify downstream value/content regression guard", () => {
         expect(pdfTextCalls).toContain("Users are summed campaign-row counts and are non-additive.");
       }
     }
+  });
+
+  it("uses Overview Campaign Breakdown revenue in the chart while retaining native All Campaigns values", async () => {
+    storageMock.getCampaign.mockResolvedValue({ ...campaign, ga4CampaignFilter: JSON.stringify(["Alpha", "Beta"]) });
+    storageMock.getRevenueSources.mockResolvedValue([{
+      ...revenueSource,
+      mappingConfig: {
+        campaignValueRevenueTotals: [{ campaignValue: "alpha_store", revenue: 40 }],
+        campaignMappings: [{ crmValue: "alpha_store", linkedinCampaignName: "Alpha", linkedinCampaignUrn: "Alpha" }],
+      },
+    }]);
+    storageMock.getRevenueBreakdownBySource.mockResolvedValue([{ sourceId: revenueSource.id, sourceType: "shopify", displayName: "Shopify", currency: "USD", revenue: 40 }]);
+    ga4ServiceMock.getAcquisitionBreakdown.mockImplementation(async (_campaignId: string, _storage: any, startDate: string) => startDate === "2026-06-01"
+      ? { rows: [{ campaign: "Alpha", revenue: 5 }, { campaign: "Beta", revenue: 100 }], totals: { revenue: 105 } }
+      : { rows: [{ campaign: "Alpha", sessions: 10, users: 10, conversions: 1, revenue: 500 }, { campaign: "Beta", sessions: 20, users: 20, conversions: 5, revenue: 1000 }], totals: { revenue: 1500 } });
+
+    await buildGA4ScheduledPdfAttachment({
+      report: { id: "report-overview-chart", campaignId: campaign.id, name: "Overview chart parity", reportType: "custom",
+        configuration: JSON.stringify({ adComparisonMetric: "revenue", sections: { ads: true }, subsections: { ads: { topCampaigns: true, allCampaigns: true } } }) },
+      reportName: "Overview chart parity", windowStart: "2026-06-01", windowEnd: "2026-07-04", campaignName: campaign.name,
+    });
+
+    expect(pdfTextCalls).toContain("CAMPAIGN BREAKDOWN REVENUE");
+    expect(pdfTextCalls).toContain("USD 145.00");
+    expect(pdfTextCalls.slice(pdfTextCalls.indexOf("All Campaigns"))).toEqual(expect.arrayContaining(["USD 500.00", "USD 1,000.00"]));
   });
 
   it("keeps an unmatched unavailable source outside scheduled Campaign Breakdown rows and exports every row", async () => {
@@ -656,7 +684,7 @@ describe("Shopify downstream value/content regression guard", () => {
       windowStart: "2026-06-01",
       windowEnd: "2026-07-04",
       campaignName: campaign.name,
-    })).rejects.toThrow("GA4_AD_COMPARISON_REPORT_INPUT_UNAVAILABLE: Campaign breakdown");
+    })).rejects.toThrow("GA4_AD_COMPARISON_REPORT_INPUT_UNAVAILABLE: GA4 Overview Campaign Breakdown");
   });
 
   it("fails the deterministic scheduled revenue provenance path closed when its read fails", async () => {

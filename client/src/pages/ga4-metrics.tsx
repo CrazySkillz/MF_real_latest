@@ -3209,10 +3209,15 @@ export default function GA4Metrics() {
     }
     if (sections.ads) {
       const adsSubsections = customSubsections.ads || {};
+      const needsTopCampaigns = reportType !== 'custom' || adsSubsections.topCampaigns === true || adsSubsections.summary === true;
+      const needsNativeDetail = reportType !== 'custom' || adsSubsections.bestWorst === true || adsSubsections.allCampaigns === true || adsSubsections.revenueBreakdown === true;
       const needsRevenueBreakdown =
         reportType !== 'custom' || adsSubsections.revenueBreakdown === true;
       const unavailable: string[] = [];
-      if (adComparisonBreakdownLoading || adComparisonBreakdownUnavailable || adComparisonBreakdownError) {
+      if (needsTopCampaigns && (campaignBreakdownUnavailable || breakdownError || revenueSourcesError || revenueBreakdownError)) {
+        unavailable.push('GA4 Overview Campaign Breakdown');
+      }
+      if (needsNativeDetail && (adComparisonBreakdownLoading || adComparisonBreakdownUnavailable || adComparisonBreakdownError)) {
         unavailable.push('Campaign breakdown');
       }
       if (needsRevenueBreakdown && adComparisonRevenueState !== 'ready') {
@@ -3604,13 +3609,13 @@ export default function GA4Metrics() {
         return { ...row, revenue: nativeRevenue, revenuePerSession: Number(row?.sessions || 0) > 0 ? nativeRevenue / Number(row.sessions || 0) : 0 };
       });
       const chartSummaryByCampaign = new Map<string, any>();
-      for (const row of comparisonRows) {
+      for (const row of campaignBreakdownAgg) {
         const key = String(row?.name || "").toLocaleLowerCase("en-US");
         const current = chartSummaryByCampaign.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0 };
         current.sessions += Number(row?.sessions || 0);
         current.users += Number(row?.users || 0);
         current.conversions += Number(row?.conversions || 0);
-        current.revenue += Number(row?.revenue || 0);
+        current.revenue += Number((Number(row?.revenue || 0) + Number(campaignBreakdownMatchedExternalRevenue.get(String(row?.name || "")) || 0)).toFixed(2));
         chartSummaryByCampaign.set(key, current);
       }
       const chartSummaryRows = Array.from(chartSummaryByCampaign.values()).map((row: any) => ({
@@ -3629,7 +3634,7 @@ export default function GA4Metrics() {
             return totalSessions > 0 ? (totalConversions / totalSessions) * 100 : 0;
           })()
         : sortedByMetric.reduce((sum: number, c: any) => sum + Number((c as any)?.[selectedMetric] || 0), 0);
-      if (rows.length === 0) {
+      if (rows.length === 0 && chartSummaryRows.length === 0) {
         doc.setFontSize(10); doc.setTextColor(...C.textSec);
         doc.text("No campaign breakdown data available.", MX + 8, y); y += 12;
       } else {
@@ -3721,7 +3726,7 @@ export default function GA4Metrics() {
           }
 
           const adSummaryCards: [string, string][] = [
-            [selectedMetric === "revenue" ? "GA4 Revenue (Imported to Date)" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric] || selectedMetric}`, fmtMetricValue(selectedMetric, Number(totalMetric || 0))],
+            [selectedMetric === "revenue" ? "Campaign Breakdown Revenue" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric] || selectedMetric}`, fmtMetricValue(selectedMetric, Number(totalMetric || 0))],
             ["Campaigns Compared", String(sortedByMetric.length)],
           ];
           const sumW = (CW - 4) / 2;
@@ -5818,6 +5823,11 @@ export default function GA4Metrics() {
       campaignCurrency,
     ).revenueByCampaign;
   }, [campaignBreakdownAgg, campaignCurrency, revenueDisplaySources]);
+
+  const adComparisonChartRows = useMemo(() => campaignBreakdownAgg.map((row) => ({
+    ...row,
+    revenue: Number((row.revenue + (campaignBreakdownMatchedExternalRevenue.get(row.name) || 0)).toFixed(2)),
+  })), [campaignBreakdownAgg, campaignBreakdownMatchedExternalRevenue]);
 
   const sourceRevenueBreakdowns = useMemo(() => {
     return new Map<string, any[]>(
@@ -8809,11 +8819,15 @@ export default function GA4Metrics() {
                 <TabsContent value="campaigns" className="fade-in">
                   <GA4AdComparison
                     campaignBreakdownAgg={adComparisonBreakdownAgg}
+                    chartCampaignRows={adComparisonChartRows}
                     breakdownLoading={adComparisonBreakdownLoading || adComparisonBreakdownPlaceholder}
                     breakdownUnavailable={adComparisonBreakdownUnavailable}
                     breakdownStale={Boolean(adComparisonBreakdownError && adComparisonBreakdown !== undefined)}
-                    comparisonStartDate={String(adComparisonBreakdown?.startDate || "")}
-                    comparisonEndDate={String(adComparisonBreakdown?.endDate || "")}
+                    chartBreakdownLoading={Boolean((breakdownLoading || revenueSourcesLoading || revenueBreakdownLoading) && (ga4Breakdown === undefined || revenueSourcesResp === undefined || revenueBreakdownResp === undefined))}
+                    chartBreakdownUnavailable={Boolean(campaignBreakdownUnavailable)}
+                    chartBreakdownStale={Boolean((breakdownError && ga4Breakdown !== undefined) || (revenueSourcesError && revenueSourcesResp !== undefined) || (revenueBreakdownError && revenueBreakdownResp !== undefined))}
+                    comparisonStartDate={String(ga4Breakdown?.startDate || "")}
+                    comparisonEndDate={String(ga4Breakdown?.endDate || "")}
                     revenueState={adComparisonRevenueState}
                     selectedMetric={adComparisonMetric}
                     onMetricChange={setAdComparisonMetric}

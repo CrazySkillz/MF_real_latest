@@ -156,6 +156,8 @@ const getAdComparisonReportRequirements = (report: any) => {
   const subsections = cfg.subsections?.ads || {};
   return {
     included: Boolean(included),
+    topCampaigns: Boolean(included && (reportType !== 'custom' || subsections.topCampaigns === true || subsections.summary === true)),
+    nativeDetail: Boolean(included && (reportType !== 'custom' || subsections.bestWorst === true || subsections.allCampaigns === true || subsections.revenueBreakdown === true)),
     revenueBreakdown: Boolean(
       included && (reportType !== 'custom' || subsections.revenueBreakdown === true),
     ),
@@ -507,7 +509,7 @@ async function buildGA4ReportPayload(report: any) {
   const [metrics, breakdownTraffic, adComparisonBreakdown, landingPages, conversionEvents, timeSeries, revenueSources, spendSources, revenueBreakdown, adComparisonRevenueBreakdown, spendBreakdown, platformKPIs, benchmarks] = await Promise.all([
     ga4Service.getMetricsWithAutoRefresh(campaignId, storage, reportLookbackRange, propertyId, campaignFilter).catch((e) => { logPartFailure("metrics", e); return {} as any; }),
     ga4Service.getAcquisitionBreakdown(campaignId, storage, overviewStartDate, propertyId, 2000, campaignFilter, dailyEnd, false, false, campaignCurrency, true).catch((e) => { logPartFailure("acquisition breakdown", e); return { rows: [] }; }),
-    adComparisonRequirements.included && adComparisonWindow
+    adComparisonRequirements.nativeDetail && adComparisonWindow
       ? ga4Service.getAcquisitionBreakdown(
           campaignId, storage, adComparisonWindow.startDate, propertyId, 2000, campaignFilter,
           adComparisonWindow.endDate, false, false, campaignCurrency, true,
@@ -649,11 +651,18 @@ async function buildGA4ReportPayload(report: any) {
     throw new Error(`GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: ${Array.from(new Set(unavailableOverviewParts)).join(", ")}`);
   }
   const unavailableAdComparisonParts: string[] = [];
+  if (adComparisonRequirements.topCampaigns && (
+    failedParts.has('acquisition breakdown') || failedParts.has('campaign revenue breakdown') ||
+    failedParts.has('revenue sources') || failedParts.has('revenue breakdown') ||
+    overviewCampaignBreakdownMaterializedRevenueUnavailable
+  )) {
+    unavailableAdComparisonParts.push('GA4 Overview Campaign Breakdown');
+  }
   if (adComparisonRequirements.revenueBreakdown && adComparisonMaterializedRevenueUnavailable) {
     unavailableAdComparisonParts.push('Imported revenue provenance');
   }
   if (
-    adComparisonRequirements.included &&
+    adComparisonRequirements.nativeDetail &&
     failedParts.has('ad comparison breakdown')
   ) {
     unavailableAdComparisonParts.push('Campaign breakdown');
@@ -1253,13 +1262,13 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     const metricLabels: Record<string, string> = { sessions: "Sessions", users: "Users", conversions: "Conversions", revenue: "Revenue", conversionRate: "Conversion Rate" };
     const formatMetricValue = (metric: string, value: number) => metric === "revenue" ? formatMoney(value) : metric === "conversionRate" ? formatMetricPct(value) : metric === "conversions" ? Number(value || 0).toLocaleString("en-US", { maximumFractionDigits: 15 }) : formatNumber(value);
     const chartSummaryByCampaign = new Map<string, any>();
-    for (const row of rows) {
+    for (const row of payload.campaignBreakdownAgg) {
       const key = String(row?.name || "").toLocaleLowerCase("en-US");
       const current = chartSummaryByCampaign.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0 };
       current.sessions += Number(row?.sessions || 0);
       current.users += Number(row?.users || 0);
       current.conversions += Number(row?.conversions || 0);
-      current.revenue += Number(row?.revenue || 0);
+      current.revenue += Number((Number(row?.revenue || 0) + Number(payload.campaignBreakdownMatchedExternalRevenue.get(String(row?.name || "")) || 0)).toFixed(2));
       chartSummaryByCampaign.set(key, current);
     }
     const chartSummaryRows = Array.from(chartSummaryByCampaign.values()).map((row: any) => ({
@@ -1321,7 +1330,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       });
       doc.setFontSize(6.5); doc.setTextColor(...COLORS.textTert); doc.text(formatMetricValue(selectedMetric, maxValue), chartX + chartW, chartY + 1, { align: "right" });
       y += 58;
-      const summaryMetricLabel = selectedMetric === "revenue" ? "GA4 Revenue (Imported to Date)" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric]}`;
+      const summaryMetricLabel = selectedMetric === "revenue" ? "Campaign Breakdown Revenue" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric]}`;
       metricCards([[summaryMetricLabel, formatMetricValue(selectedMetric, totalMetric)], ["Campaigns Compared", String(sortedByMetric.length)]], 2, 18);
       if (selectedMetric === "users") {
         doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.textTert);

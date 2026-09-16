@@ -100,9 +100,11 @@ describe('GA4 Ad Comparison accumulation window', () => {
     expect(page).toContain('window=import-to-date');
     expect(page).toContain('adComparisonCampaignBreakdown=1');
     expect(page).toContain('campaignBreakdownAgg={adComparisonBreakdownAgg}');
+    expect(page).toContain('chartCampaignRows={adComparisonChartRows}');
+    expect(page).toContain('campaignBreakdownMatchedExternalRevenue.get(row.name)');
     expect(page).toContain('const campaignBreakdownAgg = useMemo');
     expect(page).toContain('{campaignBreakdownAgg.map((c, idx) => {');
-    expect(component).toContain('GA4 Revenue (Imported to Date)');
+    expect(component).toContain('Campaign Breakdown Revenue');
     expect(component).not.toContain('GA4 Revenue (30 Completed Days)');
     const breakdownRoute = route.slice(
       route.indexOf('app.get("/api/campaigns/:id/ga4-breakdown"'),
@@ -136,6 +138,7 @@ describe('GA4 Ad Comparison accumulation window', () => {
     expect(page).toMatch(/activeTab === .campaigns. \|\| activeTab === .reports./);
     expect(reportPreflight).toContain('adComparisonBreakdownLoading || adComparisonBreakdownUnavailable || adComparisonBreakdownError');
     expect(reportSection).toContain('const rows = Array.isArray(adComparisonBreakdownAgg) ? adComparisonBreakdownAgg : [];');
+    expect(reportSection).toContain('for (const row of campaignBreakdownAgg)');
     expect(reportSection).toContain('GA4 Revenue (Imported to Date)');
     expect(reportSection).not.toContain('GA4 Revenue (30 completed days)');
   });
@@ -180,7 +183,7 @@ describe('GA4 Ad Comparison accumulation window', () => {
     expect(componentScope).toContain('return chartRows.slice(0, 10)');
     expect(componentScope).toContain('payload?.[0]?.payload as any)?.fullName');
     expect(componentScope).toContain('(totalConversions / totalSessions) * 100');
-    expect(componentScope).toContain('GA4 Revenue (Imported to Date)');
+    expect(componentScope).toContain('Campaign Breakdown Revenue');
     expect(componentScope).toContain('Overall Conversion Rate');
     expect(componentScope).toContain('{chartSummaryRows.length}');
     expect(componentScope).toContain('const chartSummaryRows = useMemo');
@@ -196,7 +199,7 @@ describe('GA4 Ad Comparison accumulation window', () => {
     for (const pdfScope of [browserPdfScope, scheduledPdfScope]) {
       expect(pdfScope).toContain('slice(0, 10)');
       expect(pdfScope).toContain('(totalConversions / totalSessions) * 100');
-      expect(pdfScope).toContain('GA4 Revenue (Imported to Date)');
+      expect(pdfScope).toContain('Campaign Breakdown Revenue');
       expect(pdfScope).toContain('Overall Conversion Rate');
       expect(pdfScope).toContain('Campaigns Compared');
       expect(pdfScope).toContain('Users are summed campaign-row counts and are non-additive.');

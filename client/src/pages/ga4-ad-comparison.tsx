@@ -11,7 +11,7 @@ import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger }
 import { formatPct } from "@shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
 import {
-  BarChart, Bar, LabelList, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend,
 } from "recharts";
 
 interface CampaignAgg {
@@ -26,9 +26,13 @@ interface CampaignAgg {
 
 interface GA4AdComparisonProps {
   campaignBreakdownAgg: CampaignAgg[];
+  chartCampaignRows: CampaignAgg[];
   breakdownLoading: boolean;
   breakdownUnavailable?: boolean;
   breakdownStale?: boolean;
+  chartBreakdownLoading: boolean;
+  chartBreakdownUnavailable: boolean;
+  chartBreakdownStale: boolean;
   comparisonStartDate?: string;
   comparisonEndDate?: string;
   revenueState?: 'loading' | 'ready' | 'stale' | 'unavailable';
@@ -57,9 +61,13 @@ const METRIC_LABELS: Record<string, string> = {
 
 export default function GA4AdComparison({
   campaignBreakdownAgg,
+  chartCampaignRows,
   breakdownLoading,
   breakdownUnavailable = false,
   breakdownStale = false,
+  chartBreakdownLoading,
+  chartBreakdownUnavailable,
+  chartBreakdownStale,
   comparisonStartDate = "",
   comparisonEndDate = "",
   revenueState = 'ready',
@@ -97,7 +105,7 @@ export default function GA4AdComparison({
 
   const chartSummaryRows = useMemo(() => {
     const byName = new Map<string, CampaignAgg>();
-    for (const row of comparisonRows) {
+    for (const row of chartCampaignRows) {
       const key = row.name.toLocaleLowerCase("en-US");
       const current = byName.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0, conversionRate: 0, revenuePerSession: 0 };
       current.sessions += row.sessions;
@@ -111,7 +119,7 @@ export default function GA4AdComparison({
       conversionRate: row.sessions > 0 ? (row.conversions / row.sessions) * 100 : 0,
       revenuePerSession: row.sessions > 0 ? row.revenue / row.sessions : 0,
     }));
-  }, [comparisonRows]);
+  }, [chartCampaignRows]);
 
   const sortedByMetric = useMemo(() => {
     return [...chartSummaryRows].sort((a, b) => {
@@ -161,12 +169,12 @@ export default function GA4AdComparison({
   }, [sortedByMetric, selectedMetric]);
 
   const summaryMetricLabel = selectedMetric === "revenue"
-    ? "GA4 Revenue (Imported to Date)"
+    ? "Campaign Breakdown Revenue"
     : selectedMetric === "conversionRate"
       ? "Overall Conversion Rate"
       : `Total ${METRIC_LABELS[selectedMetric] || selectedMetric}`;
 
-  if (breakdownLoading && campaignBreakdownAgg.length === 0) {
+  if (breakdownLoading && campaignBreakdownAgg.length === 0 && chartBreakdownLoading && chartCampaignRows.length === 0) {
     return (
       <div className="space-y-6">
         {[...Array(3)].map((_, i) => (
@@ -176,7 +184,7 @@ export default function GA4AdComparison({
     );
   }
 
-  if (breakdownUnavailable) {
+  if (breakdownUnavailable && chartBreakdownUnavailable && !chartBreakdownLoading) {
     return (
       <Card>
         <CardContent className="p-8 text-center">
@@ -188,7 +196,7 @@ export default function GA4AdComparison({
     );
   }
 
-  if (campaignBreakdownAgg.length === 0) {
+  if (campaignBreakdownAgg.length === 0 && chartCampaignRows.length === 0 && !chartBreakdownLoading) {
     return (
       <Card>
         <CardContent className="p-8 text-center">
@@ -208,7 +216,9 @@ export default function GA4AdComparison({
         <div className="md:col-span-2">
           <h3 className="text-lg font-semibold text-foreground">Ad Comparison</h3>
           <p className="text-sm text-muted-foreground/70">
-            {comparisonStartDate && comparisonEndDate
+            {selectedMetric === "revenue"
+              ? "Revenue matches GA4 Overview Campaign Breakdown"
+              : comparisonStartDate && comparisonEndDate
               ? `Compare GA4 campaigns from the initial import (${comparisonStartDate}) through the latest completed day (${comparisonEndDate})`
               : "Compare performance across your GA4 campaigns"}
           </p>
@@ -234,7 +244,7 @@ export default function GA4AdComparison({
       )}
 
       {/* Performance Rankings */}
-      {campaignBreakdownAgg.length >= 2 && (
+      {!breakdownUnavailable && campaignBreakdownAgg.length >= 2 && (
         <div className="grid gap-4 md:grid-cols-3">
           {bestPerforming && (
             <Card className="border-emerald-200 dark:border-emerald-800">
@@ -287,6 +297,16 @@ export default function GA4AdComparison({
         </div>
       )}
 
+      {chartBreakdownStale && !chartBreakdownUnavailable && (
+        <p className="text-sm text-amber-700">Showing the last verified GA4 Overview Campaign Breakdown values.</p>
+      )}
+      {chartBreakdownLoading && chartSummaryRows.length === 0 ? (
+        <div className="h-80 bg-muted rounded animate-pulse" />
+      ) : chartBreakdownUnavailable ? (
+        <Card><CardContent className="p-8 text-center text-destructive">GA4 Overview Campaign Breakdown is unavailable.</CardContent></Card>
+      ) : chartSummaryRows.length === 0 ? (
+        <Card><CardContent className="p-8 text-center text-muted-foreground">No GA4 Overview Campaign Breakdown rows available.</CardContent></Card>
+      ) : <>
       {/* Bar chart */}
       <Card>
         <CardHeader>
@@ -306,13 +326,7 @@ export default function GA4AdComparison({
                   formatter={(value: any) => [fmtMetricValue(selectedMetric, Number(value || 0)), METRIC_LABELS[selectedMetric] || selectedMetric]}
                   labelFormatter={(_label, payload) => String((payload?.[0]?.payload as any)?.fullName || "")}
                 />
-                <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} name={METRIC_LABELS[selectedMetric] || selectedMetric}>
-                  <LabelList dataKey="value" content={({ x, y, width, height, value }) => {
-                    const label = fmtMetricValue(selectedMetric, Number(value || 0));
-                    const inside = Number(width || 0) >= label.length * 7 + 16;
-                    return <text className="ga4-ad-comparison-value-label" x={Number(x || 0) + Number(width || 0) + (inside ? -8 : 8)} y={Number(y || 0) + Number(height || 0) / 2} textAnchor={inside ? "end" : "start"} dominantBaseline="middle" fill={inside ? "#fff" : "#334155"} fontSize={12}>{label}</text>;
-                  }} />
-                </Bar>
+                <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} name={METRIC_LABELS[selectedMetric] || selectedMetric} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -346,11 +360,19 @@ export default function GA4AdComparison({
           <CardContent className="p-5">
             <div className="text-sm font-medium text-muted-foreground/70">Campaigns Compared</div>
             <div className="text-2xl font-bold text-foreground mt-1">{chartSummaryRows.length}</div>
-            <div className="text-xs text-muted-foreground/70 mt-1">From GA4 acquisition breakdown</div>
+            <div className="text-xs text-muted-foreground/70 mt-1">From GA4 Overview Campaign Breakdown</div>
           </CardContent>
         </Card>
       </div>
+      </>}
 
+      {breakdownUnavailable ? (
+        <Card><CardContent className="p-8 text-center text-destructive">Native Ad Comparison detail is unavailable.</CardContent></Card>
+      ) : breakdownLoading && campaignBreakdownAgg.length === 0 ? (
+        <div className="h-32 bg-muted rounded animate-pulse" />
+      ) : campaignBreakdownAgg.length === 0 ? (
+        <Card><CardContent className="p-8 text-center text-muted-foreground">No native Ad Comparison detail available.</CardContent></Card>
+      ) : <>
       {/* Full comparison table */}
       <Card>
         <CardHeader className="pb-3">
@@ -472,6 +494,7 @@ export default function GA4AdComparison({
           </div>
         </CardContent>
       </Card>
+      </>}
     </div>
     </TooltipProvider>
   );

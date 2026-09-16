@@ -142,6 +142,7 @@ export default function GA4AdComparison({
   const fmtMetricValue = (metric: string, value: number) => {
     if (metric === "revenue") return formatMoney(value);
     if (metric === "conversionRate") return `${formatPct(value)}`;
+    if (metric === "conversions") return value.toLocaleString("en-US", { maximumFractionDigits: 15 });
     return formatNumber(value);
   };
 

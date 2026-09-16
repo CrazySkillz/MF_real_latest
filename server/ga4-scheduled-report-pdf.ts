@@ -1251,7 +1251,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       ? String(rawCfg.adComparisonMetric)
       : "sessions";
     const metricLabels: Record<string, string> = { sessions: "Sessions", users: "Users", conversions: "Conversions", revenue: "Revenue", conversionRate: "Conversion Rate" };
-    const formatMetricValue = (metric: string, value: number) => metric === "revenue" ? formatMoney(value) : metric === "conversionRate" ? formatMetricPct(value) : metric === "conversions" ? Number(value || 0).toLocaleString("en-US") : formatNumber(value);
+    const formatMetricValue = (metric: string, value: number) => metric === "revenue" ? formatMoney(value) : metric === "conversionRate" ? formatMetricPct(value) : metric === "conversions" ? Number(value || 0).toLocaleString("en-US", { maximumFractionDigits: 15 }) : formatNumber(value);
     const chartSummaryByCampaign = new Map<string, any>();
     for (const row of rows) {
       const key = String(row?.name || "").toLocaleLowerCase("en-US");

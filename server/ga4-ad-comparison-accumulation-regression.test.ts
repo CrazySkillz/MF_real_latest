@@ -203,7 +203,7 @@ describe('GA4 Ad Comparison accumulation window', () => {
       expect(pdfScope).toContain('chartSummaryByCampaign');
     }
     expect(browserPdfScope).toContain('const selectedMetric = reportAdComparisonMetric');
-    expect(browserPdfScope).toContain('if (metric === "conversions") return Number(value || 0).toLocaleString("en-US")');
+    expect(browserPdfScope).toContain('if (metric === "conversions") return Number(value || 0).toLocaleString("en-US", { maximumFractionDigits: 15 })');
     expect(browserPdfScope).toContain('Number(p.value || 0) > 0');
     expect(scheduledPdfScope).toContain('rawCfg?.adComparisonMetric');
     expect(scheduledPdfScope).toContain('item.value > 0');

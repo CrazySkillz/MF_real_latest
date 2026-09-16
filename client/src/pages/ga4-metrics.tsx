@@ -3592,7 +3592,7 @@ export default function GA4Metrics() {
       const fmtMetricValue = (metric: string, value: number) => {
         if (metric === "revenue") return fC(value);
         if (metric === "conversionRate") return fP(value);
-        if (metric === "conversions") return Number(value || 0).toLocaleString("en-US");
+        if (metric === "conversions") return Number(value || 0).toLocaleString("en-US", { maximumFractionDigits: 15 });
         return fN(value);
       };
       const fmtCardMetricValue = (metric: string, value: number) => {

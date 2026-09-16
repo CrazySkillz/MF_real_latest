@@ -8,19 +8,16 @@ Use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` for the durable production-readi
 
 Current status:
 
-`CLEAN-CERTIFIED` only for the Campaign2 metric dropdown, Top Campaigns chart,
-three leader cards, two summary cards, and their corresponding PDF values at
-deployed runtime `3013ec6b52a93eaca01cd14c538dd0a20f350fac`. The exact
-scope and evidence are in `GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md`.
-The full Ad Comparison tab and its machine record remain `UNVERIFIED`; the
-older boundary below is historical.
-
-Revenue Breakdown is separately `CLEAN-CERTIFIED` for the exact Campaign2,
-source, UI, and PDF value boundary in
-`GA4/AD_COMPARISON_REVENUE_BREAKDOWN_CERTIFICATION_2026-09-16.md`.
-The local candidate removes `All Campaigns` from the live tab and new report
-choices. Existing custom reports that explicitly saved it retain their PDF
-output. The combined tab still needs validation at one deployed runtime.
+The retained live tab is `CLEAN-CERTIFIED / PRODUCTION_READY` only for the
+Campaign2/property/saved-filter/USD boundary at deployed runtime
+`70b73a229ebb9e1021c3d18d63119d05bdee7e26`. The metric dropdown,
+chart, three leader cards, two summary cards, and Revenue Breakdown passed
+together at that runtime. `All Campaigns` is absent from the live tab and new
+standard reports; explicitly saved legacy custom reports retain it. The exact
+combined evidence and exclusions are in
+`GA4/AD_COMPARISON_PRODUCTION_READINESS.md`. The separate chart and Revenue
+Breakdown certificates remain valid for their narrower recorded runtimes.
+Reports saving, scheduling, and delivery are not certified here.
 
 Historical whole-tab status (superseded by the narrow current status above):
 

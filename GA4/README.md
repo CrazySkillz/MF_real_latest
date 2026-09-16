@@ -31,7 +31,7 @@ Current GA4 tab production-readiness status:
 <!-- /ga4-overview-current-status -->
 - Current Commit 7's deployed validation also confirmed that an active OAuth placeholder with an empty GA4 Property ID fails closed instead of rendering permanent skeletons, while persisted campaign-scoped financial sources remain reachable for exact reviewed removal.
 - GA4 KPIs are **PRODUCTION_READY** only for deployed application runtime `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` and the exact manifest in `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md`. GA4 Benchmarks are separately **CLEAN-CERTIFIED / PRODUCTION_READY** for application behavior at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d` and the exact manifest in `GA4/OVERVIEW_BENCHMARKS_DEPENDENCY_MANIFEST_2026-09-15.md`; evidence-only revision `d3d1cfa0c0b34a44b405a74d8970c1d9ac9c1e7f` was subsequently deployed healthy without changing that behavior.
-- GA4 Ad Comparison remains **UNVERIFIED as a full tab**. Its chart/cards/summary and Revenue Breakdown have separate bounded certificates in `GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md` and `GA4/AD_COMPARISON_REVENUE_BREAKDOWN_CERTIFICATION_2026-09-16.md`. The local candidate removes All Campaigns from the live tab and new reports; combined-page deployed validation remains pending. The earlier `4be16c54c550a45dbf3104313c820ea47b453604` full-tab certification is historical.
+- GA4 Ad Comparison's retained live tab is **CLEAN-CERTIFIED / PRODUCTION_READY** only for the Campaign2/property/saved-filter boundary at deployed runtime `70b73a229ebb9e1021c3d18d63119d05bdee7e26`. The combined chart/cards/summary and Revenue Breakdown passed; All Campaigns is retired. `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` controls the exact evidence and exclusions. Reports delivery and other campaigns/configurations remain outside this certificate.
 - GA4 Reports is **UNVERIFIED** for the current candidate. The deployed browser Overview Campaign Breakdown artifact passed at `08d7abe5`; exact-current scheduled/server artifact parity remains pending. The earlier `94f1096f3d08c1443f27a032bc5a44c8468c1a7e` certification is historical only. Campaign DeepDive remains excluded.
 - The combined GA4 release-certification audit is complete for the recorded section boundaries. This does not certify excluded platforms, Campaign DeepDive, future configurations, future provider availability, or obsolete campaigns outside the active boundary.
 - Absent later code changes, failed validation, contradictory deployed evidence, or changed requirements, future readiness reviews should use the tab-specific readiness doc for each GA4 section and must not infer KPI production readiness from Overview or Benchmark readiness.
@@ -124,9 +124,10 @@ Important meaning:
   Explicit Overview-facing Benchmark dependency contract. Changes outside the manifested fields, windows, freshness/currency rules, formulas, lifecycle paths, and consumers do not automatically invalidate Benchmark certification.
 - `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`
   Canonical whole-tab Ad Comparison production-readiness source of truth.
-  Current status: `UNVERIFIED` for the whole tab; the chart/cards/summary and
-  Revenue Breakdown have separate bounded certificates. Combined-page deployed
-  validation remains pending. Reports delivery is separate.
+  Current status: `PRODUCTION_READY` only for the retained Campaign2 live-tab
+  boundary at deployed runtime `70b73a229ebb9e1021c3d18d63119d05bdee7e26`.
+  Combined chart/cards/summary and Revenue Breakdown passed; Reports delivery
+  and other configurations remain separate.
 - `GA4/INSIGHTS.md`
   Short functional overview of the live GA4 Insights tab, including sections, scope contract, and refresh pattern.
 - `GA4/INSIGHTS_PRODUCTION_READINESS.md`
@@ -210,10 +211,11 @@ These are now part of the GA4 template contract:
 - displayed Campaign Breakdown Revenue adds only exact campaign-matched source-to-date imported revenue, and the table subtitle must disclose the cumulative GA4 boundary and imported provenance
 - exact campaign-matched imported revenue can propagate into GA4 Overview
   `Campaign Breakdown` and Reports-owned output under their own contracts.
-  The live GA4 `Ad Comparison` ranking, chart, summaries, and All Campaigns
-  table deliberately remain native-only from the saved initial-import boundary
-  through the latest completed day; imported revenue is source-to-date
-  provenance in Revenue Breakdown and cannot create or adjust ranked rows
+  The live GA4 `Ad Comparison` chart, leader cards, and summaries use Overview
+  Campaign Breakdown rows, including only uniquely mapped imported revenue.
+  Separate native Ad Comparison rows use the saved initial-import boundary
+  through the latest completed day for Revenue Breakdown; imported sources
+  remain distinct source-to-date provenance and cannot create campaign rows
 - HubSpot-specific report value propagation is guarded in Current Commit 4.12 by `GA4OverviewValidation.hubspotReportValuePack(...)` and static scheduled/server PDF formula checks; deployed evidence passed for the configured `GA4 Overview Report` packet and remains limited to that report/campaign/property
 - the `Add revenue source` chooser shows saved-source status for implemented revenue source families: Shopify and HubSpot show connection/import status where applicable, Google Sheets shows `Connected` when an active Google Sheets revenue source exists for the current platform context, CSV shows `Uploaded` when an active CSV revenue source exists, and Salesforce is visible for initial setup but becomes non-actionable after an active same-context Salesforce source exists; subsequent opportunity changes use the provider pencil in `Revenue Sources`
 - CRM/ecommerce Crosswalk screens should not render a redundant `Selected Campaigns label` field; selected counts and selected value rows are the visible selection summary
@@ -224,11 +226,11 @@ These are now part of the GA4 template contract:
 - GA4 KPI whole-tab status is **PRODUCTION_READY** only for deployed application runtime `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` and the dependency boundary recorded in `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md`.
 - GA4 Benchmark creation follows the same custom-entry pattern: `Create Custom Benchmark` is highlighted when selected, shows `Choose name + unit, then set values`, uses a constrained unit dropdown, keeps custom current/benchmark values in generic numeric format until a real unit is selected, disables `Create Benchmark` until `Benchmark Name` and `Benchmark Value` are entered, and disables `Update Benchmark` in edit mode until at least one form value changes
 - GA4 Benchmark whole-tab status is **CLEAN-CERTIFIED / PRODUCTION_READY** for application behavior at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d` and its explicit dependency manifest; evidence-only revision `d3d1cfa0c0b34a44b405a74d8970c1d9ac9c1e7f` did not change that behavior. Benchmark value propagation into documented consumers is included, while whole-Reports behavior remains separately controlled.
-- GA4 `Ad Comparison` leader cards, chart, summary, and All Campaigns table use the same native initial-import-to-latest-completed-day campaign rows; source-to-date imported revenue remains separate provenance in Revenue Breakdown and cannot create or adjust ranked rows
+- GA4 `Ad Comparison` leader cards, chart, and summary use Overview Campaign Breakdown rows; only uniquely mapped imported revenue may adjust their revenue values, while Revenue Breakdown shows separate native comparison-window and source-to-date imported provenance. The retired All Campaigns table is not part of the live tab
 - GA4 `Ad Comparison` uses explicit loading/ready/stale/unavailable states,
   blocks previous-property placeholders, and retains valid source zero. Its
   current machine status is `PRODUCTION_READY` for certified runtime boundary
-  `4be16c54` and the recorded dependency/configuration boundary. All PDF,
+  `70b73a229ebb9e1021c3d18d63119d05bdee7e26` and the recorded dependency/configuration boundary. All PDF,
   saved-report, snapshot, scheduler, delivery, and report-library behavior
   belongs to the Reports certification
 - GA4 daily time-series/backfill uses the same selected-campaign import rule as Overview: query campaign attribution dimensions first, use `pageLocation` `utm_campaign` only when the primary daily result has no rows, and supplement missing conversion/revenue fields from a compatible selected-campaign `campaignName` query when GA4 splits traffic and purchase attribution across dimensions. Visible Trends rows remain completed-day rows and exclude today's intraday data.

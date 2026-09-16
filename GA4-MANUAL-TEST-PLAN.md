@@ -18,9 +18,10 @@ Important:
 
 Ad Comparison status for future reference:
 
-- GA4 Ad Comparison is `UNVERIFIED` as a whole. Chart/cards/summary and Revenue
-  Breakdown have separate bounded certificates. The local All Campaigns
-  removal and combined page require validation at one deployed runtime
+- GA4 Ad Comparison's retained live tab is `PRODUCTION_READY` only for the
+  Campaign2/property/saved-filter boundary at deployed runtime
+  `70b73a229ebb9e1021c3d18d63119d05bdee7e26`. The combined chart/cards/
+  summary and Revenue Breakdown passed; the retired All Campaigns table is absent
 - Reports-owned PDF, delivery, scheduling, snapshot, and library behavior is a
   separate section and is not a deferred Ad Comparison validation item
 - use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` as the source of truth
@@ -970,7 +971,8 @@ Checkpoint after Journey 8:
   GA4-context source separately; chart/card revenue uses only exact mapped
   imported amounts alongside its native GA4 campaign rows
 - [ ] An available imported source shows its exact materialized source-to-date
-  amount and the `excluded from ranking` provenance
+  amount as separate Revenue Breakdown provenance; only uniquely mapped amounts
+  may adjust Overview-based chart revenue, and no imported source creates a row
 - [ ] An unavailable imported source remains listed as `Unavailable`, does not
   show a stale amount, and does not show configuration-backed subsection values
 - [ ] `No additional revenue sources connected` appears only when no active

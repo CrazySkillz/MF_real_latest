@@ -214,17 +214,20 @@ describe('GA4 Ad Comparison accumulation window', () => {
     expect(page).toContain('adComparisonMetric: ["sessions", "users", "conversions", "revenue", "conversionRate"].includes');
   });
 
-  it('requires the live validator to prove imported revenue is excluded from native ranking', () => {
+  it('requires the live validator to reconcile chart values with Overview Campaign Breakdown', () => {
     const validator = read('scripts/ga4-ad-comparison-live-readonly.ts');
 
     expect(validator).toContain('/revenue-sources?platformContext=ga4');
     expect(validator).toContain('/revenue-breakdown?platformContext=ga4');
     expect(validator).toContain("materializedRevenueStatus === 'available'");
     expect(validator).toContain('does not match its materialized breakdown');
-    expect(validator).toContain('Imported revenue leaked into the native GA4 Revenue summary');
+    expect(validator).toContain('overviewCampaignBreakdown=1&readOnly=1&debug=1');
+    expect(validator).toContain('resolveExactGA4CampaignBreakdownRevenue');
+    expect(validator).toContain('exactMappedImportedRevenueIncludedInOverviewChart');
     expect(validator).toContain('Valid zero Sessions summary did not render as zero');
-    expect(validator).toContain('No campaign data available. Ensure your GA4 property has UTM campaign tracking configured.');
+    expect(validator).toContain('No GA4 Overview Campaign Breakdown rows available.');
     expect(validator).toContain('Missing property request returned');
+    expect(validator).toContain('Endpoint omitted saved campaigns');
     expect(validator).toContain('sourceInventory:');
     expect(validator).not.toContain('Rendered Revenue Breakdown is missing source');
   });

@@ -98,16 +98,17 @@ certificate.
 
 #### GA4 Ad Comparison certification breakdown
 
-Both retained subsections below are certified for their separate documented
-boundaries. The local candidate removes All Campaigns from the live tab and new
-reports; Ad Comparison as a whole remains `UNVERIFIED` until that removal and
-their combined page contract are verified at one exact deployed runtime.
+Both retained subsections below retain their separate documented certificates.
+Their combined live page and the removal of All Campaigns were verified at
+deployed runtime `70b73a229ebb9e1021c3d18d63119d05bdee7e26`; the whole
+live-tab certificate applies only to its exact Campaign2/property/saved-filter
+boundary. Reports delivery remains excluded.
 Existing GA4 Overview, KPI, Benchmark, and source certifications remain read-only
 dependencies and are not reopened by this work.
 
 | Order | Ad Comparison subsection | Work state | Certification status | Required validation boundary |
 | ---: | --- | --- | --- | --- |
-| - | Ad Comparison (whole section) | `COMPLETE` | `UNVERIFIED` | Both retained subsections have separate certificates; the local All Campaigns removal and combined page contract remain pending at one exact deployed runtime. |
+| - | Ad Comparison (whole section) | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` only for the retained live tab at deployed runtime `70b73a229ebb9e1021c3d18d63119d05bdee7e26`, Campaign2/property/saved-filter/USD; both retained subsections and All Campaigns removal passed together. Controlling certificate: `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`. Reports delivery and other configurations are excluded; required steps remaining for this boundary: 0. |
 | 1 | Ad Comparison (chart and summary) | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` only for the documented Campaign2/property/saved-campaign boundary at deployed runtime `3013ec6b52a93eaca01cd14c538dd0a20f350fac`: metric dropdown, chart, three ranking cards, two summary cards, and matching PDF values. Controlling certificate: `GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md`. All Campaigns, Revenue Breakdown, and Reports delivery remain excluded. |
 | 2 | Revenue Breakdown | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` only for the exact documented Campaign2/property/source boundary at runtime `dd9cd51ea755e896838c78be8cab020fc0249eba`; controlling certificate: `GA4/AD_COMPARISON_REVENUE_BREAKDOWN_CERTIFICATION_2026-09-16.md`. Native comparison-window revenue and imported source-to-date amounts remain separate; no cross-window Total Revenue or report-delivery claim. |
 
@@ -192,7 +193,7 @@ known broken. They mean the app-wide production-ready claim is not yet proven.
 | GA4 Overview | `UNVERIFIED` | `GA4/certifications/ga4-overview.json`; `GA4/OVERVIEW_PRODUCTION_READINESS.md` | Current machine record is fail-closed; separately certified source components do not certify the whole tab. |
 | GA4 KPIs | `CERTIFIED` | `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact documented KPI boundary at deployed runtime `f7afeb2b`; documentation commit `47180dcf`; required steps remaining: 0. GA4 Overview remains a read-only upstream dependency and is not recertified by this entry. |
 | GA4 Benchmarks | `CERTIFIED` | `GA4/OVERVIEW_BENCHMARKs_CERTIFICATION_2026-09-15.md`; `GA4/OVERVIEW_BENCHMARKS_DEPENDENCY_MANIFEST_2026-09-15.md`; `GA4/BENCHMARKS_PRODUCTION_READINESS.md` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact documented Benchmark boundary at application runtime `47180dcf96586fa4fff9a83e7a097e33e42c0721`; deployed evidence commit `bdecb67142bdbe505084d397f195e252db40a4f8` changed Benchmark documentation only. The earlier `236afff9` runtime and `a96ba06e` machine record remain historical. GA4 Overview and KPIs are not recertified by this entry. |
-| GA4 Ad Comparison | `UNVERIFIED` | `GA4/certifications/ga4-ad-comparison.json`; `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`; `GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md`; `GA4/AD_COMPARISON_REVENUE_BREAKDOWN_CERTIFICATION_2026-09-16.md` | Chart-and-summary and Revenue Breakdown are independently clean-certified only at their documented boundaries; local All Campaigns removal and the combined tab need deployed verification. Reports delivery is excluded. |
+| GA4 Ad Comparison | `CERTIFIED` | `GA4/certifications/ga4-ad-comparison.json`; `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`; `GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md`; `GA4/AD_COMPARISON_REVENUE_BREAKDOWN_CERTIFICATION_2026-09-16.md` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact Campaign2/property/saved-filter/USD retained live-tab boundary at deployed runtime `70b73a229ebb9e1021c3d18d63119d05bdee7e26`; chart/cards/summary and Revenue Breakdown passed together, All Campaigns absent. Reports delivery and other configurations excluded; required steps remaining: 0. |
 | GA4 Insights | `CERTIFIED` | `GA4/certifications/ga4-insights.json`; `GA4/INSIGHTS_PRODUCTION_READINESS.md` | Exact live-tab runtime `4be16c54c550a45dbf3104313c820ea47b453604`. |
 | GA4 Reports | `UNVERIFIED` | `GA4/certifications/ga4-reports.json`; `GA4/REPORTS_PRODUCTION_READINESS.md` | Exact-current scheduled/server Campaign Breakdown artifact parity remains pending. |
 | GA4 reporting timezone | `RECONCILE` | `GA4/REPORTING_TIMEZONE_PRODUCTION_READINESS.md` | Individual validation commits are recorded, but the document has no single current whole-path certificate. |
@@ -263,8 +264,8 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 ## Known Status Conflicts Superseded By The Fresh Program
 
 1. `GA4_PRODUCTION_READY_TRACKER.md` says the complete GA4 section is
-   production-ready, while current GA4 Overview, KPI, Ad Comparison, and Reports
-   machine records say `UNVERIFIED`.
+   production-ready, while current GA4 Overview and Reports machine records
+   say `UNVERIFIED` and the KPI/Ad Comparison records have narrower boundaries.
 2. Historical whole-Overview conclusions in revenue, spend, and outstanding
    trackers conflict with the current Overview machine record.
 3. The GA4 alert/notification tracker repeats an older KPI whole-tab certificate,

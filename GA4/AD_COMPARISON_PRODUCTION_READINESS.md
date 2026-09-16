@@ -1,28 +1,55 @@
 # GA4 Ad Comparison Production Readiness
 
-<!-- ga4-ad-comparison-certification-status: UNVERIFIED -->
+<!-- ga4-ad-comparison-certification-status: PRODUCTION_READY -->
 
 ## Controlling Current Status
 
-**Full-tab status: UNVERIFIED.** The local candidate removes All Campaigns
-from the live tab and new report choices while retaining explicitly selected
-legacy custom-report output. Both retained subsections have separate certificates,
-but their combined page and the removal need validation at one exact deployed
-runtime before the full-tab machine record or ledger can be certified. Revenue
-Breakdown's exact boundary is recorded in
+**Full live-tab status: CLEAN-CERTIFIED / PRODUCTION_READY** for Client2 /
+Campaign2 `eee3e654-b736-4e8e-86ec-1050e4d905c0`, active GA4 property
+`542352127`, saved values `yesop_retargeti` and `yesop_email_nurture`, USD,
+`Europe/Amsterdam`, and deployed application commit
+`70b73a229ebb9e1021c3d18d63119d05bdee7e26`. The completed-day boundary
+observed on 2026-09-16 was `2026-08-09..2026-09-15`. The retained chart,
+three leader cards, two summary cards, and Revenue Breakdown passed together;
+the retired All Campaigns table is absent. New standard browser/server PDFs
+omit that table, while explicitly saved legacy custom reports retain it.
+The independently certified subsection boundaries remain documented in
+`GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md` and
 `GA4/AD_COMPARISON_REVENUE_BREAKDOWN_CERTIFICATION_2026-09-16.md`.
 
-Local candidate evidence: the affected Ad Comparison/source/report/ledger packet
-passed 260 tests across 10 files; a further combined-subsections render test
-passed. TypeScript, production build, `git diff --check`, and the machine
-checker passed. The checker confirms only that the current `UNVERIFIED` record
-is internally consistent. Required steps remaining for a whole-tab certificate:
-deploy the isolated removal, verify its exact SHA and Campaign2 saved scope,
-reconcile both retained subsections and their browser/scheduled PDF value paths
-on that same runtime, then update the controlling certificate and machine record.
-No Reports delivery claim follows from that value-path check.
+Exact deployed evidence: `/api/health` returned the commit above. One
+owner-authenticated, read-only validation captured the deployed Overview
+Campaign Breakdown and separate native Ad Comparison responses for the saved
+property/filter. The two responses were replayed into the deployed browser
+tab and its unsaved PDF to avoid extra GA4 provider calls. All five dropdown
+modes, chart ranking and values, three leader-card values, two summaries,
+native Revenue Breakdown amount, and five exact materialized USD source
+amounts matched: HubSpot $3,200.00; Shopify $5.90; CSV $20.00; Google Sheets
+$54,200.00; Salesforce $251.00. The Overview-based revenue chart adds only
+uniquely mapped imported amounts; the native Revenue Breakdown line uses its
+own saved-import window and is not a cross-window Total Revenue. Live browser
+and unsaved PDF omitted All Campaigns and retained the checked values.
+Unauthenticated, cross-owner, missing-property, and unsaved-property reads
+failed closed (401/404/400/404). The read-only transaction rolled back;
+temporary authentication sessions were revoked. No production source,
+campaign, report, snapshot, schedule, or revenue record was written.
 
-**Current narrow status: CLEAN-CERTIFIED / PRODUCTION_READY** only for the
+The predeployment affected packet passed 271 tests. After deployment, the
+10-file Ad Comparison/ledger/PDF packet passed 256 tests, the four-file
+accumulation/window packet passed 59 tests, and the Ad-relevant source-safety
+subset passed 15 tests (73 out-of-scope cases skipped). TypeScript, production
+build, the machine certification gate, and `git diff --check` passed. Existing deterministic
+guards and the two subsection certificates cover loading, valid zero,
+unavailable, stale last-good, pagination, source lifecycle, and refresh
+behavior; those states were not recreated by mutating live production data at
+this SHA. Exact runtime diff review found only the All Campaigns removal and
+its standard/legacy PDF selection in the Ad Comparison consumer path since
+the subsection certificates. This certificate does **not** certify another
+campaign, property, source mix, currency, future date, GA4 Overview, Reports
+saving/scheduling/delivery, or global scheduler health. Required steps
+remaining for this exact live-tab boundary: **0**.
+
+**Earlier narrow subsection certificate: CLEAN-CERTIFIED / PRODUCTION_READY** only for the
 Client2 / Campaign2 metric dropdown, Top Campaigns chart, three leader cards,
 two summary cards, and their corresponding PDF values at deployed application
 runtime `3013ec6b52a93eaca01cd14c538dd0a20f350fac`. The active property is
@@ -34,7 +61,8 @@ ownership check, focused tests, TypeScript, build, and limits, is in
 `1e8e30b87c92d496fd2613e9839b982adee2ee41`). This status does not
 certify Reports delivery or any other GA4 section.
 
-The earlier `4be16c54c550a45dbf3104313c820ea47b453604` and
+The earlier `b8c7362121593502955d41e522d32396a963fdcc`,
+`4be16c54c550a45dbf3104313c820ea47b453604`, and
 `83d124278647f3d2ccbe74b20f39c853dc0c8b44` whole-tab conclusions, and
 their saved campaign/date boundaries below, are historical only.
 
@@ -43,7 +71,7 @@ This is the only reusable current-status answer in this document. The June 27,
 SHA, complete dependency boundary, machine-readable invalidation gate, or
 complete current value/negative-state inventory.
 
-## Historical Whole-Tab Audit (Superseded for Current Chart, Cards, and Summary)
+## Historical Whole-Tab Audits (Superseded by the Current Boundary)
 
 Audit baseline:
 

@@ -82,7 +82,7 @@ describe("application production-readiness ledger", () => {
     const kpiRow = ledger.split("\n").find((line) => line.startsWith("| GA4 KPIs |"));
     expect(kpiRow).toContain("`CERTIFIED` | `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md` |");
     expect(kpiRow).toContain("deployed runtime `f7afeb2b`; documentation commit `47180dcf`");
-    expect(ledger).toContain("| GA4 Ad Comparison | `UNVERIFIED`");
+    expect(ledger).toContain("| GA4 Ad Comparison | `CERTIFIED`");
     expect(ledger).toContain("| GA4 Reports | `UNVERIFIED`");
     expect(ledger).toContain("| GA4 Benchmarks | `CERTIFIED`");
     expect(ledger).toContain("| GA4 Insights | `CERTIFIED`");

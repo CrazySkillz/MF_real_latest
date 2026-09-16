@@ -220,7 +220,7 @@ export default function GA4AdComparison({
             {selectedMetric === "revenue"
               ? "Revenue matches GA4 Overview Campaign Breakdown"
               : comparisonStartDate && comparisonEndDate
-              ? `Compare GA4 campaigns from the initial import (${comparisonStartDate}) through the latest completed day (${comparisonEndDate})`
+              ? "Compare GA4 campaigns"
               : "Compare performance across your GA4 campaigns"}
           </p>
         </div>

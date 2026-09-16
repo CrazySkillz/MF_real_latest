@@ -95,15 +95,33 @@ export default function GA4AdComparison({
     });
   }, [campaignBreakdownAgg]);
 
+  const chartSummaryRows = useMemo(() => {
+    const byName = new Map<string, CampaignAgg>();
+    for (const row of comparisonRows) {
+      const key = row.name.toLocaleLowerCase("en-US");
+      const current = byName.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0, conversionRate: 0, revenuePerSession: 0 };
+      current.sessions += row.sessions;
+      current.users += row.users;
+      current.conversions += row.conversions;
+      current.revenue += row.revenue;
+      byName.set(key, current);
+    }
+    return Array.from(byName.values()).map((row) => ({
+      ...row,
+      conversionRate: row.sessions > 0 ? (row.conversions / row.sessions) * 100 : 0,
+      revenuePerSession: row.sessions > 0 ? row.revenue / row.sessions : 0,
+    }));
+  }, [comparisonRows]);
+
   const sortedByMetric = useMemo(() => {
-    return [...comparisonRows].sort((a, b) => {
+    return [...chartSummaryRows].sort((a, b) => {
       const av = Number((a as any)[selectedMetric] || 0);
       const bv = Number((b as any)[selectedMetric] || 0);
       return (bv - av)
         || a.name.localeCompare(b.name, "en", { sensitivity: "base" })
         || a.name.localeCompare(b.name, "en", { sensitivity: "variant" });
     });
-  }, [comparisonRows, selectedMetric]);
+  }, [chartSummaryRows, selectedMetric]);
 
   const chartRows = useMemo(() => {
     return sortedByMetric;
@@ -320,7 +338,7 @@ export default function GA4AdComparison({
         <Card>
           <CardContent className="p-5">
             <div className="text-sm font-medium text-muted-foreground/70">Campaigns Compared</div>
-            <div className="text-2xl font-bold text-foreground mt-1">{campaignBreakdownAgg.length}</div>
+            <div className="text-2xl font-bold text-foreground mt-1">{chartSummaryRows.length}</div>
             <div className="text-xs text-muted-foreground/70 mt-1">From GA4 acquisition breakdown</div>
           </CardContent>
         </Card>

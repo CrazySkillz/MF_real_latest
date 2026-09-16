@@ -452,6 +452,47 @@ describe("Shopify downstream value/content regression guard", () => {
     expect(pdfTextCalls.indexOf("Beta")).toBeLessThan(pdfTextCalls.indexOf("Alpha"));
   });
 
+  it("deduplicates chart/summary case variants without changing scheduled All Campaigns rows", async () => {
+    storageMock.getCampaign.mockResolvedValue({
+      ...campaign,
+      ga4CampaignFilter: JSON.stringify(["Alpha", "alpha", "Beta"]),
+    });
+    ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
+      rows: [
+        { campaign: "Alpha", sessions: 60, users: 30, conversions: 3, revenue: 100 },
+        { campaign: "alpha", sessions: 40, users: 20, conversions: 7, revenue: 50 },
+        { campaign: "Beta", sessions: 10, users: 9, conversions: 5, revenue: 25 },
+      ],
+    });
+
+    await buildGA4ScheduledPdfAttachment({
+      report: {
+        id: "report-ad-case-boundary",
+        campaignId: campaign.id,
+        name: "Ad case boundary",
+        reportType: "custom",
+        configuration: JSON.stringify({
+          adComparisonMetric: "sessions",
+          sections: { ads: true },
+          subsections: {
+            ads: { topCampaigns: true, bestWorst: false, allCampaigns: true, revenueBreakdown: false },
+          },
+        }),
+      },
+      reportName: "Ad case boundary",
+      windowStart: "2026-06-01",
+      windowEnd: "2026-07-04",
+      campaignName: campaign.name,
+    });
+
+    const allCampaignsIndex = pdfTextCalls.indexOf("All Campaigns");
+    expect(allCampaignsIndex).toBeGreaterThan(-1);
+    expect(pdfTextCalls.slice(0, allCampaignsIndex)).not.toContain("alpha");
+    expect(pdfTextCalls.slice(allCampaignsIndex)).toEqual(expect.arrayContaining(["Alpha", "alpha", "Beta"]));
+    expect(pdfTextCalls).toContain("CAMPAIGNS COMPARED");
+    expect(pdfTextCalls).toContain("2");
+  });
+
   it("fails a scheduled Ad Comparison report closed before provider work without saved campaign scope", async () => {
     storageMock.getCampaign.mockResolvedValue({ ...campaign, ga4CampaignFilter: "" });
 

@@ -3603,7 +3603,21 @@ export default function GA4Metrics() {
         const nativeRevenue = Number(Number(row?.revenue || 0).toFixed(2));
         return { ...row, revenue: nativeRevenue, revenuePerSession: Number(row?.sessions || 0) > 0 ? nativeRevenue / Number(row.sessions || 0) : 0 };
       });
-      const sortedByMetric = [...comparisonRows].sort((a: any, b: any) =>
+      const chartSummaryByCampaign = new Map<string, any>();
+      for (const row of comparisonRows) {
+        const key = String(row?.name || "").toLocaleLowerCase("en-US");
+        const current = chartSummaryByCampaign.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0 };
+        current.sessions += Number(row?.sessions || 0);
+        current.users += Number(row?.users || 0);
+        current.conversions += Number(row?.conversions || 0);
+        current.revenue += Number(row?.revenue || 0);
+        chartSummaryByCampaign.set(key, current);
+      }
+      const chartSummaryRows = Array.from(chartSummaryByCampaign.values()).map((row: any) => ({
+        ...row,
+        conversionRate: Number(row?.sessions || 0) > 0 ? (Number(row?.conversions || 0) / Number(row.sessions)) * 100 : 0,
+      }));
+      const sortedByMetric = [...chartSummaryRows].sort((a: any, b: any) =>
         (Number((b as any)?.[selectedMetric] || 0) - Number((a as any)?.[selectedMetric] || 0))
         || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "base" })
         || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "variant" }));
@@ -3622,7 +3636,7 @@ export default function GA4Metrics() {
         const colXs = [MX + 4, MX + 18, MX + 82, MX + 104, MX + 124, MX + 144, MX + CW - 8];
 
         // Performance rankings
-        if (includeAdsBestWorst && sortedByMetric.length > 1) {
+        if (includeAdsBestWorst && comparisonRows.length > 1) {
           y += 4; checkPage(28);
           const colW = (CW - 8) / 3;
 
@@ -5778,13 +5792,12 @@ export default function GA4Metrics() {
     const byName = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
     for (const r of rows) {
       const name = String((r as any)?.campaign || "(not set)").trim();
-      const nameKey = name.toLocaleLowerCase("en-US");
-      const existing = byName.get(nameKey) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0 };
+      const existing = byName.get(name) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0 };
       existing.sessions += Number((r as any)?.sessions || 0);
       existing.users += Number((r as any)?.users || 0);
       existing.conversions += Number((r as any)?.conversions || 0);
       existing.revenue += Number((r as any)?.revenue || 0);
-      byName.set(nameKey, existing);
+      byName.set(name, existing);
     }
 
     return Array.from(byName.values())

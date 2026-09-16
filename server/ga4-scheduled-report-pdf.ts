@@ -825,13 +825,12 @@ async function buildGA4ReportPayload(report: any) {
   const adComparisonByCampaign = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
   for (const row of Array.isArray((adComparisonBreakdown as any)?.rows) ? (adComparisonBreakdown as any).rows : []) {
     const name = String((row as any)?.campaign || "(not set)").trim();
-    const nameKey = name.toLocaleLowerCase("en-US");
-    const current = adComparisonByCampaign.get(nameKey) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0 };
+    const current = adComparisonByCampaign.get(name) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0 };
     current.sessions += Number((row as any)?.sessions || 0);
     current.users += Number((row as any)?.users || 0);
     current.conversions += Number((row as any)?.conversions || 0);
     current.revenue += Number((row as any)?.revenue || 0);
-    adComparisonByCampaign.set(nameKey, current);
+    adComparisonByCampaign.set(name, current);
   }
   const adComparisonBreakdownAgg = Array.from(adComparisonByCampaign.values())
     .filter((row) => importedCampaignNames.size === 0 || importedCampaignNames.has(normalizeCampaignKey(row.name)))
@@ -1250,7 +1249,21 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       : "sessions";
     const metricLabels: Record<string, string> = { sessions: "Sessions", users: "Users", conversions: "Conversions", revenue: "Revenue", conversionRate: "Conversion Rate" };
     const formatMetricValue = (metric: string, value: number) => metric === "revenue" ? formatMoney(value) : metric === "conversionRate" ? formatMetricPct(value) : metric === "conversions" ? Number(value || 0).toLocaleString("en-US") : formatNumber(value);
-    const sortedByMetric = [...rows].sort((a: any, b: any) =>
+    const chartSummaryByCampaign = new Map<string, any>();
+    for (const row of rows) {
+      const key = String(row?.name || "").toLocaleLowerCase("en-US");
+      const current = chartSummaryByCampaign.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0 };
+      current.sessions += Number(row?.sessions || 0);
+      current.users += Number(row?.users || 0);
+      current.conversions += Number(row?.conversions || 0);
+      current.revenue += Number(row?.revenue || 0);
+      chartSummaryByCampaign.set(key, current);
+    }
+    const chartSummaryRows = Array.from(chartSummaryByCampaign.values()).map((row: any) => ({
+      ...row,
+      conversionRate: Number(row?.sessions || 0) > 0 ? (Number(row?.conversions || 0) / Number(row.sessions)) * 100 : 0,
+    }));
+    const sortedByMetric = [...chartSummaryRows].sort((a: any, b: any) =>
       (Number(b?.[selectedMetric] || 0) - Number(a?.[selectedMetric] || 0))
       || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "base" })
       || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "variant" }));
@@ -1263,7 +1276,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       : sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.[selectedMetric] || 0), 0);
     const leaderMetric = "sessions";
     const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(rows, leaderMetric);
-    if (includeBestWorst && sortedByMetric.length > 1) {
+    if (includeBestWorst && rows.length > 1) {
       y += 4;
       checkPage(28);
       const colW = (CW - 8) / 3;

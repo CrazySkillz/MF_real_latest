@@ -149,6 +149,14 @@ describe('GA4 Ad Comparison accumulation window', () => {
       scheduledPdf.indexOf('if (sections.ads) {'),
       scheduledPdf.indexOf('if (includeAllCampaigns)'),
     );
+    const adAggregateScope = page.slice(
+      page.indexOf('const adComparisonBreakdownAgg = useMemo'),
+      page.indexOf('const campaignBreakdownMatchedExternalRevenue'),
+    );
+    const scheduledAggregateScope = scheduledPdf.slice(
+      scheduledPdf.indexOf('const adComparisonByCampaign = new Map'),
+      scheduledPdf.indexOf('const sourceRevenueBreakdowns'),
+    );
 
     for (const [value, label] of [
       ['sessions', 'Sessions'],
@@ -167,7 +175,13 @@ describe('GA4 Ad Comparison accumulation window', () => {
     expect(componentScope).toContain('(totalConversions / totalSessions) * 100');
     expect(componentScope).toContain('GA4 Revenue (Imported to Date)');
     expect(componentScope).toContain('Overall Conversion Rate');
-    expect(componentScope).toContain('{campaignBreakdownAgg.length}');
+    expect(componentScope).toContain('{chartSummaryRows.length}');
+    expect(componentScope).toContain('const chartSummaryRows = useMemo');
+    expect(component).toContain('{comparisonRows.map((c, idx) => {');
+    expect(adAggregateScope).toContain('byName.get(name)');
+    expect(adAggregateScope).not.toContain('nameKey');
+    expect(scheduledAggregateScope).toContain('adComparisonByCampaign.get(name)');
+    expect(scheduledAggregateScope).not.toContain('nameKey');
     expect(component).toContain('No campaign data available. Ensure your GA4 property has UTM campaign tracking configured.');
     expect(component).toContain('Showing the last verified campaign breakdown. The latest refresh failed.');
     expect(component).toContain('Ad Comparison is unavailable because the campaign breakdown could not be verified.');
@@ -179,6 +193,7 @@ describe('GA4 Ad Comparison accumulation window', () => {
       expect(pdfScope).toContain('Overall Conversion Rate');
       expect(pdfScope).toContain('Campaigns Compared');
       expect(pdfScope).toContain('Users are summed campaign-row counts and are non-additive.');
+      expect(pdfScope).toContain('chartSummaryByCampaign');
     }
     expect(browserPdfScope).toContain('const selectedMetric = reportAdComparisonMetric');
     expect(browserPdfScope).toContain('if (metric === "conversions") return Number(value || 0).toLocaleString("en-US")');

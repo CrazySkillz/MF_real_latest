@@ -8,7 +8,7 @@ Use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` for the durable production-readi
 
 Current status:
 
-`UNVERIFIED` for the local chart/dropdown/two-summary-card candidate that reads
+`UNVERIFIED` for the current chart, leader-card, and summary-card candidate that reads
 GA4 Overview Campaign Breakdown. The certification record is
 `GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md`. The boundary below is
 historical and does not certify this candidate.
@@ -108,8 +108,8 @@ Supported dropdown metrics:
 
 The tab is built from:
 
-- GA4 Overview Campaign Breakdown rows for the chart and two summary cards
-- separate native GA4 Ad Comparison rows for leader cards, All Campaigns, and Revenue Breakdown
+- GA4 Overview Campaign Breakdown rows for the chart, leader cards, and two summary cards
+- separate native GA4 Ad Comparison rows for All Campaigns and Revenue Breakdown
 - selected GA4 campaign/property scope from campaign setup
 - active, exact materialized revenue source rows for the same campaign and GA4
   platform context, shown as separate source-to-date provenance
@@ -121,13 +121,13 @@ It must not use:
 - unscoped revenue or spend sources
 - guessed external attribution
 - proportional revenue allocation
-- source-to-date imported revenue in the native campaign ranking
+- source-to-date imported revenue in native All Campaigns rows
 - source definitions or saved configuration totals as a value fallback
 - display-only source labels as attribution keys when stable campaign identity is available
 
 ## Normalized Comparison Rows
 
-The chart and two summary cards use GA4 Overview Campaign Breakdown rows.
+The chart, leader cards, and two summary cards use GA4 Overview Campaign Breakdown rows.
 The other Ad Comparison outputs use separate native comparison rows.
 
 A normalized comparison row has:
@@ -154,24 +154,23 @@ Row rules:
 
 ## Revenue Window Boundary
 
-Native Ad Comparison rows and leader rankings use one provider window from the saved
+Native All Campaigns rows use one provider window from the saved
 initial historical import boundary through the latest completed reporting day
-in the campaign timezone. The chart and summary cards match the GA4 Overview
+in the campaign timezone. The chart, leader cards, and summary cards match the GA4 Overview
 Campaign Breakdown table: traffic uses its saved import window, and Revenue adds
 exact mapped imported revenue to its native campaign-start revenue. Imported
-revenue remains separate from native leader rankings and All Campaigns values.
+revenue remains separate from native All Campaigns values.
 
-Imported revenue may enter native leader rankings only after a future implementation
-proves exact campaign identity, active materialization, currency, timezone, and
-the identical comparison window across all live tab surfaces.
+Imported revenue can affect Best Performing when Revenue is selected only through
+exact mapped values in the Overview table; it cannot create a campaign row.
 
 ## Leader Cards
 
-The leader cards consume GA4-native normalized comparison rows.
+The leader cards consume the same campaign rows and selected metric as the chart.
 
 Shared selector:
 
-- `selectGA4AdComparisonLeaderCards(comparisonRows, selectedMetric)` in `shared/ga4-ad-comparison-cards.ts`
+- `selectGA4AdComparisonLeaderCards(chartSummaryRows, selectedMetric)` in `shared/ga4-ad-comparison-cards.ts`
 
 ### Best Performing
 
@@ -196,7 +195,7 @@ Rules:
 
 - does not change when the selected metric changes
 - excludes zero-session rows
-- uses native GA4 row revenue in the detail line
+- uses the Overview Campaign Breakdown revenue in the detail line
 - shows exact card conversion rate to two decimals so close-rate decisions are explainable
 
 ### Needs Attention
@@ -215,7 +214,7 @@ Meaningful-volume rule:
 
 Display rule:
 
-- show exact card conversion rate to two decimals and sessions from the native normalized row
+- show exact card conversion rate to two decimals and sessions from the Overview campaign row
 - never use stale, previous-property, or unverified row values
 
 ### Validation Rule
@@ -279,10 +278,10 @@ Columns:
 
 Rules:
 
-- `GA4 Revenue (imported to date)` is the sum of the same native comparison
-  rows used by ranking, chart, summary, and All Campaigns.
+- `GA4 Revenue (imported to date)` is the sum of native All Campaigns rows.
 - active imported sources show exact materialized source-to-date amounts and
-  are explicitly excluded from ranking.
+  remain separate from native All Campaigns rows; exact mapped amounts can
+  appear in the Overview-based chart and leader cards.
 - source rows can include indented per-campaign subsections from saved exact `campaignValueRevenueTotals`.
 - subsection rows must use stored exact source values only.
 - do not invent or proportionally allocate subsection values.

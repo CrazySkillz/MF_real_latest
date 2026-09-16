@@ -514,12 +514,12 @@ describe("GA4 UI regression guard", () => {
     expect(pdfAgg).not.toContain("breakdownTotals.revenue / rawTotalRevenue");
   });
 
-  it("keeps GA4 Ad Comparison leader cards on one shared GA4-native row selector", () => {
+  it("keeps GA4 Ad Comparison leader cards on the chart's Overview rows", () => {
     const adComparison = readClient("pages/ga4-ad-comparison.tsx");
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
     const scheduledPdf = readServer("ga4-scheduled-report-pdf.ts");
-    const comparisonStart = adComparison.indexOf("const comparisonRows = useMemo(() => {");
-    const cardSelectorStart = adComparison.indexOf("selectGA4AdComparisonLeaderCards(comparisonRows, selectedMetric)", comparisonStart);
+    const comparisonStart = adComparison.indexOf("const chartSummaryRows = useMemo(() => {");
+    const cardSelectorStart = adComparison.indexOf("selectGA4AdComparisonLeaderCards(chartSummaryRows, selectedMetric)", comparisonStart);
 
     expect(comparisonStart).toBeGreaterThan(-1);
     expect(cardSelectorStart).toBeGreaterThan(comparisonStart);
@@ -527,10 +527,10 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("const nativeRevenue = Number(Number(row?.revenue || 0).toFixed(2));");
     expect(scheduledPdf).toContain("const nativeRevenue = Number(Number(row?.revenue || 0).toFixed(2));");
     expect(adComparison).not.toContain("allocationSummary");
-    expect(adComparison).toContain("selectGA4AdComparisonLeaderCards(comparisonRows, selectedMetric)");
-    expect(ga4Metrics).toContain("selectGA4AdComparisonLeaderCards(comparisonRows, adComparisonMetric)");
-    expect(scheduledPdf).toContain('const leaderMetric = "sessions";');
-    expect(scheduledPdf).toContain("selectGA4AdComparisonLeaderCards(rows, leaderMetric)");
+    expect(adComparison).toContain("selectGA4AdComparisonLeaderCards(chartSummaryRows, selectedMetric)");
+    expect(ga4Metrics).toContain("selectGA4AdComparisonLeaderCards(chartSummaryRows, adComparisonMetric)");
+    expect(scheduledPdf).toContain('const leaderMetric = selectedMetric;');
+    expect(scheduledPdf).toContain("selectGA4AdComparisonLeaderCards(chartSummaryRows, leaderMetric)");
     expect(scheduledPdf).toContain('["sessions", "users", "conversions", "revenue", "conversionRate"].includes(String(rawCfg?.adComparisonMetric || ""))');
     expect(scheduledPdf).toContain(': "sessions";');
     expect(adComparison).toContain("formatGA4AdComparisonCardPct(bestPerforming.conversionRate)");

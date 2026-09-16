@@ -3209,8 +3209,8 @@ export default function GA4Metrics() {
     }
     if (sections.ads) {
       const adsSubsections = customSubsections.ads || {};
-      const needsTopCampaigns = reportType !== 'custom' || adsSubsections.topCampaigns === true || adsSubsections.summary === true;
-      const needsNativeDetail = reportType !== 'custom' || adsSubsections.bestWorst === true || adsSubsections.allCampaigns === true || adsSubsections.revenueBreakdown === true;
+      const needsTopCampaigns = reportType !== 'custom' || adsSubsections.topCampaigns === true || adsSubsections.summary === true || adsSubsections.bestWorst === true;
+      const needsNativeDetail = reportType !== 'custom' || adsSubsections.allCampaigns === true || adsSubsections.revenueBreakdown === true;
       const needsRevenueBreakdown =
         reportType !== 'custom' || adsSubsections.revenueBreakdown === true;
       const unavailable: string[] = [];
@@ -3626,7 +3626,7 @@ export default function GA4Metrics() {
         (Number((b as any)?.[selectedMetric] || 0) - Number((a as any)?.[selectedMetric] || 0))
         || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "base" })
         || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "variant" }));
-      const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(comparisonRows, adComparisonMetric);
+      const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(chartSummaryRows, adComparisonMetric);
       const totalMetric = selectedMetric === "conversionRate"
         ? (() => {
             const totalSessions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.sessions || 0), 0);
@@ -3641,7 +3641,7 @@ export default function GA4Metrics() {
         const colXs = [MX + 4, MX + 18, MX + 82, MX + 104, MX + 124, MX + 144, MX + CW - 8];
 
         // Performance rankings
-        if (includeAdsBestWorst && comparisonRows.length > 1) {
+        if (includeAdsBestWorst && chartSummaryRows.length > 1) {
           y += 4; checkPage(28);
           const colW = (CW - 8) / 3;
 

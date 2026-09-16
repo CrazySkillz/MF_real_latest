@@ -572,29 +572,51 @@ describe("Shopify downstream value/content regression guard", () => {
     }
   });
 
-  it("uses Overview Campaign Breakdown revenue in the chart while retaining native All Campaigns values", async () => {
+  it("uses Overview Campaign Breakdown revenue in chart and leader cards while retaining native All Campaigns values", async () => {
     storageMock.getCampaign.mockResolvedValue({ ...campaign, ga4CampaignFilter: JSON.stringify(["Alpha", "Beta"]) });
     storageMock.getRevenueSources.mockResolvedValue([{
       ...revenueSource,
       mappingConfig: {
-        campaignValueRevenueTotals: [{ campaignValue: "alpha_store", revenue: 40 }],
+        campaignValueRevenueTotals: [{ campaignValue: "alpha_store", revenue: 200 }],
         campaignMappings: [{ crmValue: "alpha_store", linkedinCampaignName: "Alpha", linkedinCampaignUrn: "Alpha" }],
       },
     }]);
-    storageMock.getRevenueBreakdownBySource.mockResolvedValue([{ sourceId: revenueSource.id, sourceType: "shopify", displayName: "Shopify", currency: "USD", revenue: 40 }]);
+    storageMock.getRevenueBreakdownBySource.mockResolvedValue([{ sourceId: revenueSource.id, sourceType: "shopify", displayName: "Shopify", currency: "USD", revenue: 200 }]);
     ga4ServiceMock.getAcquisitionBreakdown.mockImplementation(async (_campaignId: string, _storage: any, startDate: string) => startDate === "2026-06-01"
       ? { rows: [{ campaign: "Alpha", revenue: 5 }, { campaign: "Beta", revenue: 100 }], totals: { revenue: 105 } }
       : { rows: [{ campaign: "Alpha", sessions: 10, users: 10, conversions: 1, revenue: 500 }, { campaign: "Beta", sessions: 20, users: 20, conversions: 5, revenue: 1000 }], totals: { revenue: 1500 } });
 
     await buildGA4ScheduledPdfAttachment({
       report: { id: "report-overview-chart", campaignId: campaign.id, name: "Overview chart parity", reportType: "custom",
-        configuration: JSON.stringify({ adComparisonMetric: "revenue", sections: { ads: true }, subsections: { ads: { topCampaigns: true, allCampaigns: true } } }) },
+        configuration: JSON.stringify({ adComparisonMetric: "revenue", sections: { ads: true }, subsections: { ads: { topCampaigns: true, bestWorst: true, allCampaigns: true } } }) },
       reportName: "Overview chart parity", windowStart: "2026-06-01", windowEnd: "2026-07-04", campaignName: campaign.name,
     });
 
     expect(pdfTextCalls).toContain("CAMPAIGN BREAKDOWN REVENUE");
-    expect(pdfTextCalls).toContain("USD 145.00");
+    expect(pdfTextCalls).toContain("USD 305.00");
+    expect(pdfTextCalls[pdfTextCalls.indexOf("BEST PERFORMING") + 1]).toBe("Alpha");
+    expect(pdfTextCalls[pdfTextCalls.indexOf("MOST EFFICIENT") + 1]).toBe("Beta");
+    expect(pdfTextCalls).toContain("25.00% CR - USD 100.00 revenue");
     expect(pdfTextCalls.slice(pdfTextCalls.indexOf("All Campaigns"))).toEqual(expect.arrayContaining(["USD 500.00", "USD 1,000.00"]));
+  });
+
+  it("builds leader-card-only reports from Overview rows without requesting native Ad Comparison detail", async () => {
+    storageMock.getCampaign.mockResolvedValue({ ...campaign, ga4CampaignFilter: JSON.stringify(["Alpha", "Beta"]) });
+    ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
+      rows: [{ campaign: "Alpha", sessions: 10, users: 10, conversions: 1, revenue: 50 },
+        { campaign: "Beta", sessions: 20, users: 20, conversions: 5, revenue: 50 }],
+      totals: { revenue: 100 },
+    });
+
+    await buildGA4ScheduledPdfAttachment({
+      report: { id: "report-leader-only", campaignId: campaign.id, name: "Leader cards", reportType: "custom",
+        configuration: JSON.stringify({ sections: { ads: true }, subsections: { ads: { bestWorst: true } } }) },
+      reportName: "Leader cards", windowStart: "2026-06-01", windowEnd: "2026-07-04", campaignName: campaign.name,
+    });
+
+    expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenCalledTimes(2);
+    expect(pdfTextCalls).toEqual(expect.arrayContaining(["BEST PERFORMING", "MOST EFFICIENT", "NEEDS ATTENTION"]));
+    expect(pdfTextCalls).not.toContain("All Campaigns");
   });
 
   it("keeps an unmatched unavailable source outside scheduled Campaign Breakdown rows and exports every row", async () => {

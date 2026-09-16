@@ -156,8 +156,8 @@ const getAdComparisonReportRequirements = (report: any) => {
   const subsections = cfg.subsections?.ads || {};
   return {
     included: Boolean(included),
-    topCampaigns: Boolean(included && (reportType !== 'custom' || subsections.topCampaigns === true || subsections.summary === true)),
-    nativeDetail: Boolean(included && (reportType !== 'custom' || subsections.bestWorst === true || subsections.allCampaigns === true || subsections.revenueBreakdown === true)),
+    topCampaigns: Boolean(included && (reportType !== 'custom' || subsections.topCampaigns === true || subsections.summary === true || subsections.bestWorst === true)),
+    nativeDetail: Boolean(included && (reportType !== 'custom' || subsections.allCampaigns === true || subsections.revenueBreakdown === true)),
     revenueBreakdown: Boolean(
       included && (reportType !== 'custom' || subsections.revenueBreakdown === true),
     ),
@@ -1286,9 +1286,9 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
           return totalSessions > 0 ? (totalConversions / totalSessions) * 100 : 0;
         })()
       : sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.[selectedMetric] || 0), 0);
-    const leaderMetric = "sessions";
-    const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(rows, leaderMetric);
-    if (includeBestWorst && rows.length > 1) {
+    const leaderMetric = selectedMetric;
+    const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(chartSummaryRows, leaderMetric);
+    if (includeBestWorst && chartSummaryRows.length > 1) {
       y += 4;
       checkPage(28);
       const colW = (CW - 8) / 3;

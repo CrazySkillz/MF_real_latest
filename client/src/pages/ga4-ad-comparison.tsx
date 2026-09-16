@@ -144,8 +144,8 @@ export default function GA4AdComparison({
   }, [chartRows, selectedMetric]);
 
   const { bestPerforming, mostEfficient, needsAttention } = useMemo(() => {
-    return selectGA4AdComparisonLeaderCards(comparisonRows, selectedMetric);
-  }, [comparisonRows, selectedMetric]);
+    return selectGA4AdComparisonLeaderCards(chartSummaryRows, selectedMetric);
+  }, [chartSummaryRows, selectedMetric]);
 
   const fmtMetricValue = (metric: string, value: number) => {
     if (metric === "revenue") return formatMoney(value);
@@ -244,7 +244,7 @@ export default function GA4AdComparison({
       )}
 
       {/* Performance Rankings */}
-      {!breakdownUnavailable && campaignBreakdownAgg.length >= 2 && (
+      {!chartBreakdownUnavailable && chartSummaryRows.length >= 2 && (
         <div className="grid gap-4 md:grid-cols-3">
           {bestPerforming && (
             <Card className="border-emerald-200 dark:border-emerald-800">

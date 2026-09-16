@@ -24,7 +24,7 @@ Current GA4 tab production-readiness status:
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: UNVERIFIED -->
 
-- GA4 Overview remains **UNVERIFIED** overall. Campaign Breakdown retains its exact recorded certification. Conversion Events is **PRODUCTION_READY only for the exact boundary** in `GA4/OVERVIEW_CONVERSION_EVENTS_CERTIFICATION_2026-09-15.md`: application runtime `176d02ef00a65091917136f1ed2bd8c7cc817fcb`, deployed with the documentation-only certification revision `8dd0856bc2b63a65f56e90f45f8ec562b881f6fc`. Landing Pages populated-row production accuracy remains pending; Revenue, Spend, and the natural scheduler gate retain their separate validation status.
+- GA4 Overview remains **UNVERIFIED** overall. Campaign Breakdown's recorded certification is historical after the session key event rate correction and requires current-boundary revalidation. Conversion Events is **PRODUCTION_READY only for the exact boundary** in `GA4/OVERVIEW_CONVERSION_EVENTS_CERTIFICATION_2026-09-15.md`: application runtime `176d02ef00a65091917136f1ed2bd8c7cc817fcb`, deployed with the documentation-only certification revision `8dd0856bc2b63a65f56e90f45f8ec562b881f6fc`. Landing Pages populated-row production accuracy remains pending; Revenue, Spend, and the natural scheduler gate retain their separate validation status.
 
 - The concise current decision lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`; detailed evidence lives in `GA4/OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`; chronological Current Commits 0–24 live in `GA4/OVERVIEW_PRODUCTION_READINESS_HISTORY.md`. No production cleanup was performed or authorized.
 

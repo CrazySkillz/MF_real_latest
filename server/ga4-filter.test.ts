@@ -922,6 +922,8 @@ describe("GA4 campaign value picker", () => {
       const body = JSON.parse(String(init?.body || '{}'));
       const dimensions = (body?.dimensions || []).map((item: any) => item?.name);
       const filterText = JSON.stringify(body?.dimensionFilter || {});
+      const hasSessionRate = body.metrics.some((item: any) => item.name === 'sessionKeyEventRate');
+      const sessionRate = filterText.includes('yesop_retargeti') && !filterText.includes('yesop_email_nurture') ? '0.25' : '0';
       const totals = dimensions.length === 0
         ? filterText.includes('yesop_retargeti') && filterText.includes('yesop_email_nurture')
           ? ['384', '385', '35', '6411.3', '286']
@@ -939,9 +941,9 @@ describe("GA4 campaign value picker", () => {
           rows: dimensions.length > 1 ? [{
             dimensionValues: ['20260618', 'Email', 'newsletter', 'email', 'yesop_email_nurture', 'desktop', 'NL']
               .map((value) => ({ value })),
-            metricValues: ['23', '23', '23', '4631.1', '23'].map((value) => ({ value })),
+            metricValues: [...['23', '23', '23', '4631.1', '23'], ...(hasSessionRate ? ['0'] : [])].map((value) => ({ value })),
           }] : [],
-          totals: [{ metricValues: totals.map((value) => ({ value })) }],
+          totals: [{ metricValues: [...totals, ...(hasSessionRate ? [sessionRate] : [])].map((value) => ({ value })) }],
         }),
       } as any;
     });
@@ -956,8 +958,8 @@ describe("GA4 campaign value picker", () => {
     );
 
     expect(result.rows).toEqual([
-      expect.objectContaining({ campaign: 'yesop_retargeti', sessions: 204, users: 204, conversions: 35, revenue: 6411.3, engagedSessions: 148 }),
-      expect.objectContaining({ campaign: 'yesop_email_nurture', sessions: 180, users: 181, conversions: 0, revenue: 0, engagedSessions: 138 }),
+      expect.objectContaining({ campaign: 'yesop_retargeti', sessions: 204, users: 204, conversions: 35, revenue: 6411.3, engagedSessions: 148, sessionKeyEventRate: 0.25 }),
+      expect.objectContaining({ campaign: 'yesop_email_nurture', sessions: 180, users: 181, conversions: 0, revenue: 0, engagedSessions: 138, sessionKeyEventRate: 0 }),
     ]);
     expect(result.totals).toMatchObject({ sessions: 384, users: 385, conversions: 35, revenue: 6411.3, engagedSessions: 286 });
     expect(result.meta.overviewCampaignAttribution).toMatchObject({
@@ -983,6 +985,22 @@ describe("GA4 campaign value picker", () => {
     ]);
     expect(new RegExp(trafficPatterns[0]).test('https://example.test/?utm_campaign=yesop_retargeti&utm_source=x')).toBe(true);
     expect(new RegExp(trafficPatterns[0]).test('https://example.test/?utm_campaign=yesop_retargeting&utm_source=x')).toBe(false);
+  });
+
+  it('stops Overview candidate retries when GA4 exhausts quota', async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: false,
+      text: async () => '{"code":429,"status":"RESOURCE_EXHAUSTED"}',
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const storage = { getGA4Connection: vi.fn(async () => ({
+      id: 'conn-1', propertyId: 'properties/123', accessToken: 'token',
+    })) };
+    await expect(ga4Service.getAcquisitionBreakdown(
+      'campaign-1', storage, '2026-06-01', '123', 2000,
+      ['yesop_retargeti', 'yesop_email_nurture'], '2026-06-30', true, false, 'USD', true,
+    )).rejects.toThrow('RESOURCE_EXHAUSTED');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("does not relabel pageLocation rows as landing pages when session attribution is empty", async () => {
@@ -1341,5 +1359,3 @@ describe("GA4 campaign value picker", () => {
     ]))).toBe(true);
   });
 });
-
-

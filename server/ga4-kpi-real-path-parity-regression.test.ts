@@ -121,6 +121,7 @@ const dailyRow = {
   users: 80,
   pageviews: 200,
   conversions: 5,
+  sessionKeyEventRate: 0.05,
   revenue: "150.00",
   engagedSessions: 60,
   engagementRate: 0.6,

@@ -219,7 +219,7 @@ function setCommonShopifyFinancialMocks() {
 
   ga4ServiceMock.getMetricsWithAutoRefresh.mockResolvedValue({ sessions: 10, users: 5, conversions: 2, revenue: 100 });
   ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
-    rows: [{ campaign: "shopify_campaign", sessions: 10, users: 5, conversions: 2, revenue: 100 }],
+    rows: [{ campaign: "shopify_campaign", sessions: 10, users: 5, conversions: 2, revenue: 100, sessionKeyEventRate: 0.2 }],
     totals: { sessions: 10, users: 5, conversions: 2, revenue: 100 },
   });
   ga4ServiceMock.getLandingPagesReport.mockResolvedValue({ rows: [] });
@@ -312,17 +312,17 @@ describe("Shopify downstream value/content regression guard", () => {
     });
     ga4ServiceMock.getAcquisitionBreakdown.mockReset()
       .mockResolvedValueOnce({
-        rows: [{ campaign: "overview_window", sessions: 7, users: 7, conversions: 1, revenue: 700 }],
+        rows: [{ campaign: "overview_window", sessions: 7, users: 7, conversions: 1, revenue: 700, sessionKeyEventRate: 1 / 7 }],
       })
       .mockResolvedValueOnce({
         rows: [
-          { campaign: "ad_import_to_date", sessions: 55, users: 55, conversions: 55, revenue: 12409.8 },
-          { campaign: "ad_email", sessions: 43, users: 43, conversions: 43, revenue: 8952.6 },
-          { campaign: "ad_social", sessions: 40, users: 40, conversions: 40, revenue: 9476.6 },
+          { campaign: "ad_import_to_date", sessions: 55, users: 55, conversions: 55, revenue: 12409.8, sessionKeyEventRate: 1 },
+          { campaign: "ad_email", sessions: 43, users: 43, conversions: 43, revenue: 8952.6, sessionKeyEventRate: 1 },
+          { campaign: "ad_social", sessions: 40, users: 40, conversions: 40, revenue: 9476.6, sessionKeyEventRate: 1 },
         ],
       })
       .mockResolvedValueOnce({
-        rows: [{ campaign: "overview_window", sessions: 7, users: 7, conversions: 1, revenue: 100 }],
+        rows: [{ campaign: "overview_window", sessions: 7, users: 7, conversions: 1, revenue: 100, sessionKeyEventRate: 1 / 7 }],
         totals: { revenue: 100 },
       });
 
@@ -410,6 +410,7 @@ describe("Shopify downstream value/content regression guard", () => {
       sessions: 10,
       users: 8,
       conversions: (9 - index) / 10,
+      sessionKeyEventRate: (9 - index) / 100,
       revenue: 0,
     }));
     storageMock.getCampaign.mockResolvedValue({
@@ -418,9 +419,9 @@ describe("Shopify downstream value/content regression guard", () => {
     });
     ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
       rows: [
-        { campaign: "Alpha", sessions: 60, users: 30, conversions: 3, revenue: 100 },
-        { campaign: "alpha", sessions: 40, users: 20, conversions: 7, revenue: 50 },
-        { campaign: "Beta", sessions: 10, users: 9, conversions: 5, revenue: 25 },
+        { campaign: "Alpha", sessions: 60, users: 30, conversions: 3, revenue: 100, sessionKeyEventRate: 0.05 },
+        { campaign: "alpha", sessions: 40, users: 20, conversions: 7, revenue: 50, sessionKeyEventRate: 0.175 },
+        { campaign: "Beta", sessions: 10, users: 9, conversions: 5, revenue: 25, sessionKeyEventRate: 0.5 },
         ...descendingFractionalRows,
       ],
       totals: { revenue: 175 },
@@ -464,9 +465,9 @@ describe("Shopify downstream value/content regression guard", () => {
     });
     ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
       rows: [
-        { campaign: "Alpha", sessions: 60, users: 30, conversions: 3, revenue: 100 },
-        { campaign: "alpha", sessions: 40, users: 20, conversions: 7, revenue: 50 },
-        { campaign: "Beta", sessions: 10, users: 9, conversions: 5, revenue: 25 },
+        { campaign: "Alpha", sessions: 60, users: 30, conversions: 3, revenue: 100, sessionKeyEventRate: 0.05 },
+        { campaign: "alpha", sessions: 40, users: 20, conversions: 7, revenue: 50, sessionKeyEventRate: 0.175 },
+        { campaign: "Beta", sessions: 10, users: 9, conversions: 5, revenue: 25, sessionKeyEventRate: 0.5 },
       ],
       totals: { revenue: 175 },
     });
@@ -526,8 +527,8 @@ describe("Shopify downstream value/content regression guard", () => {
     });
     ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
       rows: [
-        { campaign: "Alpha", sessions: 10, users: 100, conversions: 1, revenue: 5 },
-        { campaign: "Beta", sessions: 20, users: 50, conversions: 5, revenue: 100 },
+        { campaign: "Alpha", sessions: 10, users: 100, conversions: 1, revenue: 5, sessionKeyEventRate: 0.1 },
+        { campaign: "Beta", sessions: 20, users: 50, conversions: 5, revenue: 100, sessionKeyEventRate: 0.25 },
       ],
       totals: { revenue: 105 },
     });
@@ -584,7 +585,7 @@ describe("Shopify downstream value/content regression guard", () => {
     storageMock.getRevenueBreakdownBySource.mockResolvedValue([{ sourceId: revenueSource.id, sourceType: "shopify", displayName: "Shopify", currency: "USD", revenue: 200 }]);
     ga4ServiceMock.getAcquisitionBreakdown.mockImplementation(async (_campaignId: string, _storage: any, startDate: string) => startDate === "2026-06-01"
       ? { rows: [{ campaign: "Alpha", revenue: 5 }, { campaign: "Beta", revenue: 100 }], totals: { revenue: 105 } }
-      : { rows: [{ campaign: "Alpha", sessions: 10, users: 10, conversions: 1, revenue: 500 }, { campaign: "Beta", sessions: 20, users: 20, conversions: 5, revenue: 1000 }], totals: { revenue: 1500 } });
+      : { rows: [{ campaign: "Alpha", sessions: 10, users: 10, conversions: 1, revenue: 500, sessionKeyEventRate: 0.1 }, { campaign: "Beta", sessions: 20, users: 20, conversions: 5, revenue: 1000, sessionKeyEventRate: 0.25 }], totals: { revenue: 1500 } });
 
     await buildGA4ScheduledPdfAttachment({
       report: { id: "report-overview-chart", campaignId: campaign.id, name: "Overview chart parity", reportType: "custom",
@@ -603,8 +604,8 @@ describe("Shopify downstream value/content regression guard", () => {
   it("builds leader-card-only reports from Overview rows without requesting native Ad Comparison detail", async () => {
     storageMock.getCampaign.mockResolvedValue({ ...campaign, ga4CampaignFilter: JSON.stringify(["Alpha", "Beta"]) });
     ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
-      rows: [{ campaign: "Alpha", sessions: 10, users: 10, conversions: 1, revenue: 50 },
-        { campaign: "Beta", sessions: 20, users: 20, conversions: 5, revenue: 50 }],
+      rows: [{ campaign: "Alpha", sessions: 10, users: 10, conversions: 1, revenue: 50, sessionKeyEventRate: 0.1 },
+        { campaign: "Beta", sessions: 20, users: 20, conversions: 5, revenue: 50, sessionKeyEventRate: 0.25 }],
       totals: { revenue: 100 },
     });
 
@@ -626,6 +627,7 @@ describe("Shopify downstream value/content regression guard", () => {
       sessions: 16 - index,
       users: 16 - index,
       conversions: index === 15 ? 0 : 1,
+      sessionKeyEventRate: index === 15 ? 0 : 1 / (16 - index),
       revenue: index === 0 ? 100 : 0,
     }));
     storageMock.getCampaign.mockResolvedValue({ ...campaign, ga4CampaignFilter: JSON.stringify(campaignNames) });

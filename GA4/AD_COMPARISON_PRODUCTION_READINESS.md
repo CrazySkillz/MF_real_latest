@@ -6,8 +6,10 @@
 
 **Status: UNVERIFIED for the current candidate.** The prior
 `4be16c54c550a45dbf3104313c820ea47b453604` certification is historical.
-The current candidate changes leader-card ranking to observed conversions and
-relabels the rate leader; deployed ranking and PDF parity remain unverified.
+The current candidate uses GA4's native session key event rate for the rate
+dropdown, leader cards, and PDFs. The former conversions/sessions calculation
+counted key events rather than sessions with a key event. Deployed rate values,
+ranking, and PDF parity remain unverified.
 
 An earlier revalidation audited every recorded dependency changed since the
 prior machine record. The exact Ad Comparison query, cumulative route, saved
@@ -104,14 +106,14 @@ leader-card, and summary sources are specified in `GA4/AD_COMPARISON.md`.
 | Sessions | GA4 acquisition rows -> campaign aggregation | Sum every exact-scope row; never silently truncate |
 | Users | Same acquisition rows | Same window/property/filter as sessions |
 | Conversions | Same acquisition rows | Same window/property/filter as sessions |
-| Conversion rate | conversions / sessions * 100 | Zero only for a proven zero denominator; unavailable otherwise |
+| Conversion rate | GA4 sessionKeyEventRate * 100 | Zero only for a proven zero denominator; unavailable when the native rate is missing or invalid |
 | Native row revenue | GA4 totalRevenue, with purchaseRevenue compatibility fallback | Same import-to-latest-completed row scope; valid zero/negative retained |
 | Imported source revenue | Exact materialized source breakdown | Source-to-date provenance only; excluded from native ranking |
 | Row revenue | Native GA4 row revenue | No imported merge, stale fallback, invented row, or proportional allocation |
 | Revenue/session | Native row revenue / sessions | Numerator and denominator share the same property/filter/window |
 | Leader cards | `selectGA4AdComparisonLeaderCards` | Historical selected-metric ranking; current conversion-based rule is in `GA4/AD_COMPARISON.md` |
 | Chart | Selected-metric sort of normalized rows | Show at most the top 10; never change underlying table order |
-| Selected-metric summary | Normalized comparison rows | Sum the selected metric; conversion rate uses aggregate conversions / aggregate sessions |
+| Selected-metric summary | Normalized comparison rows | Sum the selected metric; conversion rate is weighted by sessions across campaign rows |
 | Campaigns Compared | Normalized comparison rows | Exact normalized row count |
 | All Campaigns | Sessions-descending normalized rows | Same native row values regardless of dropdown selection |
 | Revenue Breakdown | Import-to-latest-completed native row sum plus separate materialized source-to-date rows | Exact source ID/value; no same-type/config fallback or combined total |

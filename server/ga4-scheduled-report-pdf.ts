@@ -802,14 +802,20 @@ async function buildGA4ReportPayload(report: any) {
   }
   const executiveFinancialsDescription = buildExecutiveFinancialsDescription(spendSourceLabels, revenueSourceLabels);
 
-  const byCampaign = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
+  const byCampaign = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number; sessionKeyEventRateWeighted: number }>();
   for (const row of Array.isArray((breakdown as any)?.rows) ? (breakdown as any).rows : []) {
     const name = String((row as any)?.campaign || "(not set)").trim();
-    const current = byCampaign.get(name) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0 };
+    const current = byCampaign.get(name) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0, sessionKeyEventRateWeighted: 0 };
+    const rowSessions = Number((row as any)?.sessions || 0);
+    const rowRate = Number((row as any)?.sessionKeyEventRate);
+    if (rowSessions > 0 && ((row as any)?.sessionKeyEventRate == null || !Number.isFinite(rowRate) || rowRate < 0 || rowRate > 1)) {
+      throw new Error("GA4_SESSION_KEY_EVENT_RATE_UNVERIFIED");
+    }
     current.sessions += Number((row as any)?.sessions || 0);
     current.users += Number((row as any)?.users || 0);
     current.conversions += Number((row as any)?.conversions || 0);
     current.revenue += Number((row as any)?.revenue || 0);
+    current.sessionKeyEventRateWeighted += rowSessions * (rowSessions > 0 ? rowRate : 0);
     byCampaign.set(name, current);
   }
   const filteredCampaignRows = Array.from(byCampaign.values())
@@ -822,7 +828,7 @@ async function buildGA4ReportPayload(report: any) {
       return {
         ...row,
         revenue,
-        conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
+        conversionRate: sessions > 0 ? (row.sessionKeyEventRateWeighted / sessions) * 100 : 0,
         revenuePerSession: sessions > 0 ? revenue / sessions : 0,
       };
     })
@@ -1264,16 +1270,17 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     const chartSummaryByCampaign = new Map<string, any>();
     for (const row of payload.campaignBreakdownAgg) {
       const key = String(row?.name || "").toLocaleLowerCase("en-US");
-      const current = chartSummaryByCampaign.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0 };
+      const current = chartSummaryByCampaign.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0, conversionRate: 0 };
       current.sessions += Number(row?.sessions || 0);
       current.users += Number(row?.users || 0);
       current.conversions += Number(row?.conversions || 0);
       current.revenue += Number((Number(row?.revenue || 0) + Number(payload.campaignBreakdownMatchedExternalRevenue.get(String(row?.name || "")) || 0)).toFixed(2));
+      current.conversionRate += Number(row?.conversionRate || 0) * Number(row?.sessions || 0);
       chartSummaryByCampaign.set(key, current);
     }
     const chartSummaryRows = Array.from(chartSummaryByCampaign.values()).map((row: any) => ({
       ...row,
-      conversionRate: Number(row?.sessions || 0) > 0 ? (Number(row?.conversions || 0) / Number(row.sessions)) * 100 : 0,
+      conversionRate: Number(row?.sessions || 0) > 0 ? Number(row.conversionRate || 0) / Number(row.sessions) : 0,
     }));
     const sortedByMetric = [...chartSummaryRows].sort((a: any, b: any) =>
       (Number(b?.[selectedMetric] || 0) - Number(a?.[selectedMetric] || 0))
@@ -1282,8 +1289,8 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     const totalMetric = selectedMetric === "conversionRate"
       ? (() => {
           const totalSessions = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.sessions || 0), 0);
-          const totalConversions = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.conversions || 0), 0);
-          return totalSessions > 0 ? (totalConversions / totalSessions) * 100 : 0;
+          const weightedRates = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.conversionRate || 0) * Number(row?.sessions || 0), 0);
+          return totalSessions > 0 ? weightedRates / totalSessions : 0;
         })()
       : sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.[selectedMetric] || 0), 0);
     const leaderMetric = selectedMetric;

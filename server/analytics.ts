@@ -1439,6 +1439,7 @@ export class GoogleAnalytics4Service {
           { name: 'conversions' },
           { name: metricName },
           { name: 'engagedSessions' },
+          ...(preferOverviewCampaignTotals ? [{ name: 'sessionKeyEventRate' }] : []),
         ],
         metricAggregations: ['TOTAL'],
         orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
@@ -1693,7 +1694,8 @@ export class GoogleAnalytics4Service {
         chosenDims = candidate.dims;
         chosenRevenueMetric = result.revenueMetric;
       } catch (e: any) {
-        if (e?.isPaginationIncomplete || e?.isTokenExpired || e?.isAutoRefreshNeeded || e?.code === 'GA4_CURRENCY_UNVERIFIED') {
+        if (e?.isPaginationIncomplete || e?.isTokenExpired || e?.isAutoRefreshNeeded || e?.code === 'GA4_CURRENCY_UNVERIFIED' ||
+            (preferOverviewCampaignTotals && /sessionKeyEventRate|RESOURCE_EXHAUSTED|"code": 429/i.test(String(e?.message || '')))) {
           throw e;
         }
         // Dimension/metric incompatibility, unknown dimensions, or other GA4 API errors.
@@ -1725,7 +1727,7 @@ export class GoogleAnalytics4Service {
           : null;
         const traffic = exactPageLocation?.data || await fetchReport(
           'totalRevenue', [], undefined, exactPageLocationFilter, endDate || 'yesterday',
-          [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'engagedSessions' }],
+          [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'engagedSessions' }, { name: 'sessionKeyEventRate' }],
         );
         const financial = exactPageLocation || await fetchWithRevenueFallback(
           [{ name: 'campaignName' }], this.buildCampaignDimensionFilter(campaignName, 'campaignName'),
@@ -1739,12 +1741,13 @@ export class GoogleAnalytics4Service {
             { value: String(reportMetricTotal(financial.data, 2)) },
             { value: String(reportMetricTotal(financial.data, 3)) },
             { value: String(reportMetricTotal(traffic, exactPageLocation ? 4 : 2)) },
+            { value: String(traffic?.totals?.[0]?.metricValues?.[exactPageLocation ? 5 : 3]?.value ?? traffic?.rows?.[0]?.metricValues?.[exactPageLocation ? 5 : 3]?.value ?? '') },
           ],
         });
       }
       const rebuiltTotals = [0, 0, 0, 0, 0];
       for (const row of rebuiltRows) {
-        row.metricValues.forEach((metric: any, index: number) => {
+        row.metricValues.slice(0, 5).forEach((metric: any, index: number) => {
           rebuiltTotals[index] += Number(metric?.value) || 0;
         });
       }
@@ -1969,6 +1972,10 @@ export class GoogleAnalytics4Service {
       const dims = Array.isArray(row?.dimensionValues) ? row.dimensionValues : [];
       const mets = Array.isArray(row?.metricValues) ? row.metricValues : [];
       const sessionsRaw = Number.parseInt(mets[0]?.value || '0', 10) || 0;
+      const sessionKeyEventRate = Number(mets[5]?.value);
+      if (preferOverviewCampaignTotals && sessionsRaw > 0 && (!Number.isFinite(sessionKeyEventRate) || sessionKeyEventRate < 0 || sessionKeyEventRate > 1 || mets[5]?.value == null || mets[5]?.value === '')) {
+        throw new Error('GA4_SESSION_KEY_EVENT_RATE_UNVERIFIED');
+      }
       const pageLocation = getDim(dims, idxPageLocation);
 
       const d = {
@@ -1985,6 +1992,7 @@ export class GoogleAnalytics4Service {
         conversions: Number.parseFloat(mets[2]?.value || '0') || 0,
         revenue: Number.parseFloat(mets[3]?.value || '0') || 0,
         engagedSessions: Number.parseInt(mets[4]?.value || '0', 10) || 0,
+        ...(preferOverviewCampaignTotals ? { sessionKeyEventRate: sessionsRaw > 0 ? sessionKeyEventRate : 0 } : {}),
       };
 
       // IMPORTANT: sessions must reflect GA4 sessions exactly.

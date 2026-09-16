@@ -147,7 +147,7 @@ Row rules:
 - apply saved campaign/property scope before rendering
 - start at the selected connection's saved initial historical import boundary
 - end at the latest completed reporting day in the campaign timezone
-- calculate conversion rate as `conversions / sessions * 100`
+- take conversion rate from GA4's native `sessionKeyEventRate` and convert its fraction to a percentage
 - use only native GA4 row revenue in the separate native comparison rows
 - never create a comparison row from imported-source configuration
 - never infer, merge, or proportionally allocate source-to-date revenue into the
@@ -225,7 +225,7 @@ Display rule:
 
 Card selection uses exact numeric values, not rounded display strings. Validate close decisions with row-level inputs:
 
-- `conversionRate = conversions / sessions * 100`
+- `conversionRate = GA4 sessionKeyEventRate * 100`; key events count and sessions alone cannot establish how many sessions contained a key event
 - `Best Performing` equals the row with the most conversions, or has no winner
   when every row has zero conversions
 - `Highest Conversion Rate` equals the highest positive exact conversion rate
@@ -235,8 +235,7 @@ Card selection uses exact numeric values, not rounded display strings. Validate 
 
 Example:
 
-- `34 / 273 = 12.45%`
-- `25 / 200 = 12.50%`
+- GA4 session key event rates of `0.1245` and `0.1250` display as `12.45%` and `12.50%`
 - with selected metric `Sessions`, the first row can be both `Best Performing` and `Needs Attention`, while the second row can have the highest conversion rate
 
 ## Summary Cards
@@ -248,8 +247,8 @@ Rules:
 - `Revenue` renders as `Campaign Breakdown Revenue` and sums the exact values
   displayed in GA4 Overview Campaign Breakdown.
 - `Conversion Rate` renders as `Overall Conversion Rate`.
-- `Overall Conversion Rate` is calculated as total conversions divided by total sessions across comparison rows.
-- Do not average campaign-row conversion rates for the summary card unless the product explicitly changes the metric definition.
+- `Overall Conversion Rate` is the session-weighted GA4 session key event rate across comparison rows.
+- Do not use key event count divided by sessions or an unweighted average of campaign-row rates.
 - `Users` keeps a tooltip because GA4 user counts are non-additive across campaign rows.
 - `Campaigns Compared` is the count of chart rows from GA4 Overview Campaign Breakdown.
 

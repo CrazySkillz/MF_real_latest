@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
+import { mergeGA4OverviewCampaignRevenueRows } from "../shared/ga4-traffic-window";
 
 const row = (name: string, sessions: number, users: number, conversions: number, revenue: number) => ({
   name,
@@ -12,6 +13,18 @@ const row = (name: string, sessions: number, users: number, conversions: number,
 });
 
 describe("GA4 Ad Comparison leader-card logic", () => {
+  it("ranks the provider's session key event rate, not key event count per session", () => {
+    const merged = mergeGA4OverviewCampaignRevenueRows([
+      { campaign: "high event count", sessions: 76, conversions: 76, sessionKeyEventRate: 0.25 },
+      { campaign: "more converting sessions", sessions: 40, conversions: 10, sessionKeyEventRate: 0.5 },
+    ], [], ["high event count", "more converting sessions"]);
+    const rows = merged.map((item) => ({ name: item.campaign, ...item, conversionRate: item.sessionKeyEventRate * 100 }));
+    const cards = selectGA4AdComparisonLeaderCards(rows, "conversionRate");
+    expect(cards.bestPerforming?.name).toBe("high event count");
+    expect(cards.mostEfficient?.name).toBe("more converting sessions");
+    expect(cards.needsAttention?.name).toBe("high event count");
+    expect(cards.bestPerforming?.conversionRate).toBe(25);
+  });
   it("ranks Best Performing by conversions regardless of the dropdown metric", () => {
     const rows = [
       row("session leader", 200, 150, 10, 100),

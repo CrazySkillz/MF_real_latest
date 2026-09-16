@@ -166,13 +166,16 @@ describe("GA4 Overview Campaign Breakdown", () => {
   it("merges duplicate provider rows by normalized selected key and rejects scope leakage", () => {
     const merged = mergeGA4OverviewCampaignRevenueRows(
       [
-        { campaign: "Alpha", sessions: 3, users: 2, conversions: 1 },
-        { campaign: " alpha ", sessions: 4, users: 3, conversions: 2 },
+        { campaign: "Alpha", sessions: 3, users: 2, conversions: 1, sessionKeyEventRate: 1 / 3 },
+        { campaign: " alpha ", sessions: 4, users: 3, conversions: 2, sessionKeyEventRate: 0.5 },
       ],
       [{ campaign: "ALPHA", revenue: 12.34 }],
       ["Alpha"],
     );
     expect(merged).toEqual([expect.objectContaining({ campaign: "Alpha", sessions: 7, users: 5, conversions: 3, revenue: 12.34 })]);
+    expect(merged[0].sessionKeyEventRate).toBeCloseTo(3 / 7);
+    expect(() => mergeGA4OverviewCampaignRevenueRows([{ campaign: "Alpha", sessions: 1, conversions: 2 }], [], ["Alpha"]))
+      .toThrow("GA4_SESSION_KEY_EVENT_RATE_UNVERIFIED");
     expect(() => mergeGA4OverviewCampaignRevenueRows([], [{ campaign: "Other", revenue: 1 }], ["Alpha"]))
       .toThrow("GA4_OVERVIEW_CAMPAIGN_REVENUE_SCOPE_MISMATCH");
     expect(() => mergeGA4OverviewCampaignRevenueRows([], [], ["Alpha", " alpha "]))
@@ -189,10 +192,10 @@ describe("GA4 Overview Campaign Breakdown", () => {
     expect(analytics).toContain('value: `.*[?&]utm_campaign=${escapeRegex(candidate)}(?:[&#].*)?$`');
   });
 
-  it("keeps the exact UI columns, safe conversion rate, and current row ordering", () => {
+  it("keeps the exact UI columns, native session rate, and current row ordering", () => {
     const table = between(client, "{/* Campaign Breakdown */}", "{/* Landing Pages */}");
     expect(table).toMatch(/Campaign[\s\S]*Sessions[\s\S]*Users[\s\S]*Conversions[\s\S]*Conv\. Rate[\s\S]*Revenue/);
-    expect(client).toContain("conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0");
+    expect(client).toContain("conversionRate: sessions > 0 ? (c.sessionKeyEventRateWeighted / sessions) * 100 : 0");
     expect(client).toContain(".sort((a, b) => b.sessions - a.sessions)");
     expect(table).toContain("campaignBreakdownAgg.map");
   });

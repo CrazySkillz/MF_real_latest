@@ -182,7 +182,7 @@ describe('GA4 Ad Comparison accumulation window', () => {
     expect(componentScope).toContain('{ sensitivity: "variant" }');
     expect(componentScope).toContain('return chartRows.slice(0, 10)');
     expect(componentScope).toContain('payload?.[0]?.payload as any)?.fullName');
-    expect(componentScope).toContain('(totalConversions / totalSessions) * 100');
+    expect(componentScope).toContain('weightedRates / totalSessions');
     expect(componentScope).toContain('Campaign Breakdown Revenue');
     expect(componentScope).toContain('Overall Conversion Rate');
     expect(componentScope).toContain('{chartSummaryRows.length}');
@@ -198,7 +198,7 @@ describe('GA4 Ad Comparison accumulation window', () => {
 
     for (const pdfScope of [browserPdfScope, scheduledPdfScope]) {
       expect(pdfScope).toContain('slice(0, 10)');
-      expect(pdfScope).toContain('(totalConversions / totalSessions) * 100');
+      expect(pdfScope).toContain('weightedRates / totalSessions');
       expect(pdfScope).toContain('Campaign Breakdown Revenue');
       expect(pdfScope).toContain('Overall Conversion Rate');
       expect(pdfScope).toContain('Campaigns Compared');

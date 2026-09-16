@@ -2835,6 +2835,10 @@ export default function GA4Metrics() {
   const campaignBreakdownNativeRevenueValid = campaignBreakdownNativeRows.every(
     (row: any) => Number.isFinite(Number(row?.revenue)),
   );
+  const campaignBreakdownRatesValid = campaignBreakdownNativeRows.every((row: any) =>
+    Number(row?.sessions || 0) <= 0 ||
+    (row?.sessionKeyEventRate != null && Number.isFinite(Number(row.sessionKeyEventRate)) &&
+      Number(row.sessionKeyEventRate) >= 0 && Number(row.sessionKeyEventRate) <= 1));
   const campaignBreakdownNativeRowRevenue = campaignBreakdownNativeRows.reduce(
     (sum: number, row: any) => sum + Number(row?.revenue || 0), 0,
   );
@@ -2862,6 +2866,7 @@ export default function GA4Metrics() {
     !ga4ConnectionUsable ||
     breakdownPlaceholder ||
     !campaignBreakdownRevenueVerified ||
+    !campaignBreakdownRatesValid ||
     campaignBreakdownImportedRevenueUnavailable ||
     (breakdownError && ga4Breakdown === undefined);
   const adComparisonBreakdownUnavailable =
@@ -3611,16 +3616,17 @@ export default function GA4Metrics() {
       const chartSummaryByCampaign = new Map<string, any>();
       for (const row of campaignBreakdownAgg) {
         const key = String(row?.name || "").toLocaleLowerCase("en-US");
-        const current = chartSummaryByCampaign.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0 };
+        const current = chartSummaryByCampaign.get(key) || { ...row, sessions: 0, users: 0, conversions: 0, revenue: 0, conversionRate: 0 };
         current.sessions += Number(row?.sessions || 0);
         current.users += Number(row?.users || 0);
         current.conversions += Number(row?.conversions || 0);
         current.revenue += Number((Number(row?.revenue || 0) + Number(campaignBreakdownMatchedExternalRevenue.get(String(row?.name || "")) || 0)).toFixed(2));
+        current.conversionRate = Number(current.conversionRate || 0) + Number(row?.conversionRate || 0) * Number(row?.sessions || 0);
         chartSummaryByCampaign.set(key, current);
       }
       const chartSummaryRows = Array.from(chartSummaryByCampaign.values()).map((row: any) => ({
         ...row,
-        conversionRate: Number(row?.sessions || 0) > 0 ? (Number(row?.conversions || 0) / Number(row.sessions)) * 100 : 0,
+        conversionRate: Number(row?.sessions || 0) > 0 ? Number(row.conversionRate || 0) / Number(row.sessions) : 0,
       }));
       const sortedByMetric = [...chartSummaryRows].sort((a: any, b: any) =>
         (Number((b as any)?.[selectedMetric] || 0) - Number((a as any)?.[selectedMetric] || 0))
@@ -3630,8 +3636,8 @@ export default function GA4Metrics() {
       const totalMetric = selectedMetric === "conversionRate"
         ? (() => {
             const totalSessions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.sessions || 0), 0);
-            const totalConversions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.conversions || 0), 0);
-            return totalSessions > 0 ? (totalConversions / totalSessions) * 100 : 0;
+            const weightedRates = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.conversionRate || 0) * Number(c?.sessions || 0), 0);
+            return totalSessions > 0 ? weightedRates / totalSessions : 0;
           })()
         : sortedByMetric.reduce((sum: number, c: any) => sum + Number((c as any)?.[selectedMetric] || 0), 0);
       if (rows.length === 0 && chartSummaryRows.length === 0) {
@@ -5756,10 +5762,10 @@ export default function GA4Metrics() {
   // Aggregate breakdown rows by campaign name for Campaign Performance & Ad Comparison
   const campaignBreakdownAgg = useMemo(() => {
     const rows = Array.isArray(ga4Breakdown?.rows) ? ga4Breakdown.rows : [];
-    const byName = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
+    const byName = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number; sessionKeyEventRateWeighted: number }>();
     for (const r of rows) {
       const name = String((r as any)?.campaign || "(not set)").trim();
-      const existing = byName.get(name) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0 };
+      const existing = byName.get(name) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0, sessionKeyEventRateWeighted: 0 };
       const s = Number((r as any)?.sessions || 0);
       const u = Number((r as any)?.users || 0);
       const c = Number((r as any)?.conversions || 0);
@@ -5768,6 +5774,7 @@ export default function GA4Metrics() {
       existing.users += u;
       existing.conversions += c;
       existing.revenue += rev;
+      existing.sessionKeyEventRateWeighted += s * Number((r as any)?.sessionKeyEventRate || 0);
       byName.set(name, existing);
     }
 
@@ -5785,7 +5792,7 @@ export default function GA4Metrics() {
           conversions,
           revenue,
           users,
-          conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
+          conversionRate: sessions > 0 ? (c.sessionKeyEventRateWeighted / sessions) * 100 : 0,
           revenuePerSession: sessions > 0 ? revenue / sessions : 0,
         };
       })

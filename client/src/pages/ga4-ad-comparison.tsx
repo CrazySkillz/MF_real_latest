@@ -112,11 +112,12 @@ export default function GA4AdComparison({
       current.users += row.users;
       current.conversions += row.conversions;
       current.revenue += row.revenue;
+      current.conversionRate += row.conversionRate * row.sessions;
       byName.set(key, current);
     }
     return Array.from(byName.values()).map((row) => ({
       ...row,
-      conversionRate: row.sessions > 0 ? (row.conversions / row.sessions) * 100 : 0,
+      conversionRate: row.sessions > 0 ? row.conversionRate / row.sessions : 0,
       revenuePerSession: row.sessions > 0 ? row.revenue / row.sessions : 0,
     }));
   }, [chartCampaignRows]);
@@ -162,8 +163,8 @@ export default function GA4AdComparison({
   const totalMetric = useMemo(() => {
     if (selectedMetric === "conversionRate") {
       const totalSessions = sortedByMetric.reduce((s, c) => s + c.sessions, 0);
-      const totalConversions = sortedByMetric.reduce((s, c) => s + c.conversions, 0);
-      return totalSessions > 0 ? (totalConversions / totalSessions) * 100 : 0;
+      const weightedRates = sortedByMetric.reduce((s, c) => s + c.conversionRate * c.sessions, 0);
+      return totalSessions > 0 ? weightedRates / totalSessions : 0;
     }
     return sortedByMetric.reduce((sum, c) => sum + Number((c as any)[selectedMetric] || 0), 0);
   }, [sortedByMetric, selectedMetric]);

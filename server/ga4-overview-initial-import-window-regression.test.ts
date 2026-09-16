@@ -27,8 +27,8 @@ describe('GA4 Overview initial historical import boundary', () => {
   it('keeps traffic on the import boundary while replacing revenue with exact native campaign-to-date values', () => {
     const rows = mergeGA4OverviewCampaignRevenueRows(
       [
-        { campaign: 'paid', sessions: 626, users: 627, conversions: 57, revenue: 13641.60 },
-        { campaign: 'retargeting', sessions: 471, users: 473, conversions: 79, revenue: 17866.50 },
+        { campaign: 'paid', sessions: 626, users: 627, conversions: 57, revenue: 13641.60, sessionKeyEventRate: 0.08 },
+        { campaign: 'retargeting', sessions: 471, users: 473, conversions: 79, revenue: 17866.50, sessionKeyEventRate: 0.15 },
       ],
       [
         { campaign: 'paid', sessions: 800, users: 801, conversions: 80, revenue: 25000.10 },

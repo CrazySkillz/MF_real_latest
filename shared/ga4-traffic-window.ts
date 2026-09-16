@@ -51,7 +51,13 @@ export const mergeGA4OverviewCampaignRevenueRows = (
   const merged = new Map<string, any>();
   for (const rawRow of Array.isArray(trafficRows) ? trafficRows : []) {
     const { key, name } = resolveName(rawRow?.campaign);
-    const row = merged.get(key) || { campaign: name, sessions: 0, sessionsRaw: 0, users: 0, conversions: 0, revenue: 0, engagedSessions: 0 };
+    const row = merged.get(key) || { campaign: name, sessions: 0, sessionsRaw: 0, users: 0, conversions: 0, revenue: 0, engagedSessions: 0, sessionKeyEventRate: 0 };
+    const sessions = Number(rawRow?.sessions || 0);
+    const rate = Number(rawRow?.sessionKeyEventRate);
+    if (sessions > 0 && (rawRow?.sessionKeyEventRate == null || !Number.isFinite(rate) || rate < 0 || rate > 1)) {
+      throw new Error("GA4_SESSION_KEY_EVENT_RATE_UNVERIFIED");
+    }
+    row.sessionKeyEventRate += sessions * (sessions > 0 ? rate : 0);
     row.sessions += Number(rawRow?.sessions || 0);
     row.sessionsRaw += Number(rawRow?.sessionsRaw ?? rawRow?.sessions ?? 0);
     row.users += Number(rawRow?.users || 0);
@@ -70,6 +76,7 @@ export const mergeGA4OverviewCampaignRevenueRows = (
   });
   return Array.from(merged.entries()).map(([key, row]) => ({
     ...row,
+    sessionKeyEventRate: row.sessions > 0 ? row.sessionKeyEventRate / row.sessions : 0,
     revenue: Number((revenueByCampaign.get(key) || 0).toFixed(2)),
   }));
 };

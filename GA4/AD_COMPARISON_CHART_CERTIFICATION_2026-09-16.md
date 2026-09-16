@@ -1,5 +1,25 @@
 # GA4 Ad Comparison Chart and Summary Certification - 2026-09-16
 
+## Current status amendment - Campaign2
+
+**UNVERIFIED for the current deployed runtime and Campaign2.** The earlier
+clean-certification decision below is historical evidence for its recorded
+campaign/runtime only; it must not be used to claim that Campaign2's chart or
+summary is now production-ready.
+
+Campaign2 saves the two *distinct, exact* GA4 names `yesop_retargeti` and
+`yesop_email_nurture`. Its one-bar screenshot exposed a missing-campaign case
+that the earlier validator did not reject. The Ad Comparison-only API request
+and scheduled-PDF input were changed at deployed commit
+`60a72c95a9b50e43c29777ee884423e545ced394` to use the existing exact-UTM
+reconstruction. Affected tests, TypeScript, and build passed, but the deployed
+two-campaign result was **not** proven: the subsequent authenticated GA4 API
+request failed with HTTP 500 caused by upstream GA4 HTTP 429
+`RESOURCE_EXHAUSTED` (server-errors quota). A completed live provider/API/UI/PDF
+reconciliation is required before this subsection can be certified again.
+Neither saved campaign name was changed; KPI, Overview, All Campaigns, and
+Revenue Breakdown were not recertified by this amendment.
+
 ## Certification decision
 
 **CLEAN-CERTIFIED and production-ready only for the GA4 Ad Comparison metric

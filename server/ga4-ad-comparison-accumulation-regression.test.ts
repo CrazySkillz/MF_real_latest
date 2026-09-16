@@ -98,6 +98,7 @@ describe('GA4 Ad Comparison accumulation window', () => {
     const route = read('server/routes-oauth.ts');
     expect(page).toContain('activeTab === "campaigns"');
     expect(page).toContain('window=import-to-date');
+    expect(page).toContain('adComparisonCampaignBreakdown=1');
     expect(page).toContain('campaignBreakdownAgg={adComparisonBreakdownAgg}');
     expect(page).toContain('const campaignBreakdownAgg = useMemo');
     expect(page).toContain('{campaignBreakdownAgg.map((c, idx) => {');
@@ -112,6 +113,12 @@ describe('GA4 Ad Comparison accumulation window', () => {
     expect(breakdownRoute).toContain("windowMode === 'import-to-date' && !requestedPropertyId");
     expect(breakdownRoute).toContain("windowMode === 'import-to-date' && selectedCampaignNames.length === 0");
     expect(breakdownRoute).toContain('storage.getGA4Connection(campaignId, propertyId)');
+    expect(breakdownRoute).toContain("const adComparisonCampaignBreakdown = windowMode === 'import-to-date'");
+    expect(breakdownRoute).toContain(': adComparisonCampaignBreakdown');
+    expect(breakdownRoute).toContain("String((campaign as any)?.currency || ''), true");
+    expect(read('server/ga4-scheduled-report-pdf.ts')).toContain(
+      'adComparisonWindow.endDate, false, false, campaignCurrency, true',
+    );
   });
 
   it('keeps the browser Ad Comparison report on the live import-to-date rows', () => {

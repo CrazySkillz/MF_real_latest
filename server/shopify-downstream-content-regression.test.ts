@@ -383,6 +383,10 @@ describe("Shopify downstream value/content regression guard", () => {
       2000,
       ["overview_window", "ad_import_to_date", "ad_email", "ad_social"],
       "2026-07-04",
+      false,
+      false,
+      "USD",
+      true,
     );
     expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenNthCalledWith(
       3,

@@ -508,7 +508,10 @@ async function buildGA4ReportPayload(report: any) {
     ga4Service.getMetricsWithAutoRefresh(campaignId, storage, reportLookbackRange, propertyId, campaignFilter).catch((e) => { logPartFailure("metrics", e); return {} as any; }),
     ga4Service.getAcquisitionBreakdown(campaignId, storage, overviewStartDate, propertyId, 2000, campaignFilter, dailyEnd, false, false, campaignCurrency, true).catch((e) => { logPartFailure("acquisition breakdown", e); return { rows: [] }; }),
     adComparisonRequirements.included && adComparisonWindow
-      ? ga4Service.getAcquisitionBreakdown(campaignId, storage, adComparisonWindow.startDate, propertyId, 2000, campaignFilter, adComparisonWindow.endDate)
+      ? ga4Service.getAcquisitionBreakdown(
+          campaignId, storage, adComparisonWindow.startDate, propertyId, 2000, campaignFilter,
+          adComparisonWindow.endDate, false, false, campaignCurrency, true,
+        )
           .catch((e) => { logPartFailure("ad comparison breakdown", e); return { rows: [] }; })
       : Promise.resolve({ rows: [] }),
     ga4Service.getLandingPagesReport(campaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, dailyEnd).catch((e) => { logPartFailure("landing pages", e); return { rows: [] }; }),

@@ -13135,6 +13135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dimensionDiagnosticsRequested = debug && validationReadOnly && String(req.query.dimensionDiagnostics || '').trim() === '1';
       const insightsChannelAttribution = String(req.query.insightsChannelAttribution || '').trim() === '1';
       const overviewCampaignBreakdown = windowMode === 'import-to-date' && String(req.query.overviewCampaignBreakdown || '').trim() === '1';
+      const adComparisonCampaignBreakdown = windowMode === 'import-to-date' && String(req.query.adComparisonCampaignBreakdown || '').trim() === '1';
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
       const requestedPropertyId = propertyId ? String(propertyId) : '';
@@ -13225,6 +13226,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? await ga4Service.getAcquisitionBreakdown(
             campaignId, storage, providerStartDate, resolvedPropertyId, limit, campaignFilter,
             providerEndDate, validationReadOnly, insightsChannelAttribution,
+            String((campaign as any)?.currency || ''), true,
+          )
+        : adComparisonCampaignBreakdown
+        ? await ga4Service.getAcquisitionBreakdown(
+            campaignId, storage, providerStartDate, resolvedPropertyId, limit, campaignFilter,
+            providerEndDate, validationReadOnly, false,
             String((campaign as any)?.currency || ''), true,
           )
         : await ga4Service.getAcquisitionBreakdown(

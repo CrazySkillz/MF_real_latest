@@ -120,7 +120,7 @@ try {
   await page.waitForFunction(() => Boolean((window as any).Clerk?.session?.id), undefined, { timeout: 60000 });
   sessionId = await page.evaluate(() => String((window as any).Clerk?.session?.id || ''));
 
-  const endpointPath = `/api/campaigns/${encodeURIComponent(CAMPAIGN_ID)}/ga4-breakdown?window=import-to-date&propertyId=${encodeURIComponent(PROPERTY_ID)}&debug=1`;
+  const endpointPath = `/api/campaigns/${encodeURIComponent(CAMPAIGN_ID)}/ga4-breakdown?window=import-to-date&propertyId=${encodeURIComponent(PROPERTY_ID)}&adComparisonCampaignBreakdown=1&debug=1`;
   const endpoint = await api(page, endpointPath);
   if (!endpoint.ok || endpoint.body?.success !== true) throw new Error(`Cumulative endpoint failed (${endpoint.status})`);
   if (endpoint.body?.window !== 'import-to-date') throw new Error('Endpoint did not confirm import-to-date mode');
@@ -207,11 +207,11 @@ try {
   const adHeading = page.getByRole('heading', { name: 'Ad Comparison', exact: true });
   const metricSelect = adHeading.locator('xpath=../..').getByRole('combobox');
   if (await metricSelect.count() !== 1) throw new Error('Ad Comparison metric selector is not uniquely scoped');
-  const uiBreakdownPattern = `**/api/campaigns/${CAMPAIGN_ID}/ga4-breakdown?window=import-to-date&propertyId=${PROPERTY_ID}`;
+  const uiBreakdownPattern = `**/api/campaigns/${CAMPAIGN_ID}/ga4-breakdown?window=import-to-date&propertyId=${PROPERTY_ID}&adComparisonCampaignBreakdown=1`;
   const reloadWithLiveBreakdown = async () => {
     const [response] = await Promise.all([
       page.waitForResponse((candidate) => candidate.url().endsWith(
-        `/api/campaigns/${CAMPAIGN_ID}/ga4-breakdown?window=import-to-date&propertyId=${PROPERTY_ID}`,
+        `/api/campaigns/${CAMPAIGN_ID}/ga4-breakdown?window=import-to-date&propertyId=${PROPERTY_ID}&adComparisonCampaignBreakdown=1`,
       ), { timeout: 120000 }),
       page.reload({ waitUntil: 'domcontentloaded', timeout: 120000 }),
     ]);

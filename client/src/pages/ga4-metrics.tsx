@@ -2008,7 +2008,7 @@ export default function GA4Metrics() {
       const resp = await fetch(
         `/api/campaigns/${campaignId}/ga4-breakdown?window=import-to-date&propertyId=${encodeURIComponent(
           String(selectedGA4PropertyId)
-        )}`
+        )}&adComparisonCampaignBreakdown=1`
       );
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json || json?.success === false) {

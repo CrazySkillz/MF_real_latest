@@ -157,11 +157,11 @@ The final post-cleanup `npm run test:current-version` run completed after all Be
 - Passed: 1,985.
 - Failed/deferred: 44.
 - Forty-two were visible non-blocking future-platform deferrals outside the Benchmark dependency manifest.
-- Two were blocking and both are outside the Benchmark dependency manifest:
+- Two additional failures remained visible and both are outside the Benchmark dependency manifest:
   - `server/app-production-readiness-ledger.test.ts` expects the GA4 KPI ledger row to be `UNVERIFIED`, while `APP_PRODUCTION_READINESS.md` records it as `CERTIFIED`.
   - `server/ga4-kpi-certification-gate.test.ts` reports `server/storage.ts: changed since the certified dependency snapshot`. The KPI certificate hashes the whole shared storage file, and the localized Benchmark-history method changed that file after the KPI certificate was issued.
 
-Neither blocking assertion changes the now-proven Benchmark value or lifecycle evidence. Under the explicit dependency manifest they do not semantically invalidate Benchmarks, but the user-mandated final repository boundary gate is not clean. The ledger and KPI certificate were not modified or recertified because the request explicitly excluded them.
+Neither assertion changes the now-proven Benchmark value or lifecycle evidence. Under the explicit user-approved standard—zero Benchmark-relevant or unexplained blocking failures, with unchanged unrelated deferrals kept visible—they do not invalidate Benchmarks. The repository-wide suite remained nonzero and that fact is not hidden. The KPI certificate and KPI ledger entry were not modified or recertified because the request explicitly excluded them; only the Benchmark ledger entry was later aligned to the controlling Benchmark certificate.
 
 ## Resolved Benchmark blocker: duplicate automatic history
 
@@ -217,4 +217,4 @@ The forward-path fix, exact cleanup, post-cleanup deployed lifecycle, value reco
 - `scripts/ga4-benchmark-history-duplicate-cleanup-authorized.ts`
 - `server/ga4-benchmark-history-idempotency.test.ts`
 
-The localized forward fix changes `server/storage.ts` and updates its existing isolation guard in `server/benchmark-route-isolation-regression.test.ts`. No Overview file, KPI file, Landing Pages file, `APP_PRODUCTION_READINESS.md`, existing machine certificate, or excluded readiness status was changed. Commit `236afff993e60c5f9eaf75c42bca8b31b52f601d` was pushed and deployed. The separately authorized production cleanup deleted only the two proven redundant history rows. The follow-up evidence commit contains documentation and validation tooling only.
+The localized forward fix changes `server/storage.ts` and updates its existing isolation guard in `server/benchmark-route-isolation-regression.test.ts`. That forward-fix commit did not change any Overview file, KPI file, Landing Pages file, `APP_PRODUCTION_READINESS.md`, existing machine certificate, or excluded readiness status. Commit `236afff993e60c5f9eaf75c42bca8b31b52f601d` was pushed and deployed. The separately authorized production cleanup deleted only the two proven redundant history rows. The follow-up evidence commit contains documentation and validation tooling only.

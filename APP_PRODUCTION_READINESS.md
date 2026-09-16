@@ -176,7 +176,7 @@ known broken. They mean the app-wide production-ready claim is not yet proven.
 | --- | --- | --- | --- |
 | GA4 Overview | `UNVERIFIED` | `GA4/certifications/ga4-overview.json`; `GA4/OVERVIEW_PRODUCTION_READINESS.md` | Current machine record is fail-closed; separately certified source components do not certify the whole tab. |
 | GA4 KPIs | `CERTIFIED` | `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact documented KPI boundary at deployed runtime `1c949dc9`; documentation commit `6ea70599`; required steps remaining: 0. GA4 Overview remains a read-only upstream dependency and is not recertified by this entry. |
-| GA4 Benchmarks | `CERTIFIED` | `GA4/certifications/ga4-benchmarks.json`; `GA4/BENCHMARKS_PRODUCTION_READINESS.md` | Exact deployed runtime `a96ba06e21c9344c1767c960e702ac4a647dc5f1` and recorded campaign/property/source boundary. |
+| GA4 Benchmarks | `CERTIFIED` | `GA4/OVERVIEW_BENCHMARKs_CERTIFICATION_2026-09-15.md`; `GA4/OVERVIEW_BENCHMARKS_DEPENDENCY_MANIFEST_2026-09-15.md`; `GA4/BENCHMARKS_PRODUCTION_READINESS.md` | `CLEAN-CERTIFIED / PRODUCTION_READY` for application behavior at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d`; evidence-only revision `d3d1cfa0` deployed healthy; the `a96ba06e` machine record is historical. GA4 Overview and KPIs are not recertified by this entry. |
 | GA4 Ad Comparison | `UNVERIFIED` | `GA4/certifications/ga4-ad-comparison.json`; `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` | Later shared dependencies changed after the previous exact certificate. |
 | GA4 Insights | `CERTIFIED` | `GA4/certifications/ga4-insights.json`; `GA4/INSIGHTS_PRODUCTION_READINESS.md` | Exact live-tab runtime `4be16c54c550a45dbf3104313c820ea47b453604`. |
 | GA4 Reports | `UNVERIFIED` | `GA4/certifications/ga4-reports.json`; `GA4/REPORTS_PRODUCTION_READINESS.md` | Exact-current scheduled/server Campaign Breakdown artifact parity remains pending. |
@@ -346,6 +346,8 @@ The following records are preserved and indexed by this ledger:
 - `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md`
 - `GA4/KPIS_PRODUCTION_READINESS.md`
 - `GA4/BENCHMARKS_PRODUCTION_READINESS.md`
+- `GA4/OVERVIEW_BENCHMARKs_CERTIFICATION_2026-09-15.md`
+- `GA4/OVERVIEW_BENCHMARKS_DEPENDENCY_MANIFEST_2026-09-15.md`
 - `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`
 - `GA4/INSIGHTS_PRODUCTION_READINESS.md`
 - `GA4/REPORTS_PRODUCTION_READINESS.md`

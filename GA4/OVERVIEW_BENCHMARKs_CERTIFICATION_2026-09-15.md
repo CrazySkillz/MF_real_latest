@@ -4,16 +4,16 @@
 
 <!-- ga4-benchmarks-certification-status: PRODUCTION_READY -->
 
-**Status: CLEAN-CERTIFIED / PRODUCTION_READY for the GA4 Benchmarks section only, at deployed application runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d` and the exact dependency boundary below.**
+**Status: CLEAN-CERTIFIED / PRODUCTION_READY for the GA4 Benchmarks section only, for application behavior at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d` and the exact dependency boundary below. Evidence-only revision `d3d1cfa0c0b34a44b405a74d8970c1d9ac9c1e7f` was subsequently deployed and confirmed healthy without changing that behavior.**
 
 Certification was completed on 2026-09-16 after the forward duplicate-history fix was deployed, concurrently verified, existing duplicate history was cleaned within its proven boundary, and the full authenticated post-cleanup lifecycle passed.
 
-This file does not certify GA4 Overview as a whole. Overview is a read-only upstream dependency. GA4 KPIs, Landing Pages, Conversion Events, Ad Comparison, Insights, Reports as a standalone section, and every other platform/section are excluded and were not modified or recertified. `APP_PRODUCTION_READINESS.md` was not modified.
+This file does not certify GA4 Overview as a whole. Overview is a read-only upstream dependency. GA4 KPIs, Landing Pages, Conversion Events, Ad Comparison, Insights, Reports as a standalone section, and every other platform/section are excluded and were not modified or recertified. Only the Benchmark row and document register in `APP_PRODUCTION_READINESS.md` were later aligned to this certificate.
 
 ## Certified Scope
 
-- GA4 Benchmark add, list, edit, delete, target, metric, unit, period, category, status, and alert configuration.
-- Active-definition duplicate prevention and automatic-history idempotency.
+- GA4 Benchmark add, list, edit, delete, target, metric, unit, period, category, performance classification, and alert configuration for the current active-row UI lifecycle.
+- Active-definition duplicate inventory and automatic-history idempotency. The deployed active inventory had zero exact-duplicate definition groups; logical uniqueness of user-created definitions is not enforced or claimed.
 - Source-computed current values and user-managed custom current values.
 - Count, percentage, ratio, and campaign-currency formatting.
 - Ready zero, unavailable, stale/last-good, loading, blocked, and insufficient-data behavior.
@@ -67,7 +67,8 @@ Ready numeric zero is authoritative and must not fall through to another source.
 ## Baseline And Delta Review
 
 - Historical Benchmark certificate/runtime baseline: `a96ba06e21c9344c1767c960e702ac4a647dc5f1`.
-- Current deployed runtime: `236afff993e60c5f9eaf75c42bca8b31b52f601d`.
+- Certified application-behavior runtime: `236afff993e60c5f9eaf75c42bca8b31b52f601d`.
+- Subsequent deployed evidence-only revision: `d3d1cfa0c0b34a44b405a74d8970c1d9ac9c1e7f`; production health returned `200` and that revision changed no application behavior.
 - The 188-commit delta through runtime `88e755a69cea84b83767535c0734f1` was reviewed before deployed validation.
 - Direct Benchmark-impacting changes in that delta were limited to non-blocking modal pending/error restoration and the corrected CPA financial-conversion freshness/source selection plus valid-zero fallback behavior. Existing focused tests covered both.
 - Core Benchmark metric identity, formulas, units, threshold math, scheduler selection, alert resolver, and report consumption were unchanged from the historical baseline.
@@ -114,7 +115,7 @@ Validation ran against exact deployed SHA `236afff993e60c5f9eaf75c42bca8b31b52f6
 | Add/create | Authenticated temporary custom Benchmark with zero current value | Passed |
 | Edit/update | Current value, target, unit, and alert reconciliation | Passed |
 | Delete | Parent, history, and visible-notification cleanup | Passed |
-| Definition duplicates | Focused create/edit guards and deployed active inventory | Passed; 0 groups |
+| Definition duplicates | Deployed active-definition inventory | Passed for observed state; 0 groups. Duplicate-definition rejection is not implemented or claimed. |
 | History duplicates | Concurrent unit/deployed tests plus post-cleanup inventory | Passed; 0 groups |
 | Current values | Live provider vs persisted/scheduler/UI comparison | Passed; 0 mismatches |
 | Targets | Persistence, formatting, edit, and shared comparison | Passed |
@@ -152,6 +153,8 @@ These failures are explained, visible, and outside the explicit Benchmark depend
 ## Evidence Limits
 
 - The live fixture proves the populated selected-property/USD configuration exercised above. Other currencies and source combinations rely on deterministic focused coverage and require impact analysis when their manifested contracts change.
+- The current GA4 UI writes active rows and hard-deletes them. The list API itself does not filter `status`, and archived/draft rows created outside the current UI were not exercised.
+- The API and database do not enforce logical uniqueness for identical user-created Benchmark definitions. Certification proves the deployed active inventory was clean, not that a repeated identical definition will be rejected.
 - Zero formatting/status was exercised live. Unavailable, stale, provider-failure, malformed-input, and write-failure states were exercised deterministically rather than by damaging the production source.
 - The manual scheduler path was exercised live; a natural timer firing was not observed during this audit.
 - Benchmark cards, tracker, Insights, alerts, Executive Summary, and report consumers were reconciled. No report email was sent during this recertification.
@@ -163,6 +166,7 @@ These failures are explained, visible, and outside the explicit Benchmark depend
 - Certified deployed runtime: `236afff993e60c5f9eaf75c42bca8b31b52f601d`.
 - Historical baseline retained: `a96ba06e21c9344c1767c960e702ac4a647dc5f1`.
 - Forward history fix commit: `236afff993e60c5f9eaf75c42bca8b31b52f601d`.
+- Evidence/certificate commit deployed healthy: `d3d1cfa0c0b34a44b405a74d8970c1d9ac9c1e7f`.
 - Production cleanup removed only the two proven semantically identical redundant history rows and retained both canonical rows.
-- GA4 Overview, KPIs, Landing Pages, all other sections, `APP_PRODUCTION_READINESS.md`, and the historical machine certificate were not modified or recertified.
+- GA4 Overview, KPIs, Landing Pages, all other product sections, and the historical machine certificate were not modified or recertified. The Benchmark row and document register in `APP_PRODUCTION_READINESS.md` were later aligned to this controlling certificate; its KPI entry was not changed.
 - The follow-up evidence commit contains only this certification documentation and validation tooling; it does not change the certified application behavior introduced at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d`.

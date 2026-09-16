@@ -2,8 +2,8 @@
 
 ## Status and purpose
 
-- Manifest status: complete for the current code path at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d`.
-- Certification status: **CLEAN-CERTIFIED / PRODUCTION_READY for GA4 Benchmarks only** at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d`. The controlling certificate is `GA4/OVERVIEW_BENCHMARKs_CERTIFICATION_2026-09-15.md`; this manifest does not recertify GA4 Overview.
+- Manifest status: complete for the certified application behavior at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d`.
+- Certification status: **CLEAN-CERTIFIED / PRODUCTION_READY for GA4 Benchmarks only** for application behavior at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d`. Evidence-only revision `d3d1cfa0c0b34a44b405a74d8970c1d9ac9c1e7f` was subsequently deployed and confirmed healthy; it did not change application behavior. The controlling certificate is `GA4/OVERVIEW_BENCHMARKs_CERTIFICATION_2026-09-15.md`; this manifest does not recertify GA4 Overview.
 - Historical Benchmark baseline: runtime `a96ba06e21c9344c1767c960e702ac4a647dc5f1` and `GA4/certifications/ga4-benchmarks.json`.
 - GA4 Overview is an upstream, read-only dependency. Its certification status is not changed by this manifest.
 - This manifest defines the complete Overview-facing contract consumed by GA4 Benchmarks. A future change outside the entries below does not automatically invalidate Benchmark certification.
@@ -45,8 +45,8 @@ The following are outside this dependency boundary unless a future change also m
 
 | Contract | Required behavior |
 |---|---|
-| List | `GET /api/platforms/google_analytics/benchmarks?campaignId=<campaignId>` returns only active GA4 platform Benchmark rows belonging to the accessible campaign. |
-| Create | `POST /api/benchmarks`; campaign and `platformType=google_analytics` are authoritative at creation. Exact active duplicates are rejected according to the existing metric/name/scope rule. |
+| List | `GET /api/platforms/google_analytics/benchmarks?campaignId=<campaignId>` returns GA4 platform Benchmark rows belonging to the accessible campaign. The storage query does not independently filter `status`; the current GA4 UI creates and updates rows as `active` and hard-deletes them. Archived/draft direct-API rows were not exercised by this certification. |
+| Create | `POST /api/benchmarks`; campaign and `platformType=google_analytics` are authoritative at creation. The current route and schema do not enforce logical uniqueness for otherwise identical definitions. Certification proved zero active exact-duplicate groups in the deployed inventory; it does not claim duplicate-definition rejection. |
 | Update | `PUT /api/benchmarks/:id`; campaign and platform identity cannot be moved by the update payload. |
 | Delete | `DELETE /api/platforms/google_analytics/benchmarks/:id`; deletion is campaign-access guarded and removes only the target Benchmark and its own child history. |
 | Analytics/history | The existing Benchmark analytics and history routes remain row/campaign access guarded and retain their response shapes. |
@@ -112,8 +112,9 @@ Only the aggregate fallback contract is in scope: `totals.sessions`, `totals.use
 
 - Native financial start: campaign `startDate`, falling back to `createdAt` under the existing route/job contract.
 - End: latest completed calendar day in the campaign reporting time zone.
-- Source selection is controlled by `selectGA4FinancialTotalsSource`.
-- Precedence is verified GA4 to-date totals, then persisted daily-summed totals, then bounded breakdown totals only where the existing imported-revenue currency-verification rule permits the fallback.
+- Browser source selection is controlled by `selectGA4FinancialTotalsSource`.
+- Browser precedence is verified GA4 to-date totals, then persisted daily-summed totals, then bounded breakdown totals only where the existing imported-revenue currency-verification rule permits the fallback.
+- Background recompute is intentionally stricter: for a numeric live property it requires the campaign/property-scoped provider financial candidate and fails closed when that candidate is unavailable; only the explicit `yesop` mock path may use its persisted financial candidate. The job does not silently substitute the browser breakdown fallback.
 - When imported revenue is present for a selected property, native revenue is admissible for addition only when the native currency is verified against the campaign currency. An unverified fallback must not be combined with imported revenue.
 - `noCompletedWindow=true` is insufficient for metrics that require native financial data, unless an independently valid imported source supplies the required value under the existing selection rule.
 - The financial conversion count used by CPA is the conversion value from the selected financial candidate. It must not silently use traffic-summary conversions.
@@ -199,7 +200,7 @@ Additional rules:
 
 ## 10. Refresh, recompute, and history contract
 
-- Automatic current-value calculation is performed by `server/ga4-kpi-benchmark-jobs.ts` with the same source selectors and metric math used by live consumers.
+- Automatic current-value calculation is performed by `server/ga4-kpi-benchmark-jobs.ts` with the same metric identities, formulas, scopes, and currency checks used by live consumers. Its live-property financial acquisition is deliberately stricter than the browser fallback chain, as documented in section 4.
 - Traffic window: connection import start through the latest completed reporting day.
 - Native financial window: campaign start/creation fallback through the latest completed reporting day.
 - Imported revenue and spend aggregation retain their existing historical-start storage contract through that same completed-day boundary.

@@ -6,9 +6,9 @@ This file defines the GA4 `Benchmarks` tab, benchmark creation flow, progress ru
 
 ## Production Readiness Status
 
-As of September 6, 2026, the GA4 `Benchmarks` tab is **PRODUCTION_READY** for exact deployed runtime boundary `a96ba06e21c9344c1767c960e702ac4a647dc5f1` and the recorded `ga4_mock` campaign/property/source boundary. Exact-current provider/value parity, lifecycle guards, ownership isolation, manual scheduler recomputation, alert delivery, focused regressions, the complete-suite blocker check, TypeScript, and the production build passed. No exact-current natural timer firing, inbox receipt, Playwright, rendered-PDF, global scheduler-health, or general save-latency SLO claim is made.
+As of September 16, 2026, the GA4 `Benchmarks` tab is **CLEAN-CERTIFIED / PRODUCTION_READY** for application behavior at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d` and the dependency boundary in `GA4/OVERVIEW_BENCHMARKS_DEPENDENCY_MANIFEST_2026-09-15.md`. Evidence-only revision `d3d1cfa0c0b34a44b405a74d8970c1d9ac9c1e7f` was subsequently deployed and confirmed healthy without changing application behavior. Exact provider/value parity, active-row lifecycle, ownership isolation, manual scheduler recomputation, automatic-history concurrency, alerts, Executive Summary, and bounded report-consumer checks passed. No natural timer firing, current inbox receipt, global all-campaign scheduler-health, or general save-latency SLO is claimed by this recertification.
 
-The controlling source of truth is `GA4/BENCHMARKS_PRODUCTION_READINESS.md`. Reports generation, scheduling, delivery, attachments, and inbox receipt belong to the separate Reports audit and do not gate this Benchmark certification.
+The controlling decision is `GA4/OVERVIEW_BENCHMARKs_CERTIFICATION_2026-09-15.md`; `GA4/BENCHMARKS_PRODUCTION_READINESS.md` is the canonical readiness narrative and history. Benchmark value propagation into documented report consumers is included, while whole-Reports generation, delivery, attachments, and inbox behavior remain controlled by the separate Reports audit.
 
 Current bounded scheduler evidence comes from exact deployed SHA `85f5233ebfc298afc35f4c24e0930c1a66fbd07c`: the `2026-08-14T20:35:00.001Z` natural run updated both Benchmarks with zero skipped or failed, and all 22 underlying daily rows were scheduler-written without later application repair. The process-wide run failed for 17 excluded obsolete campaigns, and no exact-current or global scheduler-health claim is made.
 
@@ -79,6 +79,13 @@ The GA4 benchmark card no longer shows a separate `Source` tile when the benchma
 The benchmark grid is the detailed record of benchmark state.
 
 The executive snapshot tracker is a summary derived from the benchmark grid, not a separate source of truth.
+
+Current implementation boundary:
+
+- the platform list endpoint is campaign-access guarded and returns rows for the exact campaign and `google_analytics` platform; it does not independently filter the persisted `status` field
+- the current GA4 UI creates and updates rows as `active` and hard-deletes them; archived/draft direct-API rows are outside the exercised certification path
+- identical user-created Benchmark definitions are not rejected by a database or API uniqueness rule; the certification proved zero active exact-duplicate groups in the deployed inventory, not duplicate-definition prevention
+- automatic `auto:ga4_daily:` history is different: it is serialized per Benchmark and returns the existing row for the exact automatic history note, while manual history remains append-only
 
 When editing an existing benchmark:
 
@@ -260,6 +267,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 `Benchmarks` tab is **PRODUCTION_READY** for exact deployed runtime boundary `a96ba06e21c9344c1767c960e702ac4a647dc5f1`. Earlier certifications remain revision-specific supporting evidence only.
+The GA4 `Benchmarks` tab is **CLEAN-CERTIFIED / PRODUCTION_READY** for application behavior at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d`, currently carried unchanged through deployed evidence-only revision `d3d1cfa0c0b34a44b405a74d8970c1d9ac9c1e7f`. The older `a96ba06e21c9344c1767c960e702ac4a647dc5f1` machine certificate is historical supporting evidence only.
 
 Future boundaries are not current blockers, but they are not certified claims: timer-fired executions beyond the exact `2026-08-12` certified run, future GA4 provider windows/outages/delayed attribution, future Benchmark alert email deliveries, a real unsimulated Google revoked-token event, future source mixes, and future platform readiness require fresh evidence before anyone claims them.

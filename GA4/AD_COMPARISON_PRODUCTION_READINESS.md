@@ -28,6 +28,8 @@ This is the only reusable current-status answer in this document. The June 27,
 SHA, complete dependency boundary, machine-readable invalidation gate, or
 complete current value/negative-state inventory.
 
+## Historical Whole-Tab Audit (Superseded for Current Chart, Cards, and Summary)
+
 Audit baseline:
 
 - audit opened: 2026-08-03

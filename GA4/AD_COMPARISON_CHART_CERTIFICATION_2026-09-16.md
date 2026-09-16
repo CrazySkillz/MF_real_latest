@@ -16,7 +16,7 @@ created one authorized, draft, unscheduled Campaign2 GA4 custom report
 (`abc09608-ef65-40c8-adc7-59fa23bd9565`) and manual snapshot
 (`ceee23ae-6486-4c53-b5de-cb88d9e7ca5d`) through the authenticated report
 API. Its downloaded 14,927-byte scheduled-builder PDF contained exactly
-`yesop_retargeti` and `yesop_email_nurture`, excluded `yesop_retargeting`, and
+`yesop_retargeti` and `yesop_email_nurture`, with no additional campaign, and
 showed the three ranking cards, Conversion Rate chart (100% and 0%), and
 summary (16.7%, two campaigns). Card values were 77 key events/100.00% CR
 for `yesop_retargeti`, 0.00% CR/385 sessions for `yesop_email_nurture`, and
@@ -48,15 +48,17 @@ all-green repository claim or a full-tab certificate.
 Current value contract for this narrow certificate: Sessions, Users (GA4
 `totalUsers`), Key Events, and native session key event rate come from the
 authenticated, saved-scope GA4 Overview Campaign Breakdown rows. Revenue is
-that table's native GA4 revenue plus only exact campaign-mapped imported
-revenue. The dropdown sorts those rows by the selected metric; the first
+that table's native GA4 revenue plus only imported revenue uniquely mapped
+to a campaign. The dropdown sorts those rows by the selected metric; the first
 summary totals that metric (or session-weights the rate), and Campaigns
-Compared counts the distinct compared names. Most Key Events ranks positive
+Compared counts distinct case-folded compared names. Most Key Events ranks positive
 key-event counts; Highest Conversion Rate ranks positive rates; Needs
 Attention selects the lowest rate among campaigns meeting the implemented
 session floor. Browser and scheduled PDF chart/card/summary consumers use
 that same Overview-row path. The separate native Ad Comparison rows continue
 to serve the excluded All Campaigns and Revenue Breakdown surfaces.
+
+## Historical Campaign2 Validation Chronology (Superseded by Current Status Above)
 
 Campaign2 saves the two *distinct, exact* GA4 names `yesop_retargeti` and
 `yesop_email_nurture`. Its one-bar screenshot exposed a missing-campaign case

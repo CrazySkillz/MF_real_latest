@@ -15,6 +15,8 @@ scope and evidence are in `GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md`.
 The full Ad Comparison tab and its machine record remain `UNVERIFIED`; the
 older boundary below is historical.
 
+Historical whole-tab status (superseded by the narrow current status above):
+
 `PRODUCTION_READY` for certified runtime boundary
 `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627` and the recorded dependency and
 configuration boundary. Current revalidation proved that later changes in the
@@ -114,8 +116,9 @@ The tab is built from:
 - GA4 Overview Campaign Breakdown rows for the chart, leader cards, and two summary cards
 - separate native GA4 Ad Comparison rows for All Campaigns and Revenue Breakdown
 - selected GA4 campaign/property scope from campaign setup
-- active, exact materialized revenue source rows for the same campaign and GA4
-  platform context, shown as separate source-to-date provenance
+- active, materialized revenue source rows for the same campaign and GA4
+  platform context; only revenue uniquely matched by the normalized allocation key is added to the
+  Overview-based chart/cards/summary, while source provenance remains separate
 
 It must not use:
 
@@ -131,7 +134,9 @@ It must not use:
 ## Normalized Comparison Rows
 
 The chart, leader cards, and two summary cards use GA4 Overview Campaign Breakdown rows.
-The other Ad Comparison outputs use separate native comparison rows.
+The page first aggregates rows by their original campaign names; the chart/card/summary
+path then combines case variants under a lowercased name. The other Ad Comparison
+outputs use separate native comparison rows.
 
 A normalized comparison row has:
 
@@ -146,7 +151,9 @@ A normalized comparison row has:
 Row rules:
 
 - aggregate GA4 breakdown rows by campaign name
-- apply saved campaign/property scope before rendering
+- query the saved property and full saved campaign names with exact provider matching;
+  the page also checks returned names with its existing normalized allocation key,
+  which is a secondary filter rather than the provider's exact-match rule
 - start at the selected connection's saved initial historical import boundary
 - end at the latest completed reporting day in the campaign timezone
 - take conversion rate from GA4's native `sessionKeyEventRate` and convert its fraction to a percentage
@@ -161,7 +168,7 @@ Native All Campaigns rows use one provider window from the saved
 initial historical import boundary through the latest completed reporting day
 in the campaign timezone. The chart, leader cards, and summary cards match the GA4 Overview
 Campaign Breakdown table: traffic uses its saved import window, and Revenue adds
-exact mapped imported revenue to its native campaign-start revenue. Imported
+uniquely mapped imported revenue to its native campaign-start revenue. Imported
 revenue remains separate from native All Campaigns values.
 
 Imported revenue cannot determine Most Key Events, which ranks by observed
@@ -249,10 +256,12 @@ Rules:
 - `Revenue` renders as `Campaign Breakdown Revenue` and sums the exact values
   displayed in GA4 Overview Campaign Breakdown.
 - `Conversion Rate` renders as `Overall Conversion Rate`.
-- `Overall Conversion Rate` is the session-weighted GA4 session key event rate across comparison rows.
+- `Overall Conversion Rate` is the session-weighted GA4 session key event rate across all compared rows.
 - Do not use key event count divided by sessions or an unweighted average of campaign-row rates.
-- `Users` keeps a tooltip because GA4 user counts are non-additive across campaign rows.
-- `Campaigns Compared` is the count of chart rows from GA4 Overview Campaign Breakdown.
+- `Users` sums GA4 `totalUsers` row values and keeps a tooltip because those
+  counts are non-additive across campaign rows.
+- Every selected-metric total uses all compared rows, even though the chart shows at most 10.
+- `Campaigns Compared` counts distinct case-folded Overview campaign names, not just the visible bars.
 
 ## All Campaigns Table
 
@@ -287,7 +296,7 @@ Rules:
 
 - `GA4 Revenue (imported to date)` is the sum of native All Campaigns rows.
 - active imported sources show exact materialized source-to-date amounts and
-  remain separate from native All Campaigns rows; exact mapped amounts can
+  remain separate from native All Campaigns rows; uniquely mapped amounts can
   appear in the Overview-based chart and leader cards.
 - source rows can include indented per-campaign subsections from saved exact `campaignValueRevenueTotals`.
 - subsection rows must use stored exact source values only.

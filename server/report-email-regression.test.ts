@@ -184,6 +184,8 @@ describe("scheduled report email regression guard", () => {
     expect(source).toContain("const adComparisonWindow = adComparisonRequirements.included");
     expect(source).toContain("adComparisonWindow.startDate");
     expect(source).toContain('const importedRevenueStartDate = "1900-01-01";');
+    expect(source).toContain('storage.getRevenueBreakdownBySource(campaignId, importedRevenueStartDate, importedRevenueEndDate, "ga4")');
+    expect(source).not.toContain('storage.getRevenueBreakdownBySource(campaignId, importedRevenueStartDate, adComparisonWindow.endDate, "ga4")');
     expect(source).toContain("'GA4_AD_COMPARISON_REPORT_INPUT_UNAVAILABLE: '");
     expect(adsSection).toContain("const nativeRevenue = Number(Number(row?.revenue || 0).toFixed(2));");
     expect(adsSection).toContain("payload.adComparisonBreakdownAgg");

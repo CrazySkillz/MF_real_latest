@@ -523,7 +523,7 @@ async function buildGA4ReportPayload(report: any) {
     storage.getSpendSources(campaignId, "ga4").catch((e) => { logPartFailure("spend sources", e); return [] as any[]; }),
     storage.getRevenueBreakdownBySource(campaignId, importedRevenueStartDate, importedRevenueEndDate, "ga4").catch((e) => { logPartFailure("revenue breakdown", e); return [] as any[]; }),
     adComparisonRequirements.revenueBreakdown && adComparisonWindow
-      ? storage.getRevenueBreakdownBySource(campaignId, importedRevenueStartDate, adComparisonWindow.endDate, "ga4")
+      ? storage.getRevenueBreakdownBySource(campaignId, importedRevenueStartDate, importedRevenueEndDate, "ga4")
           .catch((e) => { logPartFailure("ad comparison revenue breakdown", e); return [] as any[]; })
       : Promise.resolve([] as any[]),
     storage.getSpendBreakdownBySource(campaignId, spendSourceStartDate, financialEndDate, "ga4").catch((e) => { logPartFailure("spend breakdown", e); return [] as any[]; }),

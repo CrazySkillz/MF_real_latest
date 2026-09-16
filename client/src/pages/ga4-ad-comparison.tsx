@@ -11,7 +11,7 @@ import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger }
 import { formatPct } from "@shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend,
+  BarChart, Bar, LabelList, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend,
 } from "recharts";
 
 interface CampaignAgg {
@@ -305,7 +305,13 @@ export default function GA4AdComparison({
                   formatter={(value: any) => [fmtMetricValue(selectedMetric, Number(value || 0)), METRIC_LABELS[selectedMetric] || selectedMetric]}
                   labelFormatter={(_label, payload) => String((payload?.[0]?.payload as any)?.fullName || "")}
                 />
-                <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} name={METRIC_LABELS[selectedMetric] || selectedMetric} />
+                <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} name={METRIC_LABELS[selectedMetric] || selectedMetric}>
+                  <LabelList dataKey="value" content={({ x, y, width, height, value }) => {
+                    const label = fmtMetricValue(selectedMetric, Number(value || 0));
+                    const inside = Number(width || 0) >= label.length * 7 + 16;
+                    return <text className="ga4-ad-comparison-value-label" x={Number(x || 0) + Number(width || 0) + (inside ? -8 : 8)} y={Number(y || 0) + Number(height || 0) / 2} textAnchor={inside ? "end" : "start"} dominantBaseline="middle" fill={inside ? "#fff" : "#334155"} fontSize={12}>{label}</text>;
+                  }} />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>

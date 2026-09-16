@@ -841,6 +841,31 @@ describe("GA4 campaign value picker", () => {
     expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body || '{}')).offset).toBe(2);
   });
 
+  it('preserves fractional GA4 conversion attribution in rows and totals', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        rowCount: 1,
+        rows: [{
+          dimensionValues: ['20260618', 'Paid Search', 'google', 'cpc', 'campaign-a', 'desktop', 'NL']
+            .map((value) => ({ value })),
+          metricValues: ['20', '18', '1.75', '10.25', '12'].map((value) => ({ value })),
+        }],
+        totals: [{ metricValues: ['20', '18', '1.75', '10.25', '12'].map((value) => ({ value })) }],
+      }),
+    }) as any));
+    const storage = { getGA4Connection: vi.fn(async () => ({
+      id: 'conn-1', propertyId: 'properties/123', accessToken: 'token',
+    })) };
+
+    const result = await ga4Service.getAcquisitionBreakdown(
+      'campaign-1', storage, '30daysAgo', '123', 2000, 'campaign-a',
+    );
+
+    expect(result.rows[0]).toMatchObject({ conversions: 1.75, revenue: 10.25 });
+    expect(result.totals).toMatchObject({ conversions: 1.75, revenue: 10.25 });
+  });
+
   it("does not refresh or persist an acquisition token in read-only mode", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({
       ok: false,

@@ -528,9 +528,11 @@ describe("GA4 UI regression guard", () => {
     expect(scheduledPdf).toContain("const nativeRevenue = Number(Number(row?.revenue || 0).toFixed(2));");
     expect(adComparison).not.toContain("allocationSummary");
     expect(adComparison).toContain("selectGA4AdComparisonLeaderCards(comparisonRows, selectedMetric)");
-    expect(ga4Metrics).toContain("selectGA4AdComparisonLeaderCards(comparisonRows, selectedMetric)");
-    expect(scheduledPdf).toContain("selectGA4AdComparisonLeaderCards(rows, selectedMetric)");
-    expect(scheduledPdf).toContain("const selectedMetric = \"sessions\";");
+    expect(ga4Metrics).toContain("selectGA4AdComparisonLeaderCards(comparisonRows, adComparisonMetric)");
+    expect(scheduledPdf).toContain('const leaderMetric = "sessions";');
+    expect(scheduledPdf).toContain("selectGA4AdComparisonLeaderCards(rows, leaderMetric)");
+    expect(scheduledPdf).toContain('["sessions", "users", "conversions", "revenue", "conversionRate"].includes(String(rawCfg?.adComparisonMetric || ""))');
+    expect(scheduledPdf).toContain(': "sessions";');
     expect(adComparison).toContain("formatGA4AdComparisonCardPct(bestPerforming.conversionRate)");
     expect(adComparison).toContain("formatGA4AdComparisonCardPct(mostEfficient.conversionRate)");
     expect(adComparison).toContain("formatGA4AdComparisonCardPct(needsAttention.conversionRate)");

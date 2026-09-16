@@ -1982,7 +1982,7 @@ export class GoogleAnalytics4Service {
         sessions: sessionsRaw,
         sessionsRaw,
         users: Number.parseInt(mets[1]?.value || '0', 10) || 0,
-        conversions: Number.parseInt(mets[2]?.value || '0', 10) || 0,
+        conversions: Number.parseFloat(mets[2]?.value || '0') || 0,
         revenue: Number.parseFloat(mets[3]?.value || '0') || 0,
         engagedSessions: Number.parseInt(mets[4]?.value || '0', 10) || 0,
       };
@@ -2004,7 +2004,7 @@ export class GoogleAnalytics4Service {
     const hasAggregateTotals = aggregateMetricValues.length >= 5;
     const totalSessions = hasAggregateTotals ? Number.parseInt(aggregateMetricValues[0]?.value || '0', 10) || 0 : totalSessionsRaw;
     const resolvedUsers = hasAggregateTotals ? Number.parseInt(aggregateMetricValues[1]?.value || '0', 10) || 0 : totalUsers;
-    const resolvedConversions = hasAggregateTotals ? Number.parseInt(aggregateMetricValues[2]?.value || '0', 10) || 0 : totalConversions;
+    const resolvedConversions = hasAggregateTotals ? Number.parseFloat(aggregateMetricValues[2]?.value || '0') || 0 : totalConversions;
     const resolvedRevenue = hasAggregateTotals ? Number.parseFloat(aggregateMetricValues[3]?.value || '0') || 0 : totalRevenue;
     const resolvedEngagedSessions = hasAggregateTotals ? Number.parseInt(aggregateMetricValues[4]?.value || '0', 10) || 0 : totalEngagedSessions;
 

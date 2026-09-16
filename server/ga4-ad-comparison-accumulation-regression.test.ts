@@ -109,6 +109,8 @@ describe('GA4 Ad Comparison accumulation window', () => {
     );
     expect(breakdownRoute.indexOf('ensureCampaignAccess(req as any, res as any, campaignId)'))
       .toBeLessThan(breakdownRoute.indexOf("if (windowMode === 'import-to-date')"));
+    expect(breakdownRoute).toContain("windowMode === 'import-to-date' && !requestedPropertyId");
+    expect(breakdownRoute).toContain("windowMode === 'import-to-date' && selectedCampaignNames.length === 0");
     expect(breakdownRoute).toContain('storage.getGA4Connection(campaignId, propertyId)');
   });
 
@@ -131,14 +133,74 @@ describe('GA4 Ad Comparison accumulation window', () => {
     expect(reportSection).not.toContain('GA4 Revenue (30 completed days)');
   });
 
-  it('requires the live validator to prove imported source inventory and UI visibility', () => {
+  it('keeps every selector option, descending top-10 chart, totals, and PDF summary aligned', () => {
+    const page = read('client/src/pages/ga4-metrics.tsx');
+    const component = read('client/src/pages/ga4-ad-comparison.tsx');
+    const scheduledPdf = read('server/ga4-scheduled-report-pdf.ts');
+    const componentScope = component.slice(
+      component.indexOf('const METRIC_OPTIONS'),
+      component.indexOf('{/* Full comparison table */}'),
+    );
+    const browserPdfScope = page.slice(
+      page.indexOf('// ========== AD COMPARISON =========='),
+      page.indexOf('if (includeAdsAllCampaigns)'),
+    );
+    const scheduledPdfScope = scheduledPdf.slice(
+      scheduledPdf.indexOf('if (sections.ads) {'),
+      scheduledPdf.indexOf('if (includeAllCampaigns)'),
+    );
+
+    for (const [value, label] of [
+      ['sessions', 'Sessions'],
+      ['users', 'Users'],
+      ['conversions', 'Conversions'],
+      ['revenue', 'Revenue'],
+      ['conversionRate', 'Conversion Rate'],
+    ]) {
+      expect(componentScope).toContain(`{ value: "${value}", label: "${label}" }`);
+      expect(componentScope).toContain('{opt.label} (High to Low)');
+    }
+    expect(componentScope).toContain('return (bv - av)');
+    expect(componentScope).toContain('{ sensitivity: "variant" }');
+    expect(componentScope).toContain('return chartRows.slice(0, 10)');
+    expect(componentScope).toContain('payload?.[0]?.payload as any)?.fullName');
+    expect(componentScope).toContain('(totalConversions / totalSessions) * 100');
+    expect(componentScope).toContain('GA4 Revenue (Imported to Date)');
+    expect(componentScope).toContain('Overall Conversion Rate');
+    expect(componentScope).toContain('{campaignBreakdownAgg.length}');
+    expect(component).toContain('No campaign data available. Ensure your GA4 property has UTM campaign tracking configured.');
+    expect(component).toContain('Showing the last verified campaign breakdown. The latest refresh failed.');
+    expect(component).toContain('Ad Comparison is unavailable because the campaign breakdown could not be verified.');
+
+    for (const pdfScope of [browserPdfScope, scheduledPdfScope]) {
+      expect(pdfScope).toContain('slice(0, 10)');
+      expect(pdfScope).toContain('(totalConversions / totalSessions) * 100');
+      expect(pdfScope).toContain('GA4 Revenue (Imported to Date)');
+      expect(pdfScope).toContain('Overall Conversion Rate');
+      expect(pdfScope).toContain('Campaigns Compared');
+      expect(pdfScope).toContain('Users are summed campaign-row counts and are non-additive.');
+    }
+    expect(browserPdfScope).toContain('const selectedMetric = reportAdComparisonMetric');
+    expect(browserPdfScope).toContain('if (metric === "conversions") return Number(value || 0).toLocaleString("en-US")');
+    expect(browserPdfScope).toContain('Number(p.value || 0) > 0');
+    expect(scheduledPdfScope).toContain('rawCfg?.adComparisonMetric');
+    expect(scheduledPdfScope).toContain('item.value > 0');
+    expect(page).toContain('? { adComparisonMetric }');
+    expect(page).toContain('adComparisonMetric: ["sessions", "users", "conversions", "revenue", "conversionRate"].includes');
+  });
+
+  it('requires the live validator to prove imported revenue is excluded from native ranking', () => {
     const validator = read('scripts/ga4-ad-comparison-live-readonly.ts');
 
     expect(validator).toContain('/revenue-sources?platformContext=ga4');
     expect(validator).toContain('/revenue-breakdown?platformContext=ga4');
     expect(validator).toContain("materializedRevenueStatus === 'available'");
     expect(validator).toContain('does not match its materialized breakdown');
-    expect(validator).toContain('Rendered Revenue Breakdown is missing source');
+    expect(validator).toContain('Imported revenue leaked into the native GA4 Revenue summary');
+    expect(validator).toContain('Valid zero Sessions summary did not render as zero');
+    expect(validator).toContain('No campaign data available. Ensure your GA4 property has UTM campaign tracking configured.');
+    expect(validator).toContain('Missing property request returned');
     expect(validator).toContain('sourceInventory:');
+    expect(validator).not.toContain('Rendered Revenue Breakdown is missing source');
   });
 });

@@ -13140,10 +13140,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestedPropertyId = propertyId ? String(propertyId) : '';
       const selectedCampaignNames = (Array.isArray(campaignFilter) ? campaignFilter : campaignFilter ? [campaignFilter] : [])
         .map((name) => String(name || '').trim()).filter(Boolean);
-      if (overviewCampaignBreakdown && !requestedPropertyId) {
+      if (windowMode === 'import-to-date' && !requestedPropertyId) {
         return res.status(400).json({ success: false, error: 'GA4_PROPERTY_SCOPE_REQUIRED' });
       }
-      if (overviewCampaignBreakdown && selectedCampaignNames.length === 0) {
+      if (windowMode === 'import-to-date' && selectedCampaignNames.length === 0) {
         return res.status(409).json({ success: false, error: 'GA4_CAMPAIGN_SCOPE_REQUIRED' });
       }
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);

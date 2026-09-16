@@ -3144,6 +3144,11 @@ export default function GA4Metrics() {
       reportType,
       configuration: JSON.stringify({
         ...cfg,
+        ...((reportType === "ads" || (reportType === "custom" && cfg?.sections?.ads === true)) ? {
+          adComparisonMetric: ["sessions", "users", "conversions", "revenue", "conversionRate"].includes(String(cfg?.adComparisonMetric || ""))
+            ? String(cfg.adComparisonMetric)
+            : adComparisonMetric,
+        } : {}),
         meta: {
           reportingMode: "daily",
           reportDateUtc: ga4ReportDate || null,
@@ -3170,6 +3175,9 @@ export default function GA4Metrics() {
   const downloadGA4Report = async (opts: { reportType: string; configuration?: any; reportName?: string }) => {
     const reportType = String(opts.reportType || "overview");
     const cfg = opts.configuration || ga4ReportForm.configuration || {};
+    const reportAdComparisonMetric = ["sessions", "users", "conversions", "revenue", "conversionRate"].includes(String(cfg?.adComparisonMetric || ""))
+      ? String(cfg.adComparisonMetric)
+      : "sessions";
     const normalizedReportConfig = normalizeCustomReportConfig(cfg);
     const sections =
       reportType === "custom"
@@ -3573,7 +3581,7 @@ export default function GA4Metrics() {
       const includeAdsBestWorst = reportType !== "custom" || adsSubsections.bestWorst !== false;
       const includeAdsRevenueBreakdown = reportType !== "custom" || adsSubsections.revenueBreakdown !== false;
       const rows = Array.isArray(adComparisonBreakdownAgg) ? adComparisonBreakdownAgg : [];
-      const selectedMetric = adComparisonMetric;
+      const selectedMetric = reportAdComparisonMetric;
       const metricLabels: Record<string, string> = {
         sessions: "Sessions",
         users: "Users",
@@ -3584,6 +3592,7 @@ export default function GA4Metrics() {
       const fmtMetricValue = (metric: string, value: number) => {
         if (metric === "revenue") return fC(value);
         if (metric === "conversionRate") return fP(value);
+        if (metric === "conversions") return Number(value || 0).toLocaleString("en-US");
         return fN(value);
       };
       const fmtCardMetricValue = (metric: string, value: number) => {
@@ -3594,8 +3603,11 @@ export default function GA4Metrics() {
         const nativeRevenue = Number(Number(row?.revenue || 0).toFixed(2));
         return { ...row, revenue: nativeRevenue, revenuePerSession: Number(row?.sessions || 0) > 0 ? nativeRevenue / Number(row.sessions || 0) : 0 };
       });
-      const sortedByMetric = [...comparisonRows].sort((a: any, b: any) => Number((b as any)?.[selectedMetric] || 0) - Number((a as any)?.[selectedMetric] || 0));
-      const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(comparisonRows, selectedMetric);
+      const sortedByMetric = [...comparisonRows].sort((a: any, b: any) =>
+        (Number((b as any)?.[selectedMetric] || 0) - Number((a as any)?.[selectedMetric] || 0))
+        || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "base" })
+        || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "variant" }));
+      const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(comparisonRows, adComparisonMetric);
       const totalMetric = selectedMetric === "conversionRate"
         ? (() => {
             const totalSessions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.sessions || 0), 0);
@@ -3618,7 +3630,7 @@ export default function GA4Metrics() {
             {
               title: "BEST PERFORMING",
               name: String(bestPerforming?.name || bestPerforming?.campaign || ""),
-              detail: `${fmtCardMetricValue(selectedMetric, Number((bestPerforming as any)?.[selectedMetric] || 0))} ${metricLabels[selectedMetric] || selectedMetric} - ${formatGA4AdComparisonCardPct(Number(bestPerforming?.conversionRate || 0))} CR`,
+              detail: `${fmtCardMetricValue(adComparisonMetric, Number((bestPerforming as any)?.[adComparisonMetric] || 0))} ${metricLabels[adComparisonMetric] || adComparisonMetric} - ${formatGA4AdComparisonCardPct(Number(bestPerforming?.conversionRate || 0))} CR`,
               color: C.success,
               x: MX,
             },
@@ -3672,9 +3684,9 @@ export default function GA4Metrics() {
             doc.line(chartX, chartY, chartX, chartY + chartH);
             chartData.forEach((p, idx) => {
               const px = chartX + idx * slotW + (slotW - barW) / 2;
-              const barH = Math.max(1, (Number(p.value || 0) / maxVal) * (chartH - 2));
+              const barH = Number(p.value || 0) > 0 ? Math.max(1, (Number(p.value || 0) / maxVal) * (chartH - 2)) : 0;
               doc.setFillColor(...C.ads);
-              doc.rect(px, chartY + chartH - barH, barW, barH, "F");
+              if (barH > 0) doc.rect(px, chartY + chartH - barH, barW, barH, "F");
               const labelText = fmtMetricValue(selectedMetric, Number(p.value || 0));
               const labelInsideBar = barH >= 8;
               doc.setFontSize(5.5); doc.setFont("helvetica", "bold");
@@ -3695,7 +3707,7 @@ export default function GA4Metrics() {
           }
 
           const adSummaryCards: [string, string][] = [
-            [selectedMetric === "revenue" ? "GA4 Revenue (Imported to Date)" : `Total ${metricLabels[selectedMetric] || selectedMetric}`, fmtMetricValue(selectedMetric, Number(totalMetric || 0))],
+            [selectedMetric === "revenue" ? "GA4 Revenue (Imported to Date)" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric] || selectedMetric}`, fmtMetricValue(selectedMetric, Number(totalMetric || 0))],
             ["Campaigns Compared", String(sortedByMetric.length)],
           ];
           const sumW = (CW - 4) / 2;
@@ -3711,6 +3723,11 @@ export default function GA4Metrics() {
             doc.text(trunc(val, 22), cx + 5, y + 13);
           }
           y += 24;
+          if (selectedMetric === "users") {
+            doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+            doc.text("Users are summed campaign-row counts and are non-additive.", MX + 5, y - 2);
+            y += 4;
+          }
         }
 
         // All Campaigns table
@@ -5761,12 +5778,13 @@ export default function GA4Metrics() {
     const byName = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
     for (const r of rows) {
       const name = String((r as any)?.campaign || "(not set)").trim();
-      const existing = byName.get(name) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0 };
+      const nameKey = name.toLocaleLowerCase("en-US");
+      const existing = byName.get(nameKey) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0 };
       existing.sessions += Number((r as any)?.sessions || 0);
       existing.users += Number((r as any)?.users || 0);
       existing.conversions += Number((r as any)?.conversions || 0);
       existing.revenue += Number((r as any)?.revenue || 0);
-      byName.set(name, existing);
+      byName.set(nameKey, existing);
     }
 
     return Array.from(byName.values())
@@ -8674,7 +8692,14 @@ export default function GA4Metrics() {
                                       }
                                       downloadGA4Report({
                                         reportType: String(r.reportType || "overview"),
-                                        configuration: cfg,
+                                        configuration: {
+                                          ...cfg,
+                                          ...((String(r.reportType || "overview") === "ads" || (String(r.reportType || "overview") === "custom" && cfg?.sections?.ads === true)) ? {
+                                            adComparisonMetric: ["sessions", "users", "conversions", "revenue", "conversionRate"].includes(String(cfg?.adComparisonMetric || ""))
+                                              ? String(cfg.adComparisonMetric)
+                                              : "sessions",
+                                          } : {}),
+                                        },
                                         reportName: String(r.name || "GA4 Report"),
                                       });
                                     }}
@@ -10869,7 +10894,12 @@ export default function GA4Metrics() {
                       try {
                         await downloadGA4Report({
                           reportType: ga4ReportForm.reportType || "overview",
-                          configuration: ga4ReportForm.configuration,
+                          configuration: {
+                            ...ga4ReportForm.configuration,
+                            ...((ga4ReportForm.reportType === "ads" || (ga4ReportForm.reportType === "custom" && ga4ReportForm.configuration?.sections?.ads === true))
+                              ? { adComparisonMetric }
+                              : {}),
+                          },
                           reportName: ga4ReportForm.name || undefined,
                         });
                         setShowGA4ReportModal(false);

@@ -400,6 +400,130 @@ describe("Shopify downstream value/content regression guard", () => {
     );
   });
 
+  it("keeps the scheduled Ad Comparison chart and summary on the saved selector", async () => {
+    const descendingFractionalRows = Array.from({ length: 9 }, (_, index) => ({
+      campaign: `gamma-${index + 1}`,
+      sessions: 10,
+      users: 8,
+      conversions: (9 - index) / 10,
+      revenue: 0,
+    }));
+    storageMock.getCampaign.mockResolvedValue({
+      ...campaign,
+      ga4CampaignFilter: JSON.stringify(["Alpha", "Beta", ...descendingFractionalRows.map((row) => row.campaign)]),
+    });
+    ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
+      rows: [
+        { campaign: "Alpha", sessions: 60, users: 30, conversions: 3, revenue: 100 },
+        { campaign: "alpha", sessions: 40, users: 20, conversions: 7, revenue: 50 },
+        { campaign: "Beta", sessions: 10, users: 9, conversions: 5, revenue: 25 },
+        ...descendingFractionalRows,
+      ],
+    });
+
+    await buildGA4ScheduledPdfAttachment({
+      report: {
+        id: "report-ad-selector",
+        campaignId: campaign.id,
+        name: "Ad selector parity",
+        reportType: "custom",
+        configuration: JSON.stringify({
+          adComparisonMetric: "conversionRate",
+          sections: { ads: true },
+          subsections: {
+            ads: { topCampaigns: true, bestWorst: false, allCampaigns: false, revenueBreakdown: false },
+          },
+        }),
+      },
+      reportName: "Ad selector parity",
+      windowStart: "2026-06-01",
+      windowEnd: "2026-07-04",
+      campaignName: campaign.name,
+    });
+
+    const text = pdfTextCalls.join("\n");
+    expect(text).toContain("Top Campaigns by Conversion Rate");
+    expect(text).toContain("OVERALL CONVERSION RATE");
+    expect(text).toContain("9.8%");
+    expect(text).toContain("CAMPAIGNS COMPARED");
+    expect(text).toContain("11");
+    expect(text).not.toContain("gamma-9");
+    expect(text).not.toContain("alpha");
+    expect(pdfTextCalls.indexOf("Beta")).toBeLessThan(pdfTextCalls.indexOf("Alpha"));
+  });
+
+  it("fails a scheduled Ad Comparison report closed before provider work without saved campaign scope", async () => {
+    storageMock.getCampaign.mockResolvedValue({ ...campaign, ga4CampaignFilter: "" });
+
+    await expect(buildGA4ScheduledPdfAttachment({
+      report: {
+        id: "report-ad-missing-scope",
+        campaignId: campaign.id,
+        name: "Missing Ad scope",
+        reportType: "ads",
+        configuration: JSON.stringify({ adComparisonMetric: "sessions" }),
+      },
+      reportName: "Missing Ad scope",
+      windowStart: "2026-06-01",
+      windowEnd: "2026-07-04",
+      campaignName: campaign.name,
+    })).rejects.toThrow("GA4_AD_COMPARISON_REPORT_INPUT_UNAVAILABLE: Campaign scope");
+
+    expect(ga4ServiceMock.getAcquisitionBreakdown).not.toHaveBeenCalled();
+  });
+
+  it("renders every saved Ad Comparison metric with matching ordering, total, and label", async () => {
+    storageMock.getCampaign.mockResolvedValue({
+      ...campaign,
+      ga4CampaignFilter: JSON.stringify(["Alpha", "Beta"]),
+    });
+    ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
+      rows: [
+        { campaign: "Alpha", sessions: 10, users: 100, conversions: 1, revenue: 5 },
+        { campaign: "Beta", sessions: 20, users: 50, conversions: 5, revenue: 100 },
+      ],
+    });
+    const cases = [
+      { metric: "sessions", label: "Sessions", summary: "TOTAL SESSIONS", total: "30", first: "Beta" },
+      { metric: "users", label: "Users", summary: "TOTAL USERS", total: "150", first: "Alpha" },
+      { metric: "conversions", label: "Conversions", summary: "TOTAL CONVERSIONS", total: "6", first: "Beta" },
+      { metric: "revenue", label: "Revenue", summary: "GA4 REVENUE (IMPORTED TO DATE)", total: "USD 105.00", first: "Beta" },
+      { metric: "conversionRate", label: "Conversion Rate", summary: "OVERALL CONVERSION RATE", total: "20%", first: "Beta" },
+    ];
+
+    for (const expected of cases) {
+      pdfTextCalls.length = 0;
+      await buildGA4ScheduledPdfAttachment({
+        report: {
+          id: `report-ad-${expected.metric}`,
+          campaignId: campaign.id,
+          name: `Ad ${expected.label}`,
+          reportType: "custom",
+          configuration: JSON.stringify({
+            adComparisonMetric: expected.metric,
+            sections: { ads: true },
+            subsections: {
+              ads: { topCampaigns: true, bestWorst: false, allCampaigns: false, revenueBreakdown: false },
+            },
+          }),
+        },
+        reportName: `Ad ${expected.label}`,
+        windowStart: "2026-06-01",
+        windowEnd: "2026-07-04",
+        campaignName: campaign.name,
+      });
+
+      expect(pdfTextCalls).toContain(`Top Campaigns by ${expected.label}`);
+      expect(pdfTextCalls).toContain(expected.summary);
+      expect(pdfTextCalls).toContain(expected.total);
+      const other = expected.first === "Alpha" ? "Beta" : "Alpha";
+      expect(pdfTextCalls.indexOf(expected.first)).toBeLessThan(pdfTextCalls.indexOf(other));
+      if (expected.metric === "users") {
+        expect(pdfTextCalls).toContain("Users are summed campaign-row counts and are non-additive.");
+      }
+    }
+  });
+
   it("keeps an unmatched unavailable source outside scheduled Campaign Breakdown rows and exports every row", async () => {
     const campaignNames = Array.from({ length: 16 }, (_, index) => index === 0 ? "shopify_campaign" : `campaign-${index + 1}`);
     const rows = campaignNames.map((name, index) => ({

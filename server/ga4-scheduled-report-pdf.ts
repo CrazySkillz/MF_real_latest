@@ -1,7 +1,7 @@
 import { ga4Service } from "./analytics";
 import { storage } from "./storage";
 import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
-import { computeCpa, computeRoiPercent, normalizeRateToPercent } from "../shared/metric-math";
+import { computeCpa, computeRoiPercent, normalizeRateToPercent, formatPct as formatMetricPct } from "../shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
 import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
 import { mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
@@ -469,6 +469,9 @@ async function buildGA4ReportPayload(report: any) {
   if (!reportCumulativeWindow) throw new Error("GA4_REPORT_CUMULATIVE_WINDOW_UNAVAILABLE");
   const reportLookbackRange = `${lookbackDays}daysAgo`;
   const adComparisonRequirements = getAdComparisonReportRequirements(report);
+  if (adComparisonRequirements.included && importedCampaignNames.size === 0) {
+    throw new Error('GA4_AD_COMPARISON_REPORT_INPUT_UNAVAILABLE: Campaign scope');
+  }
   const adComparisonWindow = adComparisonRequirements.included
     ? reportCumulativeWindow
     : null;
@@ -822,12 +825,13 @@ async function buildGA4ReportPayload(report: any) {
   const adComparisonByCampaign = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
   for (const row of Array.isArray((adComparisonBreakdown as any)?.rows) ? (adComparisonBreakdown as any).rows : []) {
     const name = String((row as any)?.campaign || "(not set)").trim();
-    const current = adComparisonByCampaign.get(name) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0 };
+    const nameKey = name.toLocaleLowerCase("en-US");
+    const current = adComparisonByCampaign.get(nameKey) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0 };
     current.sessions += Number((row as any)?.sessions || 0);
     current.users += Number((row as any)?.users || 0);
     current.conversions += Number((row as any)?.conversions || 0);
     current.revenue += Number((row as any)?.revenue || 0);
-    adComparisonByCampaign.set(name, current);
+    adComparisonByCampaign.set(nameKey, current);
   }
   const adComparisonBreakdownAgg = Array.from(adComparisonByCampaign.values())
     .filter((row) => importedCampaignNames.size === 0 || importedCampaignNames.has(normalizeCampaignKey(row.name)))
@@ -1241,18 +1245,30 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       const nativeRevenue = Number(Number(row?.revenue || 0).toFixed(2));
       return { ...row, revenue: nativeRevenue, revenuePerSession: Number(row?.sessions || 0) > 0 ? nativeRevenue / Number(row?.sessions || 0) : 0 };
     });
-    const selectedMetric = "sessions";
+    const selectedMetric = ["sessions", "users", "conversions", "revenue", "conversionRate"].includes(String(rawCfg?.adComparisonMetric || ""))
+      ? String(rawCfg.adComparisonMetric)
+      : "sessions";
     const metricLabels: Record<string, string> = { sessions: "Sessions", users: "Users", conversions: "Conversions", revenue: "Revenue", conversionRate: "Conversion Rate" };
-    const formatMetricValue = (metric: string, value: number) => metric === "revenue" ? formatMoney(value) : metric === "conversionRate" ? formatGA4AdComparisonCardPct(value) : formatNumber(value);
-    const sortedByMetric = [...rows].sort((a: any, b: any) => Number(b?.[selectedMetric] || 0) - Number(a?.[selectedMetric] || 0));
-    const totalMetric = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.[selectedMetric] || 0), 0);
-    const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(rows, selectedMetric);
+    const formatMetricValue = (metric: string, value: number) => metric === "revenue" ? formatMoney(value) : metric === "conversionRate" ? formatMetricPct(value) : metric === "conversions" ? Number(value || 0).toLocaleString("en-US") : formatNumber(value);
+    const sortedByMetric = [...rows].sort((a: any, b: any) =>
+      (Number(b?.[selectedMetric] || 0) - Number(a?.[selectedMetric] || 0))
+      || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "base" })
+      || String(a?.name || "").localeCompare(String(b?.name || ""), "en", { sensitivity: "variant" }));
+    const totalMetric = selectedMetric === "conversionRate"
+      ? (() => {
+          const totalSessions = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.sessions || 0), 0);
+          const totalConversions = sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.conversions || 0), 0);
+          return totalSessions > 0 ? (totalConversions / totalSessions) * 100 : 0;
+        })()
+      : sortedByMetric.reduce((sum: number, row: any) => sum + Number(row?.[selectedMetric] || 0), 0);
+    const leaderMetric = "sessions";
+    const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(rows, leaderMetric);
     if (includeBestWorst && sortedByMetric.length > 1) {
       y += 4;
       checkPage(28);
       const colW = (CW - 8) / 3;
       const rankCards = [
-        { title: "BEST PERFORMING", name: String(bestPerforming?.name || ""), detail: `${formatMetricValue(selectedMetric, Number(bestPerforming?.[selectedMetric] || 0))} Sessions - ${formatGA4AdComparisonCardPct(Number(bestPerforming?.conversionRate || 0))} CR`, color: COLORS.success, x: MX },
+        { title: "BEST PERFORMING", name: String(bestPerforming?.name || ""), detail: `${formatMetricValue(leaderMetric, Number(bestPerforming?.[leaderMetric] || 0))} Sessions - ${formatGA4AdComparisonCardPct(Number(bestPerforming?.conversionRate || 0))} CR`, color: COLORS.success, x: MX },
         { title: "MOST EFFICIENT", name: String(mostEfficient?.name || ""), detail: `${formatGA4AdComparisonCardPct(Number(mostEfficient?.conversionRate || 0))} CR - ${formatMoney(Number(mostEfficient?.revenue || 0))} revenue`, color: COLORS.info, x: MX + colW + 4 },
         { title: "NEEDS ATTENTION", name: String(needsAttention?.name || ""), detail: `${formatGA4AdComparisonCardPct(Number(needsAttention?.conversionRate || 0))} CR - ${formatNumber(Number(needsAttention?.sessions || 0))} sessions`, color: COLORS.danger, x: MX + (colW + 4) * 2 },
       ];
@@ -1278,8 +1294,8 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       doc.setDrawColor(...COLORS.divider); doc.setLineWidth(0.2); doc.line(chartX, chartY + chartH, chartX + chartW, chartY + chartH); doc.line(chartX, chartY, chartX, chartY + chartH);
       chartData.forEach((item, index) => {
         const px = chartX + index * slotW + (slotW - barW) / 2;
-        const barH = Math.max(1, (item.value / maxValue) * (chartH - 2));
-        doc.setFillColor(...COLORS.ads); doc.rect(px, chartY + chartH - barH, barW, barH, "F");
+        const barH = item.value > 0 ? Math.max(1, (item.value / maxValue) * (chartH - 2)) : 0;
+        if (barH > 0) { doc.setFillColor(...COLORS.ads); doc.rect(px, chartY + chartH - barH, barW, barH, "F"); }
         doc.setFontSize(5.5); doc.setFont("helvetica", "bold"); doc.setTextColor(...(barH >= 8 ? COLORS.white : COLORS.text));
         doc.text(formatMetricValue(selectedMetric, item.value), px + barW / 2, barH >= 8 ? chartY + chartH - barH + 4 : chartY + chartH - barH - 1.5, { align: "center" });
         const nameLines = doc.splitTextToSize(item.name, Math.max(slotW - 4, 18)).slice(0, 2) as string[];
@@ -1289,7 +1305,13 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       });
       doc.setFontSize(6.5); doc.setTextColor(...COLORS.textTert); doc.text(formatMetricValue(selectedMetric, maxValue), chartX + chartW, chartY + 1, { align: "right" });
       y += 58;
-      metricCards([[`Total ${metricLabels[selectedMetric]}`, formatMetricValue(selectedMetric, totalMetric)], ["Campaigns Compared", String(sortedByMetric.length)]], 2, 18);
+      const summaryMetricLabel = selectedMetric === "revenue" ? "GA4 Revenue (Imported to Date)" : selectedMetric === "conversionRate" ? "Overall Conversion Rate" : `Total ${metricLabels[selectedMetric]}`;
+      metricCards([[summaryMetricLabel, formatMetricValue(selectedMetric, totalMetric)], ["Campaigns Compared", String(sortedByMetric.length)]], 2, 18);
+      if (selectedMetric === "users") {
+        doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...COLORS.textTert);
+        doc.text("Users are summed campaign-row counts and are non-additive.", MX, y);
+        y += 5;
+      }
     }
     if (includeAllCampaigns) {
       const colXs = [MX + 4, MX + 18, MX + 82, MX + 104, MX + 124, MX + 144, MX + CW - 8];

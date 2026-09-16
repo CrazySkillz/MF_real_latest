@@ -657,14 +657,14 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
   });
 
-  it("fails Overview Campaign Breakdown closed before provider work without exact saved scope", async () => {
+  it("fails every import-to-date Campaign Breakdown closed before provider work without exact saved scope", async () => {
     vi.useRealTimers();
-    const missingProperty = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-breakdown?window=import-to-date&overviewCampaignBreakdown=1&readOnly=1");
+    const missingProperty = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-breakdown?window=import-to-date&readOnly=1");
     expect(missingProperty.status).toBe(400);
     expect(await missingProperty.json()).toMatchObject({ error: "GA4_PROPERTY_SCOPE_REQUIRED" });
 
     storageMock.getCampaign.mockResolvedValueOnce({ ...campaign, ga4CampaignFilter: "" });
-    const missingCampaign = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-breakdown?window=import-to-date&overviewCampaignBreakdown=1&propertyId=" + encodeURIComponent(connection.propertyId) + "&readOnly=1");
+    const missingCampaign = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-breakdown?window=import-to-date&propertyId=" + encodeURIComponent(connection.propertyId) + "&readOnly=1");
     expect(missingCampaign.status).toBe(409);
     expect(await missingCampaign.json()).toMatchObject({ error: "GA4_CAMPAIGN_SCOPE_REQUIRED" });
     expect(ga4ServiceMock.getAcquisitionBreakdown).not.toHaveBeenCalled();

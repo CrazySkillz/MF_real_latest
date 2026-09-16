@@ -99,7 +99,9 @@ export default function GA4AdComparison({
     return [...comparisonRows].sort((a, b) => {
       const av = Number((a as any)[selectedMetric] || 0);
       const bv = Number((b as any)[selectedMetric] || 0);
-      return bv - av;
+      return (bv - av)
+        || a.name.localeCompare(b.name, "en", { sensitivity: "base" })
+        || a.name.localeCompare(b.name, "en", { sensitivity: "variant" });
     });
   }, [comparisonRows, selectedMetric]);
 
@@ -283,7 +285,7 @@ export default function GA4AdComparison({
                 <YAxis type="category" dataKey="name" stroke="#64748b" fontSize={11} width={180} tick={{ fontSize: 11 }} />
                 <Tooltip
                   formatter={(value: any) => [fmtMetricValue(selectedMetric, Number(value || 0)), METRIC_LABELS[selectedMetric] || selectedMetric]}
-                  labelFormatter={(label) => label}
+                  labelFormatter={(_label, payload) => String((payload?.[0]?.payload as any)?.fullName || "")}
                 />
                 <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} name={METRIC_LABELS[selectedMetric] || selectedMetric} />
               </BarChart>

@@ -2,8 +2,8 @@
 
 ## Status and purpose
 
-- Manifest status: complete for the current code path at runtime `88e755a69cea84b83767535c0734f1`.
-- Certification status: **BLOCKED**. This document is not a production-readiness certificate and does not recertify GA4 Overview.
+- Manifest status: complete for the current code path at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d`.
+- Certification status: **CLEAN-CERTIFIED / PRODUCTION_READY for GA4 Benchmarks only** at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d`. The controlling certificate is `GA4/OVERVIEW_BENCHMARKs_CERTIFICATION_2026-09-15.md`; this manifest does not recertify GA4 Overview.
 - Historical Benchmark baseline: runtime `a96ba06e21c9344c1767c960e702ac4a647dc5f1` and `GA4/certifications/ga4-benchmarks.json`.
 - GA4 Overview is an upstream, read-only dependency. Its certification status is not changed by this manifest.
 - This manifest defines the complete Overview-facing contract consumed by GA4 Benchmarks. A future change outside the entries below does not automatically invalidate Benchmark certification.
@@ -236,8 +236,8 @@ These are anchors for impact analysis, not a rule that every edit to a listed fi
 - `shared/ga4-kpi-live-value.ts`, `shared/ga4-kpi-metric-identity.ts`, `shared/kpi-math.ts`, and `shared/metric-math.ts`: mapping, formulas, units, sufficiency, and classification.
 - `server/report-scheduler.ts` and `server/ga4-scheduled-report-pdf.ts`: report preflight and Benchmark report consumption.
 
-## 13. Current blockers recorded without changing Overview
+## 13. Resolved history and out-of-scope observations recorded without changing Overview
 
-1. The authenticated deployed run found two logical duplicate automatic history groups (one Revenue and one Conversions group), each containing two same-date/same-scope rows. Active Benchmark definitions were not duplicated. Deployed runtime `88e755a69cea84b83767535c0734f1` has a non-atomic read-then-insert history path. The local working tree now serializes reserved automatic GA4 history writes and performs the exact duplicate check inside the same transaction, but that fix is not deployed and the known damaged rows remain untouched. Duplicate, refresh/recompute, history, alert/report propagation, and lifecycle certification therefore remain blocked pending deployment, targeted cleanup authorization, and deployed revalidation.
-2. The final current-version boundary suite has one blocking failure in the application readiness-ledger regression: it expects GA4 KPIs to remain `UNVERIFIED`, while the ledger currently records them as `CERTIFIED`. This is outside the Benchmark dependency manifest and does not change Benchmark values, but the user-mandated final gate is not clean. Neither the ledger nor the KPI section was modified.
-3. Because the deployed validator stopped at the duplicate-history fail-closed preflight, the current-runtime authenticated add/edit/delete/zero/alert/ownership/report lifecycle was not executed. Historical evidence for unchanged paths remains relevant but cannot substitute for the required current-runtime lifecycle gate.
+1. Resolved on 2026-09-16: the authenticated deployed run originally found two logical duplicate automatic history groups (one Revenue and one Conversions group), each containing two same-date/same-scope rows. Runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d` serializes reserved automatic GA4 history writes and performs the exact duplicate check inside the same transaction. A deployed test proved that two concurrent identical writes resolved to one stored row. A separately authorized serializable cleanup then deleted exactly one semantically identical redundant row from each pair, retained both deterministic canonical rows, and an independent read-only inventory proved zero remaining active-definition or history duplicate groups.
+2. The final current-version boundary suite has two visible failures outside this manifest: the application readiness-ledger regression expects GA4 KPIs to remain `UNVERIFIED` while the ledger records them as `CERTIFIED`, and the KPI certification gate detects the Benchmark-only `server/storage.ts` change through its whole-file KPI dependency hash. Neither failure changes Benchmark values or invalidates this manifest-scoped certificate. Neither failure was counted as a pass, and neither the ledger nor the KPI section was modified or recertified.
+3. Resolved on 2026-09-16: the current-runtime authenticated add/edit/delete/zero/target/unit/status/alert/ownership/scheduler/provider/Executive Summary/report lifecycle passed after cleanup with zero value mismatches, and an independent final inventory found no active-definition, history, or temporary validation duplicates.

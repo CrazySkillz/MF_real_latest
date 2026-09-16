@@ -394,6 +394,15 @@ try {
   if (ownerAuth && temporaryBenchmarkId) {
     const deleted = await api(ownerAuth.page, "DELETE", `/api/platforms/google_analytics/benchmarks/${encodeURIComponent(temporaryBenchmarkId)}`).catch(() => null);
     if (!deleted?.ok) cleanupErrors.push("temporary Benchmark cleanup failed");
+    const counts = await client.query(`
+      SELECT
+        (SELECT COUNT(*)::int FROM benchmarks WHERE id = $1) AS benchmark_count,
+        (SELECT COUNT(*)::int FROM benchmark_history WHERE benchmark_id = $1) AS history_count,
+        (SELECT COUNT(*)::int FROM notifications WHERE metadata::text LIKE '%' || $1 || '%' AND read = false) AS visible_notification_count
+    `, [temporaryBenchmarkId]).catch(() => null);
+    if (!counts || Object.values(counts.rows[0] || {}).some((value) => Number(value) !== 0)) {
+      cleanupErrors.push("temporary Benchmark cleanup could not be proven");
+    }
   }
   await revoke(outsiderAuth).catch((error) => cleanupErrors.push(String((error as Error).message || error)));
   await revoke(ownerAuth).catch((error) => cleanupErrors.push(String((error as Error).message || error)));
@@ -406,7 +415,10 @@ try {
   }
   client.release();
   await pool.end().catch(() => null);
-  if (cleanupErrors.length > 0 && !thrown) thrown = new Error(cleanupErrors.join("; "));
+  if (cleanupErrors.length > 0) thrown = new Error([
+    thrown instanceof Error ? thrown.message : thrown ? String(thrown) : "",
+    ...cleanupErrors,
+  ].filter(Boolean).join("; "));
 }
 
 if (thrown) throw thrown;

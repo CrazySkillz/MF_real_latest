@@ -40,6 +40,12 @@ try {
     GROUP BY h.benchmark_id, b.metric
     ORDER BY b.metric, h.benchmark_id
   `, [CAMPAIGN_ID]);
+  const temporaryValidationRows = await client.query(`
+    SELECT id
+    FROM benchmarks
+    WHERE campaign_id = $1
+      AND description = 'Temporary GA4 Benchmark history concurrency validation'
+  `, [CAMPAIGN_ID]);
   await client.query("ROLLBACK");
   console.log(JSON.stringify({
     success: true,
@@ -71,6 +77,7 @@ try {
       firstRecordedAt: row.first_recorded_at,
       lastRecordedAt: row.last_recorded_at,
     })),
+    temporaryConcurrencyValidationRows: temporaryValidationRows.rows.map((row: any) => opaque(row.id)),
   }, null, 2));
 } finally {
   client.release();

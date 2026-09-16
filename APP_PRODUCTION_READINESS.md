@@ -42,8 +42,8 @@ saved source configuration.
 | Order | Section | Program state |
 | ---: | --- | --- |
 | 1 | Overview | `IN_PROGRESS` |
-| 2 | KPIs | `QUEUED` |
-| 3 | Benchmarks | `QUEUED` |
+| 2 | KPIs | `COMPLETE` |
+| 3 | Benchmarks | `COMPLETE` |
 | 4 | Ad Comparison | `QUEUED` |
 | 5 | Insights | `QUEUED` |
 | 6 | Reports | `QUEUED` |

@@ -2,10 +2,61 @@
 
 ## Current status amendment - Campaign2
 
-**UNVERIFIED for the current deployed runtime and Campaign2.** The earlier
-clean-certification decision below is historical evidence for its recorded
-campaign/runtime only; it must not be used to claim that Campaign2's chart or
-summary is now production-ready.
+**CLEAN-CERTIFIED for the Campaign2 metric dropdown, Top Campaigns chart,
+three leader cards, two summary cards, and their matching PDF values at
+deployed runtime `3013ec6b52a93eaca01cd14c538dd0a20f350fac`.** This is a
+narrow subsection result for Client2 / Campaign2, property `542352127`, and
+the two exact saved names `yesop_retargeti` and `yesop_email_nurture`. The
+complete Ad Comparison tab and its machine record remain **UNVERIFIED**;
+All Campaigns, Revenue Breakdown, Reports delivery, and other GA4 sections
+are outside this certificate. The earlier decision below is historical.
+
+On 2026-09-16, deployed revision `3013ec6b52a93eaca01cd14c538dd0a20f350fac`
+created one authorized, draft, unscheduled Campaign2 GA4 custom report
+(`abc09608-ef65-40c8-adc7-59fa23bd9565`) and manual snapshot
+(`ceee23ae-6486-4c53-b5de-cb88d9e7ca5d`) through the authenticated report
+API. Its downloaded 14,927-byte scheduled-builder PDF contained exactly
+`yesop_retargeti` and `yesop_email_nurture`, excluded `yesop_retargeting`, and
+showed the three ranking cards, Conversion Rate chart (100% and 0%), and
+summary (16.7%, two campaigns). Card values were 77 key events/100.00% CR
+for `yesop_retargeti`, 0.00% CR/385 sessions for `yesop_email_nurture`, and
+USD 65,296.90 revenue on the highest-rate card. These agree with the current
+authenticated Campaign2 API/UI values captured earlier on this deployed
+revision. The report remained `draft` with scheduling disabled and zero send
+events; no email was sent. The temporary validator's final assertion failed
+only because it searched for title-case summary text while PDF extraction
+returned uppercase headings. Its recorded PDF text proves both headings are
+present. No GA4 retry was made. The snapshot PDF download route regenerates
+GA4 output from live data; this check does not prove immutable historical
+PDF bytes, a scheduled send, or email delivery. Three assertions still fail in
+the separate application-ledger and GA4 KPI test files. They do not check or
+change this narrow Ad Comparison value path; the repository as a whole is not
+all-green.
+
+At this same deployed revision, one authenticated Campaign2 Overview breakdown
+response was replayed through the deployed Ad Comparison UI. Both exact saved
+campaigns and all five dropdown metric orders, values, tooltips, and summary
+cards passed; all three leader-card values matched that response. A separate
+cross-owner request failed closed before provider access. Empty, valid-zero,
+and stale states passed browser checks without GA4 calls. The scoped focused,
+certification-gate, and scheduled-PDF regressions passed (123 tests), as did
+TypeScript and the build. The full current-version run had 1,997/2,041 passing,
+42 classified deferred failures, and the two unrelated failing test files
+described above. The Ad Comparison-specific gates passed; this is not an
+all-green repository claim or a full-tab certificate.
+
+Current value contract for this narrow certificate: Sessions, Users (GA4
+`totalUsers`), Key Events, and native session key event rate come from the
+authenticated, saved-scope GA4 Overview Campaign Breakdown rows. Revenue is
+that table's native GA4 revenue plus only exact campaign-mapped imported
+revenue. The dropdown sorts those rows by the selected metric; the first
+summary totals that metric (or session-weights the rate), and Campaigns
+Compared counts the distinct compared names. Most Key Events ranks positive
+key-event counts; Highest Conversion Rate ranks positive rates; Needs
+Attention selects the lowest rate among campaigns meeting the implemented
+session floor. Browser and scheduled PDF chart/card/summary consumers use
+that same Overview-row path. The separate native Ad Comparison rows continue
+to serve the excluded All Campaigns and Revenue Breakdown surfaces.
 
 Campaign2 saves the two *distinct, exact* GA4 names `yesop_retargeti` and
 `yesop_email_nurture`. Its one-bar screenshot exposed a missing-campaign case
@@ -20,9 +71,138 @@ reconciliation is required before this subsection can be certified again.
 Neither saved campaign name was changed; KPI, Overview, All Campaigns, and
 Revenue Breakdown were not recertified by this amendment.
 
-## Certification decision
+At deployed revision `40c6b88a875c4b3fbb08858594811a477fa8873f`, one
+authenticated Campaign2 request passed the read-only validator's exact saved
+campaign row checks, but the browser check timed out before the chart rendered
+and the validator did not record the row values. A subsequent single diagnostic
+API request returned GA4 `429 RESOURCE_EXHAUSTED`; no further GA4 requests were
+made. The 7-file focused packet passed (143 tests), TypeScript and build passed,
+and the current-version run had 1,991/2,035 passing with two blocking
+readiness-ledger/KPI-record failures and 42 classified deferred failures.
+At that point, the two-campaign chart, cards, and PDF values were **UNVERIFIED**.
 
-**CLEAN-CERTIFIED and production-ready only for the GA4 Ad Comparison metric
+Subsequent authenticated read-only validation at the same deployed SHA returned
+`yesop_retargeti` (76 sessions, 76 users, 76 conversions, $15,614.16 GA4
+revenue) and `yesop_email_nurture` (384 sessions, 384 users, zero conversions
+and revenue) for 2026-08-09 through 2026-09-15. The supplied Sessions screenshot
+matches the two chart labels, five visible cards, 460 total sessions, and two
+campaigns. A single later API response was replayed into the deployed UI:
+all five selector options passed chart order, labels, tooltip values, and
+selected-metric summary checks. The focused packet passed 104 tests, TypeScript
+and build passed. Full certification remains **UNVERIFIED**: the live validator
+stopped after those checks because no second-owner Clerk login was available,
+so its ownership-isolation and browser-PDF gates did not run. The current-version
+gate still has two blocking readiness-ledger/KPI-record failures and 42
+classified deferred failures. No runtime fix was made.
+
+A later visual audit found a gap in that validator: it skipped tooltip checks
+for zero-valued bars. Recharts rendered the zero Conversion Rate bar for
+`yesop_email_nurture` at zero width, leaving its 0% value invisible and
+unhoverable. The same renderer affects its zero Conversions and Revenue. A
+chart-only local fix now renders a visible formatted value label for every
+campaign row, including zero. An isolated browser check using the authenticated
+Campaign2 aggregate values passed all five dropdown choices, and the validator
+now requires every value label. The post-fix focused packet passed 104 tests,
+TypeScript and build passed; the current-version gate retained the same two
+blocking failures and 42 deferred failures. The chart fix was deployed at
+`089116b8c2160e6c0d3f5561c94a0c8140351560` and remains **UNCERTIFIED**.
+
+At that deployed revision, one authenticated Campaign2 API response again
+returned exactly the two saved campaigns and the values above. Replaying that
+response through the deployed UI passed all five dropdown chart orders,
+tooltips, visible value labels (including zero), summary cards, and ownership
+checks. The integrated browser-PDF validator then failed because its own page
+reload reset the selected metric to Sessions while it expected a Conversion
+Rate PDF. A separate browser-PDF inspection, using the just-observed campaign
+aggregates with GA4 calls intercepted, confirmed the Conversion Rate title,
+both exact names, 100% and 0% campaign values, 16.5% overall rate, and count
+two. The validator now reselects Conversion Rate after reload. It was not
+rerun against GA4 to avoid another provider request. The current-version
+blocking failures and scheduled-PDF live artifact gate keep certification
+**UNVERIFIED**.
+
+A separate value error was confirmed in the Conversions dropdown: the chart
+used the generic number formatter, which rounds fractional GA4 conversions in
+the visible bar labels, tooltips, and selected-metric total even while sorting
+by the fractional number. The browser and scheduled PDF charts also rounded
+these displayed values. Commit `b883e7688f77efb47e6bfb05e38ae3c3ab1b790e`
+changes only these three Ad Comparison chart/summary formatters to retain up to
+15 decimal places. A Vite-only browser fixture with independent asymmetric
+values passed all five dropdown chart orders and totals, including 2.5, 1.25,
+zero, and 3.75 total Conversions. The focused 109 tests, TypeScript, and build
+passed. The current-version boundary remains 1,991/2,035 passed with the same
+two unrelated blocking failures and 42 deferred failures. The observed
+Campaign2 conversions are whole numbers, so this precision correction does
+not change their displayed values. Current deployed reconciliation and the
+scheduled-PDF artifact gate remain pending; status is **UNVERIFIED**.
+
+A later local chart-only candidate removes the white bar-value labels and turns
+off Recharts' 400 ms bar-width animation. On a dropdown change, that animation
+interpolated widths from the previous metric, briefly drawing bars at values
+that did not match the selected metric. A local browser fixture using the two
+previously observed Campaign2 rows passed immediate bar order and width checks
+for all five options; zero-valued campaign rows drew no bar. Focused tests (24), TypeScript,
+and build passed. The current-version run remains 1,991/2,035 with the same two
+blocking failures and 42 deferred failures. This candidate is not deployed;
+current deployed reconciliation and PDF gates remain pending. **UNVERIFIED.**
+
+The user clarified the chart contract: each dropdown and both summary cards
+must use the values displayed in GA4 Overview's Campaign Breakdown table.
+The current local candidate now takes Sessions, Users, Conversions, and rate
+from that table's campaign rows; Revenue also includes its campaign-to-date
+native GA4 amount plus exact matched imports. The chart and summary paths in
+both PDFs use those same table rows. The separate native Ad Comparison query
+continues to supply the excluded leader cards, All Campaigns, and Revenue
+Breakdown. A local browser fixture passed all five dropdowns and the case where
+native detail fails while the Overview-based chart remains available. The
+focused chart/Overview/PDF packet passed 108 tests; TypeScript and production
+build passed. The current-version run finished at 1,992/2,036 passed, with the
+same two blocking readiness-ledger/KPI-record failures and 42 deferred failures.
+The read-only live validator now targets the Overview query and checks exact
+mapped revenue. Deployed Campaign2 values and PDF artifacts have not been
+rechecked. **UNVERIFIED.**
+
+Commit `82b4400b9662b369da46fa46e195cc41dab5e4f5` was pushed and confirmed
+by production health. One authenticated Overview Campaign Breakdown API request
+for the exact Campaign2 property/filter returned `yesop_retargeti` (76 sessions,
+76 users, 76 conversions, $7,512.96 native campaign-start GA4 revenue) and
+`yesop_email_nurture` (384 sessions, 384 users, zero conversions/revenue) for
+2026-08-09 through 2026-09-15. These native revenue amounts exclude exact
+mapped imports and are not the final Revenue dropdown values. The validator
+replayed that response but timed out on its empty-state probe before chart/card
+or browser-PDF reconciliation. No second GA4 request was made. **UNVERIFIED.**
+
+The next local candidate extends the Overview Campaign Breakdown source to the
+three leader cards. The shared ranking formulas are unchanged; the screen and
+both PDF paths now select leaders from the same campaign values as the dropdown
+chart. Scheduled PDFs also honor the selected metric for Best Performing and
+skip the separate native Ad Comparison query when only leader cards are
+included. A browser fixture with deliberately divergent Overview/native rows
+confirmed all three card values for Sessions and Revenue. The focused card,
+UI, chart, and scheduled-PDF packet passed 83 tests; a further leader-only PDF
+test passed. TypeScript and build passed. The final current-version run had
+1,993/2,037 passing, with the same two blocking readiness-ledger/KPI-record
+failures and 42 deferred failures. Deployed card values and PDF
+artifacts have not been reconciled. **UNVERIFIED.**
+
+The leader-card fix was pushed at `0222d6b45cddc06d1dad9e18605a177b9ba99ac7`
+and confirmed by production health. One authenticated Campaign2 Overview API
+request returned exactly the two saved names for 2026-08-09 through 2026-09-15.
+Their displayed Overview Campaign Breakdown values, including exact mapped
+imports, were `yesop_retargeti`: 76 sessions, 76 users, 76 conversions,
+$65,069.86 revenue; `yesop_email_nurture`: 384 sessions, 384 users, zero
+conversions, $100 revenue. The same response was replayed into the deployed UI
+while the separate native Ad Comparison response was deliberately changed.
+All three leader cards matched the Overview rows for each of the five dropdown
+metrics. This proves the deployed card source and values for that captured
+response; unmocked UI refresh, current browser/scheduled PDFs, ownership
+isolation, and the two blocking current-version gates remain unverified.
+**UNVERIFIED.**
+
+## Historical certification decision - superseded for Campaign2
+
+At the recorded `199ea4c6` boundary, this decision was **CLEAN-CERTIFIED and
+production-ready only for the GA4 Ad Comparison metric
 selector, Top Campaigns chart, selected-metric summary card, and Campaigns
 Compared card described below.**
 

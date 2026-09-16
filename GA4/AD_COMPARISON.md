@@ -8,10 +8,12 @@ Use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` for the durable production-readi
 
 Current status:
 
-`UNVERIFIED` for the current chart, leader-card, and summary-card candidate that reads
-GA4 Overview Campaign Breakdown. The certification record is
-`GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md`. The boundary below is
-historical and does not certify this candidate.
+`CLEAN-CERTIFIED` only for the Campaign2 metric dropdown, Top Campaigns chart,
+three leader cards, two summary cards, and their corresponding PDF values at
+deployed runtime `3013ec6b52a93eaca01cd14c538dd0a20f350fac`. The exact
+scope and evidence are in `GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md`.
+The full Ad Comparison tab and its machine record remain `UNVERIFIED`; the
+older boundary below is historical.
 
 `PRODUCTION_READY` for certified runtime boundary
 `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627` and the recorded dependency and

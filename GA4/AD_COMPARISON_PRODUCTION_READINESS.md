@@ -4,27 +4,24 @@
 
 ## Controlling Current Status
 
-**Status: UNVERIFIED for the current candidate.** The prior
-`4be16c54c550a45dbf3104313c820ea47b453604` certification is historical.
-The current candidate uses GA4's native session key event rate for the rate
-dropdown, leader cards, and PDFs. The former conversions/sessions calculation
-counted key events rather than sessions with a key event. Deployed rate values,
-ranking, and PDF parity remain unverified.
+**Full-tab status: UNVERIFIED.** All Campaigns and Revenue Breakdown are outside
+the current subsection review; the full-tab machine record remains UNVERIFIED.
 
-An earlier revalidation audited every recorded dependency changed since the
-prior machine record. The exact Ad Comparison query, cumulative route, saved
-import boundary, property/filter scope, native aggregation/ranking, and
-imported-source provenance renderer passed their protected regressions and
-authenticated production parity checks.
+**Current narrow status: CLEAN-CERTIFIED / PRODUCTION_READY** only for the
+Client2 / Campaign2 metric dropdown, Top Campaigns chart, three leader cards,
+two summary cards, and their corresponding PDF values at deployed application
+runtime `3013ec6b52a93eaca01cd14c538dd0a20f350fac`. The active property is
+`542352127`; the saved names are exactly `yesop_retargeti` and
+`yesop_email_nurture`. The controlling scoped evidence, including the
+authenticated API/deployed UI reconciliation, live PDF check, negative states,
+ownership check, focused tests, TypeScript, build, and limits, is in
+`GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md` (documentation commit
+`1e8e30b87c92d496fd2613e9839b982adee2ee41`). This status does not
+certify Reports delivery or any other GA4 section.
 
-Focused leader-card tests, TypeScript, and the production build pass. The
-current-version boundary remains blocked by the application readiness ledger
-and KPI certification gate failures.
-That earlier authenticated exact-SHA validation covered property `542352127`, the saved
-three-campaign filter, the `2026-07-02` through `2026-08-27` completed-day
-window, all reviewed provider aggregates, all five materialized revenue sources,
-and rendered UI parity. The validation database transaction was read-only and
-rolled back with zero application mutations. Prior `PRODUCTION_READY` records are historical only.
+The earlier `4be16c54c550a45dbf3104313c820ea47b453604` and
+`83d124278647f3d2ccbe74b20f39c853dc0c8b44` whole-tab conclusions, and
+their saved campaign/date boundaries below, are historical only.
 
 This is the only reusable current-status answer in this document. The June 27,
 2026 conclusion below is historical and revoked. It had no exact certified Git

@@ -4,9 +4,9 @@
 
 <!-- ga4-kpi-certification-status: PRODUCTION_READY -->
 
-**Status: CLEAN-CERTIFIED / PRODUCTION_READY for the GA4 KPIs section only, at deployed application runtime `1c949dc9710f36b1760a3fbf7253037236b52e00` and the exact dependency boundary below.**
+**Status: CLEAN-CERTIFIED / PRODUCTION_READY for the GA4 KPIs section only, at deployed application runtime `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` and the exact dependency boundary below.**
 
-This dated file is the controlling certificate for this KPI validation. It does not certify GA4 Overview as a whole. Overview is a read-only upstream dependency. Revenue, Spend, Performance, Campaign Breakdown, Conversion Events, Landing Pages, and every other GA4 section are excluded and were not modified or re-certified. `APP_PRODUCTION_READINESS.md` is separate, is not a KPI dependency, and was not modified.
+This dated file is the controlling certificate for this KPI validation. It does not certify GA4 Overview as a whole. Overview is a read-only upstream dependency. Revenue, Spend, Performance, Campaign Breakdown, Conversion Events, Landing Pages, and every other GA4 section are excluded and were not modified or re-certified by this KPI revalidation. `APP_PRODUCTION_READINESS.md` is separate, is not a KPI dependency, and was not modified by this KPI revalidation.
 
 ## Certified Scope
 
@@ -50,7 +50,7 @@ Only the following upstream fields and behaviors are consumed by KPIs. A future 
 | `GET /api/campaigns/:id/ga4-daily?days=30&propertyId=...` | `overviewTotals.users`, `.sessions`, `.pageviews`, `.conversions`, `.revenue`, `.engagementRate`; `overviewStartDate`, `dataThroughDate`/`endDate`, `propertyId`, `refreshIsStale`; fallback `data[].date/users/sessions/pageviews/conversions/revenue/engagedSessions` only when the `overviewTotals` property is absent | primary traffic/rate values, freshness, reporting boundary, deterministic legacy fallback |
 | persisted GA4 daily rows | exact campaign + selected property + date; `users`, `sessions`, `pageviews`, `conversions`, `revenue`, `engagedSessions` | scheduler recomputation; engagement is weighted from engaged sessions and sessions |
 | `GET /api/campaigns/:id/ga4-to-date?propertyId=...&insightsScope=1` | `totals.revenue`, `totals.conversions`, `totals.sessions`, `totals.users`, `currencyCode`, `revenueMetric`, `startDate`, `endDate`, `noCompletedWindow` | preferred native financial revenue/conversion candidate, currency verification, sufficiency/window state |
-| `GET /api/campaigns/:id/ga4-breakdown?window=import-to-date&propertyId=...&overviewCampaignBreakdown=1` | response availability and `totals.revenue/conversions/sessions/users` only as the fixed lower-priority native financial fallback | native financial fallback and failure state; not the primary traffic KPI total |
+| `GET /api/campaigns/:id/ga4-breakdown?window=import-to-date&propertyId=...&overviewCampaignBreakdown=1` | exact saved property/campaign scope, response availability (including the upstream campaign-row `sessionKeyEventRate` validation), and `totals.revenue/conversions/sessions/users` only as the fixed lower-priority native financial fallback | native financial fallback and failure state; KPI math does not consume the campaign-row rate or replace the primary traffic total |
 | revenue-to-date contract | `totalRevenue`, `sourceIds`, `currency`, `startDate`, `endDate`, success/failure | imported revenue contribution and window |
 | revenue-source contract | active campaign-scoped `id/sourceId`, `status`, `sourceType`, `platformType`, `currency`, `displayName` | source existence, scope, labels, and valid-zero availability |
 | revenue-breakdown contract | response success/failure, scoped sources/source IDs, total/currency | source reconciliation and stale/unavailable state |
@@ -61,6 +61,22 @@ Only the following upstream fields and behaviors are consumed by KPIs. A future 
 | freshness contract | query loading/error/placeholder state, `refreshIsStale`, provider coverage-through date, latest completed reporting day | verified vs loading/unavailable/stale status; alert and report eligibility |
 
 No other Overview display value, table row, chart, attribution presentation, or Overview certification status is consumed as KPI certification evidence.
+
+### September 16 current-revision impact analysis
+
+Twenty-three commits follow the `6ea70599` KPI documentation baseline. The net comparison to deployed `f7afeb2b` changes 12 recorded dependency files; unchanged dependencies retain their exact prior hashes. Each changed dependency was reviewed, not automatically treated as a KPI regression:
+
+| Changed dependency | KPI impact and current proof |
+|---|---|
+| `GA4/README.md`, `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md`, `GA4/BENCHMARKS.md`, `GA4/BENCHMARKS_PRODUCTION_READINESS.md` | Section-status/copy changes only; no KPI input or runtime contract change. The `f7afeb2b` README edit is Ad Comparison status copy and does not recertify Ad Comparison or Overview. |
+| `server/ga4-kpi-real-path-parity-regression.test.ts`, `server/ga4-filter.test.ts` | Test changes strengthen exact import-to-date scope, fractional conversion, campaign-row rate, and provider-quota guards; no production transformation is changed by these files. |
+| `client/src/pages/ga4-metrics.tsx` | Ad Comparison query/chart/PDF/configuration changes share the page, but KPI CRUD, card value resolver, tracker, and KPI-only browser-PDF branches are unchanged. Exact-deployed browser KPI parity passed. |
+| `server/routes-oauth.ts` | The import-to-date breakdown now requires exact selected property and saved campaign scope before provider work; the new Ad Comparison branch is separate. The KPI-consumed Overview breakdown branch remains scoped and returns its native financial totals or fails closed. Route/ownership and deployed input checks passed. |
+| `server/storage.ts` | Change is confined to automatic Benchmark-history idempotency; KPI persistence and delete contracts are unchanged. |
+| `server/analytics.ts`, `shared/ga4-traffic-window.ts` | The Overview-preferred campaign breakdown now requests/validates `sessionKeyEventRate`, preserves fractional conversion credit, and weights the row rate. KPI traffic still uses persisted daily `overviewTotals`; the breakdown remains only a lower-priority financial fallback. Invalid rate/quota fails closed, and provider/fallback regressions plus exact deployed response availability passed. |
+| `server/ga4-scheduled-report-pdf.ts` | Ad Comparison report inputs/formatting changed within the shared builder; KPI selection, recompute preflight, and KPI row rendering are unchanged. Exact-deployed KPI browser PDF and focused server-report/failure regressions passed. No live scheduled delivery is claimed. |
+
+No current KPI value, formula, ownership, lifecycle, or selected-source mismatch was found. This impact result applies only to the recorded candidate; it does not certify the changed Overview or Ad Comparison sections.
 
 ## End-to-End Trace
 
@@ -76,7 +92,22 @@ No other Overview display value, table row, chart, attribution presentation, or 
 | Insights | KPI target findings use the same current values, sufficiency state, direction, and absolute target-window contract. |
 | Reports | Browser KPI PDF uses the same page resolver/state. Server snapshot, test-send, manual, and scheduled report preflights require exact successful KPI recompute and preserve selected KPI identity/state. |
 
-## Production Evidence
+## September 16 Current-Boundary Production Evidence
+
+Authenticated lifecycle and read-only consumer validation passed against exact deployed SHA `f7afeb2b98a56a3387156a3d7b9b99d5128a2980`, the same eight-KPI owner/client/campaign, property `542352127`, `Europe/Amsterdam`, and USD. All eight card values/targets/states/alert pulses matched their exact inputs. The KPI Executive Snapshot, both visible breached notifications, all eight KPI-related Insights findings, and a temporary browser KPI PDF matched. Duplicate create/edit, invalid and partial edits, source-computed-value protection, cross-client/cross-owner denial, create/read/edit/delete, manual scheduler recompute, alert reconciliation, and temporary-record cleanup passed. The read-only phase made no application mutation. Final inventory was 16 active canonical rows, zero inactive rows, and zero duplicate groups.
+
+Current financial inputs for this fixture were native GA4 revenue `89299.30`, imported revenue `22700.00`, total revenue `111999.30`, spend `2759.75`, and financial conversions `407`. These reconcile KPI inputs only; they do not certify the whole Overview. The live fixture proves populated/verified values. Zero, stale/last-good, unavailable, malformed, provider-failure, and write-failure branches remain deterministic-test evidence; natural timer firing, alert/report email delivery, inbox receipt, and live scheduled-report delivery are not claimed.
+
+## September 16 Current-Boundary Validation Gates
+
+- Focused KPI and changed-shared-path packet: 15 files, 354 tests passed, 0 failed.
+- Current-version suite: 2,041 tests executed; 2,000 passed, 41 declared deferred/external failures remained visible, and 0 blocking current-version failures remained.
+- `npm run check`, `npm run build`, and the KPI certification integrity gate passed.
+- Exact-`f7afeb2b` authenticated deployed lifecycle, scheduler, KPI inputs, browser consumers, and post-cleanup inventory passed as bounded above.
+
+The 41 deferred/external failures are not counted as passes or certified. This is a KPI-only decision, not a whole-app or whole-Overview readiness claim.
+
+## September 15 Baseline Production Evidence (historical)
 
 Authenticated validation ran against deployed SHA `1c949dc9710f36b1760a3fbf7253037236b52e00`, one exact owner/client/campaign, property `542352127`, campaign timezone `Europe/Amsterdam`, and currency `USD`. Identifiers are recorded only as hashes in validator output.
 
@@ -93,7 +124,7 @@ Authenticated validation ran against deployed SHA `1c949dc9710f36b1760a3fbf72530
 
 Production financial reconciliation for this fixture used native GA4 revenue `86178.30`, imported revenue `22700.00`, total revenue `108878.30`, spend `2759.75`, and financial conversions `394`. The eight saved card outputs were independently checked against their applicable inputs; no unrelated Overview value was certified by that reconciliation.
 
-## Validation Gates
+## September 15 Baseline Validation Gates (historical)
 
 - Focused KPI/API/persistence/scheduler/UI/alert/report/certification packet: 11 files, 165 tests passed, 0 failed.
 - Current-version suite: 2,025 tests executed; 1,983 passed; 42 declared deferred/external failures remained visible; 0 blocking current-version failures.
@@ -124,7 +155,7 @@ Future GA4 work must compare its changed fields, response semantics, source prec
 
 ## Repository Actions
 
-- Certified application runtime: `1c949dc9710f36b1760a3fbf7253037236b52e00`.
-- Only KPI implementation/tests/validators and this KPI controlling certificate were changed for this work.
-- `APP_PRODUCTION_READINESS.md` and excluded GA4 section code/certificates were not modified.
+- Certified application runtime: `f7afeb2b98a56a3387156a3d7b9b99d5128a2980`; the earlier `1c949dc9710f36b1760a3fbf7253037236b52e00` evidence remains historical.
+- This revalidation changed KPI statements in the shared status documents, KPI-only documentation/test guards, and the KPI certification record; it did not change KPI, Overview, Ad Comparison, or Benchmark application code.
+- `APP_PRODUCTION_READINESS.md` and excluded GA4 section code/certificates were not modified by this KPI revalidation.
 - No production cleanup or rewrite was required; only temporary validator-owned records were created and automatically removed.

@@ -77,9 +77,11 @@ describe("application production-readiness ledger", () => {
     }
   });
 
-  it("preserves current fail-closed GA4 and exact financial-source decisions", () => {
+  it("preserves bounded GA4 and exact financial-source decisions", () => {
     expect(ledger).toContain("| GA4 Overview | `UNVERIFIED`");
-    expect(ledger).toContain("| GA4 KPIs | `UNVERIFIED`");
+    const kpiRow = ledger.split("\n").find((line) => line.startsWith("| GA4 KPIs |"));
+    expect(kpiRow).toContain("`CERTIFIED` | `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md` |");
+    expect(kpiRow).toContain("deployed runtime `1c949dc9`; documentation commit `6ea70599`");
     expect(ledger).toContain("| GA4 Ad Comparison | `UNVERIFIED`");
     expect(ledger).toContain("| GA4 Reports | `UNVERIFIED`");
     expect(ledger).toContain("| GA4 Benchmarks | `CERTIFIED`");
@@ -97,7 +99,7 @@ describe("application production-readiness ledger", () => {
     expect(ledger).toContain("| 3 | Revenue & Financials - Spend | `COMPLETE` | `CERTIFIED`");
     expect(ledger).toContain("| 4 | Campaign Breakdown | `COMPLETE` | `CERTIFIED`");
     expect(ledger).toContain("| 5 | Landing Pages | `QUEUED` | `UNVERIFIED`");
-    expect(ledger).toContain("| 6 | Conversion Events | `QUEUED` | `UNVERIFIED`");
+    expect(ledger).toContain("| 6 | Conversion Events | `COMPLETE` | `CERTIFIED`");
     expect(ledger).toContain("| Google Sheets | `COMPLETE` | `CERTIFIED`");
   });
 

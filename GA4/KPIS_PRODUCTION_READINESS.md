@@ -24,13 +24,13 @@ This file defines whether the current implementation is production-ready, what h
 
 <!-- ga4-kpi-certification-status: PRODUCTION_READY -->
 
-### September 15, 2026 current decision
+### September 16, 2026 current decision
 
-**Result: PRODUCTION_READY only for deployed application runtime `1c949dc9710f36b1760a3fbf7253037236b52e00` and the exact dependency boundary in `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md`.**
+**Result: PRODUCTION_READY only for deployed application runtime `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` and the exact dependency boundary in `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md`.**
 
-The authenticated production lifecycle passed create/read/edit/delete, duplicate prevention, invalid-edit preservation, campaign/client/owner isolation, source-computed-value protection, manual scheduler recomputation, alert reconciliation, card/Executive Snapshot/Notifications/Insights parity, and browser-PDF parity. The post-run inventory found 16 active canonical GA4 KPI rows and zero duplicates; no cleanup was required.
+The exact-deployed authenticated lifecycle and consumer checks passed create/read/edit/delete, duplicate prevention, invalid-edit preservation, campaign/client/owner isolation, source-computed-value protection, manual scheduler recomputation, alert reconciliation, card/Executive Snapshot/Notifications/Insights parity, and browser-PDF parity. The post-run inventory found 16 active canonical GA4 KPI rows and zero duplicates; no cleanup was required. The 12 changed dependency files since the prior certificate were impact-reviewed; no KPI runtime mismatch was found. Overview remains a read-only upstream dependency, not a certified section.
 
-Local gates passed: 11 focused files / 165 tests; current-version 2,025 total / 1,983 passed / 42 declared deferred or external failures / zero blocking failures; TypeScript; production build; and the KPI certification integrity gate.
+Current local gates passed: 15 focused files / 354 tests; current-version 2,041 total / 2,000 passed / 41 declared deferred or external failures / zero blocking failures; TypeScript; production build; and the KPI certification integrity gate. The deferred failures are visible, not counted as passes, and do not certify their sections.
 
 Limits: no exact-current natural timer firing, alert/report email delivery, inbox receipt, or live server-scheduled report delivery is claimed. Those paths are not required to interpret the proven in-app KPI status. Overview is a read-only upstream dependency and is not certified as a whole by this decision.
 

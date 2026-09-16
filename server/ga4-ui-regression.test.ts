@@ -536,10 +536,13 @@ describe("GA4 UI regression guard", () => {
     expect(adComparison).toContain("formatGA4AdComparisonCardPct(bestPerforming.conversionRate)");
     expect(adComparison).toContain("formatGA4AdComparisonCardPct(mostEfficient.conversionRate)");
     expect(adComparison).toContain("formatGA4AdComparisonCardPct(needsAttention.conversionRate)");
-    expect(ga4Metrics).toContain("formatGA4AdComparisonCardPct(Number(bestPerforming?.conversionRate || 0))");
-    expect(ga4Metrics).toContain("formatGA4AdComparisonCardPct(Number(mostEfficient?.conversionRate || 0))");
+    expect(adComparison).toContain('fmtCardMetricValue("conversions", bestPerforming.conversions)} Conversions');
+    expect(ga4Metrics).toContain('${fmtCardMetricValue("conversions", bestPerforming.conversions)} Conversions');
+    expect(scheduledPdf).toContain('${formatMetricValue("conversions", bestPerforming.conversions)} Conversions');
+    expect(adComparison).toContain("Highest Conversion Rate");
+    expect(ga4Metrics).toContain("formatGA4AdComparisonCardPct(mostEfficient.conversionRate)");
     expect(ga4Metrics).toContain("formatGA4AdComparisonCardPct(Number(needsAttention?.conversionRate || 0))");
-    expect(scheduledPdf).toContain("formatGA4AdComparisonCardPct(Number(mostEfficient?.conversionRate || 0))");
+    expect(scheduledPdf).toContain("formatGA4AdComparisonCardPct(mostEfficient.conversionRate)");
     expect(scheduledPdf).toContain("formatGA4AdComparisonCardPct(Number(needsAttention?.conversionRate || 0))");
     expect(adComparison).not.toContain("needsAttention.name !== mostEfficient?.name");
     expect(ga4Metrics).not.toContain(".find((r: any) => String(r?.name || \"\") !== String(bestPerforming?.name || \"\"))");

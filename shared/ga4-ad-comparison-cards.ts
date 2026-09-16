@@ -1,19 +1,18 @@
 export interface GA4AdComparisonCardRow {
   name: string;
   sessions: number;
+  conversions: number;
   conversionRate: number;
   [metric: string]: string | number;
 }
 
 export function selectGA4AdComparisonLeaderCards<T extends GA4AdComparisonCardRow>(comparisonRows: T[], selectedMetric: string) {
-  const bestPerforming = [...comparisonRows].sort((a, b) => {
-    const av = Number((a as any)[selectedMetric] || 0);
-    const bv = Number((b as any)[selectedMetric] || 0);
-    return bv - av;
-  })[0];
+  const bestPerforming = [...comparisonRows]
+    .filter(c => c.conversions > 0)
+    .sort((a, b) => b.conversions - a.conversions || a.name.localeCompare(b.name))[0];
 
   const mostEfficient = [...comparisonRows]
-    .filter(c => c.sessions > 0)
+    .filter(c => c.sessions > 0 && c.conversionRate > 0)
     .sort((a, b) => b.conversionRate - a.conversionRate)[0];
 
   const needsAttention = selectGA4AdComparisonNeedsAttention(comparisonRows, bestPerforming);

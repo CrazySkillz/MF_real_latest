@@ -90,7 +90,8 @@ The current tab contains:
 
 - top leader-card row when at least two comparison rows exist
 - metric dropdown in the header
-- metric-based ranking for leader cards, chart, and selected-metric summary
+- conversion-based Best Performing, conversion-rate leader and attention cards,
+  plus metric-based chart and selected-metric summary
 - comparison chart limited to the top 10 rows for the selected metric
 - selected-metric total and `Campaigns Compared` summary cards
 - `All Campaigns` table
@@ -161,12 +162,13 @@ Campaign Breakdown table: traffic uses its saved import window, and Revenue adds
 exact mapped imported revenue to its native campaign-start revenue. Imported
 revenue remains separate from native All Campaigns values.
 
-Imported revenue can affect Best Performing when Revenue is selected only through
-exact mapped values in the Overview table; it cannot create a campaign row.
+Imported revenue cannot determine Best Performing, which ranks by observed
+conversions. The Highest Conversion Rate card displays Overview row revenue.
 
 ## Leader Cards
 
-The leader cards consume the same campaign rows and selected metric as the chart.
+The leader cards consume the same campaign rows as the chart. The selected
+metric controls the chart, not the leader-card rankings.
 
 Shared selector:
 
@@ -176,25 +178,27 @@ Shared selector:
 
 Meaning:
 
-- highest-ranked normalized comparison row for the current selected dropdown metric
+- campaign row with the most observed conversions
 
 Rules:
 
-- changes when the dropdown metric changes
+- does not change when the dropdown metric changes
+- has no winner when all rows have zero conversions
 - cannot be created by imported-only revenue
-- must show the selected metric value and exact card conversion rate to two decimals
+- must show the conversion count and exact card conversion rate to two decimals
 - must not add suffixes such as `(matched external included)` to the campaign label
 
-### Most Efficient
+### Highest Conversion Rate
 
 Meaning:
 
-- campaign row with the highest conversion rate among rows with sessions
+- campaign row with the highest conversion rate among rows with sessions and a
+  positive conversion rate; this is not a spend-efficiency claim
 
 Rules:
 
 - does not change when the selected metric changes
-- excludes zero-session rows
+- excludes zero-session and zero-rate rows; has no winner when all rates are zero
 - uses the Overview Campaign Breakdown revenue in the detail line
 - shows exact card conversion rate to two decimals so close-rate decisions are explainable
 
@@ -222,8 +226,10 @@ Display rule:
 Card selection uses exact numeric values, not rounded display strings. Validate close decisions with row-level inputs:
 
 - `conversionRate = conversions / sessions * 100`
-- `Best Performing` equals the highest row for the selected metric
-- `Most Efficient` equals the highest exact conversion rate among rows with sessions
+- `Best Performing` equals the row with the most conversions, or has no winner
+  when every row has zero conversions
+- `Highest Conversion Rate` equals the highest positive exact conversion rate
+  among rows with sessions
 - `Needs Attention` equals the lowest exact conversion rate among meaningful-volume rows
 - if one-decimal labels appear tied, the card detail should show two-decimal CR so the decision is explainable
 
@@ -231,7 +237,7 @@ Example:
 
 - `34 / 273 = 12.45%`
 - `25 / 200 = 12.50%`
-- with selected metric `Sessions`, the first row can be both `Best Performing` and `Needs Attention`, while the second row can be `Most Efficient`
+- with selected metric `Sessions`, the first row can be both `Best Performing` and `Needs Attention`, while the second row can have the highest conversion rate
 
 ## Summary Cards
 

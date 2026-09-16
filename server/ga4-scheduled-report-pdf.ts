@@ -1293,8 +1293,8 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       checkPage(28);
       const colW = (CW - 8) / 3;
       const rankCards = [
-        { title: "BEST PERFORMING", name: String(bestPerforming?.name || ""), detail: `${formatMetricValue(leaderMetric, Number(bestPerforming?.[leaderMetric] || 0))} Sessions - ${formatGA4AdComparisonCardPct(Number(bestPerforming?.conversionRate || 0))} CR`, color: COLORS.success, x: MX },
-        { title: "MOST EFFICIENT", name: String(mostEfficient?.name || ""), detail: `${formatGA4AdComparisonCardPct(Number(mostEfficient?.conversionRate || 0))} CR - ${formatMoney(Number(mostEfficient?.revenue || 0))} revenue`, color: COLORS.info, x: MX + colW + 4 },
+        { title: "BEST PERFORMING", name: String(bestPerforming?.name || "No conversion leader"), detail: bestPerforming ? `${formatMetricValue("conversions", bestPerforming.conversions)} Conversions - ${formatGA4AdComparisonCardPct(bestPerforming.conversionRate)} CR` : "No conversions recorded", color: COLORS.success, x: MX },
+        { title: "HIGHEST CONVERSION RATE", name: String(mostEfficient?.name || "No rate leader"), detail: mostEfficient ? `${formatGA4AdComparisonCardPct(mostEfficient.conversionRate)} CR - ${formatMoney(Number(mostEfficient.revenue || 0))} revenue` : "No conversions recorded", color: COLORS.info, x: MX + colW + 4 },
         { title: "NEEDS ATTENTION", name: String(needsAttention?.name || ""), detail: `${formatGA4AdComparisonCardPct(Number(needsAttention?.conversionRate || 0))} CR - ${formatNumber(Number(needsAttention?.sessions || 0))} sessions`, color: COLORS.danger, x: MX + (colW + 4) * 2 },
       ];
       rankCards.forEach((card) => {

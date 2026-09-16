@@ -3648,15 +3648,15 @@ export default function GA4Metrics() {
           const rankCards = [
             {
               title: "BEST PERFORMING",
-              name: String(bestPerforming?.name || bestPerforming?.campaign || ""),
-              detail: `${fmtCardMetricValue(adComparisonMetric, Number((bestPerforming as any)?.[adComparisonMetric] || 0))} ${metricLabels[adComparisonMetric] || adComparisonMetric} - ${formatGA4AdComparisonCardPct(Number(bestPerforming?.conversionRate || 0))} CR`,
+              name: String(bestPerforming?.name || "No conversion leader"),
+              detail: bestPerforming ? `${fmtCardMetricValue("conversions", bestPerforming.conversions)} Conversions - ${formatGA4AdComparisonCardPct(bestPerforming.conversionRate)} CR` : "No conversions recorded",
               color: C.success,
               x: MX,
             },
             {
-              title: "MOST EFFICIENT",
-              name: String(mostEfficient?.name || mostEfficient?.campaign || ""),
-              detail: `${formatGA4AdComparisonCardPct(Number(mostEfficient?.conversionRate || 0))} CR - ${fC(Number(mostEfficient?.revenue || 0))} revenue`,
+              title: "HIGHEST CONVERSION RATE",
+              name: String(mostEfficient?.name || "No rate leader"),
+              detail: mostEfficient ? `${formatGA4AdComparisonCardPct(mostEfficient.conversionRate)} CR - ${fC(Number(mostEfficient.revenue || 0))} revenue` : "No conversions recorded",
               color: C.info,
               x: MX + colW + 4,
             },
@@ -10535,7 +10535,7 @@ export default function GA4Metrics() {
                       { key: "kpis", label: "KPIs", subsections: [] as Array<[string, string]> },
                       { key: "benchmarks", label: "Benchmarks", subsections: [] as Array<[string, string]> },
                       { key: "ads", label: "Ad Comparison", subsections: [
-                        ["bestWorst", "Best Performing / Most Efficient / Needs Attention"],
+                        ["bestWorst", "Best Performing / Highest Conversion Rate / Needs Attention"],
                         ["topCampaigns", "Top Campaigns"],
                         ["allCampaigns", "All Campaigns"],
                         ["revenueBreakdown", "Revenue Breakdown"],
@@ -10570,7 +10570,7 @@ export default function GA4Metrics() {
                                     ]
                                   : (s.key === "ads")
                                     ? [
-                                        [["bestWorst", "Best Performing / Most Efficient / Needs Attention"], ["topCampaigns", "Top Campaigns"]],
+                                        [["bestWorst", "Best Performing / Highest Conversion Rate / Needs Attention"], ["topCampaigns", "Top Campaigns"]],
                                         [["allCampaigns", "All Campaigns"], ["revenueBreakdown", "Revenue Breakdown"]],
                                       ]
                                     : (s.key === "insights")

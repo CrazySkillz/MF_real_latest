@@ -6,18 +6,19 @@
 
 **Status: UNVERIFIED for the current candidate.** The prior
 `4be16c54c550a45dbf3104313c820ea47b453604` certification is historical.
-The GA4 Overview table-accuracy correction changed shared analytics, route,
-and browser dependencies; Ad Comparison behavior is not intentionally changed,
-but exact-current regression and deployed parity evidence have not been rerun.
+The current candidate changes leader-card ranking to observed conversions and
+relabels the rate leader; deployed ranking and PDF parity remain unverified.
 
-The current revalidation audited every recorded dependency changed since the
+An earlier revalidation audited every recorded dependency changed since the
 prior machine record. The exact Ad Comparison query, cumulative route, saved
 import boundary, property/filter scope, native aggregation/ranking, and
 imported-source provenance renderer passed their protected regressions and
 authenticated production parity checks.
 
-The current-version boundary, TypeScript, and production build pass.
-Authenticated exact-SHA validation proves property `542352127`, the saved
+Focused leader-card tests, TypeScript, and the production build pass. The
+current-version boundary remains blocked by the application readiness ledger
+and KPI certification gate failures.
+That earlier authenticated exact-SHA validation covered property `542352127`, the saved
 three-campaign filter, the `2026-07-02` through `2026-08-27` completed-day
 window, all reviewed provider aggregates, all five materialized revenue sources,
 and rendered UI parity. The validation database transaction was read-only and
@@ -95,6 +96,9 @@ Excluded:
 
 ### Complete value and calculation inventory
 
+The inventory below records the historical native-row boundary; current chart,
+leader-card, and summary sources are specified in `GA4/AD_COMPARISON.md`.
+
 | Value | Production path | Required invariant |
 |---|---|---|
 | Sessions | GA4 acquisition rows -> campaign aggregation | Sum every exact-scope row; never silently truncate |
@@ -105,7 +109,7 @@ Excluded:
 | Imported source revenue | Exact materialized source breakdown | Source-to-date provenance only; excluded from native ranking |
 | Row revenue | Native GA4 row revenue | No imported merge, stale fallback, invented row, or proportional allocation |
 | Revenue/session | Native row revenue / sessions | Numerator and denominator share the same property/filter/window |
-| Leader cards | `selectGA4AdComparisonLeaderCards` | Render only with at least two rows; Best uses selected metric; Efficient requires traffic; Attention requires volume and avoids duplicating Best when another row ties the lowest exact rate |
+| Leader cards | `selectGA4AdComparisonLeaderCards` | Historical selected-metric ranking; current conversion-based rule is in `GA4/AD_COMPARISON.md` |
 | Chart | Selected-metric sort of normalized rows | Show at most the top 10; never change underlying table order |
 | Selected-metric summary | Normalized comparison rows | Sum the selected metric; conversion rate uses aggregate conversions / aggregate sessions |
 | Campaigns Compared | Normalized comparison rows | Exact normalized row count |
@@ -447,8 +451,8 @@ Leader cards must be metric-safe for the source.
 
 GA4 pattern:
 
-- `Best Performing`: selected metric leader
-- `Most Efficient`: highest conversion rate among session rows
+- `Best Performing`: most observed conversions, independent of the dropdown
+- `Highest Conversion Rate`: highest positive conversion rate among session rows; no cost-efficiency claim
 - `Needs Attention`: lowest conversion rate among meaningful-volume rows
 
 Paid-media pattern may differ, but must be explicit. Do not copy GA4 session-based logic blindly into paid-media sources if clicks, spend, or impressions are the real source metrics.
@@ -465,7 +469,7 @@ It does not gate the live tab unless it changes a shared live-tab dependency.
 
 At minimum, add tests for:
 
-- selected metric controls only the intended card
+- selected metric controls the chart and metric summary, not the leader-card rankings
 - efficiency card excludes ineligible rows
 - attention card ignores low-signal rows
 - exact revenue/spend attribution is included only when safe

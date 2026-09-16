@@ -353,7 +353,7 @@ describe("Shopify downstream value/content regression guard", () => {
     expect(text).toContain("USD 30,839.00");
     expect(text).toContain("GA4 Revenue (Imported to Date)");
     expect(text).toContain("BEST PERFORMING");
-    expect(text).toContain("MOST EFFICIENT");
+    expect(text).toContain("HIGHEST CONVERSION RATE");
     expect(text).toContain("NEEDS ATTENTION");
     expect(text).toContain("Top Campaigns by Sessions");
     expect(text).toContain("TOTAL SESSIONS");
@@ -594,8 +594,8 @@ describe("Shopify downstream value/content regression guard", () => {
 
     expect(pdfTextCalls).toContain("CAMPAIGN BREAKDOWN REVENUE");
     expect(pdfTextCalls).toContain("USD 305.00");
-    expect(pdfTextCalls[pdfTextCalls.indexOf("BEST PERFORMING") + 1]).toBe("Alpha");
-    expect(pdfTextCalls[pdfTextCalls.indexOf("MOST EFFICIENT") + 1]).toBe("Beta");
+    expect(pdfTextCalls[pdfTextCalls.indexOf("BEST PERFORMING") + 1]).toBe("Beta");
+    expect(pdfTextCalls[pdfTextCalls.indexOf("HIGHEST CONVERSION RATE") + 1]).toBe("Beta");
     expect(pdfTextCalls).toContain("25.00% CR - USD 100.00 revenue");
     expect(pdfTextCalls.slice(pdfTextCalls.indexOf("All Campaigns"))).toEqual(expect.arrayContaining(["USD 500.00", "USD 1,000.00"]));
   });
@@ -615,7 +615,7 @@ describe("Shopify downstream value/content regression guard", () => {
     });
 
     expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenCalledTimes(2);
-    expect(pdfTextCalls).toEqual(expect.arrayContaining(["BEST PERFORMING", "MOST EFFICIENT", "NEEDS ATTENTION"]));
+    expect(pdfTextCalls).toEqual(expect.arrayContaining(["BEST PERFORMING", "HIGHEST CONVERSION RATE", "NEEDS ATTENTION"]));
     expect(pdfTextCalls).not.toContain("All Campaigns");
   });
 

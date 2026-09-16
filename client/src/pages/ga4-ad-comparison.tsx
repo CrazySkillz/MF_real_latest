@@ -257,7 +257,7 @@ export default function GA4AdComparison({
                   {bestPerforming.name}
                 </div>
                 <div className="text-sm text-muted-foreground/70 mt-1">
-                  {fmtCardMetricValue(selectedMetric, Number((bestPerforming as any)[selectedMetric] || 0))} {METRIC_LABELS[selectedMetric] || selectedMetric} &middot; {formatGA4AdComparisonCardPct(bestPerforming.conversionRate)} CR
+                  {fmtCardMetricValue("conversions", bestPerforming.conversions)} Conversions &middot; {formatGA4AdComparisonCardPct(bestPerforming.conversionRate)} CR
                 </div>
               </CardContent>
             </Card>
@@ -267,7 +267,7 @@ export default function GA4AdComparison({
               <CardContent className="p-5">
                 <div className="flex items-center gap-2 mb-2">
                   <Zap className="w-5 h-5 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Most Efficient</span>
+                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Highest Conversion Rate</span>
                 </div>
                 <div className="font-semibold text-foreground truncate" title={mostEfficient.name}>
                   {mostEfficient.name}

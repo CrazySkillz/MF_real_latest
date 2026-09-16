@@ -90,7 +90,7 @@ The current tab contains:
 
 - top leader-card row when at least two comparison rows exist
 - metric dropdown in the header
-- conversion-based Best Performing, conversion-rate leader and attention cards,
+- Most Key Events, conversion-rate leader and attention cards,
   plus metric-based chart and selected-metric summary
 - comparison chart limited to the top 10 rows for the selected metric
 - selected-metric total and `Campaigns Compared` summary cards
@@ -162,8 +162,8 @@ Campaign Breakdown table: traffic uses its saved import window, and Revenue adds
 exact mapped imported revenue to its native campaign-start revenue. Imported
 revenue remains separate from native All Campaigns values.
 
-Imported revenue cannot determine Best Performing, which ranks by observed
-conversions. The Highest Conversion Rate card displays Overview row revenue.
+Imported revenue cannot determine Most Key Events, which ranks by observed
+GA4 key events. The Highest Conversion Rate card displays Overview row revenue.
 
 ## Leader Cards
 
@@ -174,18 +174,18 @@ Shared selector:
 
 - `selectGA4AdComparisonLeaderCards(chartSummaryRows, selectedMetric)` in `shared/ga4-ad-comparison-cards.ts`
 
-### Best Performing
+### Most Key Events
 
 Meaning:
 
-- campaign row with the most observed conversions
+- campaign row with the most observed GA4 key events
 
 Rules:
 
 - does not change when the dropdown metric changes
-- has no winner when all rows have zero conversions
+- has no winner when all rows have zero key events
 - cannot be created by imported-only revenue
-- must show the conversion count and exact card conversion rate to two decimals
+- must show the key event count and exact card conversion rate to two decimals
 - must not add suffixes such as `(matched external included)` to the campaign label
 
 ### Highest Conversion Rate
@@ -213,7 +213,7 @@ Meaningful-volume rule:
 - rows must have sessions
 - prefer rows at or above `max(25 sessions, 10% of the largest campaign row's sessions)`
 - if no row meets that floor, fall back to all rows with sessions
-- when the lowest-rate row is also `Best Performing` and another eligible row
+- when the lowest-rate row is also `Most Key Events` and another eligible row
   has the same lowest exact rate, use the other tied row for `Needs Attention`
 
 Display rule:
@@ -226,7 +226,7 @@ Display rule:
 Card selection uses exact numeric values, not rounded display strings. Validate close decisions with row-level inputs:
 
 - `conversionRate = GA4 sessionKeyEventRate * 100`; key events count and sessions alone cannot establish how many sessions contained a key event
-- `Best Performing` equals the row with the most conversions, or has no winner
+- `Most Key Events` equals the row with the most GA4 key events, or has no winner
   when every row has zero conversions
 - `Highest Conversion Rate` equals the highest positive exact conversion rate
   among rows with sessions
@@ -236,7 +236,7 @@ Card selection uses exact numeric values, not rounded display strings. Validate 
 Example:
 
 - GA4 session key event rates of `0.1245` and `0.1250` display as `12.45%` and `12.50%`
-- with selected metric `Sessions`, the first row can be both `Best Performing` and `Needs Attention`, while the second row can have the highest conversion rate
+- with selected metric `Sessions`, the first row can be both `Most Key Events` and `Needs Attention`, while the second row can have the highest conversion rate
 
 ## Summary Cards
 

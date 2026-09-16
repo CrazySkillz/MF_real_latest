@@ -252,13 +252,13 @@ export default function GA4AdComparison({
               <CardContent className="p-5">
                 <div className="flex items-center gap-2 mb-2">
                   <Trophy className="w-5 h-5 text-emerald-600" />
-                  <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Best Performing</span>
+                  <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Most Key Events</span>
                 </div>
                 <div className="font-semibold text-foreground truncate" title={bestPerforming.name}>
                   {bestPerforming.name}
                 </div>
                 <div className="text-sm text-muted-foreground/70 mt-1">
-                  {fmtCardMetricValue("conversions", bestPerforming.conversions)} Conversions &middot; {formatGA4AdComparisonCardPct(bestPerforming.conversionRate)} CR
+                  {fmtCardMetricValue("conversions", bestPerforming.conversions)} Key Events &middot; {formatGA4AdComparisonCardPct(bestPerforming.conversionRate)} CR
                 </div>
               </CardContent>
             </Card>

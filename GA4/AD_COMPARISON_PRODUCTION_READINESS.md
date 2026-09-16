@@ -453,7 +453,7 @@ Leader cards must be metric-safe for the source.
 
 GA4 pattern:
 
-- `Best Performing`: most observed conversions, independent of the dropdown
+- `Most Key Events`: most observed GA4 key events, independent of the dropdown
 - `Highest Conversion Rate`: highest positive conversion rate among session rows; no cost-efficiency claim
 - `Needs Attention`: lowest conversion rate among meaningful-volume rows
 

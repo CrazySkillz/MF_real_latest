@@ -3653,9 +3653,9 @@ export default function GA4Metrics() {
 
           const rankCards = [
             {
-              title: "BEST PERFORMING",
-              name: String(bestPerforming?.name || "No conversion leader"),
-              detail: bestPerforming ? `${fmtCardMetricValue("conversions", bestPerforming.conversions)} Conversions - ${formatGA4AdComparisonCardPct(bestPerforming.conversionRate)} CR` : "No conversions recorded",
+              title: "MOST KEY EVENTS",
+              name: String(bestPerforming?.name || "No key event leader"),
+              detail: bestPerforming ? `${fmtCardMetricValue("conversions", bestPerforming.conversions)} Key Events - ${formatGA4AdComparisonCardPct(bestPerforming.conversionRate)} CR` : "No key events recorded",
               color: C.success,
               x: MX,
             },
@@ -10542,7 +10542,7 @@ export default function GA4Metrics() {
                       { key: "kpis", label: "KPIs", subsections: [] as Array<[string, string]> },
                       { key: "benchmarks", label: "Benchmarks", subsections: [] as Array<[string, string]> },
                       { key: "ads", label: "Ad Comparison", subsections: [
-                        ["bestWorst", "Best Performing / Highest Conversion Rate / Needs Attention"],
+                        ["bestWorst", "Most Key Events / Highest Conversion Rate / Needs Attention"],
                         ["topCampaigns", "Top Campaigns"],
                         ["allCampaigns", "All Campaigns"],
                         ["revenueBreakdown", "Revenue Breakdown"],
@@ -10577,7 +10577,7 @@ export default function GA4Metrics() {
                                     ]
                                   : (s.key === "ads")
                                     ? [
-                                        [["bestWorst", "Best Performing / Highest Conversion Rate / Needs Attention"], ["topCampaigns", "Top Campaigns"]],
+                                        [["bestWorst", "Most Key Events / Highest Conversion Rate / Needs Attention"], ["topCampaigns", "Top Campaigns"]],
                                         [["allCampaigns", "All Campaigns"], ["revenueBreakdown", "Revenue Breakdown"]],
                                       ]
                                     : (s.key === "insights")

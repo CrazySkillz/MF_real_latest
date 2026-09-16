@@ -534,11 +534,14 @@ describe("GA4 UI regression guard", () => {
     expect(scheduledPdf).toContain('["sessions", "users", "conversions", "revenue", "conversionRate"].includes(String(rawCfg?.adComparisonMetric || ""))');
     expect(scheduledPdf).toContain(': "sessions";');
     expect(adComparison).toContain("formatGA4AdComparisonCardPct(bestPerforming.conversionRate)");
+    expect(adComparison).toContain(">Most Key Events</span>");
     expect(adComparison).toContain("formatGA4AdComparisonCardPct(mostEfficient.conversionRate)");
     expect(adComparison).toContain("formatGA4AdComparisonCardPct(needsAttention.conversionRate)");
-    expect(adComparison).toContain('fmtCardMetricValue("conversions", bestPerforming.conversions)} Conversions');
-    expect(ga4Metrics).toContain('${fmtCardMetricValue("conversions", bestPerforming.conversions)} Conversions');
-    expect(scheduledPdf).toContain('${formatMetricValue("conversions", bestPerforming.conversions)} Conversions');
+    expect(adComparison).toContain('fmtCardMetricValue("conversions", bestPerforming.conversions)} Key Events');
+    expect(ga4Metrics).toContain('${fmtCardMetricValue("conversions", bestPerforming.conversions)} Key Events');
+    expect(ga4Metrics).toContain('title: "MOST KEY EVENTS"');
+    expect(scheduledPdf).toContain('${formatMetricValue("conversions", bestPerforming.conversions)} Key Events');
+    expect(scheduledPdf).toContain('title: "MOST KEY EVENTS"');
     expect(adComparison).toContain("Highest Conversion Rate");
     expect(ga4Metrics).toContain("formatGA4AdComparisonCardPct(mostEfficient.conversionRate)");
     expect(ga4Metrics).toContain("formatGA4AdComparisonCardPct(Number(needsAttention?.conversionRate || 0))");

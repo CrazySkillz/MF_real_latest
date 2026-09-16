@@ -208,6 +208,16 @@ try {
   const metricSelect = adHeading.locator('xpath=../..').getByRole('combobox');
   if (await metricSelect.count() !== 1) throw new Error('Ad Comparison metric selector is not uniquely scoped');
   const uiBreakdownPattern = `**/api/campaigns/${CAMPAIGN_ID}/ga4-breakdown?window=import-to-date&propertyId=${PROPERTY_ID}`;
+  const reloadWithLiveBreakdown = async () => {
+    const [response] = await Promise.all([
+      page.waitForResponse((candidate) => candidate.url().endsWith(
+        `/api/campaigns/${CAMPAIGN_ID}/ga4-breakdown?window=import-to-date&propertyId=${PROPERTY_ID}`,
+      ), { timeout: 120000 }),
+      page.reload({ waitUntil: 'domcontentloaded', timeout: 120000 }),
+    ]);
+    if (!response.ok()) throw new Error(`Live Ad Comparison breakdown reload failed (${response.status()})`);
+    await adHeading.waitFor({ timeout: 120000 });
+  };
   const routeBreakdown = async (route: any, routedRows: any[]) => route.fulfill({
     status: 200,
     contentType: 'application/json',
@@ -240,8 +250,7 @@ try {
   const zeroCampaignsCard = page.getByText('Campaigns Compared', { exact: true }).locator('xpath=..');
   if (!(await zeroCampaignsCard.innerText()).includes('1')) throw new Error('Valid zero campaign was not counted');
   await page.unroute(uiBreakdownPattern);
-  await page.getByRole('tab', { name: 'Overview', exact: true }).click();
-  await page.getByRole('tab', { name: 'Ad Comparison', exact: true }).click();
+  await reloadWithLiveBreakdown();
   await page.getByText(`Compare GA4 campaigns from the initial import (${expectedWindow.startDate}) through the latest completed day (${expectedWindow.endDate})`, { exact: true })
     .waitFor({ timeout: 120000 });
 
@@ -338,8 +347,7 @@ try {
     .waitFor({ timeout: 120000 });
   await page.getByText('Top Campaigns by Conversion Rate', { exact: true }).waitFor({ timeout: 30000 });
   await page.unroute(uiBreakdownPattern);
-  await page.getByRole('tab', { name: 'Overview', exact: true }).click();
-  await page.getByRole('tab', { name: 'Ad Comparison', exact: true }).click();
+  await reloadWithLiveBreakdown();
   await page.getByText('Showing the last verified campaign breakdown. The latest refresh failed.', { exact: true })
     .waitFor({ state: 'hidden', timeout: 120000 });
 

@@ -2744,6 +2744,7 @@ export default function GA4Metrics() {
     Array.isArray(spendSourcesResp?.sources) &&
     spendSourcesResp.sources.length === 0;
   const financialSpendAvailable =
+    hasSpendSources &&
     (spendBreakdownResp !== undefined ||
       spendToDateResp !== undefined ||
       spendSourceDefinitionsKnownEmpty) &&

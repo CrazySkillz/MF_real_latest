@@ -141,6 +141,24 @@ describe("GA4 Overview Spend readiness contract", () => {
     expect(overview).toContain("const spendSourcesCount = spendDisplaySources.length;");
   });
 
+  it("withholds Spend and dependent Performance when source details are unavailable", () => {
+    const availability = slice(overview, "const financialSpendAvailable =", "const financialSpendLoading =");
+    expect(availability).toContain("hasSpendSources &&");
+    expect(availability).toContain("spendMetricAvailable");
+    const evaluate = new Function(
+      "hasSpendSources", "spendBreakdownResp", "spendToDateResp",
+      "spendSourceDefinitionsKnownEmpty", "spendMetricAvailable",
+      `${availability} return financialSpendAvailable;`,
+    ) as (hasSources: boolean, breakdown: unknown, toDate: unknown, knownEmpty: boolean, metricAvailable: boolean) => boolean;
+    expect(evaluate(false, undefined, { spendToDate: 338, sourceIds: ["sheet"] }, false, true)).toBe(false);
+    expect(evaluate(true, undefined, { spendToDate: 0 }, false, true)).toBe(true);
+    expect(evaluate(true, { totalSpend: 338 }, undefined, false, true)).toBe(true);
+    expect(evaluate(true, { totalSpend: 338 }, { spendToDate: 338 }, false, true)).toBe(true);
+    const cards = slice(overview, "{/* Total Spend */}", "{/* Campaign Breakdown */}");
+    expect(cards).toContain("renderFinancialValue(financialSpendLoading, financialSpendAvailable");
+    expect(cards).toContain("financialRevenueAvailable && financialSpendAvailable");
+  });
+
   it("propagates GA4 Spend to KPI, aggregate, snapshot, report, and UI refresh consumers", () => {
     expect(jobs).toContain('getSpendTotalForRange(campaignId, spendSourceWindow.startDate, spendSourceWindow.endDate, "ga4")');
     expect(currentValues).toContain('storage.getSpendBreakdownBySource(campaignId, spendSourceStartDate, endDate, "ga4")');

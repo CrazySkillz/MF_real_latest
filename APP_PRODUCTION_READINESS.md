@@ -45,7 +45,7 @@ saved source configuration.
 | 2 | KPIs | `COMPLETE` |
 | 3 | Benchmarks | `COMPLETE` |
 | 4 | Ad Comparison | `COMPLETE` |
-| 5 | Insights | `QUEUED` |
+| 5 | Insights | `IN_PROGRESS` |
 | 6 | Reports | `QUEUED` |
 
 #### GA4 Overview certification breakdown
@@ -111,6 +111,18 @@ dependencies and are not reopened by this work.
 | - | Ad Comparison (whole section) | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` only for the retained live tab at deployed runtime `70b73a229ebb9e1021c3d18d63119d05bdee7e26`, Campaign2/property/saved-filter/USD; both retained subsections and All Campaigns removal passed together. Controlling certificate: `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`. Reports delivery and other configurations are excluded; required steps remaining for this boundary: 0. |
 | 1 | Ad Comparison (chart and summary) | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` only for the documented Campaign2/property/saved-campaign boundary at deployed runtime `3013ec6b52a93eaca01cd14c538dd0a20f350fac`: metric dropdown, chart, three ranking cards, two summary cards, and matching PDF values. Controlling certificate: `GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md`. All Campaigns, Revenue Breakdown, and Reports delivery remain excluded. |
 | 2 | Revenue Breakdown | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` only for the exact documented Campaign2/property/source boundary at runtime `dd9cd51ea755e896838c78be8cab020fc0249eba`; controlling certificate: `GA4/AD_COMPARISON_REVENUE_BREAKDOWN_CERTIFICATION_2026-09-16.md`. Native comparison-window revenue and imported source-to-date amounts remain separate; no cross-window Total Revenue or report-delivery claim. |
+
+#### GA4 Insights fresh subsection validation
+
+The existing whole-live-tab Insights certificate at `4be16c54c550a45dbf3104313c820ea47b453604` remains preserved at its exact documented boundary. The rows below track a new, separate subsection-by-subsection pass; `UNVERIFIED` rows have not passed that fresh check, and a subsection pass does not certify the current whole tab. Treat GA4 Overview, KPIs, Benchmarks, and financial-source certificates as read-only dependencies. Do not modify protected certified behavior or evidence without explicit approval. Reports and delivery remain outside this Insights pass.
+
+| Order | Insights subsection | Work state | Fresh certification status | Required validation boundary |
+| ---: | --- | --- | --- | --- |
+| - | Insights (fresh combined-page pass) | `QUEUED` | `UNVERIFIED` | After all four rows pass, reconcile shared inputs, header/freshness states, cross-section consistency, ownership, refresh/failure behavior, and the complete live page at one exact deployed runtime. Preserve the earlier bounded whole-tab certificate. |
+| 1 | Executive Financials | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` only for Spend, Revenue, Profit, ROAS, ROI, and “Sources used” within the exact campaign/property/USD/source and value-state boundary in `GA4/INSIGHTS_EXECUTIVE_FINANCIALS_CERTIFICATION_2026-09-17.md`; validated application runtime `f4fe2f3e3b47a3b350dd14c8a8d336bc8ff946ca`, corrected documentation commit `74b778e33d9bf2758b5a681c90424b781f414b3e`. GA4 Overview financial values are read-only inputs; the whole Insights tab, its other subsections, upstream source lifecycles, and other configurations are not certified by this row. Required steps remaining for this bounded consumer result: 0. |
+| 2 | Trends | `QUEUED` | `UNVERIFIED` | Daily, 7d, 30d, and Monthly values and charts; completed-day/timezone cutoff, sparse history, weighted rates, comparison eligibility, freshness, and scheduler-fed daily inputs. |
+| 3 | Data Summary | `QUEUED` | `UNVERIFIED` | Sessions, conversions, Top Channel, channel table/share/rate, exact date/source/medium matching, incomplete attribution, valid zero, and withheld or stale states. |
+| 4 | What to investigate next | `QUEUED` | `UNVERIFIED` | All finding categories, order, severity, basis/confidence, recommendations, deduplication and withholding; include the three finding-count tracker cards and KPI/Benchmark input boundaries. |
 
 Each GA4 section must independently pass the complete no-overclaim standard at
 an exact current runtime: visible/downstream value inventory, provider/query and
@@ -194,7 +206,7 @@ known broken. They mean the app-wide production-ready claim is not yet proven.
 | GA4 KPIs | `CERTIFIED` | `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact documented KPI boundary at deployed runtime `f7afeb2b`; documentation commit `47180dcf`; required steps remaining: 0. GA4 Overview remains a read-only upstream dependency and is not recertified by this entry. |
 | GA4 Benchmarks | `CERTIFIED` | `GA4/OVERVIEW_BENCHMARKs_CERTIFICATION_2026-09-15.md`; `GA4/OVERVIEW_BENCHMARKS_DEPENDENCY_MANIFEST_2026-09-15.md`; `GA4/BENCHMARKS_PRODUCTION_READINESS.md` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact documented Benchmark boundary at application runtime `47180dcf96586fa4fff9a83e7a097e33e42c0721`; deployed evidence commit `bdecb67142bdbe505084d397f195e252db40a4f8` changed Benchmark documentation only. The earlier `236afff9` runtime and `a96ba06e` machine record remain historical. GA4 Overview and KPIs are not recertified by this entry. |
 | GA4 Ad Comparison | `CERTIFIED` | `GA4/certifications/ga4-ad-comparison.json`; `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`; `GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md`; `GA4/AD_COMPARISON_REVENUE_BREAKDOWN_CERTIFICATION_2026-09-16.md` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact Campaign2/property/saved-filter/USD retained live-tab boundary at deployed runtime `70b73a229ebb9e1021c3d18d63119d05bdee7e26`; chart/cards/summary and Revenue Breakdown passed together, All Campaigns absent. Reports delivery and other configurations excluded; required steps remaining: 0. |
-| GA4 Insights | `CERTIFIED` | `GA4/certifications/ga4-insights.json`; `GA4/INSIGHTS_PRODUCTION_READINESS.md` | Exact live-tab runtime `4be16c54c550a45dbf3104313c820ea47b453604`. |
+| GA4 Insights | `CERTIFIED` | `GA4/certifications/ga4-insights.json`; `GA4/INSIGHTS_PRODUCTION_READINESS.md` | Historical bounded whole-live-tab certificate for exact runtime `4be16c54c550a45dbf3104313c820ea47b453604` is preserved, not renewed for `f4fe2f3e`; Executive Financials alone has a fresh subsection certificate above. The current combined Insights page remains unverified. |
 | GA4 Reports | `UNVERIFIED` | `GA4/certifications/ga4-reports.json`; `GA4/REPORTS_PRODUCTION_READINESS.md` | Exact-current scheduled/server Campaign Breakdown artifact parity remains pending. |
 | GA4 reporting timezone | `RECONCILE` | `GA4/REPORTING_TIMEZONE_PRODUCTION_READINESS.md` | Individual validation commits are recorded, but the document has no single current whole-path certificate. |
 | GA4 KPI/Benchmark alerts and notifications | `RECONCILE` | `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md` | Lifecycle evidence exists, but its broad KPI status conflicts with the newer KPI machine record. |

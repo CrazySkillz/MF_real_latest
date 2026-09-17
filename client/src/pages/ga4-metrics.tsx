@@ -4775,6 +4775,19 @@ export default function GA4Metrics() {
     [insightsRollupRows, insightsRollupCutoff],
   );
   const insightsDataSummaryTotals = insightsRollups.last30;
+  const dataSummaryHistoryTotals = (ga4InsightsDailyResp as any)?.overviewTotals;
+  const dataSummaryHistoryStartDate = String((ga4InsightsDailyResp as any)?.overviewStartDate || "");
+  const dataSummaryHistoryEndDate = String((ga4InsightsDailyResp as any)?.dataThroughDate || "");
+  const dataSummaryHistorySessions = Number(dataSummaryHistoryTotals?.sessions);
+  const dataSummaryHistoryConversions = Number(dataSummaryHistoryTotals?.conversions);
+  const dataSummaryHistoryAvailable = ga4InsightsDailyResp !== undefined &&
+    dataSummaryHistoryTotals?.sessions != null && dataSummaryHistoryTotals?.conversions != null &&
+    /^\d{4}-\d{2}-\d{2}$/.test(dataSummaryHistoryStartDate) && /^\d{4}-\d{2}-\d{2}$/.test(dataSummaryHistoryEndDate) &&
+    dataSummaryHistoryStartDate <= dataSummaryHistoryEndDate &&
+    Number.isFinite(dataSummaryHistorySessions) && dataSummaryHistorySessions >= 0 &&
+    Number.isFinite(dataSummaryHistoryConversions) && dataSummaryHistoryConversions >= 0 &&
+    (dataSummaryHistorySessions > 0 || dataSummaryHistoryConversions > 0 ||
+      ga4InsightsTimeSeries.some((row) => row.date >= dataSummaryHistoryStartDate && row.date <= dataSummaryHistoryEndDate));
   // --- Channel analysis for data-driven recommendations ---
   const channelAnalysis = useMemo(() => {
     const breakdownRows = !breakdownPlaceholder && Array.isArray(ga4Breakdown?.rows) ? ga4Breakdown.rows : [];
@@ -4855,6 +4868,12 @@ export default function GA4Metrics() {
     channelAnalysis.totalSessions === insightsDataSummaryTotals.sessions &&
     channelAnalysis.totalConversions === insightsDataSummaryTotals.conversions;
   const dataSummaryChannelAnalysis = insightsChannelBreakdownMatchesDaily ? channelAnalysis : null;
+  const dataSummaryHistoryChannelAnalysis = dataSummaryHistoryAvailable && dataSummaryChannelAnalysis &&
+    String((ga4Breakdown as any)?.startDate || "") === dataSummaryHistoryStartDate &&
+    String((ga4Breakdown as any)?.endDate || "") === dataSummaryHistoryEndDate &&
+    dataSummaryChannelAnalysis.totalSessions === dataSummaryHistorySessions &&
+    dataSummaryChannelAnalysis.totalConversions === dataSummaryHistoryConversions
+    ? dataSummaryChannelAnalysis : null;
   const recommendationChannelAnalysis = breakdownError ? null : dataSummaryChannelAnalysis;
   const insightsInitialLoading =
     activeTab === "insights" && (
@@ -9454,64 +9473,71 @@ export default function GA4Metrics() {
                           {ga4InsightsDailyError && ga4InsightsDailyResp === undefined && (
                             <div className="mb-4 text-sm text-destructive">GA4 summary values are unavailable; no zero values are inferred.</div>
                           )}
+                          {trendsRefreshIsStale && dataSummaryHistoryAvailable && (
+                            <div className="mb-4 text-sm text-amber-700 dark:text-amber-300" data-testid="insights-data-summary-stale">
+                              Showing the latest available GA4 summary values. Daily data may be out of date; verify the refresh before using these figures.
+                            </div>
+                          )}
+                          {ga4InsightsDailyResp !== undefined && !dataSummaryHistoryAvailable && (
+                            <div className="mb-4 text-sm text-muted-foreground">GA4 summary values are unavailable: no usable imported history was returned for this property.</div>
+                          )}
                           {breakdownError && ga4Breakdown === undefined && (
                             <div className="mb-4 text-sm text-destructive">Channel values are unavailable; no channel recommendation is inferred.</div>
                           )}
                           {breakdownError && ga4Breakdown !== undefined && !breakdownPlaceholder && (
                             <div className="mb-4 text-sm text-amber-700 dark:text-amber-300">Showing last-good channel values; channel-based recommendations are withheld until refresh succeeds.</div>
                           )}
-                          {ga4InsightsDailyResp !== undefined && channelAnalysis && !insightsChannelBreakdownMatchesDaily && (
+                          {dataSummaryHistoryAvailable && ga4Breakdown !== undefined && !breakdownPlaceholder && !breakdownError &&
+                            (dataSummaryHistorySessions > 0 || dataSummaryHistoryConversions > 0) && !dataSummaryHistoryChannelAnalysis && (
                             <div className="mb-4 text-sm text-amber-700 dark:text-amber-300" data-testid="insights-data-summary-channel-unavailable">
-                              Channel breakdown unavailable because GA4 did not return complete session attribution for this reporting window.
+                              Channel breakdown unavailable because its dates or totals do not match the GA4 daily summary for this reporting window.
                             </div>
                           )}
-                          {ga4InsightsDailyResp !== undefined && dataSummaryChannelAnalysis && (
+                          {dataSummaryHistoryAvailable && (
                             <p className="mb-4 text-xs text-muted-foreground/70" data-testid="insights-data-summary-scope-note">
-                              Sessions, conversions and channels cover recent 30 days
+                              GA4 imported history: {dataSummaryHistoryStartDate} to {dataSummaryHistoryEndDate} ({trendsReportingTimeZoneLabel}); missing days excluded.
                             </p>
                           )}
                           {timeSeriesLoading && ga4InsightsDailyResp === undefined && (
                             <div className="mb-4 h-8 rounded bg-muted animate-pulse" aria-label="Loading GA4 Insights summary" />
                           )}
                           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {ga4InsightsDailyResp !== undefined && (
+                            {dataSummaryHistoryAvailable && (
                               <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-sessions">
                                 <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Sessions</p>
-                                <p className="text-xl font-bold text-foreground mt-1">{formatNumber(insightsDataSummaryTotals.sessions)}</p>
+                                <p className="text-xl font-bold text-foreground mt-1">{formatNumber(dataSummaryHistorySessions)}</p>
                                 <p className="text-xs text-muted-foreground/70 mt-0.5">
-                                  {insightsDataSummaryTotals.complete
-                                    ? "Exact completed-day window"
-                                    : `Partial: ${insightsDataSummaryTotals.days}/${insightsDataSummaryTotals.expectedDays} imported days; missing days excluded`}
+                                  Import-to-date GA4 sessions
                                 </p>
                               </div>
                             )}
-                            {ga4InsightsDailyResp !== undefined && (
+                            {dataSummaryHistoryAvailable && (
                               <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-conversions">
                                 <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Conversions</p>
-                                <p className="text-xl font-bold text-foreground mt-1">{formatNumber(insightsDataSummaryTotals.conversions)}</p>
+                                <p className="text-xl font-bold text-foreground mt-1">{formatNumber(dataSummaryHistoryConversions)}</p>
                                 <p className="text-xs text-muted-foreground/70 mt-0.5">
-                                  {insightsDataSummaryTotals.sessions > 0
-                                    ? `${formatPct((insightsDataSummaryTotals.conversions / insightsDataSummaryTotals.sessions) * 100)} conversion rate${insightsDataSummaryTotals.complete ? "" : " across imported days"}`
+                                  {dataSummaryHistorySessions > 0
+                                    ? `${formatPct((dataSummaryHistoryConversions / dataSummaryHistorySessions) * 100)} conversion rate across imported history`
                                     : "Valid zero sessions"}
                                 </p>
                               </div>
                             )}
-                            {dataSummaryChannelAnalysis && dataSummaryChannelAnalysis.topSessionChannel && (
+                            {dataSummaryHistoryChannelAnalysis && dataSummaryHistoryChannelAnalysis.topSessionChannel && (
                               <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-top-channel">
                                 <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Top Channel</p>
-                                <p className="text-base font-bold text-foreground mt-1 truncate" title={dataSummaryChannelAnalysis.topSessionChannel.label}>
-                                  {dataSummaryChannelAnalysis.topSessionChannel.label}
+                                <p className="text-base font-bold text-foreground mt-1 truncate" title={dataSummaryHistoryChannelAnalysis.topSessionChannel.label}>
+                                  {dataSummaryHistoryChannelAnalysis.topSessionChannel.label}
                                 </p>
                                 <p className="text-xs text-muted-foreground/70 mt-0.5">
-                                  {`${dataSummaryChannelAnalysis.topSessionShare.toFixed(0)}% of ${formatNumber(dataSummaryChannelAnalysis.totalSessions)} channel-breakdown sessions · ${dataSummaryChannelAnalysis.channelCount} channels`}
+                                  {`${dataSummaryHistoryChannelAnalysis.topSessionShare.toFixed(0)}% of ${formatNumber(dataSummaryHistoryChannelAnalysis.totalSessions)} channel-breakdown sessions · ${dataSummaryHistoryChannelAnalysis.channelCount} channels`}
                                 </p>
                               </div>
                             )}
                           </div>
-                          {dataSummaryChannelAnalysis && dataSummaryChannelAnalysis.channels && dataSummaryChannelAnalysis.channels.length >= 1 && (
+                          {dataSummaryHistoryChannelAnalysis && dataSummaryHistoryChannelAnalysis.channels && dataSummaryHistoryChannelAnalysis.channels.length >= 1 && (
                             <div className="mt-4 pt-4 border-t">
                               <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide mb-2">
-                                Channel Breakdown · {formatNumber(dataSummaryChannelAnalysis.totalSessions)} sessions · {String((ga4Breakdown as any)?.startDate || "")} → {String((ga4Breakdown as any)?.endDate || "")}
+                                Channel Breakdown · {formatNumber(dataSummaryHistoryChannelAnalysis.totalSessions)} sessions · {String((ga4Breakdown as any)?.startDate || "")} → {String((ga4Breakdown as any)?.endDate || "")}
                               </p>
                               <div className="overflow-hidden border rounded-md">
                                 <table className="w-full text-sm">
@@ -9525,10 +9551,10 @@ export default function GA4Metrics() {
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {dataSummaryChannelAnalysis.channels.map((ch: any) => {
-                                      const share = dataSummaryChannelAnalysis.totalSessions > 0 ? (ch.sessions / dataSummaryChannelAnalysis.totalSessions * 100) : 0;
+                                    {dataSummaryHistoryChannelAnalysis.channels.map((ch: any) => {
+                                      const share = dataSummaryHistoryChannelAnalysis.totalSessions > 0 ? (ch.sessions / dataSummaryHistoryChannelAnalysis.totalSessions * 100) : 0;
                                       const cr = ch.sessions > 0 ? (ch.conversions / ch.sessions * 100) : 0;
-                                      const isLowestCR = dataSummaryChannelAnalysis.channels.length > 1 && dataSummaryChannelAnalysis.lowestCRChannel?.label === ch.label;
+                                      const isLowestCR = dataSummaryHistoryChannelAnalysis.channels.length > 1 && dataSummaryHistoryChannelAnalysis.lowestCRChannel?.label === ch.label;
                                       return (
                                         <tr key={ch.label} className="border-b last:border-b-0" data-testid="insights-summary-channel-row" data-channel-label={ch.label}>
                                           <td className="p-2 pl-3 text-foreground font-medium truncate max-w-[200px]" title={ch.label}>{ch.label}</td>

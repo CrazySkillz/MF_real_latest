@@ -133,7 +133,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(start).toBeGreaterThan(-1);
     expect(section).toContain("formatNumber(ch.sessions)");
     expect(section).toContain("formatNumber(ch.conversions)");
-    expect(section).toContain("ch.sessions / dataSummaryChannelAnalysis.totalSessions");
+    expect(section).toContain("ch.sessions / dataSummaryHistoryChannelAnalysis.totalSessions");
     expect(section).not.toContain("sessScale");
     expect(section).not.toContain("convScaleFactor");
     expect(section).not.toContain("scaledSessions");
@@ -151,7 +151,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(section).toContain("Showing last-good financial values");
     expect(page).not.toContain("Showing last-good Data Summary financial values because one or more source refreshes failed.");
     expect(page).not.toContain("Showing last-good GA4 summary values; trend recommendations are withheld until refresh succeeds.");
-    expect(page).toContain("Sessions, conversions and channels cover recent 30 days");
+    expect(page).toContain("GA4 imported history:");
     expect(page).toContain('const financialRevenueAvailable = activeTab === "insights"');
     expect(page).toContain("? ga4ToDateResp !== undefined && (!requiresVerifiedNativeCurrency || ga4NativeCurrencyVerified) && importedRevenueAvailable && revenueMetricAvailable");
     expect(page).toContain(": ga4FinancialNativeAvailable && importedRevenueAvailable && revenueMetricAvailable;");

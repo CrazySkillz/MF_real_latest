@@ -31,7 +31,7 @@ describe("GA4 Insights Data Summary accuracy", () => {
     const pdf = readScheduledPdf();
 
     const liveStart = page.indexOf('<CardTitle className="text-lg">Data Summary</CardTitle>');
-    const liveEnd = page.indexOf("{dataSummaryChannelAnalysis && dataSummaryChannelAnalysis.channels", liveStart);
+    const liveEnd = page.indexOf("{dataSummaryHistoryChannelAnalysis && dataSummaryHistoryChannelAnalysis.channels", liveStart);
     const liveSection = page.slice(liveStart, liveEnd);
 
     const downloadStart = page.indexOf('sectionTitle("Data Summary", C.insights);');
@@ -57,7 +57,7 @@ describe("GA4 Insights Data Summary accuracy", () => {
       expect(section).not.toContain("financialRevenue / Math.max");
       expect(section).not.toContain("/day avg");
     }
-    expect(liveSection).toContain("Exact completed-day window");
+    expect(liveSection).toContain("GA4 imported history:");
     for (const section of [downloadSection, scheduledSection]) {
       expect(section).toContain("Current GA4 total");
     }

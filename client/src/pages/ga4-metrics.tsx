@@ -8856,22 +8856,20 @@ export default function GA4Metrics() {
 
                     {(() => {
                       const executive = resolveGA4InsightsExecutiveFinancials({
+                        overviewSpend: financialSpend,
+                        overviewSpendAvailable: financialSpendAvailable,
+                        overviewHasSpendSources: hasSpendSources,
                         spendToDate: spendToDateResp,
                         spendBreakdown: spendBreakdownResp,
                         spendDisplaySources,
                         spendSourceDefinitions: Array.isArray(spendSourcesResp?.sources) ? spendSourcesResp.sources : [],
                         spendDetailsError: spendSourcesError || spendBreakdownError,
-                        spendBreakdownError,
-                        spendToDateError,
                         revenueToDate: importedRevenueToDateResp,
                         revenueDisplaySources,
                         revenueDetailsError: revenueSourcesError || revenueBreakdownError,
                         hasNativeRevenueMetric: ga4HasRevenueMetric,
                       });
-                      const financialSpend = executive.spend;
-                      const financialSpendAvailable = executive.spendAvailable;
-                      const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
-                      const financialROI = computeRoiPercent(financialRevenue, financialSpend);
+                      const executiveSpendAvailable = executive.spendAvailable;
                       const spendSourceLabels = executive.spendSourceLabels;
                       const revenueSourceLabels = executive.revenueSourceLabels;
                       const nativeEndDate = String((ga4ToDateResp as any)?.endDate || "");
@@ -8895,7 +8893,7 @@ export default function GA4Metrics() {
                             <CardContent className="p-5">
                               <div className="text-sm font-medium text-muted-foreground/70">Spend</div>
                               <div className="text-2xl font-bold text-foreground">
-                                {renderFinancialValue(financialSpendLoading, financialSpendAvailable, formatMoney(Number(financialSpend || 0)), spendKpiInputState === "ready" && !spendMetricAvailable ? "Not connected" : "Unavailable")}
+                                {renderFinancialValue(financialSpendLoading, financialSpendAvailable && executiveSpendAvailable, formatMoney(Number(financialSpend || 0)), spendKpiInputState === "ready" && !spendMetricAvailable ? "Not connected" : "Unavailable")}
                               </div>
                             </CardContent>
                           </Card>
@@ -8910,10 +8908,10 @@ export default function GA4Metrics() {
                           <Card data-testid="insights-financial-profit">
                             <CardContent className="p-5">
                               <div className="text-sm font-medium text-muted-foreground/70">Profit</div>
-                              <div className={`text-2xl font-bold ${!(financialRevenueAvailable && financialSpendAvailable) ? 'text-foreground' : (financialRevenue - financialSpend) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                              <div className={`text-2xl font-bold ${!(financialRevenueAvailable && financialSpendAvailable && executiveSpendAvailable) ? 'text-foreground' : (financialRevenue - financialSpend) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                                 {renderFinancialValue(
                                   financialRevenueLoading || financialSpendLoading,
-                                  financialRevenueAvailable && financialSpendAvailable,
+                                  financialRevenueAvailable && financialSpendAvailable && executiveSpendAvailable,
                                   formatMoney(financialRevenue - financialSpend),
                                 )}
                               </div>
@@ -8925,9 +8923,9 @@ export default function GA4Metrics() {
                               <div className="text-2xl font-bold text-foreground">
                                 {renderFinancialValue(
                                   financialRevenueLoading || financialSpendLoading,
-                                  financialRevenueAvailable && financialSpendAvailable && financialSpend > 0,
+                                  financialRevenueAvailable && financialSpendAvailable && executiveSpendAvailable && financialSpend > 0,
                                   `${Number(financialROAS || 0).toFixed(2)}x`,
-                                  financialSpendAvailable && financialSpend <= 0 ? "—" : "Unavailable",
+                                  executiveSpendAvailable ? (financialSpendAvailable && financialSpend <= 0 ? "—" : "Unavailable") : "Unavailable",
                                 )}
                               </div>
                             </CardContent>
@@ -8938,9 +8936,9 @@ export default function GA4Metrics() {
                               <div className="text-2xl font-bold text-foreground">
                                 {renderFinancialValue(
                                   financialRevenueLoading || financialSpendLoading,
-                                  financialRevenueAvailable && financialSpendAvailable && financialSpend > 0,
+                                  financialRevenueAvailable && financialSpendAvailable && executiveSpendAvailable && financialSpend > 0,
                                   formatPercentage(Number(financialROI || 0)),
-                                  financialSpendAvailable && financialSpend <= 0 ? "—" : "Unavailable",
+                                  executiveSpendAvailable ? (financialSpendAvailable && financialSpend <= 0 ? "—" : "Unavailable") : "Unavailable",
                                 )}
                               </div>
                             </CardContent>

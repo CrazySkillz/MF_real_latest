@@ -43,23 +43,21 @@ const labelsForIds = (ids: string[], sources: FinancialSource[]) => {
 };
 
 export const resolveGA4InsightsExecutiveFinancials = (input: {
+  overviewSpend: number;
+  overviewSpendAvailable: boolean;
+  overviewHasSpendSources: boolean;
   spendToDate?: FinancialTotal;
   spendBreakdown?: { totalSpend?: unknown; sources?: unknown };
   spendDisplaySources?: FinancialSource[];
   spendSourceDefinitions?: FinancialSource[];
   spendDetailsError?: boolean;
-  spendBreakdownError?: boolean;
-  spendToDateError?: boolean;
   revenueToDate?: FinancialTotal;
   revenueDisplaySources?: FinancialSource[];
   revenueDetailsError?: boolean;
   hasNativeRevenueMetric: boolean;
 }) => {
-  const breakdownSpend = finiteAmount(input.spendBreakdown?.totalSpend);
-  const toDateSpend = finiteAmount(input.spendToDate?.spendToDate);
-  const useToDateSpend = input.spendBreakdownError && !input.spendToDateError && toDateSpend !== null;
-  const spend = useToDateSpend ? toDateSpend : breakdownSpend ?? toDateSpend ?? 0;
-  const useBreakdownDetails = input.spendToDateError && !input.spendBreakdownError;
+  const useBreakdownDetails = input.spendBreakdown?.totalSpend !== null &&
+    input.spendBreakdown?.totalSpend !== undefined;
   const spendSources = useBreakdownDetails
     ? [...(input.spendDisplaySources || []), ...(input.spendSourceDefinitions || [])]
     : [...(input.spendSourceDefinitions || []), ...(input.spendDisplaySources || [])];
@@ -69,16 +67,14 @@ export const resolveGA4InsightsExecutiveFinancials = (input: {
       : [],
   );
   const spendIds = sourceIds(input.spendToDate?.sourceIds);
-  const selectedSpendIds = useBreakdownDetails && breakdownIds.length > 0
-    ? breakdownIds
-    : spendIds.length > 0 ? spendIds : breakdownIds;
+  const selectedSpendIds = useBreakdownDetails ? breakdownIds : spendIds;
   const spendDetails = labelsForIds(selectedSpendIds, spendSources);
   const spendSourceLabels = selectedSpendIds.length > 0
     ? spendDetails.labels
-    : spend === 0 ? Array.from(new Set(spendSources.map(sourceLabel).filter(Boolean))) : [];
+    : input.overviewSpend === 0 ? Array.from(new Set(spendSources.map(sourceLabel).filter(Boolean))) : [];
   if (spendDetails.missing > 0) {
     spendSourceLabels.push(`Source details unavailable (${spendDetails.missing} ${spendDetails.missing === 1 ? "source" : "sources"})`);
-  } else if (selectedSpendIds.length === 0 && (spend !== 0 || input.spendDetailsError) && spendSources.length === 0) {
+  } else if (selectedSpendIds.length === 0 && (input.overviewSpend !== 0 || input.spendDetailsError)) {
     spendSourceLabels.push("Source details unavailable");
   }
 
@@ -103,9 +99,7 @@ export const resolveGA4InsightsExecutiveFinancials = (input: {
   }
 
   return {
-    spend,
-    spendAvailable: (breakdownSpend !== null || toDateSpend !== null) &&
-      (selectedSpendIds.length > 0 || spendSources.length > 0),
+    spendAvailable: input.overviewSpendAvailable && input.overviewHasSpendSources && Number.isFinite(input.overviewSpend),
     spendSourceLabels,
     revenueSourceLabels,
   };

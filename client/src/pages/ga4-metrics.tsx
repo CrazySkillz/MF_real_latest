@@ -9025,6 +9025,11 @@ export default function GA4Metrics() {
                           <span className="whitespace-nowrap">Latest imported day <span className="font-medium text-foreground">{trendsLatestImportedDateLabel}</span> <span aria-hidden="true">|</span></span>
                           <span className="whitespace-nowrap">Last refreshed <span className="font-medium text-foreground">{trendsLastRefreshedLabel}</span></span>
                         </div>
+                        {trendsRefreshIsStale && ga4InsightsDailyResp !== undefined && (
+                          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900" data-testid="insights-trends-stale">
+                            Showing last-good GA4 daily history. Refresh is stale; trend recommendations are withheld until refresh succeeds.
+                          </div>
+                        )}
                         {ga4InsightsDailyError && ga4InsightsDailyResp === undefined && (
                           <div className="rounded-md border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-900">
                             GA4 daily history is unavailable. Trend values and trend-based recommendations are withheld.
@@ -9120,6 +9125,8 @@ export default function GA4Metrics() {
                           } else {
                             const windowDays = insightsTrendMode === "7d" ? 7 : 30;
                             const completeRows = insightsTrendMode === "7d" ? complete7DayRows : complete30DayRows;
+                            // Non-rate metrics show rolling window totals (sum of last N days).
+                            // engagementRate is already a weighted average of engaged sessions over sessions.
                             let cursor = String(completeRows[0]?.date || "");
                             const finalDate = String(completeRows[completeRows.length - 1]?.date || "");
                             while (cursor && cursor <= finalDate) {

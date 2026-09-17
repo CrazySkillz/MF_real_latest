@@ -37,6 +37,7 @@ import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPe
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
 import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "@shared/ga4-financial-source";
 import { resolveExactGA4CampaignBreakdownRevenue } from "@shared/ga4-campaign-breakdown";
+import { resolveGA4InsightsExecutiveFinancials } from "@/lib/ga4-insights-executive-financials";
 import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy, resolveKpiDataSufficiency, computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "@shared/kpi-math";
 import { resolveGA4KpiLiveValue } from "@shared/ga4-kpi-live-value";
 import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "@shared/ga4-kpi-metric-identity";
@@ -8853,7 +8854,27 @@ export default function GA4Metrics() {
                       </p>
                     </div>
 
-                    <Card className="border-border" data-testid="insights-executive-financials">
+                    {(() => {
+                      const executive = resolveGA4InsightsExecutiveFinancials({
+                        spendToDate: spendToDateResp,
+                        spendBreakdown: spendBreakdownResp,
+                        spendDisplaySources,
+                        spendSourceDefinitions: Array.isArray(spendSourcesResp?.sources) ? spendSourcesResp.sources : [],
+                        spendDetailsError: spendSourcesError || spendBreakdownError,
+                        spendBreakdownError,
+                        spendToDateError,
+                        revenueToDate: importedRevenueToDateResp,
+                        revenueDisplaySources,
+                        revenueDetailsError: revenueSourcesError || revenueBreakdownError,
+                        hasNativeRevenueMetric: ga4HasRevenueMetric,
+                      });
+                      const financialSpend = executive.spend;
+                      const financialSpendAvailable = executive.spendAvailable;
+                      const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
+                      const financialROI = computeRoiPercent(financialRevenue, financialSpend);
+                      const spendSourceLabels = executive.spendSourceLabels;
+                      const revenueSourceLabels = executive.revenueSourceLabels;
+                      return <Card className="border-border" data-testid="insights-executive-financials">
                       <CardHeader>
                         <CardTitle className="text-lg">Executive Financials</CardTitle>
                       </CardHeader>
@@ -8935,7 +8956,8 @@ export default function GA4Metrics() {
                           </div>
                         </div>
                       </CardContent>
-                    </Card>
+                    </Card>;
+                    })()}
 
                     {/* Trends card — replaces Performance Rollups with chart + metric selector */}
                     <Card className="border-border" data-testid="insights-trends">

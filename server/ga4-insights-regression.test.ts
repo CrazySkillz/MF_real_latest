@@ -296,7 +296,7 @@ describe("GA4 Insights regression guard", () => {
     expect(content).toContain("channelAnalysis.totalConversions === insightsDataSummaryTotals.conversions");
     expect(content).toContain("const dataSummaryChannelAnalysis = insightsChannelBreakdownMatchesDaily ? channelAnalysis : null;");
     expect(content).toContain("const recommendationChannelAnalysis = breakdownError ? null : dataSummaryChannelAnalysis;");
-    expect(content).toContain("Channel breakdown unavailable because its dates or totals do not match the GA4 daily summary for this reporting window.");
+    expect(content).toContain("Top Channel and channel rows are hidden until channel data covers the same dates and adds up to these totals.");
     expect(content).toContain("{dataSummaryHistoryChannelAnalysis && dataSummaryHistoryChannelAnalysis.topSessionChannel && (");
     expect(content).toContain("{dataSummaryHistoryChannelAnalysis && dataSummaryHistoryChannelAnalysis.channels && dataSummaryHistoryChannelAnalysis.channels.length >= 1 && (");
     expect(content).not.toContain("Channel figures use a separate GA4 breakdown and are not a breakdown of the");

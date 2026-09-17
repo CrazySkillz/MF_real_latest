@@ -4868,12 +4868,12 @@ export default function GA4Metrics() {
     channelAnalysis.totalSessions === insightsDataSummaryTotals.sessions &&
     channelAnalysis.totalConversions === insightsDataSummaryTotals.conversions;
   const dataSummaryChannelAnalysis = insightsChannelBreakdownMatchesDaily ? channelAnalysis : null;
-  const dataSummaryHistoryChannelAnalysis = dataSummaryHistoryAvailable && dataSummaryChannelAnalysis &&
+  const dataSummaryHistoryChannelAnalysis = dataSummaryHistoryAvailable && channelAnalysis &&
     String((ga4Breakdown as any)?.startDate || "") === dataSummaryHistoryStartDate &&
     String((ga4Breakdown as any)?.endDate || "") === dataSummaryHistoryEndDate &&
-    dataSummaryChannelAnalysis.totalSessions === dataSummaryHistorySessions &&
-    dataSummaryChannelAnalysis.totalConversions === dataSummaryHistoryConversions
-    ? dataSummaryChannelAnalysis : null;
+    channelAnalysis.totalSessions === dataSummaryHistorySessions &&
+    channelAnalysis.totalConversions === dataSummaryHistoryConversions
+    ? channelAnalysis : null;
   const recommendationChannelAnalysis = breakdownError ? null : dataSummaryChannelAnalysis;
   const insightsInitialLoading =
     activeTab === "insights" && (
@@ -9490,7 +9490,7 @@ export default function GA4Metrics() {
                           {dataSummaryHistoryAvailable && ga4Breakdown !== undefined && !breakdownPlaceholder && !breakdownError &&
                             (dataSummaryHistorySessions > 0 || dataSummaryHistoryConversions > 0) && !dataSummaryHistoryChannelAnalysis && (
                             <div className="mb-4 text-sm text-amber-700 dark:text-amber-300" data-testid="insights-data-summary-channel-unavailable">
-                              Channel breakdown unavailable because its dates or totals do not match the GA4 daily summary for this reporting window.
+                              Top Channel and channel rows are hidden until channel data covers the same dates and adds up to these totals.
                             </div>
                           )}
                           {dataSummaryHistoryAvailable && (

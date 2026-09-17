@@ -4158,7 +4158,6 @@ export default function GA4Metrics() {
           ...(breakdownTotals.sessions > 0 ? [["Sessions", formatNumber(breakdownTotals.sessions), "Current GA4 total"] as [string, string, string]] : []),
           ...(breakdownTotals.conversions > 0 ? [["Conversions", formatNumber(breakdownTotals.conversions), breakdownTotals.sessions > 0 ? `${formatPct((breakdownTotals.conversions / breakdownTotals.sessions) * 100)} conversion rate` : ""] as [string, string, string]] : []),
           ...(financialRevenue > 0 ? [["Revenue", formatMoney(financialRevenue), "Total across revenue sources"] as [string, string, string]] : []),
-          ...(dataSummaryChannelAnalysis?.topSessionChannel ? [["Top Channel", String(dataSummaryChannelAnalysis.topSessionChannel.label || ""), `${dataSummaryChannelAnalysis.topSessionShare.toFixed(0)}% of ${formatNumber(dataSummaryChannelAnalysis.totalSessions)} channel-breakdown sessions · ${dataSummaryChannelAnalysis.channelCount} channels`]] : []),
         ];
         const secondaryDataCards: string[][] = [
           ...(financialSpend > 0 ? [["Total Spend", formatMoney(financialSpend), ""] as [string, string, string]] : []),
@@ -4168,29 +4167,6 @@ export default function GA4Metrics() {
         ];
         if (primaryDataCards.length > 0) renderInsightDataCards(primaryDataCards, 4);
         if (secondaryDataCards.length > 0) renderInsightDataCards(secondaryDataCards, 4);
-        if (dataSummaryChannelAnalysis?.channels && dataSummaryChannelAnalysis.channels.length >= 1) {
-          const sessScale = dataSummaryChannelAnalysis.totalSessions > 0 ? breakdownTotals.sessions / dataSummaryChannelAnalysis.totalSessions : 1;
-          const convScale = (dataSummaryChannelAnalysis.channels.reduce((s: number, c: any) => s + c.conversions, 0) || 1);
-          const convScaleFactor = breakdownTotals.conversions > 0 ? breakdownTotals.conversions / convScale : 1;
-          addSimpleTable(
-            "Channel Breakdown",
-            ["CHANNEL", "SESSIONS", "SHARE", "CONVERSIONS", "CONV. RATE"],
-            dataSummaryChannelAnalysis.channels.map((ch: any) => {
-              const scaledSessions = Math.round(Number(ch?.sessions || 0) * sessScale);
-              const scaledConversions = Math.round(Number(ch?.conversions || 0) * convScaleFactor);
-              const share = breakdownTotals.sessions > 0 ? (scaledSessions / breakdownTotals.sessions * 100) : 0;
-              const cr = scaledSessions > 0 ? (scaledConversions / scaledSessions * 100) : 0;
-              return [
-                String(ch?.label || ""),
-                formatNumber(scaledSessions),
-                `${share.toFixed(0)}%`,
-                formatNumber(scaledConversions),
-                formatPct(cr),
-              ];
-            }),
-            [72, 24, 18, 28, 30]
-          );
-        }
       }
 
       if (!insightsOnlyActions) {
@@ -4868,12 +4844,6 @@ export default function GA4Metrics() {
     channelAnalysis.totalSessions === insightsDataSummaryTotals.sessions &&
     channelAnalysis.totalConversions === insightsDataSummaryTotals.conversions;
   const dataSummaryChannelAnalysis = insightsChannelBreakdownMatchesDaily ? channelAnalysis : null;
-  const dataSummaryHistoryChannelAnalysis = dataSummaryHistoryAvailable && channelAnalysis &&
-    String((ga4Breakdown as any)?.startDate || "") === dataSummaryHistoryStartDate &&
-    String((ga4Breakdown as any)?.endDate || "") === dataSummaryHistoryEndDate &&
-    channelAnalysis.totalSessions === dataSummaryHistorySessions &&
-    channelAnalysis.totalConversions === dataSummaryHistoryConversions
-    ? channelAnalysis : null;
   const recommendationChannelAnalysis = breakdownError ? null : dataSummaryChannelAnalysis;
   const insightsInitialLoading =
     activeTab === "insights" && (
@@ -9481,18 +9451,6 @@ export default function GA4Metrics() {
                           {ga4InsightsDailyResp !== undefined && !dataSummaryHistoryAvailable && (
                             <div className="mb-4 text-sm text-muted-foreground">GA4 summary values are unavailable: no usable imported history was returned for this property.</div>
                           )}
-                          {breakdownError && ga4Breakdown === undefined && (
-                            <div className="mb-4 text-sm text-destructive">Channel values are unavailable; no channel recommendation is inferred.</div>
-                          )}
-                          {breakdownError && ga4Breakdown !== undefined && !breakdownPlaceholder && (
-                            <div className="mb-4 text-sm text-amber-700 dark:text-amber-300">Showing last-good channel values; channel-based recommendations are withheld until refresh succeeds.</div>
-                          )}
-                          {dataSummaryHistoryAvailable && ga4Breakdown !== undefined && !breakdownPlaceholder && !breakdownError &&
-                            (dataSummaryHistorySessions > 0 || dataSummaryHistoryConversions > 0) && !dataSummaryHistoryChannelAnalysis && (
-                            <div className="mb-4 text-sm text-amber-700 dark:text-amber-300" data-testid="insights-data-summary-channel-unavailable">
-                              Top Channel and channel rows are hidden until channel data covers the same dates and adds up to these totals.
-                            </div>
-                          )}
                           {dataSummaryHistoryAvailable && (
                             <p className="mb-4 text-xs text-muted-foreground/70" data-testid="insights-data-summary-scope-note">
                               GA4 imported history: {dataSummaryHistoryStartDate} to {dataSummaryHistoryEndDate} ({trendsReportingTimeZoneLabel}); missing days excluded.
@@ -9522,56 +9480,7 @@ export default function GA4Metrics() {
                                 </p>
                               </div>
                             )}
-                            {dataSummaryHistoryChannelAnalysis && dataSummaryHistoryChannelAnalysis.topSessionChannel && (
-                              <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-top-channel">
-                                <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Top Channel</p>
-                                <p className="text-base font-bold text-foreground mt-1 truncate" title={dataSummaryHistoryChannelAnalysis.topSessionChannel.label}>
-                                  {dataSummaryHistoryChannelAnalysis.topSessionChannel.label}
-                                </p>
-                                <p className="text-xs text-muted-foreground/70 mt-0.5">
-                                  {`${dataSummaryHistoryChannelAnalysis.topSessionShare.toFixed(0)}% of ${formatNumber(dataSummaryHistoryChannelAnalysis.totalSessions)} channel-breakdown sessions · ${dataSummaryHistoryChannelAnalysis.channelCount} channels`}
-                                </p>
-                              </div>
-                            )}
                           </div>
-                          {dataSummaryHistoryChannelAnalysis && dataSummaryHistoryChannelAnalysis.channels && dataSummaryHistoryChannelAnalysis.channels.length >= 1 && (
-                            <div className="mt-4 pt-4 border-t">
-                              <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide mb-2">
-                                Channel Breakdown · {formatNumber(dataSummaryHistoryChannelAnalysis.totalSessions)} sessions · {String((ga4Breakdown as any)?.startDate || "")} → {String((ga4Breakdown as any)?.endDate || "")}
-                              </p>
-                              <div className="overflow-hidden border rounded-md">
-                                <table className="w-full text-sm">
-                                  <thead className="bg-muted border-b">
-                                    <tr>
-                                      <th className="text-left p-2 pl-3">Channel</th>
-                                      <th className="text-right p-2">Sessions</th>
-                                      <th className="text-right p-2">Share</th>
-                                      <th className="text-right p-2">Conversions</th>
-                                      <th className="text-right p-2 pr-3">Conv. Rate</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {dataSummaryHistoryChannelAnalysis.channels.map((ch: any) => {
-                                      const share = dataSummaryHistoryChannelAnalysis.totalSessions > 0 ? (ch.sessions / dataSummaryHistoryChannelAnalysis.totalSessions * 100) : 0;
-                                      const cr = ch.sessions > 0 ? (ch.conversions / ch.sessions * 100) : 0;
-                                      const isLowestCR = dataSummaryHistoryChannelAnalysis.channels.length > 1 && dataSummaryHistoryChannelAnalysis.lowestCRChannel?.label === ch.label;
-                                      return (
-                                        <tr key={ch.label} className="border-b last:border-b-0" data-testid="insights-summary-channel-row" data-channel-label={ch.label}>
-                                          <td className="p-2 pl-3 text-foreground font-medium truncate max-w-[200px]" title={ch.label}>{ch.label}</td>
-                                          <td className="p-2 text-right tabular-nums text-foreground">{formatNumber(ch.sessions)}</td>
-                                          <td className="p-2 text-right tabular-nums text-muted-foreground/70">{share.toFixed(0)}%</td>
-                                          <td className="p-2 text-right tabular-nums text-foreground">{formatNumber(ch.conversions)}</td>
-                                          <td className={`p-2 pr-3 text-right tabular-nums ${isLowestCR ? "text-red-600 font-medium" : "text-foreground"}`}>
-                                            {formatPct(cr)}
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          )}
                         </CardContent>
                       </Card>
 

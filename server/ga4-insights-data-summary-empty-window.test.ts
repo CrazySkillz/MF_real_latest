@@ -16,7 +16,7 @@ describe("GA4 Insights Data Summary empty window", () => {
 
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"), "utf-8");
     const start = page.indexOf('<CardTitle className="text-lg">Data Summary</CardTitle>');
-    const end = page.indexOf('data-testid="insights-summary-top-channel"', start);
+    const end = page.indexOf("</CardContent>", start);
     const section = page.slice(start, end);
     const guard = "dataSummaryHistoryAvailable && (";
 

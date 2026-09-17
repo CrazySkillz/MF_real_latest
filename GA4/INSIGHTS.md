@@ -117,14 +117,13 @@ History gates:
 
 ### Data Summary
 
-Shows compact recent GA4 traffic and channel context for the imported reporting dates.
+Shows GA4 Sessions and Conversions for the selected campaign/property's imported history.
 
 Current meaning:
 
-- traffic values use the exact current 30-calendar-day completed-day window and remain visible for verified zero
-- when the standard acquisition response is partial, Insights uses session-campaign-scoped landing-page rows for traffic and standard GA4 acquisition rows for conversions/revenue, merged only by exact date/source/medium and filtered to the imported dates used by Data Summary; the result is shown only when every displayed metric total reconciles
-- channel rows render only when their dates, Sessions, and Conversions exactly match the daily-summary window; otherwise they are withheld rather than allocated or estimated
-- channel share copy names the raw breakdown-session denominator, and a lowest-conversion-rate channel is identified only when one channel is uniquely lower at the displayed one-decimal precision
+- on-screen traffic values use the saved historical-import start through the latest completed reporting day; missing days are excluded and verified zero remains distinct from unavailable data
+- this app version does not show Top Channel, a source/medium channel table, or channel-availability warnings in Data Summary or its browser-generated PDF; those values are excluded from Data Summary certification
+- the existing GA4 acquisition response remains available to other Insights features under their own evidence and certification boundaries
 - campaign-to-date financial values remain in Executive Financials and are not duplicated in Data Summary
 
 ### Tracker Cards

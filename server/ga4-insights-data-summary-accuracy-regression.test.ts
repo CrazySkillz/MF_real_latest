@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { filterGA4InsightsBreakdownRowsToImportedDates } from "../shared/ga4-insights";
 
 const readClient = () =>
   readFileSync(join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"), "utf-8");
@@ -10,20 +9,26 @@ const readScheduledPdf = () =>
   readFileSync(join(process.cwd(), "server", "ga4-scheduled-report-pdf.ts"), "utf-8");
 
 describe("GA4 Insights Data Summary accuracy", () => {
-  it("limits channel rows to the exact imported dates used by the summary", () => {
-    const rows = [
-      { date: "2026-07-08", sessions: 200 },
-      { date: "2026-07-09", sessions: 249 },
-      { date: "2026-07-13", sessions: 306 },
-    ];
-    const filtered = filterGA4InsightsBreakdownRowsToImportedDates(
-      rows,
-      [{ date: "2026-07-08" }, { date: "2026-07-09" }],
-      "2026-07-08",
-      "2026-08-06",
-    );
-    expect(filtered).toEqual(rows.slice(0, 2));
-    expect(filtered.reduce((sum, row) => sum + row.sessions, 0)).toBe(449);
+  it("omits channel values from live and downloaded Data Summary", () => {
+    const page = readClient();
+    const liveStart = page.indexOf('<CardTitle className="text-lg">Data Summary</CardTitle>');
+    const liveEnd = page.indexOf("</CardContent>", liveStart);
+    const downloadStart = page.indexOf('sectionTitle("Data Summary", C.insights);');
+    const downloadEnd = page.indexOf("if (!insightsOnlyActions)", downloadStart);
+    const scheduledPdf = readScheduledPdf();
+    const scheduledStart = scheduledPdf.indexOf('"Data Summary",');
+    const scheduledEnd = scheduledPdf.indexOf("if (includeActions)", scheduledStart);
+    expect(liveStart).toBeGreaterThan(-1);
+    expect(liveEnd).toBeGreaterThan(liveStart);
+    expect(downloadStart).toBeGreaterThan(-1);
+    expect(downloadEnd).toBeGreaterThan(downloadStart);
+    expect(scheduledStart).toBeGreaterThan(-1);
+    expect(scheduledEnd).toBeGreaterThan(scheduledStart);
+    for (const section of [page.slice(liveStart, liveEnd), page.slice(downloadStart, downloadEnd), scheduledPdf.slice(scheduledStart, scheduledEnd)]) {
+      expect(section).not.toContain("Top Channel");
+      expect(section).not.toContain("Channel Breakdown");
+      expect(section).not.toContain("scaledSessions");
+    }
   });
 
   it("does not present additive to-date revenue as an exact daily average", () => {
@@ -31,11 +36,11 @@ describe("GA4 Insights Data Summary accuracy", () => {
     const pdf = readScheduledPdf();
 
     const liveStart = page.indexOf('<CardTitle className="text-lg">Data Summary</CardTitle>');
-    const liveEnd = page.indexOf("{dataSummaryHistoryChannelAnalysis && dataSummaryHistoryChannelAnalysis.channels", liveStart);
+    const liveEnd = page.indexOf("</CardContent>", liveStart);
     const liveSection = page.slice(liveStart, liveEnd);
 
     const downloadStart = page.indexOf('sectionTitle("Data Summary", C.insights);');
-    const downloadEnd = page.indexOf("if (dataSummaryChannelAnalysis?.channels", downloadStart);
+    const downloadEnd = page.indexOf("if (!insightsOnlyActions)", downloadStart);
     const downloadSection = page.slice(downloadStart, downloadEnd);
 
     const scheduledStart = pdf.indexOf('"Data Summary",');

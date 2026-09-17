@@ -21,15 +21,11 @@ describe("GA4 Insights Data Summary history window", () => {
     expect(start).toBeGreaterThan(-1);
     expect(end).toBeGreaterThan(start);
     expect(page).toContain("const dataSummaryHistoryTotals = (ga4InsightsDailyResp as any)?.overviewTotals;");
-    expect(page).toContain("const dataSummaryHistoryChannelAnalysis = dataSummaryHistoryAvailable && channelAnalysis &&");
-    expect(page).toContain('String((ga4Breakdown as any)?.startDate || "") === dataSummaryHistoryStartDate');
-    expect(page).toContain('String((ga4Breakdown as any)?.endDate || "") === dataSummaryHistoryEndDate');
-    expect(page).toContain("channelAnalysis.totalSessions === dataSummaryHistorySessions");
-    expect(page).toContain("channelAnalysis.totalConversions === dataSummaryHistoryConversions");
-    expect(page).not.toContain("dataSummaryHistoryAvailable && dataSummaryChannelAnalysis &&");
     expect(section).toContain("formatNumber(dataSummaryHistorySessions)");
     expect(section).toContain("formatNumber(dataSummaryHistoryConversions)");
-    expect(section).toContain("dataSummaryHistoryChannelAnalysis && dataSummaryHistoryChannelAnalysis.channels");
+    expect(section).not.toContain("Top Channel");
+    expect(section).not.toContain("Channel Breakdown");
+    expect(section).not.toContain("insights-data-summary-channel-unavailable");
     expect(page).toContain("const recommendationChannelAnalysis = breakdownError ? null : dataSummaryChannelAnalysis;");
   });
 });

@@ -103,7 +103,6 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain("const recommendationChannelAnalysis = breakdownError ? null : dataSummaryChannelAnalysis;");
     expect(page).toContain("const ch = recommendationChannelAnalysis;");
     expect(page).toContain("if (recommendationChannelAnalysis && recommendationChannelAnalysis.topSessionChannel");
-    expect(page).toContain("Showing last-good channel values; channel-based recommendations are withheld until refresh succeeds.");
   });
 
   it("recomputes financial integrity findings when source availability changes", () => {
@@ -124,16 +123,18 @@ describe("live GA4 Insights production boundary", () => {
     expect(findings).toContain('revenueKpiInputState === "ready" && ga4HasRevenueMetric && Number(importedRevenueForFinancials || 0) > 0');
   });
 
-  it("renders raw channel rows without proportional allocation", () => {
+  it("omits channel values from Data Summary", () => {
     const page = read("client", "src", "pages", "ga4-metrics.tsx");
     const start = page.indexOf('<CardTitle className="text-lg">Data Summary</CardTitle>');
     const end = page.indexOf("</CardContent>", start);
     const section = page.slice(start, end);
 
     expect(start).toBeGreaterThan(-1);
-    expect(section).toContain("formatNumber(ch.sessions)");
-    expect(section).toContain("formatNumber(ch.conversions)");
-    expect(section).toContain("ch.sessions / dataSummaryHistoryChannelAnalysis.totalSessions");
+    expect(section).toContain("formatNumber(dataSummaryHistorySessions)");
+    expect(section).toContain("formatNumber(dataSummaryHistoryConversions)");
+    expect(section).not.toContain("Top Channel");
+    expect(section).not.toContain("Channel Breakdown");
+    expect(section).not.toContain("insights-data-summary-channel-unavailable");
     expect(section).not.toContain("sessScale");
     expect(section).not.toContain("convScaleFactor");
     expect(section).not.toContain("scaledSessions");
@@ -194,7 +195,6 @@ describe("live GA4 Insights production boundary", () => {
       "insights-financial-sources", "insights-trends", "insights-data-summary",
       "insights-trends-chart",
       "insights-summary-sessions", "insights-summary-conversions",
-      "insights-summary-top-channel", "insights-summary-channel-row",
       "insights-trackers", "insights-tracker-total", "insights-tracker-high",
       "insights-tracker-medium", "insights-findings", "insights-finding", "insights-hidden-count",
       "insights-scope-context", "insights-scope-client", "insights-scope-campaign", "insights-scope-property", "insights-scope-filter",
@@ -204,6 +204,7 @@ describe("live GA4 Insights production boundary", () => {
     for (const removedTestId of [
       "insights-summary-revenue", "insights-summary-spend", "insights-summary-profit",
       "insights-summary-roas", "insights-summary-cpa",
+      "insights-summary-top-channel", "insights-summary-channel-row", "insights-data-summary-channel-unavailable",
     ]) {
       expect(page).not.toContain(`data-testid="${removedTestId}"`);
     }
@@ -277,19 +278,13 @@ describe("live GA4 Insights production boundary", () => {
     expect(validator).toContain("const importedRevenueSourceIds = new Set(");
     expect(validator).toContain("revenueDisplaySources.filter((source: any) => importedRevenueSourceIds.has");
     expect(validator).toContain('cardText("insights-summary-sessions")');
-    expect(validator).toContain('"summary traffic completeness"');
+    expect(validator).toContain('"summary history window"');
+    expect(validator).toContain('"summary traffic scope"');
     expect(validator).not.toContain('"summary start date"');
     expect(validator).not.toContain('"summary end date"');
-    expect(validator).toContain('getByTestId("insights-summary-channel-row")');
-    expect(validator).toContain("const expectedRenderedChannels = breakdownMatchesDaily ? expectedChannels : [];");
-    expect(validator).toContain('cardText("insights-data-summary-channel-unavailable")');
-    expect(validator).toContain('throw new Error("Top Channel should be withheld for a mismatched breakdown")');
-    const channelCellsStart = validator.indexOf("const expectedCells = [", validator.indexOf("const channelRows"));
-    const channelCellsEnd = validator.indexOf("];", channelCellsStart);
-    const channelCells = validator.slice(channelCellsStart, channelCellsEnd);
-    expect(channelCells).toContain("formatNumber(expected.conversions)");
-    expect(channelCells).toContain("formatPct(expected.sessions > 0");
-    expect(channelCells).not.toContain("formatMoney(expected.revenue");
+    expect(validator).toContain('"insights-summary-top-channel", "insights-summary-channel-row", "insights-data-summary-channel-unavailable"');
+    expect(validator).not.toContain('getByTestId("insights-summary-channel-row")');
+    expect(validator).toContain("channelRows: 0");
     expect(validator).toContain('validateRollingMode("7d", 7)');
     expect(validator).toContain("const expected7DaySessionChart = normalizedDailyRows.slice(-14).reduce");
     expect(validator).toContain("rolling7DayChart: expected7DaySessionChart");

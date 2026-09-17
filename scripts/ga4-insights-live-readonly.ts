@@ -350,13 +350,6 @@ try {
   if (await owner.page.getByTestId("ga4-overview-freshness-warning").count() !== 0) {
     throw new Error("Shared daily freshness warning should not be rendered");
   }
-  responses.breakdownDebug = await request(
-    owner.page,
-    `${paths.breakdown}&insightsChannelAttribution=1&debug=1`,
-  );
-  if (!responses.breakdownDebug.ok) {
-    throw new Error(`breakdown debug endpoint failed (${responses.breakdownDebug.status})`);
-  }
   const toDateTotals = responses.toDate.body?.totals || {};
   const revenueDefinitions = Array.isArray(responses.revenueSources.body?.sources) ? responses.revenueSources.body.sources : [];
   const spendDefinitions = Array.isArray(responses.spendSources.body?.sources) ? responses.spendSources.body.sources : [];
@@ -469,87 +462,23 @@ try {
   if (sourcesText.includes("Windows:")) throw new Error("Sources used should not render financial windows");
 
   const summaryText = await cardText("insights-data-summary");
-  assertIncludes(summaryText, uiRollups.last30.days + "/" + uiRollups.last30.expectedDays + " imported days", "summary completeness");
-  assertIncludes(await cardText("insights-summary-sessions"), formatNumber(uiRollups.last30.sessions), "summary sessions");
-  assertIncludes(
-    await cardText("insights-summary-sessions"),
-    uiRollups.last30.complete
-      ? "Exact completed-day window"
-      : `Partial: ${uiRollups.last30.days}/${uiRollups.last30.expectedDays} imported days; missing days excluded`,
-    "summary traffic completeness",
-  );
-  assertIncludes(await cardText("insights-summary-conversions"), formatNumber(uiRollups.last30.conversions), "summary conversions");
+  const summaryTotals = uiDailyBody?.overviewTotals;
+  const summaryStartDate = String(uiDailyBody?.overviewStartDate || "");
+  const summaryEndDate = String(uiDailyBody?.dataThroughDate || "");
+  if (summaryTotals?.sessions == null || summaryTotals?.conversions == null ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(summaryStartDate) || !/^\d{4}-\d{2}-\d{2}$/.test(summaryEndDate) ||
+      summaryStartDate > summaryEndDate) throw new Error("Data Summary imported-history evidence is unavailable");
+  assertIncludes(summaryText, `GA4 imported history: ${summaryStartDate} to ${summaryEndDate}`, "summary history window");
+  assertIncludes(await cardText("insights-summary-sessions"), formatNumber(summaryTotals.sessions), "summary sessions");
+  assertIncludes(await cardText("insights-summary-sessions"), "Import-to-date GA4 sessions", "summary traffic scope");
+  assertIncludes(await cardText("insights-summary-conversions"), formatNumber(summaryTotals.conversions), "summary conversions");
   assertIncludes(
     await cardText("insights-summary-conversions"),
-    uiRollups.last30.sessions > 0 ? formatPct((uiRollups.last30.conversions / uiRollups.last30.sessions) * 100) + " conversion rate" : "Valid zero sessions",
+    Number(summaryTotals.sessions) > 0 ? formatPct((Number(summaryTotals.conversions) / Number(summaryTotals.sessions)) * 100) + " conversion rate" : "Valid zero sessions",
     "summary conversion rate",
   );
-  for (const testId of ["insights-summary-revenue", "insights-summary-spend", "insights-summary-profit", "insights-summary-roas", "insights-summary-cpa"]) {
+  for (const testId of ["insights-summary-revenue", "insights-summary-spend", "insights-summary-profit", "insights-summary-roas", "insights-summary-cpa", "insights-summary-top-channel", "insights-summary-channel-row", "insights-data-summary-channel-unavailable"]) {
     if (await owner.page.getByTestId(testId).count() !== 0) throw new Error(`${testId} should not be rendered in Data Summary`);
-  }
-
-  const channelMap = new Map<string, { label: string; sessions: number; conversions: number; revenue: number }>();
-  for (const sourceRow of Array.isArray(responses.breakdown.body?.rows) ? responses.breakdown.body.rows : []) {
-    const source = String(sourceRow?.source || "(direct)").trim();
-    const medium = String(sourceRow?.medium || "(none)").trim();
-    const label = source + " / " + medium;
-    const value = channelMap.get(label) || { label, sessions: 0, conversions: 0, revenue: 0 };
-    value.sessions += Number(sourceRow?.sessions || 0);
-    value.conversions += Number(sourceRow?.conversions || 0);
-    value.revenue += Number(sourceRow?.revenue || 0);
-    channelMap.set(label, value);
-  }
-  const expectedChannels = Array.from(channelMap.values()).sort((a, b) => b.sessions - a.sessions);
-  const breakdownMatchesDaily =
-    String(responses.breakdown.body?.startDate || "") === String(uiRollups.last30.startDate || "") &&
-    String(responses.breakdown.body?.endDate || "") === String(uiRollups.last30.endDate || "") &&
-    Number(responses.breakdown.body?.totals?.sessions || 0) === uiRollups.last30.sessions &&
-    Number(responses.breakdown.body?.totals?.conversions || 0) === uiRollups.last30.conversions;
-  const expectedRenderedChannels = breakdownMatchesDaily ? expectedChannels : [];
-  const channelTotalSessions = expectedRenderedChannels.reduce((sum, channel) => sum + channel.sessions, 0);
-  const channelRows = owner.page.getByTestId("insights-summary-channel-row");
-  const renderedChannelCount = await channelRows.count();
-  if (renderedChannelCount !== expectedRenderedChannels.length) {
-    throw new Error("Rendered channel row count does not match the scoped breakdown "
-      + JSON.stringify({
-        renderedChannelCount,
-        expectedChannels,
-        breakdownWindow: [responses.breakdown.body?.startDate, responses.breakdown.body?.endDate],
-        breakdownTotals: responses.breakdown.body?.totals,
-        breakdownDebug: responses.breakdownDebug.body?.meta,
-        dailyWindow: [uiRollups.last30.startDate, uiRollups.last30.endDate],
-        dailyTotals: { sessions: uiRollups.last30.sessions, conversions: uiRollups.last30.conversions },
-      }));
-  }
-  if (!breakdownMatchesDaily) {
-    assertIncludes(await cardText("insights-data-summary-channel-unavailable"),
-      "Channel breakdown unavailable because GA4 did not return complete session attribution for this reporting window.",
-      "channel mismatch state");
-    if (await owner.page.getByTestId("insights-summary-top-channel").count() !== 0) throw new Error("Top Channel should be withheld for a mismatched breakdown");
-  }
-  for (let index = 0; index < expectedRenderedChannels.length; index += 1) {
-    const expected = expectedRenderedChannels[index];
-    const cells = await channelRows.nth(index).locator("td").allInnerTexts();
-    const expectedCells = [
-      expected.label,
-      formatNumber(expected.sessions),
-      (channelTotalSessions > 0 ? (expected.sessions / channelTotalSessions) * 100 : 0).toFixed(0) + "%",
-      formatNumber(expected.conversions),
-      formatPct(expected.sessions > 0 ? (expected.conversions / expected.sessions) * 100 : 0),
-    ];
-    if (cells.map(normalizeText).join("|") !== expectedCells.map(normalizeText).join("|")) {
-      throw new Error("Rendered channel row parity failed for " + expected.label
-        + " (expected " + JSON.stringify(expectedCells.map(normalizeText))
-        + "; actual " + JSON.stringify(cells.map(normalizeText)) + ")");
-    }
-  }
-  if (expectedRenderedChannels.length > 0) {
-    const top = expectedRenderedChannels[0];
-    const topText = await cardText("insights-summary-top-channel");
-    assertIncludes(topText, top.label, "top channel label");
-    assertIncludes(topText, (channelTotalSessions > 0 ? (top.sessions / channelTotalSessions) * 100 : 0).toFixed(0)
-      + `% of ${formatNumber(channelTotalSessions)} channel-breakdown sessions`, "top channel share");
-    assertIncludes(topText, expectedRenderedChannels.length + " channels", "top channel count");
   }
 
   const normalizedDailyRows = normalizeGA4InsightsDailyRows(uiDailyBody?.data, uiDailyBody?.dataThroughDate);
@@ -1021,7 +950,7 @@ try {
     liveSurfaceParity: {
       executiveFinancialValues: Object.keys(expectedFinancialValues).length,
       summaryValues: 3,
-      channelRows: expectedRenderedChannels.length,
+      channelRows: 0,
       trendModes: 4,
       trackerValues: 3,
       visibleFindings: findings.length,

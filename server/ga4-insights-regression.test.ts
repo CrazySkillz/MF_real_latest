@@ -280,14 +280,7 @@ describe("GA4 Insights regression guard", () => {
     expect(pdfContent).not.toContain("dropped first");
   });
 
-  it("labels channel share with its raw breakdown denominator", () => {
-    const content = ga4MetricsFile();
-
-    expect(content).toContain("% of ${formatNumber(dataSummaryChannelAnalysis.totalSessions)} channel-breakdown sessions");
-    expect(content).not.toContain("{channelAnalysis.topSessionShare.toFixed(0)}% of sessions");
-  });
-
-  it("withholds mismatched channel attribution from the Data Summary and recommendations", () => {
+  it("keeps channel recommendations guarded while omitting Data Summary channel values", () => {
     const content = ga4MetricsFile();
 
     expect(content).toContain("const insightsChannelBreakdownMatchesDaily =");
@@ -296,9 +289,9 @@ describe("GA4 Insights regression guard", () => {
     expect(content).toContain("channelAnalysis.totalConversions === insightsDataSummaryTotals.conversions");
     expect(content).toContain("const dataSummaryChannelAnalysis = insightsChannelBreakdownMatchesDaily ? channelAnalysis : null;");
     expect(content).toContain("const recommendationChannelAnalysis = breakdownError ? null : dataSummaryChannelAnalysis;");
-    expect(content).toContain("Top Channel and channel rows are hidden until channel data covers the same dates and adds up to these totals.");
-    expect(content).toContain("{dataSummaryHistoryChannelAnalysis && dataSummaryHistoryChannelAnalysis.topSessionChannel && (");
-    expect(content).toContain("{dataSummaryHistoryChannelAnalysis && dataSummaryHistoryChannelAnalysis.channels && dataSummaryHistoryChannelAnalysis.channels.length >= 1 && (");
+    expect(content).not.toContain("dataSummaryHistoryChannelAnalysis");
+    expect(content).not.toContain('data-testid="insights-summary-top-channel"');
+    expect(content).not.toContain('data-testid="insights-summary-channel-row"');
     expect(content).not.toContain("Channel figures use a separate GA4 breakdown and are not a breakdown of the");
   });
 

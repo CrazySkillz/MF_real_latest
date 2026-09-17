@@ -9119,22 +9119,23 @@ export default function GA4Metrics() {
                             });
                           } else {
                             const windowDays = insightsTrendMode === "7d" ? 7 : 30;
-                            // Limit chart to relevant range: show 2× window (current + prior) for context
-                            const chartRows = sorted.slice(-(windowDays * 2));
-                            for (const row of chartRows) {
-                              const rollup = buildGA4InsightsCalendarRollup(sorted, String(row.date || ""), windowDays);
-                              if (!rollup.complete) continue;
+                            const completeRows = insightsTrendMode === "7d" ? complete7DayRows : complete30DayRows;
+                            let cursor = String(completeRows[0]?.date || "");
+                            const finalDate = String(completeRows[completeRows.length - 1]?.date || "");
+                            while (cursor && cursor <= finalDate) {
+                              const rollup = buildGA4InsightsCalendarRollup(sorted, cursor, windowDays);
                               let val = 0;
                               if (isRate) {
                                 val = rollup.engagementRate;
                               } else {
                                 val = Number((rollup as any)[metric] || 0);
                               }
-                              // engagementRate is already a weighted average — no further processing needed
-                              // Non-rate metrics show rolling window totals (sum of last N days)
-                              if (!rollingChartStartDate) rollingChartStartDate = String(rollup.startDate || "");
-                              rollingChartEndDate = String(rollup.endDate || "");
-                              chartData.push({ date: String(row.date || "").slice(5), value: Number(val.toFixed(2)), idx: chartData.length });
+                              if (rollup.complete) {
+                                if (!rollingChartStartDate) rollingChartStartDate = String(rollup.startDate || "");
+                                rollingChartEndDate = String(rollup.endDate || "");
+                              }
+                              chartData.push({ date: cursor.slice(5), value: rollup.complete ? Number(val.toFixed(2)) : null, idx: chartData.length });
+                              cursor = addGA4InsightsDateDays(cursor, 1) || "";
                             }
                           }
 
@@ -9199,7 +9200,11 @@ export default function GA4Metrics() {
                                           return `${periodLabel} period ending: ${dateLabel}`;
                                         }}
                                       />
-                                      <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={insightsTrendMode === "daily" ? { r: 3 } : chartData.length === 1 ? { r: 3 } : false} connectNulls={false} name={trendMetricLabels[metric] || metric} />
+                                      {chartData.some((point) => point.value === null) ? (
+                                        <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} connectNulls={false} name={trendMetricLabels[metric] || metric} />
+                                      ) : (
+                                        <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={insightsTrendMode === "daily" ? { r: 3 } : chartData.length === 1 ? { r: 3 } : false} connectNulls={false} name={trendMetricLabels[metric] || metric} />
+                                      )}
                                     </LineChart>
                                   )}
                                 </ResponsiveContainer>
@@ -9211,7 +9216,7 @@ export default function GA4Metrics() {
                               )}
                               {insightsTrendMode === "7d" && (
                                 <div className="mt-2 text-xs text-muted-foreground/70" data-testid="insights-7d-chart-coverage">
-                                  {chartData.length > 0 ? <>7-day chart {rollingChartStartDate} {"\u2192"} {rollingChartEndDate}: {chartData.length} complete rolling window{chartData.length === 1 ? "" : "s"}.</> : <>7-day chart: no complete rolling windows in the displayed range.</>} Each point totals 7 consecutive calendar days. Missing dates exclude affected windows, not treated as zero.
+                                  {chartData.length > 0 ? <>7-day chart {rollingChartStartDate} {"\u2192"} {rollingChartEndDate}: {chartData.filter((row) => row.value !== null).length} complete rolling window{chartData.filter((row) => row.value !== null).length === 1 ? "" : "s"}.</> : <>7-day chart: no complete rolling windows in the displayed range.</>} Each point totals 7 consecutive calendar days. Missing dates exclude affected windows, not treated as zero.
                                 </div>
                               )}
                               {insightsTrendMode === "monthly" && (
@@ -9246,7 +9251,7 @@ export default function GA4Metrics() {
                                               <td className="p-3 text-foreground">{r.date}</td>
                                               <td className="p-3 text-right font-medium tabular-nums text-foreground">{fmtValue(curVal)}</td>
                                               <td className="p-3 text-right">
-                                                {prevRow ? <span className={`text-xs ${deltaColor(delta)}`}>{fmtDelta(delta)}</span> : <span className="text-xs text-muted-foreground/70">—</span>}
+                                                {prevRow && prevVal !== 0 ? <span className={`text-xs ${deltaColor(delta)}`}>{fmtDelta(delta)}</span> : <span className="text-xs text-muted-foreground/70">{prevRow ? "No % baseline" : "—"}</span>}
                                               </td>
                                             </tr>
                                           );
@@ -9308,9 +9313,9 @@ export default function GA4Metrics() {
                                               </td>
                                               <td className="p-3 text-right font-medium tabular-nums text-foreground">{fmtValue(row.value)}</td>
                                               <td className="p-3 text-right">
-                                                {comparable
+                                                {comparable && prev && prev.value !== 0
                                                   ? <span className={`text-xs ${deltaColor(delta)}`}>{fmtDelta(delta)}</span>
-                                                  : <span className="text-xs text-muted-foreground/70">Not comparable</span>}
+                                                  : <span className="text-xs text-muted-foreground/70">{comparable ? "No % baseline" : "Not comparable"}</span>}
                                               </td>
                                             </tr>
                                           );
@@ -9354,7 +9359,7 @@ export default function GA4Metrics() {
                                         const delta = deltaPct(curVal, priorVal);
 
                                         return [
-                                          { label: `Last ${windowDays} days`, dateRange: `${cur.startDate} → ${cur.endDate}`, value: curVal, delta, hasDelta: true },
+                                          { label: `Last ${windowDays} days`, dateRange: `${cur.startDate} → ${cur.endDate}`, value: curVal, delta, hasDelta: priorVal !== 0, zeroBaseline: priorVal === 0 },
                                           { label: `Prior ${windowDays} days`, dateRange: `${prior.startDate} → ${prior.endDate}`, value: priorVal, delta: 0, hasDelta: false },
                                         ].map((row, i) => (
                                           <tr key={i} className="border-b last:border-b-0">
@@ -9368,7 +9373,7 @@ export default function GA4Metrics() {
                                             <td className="p-3 text-right">
                                               {row.hasDelta
                                                 ? <span className={`text-xs ${deltaColor(row.delta)}`}>{fmtDelta(row.delta)}</span>
-                                                : <span className="text-xs text-muted-foreground/70">baseline</span>}
+                                                : <span className="text-xs text-muted-foreground/70">{row.zeroBaseline ? "No % baseline" : "baseline"}</span>}
                                             </td>
                                           </tr>
                                         ));

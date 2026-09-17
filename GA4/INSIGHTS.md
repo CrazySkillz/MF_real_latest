@@ -85,6 +85,10 @@ Current meaning:
 
 ### Trends
 
+The current Trends-only implementation and exact-runtime evidence are in
+`GA4/INSIGHTS_TRENDS_CERTIFICATION_2026-09-17.md`. Earlier whole-Insights
+readiness records describe their own revision-specific Trends behavior.
+
 Shows completed daily-history views:
 
 - `Daily`
@@ -94,17 +98,19 @@ Shows completed daily-history views:
 
 Current meaning:
 
-- Trends uses persisted GA4 daily facts for the selected campaign/property/scope and shows only reporting dates on or after the campaign creation date
+- Trends uses persisted GA4 daily facts for the selected campaign/property/scope and shows only reporting dates on or after the campaign creation calendar date in the campaign reporting timezone; this display filter does not delete pre-creation stored rows or change other sections
 - Insights requests an isolated 60-calendar-day window through the latest completed reporting day so two exact 30-day windows can be evaluated without changing Overview or KPI windows; GA4 may return sparse rows, so returned row count is not treated as consecutive-day coverage
+- the normal Insights daily request is read-only; scheduled or explicit refresh paths update stored facts, while the separate Trends zero-day coverage check refetches on property/completed-day/refresh-marker changes and polls every 30 minutes while Insights is active
 - today's intraday data is excluded until it becomes a completed reporting day
-- `Latest imported day` and `Last refreshed` explain visible freshness; the completed-day cutoff still controls which daily rows are eligible
+- `Latest imported day` is the latest persisted row eligible for Trends after the creation-date filter, and `Last refreshed` shows the daily response's refresh timestamp; the completed-day cutoff still controls eligible rows but is not displayed as a separate label
 - `7d` and `30d` show rolling totals for non-rate metrics and weighted averages for rates
 - a missing GA4 row becomes zero only after a separate read-only check verifies no matching campaign values for that completed day; unverified missing dates remain gaps and cannot complete comparison windows
 - explicit zero engaged sessions remain zero; only a genuinely absent legacy value is derived from that row's sessions and engagement rate
+- the metric selector uses a native select; Users is available only in Daily because daily distinct-user counts cannot be summed across days
 
 History gates:
 
-- `Daily`: at least 2 available daily rows; the chart considers up to 30 calendar days through the latest eligible day, excludes pre-creation dates, preserves verified zero, leaves unverified dates as gaps, and shows a delta only when the actual prior calendar day exists
+- `Daily`: at least 2 eligible completed dates from stored rows or provider-verified zeros; the chart considers up to 30 calendar days through the latest eligible day, excludes pre-creation dates, preserves verified zero, leaves unverified dates as gaps, and shows a delta only when the actual prior calendar day exists; the table shows 14 recent rows initially and up to 30 with `Show all`
 - `7d`: the chart shows every complete historical 7-calendar-day rolling window in the visible history; the latest comparison requires two complete adjacent 7-calendar-day windows
 - `30d`: the chart shows every complete historical 30-calendar-day rolling window in the visible history; the latest comparison requires two complete adjacent 30-calendar-day windows
 - `Monthly`: one calendar month can be shown and is marked partial when incomplete; only two adjacent complete calendar months are compared

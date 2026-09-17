@@ -288,7 +288,7 @@ Mock-live GA4 seed-script caveat:
 - numeric GA4 property IDs, including mock-live validation properties, must use live GA4 import/query paths; only explicit `yesop` demo connections or request-level `?mock=1` should use deterministic simulation
 - GA4 processes Measurement Protocol events asynchronously, so app values can increase later without rerunning the script
 - repeat same-day script runs add more current events, but they do not create multiple persisted daily-history rows for Trends
-- to validate Insights Trends, run controlled data on separate UTC days or use a confirmed daily-backfill path; expected minimums are 2 days for `Daily`, 14 days for `7d`, 60 days for `30d`, and 2 calendar months for `Monthly`
+- to validate Insights Trends, use separate completed dates in the campaign reporting timezone or a confirmed daily-backfill path; provider-verified no-match dates may count as zero, while unverified missing dates do not. `Daily` needs 2 eligible dates; a `7d` chart point needs 7 consecutive dates and its latest adjacent comparison needs 14; a `30d` chart point needs 30 consecutive dates and its latest adjacent comparison needs 60; `Monthly` can show one partial month but needs 2 adjacent complete calendar months for comparison
 - seed scripts should send standard GA4 `page_view` and `purchase` events with UTM campaign/source/medium values; avoid standalone `user_engagement` events unless explicitly testing GA4 key-event configuration
 
 ## Practical Fix Cycle

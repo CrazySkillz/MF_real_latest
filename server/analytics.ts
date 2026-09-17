@@ -2812,6 +2812,61 @@ export class GoogleAnalytics4Service {
     }
   }
 
+  // Read-only presence check for Insights Trends. A missing date is a confirmed
+  // zero only when all attribution shapes used by the daily import were checked.
+  async getTrendsDailyPresenceWithToken(
+    propertyId: string,
+    accessToken: string,
+    startDate: string,
+    endDate: string,
+    campaignFilter?: CampaignFilter,
+    currencyCode?: string,
+  ): Promise<{ dailyRows: any[]; presentDates: string[] }> {
+    const dailyRows = await this.getTimeSeriesWithToken(propertyId, accessToken, startDate, campaignFilter, endDate, currencyCode);
+    const presentDates = new Set(dailyRows.map((row: any) => String(row?.date || "")));
+    const property = this.normalizeGA4PropertyId(propertyId);
+    const currency = String(currencyCode || "").trim().toUpperCase();
+    const runPresence = async (filter: any, metrics: string[]) => {
+      const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${property}:runReport`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dateRanges: [{ startDate, endDate }],
+          dimensions: [{ name: "date" }],
+          ...(currency ? { currencyCode: currency } : {}),
+          ...filter,
+          metrics: metrics.map((name) => ({ name })),
+        }),
+      });
+      if (!response.ok) throw new Error(`GA4 Trends presence check failed: ${await response.text()}`);
+      const result = await response.json();
+      if (currency && String(result?.metadata?.currencyCode || "").trim().toUpperCase() !== currency) {
+        throw new Error("GA4 Trends presence check currency is unverified");
+      }
+      for (const row of Array.isArray(result?.rows) ? result.rows : []) {
+        const rawDate = String(row?.dimensionValues?.[0]?.value || "");
+        const date = /^\d{8}$/.test(rawDate) ? `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6)}` : rawDate;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < startDate || date > endDate) {
+          throw new Error("GA4 Trends presence check returned an out-of-window date");
+        }
+        presentDates.add(date);
+      }
+    };
+    const utmFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
+    const conversionFilter = this.buildCampaignDimensionFilter(campaignFilter, "campaignName");
+    if (utmFilter) await runPresence(utmFilter, ["sessions", "screenPageViews", "totalUsers"]);
+    if (conversionFilter) {
+      try {
+        await runPresence(conversionFilter, ["conversions", "totalRevenue"]);
+      } catch (error: any) {
+        const message = String(error?.message || "").toLowerCase();
+        if (!message.includes("totalrevenue") && !message.includes("metric") && !message.includes("invalid")) throw error;
+        await runPresence(conversionFilter, ["conversions", "purchaseRevenue"]);
+      }
+    }
+    return { dailyRows, presentDates: Array.from(presentDates) };
+  }
+
   async getMetricsWithAutoRefresh(
     campaignId: string,
     storage: any,

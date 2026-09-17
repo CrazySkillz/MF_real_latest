@@ -9383,6 +9383,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Insights Trends verifies absent completed dates without changing shared daily facts.
+  app.get("/api/campaigns/:id/ga4-insights-trends-coverage", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const campaignId = req.params.id;
+    const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+    if (!campaign) return;
+    const requestedPropertyId = String(req.query.propertyId || "").trim();
+    if (!requestedPropertyId) return res.status(400).json({ success: false, error: "propertyId is required" });
+    const connection = await storage.getGA4Connection(campaignId, requestedPropertyId);
+    if (!connection || String(connection.propertyId).replace(/^properties\//i, "") !== requestedPropertyId.replace(/^properties\//i, "") || connection.isActive === false) {
+      return res.status(404).json({ success: false, error: "NO_GA4_CONNECTION" });
+    }
+    if (connection.method !== "access_token" || !connection.accessToken) {
+      return res.status(400).json({ success: false, error: "GA4_CONNECTION_UNAVAILABLE" });
+    }
+    const window = getReportingDateWindow(60, (campaign as any)?.reportingTimeZone);
+    const configuredStart = String((connection as any)?.importStartDate || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(configuredStart)) return res.status(400).json({ success: false, error: "GA4_IMPORT_START_DATE_INVALID" });
+    const startDate = configuredStart > window.startDate ? configuredStart : window.startDate;
+    const base = {
+      success: true,
+      propertyId: connection.propertyId,
+      startDate,
+      endDate: window.endDate,
+      reportingTimeZone: window.reportingTimeZone,
+    };
+    if (startDate > window.endDate) return res.json({ ...base, verified: false, zeroDates: [], reason: "no_completed_import_days" });
+    try {
+      const { dailyRows, presentDates } = await ga4Service.getTrendsDailyPresenceWithToken(
+        String(connection.propertyId),
+        String(connection.accessToken),
+        startDate,
+        window.endDate,
+        parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter),
+        String((campaign as any)?.currency || "USD"),
+      );
+      const stored = await storage.getGA4DailyMetrics(campaignId, String(connection.propertyId), startDate, window.endDate);
+      const providerByDate = new Map<string, any>();
+      for (const row of dailyRows) {
+        const date = String(row?.date || "");
+        const normalized = normalizeGA4InsightsDailyMetricValues(row);
+        if (!normalized || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date < startDate || date > window.endDate || providerByDate.has(date)) {
+          throw new Error("GA4 Trends provider daily rows are invalid");
+        }
+        providerByDate.set(date, normalized);
+      }
+      const storedByDate = new Map((stored || []).map((row: any) => [String(row.date), normalizeGA4InsightsDailyMetricValues(row)]));
+      const fields = ["sessions", "users", "conversions", "revenue", "pageviews", "engagedSessions", "engagementRate"];
+      const matchesStored = providerByDate.size === storedByDate.size && storedByDate.size === stored.length && Array.from(providerByDate).every(([date, row]) => {
+        const saved: any = storedByDate.get(date);
+        return saved && fields.every((field) => Math.abs(Number(row[field] ?? 0) - Number(saved[field] ?? 0)) <= (field === "revenue" ? 0.01 : field === "engagementRate" ? 0.00005 : 0.000001));
+      });
+      const presence = new Set(presentDates);
+      if (!matchesStored || Array.from(presence).some((date) => !storedByDate.has(date))) {
+        return res.json({ ...base, verified: false, zeroDates: [], reason: "stored_daily_history_differs_from_ga4" });
+      }
+      const zeroDates: string[] = [];
+      for (const date = new Date(`${startDate}T00:00:00.000Z`); date.toISOString().slice(0, 10) <= window.endDate; date.setUTCDate(date.getUTCDate() + 1)) {
+        const day = date.toISOString().slice(0, 10);
+        if (!presence.has(day)) zeroDates.push(day);
+      }
+      return res.json({ ...base, verified: true, zeroDates, dailyRows: stored.map(addDerivedGA4EngagedSessions), checkedAt: new Date().toISOString() });
+    } catch (error: any) {
+      console.warn("[GA4 Trends] Zero-day verification unavailable:", error?.message || error);
+      return res.json({ ...base, verified: false, zeroDates: [], reason: "provider_verification_unavailable" });
+    }
+  });
+
   // GA4 to-date totals (campaign lifetime) for executive financial metrics.
   // Uses GA4 Data API directly (does not rely on the daily fact table retention window).
   app.get("/api/campaigns/:id/ga4-to-date", async (req, res) => {

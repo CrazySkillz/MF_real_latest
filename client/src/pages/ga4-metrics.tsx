@@ -1851,6 +1851,21 @@ export default function GA4Metrics() {
     },
   });
 
+  const { data: ga4TrendsCoverage, error: ga4TrendsCoverageError } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-insights-trends-coverage", selectedGA4PropertyId, ga4InsightsDailyResp?.dataThroughDate, ga4InsightsDailyResp?.lastCompletedRefreshAt],
+    enabled: activeTab === "insights" && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId && ga4InsightsDailyResp !== undefined,
+    staleTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 30 * 60 * 1000,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/ga4-insights-trends-coverage?propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}`);
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data || data?.success === false) throw new Error("GA4 Trends zero-day check failed");
+      return data;
+    },
+  });
+
   const ga4DailyDataThroughDate = String((ga4DailyResp as any)?.dataThroughDate || (ga4DailyResp as any)?.endDate || "").trim();
 
   const ga4DailyRows = useMemo<any[]>(() => {
@@ -1949,13 +1964,33 @@ export default function GA4Metrics() {
   const trendsReportingTimeZoneLabel = formatReportingTimeZoneLabel(trendsReportingTimeZone);
   const trendsDataThroughDate = String(ga4InsightsDataThroughDate || "").trim();
   const trendsDataThroughLabel = formatReportingDateLabel(trendsDataThroughDate);
-  const trendsLatestImportedDate = String(ga4InsightsTimeSeries[ga4InsightsTimeSeries.length - 1]?.date || "").trim();
-  const trendsLatestImportedDateLabel = trendsLatestImportedDate ? formatReportingDateLabel(trendsLatestImportedDate) : "Not available";
   const trendsLastRefreshValue = Object.prototype.hasOwnProperty.call((ga4InsightsDailyResp as any) || {}, "lastCompletedRefreshAt")
     ? (ga4InsightsDailyResp as any)?.lastCompletedRefreshAt
     : (ga4InsightsDailyResp as any)?.lastUpdated;
   const trendsLastRefreshedLabel = formatReportingTimestampLabel(trendsLastRefreshValue, trendsReportingTimeZone);
   const trendsRefreshIsStale = Boolean((ga4InsightsDailyResp as any)?.refreshIsStale) || Boolean(ga4InsightsDailyError && ga4InsightsDailyResp !== undefined);
+  const trendsZeroDaysVerified = ga4TrendsCoverage?.verified === true && Array.isArray(ga4TrendsCoverage?.dailyRows) &&
+    String(ga4TrendsCoverage?.propertyId || "").replace(/^properties\//i, "") === String(selectedGA4PropertyId || "").replace(/^properties\//i, "") &&
+    String(ga4TrendsCoverage?.endDate || "") === trendsDataThroughDate &&
+    String(ga4TrendsCoverage?.reportingTimeZone || "") === String((ga4InsightsDailyResp as any)?.reportingTimeZone || "") &&
+    String(ga4TrendsCoverage?.startDate || "") >= String((ga4InsightsDailyResp as any)?.startDate || "");
+  const trendsDailyRows = useMemo(() => {
+    const rows = trendsZeroDaysVerified
+      ? normalizeGA4InsightsDailyRows(ga4TrendsCoverage.dailyRows, trendsDataThroughDate)
+      : [...ga4InsightsTimeSeries];
+    if (trendsZeroDaysVerified) {
+      const knownDates = new Set(rows.map((row: any) => String(row.date)));
+      for (const date of Array.isArray(ga4TrendsCoverage?.zeroDates) ? ga4TrendsCoverage.zeroDates : []) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date)) || date < ga4TrendsCoverage.startDate || date > trendsDataThroughDate || knownDates.has(date)) continue;
+        rows.push({ date, sessions: 0, users: 0, conversions: 0, revenue: 0, pageviews: 0, engagedSessions: 0, engagementRate: 0 });
+      }
+    }
+    return rows.sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
+  }, [ga4InsightsTimeSeries, ga4TrendsCoverage, trendsZeroDaysVerified, trendsDataThroughDate]);
+  const trendsImportedRows = trendsZeroDaysVerified ? ga4TrendsCoverage.dailyRows : ga4InsightsTimeSeries;
+  const trendsLatestImportedDate = String(trendsImportedRows[trendsImportedRows.length - 1]?.date || "").trim();
+  const trendsLatestImportedDateLabel = trendsLatestImportedDate ? formatReportingDateLabel(trendsLatestImportedDate) : "Not available";
+  const trendsRollups = useMemo(() => buildGA4InsightsRollups(trendsDailyRows, trendsDataThroughDate), [trendsDailyRows, trendsDataThroughDate]);
 
   const {
     data: ga4Breakdown,
@@ -9030,6 +9065,13 @@ export default function GA4Metrics() {
                             Showing last-good GA4 daily history. Refresh is stale; trend recommendations are withheld until refresh succeeds.
                           </div>
                         )}
+                        {ga4InsightsDailyResp !== undefined && !trendsZeroDaysVerified && (
+                          <div className="text-sm text-muted-foreground" data-testid="insights-trends-zero-day-status">
+                            {ga4TrendsCoverageError || ga4TrendsCoverage?.verified === false
+                              ? "GA4 could not verify days without stored rows. Those days remain gaps until verification succeeds."
+                              : "Checking GA4 for days with no matching campaign values. Unverified days remain gaps."}
+                          </div>
+                        )}
                         {ga4InsightsDailyError && ga4InsightsDailyResp === undefined && (
                           <div className="rounded-md border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-900">
                             GA4 daily history is unavailable. Trend values and trend-based recommendations are withheld.
@@ -9040,7 +9082,7 @@ export default function GA4Metrics() {
                         )}
                         {/* Trends line chart */}
                         {(!ga4InsightsDailyError || ga4InsightsDailyResp !== undefined) && (!timeSeriesLoading || ga4InsightsDailyResp !== undefined) && (() => {
-                          const dailyRows = Array.isArray(ga4InsightsTimeSeries) ? (ga4InsightsTimeSeries as any[]).filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(r?.date || ""))) : [];
+                          const dailyRows = trendsDailyRows.filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(r?.date || "")));
                           const sorted = [...dailyRows].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
                           const complete7DayRows = insightsTrendMode === "7d"
                             ? sorted.filter((row: any) => buildGA4InsightsCalendarRollup(sorted, String(row.date || ""), 7).complete)
@@ -9063,15 +9105,15 @@ export default function GA4Metrics() {
                                 : complete30DayRows.length > 0;
                           if (!hasRequiredHistory) {
                             const rollingWindow = insightsTrendMode === "7d"
-                              ? { label: "7-day", current: insightsRollups.last7, prior: insightsRollups.prior7 }
+                              ? { label: "7-day", current: trendsRollups.last7, prior: trendsRollups.prior7 }
                               : insightsTrendMode === "30d"
-                                ? { label: "30-day", current: insightsRollups.last30, prior: insightsRollups.prior30 }
+                                ? { label: "30-day", current: trendsRollups.last30, prior: trendsRollups.prior30 }
                                 : null;
                             const intradayHistoryNote = insightsTrendMode === "monthly" ? "" : ` Today's intraday GA4 data is excluded until it becomes a completed ${trendsReportingTimeZoneLabel} GA4 day.`;
                             if (rollingWindow) {
                               return (
                                 <div className="text-sm text-muted-foreground/70 py-4">
-                                  {insightsTrendMode === "30d" ? <>30-day comparison unavailable. Both adjacent calendar windows must contain every completed reporting day. Missing dates are not assumed to be zero.</> : <>{rollingWindow.label} comparison unavailable. Both adjacent calendar windows must contain every completed reporting day. Current {rollingWindow.current.startDate} → {rollingWindow.current.endDate}: {rollingWindow.current.days}/{rollingWindow.current.expectedDays} imported days. Prior {rollingWindow.prior.startDate} → {rollingWindow.prior.endDate}: {rollingWindow.prior.days}/{rollingWindow.prior.expectedDays} imported days. Total imported rows in the 60-day response: {dailyRows.length}. Missing dates are not assumed to be zero.{intradayHistoryNote}</>}
+                                  {insightsTrendMode === "30d" ? <>30-day comparison unavailable. Both adjacent calendar windows must contain every completed reporting day. Missing dates are not assumed to be zero.</> : trendsZeroDaysVerified ? <>{rollingWindow.label} comparison unavailable. Both adjacent calendar windows must contain every completed reporting day. Current {rollingWindow.current.startDate} → {rollingWindow.current.endDate}: {rollingWindow.current.days}/{rollingWindow.current.expectedDays} verified days. Prior {rollingWindow.prior.startDate} → {rollingWindow.prior.endDate}: {rollingWindow.prior.days}/{rollingWindow.prior.expectedDays} verified days.{intradayHistoryNote}</> : <>{rollingWindow.label} comparison unavailable. Both adjacent calendar windows must contain every completed reporting day. Current {rollingWindow.current.startDate} → {rollingWindow.current.endDate}: {rollingWindow.current.days}/{rollingWindow.current.expectedDays} imported days. Prior {rollingWindow.prior.startDate} → {rollingWindow.prior.endDate}: {rollingWindow.prior.days}/{rollingWindow.prior.expectedDays} imported days. Total imported rows in the 60-day response: {dailyRows.length}. Missing dates are not assumed to be zero.{intradayHistoryNote}</>}
                                 </div>
                               );
                             }
@@ -9218,7 +9260,9 @@ export default function GA4Metrics() {
                               </div>
                               {insightsTrendMode === "daily" && (
                                 <div className="mt-2 text-xs text-muted-foreground/70" data-testid="insights-daily-chart-coverage">
-                                  Daily chart {dailyChartStartDate} {"\u2192"} {dailyChartEndDate}: {chartData.filter((row) => row.value !== null).length}/{chartData.length} imported days. Missing dates are shown as gaps, not treated as zero.
+                                  {trendsZeroDaysVerified
+                                    ? <>Daily chart {dailyChartStartDate} {"\u2192"} {dailyChartEndDate}: {chartData.filter((row) => row.value !== null).length}/{chartData.length} verified days. Days with no matching GA4 campaign values are shown as 0 after verification.</>
+                                    : <>Daily chart {dailyChartStartDate} {"\u2192"} {dailyChartEndDate}: {chartData.filter((row) => row.value !== null).length}/{chartData.length} imported days. Missing dates are shown as gaps, not treated as zero.</>}
                                 </div>
                               )}
                               {insightsTrendMode === "7d" && (
@@ -9346,8 +9390,8 @@ export default function GA4Metrics() {
                                     <tbody>
                                       {(() => {
                                         const windowDays = insightsTrendMode === "7d" ? 7 : 30;
-                                        const cur = insightsTrendMode === "7d" ? insightsRollups.last7 : insightsRollups.last30;
-                                        const prior = insightsTrendMode === "7d" ? insightsRollups.prior7 : insightsRollups.prior30;
+                                        const cur = insightsTrendMode === "7d" ? trendsRollups.last7 : trendsRollups.last30;
+                                        const prior = insightsTrendMode === "7d" ? trendsRollups.prior7 : trendsRollups.prior30;
                                         if (!cur.complete || !prior.complete) {
                                           return (
                                             <tr><td colSpan={3} className="p-3 text-sm text-muted-foreground/70">

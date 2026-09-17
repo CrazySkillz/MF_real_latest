@@ -103,6 +103,10 @@
     margin-right: 0 !important;
   }
 
+  body[data-scroll-locked]:has([data-ga4-insights-trend-metric-select]) {
+    margin-right: 0 !important;
+  }
+
   body[data-scroll-locked]:has([data-ga4-ad-comparison-metric-select]) {
     margin-right: 0 !important;
   }

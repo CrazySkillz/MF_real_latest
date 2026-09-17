@@ -9055,7 +9055,7 @@ export default function GA4Metrics() {
                                 onValueChange={setInsightsTrendMetric}
                               >
                                 <SelectTrigger className="h-9" data-testid="insights-trend-metric"><SelectValue placeholder="Metric" /></SelectTrigger>
-                                <SelectContent>
+                                <SelectContent data-ga4-insights-trend-metric-select>
                                   <SelectItem value="sessions">Sessions</SelectItem>
                                   {insightsTrendMode === "daily" && <SelectItem value="users">Users</SelectItem>}
                                   <SelectItem value="conversions">Conversions</SelectItem>

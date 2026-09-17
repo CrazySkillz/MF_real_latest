@@ -44,7 +44,7 @@ describe("GA4 Insights copy accuracy", () => {
     expect(section).toContain("<li>Daily shows day-by-day values.</li>");
     expect(section).toContain("<li>7d/30d show rolling totals.</li>");
     expect(section).toContain("<li>Monthly compares calendar months.</li>");
-    expect(section).toContain("Completed-day cutoff");
+    expect(section).not.toContain("Completed-day cutoff");
     expect(page).toContain("Completed-day cutoff: ${trendsDataThroughLabel}");
     expect(scheduledPdf).toContain("Completed-day cutoff: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}");
     expect(section).not.toContain("Data through");

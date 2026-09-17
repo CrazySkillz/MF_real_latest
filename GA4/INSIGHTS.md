@@ -94,20 +94,20 @@ Shows completed daily-history views:
 
 Current meaning:
 
-- Trends uses persisted GA4 daily facts for the selected campaign/property/scope
+- Trends uses persisted GA4 daily facts for the selected campaign/property/scope and shows only reporting dates on or after the campaign creation date
 - Insights requests an isolated 60-calendar-day window through the latest completed reporting day so two exact 30-day windows can be evaluated without changing Overview or KPI windows; GA4 may return sparse rows, so returned row count is not treated as consecutive-day coverage
 - today's intraday data is excluded until it becomes a completed reporting day
-- `Completed-day cutoff`, `Latest imported day`, and `Last refreshed` explain freshness
+- `Latest imported day` and `Last refreshed` explain visible freshness; the completed-day cutoff still controls which daily rows are eligible
 - `7d` and `30d` show rolling totals for non-rate metrics and weighted averages for rates
-- missing GA4 rows are not synthesized as zero-value days and do not widen a comparison window
+- a missing GA4 row becomes zero only after a separate read-only check verifies no matching campaign values for that completed day; unverified missing dates remain gaps and cannot complete comparison windows
 - explicit zero engaged sessions remain zero; only a genuinely absent legacy value is derived from that row's sessions and engagement rate
 
 History gates:
 
-- `Daily`: at least 2 imported daily rows; the chart considers up to 30 calendar days through the latest imported day, begins at the first imported date in that window, renders later missing dates as gaps rather than connecting non-consecutive observations, preserves valid zero, and shows a delta only when the actual prior calendar day exists
+- `Daily`: at least 2 available daily rows; the chart considers up to 30 calendar days through the latest eligible day, excludes pre-creation dates, preserves verified zero, leaves unverified dates as gaps, and shows a delta only when the actual prior calendar day exists
 - `7d`: the chart shows every complete historical 7-calendar-day rolling window in the visible history; the latest comparison requires two complete adjacent 7-calendar-day windows
 - `30d`: the chart shows every complete historical 30-calendar-day rolling window in the visible history; the latest comparison requires two complete adjacent 30-calendar-day windows
-- `Monthly`: at least 2 calendar months; partial or incomplete months are labeled and are not compared with full months
+- `Monthly`: one calendar month can be shown and is marked partial when incomplete; only two adjacent complete calendar months are compared
 
 ### Data Summary
 

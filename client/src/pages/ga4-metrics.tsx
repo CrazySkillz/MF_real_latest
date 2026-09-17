@@ -139,6 +139,16 @@ const normalizeClientReportingTimeZone = (value: any) => {
   }
 };
 
+const getTrendsCampaignStartDate = (createdAt: Date | string | null | undefined, reportingTimeZone: string) => {
+  if (!createdAt) return "";
+  const created = createdAt instanceof Date ? createdAt : new Date(createdAt);
+  if (Number.isNaN(created.getTime())) return "";
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+    timeZone: reportingTimeZone, year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(created).map((part) => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+};
+
 const formatReportingTimeZoneLabel = (value: any) => {
   const tz = normalizeClientReportingTimeZone(value);
   if (tz === "UTC") return "UTC";
@@ -1962,6 +1972,7 @@ export default function GA4Metrics() {
   const timeSeriesLoading = ga4InsightsDailyLoading;
   const trendsReportingTimeZone = normalizeClientReportingTimeZone((ga4InsightsDailyResp as any)?.reportingTimeZone);
   const trendsReportingTimeZoneLabel = formatReportingTimeZoneLabel(trendsReportingTimeZone);
+  const trendsCampaignStartDate = useMemo(() => getTrendsCampaignStartDate((campaign as any)?.createdAt, trendsReportingTimeZone), [(campaign as any)?.createdAt, trendsReportingTimeZone]);
   const trendsDataThroughDate = String(ga4InsightsDataThroughDate || "").trim();
   const trendsDataThroughLabel = formatReportingDateLabel(trendsDataThroughDate);
   const trendsLastRefreshValue = Object.prototype.hasOwnProperty.call((ga4InsightsDailyResp as any) || {}, "lastCompletedRefreshAt")
@@ -1975,19 +1986,22 @@ export default function GA4Metrics() {
     String(ga4TrendsCoverage?.reportingTimeZone || "") === String((ga4InsightsDailyResp as any)?.reportingTimeZone || "") &&
     String(ga4TrendsCoverage?.startDate || "") >= String((ga4InsightsDailyResp as any)?.startDate || "");
   const trendsDailyRows = useMemo(() => {
+    if (!trendsCampaignStartDate) return [];
     const rows = trendsZeroDaysVerified
       ? normalizeGA4InsightsDailyRows(ga4TrendsCoverage.dailyRows, trendsDataThroughDate)
       : [...ga4InsightsTimeSeries];
+    const campaignRows = rows.filter((row: any) => String(row.date) >= trendsCampaignStartDate);
     if (trendsZeroDaysVerified) {
-      const knownDates = new Set(rows.map((row: any) => String(row.date)));
+      const knownDates = new Set(campaignRows.map((row: any) => String(row.date)));
       for (const date of Array.isArray(ga4TrendsCoverage?.zeroDates) ? ga4TrendsCoverage.zeroDates : []) {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date)) || date < ga4TrendsCoverage.startDate || date > trendsDataThroughDate || knownDates.has(date)) continue;
-        rows.push({ date, sessions: 0, users: 0, conversions: 0, revenue: 0, pageviews: 0, engagedSessions: 0, engagementRate: 0 });
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date)) || date < trendsCampaignStartDate || date < ga4TrendsCoverage.startDate || date > trendsDataThroughDate || knownDates.has(date)) continue;
+        campaignRows.push({ date, sessions: 0, users: 0, conversions: 0, revenue: 0, pageviews: 0, engagedSessions: 0, engagementRate: 0 });
       }
     }
-    return rows.sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
-  }, [ga4InsightsTimeSeries, ga4TrendsCoverage, trendsZeroDaysVerified, trendsDataThroughDate]);
-  const trendsImportedRows = trendsZeroDaysVerified ? ga4TrendsCoverage.dailyRows : ga4InsightsTimeSeries;
+    return campaignRows.sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
+  }, [ga4InsightsTimeSeries, ga4TrendsCoverage, trendsZeroDaysVerified, trendsDataThroughDate, trendsCampaignStartDate]);
+  const trendsImportedRows = (trendsZeroDaysVerified ? ga4TrendsCoverage.dailyRows : ga4InsightsTimeSeries)
+    .filter((row: any) => trendsCampaignStartDate && String(row?.date || "") >= trendsCampaignStartDate);
   const trendsLatestImportedDate = String(trendsImportedRows[trendsImportedRows.length - 1]?.date || "").trim();
   const trendsLatestImportedDateLabel = trendsLatestImportedDate ? formatReportingDateLabel(trendsLatestImportedDate) : "Not available";
   const trendsRollups = useMemo(() => buildGA4InsightsRollups(trendsDailyRows, trendsDataThroughDate), [trendsDailyRows, trendsDataThroughDate]);
@@ -9056,7 +9070,6 @@ export default function GA4Metrics() {
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div className="flex flex-wrap gap-x-2 gap-y-1 text-sm text-muted-foreground/80">
-                          <span className="whitespace-nowrap">Completed-day cutoff <span className="font-medium text-foreground">{trendsDataThroughLabel}</span> <span aria-hidden="true">|</span></span>
                           <span className="whitespace-nowrap">Latest imported day <span className="font-medium text-foreground">{trendsLatestImportedDateLabel}</span> <span aria-hidden="true">|</span></span>
                           <span className="whitespace-nowrap">Last refreshed <span className="font-medium text-foreground">{trendsLastRefreshedLabel}</span></span>
                         </div>
@@ -9097,7 +9110,7 @@ export default function GA4Metrics() {
                           ).size;
                           const minRequiredDays = insightsTrendMode === "daily" ? 2 : 0;
                           const hasRequiredHistory = insightsTrendMode === "monthly"
-                            ? availableMonths >= 2
+                            ? availableMonths >= 1
                             : insightsTrendMode === "daily"
                               ? dailyRows.length >= minRequiredDays
                               : insightsTrendMode === "7d"
@@ -9117,7 +9130,7 @@ export default function GA4Metrics() {
                                 </div>
                               );
                             }
-                            const requiredHistory = insightsTrendMode === "monthly" ? "2 calendar months" : `${minRequiredDays} imported daily rows`;
+                            const requiredHistory = insightsTrendMode === "monthly" ? "1 calendar month" : `${minRequiredDays} imported daily rows`;
                             const availableHistory = insightsTrendMode === "monthly" ? `${availableMonths} calendar month${availableMonths === 1 ? "" : "s"}` : `${dailyRows.length} imported row${dailyRows.length === 1 ? "" : "s"}`;
                             return (
                               <div className="text-sm text-muted-foreground/70 py-4">
@@ -9147,6 +9160,7 @@ export default function GA4Metrics() {
                               return date >= initialDate && date <= finalDate;
                             });
                             let cursor = String(firstImportedDate?.date || initialDate);
+                            if (trendsCampaignStartDate >= initialDate && trendsCampaignStartDate < cursor) cursor = trendsCampaignStartDate;
                             dailyChartStartDate = cursor;
                             dailyChartEndDate = finalDate;
                             while (cursor && cursor <= finalDate) {
@@ -9341,14 +9355,6 @@ export default function GA4Metrics() {
                                             isPartial: row.partial,
                                           };
                                         });
-
-                                        if (monthValues.length < 2) {
-                                          return (
-                                            <tr><td colSpan={3} className="p-3 text-sm text-muted-foreground/70">
-                                              Need at least 2 months of data for comparison. Available: {monthValues.length} month(s).
-                                            </td></tr>
-                                          );
-                                        }
 
                                         return monthValues.map((row, i) => {
                                           const prev = i < monthValues.length - 1 ? monthValues[i + 1] : null;

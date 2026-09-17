@@ -702,7 +702,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain('insightsRollups.last7.complete && insightsRollups.prior7.complete');
     expect(ga4Metrics).toContain('const complete30DayRows = insightsTrendMode === "30d"');
     expect(ga4Metrics).toContain(': complete30DayRows.length > 0');
-    expect(ga4Metrics).toContain('const requiredHistory = insightsTrendMode === "monthly" ? "2 calendar months" : `${minRequiredDays} imported daily rows`;');
+    expect(ga4Metrics).toContain('const requiredHistory = insightsTrendMode === "monthly" ? "1 calendar month" : `${minRequiredDays} imported daily rows`;');
     expect(ga4Metrics).toContain("Both adjacent calendar windows must contain every completed reporting day.");
     expect(ga4Metrics).toContain("30-day comparison unavailable. Both adjacent calendar windows must contain every completed reporting day. Missing dates are not assumed to be zero.");
     expect(ga4Metrics).toContain("Missing dates are not assumed to be zero.");
@@ -712,9 +712,9 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("const trendsReportingTimeZoneLabel = formatReportingTimeZoneLabel(trendsReportingTimeZone);");
     expect(ga4Metrics).not.toContain("const trendsRefreshScheduleTimeZone =");
     expect(ga4Metrics).not.toContain("const trendsExpectedRefreshLabel =");
-    expect(ga4Metrics).toContain('const trendsLatestImportedDate = String(ga4InsightsTimeSeries[ga4InsightsTimeSeries.length - 1]?.date || "").trim();');
+    expect(ga4Metrics).toContain('const trendsLatestImportedDate = String(trendsImportedRows[trendsImportedRows.length - 1]?.date || "").trim();');
     expect(ga4Metrics).toContain('const trendsLatestImportedDateLabel = trendsLatestImportedDate ? formatReportingDateLabel(trendsLatestImportedDate) : "Not available";');
-    expect(ga4Metrics).toContain("Completed-day cutoff <span");
+    expect(ga4Metrics).not.toContain("Completed-day cutoff <span");
     expect(ga4Metrics).toContain("Latest imported day");
     expect(ga4Metrics).not.toContain("<span>Reporting timezone <span");
     expect(ga4Metrics).toContain("Last refreshed <span");

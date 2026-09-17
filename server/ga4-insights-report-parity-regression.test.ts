@@ -34,12 +34,12 @@ describe("GA4 Insights report parity", () => {
 
     const reportTrendCopy =
       "Daily shows day-by-day values. 7d/30d show rolling totals for non-rate metrics and weighted averages for rates. Monthly compares calendar months.";
-    const sharedCopy = ["Completed-day cutoff"];
+    expect(liveSection).not.toContain("Completed-day cutoff");
+    for (const section of [reportSection, scheduledSection]) {
+      expect(section).toContain("Completed-day cutoff");
+    }
 
     for (const section of [liveSection, reportSection, scheduledSection]) {
-      for (const copy of sharedCopy) {
-        expect(section).toContain(copy);
-      }
       expect(section).not.toContain("or imported revenue-to-date when GA4 revenue is missing");
       expect(section).not.toContain("Data through");
       expect(section).not.toContain("7d/30d show rolling daily averages");

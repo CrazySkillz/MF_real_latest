@@ -9050,20 +9050,20 @@ export default function GA4Metrics() {
                               ))}
                             </div>
                             <div className="min-w-[200px]">
-                              <Select
+                              <select
+                                aria-label="Trend metric"
+                                className="h-9 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                data-testid="insights-trend-metric"
                                 value={insightsTrendMetric}
-                                onValueChange={setInsightsTrendMetric}
+                                onChange={(event) => setInsightsTrendMetric(event.target.value)}
                               >
-                                <SelectTrigger className="h-9" data-testid="insights-trend-metric"><SelectValue placeholder="Metric" /></SelectTrigger>
-                                <SelectContent data-ga4-insights-trend-metric-select>
-                                  <SelectItem value="sessions">Sessions</SelectItem>
-                                  {insightsTrendMode === "daily" && <SelectItem value="users">Users</SelectItem>}
-                                  <SelectItem value="conversions">Conversions</SelectItem>
-                                  <SelectItem value="revenue">Revenue</SelectItem>
-                                  <SelectItem value="pageviews">Page Views</SelectItem>
-                                  <SelectItem value="engagementRate">Engagement Rate</SelectItem>
-                                </SelectContent>
-                              </Select>
+                                <option value="sessions">Sessions</option>
+                                {insightsTrendMode === "daily" && <option value="users">Users</option>}
+                                <option value="conversions">Conversions</option>
+                                <option value="revenue">Revenue</option>
+                                <option value="pageviews">Page Views</option>
+                                <option value="engagementRate">Engagement Rate</option>
+                              </select>
                             </div>
                           </div>
                         </div>

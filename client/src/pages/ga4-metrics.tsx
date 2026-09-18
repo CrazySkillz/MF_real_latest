@@ -9517,7 +9517,7 @@ export default function GA4Metrics() {
                           </div>
                         ) : insights.length === 0 ? (
                           <div className="text-sm text-muted-foreground/70">
-                            No issues detected for the selected range. Create KPIs and Benchmarks to unlock performance tracking insights.
+                            No finding met the current checks for this campaign.
                           </div>
                         ) : (
                           (() => {

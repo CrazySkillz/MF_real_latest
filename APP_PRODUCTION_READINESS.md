@@ -273,6 +273,23 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 | Global scheduler health | `UNVERIFIED` | Several exact target jobs are certified; current evidence repeatedly excludes obsolete/test failures | Define active production job inventory and pass one global healthy-cycle gate without treating excluded jobs as success. |
 | App-wide destructive/visibility behavior | `RECONCILE` | `TARGETED_DESTRUCTIVE_VISIBILITY_AUDIT.md` contains broad targeted evidence | Convert completed evidence into an explicit exact-runtime certificate and preserve unresolved rows. |
 
+## Automatic Scheduler Validation Track
+
+This is a **separate app-wide operational gate**, not a replacement for any section or source certificate. The table below is an initial work queue, **not a complete active-job inventory**. A manual `run-now` call, startup run, configured timer, or successful UI poll does **not** prove that the normal scheduler timer fired. Existing bounded timer-fired source evidence remains valid within its own certificate; it must not be generalized into global scheduler health.
+
+| Scheduler family | Evidence to preserve | App-wide timer status |
+| --- | --- | --- |
+| GA4 daily facts and KPI/Benchmark recompute | `GA4/REFRESH_AND_PROCESSING.md` records earlier bounded natural runs; `GA4/INSIGHTS_COMBINED_ONSCREEN_CERTIFICATION_2026-09-18.md` records a successful Campaign2 manual run on product revision `f7416759`. | `UNVERIFIED` for a natural timer firing on that revision; the manual run is not counted as one. |
+| HubSpot and Salesforce revenue/Pipeline Proxy | Their controlling GA4 Revenue source certificates own the exact source, cadence, transition, and refresh evidence. | Source-bounded evidence only; a current app-wide healthy cycle is `UNVERIFIED`. |
+| Shopify and Google Sheets Revenue/Spend | Their controlling GA4 source certificates own their exact automatic-refresh evidence and exclusions. | Source-bounded evidence only; a current app-wide healthy cycle is `UNVERIFIED`. |
+| Scheduled reports and alerts | Their separate Reports and notification readiness records control delivery and alert claims. | `UNVERIFIED` in this app-wide track; no send/delivery claim is inferred from a timer starting. |
+| Other platform, KPI, token, snapshot, and maintenance jobs | Enumerate enabled jobs from the deployed scheduler configuration before testing; do not infer enablement from a source card or a scheduler file. | `INVENTORY_PENDING`; no app-wide pass is claimed. |
+| CSV uploads | CSV Revenue and Spend certificates define user-updated snapshots. | `NOT_APPLICABLE` for automatic source refresh. |
+
+For each **enabled production job**, record the deployed product revision and dependency-impact check; the configured cadence/timezone and actual timer trigger; exact owner/campaign/property/source or report scope; run ID, start/end, result, skips/failures, and overlap handling; provider-to-storage before/after values; downstream open-page convergence; idempotency; and last-good-data behavior on failure. Preserve provider/API acceptance versus confirmed email delivery as separate outcomes. Mark a job `TIMER_VERIFIED` only from an observed normal timer firing with reconciled effects—not from manual, startup, or browser-only fixtures.
+
+The app-wide gate stays `UNVERIFIED` until the active production job inventory is explicit and one healthy natural cycle covers every enabled family in scope. Disposable/test campaigns and unconfigured sources may be excluded only by recorded ownership/configuration evidence; their failures must not be silently relabeled as successes. Do not modify a certified section to close this track without explicit approval.
+
 ## Known Status Conflicts Superseded By The Fresh Program
 
 1. `GA4_PRODUCTION_READY_TRACKER.md` says the complete GA4 section is

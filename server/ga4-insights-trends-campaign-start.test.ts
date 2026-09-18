@@ -15,6 +15,10 @@ const js = (source: string) => transpileModule(source, { compilerOptions: { targ
 
 const getStartDate = new Function(js(`${extract("const getTrendsCampaignStartDate =", "\nconst formatReportingTimeZoneLabel")}; return getTrendsCampaignStartDate;`))() as
   (createdAt: string | null, reportingTimeZone: string) => string;
+const zeroDatesVerified = new Function("ga4TrendsCoverage", "selectedGA4PropertyId", "trendsDataThroughDate", "ga4InsightsDailyResp", js(`
+  ${extract("  const trendsZeroDaysVerified =", ";\n  const trendsDailyRows")};
+  return trendsZeroDaysVerified;
+`)) as (coverage: any, propertyId: string, cutoff: string, daily: any) => boolean;
 const buildRows = new Function("normalizeGA4InsightsDailyRows", js(`
   return (ga4InsightsTimeSeries: any[], ga4TrendsCoverage: any, trendsZeroDaysVerified: boolean, trendsDataThroughDate: string, trendsCampaignStartDate: string) => {
     ${extract("    if (!trendsCampaignStartDate) return [];", "\n  }, [ga4InsightsTimeSeries,")}
@@ -82,5 +86,19 @@ describe("GA4 Insights Trends campaign creation boundary", () => {
     const chart = dailyChart([row("2026-09-09", 38), row("2026-09-10", 38)], "2026-09-08");
     expect(chart.dailyChartStartDate).toBe("2026-09-08");
     expect(chart.chartData.map((point) => point.value)).toEqual([null, 38, 38]);
+  });
+
+  it("renders independently verified zeros while populated GA4 values differ from storage", () => {
+    const coverage = {
+      verified: false, zeroDatesVerified: true, propertyId: "542352127",
+      startDate: "2026-08-09", endDate: "2026-09-17", reportingTimeZone: "Europe/Amsterdam",
+      dailyRows: [row("2026-09-09", 38), row("2026-09-17", 8)],
+      zeroDates: ["2026-09-08", "2026-09-11"],
+    };
+    const daily = { startDate: "2026-07-20", reportingTimeZone: "Europe/Amsterdam" };
+    expect(zeroDatesVerified(coverage, "542352127", "2026-09-17", daily)).toBe(true);
+    expect(buildRows([], coverage, true, "2026-09-17", "2026-09-08").filter((item) => item.sessions === 0).map((item) => item.date)).toEqual(["2026-09-08", "2026-09-11"]);
+    expect(zeroDatesVerified({ ...coverage, zeroDatesVerified: false }, "542352127", "2026-09-17", daily)).toBe(false);
+    expect(zeroDatesVerified({ ...coverage, propertyId: "other" }, "542352127", "2026-09-17", daily)).toBe(false);
   });
 });

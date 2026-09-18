@@ -1980,7 +1980,7 @@ export default function GA4Metrics() {
     : (ga4InsightsDailyResp as any)?.lastUpdated;
   const trendsLastRefreshedLabel = formatReportingTimestampLabel(trendsLastRefreshValue, trendsReportingTimeZone);
   const trendsRefreshIsStale = Boolean((ga4InsightsDailyResp as any)?.refreshIsStale) || Boolean(ga4InsightsDailyError && ga4InsightsDailyResp !== undefined);
-  const trendsZeroDaysVerified = ga4TrendsCoverage?.verified === true && Array.isArray(ga4TrendsCoverage?.dailyRows) &&
+  const trendsZeroDaysVerified = (ga4TrendsCoverage?.verified === true || ga4TrendsCoverage?.zeroDatesVerified === true) && Array.isArray(ga4TrendsCoverage?.dailyRows) &&
     String(ga4TrendsCoverage?.propertyId || "").replace(/^properties\//i, "") === String(selectedGA4PropertyId || "").replace(/^properties\//i, "") &&
     String(ga4TrendsCoverage?.endDate || "") === trendsDataThroughDate &&
     String(ga4TrendsCoverage?.reportingTimeZone || "") === String((ga4InsightsDailyResp as any)?.reportingTimeZone || "") &&
@@ -9073,6 +9073,11 @@ export default function GA4Metrics() {
                         {trendsRefreshIsStale && ga4InsightsDailyResp !== undefined && (
                           <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900" data-testid="insights-trends-stale">
                             Showing last-good GA4 daily history. Refresh is stale; trend recommendations are withheld until refresh succeeds.
+                          </div>
+                        )}
+                        {trendsZeroDaysVerified && ga4TrendsCoverage?.verified === false && (
+                          <div className="text-sm text-muted-foreground" data-testid="insights-trends-import-drift">
+                            Current GA4 values differ from the last imported daily rows. Charts show imported values; confirmed no-activity days show 0. Dates with GA4 activity not yet imported remain gaps.
                           </div>
                         )}
                         {ga4InsightsDailyResp !== undefined && !trendsZeroDaysVerified && (

@@ -82,7 +82,7 @@ describe("Insights Trends zero-day coverage route", () => {
     const response = await request();
     const body = await response.json();
     expect(response.status).toBe(200);
-    expect(body).toMatchObject({ verified: true, propertyId: connection.propertyId, startDate: "2026-09-04", endDate: "2026-09-16" });
+    expect(body).toMatchObject({ verified: true, zeroDatesVerified: true, propertyId: connection.propertyId, startDate: "2026-09-04", endDate: "2026-09-16" });
     expect(body.zeroDates).toHaveLength(11);
     expect(body.zeroDates).toContain("2026-09-05");
     expect(body.dailyRows).toHaveLength(2);
@@ -96,22 +96,37 @@ describe("Insights Trends zero-day coverage route", () => {
     expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
   });
 
-  it("withholds zero dates if GA4 reports activity absent from stored rows", async () => {
+  it("keeps verified no-activity dates while leaving unimported GA4 activity as a gap", async () => {
     ga4ServiceMock.getTrendsDailyPresenceWithToken.mockResolvedValue({ dailyRows, presentDates: [...dailyRows.map((row) => row.date), "2026-09-05"] });
     const body = await (await request()).json();
-    expect(body).toMatchObject({ verified: false, reason: "stored_daily_history_differs_from_ga4", zeroDates: [] });
+    expect(body).toMatchObject({ verified: false, zeroDatesVerified: true, reason: "stored_daily_history_differs_from_ga4" });
+    expect(body.zeroDates).not.toContain("2026-09-05");
+    expect(body.zeroDates).toContain("2026-09-07");
+    expect(body.zeroDates).toHaveLength(10);
   });
 
-  it("withholds zero dates if a stored metric disagrees with GA4", async () => {
-    ga4ServiceMock.getTrendsDailyPresenceWithToken.mockResolvedValue({ dailyRows: [{ ...dailyRows[0], sessions: 31 }, dailyRows[1]], presentDates: dailyRows.map((row) => row.date) });
+  it("keeps verified zero days when a populated day's Page Views change after import", async () => {
+    ga4ServiceMock.getTrendsDailyPresenceWithToken.mockResolvedValue({ dailyRows: [dailyRows[0], { ...dailyRows[1], pageviews: 51 }], presentDates: dailyRows.map((row) => row.date) });
     const body = await (await request()).json();
-    expect(body).toMatchObject({ verified: false, reason: "stored_daily_history_differs_from_ga4", zeroDates: [] });
+    expect(body).toMatchObject({ verified: false, zeroDatesVerified: true, reason: "stored_daily_history_differs_from_ga4" });
+    expect(body.zeroDates).toContain("2026-09-05");
+    expect(body.zeroDates).toHaveLength(11);
+    expect(body.dailyRows).toHaveLength(2);
+    expect(storageMock.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
   });
 
   it("withholds zero dates after provider failure", async () => {
     ga4ServiceMock.getTrendsDailyPresenceWithToken.mockRejectedValue(new Error("provider unavailable"));
     const body = await (await request()).json();
     expect(body).toMatchObject({ verified: false, reason: "provider_verification_unavailable", zeroDates: [] });
+    expect(body.zeroDatesVerified).toBeUndefined();
+  });
+
+  it("fails closed if a presence date falls outside the completed window", async () => {
+    ga4ServiceMock.getTrendsDailyPresenceWithToken.mockResolvedValue({ dailyRows, presentDates: ["2026-09-17"] });
+    const body = await (await request()).json();
+    expect(body).toMatchObject({ verified: false, reason: "provider_verification_unavailable", zeroDates: [] });
+    expect(body.zeroDatesVerified).toBeUndefined();
   });
 
   it("does not disclose coverage to another owner or property", async () => {

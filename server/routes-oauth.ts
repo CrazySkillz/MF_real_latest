@@ -9436,15 +9436,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return saved && fields.every((field) => Math.abs(Number(row[field] ?? 0) - Number(saved[field] ?? 0)) <= (field === "revenue" ? 0.01 : field === "engagementRate" ? 0.00005 : 0.000001));
       });
       const presence = new Set(presentDates);
-      if (!matchesStored || Array.from(presence).some((date) => !storedByDate.has(date))) {
-        return res.json({ ...base, verified: false, zeroDates: [], reason: "stored_daily_history_differs_from_ga4" });
+      if (Array.from(presence).some((date) => !/^\d{4}-\d{2}-\d{2}$/.test(date) || date < startDate || date > window.endDate)) {
+        throw new Error("GA4 Trends presence dates are invalid");
       }
       const zeroDates: string[] = [];
       for (const date = new Date(`${startDate}T00:00:00.000Z`); date.toISOString().slice(0, 10) <= window.endDate; date.setUTCDate(date.getUTCDate() + 1)) {
         const day = date.toISOString().slice(0, 10);
-        if (!presence.has(day)) zeroDates.push(day);
+        if (!presence.has(day) && !storedByDate.has(day)) zeroDates.push(day);
       }
-      return res.json({ ...base, verified: true, zeroDates, dailyRows: stored.map(addDerivedGA4EngagedSessions), checkedAt: new Date().toISOString() });
+      const verified = matchesStored && Array.from(presence).every((date) => storedByDate.has(date));
+      return res.json({ ...base, verified, zeroDatesVerified: true, zeroDates, dailyRows: stored.map(addDerivedGA4EngagedSessions), checkedAt: new Date().toISOString(),
+        ...(!verified ? { reason: "stored_daily_history_differs_from_ga4" } : {}) });
     } catch (error: any) {
       console.warn("[GA4 Trends] Zero-day verification unavailable:", error?.message || error);
       return res.json({ ...base, verified: false, zeroDates: [], reason: "provider_verification_unavailable" });

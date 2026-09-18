@@ -4913,12 +4913,13 @@ export default function GA4Metrics() {
     if (id.startsWith("integrity:bench")) return "Saved Benchmark configuration";
     if (id === "financial:ga4_to_date_unavailable" || id === "financial:ga4_to_date_stale") return "GA4 to-date totals";
     if (id === "financial:revenue_missing" || id === "financial:spend_missing") return "Source configuration";
+    if (id === "financial:negative_revenue") return "GA4 native + imported revenue sources available to this campaign";
     if (id.startsWith("financial:")) return "Revenue/spend to-date totals";
     if (id.startsWith("kpi:") || id.startsWith("positive:kpi:")) return "Saved KPI target + current values";
     if (id.startsWith("bench:")) return "Saved Benchmark + current values";
     if (id === "info:top_channel") return "GA4 campaign breakdown";
     if (id.startsWith("anomaly:") || id.startsWith("positive:sessions:") || id.startsWith("positive:revenue:") || id.startsWith("positive:conversions:")) {
-      return "Imported GA4 campaign/property daily history";
+      return "Imported GA4 completed daily history for the selected campaign/property";
     }
     if (id === "info:scheduler_no_history") return "KPI/Benchmark snapshot history";
     if (id === "integrity:analytics_history_primary_property_only") return "KPI/Benchmark snapshot history + selected property";
@@ -5641,7 +5642,7 @@ export default function GA4Metrics() {
         id: "anomaly:not-enough-history",
         severity: "low",
         title: "Trend signals need more history",
-        description: `Current 7-day window ${insightsRollups.last7.startDate} to ${insightsRollups.last7.endDate}: ${findingRollups.last7.days}/${findingRollups.last7.expectedDays} ${historyCoverageLabel} days. Prior 7-day window ${insightsRollups.prior7.startDate} to ${insightsRollups.prior7.endDate}: ${findingRollups.prior7.days}/${findingRollups.prior7.expectedDays} ${historyCoverageLabel} days. Current 3-day window ${insightsRollups.last3.startDate} to ${insightsRollups.last3.endDate}: ${findingRollups.last3.days}/${findingRollups.last3.expectedDays} ${historyCoverageLabel} days. Prior 3-day window ${insightsRollups.prior3.startDate} to ${insightsRollups.prior3.endDate}: ${findingRollups.prior3.days}/${findingRollups.prior3.expectedDays} ${historyCoverageLabel} days. Both adjacent calendar windows must be complete before comparisons run; ${historyRowsLabel}.`,
+        description: `Current 7-day window ${insightsRollups.last7.startDate} to ${insightsRollups.last7.endDate}: ${findingRollups.last7.days}/${findingRollups.last7.expectedDays} ${historyCoverageLabel} days. Prior 7-day window ${insightsRollups.prior7.startDate} to ${insightsRollups.prior7.endDate}: ${findingRollups.prior7.days}/${findingRollups.prior7.expectedDays} ${historyCoverageLabel} days. Current 3-day window ${insightsRollups.last3.startDate} to ${insightsRollups.last3.endDate}: ${findingRollups.last3.days}/${findingRollups.last3.expectedDays} ${historyCoverageLabel} days. Prior window ${insightsRollups.prior3.startDate} to ${insightsRollups.prior3.endDate}: ${findingRollups.prior3.days}/${findingRollups.prior3.expectedDays} ${historyCoverageLabel} days. Both adjacent calendar windows must be complete before comparisons run; ${historyRowsLabel}.`,
         recommendation: "Check whether the missing days are genuine zero-activity days or an incomplete import before using trend comparisons.",
       });
     }

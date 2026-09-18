@@ -1980,6 +1980,7 @@ export default function GA4Metrics() {
     : (ga4InsightsDailyResp as any)?.lastUpdated;
   const trendsLastRefreshedLabel = formatReportingTimestampLabel(trendsLastRefreshValue, trendsReportingTimeZone);
   const trendsRefreshIsStale = Boolean((ga4InsightsDailyResp as any)?.refreshIsStale) || Boolean(ga4InsightsDailyError && ga4InsightsDailyResp !== undefined);
+  const trendsCoveragePending = ga4InsightsDailyResp !== undefined && ga4TrendsCoverageLoading && ga4TrendsCoverage === undefined;
   const trendsZeroDaysVerified = (ga4TrendsCoverage?.verified === true || ga4TrendsCoverage?.zeroDatesVerified === true) && Array.isArray(ga4TrendsCoverage?.dailyRows) &&
     String(ga4TrendsCoverage?.propertyId || "").replace(/^properties\//i, "") === String(selectedGA4PropertyId || "").replace(/^properties\//i, "") &&
     String(ga4TrendsCoverage?.endDate || "") === trendsDataThroughDate &&
@@ -9082,9 +9083,9 @@ export default function GA4Metrics() {
                         )}
                         {ga4InsightsDailyResp !== undefined && !trendsZeroDaysVerified && (
                           <div className="text-sm text-muted-foreground" data-testid="insights-trends-zero-day-status">
-                            {ga4TrendsCoverageError || ga4TrendsCoverage?.verified === false
+                            {ga4TrendsCoverageError || (ga4TrendsCoverage !== undefined && !trendsZeroDaysVerified)
                               ? "GA4 could not verify days without stored rows. Those days remain gaps until verification succeeds."
-                              : "Checking GA4 for days with no matching campaign values. Unverified days remain gaps."}
+                              : "Checking GA4 daily coverage before showing Trends."}
                           </div>
                         )}
                         {ga4InsightsDailyError && ga4InsightsDailyResp === undefined && (
@@ -9095,8 +9096,11 @@ export default function GA4Metrics() {
                         {timeSeriesLoading && ga4InsightsDailyResp === undefined && (
                           <div className="h-64 rounded-md bg-muted animate-pulse" aria-label="Loading GA4 Insights daily history" />
                         )}
+                        {trendsCoveragePending && (
+                          <div className="h-64 rounded-md bg-muted animate-pulse" aria-label="Checking GA4 Trends daily coverage" />
+                        )}
                         {/* Trends line chart */}
-                        {(!ga4InsightsDailyError || ga4InsightsDailyResp !== undefined) && (!timeSeriesLoading || ga4InsightsDailyResp !== undefined) && (() => {
+                        {!trendsCoveragePending && (!ga4InsightsDailyError || ga4InsightsDailyResp !== undefined) && (!timeSeriesLoading || ga4InsightsDailyResp !== undefined) && (() => {
                           const dailyRows = trendsDailyRows.filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(r?.date || "")));
                           const sorted = [...dailyRows].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
                           const complete7DayRows = insightsTrendMode === "7d"

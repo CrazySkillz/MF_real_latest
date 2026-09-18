@@ -4855,7 +4855,6 @@ export default function GA4Metrics() {
       revenueKpiInputState === "loading" ||
       spendKpiInputState === "loading" ||
       (ga4InsightsDailyLoading && ga4InsightsDailyResp === undefined) ||
-      (ga4InsightsDailyResp !== undefined && ga4Connection?.connected && !!selectedGA4PropertyId && ga4TrendsCoverage === undefined && !ga4TrendsCoverageError) ||
       (breakdownLoading && ga4Breakdown === undefined) ||
       kpiAnalyticsQueries.some((query: any) => query?.isLoading && query?.data === undefined) ||
       benchmarkAnalyticsQueries.some((query: any) => query?.isLoading && query?.data === undefined)
@@ -4895,7 +4894,6 @@ export default function GA4Metrics() {
     if (id.startsWith("kpi:") || id.startsWith("bench:")) return "targets";
     if (
       id.startsWith("anomaly:") ||
-      id === "info:short_window" ||
       id === "info:avg_sessions" ||
       id === "info:engagement_rate" ||
       id.startsWith("positive:sessions:") ||
@@ -4903,9 +4901,7 @@ export default function GA4Metrics() {
       id.startsWith("positive:conversions:")
     ) return "trends";
     if (
-      id.startsWith("financial:") ||
-      id === "info:ga4_revenue_and_imported_revenue_included" ||
-      id === "info:revenue_summary"
+      id.startsWith("financial:")
     ) return "finance";
     return "context";
   };
@@ -4914,20 +4910,17 @@ export default function GA4Metrics() {
     const id = String(item.id || "");
     if (id === "integrity:target_period_mismatch") return "Saved target period + current-value reporting window";
     if (id === "integrity:targets_unverified") return "Required source state + saved KPI/Benchmark configuration";
-    if (id === "integrity:daily_history_mismatch") return "GA4 provider daily rows + saved campaign/property daily rows";
     if (id === "integrity:target_lists_unverified") return "Campaign-scoped KPI/Benchmark list requests";
     if (id.startsWith("integrity:kpi")) return "Saved KPI configuration";
     if (id.startsWith("integrity:bench")) return "Saved Benchmark configuration";
     if (id === "financial:ga4_to_date_unavailable" || id === "financial:ga4_to_date_stale") return "GA4 to-date totals";
     if (id === "financial:revenue_missing" || id === "financial:spend_missing") return "Source configuration";
     if (id.startsWith("financial:")) return "Revenue/spend to-date totals";
-    if (id === "info:ga4_revenue_and_imported_revenue_included") return "GA4 native + imported revenue";
     if (id.startsWith("kpi:") || id.startsWith("positive:kpi:")) return "Saved KPI target + current values";
     if (id.startsWith("bench:")) return "Saved Benchmark + current values";
     if (id === "info:top_channel") return "GA4 campaign breakdown";
-    if (id === "info:revenue_summary") return "Revenue to-date totals; spend to-date when ROAS is shown";
-    if (id.startsWith("anomaly:") || id === "info:short_window" || id === "info:avg_sessions" || id === "info:engagement_rate" || id.startsWith("positive:sessions:") || id.startsWith("positive:revenue:") || id.startsWith("positive:conversions:")) {
-      return "GA4 completed daily history";
+    if (id.startsWith("anomaly:") || id === "info:avg_sessions" || id === "info:engagement_rate" || id.startsWith("positive:sessions:") || id.startsWith("positive:revenue:") || id.startsWith("positive:conversions:")) {
+      return "Imported GA4 campaign/property daily history";
     }
     if (id === "info:scheduler_no_history") return "KPI/Benchmark snapshot history";
     if (id === "integrity:analytics_history_primary_property_only") return "KPI/Benchmark snapshot history + selected property";
@@ -4945,18 +4938,17 @@ export default function GA4Metrics() {
       id === "info:scheduler_no_history" ||
       id === "anomaly:not-enough-history"
     ) return "High";
-    if (id.includes(":3d") || id === "info:short_window") return "Low";
+    if (id.includes(":3d")) return "Low";
     if (id.startsWith("anomaly:") || id.startsWith("positive:sessions:") || id.startsWith("positive:revenue:") || id.startsWith("positive:conversions:")) return "Medium";
     if (id.startsWith("kpi:") || id.startsWith("bench:") || id.startsWith("positive:kpi:")) return "Medium";
-    if (id.startsWith("financial:") || id === "info:ga4_revenue_and_imported_revenue_included") return "High";
+    if (id.startsWith("financial:")) return "High";
     return "Medium";
   };
 
   const insights = useMemo<InsightItem[]>(() => {
     const out: InsightItem[] = [];
-    const findingCoverageVerified = activeTab === "insights" && trendsZeroDaysVerified && !ga4TrendsCoverageError;
-    const findingDailyHistoryMismatch = activeTab === "insights" && ga4TrendsCoverage?.verified === false && ga4TrendsCoverage?.reason === "stored_daily_history_differs_from_ga4";
-    const findingRollups = findingCoverageVerified ? trendsRollups : insightsRollups;
+    const findingRollups = insightsRollups;
+    const hasNativeAndImportedRevenue = revenueKpiInputState === "ready" && ga4HasRevenueMetric && Number(importedRevenueForFinancials || 0) > 0;
 
     // 0) Executive financial integrity checks (to-date / lifetime)
     // These should update immediately when a user imports Spend/Revenue, even if no KPIs/Benchmarks exist yet.
@@ -4977,14 +4969,6 @@ export default function GA4Metrics() {
         title: "GA4 trend history is stale",
         description: "The tab is showing last-good daily values, but trend comparisons and recommendations are withheld until a current refresh succeeds.",
         recommendation: "Run the campaign GA4 refresh and confirm the completed-day coverage before acting on trend signals.",
-      });
-    } else if (findingDailyHistoryMismatch) {
-      out.push({
-        id: "integrity:daily_history_mismatch",
-        severity: "high",
-        title: "Saved GA4 trend history differs from GA4",
-        description: "GA4 provider daily rows or their date coverage differ from saved rows for this campaign and property. Daily trend and KPI/Benchmark performance findings are withheld until the difference is resolved.",
-        recommendation: "Compare provider and saved daily rows for this campaign, property, filter, currency, and reporting window before repairing confirmed differences.",
       });
     }
 
@@ -5220,7 +5204,7 @@ export default function GA4Metrics() {
         id: "financial:negative_revenue",
         severity: "high",
         title: "Revenue is negative to date",
-        description: `Revenue-to-date is ${formatMoney(Number(financialRevenue || 0))} (${toDateRangeLabel}); it is not treated as zero.`,
+        description: `Revenue-to-date is ${formatMoney(Number(financialRevenue || 0))} (${toDateRangeLabel}); it is not treated as zero. Revenue-to-date uses GA4 native revenue plus imported revenue sources.`,
         recommendation: "Verify refunds, chargebacks, adjustments, and revenue-event configuration before acting on revenue, ROI, or ROAS.",
       });
     }
@@ -5261,18 +5245,8 @@ export default function GA4Metrics() {
     // NOTE: We intentionally do NOT count "revenue source policy/provenance" as an Insight.
     // Execs can audit provenance in the "Sources used" footer; Insights should remain actionable.
 
-    if (revenueKpiInputState === "ready" && ga4HasRevenueMetric && Number(importedRevenueForFinancials || 0) > 0) {
-      out.push({
-        id: "info:ga4_revenue_and_imported_revenue_included",
-        severity: "low",
-        title: "GA4 and imported revenue are both included",
-        description: "Imported revenue is included alongside GA4 revenue in Total Revenue. Confirm imported sources are not already tracked as GA4 ecommerce to avoid double counting.",
-      });
-    }
-
     // 1) Actionable insights from KPI performance
     for (const k of Array.isArray(platformKPIs) ? platformKPIs : []) {
-      if (findingDailyHistoryMismatch) continue;
       if (!getKpiConsumerState(k).eligible) continue; // non-verified KPIs are handled in integrity checks above
       if (getInvalidKpiConfigReason(k)) continue; // invalid KPIs are handled in integrity checks above
       if (!getKpiInsightPeriodCompatibility(k).comparable) continue;
@@ -5371,7 +5345,6 @@ export default function GA4Metrics() {
 
     // 2) Actionable insights from Benchmark performance
     for (const b of Array.isArray(benchmarks) ? benchmarks : []) {
-      if (findingDailyHistoryMismatch) continue;
       if (!getBenchmarkConsumerState(b).eligible) continue; // non-verified Benchmarks are handled in integrity checks above
       if (getInvalidBenchmarkConfigReason(b)) continue; // invalid benchmarks are handled in integrity checks above
       if (!getBenchmarkInsightPeriodCompatibility(b).comparable) continue;
@@ -5469,13 +5442,9 @@ export default function GA4Metrics() {
     // 3) Anomaly detection uses two complete calendar windows. Missing dates
     // fail closed as insufficient history instead of widening either period.
     const dates = findingRollups.rows.map((row) => row.date);
-    const historyCoverageLabel = findingCoverageVerified ? "verified" : "imported";
-    const historyRowsLabel = findingCoverageVerified
-      ? `${dates.length} verified campaign days are available in the 60-day window`
-      : `${dates.length} total rows are present in the 60-day response`;
-    const sevenDayComparisonReady = !findingDailyHistoryMismatch && (findingCoverageVerified
-      ? !trendsRefreshIsStale && findingRollups.last7.complete && findingRollups.prior7.complete
-      : !trendsRefreshIsStale && insightsRollups.last7.complete && insightsRollups.prior7.complete);
+    const historyCoverageLabel = "imported";
+    const historyRowsLabel = `${dates.length} total rows are present in the 60-day response`;
+    const sevenDayComparisonReady = !trendsRefreshIsStale && insightsRollups.last7.complete && insightsRollups.prior7.complete;
     if (sevenDayComparisonReady) {
       const a = findingRollups.last7;
       const b = findingRollups.prior7;
@@ -5579,7 +5548,7 @@ export default function GA4Metrics() {
           description: `Last 7d: ${formatNumber(findingRollups.last7.conversions)} vs prior 7d: ${formatNumber(findingRollups.prior7.conversions)}.`,
         });
       }
-    } else if (!trendsRefreshIsStale && !findingDailyHistoryMismatch && findingRollups.last3.complete && findingRollups.prior3.complete) {
+    } else if (!trendsRefreshIsStale && findingRollups.last3.complete && findingRollups.prior3.complete) {
       // Short-window fallback: 3d vs 3d with higher thresholds to reduce false positives
       const crA3 = findingRollups.last3.cr;
       const crB3 = findingRollups.prior3.cr;
@@ -5611,8 +5580,23 @@ export default function GA4Metrics() {
       const sessionsDelta3 = findingRollups.deltas.sessions3;
       const revenueDelta3 = findingRollups.deltas.revenue3;
       const convDelta3 = findingRollups.deltas.conversions3;
+      const correlatedVolumeDrop =
+        sessionsDelta3 <= ANOMALY_SHORT_SESSIONS_DROP_PCT && findingRollups.prior3.sessions > 0 &&
+        revenueDelta3 <= ANOMALY_SHORT_REVENUE_DROP_PCT && findingRollups.prior3.revenue > 0 &&
+        convDelta3 <= ANOMALY_SHORT_CONVERSIONS_DROP_PCT && findingRollups.prior3.conversions > 0 &&
+        crA3 >= crB3;
+      if (correlatedVolumeDrop) {
+        const latestDay = findingRollups.rows.find((row) => row.date === findingRollups.last3.endDate);
+        out.push({
+          id: "anomaly:volume:3d",
+          severity: "medium",
+          title: "Traffic and revenue fell in the latest 3 days",
+          description: `Imported GA4 data for ${findingRollups.last3.startDate} to ${findingRollups.last3.endDate}: ${formatNumber(findingRollups.last3.sessions)} sessions, ${formatNumber(findingRollups.last3.conversions)} conversions, ${formatMoney(findingRollups.last3.revenue)} revenue. Prior ${findingRollups.prior3.startDate} to ${findingRollups.prior3.endDate}: ${formatNumber(findingRollups.prior3.sessions)} sessions, ${formatNumber(findingRollups.prior3.conversions)} conversions, ${formatMoney(findingRollups.prior3.revenue)} revenue. Conversion rate was ${formatPct(crA3)} vs ${formatPct(crB3)}; the newest day had ${formatNumber(latestDay?.sessions || 0)} sessions.${hasNativeAndImportedRevenue ? " These daily revenue amounts exclude separate imported revenue included in Total Revenue." : ""}`,
+          recommendation: "Check that the newest day's GA4 import is complete. If it is, compare traffic-source volume and campaign delivery between these periods before changing budgets; conversion rate did not fall.",
+        });
+      }
 
-      if (sessionsDelta3 <= ANOMALY_SHORT_SESSIONS_DROP_PCT && findingRollups.prior3.sessions > 0) {
+      if (!correlatedVolumeDrop && sessionsDelta3 <= ANOMALY_SHORT_SESSIONS_DROP_PCT && findingRollups.prior3.sessions > 0) {
         out.push({
           id: "anomaly:sessions:3d",
           severity: "medium",
@@ -5622,7 +5606,7 @@ export default function GA4Metrics() {
         });
       }
 
-      if (revenueDelta3 <= ANOMALY_SHORT_REVENUE_DROP_PCT && findingRollups.prior3.revenue > 0) {
+      if (!correlatedVolumeDrop && revenueDelta3 <= ANOMALY_SHORT_REVENUE_DROP_PCT && findingRollups.prior3.revenue > 0) {
         out.push({
           id: "anomaly:revenue:3d",
           severity: "medium",
@@ -5632,7 +5616,7 @@ export default function GA4Metrics() {
         });
       }
 
-      if (convDelta3 <= ANOMALY_SHORT_CONVERSIONS_DROP_PCT && findingRollups.prior3.conversions > 0) {
+      if (!correlatedVolumeDrop && convDelta3 <= ANOMALY_SHORT_CONVERSIONS_DROP_PCT && findingRollups.prior3.conversions > 0) {
         out.push({
           id: "anomaly:conversions:3d",
           severity: "medium",
@@ -5652,24 +5636,17 @@ export default function GA4Metrics() {
         });
       }
 
-      out.push({
-        id: "info:short_window",
-        severity: "low",
-        title: "Using 3-day comparison window (limited history)",
-        description: `Current 7-day window ${insightsRollups.last7.startDate} to ${insightsRollups.last7.endDate}: ${findingRollups.last7.days}/${findingRollups.last7.expectedDays} ${historyCoverageLabel} days. Prior window ${insightsRollups.prior7.startDate} to ${insightsRollups.prior7.endDate}: ${findingRollups.prior7.days}/${findingRollups.prior7.expectedDays} ${historyCoverageLabel} days. Both adjacent calendar windows must be complete before 7-day comparisons run; ${historyRowsLabel}.`,
-      });
-    } else if (!trendsRefreshIsStale && !findingDailyHistoryMismatch && ga4InsightsDailyResp !== undefined) {
+    } else if (!trendsRefreshIsStale && ga4InsightsDailyResp !== undefined) {
       out.push({
         id: "anomaly:not-enough-history",
         severity: "low",
         title: "Trend signals need more history",
-        description: `Current 3-day window ${insightsRollups.last3.startDate} to ${insightsRollups.last3.endDate}: ${findingRollups.last3.days}/${findingRollups.last3.expectedDays} ${historyCoverageLabel} days. Prior window ${insightsRollups.prior3.startDate} to ${insightsRollups.prior3.endDate}: ${findingRollups.prior3.days}/${findingRollups.prior3.expectedDays} ${historyCoverageLabel} days. Both adjacent calendar windows must be complete before comparisons run; ${historyRowsLabel}.`,
+        description: `Current 7-day window ${insightsRollups.last7.startDate} to ${insightsRollups.last7.endDate}: ${findingRollups.last7.days}/${findingRollups.last7.expectedDays} ${historyCoverageLabel} days. Prior 7-day window ${insightsRollups.prior7.startDate} to ${insightsRollups.prior7.endDate}: ${findingRollups.prior7.days}/${findingRollups.prior7.expectedDays} ${historyCoverageLabel} days. Current 3-day window ${insightsRollups.last3.startDate} to ${insightsRollups.last3.endDate}: ${findingRollups.last3.days}/${findingRollups.last3.expectedDays} ${historyCoverageLabel} days. Prior 3-day window ${insightsRollups.prior3.startDate} to ${insightsRollups.prior3.endDate}: ${findingRollups.prior3.days}/${findingRollups.prior3.expectedDays} ${historyCoverageLabel} days. Both adjacent calendar windows must be complete before comparisons run; ${historyRowsLabel}.`,
       });
     }
 
     // 4) Positive saved-target signals
     for (const k of Array.isArray(platformKPIs) ? platformKPIs : []) {
-      if (findingDailyHistoryMismatch) continue;
       if (!getKpiConsumerState(k).eligible) continue;
       if (getInvalidKpiConfigReason(k)) continue;
       if (!getKpiInsightPeriodCompatibility(k).comparable) continue;
@@ -5695,8 +5672,7 @@ export default function GA4Metrics() {
     }
 
     // 5) Informational insights — always fire when data exists, even without KPIs/Benchmarks
-    const availDays = insightsRollups?.availableDays || 0;
-    if (!trendsRefreshIsStale && !findingDailyHistoryMismatch && findingRollups.last7.complete) {
+    if (!trendsRefreshIsStale && findingRollups.last7.complete) {
       const r7 = findingRollups.last7;
       const avgDailySessions = r7.sessions > 0 ? Math.round(r7.sessions / Math.min(r7.days, 7)) : 0;
       const avgDailyConversions = r7.conversions > 0 ? Math.round((r7.conversions / Math.min(r7.days, 7)) * 10) / 10 : 0;
@@ -5740,20 +5716,6 @@ export default function GA4Metrics() {
       }
     }
 
-    // Revenue summary (fires when revenue exists, regardless of KPIs)
-    if (!findingDailyHistoryMismatch && revenueKpiInputState === "ready" && Number(financialRevenue || 0) > 0 && availDays >= 7) {
-      const verifiedPositiveSpend = spendKpiInputState === "ready" && spendMetricAvailable && Number(financialSpend) > 0;
-      out.push({
-        id: "info:revenue_summary",
-        severity: "low",
-        title: `Revenue: ${formatMoney(Number(financialRevenue))} to date`,
-        description: `Revenue-to-date uses GA4 native revenue plus imported revenue sources.${verifiedPositiveSpend ? ` ROAS: ${Number(financialROAS).toFixed(2)}x.` : ""}`,
-        recommendation: verifiedPositiveSpend && Number(financialROAS) < 1
-          ? "Review spend allocation and conversion paths before acting on ROAS."
-          : spendKpiInputState === "ready" && !spendMetricAvailable ? "Add spend data to calculate ROAS and ROI." : undefined,
-      });
-    }
-
     // Stable ordering: high -> medium -> low
     const order = { high: 0, medium: 1, low: 2 } as const;
     out.sort((a, b) => order[a.severity] - order[b.severity]);
@@ -5792,11 +5754,6 @@ export default function GA4Metrics() {
     kpiAnalyticsFailed,
     benchmarkAnalyticsFailed,
     insightsRollups,
-    trendsRollups,
-    trendsZeroDaysVerified,
-    ga4TrendsCoverage,
-    ga4TrendsCoverageError,
-    activeTab,
     recommendationChannelAnalysis,
     kpiListState,
     kpiTrafficInputState,

@@ -1266,6 +1266,19 @@ export default function CampaignPerformanceSummary() {
 
   const getOverviewMetric = (metricName: string, fallbackValue: number) => {
     const metric = performanceSummary?.totals?.[metricName];
+    if (!demoMode && (performanceGA4PropertyId || performanceGA4ConnectionsLoading) && metricName === "spend") {
+      if (performanceSummaryPending || trafficInputState === "loading" || spendInputState === "loading") {
+        return { available: true, value: null, sources: [], unavailableReasons: [], pending: true };
+      }
+      if (trafficInputState !== "ready" || spendInputState !== "ready" || outcomeTotalsError
+        || !performanceSummary?.currentValueWindow?.dataThroughDate
+        || performanceSummary.currentValueWindow.dataThroughDate !== performanceGA4SummaryResponse?.dataThroughDate
+        || metric?.available !== true || typeof metric.value !== "number"
+        || !Number.isFinite(metric.value) || metric.value !== scoringSpendToDate) {
+        return { available: false, value: null, sources: [], unavailableReasons: ["Campaign spend is currently unavailable"] };
+      }
+      return metric;
+    }
     if (performanceSummaryPending) {
       return { available: true, value: null, sources: [], unavailableReasons: [], pending: true };
     }

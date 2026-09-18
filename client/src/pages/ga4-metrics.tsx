@@ -4894,8 +4894,6 @@ export default function GA4Metrics() {
     if (id.startsWith("kpi:") || id.startsWith("bench:")) return "targets";
     if (
       id.startsWith("anomaly:") ||
-      id === "info:avg_sessions" ||
-      id === "info:engagement_rate" ||
       id.startsWith("positive:sessions:") ||
       id.startsWith("positive:revenue:") ||
       id.startsWith("positive:conversions:")
@@ -4919,7 +4917,7 @@ export default function GA4Metrics() {
     if (id.startsWith("kpi:") || id.startsWith("positive:kpi:")) return "Saved KPI target + current values";
     if (id.startsWith("bench:")) return "Saved Benchmark + current values";
     if (id === "info:top_channel") return "GA4 campaign breakdown";
-    if (id.startsWith("anomaly:") || id === "info:avg_sessions" || id === "info:engagement_rate" || id.startsWith("positive:sessions:") || id.startsWith("positive:revenue:") || id.startsWith("positive:conversions:")) {
+    if (id.startsWith("anomaly:") || id.startsWith("positive:sessions:") || id.startsWith("positive:revenue:") || id.startsWith("positive:conversions:")) {
       return "Imported GA4 campaign/property daily history";
     }
     if (id === "info:scheduler_no_history") return "KPI/Benchmark snapshot history";
@@ -5546,6 +5544,7 @@ export default function GA4Metrics() {
           severity: "low",
           title: `Conversions up ${convDelta7.toFixed(1)}% week-over-week`,
           description: `Last 7d: ${formatNumber(findingRollups.last7.conversions)} vs prior 7d: ${formatNumber(findingRollups.prior7.conversions)}.`,
+          recommendation: "Check which traffic sources and conversion paths contributed before changing campaign delivery.",
         });
       }
     } else if (!trendsRefreshIsStale && findingRollups.last3.complete && findingRollups.prior3.complete) {
@@ -5633,6 +5632,7 @@ export default function GA4Metrics() {
           severity: "low",
           title: `Sessions up ${sessionsDelta3.toFixed(1)}% (3-day comparison)`,
           description: `Last 3d: ${formatNumber(findingRollups.last3.sessions)} vs prior 3d: ${formatNumber(findingRollups.prior3.sessions)}. Early signal — monitor for sustained trend.`,
+          recommendation: "Check which traffic sources gained volume, then confirm the change persists before shifting budget.",
         });
       }
 
@@ -5642,6 +5642,7 @@ export default function GA4Metrics() {
         severity: "low",
         title: "Trend signals need more history",
         description: `Current 7-day window ${insightsRollups.last7.startDate} to ${insightsRollups.last7.endDate}: ${findingRollups.last7.days}/${findingRollups.last7.expectedDays} ${historyCoverageLabel} days. Prior 7-day window ${insightsRollups.prior7.startDate} to ${insightsRollups.prior7.endDate}: ${findingRollups.prior7.days}/${findingRollups.prior7.expectedDays} ${historyCoverageLabel} days. Current 3-day window ${insightsRollups.last3.startDate} to ${insightsRollups.last3.endDate}: ${findingRollups.last3.days}/${findingRollups.last3.expectedDays} ${historyCoverageLabel} days. Prior 3-day window ${insightsRollups.prior3.startDate} to ${insightsRollups.prior3.endDate}: ${findingRollups.prior3.days}/${findingRollups.prior3.expectedDays} ${historyCoverageLabel} days. Both adjacent calendar windows must be complete before comparisons run; ${historyRowsLabel}.`,
+        recommendation: "Check whether the missing days are genuine zero-activity days or an incomplete import before using trend comparisons.",
       });
     }
 
@@ -5671,47 +5672,17 @@ export default function GA4Metrics() {
       }
     }
 
-    // 5) Informational insights — always fire when data exists, even without KPIs/Benchmarks
+    // 5) Surface channel concentration only when it warrants a specific check.
     if (!trendsRefreshIsStale && findingRollups.last7.complete) {
-      const r7 = findingRollups.last7;
-      const avgDailySessions = r7.sessions > 0 ? Math.round(r7.sessions / Math.min(r7.days, 7)) : 0;
-      const avgDailyConversions = r7.conversions > 0 ? Math.round((r7.conversions / Math.min(r7.days, 7)) * 10) / 10 : 0;
-      const cr7 = r7.sessions > 0 ? ((r7.conversions / r7.sessions) * 100).toFixed(2) : "0";
-      const engRate7 = r7.engagementRate > 0 ? r7.engagementRate.toFixed(1) : null;
-
-      if (avgDailySessions > 0) {
-        out.push({
-          id: "info:avg_sessions",
-          severity: "low",
-          title: `Average daily sessions: ${formatNumber(avgDailySessions)}`,
-          description: `Over the last 7 days, your campaign averaged ${formatNumber(avgDailySessions)} sessions per day with a ${cr7}% conversion rate.`,
-          recommendation: avgDailyConversions > 0
-            ? `Last 7 days average: ${avgDailyConversions} conversions/day. Create KPIs to track whether this meets your goals.`
-            : "Set up conversion tracking and KPIs to measure campaign effectiveness.",
-        });
-      }
-
-      if (engRate7 && Number(engRate7) > 0) {
-        out.push({
-          id: "info:engagement_rate",
-          severity: "low",
-          title: `Engagement rate: ${engRate7}%`,
-          description: `${engRate7}% of sessions in the last 7 days met GA4's engaged-session criteria. ${Number(engRate7) >= 60 ? "This is a healthy engagement level." : Number(engRate7) >= 40 ? "Moderate engagement — room for improvement." : "Low engagement — consider reviewing landing page relevance."}`,
-        });
-      }
-
-      // Top channel insight (from channelAnalysis)
-      if (recommendationChannelAnalysis && recommendationChannelAnalysis.topSessionChannel && recommendationChannelAnalysis.channelCount >= 2) {
+      if (recommendationChannelAnalysis && recommendationChannelAnalysis.topSessionChannel && recommendationChannelAnalysis.channelCount >= 2 && recommendationChannelAnalysis.topSessionShare > 70) {
         const ch = recommendationChannelAnalysis.topSessionChannel;
         const share = recommendationChannelAnalysis.topSessionShare;
         out.push({
           id: "info:top_channel",
           severity: "low",
           title: `Top channel: ${ch.label} (${share.toFixed(0)}% of sessions)`,
-          description: `Your leading traffic source is ${ch.label} with ${formatNumber(ch.sessions)} sessions across ${recommendationChannelAnalysis.channelCount} channels. ${share > 70 ? "High concentration — consider diversifying traffic sources." : "Healthy channel mix."}`,
-          recommendation: recommendationChannelAnalysis.lowestCRChannel
-            ? `Lowest-converting channel: ${recommendationChannelAnalysis.lowestCRChannel.label} at ${formatPct(recommendationChannelAnalysis.lowestCRChannel.cr)} CR. Check landing page alignment for this source.`
-            : undefined,
+          description: `${ch.label} supplied ${formatNumber(ch.sessions)} sessions across ${recommendationChannelAnalysis.channelCount} channels in the imported 30-day window. Traffic is concentrated in this source.`,
+          recommendation: `Check whether changes to ${ch.label} explain the campaign's traffic movement before shifting spend to other sources.`,
         });
       }
     }

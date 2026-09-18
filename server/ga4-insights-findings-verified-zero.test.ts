@@ -13,6 +13,7 @@ describe("GA4 Insights findings use imported campaign daily history", () => {
     let sevenDayReady = "";
     let threeDayReady = "";
     let correlatedDrop = "";
+    let topChannelReady = "";
     const visit = (node: ts.Node) => {
       if (ts.isVariableDeclaration(node)) {
         const name = node.name.getText(source);
@@ -23,16 +24,21 @@ describe("GA4 Insights findings use imported campaign daily history", () => {
       if (ts.isIfStatement(node) && node.thenStatement.getText(source).includes('id: "anomaly:volume:3d"') && node.expression.getText(source).includes("findingRollups.last3.complete")) {
         threeDayReady = node.expression.getText(source);
       }
+      if (ts.isIfStatement(node) && node.thenStatement.getText(source).includes('id: "info:top_channel"')) {
+        topChannelReady = node.expression.getText(source);
+      }
       ts.forEachChild(node, visit);
     };
     visit(source);
     expect(selectedRollups).toBe("insightsRollups");
-    expect(sevenDayReady && threeDayReady && correlatedDrop).toBeTruthy();
+    expect(sevenDayReady && threeDayReady && correlatedDrop && topChannelReady).toBeTruthy();
     expect(findingMemo).not.toContain("ga4TrendsCoverage");
     expect(findingMemo).not.toContain("trendsRollups");
     expect(findingMemo).not.toContain('id: "integrity:daily_history_mismatch"');
     expect(findingMemo).not.toContain('id: "info:ga4_revenue_and_imported_revenue_included"');
     expect(findingMemo).not.toContain('id: "info:revenue_summary"');
+    expect(findingMemo).not.toContain('id: "info:avg_sessions"');
+    expect(findingMemo).not.toContain('id: "info:engagement_rate"');
 
     const row = (date: string, sessions: number, conversions = 0, revenue = 0) => ({
       date, sessions, users: sessions, conversions, revenue, pageviews: sessions, engagedSessions: 0, engagementRate: 0,
@@ -66,5 +72,9 @@ describe("GA4 Insights findings use imported campaign daily history", () => {
     expect(isCorrelated(validZero)).toBe(false);
     expect(findingMemo).toContain('id: "anomaly:volume:3d"');
     expect(findingMemo).toContain('confidence: getInsightConfidence(item)');
+    const showChannel = new Function("recommendationChannelAnalysis", `return (${topChannelReady});`) as
+      (value: unknown) => boolean;
+    expect(showChannel({ topSessionChannel: { label: "Email" }, channelCount: 2, topSessionShare: 69 })).toBe(false);
+    expect(showChannel({ topSessionChannel: { label: "Email" }, channelCount: 2, topSessionShare: 71 })).toBe(true);
   });
 });

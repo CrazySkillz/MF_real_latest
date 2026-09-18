@@ -1158,6 +1158,21 @@ export default function CampaignPerformanceSummary() {
         ga4BaselineTimestamp ||= `${spendComparisonEndDate}T00:00:00.000Z`;
       }
     }
+    const currentSpend = Number(performanceSummary?.totals?.spend?.value);
+    if (!demoMode && performanceGA4PropertyId && !outcomeTotalsError && spendInputState === "ready"
+      && !performanceGA4SummaryResponse?.refreshIsStale && !performanceGA4SummaryResponse?.providerRefreshWarning
+      && performanceSummary?.currentValueWindow?.dataThroughDate === performanceGA4SummaryResponse?.dataThroughDate
+      && aggregateSnapshotMetricAvailable(performanceSummary, "spend")
+      && Number.isFinite(currentSpend) && currentSpend >= 0 && currentSpend === scoringSpendToDate
+      && !ga4Changes.some((change) => change.metric === "Spend")) {
+      const sourceLabels = aggregateMetricSources(performanceSummary, "spend");
+      ga4Changes.push({
+        metric: "Spend", current: currentSpend, previous: currentSpend, change: 0,
+        pctChange: null, direction: "flat", isCurrency: true, isCostMetric: true,
+        comparisonUnavailable: true, comparisonUnavailableLabel: "Comparison unavailable — verified Spend baseline unavailable",
+        sourceLabel: sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")}` : "Sources unavailable",
+      });
+    }
 
     const currentRevenue = revenueResponseTotal(performanceGA4RevenueResponse);
     const historicalRevenue = revenueResponseTotal(historicalRevenueResponse);

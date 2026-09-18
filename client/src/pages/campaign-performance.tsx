@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { buildPerformanceRecommendedActions, resolvePerformanceConfiguredMetricValue, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, resolvePerformancePriorityRank } from "@/lib/performance-recommended-actions";
+import { datedFinancialSourceIds, datedFinancialSourceSetsCompatible } from "@/lib/performance-financial-source-dates";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatPct } from "@shared/metric-math";
 import {
@@ -217,7 +218,7 @@ export default function CampaignPerformanceSummary() {
   const trendPeriod = timeRange === '24h' ? 'daily' : timeRange === '7d' ? 'weekly' : 'monthly';
   const spendComparisonEndDate = resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), timeRange);
   const revenueComparisonEndDate = resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), timeRange);
-  const { data: historicalRevenueResponse } = useQuery<any>({
+  const { data: historicalRevenueResponse, isError: historicalRevenueError, isPlaceholderData: historicalRevenuePlaceholder } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-total-revenue-comparison", performanceGA4PropertyId, revenueComparisonEndDate],
     enabled: !!campaignId && !!performanceGA4PropertyId && !!revenueComparisonEndDate && !demoMode,
     placeholderData: keepPreviousData,
@@ -250,14 +251,34 @@ export default function CampaignPerformanceSummary() {
       return data;
     },
   });
-  const { data: historicalSpendComparison } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "snapshots", "spend-comparison", comparisonType, spendComparisonEndDate],
+  const { data: performanceGA4SpendSourcesResponse, isError: performanceGA4SpendSourcesError } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-spend-sources", "performance-summary-read-only"],
+    enabled: !!campaignId && !!performanceGA4PropertyId && !demoMode,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/spend-sources?platformContext=ga4`);
+      const data = await response.json().catch(() => null);
+      if (!response.ok || data?.success !== true || !Array.isArray(data?.sources)) throw new Error(data?.error || "Failed to fetch GA4 spend sources");
+      return data;
+    },
+  });
+  const { data: performanceGA4RevenueSourcesResponse, isError: performanceGA4RevenueSourcesError } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-revenue-sources", "performance-summary-read-only"],
+    enabled: !!campaignId && !!performanceGA4PropertyId && !demoMode,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/revenue-sources?platformContext=ga4`);
+      const data = await response.json().catch(() => null);
+      if (!response.ok || data?.success !== true || !Array.isArray(data?.sources)) throw new Error(data?.error || "Failed to fetch GA4 revenue sources");
+      return data;
+    },
+  });
+  const { data: historicalSpendResponse, isError: historicalSpendError, isPlaceholderData: historicalSpendPlaceholder } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-spend-to-date-comparison", spendComparisonEndDate],
     enabled: !!campaignId && !!performanceGA4PropertyId && !!spendComparisonEndDate && !demoMode,
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/snapshots/comparison?type=${comparisonType}&comparisonDate=${encodeURIComponent(spendComparisonEndDate)}`, { credentials: "include" });
+      const response = await fetch(`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4&endDate=${encodeURIComponent(spendComparisonEndDate)}`);
       const data = await response.json().catch(() => null);
-      if (!response.ok || data?.comparisonDate !== spendComparisonEndDate) throw new Error(data?.message || "Failed to fetch historical Spend");
+      if (!response.ok || data?.success !== true || data?.endDate !== spendComparisonEndDate) throw new Error(data?.error || "Failed to fetch historical Spend");
       return data;
     },
   });
@@ -1051,9 +1072,10 @@ export default function CampaignPerformanceSummary() {
     return Array.from(new Set([...nativeSource, ...importedSources])).sort();
   };
   const revenueResponseTotal = (response: any): number | null => {
-    const nativeRevenue = Number(response?.native?.totals?.revenue);
-    const importedRevenue = Number(response?.imported?.totalRevenue);
-    if (!Number.isFinite(nativeRevenue) || !Number.isFinite(importedRevenue) || revenueResponseSourceIds(response).length === 0) return null;
+    if (typeof response?.native?.totals?.revenue !== "number" || typeof response?.imported?.totalRevenue !== "number") return null;
+    const nativeRevenue = Number(response.native.totals.revenue);
+    const importedRevenue = Number(response.imported.totalRevenue);
+    if (!Number.isFinite(nativeRevenue) || !Number.isFinite(importedRevenue)) return null;
     return Number((nativeRevenue + importedRevenue).toFixed(2));
   };
 
@@ -1136,23 +1158,22 @@ export default function CampaignPerformanceSummary() {
       }
     };
     changeMetricConfigs.forEach(addGA4Change);
-    const historicalSpendSummary = historicalSpendComparison?.previous?.metrics?.performanceSummary;
-    const currentSpendSourceIds = aggregateMetricSourceIds(performanceSummary, "spend");
-    const historicalSpendSourceIds = aggregateMetricSourceIds(historicalSpendSummary, "spend");
-    const currentVerifiedSpendSourceIds = Array.isArray(performanceGA4SpendResponse?.sourceIds)
-      ? performanceGA4SpendResponse.sourceIds.map((sourceId: any) => String(sourceId || "").trim()).filter(Boolean).sort()
-      : [];
-    const spendSourcesCompatible = currentSpendSourceIds.length > 0
-      && JSON.stringify(currentSpendSourceIds) === JSON.stringify(currentVerifiedSpendSourceIds)
-      && JSON.stringify(currentSpendSourceIds) === JSON.stringify(historicalSpendSourceIds);
+    const activeSpendSourceIds = datedFinancialSourceIds(performanceGA4SpendSourcesResponse, "spend", String(performanceGA4SpendResponse?.currency || "").toUpperCase());
+    const spendSourcesCompatible = activeSpendSourceIds !== null && activeSpendSourceIds.length > 0
+      && datedFinancialSourceSetsCompatible(activeSpendSourceIds, performanceGA4SpendResponse?.sourceIds, historicalSpendResponse?.sourceIds);
     if (!demoMode && performanceGA4PropertyId && trafficInputState === "ready" && spendInputState === "ready" && spendComparisonEndDate
-      && historicalSpendComparison?.comparisonDate === spendComparisonEndDate
+      && !historicalSpendError && !historicalSpendPlaceholder && !performanceGA4SpendSourcesError
+      && historicalSpendResponse?.endDate === spendComparisonEndDate
+      && performanceGA4SpendResponse?.endDate === performanceGA4FinancialEndDate
+      && String(performanceGA4SpendResponse?.currency || "").toUpperCase() === String(historicalSpendResponse?.currency || "").toUpperCase()
+      && !performanceGA4SummaryResponse?.refreshIsStale && !performanceGA4SummaryResponse?.providerRefreshWarning
+      && performanceSummary?.currentValueWindow?.dataThroughDate === performanceGA4FinancialEndDate
       && aggregateSnapshotMetricAvailable(performanceSummary, "spend")
-      && aggregateSnapshotMetricAvailable(historicalSpendSummary, "spend")
       && spendSourcesCompatible) {
-      const current = aggregateSnapshotMetricValue(performanceSummary, "spend");
-      const previous = aggregateSnapshotMetricValue(historicalSpendSummary, "spend");
-      if (Number.isFinite(current) && Number.isFinite(previous) && current >= 0 && previous >= 0) {
+      const current = Number(performanceGA4SpendResponse?.spendToDate);
+      const previous = Number(historicalSpendResponse?.spendToDate);
+      if (typeof historicalSpendResponse?.spendToDate === "number" && Number.isFinite(current) && Number.isFinite(previous)
+        && current >= 0 && previous >= 0 && current === aggregateSnapshotMetricValue(performanceSummary, "spend")) {
         const change = current - previous;
         const sourceLabels = aggregateMetricSources(performanceSummary, "spend");
         ga4Changes.push({
@@ -1185,19 +1206,24 @@ export default function CampaignPerformanceSummary() {
     const historicalRevenue = revenueResponseTotal(historicalRevenueResponse);
     const currentRevenueSourceIds = revenueResponseSourceIds(performanceGA4RevenueResponse);
     const historicalRevenueSourceIds = revenueResponseSourceIds(historicalRevenueResponse);
+    const activeRevenueSourceIds = datedFinancialSourceIds(performanceGA4RevenueSourcesResponse, "revenue", String(performanceGA4RevenueResponse?.imported?.currency || "").toUpperCase());
     const currentRevenueDate = String(performanceGA4SummaryResponse?.dataThroughDate || "");
     const currentRevenueDatesMatch = performanceGA4RevenueResponse?.native?.endDate === currentRevenueDate
       && performanceGA4RevenueResponse?.imported?.endDate === currentRevenueDate;
     const historicalRevenueDatesMatch = historicalRevenueResponse?.native?.endDate === revenueComparisonEndDate
       && historicalRevenueResponse?.imported?.endDate === revenueComparisonEndDate;
-    const revenueSourcesCompatible = currentRevenueSourceIds.length > 0
-      && currentRevenueSourceIds.join("\u0000") === historicalRevenueSourceIds.join("\u0000");
+    const revenueSourcesCompatible = activeRevenueSourceIds !== null && currentRevenueSourceIds.length > 0
+      && datedFinancialSourceSetsCompatible(activeRevenueSourceIds, performanceGA4RevenueResponse?.imported?.sourceIds, historicalRevenueResponse?.imported?.sourceIds)
+      && JSON.stringify(currentRevenueSourceIds.filter((sourceId) => sourceId.startsWith("ga4:")))
+        === JSON.stringify(historicalRevenueSourceIds.filter((sourceId) => sourceId.startsWith("ga4:")))
+      && String(performanceGA4RevenueResponse?.imported?.currency || "").toUpperCase() === String(historicalRevenueResponse?.imported?.currency || "").toUpperCase();
     if (!demoMode && performanceGA4PropertyId && trafficInputState === "ready" && revenueInputState === "ready" && currentRevenue !== null && currentRevenueDatesMatch) {
       const sourceLabels = [
         ...(String(performanceGA4RevenueResponse?.native?.revenueMetric || "").trim() || Number(performanceGA4RevenueResponse?.native?.totals?.revenue) !== 0 ? ["GA4 native revenue"] : []),
         ...(Array.isArray(performanceGA4RevenueResponse?.imported?.sourceIds) && performanceGA4RevenueResponse.imported.sourceIds.length > 0 ? ["Imported revenue"] : []),
       ];
-      if (historicalRevenue !== null && historicalRevenueDatesMatch && revenueSourcesCompatible) {
+      if (!historicalRevenueError && !historicalRevenuePlaceholder && !performanceGA4RevenueSourcesError
+        && historicalRevenue !== null && historicalRevenueDatesMatch && revenueSourcesCompatible) {
         const change = currentRevenue - historicalRevenue;
         ga4Changes.push({
           metric: "Total Revenue", current: currentRevenue, previous: historicalRevenue, change,
@@ -1210,7 +1236,7 @@ export default function CampaignPerformanceSummary() {
         ga4Changes.push({
           metric: "Total Revenue", current: currentRevenue, previous: currentRevenue, change: 0,
           pctChange: null, direction: "flat", isCurrency: true, comparisonUnavailable: true,
-          comparisonUnavailableLabel: "Comparison unavailable — exact-date Revenue unavailable",
+          comparisonUnavailableLabel: "Comparison unavailable — dated Revenue history unverified",
           sourceLabel: sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")}` : "Sources unavailable",
         });
       }
@@ -1677,7 +1703,7 @@ export default function CampaignPerformanceSummary() {
                                   'text-muted-foreground/70'
                                 }`}>
                                   {item.comparisonUnavailable ? item.comparisonUnavailableLabel || 'Comparison unavailable — incomplete GA4 daily history' : isFlat ? 'No change' :
-                                    `${isUp ? '+' : ''}${item.isCurrency ? formatCurrencyValue(item.change) : item.change.toLocaleString()}${item.pctChange === null ? '' : ` (${isUp ? '+' : ''}${item.pctChange.toFixed(1)}%)`}`
+                                    `${isUp ? '+' : ''}${item.isCurrency ? formatCurrencyValue(item.change) : item.change.toLocaleString()}${item.pctChange === null ? '' : ` (${isUp ? '+' : ''}${item.pctChange.toFixed(Math.abs(item.pctChange) < 0.05 && item.pctChange !== 0 ? 2 : 1)}%)`}`
                                   }
                                 </span>
                               </div>

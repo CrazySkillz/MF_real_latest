@@ -272,29 +272,26 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain('body[data-scroll-locked]:has([data-performance-movement-select]) { margin-right: 0 !important; }');
   });
 
-  it("compares Spend with the compatible Performance Summary snapshot recorded on the exact historical date", () => {
+  it("compares GA4 Spend through the exact prior date using the same dated active sources", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const storage = readFileSync(join(process.cwd(), "server", "storage.ts"), "utf-8");
-    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/snapshots/comparison"');
-    const routeEnd = routes.indexOf("// Get campaign snapshots by time period", routeStart);
-    const comparisonRoute = routes.slice(routeStart, routeEnd);
-    const storageStart = storage.indexOf("async getComparisonData(");
-    const storageEnd = storage.indexOf("async getBenchmarkAnalytics", storageStart);
-    const comparisonStorage = storage.slice(storageStart, storageEnd);
+    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/spend-to-date"');
+    const routeEnd = routes.indexOf("const toISODateUTC", routeStart);
+    const spendRoute = routes.slice(routeStart, routeEnd);
 
     expect(page).toContain('resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), timeRange)');
-    expect(page).toContain('snapshots/comparison?type=${comparisonType}&comparisonDate=${encodeURIComponent(spendComparisonEndDate)}');
-    expect(page).not.toContain('spend-to-date?platformContext=ga4&endDate=${encodeURIComponent(spendComparisonEndDate)}');
-    expect(page).toContain('historicalSpendComparison?.comparisonDate === spendComparisonEndDate');
-    expect(page).toContain('aggregateSnapshotMetricAvailable(historicalSpendSummary, "spend")');
-    expect(page).toContain('JSON.stringify(currentSpendSourceIds) === JSON.stringify(historicalSpendSourceIds)');
-    expect(page).toContain('const previous = aggregateSnapshotMetricValue(historicalSpendSummary, "spend");');
-    expect(comparisonRoute).toContain('comparisonDate > latestComparisonDate');
-    expect(comparisonRoute).toContain('comparisonDate || undefined');
-    expect(comparisonStorage).toContain("to_char(timezone(${comparisonBoundary.reportingTimeZone}, timezone('UTC', ${metricSnapshots.recordedAt})), 'YYYY-MM-DD') = ${exactComparisonDate}");
-    expect(comparisonStorage).toContain('sql`${metricSnapshots.recordedAt} <= ${targetDate}`');
-    expect(comparisonStorage).toContain("selectStableExactDateSpendSnapshot(previousSnapshots)");
+    expect(page).toContain('spend-to-date?platformContext=ga4&endDate=${encodeURIComponent(spendComparisonEndDate)}');
+    expect(page).toContain('spend-sources?platformContext=ga4');
+    expect(page).toContain('historicalSpendResponse?.endDate === spendComparisonEndDate');
+    expect(page).toContain('datedFinancialSourceIds(performanceGA4SpendSourcesResponse, "spend"');
+    expect(page).toContain('datedFinancialSourceSetsCompatible(activeSpendSourceIds, performanceGA4SpendResponse?.sourceIds, historicalSpendResponse?.sourceIds)');
+    expect(page).toContain('current === aggregateSnapshotMetricValue(performanceSummary, "spend")');
+    expect(page).toContain('!historicalSpendError && !historicalSpendPlaceholder');
+    expect(spendRoute).toContain('requireCampaignAccessParamId');
+    expect(spendRoute).toContain('requestedEndDate > latestEndDate');
+    expect(spendRoute).toContain('storage.getSpendTotalForRange(campaignId, startDate, endDate, platformContext)');
+    expect(storage).toContain('sql`${spendRecords.date} <= ${endDate}`');
     expect(page).toContain('ga4MovementMetricKeys.has(config.key) || config.key === "spend"');
   });
 
@@ -330,11 +327,15 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain("const revenueComparisonEndDate = resolveSpendComparisonEndDate");
     expect(page).toContain("ga4-to-date?propertyId=${encodeURIComponent(performanceGA4PropertyId)}&insightsScope=1&readOnly=1&endDate=${encodeURIComponent(revenueComparisonEndDate)}");
     expect(page).toContain("revenue-to-date?platformContext=ga4&endDate=${encodeURIComponent(revenueComparisonEndDate)}");
+    expect(page).toContain("revenue-sources?platformContext=ga4");
     expect(page).toContain('const recentMovementMetricOrder = ["Sessions", "Conversions", "Spend", "Total Revenue"]');
     expect(movement).toContain('metric: "Total Revenue"');
     expect(movement).toContain("comparisonUnavailable: true");
     expect(movement).toContain("currentRevenueSourceIds");
     expect(movement).toContain("historicalRevenueSourceIds");
+    expect(movement).toContain('datedFinancialSourceIds(performanceGA4RevenueSourcesResponse, "revenue"');
+    expect(movement).toContain('datedFinancialSourceSetsCompatible(activeRevenueSourceIds, performanceGA4RevenueResponse?.imported?.sourceIds, historicalRevenueResponse?.imported?.sourceIds)');
+    expect(movement).toContain('!historicalRevenueError && !historicalRevenuePlaceholder');
   });
 
   it("renders one streamlined live view without repeated tabs, detail lists, source cards, or trend charts", () => {

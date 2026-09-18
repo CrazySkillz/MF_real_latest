@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { buildPerformanceRecommendedActions, resolvePerformanceConfiguredMetricValue, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, resolvePerformancePriorityRank } from "@/lib/performance-recommended-actions";
+import { buildPerformanceRecommendedActions, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, resolvePerformancePriorityRank } from "@/lib/performance-recommended-actions";
 import { datedFinancialSourceIds, datedFinancialSourceSetsCompatible } from "@/lib/performance-financial-source-dates";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatPct } from "@shared/metric-math";
@@ -539,21 +539,14 @@ export default function CampaignPerformanceSummary() {
     : Number(performanceGA4RevenueResponse?.native?.totals?.conversions);
   const scoringSpend = demoMode ? totalSpend : scoringSpendToDate;
   const scoringRevenue = demoMode ? parseNum(effectiveGA4?.metrics?.revenue) : nativeRevenue + importedRevenue;
-  const getLiveScoringValue = (item: any) => resolvePerformanceConfiguredMetricValue(item) ?? resolvePerformanceLiveMetricValue({
+  const getLiveScoringValue = (item: any) => resolvePerformanceLiveMetricValue({
     item,
     trafficTotals: scoringTrafficTotals,
     financialRevenue: scoringRevenue,
     financialSpend: scoringSpend,
     financialConversions: scoringFinancialConversions,
   });
-  const getPriorityScoringValue = (item: any) => {
-    const identity = resolveGA4KpiMetricIdentity(item?.metric, item?.metricName, item?.name);
-    const configuredCurrent = resolvePerformanceConfiguredMetricValue(item);
-    if (configuredCurrent !== null) return configuredCurrent;
-    const isFinancial = identity === "revenue" || identity === "roas" || identity === "roi" || identity === "cpa";
-    if (!identity || (!isFinancial && trafficInputState !== "ready")) return null;
-    return getLiveScoringValue(item);
-  };
+  const getPriorityScoringValue = (item: any) => getLiveScoringValue(item);
   const isPriorityPeriodComparable = (item: any) => demoMode || resolveGA4InsightTargetPeriodCompatibility({
     metric: item?.metric || item?.metricName,
     name: item?.name || item?.metricName,
@@ -610,7 +603,7 @@ export default function CampaignPerformanceSummary() {
     if (!consumerState.eligible) return null;
     const current = currentOverride === undefined ? getLiveScoringValue(kpi) : currentOverride;
     const target = parseScoringNumber(kpi?.targetValue);
-    if (kpiListState !== "ready" || (resolvePerformanceConfiguredMetricValue(kpi) === null && !consumerState.eligible) || current === null || target === null || target <= 0) return null;
+    if (kpiListState !== "ready" || current === null || target === null || target <= 0) return null;
     const lowerIsBetter = isLowerIsBetterKpi({ metric: kpi?.metric, name: kpi?.name });
     const policy = resolveKpiThresholdPolicy({ metric: kpi?.metric, name: kpi?.name, unit: kpi?.unit, current, target, lowerIsBetter });
     const band = classifyKpiBandWithPolicy({ current, target, lowerIsBetter, policy });
@@ -643,7 +636,7 @@ export default function CampaignPerformanceSummary() {
     if (!consumerState.eligible) return null;
     const current = currentOverride === undefined ? getLiveScoringValue(benchmark) : currentOverride;
     const benchmarkValue = parseScoringNumber(benchmark?.benchmarkValue ?? benchmark?.industryAverage);
-    if (benchmarkListState !== "ready" || (resolvePerformanceConfiguredMetricValue(benchmark) === null && !consumerState.eligible) || current === null || benchmarkValue === null || benchmarkValue <= 0) return null;
+    if (benchmarkListState !== "ready" || current === null || benchmarkValue === null || benchmarkValue <= 0) return null;
     const result = computeBenchmarkThresholdResult({ metric, name, unit: benchmark?.unit, current, benchmarkValue });
     return result.status ? { ...result, current, target: benchmarkValue } : null;
   };

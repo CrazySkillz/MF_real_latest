@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { getReportingComparisonBoundary } from "./utils/reporting-timezone";
 import { selectStableExactDateSpendSnapshot } from "./storage";
-import { resolvePerformanceConfiguredMetricValue, resolvePerformanceLiveMetricValue, resolvePerformancePriorityRank } from "../client/src/lib/performance-recommended-actions";
+import { resolvePerformanceLiveMetricValue, resolvePerformancePriorityRank } from "../client/src/lib/performance-recommended-actions";
 import { classifyKpiBandWithPolicy, computeEffectiveDeltaPct, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "../shared/kpi-math";
 import { resolveGA4InsightTargetPeriodCompatibility } from "../shared/ga4-kpi-consumer-state";
 
@@ -41,15 +41,15 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain('fetch(`/api/platforms/google_analytics/benchmarks?campaignId=${encodeURIComponent(String(campaignId))}`)');
     expect(page).not.toContain('queryKey: [`/api/campaigns/${campaignId}/kpis`]');
     expect(page).not.toContain('queryKey: [`/api/campaigns/${campaignId}/benchmarks`]');
-    expect(scoringBlock).toContain("const getLiveScoringValue = (item: any) => resolvePerformanceConfiguredMetricValue(item) ?? resolvePerformanceLiveMetricValue({");
+    expect(scoringBlock).toContain("const getLiveScoringValue = (item: any) => resolvePerformanceLiveMetricValue({");
     expect(scoringBlock).toContain("const current = currentOverride === undefined ? getLiveScoringValue(kpi) : currentOverride;");
     expect(scoringBlock).toContain("const current = currentOverride === undefined ? getLiveScoringValue(benchmark) : currentOverride;");
     expect(scoringBlock).toContain("const getScoringTrafficInputState = (item: any): GA4KpiInputState => {");
     expect(scoringBlock).not.toContain("getFreshPersistedScoringValue");
     expect(page).not.toContain("performance-summary-scoring-read-only");
     expect(page).toContain("performanceGA4SummaryResponse?.overviewTotals");
-    expect(scoringBlock).toContain("resolvePerformanceConfiguredMetricValue(kpi)");
-    expect(scoringBlock).toContain("resolvePerformanceConfiguredMetricValue(benchmark)");
+    expect(scoringBlock).not.toContain("resolvePerformanceConfiguredMetricValue(kpi)");
+    expect(scoringBlock).not.toContain("resolvePerformanceConfiguredMetricValue(benchmark)");
   });
 
   it("reads GA4 traffic outcomes from the read-only GA4 Summary response while retaining aggregate spend", () => {
@@ -125,9 +125,7 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain("const targetSetupAction = recommendedActions.find");
     expect(page).toContain("priority.type === 'success' ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'");
     expect(page).not.toContain("const priorityTrafficWindow");
-    expect(page).toContain("if (configuredCurrent !== null) return configuredCurrent;");
-    expect(page).toContain("const getPriorityScoringValue = (item: any) => {");
-    expect(page).toContain("return getLiveScoringValue(item);");
+    expect(page).toContain("const getPriorityScoringValue = (item: any) => getLiveScoringValue(item);");
     expect(page).toContain("const isPriorityPeriodComparable = (item: any) => demoMode || resolveGA4InsightTargetPeriodCompatibility({");
     expect(page).toContain("const priorityScoredKpis = effectiveKpis");
     expect(page).toContain(".filter(isPriorityPeriodComparable)");
@@ -154,7 +152,13 @@ describe("campaign Performance Summary consolidated view regression guard", () =
       { name: "CPA", metric: "CPA", currentValue: 10.76, targetValue: 9, unit: "USD", priority: "medium", timeframe: "monthly", trackingPeriod: 30 },
     ];
     const ranked = rows.map((item) => {
-      const current = Number(resolvePerformanceConfiguredMetricValue(item));
+      const current = resolvePerformanceLiveMetricValue({
+        item,
+        trafficTotals: { sessions: 1_183, users: 1_184, conversions: 152, pageviews: 1_500, engagedSessions: 809 },
+        financialRevenue: 72_766.69,
+        financialSpend: 2_699.75,
+        financialConversions: 251,
+      })!;
       const target = Number(item.targetValue);
       const lowerIsBetter = isLowerIsBetterKpi(item);
       const policy = resolveKpiThresholdPolicy({ ...item, current, target, lowerIsBetter });
@@ -197,9 +201,9 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain("const sufficiency = resolveBenchmarkDataSufficiency({");
     expect(page).toContain("const band = classifyKpiBandWithPolicy({ current, target, lowerIsBetter, policy });");
     expect(page).toContain("const result = computeBenchmarkThresholdResult({ metric, name, unit: benchmark?.unit, current, benchmarkValue });");
-    expect(page).toContain("const getLiveScoringValue = (item: any) => resolvePerformanceConfiguredMetricValue(item) ?? resolvePerformanceLiveMetricValue({");
+    expect(page).toContain("const getLiveScoringValue = (item: any) => resolvePerformanceLiveMetricValue({");
     expect(page).not.toContain("hasOneCompatiblePerformanceScoringTarget");
-    expect(page).toContain("resolvePerformanceConfiguredMetricValue(kpi)");
+    expect(page).not.toContain("resolvePerformanceConfiguredMetricValue(kpi)");
     expect(page).toContain('const kpisOnTrackOrAbove = scoredKpis.filter((entry: any) => entry.score.band === "above" || entry.score.band === "near").length;');
     expect(page).toContain('const benchmarksOnTrack = scoredBenchmarks.filter((entry: any) => entry.score.status === "on_track").length;');
     expect(page).toContain("const healthCoverage = resolvePerformanceHealthCoverage({");

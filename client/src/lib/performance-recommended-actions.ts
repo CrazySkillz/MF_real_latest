@@ -209,7 +209,7 @@ export function buildPerformanceRecommendedActions(input: PerformanceRecommended
     return [{ type: "info", priority: 0, category: "verification", title: "Recommended Actions withheld", message: "The complete target inventory could not be freshly verified. No action is recommended from retained or incomplete target data." }];
   }
 
-  const liveValue = (row: any) => resolvePerformanceConfiguredMetricValue(row) ?? resolvePerformanceLiveMetricValue({
+  const liveValue = (row: any) => resolvePerformanceLiveMetricValue({
     item: row,
     trafficTotals: input.trafficTotals,
     financialRevenue: input.financialRevenue,

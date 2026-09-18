@@ -31,7 +31,7 @@ const baseInput = (overrides: Partial<PerformanceRecommendedActionsInput> = {}):
   trafficMetricAvailability: { sessions: true, users: true, conversions: true, pageviews: true, conversion_rate: true, engagement_rate: true },
   financialRevenue: 72_766.69,
   financialSpend: 2_699.75,
-  financialConversions: 152,
+  financialConversions: 251,
   ...overrides,
 });
 
@@ -285,6 +285,29 @@ describe("Performance Summary Recommended Actions decision engine", () => {
     expect(action.message).toContain("campaign-to-date financial inputs");
   });
 
+  it("ignores an older saved KPI value when verified source totals are newer", () => {
+    const [action] = buildPerformanceRecommendedActions(baseInput({
+      financialRevenue: 200,
+      kpis: [{ metric: "revenue", currentValue: 2_000, targetValue: 1_000 }],
+    }));
+    expect(action).toMatchObject({ type: "warning", title: "Review Revenue" });
+    expect(action.message).toContain("Verified $200.00");
+    expect(action.message).not.toContain("$2,000.00");
+  });
+
+  it("ignores an older saved Benchmark value and withholds unavailable Revenue", () => {
+    const [benchmarkAction] = buildPerformanceRecommendedActions(baseInput({
+      benchmarks: [{ metric: "conversions", currentValue: 500, benchmarkValue: 300 }],
+    }));
+    expect(benchmarkAction).toMatchObject({ type: "warning", title: "Review Conversions" });
+    expect(benchmarkAction.message).toContain("Verified 152");
+    const [revenueAction] = buildPerformanceRecommendedActions(baseInput({
+      revenueState: "unavailable",
+      kpis: [{ metric: "revenue", currentValue: 2_000, targetValue: 1_000 }],
+    }));
+    expect(revenueAction).toMatchObject({ type: "info", title: "Recommendation inputs unavailable" });
+  });
+
   it("withholds a saved CPA current value when financial conversions are stale", () => {
     const [action] = buildPerformanceRecommendedActions(baseInput({
       financialConversionsState: "stale",
@@ -371,7 +394,7 @@ describe("Performance Summary Recommended Actions decision engine", () => {
     expect(page).not.toContain('action.category === "target-periods"');
     expect(page).not.toContain("performance-summary-scoring-read-only");
     expect(page).toContain("const liveScoringTrafficTotals = performanceGA4SummaryResponse?.overviewTotals || {};");
-    expect(page).toContain("resolvePerformanceConfiguredMetricValue(item) ?? resolvePerformanceLiveMetricValue({");
+    expect(page).toContain("const getLiveScoringValue = (item: any) => resolvePerformanceLiveMetricValue({");
     expect(page).toContain("const recommendedActions = buildPerformanceRecommendedActions({");
     expect(page).toContain("kpis: effectiveKpis,");
     expect(page).toContain("benchmarks: effectiveBenchmarks,");

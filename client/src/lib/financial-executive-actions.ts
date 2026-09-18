@@ -6,6 +6,11 @@ export type FinancialExecutiveAction = {
 
 export type FinancialPacingStatus = "unavailable" | "ahead" | "behind" | "on-track";
 
+export const countInclusivePacingDays = (start: Date, end: Date): number => {
+  const dayNumber = (date: Date) => Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000;
+  return Math.max(0, dayNumber(end) - dayNumber(start) + 1);
+};
+
 export function buildFinancialBudgetAction(input: {
   hasCampaignBudget: boolean;
   spendAvailable: boolean;

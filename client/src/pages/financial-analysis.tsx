@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest } from "@/lib/queryClient";
-import { buildFinancialAllocationAction, buildFinancialBudgetAction } from "@/lib/financial-executive-actions";
+import { buildFinancialAllocationAction, buildFinancialBudgetAction, countInclusivePacingDays } from "@/lib/financial-executive-actions";
 import { formatPct } from "@shared/metric-math";
 
 interface Campaign {
@@ -417,10 +417,10 @@ export default function FinancialAnalysis() {
   // Active budget periods pace through today; completed periods stop elapsed days at the pacing end date.
   const campaignElapsedEndDay = campaignEndDay && todayPacingDate.getTime() > campaignEndDay.getTime() ? campaignEndDay : todayPacingDate;
   const campaignElapsedDays = campaignStartDay && campaignElapsedEndDay.getTime() >= campaignStartDay.getTime()
-    ? Math.max(1, Math.floor((campaignElapsedEndDay.getTime() - campaignStartDay.getTime()) / (1000 * 60 * 60 * 24)) + 1)
+    ? countInclusivePacingDays(campaignStartDay, campaignElapsedEndDay)
     : 0;
   const campaignTotalDays = hasCampaignDateRange
-    ? Math.max(1, Math.floor((campaignEndDay!.getTime() - campaignStartDay!.getTime()) / (1000 * 60 * 60 * 24)) + 1)
+    ? countInclusivePacingDays(campaignStartDay!, campaignEndDay!)
     : 0;
   // Format currency with campaign's currency
   const formatCurrency = (value: number) => {

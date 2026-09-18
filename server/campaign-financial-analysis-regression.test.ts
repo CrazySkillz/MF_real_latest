@@ -2,9 +2,27 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { insertCampaignSchema } from "@shared/schema";
-import { buildFinancialAllocationAction, buildFinancialBudgetAction } from "../client/src/lib/financial-executive-actions";
+import { buildFinancialAllocationAction, buildFinancialBudgetAction, countInclusivePacingDays } from "../client/src/lib/financial-executive-actions";
 
 describe("campaign Budget & Financial Analysis regression guard", () => {
+  it("counts budget-period calendar days across daylight-saving changes", () => {
+    const originalTimeZone = process.env.TZ;
+    try {
+      process.env.TZ = "Europe/Amsterdam";
+      const start = new Date(2026, 2, 28);
+      const elapsed = countInclusivePacingDays(start, new Date(2026, 2, 30));
+      const total = countInclusivePacingDays(start, new Date(2026, 3, 3));
+      expect(elapsed).toBe(3);
+      expect(total).toBe(7);
+      expect(((230 / elapsed) / (700 / total)) * 100).toBeLessThan(85);
+      expect(countInclusivePacingDays(new Date(2026, 9, 24), new Date(2026, 9, 26))).toBe(3);
+      expect(countInclusivePacingDays(new Date(2026, 2, 30), start)).toBe(0);
+    } finally {
+      if (originalTimeZone === undefined) delete process.env.TZ;
+      else process.env.TZ = originalTimeZone;
+    }
+  });
+
   it("uses actual budget pacing instead of total-budget utilization alone", () => {
     const base = {
       hasCampaignBudget: true,

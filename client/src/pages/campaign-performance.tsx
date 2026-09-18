@@ -1112,6 +1112,7 @@ export default function CampaignPerformanceSummary() {
     let ga4BaselineTimestamp: string | null = null;
     const addGA4Change = (config: any) => {
       if (!demoMode && performanceGA4PropertyId && ga4MovementMetricKeys.has(config.key)) {
+        if (trafficInputState !== "ready") return;
         const comparison = getGA4MovementComparison(config.key);
         if (!comparison) {
           const current = Number(performanceGA4SummaryResponse?.overviewTotals?.[config.key]);
@@ -1138,7 +1139,7 @@ export default function CampaignPerformanceSummary() {
     const historicalSpendSourceIds = aggregateMetricSourceIds(historicalSpendSummary, "spend");
     const spendSourcesCompatible = currentSpendSourceIds.length > 0
       && JSON.stringify(currentSpendSourceIds) === JSON.stringify(historicalSpendSourceIds);
-    if (!demoMode && performanceGA4PropertyId && spendComparisonEndDate
+    if (!demoMode && performanceGA4PropertyId && trafficInputState === "ready" && spendInputState === "ready" && spendComparisonEndDate
       && historicalSpendComparison?.comparisonDate === spendComparisonEndDate
       && aggregateSnapshotMetricAvailable(performanceSummary, "spend")
       && aggregateSnapshotMetricAvailable(historicalSpendSummary, "spend")
@@ -1159,7 +1160,7 @@ export default function CampaignPerformanceSummary() {
       }
     }
     const currentSpend = Number(performanceSummary?.totals?.spend?.value);
-    if (!demoMode && performanceGA4PropertyId && !outcomeTotalsError && spendInputState === "ready"
+    if (!demoMode && performanceGA4PropertyId && !outcomeTotalsError && trafficInputState === "ready" && spendInputState === "ready"
       && !performanceGA4SummaryResponse?.refreshIsStale && !performanceGA4SummaryResponse?.providerRefreshWarning
       && performanceSummary?.currentValueWindow?.dataThroughDate === performanceGA4SummaryResponse?.dataThroughDate
       && aggregateSnapshotMetricAvailable(performanceSummary, "spend")
@@ -1185,7 +1186,7 @@ export default function CampaignPerformanceSummary() {
       && historicalRevenueResponse?.imported?.endDate === revenueComparisonEndDate;
     const revenueSourcesCompatible = currentRevenueSourceIds.length > 0
       && currentRevenueSourceIds.join("\u0000") === historicalRevenueSourceIds.join("\u0000");
-    if (!demoMode && performanceGA4PropertyId && currentRevenue !== null && currentRevenueDatesMatch) {
+    if (!demoMode && performanceGA4PropertyId && trafficInputState === "ready" && revenueInputState === "ready" && currentRevenue !== null && currentRevenueDatesMatch) {
       const sourceLabels = [
         ...(String(performanceGA4RevenueResponse?.native?.revenueMetric || "").trim() || Number(performanceGA4RevenueResponse?.native?.totals?.revenue) !== 0 ? ["GA4 native revenue"] : []),
         ...(Array.isArray(performanceGA4RevenueResponse?.imported?.sourceIds) && performanceGA4RevenueResponse.imported.sourceIds.length > 0 ? ["Imported revenue"] : []),
@@ -1608,11 +1609,14 @@ export default function CampaignPerformanceSummary() {
                     <div className="text-center py-8">
                       <Clock className="w-8 h-8 text-muted-foreground/70 mx-auto mb-3" />
                       <p className="text-muted-foreground/70 font-medium">
-                        {changeData.emptyReason === "incompatible_history" ? "No compatible historical data yet" : "Not enough historical data yet"}
+                        {!demoMode && performanceGA4PropertyId && trafficInputState !== "ready"
+                          ? "GA4 recent movement is currently unavailable"
+                          : changeData.emptyReason === "incompatible_history" ? "No compatible historical data yet" : "Not enough historical data yet"}
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Compatible aggregate snapshots are recorded as your connected platforms sync.
-                        Changes will appear here once a previous aggregate snapshot is available to compare.
+                        {!demoMode && performanceGA4PropertyId && trafficInputState !== "ready"
+                          ? "Wait for GA4 data to load or verify its refresh before using recent comparisons."
+                          : "Compatible aggregate snapshots are recorded as your connected platforms sync. Changes will appear here once a previous aggregate snapshot is available to compare."}
                       </p>
                     </div>
                   ) : (

@@ -236,6 +236,7 @@ describe("scheduled Performance Summary PDF", () => {
     storageMock.getPlatformKPIs.mockResolvedValueOnce([
       { id: "kpi-cpa", name: "CPA", metric: "cpa", currentValue: null, targetValue: "15", unit: "$", priority: "critical" },
     ]);
+    storageMock.getPlatformBenchmarks.mockResolvedValueOnce([]);
 
     await buildPdfAttachmentForReport({
       report: {

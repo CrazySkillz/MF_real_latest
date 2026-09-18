@@ -312,7 +312,9 @@ export function buildPerformanceRecommendedActions(input: PerformanceRecommended
       evaluatedByMetric.set(action.category, action);
     }
   }
-  const recommendations = (setup.length > 0 ? setup : Array.from(evaluatedByMetric.values()))
+  const targetActions = Array.from(evaluatedByMetric.values());
+  const gapActions = targetActions.filter((action) => action.type === "warning");
+  const recommendations = (setup.length > 0 ? setup : gapActions.length > 0 ? gapActions : targetActions)
     .sort((a, b) => a.priority - b.priority || (b.severity || 0) - (a.severity || 0))
     .slice(0, 3);
   if (recommendations.length > 0) return recommendations;

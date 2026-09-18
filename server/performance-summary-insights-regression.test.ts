@@ -316,6 +316,19 @@ describe("Performance Summary Recommended Actions decision engine", () => {
     expect(action.message).toContain("Verified 0");
   });
 
+  it("shows only target gaps when verified on-target metrics also exist", () => {
+    const actions = buildPerformanceRecommendedActions(baseInput({
+      kpis: [
+        { metric: "conversion_rate", name: "Conversion Rate", currentValue: 12.88, targetValue: 39, priority: "medium" },
+        { metric: "engagement_rate", name: "Engagement Rate", currentValue: 68.24, targetValue: 90, priority: "medium" },
+        { metric: "users", name: "Total Users", currentValue: 2_502, targetValue: 950, priority: "medium" },
+      ],
+    }));
+
+    expect(actions.map((action) => action.title)).toEqual(["Review Key Events per Session", "Review Engagement Rate"]);
+    expect(actions.every((action) => action.type === "warning")).toBe(true);
+  });
+
   it("does not recommend corrective action when verified ROAS beats a compatible target", () => {
     const [action] = buildPerformanceRecommendedActions(baseInput({
       kpis: [{ metric: "roas", name: "ROAS", currentValue: 26.95, targetValue: 25, timeframe: "campaign-to-date" }],

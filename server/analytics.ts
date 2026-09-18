@@ -1139,7 +1139,7 @@ export class GoogleAnalytics4Service {
     try {
       const result = await runWithRevenueFallback(campaignDimensionFilter);
       if (!isEmptyTotals(result) || !pageLocationCampaignFilter) return await supplementConversionRevenueTotals(result);
-      const utmResult = await runWithRevenueFallback(pageLocationCampaignFilter, 'today').catch(ignoreNonCurrencyFailure);
+      const utmResult = await runWithRevenueFallback(pageLocationCampaignFilter, endDate).catch(ignoreNonCurrencyFailure);
       const selectedResult = utmResult && !isEmptyTotals(utmResult) ? utmResult : result;
       return await supplementConversionRevenueTotals(selectedResult);
     } catch (e: any) {

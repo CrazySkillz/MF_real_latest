@@ -170,7 +170,7 @@ describe("GA4 campaign value picker", () => {
         json: async () => ({
           metadata: { currencyCode: "USD" },
           rows: isPageLocationScope
-            ? [{ metricValues: [{ value: "85" }, { value: "85" }, { value: "3" }, { value: "108" }, { value: "531.349929" }] }]
+            ? [{ metricValues: [{ value: "85" }, { value: "85" }, { value: "3" }, { value: "108" }, { value: body.dateRanges?.[0]?.endDate === "2026-06-17" ? "531.349929" : "999" }] }]
             : [{ metricValues: [{ value: "0" }, { value: "0" }, { value: "0" }, { value: "0" }, { value: "0" }] }],
         }),
       } as any;
@@ -201,7 +201,7 @@ describe("GA4 campaign value picker", () => {
     expect(fetchMock.mock.calls.every((call) => JSON.parse(String(call[1]?.body || "{}")).currencyCode === "USD")).toBe(true);
     const fallbackBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body || "{}"));
     expect(JSON.stringify(fallbackBody.dimensionFilter)).toContain("pageLocation");
-    expect(fallbackBody.dateRanges[0].endDate).toBe("today");
+    expect(fallbackBody.dateRanges[0]).toEqual({ startDate: "2026-06-01", endDate: "2026-06-17" });
   });
 
   it("supplements to-date conversion and revenue values without changing traffic totals", async () => {

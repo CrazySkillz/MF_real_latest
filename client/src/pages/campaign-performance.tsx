@@ -1137,7 +1137,11 @@ export default function CampaignPerformanceSummary() {
     const historicalSpendSummary = historicalSpendComparison?.previous?.metrics?.performanceSummary;
     const currentSpendSourceIds = aggregateMetricSourceIds(performanceSummary, "spend");
     const historicalSpendSourceIds = aggregateMetricSourceIds(historicalSpendSummary, "spend");
+    const currentVerifiedSpendSourceIds = Array.isArray(performanceGA4SpendResponse?.sourceIds)
+      ? performanceGA4SpendResponse.sourceIds.map((sourceId: any) => String(sourceId || "").trim()).filter(Boolean).sort()
+      : [];
     const spendSourcesCompatible = currentSpendSourceIds.length > 0
+      && JSON.stringify(currentSpendSourceIds) === JSON.stringify(currentVerifiedSpendSourceIds)
       && JSON.stringify(currentSpendSourceIds) === JSON.stringify(historicalSpendSourceIds);
     if (!demoMode && performanceGA4PropertyId && trafficInputState === "ready" && spendInputState === "ready" && spendComparisonEndDate
       && historicalSpendComparison?.comparisonDate === spendComparisonEndDate

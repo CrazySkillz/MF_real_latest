@@ -1636,7 +1636,7 @@ export default function CampaignPerformanceSummary() {
                               <div className="text-sm font-medium text-muted-foreground/70 mb-1">{item.metric}</div>
                               <div className="flex items-baseline space-x-2">
                                 <span className="text-2xl font-bold text-foreground">
-                                  {item.isCurrency ? `$${item.current.toLocaleString()}` : item.current.toLocaleString()}
+                                  {item.isCurrency ? formatCurrencyValue(item.current) : item.current.toLocaleString()}
                                 </span>
                               </div>
                               <div className="flex items-center mt-2 space-x-2">
@@ -1648,13 +1648,13 @@ export default function CampaignPerformanceSummary() {
                                   'text-muted-foreground/70'
                                 }`}>
                                   {item.comparisonUnavailable ? item.comparisonUnavailableLabel || 'Comparison unavailable — incomplete GA4 daily history' : isFlat ? 'No change' :
-                                    `${isUp ? '+' : ''}${item.isCurrency ? '$' + item.change.toLocaleString() : item.change.toLocaleString()}${item.pctChange === null ? '' : ` (${isUp ? '+' : ''}${item.pctChange.toFixed(1)}%)`}`
+                                    `${isUp ? '+' : ''}${item.isCurrency ? formatCurrencyValue(item.change) : item.change.toLocaleString()}${item.pctChange === null ? '' : ` (${isUp ? '+' : ''}${item.pctChange.toFixed(1)}%)`}`
                                   }
                                 </span>
                               </div>
                               {!item.comparisonUnavailable && (
                                 <div className="text-xs text-muted-foreground mt-1">
-                                  Previous: {item.isCurrency ? `$${item.previous.toLocaleString()}` : item.previous.toLocaleString()}
+                                  Previous: {item.isCurrency ? formatCurrencyValue(item.previous) : item.previous.toLocaleString()}
                                 </div>
                               )}
                               <div className="text-xs text-muted-foreground mt-1">

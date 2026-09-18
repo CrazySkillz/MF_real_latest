@@ -586,6 +586,7 @@ export default function CampaignPerformanceSummary() {
       missingDependencies: getScoringMissingDependencies(kpi),
       sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
     });
+    if (!consumerState.eligible) return null;
     const current = currentOverride === undefined ? getLiveScoringValue(kpi) : currentOverride;
     const target = parseScoringNumber(kpi?.targetValue);
     if (kpiListState !== "ready" || (resolvePerformanceConfiguredMetricValue(kpi) === null && !consumerState.eligible) || current === null || target === null || target <= 0) return null;
@@ -618,6 +619,7 @@ export default function CampaignPerformanceSummary() {
       sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
       entityLabel: "Benchmark",
     });
+    if (!consumerState.eligible) return null;
     const current = currentOverride === undefined ? getLiveScoringValue(benchmark) : currentOverride;
     const benchmarkValue = parseScoringNumber(benchmark?.benchmarkValue ?? benchmark?.industryAverage);
     if (benchmarkListState !== "ready" || (resolvePerformanceConfiguredMetricValue(benchmark) === null && !consumerState.eligible) || current === null || benchmarkValue === null || benchmarkValue <= 0) return null;

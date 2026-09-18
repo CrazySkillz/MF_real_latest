@@ -1303,8 +1303,11 @@ export default function CampaignPerformanceSummary() {
   };
   const getGA4TotalRevenueMetric = () => {
     if (demoMode) return getOverviewMetric("revenue", parseNum(effectiveGA4?.metrics?.revenue));
-    if (performanceGA4ConnectionsLoading || performanceGA4RevenueLoading) {
+    if (trafficInputState === "loading" || revenueInputState === "loading") {
       return { available: true, value: null, sources: [], unavailableReasons: [], pending: true };
+    }
+    if (trafficInputState !== "ready" || revenueInputState !== "ready") {
+      return { available: false, value: null, sources: [], unavailableReasons: [trafficInputState === "stale" || revenueInputState === "stale" ? "GA4 revenue data is stale" : "GA4 revenue unavailable"] };
     }
     const nativeRevenue = Number(performanceGA4RevenueResponse?.native?.totals?.revenue);
     const importedRevenue = Number(performanceGA4RevenueResponse?.imported?.totalRevenue);

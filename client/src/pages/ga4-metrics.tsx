@@ -1861,7 +1861,7 @@ export default function GA4Metrics() {
     },
   });
 
-  const { data: ga4TrendsCoverage, error: ga4TrendsCoverageError } = useQuery<any>({
+  const { data: ga4TrendsCoverage, error: ga4TrendsCoverageError, isLoading: ga4TrendsCoverageLoading } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-insights-trends-coverage", selectedGA4PropertyId, ga4InsightsDailyResp?.dataThroughDate, ga4InsightsDailyResp?.lastCompletedRefreshAt],
     enabled: activeTab === "insights" && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId && ga4InsightsDailyResp !== undefined,
     staleTime: 30 * 60 * 1000,
@@ -4855,6 +4855,7 @@ export default function GA4Metrics() {
       revenueKpiInputState === "loading" ||
       spendKpiInputState === "loading" ||
       (ga4InsightsDailyLoading && ga4InsightsDailyResp === undefined) ||
+      (ga4TrendsCoverageLoading && ga4TrendsCoverage === undefined) ||
       (breakdownLoading && ga4Breakdown === undefined) ||
       kpiAnalyticsQueries.some((query: any) => query?.isLoading && query?.data === undefined) ||
       benchmarkAnalyticsQueries.some((query: any) => query?.isLoading && query?.data === undefined)
@@ -4909,6 +4910,7 @@ export default function GA4Metrics() {
     if (id === "integrity:target_period_mismatch") return "Saved target period + current-value reporting window";
     if (id === "integrity:targets_unverified") return "Required source state + saved KPI/Benchmark configuration";
     if (id === "integrity:target_lists_unverified") return "Campaign-scoped KPI/Benchmark list requests";
+    if (id === "integrity:daily_history_outdated") return "GA4 provider daily values + saved campaign/property daily rows";
     if (id.startsWith("integrity:kpi")) return "Saved KPI configuration";
     if (id.startsWith("integrity:bench")) return "Saved Benchmark configuration";
     if (id === "financial:ga4_to_date_unavailable" || id === "financial:ga4_to_date_stale") return "GA4 to-date totals";
@@ -4919,7 +4921,7 @@ export default function GA4Metrics() {
     if (id.startsWith("bench:")) return "Saved Benchmark + current values";
     if (id === "info:top_channel") return "GA4 campaign breakdown";
     if (id.startsWith("anomaly:") || id.startsWith("positive:sessions:") || id.startsWith("positive:revenue:") || id.startsWith("positive:conversions:")) {
-      return "Imported GA4 completed daily history for the selected campaign/property";
+      return "GA4 completed daily history for this campaign/property, including pre-creation dates and verified zero days when available";
     }
     if (id === "info:scheduler_no_history") return "KPI/Benchmark snapshot history";
     if (id === "integrity:analytics_history_primary_property_only") return "KPI/Benchmark snapshot history + selected property";
@@ -4944,9 +4946,34 @@ export default function GA4Metrics() {
     return "Medium";
   };
 
+  const findingsCoverageMatchesDaily =
+    String(ga4TrendsCoverage?.propertyId || "").replace(/^properties\//i, "") === String(selectedGA4PropertyId || "").replace(/^properties\//i, "") &&
+    String(ga4TrendsCoverage?.endDate || "") === trendsDataThroughDate &&
+    String(ga4TrendsCoverage?.reportingTimeZone || "") === String((ga4InsightsDailyResp as any)?.reportingTimeZone || "") &&
+    /^\d{4}-\d{2}-\d{2}$/.test(String(ga4TrendsCoverage?.startDate || "")) &&
+    String(ga4TrendsCoverage?.startDate || "") <= trendsDataThroughDate;
+  const findingsZeroDaysVerified = findingsCoverageMatchesDaily && ga4TrendsCoverage?.verified === true && Array.isArray(ga4TrendsCoverage?.dailyRows);
+  const findingsDailyRows = useMemo(() => {
+    if (!findingsZeroDaysVerified) return ga4InsightsTimeSeries;
+    const verifiedRows = normalizeGA4InsightsDailyRows(ga4TrendsCoverage.dailyRows, trendsDataThroughDate);
+    const knownDates = new Set(verifiedRows.map((row: any) => String(row.date)));
+    const verifiedZeroRows = (Array.isArray(ga4TrendsCoverage?.zeroDates) ? ga4TrendsCoverage.zeroDates : [])
+      .filter((date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date) && date >= ga4TrendsCoverage.startDate && date >= String((ga4InsightsDailyResp as any)?.startDate || "") && date <= trendsDataThroughDate && !knownDates.has(date))
+      .map((date: string) => ({ date, sessions: 0, users: 0, conversions: 0, revenue: 0, pageviews: 0, engagedSessions: 0, engagementRate: 0 }));
+    return [...verifiedRows, ...verifiedZeroRows];
+  }, [ga4InsightsTimeSeries, ga4TrendsCoverage, ga4InsightsDailyResp, findingsZeroDaysVerified, trendsDataThroughDate]);
+  const findingsRollups = useMemo(
+    () => buildGA4InsightsRollups(findingsDailyRows, trendsDataThroughDate),
+    [findingsDailyRows, trendsDataThroughDate],
+  );
+  const findingsHistoryMismatch = findingsCoverageMatchesDaily && ga4TrendsCoverage?.reason === "stored_daily_history_differs_from_ga4";
   const insights = useMemo<InsightItem[]>(() => {
     const out: InsightItem[] = [];
-    const findingRollups = insightsRollups;
+    const findingRollups = findingsRollups;
+    const findingChannelAnalysis = recommendationChannelAnalysis &&
+      findingRollups.last30.sessions === insightsDataSummaryTotals.sessions &&
+      findingRollups.last30.conversions === insightsDataSummaryTotals.conversions
+      ? recommendationChannelAnalysis : null;
     const hasNativeAndImportedRevenue = revenueKpiInputState === "ready" && ga4HasRevenueMetric && Number(importedRevenueForFinancials || 0) > 0;
 
     // 0) Executive financial integrity checks (to-date / lifetime)
@@ -4968,6 +4995,14 @@ export default function GA4Metrics() {
         title: "GA4 trend history is stale",
         description: "The tab is showing last-good daily values, but trend comparisons and recommendations are withheld until a current refresh succeeds.",
         recommendation: "Run the campaign GA4 refresh and confirm the completed-day coverage before acting on trend signals.",
+      });
+    } else if (findingsHistoryMismatch) {
+      out.push({
+        id: "integrity:daily_history_outdated",
+        severity: "high",
+        title: "Refresh GA4 data before reviewing trends",
+        description: "GA4's completed daily values differ from the saved data for this campaign and property. Trend findings are paused to avoid misleading recommendations.",
+        recommendation: "Refresh this campaign's GA4 data, then review its traffic and conversion trends again.",
       });
     }
 
@@ -5307,7 +5342,7 @@ export default function GA4Metrics() {
         recommendation: (() => {
           const m = metric.toLowerCase();
           const identity = resolveGA4KpiMetricIdentity((k as any)?.metric, (k as any)?.name);
-          const ch = recommendationChannelAnalysis;
+          const ch = findingChannelAnalysis;
           const isCustom = !m || m === "__custom__";
           const isConversion = identity === "conversions" || identity === "conversion_rate" || (!identity && !isCustom && m.includes("conversion"));
           const isRevenue = identity === "revenue";
@@ -5371,7 +5406,7 @@ export default function GA4Metrics() {
         recommendation: (() => {
           const m = metric.toLowerCase();
           const identity = resolveGA4KpiMetricIdentity((b as any)?.metric, (b as any)?.name);
-          const ch = recommendationChannelAnalysis;
+          const ch = findingChannelAnalysis;
           const isCustom = !m || m === "__custom__";
           const isConversion = identity === "conversions" || identity === "conversion_rate" || (!identity && !isCustom && m.includes("conversion"));
           const isEngagement = identity === "engagement_rate" || (!identity && !isCustom && m.includes("engagement"));
@@ -5441,9 +5476,9 @@ export default function GA4Metrics() {
     // 3) Anomaly detection uses two complete calendar windows. Missing dates
     // fail closed as insufficient history instead of widening either period.
     const dates = findingRollups.rows.map((row) => row.date);
-    const historyCoverageLabel = "imported";
-    const historyRowsLabel = `${dates.length} total rows are present in the 60-day response`;
-    const sevenDayComparisonReady = !trendsRefreshIsStale && insightsRollups.last7.complete && insightsRollups.prior7.complete;
+    const historyCoverageLabel = findingsZeroDaysVerified ? "observed or verified-zero" : "observed";
+    const historyRowsLabel = `${dates.length} campaign/property daily dates are available`;
+    const sevenDayComparisonReady = !trendsRefreshIsStale && !findingsHistoryMismatch && findingRollups.last7.complete && findingRollups.prior7.complete;
     if (sevenDayComparisonReady) {
       const a = findingRollups.last7;
       const b = findingRollups.prior7;
@@ -5480,7 +5515,7 @@ export default function GA4Metrics() {
       const sessionsDelta7 = findingRollups.deltas.sessions7;
       const revenueDelta7 = findingRollups.deltas.revenue7;
       const convDelta7 = findingRollups.deltas.conversions7;
-      const ch = recommendationChannelAnalysis;
+      const ch = findingChannelAnalysis;
 
       if (sessionsDelta7 <= ANOMALY_SESSIONS_DROP_PCT && findingRollups.prior7.sessions > 0) {
         const channelNote = ch?.topSessionChannel
@@ -5548,7 +5583,7 @@ export default function GA4Metrics() {
           recommendation: "Check which traffic sources and conversion paths contributed before changing campaign delivery.",
         });
       }
-    } else if (!trendsRefreshIsStale && findingRollups.last3.complete && findingRollups.prior3.complete) {
+    } else if (!trendsRefreshIsStale && !findingsHistoryMismatch && findingRollups.last3.complete && findingRollups.prior3.complete) {
       // Short-window fallback: 3d vs 3d with higher thresholds to reduce false positives
       const crA3 = findingRollups.last3.cr;
       const crB3 = findingRollups.prior3.cr;
@@ -5637,12 +5672,12 @@ export default function GA4Metrics() {
         });
       }
 
-    } else if (!trendsRefreshIsStale && ga4InsightsDailyResp !== undefined) {
+    } else if (!trendsRefreshIsStale && !findingsHistoryMismatch && ga4InsightsDailyResp !== undefined) {
       out.push({
         id: "anomaly:not-enough-history",
         severity: "low",
         title: "Trend signals need more history",
-        description: `Current 7-day window ${insightsRollups.last7.startDate} to ${insightsRollups.last7.endDate}: ${findingRollups.last7.days}/${findingRollups.last7.expectedDays} ${historyCoverageLabel} days. Prior 7-day window ${insightsRollups.prior7.startDate} to ${insightsRollups.prior7.endDate}: ${findingRollups.prior7.days}/${findingRollups.prior7.expectedDays} ${historyCoverageLabel} days. Current 3-day window ${insightsRollups.last3.startDate} to ${insightsRollups.last3.endDate}: ${findingRollups.last3.days}/${findingRollups.last3.expectedDays} ${historyCoverageLabel} days. Prior window ${insightsRollups.prior3.startDate} to ${insightsRollups.prior3.endDate}: ${findingRollups.prior3.days}/${findingRollups.prior3.expectedDays} ${historyCoverageLabel} days. Both adjacent calendar windows must be complete before comparisons run; ${historyRowsLabel}.`,
+        description: `Current 7-day window ${findingRollups.last7.startDate} to ${findingRollups.last7.endDate}: ${findingRollups.last7.days}/${findingRollups.last7.expectedDays} ${historyCoverageLabel} days. Prior 7-day window ${findingRollups.prior7.startDate} to ${findingRollups.prior7.endDate}: ${findingRollups.prior7.days}/${findingRollups.prior7.expectedDays} ${historyCoverageLabel} days. Current 3-day window ${findingRollups.last3.startDate} to ${findingRollups.last3.endDate}: ${findingRollups.last3.days}/${findingRollups.last3.expectedDays} ${historyCoverageLabel} days. Prior window ${findingRollups.prior3.startDate} to ${findingRollups.prior3.endDate}: ${findingRollups.prior3.days}/${findingRollups.prior3.expectedDays} ${historyCoverageLabel} days. Both adjacent calendar windows must be complete before comparisons run; ${historyRowsLabel}.`,
         recommendation: "Check whether the missing days are genuine zero-activity days or an incomplete import before using trend comparisons.",
       });
     }
@@ -5674,15 +5709,15 @@ export default function GA4Metrics() {
     }
 
     // 5) Surface channel concentration only when it warrants a specific check.
-    if (!trendsRefreshIsStale && findingRollups.last7.complete) {
-      if (recommendationChannelAnalysis && recommendationChannelAnalysis.topSessionChannel && recommendationChannelAnalysis.channelCount >= 2 && recommendationChannelAnalysis.topSessionShare > 70) {
-        const ch = recommendationChannelAnalysis.topSessionChannel;
-        const share = recommendationChannelAnalysis.topSessionShare;
+    if (!trendsRefreshIsStale && !findingsHistoryMismatch && findingRollups.last7.complete) {
+      if (findingChannelAnalysis && findingChannelAnalysis.topSessionChannel && findingChannelAnalysis.channelCount >= 2 && findingChannelAnalysis.topSessionShare > 70) {
+        const ch = findingChannelAnalysis.topSessionChannel;
+        const share = findingChannelAnalysis.topSessionShare;
         out.push({
           id: "info:top_channel",
           severity: "low",
           title: `Top channel: ${ch.label} (${share.toFixed(0)}% of sessions)`,
-          description: `${ch.label} supplied ${formatNumber(ch.sessions)} sessions across ${recommendationChannelAnalysis.channelCount} channels in the imported 30-day window. Traffic is concentrated in this source.`,
+          description: `${ch.label} supplied ${formatNumber(ch.sessions)} sessions across ${findingChannelAnalysis.channelCount} channels in the imported 30-day window. Traffic is concentrated in this source.`,
           recommendation: `Check whether changes to ${ch.label} explain the campaign's traffic movement before shifting spend to other sources.`,
         });
       }
@@ -5700,10 +5735,11 @@ export default function GA4Metrics() {
   }, [
     platformKPIs,
     benchmarks,
-    insightsRollupRows,
+    findingsRollups,
     ga4InsightsDailyError,
     ga4InsightsDailyResp,
     trendsRefreshIsStale,
+    findingsHistoryMismatch,
     breakdownTotals,
     ga4Metrics,
     financialSpend,
@@ -5725,8 +5761,8 @@ export default function GA4Metrics() {
     benchmarkAnalyticsById,
     kpiAnalyticsFailed,
     benchmarkAnalyticsFailed,
-    insightsRollups,
     recommendationChannelAnalysis,
+    findingsZeroDaysVerified,
     kpiListState,
     kpiTrafficInputState,
     trafficKpiInputState,

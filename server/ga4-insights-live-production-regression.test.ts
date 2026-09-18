@@ -43,7 +43,8 @@ describe("live GA4 Insights production boundary", () => {
 
     expect(page).toContain('id: "integrity:daily_history_unavailable"');
     expect(page).toContain('id: "integrity:daily_history_stale"');
-    expect(page).toContain("!trendsRefreshIsStale && insightsRollups.last7.complete && insightsRollups.prior7.complete");
+    expect(page).toContain("!trendsRefreshIsStale && !findingsHistoryMismatch && findingRollups.last7.complete && findingRollups.prior7.complete");
+    expect(page).toContain('id: "integrity:daily_history_outdated"');
     expect(page).toContain('id: "integrity:analytics_history_unavailable"');
     expect(page).toContain("if (!resp.ok) throw new Error(json?.message || json?.error || \"Failed to fetch KPI analytics history\")");
   });
@@ -63,8 +64,8 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).not.toContain("Full 7-day vs prior 7-day anomaly checks start after");
     expect(page).not.toContain("Need at least {insightsTrendMode === \"7d\" ? 14 : 60} days of history");
     expect(page).not.toContain("Number(insightsRollups?.availableDays || 0) < minDays");
-    expect(page).toContain("Current 7-day window ${insightsRollups.last7.startDate}");
-    expect(page).toContain("Current 3-day window ${insightsRollups.last3.startDate}");
+    expect(page).toContain("Current 7-day window ${findingRollups.last7.startDate}");
+    expect(page).toContain("Current 3-day window ${findingRollups.last3.startDate}");
     expect(page).toContain("const complete7DayRows = insightsTrendMode === \"7d\"");
     expect(page).toContain("? complete7DayRows.length > 0");
     expect(page).toContain("const complete30DayRows = insightsTrendMode === \"30d\"");
@@ -101,8 +102,11 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain("filterGA4InsightsBreakdownRowsToImportedDates(");
     expect(page).toContain("}, [activeTab, ga4Breakdown, breakdownPlaceholder, ga4InsightsTimeSeries, insightsDataSummaryTotals.startDate, insightsDataSummaryTotals.endDate]);");
     expect(page).toContain("const recommendationChannelAnalysis = breakdownError ? null : dataSummaryChannelAnalysis;");
-    expect(page).toContain("const ch = recommendationChannelAnalysis;");
-    expect(page).toContain("if (recommendationChannelAnalysis && recommendationChannelAnalysis.topSessionChannel");
+    expect(page).toContain("const findingChannelAnalysis = recommendationChannelAnalysis &&");
+    expect(page).toContain("findingRollups.last30.sessions === insightsDataSummaryTotals.sessions");
+    expect(page).toContain("buildGA4InsightsRollups(findingsDailyRows, trendsDataThroughDate)");
+    expect(page).toContain("const ch = findingChannelAnalysis;");
+    expect(page).toContain("if (findingChannelAnalysis && findingChannelAnalysis.topSessionChannel");
   });
 
   it("recomputes financial integrity findings when source availability changes", () => {

@@ -16,12 +16,13 @@ describe("GA4 Insights finding eligibility on daily-history failure", () => {
     };
     visit(source);
     expect(condition).toBeTruthy();
-    const eligible = new Function("trendsRefreshIsStale", "ga4InsightsDailyResp", `return (${condition});`) as
-      (stale: boolean, response: unknown) => boolean;
+    const eligible = new Function("trendsRefreshIsStale", "findingsHistoryMismatch", "ga4InsightsDailyResp", `return (${condition});`) as
+      (stale: boolean, mismatch: boolean, response: unknown) => boolean;
 
-    expect(eligible(false, undefined)).toBe(false); // Initial failed or absent response.
-    expect(eligible(true, { data: [] })).toBe(false); // Last-good response marked stale.
-    expect(eligible(false, { data: [] })).toBe(true); // Genuine, sparse history.
-    expect(eligible(false, { data: [{ sessions: 0 }] })).toBe(true); // Valid zero remains eligible.
+    expect(eligible(false, false, undefined)).toBe(false); // Initial failed or absent response.
+    expect(eligible(true, false, { data: [] })).toBe(false); // Last-good response marked stale.
+    expect(eligible(false, true, { data: [] })).toBe(false); // Provider-confirmed mismatch.
+    expect(eligible(false, false, { data: [] })).toBe(true); // Genuine, sparse history.
+    expect(eligible(false, false, { data: [{ sessions: 0 }] })).toBe(true); // Valid zero remains eligible.
   });
 });

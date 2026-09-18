@@ -4,7 +4,7 @@
 
 This file is the short functional overview for the GA4 `Insights` tab.
 
-Use `GA4/INSIGHTS_PRODUCTION_READINESS.md` for the durable production-readiness answer, validation evidence, and future-platform template guidance.
+Use `GA4/INSIGHTS_PRODUCTION_READINESS.md` for the tab-level production-readiness record and `GA4/INSIGHTS_FINDINGS_CERTIFICATION_2026-09-18.md` for the separate, exact-revision findings and tracker-card certificate.
 
 <!-- ga4-insights-current-status -->
 <!-- ga4-insights-certification-status: PRODUCTION_READY -->
@@ -15,16 +15,20 @@ GA4 Insights is **PRODUCTION_READY** for certified runtime boundary `b8c73621215
 
 <!-- /ga4-insights-current-status -->
 
+That tab-level status records its stated earlier revision; the findings-only certificate below records the separate deployed `6673a976f98d853b9eb37ddc99a2afc195f302d9` boundary.
+
 ## Document Ownership
 
-The Insights documentation is intentionally split into two files:
+The Insights documentation has separate scopes:
 
 - `GA4/INSIGHTS.md`
   Functional overview of the current GA4 Insights tab.
 - `GA4/INSIGHTS_PRODUCTION_READINESS.md`
   Canonical source of truth for production readiness, root-cause history, validation evidence, and the reusable template for later Meta, LinkedIn, Instagram, Google Ads, and other platform releases. Google Ads is outside the current Insights certification boundary because no authorized live test account is available.
+- `GA4/INSIGHTS_FINDINGS_CERTIFICATION_2026-09-18.md`
+  Subsection-only evidence for the on-screen findings and Total/High/Medium cards on deployed revision `6673a976f98d853b9eb37ddc99a2afc195f302d9`.
 
-There is no separate `What to investigate next` production-readiness tracker anymore. That subsection is covered inside `GA4/INSIGHTS_PRODUCTION_READINESS.md` with the rest of the tab.
+The subsection certificate does not recertify the other Insights sections or Reports.
 
 ## Current Tab Structure
 
@@ -149,6 +153,11 @@ Shows grouped, rule-based executive guidance.
 Current meaning:
 
 - findings are grouped by investigation type
+- daily trend findings use refreshed, stored rows for the selected campaign/property within the 60-day response, including imported dates before campaign creation; adjacent 7-day windows take precedence over a 3-day fallback
+- provider-verified absent dates can count as zero; unverified missing dates cannot complete a comparison window
+- stale, failed, or confirmed provider-mismatched daily history withholds daily trend comparisons and standalone top-channel context; verified financial and current target findings can still appear from their separate inputs
+- if provider coverage is unavailable, complete observed daily windows may still produce trend findings, but no unverified zero dates are inferred
+- channel details in KPI/Benchmark recommendations require a reconciled breakdown and can remain when daily history is stale or mismatched; missing or wrong-property snapshots withhold streak/history context, not verified current target evaluations
 - invalid KPI or Benchmark targets are shown as configuration issues before performance conclusions
 - standard KPI and Benchmark targets are absolute goals evaluated against their authoritative current values: traffic metrics use the initial-import-through-latest-completed-day cumulative window, while financial metrics use campaign-to-date inputs
 - below-target KPI findings use factual `Below Saved Target` wording and the priority saved on that KPI; attainment percentage does not invent severity

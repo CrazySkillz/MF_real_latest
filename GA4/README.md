@@ -241,7 +241,7 @@ These are now part of the GA4 template contract:
 - The Overview financial-source chooser is outside the Insights certification boundary and remains governed by `GA4/OVERVIEW.md` and `GA4/FINANCIAL_SOURCES.md`. Insights may consume only documented GA4-context totals; foreign platform contexts must not feed GA4 Insights totals.
 - GA4 Insights Executive Financials source copy is conditional on actual connected sources: it must not claim imported revenue or source-backed spend unless those sources are present, and it should not append date-range copy because Trends owns freshness/date context
 - GA4 Insights Trends enforces the completed reporting-day cutoff internally and displays `Latest imported day` for the latest persisted row visible after the campaign-creation-date filter, plus `Last refreshed`; it does not display a separate completed-day-cutoff label
-- GA4 Insights `What to investigate next` is validated as grouped, evidence-aware, history-aware, non-causal executive guidance with explicit data basis, confidence, and `Recommended check:` wording
+- GA4 Insights `What to investigate next` and its Total/High/Medium cards have a separate on-screen certificate for deployed revision `6673a976f98d853b9eb37ddc99a2afc195f302d9`: `GA4/INSIGHTS_FINDINGS_CERTIFICATION_2026-09-18.md`. It does not recertify the other Insights sections or Reports.
 
 Live GA4 processing caveat:
 

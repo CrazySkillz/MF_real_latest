@@ -249,9 +249,8 @@ export function buildPerformanceRecommendedActions(input: PerformanceRecommended
         sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
         entityLabel: entity,
       });
-      const configuredCurrent = resolvePerformanceConfiguredMetricValue(row);
       const current = liveValue(row);
-      if ((configuredCurrent === null && !consumerState.eligible) || current === null) {
+      if (!consumerState.eligible || current === null) {
         blockedLabels.push(`${entity} ${label}`);
         continue;
       }

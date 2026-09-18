@@ -154,7 +154,7 @@ describe("Performance Summary Recommended Actions decision engine", () => {
     expect(["critical", "high", "medium", "low"].map(resolvePerformancePriorityRank)).toEqual([1, 2, 3, 4]);
   });
 
-  it("uses the refreshed KPI current value even when the independent daily-activity freshness flag is stale", () => {
+  it("withholds a saved KPI current value when required traffic is stale", () => {
     const [action] = buildPerformanceRecommendedActions(baseInput({
       trafficState: "stale",
       kpis: [{
@@ -167,11 +167,12 @@ describe("Performance Summary Recommended Actions decision engine", () => {
       }],
     }));
 
-    expect(action).toMatchObject({ type: "success", title: "Users on target" });
-    expect(action.message).toContain("Verified 1,184");
+    expect(action).toMatchObject({ type: "info", title: "Recommendation inputs unavailable" });
+    expect(action.message).toContain("KPI Users");
+    expect(action.message).not.toContain("Verified 1,184");
   });
 
-  it("treats a numeric refreshed KPI current value as the Performance Summary source of truth", () => {
+  it("parses a saved KPI value but does not recommend from stale traffic", () => {
     const sessionsTarget = {
       metric: "sessions",
       name: "Sessions",
@@ -184,19 +185,9 @@ describe("Performance Summary Recommended Actions decision engine", () => {
       trafficState: "stale",
       kpis: [sessionsTarget],
     }));
-    const health = resolvePerformanceHealthCoverage({
-      configuredKpiCount: 1,
-      configuredBenchmarkCount: 0,
-      scoredKpiCount: resolvePerformanceConfiguredMetricValue(sessionsTarget) === null ? 0 : 1,
-      scoredBenchmarkCount: 0,
-      kpisOnTrack: 1,
-      benchmarksOnTrack: 0,
-    });
-
     expect(resolvePerformanceConfiguredMetricValue(sessionsTarget)).toBe(1_183);
-    expect(health).toMatchObject({ verifiedMetricCount: 1, excludedMetricCount: 0, healthScore: 100 });
-    expect(actions).toEqual([expect.objectContaining({ type: "success", title: "Sessions on target" })]);
-    expect(actions[0].message).toContain("Verified 1,183");
+    expect(actions).toEqual([expect.objectContaining({ type: "info", title: "Recommendation inputs unavailable" })]);
+    expect(actions[0].message).toContain("KPI Sessions");
   });
 
   it("scores every standard target against cumulative Overview values", () => {
@@ -294,14 +285,35 @@ describe("Performance Summary Recommended Actions decision engine", () => {
     expect(action.message).toContain("campaign-to-date financial inputs");
   });
 
-  it("uses the refreshed CPA current value when its independent conversion freshness flag is stale", () => {
+  it("withholds a saved CPA current value when financial conversions are stale", () => {
     const [action] = buildPerformanceRecommendedActions(baseInput({
       financialConversionsState: "stale",
       kpis: [{ metric: "cpa", name: "Cost Per Acquisition", currentValue: 10.76, targetValue: 9, timeframe: "lifetime" }],
     }));
 
-    expect(action).toMatchObject({ type: "warning", title: "Review Cost Per Acquisition" });
-    expect(action.message).toContain("Verified $10.76");
+    expect(action).toMatchObject({ type: "info", title: "Recommendation inputs unavailable" });
+    expect(action.message).toContain("KPI Cost Per Acquisition");
+    expect(action.message).not.toContain("Verified $10.76");
+  });
+
+  it("withholds a saved Benchmark current value when required traffic is unavailable", () => {
+    const [action] = buildPerformanceRecommendedActions(baseInput({
+      trafficState: "unavailable",
+      benchmarks: [{ metric: "conversions", name: "Conversions", currentValue: 152, benchmarkValue: 299 }],
+    }));
+
+    expect(action).toMatchObject({ type: "info", title: "Recommendation inputs unavailable" });
+    expect(action.message).toContain("Benchmark Conversions");
+  });
+
+  it("keeps a verified zero current value eligible for a target-backed action", () => {
+    const [action] = buildPerformanceRecommendedActions(baseInput({
+      trafficTotals: { ...baseInput().trafficTotals, conversions: 0 },
+      kpis: [{ metric: "conversions", name: "Conversions", currentValue: 0, targetValue: 100 }],
+    }));
+
+    expect(action).toMatchObject({ type: "warning", title: "Review Conversions" });
+    expect(action.message).toContain("Verified 0");
   });
 
   it("does not recommend corrective action when verified ROAS beats a compatible target", () => {

@@ -1276,11 +1276,14 @@ export default function CampaignPerformanceSummary() {
   };
   const getGA4SummaryMetric = (metricName: string, demoFallbackValue: number) => {
     if (demoMode) return getOverviewMetric(metricName, demoFallbackValue);
-    if (performanceGA4ConnectionsLoading || (!!performanceGA4PropertyId && performanceGA4SummaryLoading)) {
+    if (trafficInputState === "loading") {
       return { available: true, value: null, sources: [], unavailableReasons: [], pending: true };
     }
-    const value = Number(performanceGA4SummaryResponse?.overviewTotals?.[metricName]);
-    if (!Number.isFinite(value)) {
+    if (trafficInputState !== "ready") {
+      return { available: false, value: null, sources: [], unavailableReasons: [trafficInputState === "stale" ? "GA4 Summary data is stale" : "GA4 Summary metric unavailable"] };
+    }
+    const value = performanceGA4SummaryResponse?.overviewTotals?.[metricName];
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
       return { available: false, value: null, sources: [], unavailableReasons: ["GA4 Summary metric unavailable"] };
     }
     return { available: true, value, sources: ["Google Analytics"], unavailableReasons: [] };

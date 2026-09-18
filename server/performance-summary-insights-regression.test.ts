@@ -243,7 +243,7 @@ describe("Performance Summary Recommended Actions decision engine", () => {
       totalOnTrackMetrics: 6,
       healthScore: 60,
     });
-    expect(actions.map((action) => action.title)).toEqual(["Review Engagement Rate", "Review Cost Per Acquisition", "Review Key Events per Session"]);
+    expect(actions.map((action) => action.title)).toEqual(["Review Engagement Rate", "Review Cost Per Acquisition", "Review Conversion Rate"]);
     expect(actions[0].message).toContain("Verified 68.39%");
     expect(actions[1].message).toContain("Verified $10.76");
     expect(actions[2].message).toContain("Verified 12.85%");
@@ -263,13 +263,13 @@ describe("Performance Summary Recommended Actions decision engine", () => {
     expect(actions[0].message).toContain("Verified 1,183");
   });
 
-  it("computes Key Events per Session from the cumulative Overview totals", () => {
+  it("computes Conversion Rate from the cumulative Overview totals", () => {
     const [action] = buildPerformanceRecommendedActions(baseInput({
       kpis: [{ metric: "conversion_rate", name: "Conversion Rate", currentValue: 12.85, targetValue: 15, trackingPeriod: 30, priority: "high" }],
     }));
 
     expect(action.type).toBe("warning");
-    expect(action.title).toBe("Review Key Events per Session");
+    expect(action.title).toBe("Review Conversion Rate");
     expect(action.message).toContain("Verified 12.85% from initial import through latest completed reporting day versus the 15% KPI target");
     expect(action.message).not.toContain("13.25%");
   });
@@ -325,7 +325,7 @@ describe("Performance Summary Recommended Actions decision engine", () => {
       ],
     }));
 
-    expect(actions.map((action) => action.title)).toEqual(["Review Key Events per Session", "Review Engagement Rate"]);
+    expect(actions.map((action) => action.title)).toEqual(["Review Conversion Rate", "Review Engagement Rate"]);
     expect(actions.every((action) => action.type === "warning")).toBe(true);
   });
 

@@ -71,7 +71,7 @@ const metricLabels: Record<GA4KpiMetricIdentity, string> = {
   sessions: "Sessions",
   users: "Users",
   pageviews: "Pageviews",
-  conversion_rate: "Key Events per Session",
+  conversion_rate: "Conversion Rate",
   engagement_rate: "Engagement Rate",
   roas: "ROAS",
   roi: "ROI",

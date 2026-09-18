@@ -4855,6 +4855,7 @@ export default function GA4Metrics() {
       revenueKpiInputState === "loading" ||
       spendKpiInputState === "loading" ||
       (ga4InsightsDailyLoading && ga4InsightsDailyResp === undefined) ||
+      (ga4InsightsDailyResp !== undefined && ga4Connection?.connected && !!selectedGA4PropertyId && ga4TrendsCoverage === undefined && !ga4TrendsCoverageError) ||
       (breakdownLoading && ga4Breakdown === undefined) ||
       kpiAnalyticsQueries.some((query: any) => query?.isLoading && query?.data === undefined) ||
       benchmarkAnalyticsQueries.some((query: any) => query?.isLoading && query?.data === undefined)
@@ -4913,6 +4914,8 @@ export default function GA4Metrics() {
     const id = String(item.id || "");
     if (id === "integrity:target_period_mismatch") return "Saved target period + current-value reporting window";
     if (id === "integrity:targets_unverified") return "Required source state + saved KPI/Benchmark configuration";
+    if (id === "integrity:daily_history_mismatch") return "GA4 provider daily rows + saved campaign/property daily rows";
+    if (id === "integrity:target_lists_unverified") return "Campaign-scoped KPI/Benchmark list requests";
     if (id.startsWith("integrity:kpi")) return "Saved KPI configuration";
     if (id.startsWith("integrity:bench")) return "Saved Benchmark configuration";
     if (id === "financial:ga4_to_date_unavailable" || id === "financial:ga4_to_date_stale") return "GA4 to-date totals";
@@ -4922,7 +4925,7 @@ export default function GA4Metrics() {
     if (id.startsWith("kpi:") || id.startsWith("positive:kpi:")) return "Saved KPI target + current values";
     if (id.startsWith("bench:")) return "Saved Benchmark + current values";
     if (id === "info:top_channel") return "GA4 campaign breakdown";
-    if (id === "info:revenue_summary") return "Revenue to-date totals";
+    if (id === "info:revenue_summary") return "Revenue to-date totals; spend to-date when ROAS is shown";
     if (id.startsWith("anomaly:") || id === "info:short_window" || id === "info:avg_sessions" || id === "info:engagement_rate" || id.startsWith("positive:sessions:") || id.startsWith("positive:revenue:") || id.startsWith("positive:conversions:")) {
       return "GA4 completed daily history";
     }
@@ -4951,6 +4954,9 @@ export default function GA4Metrics() {
 
   const insights = useMemo<InsightItem[]>(() => {
     const out: InsightItem[] = [];
+    const findingCoverageVerified = activeTab === "insights" && trendsZeroDaysVerified && !ga4TrendsCoverageError;
+    const findingDailyHistoryMismatch = activeTab === "insights" && ga4TrendsCoverage?.verified === false && ga4TrendsCoverage?.reason === "stored_daily_history_differs_from_ga4";
+    const findingRollups = findingCoverageVerified ? trendsRollups : insightsRollups;
 
     // 0) Executive financial integrity checks (to-date / lifetime)
     // These should update immediately when a user imports Spend/Revenue, even if no KPIs/Benchmarks exist yet.
@@ -4971,6 +4977,29 @@ export default function GA4Metrics() {
         title: "GA4 trend history is stale",
         description: "The tab is showing last-good daily values, but trend comparisons and recommendations are withheld until a current refresh succeeds.",
         recommendation: "Run the campaign GA4 refresh and confirm the completed-day coverage before acting on trend signals.",
+      });
+    } else if (findingDailyHistoryMismatch) {
+      out.push({
+        id: "integrity:daily_history_mismatch",
+        severity: "high",
+        title: "Saved GA4 trend history differs from GA4",
+        description: "GA4 provider daily rows or their date coverage differ from saved rows for this campaign and property. Daily trend and KPI/Benchmark performance findings are withheld until the difference is resolved.",
+        recommendation: "Compare provider and saved daily rows for this campaign, property, filter, currency, and reporting window before repairing confirmed differences.",
+      });
+    }
+
+    const unverifiedTargetLists = [
+      ...(kpiListState === "failed" || (kpiListState === "stale" && platformKPIs.length === 0) ? ["KPI"] : []),
+      ...(benchmarkListState === "failed" || (benchmarkListState === "stale" && benchmarks.length === 0) ? ["Benchmark"] : []),
+    ];
+    if (unverifiedTargetLists.length > 0) {
+      const targetListLabel = unverifiedTargetLists.join(" and ");
+      out.push({
+        id: "integrity:target_lists_unverified",
+        severity: "high",
+        title: `${targetListLabel} list${unverifiedTargetLists.length > 1 ? "s" : ""} could not be verified`,
+        description: `The campaign-scoped ${targetListLabel} list request${unverifiedTargetLists.length > 1 ? "s" : ""} failed without verified current rows. Saved targets may exist, so related performance findings are withheld rather than assuming no targets are configured.`,
+        recommendation: "Refresh Insights and confirm the affected KPI or Benchmark list loads before acting on target performance.",
       });
     }
 
@@ -5161,9 +5190,7 @@ export default function GA4Metrics() {
         severity: "high",
         title: "Spend recorded, but revenue is $0 to date",
         description: `Spend-to-date is ${formatMoney(Number(financialSpend || 0))}, but revenue-to-date is ${formatMoney(0)} (${toDateRangeLabel}).`,
-        recommendation: ga4RevenueForFinancials > 0
-          ? "Verify GA4 revenue tracking and conversion configuration for this campaign filter."
-          : "Connect a GA4 revenue metric if available, or import revenue from HubSpot/Salesforce/Shopify/Sheets/CSV for accurate ROI/ROAS.",
+        recommendation: "Verify revenue events and connected revenue source records for this campaign and reporting window.",
       });
     }
 
@@ -5173,7 +5200,7 @@ export default function GA4Metrics() {
         severity: "medium",
         title: "Revenue exists, but spend is $0 to date",
         description: `Revenue-to-date is ${formatMoney(Number(financialRevenue || 0))} (${toDateRangeLabel}), but spend-to-date is ${formatMoney(0)}.`,
-        recommendation: "Import spend-to-date for this campaign so ROI/ROAS/CPA reflect actual performance.",
+        recommendation: "Verify the connected spend source and reporting window before acting on ROI, ROAS, or CPA.",
       });
     }
     if (ga4NoCompletedWindow) {
@@ -5245,6 +5272,7 @@ export default function GA4Metrics() {
 
     // 1) Actionable insights from KPI performance
     for (const k of Array.isArray(platformKPIs) ? platformKPIs : []) {
+      if (findingDailyHistoryMismatch) continue;
       if (!getKpiConsumerState(k).eligible) continue; // non-verified KPIs are handled in integrity checks above
       if (getInvalidKpiConfigReason(k)) continue; // invalid KPIs are handled in integrity checks above
       if (!getKpiInsightPeriodCompatibility(k).comparable) continue;
@@ -5343,6 +5371,7 @@ export default function GA4Metrics() {
 
     // 2) Actionable insights from Benchmark performance
     for (const b of Array.isArray(benchmarks) ? benchmarks : []) {
+      if (findingDailyHistoryMismatch) continue;
       if (!getBenchmarkConsumerState(b).eligible) continue; // non-verified Benchmarks are handled in integrity checks above
       if (getInvalidBenchmarkConfigReason(b)) continue; // invalid benchmarks are handled in integrity checks above
       if (!getBenchmarkInsightPeriodCompatibility(b).comparable) continue;
@@ -5439,10 +5468,17 @@ export default function GA4Metrics() {
 
     // 3) Anomaly detection uses two complete calendar windows. Missing dates
     // fail closed as insufficient history instead of widening either period.
-    const dates = insightsRollups.rows.map((row) => row.date);
-    if (!trendsRefreshIsStale && insightsRollups.last7.complete && insightsRollups.prior7.complete) {
-      const a = insightsRollups.last7;
-      const b = insightsRollups.prior7;
+    const dates = findingRollups.rows.map((row) => row.date);
+    const historyCoverageLabel = findingCoverageVerified ? "verified" : "imported";
+    const historyRowsLabel = findingCoverageVerified
+      ? `${dates.length} verified campaign days are available in the 60-day window`
+      : `${dates.length} total rows are present in the 60-day response`;
+    const sevenDayComparisonReady = !findingDailyHistoryMismatch && (findingCoverageVerified
+      ? !trendsRefreshIsStale && findingRollups.last7.complete && findingRollups.prior7.complete
+      : !trendsRefreshIsStale && insightsRollups.last7.complete && insightsRollups.prior7.complete);
+    if (sevenDayComparisonReady) {
+      const a = findingRollups.last7;
+      const b = findingRollups.prior7;
       const crA = a.sessions > 0 ? (a.conversions / a.sessions) * 100 : 0;
       const crB = b.sessions > 0 ? (b.conversions / b.sessions) * 100 : 0;
       const crDeltaPct = crB > 0 ? ((crA - crB) / crB) * 100 : 0;
@@ -5472,13 +5508,13 @@ export default function GA4Metrics() {
         });
       }
 
-      // 3b) Volume anomalies using pre-computed insightsRollups deltas
-      const sessionsDelta7 = insightsRollups.deltas.sessions7;
-      const revenueDelta7 = insightsRollups.deltas.revenue7;
-      const convDelta7 = insightsRollups.deltas.conversions7;
+      // 3b) Volume anomalies using the selected finding-window deltas
+      const sessionsDelta7 = findingRollups.deltas.sessions7;
+      const revenueDelta7 = findingRollups.deltas.revenue7;
+      const convDelta7 = findingRollups.deltas.conversions7;
       const ch = recommendationChannelAnalysis;
 
-      if (sessionsDelta7 <= ANOMALY_SESSIONS_DROP_PCT && insightsRollups.prior7.sessions > 0) {
+      if (sessionsDelta7 <= ANOMALY_SESSIONS_DROP_PCT && findingRollups.prior7.sessions > 0) {
         const channelNote = ch?.topSessionChannel
           ? ` Top source: "${ch.topSessionChannel.label}" (${ch.topSessionShare.toFixed(0)}% of sessions).`
           : "";
@@ -5486,12 +5522,12 @@ export default function GA4Metrics() {
           id: "anomaly:sessions:wow",
           severity: "high",
           title: `Sessions dropped ${Math.abs(sessionsDelta7).toFixed(1)}% week-over-week`,
-          description: `Last 7d: ${formatNumber(insightsRollups.last7.sessions)} sessions vs prior 7d: ${formatNumber(insightsRollups.prior7.sessions)}.${channelNote}`,
+          description: `Last 7d: ${formatNumber(findingRollups.last7.sessions)} sessions vs prior 7d: ${formatNumber(findingRollups.prior7.sessions)}.${channelNote}`,
           recommendation: "Check paid campaign budgets, SEO ranking changes, and whether any traffic sources were paused or reduced.",
         });
       }
 
-      if (revenueDelta7 <= ANOMALY_REVENUE_DROP_PCT && insightsRollups.prior7.revenue > 0) {
+      if (revenueDelta7 <= ANOMALY_REVENUE_DROP_PCT && findingRollups.prior7.revenue > 0) {
         const channelNote = ch?.topRevenueChannel
           ? ` Top revenue source: "${ch.topRevenueChannel.label}" (${ch.topRevenueShare.toFixed(0)}% of revenue).`
           : "";
@@ -5499,54 +5535,54 @@ export default function GA4Metrics() {
           id: "anomaly:revenue:wow",
           severity: "high",
           title: `Revenue dropped ${Math.abs(revenueDelta7).toFixed(1)}% week-over-week`,
-          description: `Last 7d: ${formatMoney(insightsRollups.last7.revenue)} vs prior 7d: ${formatMoney(insightsRollups.prior7.revenue)}.${channelNote}`,
+          description: `Last 7d: ${formatMoney(findingRollups.last7.revenue)} vs prior 7d: ${formatMoney(findingRollups.prior7.revenue)}.${channelNote}`,
           recommendation: "Check conversion rate, AOV, and high-value campaign changes first.",
         });
       }
 
-      if (convDelta7 <= ANOMALY_CONVERSIONS_DROP_PCT && insightsRollups.prior7.conversions > 0) {
+      if (convDelta7 <= ANOMALY_CONVERSIONS_DROP_PCT && findingRollups.prior7.conversions > 0) {
         out.push({
           id: "anomaly:conversions:wow",
           severity: "high",
           title: `Conversions dropped ${Math.abs(convDelta7).toFixed(1)}% week-over-week`,
-          description: `Last 7d: ${formatNumber(insightsRollups.last7.conversions)} vs prior 7d: ${formatNumber(insightsRollups.prior7.conversions)}.`,
+          description: `Last 7d: ${formatNumber(findingRollups.last7.conversions)} vs prior 7d: ${formatNumber(findingRollups.prior7.conversions)}.`,
           recommendation: "Check conversion event configuration, landing page changes, and traffic quality by source/medium.",
         });
       }
 
       // 3c) Positive signals — what's working
-      if (sessionsDelta7 >= POSITIVE_SESSIONS_UP_PCT && insightsRollups.prior7.sessions > POSITIVE_SESSIONS_MIN_PRIOR) {
+      if (sessionsDelta7 >= POSITIVE_SESSIONS_UP_PCT && findingRollups.prior7.sessions > POSITIVE_SESSIONS_MIN_PRIOR) {
         out.push({
           id: "positive:sessions:wow",
           severity: "low",
           title: `Sessions up ${sessionsDelta7.toFixed(1)}% week-over-week`,
-          description: `Last 7d: ${formatNumber(insightsRollups.last7.sessions)} sessions vs prior 7d: ${formatNumber(insightsRollups.prior7.sessions)}.`,
+          description: `Last 7d: ${formatNumber(findingRollups.last7.sessions)} sessions vs prior 7d: ${formatNumber(findingRollups.prior7.sessions)}.`,
           recommendation: "Check top-performing channels before considering budget increases.",
         });
       }
 
-      if (revenueDelta7 >= POSITIVE_REVENUE_UP_PCT && insightsRollups.prior7.revenue > 0) {
+      if (revenueDelta7 >= POSITIVE_REVENUE_UP_PCT && findingRollups.prior7.revenue > 0) {
         out.push({
           id: "positive:revenue:wow",
           severity: "low",
           title: `Revenue up ${revenueDelta7.toFixed(1)}% week-over-week`,
-          description: `Last 7d: ${formatMoney(insightsRollups.last7.revenue)} vs prior 7d: ${formatMoney(insightsRollups.prior7.revenue)}.`,
+          description: `Last 7d: ${formatMoney(findingRollups.last7.revenue)} vs prior 7d: ${formatMoney(findingRollups.prior7.revenue)}.`,
           recommendation: "Check which channels contributed to the increase before considering scaling.",
         });
       }
 
-      if (convDelta7 >= POSITIVE_CONVERSIONS_UP_PCT && insightsRollups.prior7.conversions > POSITIVE_CONVERSIONS_MIN_PRIOR) {
+      if (convDelta7 >= POSITIVE_CONVERSIONS_UP_PCT && findingRollups.prior7.conversions > POSITIVE_CONVERSIONS_MIN_PRIOR) {
         out.push({
           id: "positive:conversions:wow",
           severity: "low",
           title: `Conversions up ${convDelta7.toFixed(1)}% week-over-week`,
-          description: `Last 7d: ${formatNumber(insightsRollups.last7.conversions)} vs prior 7d: ${formatNumber(insightsRollups.prior7.conversions)}.`,
+          description: `Last 7d: ${formatNumber(findingRollups.last7.conversions)} vs prior 7d: ${formatNumber(findingRollups.prior7.conversions)}.`,
         });
       }
-    } else if (!trendsRefreshIsStale && insightsRollups.last3.complete && insightsRollups.prior3.complete) {
+    } else if (!trendsRefreshIsStale && !findingDailyHistoryMismatch && findingRollups.last3.complete && findingRollups.prior3.complete) {
       // Short-window fallback: 3d vs 3d with higher thresholds to reduce false positives
-      const crA3 = insightsRollups.last3.cr;
-      const crB3 = insightsRollups.prior3.cr;
+      const crA3 = findingRollups.last3.cr;
+      const crB3 = findingRollups.prior3.cr;
       const crDelta3 = crB3 > 0 ? ((crA3 - crB3) / crB3) * 100 : 0;
 
       if (crB3 > 0 && crDelta3 <= ANOMALY_SHORT_CR_DROP_PCT) {
@@ -5559,8 +5595,8 @@ export default function GA4Metrics() {
         });
       }
 
-      const pvpsA3 = insightsRollups.last3.pvps;
-      const pvpsB3 = insightsRollups.prior3.pvps;
+      const pvpsA3 = findingRollups.last3.pvps;
+      const pvpsB3 = findingRollups.prior3.pvps;
       const pvpsDelta3 = pvpsB3 > 0 ? ((pvpsA3 - pvpsB3) / pvpsB3) * 100 : 0;
       if (pvpsB3 > 0 && pvpsDelta3 <= ANOMALY_SHORT_ENGAGEMENT_DROP_PCT) {
         out.push({
@@ -5572,47 +5608,47 @@ export default function GA4Metrics() {
         });
       }
 
-      const sessionsDelta3 = insightsRollups.deltas.sessions3;
-      const revenueDelta3 = insightsRollups.deltas.revenue3;
-      const convDelta3 = insightsRollups.deltas.conversions3;
+      const sessionsDelta3 = findingRollups.deltas.sessions3;
+      const revenueDelta3 = findingRollups.deltas.revenue3;
+      const convDelta3 = findingRollups.deltas.conversions3;
 
-      if (sessionsDelta3 <= ANOMALY_SHORT_SESSIONS_DROP_PCT && insightsRollups.prior3.sessions > 0) {
+      if (sessionsDelta3 <= ANOMALY_SHORT_SESSIONS_DROP_PCT && findingRollups.prior3.sessions > 0) {
         out.push({
           id: "anomaly:sessions:3d",
           severity: "medium",
           title: `Sessions dropped ${Math.abs(sessionsDelta3).toFixed(1)}% (3-day comparison)`,
-          description: `Last 3d: ${formatNumber(insightsRollups.last3.sessions)} vs prior 3d: ${formatNumber(insightsRollups.prior3.sessions)}. Short window — monitor for confirmation.`,
+          description: `Last 3d: ${formatNumber(findingRollups.last3.sessions)} vs prior 3d: ${formatNumber(findingRollups.prior3.sessions)}. Short window — monitor for confirmation.`,
           recommendation: "Check campaign budgets and traffic sources for recent changes.",
         });
       }
 
-      if (revenueDelta3 <= ANOMALY_SHORT_REVENUE_DROP_PCT && insightsRollups.prior3.revenue > 0) {
+      if (revenueDelta3 <= ANOMALY_SHORT_REVENUE_DROP_PCT && findingRollups.prior3.revenue > 0) {
         out.push({
           id: "anomaly:revenue:3d",
           severity: "medium",
           title: `Revenue dropped ${Math.abs(revenueDelta3).toFixed(1)}% (3-day comparison)`,
-          description: `Last 3d: ${formatMoney(insightsRollups.last3.revenue)} vs prior 3d: ${formatMoney(insightsRollups.prior3.revenue)}. Short window — monitor for confirmation.`,
+          description: `Last 3d: ${formatMoney(findingRollups.last3.revenue)} vs prior 3d: ${formatMoney(findingRollups.prior3.revenue)}. Short window — monitor for confirmation.`,
           recommendation: "Check conversion rate and AOV changes.",
         });
       }
 
-      if (convDelta3 <= ANOMALY_SHORT_CONVERSIONS_DROP_PCT && insightsRollups.prior3.conversions > 0) {
+      if (convDelta3 <= ANOMALY_SHORT_CONVERSIONS_DROP_PCT && findingRollups.prior3.conversions > 0) {
         out.push({
           id: "anomaly:conversions:3d",
           severity: "medium",
           title: `Conversions dropped ${Math.abs(convDelta3).toFixed(1)}% (3-day comparison)`,
-          description: `Last 3d: ${formatNumber(insightsRollups.last3.conversions)} vs prior 3d: ${formatNumber(insightsRollups.prior3.conversions)}. Short window — monitor for confirmation.`,
+          description: `Last 3d: ${formatNumber(findingRollups.last3.conversions)} vs prior 3d: ${formatNumber(findingRollups.prior3.conversions)}. Short window — monitor for confirmation.`,
           recommendation: "Check conversion event configuration and traffic quality.",
         });
       }
 
       // Positive signals (3d) — only sessions, with higher threshold
-      if (sessionsDelta3 >= 25 && insightsRollups.prior3.sessions > 20) {
+      if (sessionsDelta3 >= 25 && findingRollups.prior3.sessions > 20) {
         out.push({
           id: "positive:sessions:3d",
           severity: "low",
           title: `Sessions up ${sessionsDelta3.toFixed(1)}% (3-day comparison)`,
-          description: `Last 3d: ${formatNumber(insightsRollups.last3.sessions)} vs prior 3d: ${formatNumber(insightsRollups.prior3.sessions)}. Early signal — monitor for sustained trend.`,
+          description: `Last 3d: ${formatNumber(findingRollups.last3.sessions)} vs prior 3d: ${formatNumber(findingRollups.prior3.sessions)}. Early signal — monitor for sustained trend.`,
         });
       }
 
@@ -5620,19 +5656,20 @@ export default function GA4Metrics() {
         id: "info:short_window",
         severity: "low",
         title: "Using 3-day comparison window (limited history)",
-        description: `Current 7-day window ${insightsRollups.last7.startDate} to ${insightsRollups.last7.endDate}: ${insightsRollups.last7.days}/${insightsRollups.last7.expectedDays} imported days. Prior window ${insightsRollups.prior7.startDate} to ${insightsRollups.prior7.endDate}: ${insightsRollups.prior7.days}/${insightsRollups.prior7.expectedDays} imported days. Both adjacent calendar windows must be complete before 7-day comparisons run; ${dates.length} total rows are present in the 60-day response.`,
+        description: `Current 7-day window ${insightsRollups.last7.startDate} to ${insightsRollups.last7.endDate}: ${findingRollups.last7.days}/${findingRollups.last7.expectedDays} ${historyCoverageLabel} days. Prior window ${insightsRollups.prior7.startDate} to ${insightsRollups.prior7.endDate}: ${findingRollups.prior7.days}/${findingRollups.prior7.expectedDays} ${historyCoverageLabel} days. Both adjacent calendar windows must be complete before 7-day comparisons run; ${historyRowsLabel}.`,
       });
-    } else if (!trendsRefreshIsStale) {
+    } else if (!trendsRefreshIsStale && !findingDailyHistoryMismatch && ga4InsightsDailyResp !== undefined) {
       out.push({
         id: "anomaly:not-enough-history",
         severity: "low",
         title: "Trend signals need more history",
-        description: `Current 3-day window ${insightsRollups.last3.startDate} to ${insightsRollups.last3.endDate}: ${insightsRollups.last3.days}/${insightsRollups.last3.expectedDays} imported days. Prior window ${insightsRollups.prior3.startDate} to ${insightsRollups.prior3.endDate}: ${insightsRollups.prior3.days}/${insightsRollups.prior3.expectedDays} imported days. Both adjacent calendar windows must be complete before comparisons run; ${dates.length} total rows are present in the 60-day response.`,
+        description: `Current 3-day window ${insightsRollups.last3.startDate} to ${insightsRollups.last3.endDate}: ${findingRollups.last3.days}/${findingRollups.last3.expectedDays} ${historyCoverageLabel} days. Prior window ${insightsRollups.prior3.startDate} to ${insightsRollups.prior3.endDate}: ${findingRollups.prior3.days}/${findingRollups.prior3.expectedDays} ${historyCoverageLabel} days. Both adjacent calendar windows must be complete before comparisons run; ${historyRowsLabel}.`,
       });
     }
 
     // 4) Positive saved-target signals
     for (const k of Array.isArray(platformKPIs) ? platformKPIs : []) {
+      if (findingDailyHistoryMismatch) continue;
       if (!getKpiConsumerState(k).eligible) continue;
       if (getInvalidKpiConfigReason(k)) continue;
       if (!getKpiInsightPeriodCompatibility(k).comparable) continue;
@@ -5659,8 +5696,8 @@ export default function GA4Metrics() {
 
     // 5) Informational insights — always fire when data exists, even without KPIs/Benchmarks
     const availDays = insightsRollups?.availableDays || 0;
-    if (!trendsRefreshIsStale && insightsRollups.last7.complete) {
-      const r7 = insightsRollups.last7;
+    if (!trendsRefreshIsStale && !findingDailyHistoryMismatch && findingRollups.last7.complete) {
+      const r7 = findingRollups.last7;
       const avgDailySessions = r7.sessions > 0 ? Math.round(r7.sessions / Math.min(r7.days, 7)) : 0;
       const avgDailyConversions = r7.conversions > 0 ? Math.round((r7.conversions / Math.min(r7.days, 7)) * 10) / 10 : 0;
       const cr7 = r7.sessions > 0 ? ((r7.conversions / r7.sessions) * 100).toFixed(2) : "0";
@@ -5704,15 +5741,16 @@ export default function GA4Metrics() {
     }
 
     // Revenue summary (fires when revenue exists, regardless of KPIs)
-    if (revenueKpiInputState === "ready" && Number(financialRevenue || 0) > 0 && availDays >= 7) {
+    if (!findingDailyHistoryMismatch && revenueKpiInputState === "ready" && Number(financialRevenue || 0) > 0 && availDays >= 7) {
+      const verifiedPositiveSpend = spendKpiInputState === "ready" && spendMetricAvailable && Number(financialSpend) > 0;
       out.push({
         id: "info:revenue_summary",
         severity: "low",
         title: `Revenue: ${formatMoney(Number(financialRevenue))} to date`,
-        description: `Revenue-to-date uses GA4 native revenue plus imported revenue sources.${Number(financialSpend) > 0 ? ` ROAS: ${Number(financialROAS).toFixed(2)}x.` : ""}`,
-        recommendation: Number(financialSpend) > 0 && Number(financialROAS) < 1
+        description: `Revenue-to-date uses GA4 native revenue plus imported revenue sources.${verifiedPositiveSpend ? ` ROAS: ${Number(financialROAS).toFixed(2)}x.` : ""}`,
+        recommendation: verifiedPositiveSpend && Number(financialROAS) < 1
           ? "Review spend allocation and conversion paths before acting on ROAS."
-          : !Number(financialSpend) ? "Add spend data to calculate ROAS and ROI." : undefined,
+          : spendKpiInputState === "ready" && !spendMetricAvailable ? "Add spend data to calculate ROAS and ROI." : undefined,
       });
     }
 
@@ -5754,6 +5792,11 @@ export default function GA4Metrics() {
     kpiAnalyticsFailed,
     benchmarkAnalyticsFailed,
     insightsRollups,
+    trendsRollups,
+    trendsZeroDaysVerified,
+    ga4TrendsCoverage,
+    ga4TrendsCoverageError,
+    activeTab,
     recommendationChannelAnalysis,
     kpiListState,
     kpiTrafficInputState,

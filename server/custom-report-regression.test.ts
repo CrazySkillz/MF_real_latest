@@ -520,6 +520,11 @@ describe("campaign Custom Report regression guard", () => {
     expect(reportTypeBlock.match(/trend-analysis:[a-z-]+/g)).toEqual(["trend-analysis:overview"]);
     expect(reportTypeBlock).toContain('label: "Executive View"');
     expect(reports).toContain("const normalizeTrendReportSections =");
+    expect(reports).toContain("const rowsWithAggregateMetric =");
+    expect(reports).toContain("const compatibleRows = rowsWithAggregateMetric(rows, metricName);");
+    expect(reports).toContain('if (metricName === "roas") return spend > 0 ? revenue / spend : null;');
+    expect(reports).toContain('if (metricName === "cpa") return conversions > 0 ? spend / conversions : null;');
+    expect(reports).toContain('conversions / (clicks > 0 ? clicks : sessions)');
     expect(scheduler).toContain("const normalizeCampaignDeepDiveTrendSections =");
     expect(scheduler).toContain("const trendReportDays = 30;");
     expect(scheduler).toContain("date.setUTCDate(date.getUTCDate() - (trendReportDays - 1));");

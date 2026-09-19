@@ -798,25 +798,34 @@ export default function TrendAnalysis() {
       const values = items.map((row) => row[key]).filter((value) => value !== null && typeof value !== "undefined" && Number.isFinite(Number(value)));
       return values.length > 0 ? values.reduce((total, value) => total + Number(value), 0) / values.length : null;
     };
+    const compatibleRows = (items: any[], key: string) => items.filter((row) =>
+      row[key] !== null && typeof row[key] !== "undefined" && Number.isFinite(Number(row[key])),
+    );
     const buildSummary = (items: any[]) => {
-      const spend = sum(items, "spend");
-      const revenue = sum(items, "revenue");
-      const conversions = sum(items, "conversions");
-      const clicks = sum(items, "clicks");
-      const impressions = sum(items, "impressions");
-      const sessions = sum(items, "sessions");
+      const roasRows = compatibleRows(items, "roas");
+      const roiRows = compatibleRows(items, "roi");
+      const cpaRows = compatibleRows(items, "cpa");
+      const cpcRows = compatibleRows(items, "cpc");
+      const cpmRows = compatibleRows(items, "cpm");
+      const ctrRows = compatibleRows(items, "ctr");
+      const cvrRows = compatibleRows(items, "cvr");
+      const roasSpend = sum(roasRows, "spend");
+      const roiSpend = sum(roiRows, "spend");
+      const cvrConversions = sum(cvrRows, "conversions");
+      const cvrClicks = sum(cvrRows, "clicks");
+      const cvrSessions = sum(cvrRows, "sessions");
       return {
-        roas: spend > 0 && revenue > 0 ? revenue / spend : null,
-        roi: spend > 0 && revenue > 0 ? ((revenue - spend) / spend) * 100 : null,
-        cpa: spend > 0 && conversions > 0 ? spend / conversions : null,
-        cpc: spend > 0 && clicks > 0 ? spend / clicks : null,
-        cpm: spend > 0 && impressions > 0 ? (spend / impressions) * 1000 : null,
-        ctr: impressions > 0 && clicks > 0 ? (clicks / impressions) * 100 : null,
-        cvr: conversions > 0
-          ? clicks > 0
-            ? (conversions / clicks) * 100
-            : sessions > 0
-              ? (conversions / sessions) * 100
+        roas: roasRows.length > 0 && roasSpend > 0 ? sum(roasRows, "revenue") / roasSpend : null,
+        roi: roiRows.length > 0 && roiSpend > 0 ? ((sum(roiRows, "revenue") - roiSpend) / roiSpend) * 100 : null,
+        cpa: cpaRows.length > 0 && sum(cpaRows, "conversions") > 0 ? sum(cpaRows, "spend") / sum(cpaRows, "conversions") : null,
+        cpc: cpcRows.length > 0 && sum(cpcRows, "clicks") > 0 ? sum(cpcRows, "spend") / sum(cpcRows, "clicks") : null,
+        cpm: cpmRows.length > 0 && sum(cpmRows, "impressions") > 0 ? (sum(cpmRows, "spend") / sum(cpmRows, "impressions")) * 1000 : null,
+        ctr: ctrRows.length > 0 && sum(ctrRows, "impressions") > 0 ? (sum(ctrRows, "clicks") / sum(ctrRows, "impressions")) * 100 : null,
+        cvr: cvrRows.length > 0
+          ? cvrClicks > 0
+            ? (cvrConversions / cvrClicks) * 100
+            : cvrSessions > 0
+              ? (cvrConversions / cvrSessions) * 100
               : null
           : null,
         engagementRate: avg(items, "engagementRate"),

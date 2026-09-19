@@ -134,4 +134,77 @@ describe("Trend Analysis aggregate contract", () => {
       cpm: 100,
     });
   });
+
+  it("preserves explicit zero efficiency numerators without inventing missing inputs", () => {
+    const explicitZero = buildTrendAnalysisAggregate({
+      campaignId: "campaign-zero",
+      dateRange: "7days",
+      startDate: "2026-05-01",
+      endDate: "2026-05-01",
+      sources: [{
+        id: "controlled",
+        label: "Controlled Source",
+        category: "custom",
+        connected: true,
+        capabilities: ["impressions", "clicks", "spend", "conversions", "revenue", "sessions"],
+        includedMetrics: ["impressions", "clicks", "spend", "conversions", "revenue", "sessions"],
+        excludedMetrics: [],
+        dailyRows: [{
+          date: "2026-05-01",
+          metrics: { impressions: 1000, clicks: 0, spend: 100, conversions: 0, revenue: 0, sessions: 100 },
+        }],
+      }],
+    });
+    expect(explicitZero.dailyTotals[0].metrics).toMatchObject({
+      roas: 0,
+      roi: -100,
+      ctr: 0,
+      cvr: 0,
+    });
+
+    const explicitZeroSpend = buildTrendAnalysisAggregate({
+      campaignId: "campaign-zero-spend",
+      dateRange: "7days",
+      startDate: "2026-05-01",
+      endDate: "2026-05-01",
+      sources: [{
+        id: "controlled",
+        label: "Controlled Source",
+        category: "custom",
+        connected: true,
+        capabilities: ["impressions", "clicks", "spend", "conversions"],
+        includedMetrics: ["impressions", "clicks", "spend", "conversions"],
+        excludedMetrics: [],
+        dailyRows: [{ date: "2026-05-01", metrics: { impressions: 1000, clicks: 20, spend: 0, conversions: 5 } }],
+      }],
+    });
+    expect(explicitZeroSpend.dailyTotals[0].metrics).toMatchObject({
+      cpa: 0,
+      cpc: 0,
+      cpm: 0,
+    });
+
+    const missingInputs = buildTrendAnalysisAggregate({
+      campaignId: "campaign-missing",
+      dateRange: "7days",
+      startDate: "2026-05-01",
+      endDate: "2026-05-01",
+      sources: [{
+        id: "controlled",
+        label: "Controlled Source",
+        category: "custom",
+        connected: true,
+        capabilities: ["impressions", "clicks", "spend", "conversions", "revenue", "sessions"],
+        includedMetrics: ["impressions", "clicks", "spend", "conversions", "revenue", "sessions"],
+        excludedMetrics: [],
+        dailyRows: [{ date: "2026-05-01", metrics: { impressions: 1000, spend: 100, sessions: 100 } }],
+      }],
+    });
+    expect(missingInputs.dailyTotals[0].metrics).toMatchObject({
+      roas: null,
+      roi: null,
+      ctr: null,
+      cvr: null,
+    });
+  });
 });

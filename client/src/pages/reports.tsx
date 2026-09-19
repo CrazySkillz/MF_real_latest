@@ -1959,25 +1959,31 @@ export default function Reports() {
       const previousRows = rowsBetween(trendRows, previousStartDate, previousEndDate);
       const sumRows = (rows: any[], metricName: string) =>
         rows.reduce((sum: number, row: any) => sum + (Number(row?.metrics?.[metricName]) || 0), 0);
+      const rowsWithAggregateMetric = (rows: any[], metricName: string) => rows.filter((row: any) => {
+        const raw = row?.metrics?.[metricName];
+        return raw !== null && typeof raw !== "undefined" && Number.isFinite(Number(raw));
+      });
       const aggregateMetric = (rows: any[], metricName: string): number | null => {
         if (rows.length === 0) return null;
         if (["users", "sessions", "conversions", "revenue", "spend", "impressions", "clicks"].includes(metricName)) {
           const value = sumRows(rows, metricName);
           return value > 0 ? value : null;
         }
-        const spend = sumRows(rows, "spend");
-        const revenue = sumRows(rows, "revenue");
-        const conversions = sumRows(rows, "conversions");
-        const sessions = sumRows(rows, "sessions");
-        const impressions = sumRows(rows, "impressions");
-        const clicks = sumRows(rows, "clicks");
-        if (metricName === "ctr") return impressions > 0 && clicks > 0 ? (clicks / impressions) * 100 : null;
-        if (metricName === "cvr") return conversions > 0 && (sessions > 0 || clicks > 0) ? (conversions / (sessions > 0 ? sessions : clicks)) * 100 : null;
-        if (metricName === "cpc") return spend > 0 && clicks > 0 ? spend / clicks : null;
-        if (metricName === "cpm") return spend > 0 && impressions > 0 ? (spend / impressions) * 1000 : null;
-        if (metricName === "cpa") return spend > 0 && conversions > 0 ? spend / conversions : null;
-        if (metricName === "roas") return spend > 0 && revenue > 0 ? revenue / spend : null;
-        if (metricName === "roi") return spend > 0 && revenue > 0 ? ((revenue - spend) / spend) * 100 : null;
+        const compatibleRows = rowsWithAggregateMetric(rows, metricName);
+        if (compatibleRows.length === 0) return null;
+        const spend = sumRows(compatibleRows, "spend");
+        const revenue = sumRows(compatibleRows, "revenue");
+        const conversions = sumRows(compatibleRows, "conversions");
+        const sessions = sumRows(compatibleRows, "sessions");
+        const impressions = sumRows(compatibleRows, "impressions");
+        const clicks = sumRows(compatibleRows, "clicks");
+        if (metricName === "ctr") return impressions > 0 ? (clicks / impressions) * 100 : null;
+        if (metricName === "cvr") return clicks > 0 || sessions > 0 ? (conversions / (clicks > 0 ? clicks : sessions)) * 100 : null;
+        if (metricName === "cpc") return clicks > 0 ? spend / clicks : null;
+        if (metricName === "cpm") return impressions > 0 ? (spend / impressions) * 1000 : null;
+        if (metricName === "cpa") return conversions > 0 ? spend / conversions : null;
+        if (metricName === "roas") return spend > 0 ? revenue / spend : null;
+        if (metricName === "roi") return spend > 0 ? ((revenue - spend) / spend) * 100 : null;
         return null;
       };
       const trendMetricValue = (metricName: string) => {

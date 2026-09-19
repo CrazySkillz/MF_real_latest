@@ -251,6 +251,11 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain("roi: toMetric(metrics.roi)");
     expect(page).toContain("cpa: toMetric(metrics.cpa)");
     expect(page).toContain("engagementRate === null ? null : normalizeRateToPercent(engagementRate)");
+    expect(page).toContain('const compatibleRows = (items: any[], key: string)');
+    expect(page).toContain('roas: roasRows.length > 0 && roasSpend > 0');
+    expect(page).toContain('cpa: cpaRows.length > 0 && sum(cpaRows, "conversions") > 0');
+    expect(page).toContain('ctr: ctrRows.length > 0 && sum(ctrRows, "impressions") > 0');
+    expect(page).toContain('cvr: cvrRows.length > 0');
     expect(page).toContain("hasCompleteCurrentPeriod: usesCumulativeGA4Consumer ? Boolean(authoritativeTrendCurrent) : currentPeriod.length >= perfDays");
     expect(page).toContain('hasFinancialEfficiency: !usesCumulativeGA4Consumer && (hasValue("roas") || hasValue("roi"))');
     expect(page).toContain("Daily ROAS and ROI trends are unavailable because no compatible cumulative financial series exists.");

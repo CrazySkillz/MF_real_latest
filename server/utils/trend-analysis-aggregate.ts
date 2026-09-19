@@ -68,6 +68,30 @@ export function buildTrendAnalysisAggregate(input: TrendAnalysisAggregateInput) 
         .filter((row) => /^\d{4}-\d{2}-\d{2}$/.test(row.date)),
     }));
 
+  const explicitMetricSourcesByDate = new Map<string, Map<string, Set<string>>>();
+  for (const source of input.sources.filter((candidate) => candidate.connected === true)) {
+    const sourceId = String(source.id);
+    const includedMetrics = Array.isArray(source.includedMetrics) ? source.includedMetrics : [];
+    for (const row of Array.isArray(source.dailyRows) ? source.dailyRows : []) {
+      const date = normalizeDate(row.date);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+      for (const metricName of includedMetrics) {
+        const rawValue = row.metrics?.[metricName];
+        if (rawValue === null || typeof rawValue === "undefined" || rawValue === "" || !Number.isFinite(Number(rawValue))) continue;
+        const metricsForDate = explicitMetricSourcesByDate.get(date) || new Map<string, Set<string>>();
+        const sourcesForMetric = metricsForDate.get(metricName) || new Set<string>();
+        sourcesForMetric.add(sourceId);
+        metricsForDate.set(metricName, sourcesForMetric);
+        explicitMetricSourcesByDate.set(date, metricsForDate);
+      }
+    }
+  }
+  const hasCompleteExplicitMetric = (date: string, metricName: string) => {
+    const expectedSources = metricSources(sources, metricName);
+    const explicitSources = explicitMetricSourcesByDate.get(date)?.get(metricName);
+    return expectedSources.length > 0 && expectedSources.every((sourceId) => explicitSources?.has(sourceId));
+  };
+
   const totalsByDate = new Map<string, Record<string, number>>();
   const ensureDate = (date: string) => {
     const existing = totalsByDate.get(date);
@@ -104,19 +128,23 @@ export function buildTrendAnalysisAggregate(input: TrendAnalysisAggregateInput) 
       const clicks = parseNum(metrics.clicks);
       const conversions = parseNum(metrics.conversions);
       const sessions = parseNum(metrics.sessions);
+      const hasExplicitSpend = hasCompleteExplicitMetric(date, "spend");
+      const hasExplicitRevenue = hasCompleteExplicitMetric(date, "revenue");
+      const hasExplicitClicks = hasCompleteExplicitMetric(date, "clicks");
+      const hasExplicitConversions = hasCompleteExplicitMetric(date, "conversions");
       return {
         date,
         metrics: {
           ...metrics,
-          cpc: spend > 0 && clicks > 0 ? round2(spend / clicks) : null,
-          cpm: spend > 0 && impressions > 0 ? round2((spend / impressions) * 1000) : null,
-          cpa: spend > 0 && conversions > 0 ? round2(spend / conversions) : null,
-          roas: spend > 0 && revenue > 0 ? round2(revenue / spend) : null,
-          roi: spend > 0 && revenue > 0 ? round2(((revenue - spend) / spend) * 100) : null,
-          ctr: impressions > 0 && clicks > 0 ? round2((clicks / impressions) * 100) : null,
-          cvr: clicks > 0 && conversions > 0
+          cpc: clicks > 0 && (spend > 0 || (spend === 0 && hasExplicitSpend)) ? round2(spend / clicks) : null,
+          cpm: impressions > 0 && (spend > 0 || (spend === 0 && hasExplicitSpend)) ? round2((spend / impressions) * 1000) : null,
+          cpa: conversions > 0 && (spend > 0 || (spend === 0 && hasExplicitSpend)) ? round2(spend / conversions) : null,
+          roas: spend > 0 && (revenue > 0 || (revenue === 0 && hasExplicitRevenue)) ? round2(revenue / spend) : null,
+          roi: spend > 0 && (revenue > 0 || (revenue === 0 && hasExplicitRevenue)) ? round2(((revenue - spend) / spend) * 100) : null,
+          ctr: impressions > 0 && (clicks > 0 || (clicks === 0 && hasExplicitClicks)) ? round2((clicks / impressions) * 100) : null,
+          cvr: clicks > 0 && (conversions > 0 || (conversions === 0 && hasExplicitConversions))
             ? round2((conversions / clicks) * 100)
-            : sessions > 0 && conversions > 0
+            : sessions > 0 && (conversions > 0 || (conversions === 0 && hasExplicitConversions))
               ? round2((conversions / sessions) * 100)
               : null,
         },

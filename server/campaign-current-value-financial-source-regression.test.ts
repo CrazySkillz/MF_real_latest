@@ -22,7 +22,11 @@ const ga4ServiceMock = vi.hoisted(() => ({
 vi.mock("./storage", () => ({ storage: storageMock }));
 vi.mock("./analytics", () => ({ ga4Service: ga4ServiceMock }));
 
-import { getCampaignMetricTotals, refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
+import {
+  getCampaignMetricTotals,
+  getCampaignMetricTotalsAtDate,
+  refreshCampaignCurrentValuesForCampaign,
+} from "./utils/campaign-current-values";
 
 describe("campaign current-value financial source contract", () => {
   beforeEach(() => {
@@ -90,6 +94,27 @@ describe("campaign current-value financial source contract", () => {
     const totals = await getCampaignMetricTotals("campaign-1", true);
     expect(totals).toMatchObject({ ga4Revenue: 0, financialConversions: 0, ga4RevenueAvailable: true });
     expect(ga4ServiceMock.getAcquisitionBreakdown).not.toHaveBeenCalled();
+  });
+
+  it("uses the requested completed reporting date for every historical input", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-21T12:00:00.000Z"));
+    storageMock.getGA4DailyMetrics.mockResolvedValue([{ revenue: 500, conversions: 25 }]);
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ totals: { revenue: 1000, conversions: 40 } });
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 300, currency: "USD", sourceIds: ["revenue-1"] });
+
+    const totals = await getCampaignMetricTotalsAtDate("campaign-1", "2026-08-12");
+
+    expect(totals).toMatchObject({ revenue: 1300, ga4Revenue: 1000, financialConversions: 40 });
+    expect(storageMock.getGA4Connections).toHaveBeenCalledWith("campaign-1", { migrateLegacyTokens: false });
+    expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-07-01", "2026-08-12");
+    expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-05-20", "2026-08-12");
+    expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-12", "ga4");
+    expect(storageMock.getSpendTotalForRange).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-12", "ga4");
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith("properties/123", "token", "2026-05-20", "2026-08-12", [], "USD");
+    expect(ga4ServiceMock.getAcquisitionBreakdown).not.toHaveBeenCalled();
+    expect(await getCampaignMetricTotalsAtDate("campaign-1", "2026-06-30")).toBeNull();
+    expect(await getCampaignMetricTotalsAtDate("campaign-1", "2026-02-30")).toBeNull();
   });
 
   it("uses persisted fallback only when it will not be combined with an imported source", async () => {

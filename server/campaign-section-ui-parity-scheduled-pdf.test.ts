@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const pdfTextCalls = vi.hoisted((): string[] => []);
 const aggregateCampaignMetricsMock = vi.hoisted(() => vi.fn());
 const getCampaignMetricTotalsMock = vi.hoisted(() => vi.fn());
+const resolveFinancialDailyComparisonPreviousMock = vi.hoisted(() => vi.fn());
 const evaluateExecutiveSummaryTrajectoryMock = vi.hoisted(() => vi.fn());
 const storageMock = vi.hoisted(() => ({
   getCampaign: vi.fn(),
@@ -21,6 +22,9 @@ const storageMock = vi.hoisted(() => ({
 vi.mock("./storage", () => ({ storage: storageMock }));
 vi.mock("./scheduler", () => ({ aggregateCampaignMetrics: aggregateCampaignMetricsMock }));
 vi.mock("./utils/campaign-current-values", () => ({ getCampaignMetricTotals: getCampaignMetricTotalsMock }));
+vi.mock("./utils/financial-daily-comparison", () => ({
+  resolveFinancialDailyComparisonPrevious: resolveFinancialDailyComparisonPreviousMock,
+}));
 vi.mock("./utils/executive-summary-daily-snapshot", () => ({
   evaluateExecutiveSummaryTrajectory: evaluateExecutiveSummaryTrajectoryMock,
 }));
@@ -97,6 +101,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     vi.setSystemTime(new Date("2026-08-28T12:00:00.000Z"));
     pdfTextCalls.length = 0;
     vi.clearAllMocks();
+    resolveFinancialDailyComparisonPreviousMock.mockResolvedValue(null);
     storageMock.getCampaign.mockResolvedValue({
       id: "campaign-1",
       name: "Campaign",
@@ -214,6 +219,49 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfTextCalls.some((text) => text.includes("Cost per click: Unavailable"))).toBe(false);
     expect(pdfTextCalls.some((text) => text.includes("Click-through rate: Unavailable"))).toBe(false);
     expect(getCampaignMetricTotalsMock).not.toHaveBeenCalled();
+    expect(resolveFinancialDailyComparisonPreviousMock).not.toHaveBeenCalled();
+  });
+
+  it("uses the same read-only exact-date financial fallback when a stored Trend comparison is absent", async () => {
+    storageMock.getFinancialDailyComparisonData.mockResolvedValueOnce({ current: null, previous: null });
+    const derivedPrevious = {
+      campaignId: "campaign-1",
+      snapshotType: "financial_daily",
+      reportingDate: "2026-07-28",
+      metrics: {
+        financialDaily: {
+          version: "financial_daily_snapshot_v1",
+          currency: "USD",
+          currentValueWindow: {
+            mode: "initial_import_to_latest_completed_day",
+            startDate: "2026-07-02",
+            endDate: "2026-07-28",
+            dataThroughDate: "2026-07-28",
+            reportingTimeZone: "Europe/Amsterdam",
+          },
+          inputs: {
+            spend: { available: true, value: "2500.00", sources: ["canonical_spend_sources"] },
+            revenue: { available: true, value: "50000.00", sources: ["ga4"] },
+            conversions: { available: true, value: 145, sources: ["ga4"] },
+          },
+        },
+      },
+    };
+    resolveFinancialDailyComparisonPreviousMock.mockResolvedValueOnce(derivedPrevious);
+
+    await buildPdfAttachmentForReport({
+      report: report("trend-analysis", ["trend-analysis:overview"]),
+      windowStart: "2026-07-29",
+      windowEnd: "2026-08-27",
+      campaignName: "Campaign",
+    });
+
+    expect(resolveFinancialDailyComparisonPreviousMock).toHaveBeenCalledWith({
+      campaignId: "campaign-1",
+      reportingDate: "2026-07-28",
+      storedPrevious: null,
+    });
+    expect(pdfTextCalls.some((text) => text.includes("Revenue: $72,766.69") && text.includes("+45.5%"))).toBe(true);
   });
 
   it("keeps the multi-source Trend website summary scoped to session-capable source rows", async () => {

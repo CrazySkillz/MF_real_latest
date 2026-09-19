@@ -124,6 +124,14 @@ const getYesopMockBaselineTotals = (campaignId: string, ga4CampaignFilter: unkno
 };
 
 async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandidate = false): Promise<CampaignMetricTotals | null> {
+  return getCampaignMetricTotalsForEndDate(campaignId, useFullFinancialCandidate);
+}
+
+async function getCampaignMetricTotalsForEndDate(
+  campaignId: string,
+  useFullFinancialCandidate: boolean,
+  exactEndDate?: string,
+): Promise<CampaignMetricTotals | null> {
   const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
   if (!campaign) return null;
 
@@ -134,15 +142,26 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
   let sessions = 0;
   let engagementRate = 0;
 
-  const connections = await storage.getGA4Connections(campaignId).catch(() => null as any);
+  const connections = await storage.getGA4Connections(
+    campaignId,
+    exactEndDate ? { migrateLegacyTokens: false } : undefined,
+  ).catch(() => null as any);
   if (!connections) return null;
-  const primary = (connections || []).find((conn: any) => conn?.isPrimary) || (connections || [])[0];
+  const eligibleConnections = exactEndDate
+    ? (connections || []).filter((conn: any) => conn?.isActive !== false && String(conn?.propertyId || "").trim())
+    : (connections || []);
+  const primary = eligibleConnections.find((conn: any) => conn?.isPrimary) || eligibleConnections[0];
   const ga4Window = primary?.propertyId
     ? resolveGA4ImportToDateWindow((primary as any)?.importStartDate, (campaign as any)?.reportingTimeZone)
     : null;
   if (primary?.propertyId && !ga4Window) return null;
   const startDate = ga4Window?.startDate || toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
-  const endDate = ga4Window?.endDate || todayUTC();
+  const parsedExactEndDate = exactEndDate ? new Date(`${exactEndDate}T00:00:00.000Z`) : null;
+  if (exactEndDate && (!/^\d{4}-\d{2}-\d{2}$/.test(exactEndDate)
+    || !parsedExactEndDate || Number.isNaN(parsedExactEndDate.getTime())
+    || parsedExactEndDate.toISOString().slice(0, 10) !== exactEndDate
+    || !ga4Window || exactEndDate < ga4Window.startDate || exactEndDate > ga4Window.endDate)) return null;
+  const endDate = exactEndDate || ga4Window?.endDate || todayUTC();
   const financialStartDate = toISODateUTC((campaign as any)?.startDate)
     || toISODateUTC((campaign as any)?.createdAt)
     || "2000-01-01";
@@ -211,7 +230,7 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
         toDateCandidate,
         financialRows?.length > 0 ? dailyCandidate : null,
       ], {} as any);
-      if (!isGA4FinancialTotalsCandidate(earlierFinancialCandidate)) {
+      if (!exactEndDate && !isGA4FinancialTotalsCandidate(earlierFinancialCandidate)) {
         try {
           const lookbackDays = [30, 60, 90].includes(Number((primary as any)?.lookbackDays))
             ? Number((primary as any).lookbackDays)
@@ -283,6 +302,13 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
     financialConversionsAvailable: ga4RevenueAvailable,
     ga4FinancialSource,
   };
+}
+
+export async function getCampaignMetricTotalsAtDate(
+  campaignId: string,
+  reportingDate: string,
+): Promise<CampaignMetricTotals | null> {
+  return getCampaignMetricTotalsForEndDate(campaignId, true, String(reportingDate || "").trim());
 }
 
 export { getCampaignMetricTotals };

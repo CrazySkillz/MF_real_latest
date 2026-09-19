@@ -131,6 +131,8 @@ describe("compact daily financial snapshot contract", () => {
   it("reads financial comparisons only by their exact stored reporting dates", () => {
     const storage = readFileSync(join(process.cwd(), "server", "storage.ts"), "utf-8");
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const scheduler = readFileSync(join(process.cwd(), "server", "report-scheduler.ts"), "utf-8");
+    const fallback = readFileSync(join(process.cwd(), "server", "utils", "financial-daily-comparison.ts"), "utf-8");
     const readerStart = storage.indexOf("async getFinancialDailyComparisonData(");
     const readerEnd = storage.indexOf("async getComparisonData(", readerStart);
     const reader = storage.slice(readerStart, readerEnd);
@@ -148,5 +150,11 @@ describe("compact daily financial snapshot contract", () => {
     expect(route).toContain("snapshotType && snapshotType !== 'financial_daily'");
     expect(route).toContain("snapshotType === 'financial_daily' && !comparisonDate");
     expect(route).toContain("storage.getFinancialDailyComparisonData(id, latestComparisonDate, comparisonDate)");
+    expect(route).toContain("snapshotType === 'financial_daily' && !comparisonData.previous");
+    expect(route).toContain("resolveFinancialDailyComparisonPrevious({");
+    expect(scheduler).toContain("if (trendFinancialComparison && !trendFinancialComparison.previous)");
+    expect(scheduler).toContain("resolveFinancialDailyComparisonPrevious({");
+    expect(fallback).toContain("getCampaignMetricTotalsAtDate(campaignId, reportingDate)");
+    expect(fallback).not.toContain("upsertFinancialDailySnapshot");
   });
 });

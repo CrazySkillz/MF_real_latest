@@ -17,6 +17,7 @@ import { buildFinancialAllocationAction, buildFinancialBudgetAction } from "../c
 import { deriveTrendFinancialRatios, formatTrendComparison, resolveCompatibleTrendFinancialDaily } from "../client/src/lib/trend-analysis-cumulative";
 import { mapMailgunDeliveryToAlertEmailStatus, waitForMailgunDelivery } from "./utils/mailgun-delivery";
 import { getCampaignMetricTotals } from "./utils/campaign-current-values";
+import { resolveFinancialDailyComparisonPrevious } from "./utils/financial-daily-comparison";
 import { evaluateExecutiveSummaryTrajectory } from "./utils/executive-summary-daily-snapshot";
 import { resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { createReportPdfArtifact } from "./utils/report-pdf-artifact";
@@ -1298,6 +1299,13 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   const trendFinancialComparison = trendAnalysisSelected && cumulativeGA4Connection && cumulativeGA4Window && campaignId && trendComparisonDate && trendWindowEnd
     ? await storage.getFinancialDailyComparisonData(campaignId, trendWindowEnd, trendComparisonDate).catch(() => null)
     : null;
+  if (trendFinancialComparison && !trendFinancialComparison.previous) {
+    trendFinancialComparison.previous = await resolveFinancialDailyComparisonPrevious({
+      campaignId,
+      reportingDate: trendComparisonDate,
+      storedPrevious: trendFinancialComparison.previous,
+    });
+  }
   const compatibleTrendFinancialDaily = resolveCompatibleTrendFinancialDaily({
     snapshot: (trendFinancialComparison as any)?.previous,
     campaignId,

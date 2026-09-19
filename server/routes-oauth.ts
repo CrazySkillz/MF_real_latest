@@ -48,6 +48,7 @@ import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-ag
 import { createReportPdfArtifact, readReportPdfArtifact } from "./utils/report-pdf-artifact";
 import { resolveCampaignCumulativeFinancials } from "./utils/campaign-cumulative-financials";
 import { observeFinancialDailySnapshotReadiness } from "./utils/financial-daily-snapshot-observation";
+import { resolveFinancialDailyComparisonPrevious } from "./utils/financial-daily-comparison";
 import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
 import { isGA4FinancialTotalsCandidate, parseGA4FinancialNumber, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
 import { addDerivedGA4EngagedSessions, mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
@@ -31048,6 +31049,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             (req as any)._campaign?.reportingTimeZone,
             comparisonDate || undefined,
           );
+      if (snapshotType === 'financial_daily' && !comparisonData.previous) {
+        comparisonData.previous = await resolveFinancialDailyComparisonPrevious({
+          campaignId: id,
+          reportingDate: comparisonDate,
+          storedPrevious: comparisonData.previous,
+        });
+      }
       res.json(comparisonDate ? { ...comparisonData, comparisonDate } : comparisonData);
     } catch (error) {
       console.error('Comparison data fetch error:', error);

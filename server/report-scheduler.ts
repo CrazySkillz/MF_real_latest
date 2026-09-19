@@ -1980,6 +1980,29 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
           if (engagementRate !== null) addText(`- Engagement rate: ${formatCampaignDeepDiveMetricValue("engagementRate", engagementRate)}`, { indent: 8 });
           if (conversions !== null && sessions > 0) addText(`- Conversions per 100 sessions: ${((conversions / sessions) * 100).toFixed(1)}`, { indent: 8 });
         }
+        const paidSources = (Array.isArray(trendAnalysis?.sources) ? trendAnalysis.sources : [])
+          .filter((source: any) => source?.category === "paid_media");
+        const paidMetricTotal = (key: string): number | null => {
+          const compatibleSources = paidSources.filter((source: any) => Array.isArray(source?.includedMetrics) && source.includedMetrics.includes(key));
+          if (compatibleSources.length === 0) return null;
+          return compatibleSources.reduce((total: number, source: any) => total + sourceWindowRows(source)
+            .reduce((sourceTotal: number, row: any) => sourceTotal + (Number(row?.metrics?.[key]) || 0), 0), 0);
+        };
+        const paidAvailable = paidSources.some((source: any) => Array.isArray(source?.includedMetrics)
+          && (source.includedMetrics.includes("impressions") || source.includedMetrics.includes("clicks")));
+        if (paidAvailable) {
+          const impressions = paidMetricTotal("impressions");
+          const clicks = paidMetricTotal("clicks");
+          const paidConversions = paidMetricTotal("conversions");
+          const ctr = impressions !== null && impressions > 0 && clicks !== null ? (clicks / impressions) * 100 : null;
+          const paidCvr = clicks !== null && clicks > 0 && paidConversions !== null ? (paidConversions / clicks) * 100 : null;
+          addText("Paid Acquisition Funnel", { bold: true, indent: 4 });
+          if (impressions !== null) addText(`- Impressions: ${formatCampaignDeepDiveMetricValue("impressions", impressions)}`, { indent: 8 });
+          if (clicks !== null) addText(`- Clicks: ${formatCampaignDeepDiveMetricValue("clicks", clicks)}`, { indent: 8 });
+          if (paidConversions !== null) addText(`- Conversions: ${formatCampaignDeepDiveMetricValue("conversions", paidConversions)}`, { indent: 8 });
+          if (ctr !== null) addText(`- CTR: ${formatCampaignDeepDiveMetricValue("ctr", ctr)}`, { indent: 8 });
+          if (paidCvr !== null) addText(`- Paid CVR: ${formatCampaignDeepDiveMetricValue("cvr", paidCvr)}`, { indent: 8 });
+        }
       }
       const trendRecommendations: Array<{ title: string; message: string }> = [];
       const hasExactTrendComparison = ["users", "sessions", "conversions", "cvr", "engagementRate"]

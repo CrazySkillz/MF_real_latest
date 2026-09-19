@@ -203,6 +203,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfTextCalls).toContain("Website Engagement & Conversion Summary");
     expect(pdfTextCalls).toContain("- Engaged Sessions: 809");
     expect(pdfTextCalls).toContain("- Conversions per 100 sessions: 12.8");
+    expect(pdfTextCalls).not.toContain("Paid Acquisition Funnel");
     expect(pdfTextCalls).toContain("Executive Recommendations");
     expect(pdfTextCalls.some((text) => text.includes("Selected-Window Comparison") && text.includes("Jul 28, 2026"))).toBe(true);
     expect(pdfTextCalls.some((text) => text.includes("Campaign-to-Date ROAS") && text.includes("26.95x"))).toBe(true);
@@ -259,6 +260,12 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfTextCalls).toContain("- Engagement rate: 80.0%");
     expect(pdfTextCalls).toContain("- Conversions per 100 sessions: 10.0");
     expect(pdfTextCalls).not.toContain("- Conversions per 100 sessions: 40.0");
+    expect(pdfTextCalls).toContain("Paid Acquisition Funnel");
+    expect(pdfTextCalls).toContain("- Impressions: 1,000");
+    expect(pdfTextCalls).toContain("- Clicks: 100");
+    expect(pdfTextCalls).toContain("- Conversions: 30");
+    expect(pdfTextCalls).toContain("- CTR: 10.0%");
+    expect(pdfTextCalls).toContain("- Paid CVR: 30.0%");
     expect(getCampaignMetricTotalsMock).not.toHaveBeenCalled();
   });
 

@@ -148,6 +148,7 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
     || "2000-01-01";
   const financialSourceStartDate = "1900-01-01";
   const spendSourceStartDate = "1900-01-01";
+  const financialSourceEndDate = todayUTC();
   let ga4Available = false;
   let ga4RevenueAvailable = false;
   let verifiedToDateFinancialCandidateAvailable = false;
@@ -249,10 +250,10 @@ async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandi
   if (financialConversions === null) financialConversions = conversions;
 
   const [revenueTotalsResult, spendTotalsResult, revenueBreakdownResult, spendBreakdownResult] = await Promise.allSettled([
-    storage.getRevenueTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4"),
-    storage.getSpendTotalForRange(campaignId, spendSourceStartDate, endDate, "ga4"),
-    storage.getRevenueBreakdownBySource(campaignId, financialSourceStartDate, endDate, "ga4"),
-    storage.getSpendBreakdownBySource(campaignId, spendSourceStartDate, endDate, "ga4"),
+    storage.getRevenueTotalForRange(campaignId, financialSourceStartDate, financialSourceEndDate, "ga4"),
+    storage.getSpendTotalForRange(campaignId, spendSourceStartDate, financialSourceEndDate, "ga4"),
+    storage.getRevenueBreakdownBySource(campaignId, financialSourceStartDate, financialSourceEndDate, "ga4"),
+    storage.getSpendBreakdownBySource(campaignId, spendSourceStartDate, financialSourceEndDate, "ga4"),
   ]);
   const revenueTotals: any = revenueTotalsResult.status === "fulfilled" ? revenueTotalsResult.value : { totalRevenue: 0 };
   const spendTotals: any = spendTotalsResult.status === "fulfilled" ? spendTotalsResult.value : { totalSpend: 0 };

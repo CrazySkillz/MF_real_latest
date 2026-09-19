@@ -16,6 +16,13 @@ export const requiresGa4RevenueMaterializationCompleteness = (
   today: string = new Date().toISOString().slice(0, 10),
 ): boolean => platformContext === 'ga4' && startDate === '1900-01-01' && endDate >= today;
 
+export const requiresGa4SpendMaterializationCompleteness = (
+  platformContext: unknown,
+  startDate: string,
+  endDate: string,
+  today: string = new Date().toISOString().slice(0, 10),
+): boolean => platformContext === 'ga4' && startDate === '1900-01-01' && endDate >= today;
+
 export const assertGa4RevenueMaterializationComplete = (activeSources: any[], rows: any[]): void => {
   const representedSourceIds = new Set(
     rows
@@ -33,6 +40,28 @@ export const assertGa4RevenueMaterializationComplete = (activeSources: any[], ro
   if (missingSourceIds.length > 0) {
     throw Object.assign(new Error('Active GA4 revenue source has no materialized revenue record'), {
       code: 'GA4_REVENUE_MATERIALIZATION_INCOMPLETE',
+      sourceIds: missingSourceIds,
+    });
+  }
+};
+
+export const assertGa4SpendMaterializationComplete = (activeSources: any[], rows: any[]): void => {
+  const representedSourceIds = new Set(
+    rows
+      .filter((row) => {
+        const value = row?.spend ?? row?.spendRecords?.spend;
+        return value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value));
+      })
+      .map((row) => String(row?.spendSourceId ?? row?.spendRecords?.spendSourceId ?? '').trim())
+      .filter(Boolean),
+  );
+  const missingSourceIds = activeSources
+    .filter((source) => source?.isActive !== false)
+    .map((source) => String(source?.id || '').trim())
+    .filter((sourceId) => sourceId && !representedSourceIds.has(sourceId));
+  if (missingSourceIds.length > 0) {
+    throw Object.assign(new Error('Active GA4 spend source has no materialized spend record'), {
+      code: 'GA4_SPEND_MATERIALIZATION_INCOMPLETE',
       sourceIds: missingSourceIds,
     });
   }

@@ -2525,17 +2525,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
 
       const startDate = "1900-01-01";
-      const latestEndDate = platformContext === "ga4"
+      const currentUtcDate = new Date().toISOString().slice(0, 10);
+      const latestCompletedEndDate = platformContext === "ga4"
         ? getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate
-        : new Date().toISOString().slice(0, 10);
+        : currentUtcDate;
       const requestedEndDate = String((req.query as any)?.endDate || "").trim();
       const parsedEndDate = new Date(`${requestedEndDate}T00:00:00.000Z`);
       if (requestedEndDate && (platformContext !== "ga4" || !/^\d{4}-\d{2}-\d{2}$/.test(requestedEndDate)
         || Number.isNaN(parsedEndDate.getTime()) || parsedEndDate.toISOString().slice(0, 10) !== requestedEndDate
-        || requestedEndDate < startDate || requestedEndDate > latestEndDate)) {
+        || requestedEndDate < startDate || requestedEndDate > latestCompletedEndDate)) {
         return res.status(400).json({ success: false, error: "endDate must be a completed GA4 reporting date in YYYY-MM-DD format" });
       }
-      const endDate = requestedEndDate || latestEndDate;
+      const endDate = requestedEndDate || currentUtcDate;
       const sources = await storage.getSpendSources(campaignId, platformContext);
       const scopedTotals = platformContext
         ? await storage.getSpendTotalForRange(campaignId, startDate, endDate, platformContext)
@@ -3413,9 +3414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Budget pacing dates are campaign metadata and must not narrow platform spend provenance.
       const startDate = "1900-01-01";
-      const endDate = platformContext === "ga4"
-        ? getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate
-        : new Date().toISOString().slice(0, 10);
+      const endDate = new Date().toISOString().slice(0, 10);
 
       const [sources, sourceDefinitions] = await Promise.all([
         storage.getSpendBreakdownBySource(campaignId, startDate, endDate, platformContext),
@@ -14770,11 +14769,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let performanceSummarySpend = currentValueWindow ? 0 : persistedSpend;
       let canonicalPerformanceSummarySpendAvailable = !currentValueWindow && Array.isArray((spendTotals as any)?.sourceIds)
         && (spendTotals as any).sourceIds.length > 0;
+      let canonicalPerformanceSummarySpendFailed = false;
       let financialSpendInputs: any[] = [];
+      const financialSourceEndDate = new Date().toISOString().slice(0, 10);
       try {
         // Imported spend is source-to-date; the GA4 import boundary applies only to native GA4 metrics.
         const spendStartDate = "1900-01-01";
-        const spendEndDate = currentValueWindow?.endDate || new Date().toISOString().slice(0, 10);
+        const spendEndDate = financialSourceEndDate;
         const [spendToDateTotals, spendBreakdown] = await Promise.all([
           storage.getSpendTotalForRange(campaignId, spendStartDate, spendEndDate, "ga4"),
           storage.getSpendBreakdownBySource(campaignId, spendStartDate, spendEndDate, "ga4"),
@@ -14808,6 +14809,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           performanceSummarySpendTotals = null;
           performanceSummarySpend = 0;
           canonicalPerformanceSummarySpendAvailable = false;
+          canonicalPerformanceSummarySpendFailed = true;
           financialSpendInputs = [];
         }
       }
@@ -14820,7 +14822,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         // Imported revenue is source-to-date; the GA4 import boundary applies only to native GA4 metrics.
         const revenueStartDate = "1900-01-01";
-        const revenueEndDate = currentValueWindow?.endDate || new Date().toISOString().slice(0, 10);
+        const revenueEndDate = financialSourceEndDate;
         const [revenueTotals, revenueBreakdown, revenueSourceDefinitions] = await Promise.all([
           storage.getRevenueTotalForRange(campaignId, revenueStartDate, revenueEndDate, "ga4"),
           storage.getRevenueBreakdownBySource(campaignId, revenueStartDate, revenueEndDate, "ga4"),
@@ -15162,7 +15164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         googleSheets?.includedMetrics?.includes("spend"),
       ].some(Boolean) : true;
       const performanceSummarySpendAvailable = currentValueWindow
-        ? canonicalPerformanceSummarySpendAvailable || exactPlatformSpendAvailable
+        ? !canonicalPerformanceSummarySpendFailed && (canonicalPerformanceSummarySpendAvailable || exactPlatformSpendAvailable)
         : true;
       const performanceSummarySpendSource = currentValueWindow
         ? canonicalPerformanceSummarySpendAvailable ? "persisted_spend_sources" : "platform_spend_fallback"
@@ -15222,7 +15224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const onsiteRevenue = parseNum(financialWebAnalytics.revenue);
       const totalRevenueUnified = parseFloat((onsiteRevenue + offsiteRevenueTotal).toFixed(2));
       const financialSpendForOutcome = currentValueWindow
-        ? canonicalPerformanceSummarySpendAvailable ? performanceSummarySpend : platformSpendFallback
+        ? canonicalPerformanceSummarySpendAvailable ? performanceSummarySpend : canonicalPerformanceSummarySpendFailed ? 0 : platformSpendFallback
         : webAnalyticsProvider === "ga4" ? performanceSummarySpend : unifiedSpend;
       const financialConversionsForOutcome = campaignFinancialConversions ?? parseNum(financialWebAnalytics.conversions);
       const ga4FinancialConversions = webAnalyticsProvider === "ga4" ? {

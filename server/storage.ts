@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql, gte, lte, inArray, ne } from "drizzle-orm";
 import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, type EncryptedTokens } from "./utils/tokenVault";
-import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness } from "./utils/revenue-record-total";
+import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, assertGa4SpendMaterializationComplete, requiresGa4RevenueMaterializationCompleteness, requiresGa4SpendMaterializationCompleteness } from "./utils/revenue-record-total";
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 import { getReportingComparisonBoundary } from "./utils/reporting-timezone";
 import { executiveSummaryDailySnapshotInputSchema, type ExecutiveSummaryDailySnapshotInput } from "./utils/executive-summary-daily-snapshot";
@@ -1500,6 +1500,11 @@ export class DatabaseStorage implements IStorage {
         sql`${spendRecords.date} <= ${endDate}`
       ));
 
+    if (requiresGa4SpendMaterializationCompleteness(platformContext, startDate, endDate)) {
+      const activeSources = await this.getSpendSources(campaignId, platformContext);
+      assertGa4SpendMaterializationComplete(activeSources as any[], rows as any[]);
+    }
+
     let total = 0;
     const sourceIds = new Set<string>();
     const currencies = new Set<string>();
@@ -1538,6 +1543,11 @@ export class DatabaseStorage implements IStorage {
         sql`${spendRecords.date} >= ${startDate}`,
         sql`${spendRecords.date} <= ${endDate}`
       ));
+
+    if (requiresGa4SpendMaterializationCompleteness(platformContext, startDate, endDate)) {
+      const activeSources = await this.getSpendSources(campaignId, platformContext);
+      assertGa4SpendMaterializationComplete(activeSources as any[], rows as any[]);
+    }
 
     const totals = new Map<string, { displayName: string; sourceType: string; spend: number; currency?: string }>();
     const currencies = new Set<string>();
@@ -2335,6 +2345,11 @@ export class DatabaseStorage implements IStorage {
         sql`${revenueRecords.date} >= ${startDate}`,
         sql`${revenueRecords.date} <= ${endDate}`
       ));
+
+    if (requiresGa4RevenueMaterializationCompleteness(platformContext, startDate, endDate)) {
+      const activeSources = await this.getRevenueSources(campaignId, platformContext);
+      assertGa4RevenueMaterializationComplete(activeSources as any[], rows as any[]);
+    }
 
     if (platformContext === 'ga4') {
       const campaign = await this.getCampaign(campaignId);

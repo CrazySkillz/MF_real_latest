@@ -374,6 +374,11 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(route).toContain("buildGoogleAdsPlatformSourceForAggregate(campaignId, aggregateStartDate, aggregateEndDate, requireExactPlatformRows)");
     expect(route).toContain("currentValueWindow ? { startDate: currentValueWindow.startDate, endDate: currentValueWindow.endDate } : undefined");
     expect(route).toContain("const platformSpendFallback = parseFloat((linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend + parseNum(googleSheets?.metrics?.spend) + parseNum(custom?.spend)).toFixed(2));");
+    expect(route).toContain('const financialSourceEndDate = new Date().toISOString().slice(0, 10);');
+    expect(route).toContain("let canonicalPerformanceSummarySpendFailed = false;");
+    expect(route).toContain("canonicalPerformanceSummarySpendFailed = true;");
+    expect(route).toContain("!canonicalPerformanceSummarySpendFailed && (canonicalPerformanceSummarySpendAvailable || exactPlatformSpendAvailable)");
+    expect(route).toContain("canonicalPerformanceSummarySpendFailed ? 0 : platformSpendFallback");
     expect(route).toContain("mainPlatformSources: { googleAds, instagram, tiktok, googleSheets }");
     expect(route).toContain("buildGoogleSheetsPlatformSourceForAggregate(campaign, googleSheetsConnections as any[], googleSheetsFinancials, !currentValueWindow)");
     expect(route).toContain('financialWebAnalytics.provider === "ga4" && financialWebAnalytics.available');

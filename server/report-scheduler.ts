@@ -1324,7 +1324,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         return date.toISOString().slice(0, 10);
       })()).then((snapshots: any) => evaluateExecutiveSummaryTrajectory(snapshots.current, snapshots.previous)).catch(() => ({ available: false, reason: "not_enough_history" }))
     : { available: false, reason: "not_enough_history" };
-  const financialInputEndDate = String(performanceSummary?.currentValueWindow?.endDate || trendWindowEnd || windowEnd);
+  const financialInputEndDate = new Date().toISOString().slice(0, 10);
   const financialGA4Source = aggregateSources.find((source: any) => source?.connected === true && source?.id === "ga4");
   const [financialRevenueInputRows, financialSpendInputRows] = financialAnalysisSelected && financialGA4Source && /^\d{4}-\d{2}-\d{2}$/.test(financialInputEndDate)
     ? await Promise.all([

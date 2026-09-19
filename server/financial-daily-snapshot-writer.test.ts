@@ -76,6 +76,8 @@ describe("gated financial daily snapshot writer", () => {
     const result = await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps);
 
     expect(result.status).toBe("written");
+    expect(deps.getRevenueTotalForRange).toHaveBeenCalledWith(campaignId, "1900-01-01", "2026-08-22", "ga4");
+    expect(deps.getSpendTotalForRange).toHaveBeenCalledWith(campaignId, "1900-01-01", "2026-08-22", "ga4");
     expect(deps.upsertFinancialDailySnapshot).toHaveBeenCalledWith({
       version: "financial_daily_snapshot_v1",
       campaignId,

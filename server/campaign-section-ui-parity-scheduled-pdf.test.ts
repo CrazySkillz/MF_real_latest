@@ -237,6 +237,8 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfTextCalls).toContain("- Imported Spend: $2,699.75");
     expect(pdfTextCalls).not.toContain("ROI & ROAS");
     expect(getCampaignMetricTotalsMock).not.toHaveBeenCalled();
+    expect(storageMock.getRevenueBreakdownBySource).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-28", "ga4");
+    expect(storageMock.getSpendBreakdownBySource).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-28", "ga4");
   });
 
   it("keeps persisted financial provenance when GA4 and a paid source are both connected", async () => {

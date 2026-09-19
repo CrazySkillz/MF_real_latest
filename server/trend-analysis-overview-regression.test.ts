@@ -276,9 +276,15 @@ describe("Trend Analysis Overview regression guard", () => {
     const funnelStart = page.indexOf('<TabsContent value="funnel"');
     const funnelEnd = page.indexOf('<TabsContent value="platforms"', funnelStart);
     const funnel = page.slice(funnelStart, funnelEnd);
+    const funnelModelStart = page.indexOf("const conversionFunnelData = useMemo<any>(() => {");
+    const funnelModel = page.slice(funnelModelStart, page.indexOf("const platformBreakdownData", funnelModelStart));
 
     expect(page).toContain("const conversionFunnelData = useMemo<any>(() => {");
-    expect(page).toContain('paidAvailable: usesCumulativeGA4Consumer ? false : hasMetric("impressions") || hasMetric("clicks")');
+    expect(page).toContain('aggregate.sources.filter((source: any) => source?.category === "paid_media")');
+    expect(page).toContain('const paidConversions = paidMetricTotal("conversions");');
+    expect(page).toContain('paidCvr: clicks && clicks > 0 && paidConversions !== null ? (paidConversions / clicks) * 100 : null');
+    expect(page).toContain("conversionFunnelData.current.paidConversions");
+    expect(funnelModel).not.toContain('(conversions / clicks) * 100');
     expect(funnel).toContain("Web Analytics Funnel");
     expect(funnel).toContain("Paid-Media Funnel");
     expect(funnel).toContain("Paid-media funnel metrics require a connected paid-media source with impressions or clicks.");

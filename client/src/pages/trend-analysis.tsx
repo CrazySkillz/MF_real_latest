@@ -921,9 +921,20 @@ export default function TrendAnalysis() {
     const sessions = hasMetric("sessions") ? sum("sessions") : null;
     const users = hasMetric("users") ? sum("users") : null;
     const conversions = hasMetric("conversions") ? sum("conversions") : null;
-    const impressions = hasMetric("impressions") ? sum("impressions") : null;
-    const clicks = hasMetric("clicks") ? sum("clicks") : null;
-    const spend = hasMetric("spend") ? sum("spend") : null;
+    const paidSources = Array.isArray(aggregate?.sources)
+      ? aggregate.sources.filter((source: any) => source?.category === "paid_media")
+      : [];
+    const paidMetricTotal = (metricName: string): number | null => {
+      const compatibleSources = paidSources.filter((source: any) => Array.isArray(source?.includedMetrics) && source.includedMetrics.includes(metricName));
+      if (compatibleSources.length === 0) return null;
+      return compatibleSources.reduce((total: number, source: any) => total + filterAggregateTrendWindow(
+        Array.isArray(source?.dailyRows) ? source.dailyRows : [], aggregate, perfDays,
+      ).reduce((sourceTotal: number, row: any) => sourceTotal + (Number(row?.metrics?.[metricName]) || 0), 0), 0);
+    };
+    const impressions = paidMetricTotal("impressions");
+    const clicks = paidMetricTotal("clicks");
+    const paidConversions = paidMetricTotal("conversions");
+    const spend = paidMetricTotal("spend");
 
     const rollingCurrent = {
         sessions,
@@ -934,10 +945,11 @@ export default function TrendAnalysis() {
         engagementRate: hasEngagementRate ? avg("engagementRate") : null,
         impressions,
         clicks,
+        paidConversions,
         spend,
         ctr: impressions && impressions > 0 && clicks !== null ? (clicks / impressions) * 100 : null,
-        paidCvr: clicks && clicks > 0 && conversions !== null ? (conversions / clicks) * 100 : null,
-        cpa: spend && spend > 0 && conversions ? spend / conversions : null,
+        paidCvr: clicks && clicks > 0 && paidConversions !== null ? (paidConversions / clicks) * 100 : null,
+        cpa: spend && spend > 0 && paidConversions ? spend / paidConversions : null,
         cpc: spend && spend > 0 && clicks ? spend / clicks : null,
         cpm: spend && spend > 0 && impressions ? (spend / impressions) * 1000 : null,
         roas: avg("roas"),
@@ -951,6 +963,7 @@ export default function TrendAnalysis() {
       engagementRate: authoritativeTrendCurrent.engagementRate,
       impressions: null,
       clicks: null,
+      paidConversions: null,
       spend: null,
       ctr: null,
       paidCvr: null,
@@ -964,7 +977,7 @@ export default function TrendAnalysis() {
       series: currentPeriod,
       current,
       webAvailable: usesCumulativeGA4Consumer ? Boolean(authoritativeTrendCurrent) : hasMetric("sessions") || hasMetric("users") || hasMetric("conversions") || hasEngagementRate,
-      paidAvailable: usesCumulativeGA4Consumer ? false : hasMetric("impressions") || hasMetric("clicks"),
+      paidAvailable: usesCumulativeGA4Consumer ? false : paidSources.some((source: any) => Array.isArray(source?.includedMetrics) && (source.includedMetrics.includes("impressions") || source.includedMetrics.includes("clicks"))),
       hasCompleteCurrentPeriod: usesCumulativeGA4Consumer ? Boolean(authoritativeTrendCurrent) : currentPeriod.length >= perfDays,
       currentPeriodDays: currentPeriod.length,
       requestedPeriodDays: perfDays,
@@ -1682,7 +1695,7 @@ export default function TrendAnalysis() {
                         {[
                           { label: "Impressions", value: conversionFunnelData.current.impressions === null ? null : fmtNum(conversionFunnelData.current.impressions) },
                           { label: "Clicks", value: conversionFunnelData.current.clicks === null ? null : fmtNum(conversionFunnelData.current.clicks) },
-                          { label: "Conversions", value: conversionFunnelData.current.conversions === null ? null : fmtNum(conversionFunnelData.current.conversions) },
+                          { label: "Conversions", value: conversionFunnelData.current.paidConversions === null ? null : fmtNum(conversionFunnelData.current.paidConversions) },
                           { label: "CTR", value: conversionFunnelData.current.ctr === null ? null : formatPct(conversionFunnelData.current.ctr) },
                           { label: "Paid CVR", value: conversionFunnelData.current.paidCvr === null ? null : formatPct(conversionFunnelData.current.paidCvr) },
                         ].filter((item) => item.value !== null).map((item) => (

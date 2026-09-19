@@ -191,7 +191,7 @@ export default function FinancialAnalysis() {
     },
   });
 
-  const { data: outcomeTotals, isLoading: outcomeTotalsLoading, isError: outcomeTotalsError } = useQuery<any>({
+  const { data: outcomeTotals, isLoading: outcomeTotalsLoading, isError: outcomeTotalsError, isRefetchError: outcomeTotalsRefetchError } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", demoMode ? "demo" : "live"],
     enabled: !!campaignId,
     queryFn: async () => {
@@ -311,6 +311,7 @@ export default function FinancialAnalysis() {
     && currentValueWindow.dataThroughDate === currentValueWindow.endDate
     && Boolean(String(currentValueWindow?.reportingTimeZone || "").trim());
   const aggregateUnavailable = !demoMode && !performanceSummary && (outcomeTotalsError || outcomeTotals !== undefined);
+  const aggregateRefreshFailed = !demoMode && outcomeTotalsRefetchError && Boolean(performanceSummary);
   const campaignCurrency = String((campaign as any).currency || 'USD').trim().toUpperCase();
   const performanceSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];
   const aggregateMetric = (metricName: string) => performanceSummary?.totals?.[metricName];
@@ -841,6 +842,16 @@ export default function FinancialAnalysis() {
             </div>
           ) : (
             <div className="space-y-8" data-testid="executive-financial-analysis">
+              {aggregateRefreshFailed && (
+                <div
+                  role="status"
+                  data-testid="financial-aggregate-refresh-warning"
+                  className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200"
+                >
+                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+                  <p className="text-sm">Financial totals could not refresh. Values below are from the last successful response and may be outdated.</p>
+                </div>
+              )}
               <section aria-labelledby="financial-position-heading" className="space-y-4">
                 <div>
                   <h2 id="financial-position-heading" className="text-xl font-semibold">Financial Position</h2>

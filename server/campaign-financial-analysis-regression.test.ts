@@ -199,7 +199,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
   it("adds the shared performanceSummary aggregate contract for Budget & Financial tabs", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "financial-analysis.tsx"), "utf-8");
 
-    expect(page).toContain("const { data: outcomeTotals, isLoading: outcomeTotalsLoading, isError: outcomeTotalsError } = useQuery<any>({");
+    expect(page).toContain("isRefetchError: outcomeTotalsRefetchError");
     expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days"');
     expect(page).toContain("outcome-totals?dateRange=90days");
     expect(page).toContain('if (!response.ok) throw new Error("Failed to load aggregate financial totals");');
@@ -223,6 +223,9 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain('const hasCampaignToDateWindow = performanceSummary?.version === "performance_summary_aggregate_v3"');
     expect(page).toContain('currentValueWindow?.mode === "initial_import_to_latest_completed_day"');
     expect(page).toContain("const aggregateUnavailable = !demoMode && !performanceSummary && (outcomeTotalsError || outcomeTotals !== undefined);");
+    expect(page).toContain("const aggregateRefreshFailed = !demoMode && outcomeTotalsRefetchError && Boolean(performanceSummary);");
+    expect(page).toContain('data-testid="financial-aggregate-refresh-warning"');
+    expect(page).toContain("Values below are from the last successful response and may be outdated.");
     expect(page).toContain("const performanceSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];");
     expect(page).toContain("const aggregateMetric = (metricName: string) => performanceSummary?.totals?.[metricName];");
     expect(page).toContain("const aggregateMetricAvailable = (metricName: string) => aggregateMetric(metricName)?.available === true;");

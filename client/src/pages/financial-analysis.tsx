@@ -677,14 +677,6 @@ export default function FinancialAnalysis() {
       .map((source: any) => String(source?.label || source?.id || "").trim())
       .filter(Boolean)
   ));
-  const paidMediaEfficiencySourceLabels = financialMainSources
-    .filter((source: any) =>
-      (source?.category === "paid_media" || source?.id === "custom_integration") &&
-      Array.isArray(source?.includedMetrics) &&
-      source.includedMetrics.some((metric: string) => ["clicks", "impressions", "spend"].includes(metric))
-    )
-    .map((source: any) => String(source?.label || source?.id || "").trim())
-    .filter(Boolean);
   const conversionEfficiencySourceLabels = financialMainSources
     .filter((source: any) =>
       Array.isArray(source?.includedMetrics) &&
@@ -702,10 +694,17 @@ export default function FinancialAnalysis() {
     unavailableReasons: [`${metricName} is withheld until every input has a certified campaign-to-date window`],
   };
   const paidMediaEfficiencyMetrics = [
-    { label: "CPC", metric: campaignToDateEfficiencyMetric(overviewCpcMetric, "CPC"), value: formatOverviewCurrency(overviewCpcMetric) },
-    { label: "CPM", metric: campaignToDateEfficiencyMetric(overviewCpmMetric, "CPM"), value: formatOverviewCurrency(overviewCpmMetric) },
-    { label: "CTR", metric: campaignToDateEfficiencyMetric(overviewCtrMetric, "CTR"), value: formatOverviewPercentage(overviewCtrMetric) },
+    { label: "CPC", metric: campaignToDateEfficiencyMetric(overviewCpcMetric, "CPC"), value: formatOverviewCurrency(overviewCpcMetric), requiredMetrics: ["spend", "clicks"] },
+    { label: "CPM", metric: campaignToDateEfficiencyMetric(overviewCpmMetric, "CPM"), value: formatOverviewCurrency(overviewCpmMetric), requiredMetrics: ["spend", "impressions"] },
+    { label: "CTR", metric: campaignToDateEfficiencyMetric(overviewCtrMetric, "CTR"), value: formatOverviewPercentage(overviewCtrMetric), requiredMetrics: ["clicks", "impressions"] },
   ].filter((item) => item.metric.available);
+  const paidMediaEfficiencySourceLabels = financialMainSources
+    .filter((source: any) =>
+      (source?.category === "paid_media" || source?.id === "custom_integration") &&
+      paidMediaEfficiencyMetrics.some((item) => item.requiredMetrics.every((metric) => sourceIncludesMetric(source, metric)))
+    )
+    .map((source: any) => String(source?.label || source?.id || "").trim())
+    .filter(Boolean);
   const conversionEfficiencyCvrMetric = campaignToDateEfficiencyMetric(overviewCvrMetric, "CVR");
   const campaignToDateAllocationSources: FinancialSourceBreakdown[] = demoMode || hasCampaignToDateWindow ? budgetAllocationSources : [];
 

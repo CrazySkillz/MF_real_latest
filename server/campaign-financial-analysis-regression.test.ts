@@ -305,6 +305,10 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const paidMediaEfficiencyMetrics = [");
     expect(page).toContain("].filter((item) => item.metric.available);");
     expect(page).toContain("const paidMediaEfficiencySourceLabels = financialMainSources");
+    expect(page).toContain('requiredMetrics: ["spend", "clicks"]');
+    expect(page).toContain('requiredMetrics: ["spend", "impressions"]');
+    expect(page).toContain('requiredMetrics: ["clicks", "impressions"]');
+    expect(page).toContain("paidMediaEfficiencyMetrics.some((item) => item.requiredMetrics.every((metric) => sourceIncludesMetric(source, metric)))");
     expect(page).toContain("const conversionEfficiencySourceLabels = financialMainSources");
     expect(page).toContain("const conversionEfficiencyCvrMetric = campaignToDateEfficiencyMetric(overviewCvrMetric, \"CVR\");");
     expect(executiveView).toContain("paidMediaEfficiencyMetrics.length > 0");

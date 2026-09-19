@@ -505,7 +505,7 @@ describe("Performance Summary aggregate contract", () => {
     expect(withRevenue.totals.roi).toMatchObject({ available: true, value: 150, sources: ["revenue", "spend"] });
   });
 
-  it("marks canonical spend and revenue-derived ratios available only when required inputs exist", () => {
+  it("keeps canonical financial spend separate from source-compatible paid efficiency", () => {
     const aggregate = buildPerformanceSummaryAggregate({
       campaignId: "campaign-3",
       dateRange: "30days",
@@ -523,7 +523,7 @@ describe("Performance Summary aggregate contract", () => {
     expect(aggregate.totals.roas).toMatchObject({ available: true, value: 4, sources: ["revenue", "spend"] });
     expect(aggregate.totals.roi).toMatchObject({ available: true, value: 300, sources: ["revenue", "spend"] });
     expect(aggregate.totals.cpa).toMatchObject({ available: true, value: 12.5, sources: ["spend", "conversions"] });
-    expect(aggregate.totals.cpm).toMatchObject({ available: true, value: 250, sources: ["spend", "impressions"] });
+    expect(aggregate.totals.cpm).toMatchObject({ available: true, value: 400, sources: ["spend", "impressions"] });
   });
 
   it("keeps supported zero-valued metrics available instead of treating them as missing", () => {
@@ -570,6 +570,111 @@ describe("Performance Summary aggregate contract", () => {
 
     expect(zeroCvr.totals.cvr).toMatchObject({ available: true, value: 0, sources: ["conversions", "sessions"] });
     expect(missingConversions.totals.cvr.available).toBe(false);
+  });
+
+  it("uses only mutually compatible paid sources and keeps valid zero efficiency values available", () => {
+    const aggregate = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-compatible-paid-efficiency",
+      dateRange: "90days",
+      currentValueWindow: {
+        mode: "initial_import_to_latest_completed_day",
+        startDate: "2026-05-01",
+        endDate: "2026-08-20",
+        dataThroughDate: "2026-08-20",
+        reportingTimeZone: "Europe/Amsterdam",
+      },
+      ga4: { connected: false },
+      webAnalytics: { connected: false, provider: null },
+      spend: {
+        available: true,
+        unifiedSpend: 1000,
+        spendSource: "persisted_spend_sources",
+        sourceIds: ["spend-source"],
+      },
+      platforms: {},
+      platformSources: [
+        {
+          id: "compatible",
+          label: "Compatible Ads",
+          category: "paid_media",
+          connected: true,
+          capabilities: ["impressions", "clicks", "spend", "conversions"],
+          includedMetrics: ["impressions", "clicks", "spend", "conversions"],
+          excludedMetrics: [],
+          metrics: { impressions: 1000, clicks: 20, spend: 0, conversions: 0 },
+        },
+        {
+          id: "clicks_only",
+          label: "Clicks Only",
+          category: "paid_media",
+          connected: true,
+          capabilities: ["clicks"],
+          includedMetrics: ["clicks"],
+          excludedMetrics: [],
+          metrics: { clicks: 80 },
+        },
+        {
+          id: "impressions_only",
+          label: "Impressions Only",
+          category: "paid_media",
+          connected: true,
+          capabilities: ["impressions"],
+          includedMetrics: ["impressions"],
+          excludedMetrics: [],
+          metrics: { impressions: 9000 },
+        },
+        {
+          id: "spend_only",
+          label: "Spend Only",
+          category: "paid_media",
+          connected: true,
+          capabilities: ["spend"],
+          includedMetrics: ["spend"],
+          excludedMetrics: [],
+          metrics: { spend: 1000 },
+        },
+      ],
+      revenue: { onsiteRevenue: 0, offsiteRevenue: 0, totalRevenue: 0 },
+      revenueSources: [],
+    });
+
+    expect(aggregate.totals.clicks).toMatchObject({ available: true, value: 100 });
+    expect(aggregate.totals.impressions).toMatchObject({ available: true, value: 10000 });
+    expect(aggregate.totals.cpc).toMatchObject({ available: true, value: 0, sources: ["spend", "clicks"] });
+    expect(aggregate.totals.cpm).toMatchObject({ available: true, value: 0, sources: ["spend", "impressions"] });
+    expect(aggregate.totals.ctr).toMatchObject({ available: true, value: 2, sources: ["clicks", "impressions"] });
+    expect(aggregate.totals.cvr).toMatchObject({ available: true, value: 0, sources: ["conversions", "clicks"] });
+  });
+
+  it("withholds paid efficiency when required inputs exist only on separate sources", () => {
+    const aggregate = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-incompatible-paid-efficiency",
+      dateRange: "90days",
+      currentValueWindow: {
+        mode: "initial_import_to_latest_completed_day",
+        startDate: "2026-05-01",
+        endDate: "2026-08-20",
+        dataThroughDate: "2026-08-20",
+        reportingTimeZone: "Europe/Amsterdam",
+      },
+      ga4: { connected: false },
+      webAnalytics: { connected: false, provider: null },
+      spend: { available: true, unifiedSpend: 100, spendSource: "persisted_spend_sources", sourceIds: ["spend_only"] },
+      platforms: {},
+      platformSources: [
+        { id: "spend_only", label: "Spend Only", category: "paid_media", connected: true, includedMetrics: ["spend"], metrics: { spend: 100 } },
+        { id: "clicks_only", label: "Clicks Only", category: "paid_media", connected: true, includedMetrics: ["clicks"], metrics: { clicks: 20 } },
+        { id: "impressions_only", label: "Impressions Only", category: "paid_media", connected: true, includedMetrics: ["impressions"], metrics: { impressions: 1000 } },
+        { id: "conversions_only", label: "Conversions Only", category: "paid_media", connected: true, includedMetrics: ["conversions"], metrics: { conversions: 5 } },
+      ],
+      revenue: { onsiteRevenue: 0, offsiteRevenue: 0, totalRevenue: 0 },
+      revenueSources: [],
+    });
+
+    expect(aggregate.totals.cpc.available).toBe(false);
+    expect(aggregate.totals.cpm.available).toBe(false);
+    expect(aggregate.totals.ctr.available).toBe(false);
+    expect(aggregate.totals.cvr.available).toBe(false);
   });
 
   it("keeps valid zero and negative revenue available in ROAS and ROI when spend is positive", () => {

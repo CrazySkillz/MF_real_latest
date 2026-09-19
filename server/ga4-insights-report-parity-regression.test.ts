@@ -53,7 +53,7 @@ describe("GA4 Insights report parity", () => {
     expect(scheduledSection).toContain(reportTrendCopy);
     expect(reportSection).toContain("Total across revenue sources");
     expect(scheduledSection).toContain("Total across revenue sources");
-    expect(liveSection).toContain("Exact completed-day window");
+    expect(liveSection).toContain("Different cutoffs: GA4 native revenue through");
     for (const section of [reportSection, scheduledSection]) {
       expect(section).toContain("Current GA4 total");
     }

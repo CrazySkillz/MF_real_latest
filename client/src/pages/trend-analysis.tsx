@@ -244,7 +244,11 @@ export default function TrendAnalysis() {
     enabled: !!campaignId,
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/daily-financials?days=${perfDays * 2}`);
+      const end = new Date();
+      end.setUTCDate(end.getUTCDate() - 1);
+      const start = new Date(end);
+      start.setUTCDate(start.getUTCDate() - (perfDays * 2 - 1));
+      const resp = await fetch(`/api/campaigns/${campaignId}/daily-financials?start=${start.toISOString().slice(0, 10)}&end=${end.toISOString().slice(0, 10)}`);
       if (!resp.ok) return null;
       return resp.json().catch(() => null);
     },

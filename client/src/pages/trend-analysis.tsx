@@ -496,6 +496,15 @@ export default function TrendAnalysis() {
     const validValue = Number.isFinite(value) && (metricName === "roi" || value >= 0);
     return metric?.available === true && Array.isArray(metric?.sources) && metric.sources.length > 0 && validValue ? value : null;
   };
+  const hasAuthoritativeHeadlineWindow = performanceSummary?.campaignId === campaignId
+    && performanceSummary?.version === "performance_summary_aggregate_v3"
+    && performanceMainSources.length > 0
+    && currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+    && ISO_DATE_PATTERN.test(String(currentValueWindow?.startDate || ""))
+    && ISO_DATE_PATTERN.test(String(currentValueWindow?.endDate || ""))
+    && currentValueWindow.startDate <= currentValueWindow.endDate
+    && currentValueWindow?.dataThroughDate === currentValueWindow?.endDate
+    && Boolean(String(currentValueWindow?.reportingTimeZone || "").trim());
   const currentTraffic = cumulativeGA4CurrentCompatible
     ? deriveExactCumulativeGA4Traffic(ga4Daily, trendComparisonDate)?.current || (() => {
       const totals = ga4Daily?.overviewTotals || {};
@@ -518,6 +527,7 @@ export default function TrendAnalysis() {
     : null;
   const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase() || "USD";
   const fmtTrendCurrency = (value: number) => fmtCur(value, usesCumulativeGA4Consumer ? campaignCurrency : "USD");
+  const fmtHeadlineCurrency = (value: number) => fmtCur(value, campaignCurrency);
   const compatibleFinancialDaily = resolveCompatibleTrendFinancialDaily({
     snapshot: trendFinancialComparison?.previous,
     campaignId: String(campaignId || ""),
@@ -549,6 +559,21 @@ export default function TrendAnalysis() {
     ctr: aggregateMetricValue("ctr"),
     cpc: aggregateMetricValue("cpc"),
     cpm: aggregateMetricValue("cpm"),
+  } : null;
+  const authoritativeHeadlineCurrent = hasAuthoritativeHeadlineWindow ? {
+    revenue: aggregateMetricValue("revenue"),
+    spend: aggregateMetricValue("spend"),
+    roas: aggregateMetricValue("roas"),
+    roi: aggregateMetricValue("roi"),
+    conversions: aggregateMetricValue("conversions"),
+    cpa: aggregateMetricValue("cpa"),
+    cpc: aggregateMetricValue("cpc"),
+    cpm: aggregateMetricValue("cpm"),
+    sessions: aggregateMetricValue("sessions"),
+    users: aggregateMetricValue("users"),
+    cvr: aggregateMetricValue("cvr"),
+    engagementRate: authoritativeTrendCurrent?.engagementRate ?? null,
+    ctr: aggregateMetricValue("ctr"),
   } : null;
   const historicalSpend = historicalFinancialValue("spend");
   const historicalRevenue = historicalFinancialValue("revenue");
@@ -1264,6 +1289,12 @@ export default function TrendAnalysis() {
   const cumulativeDataThroughLabel = ISO_DATE_PATTERN.test(cumulativeDataThroughDate)
     ? format(new Date(`${cumulativeDataThroughDate}T00:00:00`), "MMM d, yyyy")
     : "";
+  const headlineComparison = usesCumulativeGA4Consumer ? overviewTrendData?.comparison || {} : {};
+  const authoritativeHeadlineEfficiencyCards = authoritativeHeadlineCurrent ? [
+    { key: "roi", label: "ROI", value: authoritativeHeadlineCurrent.roi === null ? null : formatPct(authoritativeHeadlineCurrent.roi), change: headlineComparison.roi },
+    { key: "cpc", label: "CPC", value: authoritativeHeadlineCurrent.cpc === null ? null : fmtHeadlineCurrency(authoritativeHeadlineCurrent.cpc), change: headlineComparison.cpc, invertColor: true },
+    { key: "cpm", label: "CPM", value: authoritativeHeadlineCurrent.cpm === null ? null : fmtHeadlineCurrency(authoritativeHeadlineCurrent.cpm), change: headlineComparison.cpm, invertColor: true },
+  ] : [];
   const trendWindowCalendar = usesCumulativeGA4Consumer
     ? expandTrendRowsToCalendarWindow([], String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || ""))
     : [];
@@ -1350,21 +1381,27 @@ export default function TrendAnalysis() {
               ) : (
                 <>
                   {/* Executive KPI scorecard: one card per decision metric. */}
+                  {authoritativeHeadlineCurrent ? <>
+                  {cumulativeDataThroughLabel && (
+                    <p className="text-sm text-muted-foreground">
+                      Current totals are cumulative through {cumulativeDataThroughLabel}; the selector controls charts and the exact comparison date.
+                    </p>
+                  )}
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                       {[
-                        { label: 'Revenue', value: overviewTrendData.current.revenue === null ? null : fmtTrendCurrency(overviewTrendData.current.revenue), change: overviewTrendData.comparison.revenue },
-                        { label: 'Spend', value: overviewTrendData.current.spend === null ? null : fmtTrendCurrency(overviewTrendData.current.spend), change: overviewTrendData.comparison.spend, invertColor: true },
-                        { label: 'ROAS', value: overviewTrendData.current.roas === null ? null : `${overviewTrendData.current.roas.toFixed(1)}x`, change: overviewTrendData.comparison.roas },
-                        efficiencyTrendData?.cards?.find((card: any) => card.key === "roi") || { label: 'ROI', value: null, change: null },
-                        { label: 'Conversions', value: overviewTrendData.current.conversions === null ? null : fmtNum(overviewTrendData.current.conversions), change: overviewTrendData.comparison.conversions },
-                        { label: 'CPA', value: overviewTrendData.current.cpa === null ? null : fmtTrendCurrency(overviewTrendData.current.cpa), change: overviewTrendData.comparison.cpa, invertColor: true },
-                        efficiencyTrendData?.cards?.find((card: any) => card.key === "cpc") || { label: 'CPC', value: null, change: null, invertColor: true },
-                        efficiencyTrendData?.cards?.find((card: any) => card.key === "cpm") || { label: 'CPM', value: null, change: null, invertColor: true },
-                        { label: 'Sessions', value: overviewTrendData.current.sessions === null ? null : formatExactTrendCount(overviewTrendData.current.sessions), change: overviewTrendData.comparison.sessions },
-                        { label: 'Users', value: overviewTrendData.current.users === null ? null : formatExactTrendCount(overviewTrendData.current.users), change: overviewTrendData.comparison.users },
-                        { label: 'CVR', value: overviewTrendData.current.cvr === null ? null : formatPct(overviewTrendData.current.cvr), change: overviewTrendData.comparison.cvr },
-                        { label: 'Engagement Rate', value: overviewTrendData.current.engagementRate === null ? null : formatPct(normalizeRateToPercent(overviewTrendData.current.engagementRate)), change: overviewTrendData.comparison.engagementRate },
-                        { label: 'CTR', value: overviewTrendData.current.ctr === null ? null : formatPct(overviewTrendData.current.ctr), change: overviewTrendData.comparison.ctr },
+                        { label: 'Revenue', value: authoritativeHeadlineCurrent.revenue === null ? null : fmtHeadlineCurrency(authoritativeHeadlineCurrent.revenue), change: headlineComparison.revenue },
+                        { label: 'Spend', value: authoritativeHeadlineCurrent.spend === null ? null : fmtHeadlineCurrency(authoritativeHeadlineCurrent.spend), change: headlineComparison.spend, invertColor: true },
+                        { label: 'ROAS', value: authoritativeHeadlineCurrent.roas === null ? null : `${authoritativeHeadlineCurrent.roas.toFixed(1)}x`, change: headlineComparison.roas },
+                        authoritativeHeadlineEfficiencyCards.find((card) => card.key === "roi") || { label: 'ROI', value: null, change: null },
+                        { label: 'Conversions', value: authoritativeHeadlineCurrent.conversions === null ? null : formatExactTrendCount(authoritativeHeadlineCurrent.conversions), change: headlineComparison.conversions },
+                        { label: 'CPA', value: authoritativeHeadlineCurrent.cpa === null ? null : fmtHeadlineCurrency(authoritativeHeadlineCurrent.cpa), change: headlineComparison.cpa, invertColor: true },
+                        authoritativeHeadlineEfficiencyCards.find((card) => card.key === "cpc") || { label: 'CPC', value: null, change: null, invertColor: true },
+                        authoritativeHeadlineEfficiencyCards.find((card) => card.key === "cpm") || { label: 'CPM', value: null, change: null, invertColor: true },
+                        { label: 'Sessions', value: authoritativeHeadlineCurrent.sessions === null ? null : formatExactTrendCount(authoritativeHeadlineCurrent.sessions), change: headlineComparison.sessions },
+                        { label: 'Users', value: authoritativeHeadlineCurrent.users === null ? null : formatExactTrendCount(authoritativeHeadlineCurrent.users), change: headlineComparison.users },
+                        { label: 'CVR', value: authoritativeHeadlineCurrent.cvr === null ? null : formatPct(authoritativeHeadlineCurrent.cvr), change: headlineComparison.cvr },
+                        { label: 'Engagement Rate', value: authoritativeHeadlineCurrent.engagementRate === null ? null : formatPct(normalizeRateToPercent(authoritativeHeadlineCurrent.engagementRate)), change: headlineComparison.engagementRate },
+                        { label: 'CTR', value: authoritativeHeadlineCurrent.ctr === null ? null : formatPct(authoritativeHeadlineCurrent.ctr), change: headlineComparison.ctr },
                       ].filter((card) => card.value !== null).map((card, i) => {
                         const isGood = card.invertColor ? card.change <= 0 : card.change >= 0;
                         const countKey = ({ Conversions: "conversions", Sessions: "sessions", Users: "users" } as Record<string, string>)[card.label];
@@ -1372,7 +1409,7 @@ export default function TrendAnalysis() {
                         const comparisonKey = countKey || rateKey;
                         const cumulativeComparison = usesCumulativeGA4Consumer && comparisonKey && trendComparisonDate
                           ? formatTrendComparison({
-                              current: Number(overviewTrendData.current[comparisonKey]),
+                              current: Number(authoritativeHeadlineCurrent[comparisonKey as keyof typeof authoritativeHeadlineCurrent]),
                               previous: Number(overviewTrendData.previous?.[comparisonKey]),
                               comparisonDate: trendComparisonDate,
                               kind: rateKey ? "rate" : "count",
@@ -1397,7 +1434,7 @@ export default function TrendAnalysis() {
                                   </div>
                                 )
                               )}
-                              {usesCumulativeGA4Consumer && comparisonDateLabel && typeof card.change !== "number" && (
+                              {hasAuthoritativeHeadlineWindow && comparisonDateLabel && typeof card.change !== "number" && (
                                 <div className="text-xs text-muted-foreground mt-1 leading-tight">
                                   <div>Comparison unavailable</div>
                                   <div>vs cumulative - {comparisonDateLabel}</div>
@@ -1409,6 +1446,9 @@ export default function TrendAnalysis() {
                         );
                       })}
                     </div>
+                  </> : (
+                    <Card><CardContent className="p-6 text-sm text-muted-foreground">Current cumulative summary is unavailable because its reporting-window contract could not be verified.</CardContent></Card>
+                  )}
 
                   {!overviewTrendData.hasCompleteCurrentPeriod && (
                     <p className="text-sm text-muted-foreground">

@@ -222,8 +222,8 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(formatTrendComparison({ current: 10, previous: 0, comparisonDate: "2026-07-23", kind: "count" })).toBeNull();
 
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
-    expect(page).toContain("formatExactTrendCount(overviewTrendData.current.sessions)");
-    expect(page).toContain("formatExactTrendCount(overviewTrendData.current.users)");
+    expect(page).toContain("formatExactTrendCount(authoritativeHeadlineCurrent.sessions)");
+    expect(page).toContain("formatExactTrendCount(authoritativeHeadlineCurrent.users)");
     expect(page).toContain("const cumulativeComparison = usesCumulativeGA4Consumer && comparisonKey && trendComparisonDate");
     expect(page).toContain('<div className="text-xs text-muted-foreground mt-1 leading-tight">');
     expect(page).toContain("<div>{cumulativeComparison.context}</div>");
@@ -232,7 +232,7 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).not.toContain("ArrowUpRight");
     expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).not.toContain("text-green-600");
     expect(page).not.toContain("const isFinancialCard");
-    expect(page).toContain('usesCumulativeGA4Consumer && comparisonDateLabel && typeof card.change !== "number"');
+    expect(page).toContain('hasAuthoritativeHeadlineWindow && comparisonDateLabel && typeof card.change !== "number"');
     expect(page).toContain("<div>Comparison unavailable</div>");
     expect(page).toContain("<div>vs cumulative - {comparisonDateLabel}</div>");
     expect(page).not.toContain("Financial KPIs are campaign-to-date");

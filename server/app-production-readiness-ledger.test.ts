@@ -80,8 +80,8 @@ describe("application production-readiness ledger", () => {
   it("preserves bounded GA4 and exact financial-source decisions", () => {
     expect(ledger).toContain("| GA4 Overview | `UNVERIFIED`");
     const kpiRow = ledger.split("\n").find((line) => line.startsWith("| GA4 KPIs |"));
-    expect(kpiRow).toContain("`CERTIFIED` | `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md` |");
-    expect(kpiRow).toContain("deployed runtime `f7afeb2b`; documentation commit `47180dcf`");
+    expect(kpiRow).toContain("`UNVERIFIED` | `GA4/certifications/ga4-kpis.json`; `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md` |");
+    expect(kpiRow).toContain("changed after certified runtime `f7afeb2b`");
     expect(ledger).toContain("| GA4 Ad Comparison | `CERTIFIED`");
     expect(ledger).toContain("| GA4 Reports | `UNVERIFIED`");
     expect(ledger).toContain("| GA4 Benchmarks | `CERTIFIED`");

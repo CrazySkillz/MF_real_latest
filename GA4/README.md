@@ -19,7 +19,7 @@ Current GA4 tab production-readiness status:
 
 <!-- /ga4-insights-current-status -->
 
-<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
+<!-- ga4-kpi-certification-status: UNVERIFIED -->
 
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: UNVERIFIED -->
@@ -30,7 +30,7 @@ Current GA4 tab production-readiness status:
 
 <!-- /ga4-overview-current-status -->
 - Current Commit 7's deployed validation also confirmed that an active OAuth placeholder with an empty GA4 Property ID fails closed instead of rendering permanent skeletons, while persisted campaign-scoped financial sources remain reachable for exact reviewed removal.
-- GA4 KPIs are **PRODUCTION_READY** only for deployed application runtime `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` and the exact manifest in `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md`. GA4 Benchmarks are separately **CLEAN-CERTIFIED / PRODUCTION_READY** for application behavior at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d` and the exact manifest in `GA4/OVERVIEW_BENCHMARKS_DEPENDENCY_MANIFEST_2026-09-15.md`; evidence-only revision `d3d1cfa0c0b34a44b405a74d8970c1d9ac9c1e7f` was subsequently deployed healthy without changing that behavior.
+- GA4 KPIs are **UNVERIFIED** for the current deployed revision and Budget audit branch after shared consumed dependencies changed. The prior `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` certification remains historical evidence for that exact boundary only. GA4 Benchmarks retain their separate recorded status.
 - GA4 Ad Comparison's retained live tab is **CLEAN-CERTIFIED / PRODUCTION_READY** only for the Campaign2/property/saved-filter boundary at deployed runtime `70b73a229ebb9e1021c3d18d63119d05bdee7e26`. The combined chart/cards/summary and Revenue Breakdown passed; All Campaigns is retired. `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` controls the exact evidence and exclusions. Reports delivery and other campaigns/configurations remain outside this certificate.
 - GA4 Reports is **UNVERIFIED** for the current candidate. The deployed browser Overview Campaign Breakdown artifact passed at `08d7abe5`; exact-current scheduled/server artifact parity remains pending. The earlier `94f1096f3d08c1443f27a032bc5a44c8468c1a7e` certification is historical only. Campaign DeepDive remains excluded.
 - The combined GA4 release-certification audit is complete for the recorded section boundaries. This does not certify excluded platforms, Campaign DeepDive, future configurations, future provider availability, or obsolete campaigns outside the active boundary.
@@ -107,7 +107,7 @@ Important meaning:
 - `GA4/KPIS.md`
   Covers KPI creation, display, current-value sourcing, gating, alerts, and KPI refresh behavior.
 - `GA4/KPIS_PRODUCTION_READINESS.md`
-  Current KPI readiness summary plus preserved historical evidence. Current status: **PRODUCTION_READY** only for deployed application runtime `f7afeb2b98a56a3387156a3d7b9b99d5128a2980`; the dated KPI certificate is controlling.
+  Current KPI readiness summary plus preserved historical evidence. Current status: **UNVERIFIED** after shared consumed dependencies changed; the `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` result remains historical evidence for that exact revision.
 - `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md`
   Controlling KPI-only clean-certification decision, exact runtime, Overview dependency manifest, end-to-end trace, validation evidence, and limitations.
 - `GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md`
@@ -223,7 +223,7 @@ These are now part of the GA4 template contract:
 - HubSpot rows in the GA4 Overview `Revenue Sources` modal do not repeat provider or mapped-campaign subtitles; Shopify keeps its saved mapped campaign label on the item row when available
 - Shopify `Review Settings` revenue breakdown rows show campaign/value revenue amounts without appending order-count text such as `(1 order)`
 - GA4 KPI creation uses a constrained unit dropdown, highlights `Create Custom KPI` when selected, keeps custom KPI current/target values in generic numeric format until a real unit is selected, disables `Create KPI` until `KPI Name` and `Target Value` are entered, and disables `Update KPI` in edit mode until at least one form value changes
-- GA4 KPI whole-tab status is **PRODUCTION_READY** only for deployed application runtime `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` and the dependency boundary recorded in `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md`.
+- GA4 KPI whole-tab status is **UNVERIFIED** for the current deployed revision and Budget audit branch. Runtime `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` remains historical evidence for its exact dependency boundary.
 - GA4 Benchmark creation follows the same custom-entry pattern: `Create Custom Benchmark` is highlighted when selected, shows `Choose name + unit, then set values`, uses a constrained unit dropdown, keeps custom current/benchmark values in generic numeric format until a real unit is selected, disables `Create Benchmark` until `Benchmark Name` and `Benchmark Value` are entered, and disables `Update Benchmark` in edit mode until at least one form value changes
 - GA4 Benchmark whole-tab status is **CLEAN-CERTIFIED / PRODUCTION_READY** for application behavior at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d` and its explicit dependency manifest; evidence-only revision `d3d1cfa0c0b34a44b405a74d8970c1d9ac9c1e7f` did not change that behavior. Benchmark value propagation into documented consumers is included, while whole-Reports behavior remains separately controlled.
 - GA4 `Ad Comparison` leader cards, chart, and summary use Overview Campaign Breakdown rows; only uniquely mapped imported revenue may adjust their revenue values, while Revenue Breakdown shows separate native comparison-window and source-to-date imported provenance. The retired All Campaigns table is not part of the live tab

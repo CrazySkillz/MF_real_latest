@@ -335,8 +335,7 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain('const recentMovementMetricOrder = ["Sessions", "Conversions", "Spend", "Total Revenue"]');
     expect(movement).toContain('metric: "Total Revenue"');
     expect(movement).toContain("comparisonUnavailable: true");
-    expect(movement).toContain("currentRevenueSourceIds");
-    expect(movement).toContain("historicalRevenueSourceIds");
+    expect(movement).toContain("datedNativeRevenueResponsesCompatible(performanceGA4RevenueResponse?.native, historicalRevenueResponse?.native)");
     expect(movement).toContain('datedFinancialSourceIds(performanceGA4RevenueSourcesResponse, "revenue"');
     expect(movement).toContain('datedFinancialSourceSetsCompatible(activeRevenueSourceIds, performanceGA4RevenueResponse?.imported?.sourceIds, historicalRevenueResponse?.imported?.sourceIds)');
     expect(movement).toContain('!historicalRevenueError && !historicalRevenuePlaceholder');

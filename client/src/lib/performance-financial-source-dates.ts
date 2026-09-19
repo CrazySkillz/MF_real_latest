@@ -30,3 +30,18 @@ export const datedFinancialSourceSetsCompatible = (activeIds: string[] | null, c
     && JSON.stringify(current) === JSON.stringify(activeIds)
     && prior.every((id) => activeIds.includes(id));
 };
+
+export const datedNativeRevenueResponsesCompatible = (current: any, prior: any): boolean => {
+  const currentProperty = String(current?.propertyId || "").replace(/^properties\//, "");
+  const priorProperty = String(prior?.propertyId || "").replace(/^properties\//, "");
+  const currentCurrency = String(current?.currencyCode || "").trim().toUpperCase();
+  const priorCurrency = String(prior?.currencyCode || "").trim().toUpperCase();
+  const currentMetric = String(current?.revenueMetric || "").trim();
+  const priorMetric = String(prior?.revenueMetric || "").trim();
+  const currentRevenue = Number(current?.totals?.revenue);
+  const priorRevenue = Number(prior?.totals?.revenue);
+  if (current?.success !== true || prior?.success !== true || !currentProperty || currentProperty !== priorProperty
+    || !currentCurrency || currentCurrency !== priorCurrency || !Number.isFinite(currentRevenue) || !Number.isFinite(priorRevenue)) return false;
+  if (!currentMetric) return currentRevenue === 0 && !priorMetric && priorRevenue === 0;
+  return priorMetric === currentMetric || (!priorMetric && priorRevenue === 0);
+};

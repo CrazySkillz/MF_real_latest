@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { buildPerformanceRecommendedActions, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, resolvePerformancePriorityRank } from "@/lib/performance-recommended-actions";
-import { datedFinancialSourceIds, datedFinancialSourceSetsCompatible } from "@/lib/performance-financial-source-dates";
+import { datedFinancialSourceIds, datedFinancialSourceSetsCompatible, datedNativeRevenueResponsesCompatible } from "@/lib/performance-financial-source-dates";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatPct } from "@shared/metric-math";
 import {
@@ -1053,17 +1053,6 @@ export default function CampaignPerformanceSummary() {
   const aggregateMetricSources = (aggregate: any, metricName: string) => {
     return Array.from(new Set(aggregateMetricSourceIds(aggregate, metricName).map((sourceId) => sourceLabelForId(sourceId))));
   };
-  const revenueResponseSourceIds = (response: any) => {
-    const nativeRevenue = Number(response?.native?.totals?.revenue);
-    const nativeRevenueMetric = String(response?.native?.revenueMetric || "").trim();
-    const nativeSource = nativeRevenueMetric || nativeRevenue !== 0
-      ? [`ga4:${String(response?.native?.propertyId || "")}:${nativeRevenueMetric}:${String(response?.native?.currencyCode || "")}`]
-      : [];
-    const importedSources = Array.isArray(response?.imported?.sourceIds)
-      ? response.imported.sourceIds.map((sourceId: any) => `imported:${String(sourceId || "").trim()}`).filter((sourceId: string) => sourceId !== "imported:")
-      : [];
-    return Array.from(new Set([...nativeSource, ...importedSources])).sort();
-  };
   const revenueResponseTotal = (response: any): number | null => {
     if (typeof response?.native?.totals?.revenue !== "number" || typeof response?.imported?.totalRevenue !== "number") return null;
     const nativeRevenue = Number(response.native.totals.revenue);
@@ -1197,18 +1186,18 @@ export default function CampaignPerformanceSummary() {
 
     const currentRevenue = revenueResponseTotal(performanceGA4RevenueResponse);
     const historicalRevenue = revenueResponseTotal(historicalRevenueResponse);
-    const currentRevenueSourceIds = revenueResponseSourceIds(performanceGA4RevenueResponse);
-    const historicalRevenueSourceIds = revenueResponseSourceIds(historicalRevenueResponse);
     const activeRevenueSourceIds = datedFinancialSourceIds(performanceGA4RevenueSourcesResponse, "revenue", String(performanceGA4RevenueResponse?.imported?.currency || "").toUpperCase());
     const currentRevenueDate = String(performanceGA4SummaryResponse?.dataThroughDate || "");
     const currentRevenueDatesMatch = performanceGA4RevenueResponse?.native?.endDate === currentRevenueDate
       && performanceGA4RevenueResponse?.imported?.endDate === currentRevenueDate;
     const historicalRevenueDatesMatch = historicalRevenueResponse?.native?.endDate === revenueComparisonEndDate
       && historicalRevenueResponse?.imported?.endDate === revenueComparisonEndDate;
-    const revenueSourcesCompatible = activeRevenueSourceIds !== null && currentRevenueSourceIds.length > 0
+    const hasCurrentRevenueSource = activeRevenueSourceIds !== null && (activeRevenueSourceIds.length > 0
+      || !!String(performanceGA4RevenueResponse?.native?.revenueMetric || "").trim()
+      || Number(performanceGA4RevenueResponse?.native?.totals?.revenue) !== 0);
+    const revenueSourcesCompatible = hasCurrentRevenueSource
       && datedFinancialSourceSetsCompatible(activeRevenueSourceIds, performanceGA4RevenueResponse?.imported?.sourceIds, historicalRevenueResponse?.imported?.sourceIds)
-      && JSON.stringify(currentRevenueSourceIds.filter((sourceId) => sourceId.startsWith("ga4:")))
-        === JSON.stringify(historicalRevenueSourceIds.filter((sourceId) => sourceId.startsWith("ga4:")))
+      && datedNativeRevenueResponsesCompatible(performanceGA4RevenueResponse?.native, historicalRevenueResponse?.native)
       && String(performanceGA4RevenueResponse?.imported?.currency || "").toUpperCase() === String(historicalRevenueResponse?.imported?.currency || "").toUpperCase();
     if (!demoMode && performanceGA4PropertyId && trafficInputState === "ready" && revenueInputState === "ready" && currentRevenue !== null && currentRevenueDatesMatch) {
       const sourceLabels = [

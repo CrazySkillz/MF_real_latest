@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { datedFinancialSourceIds, datedFinancialSourceSetsCompatible } from "../client/src/lib/performance-financial-source-dates";
+import { datedFinancialSourceIds, datedFinancialSourceSetsCompatible, datedNativeRevenueResponsesCompatible } from "../client/src/lib/performance-financial-source-dates";
 
 const source = (id: string, sourceType: string, mappingConfig: object, currency = "USD") => ({
   id, sourceType, mappingConfig: JSON.stringify(mappingConfig), currency, isActive: true, materializedRevenueStatus: "available",
@@ -38,5 +38,15 @@ describe("Performance Summary dated financial comparisons", () => {
     expect(datedFinancialSourceIds({ success: true, sources: [source("eur", "csv", { dateColumn: "Date" }, "EUR")] }, "spend", "USD")).toBeNull();
     expect(datedFinancialSourceIds({ success: true, sources: [{ ...source("empty", "csv", { dateColumn: "Date" }), materializedRevenueStatus: "unavailable" }] }, "revenue", "USD")).toBeNull();
     expect(datedFinancialSourceIds({ success: true, sources: [{ ...source("bad", "csv", {}), mappingConfig: "{" }] }, "spend", "USD")).toBeNull();
+  });
+
+  it("accepts an exact-date native zero only for the same GA4 property and currency", () => {
+    const current = { success: true, propertyId: "542352127", currencyCode: "USD", revenueMetric: "totalRevenue", totals: { revenue: 11481 } };
+    const priorZero = { success: true, propertyId: "properties/542352127", currencyCode: "USD", revenueMetric: "", totals: { revenue: 0 } };
+    expect(datedNativeRevenueResponsesCompatible(current, priorZero)).toBe(true);
+    expect(datedNativeRevenueResponsesCompatible(current, { ...priorZero, totals: { revenue: 1 } })).toBe(false);
+    expect(datedNativeRevenueResponsesCompatible(current, { ...priorZero, propertyId: "other" })).toBe(false);
+    expect(datedNativeRevenueResponsesCompatible(current, { ...priorZero, currencyCode: "EUR" })).toBe(false);
+    expect(datedNativeRevenueResponsesCompatible(current, { ...priorZero, revenueMetric: "purchaseRevenue" })).toBe(false);
   });
 });

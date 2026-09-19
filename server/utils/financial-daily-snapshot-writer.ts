@@ -52,15 +52,16 @@ export async function writeFinancialDailySnapshotIfReady(
     return { status: "skipped", reasons: ["cumulative_ga4_window_unavailable"] };
   }
 
-  const window = resolveGA4ImportToDateWindow(primary.importStartDate, campaign.reportingTimeZone, dependencies.now());
+  const now = dependencies.now();
+  const window = resolveGA4ImportToDateWindow(primary.importStartDate, campaign.reportingTimeZone, now);
   if (!window || window.endDate !== reportingDate) {
     return { status: "skipped", reasons: ["reporting_date_window_mismatch"] };
   }
 
   const [totals, revenueSourceTotal, spendSourceTotal] = await Promise.all([
     dependencies.getCampaignMetricTotals(campaignId, true),
-    dependencies.getRevenueTotalForRange(campaignId, "1900-01-01", reportingDate, "ga4"),
-    dependencies.getSpendTotalForRange(campaignId, "1900-01-01", reportingDate, "ga4"),
+    dependencies.getRevenueTotalForRange(campaignId, "1900-01-01", now.toISOString().slice(0, 10), "ga4"),
+    dependencies.getSpendTotalForRange(campaignId, "1900-01-01", now.toISOString().slice(0, 10), "ga4"),
   ]);
   if (!totals) return { status: "blocked", reasons: ["cumulative_financial_totals_unavailable"] };
   if (totals.ga4FinancialSource === "rolling_breakdown") {

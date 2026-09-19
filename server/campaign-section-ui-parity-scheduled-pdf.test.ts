@@ -237,6 +237,79 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfTextCalls).toContain("- Imported Spend: $2,699.75");
     expect(pdfTextCalls).not.toContain("ROI & ROAS");
     expect(getCampaignMetricTotalsMock).not.toHaveBeenCalled();
+    expect(storageMock.getRevenueBreakdownBySource).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-28", "ga4");
+    expect(storageMock.getSpendBreakdownBySource).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-28", "ga4");
+  });
+
+  it("keeps persisted financial provenance when GA4 and a paid source are both connected", async () => {
+    aggregateCampaignMetricsMock.mockResolvedValue({
+      detailedMetrics: {
+        performanceSummary: {
+          ...performanceSummary,
+          sources: [
+            ...performanceSummary.sources,
+            {
+              id: "linkedin",
+              label: "LinkedIn Ads",
+              category: "paid_media",
+              connected: true,
+              includedMetrics: ["impressions", "clicks", "conversions"],
+              metrics: { impressions: 1000, clicks: 50, conversions: 4 },
+            },
+          ],
+        },
+      },
+    });
+
+    await buildPdfAttachmentForReport({
+      report: report("financial-analysis", ["financial-analysis:overview"]),
+      windowStart: "2026-07-29",
+      windowEnd: "2026-08-27",
+      campaignName: "Campaign",
+    });
+
+    expect(pdfTextCalls).toContain("- GA4 Revenue: $55,966.70");
+    expect(pdfTextCalls).toContain("- Imported Revenue: $16,799.99");
+    expect(pdfTextCalls).toContain("- Imported Spend: $2,699.75");
+    expect(pdfTextCalls).not.toContain("- GA4 Revenue: $72,766.69");
+    expect(pdfTextCalls).not.toContain("- No detailed spend inputs are available.");
+  });
+
+  it("fails financial PDF provenance closed when a required source read fails", async () => {
+    storageMock.getRevenueBreakdownBySource.mockRejectedValue(new Error("source unavailable"));
+
+    await expect(buildPdfAttachmentForReport({
+      report: report("financial-analysis", ["financial-analysis:overview"]),
+      windowStart: "2026-07-29",
+      windowEnd: "2026-08-27",
+      campaignName: "Campaign",
+    })).rejects.toThrow("source unavailable");
+  });
+
+  it("renders source-backed zero GA4 revenue instead of treating it as missing", async () => {
+    storageMock.getRevenueBreakdownBySource.mockResolvedValue([]);
+    aggregateCampaignMetricsMock.mockResolvedValue({
+      detailedMetrics: {
+        performanceSummary: {
+          ...performanceSummary,
+          totals: { ...performanceSummary.totals, revenue: metric(0) },
+          sources: [{
+            ...performanceSummary.sources[0],
+            metrics: { ...performanceSummary.sources[0].metrics, revenue: 0 },
+          }],
+        },
+      },
+    });
+
+    await buildPdfAttachmentForReport({
+      report: report("financial-analysis", ["financial-analysis:overview"]),
+      windowStart: "2026-07-29",
+      windowEnd: "2026-08-27",
+      campaignName: "Campaign",
+    });
+
+    expect(pdfTextCalls).toContain("- GA4 Revenue: $0.00");
+    expect(pdfTextCalls).not.toContain("- No detailed revenue inputs are available.");
   });
 
   it("uses Executive Summary UI financials, cumulative traffic, GA4 target rows, and trajectory", async () => {

@@ -22,17 +22,17 @@ This file defines whether the current implementation is production-ready, what h
 
 ## Current Status
 
-<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
+<!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-### September 16, 2026 current decision
+### September 19, 2026 current decision
 
-**Result: PRODUCTION_READY only for deployed application runtime `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` and the exact dependency boundary in `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md`.**
+**Result: UNVERIFIED for the current deployed revision and Budget audit branch. The prior production-ready result remains historical evidence only for exact runtime `f7afeb2b98a56a3387156a3d7b9b99d5128a2980`.**
 
-The exact-deployed authenticated lifecycle and consumer checks passed create/read/edit/delete, duplicate prevention, invalid-edit preservation, campaign/client/owner isolation, source-computed-value protection, manual scheduler recomputation, alert reconciliation, card/Executive Snapshot/Notifications/Insights parity, and browser-PDF parity. The post-run inventory found 16 active canonical GA4 KPI rows and zero duplicates; no cleanup was required. The 12 changed dependency files since the prior certificate were impact-reviewed; no KPI runtime mismatch was found. Overview remains a read-only upstream dependency, not a certified section.
+Shared GA4 provider-window, financial-source, current-value, Insights, and report-consumer dependencies changed after the certified revision. Focused local impact regressions pass apart from the intentionally invalidated certification record; exact-revision deployed KPI validation remains pending. No current KPI defect is asserted, and no current production-ready claim is made.
 
-Current local gates passed: 15 focused files / 354 tests; current-version 2,041 total / 2,000 passed / 41 declared deferred or external failures / zero blocking failures; TypeScript; production build; and the KPI certification integrity gate. The deferred failures are visible, not counted as passes, and do not certify their sections.
+The prior exact-runtime lifecycle, ownership, scheduler, alert, card, Insights, and browser-PDF evidence remains revision-specific history. Unchanged evidence may be reused only after the current dependency impact and exact deployed revision are validated.
 
-Limits: no exact-current natural timer firing, alert/report email delivery, inbox receipt, or live server-scheduled report delivery is claimed. Those paths are not required to interpret the proven in-app KPI status. Overview is a read-only upstream dependency and is not certified as a whole by this decision.
+Limits remain unchanged: no current natural timer firing, alert/report email delivery, inbox receipt, or live server-scheduled report delivery is claimed. Overview remains a read-only upstream dependency and is not certified as a whole by this decision.
 
 The dated certificate is controlling. The synchronized machine record is `GA4/certifications/ga4-kpis.json`; `npm run check:ga4-kpi-certification` must pass. Everything below `Historical Status And Evidence (non-authoritative)` is retained history and cannot override this section.
 

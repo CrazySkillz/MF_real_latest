@@ -1324,11 +1324,12 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         return date.toISOString().slice(0, 10);
       })()).then((snapshots: any) => evaluateExecutiveSummaryTrajectory(snapshots.current, snapshots.previous)).catch(() => ({ available: false, reason: "not_enough_history" }))
     : { available: false, reason: "not_enough_history" };
-  const financialInputEndDate = String(performanceSummary?.currentValueWindow?.endDate || trendWindowEnd || windowEnd);
-  const [financialRevenueInputRows, financialSpendInputRows] = financialAnalysisSelected && cumulativeGA4Connection && /^\d{4}-\d{2}-\d{2}$/.test(financialInputEndDate)
+  const financialInputEndDate = new Date().toISOString().slice(0, 10);
+  const financialGA4Source = aggregateSources.find((source: any) => source?.connected === true && source?.id === "ga4");
+  const [financialRevenueInputRows, financialSpendInputRows] = financialAnalysisSelected && financialGA4Source && /^\d{4}-\d{2}-\d{2}$/.test(financialInputEndDate)
     ? await Promise.all([
-        storage.getRevenueBreakdownBySource(campaignId, "1900-01-01", financialInputEndDate, "ga4").catch(() => []),
-        storage.getSpendBreakdownBySource(campaignId, "1900-01-01", financialInputEndDate, "ga4").catch(() => []),
+        storage.getRevenueBreakdownBySource(campaignId, "1900-01-01", financialInputEndDate, "ga4"),
+        storage.getSpendBreakdownBySource(campaignId, "1900-01-01", financialInputEndDate, "ga4"),
       ])
     : [[], []];
   const performanceRecentMovement: Array<{ key: string; current: number; previous: number | null; sourceLabel: string; unavailableLabel?: string }> = [];
@@ -1836,10 +1837,16 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       addText("Allocation & Sources", { bold: true, indent: 4 });
       addText("Revenue", { bold: true, indent: 8 });
       const importedRevenue = (financialRevenueInputRows as any[]).reduce((sum, row) => sum + (Number(row?.revenue) || 0), 0);
-      const ga4NativeRevenue = revenue !== null ? Math.max(0, revenue - importedRevenue) : null;
-      if (ga4NativeRevenue !== null && ga4NativeRevenue > 0) addText(`- GA4 Revenue: ${money(ga4NativeRevenue)}`, { indent: 12 });
+      const rawGA4NativeRevenue = Number(financialGA4Source?.metrics?.revenue);
+      const ga4NativeRevenue = financialGA4Source?.includedMetrics?.includes("revenue") && Number.isFinite(rawGA4NativeRevenue)
+        ? rawGA4NativeRevenue
+        : null;
+      if (revenue !== null && financialGA4Source && (ga4NativeRevenue === null || Math.abs(ga4NativeRevenue + importedRevenue - revenue) > 0.01)) {
+        throw new Error("Campaign DeepDive financial revenue provenance does not reconcile");
+      }
+      if (ga4NativeRevenue !== null) addText(`- GA4 Revenue: ${money(ga4NativeRevenue)}`, { indent: 12 });
       (financialRevenueInputRows as any[]).forEach((row) => addText(`- ${row?.displayName || row?.sourceType || "Revenue input"}: ${money(Number(row?.revenue) || 0)}`, { indent: 12 }));
-      if (!(ga4NativeRevenue !== null && ga4NativeRevenue > 0) && financialRevenueInputRows.length === 0) addText("- No detailed revenue inputs are available.", { indent: 12 });
+      if (ga4NativeRevenue === null && financialRevenueInputRows.length === 0) addText("- No detailed revenue inputs are available.", { indent: 12 });
       addText("Spend", { bold: true, indent: 8 });
       (financialSpendInputRows as any[]).forEach((row) => addText(`- ${row?.displayName || row?.sourceType || "Spend input"}: ${money(Number(row?.spend) || 0)}`, { indent: 12 }));
       if (financialSpendInputRows.length === 0) addText("- No detailed spend inputs are available.", { indent: 12 });

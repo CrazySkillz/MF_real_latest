@@ -2,9 +2,39 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { insertCampaignSchema } from "@shared/schema";
-import { buildFinancialAllocationAction, buildFinancialBudgetAction } from "../client/src/lib/financial-executive-actions";
+import { addPacingCalendarDays, buildFinancialAllocationAction, buildFinancialBudgetAction, countInclusivePacingDays, getPacingDateInTimeZone } from "../client/src/lib/financial-executive-actions";
 
 describe("campaign Budget & Financial Analysis regression guard", () => {
+  it("counts budget-period calendar days across daylight-saving changes", () => {
+    const originalTimeZone = process.env.TZ;
+    try {
+      process.env.TZ = "Europe/Amsterdam";
+      const start = new Date(2026, 2, 28);
+      const elapsed = countInclusivePacingDays(start, new Date(2026, 2, 30));
+      const total = countInclusivePacingDays(start, new Date(2026, 3, 3));
+      expect(elapsed).toBe(3);
+      expect(total).toBe(7);
+      expect(((230 / elapsed) / (700 / total)) * 100).toBeLessThan(85);
+      expect(countInclusivePacingDays(new Date(2026, 9, 24), new Date(2026, 9, 26))).toBe(3);
+      expect(countInclusivePacingDays(new Date(2026, 2, 30), start)).toBe(0);
+    } finally {
+      if (originalTimeZone === undefined) delete process.env.TZ;
+      else process.env.TZ = originalTimeZone;
+    }
+  });
+
+  it("uses the campaign reporting date for pacing and calendar-day projections", () => {
+    const instant = new Date("2026-09-19T00:30:00.000Z");
+    const amsterdam = getPacingDateInTimeZone(instant, "Europe/Amsterdam");
+    const losAngeles = getPacingDateInTimeZone(instant, "America/Los_Angeles");
+    expect(amsterdam && [amsterdam.getFullYear(), amsterdam.getMonth() + 1, amsterdam.getDate()]).toEqual([2026, 9, 19]);
+    expect(losAngeles && [losAngeles.getFullYear(), losAngeles.getMonth() + 1, losAngeles.getDate()]).toEqual([2026, 9, 18]);
+    expect(getPacingDateInTimeZone(instant, "Invalid/Time_Zone")).toBeNull();
+
+    const projected = addPacingCalendarDays(new Date(2026, 2, 28), 2);
+    expect([projected.getFullYear(), projected.getMonth() + 1, projected.getDate()]).toEqual([2026, 3, 30]);
+  });
+
   it("uses actual budget pacing instead of total-budget utilization alone", () => {
     const base = {
       hasCampaignBudget: true,
@@ -158,12 +188,15 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(migration).not.toMatch(/\b(start_date|end_date)\s*=/i);
     expect(page).toContain("pacingStartDate?: string | null;");
     expect(page).toContain("pacingEndDate?: string | null;");
+    expect(page).toContain("reportingTimeZone?: string;");
     expect(mutation).toContain("pacingStartDate: data.pacingStartDate || null");
     expect(mutation).toContain("pacingEndDate: data.pacingEndDate || null");
     expect(mutation).not.toContain("startDate:");
     expect(mutation).not.toContain("endDate:");
     expect(page).toContain("campaign.pacingStartDate");
     expect(page).toContain("campaign.pacingEndDate");
+    expect(page).toContain('getPacingDateInTimeZone(new Date(), campaignReportingTimeZone)');
+    expect(page).toContain('addPacingCalendarDays(todayPacingDate, Math.ceil(daysRemaining))');
     expect(page).not.toContain("setPacingStartDateInput(formatDateInputValue(campaign.startDate))");
     expect(page).not.toContain("setPacingEndDateInput(formatDateInputValue(campaign.endDate))");
     expect(page).toContain("Budget Period Start");
@@ -181,7 +214,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
   it("adds the shared performanceSummary aggregate contract for Budget & Financial tabs", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "financial-analysis.tsx"), "utf-8");
 
-    expect(page).toContain("const { data: outcomeTotals, isLoading: outcomeTotalsLoading, isError: outcomeTotalsError } = useQuery<any>({");
+    expect(page).toContain("isRefetchError: outcomeTotalsRefetchError");
     expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days"');
     expect(page).toContain("outcome-totals?dateRange=90days");
     expect(page).toContain('if (!response.ok) throw new Error("Failed to load aggregate financial totals");');
@@ -205,6 +238,9 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain('const hasCampaignToDateWindow = performanceSummary?.version === "performance_summary_aggregate_v3"');
     expect(page).toContain('currentValueWindow?.mode === "initial_import_to_latest_completed_day"');
     expect(page).toContain("const aggregateUnavailable = !demoMode && !performanceSummary && (outcomeTotalsError || outcomeTotals !== undefined);");
+    expect(page).toContain("const aggregateRefreshFailed = !demoMode && outcomeTotalsRefetchError && Boolean(performanceSummary);");
+    expect(page).toContain('data-testid="financial-aggregate-refresh-warning"');
+    expect(page).toContain("Values below are from the last successful response and may be outdated.");
     expect(page).toContain("const performanceSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];");
     expect(page).toContain("const aggregateMetric = (metricName: string) => performanceSummary?.totals?.[metricName];");
     expect(page).toContain("const aggregateMetricAvailable = (metricName: string) => aggregateMetric(metricName)?.available === true;");
@@ -269,6 +305,10 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const paidMediaEfficiencyMetrics = [");
     expect(page).toContain("].filter((item) => item.metric.available);");
     expect(page).toContain("const paidMediaEfficiencySourceLabels = financialMainSources");
+    expect(page).toContain('requiredMetrics: ["spend", "clicks"]');
+    expect(page).toContain('requiredMetrics: ["spend", "impressions"]');
+    expect(page).toContain('requiredMetrics: ["clicks", "impressions"]');
+    expect(page).toContain("paidMediaEfficiencyMetrics.some((item) => item.requiredMetrics.every((metric) => sourceIncludesMetric(source, metric)))");
     expect(page).toContain("const conversionEfficiencySourceLabels = financialMainSources");
     expect(page).toContain("const conversionEfficiencyCvrMetric = campaignToDateEfficiencyMetric(overviewCvrMetric, \"CVR\");");
     expect(executiveView).toContain("paidMediaEfficiencyMetrics.length > 0");
@@ -334,8 +374,15 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(route).toContain("buildGoogleAdsPlatformSourceForAggregate(campaignId, aggregateStartDate, aggregateEndDate, requireExactPlatformRows)");
     expect(route).toContain("currentValueWindow ? { startDate: currentValueWindow.startDate, endDate: currentValueWindow.endDate } : undefined");
     expect(route).toContain("const platformSpendFallback = parseFloat((linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend + parseNum(googleSheets?.metrics?.spend) + parseNum(custom?.spend)).toFixed(2));");
+    expect(route).toContain('const financialSourceEndDate = new Date().toISOString().slice(0, 10);');
+    expect(route).toContain("let canonicalPerformanceSummarySpendFailed = false;");
+    expect(route).toContain("canonicalPerformanceSummarySpendFailed = true;");
+    expect(route).toContain("!canonicalPerformanceSummarySpendFailed && (canonicalPerformanceSummarySpendAvailable || exactPlatformSpendAvailable)");
+    expect(route).toContain("canonicalPerformanceSummarySpendFailed ? 0 : platformSpendFallback");
     expect(route).toContain("mainPlatformSources: { googleAds, instagram, tiktok, googleSheets }");
     expect(route).toContain("buildGoogleSheetsPlatformSourceForAggregate(campaign, googleSheetsConnections as any[], googleSheetsFinancials, !currentValueWindow)");
+    expect(route).toContain('financialWebAnalytics.provider === "ga4" && financialWebAnalytics.available');
+    expect(route).not.toContain('financialWebAnalytics.provider === "ga4" && onsiteRevenue > 0');
   });
 
   it("wires the Overview tab to aggregate financial metrics with unavailable states", () => {
@@ -365,7 +412,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const hasCampaignEndDate = Boolean(campaignEndDate && !Number.isNaN(campaignEndDate.getTime()));");
     expect(page).toContain("const hasCampaignDateRange = Boolean(campaignStartDay && campaignEndDay && campaignEndDay.getTime() >= campaignStartDay.getTime());");
     expect(overview).toContain("const hasBudgetHealthInputs = hasCampaignBudget && overviewSpendMetric.available;");
-    expect(page).toContain("const campaignElapsedDays = campaignStartDay && campaignElapsedEndDay.getTime() >= campaignStartDay.getTime()");
+    expect(page).toContain("const campaignElapsedDays = campaignStartDay && campaignElapsedEndDay && campaignElapsedEndDay.getTime() >= campaignStartDay.getTime()");
     expect(page).toContain("const campaignTotalDays = hasCampaignDateRange");
     expect(overview).toContain("const hasPacingHealthInputs = hasBudgetHealthInputs && hasCampaignDateRange && campaignElapsedDays > 0;");
     expect(overview).toContain("const budgetScore = hasBudgetHealthInputs ?");
@@ -450,7 +497,12 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const useAggregateSourceTotals = financialMainSources.length === 1;");
     expect(page).toContain("const financialSourceBreakdowns: FinancialSourceBreakdown[] = financialMainSources");
     expect(page).toContain("const aggregateRevenueInputBreakdowns: FinancialChildSourceBreakdown[] = performanceSources");
-    expect(page).toContain("const financialChildSourceBreakdowns: FinancialChildSourceBreakdown[] = financialRevenueInputs.length > 0");
+    expect(page).toContain("const financialRevenueInputBreakdowns: FinancialChildSourceBreakdown[] = financialRevenueInputs");
+    expect(page).toContain("const financialChildSourceBreakdowns: FinancialChildSourceBreakdown[] = financialRevenueInputBreakdowns.length > 0");
+    expect(page).toContain("return revenue === null ? [] : [{");
+    expect(page).toContain("return spend === null ? [] : [{");
+    expect(page).not.toContain(".filter((source: FinancialChildSourceBreakdown) => source.revenue > 0)");
+    expect(page).not.toContain(".filter((source: FinancialSpendInputBreakdown) => source.spend > 0)");
     expect(page).toContain("const revenue = useAggregateSourceTotals && financialRevenueMetric.available ? financialRevenueMetric.value : sourceRevenue;");
     expect(page).toContain("const spend = useAggregateSourceTotals && financialSpendMetric.available ? financialSpendMetric.value : sourceSpend;");
     expect(page).toContain("const financialRevenueInputs = Array.isArray(outcomeTotals?.financialInputs?.revenue) ? outcomeTotals.financialInputs.revenue : [];");

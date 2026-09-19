@@ -85,18 +85,24 @@ describe("GA4 KPI certification integrity gate", () => {
   it("keeps secondary KPI summaries aligned to the exact certified status", () => {
     const readme = readFileSync(resolve(process.cwd(), "GA4/README.md"), "utf8");
     const thresholds = readFileSync(resolve(process.cwd(), "GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md"), "utf8");
-    const certifiedSha = JSON.parse(readFileSync(resolve(process.cwd(), "GA4/certifications/ga4-kpis.json"), "utf8")).certifiedSha;
+    const record = JSON.parse(readFileSync(resolve(process.cwd(), "GA4/certifications/ga4-kpis.json"), "utf8"));
     const readmeKpiEntry = readme.slice(
       readme.indexOf("- `GA4/KPIS_PRODUCTION_READINESS.md`"),
       readme.indexOf("- `GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md`"),
     );
     const thresholdStatus = thresholds.slice(0, thresholds.indexOf("## Purpose"));
 
-    expect(readmeKpiEntry).toContain("Current status: **PRODUCTION_READY**");
-    expect(readmeKpiEntry).toContain(certifiedSha);
-    expect(thresholdStatus).toContain("Current durable whole-tab answer: GA4 KPIs are **PRODUCTION_READY**");
-    expect(thresholdStatus).toContain(certifiedSha);
-    expect(thresholdStatus).not.toContain("Current durable whole-tab answer: GA4 KPIs are **UNVERIFIED**");
+    if (record.status === "PRODUCTION_READY") {
+      expect(readmeKpiEntry).toContain("Current status: **PRODUCTION_READY**");
+      expect(readmeKpiEntry).toContain(record.certifiedSha);
+      expect(thresholdStatus).toContain("Current durable whole-tab answer: GA4 KPIs are **PRODUCTION_READY**");
+      expect(thresholdStatus).toContain(record.certifiedSha);
+    } else {
+      expect(record.status).toBe("UNVERIFIED");
+      expect(record.certifiedSha).toBeNull();
+      expect(readmeKpiEntry).toContain("Current status: **UNVERIFIED**");
+      expect(thresholdStatus).toContain("Current durable whole-tab answer: GA4 KPIs are **UNVERIFIED**");
+    }
   });
 
   it("accepts a complete UNVERIFIED record with pending evidence", () => {

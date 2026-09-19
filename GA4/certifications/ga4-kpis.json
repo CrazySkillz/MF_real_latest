@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "sectionId": "ga4-kpis",
   "contractSha256": "6b366ce4153c0f793fa5ac38e3049331a43c56fa37355e6d49428bf605a9fa8d",
-  "status": "PRODUCTION_READY",
-  "lastReviewedSha": "f7afeb2b98a56a3387156a3d7b9b99d5128a2980",
-  "certifiedSha": "f7afeb2b98a56a3387156a3d7b9b99d5128a2980",
-  "invalidationReason": null,
+  "status": "UNVERIFIED",
+  "lastReviewedSha": "2b30a0f182250091091f4a2f200a5df4fc3fea2c",
+  "certifiedSha": null,
+  "invalidationReason": "Shared GA4 provider, financial-source, current-value, report, Insights, and status dependencies changed after the f7afeb2b certified runtime. The current deployed revision and Budget audit branch require focused KPI impact revalidation before certification can be restored.",
   "previousCertification": {
     "status": "PRODUCTION_READY",
     "certifiedSha": "19f055372abe8aee789dd4205eba5decef5f39a5"
@@ -35,6 +35,11 @@
       "status": "PRODUCTION_READY",
       "certifiedSha": "1c949dc9710f36b1760a3fbf7253037236b52e00",
       "reviewedOn": "2026-09-15"
+    },
+    {
+      "status": "PRODUCTION_READY",
+      "certifiedSha": "f7afeb2b98a56a3387156a3d7b9b99d5128a2980",
+      "reviewedOn": "2026-09-16"
     }
   ],
   "configurationBoundary": {
@@ -710,7 +715,7 @@
       "id": "certification_gate",
       "command": "npm test -- server/ga4-kpi-certification-gate.test.ts && npm run check:ga4-kpi-certification",
       "status": "passed",
-      "evidence": "The final exact-current certification record and dependency snapshot pass the fail-closed integrity checker and its regression tests."
+      "evidence": "The synchronized UNVERIFIED record and status documents pass the fail-closed integrity checker and its regression tests. This confirms status consistency only and does not certify current KPI behavior."
     },
     {
       "id": "deployed_read_only_validator_contract",

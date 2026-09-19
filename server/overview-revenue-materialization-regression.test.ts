@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   assertGa4RevenueMaterializationComplete,
+  assertGa4SpendMaterializationComplete,
   requiresGa4RevenueMaterializationCompleteness,
+  requiresGa4SpendMaterializationCompleteness,
 } from "./utils/revenue-record-total";
 
 describe("GA4 Overview revenue materialization integrity", () => {
@@ -36,9 +38,24 @@ describe("GA4 Overview revenue materialization integrity", () => {
     )).not.toThrow();
   });
 
+  it("accepts explicit zero spend and fails closed when an active spend source has no record", () => {
+    expect(() => assertGa4SpendMaterializationComplete(
+      [{ id: "spend-zero", isActive: true }],
+      [{ spendSourceId: "spend-zero", spend: "0.00" }],
+    )).not.toThrow();
+    expect(() => assertGa4SpendMaterializationComplete(
+      [{ id: "healthy", isActive: true }, { id: "missing", isActive: true }],
+      [{ spendSourceId: "healthy", spend: "25.00" }],
+    )).toThrowError(expect.objectContaining({
+      code: "GA4_SPEND_MATERIALIZATION_INCOMPLETE",
+      sourceIds: ["missing"],
+    }));
+  });
+
   it("limits completeness enforcement to current GA4 campaign-to-date totals", () => {
     const today = "2026-08-08";
     expect(requiresGa4RevenueMaterializationCompleteness("ga4", "1900-01-01", today, today)).toBe(true);
+    expect(requiresGa4SpendMaterializationCompleteness("ga4", "1900-01-01", today, today)).toBe(true);
     expect(requiresGa4RevenueMaterializationCompleteness("ga4", "2026-07-10", today, today)).toBe(false);
     expect(requiresGa4RevenueMaterializationCompleteness("ga4", "1900-01-01", "2026-08-07", today)).toBe(false);
     expect(requiresGa4RevenueMaterializationCompleteness("linkedin", "1900-01-01", today, today)).toBe(false);
@@ -51,6 +68,8 @@ describe("GA4 Overview revenue materialization integrity", () => {
 
     expect(storage).toContain("requiresGa4RevenueMaterializationCompleteness(platformContext, startDate, endDate)");
     expect(storage).toContain("assertGa4RevenueMaterializationComplete(activeSources as any[], rows as any[])");
+    expect(storage.match(/assertGa4RevenueMaterializationComplete\(activeSources as any\[\], rows as any\[\]\)/g)).toHaveLength(2);
+    expect(storage.match(/assertGa4SpendMaterializationComplete\(activeSources as any\[\], rows as any\[\]\)/g)).toHaveLength(2);
     expect(routes).toContain('const isGa4RevenueSource = platformContext === "ga4"');
     expect(routes).toContain('materializedRevenueStatus: hasMaterializedRevenue ? "available" : "unavailable"');
     expect(page).toContain('const materializedRevenueUnavailable = s.materializedRevenueStatus === "unavailable";');

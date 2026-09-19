@@ -293,7 +293,7 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain('current === aggregateSnapshotMetricValue(performanceSummary, "spend")');
     expect(page).toContain('!historicalSpendError && !historicalSpendPlaceholder');
     expect(spendRoute).toContain('requireCampaignAccessParamId');
-    expect(spendRoute).toContain('requestedEndDate > latestEndDate');
+    expect(spendRoute).toContain('requestedEndDate > latestCompletedEndDate');
     expect(spendRoute).toContain('storage.getSpendTotalForRange(campaignId, startDate, endDate, platformContext)');
     expect(storage).toContain('sql`${spendRecords.date} <= ${endDate}`');
     expect(page).toContain('ga4MovementMetricKeys.has(config.key) || config.key === "spend"');

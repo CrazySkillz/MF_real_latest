@@ -2,11 +2,11 @@
 
 ## Controlling Decision
 
-<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
+<!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-**Status: CLEAN-CERTIFIED / PRODUCTION_READY for the GA4 KPIs section only, at deployed application runtime `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` and the exact dependency boundary below.**
+**Current status: UNVERIFIED after shared KPI dependencies changed beyond deployed runtime `f7afeb2b98a56a3387156a3d7b9b99d5128a2980`. The prior clean certification remains historical evidence for that exact revision only.**
 
-This dated file is the controlling certificate for this KPI validation. It does not certify GA4 Overview as a whole. Overview is a read-only upstream dependency. Revenue, Spend, Performance, Campaign Breakdown, Conversion Events, Landing Pages, and every other GA4 section are excluded and were not modified or re-certified by this KPI revalidation. `APP_PRODUCTION_READINESS.md` is separate, is not a KPI dependency, and was not modified by this KPI revalidation.
+This dated file remains the controlling historical certificate. Focused current-revision validation is required for the changed provider-window, financial-source, current-value, Insights, and report-consumer paths before GA4 KPI certification can be restored. It does not certify GA4 Overview as a whole.
 
 ## Certified Scope
 

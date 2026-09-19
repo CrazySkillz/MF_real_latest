@@ -156,8 +156,8 @@ return buildTotals;`,
     expect(campaign).toContain('["revenue", "profit", "roas", "roi", "cpa"]');
     expect(campaign).toContain("} else if (useFullFinancialCandidate) {");
     expect(campaign).toContain('useFullFinancialCandidate ? "financial" : "base"');
-    expect(campaign).toContain('storage.getRevenueTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4")');
-    expect(campaign).toContain('storage.getSpendTotalForRange(campaignId, spendSourceStartDate, endDate, "ga4")');
+    expect(campaign).toContain('storage.getRevenueTotalForRange(campaignId, financialSourceStartDate, financialSourceEndDate, "ga4")');
+    expect(campaign).toContain('storage.getSpendTotalForRange(campaignId, spendSourceStartDate, financialSourceEndDate, "ga4")');
     expect(campaign).not.toContain("pipelineTotalToDate");
   });
 

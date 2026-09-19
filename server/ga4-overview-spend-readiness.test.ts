@@ -161,8 +161,8 @@ describe("GA4 Overview Spend readiness contract", () => {
 
   it("propagates GA4 Spend to KPI, aggregate, snapshot, report, and UI refresh consumers", () => {
     expect(jobs).toContain('getSpendTotalForRange(campaignId, spendSourceWindow.startDate, spendSourceWindow.endDate, "ga4")');
-    expect(currentValues).toContain('storage.getSpendBreakdownBySource(campaignId, spendSourceStartDate, endDate, "ga4")');
-    expect(snapshots).toContain('dependencies.getSpendTotalForRange(campaignId, "1900-01-01", reportingDate, "ga4")');
+    expect(currentValues).toContain('storage.getSpendBreakdownBySource(campaignId, spendSourceStartDate, financialSourceEndDate, "ga4")');
+    expect(snapshots).toContain('dependencies.getSpendTotalForRange(campaignId, "1900-01-01", now.toISOString().slice(0, 10), "ga4")');
     expect(scheduledPdf).toContain('storage.getSpendSources(campaignId, "ga4")');
     expect(scheduledPdf).toContain('storage.getSpendBreakdownBySource(campaignId, spendSourceStartDate, financialEndDate, "ga4")');
     const successRefresh = slice(overview, "<AddSpendWizardModal", "<AddRevenueWizardModal");

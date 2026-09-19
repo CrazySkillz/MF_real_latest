@@ -326,6 +326,10 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
     );
   const sumPaidMetric = (metricName: string) =>
     paidMetricSources(metricName).reduce((sum, source) => sum + parseNum(source.metrics[metricName]), 0);
+  const compatiblePaidSources = (...metricNames: string[]) =>
+    paidSources.filter((source) => metricNames.every((metricName) => source.includedMetrics.includes(metricName)));
+  const sumSourceMetric = (sources: SourceBreakdown[], metricName: string) =>
+    sources.reduce((sum, source) => sum + parseNum(source.metrics[metricName]), 0);
 
   const webConnected = input.webAnalytics?.connected === true && input.webAnalytics?.available !== false;
   const webProviderConfigured = input.webAnalytics?.connected === true
@@ -363,6 +367,9 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
   const totalConversions = webSource
     ? parseNum(input.webAnalytics?.conversions)
     : webProviderConfigured ? 0 : sumPaidMetric("conversions");
+  const webCvrSource = webSource ? sourceBreakdown.find((source) => source.id === webSource) : null;
+  const webCvrAvailable = Boolean(webCvrSource?.includedMetrics.includes("sessions")
+    && webCvrSource.includedMetrics.includes("conversions"));
   const hasSeparateFinancialConversions = typeof input.financialConversions !== "undefined";
   const financialConversionSources = input.financialConversions?.available === true && Array.isArray(input.financialConversions.sources)
     ? input.financialConversions.sources.map(String).filter(Boolean)
@@ -372,30 +379,30 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
   const totalLeads = sumPaidMetric("leads");
   const totalSessions = webSource ? parseNum(input.webAnalytics?.sessions) : 0;
   const totalUsers = webSource ? parseNum(input.webAnalytics?.users) : 0;
-  const costSources = currentValueWindow ? paidMetricSources("spend") : paidSources;
-  const costSpendValue = currentValueWindow
-    ? costSources.reduce((sum, source) => sum + parseNum(source.metrics.spend), 0)
-    : spendValue;
-  const costClicks = currentValueWindow
-    ? costSources.reduce((sum, source) => sum + (source.includedMetrics.includes("clicks") ? parseNum(source.metrics.clicks) : 0), 0)
-    : totalClicks;
-  const costImpressions = currentValueWindow
-    ? costSources.reduce((sum, source) => sum + (source.includedMetrics.includes("impressions") ? parseNum(source.metrics.impressions) : 0), 0)
-    : totalImpressions;
-  const cpc = costSpendValue > 0 && costClicks > 0 ? round2(costSpendValue / costClicks) : null;
+  const cpcSources = compatiblePaidSources("spend", "clicks");
+  const cpmSources = compatiblePaidSources("spend", "impressions");
+  const ctrSources = compatiblePaidSources("clicks", "impressions");
+  const paidCvrSources = compatiblePaidSources("conversions", "clicks");
+  const cpcClicks = sumSourceMetric(cpcSources, "clicks");
+  const cpmImpressions = sumSourceMetric(cpmSources, "impressions");
+  const ctrImpressions = sumSourceMetric(ctrSources, "impressions");
+  const paidCvrClicks = sumSourceMetric(paidCvrSources, "clicks");
+  const cpc = cpcClicks > 0 ? round2(sumSourceMetric(cpcSources, "spend") / cpcClicks) : null;
   const cpa = spendValue > 0 && cpaConversions > 0 && cpaConversionsAvailable ? round2(spendValue / cpaConversions) : null;
-  const cpm = costSpendValue > 0 && costImpressions > 0 ? round2((costSpendValue / costImpressions) * 1000) : null;
+  const cpm = cpmImpressions > 0 ? round2((sumSourceMetric(cpmSources, "spend") / cpmImpressions) * 1000) : null;
   const roas = hasRevenue && hasSpend && spendValue > 0 ? round2(revenueValue / spendValue) : null;
   const roi = hasRevenue && hasSpend && spendValue > 0 ? round2(((revenueValue - spendValue) / spendValue) * 100) : null;
-  const ctr = totalImpressions > 0 && totalClicks > 0 ? round2((totalClicks / totalImpressions) * 100) : null;
-  const cvr = webSource && totalSessions > 0 && totalConversions > 0
+  const ctr = ctrImpressions > 0
+    ? round2((sumSourceMetric(ctrSources, "clicks") / ctrImpressions) * 100)
+    : null;
+  const cvr = webSource && webCvrAvailable && totalSessions > 0
       ? (totalConversions / totalSessions) * 100
-    : !webSource && totalClicks > 0 && totalConversions > 0
-      ? (totalConversions / totalClicks) * 100
+    : !webSource && !webProviderConfigured && paidCvrClicks > 0
+      ? (sumSourceMetric(paidCvrSources, "conversions") / paidCvrClicks) * 100
       : null;
-  const cvrSources = webSource && totalSessions > 0 && totalConversions > 0
+  const cvrSources = webSource && webCvrAvailable && totalSessions > 0
       ? ["conversions", "sessions"]
-    : !webSource && totalClicks > 0 && totalConversions > 0
+    : !webSource && !webProviderConfigured && paidCvrClicks > 0
       ? ["conversions", "clicks"]
       : [];
 

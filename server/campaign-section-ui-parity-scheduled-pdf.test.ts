@@ -168,6 +168,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
           dateRange: "90days",
           endDate: "2026-08-27",
           dailyTotals: [
+            { date: "2026-08-24", metrics: { users: 150, sessions: 200, conversions: 1, revenue: 200, engagementRate: 0.6, cvr: 0.5 } },
             { date: "2026-08-25", metrics: { users: 10, sessions: 10, conversions: 2, revenue: 250, engagementRate: 0.6, cvr: 20 } },
             { date: "2026-08-26", metrics: { users: 10, sessions: 10, conversions: 2, revenue: 300, engagementRate: 0.7, cvr: 20 } },
             { date: "2026-08-27", metrics: { users: 10, sessions: 10, conversions: 3, revenue: 450, engagementRate: 0.6333, cvr: 30 } },
@@ -193,10 +194,11 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfTextCalls.some((text) => text.includes("Revenue: $72,766.69"))).toBe(true);
     expect(pdfTextCalls.some((text) => text.includes("selector comparison date is 2026-07-28"))).toBe(true);
     expect(pdfTextCalls).toContain("Source: Google Analytics");
-    expect(pdfTextCalls.some((text) => text.includes("Daily records: 3 of 30 calendar dates"))).toBe(true);
+    expect(pdfTextCalls.some((text) => text.includes("Daily records: 4 of 30 calendar dates"))).toBe(true);
     expect(pdfTextCalls).toContain("Daily Traffic");
     expect(pdfTextCalls).toContain("- 2026-08-25: Users 10; Sessions 10; Conversions 2");
     expect(pdfTextCalls).toContain("Conversion Quality Trend");
+    expect(pdfTextCalls).toContain("- 2026-08-24: CVR 0.5%; Engagement Rate 60.0%");
     expect(pdfTextCalls).toContain("- 2026-08-25: CVR 20.0%; Engagement Rate 60.0%");
     expect(pdfTextCalls).toContain("Website Engagement & Conversion Summary");
     expect(pdfTextCalls).toContain("- Engaged Sessions: 809");

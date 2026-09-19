@@ -104,7 +104,11 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain("ga4Daily?.providerRefreshAttempted === false");
     expect(page).not.toContain("&& ga4Daily?.refreshIsStale === false");
     expect(page).toContain('String(ga4Daily?.propertyId || "") === trendGA4PropertyId');
-    expect(page).toContain('const fmtTrendCurrency = (value: number) => fmtCur(value, usesCumulativeGA4Consumer ? campaignCurrency : "USD");');
+    expect(page).toContain('const fmtTrendCurrency = (value: number) => fmtCur(value, campaignCurrency);');
+    expect(page).toContain('name={`Spend (${campaignCurrency})`}');
+    expect(page).toContain('name={`Revenue (${campaignCurrency})`}');
+    expect(page).not.toContain('name="Spend ($)"');
+    expect(page).not.toContain('name="Revenue ($)"');
     expect(overviewModel).toContain("const current = usesCumulativeGA4Consumer ? authoritativeTrendCurrent : buildSummary(currentPeriod);");
     expect(overviewModel).toContain("const previous = usesCumulativeGA4Consumer ? authoritativeTrendPrevious : buildSummary(previousPeriod);");
     expect(overviewModel).toContain("(!usesCumulativeGA4Consumer || Number(previousValue) > 0)");

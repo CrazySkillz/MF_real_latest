@@ -526,7 +526,7 @@ export default function TrendAnalysis() {
     ? deriveExactCumulativeGA4Traffic(ga4Daily, trendComparisonDate)
     : null;
   const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase() || "USD";
-  const fmtTrendCurrency = (value: number) => fmtCur(value, usesCumulativeGA4Consumer ? campaignCurrency : "USD");
+  const fmtTrendCurrency = (value: number) => fmtCur(value, campaignCurrency);
   const fmtHeadlineCurrency = (value: number) => fmtCur(value, campaignCurrency);
   const compatibleFinancialDaily = resolveCompatibleTrendFinancialDaily({
     snapshot: trendFinancialComparison?.previous,
@@ -1506,8 +1506,8 @@ export default function TrendAnalysis() {
                               if (['Spend', 'Revenue'].some(n => name.includes(n))) return [fmtTrendCurrency(Number(value)), name];
                               return [Number(value).toLocaleString(), name];
                             }} />
-                            {overviewVisibleSeries.has('spend') && <Area isAnimationActive={false} yAxisId="right" type="monotone" dataKey="spend" fill="#f59e0b" fillOpacity={0.1} stroke="#f59e0b" strokeWidth={2} name="Spend ($)" />}
-                            {overviewVisibleSeries.has('revenue') && <Line isAnimationActive={false} yAxisId="right" type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} dot={false} name="Revenue ($)" />}
+                            {overviewVisibleSeries.has('spend') && <Area isAnimationActive={false} yAxisId="right" type="monotone" dataKey="spend" fill="#f59e0b" fillOpacity={0.1} stroke="#f59e0b" strokeWidth={2} name={`Spend (${campaignCurrency})`} />}
+                            {overviewVisibleSeries.has('revenue') && <Line isAnimationActive={false} yAxisId="right" type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} dot={false} name={`Revenue (${campaignCurrency})`} />}
                             {overviewVisibleSeries.has('conversions') && <Bar isAnimationActive={false} yAxisId="left" dataKey="conversions" fill="#8b5cf6" fillOpacity={0.7} name="Conversions" />}
                             {overviewVisibleSeries.has('impressions') && <Area isAnimationActive={false} yAxisId="left" type="monotone" dataKey="impressions" fill="#3b82f6" fillOpacity={0.08} stroke="#3b82f6" strokeWidth={1.5} name="Impressions" />}
                             {overviewVisibleSeries.has('clicks') && <Line isAnimationActive={false} yAxisId="left" type="monotone" dataKey="clicks" stroke="#06b6d4" strokeWidth={2} dot={false} name="Clicks" />}

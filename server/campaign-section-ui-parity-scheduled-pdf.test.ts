@@ -239,6 +239,51 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(getCampaignMetricTotalsMock).not.toHaveBeenCalled();
   });
 
+  it("keeps persisted financial provenance when GA4 and a paid source are both connected", async () => {
+    aggregateCampaignMetricsMock.mockResolvedValue({
+      detailedMetrics: {
+        performanceSummary: {
+          ...performanceSummary,
+          sources: [
+            ...performanceSummary.sources,
+            {
+              id: "linkedin",
+              label: "LinkedIn Ads",
+              category: "paid_media",
+              connected: true,
+              includedMetrics: ["impressions", "clicks", "conversions"],
+              metrics: { impressions: 1000, clicks: 50, conversions: 4 },
+            },
+          ],
+        },
+      },
+    });
+
+    await buildPdfAttachmentForReport({
+      report: report("financial-analysis", ["financial-analysis:overview"]),
+      windowStart: "2026-07-29",
+      windowEnd: "2026-08-27",
+      campaignName: "Campaign",
+    });
+
+    expect(pdfTextCalls).toContain("- GA4 Revenue: $55,966.70");
+    expect(pdfTextCalls).toContain("- Imported Revenue: $16,799.99");
+    expect(pdfTextCalls).toContain("- Imported Spend: $2,699.75");
+    expect(pdfTextCalls).not.toContain("- GA4 Revenue: $72,766.69");
+    expect(pdfTextCalls).not.toContain("- No detailed spend inputs are available.");
+  });
+
+  it("fails financial PDF provenance closed when a required source read fails", async () => {
+    storageMock.getRevenueBreakdownBySource.mockRejectedValue(new Error("source unavailable"));
+
+    await expect(buildPdfAttachmentForReport({
+      report: report("financial-analysis", ["financial-analysis:overview"]),
+      windowStart: "2026-07-29",
+      windowEnd: "2026-08-27",
+      campaignName: "Campaign",
+    })).rejects.toThrow("source unavailable");
+  });
+
   it("uses Executive Summary UI financials, cumulative traffic, GA4 target rows, and trajectory", async () => {
     await buildPdfAttachmentForReport({
       report: report("executive-summary", ["executive-summary:overview", "executive-summary:recommendations"]),

@@ -583,8 +583,9 @@ export default function FinancialAnalysis() {
     return Number.isFinite(parsed) ? parsed : 0;
   };
   const parseInputValue = (source: any) => {
+    if (source?.value === null || typeof source?.value === "undefined" || source?.value === "") return null;
     const parsed = Number(source?.value);
-    return Number.isFinite(parsed) ? parsed : 0;
+    return Number.isFinite(parsed) ? parsed : null;
   };
   const sourceIncludesMetric = (source: any, metricName: string) =>
     Array.isArray(source?.includedMetrics) && source.includedMetrics.includes(metricName);
@@ -614,32 +615,36 @@ export default function FinancialAnalysis() {
   const financialRevenueInputs = Array.isArray(outcomeTotals?.financialInputs?.revenue) ? outcomeTotals.financialInputs.revenue : [];
   const financialSpendInputs = Array.isArray(outcomeTotals?.financialInputs?.spend) ? outcomeTotals.financialInputs.spend : [];
   const aggregateRevenueInputBreakdowns: FinancialChildSourceBreakdown[] = performanceSources
-    .filter((source: any) => source?.connected === true && source?.category === "financial")
+    .filter((source: any) => source?.connected === true && source?.category === "financial" && sourceIncludesMetric(source, "revenue"))
     .map((source: any, index: number) => ({
       id: `${String(source.id || source.label || "financial")}-${index}`,
       label: String(source.label || source.id || "Financial input"),
       sourceType: String(source.sourceType || ""),
       revenue: parseSourceMetric(source, "revenue"),
-    }))
-    .filter((source: FinancialChildSourceBreakdown) => source.revenue > 0);
-  const financialChildSourceBreakdowns: FinancialChildSourceBreakdown[] = financialRevenueInputs.length > 0
-    ? financialRevenueInputs
-        .map((source: any) => ({
+    }));
+  const financialRevenueInputBreakdowns: FinancialChildSourceBreakdown[] = financialRevenueInputs
+    .flatMap((source: any) => {
+      const revenue = parseInputValue(source);
+      return revenue === null ? [] : [{
           id: String(source?.id || source?.label || "revenue_input"),
           label: String(source?.label || "Revenue input"),
           sourceType: String(source?.sourceType || ""),
-          revenue: parseInputValue(source),
-        }))
-        .filter((source: FinancialChildSourceBreakdown) => source.revenue > 0)
+          revenue,
+        }];
+    });
+  const financialChildSourceBreakdowns: FinancialChildSourceBreakdown[] = financialRevenueInputBreakdowns.length > 0
+    ? financialRevenueInputBreakdowns
     : aggregateRevenueInputBreakdowns;
   const financialSpendInputBreakdowns: FinancialSpendInputBreakdown[] = financialSpendInputs
-    .map((source: any) => ({
-      id: String(source?.id || source?.label || "spend_input"),
-      label: String(source?.label || "Spend input"),
-      sourceType: String(source?.sourceType || ""),
-      spend: parseInputValue(source),
-    }))
-    .filter((source: FinancialSpendInputBreakdown) => source.spend > 0);
+    .flatMap((source: any) => {
+      const spend = parseInputValue(source);
+      return spend === null ? [] : [{
+        id: String(source?.id || source?.label || "spend_input"),
+        label: String(source?.label || "Spend input"),
+        sourceType: String(source?.sourceType || ""),
+        spend,
+      }];
+    });
   const budgetAllocationSources: FinancialSourceBreakdown[] = financialMainSources
     .filter((source: any) => sourceIncludesMetric(source, "spend"))
     .map((source: any) => {

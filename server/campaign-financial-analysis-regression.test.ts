@@ -372,6 +372,8 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(route).toContain("const platformSpendFallback = parseFloat((linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend + parseNum(googleSheets?.metrics?.spend) + parseNum(custom?.spend)).toFixed(2));");
     expect(route).toContain("mainPlatformSources: { googleAds, instagram, tiktok, googleSheets }");
     expect(route).toContain("buildGoogleSheetsPlatformSourceForAggregate(campaign, googleSheetsConnections as any[], googleSheetsFinancials, !currentValueWindow)");
+    expect(route).toContain('financialWebAnalytics.provider === "ga4" && financialWebAnalytics.available');
+    expect(route).not.toContain('financialWebAnalytics.provider === "ga4" && onsiteRevenue > 0');
   });
 
   it("wires the Overview tab to aggregate financial metrics with unavailable states", () => {
@@ -486,7 +488,12 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const useAggregateSourceTotals = financialMainSources.length === 1;");
     expect(page).toContain("const financialSourceBreakdowns: FinancialSourceBreakdown[] = financialMainSources");
     expect(page).toContain("const aggregateRevenueInputBreakdowns: FinancialChildSourceBreakdown[] = performanceSources");
-    expect(page).toContain("const financialChildSourceBreakdowns: FinancialChildSourceBreakdown[] = financialRevenueInputs.length > 0");
+    expect(page).toContain("const financialRevenueInputBreakdowns: FinancialChildSourceBreakdown[] = financialRevenueInputs");
+    expect(page).toContain("const financialChildSourceBreakdowns: FinancialChildSourceBreakdown[] = financialRevenueInputBreakdowns.length > 0");
+    expect(page).toContain("return revenue === null ? [] : [{");
+    expect(page).toContain("return spend === null ? [] : [{");
+    expect(page).not.toContain(".filter((source: FinancialChildSourceBreakdown) => source.revenue > 0)");
+    expect(page).not.toContain(".filter((source: FinancialSpendInputBreakdown) => source.spend > 0)");
     expect(page).toContain("const revenue = useAggregateSourceTotals && financialRevenueMetric.available ? financialRevenueMetric.value : sourceRevenue;");
     expect(page).toContain("const spend = useAggregateSourceTotals && financialSpendMetric.available ? financialSpendMetric.value : sourceSpend;");
     expect(page).toContain("const financialRevenueInputs = Array.isArray(outcomeTotals?.financialInputs?.revenue) ? outcomeTotals.financialInputs.revenue : [];");

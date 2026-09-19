@@ -284,6 +284,32 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     })).rejects.toThrow("source unavailable");
   });
 
+  it("renders source-backed zero GA4 revenue instead of treating it as missing", async () => {
+    storageMock.getRevenueBreakdownBySource.mockResolvedValue([]);
+    aggregateCampaignMetricsMock.mockResolvedValue({
+      detailedMetrics: {
+        performanceSummary: {
+          ...performanceSummary,
+          totals: { ...performanceSummary.totals, revenue: metric(0) },
+          sources: [{
+            ...performanceSummary.sources[0],
+            metrics: { ...performanceSummary.sources[0].metrics, revenue: 0 },
+          }],
+        },
+      },
+    });
+
+    await buildPdfAttachmentForReport({
+      report: report("financial-analysis", ["financial-analysis:overview"]),
+      windowStart: "2026-07-29",
+      windowEnd: "2026-08-27",
+      campaignName: "Campaign",
+    });
+
+    expect(pdfTextCalls).toContain("- GA4 Revenue: $0.00");
+    expect(pdfTextCalls).not.toContain("- No detailed revenue inputs are available.");
+  });
+
   it("uses Executive Summary UI financials, cumulative traffic, GA4 target rows, and trajectory", async () => {
     await buildPdfAttachmentForReport({
       report: report("executive-summary", ["executive-summary:overview", "executive-summary:recommendations"]),

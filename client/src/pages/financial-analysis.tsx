@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest } from "@/lib/queryClient";
-import { buildFinancialAllocationAction, buildFinancialBudgetAction } from "@/lib/financial-executive-actions";
+import { buildFinancialAllocationAction, buildFinancialBudgetAction, resolveFinancialPacingCalendar, resolveFinancialPaidMediaEfficiencyCompatibility } from "@/lib/financial-executive-actions";
 import { formatPct } from "@shared/metric-math";
 
 interface Campaign {
@@ -22,6 +22,7 @@ interface Campaign {
   status: string;
   pacingStartDate?: string | null;
   pacingEndDate?: string | null;
+  reportingTimeZone?: string | null;
 }
 
 type FinancialSourceBreakdown = {
@@ -93,13 +94,6 @@ export default function FinancialAnalysis() {
     if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
     const date = value instanceof Date ? value : new Date(value);
     return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
-  };
-
-  const parsePacingDateValue = (value?: string | null) => {
-    if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-    const [year, month, day] = value.split("-").map(Number);
-    const date = new Date(year, month - 1, day);
-    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
   };
 
   const formatBudgetInputValue = (value?: string | number | null, padDecimals = false) => {
@@ -191,7 +185,7 @@ export default function FinancialAnalysis() {
     },
   });
 
-  const { data: outcomeTotals, isLoading: outcomeTotalsLoading, isError: outcomeTotalsError } = useQuery<any>({
+  const { data: outcomeTotals, isLoading: outcomeTotalsLoading, isError: outcomeTotalsError, isRefetchError: outcomeTotalsRefetchError } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", demoMode ? "demo" : "live"],
     enabled: !!campaignId,
     queryFn: async () => {
@@ -405,23 +399,16 @@ export default function FinancialAnalysis() {
   // Get campaign budget and currency
   const campaignBudget = campaign.budget ? (parseFloat(campaign.budget) || 0) : 0;
   const hasCampaignBudget = campaignBudget > 0;
-  const campaignStartDate = parsePacingDateValue(campaign.pacingStartDate);
-  const campaignEndDate = parsePacingDateValue(campaign.pacingEndDate);
-  const hasCampaignStartDate = Boolean(campaignStartDate && !Number.isNaN(campaignStartDate.getTime()));
-  const hasCampaignEndDate = Boolean(campaignEndDate && !Number.isNaN(campaignEndDate.getTime()));
-  const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const todayPacingDate = startOfDay(new Date());
-  const campaignStartDay = hasCampaignStartDate ? startOfDay(campaignStartDate!) : null;
-  const campaignEndDay = hasCampaignEndDate ? startOfDay(campaignEndDate!) : null;
-  const hasCampaignDateRange = Boolean(campaignStartDay && campaignEndDay && campaignEndDay.getTime() >= campaignStartDay.getTime());
-  // Active budget periods pace through today; completed periods stop elapsed days at the pacing end date.
-  const campaignElapsedEndDay = campaignEndDay && todayPacingDate.getTime() > campaignEndDay.getTime() ? campaignEndDay : todayPacingDate;
-  const campaignElapsedDays = campaignStartDay && campaignElapsedEndDay.getTime() >= campaignStartDay.getTime()
-    ? Math.max(1, Math.floor((campaignElapsedEndDay.getTime() - campaignStartDay.getTime()) / (1000 * 60 * 60 * 24)) + 1)
-    : 0;
-  const campaignTotalDays = hasCampaignDateRange
-    ? Math.max(1, Math.floor((campaignEndDay!.getTime() - campaignStartDay!.getTime()) / (1000 * 60 * 60 * 24)) + 1)
-    : 0;
+  const pacingCalendar = resolveFinancialPacingCalendar({
+    startDate: campaign.pacingStartDate,
+    endDate: campaign.pacingEndDate,
+    reportingTimeZone: campaign.reportingTimeZone,
+  });
+  const hasCampaignStartDate = pacingCalendar.hasStartDate;
+  const hasCampaignEndDate = pacingCalendar.hasEndDate;
+  const hasCampaignDateRange = pacingCalendar.hasDateRange;
+  const campaignElapsedDays = pacingCalendar.elapsedDays;
+  const campaignTotalDays = pacingCalendar.totalDays;
   // Format currency with campaign's currency
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -495,7 +482,14 @@ export default function FinancialAnalysis() {
 
   const getOverviewMetric = (metricName: string, fallbackValue: number) => {
     const metric = aggregateMetric(metricName);
-    if (performanceSummary && metric) {
+    if (performanceSummary) {
+      if (!metric) {
+        return {
+          available: false,
+          value: 0,
+          unavailableReasons: [`${metricName.toUpperCase()} is missing from aggregate financial totals`],
+        };
+      }
       const value = aggregateMetricValue(metricName);
       return {
         available: metric.available === true && value !== null,
@@ -583,6 +577,10 @@ export default function FinancialAnalysis() {
     const parsed = Number(source?.value);
     return Number.isFinite(parsed) ? parsed : 0;
   };
+  const hasNonNegativeInputValue = (source: any) => source?.value !== null
+    && source?.value !== ""
+    && Number.isFinite(Number(source?.value))
+    && Number(source.value) >= 0;
   const sourceIncludesMetric = (source: any, metricName: string) =>
     Array.isArray(source?.includedMetrics) && source.includedMetrics.includes(metricName);
   const financialMainSources = performanceSources
@@ -611,32 +609,32 @@ export default function FinancialAnalysis() {
   const financialRevenueInputs = Array.isArray(outcomeTotals?.financialInputs?.revenue) ? outcomeTotals.financialInputs.revenue : [];
   const financialSpendInputs = Array.isArray(outcomeTotals?.financialInputs?.spend) ? outcomeTotals.financialInputs.spend : [];
   const aggregateRevenueInputBreakdowns: FinancialChildSourceBreakdown[] = performanceSources
-    .filter((source: any) => source?.connected === true && source?.category === "financial")
+    .filter((source: any) => source?.connected === true && source?.category === "financial" && sourceIncludesMetric(source, "revenue"))
     .map((source: any, index: number) => ({
       id: `${String(source.id || source.label || "financial")}-${index}`,
       label: String(source.label || source.id || "Financial input"),
       sourceType: String(source.sourceType || ""),
       revenue: parseSourceMetric(source, "revenue"),
     }))
-    .filter((source: FinancialChildSourceBreakdown) => source.revenue > 0);
+    .filter((source: FinancialChildSourceBreakdown) => source.revenue >= 0);
   const financialChildSourceBreakdowns: FinancialChildSourceBreakdown[] = financialRevenueInputs.length > 0
     ? financialRevenueInputs
+        .filter(hasNonNegativeInputValue)
         .map((source: any) => ({
           id: String(source?.id || source?.label || "revenue_input"),
           label: String(source?.label || "Revenue input"),
           sourceType: String(source?.sourceType || ""),
           revenue: parseInputValue(source),
         }))
-        .filter((source: FinancialChildSourceBreakdown) => source.revenue > 0)
     : aggregateRevenueInputBreakdowns;
   const financialSpendInputBreakdowns: FinancialSpendInputBreakdown[] = financialSpendInputs
+    .filter(hasNonNegativeInputValue)
     .map((source: any) => ({
       id: String(source?.id || source?.label || "spend_input"),
       label: String(source?.label || "Spend input"),
       sourceType: String(source?.sourceType || ""),
       spend: parseInputValue(source),
-    }))
-    .filter((source: FinancialSpendInputBreakdown) => source.spend > 0);
+    }));
   const budgetAllocationSources: FinancialSourceBreakdown[] = financialMainSources
     .filter((source: any) => sourceIncludesMetric(source, "spend"))
     .map((source: any) => {
@@ -669,14 +667,6 @@ export default function FinancialAnalysis() {
       .map((source: any) => String(source?.label || source?.id || "").trim())
       .filter(Boolean)
   ));
-  const paidMediaEfficiencySourceLabels = financialMainSources
-    .filter((source: any) =>
-      (source?.category === "paid_media" || source?.id === "custom_integration") &&
-      Array.isArray(source?.includedMetrics) &&
-      source.includedMetrics.some((metric: string) => ["clicks", "impressions", "spend"].includes(metric))
-    )
-    .map((source: any) => String(source?.label || source?.id || "").trim())
-    .filter(Boolean);
   const conversionEfficiencySourceLabels = financialMainSources
     .filter((source: any) =>
       Array.isArray(source?.includedMetrics) &&
@@ -693,11 +683,15 @@ export default function FinancialAnalysis() {
     value: 0,
     unavailableReasons: [`${metricName} is withheld until every input has a certified campaign-to-date window`],
   };
+  const paidMediaEfficiencyCompatibility = resolveFinancialPaidMediaEfficiencyCompatibility(financialMainSources);
   const paidMediaEfficiencyMetrics = [
-    { label: "CPC", metric: campaignToDateEfficiencyMetric(overviewCpcMetric, "CPC"), value: formatOverviewCurrency(overviewCpcMetric) },
-    { label: "CPM", metric: campaignToDateEfficiencyMetric(overviewCpmMetric, "CPM"), value: formatOverviewCurrency(overviewCpmMetric) },
-    { label: "CTR", metric: campaignToDateEfficiencyMetric(overviewCtrMetric, "CTR"), value: formatOverviewPercentage(overviewCtrMetric) },
-  ].filter((item) => item.metric.available);
+    { label: "CPC", metric: campaignToDateEfficiencyMetric(overviewCpcMetric, "CPC"), value: formatOverviewCurrency(overviewCpcMetric), compatibility: paidMediaEfficiencyCompatibility.cpc },
+    { label: "CPM", metric: campaignToDateEfficiencyMetric(overviewCpmMetric, "CPM"), value: formatOverviewCurrency(overviewCpmMetric), compatibility: paidMediaEfficiencyCompatibility.cpm },
+    { label: "CTR", metric: campaignToDateEfficiencyMetric(overviewCtrMetric, "CTR"), value: formatOverviewPercentage(overviewCtrMetric), compatibility: paidMediaEfficiencyCompatibility.ctr },
+  ].filter((item) => item.metric.available && item.compatibility.compatible);
+  const paidMediaEfficiencySourceLabels = Array.from(new Set(
+    paidMediaEfficiencyMetrics.flatMap((item) => item.compatibility.sourceLabels),
+  ));
   const conversionEfficiencyCvrMetric = campaignToDateEfficiencyMetric(overviewCvrMetric, "CVR");
   const campaignToDateAllocationSources: FinancialSourceBreakdown[] = demoMode || hasCampaignToDateWindow ? budgetAllocationSources : [];
 
@@ -841,6 +835,12 @@ export default function FinancialAnalysis() {
             </div>
           ) : (
             <div className="space-y-8" data-testid="executive-financial-analysis">
+              {!demoMode && outcomeTotalsRefetchError && performanceSummary && (
+                <div role="status" data-testid="financial-aggregate-stale-warning" className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>Showing last successful financial values. The latest refresh failed, so these values may be stale.</span>
+                </div>
+              )}
               <section aria-labelledby="financial-position-heading" className="space-y-4">
                 <div>
                   <h2 id="financial-position-heading" className="text-xl font-semibold">Financial Position</h2>
@@ -968,10 +968,9 @@ export default function FinancialAnalysis() {
                     </CardHeader>
                     <CardContent>
                       {(() => {
-                        const today = new Date();
                         const daysRemaining = !isOverBudget && dailyBurnRate > 0 ? overviewRemainingBudget / dailyBurnRate : 0;
-                        const projectedEndDate = !isOverBudget && dailyBurnRate > 0
-                          ? new Date(today.getTime() + daysRemaining * 24 * 60 * 60 * 1000)
+                        const projectedEndDateOrdinal = !isOverBudget && dailyBurnRate > 0
+                          ? pacingCalendar.todayDateOrdinal + Math.ceil(daysRemaining) * 24 * 60 * 60 * 1000
                           : null;
                         const shouldShowPacingInputForm = isEditingPacingInputs || !hasCampaignBudget || !hasCampaignStartDate || !hasCampaignEndDate || !hasCampaignDateRange;
 
@@ -1097,10 +1096,10 @@ export default function FinancialAnalysis() {
                                 </Button>
                               </div>
                             )}
-                            {overviewSpendMetric.available && !isOverBudget && projectedEndDate && daysRemaining > 0 && (
+                            {overviewSpendMetric.available && !isOverBudget && projectedEndDateOrdinal !== null && daysRemaining > 0 && (
                               <p className="border-t pt-3 text-xs text-muted-foreground">
                                 At current rate, budget will be exhausted in <strong>{Math.ceil(daysRemaining)} days</strong>
-                                {campaignEndDate && <span> ({projectedEndDate > campaignEndDate ? "after" : "before"} budget period end)</span>}
+                                {pacingCalendar.endDateOrdinal !== null && <span> ({projectedEndDateOrdinal > pacingCalendar.endDateOrdinal ? "after" : "before"} budget period end)</span>}
                               </p>
                             )}
                           </div>
@@ -1510,11 +1509,12 @@ export default function FinancialAnalysis() {
                   <CardContent>
                     <div className="space-y-4">
                       {(() => {
-                        const today = new Date();
                         const dailyBurnRate = campaignElapsedDays > 0 ? overviewSpend / campaignElapsedDays : 0;
                         const isOverBudget = hasCampaignBudget && overviewSpendMetric.available && overviewRemainingBudget < 0;
                         const daysRemaining = (!isOverBudget && dailyBurnRate > 0) ? overviewRemainingBudget / dailyBurnRate : 0;
-                        const projectedEndDate = (!isOverBudget && dailyBurnRate > 0) ? new Date(today.getTime() + daysRemaining * 24 * 60 * 60 * 1000) : null;
+                        const projectedEndDateOrdinal = (!isOverBudget && dailyBurnRate > 0)
+                          ? pacingCalendar.todayDateOrdinal + Math.ceil(daysRemaining) * 24 * 60 * 60 * 1000
+                          : null;
                         
                         const hasPacingInputs = hasCampaignBudget && overviewSpendMetric.available && hasCampaignDateRange && campaignElapsedDays > 0;
                         const targetDailySpend = campaignTotalDays > 0 ? campaignBudget / campaignTotalDays : 0;
@@ -1656,12 +1656,12 @@ export default function FinancialAnalysis() {
                                 </Button>
                               </div>
                             )}
-                            {overviewSpendMetric.available && !isOverBudget && projectedEndDate && daysRemaining > 0 && (
+                            {overviewSpendMetric.available && !isOverBudget && projectedEndDateOrdinal !== null && daysRemaining > 0 && (
                               <div className="pt-3 border-t">
                                 <p className="text-xs text-muted-foreground">
                                   At current rate, budget will be exhausted in <strong>{Math.ceil(daysRemaining)} days</strong>
-                                  {campaignEndDate && (
-                                    <span> ({projectedEndDate > campaignEndDate ? 'after' : 'before'} budget period end)</span>
+                                  {pacingCalendar.endDateOrdinal !== null && (
+                                    <span> ({projectedEndDateOrdinal > pacingCalendar.endDateOrdinal ? 'after' : 'before'} budget period end)</span>
                                   )}
                                 </p>
                               </div>

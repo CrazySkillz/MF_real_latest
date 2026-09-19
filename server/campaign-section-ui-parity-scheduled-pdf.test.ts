@@ -239,6 +239,44 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(getCampaignMetricTotalsMock).not.toHaveBeenCalled();
   });
 
+  it("keeps available zero-valued GA4, revenue, and spend provenance visible", async () => {
+    const unavailableMetric = { available: false, value: null, sources: [], unavailableReasons: ["Zero denominator"] };
+    aggregateCampaignMetricsMock.mockResolvedValue({
+      detailedMetrics: {
+        performanceSummary: {
+          ...performanceSummary,
+          totals: {
+            ...performanceSummary.totals,
+            revenue: metric(0, ["ga4", "imported_revenue"]),
+            spend: metric(0, ["canonical_spend_sources"]),
+            roas: unavailableMetric,
+            roi: unavailableMetric,
+            cpa: unavailableMetric,
+          },
+          sources: performanceSummary.sources.map((source) => ({
+            ...source,
+            metrics: { ...source.metrics, revenue: 0 },
+          })),
+        },
+      },
+    });
+    storageMock.getRevenueBreakdownBySource.mockResolvedValue([{ sourceId: "revenue-1", displayName: "Zero Revenue", sourceType: "csv", revenue: 0 }]);
+    storageMock.getSpendBreakdownBySource.mockResolvedValue([{ sourceId: "spend-1", displayName: "Zero Spend", sourceType: "csv", spend: 0 }]);
+
+    await buildPdfAttachmentForReport({
+      report: report("financial-analysis", ["financial-analysis:overview"]),
+      windowStart: "2026-07-29",
+      windowEnd: "2026-08-27",
+      campaignName: "Campaign",
+    });
+
+    expect(pdfTextCalls).toContain("- GA4 Revenue: $0.00");
+    expect(pdfTextCalls).toContain("- Zero Revenue: $0.00");
+    expect(pdfTextCalls).toContain("- Zero Spend: $0.00");
+    expect(pdfTextCalls).not.toContain("- No detailed revenue inputs are available.");
+    expect(pdfTextCalls).not.toContain("- No detailed spend inputs are available.");
+  });
+
   it("uses Executive Summary UI financials, cumulative traffic, GA4 target rows, and trajectory", async () => {
     await buildPdfAttachmentForReport({
       report: report("executive-summary", ["executive-summary:overview", "executive-summary:recommendations"]),

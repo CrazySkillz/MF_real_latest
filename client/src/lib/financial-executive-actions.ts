@@ -6,6 +6,109 @@ export type FinancialExecutiveAction = {
 
 export type FinancialPacingStatus = "unavailable" | "ahead" | "behind" | "on-track";
 
+const FINANCIAL_PACING_DAY_MS = 24 * 60 * 60 * 1000;
+
+const parseFinancialPacingDateOrdinal = (value?: string | null): number | null => {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(0);
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCFullYear(year, month - 1, day);
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+    ? date.getTime()
+    : null;
+};
+
+const getFinancialReportingDateOrdinal = (now: Date, reportingTimeZone?: string | null): number => {
+  const buildOrdinal = (timeZone: string) => {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(now);
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    return Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day));
+  };
+  try {
+    return buildOrdinal(String(reportingTimeZone || "UTC").trim() || "UTC");
+  } catch {
+    return buildOrdinal("UTC");
+  }
+};
+
+export function resolveFinancialPacingCalendar(input: {
+  startDate?: string | null;
+  endDate?: string | null;
+  reportingTimeZone?: string | null;
+  now?: Date;
+}) {
+  const startDateOrdinal = parseFinancialPacingDateOrdinal(input.startDate);
+  const endDateOrdinal = parseFinancialPacingDateOrdinal(input.endDate);
+  const todayDateOrdinal = getFinancialReportingDateOrdinal(input.now || new Date(), input.reportingTimeZone);
+  const hasDateRange = startDateOrdinal !== null && endDateOrdinal !== null && endDateOrdinal >= startDateOrdinal;
+  const elapsedEndDateOrdinal = endDateOrdinal !== null && todayDateOrdinal > endDateOrdinal
+    ? endDateOrdinal
+    : todayDateOrdinal;
+  const elapsedDays = startDateOrdinal !== null && elapsedEndDateOrdinal >= startDateOrdinal
+    ? Math.floor((elapsedEndDateOrdinal - startDateOrdinal) / FINANCIAL_PACING_DAY_MS) + 1
+    : 0;
+  const totalDays = hasDateRange
+    ? Math.floor((endDateOrdinal - startDateOrdinal) / FINANCIAL_PACING_DAY_MS) + 1
+    : 0;
+
+  return {
+    startDateOrdinal,
+    endDateOrdinal,
+    todayDateOrdinal,
+    hasStartDate: startDateOrdinal !== null,
+    hasEndDate: endDateOrdinal !== null,
+    hasDateRange,
+    elapsedDays,
+    totalDays,
+  };
+}
+
+export function resolveFinancialPaidMediaEfficiencyCompatibility(sources: any[]) {
+  const paidSources = (Array.isArray(sources) ? sources : []).filter((source) =>
+    source?.connected === true && (source?.category === "paid_media" || source?.id === "custom_integration"),
+  );
+  const sourcesWithMetric = (metricName: string) => paidSources.filter((source) =>
+    Array.isArray(source?.includedMetrics) && source.includedMetrics.includes(metricName),
+  );
+  const sourceKey = (source: any) => String(source?.id || source?.label || "").trim();
+  const sameSourceSet = (left: any[], right: any[]) => {
+    const leftKeys = new Set(left.map(sourceKey).filter(Boolean));
+    const rightKeys = new Set(right.map(sourceKey).filter(Boolean));
+    return leftKeys.size > 0 && leftKeys.size === rightKeys.size
+      && Array.from(leftKeys).every((key) => rightKeys.has(key));
+  };
+  const sourceLabels = (matchingSources: any[]) => matchingSources
+    .map((source) => String(source?.label || source?.id || "").trim())
+    .filter(Boolean);
+  const spendSources = sourcesWithMetric("spend");
+  const clickSources = sourcesWithMetric("clicks");
+  const impressionSources = sourcesWithMetric("impressions");
+
+  return {
+    cpc: {
+      compatible: spendSources.length > 0 && spendSources.every((source) => source.includedMetrics.includes("clicks")),
+      sourceLabels: sourceLabels(spendSources),
+    },
+    cpm: {
+      compatible: spendSources.length > 0 && spendSources.every((source) => source.includedMetrics.includes("impressions")),
+      sourceLabels: sourceLabels(spendSources),
+    },
+    ctr: {
+      compatible: sameSourceSet(clickSources, impressionSources),
+      sourceLabels: sourceLabels(clickSources),
+    },
+  };
+}
+
 export function buildFinancialBudgetAction(input: {
   hasCampaignBudget: boolean;
   spendAvailable: boolean;

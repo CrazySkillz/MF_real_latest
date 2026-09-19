@@ -382,20 +382,22 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
   const costImpressions = currentValueWindow
     ? costSources.reduce((sum, source) => sum + (source.includedMetrics.includes("impressions") ? parseNum(source.metrics.impressions) : 0), 0)
     : totalImpressions;
-  const cpc = costSpendValue > 0 && costClicks > 0 ? round2(costSpendValue / costClicks) : null;
+  const costSpendAvailable = currentValueWindow ? costSources.length > 0 : hasSpend;
+  const cpc = costSpendAvailable && costClicks > 0 ? round2(costSpendValue / costClicks) : null;
   const cpa = spendValue > 0 && cpaConversions > 0 && cpaConversionsAvailable ? round2(spendValue / cpaConversions) : null;
-  const cpm = costSpendValue > 0 && costImpressions > 0 ? round2((costSpendValue / costImpressions) * 1000) : null;
+  const cpm = costSpendAvailable && costImpressions > 0 ? round2((costSpendValue / costImpressions) * 1000) : null;
   const roas = hasRevenue && hasSpend && spendValue > 0 ? round2(revenueValue / spendValue) : null;
   const roi = hasRevenue && hasSpend && spendValue > 0 ? round2(((revenueValue - spendValue) / spendValue) * 100) : null;
-  const ctr = totalImpressions > 0 && totalClicks > 0 ? round2((totalClicks / totalImpressions) * 100) : null;
-  const cvr = webSource && totalSessions > 0 && totalConversions > 0
+  const ctr = totalImpressions > 0 && clicksSources.length > 0 ? round2((totalClicks / totalImpressions) * 100) : null;
+  const webConversionsAvailable = Boolean(webSource && hasSourceMetric(input.webAnalytics, "conversions"));
+  const cvr = webSource && totalSessions > 0 && webConversionsAvailable
       ? (totalConversions / totalSessions) * 100
-    : !webSource && totalClicks > 0 && totalConversions > 0
+    : !webSource && !webProviderConfigured && totalClicks > 0 && paidConversionSources.length > 0
       ? (totalConversions / totalClicks) * 100
       : null;
-  const cvrSources = webSource && totalSessions > 0 && totalConversions > 0
+  const cvrSources = webSource && totalSessions > 0 && webConversionsAvailable
       ? ["conversions", "sessions"]
-    : !webSource && totalClicks > 0 && totalConversions > 0
+    : !webSource && !webProviderConfigured && totalClicks > 0 && paidConversionSources.length > 0
       ? ["conversions", "clicks"]
       : [];
 

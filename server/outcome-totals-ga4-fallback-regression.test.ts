@@ -57,6 +57,8 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain('id: "ga4_native_revenue"');
     expect(route).toContain('label: "GA4 Revenue"');
     expect(route).toContain('sourceType: "Native GA4 revenue"');
+    expect(route).toContain('financialWebAnalytics.available === true && onsiteRevenue >= 0');
+    expect(route).not.toContain('financialWebAnalytics.provider === "ga4" && onsiteRevenue > 0');
     expect(route).toContain("financialInputs,");
   });
 

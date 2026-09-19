@@ -70,6 +70,59 @@ describe("Performance Summary aggregate contract", () => {
     expect(aggregate.totals.cvr).toMatchObject({ available: true, value: 4 });
   });
 
+  it("preserves valid zero efficiency values when their inputs and denominators are available", () => {
+    const currentValueWindow = {
+      mode: "initial_import_to_latest_completed_day" as const,
+      startDate: "2026-05-01",
+      endDate: "2026-08-20",
+      dataThroughDate: "2026-08-20",
+      reportingTimeZone: "Europe/Amsterdam",
+    };
+    const aggregate = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-valid-zero-efficiency",
+      dateRange: "90days",
+      currentValueWindow,
+      ga4: { connected: true, available: true, revenue: 0, conversions: 0, sessions: 100, users: 50 },
+      webAnalytics: { connected: true, available: true, provider: "ga4", revenue: 0, conversions: 0, sessions: 100, users: 50 },
+      spend: { available: true, unifiedSpend: 0, spendSource: "persisted_spend_sources", sourceIds: ["spend-1"] },
+      platforms: {
+        linkedin: { connected: true, available: true, impressions: 1000, clicks: 10, spend: 0, conversions: 0, leads: 0 },
+      },
+      revenue: { available: true, onsiteRevenue: 0, offsiteRevenue: 0, totalRevenue: 0 },
+      revenueSources: [{ type: "imported", connected: true, lastTotalRevenue: 0 }],
+    });
+
+    expect(aggregate.totals.cpc).toMatchObject({ available: true, value: 0 });
+    expect(aggregate.totals.cpm).toMatchObject({ available: true, value: 0 });
+    expect(aggregate.totals.cvr).toMatchObject({ available: true, value: 0 });
+  });
+
+  it("keeps zero-denominator and missing-conversion efficiency values unavailable", () => {
+    const aggregate = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-invalid-zero-efficiency",
+      dateRange: "90days",
+      currentValueWindow: {
+        mode: "initial_import_to_latest_completed_day",
+        startDate: "2026-05-01",
+        endDate: "2026-08-20",
+        dataThroughDate: "2026-08-20",
+        reportingTimeZone: "Europe/Amsterdam",
+      },
+      ga4: { connected: true, available: true, revenue: 0, sessions: 100, users: 50 },
+      webAnalytics: { connected: true, available: true, provider: "ga4", revenue: 0, sessions: 100, users: 50 },
+      spend: { available: true, unifiedSpend: 50, spendSource: "persisted_spend_sources", sourceIds: ["spend-1"] },
+      platforms: {
+        linkedin: { connected: true, available: true, impressions: 1000, clicks: 0, spend: 50, conversions: 0, leads: 0 },
+      },
+      revenue: { available: true, onsiteRevenue: 0, offsiteRevenue: 0, totalRevenue: 0 },
+      revenueSources: [{ type: "imported", connected: true, lastTotalRevenue: 0 }],
+    });
+
+    expect(aggregate.totals.ctr).toMatchObject({ available: true, value: 0 });
+    expect(aggregate.totals.cpc.available).toBe(false);
+    expect(aggregate.totals.cvr.available).toBe(false);
+  });
+
   it("keeps cumulative traffic conversions separate from campaign-to-date financial conversions", () => {
     const aggregate = buildPerformanceSummaryAggregate({
       campaignId: "campaign-financial-window",

@@ -2,9 +2,78 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { insertCampaignSchema } from "@shared/schema";
-import { buildFinancialAllocationAction, buildFinancialBudgetAction } from "../client/src/lib/financial-executive-actions";
+import { buildFinancialAllocationAction, buildFinancialBudgetAction, resolveFinancialPacingCalendar, resolveFinancialPaidMediaEfficiencyCompatibility } from "../client/src/lib/financial-executive-actions";
 
 describe("campaign Budget & Financial Analysis regression guard", () => {
+  it("withholds paid-media efficiency when contributing source sets are incompatible", () => {
+    const compatibility = resolveFinancialPaidMediaEfficiencyCompatibility([
+      { id: "linkedin", label: "LinkedIn Ads", category: "paid_media", connected: true, includedMetrics: ["spend", "clicks", "impressions"] },
+      { id: "meta", label: "Meta Ads", category: "paid_media", connected: true, includedMetrics: ["spend", "impressions"] },
+      { id: "ga4", label: "Google Analytics", category: "web_analytics", connected: true, includedMetrics: ["sessions"] },
+    ]);
+
+    expect(compatibility.cpc).toEqual({ compatible: false, sourceLabels: ["LinkedIn Ads", "Meta Ads"] });
+    expect(compatibility.cpm).toEqual({ compatible: true, sourceLabels: ["LinkedIn Ads", "Meta Ads"] });
+    expect(compatibility.ctr).toEqual({ compatible: false, sourceLabels: ["LinkedIn Ads"] });
+  });
+
+  it("keeps fully compatible paid-media efficiency visible", () => {
+    const compatibility = resolveFinancialPaidMediaEfficiencyCompatibility([
+      { id: "linkedin", label: "LinkedIn Ads", category: "paid_media", connected: true, includedMetrics: ["spend", "clicks", "impressions"] },
+      { id: "google_ads", label: "Google Ads", category: "paid_media", connected: true, includedMetrics: ["spend", "clicks", "impressions"] },
+    ]);
+
+    expect(compatibility.cpc.compatible).toBe(true);
+    expect(compatibility.cpm.compatible).toBe(true);
+    expect(compatibility.ctr.compatible).toBe(true);
+    expect(compatibility.ctr.sourceLabels).toEqual(["LinkedIn Ads", "Google Ads"]);
+  });
+
+  it("counts pacing by campaign calendar days across DST boundaries", () => {
+    expect(resolveFinancialPacingCalendar({
+      startDate: "2026-03-28",
+      endDate: "2026-03-30",
+      reportingTimeZone: "Europe/Amsterdam",
+      now: new Date("2026-03-30T12:00:00.000Z"),
+    })).toEqual(expect.objectContaining({
+      hasDateRange: true,
+      elapsedDays: 3,
+      totalDays: 3,
+    }));
+
+    expect(resolveFinancialPacingCalendar({
+      startDate: "2026-10-24",
+      endDate: "2026-10-26",
+      reportingTimeZone: "Europe/Amsterdam",
+      now: new Date("2026-10-26T12:00:00.000Z"),
+    })).toEqual(expect.objectContaining({
+      hasDateRange: true,
+      elapsedDays: 3,
+      totalDays: 3,
+    }));
+  });
+
+  it("uses the campaign reporting date and caps elapsed pacing at the period", () => {
+    expect(resolveFinancialPacingCalendar({
+      startDate: "2026-03-31",
+      endDate: "2026-03-31",
+      reportingTimeZone: "Europe/Amsterdam",
+      now: new Date("2026-03-30T22:30:00.000Z"),
+    }).elapsedDays).toBe(1);
+    expect(resolveFinancialPacingCalendar({
+      startDate: "2026-03-31",
+      endDate: "2026-03-31",
+      reportingTimeZone: "UTC",
+      now: new Date("2026-03-30T22:30:00.000Z"),
+    }).elapsedDays).toBe(0);
+    expect(resolveFinancialPacingCalendar({
+      startDate: "2026-03-01",
+      endDate: "2026-03-10",
+      reportingTimeZone: "Europe/Amsterdam",
+      now: new Date("2026-03-30T12:00:00.000Z"),
+    }).elapsedDays).toBe(10);
+  });
+
   it("uses actual budget pacing instead of total-budget utilization alone", () => {
     const base = {
       hasCampaignBudget: true,
@@ -181,7 +250,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
   it("adds the shared performanceSummary aggregate contract for Budget & Financial tabs", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "financial-analysis.tsx"), "utf-8");
 
-    expect(page).toContain("const { data: outcomeTotals, isLoading: outcomeTotalsLoading, isError: outcomeTotalsError } = useQuery<any>({");
+    expect(page).toContain("isRefetchError: outcomeTotalsRefetchError");
     expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days"');
     expect(page).toContain("outcome-totals?dateRange=90days");
     expect(page).toContain('if (!response.ok) throw new Error("Failed to load aggregate financial totals");');
@@ -211,6 +280,10 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const aggregateMetricValue = (metricName: string): number | null => {");
     expect(page).toContain("const aggregateMetricSources = (metricName: string): string[] => {");
     expect(page).toContain("const aggregateMetricUnavailableReasons = (metricName: string): string[] => {");
+    const metricResolver = page.slice(page.indexOf("const getOverviewMetric"), page.indexOf("const overviewSpendMetric"));
+    expect(metricResolver).toContain("if (performanceSummary) {");
+    expect(metricResolver).toContain("if (!metric) {");
+    expect(metricResolver).toContain("is missing from aggregate financial totals");
     expect(page).toContain('effectiveSnapshot?.snapshotType === "financial_daily"');
     expect(page).toContain("effectiveSnapshot?.reportingDate === financialComparisonDate");
     expect(page).toContain('snapshotFinancialDaily?.currentValueWindow?.mode === "initial_import_to_latest_completed_day"');
@@ -247,6 +320,9 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(executiveView).toContain('aria-labelledby="paid-media-efficiency-heading"');
     expect(executiveView).toContain('aria-labelledby="allocation-sources-heading"');
     expect(executiveView).toContain('aria-labelledby="executive-action-heading"');
+    expect(executiveView).toContain('outcomeTotalsRefetchError && performanceSummary');
+    expect(executiveView).toContain('data-testid="financial-aggregate-stale-warning"');
+    expect(executiveView).toContain("Showing last successful financial values. The latest refresh failed, so these values may be stale.");
     expect(executiveView).toContain('label: "Total Spend"');
     expect(executiveView).toContain('label: "Total Revenue"');
     expect(executiveView).toContain('label: "Profit"');
@@ -267,8 +343,9 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(executiveView).toContain("Financial return, pacing, and spend-source guidance from the same displayed aggregate values.");
     expect(executiveView).not.toContain("Prioritized financial risks and actions");
     expect(page).toContain("const paidMediaEfficiencyMetrics = [");
-    expect(page).toContain("].filter((item) => item.metric.available);");
-    expect(page).toContain("const paidMediaEfficiencySourceLabels = financialMainSources");
+    expect(page).toContain("const paidMediaEfficiencyCompatibility = resolveFinancialPaidMediaEfficiencyCompatibility(financialMainSources);");
+    expect(page).toContain("].filter((item) => item.metric.available && item.compatibility.compatible);");
+    expect(page).toContain("paidMediaEfficiencyMetrics.flatMap((item) => item.compatibility.sourceLabels)");
     expect(page).toContain("const conversionEfficiencySourceLabels = financialMainSources");
     expect(page).toContain("const conversionEfficiencyCvrMetric = campaignToDateEfficiencyMetric(overviewCvrMetric, \"CVR\");");
     expect(executiveView).toContain("paidMediaEfficiencyMetrics.length > 0");
@@ -361,12 +438,14 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain('aggregateUnavailable\n                              ? "Aggregate financial totals are unavailable."');
     expect(page).not.toContain("{!performanceSummary && (");
     expect(page).toContain("const hasCampaignBudget = campaignBudget > 0;");
-    expect(page).toContain("const hasCampaignStartDate = Boolean(campaignStartDate && !Number.isNaN(campaignStartDate.getTime()));");
-    expect(page).toContain("const hasCampaignEndDate = Boolean(campaignEndDate && !Number.isNaN(campaignEndDate.getTime()));");
-    expect(page).toContain("const hasCampaignDateRange = Boolean(campaignStartDay && campaignEndDay && campaignEndDay.getTime() >= campaignStartDay.getTime());");
+    expect(page).toContain("const pacingCalendar = resolveFinancialPacingCalendar({");
+    expect(page).toContain("reportingTimeZone: campaign.reportingTimeZone,");
+    expect(page).toContain("const hasCampaignStartDate = pacingCalendar.hasStartDate;");
+    expect(page).toContain("const hasCampaignEndDate = pacingCalendar.hasEndDate;");
+    expect(page).toContain("const hasCampaignDateRange = pacingCalendar.hasDateRange;");
     expect(overview).toContain("const hasBudgetHealthInputs = hasCampaignBudget && overviewSpendMetric.available;");
-    expect(page).toContain("const campaignElapsedDays = campaignStartDay && campaignElapsedEndDay.getTime() >= campaignStartDay.getTime()");
-    expect(page).toContain("const campaignTotalDays = hasCampaignDateRange");
+    expect(page).toContain("const campaignElapsedDays = pacingCalendar.elapsedDays;");
+    expect(page).toContain("const campaignTotalDays = pacingCalendar.totalDays;");
     expect(overview).toContain("const hasPacingHealthInputs = hasBudgetHealthInputs && hasCampaignDateRange && campaignElapsedDays > 0;");
     expect(overview).toContain("const budgetScore = hasBudgetHealthInputs ?");
     expect(overview).toContain("const pacingScore = hasPacingHealthInputs ?");
@@ -455,6 +534,12 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const spend = useAggregateSourceTotals && financialSpendMetric.available ? financialSpendMetric.value : sourceSpend;");
     expect(page).toContain("const financialRevenueInputs = Array.isArray(outcomeTotals?.financialInputs?.revenue) ? outcomeTotals.financialInputs.revenue : [];");
     expect(page).toContain("const financialSpendInputs = Array.isArray(outcomeTotals?.financialInputs?.spend) ? outcomeTotals.financialInputs.spend : [];");
+    const provenanceInputs = page.slice(page.indexOf("const aggregateRevenueInputBreakdowns"), page.indexOf("const budgetAllocationSources"));
+    expect(provenanceInputs).toContain('sourceIncludesMetric(source, "revenue")');
+    expect(provenanceInputs.match(/\.filter\(hasNonNegativeInputValue\)/g)).toHaveLength(2);
+    expect(provenanceInputs).toContain("source.revenue >= 0");
+    expect(provenanceInputs).not.toContain("source.revenue > 0");
+    expect(provenanceInputs).not.toContain("source.spend > 0");
 
     expect(roiTab).toContain("financialRoasMetric.available ? `${financialRoasMetric.value.toFixed(2)}x` : \"Unavailable\"");
     expect(roiTab).toContain("formatOverviewCurrency(financialSpendMetric)");

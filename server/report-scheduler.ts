@@ -1257,7 +1257,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     return { ...aggregateMetric, available: resolvedAvailable, value: resolvedAvailable ? value : null, unavailableReasons: resolvedAvailable ? [] : ["Executive Summary UI value unavailable"] };
   };
   const trendReportDays = 30;
-  const trendWindowEnd = String(cumulativeGA4Window?.endDate || trendAnalysis?.endDate || "");
+  const trendWindowEnd = String(cumulativeGA4Window?.endDate || windowEnd || trendAnalysis?.endDate || "");
   const requestedTrendWindowStart = /^\d{4}-\d{2}-\d{2}$/.test(trendWindowEnd)
     ? (() => {
         const date = new Date(`${trendWindowEnd}T00:00:00.000Z`);
@@ -2002,6 +2002,77 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
           if (paidConversions !== null) addText(`- Conversions: ${formatCampaignDeepDiveMetricValue("conversions", paidConversions)}`, { indent: 8 });
           if (ctr !== null) addText(`- CTR: ${formatCampaignDeepDiveMetricValue("ctr", ctr)}`, { indent: 8 });
           if (paidCvr !== null) addText(`- Paid CVR: ${formatCampaignDeepDiveMetricValue("cvr", paidCvr)}`, { indent: 8 });
+        }
+        const contributionSources = (Array.isArray(trendAnalysis?.sources) ? trendAnalysis.sources : []).map((source: any, index: number) => {
+          const includedMetrics = Array.isArray(source?.includedMetrics) ? source.includedMetrics.map(String) : [];
+          const sum = (key: string): number | null => includedMetrics.includes(key)
+            ? sourceWindowRows(source).reduce((total: number, row: any) => total + (Number(row?.metrics?.[key]) || 0), 0)
+            : null;
+          const users = sum("users");
+          const sessions = sum("sessions");
+          const clicks = sum("clicks");
+          const impressions = sum("impressions");
+          const spend = sum("spend");
+          const conversions = sum("conversions");
+          const revenue = sum("revenue");
+          return {
+            source,
+            id: String(source?.id || `source_${index}`),
+            label: String(source?.label || source?.id || "Connected Source"),
+            users,
+            sessions,
+            clicks,
+            impressions,
+            spend,
+            conversions,
+            revenue,
+            ctr: impressions && impressions > 0 && clicks !== null ? (clicks / impressions) * 100 : null,
+            cpc: spend && spend > 0 && clicks ? spend / clicks : null,
+            cpa: spend && spend > 0 && conversions ? spend / conversions : null,
+            roas: spend && spend > 0 && revenue !== null ? revenue / spend : null,
+            coverage: (Array.isArray(source?.excludedMetrics) ? source.excludedMetrics : [])
+              .map((item: any) => `${item?.metric}: ${item?.reason}`).slice(0, 3),
+          };
+        });
+        if (contributionSources.length > 1) {
+          const contributionCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase() || "USD";
+          const contributionValue = (key: string, value: number | null) => value === null
+            ? "Unavailable"
+            : key === "roas"
+              ? `${value.toFixed(2)}x`
+              : formatCampaignDeepDiveMetricValue(key, value, contributionCurrency);
+          addText("Source Contribution", { bold: true, indent: 4 });
+          contributionSources.forEach((source: any) => {
+            const traffic = source.sessions !== null
+              ? `${formatCampaignDeepDiveMetricValue("sessions", source.sessions)} sessions`
+              : source.clicks !== null
+                ? `${formatCampaignDeepDiveMetricValue("clicks", source.clicks)} clicks`
+                : "Unavailable";
+            addText(`- ${source.label}: Spend ${contributionValue("spend", source.spend)}; Traffic ${traffic}; Conversions ${contributionValue("conversions", source.conversions)}; Revenue ${contributionValue("revenue", source.revenue)}; ROAS ${contributionValue("roas", source.roas)}; CPA ${contributionValue("cpa", source.cpa)}; CTR ${contributionValue("ctr", source.ctr)}; CPC ${contributionValue("cpc", source.cpc)}; Coverage notes: ${source.coverage.length > 0 ? source.coverage.join("; ") : "None"}`, { indent: 8 });
+          });
+          const contributionMetricOptions = ["spend", "clicks", "conversions", "impressions", "sessions", "users", "revenue"]
+            .filter((key) => contributionSources.some((source: any) => source[key] !== null));
+          const contributionMetric = contributionMetricOptions.includes("spend") ? "spend" : contributionMetricOptions[0];
+          const contributionByDate = new Map<string, Map<string, number>>();
+          if (contributionMetric) {
+            contributionSources.forEach((source: any) => sourceWindowRows(source.source).forEach((row: any) => {
+              const date = String(row?.date || "").slice(0, 10);
+              if (!date) return;
+              const values = contributionByDate.get(date) || new Map<string, number>();
+              values.set(source.id, Number(row?.metrics?.[contributionMetric]) || 0);
+              contributionByDate.set(date, values);
+            }));
+          }
+          if (contributionMetric && contributionByDate.size > 0) {
+            addText("Contribution Over Time", { bold: true, indent: 8 });
+            addText(`- Selected metric: ${contributionMetric.charAt(0).toUpperCase()}${contributionMetric.slice(1)}`, { indent: 12 });
+            Array.from(contributionByDate.entries()).sort(([a], [b]) => a.localeCompare(b)).forEach(([date, values]) => {
+              const sourceValues = contributionSources
+                .filter((source: any) => values.has(source.id))
+                .map((source: any) => `${source.label} ${contributionValue(contributionMetric, values.get(source.id) ?? null)}`);
+              addText(`- ${date}: ${sourceValues.join("; ")}`, { indent: 12 });
+            });
+          }
         }
       }
       const trendRecommendations: Array<{ title: string; message: string }> = [];

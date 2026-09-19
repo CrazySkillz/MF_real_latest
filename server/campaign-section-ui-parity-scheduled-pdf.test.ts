@@ -204,6 +204,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfTextCalls).toContain("- Engaged Sessions: 809");
     expect(pdfTextCalls).toContain("- Conversions per 100 sessions: 12.8");
     expect(pdfTextCalls).not.toContain("Paid Acquisition Funnel");
+    expect(pdfTextCalls).not.toContain("Source Contribution");
     expect(pdfTextCalls).toContain("Executive Recommendations");
     expect(pdfTextCalls.some((text) => text.includes("Selected-Window Comparison") && text.includes("Jul 28, 2026"))).toBe(true);
     expect(pdfTextCalls.some((text) => text.includes("Campaign-to-Date ROAS") && text.includes("26.95x"))).toBe(true);
@@ -219,11 +220,20 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     const ga4Source = {
       id: "ga4", label: "Google Analytics", category: "web_analytics", connected: true,
       includedMetrics: ["users", "sessions", "conversions", "revenue", "engagementRate"],
+      excludedMetrics: [
+        { metric: "impressions", reason: "GA4 is not an ad-impression source" },
+        { metric: "clicks", reason: "GA4 is not an ad-click source" },
+        { metric: "spend", reason: "Spend is not a GA4 metric" },
+      ],
       dailyRows: [{ date: "2026-08-27", metrics: { users: 80, sessions: 100, conversions: 10, revenue: 600, engagementRate: 0.8 } }],
     };
     const paidSource = {
       id: "linkedin", label: "LinkedIn Ads", category: "paid_media", connected: true,
       includedMetrics: ["impressions", "clicks", "spend", "conversions"],
+      excludedMetrics: [
+        { metric: "sessions", reason: "Sessions are web analytics metrics" },
+        { metric: "users", reason: "Users are web analytics metrics" },
+      ],
       dailyRows: [{ date: "2026-08-27", metrics: { impressions: 1000, clicks: 100, spend: 300, conversions: 30 } }],
     };
     aggregateCampaignMetricsMock.mockResolvedValueOnce({
@@ -238,7 +248,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
           sources: [ga4Source, paidSource],
         },
         trendAnalysis: {
-          campaignId: "campaign-1", dateRange: "90days", startDate: "2026-07-29", endDate: "2026-08-27",
+          campaignId: "campaign-1", dateRange: "90days", startDate: "2026-07-29", endDate: "2026-08-28",
           dailyTotals: [{ date: "2026-08-27", metrics: { users: 80, sessions: 100, conversions: 40, revenue: 600, engagementRate: 0.8, impressions: 1000, clicks: 100, spend: 300 } }],
           sources: [ga4Source, paidSource],
         },
@@ -266,6 +276,12 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfTextCalls).toContain("- Conversions: 30");
     expect(pdfTextCalls).toContain("- CTR: 10.0%");
     expect(pdfTextCalls).toContain("- Paid CVR: 30.0%");
+    expect(pdfTextCalls).toContain("Source Contribution");
+    expect(pdfTextCalls).toContain("- Google Analytics: Spend Unavailable; Traffic 100 sessions; Conversions 10; Revenue $600.00; ROAS Unavailable; CPA Unavailable; CTR Unavailable; CPC Unavailable; Coverage notes: impressions: GA4 is not an ad-impression source; clicks: GA4 is not an ad-click source; spend: Spend is not a GA4 metric");
+    expect(pdfTextCalls).toContain("- LinkedIn Ads: Spend $300.00; Traffic 100 clicks; Conversions 30; Revenue Unavailable; ROAS Unavailable; CPA $10.00; CTR 10.0%; CPC $3.00; Coverage notes: sessions: Sessions are web analytics metrics; users: Users are web analytics metrics");
+    expect(pdfTextCalls).toContain("Contribution Over Time");
+    expect(pdfTextCalls).toContain("- Selected metric: Spend");
+    expect(pdfTextCalls).toContain("- 2026-08-27: Google Analytics $0.00; LinkedIn Ads $300.00");
     expect(getCampaignMetricTotalsMock).not.toHaveBeenCalled();
   });
 

@@ -530,7 +530,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduler).toContain("date.setUTCDate(date.getUTCDate() - (trendReportDays - 1));");
     expect(scheduler).toContain("date.setUTCDate(date.getUTCDate() - trendReportDays);");
     expect(scheduler).toContain("resolveGA4ImportToDateWindow((cumulativeGA4Connection as any)?.importStartDate");
-    expect(scheduler).toContain('cumulativeGA4Window?.endDate || trendAnalysis?.endDate');
+    expect(scheduler).toContain('cumulativeGA4Window?.endDate || windowEnd || trendAnalysis?.endDate');
     expect(scheduler).toContain("const trendCurrentMetric = (key: string): number | null =>");
     expect(scheduler).toContain("const trendPreviousMetric = (key: string): number | null =>");
   });

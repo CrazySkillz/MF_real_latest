@@ -74,7 +74,7 @@ Revenue source families:
 | HubSpot, including Pipeline Proxy | `COMPLETE` | `CERTIFIED` | Production-ready, clean-certified, and no-overclaiming for only the exact runtime, active sources, exercised configurations, and exclusions in the controlling HubSpot certificate. |
 | Shopify | `COMPLETE` | `CERTIFIED` | Clean-certified for the exact documented GA4 Overview, USD, OAuth `read_orders`, recent-order-window scope at deployed application commit `ea516f3a`; evidence commit `bc46d0a4`; OAuth renewal and timer-fired scheduled refresh are proven; required steps remaining: 0. |
 | Salesforce, including Pipeline Proxy | `COMPLETE` | `CERTIFIED` | Clean-certified for the exact documented GA4 source, configuration, and exercised lifecycle at deployed application commit `d4f1ec0e`; evidence commit `6fa4bff2`; required steps remaining: 0. |
-| Google Sheets | `COMPLETE` | `CERTIFIED` | Clean-certified and production-ready for the documented deployed single-runtime V1 scope in `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md`; required V1 steps remaining: 0. |
+| Google Sheets | `COMPLETE` | `CERTIFIED` | Clean-certified and production-ready for the documented deployed single-runtime V1 scope in `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md`; documentation commit `f4a648a8`; certified deployed runtime `f8061d135a85fbe2c4c11433fffb3f80dedceae8`; required V1 steps remaining: 0. |
 | Upload CSV | `COMPLETE` | `CERTIFIED` | Clean-certified for the documented GA4 CSV Revenue scope on deployed application commit `b2fd97a9`; evidence commit `4476e807`; manual source-refresh scheduler behavior is inapplicable; required steps remaining: 0. |
 
 Spend source families:
@@ -144,26 +144,60 @@ After all six sections pass, create one GA4 roll-up certificate from those six
 current certificates. There is no separate up-front status-reconciliation task;
 the fresh section certificates supersede stale summaries as the program advances.
 
-### Phase 2 - campaign-level dependencies
+### Phase 2 - Campaign DeepDive
 
-Freshly certify campaign-level KPIs and Benchmarks after the GA4 section passes.
-This must prove the current connected-platform inputs, CRUD, refresh/recompute,
-alerts, notifications, owner/client/campaign isolation, and downstream consumers.
+Standalone campaign-level KPI and Benchmark tabs are disabled in normal
+navigation and are not a certification phase in this program. This does not
+exclude GA4 KPI/Benchmark inputs still consumed by visible DeepDive content.
+The legacy `#kpis` and `#benchmarks` entry points remain an app-exit visibility
+check; do not call those tabs fully `EXCLUDED` while they remain reachable.
 
-### Phase 3 - Campaign DeepDive
+The fresh Performance Summary review is complete. Its current certificate is
+separate from the preserved historical certificate for runtime `12789c1e`.
 
-Certify in dependency order:
+| Order | Performance Summary review | Work state | Fresh certification status | Boundary |
+| ---: | --- | --- | --- | --- |
+| - | Combined Performance Summary | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY / NO-OVERCLAIMING` for the exact two-campaign, property `542352127`, USD, Europe/Amsterdam, data-through `2026-09-18` boundary at deployed runtime `ee6e11ebf8cb0a13dd182dde54af790a3757ef2f`; controlling certificate: `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md`; required steps remaining within that scope: 0. Timer-fired financial/GA4 evidence is carried only from immediate parent `2ee07fa6` because the certified diff changed no scheduler/provider/storage/configuration path and the exact runtime had both next timers armed. Unrelated campaign/provider failures, global scheduler health, future restatements/configurations, other DeepDive sections, Reports/delivery, and provider behavior after the evidence boundary remain excluded. |
+| 1 | Key Outcomes | `COMPLETE` | `CERTIFIED` | PASS for Users, Sessions, Conversions, Spend, Revenue, source labels, currency, completed-day boundary, and valid-zero/unavailable distinction within the exact certificate boundary. |
+| 2 | Campaign Health | `COMPLETE` | `CERTIFIED` | PASS for target-free setup and the recorded complete 8-KPI/2-Benchmark configured-target state; incomplete inputs fail closed. |
+| 3 | Top Priority Action | `COMPLETE` | `CERTIFIED` | PASS for target-free and configured-target states using verified source-derived current values rather than stale persisted values. |
+| 4 | Recent Movement | `COMPLETE` | `CERTIFIED` | PASS for yesterday, seven-day, and one-month exact-date comparisons with source/property/currency compatibility and fail-closed invalid states. |
+| 5 | Recommended Actions | `COMPLETE` | `CERTIFIED` | PASS for target-free and configured-target states, metric direction, eligibility, ordering, deduplication, and fail-closed unavailable inputs. |
 
-1. Performance Summary
-2. Budget & Financial Analysis
-3. Platform Comparison if it remains visible; otherwise hide it and mark it
+Google Sheets Revenue is incorporated only as a certified read-only Key Outcomes
+dependency. Its lifecycle authority remains
+`GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md` at documentation commit
+`f4a648a8` and deployed runtime `f8061d13`; the Performance Summary certificate
+does not recertify or broaden that source boundary.
+
+Then certify the remaining DeepDive sections in dependency order:
+
+1. Budget & Financial Analysis
+2. Platform Comparison if it remains visible; otherwise hide it and mark it
    `EXCLUDED` before app certification
-4. Trend Analysis
-5. Executive Summary
-6. Custom Reports
+3. Trend Analysis
+4. Executive Summary
+5. Custom Reports
 
-Each DeepDive certificate must consume the newly certified GA4 and campaign-level
-inputs without independently changing or reinterpreting those upstream values.
+Review Budget & Financial Analysis in four fresh packets. This work queue is
+separate from its preserved certificate for exact runtime `19f05537`.
+
+| Order | Budget & Financial Analysis review | Work state | Fresh certification status | Boundary |
+| ---: | --- | --- | --- | --- |
+| - | Combined Budget & Financial Analysis | `QUEUED` | `UNVERIFIED` | Reconcile every visible section, shared financial inputs, ownership, refresh/failure states, and downstream outputs on the current runtime. |
+| 1 | Financial Position | `QUEUED` | `UNVERIFIED` | Spend, Revenue, Profit, ROAS, ROI, Conversion Efficiency, and conditional Paid Media Efficiency when compatible inputs exist. |
+| 2 | Budget & Pacing | `QUEUED` | `UNVERIFIED` | Saved campaign budget/date metadata, add/edit/delete, utilization, pacing, and unavailable states without changing source totals. |
+| 3 | Allocation & Sources | `QUEUED` | `UNVERIFIED` | Authoritative revenue/spend provenance, source identity, allocation, and reconciliation without double-counting. |
+| 4 | Executive Action | `QUEUED` | `UNVERIFIED` | Return, budget-pacing, and source-mix guidance against the same verified displayed values. |
+
+`Paid Media Efficiency` has its own conditional UI heading. It is included in
+the Financial Position packet and combined-page gate, not omitted or declared
+certified when no compatible paid-media source is configured.
+
+Each DeepDive certificate must consume certified GA4 and enabled connected-platform
+inputs without independently changing or reinterpreting upstream values. An
+unverified upstream input keeps its dependent DeepDive claim unverified; it does
+not require reopening an unrelated certified section.
 
 ## Authority Order
 
@@ -235,7 +269,7 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 
 | Subsection | Durable status | Controlling authority | Exact boundary or open gate |
 | --- | --- | --- | --- |
-| Performance Summary | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_PRODUCTION_READY.md` | Exact runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`, recorded GA4-only configuration. |
+| Performance Summary | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md`; historical `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_PRODUCTION_READY.md` | Current clean certificate: exact deployed runtime `ee6e11ebf8cb0a13dd182dde54af790a3757ef2f`, two recorded campaigns, property `542352127`, USD, Europe/Amsterdam, data through `2026-09-18`; all five visible results and combined page passed with 0 required steps remaining inside that boundary. Parent timer evidence is accepted only through the documented unchanged-scheduler dependency check; global scheduler health and the certificate's other exclusions remain outside the claim. |
 | Budget & Financial Analysis | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md` | Exact GA4-first runtime `19f055372abe8aee789dd4205eba5decef5f39a5`. |
 | Platform Comparison | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_PLATFORM_COMPARISON_PRODUCTION_READY.md` | Current aggregate-backed implementation and Render-validated GA4-only scenario. |
 | Trend Analysis | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md` | Exact deployed GA4-only runtime `cd35bba1c4ff4bb0b045c3bc6c176f2847cd80eb`. |
@@ -264,7 +298,7 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 | Home and client lifecycle | `NO_CERTIFICATE` | `ARCHITECTURE_USER_JOURNEY.md`; targeted destructive audit | Certify create/select/delete, owner isolation, transactional cascade, and empty/error states. |
 | Campaign create/manage lifecycle | `NO_CERTIFICATE` | Architecture contract and platform-specific flow tests | Certify create/edit/delete, draft/finalization, source attachment, owner/client scope, and damaged-data boundary. |
 | Campaign Overview and Connected Platforms | `NO_CERTIFICATE` | Platform-specific trackers and Campaign DeepDive launchers | One whole-surface inventory covering source cards, statuses, navigation, refresh, and unavailable states. |
-| Campaign-level KPIs and Benchmarks | `RECONCILE` | `CAMPAIGN_LEVEL_KPI_BENCHMARK_PRODUCTION_READY.md` records completed tasks and validation | Add one explicit current status/runtime boundary; do not repeat completed implementation work. |
+| Campaign-level KPIs and Benchmarks | `RECONCILE` | `CAMPAIGN_LEVEL_KPI_BENCHMARK_PRODUCTION_READY.md` preserves historical evidence; standalone tabs are absent from normal navigation | Outside the fresh certification queue. Legacy `#kpis`/`#benchmarks` still render content, so verify release visibility before marking `EXCLUDED`; audit any visible GA4 KPI/Benchmark consumers within their own sections. |
 | Notifications page and bell | `NO_CERTIFICATE` | Targeted visibility audit and alert/notification regression evidence | One whole-surface certificate covering list, filters, links, dismiss/recreate, ownership, email status, and source changes. |
 | Global Dashboard | `UNVERIFIED` | Architecture says the Dashboard still needs refinement | Complete value inventory, scope, formulas, lifecycle, and downstream trace. |
 | Global Reports route/library | `UNVERIFIED` | GA4 Reports and Campaign DeepDive Custom Report have separate records | Certify the visible route as a composition of only its supported report families. |
@@ -340,14 +374,18 @@ consumers. Do not revoke unrelated sections.
 
 ## Efficient Completion Order
 
-1. **Freshly certify GA4:** Overview, KPIs, Benchmarks, Ad Comparison, Insights,
-   and Reports, one section and one certificate at a time.
-2. **Create the GA4 roll-up:** only after all six new section certificates pass.
-3. **Freshly certify campaign-level KPIs and Benchmarks:** use the certified GA4
-   values and prove lifecycle, alerts, ownership, and downstream propagation.
-4. **Freshly certify Campaign DeepDive:** Performance Summary, Budget & Financial
-   Analysis, visible Platform Comparison, Trend Analysis, Executive Summary, and
-   Custom Reports.
+1. **Next, freshly review Campaign DeepDive Budget & Financial Analysis:**
+   Financial Position, Budget & Pacing, Allocation & Sources, Executive Action,
+   then the combined visible page gate.
+2. **Continue Campaign DeepDive:** visible Platform
+   Comparison, Trend Analysis, Executive Summary, and Custom Reports. Preserve
+   historical bounded certificates; do not promote unverified input paths.
+3. **Complete pending GA4 work and its roll-up:** finish the remaining Overview
+   and Reports gates independently; create the GA4 roll-up only after all six
+   section certificates pass. Keep the existing certified rows unchanged.
+4. **Resolve excluded-feature visibility:** standalone campaign-level KPI and
+   Benchmark tabs require no fresh certificate, but legacy entry points must be
+   hidden/disabled before recording them as `EXCLUDED` for app certification.
 5. **Certify remaining enabled app surfaces and sources:** work only on ledger
    rows that are not already accepted into the new program; hide and mark
    unsupported features `EXCLUDED` rather than certifying unfinished behavior.
@@ -402,6 +440,7 @@ The following records are preserved and indexed by this ledger:
 - `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md`
 - `CAMPAIGN_LEVEL_KPI_BENCHMARK_PRODUCTION_READY.md`
 - `CAMPAIGN_DEEPDIVE_PRODUCTION_READY_STATUS.md`
+- `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md`
 - `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_PRODUCTION_READY.md`
 - `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md`
 - `CAMPAIGN_DEEPDIVE_PLATFORM_COMPARISON_PRODUCTION_READY.md`

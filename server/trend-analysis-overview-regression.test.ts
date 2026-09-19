@@ -87,6 +87,30 @@ describe("Trend Analysis Overview regression guard", () => {
     })).toBe("aggregate");
   });
 
+  it("keeps loading, empty, unavailable, failed, and stale Trend states distinct", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
+    const overviewStart = page.indexOf('<TabsContent value="overview"');
+    const overviewEnd = page.indexOf('<TabsContent value="efficiency"', overviewStart);
+    const overview = page.slice(overviewStart, overviewEnd);
+
+    expect(page).toContain("error: trendGA4ConnectionsError");
+    expect(page).toContain("error: trendGA4DailyError");
+    expect(page).toContain("error: outcomeTotalsError");
+    expect(page).toContain("error: trendAnalysisError");
+    expect(page).toContain('if (!resp.ok || !data) throw new Error(data?.error || "Failed to fetch Trend Analysis");');
+    expect(page).toContain("const trendInitialLoadFailed = Boolean(");
+    expect(page).toContain("const trendRetainedRefreshFailed = Boolean(");
+    expect(page).toContain("ga4Daily?.refreshIsStale === true");
+    expect(overview).toContain("Trend data may be stale");
+    expect(overview).toContain("Some Trend data is unavailable");
+    expect(overview).toContain("This is not being treated as an empty campaign");
+    expect(overview).toContain('trendConsumerMode === "unavailable"');
+    expect(overview).toContain("Connected-source scope or the current reporting-window contract could not be verified");
+    expect(overview).toContain("No connected source trend data available");
+    expect(overview.indexOf("trendInitialLoadFailed && !overviewHasData"))
+      .toBeLessThan(overview.indexOf("No connected source trend data available"));
+  });
+
   it("uses cumulative current values and exact-date history only for the compatible GA4 consumer", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
     const overviewStart = page.indexOf("const overviewTrendData = useMemo<any>(() => {");

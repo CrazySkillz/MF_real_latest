@@ -138,7 +138,7 @@ export default function TrendAnalysis() {
     },
   });
 
-  const { data: trendGA4ConnectionsResponse, isFetched: trendGA4ConnectionsFetched } = useQuery<any>({
+  const { data: trendGA4ConnectionsResponse, isFetched: trendGA4ConnectionsFetched, error: trendGA4ConnectionsError } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-connections", "performance-summary-read-only"],
     enabled: !!campaignId,
     queryFn: async () => {
@@ -155,7 +155,7 @@ export default function TrendAnalysis() {
     (trendGA4Connections.find((connection: any) => connection?.isPrimary) || trendGA4Connections[0])?.propertyId || "",
   );
 
-  const { data: ga4Daily, isFetched: trendGA4DailyFetched } = useQuery<any>({
+  const { data: ga4Daily, isFetched: trendGA4DailyFetched, error: trendGA4DailyError } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-daily", TREND_GA4_DAILY_DAYS, trendGA4PropertyId, "trend-read-only"],
     enabled: !!campaignId && !!trendGA4PropertyId,
     queryFn: async () => {
@@ -173,7 +173,7 @@ export default function TrendAnalysis() {
     refetchOnWindowFocus: true,
   });
 
-  const { data: outcomeTotals, isFetched: outcomeTotalsFetched } = useQuery<any>({
+  const { data: outcomeTotals, isFetched: outcomeTotalsFetched, error: outcomeTotalsError } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", "live"],
     enabled: !!campaignId,
     queryFn: async () => {
@@ -193,7 +193,7 @@ export default function TrendAnalysis() {
     perfDays,
   );
   const trendFinancialComparisonUrl = `/api/campaigns/${campaignId}/snapshots/comparison?type=last_week&snapshotType=financial_daily&comparisonDate=${trendComparisonDate}`;
-  const { data: trendFinancialComparison, isFetched: trendFinancialComparisonFetched } = useQuery<any>({
+  const { data: trendFinancialComparison, isFetched: trendFinancialComparisonFetched, error: trendFinancialComparisonError } = useQuery<any>({
     queryKey: [trendFinancialComparisonUrl, "trend-exact-financial"],
     enabled: !!campaignId && !!trendComparisonDate,
     queryFn: async () => {
@@ -267,6 +267,7 @@ export default function TrendAnalysis() {
     isLoading: trendAnalysisLoading,
     isPlaceholderData: isTrendAnalysisRefreshing,
     isFetched: trendAnalysisFetched,
+    error: trendAnalysisError,
   } = useQuery({
     queryKey: [`/api/campaigns/${campaignId}/trend-analysis`, trendDateRange, perfDays],
     enabled: !!campaignId,
@@ -274,8 +275,9 @@ export default function TrendAnalysis() {
       const resp = await fetch(`/api/campaigns/${campaignId}/trend-analysis?dateRange=${trendDateRange}&days=${perfDays * 2}`, {
         credentials: "include",
       });
-      if (!resp.ok) return null;
-      return resp.json().catch(() => null);
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok || !data) throw new Error(data?.error || "Failed to fetch Trend Analysis");
+      return data;
     },
     staleTime: 0,
     refetchInterval: TREND_REFRESH_MS,
@@ -1293,6 +1295,21 @@ export default function TrendAnalysis() {
 
   const overviewHasData = Boolean(overviewTrendData
     && (overviewTrendData.series.length > 0 || (usesCumulativeGA4Consumer && authoritativeTrendCurrent)));
+  const trendInitialLoadFailed = Boolean(
+    (outcomeTotalsError && !outcomeTotals)
+    || (trendAnalysisError && !trendAnalysisResponse)
+    || (usesCumulativeGA4Consumer && trendGA4ConnectionsError && !trendGA4ConnectionsResponse)
+    || (usesCumulativeGA4Consumer && trendGA4DailyError && !ga4Daily),
+  );
+  const trendRetainedRefreshFailed = Boolean(
+    (outcomeTotalsError && outcomeTotals)
+    || (trendAnalysisError && trendAnalysisResponse)
+    || (trendFinancialComparisonError && trendFinancialComparison)
+    || (usesCumulativeGA4Consumer && trendGA4ConnectionsError && trendGA4ConnectionsResponse)
+    || (usesCumulativeGA4Consumer && trendGA4DailyError && ga4Daily),
+  );
+  const trendDataStale = trendRetainedRefreshFailed || (usesCumulativeGA4Consumer && ga4Daily?.refreshIsStale === true);
+  const trendPartialLoadFailure = trendInitialLoadFailed && overviewHasData;
   const cumulativeConsumerLoading = usesCumulativeGA4Consumer && (
     !trendGA4ConnectionsFetched
     || (!!trendGA4PropertyId && !trendGA4DailyFetched)
@@ -1381,6 +1398,21 @@ export default function TrendAnalysis() {
 
             {/* ═══════════ TAB 1: EXECUTIVE OVERVIEW ═══════════ */}
             <TabsContent value="overview" className={`space-y-6 fade-in chart-transition ${isTrendAnalysisRefreshing ? 'chart-refreshing' : ''}`}>
+              {(trendDataStale || trendPartialLoadFailure) && (
+                <Card className="border-amber-300 bg-amber-50 dark:bg-amber-900/20">
+                  <CardContent className="flex items-start gap-3 p-4">
+                    <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                    <div>
+                      <p className="font-medium text-foreground">{trendDataStale ? "Trend data may be stale" : "Some Trend data is unavailable"}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {trendDataStale
+                          ? "Showing the latest available Trend values. Latest completed-day coverage or a background refresh could not be verified."
+                          : "Available values remain shown; failed inputs and dependent sections are withheld."}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
               {overviewLoading ? (
                 <Card>
                   <CardContent className="p-8">
@@ -1391,6 +1423,26 @@ export default function TrendAnalysis() {
                       </div>
                       <div className="h-72 bg-muted rounded" />
                     </div>
+                  </CardContent>
+                </Card>
+              ) : trendInitialLoadFailed && !overviewHasData ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <AlertTriangle className="w-16 h-16 mx-auto text-destructive/70 mb-4" />
+                    <h3 className="text-lg font-semibold text-foreground mb-2">Trend Analysis unavailable</h3>
+                    <p className="text-sm text-muted-foreground/70">
+                      Current source data could not be loaded. This is not being treated as an empty campaign; reload or try again shortly.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : trendConsumerMode === "unavailable" ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <AlertTriangle className="w-16 h-16 mx-auto text-muted-foreground/60 mb-4" />
+                    <h3 className="text-lg font-semibold text-foreground mb-2">Trend Analysis unavailable</h3>
+                    <p className="text-sm text-muted-foreground/70">
+                      Connected-source scope or the current reporting-window contract could not be verified, so Trend values are withheld.
+                    </p>
                   </CardContent>
                 </Card>
               ) : !overviewHasData ? (

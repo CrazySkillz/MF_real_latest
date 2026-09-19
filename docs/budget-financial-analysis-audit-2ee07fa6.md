@@ -95,4 +95,8 @@ The next approved fix keeps last-good aggregate values visible after a failed ba
 
 These are **local branch fixes only**. The browser still uses the viewer's local date rather than the campaign reporting-zone date for today, and its exhaustion-date projection still advances by 24-hour blocks; those pacing boundaries remain open. F1, F2, F4, F5 and F7 remain open. No application change from this branch has been deployed, so the deployed F3 and F6 defects and every certification decision above remain in force.
 
-No shared contract, existing certificate, master ledger, Render setting, deployment, merge or push was changed. The branch was created from deployed revision 2ee07fa6. Before calling a future code revision production-ready, exercise all relevant zero/date/failure/mixed-source/lifecycle regressions, deploy **that exact revision**, then verify its browser, API, source and report behavior at the deployed revision. The pending Performance Summary scheduler check remains independent and untouched.
+## Updated-main integration, 2026-09-19
+
+The two reviewed Budget fixes were copied without patch changes onto audit/budget-financial-current-main, based on updated main revision 586a5ffd. That main revision contains the completed Performance Summary certification and master-ledger update. A range comparison confirmed both copied fixes are identical to the reviewed originals. Four focused files passed 38/38 tests, including the updated main financial-date and Performance Summary guards; TypeScript and the production build also passed.
+
+The Budget commits did not change Performance Summary code, shared contracts, existing certificates, the master ledger, Render settings, or the original checkout. Nothing from this branch has been pushed, merged, or deployed. Before calling the Budget changes production-ready, deploy **this branch's exact revision** and validate the changed browser paths at that deployed revision.

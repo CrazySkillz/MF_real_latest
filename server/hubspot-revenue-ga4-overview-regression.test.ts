@@ -1005,9 +1005,10 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(jobs).toContain('await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);');
 
     expect(campaignTotalsBlock).toContain("await Promise.allSettled([");
-    expect(campaignTotalsBlock).toContain('storage.getRevenueTotalForRange(campaignId, financialSourceStartDate, endDate, "ga4")');
-    expect(campaignTotalsBlock).toContain('storage.getRevenueBreakdownBySource(campaignId, financialSourceStartDate, endDate, "ga4")');
-    expect(campaignTotalsBlock).toContain('storage.getSpendTotalForRange(campaignId, spendSourceStartDate, endDate, "ga4")');
+    expect(campaignTotalsBlock).toContain("const financialSourceEndDate = todayUTC();");
+    expect(campaignTotalsBlock).toContain('storage.getRevenueTotalForRange(campaignId, financialSourceStartDate, financialSourceEndDate, "ga4")');
+    expect(campaignTotalsBlock).toContain('storage.getRevenueBreakdownBySource(campaignId, financialSourceStartDate, financialSourceEndDate, "ga4")');
+    expect(campaignTotalsBlock).toContain('storage.getSpendTotalForRange(campaignId, spendSourceStartDate, financialSourceEndDate, "ga4")');
     expect(campaignTotalsBlock).toContain("revenue: round2(ga4Revenue + parseNum((revenueTotals as any)?.totalRevenue)),");
     expect(campaignTotalsBlock).toContain("selectGA4FinancialTotalsSource([");
     expect(campaignTotalsBlock).toContain('revenueAvailable: revenueTotalsResult.status === "fulfilled" && (!primary?.propertyId || ga4RevenueAvailable),');

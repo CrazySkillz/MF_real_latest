@@ -107,9 +107,14 @@ Paid Media Efficiency rules were proven as follows:
 ### 4. Executive Action — PASS
 
 - Return guidance is derived from the displayed ROAS and ROI, with an unavailable alternative when return cannot be assessed.
+- `Positive financial return` means ROAS is at least `1.00x` and ROI is non-negative; `Return below break-even` appears when either value is below that boundary.
 - Pacing guidance is derived from the same displayed budget, spend, pacing dates, and pacing status.
+- Pacing is a linear V1 comparison: average daily spend below `85%` of target is behind, above `115%` is ahead, and the inclusive range between those thresholds is on track.
 - Source-mix guidance is derived from the same reconciled spend inputs and identifies the largest source without inventing allocation.
+- Source mix is shown only when positive source rows reconcile to authoritative Total Spend within `$0.01`; it describes concentration and does not automatically recommend moving budget.
 - Guidance fails closed when required inputs are unavailable and does not overstate missing data.
+
+This is deterministic V1 decision support, not causal attribution or an automatic budget optimizer. It assumes configured revenue sources are additive and non-overlapping and that tracked spend is complete. The displayed Profit is revenue minus tracked marketing spend, not accounting profit; the rules do not model incrementality, gross margin, COGS, agency costs, LTV, seasonality, planned non-linear flighting, or campaign-specific return targets.
 
 ## Combined-page result — PASS
 
@@ -139,6 +144,7 @@ The dependency-impact review found no shared schema or public response-shape cha
 - Live email transport/delivery and a newly generated production PDF artifact were not exercised; they are not part of this page certificate.
 - Live Instagram OAuth/provider accuracy was not asserted by the temporary test-mode fixture.
 - No complete GA4 or Performance Summary re-audit was performed; unchanged certified upstream evidence was reused after the dependency-impact check.
-- No readiness ledger was updated; the certificate is recorded separately from the certified application revision.
+- Executive Action is certified as bounded V1 decision support only. Its arithmetic and fail-closed rules are covered; causal, accounting-profit, source-deduplication, and automatic-reallocation claims are excluded.
+- The app-wide readiness ledger records this bounded certificate separately from the certified application revision.
 
 No remaining gate blocks this bounded page certification. Any later code, source-contract, provider, currency, ownership, or deployment change requires impact review and, where affected, recertification.

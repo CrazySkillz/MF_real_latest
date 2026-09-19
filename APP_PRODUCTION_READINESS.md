@@ -179,16 +179,18 @@ Then certify the remaining DeepDive sections in dependency order:
 4. Executive Summary
 5. Custom Reports
 
-Review Budget & Financial Analysis in four fresh packets. This work queue is
-separate from its preserved certificate for exact runtime `19f05537`.
+Budget & Financial Analysis completed its fresh four-packet and combined-page
+review at deployed application runtime `b36047bbce419df9d606239c340398e69a409211`.
+The earlier certificate for runtime `19f05537` remains preserved as historical
+evidence and is not the controlling current-program result.
 
 | Order | Budget & Financial Analysis review | Work state | Fresh certification status | Boundary |
 | ---: | --- | --- | --- | --- |
-| - | Combined Budget & Financial Analysis | `QUEUED` | `UNVERIFIED` | Reconcile every visible section, shared financial inputs, ownership, refresh/failure states, and downstream outputs on the current runtime. |
-| 1 | Financial Position | `QUEUED` | `UNVERIFIED` | Spend, Revenue, Profit, ROAS, ROI, Conversion Efficiency, and conditional Paid Media Efficiency when compatible inputs exist. |
-| 2 | Budget & Pacing | `QUEUED` | `UNVERIFIED` | Saved campaign budget/date metadata, add/edit/delete, utilization, pacing, and unavailable states without changing source totals. |
-| 3 | Allocation & Sources | `QUEUED` | `UNVERIFIED` | Authoritative revenue/spend provenance, source identity, allocation, and reconciliation without double-counting. |
-| 4 | Executive Action | `QUEUED` | `UNVERIFIED` | Return, budget-pacing, and source-mix guidance against the same verified displayed values. |
+| - | Combined Budget & Financial Analysis | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY / NO-OVERCLAIMING` for the exact existing-campaign and isolated-fixture boundary at deployed runtime `b36047bbce419df9d606239c340398e69a409211`; controlling certificate: `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_CERTIFICATE_2026-09-19.md`; required steps remaining within that boundary: 0. Live paid-provider OAuth, live email delivery, a newly generated production PDF, other configurations, and the certificate's stated V1 decision-support limits remain excluded. |
+| 1 | Financial Position | `COMPLETE` | `CERTIFIED` | PASS for Spend, Revenue, Profit, ROAS, ROI, CPA, Conversion Efficiency, valid-zero/unavailable/stale states, and conditional Paid Media Efficiency. The section was proven hidden without compatible paid inputs and visible as CTR-only with exact compatible Instagram fixture inputs; live Instagram provider accuracy remains excluded. |
+| 2 | Budget & Pacing | `COMPLETE` | `CERTIFIED` | PASS for deployed UI add, edit, delete, final render, timezone-safe inclusive calendar math, linear pacing thresholds, and unavailable states without changing source totals. The V1 pacing plan is uniform daily spend: below `85%` is behind, above `115%` is ahead, otherwise on track. |
+| 3 | Allocation & Sources | `COMPLETE` | `CERTIFIED` | PASS for authoritative revenue/spend provenance and exact displayed-total reconciliation in the certified configuration. The implementation validates arithmetic and currency but assumes configured revenue sources are additive and non-overlapping; cross-source business-transaction deduplication is not claimed. |
+| 4 | Executive Action | `COMPLETE` | `CERTIFIED` | PASS as deterministic V1 decision support: break-even return classification, linear budget pacing, and reconciled largest-source concentration from the same displayed values. It is not causal attribution, accounting-profit analysis, or an automatic reallocation recommendation; incrementality, margins/COGS, LTV, seasonality, non-linear flighting, source-overlap detection, and campaign-specific return targets are excluded. |
 
 `Paid Media Efficiency` has its own conditional UI heading. It is included in
 the Financial Position packet and combined-page gate, not omitted or declared
@@ -270,7 +272,7 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 | Subsection | Durable status | Controlling authority | Exact boundary or open gate |
 | --- | --- | --- | --- |
 | Performance Summary | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md`; historical `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_PRODUCTION_READY.md` | Current clean certificate: exact deployed runtime `ee6e11ebf8cb0a13dd182dde54af790a3757ef2f`, two recorded campaigns, property `542352127`, USD, Europe/Amsterdam, data through `2026-09-18`; all five visible results and combined page passed with 0 required steps remaining inside that boundary. Parent timer evidence is accepted only through the documented unchanged-scheduler dependency check; global scheduler health and the certificate's other exclusions remain outside the claim. |
-| Budget & Financial Analysis | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md` | Exact GA4-first runtime `19f055372abe8aee789dd4205eba5decef5f39a5`. |
+| Budget & Financial Analysis | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_CERTIFICATE_2026-09-19.md`; historical `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md` | Current bounded clean certificate: deployed application runtime `b36047bbce419df9d606239c340398e69a409211`; all four visible sections and the combined page passed, including budget/date add-edit-delete and both hidden/visible Paid Media Efficiency conditions. Executive Action is deterministic V1 decision support, not causal attribution, accounting-profit analysis, source-overlap detection, or automatic budget optimization. Required steps remaining inside the exact certificate boundary: 0. |
 | Platform Comparison | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_PLATFORM_COMPARISON_PRODUCTION_READY.md` | Current aggregate-backed implementation and Render-validated GA4-only scenario. |
 | Trend Analysis | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md` | Exact deployed GA4-only runtime `cd35bba1c4ff4bb0b045c3bc6c176f2847cd80eb`. |
 | Executive Summary | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md` | Exact GA4-first deployed runtime `ec1305b92e5eba439ce74685ea2d06ecd3fabd50`. |
@@ -374,10 +376,10 @@ consumers. Do not revoke unrelated sections.
 
 ## Efficient Completion Order
 
-1. **Next, freshly review Campaign DeepDive Budget & Financial Analysis:**
-   Financial Position, Budget & Pacing, Allocation & Sources, Executive Action,
-   then the combined visible page gate.
-2. **Continue Campaign DeepDive:** visible Platform
+1. **Budget & Financial Analysis is complete:** carry forward only within the
+   exact controlling certificate boundary and reopen affected paths when its
+   code, source contracts, configuration, or deployment changes.
+2. **Continue Campaign DeepDive:** freshly review visible Platform
    Comparison, Trend Analysis, Executive Summary, and Custom Reports. Preserve
    historical bounded certificates; do not promote unverified input paths.
 3. **Complete pending GA4 work and its roll-up:** finish the remaining Overview

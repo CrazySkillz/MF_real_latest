@@ -877,13 +877,10 @@ export default function TrendAnalysis() {
     const rows = Array.isArray(aggregate?.dailyTotals) ? aggregate.dailyTotals : [];
     if (rows.length === 0 && !authoritativeTrendCurrent) return null;
 
-    const sourcesFor = (metricName: string): string[] => {
-      const sources = aggregate?.metrics?.[metricName]?.sources;
-      return Array.isArray(sources) ? sources.map(String) : [];
-    };
-    const hasMetric = (metricName: string) => sourcesFor(metricName).length > 0;
-    const hasEngagementRate = Array.isArray(aggregate?.sources)
-      && aggregate.sources.some((source: any) => Array.isArray(source?.includedMetrics) && source.includedMetrics.includes("engagementRate"));
+    const webSources = Array.isArray(aggregate?.sources)
+      ? aggregate.sources.filter((source: any) => Array.isArray(source?.includedMetrics) && source.includedMetrics.includes("sessions"))
+      : [];
+    const hasEngagementRate = webSources.some((source: any) => source.includedMetrics.includes("engagementRate"));
     const toMetric = (value: any) => {
       if (value === null || typeof value === "undefined") return null;
       const parsed = Number(value);
@@ -913,14 +910,20 @@ export default function TrendAnalysis() {
     const currentPeriod = usesCumulativeGA4Consumer
       ? filterTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || ""))
       : filterAggregateTrendWindow(series, aggregate, perfDays);
-    const sum = (key: string) => currentPeriod.reduce((total: number, row: any) => total + (Number(row[key]) || 0), 0);
     const avg = (key: string) => {
       const values = currentPeriod.map((row: any) => row[key]).filter((value: any) => value !== null && typeof value !== "undefined" && Number.isFinite(Number(value)));
       return values.length > 0 ? values.reduce((total: number, value: any) => total + Number(value), 0) / values.length : null;
     };
-    const sessions = hasMetric("sessions") ? sum("sessions") : null;
-    const users = hasMetric("users") ? sum("users") : null;
-    const conversions = hasMetric("conversions") ? sum("conversions") : null;
+    const webMetricTotal = (metricName: string): number | null => {
+      const compatibleSources = webSources.filter((source: any) => source.includedMetrics.includes(metricName));
+      if (compatibleSources.length === 0) return null;
+      return compatibleSources.reduce((total: number, source: any) => total + filterAggregateTrendWindow(
+        Array.isArray(source?.dailyRows) ? source.dailyRows : [], aggregate, perfDays,
+      ).reduce((sourceTotal: number, row: any) => sourceTotal + (Number(row?.metrics?.[metricName]) || 0), 0), 0);
+    };
+    const sessions = webMetricTotal("sessions");
+    const users = webMetricTotal("users");
+    const conversions = webMetricTotal("conversions");
     const paidSources = Array.isArray(aggregate?.sources)
       ? aggregate.sources.filter((source: any) => source?.category === "paid_media")
       : [];
@@ -976,7 +979,7 @@ export default function TrendAnalysis() {
     return {
       series: currentPeriod,
       current,
-      webAvailable: usesCumulativeGA4Consumer ? Boolean(authoritativeTrendCurrent) : hasMetric("sessions") || hasMetric("users") || hasMetric("conversions") || hasEngagementRate,
+      webAvailable: usesCumulativeGA4Consumer ? Boolean(authoritativeTrendCurrent) : webSources.length > 0,
       paidAvailable: usesCumulativeGA4Consumer ? false : paidSources.some((source: any) => Array.isArray(source?.includedMetrics) && (source.includedMetrics.includes("impressions") || source.includedMetrics.includes("clicks"))),
       hasCompleteCurrentPeriod: usesCumulativeGA4Consumer ? Boolean(authoritativeTrendCurrent) : currentPeriod.length >= perfDays,
       currentPeriodDays: currentPeriod.length,

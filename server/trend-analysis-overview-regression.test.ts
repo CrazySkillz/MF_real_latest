@@ -280,6 +280,10 @@ describe("Trend Analysis Overview regression guard", () => {
     const funnelModel = page.slice(funnelModelStart, page.indexOf("const platformBreakdownData", funnelModelStart));
 
     expect(page).toContain("const conversionFunnelData = useMemo<any>(() => {");
+    expect(page).toContain('source.includedMetrics.includes("sessions")');
+    expect(page).toContain('const conversions = webMetricTotal("conversions");');
+    expect(page).toContain('webAvailable: usesCumulativeGA4Consumer ? Boolean(authoritativeTrendCurrent) : webSources.length > 0');
+    expect(funnelModel).not.toContain('const conversions = hasMetric("conversions")');
     expect(page).toContain('aggregate.sources.filter((source: any) => source?.category === "paid_media")');
     expect(page).toContain('const paidConversions = paidMetricTotal("conversions");');
     expect(page).toContain('paidCvr: clicks && clicks > 0 && paidConversions !== null ? (paidConversions / clicks) * 100 : null');

@@ -214,6 +214,54 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(getCampaignMetricTotalsMock).not.toHaveBeenCalled();
   });
 
+  it("keeps the multi-source Trend website summary scoped to session-capable source rows", async () => {
+    const ga4Source = {
+      id: "ga4", label: "Google Analytics", category: "web_analytics", connected: true,
+      includedMetrics: ["users", "sessions", "conversions", "revenue", "engagementRate"],
+      dailyRows: [{ date: "2026-08-27", metrics: { users: 80, sessions: 100, conversions: 10, revenue: 600, engagementRate: 0.8 } }],
+    };
+    const paidSource = {
+      id: "linkedin", label: "LinkedIn Ads", category: "paid_media", connected: true,
+      includedMetrics: ["impressions", "clicks", "spend", "conversions"],
+      dailyRows: [{ date: "2026-08-27", metrics: { impressions: 1000, clicks: 100, spend: 300, conversions: 30 } }],
+    };
+    aggregateCampaignMetricsMock.mockResolvedValueOnce({
+      detailedMetrics: {
+        performanceSummary: {
+          ...performanceSummary,
+          currentValueWindow: { ...performanceSummary.currentValueWindow, mode: "aggregate" },
+          totals: {
+            ...performanceSummary.totals,
+            users: metric(80), sessions: metric(100), conversions: metric(40, ["ga4", "linkedin"]), cvr: metric(40, ["ga4", "linkedin"]),
+          },
+          sources: [ga4Source, paidSource],
+        },
+        trendAnalysis: {
+          campaignId: "campaign-1", dateRange: "90days", startDate: "2026-07-29", endDate: "2026-08-27",
+          dailyTotals: [{ date: "2026-08-27", metrics: { users: 80, sessions: 100, conversions: 40, revenue: 600, engagementRate: 0.8, impressions: 1000, clicks: 100, spend: 300 } }],
+          sources: [ga4Source, paidSource],
+        },
+      },
+    });
+
+    await buildPdfAttachmentForReport({
+      report: report("trend-analysis", ["trend-analysis:overview"]),
+      windowStart: "2026-07-29",
+      windowEnd: "2026-08-27",
+      campaignName: "Campaign",
+    });
+
+    expect(pdfTextCalls).toContain("Website Engagement & Conversion Summary");
+    expect(pdfTextCalls).toContain("- Selected 30-day window from 2026-07-29 through 2026-08-27.");
+    expect(pdfTextCalls).toContain("- Sessions: 100");
+    expect(pdfTextCalls).toContain("- Users: 80");
+    expect(pdfTextCalls).toContain("- Conversions: 10");
+    expect(pdfTextCalls).toContain("- Engagement rate: 80.0%");
+    expect(pdfTextCalls).toContain("- Conversions per 100 sessions: 10.0");
+    expect(pdfTextCalls).not.toContain("- Conversions per 100 sessions: 40.0");
+    expect(getCampaignMetricTotalsMock).not.toHaveBeenCalled();
+  });
+
   it("normalizes retired Financial tabs into one UI-shaped page using aggregate values and persisted inputs", async () => {
     await buildPdfAttachmentForReport({
       report: report("financial-analysis", [

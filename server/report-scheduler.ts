@@ -1948,6 +1948,38 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         addText(`- Conversions: ${formatCampaignDeepDiveMetricValue("conversions", conversions)}`, { indent: 8 });
         addText(`- Engagement rate: ${formatCampaignDeepDiveMetricValue("engagementRate", engagementRate)}`, { indent: 8 });
         addText(`- Conversions per 100 sessions: ${conversionsPerHundredSessions.toFixed(1)}`, { indent: 8 });
+      } else {
+        const webSources = (Array.isArray(trendAnalysis?.sources) ? trendAnalysis.sources : [])
+          .filter((source: any) => Array.isArray(source?.includedMetrics) && source.includedMetrics.includes("sessions"));
+        const sourceWindowRows = (source: any) => (Array.isArray(source?.dailyRows) ? source.dailyRows : []).filter((row: any) => {
+          const date = String(row?.date || "").slice(0, 10);
+          return trendWindowStart && date >= trendWindowStart && date <= trendWindowEnd;
+        });
+        const webMetricTotal = (key: string): number | null => {
+          const compatibleSources = webSources.filter((source: any) => source.includedMetrics.includes(key));
+          if (compatibleSources.length === 0) return null;
+          return compatibleSources.reduce((total: number, source: any) => total + sourceWindowRows(source)
+            .reduce((sourceTotal: number, row: any) => sourceTotal + (Number(row?.metrics?.[key]) || 0), 0), 0);
+        };
+        const sessions = webMetricTotal("sessions");
+        const users = webMetricTotal("users");
+        const conversions = webMetricTotal("conversions");
+        const engagementRates = webSources
+          .filter((source: any) => source.includedMetrics.includes("engagementRate"))
+          .flatMap((source: any) => sourceWindowRows(source).map((row: any) => dailyRate(row, "engagementRate")))
+          .filter((value: number | null): value is number => value !== null);
+        const engagementRate = engagementRates.length > 0
+          ? engagementRates.reduce((total: number, value: number) => total + value, 0) / engagementRates.length
+          : null;
+        if (webSources.length > 0 && sessions !== null) {
+          addText("Website Engagement & Conversion Summary", { bold: true, indent: 4 });
+          addText(`- Selected ${trendReportDays}-day window from ${trendWindowStart || "Unavailable"} through ${trendWindowEnd || "Unavailable"}.`, { indent: 8 });
+          addText(`- Sessions: ${formatCampaignDeepDiveMetricValue("sessions", sessions)}`, { indent: 8 });
+          if (users !== null) addText(`- Users: ${formatCampaignDeepDiveMetricValue("users", users)}`, { indent: 8 });
+          if (conversions !== null) addText(`- Conversions: ${formatCampaignDeepDiveMetricValue("conversions", conversions)}`, { indent: 8 });
+          if (engagementRate !== null) addText(`- Engagement rate: ${formatCampaignDeepDiveMetricValue("engagementRate", engagementRate)}`, { indent: 8 });
+          if (conversions !== null && sessions > 0) addText(`- Conversions per 100 sessions: ${((conversions / sessions) * 100).toFixed(1)}`, { indent: 8 });
+        }
       }
       const trendRecommendations: Array<{ title: string; message: string }> = [];
       const hasExactTrendComparison = ["users", "sessions", "conversions", "cvr", "engagementRate"]

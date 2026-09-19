@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { insertCampaignSchema } from "@shared/schema";
-import { buildFinancialAllocationAction, buildFinancialBudgetAction, countInclusivePacingDays } from "../client/src/lib/financial-executive-actions";
+import { addPacingCalendarDays, buildFinancialAllocationAction, buildFinancialBudgetAction, countInclusivePacingDays, getPacingDateInTimeZone } from "../client/src/lib/financial-executive-actions";
 
 describe("campaign Budget & Financial Analysis regression guard", () => {
   it("counts budget-period calendar days across daylight-saving changes", () => {
@@ -21,6 +21,18 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
       if (originalTimeZone === undefined) delete process.env.TZ;
       else process.env.TZ = originalTimeZone;
     }
+  });
+
+  it("uses the campaign reporting date for pacing and calendar-day projections", () => {
+    const instant = new Date("2026-09-19T00:30:00.000Z");
+    const amsterdam = getPacingDateInTimeZone(instant, "Europe/Amsterdam");
+    const losAngeles = getPacingDateInTimeZone(instant, "America/Los_Angeles");
+    expect(amsterdam && [amsterdam.getFullYear(), amsterdam.getMonth() + 1, amsterdam.getDate()]).toEqual([2026, 9, 19]);
+    expect(losAngeles && [losAngeles.getFullYear(), losAngeles.getMonth() + 1, losAngeles.getDate()]).toEqual([2026, 9, 18]);
+    expect(getPacingDateInTimeZone(instant, "Invalid/Time_Zone")).toBeNull();
+
+    const projected = addPacingCalendarDays(new Date(2026, 2, 28), 2);
+    expect([projected.getFullYear(), projected.getMonth() + 1, projected.getDate()]).toEqual([2026, 3, 30]);
   });
 
   it("uses actual budget pacing instead of total-budget utilization alone", () => {
@@ -176,12 +188,15 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(migration).not.toMatch(/\b(start_date|end_date)\s*=/i);
     expect(page).toContain("pacingStartDate?: string | null;");
     expect(page).toContain("pacingEndDate?: string | null;");
+    expect(page).toContain("reportingTimeZone?: string;");
     expect(mutation).toContain("pacingStartDate: data.pacingStartDate || null");
     expect(mutation).toContain("pacingEndDate: data.pacingEndDate || null");
     expect(mutation).not.toContain("startDate:");
     expect(mutation).not.toContain("endDate:");
     expect(page).toContain("campaign.pacingStartDate");
     expect(page).toContain("campaign.pacingEndDate");
+    expect(page).toContain('getPacingDateInTimeZone(new Date(), campaignReportingTimeZone)');
+    expect(page).toContain('addPacingCalendarDays(todayPacingDate, Math.ceil(daysRemaining))');
     expect(page).not.toContain("setPacingStartDateInput(formatDateInputValue(campaign.startDate))");
     expect(page).not.toContain("setPacingEndDateInput(formatDateInputValue(campaign.endDate))");
     expect(page).toContain("Budget Period Start");
@@ -386,7 +401,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const hasCampaignEndDate = Boolean(campaignEndDate && !Number.isNaN(campaignEndDate.getTime()));");
     expect(page).toContain("const hasCampaignDateRange = Boolean(campaignStartDay && campaignEndDay && campaignEndDay.getTime() >= campaignStartDay.getTime());");
     expect(overview).toContain("const hasBudgetHealthInputs = hasCampaignBudget && overviewSpendMetric.available;");
-    expect(page).toContain("const campaignElapsedDays = campaignStartDay && campaignElapsedEndDay.getTime() >= campaignStartDay.getTime()");
+    expect(page).toContain("const campaignElapsedDays = campaignStartDay && campaignElapsedEndDay && campaignElapsedEndDay.getTime() >= campaignStartDay.getTime()");
     expect(page).toContain("const campaignTotalDays = hasCampaignDateRange");
     expect(overview).toContain("const hasPacingHealthInputs = hasBudgetHealthInputs && hasCampaignDateRange && campaignElapsedDays > 0;");
     expect(overview).toContain("const budgetScore = hasBudgetHealthInputs ?");

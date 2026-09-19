@@ -6,10 +6,32 @@ export type FinancialExecutiveAction = {
 
 export type FinancialPacingStatus = "unavailable" | "ahead" | "behind" | "on-track";
 
+export const getPacingDateInTimeZone = (now: Date, reportingTimeZone: string): Date | null => {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: reportingTimeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(now);
+    const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    const year = Number(byType.year);
+    const month = Number(byType.month);
+    const day = Number(byType.day);
+    const date = new Date(year, month - 1, day);
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
+  } catch {
+    return null;
+  }
+};
+
 export const countInclusivePacingDays = (start: Date, end: Date): number => {
   const dayNumber = (date: Date) => Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000;
   return Math.max(0, dayNumber(end) - dayNumber(start) + 1);
 };
+
+export const addPacingCalendarDays = (date: Date, days: number): Date =>
+  new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
 
 export function buildFinancialBudgetAction(input: {
   hasCampaignBudget: boolean;

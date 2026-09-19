@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest } from "@/lib/queryClient";
-import { buildFinancialAllocationAction, buildFinancialBudgetAction, countInclusivePacingDays } from "@/lib/financial-executive-actions";
+import { addPacingCalendarDays, buildFinancialAllocationAction, buildFinancialBudgetAction, countInclusivePacingDays, getPacingDateInTimeZone } from "@/lib/financial-executive-actions";
 import { formatPct } from "@shared/metric-math";
 
 interface Campaign {
@@ -22,6 +22,7 @@ interface Campaign {
   status: string;
   pacingStartDate?: string | null;
   pacingEndDate?: string | null;
+  reportingTimeZone?: string;
 }
 
 type FinancialSourceBreakdown = {
@@ -411,13 +412,14 @@ export default function FinancialAnalysis() {
   const hasCampaignStartDate = Boolean(campaignStartDate && !Number.isNaN(campaignStartDate.getTime()));
   const hasCampaignEndDate = Boolean(campaignEndDate && !Number.isNaN(campaignEndDate.getTime()));
   const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const todayPacingDate = startOfDay(new Date());
+  const campaignReportingTimeZone = String(campaign.reportingTimeZone || currentValueWindow?.reportingTimeZone || "UTC").trim() || "UTC";
+  const todayPacingDate = getPacingDateInTimeZone(new Date(), campaignReportingTimeZone);
   const campaignStartDay = hasCampaignStartDate ? startOfDay(campaignStartDate!) : null;
   const campaignEndDay = hasCampaignEndDate ? startOfDay(campaignEndDate!) : null;
   const hasCampaignDateRange = Boolean(campaignStartDay && campaignEndDay && campaignEndDay.getTime() >= campaignStartDay.getTime());
   // Active budget periods pace through today; completed periods stop elapsed days at the pacing end date.
-  const campaignElapsedEndDay = campaignEndDay && todayPacingDate.getTime() > campaignEndDay.getTime() ? campaignEndDay : todayPacingDate;
-  const campaignElapsedDays = campaignStartDay && campaignElapsedEndDay.getTime() >= campaignStartDay.getTime()
+  const campaignElapsedEndDay = todayPacingDate && campaignEndDay && todayPacingDate.getTime() > campaignEndDay.getTime() ? campaignEndDay : todayPacingDate;
+  const campaignElapsedDays = campaignStartDay && campaignElapsedEndDay && campaignElapsedEndDay.getTime() >= campaignStartDay.getTime()
     ? countInclusivePacingDays(campaignStartDay, campaignElapsedEndDay)
     : 0;
   const campaignTotalDays = hasCampaignDateRange
@@ -979,10 +981,9 @@ export default function FinancialAnalysis() {
                     </CardHeader>
                     <CardContent>
                       {(() => {
-                        const today = new Date();
                         const daysRemaining = !isOverBudget && dailyBurnRate > 0 ? overviewRemainingBudget / dailyBurnRate : 0;
-                        const projectedEndDate = !isOverBudget && dailyBurnRate > 0
-                          ? new Date(today.getTime() + daysRemaining * 24 * 60 * 60 * 1000)
+                        const projectedEndDate = todayPacingDate && !isOverBudget && dailyBurnRate > 0
+                          ? addPacingCalendarDays(todayPacingDate, Math.ceil(daysRemaining))
                           : null;
                         const shouldShowPacingInputForm = isEditingPacingInputs || !hasCampaignBudget || !hasCampaignStartDate || !hasCampaignEndDate || !hasCampaignDateRange;
 
@@ -1111,7 +1112,7 @@ export default function FinancialAnalysis() {
                             {overviewSpendMetric.available && !isOverBudget && projectedEndDate && daysRemaining > 0 && (
                               <p className="border-t pt-3 text-xs text-muted-foreground">
                                 At current rate, budget will be exhausted in <strong>{Math.ceil(daysRemaining)} days</strong>
-                                {campaignEndDate && <span> ({projectedEndDate > campaignEndDate ? "after" : "before"} budget period end)</span>}
+                                {campaignEndDay && <span> ({projectedEndDate > campaignEndDay ? "after" : "before"} budget period end)</span>}
                               </p>
                             )}
                           </div>

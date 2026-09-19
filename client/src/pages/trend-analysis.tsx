@@ -58,6 +58,14 @@ const tooltipStyle = {
   borderRadius: '6px',
 };
 
+const filterAggregateTrendWindow = (rows: any[], aggregate: any, days: number, previous = false) => {
+  const endDate = String(aggregate?.endDate || "");
+  return filterTrendRowsToCalendarWindow(rows, previous ? resolveTrendComparisonDate(endDate, days) : endDate, days, String(aggregate?.startDate || ""));
+};
+
+const expandAggregateTrendWindow = (rows: any[], aggregate: any, days: number) =>
+  expandTrendRowsToCalendarWindow(rows, String(aggregate?.endDate || ""), days, String(aggregate?.startDate || ""));
+
 // ─── Anomaly Detection ──────────────────────────────────────────────
 interface Anomaly {
   date: string;
@@ -602,15 +610,19 @@ export default function TrendAnalysis() {
 
     const currentPeriod = usesCumulativeGA4Consumer
       ? filterTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || ""))
-      : series.slice(-perfDays);
-    const chartSeries = usesCumulativeGA4Consumer && currentPeriod.length > 0
-      ? expandTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || "")).map((row) => ({
+      : filterAggregateTrendWindow(series, aggregate, perfDays);
+    const chartSeries = currentPeriod.length > 0
+      ? (usesCumulativeGA4Consumer
+        ? expandTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || ""))
+        : expandAggregateTrendWindow(series, aggregate, perfDays)).map((row) => ({
         spend: null, revenue: null, conversions: null, impressions: null, clicks: null, users: null, sessions: null,
         ...row,
         label: format(new Date(`${row.date}T00:00:00`), 'MMM dd'),
       }))
       : currentPeriod;
-    const previousPeriod = series.slice(-perfDays * 2, -perfDays);
+    const previousPeriod = usesCumulativeGA4Consumer
+      ? series.slice(-perfDays * 2, -perfDays)
+      : filterAggregateTrendWindow(series, aggregate, perfDays, true);
     const sum = (items: any[], key: string) => items.reduce((total, row) => total + (Number(row[key]) || 0), 0);
     const avg = (items: any[], key: string) => {
       const values = items.map((row) => row[key]).filter((value) => value !== null && typeof value !== "undefined" && Number.isFinite(Number(value)));
@@ -743,15 +755,19 @@ export default function TrendAnalysis() {
 
     const currentPeriod = usesCumulativeGA4Consumer
       ? filterTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || ""))
-      : series.slice(-perfDays);
-    const efficiencyChartSeries = usesCumulativeGA4Consumer && currentPeriod.length > 0
-      ? expandTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || "")).map((row) => ({
+      : filterAggregateTrendWindow(series, aggregate, perfDays);
+    const efficiencyChartSeries = currentPeriod.length > 0
+      ? (usesCumulativeGA4Consumer
+        ? expandTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || ""))
+        : expandAggregateTrendWindow(series, aggregate, perfDays)).map((row) => ({
         roas: null, roi: null, cpa: null, cpc: null, cpm: null, ctr: null, cvr: null, engagementRate: null,
         ...row,
         label: format(new Date(`${row.date}T00:00:00`), 'MMM dd'),
       }))
       : currentPeriod;
-    const previousPeriod = series.slice(-perfDays * 2, -perfDays);
+    const previousPeriod = usesCumulativeGA4Consumer
+      ? series.slice(-perfDays * 2, -perfDays)
+      : filterAggregateTrendWindow(series, aggregate, perfDays, true);
     const sum = (items: any[], key: string) => items.reduce((total, row) => total + (Number(row[key]) || 0), 0);
     const avg = (items: any[], key: string) => {
       const values = items.map((row) => row[key]).filter((value) => value !== null && typeof value !== "undefined" && Number.isFinite(Number(value)));
@@ -862,7 +878,7 @@ export default function TrendAnalysis() {
     });
     const currentPeriod = usesCumulativeGA4Consumer
       ? filterTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || ""))
-      : series.slice(-perfDays);
+      : filterAggregateTrendWindow(series, aggregate, perfDays);
     const sum = (key: string) => currentPeriod.reduce((total: number, row: any) => total + (Number(row[key]) || 0), 0);
     const avg = (key: string) => {
       const values = currentPeriod.map((row: any) => row[key]).filter((value: any) => value !== null && typeof value !== "undefined" && Number.isFinite(Number(value)));
@@ -938,7 +954,7 @@ export default function TrendAnalysis() {
       const dailyRows = Array.isArray(source?.dailyRows) ? source.dailyRows : [];
       const currentRows = usesCumulativeGA4Consumer
         ? filterTrendRowsToCalendarWindow(dailyRows, String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || ""))
-        : dailyRows.slice(-perfDays);
+        : filterAggregateTrendWindow(dailyRows, aggregate, perfDays);
       const hasMetric = (metricName: string) => includedMetrics.includes(metricName);
       const sum = (metricName: string) => hasMetric(metricName)
         ? currentRows.reduce((total: number, row: any) => total + (Number(row?.metrics?.[metricName]) || 0), 0)
@@ -1000,7 +1016,7 @@ export default function TrendAnalysis() {
       const sourceDailyRows = Array.isArray(source?.dailyRows) ? source.dailyRows : [];
       const dailyRows = usesCumulativeGA4Consumer
         ? filterTrendRowsToCalendarWindow(sourceDailyRows, String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || ""))
-        : sourceDailyRows.slice(-perfDays);
+        : filterAggregateTrendWindow(sourceDailyRows, aggregate, perfDays);
       for (const row of dailyRows) {
         const date = String(row?.date || "").slice(0, 10);
         if (!date) continue;
@@ -1012,9 +1028,16 @@ export default function TrendAnalysis() {
       }
     }
 
+    const sourceTrendRows = Array.from(trendRowsByDate.values())
+      .sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
+    const chartTrendRows = !usesCumulativeGA4Consumer && sourceTrendRows.length > 0
+      ? expandAggregateTrendWindow(sourceTrendRows, aggregate, perfDays)
+        .map((row) => ({ ...row, label: format(new Date(`${row.date}T00:00:00`), 'MMM dd') }))
+      : sourceTrendRows;
+
     return {
       sources: sourceRows,
-      trendRows: Array.from(trendRowsByDate.values()).sort((a: any, b: any) => String(a.date).localeCompare(String(b.date))),
+      trendRows: chartTrendRows,
       metricOptions,
       activeMetric,
       spendSources: sourceRows.filter((source: any) => source.spend !== null && source.spend > 0),

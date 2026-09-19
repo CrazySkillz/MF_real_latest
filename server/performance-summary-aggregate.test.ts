@@ -546,6 +546,32 @@ describe("Performance Summary aggregate contract", () => {
     expect(aggregate.totals.sessions.available).toBe(false);
   });
 
+  it("keeps source-backed zero web CVR available while missing conversion input stays unavailable", () => {
+    const zeroCvr = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-zero-web-cvr",
+      dateRange: "30days",
+      ga4: { connected: true, conversions: 0, sessions: 20, users: 10 },
+      webAnalytics: { connected: true, provider: "ga4", conversions: 0, sessions: 20, users: 10 },
+      spend: { unifiedSpend: 0, spendSource: "platform_spend_fallback" },
+      platforms: {},
+      revenue: { onsiteRevenue: 0, offsiteRevenue: 0, totalRevenue: 0 },
+      revenueSources: [],
+    });
+    const missingConversions = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-missing-web-conversions",
+      dateRange: "30days",
+      ga4: { connected: false },
+      webAnalytics: { connected: true, provider: "custom_integration", sessions: 20, users: 10 },
+      spend: { unifiedSpend: 0, spendSource: "platform_spend_fallback" },
+      platforms: { customIntegration: { connected: true, sessions: 20, users: 10 } },
+      revenue: { onsiteRevenue: 0, offsiteRevenue: 0, totalRevenue: 0 },
+      revenueSources: [],
+    });
+
+    expect(zeroCvr.totals.cvr).toMatchObject({ available: true, value: 0, sources: ["conversions", "sessions"] });
+    expect(missingConversions.totals.cvr.available).toBe(false);
+  });
+
   it("keeps valid zero and negative revenue available in ROAS and ROI when spend is positive", () => {
     const aggregate = buildPerformanceSummaryAggregate({
       campaignId: "campaign-zero-revenue",

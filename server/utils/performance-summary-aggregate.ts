@@ -363,6 +363,9 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
   const totalConversions = webSource
     ? parseNum(input.webAnalytics?.conversions)
     : webProviderConfigured ? 0 : sumPaidMetric("conversions");
+  const webCvrSource = webSource ? sourceBreakdown.find((source) => source.id === webSource) : null;
+  const webCvrAvailable = Boolean(webCvrSource?.includedMetrics.includes("sessions")
+    && webCvrSource.includedMetrics.includes("conversions"));
   const hasSeparateFinancialConversions = typeof input.financialConversions !== "undefined";
   const financialConversionSources = input.financialConversions?.available === true && Array.isArray(input.financialConversions.sources)
     ? input.financialConversions.sources.map(String).filter(Boolean)
@@ -388,12 +391,12 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
   const roas = hasRevenue && hasSpend && spendValue > 0 ? round2(revenueValue / spendValue) : null;
   const roi = hasRevenue && hasSpend && spendValue > 0 ? round2(((revenueValue - spendValue) / spendValue) * 100) : null;
   const ctr = totalImpressions > 0 && totalClicks > 0 ? round2((totalClicks / totalImpressions) * 100) : null;
-  const cvr = webSource && totalSessions > 0 && totalConversions > 0
+  const cvr = webSource && webCvrAvailable && totalSessions > 0
       ? (totalConversions / totalSessions) * 100
     : !webSource && totalClicks > 0 && totalConversions > 0
       ? (totalConversions / totalClicks) * 100
       : null;
-  const cvrSources = webSource && totalSessions > 0 && totalConversions > 0
+  const cvrSources = webSource && webCvrAvailable && totalSessions > 0
       ? ["conversions", "sessions"]
     : !webSource && totalClicks > 0 && totalConversions > 0
       ? ["conversions", "clicks"]

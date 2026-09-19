@@ -1894,7 +1894,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       };
       const dailyRate = (row: any, key: string): number | null => {
         const value = dailyMetric(row, key);
-        return value === null ? null : Math.abs(value) <= 1 ? value * 100 : value;
+        return value === null ? null : key === "engagementRate" && Math.abs(value) <= 1 ? value * 100 : value;
       };
       const comparisonDateLabel = /^\d{4}-\d{2}-\d{2}$/.test(trendComparisonDate)
         ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(`${trendComparisonDate}T00:00:00.000Z`))

@@ -242,11 +242,11 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(formatExactTrendCount(1183)).toBe("1,183");
     expect(formatExactTrendCount(1184)).toBe("1,184");
     expect(formatTrendComparison({ current: 1183, previous: 866, comparisonDate: "2026-07-23", kind: "count" }))
-      .toEqual({ value: "+317 (+36.6%)", context: "vs cumulative - Jul 23, 2026" });
+      .toEqual({ value: "+317 (+36.6%)", context: "Jul 23, 2026" });
     expect(formatTrendComparison({ current: 12.8486897718, previous: 12.7020785219, comparisonDate: "2026-07-23", kind: "rate" }))
-      .toEqual({ value: "+0.15 percentage points", context: "vs cumulative - Jul 23, 2026" });
+      .toEqual({ value: "+0.15 percentage points", context: "Jul 23, 2026" });
     expect(formatTrendComparison({ current: 68.3854606932, previous: 68.3602771363, comparisonDate: "2026-07-23", kind: "rate" }))
-      .toEqual({ value: "+0.03 percentage points", context: "vs cumulative - Jul 23, 2026" });
+      .toEqual({ value: "+0.03 percentage points", context: "Jul 23, 2026" });
     expect(formatTrendComparison({ current: 10, previous: 0, comparisonDate: "2026-07-23", kind: "count" })).toBeNull();
 
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
@@ -256,7 +256,7 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain('<div className="text-xs text-muted-foreground mt-1 leading-tight">');
     expect(page).toContain("<div>{cumulativeComparison.context}</div>");
     expect(page).toContain("{usesCumulativeGA4Consumer && comparisonDateLabel && (");
-    expect(page.match(/vs cumulative - \{comparisonDateLabel\}/g)).toHaveLength(2);
+    expect(page.match(/<div(?: className="text-muted-foreground")?>\{comparisonDateLabel\}<\/div>/g)).toHaveLength(2);
     const cumulativeRenderStart = page.indexOf("cumulativeComparison ? (");
     const cumulativeRenderEnd = page.indexOf(") : (", cumulativeRenderStart);
     expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).not.toContain("ArrowUpRight");
@@ -264,7 +264,7 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).not.toContain("const isFinancialCard");
     expect(page).toContain('hasAuthoritativeHeadlineWindow && comparisonDateLabel && typeof card.change !== "number"');
     expect(page).toContain("<div>Comparison unavailable</div>");
-    expect(page).toContain("<div>vs cumulative - {comparisonDateLabel}</div>");
+    expect(page).toContain("<div>{comparisonDateLabel}</div>");
     expect(page).not.toContain("Financial KPIs are campaign-to-date");
     expect(page).not.toContain("current campaign-to-date financial KPIs remain visible");
     expect(page).not.toContain("Traffic cards are cumulative from the initial import");

@@ -1511,7 +1511,7 @@ export default function TrendAnalysis() {
                                       {card.change >= 0 ? '+' : ''}{card.change.toFixed(1)}%
                                     </div>
                                     {usesCumulativeGA4Consumer && comparisonDateLabel && (
-                                      <div className="text-muted-foreground">vs cumulative - {comparisonDateLabel}</div>
+                                      <div className="text-muted-foreground">{comparisonDateLabel}</div>
                                     )}
                                   </div>
                                 )
@@ -1519,7 +1519,7 @@ export default function TrendAnalysis() {
                               {hasAuthoritativeHeadlineWindow && comparisonDateLabel && typeof card.change !== "number" && (
                                 <div className="text-xs text-muted-foreground mt-1 leading-tight">
                                   <div>Comparison unavailable</div>
-                                  <div>vs cumulative - {comparisonDateLabel}</div>
+                                  <div>{comparisonDateLabel}</div>
                                 </div>
                               )}
                               </div>

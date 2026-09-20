@@ -170,14 +170,13 @@ dependency. Its lifecycle authority remains
 `f4a648a8` and deployed runtime `f8061d13`; the Performance Summary certificate
 does not recertify or broaden that source boundary.
 
-Then certify the remaining DeepDive sections in dependency order:
+Remaining DeepDive certification order after the completed Budget and Trend
+reviews:
 
-1. Budget & Financial Analysis
-2. Platform Comparison if it remains visible; otherwise hide it and mark it
+1. Platform Comparison if it remains visible; otherwise hide it and mark it
    `EXCLUDED` before app certification
-3. Trend Analysis
-4. Executive Summary
-5. Custom Reports
+2. Executive Summary
+3. Custom Reports
 
 Budget & Financial Analysis completed its fresh four-packet and combined-page
 review at deployed application runtime `b36047bbce419df9d606239c340398e69a409211`.
@@ -195,6 +194,30 @@ evidence and is not the controlling current-program result.
 `Paid Media Efficiency` has its own conditional UI heading. It is included in
 the Financial Position packet and combined-page gate, not omitted or declared
 certified when no compatible paid-media source is configured.
+
+Trend Analysis completed its fresh six-packet and combined-page review for the
+exact GA4-first boundary at application runtime
+`7dc72dc8dc5ba302146128b62c45f3bf7d86f6eb`, deployed within documentation-only
+successor `595268463c79b111e77b181ad3003e58f912d208`. Documentation-alignment
+commit `08df7c98856c132c55b7cdec9511fedb1ececf81` is not a new application runtime.
+
+| Order | Trend Analysis review | Work state | Fresh certification status | Boundary |
+| ---: | --- | --- | --- | --- |
+| - | Combined Trend Analysis | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY / NO-OVERCLAIMING` for the exact audited Campaign2, one-GA4-source, USD, Europe/Amsterdam, data-through `2026-09-19` boundary at application runtime `7dc72dc8dc5ba302146128b62c45f3bf7d86f6eb`; controlling evidence: `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_CERTIFICATION_2026-09-20.md`; supporting contract: `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`; required implementation/certification steps remaining within that scope: 0. |
+| 1 | Campaign-to-Date Performance Summary | `COMPLETE` | `CERTIFIED` | PASS within the exact certified GA4-first scope for the observed Revenue, Spend, ROAS, ROI, Conversions, CPA, Sessions, Users, CVR, and Engagement Rate paths, guarded formulas, currency, windows, and valid-zero/unavailable distinction. Positive paid-media CPC, CPM, and CTR card paths are not certified. |
+| 2 | Campaign Performance Trend | `COMPLETE` | `CERTIFIED` | PASS within the exact certified GA4-first scope for all four selectors, actual daily rows, missing-date gaps, provider-verified zero, and the explicit 90-day insufficient-history state. |
+| 3 | Efficiency Trends | `COMPLETE` | `CERTIFIED` | PASS within the exact certified GA4-first conversion-quality and unavailable-daily-financial-history boundary; return, cost, and rate series remain independently capability-gated and do not fabricate unavailable performance. |
+| 4 | Website Engagement & Conversion Summary | `COMPLETE` | `CERTIFIED` | PASS within the exact certified GA4-first scope for Sessions, Engaged Sessions, Conversions, Engagement Rate, conversions per 100 sessions, and compatible cumulative numerator/denominator windows. |
+| 5 | Anomaly Detection | `COMPLETE` | `CERTIFIED` | PASS within the exact certified GA4-first conversion-history scope, including descriptive statistical flags, eligible observed-zero drops, no-anomaly/missing-data handling, and non-causal wording. This panel remains browser-only and is not claimed as PDF content. |
+| 6 | Executive Recommendations | `COMPLETE` | `CERTIFIED` | PASS within the exact certified GA4-first scope for evidence-gated adjacent-window and reconciled financial guidance, fail-closed incomplete context, ordering/cap, and non-causal/non-automatic-action limits. |
+
+`Paid Acquisition Funnel` and `Source Contribution` are conditional visible
+panels rather than separate requested packets. Their hidden single-GA4 behavior
+passed. Positive paid-media `Paid Acquisition Funnel`, positive multi-source
+`Source Contribution`, non-GA4 main sources, and future source mixes remain
+uncertified and require separate evidence. Global scheduler health, a new
+scheduled firing, provider delivery, inbox receipt, whole-application readiness,
+and global multi-source readiness are also outside this certificate.
 
 Each DeepDive certificate must consume certified GA4 and enabled connected-platform
 inputs without independently changing or reinterpreting upstream values. An
@@ -274,7 +297,7 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 | Performance Summary | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md`; historical `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_PRODUCTION_READY.md` | Current clean certificate: exact deployed runtime `ee6e11ebf8cb0a13dd182dde54af790a3757ef2f`, two recorded campaigns, property `542352127`, USD, Europe/Amsterdam, data through `2026-09-18`; all five visible results and combined page passed with 0 required steps remaining inside that boundary. Parent timer evidence is accepted only through the documented unchanged-scheduler dependency check; global scheduler health and the certificate's other exclusions remain outside the claim. |
 | Budget & Financial Analysis | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_CERTIFICATE_2026-09-19.md`; historical `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md` | Current bounded clean certificate: deployed application runtime `b36047bbce419df9d606239c340398e69a409211`; all four visible sections and the combined page passed, including budget/date add-edit-delete and both hidden/visible Paid Media Efficiency conditions. Executive Action is deterministic V1 decision support, not causal attribution, accounting-profit analysis, source-overlap detection, or automatic budget optimization. Required steps remaining inside the exact certificate boundary: 0. |
 | Platform Comparison | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_PLATFORM_COMPARISON_PRODUCTION_READY.md` | Current aggregate-backed implementation and Render-validated GA4-only scenario. |
-| Trend Analysis | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md` | Exact deployed GA4-only runtime `cd35bba1c4ff4bb0b045c3bc6c176f2847cd80eb`. |
+| Trend Analysis | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_CERTIFICATION_2026-09-20.md`; supporting `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md` | Current bounded clean certificate: application runtime `7dc72dc8dc5ba302146128b62c45f3bf7d86f6eb`, deployed within documentation-only successor `595268463c79b111e77b181ad3003e58f912d208`; documentation-alignment commit `08df7c98856c132c55b7cdec9511fedb1ececf81` is not an application runtime. All six current sections and the combined single-GA4 page passed with 0 required implementation/certification steps remaining inside the exact boundary. Positive conditional panels, non-GA4/future source mixes, global scheduler health, new timer firing, provider/inbox delivery, and whole-app/global multi-source claims remain excluded. |
 | Executive Summary | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md` | Exact GA4-first deployed runtime `ec1305b92e5eba439ce74685ea2d06ecd3fabd50`. |
 | Custom Report | `RELEASE_CANDIDATE` | `CAMPAIGN_DEEPDIVE_CUSTOM_REPORT_PRODUCTION_READY.md` | Current status requires deployment validation for changed Performance Summary PDF composition. |
 | Whole Campaign DeepDive | `RECONCILE` | `CAMPAIGN_DEEPDIVE_PRODUCTION_READY_STATUS.md` plus subsection authorities | The top-level file explicitly says it is not a whole-section certificate and contains a stale Custom Report summary. |
@@ -379,19 +402,22 @@ consumers. Do not revoke unrelated sections.
 1. **Budget & Financial Analysis is complete:** carry forward only within the
    exact controlling certificate boundary and reopen affected paths when its
    code, source contracts, configuration, or deployment changes.
-2. **Continue Campaign DeepDive:** freshly review visible Platform
-   Comparison, Trend Analysis, Executive Summary, and Custom Reports. Preserve
+2. **Trend Analysis is complete:** carry forward only within the exact
+   controlling GA4-first certificate boundary and reopen affected paths when its
+   code, source contracts, configuration, or deployment changes.
+3. **Continue Campaign DeepDive:** freshly review visible Platform Comparison,
+   Executive Summary, and Custom Reports. Preserve
    historical bounded certificates; do not promote unverified input paths.
-3. **Complete pending GA4 work and its roll-up:** finish the remaining Overview
+4. **Complete pending GA4 work and its roll-up:** finish the remaining Overview
    and Reports gates independently; create the GA4 roll-up only after all six
    section certificates pass. Keep the existing certified rows unchanged.
-4. **Resolve excluded-feature visibility:** standalone campaign-level KPI and
+5. **Resolve excluded-feature visibility:** standalone campaign-level KPI and
    Benchmark tabs require no fresh certificate, but legacy entry points must be
    hidden/disabled before recording them as `EXCLUDED` for app certification.
-5. **Certify remaining enabled app surfaces and sources:** work only on ledger
+6. **Certify remaining enabled app surfaces and sources:** work only on ledger
    rows that are not already accepted into the new program; hide and mark
    unsupported features `EXCLUDED` rather than certifying unfinished behavior.
-6. **Issue the app certificate:** on one exact deployed release SHA, run the
+7. **Issue the app certificate:** on one exact deployed release SHA, run the
    integrated owner -> client -> campaign -> source -> analysis -> action journey,
    app-wide ownership/isolation matrix, production data inventories, active
    scheduler cycle, focused certificate guards, TypeScript, production build,
@@ -446,6 +472,7 @@ The following records are preserved and indexed by this ledger:
 - `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_PRODUCTION_READY.md`
 - `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md`
 - `CAMPAIGN_DEEPDIVE_PLATFORM_COMPARISON_PRODUCTION_READY.md`
+- `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_CERTIFICATION_2026-09-20.md`
 - `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`
 - `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md`
 - `CAMPAIGN_DEEPDIVE_CUSTOM_REPORT_PRODUCTION_READY.md`

@@ -80,14 +80,23 @@ interface Anomaly {
 function detectAnomalies(series: any[], metrics: string[]): Anomaly[] {
   const anomalies: Anomaly[] = [];
   metrics.forEach(metric => {
-    const values = series.map(r => r[metric] || 0);
+    const values: Array<number | null> = series.map((row) => {
+      const rawValue = row?.[metric];
+      if (rawValue === null || typeof rawValue === 'undefined' || rawValue === '') return null;
+      const value = Number(rawValue);
+      return Number.isFinite(value) ? value : null;
+    });
     if (values.length < 8) return;
-    for (let i = 7; i < values.length; i++) {
+    const firstActivityIndex = values.findIndex((value) => value !== null && value !== 0);
+    if (firstActivityIndex < 0) return;
+    for (let i = Math.max(7, firstActivityIndex + 7); i < values.length; i++) {
       const window = values.slice(i - 7, i);
-      const mean = window.reduce((a, b) => a + b, 0) / window.length;
-      const variance = window.reduce((a, b) => a + (b - mean) ** 2, 0) / window.length;
-      const stddev = Math.sqrt(variance);
       const val = values[i];
+      if (val === null || window.some((value) => value === null)) continue;
+      const comparableWindow = window as number[];
+      const mean = comparableWindow.reduce((a, b) => a + b, 0) / comparableWindow.length;
+      const variance = comparableWindow.reduce((a, b) => a + (b - mean) ** 2, 0) / comparableWindow.length;
+      const stddev = Math.sqrt(variance);
       if (stddev > 0) {
         const deviations = Math.abs(val - mean) / stddev;
         if (deviations > 2) {
@@ -1651,15 +1660,18 @@ export default function TrendAnalysis() {
                       <CardHeader>
                         <p className="text-xs text-muted-foreground">Verified daily values: {overviewTrendData.currentPeriodDays} of {overviewTrendData.chartCalendarDays} calendar dates; missing dates remain gaps unless GA4 verifies them as zero.</p>
                         {overviewTrendData.anomalies.some((anomaly: any) => overviewVisibleSeries.has(anomaly.metric)) && (
-                          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground" aria-label="Anomaly marker legend">
-                            <span className="inline-flex items-center gap-1.5">
-                              <span className="h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" aria-hidden="true" />
-                              Critical anomaly
-                            </span>
-                            <span className="inline-flex items-center gap-1.5">
-                              <span className="h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-white" aria-hidden="true" />
-                              Warning anomaly
-                            </span>
+                          <div className="space-y-1 text-xs text-muted-foreground" aria-label="Anomaly marker legend">
+                            <div className="flex flex-wrap items-center gap-4">
+                              <span className="inline-flex items-center gap-1.5">
+                                <span className="h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" aria-hidden="true" />
+                                Critical statistical change
+                              </span>
+                              <span className="inline-flex items-center gap-1.5">
+                                <span className="h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-white" aria-hidden="true" />
+                                Warning statistical change
+                              </span>
+                            </div>
+                            <p>Conversion markers compare each date with the previous 7 comparable dates; severity shows how unusual the change is, not whether it is good or bad.</p>
                           </div>
                         )}
                       </CardHeader>

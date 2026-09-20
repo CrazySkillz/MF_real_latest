@@ -1505,9 +1505,14 @@ export default function TrendAnalysis() {
                                     <div>{cumulativeComparison.context}</div>
                                   </div>
                                 ) : (
-                                  <div className={`flex items-center text-xs mt-1 ${isGood ? 'text-green-600' : 'text-red-600'}`}>
-                                    {card.change >= 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
-                                    {card.change >= 0 ? '+' : ''}{card.change.toFixed(1)}%
+                                  <div className="text-xs mt-1 leading-tight">
+                                    <div className={`flex items-center ${isGood ? 'text-green-600' : 'text-red-600'}`}>
+                                      {card.change >= 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
+                                      {card.change >= 0 ? '+' : ''}{card.change.toFixed(1)}%
+                                    </div>
+                                    {usesCumulativeGA4Consumer && comparisonDateLabel && (
+                                      <div className="text-muted-foreground">vs cumulative - {comparisonDateLabel}</div>
+                                    )}
                                   </div>
                                 )
                               )}

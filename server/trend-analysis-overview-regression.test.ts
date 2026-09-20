@@ -255,6 +255,8 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain("const cumulativeComparison = usesCumulativeGA4Consumer && comparisonKey && trendComparisonDate");
     expect(page).toContain('<div className="text-xs text-muted-foreground mt-1 leading-tight">');
     expect(page).toContain("<div>{cumulativeComparison.context}</div>");
+    expect(page).toContain("{usesCumulativeGA4Consumer && comparisonDateLabel && (");
+    expect(page.match(/vs cumulative - \{comparisonDateLabel\}/g)).toHaveLength(2);
     const cumulativeRenderStart = page.indexOf("cumulativeComparison ? (");
     const cumulativeRenderEnd = page.indexOf(") : (", cumulativeRenderStart);
     expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).not.toContain("ArrowUpRight");

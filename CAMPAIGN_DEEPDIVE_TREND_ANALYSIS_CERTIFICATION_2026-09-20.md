@@ -2,11 +2,11 @@
 
 ## Decision
 
-Status: **PASS — bounded production certification for the current GA4-first Trend Analysis surface at deployed revision `637d0c31e1466ff2b2d7f0ad25543c5ec3ddd828`.**
+Status: **PASS — bounded production certification for the current GA4-first Trend Analysis surface at deployed revision `7dc72dc8dc5ba302146128b62c45f3bf7d86f6eb`.**
 
 The earlier `58a93a81feb189cbf7b502f3ae57a72120a9a80d` decision is historical. The current revision was revalidated after the initial-render, cumulative-input, anomaly-helper, financial-reconciliation, and Executive Recommendation changes. This decision applies only to the exact scope and evidence below.
 
-Post-certification candidate `52bf90fb2b26642e8268434f268857ffaab96c01`: **UNVERIFIED pending deployment and browser confirmation.** The subsequent top-card title and directional-color presentation change does not alter metric values or calculations, but it changes the certified UI dependency.
+The top-card presentation candidate introduced at `52bf90fb2b26642e8268434f268857ffaab96c01` and included in deployed revision `7dc72dc8dc5ba302146128b62c45f3bf7d86f6eb` passed authenticated browser confirmation. The heading is `Campaign-to-Date Performance Summary`; positive comparisons are green, negative comparisons are red, and zero comparisons remain neutral. The change does not alter metric values or calculations.
 
 This is not a global or multi-source certification. In the current release, campaign metrics are imported through GA4. Meta, Instagram, LinkedIn, TikTok, and other non-GA4 main-source Trend paths are not configured. The positive `Paid Acquisition Funnel` and multi-source `Source Contribution` branches are therefore excluded; their correct GA4-only behavior is to remain hidden.
 
@@ -14,7 +14,7 @@ This is not a global or multi-source certification. In the current release, camp
 
 - Branch: local `main`, matching `origin/main` at validation.
 - Deployed service: `https://marketforensics.onrender.com`.
-- Deployed health revision: `637d0c31e1466ff2b2d7f0ad25543c5ec3ddd828`.
+- Deployed health revision: `7dc72dc8dc5ba302146128b62c45f3bf7d86f6eb`.
 - Audited production campaign: `Campaign2`.
 - Main source boundary: exactly one connected `ga4` source (`Google Analytics`).
 - Campaign currency: `USD`.
@@ -50,7 +50,7 @@ Overall combined page: **PASS within the certified GA4-first boundary.**
 | Unavailable | **PASS** | Invalid or incomplete consumer contracts withheld dependent values and displayed the unavailable state. |
 | Failure | **PASS** | Non-2xx core Trend responses throw, initial failure is distinct from empty data, and background failure retains last-good values with a warning. |
 | Refresh propagation | **PASS — request/data path** | Queries refetch on focus and at the existing interval. A later read-only deployed observation at the same revision returned the next current aggregate values. No separate Trend write path was introduced or claimed. |
-| Browser/scheduled Trend report parity | **PASS — shared renderer, bounded fields** | A deployed one-off Trend PDF at the exact revision matched browser Revenue, Spend, Conversions, Sessions, and Users; included the reconciled ROAS guidance; removed the redundant Selected-Window Comparison recommendation; and correctly omitted both unsupported conditional panels. Browser one-off and scheduled Trend PDFs call the same server renderer. Anomaly Detection remains a browser-only decision-support panel and is not claimed as PDF content. No new scheduled firing or email was required. |
+| Browser/scheduled Trend report parity | **PASS — shared renderer, bounded fields** | A deployed one-off Trend PDF at runtime `637d0c31` matched browser Revenue, Spend, Conversions, Sessions, and Users; included the reconciled ROAS guidance; removed the redundant Selected-Window Comparison recommendation; and correctly omitted both unsupported conditional panels. The only later runtime change through `7dc72dc8` is the client-only heading/color presentation, so the unchanged shared PDF renderer evidence carries forward. Anomaly Detection remains a browser-only decision-support panel and is not claimed as PDF content. No new scheduled firing or email was required. |
 
 ## Dependency-Impact Comparison
 
@@ -73,8 +73,9 @@ Fresh current-revision evidence:
 - `npm run build`: passed after the final implementation
 - deployed health: HTTP 200 and exact revision matched
 - authenticated deployed browser validation: initial render remained stable; all four selectors requested the matching `dateRange` and `2x` history; all required browser sections loaded; no page error or critical Trend request failure occurred
+- authenticated deployed top-card presentation validation at `7dc72dc8`: the new section heading rendered; Revenue, ROAS, ROI, Conversions, Sessions, and Users increases were green; CPA, CVR, and Engagement Rate decreases were red; the zero Spend change remained neutral
 - current-revision focused regressions covered loading, empty, valid-zero, stale, unavailable, initial-failure, and background-failure branches; the authenticated deployed run separately proved the normal live state and initial-render path
-- deployed one-off GA4-only Trend PDF: valid PDF; current browser Revenue, Spend, Conversions, Sessions, and Users matched; reconciled ROAS guidance was present; the redundant comparison recommendation and unsupported conditional panels were absent
+- carried-forward deployed one-off GA4-only Trend PDF evidence from `637d0c31`: valid PDF; current browser Revenue, Spend, Conversions, Sessions, and Users matched; reconciled ROAS guidance was present; the redundant comparison recommendation and unsupported conditional panels were absent. The PDF/server path did not change in `52bf90fb` or the documentation-only `7dc72dc8`
 - strict persistence checks proved campaign, GA4 daily, revenue, report, and snapshot records unchanged. A concurrent three-minute Google Sheets spend refresh regenerated row IDs and `lastSyncedAt`; a repeat gate compared the spend business-value projection and proved dates, amounts, currency, source scope, and totals unchanged
 - the repository-wide suite was not globally clean: 2012 tests passed and 45 unrelated tests failed across 38 suites. None of the failing suite filenames belonged to the bounded Trend packet, so this certificate makes no whole-repository or whole-application claim
 
@@ -102,4 +103,4 @@ Before any non-GA4 main source is enabled for this release, its positive conditi
 - `APP_PRODUCTION_READINESS.md` was not modified.
 - The pre-existing uncommitted ledger edit and unrelated untracked paths were preserved.
 - No product code, shared contract, existing test, or existing certificate was changed by this certification record.
-- The post-certification UI candidate is committed and pushed at `52bf90fb2b26642e8268434f268857ffaab96c01`, but remains unverified until that exact revision is deployed and browser-confirmed.
+- The UI runtime change is committed at `52bf90fb2b26642e8268434f268857ffaab96c01` and deployed within `7dc72dc8dc5ba302146128b62c45f3bf7d86f6eb`; this documentation-only evidence update does not change the certified application runtime.

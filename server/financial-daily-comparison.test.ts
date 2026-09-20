@@ -100,6 +100,37 @@ describe("read-only financial daily comparison derivation", () => {
     expect(deps.getCampaignMetricTotalsAtDate).not.toHaveBeenCalled();
   });
 
+  it("preserves source totals with authoritative native zero before campaign start", async () => {
+    const deps = dependencies({
+      getCampaignMetricTotalsAtDate: vi.fn().mockResolvedValue({
+        ...(await dependencies().getCampaignMetricTotalsAtDate()),
+        revenue: 60902,
+        ga4Revenue: 0,
+        spend: 300,
+        financialConversions: 0,
+        ga4FinancialSource: "pre_campaign_zero",
+      }),
+      getRevenueTotalForRange: vi.fn().mockResolvedValue({
+        totalRevenue: 60902,
+        currency: "USD",
+        sourceIds: ["revenue-1"],
+      }),
+      getSpendTotalForRange: vi.fn().mockResolvedValue({
+        totalSpend: 300,
+        currency: "USD",
+        sourceIds: ["spend-1"],
+      }),
+    });
+
+    const result = await deriveFinancialDailyComparisonSnapshot({ campaignId, reportingDate: "2026-09-05" }, deps);
+
+    expect((result?.metrics as any)?.financialDaily?.inputs).toMatchObject({
+      revenue: { value: "60902.00", available: true },
+      spend: { value: "300.00", available: true },
+      conversions: { value: 0, available: true },
+    });
+  });
+
   it("fails closed outside the import window and on source/currency inconsistencies", async () => {
     const beforeImport = dependencies();
     expect(await deriveFinancialDailyComparisonSnapshot({ campaignId, reportingDate: "2026-08-08" }, beforeImport)).toBeNull();

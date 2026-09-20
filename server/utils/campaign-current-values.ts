@@ -27,7 +27,7 @@ export type CampaignMetricTotals = {
   ga4Available?: boolean;
   ga4RevenueAvailable?: boolean;
   financialConversionsAvailable?: boolean;
-  ga4FinancialSource?: "provider_to_date" | "persisted_daily" | "rolling_breakdown" | "deterministic_simulation" | null;
+  ga4FinancialSource?: "provider_to_date" | "persisted_daily" | "rolling_breakdown" | "deterministic_simulation" | "pre_campaign_zero" | null;
 };
 
 const round2 = (value: number) => Number((Number.isFinite(value) ? value : 0).toFixed(2));
@@ -165,6 +165,7 @@ async function getCampaignMetricTotalsForEndDate(
   const financialStartDate = toISODateUTC((campaign as any)?.startDate)
     || toISODateUTC((campaign as any)?.createdAt)
     || "2000-01-01";
+  const isBeforeFinancialStart = Boolean(exactEndDate && exactEndDate < financialStartDate);
   const financialSourceStartDate = "1900-01-01";
   const spendSourceStartDate = "1900-01-01";
   let ga4Available = false;
@@ -202,7 +203,9 @@ async function getCampaignMetricTotalsForEndDate(
       ga4FinancialSource = "deterministic_simulation";
     } else if (useFullFinancialCandidate) {
       const financialEndDate = endDate;
-      const financialRows = await storage.getGA4DailyMetrics(campaignId, propertyId, financialStartDate, financialEndDate).catch(() => null as any);
+      const financialRows = isBeforeFinancialStart
+        ? []
+        : await storage.getGA4DailyMetrics(campaignId, propertyId, financialStartDate, financialEndDate).catch(() => null as any);
       const dailyCandidate = (financialRows || []).reduce((totals: any, row: any) => ({
         revenue: totals.revenue + parseNum(row?.revenue),
         conversions: totals.conversions + parseNum(row?.conversions),
@@ -210,7 +213,10 @@ async function getCampaignMetricTotalsForEndDate(
       let toDateCandidate: any = null;
       let breakdownCandidate: any = null;
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
-      if ((primary as any)?.method === "access_token" && (primary as any)?.accessToken && financialStartDate <= financialEndDate) {
+      if (isBeforeFinancialStart) {
+        toDateCandidate = { revenue: 0, conversions: 0 };
+        verifiedToDateFinancialCandidateAvailable = true;
+      } else if ((primary as any)?.method === "access_token" && (primary as any)?.accessToken && financialStartDate <= financialEndDate) {
         try {
           const toDate = await ga4Service.getTotalsWithRevenue(
             propertyId,
@@ -257,7 +263,9 @@ async function getCampaignMetricTotalsForEndDate(
       if (ga4RevenueAvailable) {
         ga4Revenue = parseNum(selectedFinancialCandidate?.revenue);
         financialConversions = parseNum(selectedFinancialCandidate?.conversions);
-        ga4FinancialSource = selectedFinancialCandidate === toDateCandidate
+        ga4FinancialSource = isBeforeFinancialStart
+          ? "pre_campaign_zero"
+          : selectedFinancialCandidate === toDateCandidate
           ? "provider_to_date"
           : selectedFinancialCandidate === dailyCandidate
             ? "persisted_daily"

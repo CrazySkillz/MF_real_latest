@@ -117,6 +117,34 @@ describe("campaign current-value financial source contract", () => {
     expect(await getCampaignMetricTotalsAtDate("campaign-1", "2026-02-30")).toBeNull();
   });
 
+  it("retains exact source-to-date financials before the native campaign window", async () => {
+    storageMock.getCampaign.mockResolvedValue({
+      id: "campaign-1",
+      createdAt: "2026-09-08T10:06:04.469Z",
+      currency: "USD",
+      reportingTimeZone: "Europe/Amsterdam",
+    });
+    storageMock.getGA4DailyMetrics.mockResolvedValue([{ revenue: 5572.8, conversions: 25 }]);
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 60902, sourceIds: ["revenue-1"] });
+    storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 300, sourceIds: ["spend-1"] });
+
+    const totals = await getCampaignMetricTotalsAtDate("campaign-1", "2026-09-05");
+
+    expect(totals).toMatchObject({
+      revenue: 60902,
+      ga4Revenue: 0,
+      spend: 300,
+      financialConversions: 0,
+      revenueAvailable: true,
+      spendAvailable: true,
+      ga4RevenueAvailable: true,
+      financialConversionsAvailable: true,
+      ga4FinancialSource: "pre_campaign_zero",
+    });
+    expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledTimes(1);
+    expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
+  });
+
   it("uses persisted fallback only when it will not be combined with an imported source", async () => {
     storageMock.getGA4DailyMetrics.mockResolvedValue([{ revenue: 500, conversions: 25 }]);
     ga4ServiceMock.getTotalsWithRevenue.mockRejectedValue(new Error("provider unavailable"));

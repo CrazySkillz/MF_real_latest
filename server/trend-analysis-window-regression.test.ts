@@ -35,6 +35,7 @@ describe("Trend Analysis window regression guard", () => {
 
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
     expect(page.match(/filterTrendRowsToCalendarWindow\([^\n]+currentValueWindow\?\.startDate/g)).toHaveLength(5);
+    expect(page).toContain("Showing {trendWindowCalendar.length} of {perfDays} selected calendar dates because imported GA4 history begins {trendWindowStartLabel}.");
   });
 
   it("preserves missing GA4 calendar dates as empty chart gaps", () => {

@@ -7,6 +7,7 @@ import {
   filterTrendRowsToCalendarWindow,
   formatExactTrendCount,
   formatTrendComparison,
+  resolveVerifiedTrendGA4DailyRows,
   resolveCompatibleTrendFinancialDaily,
   resolveTrendConsumerMode,
   resolveTrendComparisonDate,
@@ -111,6 +112,45 @@ describe("Trend Analysis Overview regression guard", () => {
       .toBeLessThan(overview.indexOf("No connected source trend data available"));
   });
 
+  it("uses one exact provider-verified history for all four campaign performance windows", () => {
+    const dailyResponse = {
+      propertyId: "542352127",
+      dataThroughDate: "2026-09-19",
+      overviewStartDate: "2026-06-01",
+      reportingTimeZone: "Europe/Amsterdam",
+    };
+    const providerDailyRows = Array.from({ length: 89 }, (_, index) => {
+      const date = new Date("2026-06-22T00:00:00.000Z");
+      date.setUTCDate(date.getUTCDate() + index);
+      return { date: date.toISOString().slice(0, 10), users: index + 1, sessions: index + 2, conversions: index % 8 };
+    });
+    const coverageResponse = {
+      providerVerified: true,
+      providerZeroDatesVerified: true,
+      propertyId: "542352127",
+      startDate: "2026-06-22",
+      endDate: "2026-09-19",
+      reportingTimeZone: "Europe/Amsterdam",
+      providerDailyRows,
+      providerZeroDates: ["2026-09-19"],
+    };
+    const resolve = (selectedStartDate: string) => resolveVerifiedTrendGA4DailyRows({
+      dailyResponse, coverageResponse, propertyId: "542352127", selectedStartDate,
+    });
+
+    expect(resolve("2026-09-13")).toHaveLength(7);
+    expect(resolve("2026-09-06")).toHaveLength(14);
+    expect(resolve("2026-08-21")).toHaveLength(30);
+    expect(resolve("2026-06-22")).toHaveLength(90);
+    expect(resolve("2026-09-13")?.at(-1)).toEqual({ date: "2026-09-19", users: 0, sessions: 0, conversions: 0 });
+    expect(resolveVerifiedTrendGA4DailyRows({
+      dailyResponse, coverageResponse: { ...coverageResponse, providerVerified: false }, propertyId: "542352127", selectedStartDate: "2026-09-13",
+    })).toBeNull();
+    expect(resolveVerifiedTrendGA4DailyRows({
+      dailyResponse, coverageResponse: { ...coverageResponse, propertyId: "other-property" }, propertyId: "542352127", selectedStartDate: "2026-09-13",
+    })).toBeNull();
+  });
+
   it("uses cumulative current values and exact-date history only for the compatible GA4 consumer", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
     const overviewStart = page.indexOf("const overviewTrendData = useMemo<any>(() => {");
@@ -119,6 +159,11 @@ describe("Trend Analysis Overview regression guard", () => {
 
     expect(page).toContain("ga4-connections?readOnly=1");
     expect(page).toContain("ga4-daily?days=${TREND_GA4_DAILY_DAYS}&propertyId=${encodeURIComponent(trendGA4PropertyId)}&readOnly=1");
+    expect(page).toContain("ga4-insights-trends-coverage?propertyId=${encodeURIComponent(trendGA4PropertyId)}&days=90");
+    expect(page).toContain("resolveVerifiedTrendGA4DailyRows({");
+    expect(overviewModel).toContain("verifiedTrendGA4DailyRows.map");
+    expect(page).toContain("trendGA4DailyHistoryVerified && overviewTrendData.series.length > 0");
+    expect(page).toContain("Campaign performance daily values are withheld because current GA4 data could not be verified.");
     expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", "live"]');
     expect(page).toContain("snapshotType=financial_daily&comparisonDate=${trendComparisonDate}");
     expect(page).toContain('performanceSummary?.version === "performance_summary_aggregate_v3"');

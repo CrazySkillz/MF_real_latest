@@ -9399,7 +9399,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (connection.method !== "access_token" || !connection.accessToken) {
       return res.status(400).json({ success: false, error: "GA4_CONNECTION_UNAVAILABLE" });
     }
-    const window = getReportingDateWindow(60, (campaign as any)?.reportingTimeZone);
+    const requestedDays = Number.parseInt(String(req.query.days || "60"), 10);
+    const window = getReportingDateWindow(requestedDays === 90 ? 90 : 60, (campaign as any)?.reportingTimeZone);
     const configuredStart = String((connection as any)?.importStartDate || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(configuredStart)) return res.status(400).json({ success: false, error: "GA4_IMPORT_START_DATE_INVALID" });
     const startDate = configuredStart > window.startDate ? configuredStart : window.startDate;
@@ -9441,12 +9442,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error("GA4 Trends presence dates are invalid");
       }
       const zeroDates: string[] = [];
+      const providerZeroDates: string[] = [];
       for (const date = new Date(`${startDate}T00:00:00.000Z`); date.toISOString().slice(0, 10) <= window.endDate; date.setUTCDate(date.getUTCDate() + 1)) {
         const day = date.toISOString().slice(0, 10);
+        if (!presence.has(day)) providerZeroDates.push(day);
         if (!presence.has(day) && !storedByDate.has(day)) zeroDates.push(day);
       }
       const verified = matchesStored && Array.from(presence).every((date) => storedByDate.has(date));
-      return res.json({ ...base, verified, zeroDatesVerified: true, zeroDates, dailyRows: stored.map(addDerivedGA4EngagedSessions), checkedAt: new Date().toISOString(),
+      const providerDailyRows = Array.from(providerByDate.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, row]) => addDerivedGA4EngagedSessions({ ...row, date }));
+      return res.json({ ...base, verified, providerVerified: true, providerZeroDatesVerified: true, providerZeroDates, zeroDatesVerified: true, zeroDates, dailyRows: stored.map(addDerivedGA4EngagedSessions), providerDailyRows, checkedAt: new Date().toISOString(),
         ...(!verified ? { reason: "stored_daily_history_differs_from_ga4" } : {}) });
     } catch (error: any) {
       console.warn("[GA4 Trends] Zero-day verification unavailable:", error?.message || error);

@@ -24,6 +24,7 @@ import {
   filterTrendRowsToCalendarWindow,
   formatExactTrendCount,
   formatTrendComparison,
+  resolveVerifiedTrendGA4DailyRows,
   resolveCompatibleTrendFinancialDaily,
   resolveTrendConsumerMode,
   resolveTrendComparisonDate,
@@ -169,6 +170,21 @@ export default function TrendAnalysis() {
     },
     staleTime: 0,
     refetchInterval: TREND_REFRESH_MS,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+  });
+
+  const { data: trendGA4Coverage, isFetching: trendGA4CoverageFetching, error: trendGA4CoverageError } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-insights-trends-coverage", "90days-provider", trendGA4PropertyId, ga4Daily?.dataThroughDate, ga4Daily?.lastCompletedRefreshAt],
+    enabled: !!campaignId && !!trendGA4PropertyId && ga4Daily !== undefined,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/ga4-insights-trends-coverage?propertyId=${encodeURIComponent(trendGA4PropertyId)}&days=90`);
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data || data?.success === false) throw new Error(data?.error || "Failed to verify GA4 Trend daily history");
+      return data;
+    },
+    staleTime: 0,
+    refetchInterval: 30 * 60 * 1000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
@@ -468,6 +484,19 @@ export default function TrendAnalysis() {
     ? performanceSummary.sources.filter((source: any) => source?.connected === true && source?.category !== "financial")
     : [];
   const usesCumulativeGA4Consumer = trendConsumerMode === "cumulative_ga4";
+  const selectedTrendStartDate = trendComparisonDate ? (() => {
+    const date = new Date(`${trendComparisonDate}T00:00:00.000Z`);
+    date.setUTCDate(date.getUTCDate() + 1);
+    return date.toISOString().slice(0, 10);
+  })() : "";
+  const verifiedTrendGA4DailyRows = usesCumulativeGA4Consumer && !trendGA4CoverageError ? resolveVerifiedTrendGA4DailyRows({
+    dailyResponse: ga4Daily,
+    coverageResponse: trendGA4Coverage,
+    propertyId: trendGA4PropertyId,
+    selectedStartDate: selectedTrendStartDate,
+  }) : null;
+  const trendGA4DailyHistoryVerified = !usesCumulativeGA4Consumer || verifiedTrendGA4DailyRows !== null;
+  const trendGA4DailyHistoryPending = usesCumulativeGA4Consumer && ga4Daily !== undefined && trendGA4CoverageFetching;
   const ga4TrendSource = Array.isArray(trendAggregate?.sources)
     ? trendAggregate.sources.find((source: any) => source?.id === "ga4")
     : null;
@@ -607,7 +636,17 @@ export default function TrendAnalysis() {
   const overviewTrendData = useMemo<any>(() => {
     if (trendConsumerMode === "pending" || trendConsumerMode === "unavailable") return null;
     const aggregate = trendAggregate;
-    const rows = Array.isArray(aggregate?.dailyTotals) ? aggregate.dailyTotals : [];
+    const rows = usesCumulativeGA4Consumer && verifiedTrendGA4DailyRows
+      ? verifiedTrendGA4DailyRows.map((row: any) => ({
+        date: row.date,
+        metrics: {
+          users: row.users,
+          sessions: row.sessions,
+          conversions: row.conversions,
+          engagementRate: row.engagementRate,
+        },
+      }))
+      : Array.isArray(aggregate?.dailyTotals) ? aggregate.dailyTotals : [];
     if (rows.length === 0 && !authoritativeTrendCurrent) return null;
 
     const sourcesFor = (metricName: string): string[] => {
@@ -728,7 +767,7 @@ export default function TrendAnalysis() {
         ? aggregate.sources.map((source: any) => String(source?.label || source?.id)).filter(Boolean)
         : performanceMainSources.map((source: any) => String(source?.label || source?.id)).filter(Boolean),
     };
-  }, [trendAggregate, perfDays, trendConsumerMode, usesCumulativeGA4Consumer, authoritativeTrendCurrent, authoritativeTrendPrevious, trendComparisonDate, performanceMainSources]);
+  }, [trendAggregate, perfDays, trendConsumerMode, usesCumulativeGA4Consumer, verifiedTrendGA4DailyRows, authoritativeTrendCurrent, authoritativeTrendPrevious, trendComparisonDate, performanceMainSources]);
 
   const overviewVisibleSeries = useMemo(() => {
     const keys = (overviewTrendData?.availableSeries || []).map((item: any) => item.key);
@@ -1532,7 +1571,11 @@ export default function TrendAnalysis() {
                     <Card><CardContent className="p-6 text-sm text-muted-foreground">Current cumulative summary is unavailable because its reporting-window contract could not be verified.</CardContent></Card>
                   )}
 
-                  {!overviewTrendData.hasCompleteCurrentPeriod && (
+                  {trendGA4DailyHistoryVerified && usesCumulativeGA4Consumer && trendWindowCalendar.length < perfDays && trendWindowStartLabel ? (
+                    <p className="text-sm text-muted-foreground">
+                      Showing {trendWindowCalendar.length} of {perfDays} selected calendar dates because imported GA4 history begins {trendWindowStartLabel}.
+                    </p>
+                  ) : trendGA4DailyHistoryVerified && !overviewTrendData.hasCompleteCurrentPeriod && (
                     <p className="text-sm text-muted-foreground">
                       Showing {overviewTrendData.currentPeriodDays} of {overviewTrendData.requestedPeriodDays} days available for this selection. Full-period trend comparisons appear once enough daily history exists.
                     </p>
@@ -1541,7 +1584,9 @@ export default function TrendAnalysis() {
                     <Activity className="w-5 h-5" />
                     <span>Campaign Performance Trend</span>
                   </h2>
-                  {overviewTrendData.series.length > 0 ? <>
+                  {trendGA4DailyHistoryPending ? (
+                    <Card><CardContent className="p-6"><div className="h-80 rounded-md bg-muted animate-pulse" aria-label="Verifying GA4 campaign performance daily history" /></CardContent></Card>
+                  ) : trendGA4DailyHistoryVerified && overviewTrendData.series.length > 0 ? <>
                     {/* Metric Toggle Row */}
                     <div className="flex flex-wrap gap-2">
                     {overviewTrendData.availableSeries.map((s: any) => (
@@ -1564,7 +1609,7 @@ export default function TrendAnalysis() {
                   <Card>
                     {usesCumulativeGA4Consumer && overviewTrendData.series.length > 0 && (
                       <CardHeader>
-                        <p className="text-xs text-muted-foreground">Daily records: {overviewTrendData.currentPeriodDays} of {overviewTrendData.chartCalendarDays} calendar dates; missing dates remain gaps.</p>
+                        <p className="text-xs text-muted-foreground">Verified daily values: {overviewTrendData.currentPeriodDays} of {overviewTrendData.chartCalendarDays} calendar dates; missing dates remain gaps unless GA4 verifies them as zero.</p>
                       </CardHeader>
                     )}
                     <CardContent>
@@ -1605,7 +1650,9 @@ export default function TrendAnalysis() {
                   </> : (
                     <Card>
                       <CardContent className="p-8 text-center text-sm text-muted-foreground">
-                        {usesCumulativeGA4Consumer && trendWindowCalendar.length < perfDays && trendWindowStartLabel
+                        {usesCumulativeGA4Consumer && !trendGA4DailyHistoryVerified
+                          ? <>Campaign performance daily values are withheld because current GA4 data could not be verified.</>
+                          : usesCumulativeGA4Consumer && trendWindowCalendar.length < perfDays && trendWindowStartLabel
                           ? <>{perfDays}-day trend unavailable: {trendWindowCalendar.length} of {perfDays} calendar days are available. Data begins {trendWindowStartLabel}.</>
                           : usesCumulativeGA4Consumer && trendWindowStartLabel && trendWindowEndLabel
                             ? <>No GA4 daily records for {trendWindowStartLabel}–{trendWindowEndLabel}.{latestTrendDailyDateLabel ? ` Latest recorded date: ${latestTrendDailyDateLabel}.` : ""}</>

@@ -499,6 +499,7 @@ export default function TrendAnalysis() {
     return date.toISOString().slice(0, 10);
   })() : "";
   const requestedAnomalyTrendStartDate = resolveTrendComparisonDate(selectedTrendStartDate, 7);
+  const selectedTrendComparisonStartDate = resolveTrendComparisonDate(selectedTrendStartDate, perfDays);
   const coverageStartDate = String(trendGA4Coverage?.startDate || "");
   const anomalyTrendStartDate = ISO_DATE_PATTERN.test(requestedAnomalyTrendStartDate)
     && ISO_DATE_PATTERN.test(coverageStartDate) && coverageStartDate > requestedAnomalyTrendStartDate
@@ -514,6 +515,16 @@ export default function TrendAnalysis() {
     },
     propertyId: trendGA4PropertyId,
     selectedStartDate: selectedTrendStartDate,
+  }) : null;
+  const verifiedTrendGA4ComparisonRows = usesCumulativeGA4Consumer && !trendGA4CoverageError ? resolveVerifiedTrendGA4DailyRows({
+    dailyResponse: ga4Daily,
+    coverageResponse: {
+      ...trendGA4Coverage,
+      providerDailyRows: trendGA4Coverage.dailyRows,
+      providerZeroDates: trendGA4Coverage.zeroDates,
+    },
+    propertyId: trendGA4PropertyId,
+    selectedStartDate: selectedTrendComparisonStartDate,
   }) : null;
   const verifiedTrendGA4AnomalyRows = usesCumulativeGA4Consumer && !trendGA4CoverageError ? resolveVerifiedTrendGA4DailyRows({
     dailyResponse: ga4Daily,
@@ -754,6 +765,12 @@ export default function TrendAnalysis() {
       };
     });
     const series: any[] = mapSeries(rows);
+    const comparisonSeries: any[] = usesCumulativeGA4Consumer && verifiedTrendGA4ComparisonRows
+      ? mapSeries(verifiedTrendGA4ComparisonRows.map((row: any) => ({
+        date: row.date,
+        metrics: { users: row.users, sessions: row.sessions, conversions: row.conversions },
+      })))
+      : series;
     const anomalySeries: any[] = usesCumulativeGA4Consumer ? mapSeries(anomalyRows) : series;
 
     const currentPeriod = usesCumulativeGA4Consumer
@@ -769,7 +786,9 @@ export default function TrendAnalysis() {
       }))
       : currentPeriod;
     const previousPeriod = usesCumulativeGA4Consumer
-      ? series.slice(-perfDays * 2, -perfDays)
+      ? (String(currentValueWindow?.startDate || "") <= selectedTrendComparisonStartDate
+        ? comparisonSeries.filter((row: any) => row.date >= selectedTrendComparisonStartDate && row.date <= trendComparisonDate)
+        : [])
       : filterAggregateTrendWindow(series, aggregate, perfDays, true);
     const sum = (items: any[], key: string) => items.reduce((total, row) => total + (Number(row[key]) || 0), 0);
     const avg = (items: any[], key: string) => {
@@ -809,6 +828,19 @@ export default function TrendAnalysis() {
     const current = usesCumulativeGA4Consumer ? authoritativeTrendCurrent : buildSummary(currentPeriod);
     const previous = usesCumulativeGA4Consumer ? authoritativeTrendPrevious : buildSummary(previousPeriod);
     if (!current) return null;
+    const likeForLikeTrafficComparison = usesCumulativeGA4Consumer
+      && currentPeriod.length === perfDays && previousPeriod.length === perfDays
+      ? {
+        currentStartDate: String(currentPeriod[0]?.date || ""),
+        currentEndDate: String(currentPeriod.at(-1)?.date || ""),
+        previousStartDate: String(previousPeriod[0]?.date || ""),
+        previousEndDate: String(previousPeriod.at(-1)?.date || ""),
+        currentSessions: sum(currentPeriod, "sessions"),
+        previousSessions: sum(previousPeriod, "sessions"),
+        currentConversions: sum(currentPeriod, "conversions"),
+        previousConversions: sum(previousPeriod, "conversions"),
+      }
+      : null;
     const comparison = Object.fromEntries(
       Object.keys(current).map((key) => {
         const currentValue = (current as any)[key];
@@ -845,12 +877,13 @@ export default function TrendAnalysis() {
       currentPeriodDays: currentPeriod.length,
       chartCalendarDays: chartSeries.length,
       previousPeriodDays: previousPeriod.length,
+      likeForLikeTrafficComparison,
       requestedPeriodDays: perfDays,
       connectedSources: Array.isArray(aggregate?.sources) && aggregate.sources.length > 0
         ? aggregate.sources.map((source: any) => String(source?.label || source?.id)).filter(Boolean)
         : performanceMainSources.map((source: any) => String(source?.label || source?.id)).filter(Boolean),
     };
-  }, [trendAggregate, perfDays, trendConsumerMode, usesCumulativeGA4Consumer, verifiedTrendGA4DailyRows, verifiedTrendGA4AnomalyRows, authoritativeTrendCurrent, authoritativeTrendPrevious, trendComparisonDate, performanceMainSources]);
+  }, [trendAggregate, perfDays, trendConsumerMode, usesCumulativeGA4Consumer, verifiedTrendGA4DailyRows, verifiedTrendGA4ComparisonRows, verifiedTrendGA4AnomalyRows, authoritativeTrendCurrent, authoritativeTrendPrevious, trendComparisonDate, selectedTrendComparisonStartDate, performanceMainSources]);
 
   const overviewVisibleSeries = useMemo(() => {
     const keys = (overviewTrendData?.availableSeries || []).map((item: any) => item.key);
@@ -1259,39 +1292,47 @@ export default function TrendAnalysis() {
       });
     }
 
-    if (overviewTrendData?.hasPrevious) {
+    if (usesCumulativeGA4Consumer && overviewTrendData?.likeForLikeTrafficComparison) {
+      const comparison = overviewTrendData.likeForLikeTrafficComparison;
+      const currentRate = comparison.currentSessions > 0
+        ? (comparison.currentConversions / comparison.currentSessions) * 100
+        : null;
+      const previousRate = comparison.previousSessions > 0
+        ? (comparison.previousConversions / comparison.previousSessions) * 100
+        : null;
+      const currentRange = `${format(new Date(`${comparison.currentStartDate}T00:00:00`), "MMM d")}–${format(new Date(`${comparison.currentEndDate}T00:00:00`), "MMM d")}`;
+      const previousRange = `${format(new Date(`${comparison.previousStartDate}T00:00:00`), "MMM d")}–${format(new Date(`${comparison.previousEndDate}T00:00:00`), "MMM d")}`;
+      const conversionsIncreased = comparison.currentConversions > comparison.previousConversions;
+      const conversionsDecreased = comparison.currentConversions < comparison.previousConversions;
+      const action = conversionsIncreased
+        ? "Identify the traffic sources and landing pages associated with the increase, then verify conversion-event integrity before considering budget reallocation."
+        : conversionsDecreased && comparison.currentSessions >= comparison.previousSessions
+          ? "Audit conversion-event tracking, source mix, and landing-page changes because conversions declined without a decline in sessions."
+          : conversionsDecreased
+            ? "Review source-level traffic delivery first, then inspect conversion frequency to separate acquisition loss from on-site performance."
+            : "Compare the flat conversion volume with the approved campaign target and review source mix before changing spend.";
+      pushInsight({
+        type: conversionsDecreased ? "warning" : "info",
+        title: conversionsIncreased
+          ? "Conversions Increased — Validate the Drivers"
+          : conversionsDecreased
+            ? "Conversions Decreased — Investigate the Drivers"
+            : "Conversion Volume Flat — Review the Target Gap",
+        message: `${currentRange} recorded ${formatExactTrendCount(comparison.currentConversions)} conversions from ${formatExactTrendCount(comparison.currentSessions)} sessions${currentRate === null ? "" : ` (${currentRate.toFixed(1)} per 100 sessions)`}, versus ${formatExactTrendCount(comparison.previousConversions)} conversions from ${formatExactTrendCount(comparison.previousSessions)} sessions${previousRate === null ? "" : ` (${previousRate.toFixed(1)} per 100 sessions)`} during ${previousRange}. Next action: ${action}`,
+      });
+    } else if (!usesCumulativeGA4Consumer && overviewTrendData?.hasPrevious) {
       const revenueChange = overviewTrendData.comparison?.revenue;
       const conversionsChange = overviewTrendData.comparison?.conversions;
-      if (usesCumulativeGA4Consumer) {
-        const exactDate = String(overviewTrendData.exactComparisonDate || "");
-        const exactDateLabel = ISO_DATE_PATTERN.test(exactDate)
-          ? format(new Date(`${exactDate}T00:00:00`), "MMM d, yyyy")
-          : "the requested historical date";
-        pushInsight({
-          type: "info",
-          title: "Selected-Window Comparison",
-          message: `Current totals are compared with cumulative totals through ${exactDateLabel}. Differences show activity added since that date, not like-for-like period performance.`,
-        });
-      } else {
-        const observedChanges = [
-          typeof revenueChange === "number" ? `revenue ${revenueChange >= 0 ? "+" : ""}${revenueChange.toFixed(1)}%` : null,
-          typeof conversionsChange === "number" ? `conversions ${conversionsChange >= 0 ? "+" : ""}${conversionsChange.toFixed(1)}%` : null,
-        ].filter(Boolean);
-        pushInsight({
-          type: "info",
-          title: "Comparable-Period Movement",
-          message: observedChanges.length > 0
-            ? `${observedChanges.join(" and ")} versus the previous comparable period. These are observed changes, not evidence of cause; compare them with approved campaign targets and source-level evidence before changing budget.`
-            : "Comparable-period values are available, but no supported revenue or conversion change is available for executive interpretation.",
-        });
-      }
-    } else if (overviewTrendData?.currentPeriodDays) {
+      const observedChanges = [
+        typeof revenueChange === "number" ? `revenue ${revenueChange >= 0 ? "+" : ""}${revenueChange.toFixed(1)}%` : null,
+        typeof conversionsChange === "number" ? `conversions ${conversionsChange >= 0 ? "+" : ""}${conversionsChange.toFixed(1)}%` : null,
+      ].filter(Boolean);
       pushInsight({
         type: "info",
-        title: "Historical Comparison Pending",
-        message: overviewTrendData.exactComparisonDate
-          ? `Exact comparison data for ${overviewTrendData.exactComparisonDate} is unavailable. Current cumulative values are not being reused as historical values.`
-          : `Current values are available for ${overviewTrendData.currentPeriodDays} of ${overviewTrendData.requestedPeriodDays} selected days. Full trend comparisons need enough compatible daily history.`,
+        title: "Comparable-Period Movement",
+        message: observedChanges.length > 0
+          ? `${observedChanges.join(" and ")} versus the previous comparable period. Next action: compare the movement with approved campaign targets and inspect source-level drivers before changing budget.`
+          : "Comparable-period values are available, but no supported revenue or conversion change is available for executive action.",
       });
     }
 

@@ -1281,6 +1281,20 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         return date.toISOString().slice(0, 10);
       })()
     : "";
+  const trendPreviousWindowStart = /^\d{4}-\d{2}-\d{2}$/.test(trendComparisonDate)
+    ? (() => {
+        const date = new Date(`${trendComparisonDate}T00:00:00.000Z`);
+        date.setUTCDate(date.getUTCDate() - (trendReportDays - 1));
+        return date.toISOString().slice(0, 10);
+      })()
+    : "";
+  const trendPreviousWindowRows = (Array.isArray(trendAnalysis?.dailyTotals) ? trendAnalysis.dailyTotals : [])
+    .filter((row: any) => {
+      const date = String(row?.date || "").slice(0, 10);
+      return trendPreviousWindowStart
+        && (!(cumulativeGA4Connection && /^\d{4}-\d{2}-\d{2}$/.test(cumulativeStartDate) && cumulativeStartDate > trendPreviousWindowStart))
+        && date >= trendPreviousWindowStart && date <= trendComparisonDate;
+    });
   const trendRecentTrafficRows = Array.isArray(performancePageRows)
     ? performancePageRows.filter((row: any) => {
         const date = String(row?.date || "").slice(0, 10);
@@ -1904,9 +1918,6 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         const value = dailyMetric(row, key);
         return value === null ? null : key === "engagementRate" && Math.abs(value) <= 1 ? value * 100 : value;
       };
-      const comparisonDateLabel = /^\d{4}-\d{2}-\d{2}$/.test(trendComparisonDate)
-        ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(`${trendComparisonDate}T00:00:00.000Z`))
-        : trendComparisonDate;
       if (trendSourceLabels.length > 0) addText(`Source: ${trendSourceLabels.join(", ")}`, { indent: 4 });
       addText("Current Decision Metrics", { bold: true, indent: 4 });
       addText(`- Current GA4 traffic values are cumulative through ${trendWindowEnd || "the latest completed reporting day"}; the selector comparison date is ${trendComparisonDate || "Unavailable"}.`, { indent: 8 });
@@ -2084,17 +2095,43 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         }
       }
       const trendRecommendations: Array<{ title: string; message: string }> = [];
-      const hasExactTrendComparison = ["users", "sessions", "conversions", "cvr", "engagementRate"]
-        .some((key) => trendPreviousMetric(key) !== null && Number(trendPreviousMetric(key)) > 0);
-      if (hasExactTrendComparison) {
+      const completeDailyWindow = (rows: any[], startDate: string, endDate: string) => {
+        if (rows.length !== trendReportDays || !/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) return false;
+        const dates = new Set(rows.map((row: any) => String(row?.date || "").slice(0, 10)));
+        const expectedDates = new Set<string>();
+        for (const date = new Date(`${startDate}T00:00:00.000Z`); date <= new Date(`${endDate}T00:00:00.000Z`); date.setUTCDate(date.getUTCDate() + 1)) {
+          expectedDates.add(date.toISOString().slice(0, 10));
+        }
+        return dates.size === trendReportDays && expectedDates.size === trendReportDays
+          && Array.from(expectedDates).every((date) => dates.has(date))
+          && rows.every((row: any) => [dailyMetric(row, "sessions"), dailyMetric(row, "conversions")]
+            .every((value) => value !== null && Number(value) >= 0));
+      };
+      if (completeDailyWindow(trendWindowRows, trendWindowStart, trendWindowEnd)
+        && completeDailyWindow(trendPreviousWindowRows, trendPreviousWindowStart, trendComparisonDate)) {
+        const total = (rows: any[], key: string) => rows.reduce((sum: number, row: any) => sum + Number(dailyMetric(row, key) || 0), 0);
+        const currentSessions = total(trendWindowRows, "sessions");
+        const previousSessions = total(trendPreviousWindowRows, "sessions");
+        const currentConversions = total(trendWindowRows, "conversions");
+        const previousConversions = total(trendPreviousWindowRows, "conversions");
+        const currentRate = currentSessions > 0 ? (currentConversions / currentSessions) * 100 : null;
+        const previousRate = previousSessions > 0 ? (previousConversions / previousSessions) * 100 : null;
+        const conversionsIncreased = currentConversions > previousConversions;
+        const conversionsDecreased = currentConversions < previousConversions;
+        const action = conversionsIncreased
+          ? "Identify the traffic sources and landing pages associated with the increase, then verify conversion-event integrity before considering budget reallocation."
+          : conversionsDecreased && currentSessions >= previousSessions
+            ? "Audit conversion-event tracking, source mix, and landing-page changes because conversions declined without a decline in sessions."
+            : conversionsDecreased
+              ? "Review source-level traffic delivery first, then inspect conversion frequency to separate acquisition loss from on-site performance."
+              : "Compare the flat conversion volume with the approved campaign target and review source mix before changing spend.";
         trendRecommendations.push({
-          title: "Selected-Window Comparison",
-          message: `Current totals are compared with cumulative totals through ${comparisonDateLabel || "the requested historical date"}. Differences show activity added since that date, not like-for-like period performance.`,
-        });
-      } else if (trendWindowRows.length > 0) {
-        trendRecommendations.push({
-          title: "Historical Comparison Pending",
-          message: `Exact comparison data for ${trendComparisonDate || "the requested historical date"} is unavailable. Current cumulative values are not being reused as historical values.`,
+          title: conversionsIncreased
+            ? "Conversions Increased — Validate the Drivers"
+            : conversionsDecreased
+              ? "Conversions Decreased — Investigate the Drivers"
+              : "Conversion Volume Flat — Review the Target Gap",
+          message: `${trendWindowStart} to ${trendWindowEnd} recorded ${formatCampaignDeepDiveMetricValue("conversions", currentConversions)} conversions from ${formatCampaignDeepDiveMetricValue("sessions", currentSessions)} sessions${currentRate === null ? "" : ` (${currentRate.toFixed(1)} per 100 sessions)`}, versus ${formatCampaignDeepDiveMetricValue("conversions", previousConversions)} conversions from ${formatCampaignDeepDiveMetricValue("sessions", previousSessions)} sessions${previousRate === null ? "" : ` (${previousRate.toFixed(1)} per 100 sessions)`} during ${trendPreviousWindowStart} to ${trendComparisonDate}. Next action: ${action}`,
         });
       }
       const currentRoas = trendCurrentMetric("roas");

@@ -6,7 +6,7 @@ Status: **PASS — bounded production certification for the current GA4-first Tr
 
 The earlier `58a93a81feb189cbf7b502f3ae57a72120a9a80d` decision is historical. The current revision was revalidated after the initial-render, cumulative-input, anomaly-helper, financial-reconciliation, and Executive Recommendation changes. This decision applies only to the exact scope and evidence below.
 
-Post-certification local candidate: **UNVERIFIED pending deployment and browser confirmation.** The subsequent top-card title and directional-color presentation change does not alter metric values or calculations, but it changes the certified UI dependency.
+Post-certification candidate `52bf90fb2b26642e8268434f268857ffaab96c01`: **UNVERIFIED pending deployment and browser confirmation.** The subsequent top-card title and directional-color presentation change does not alter metric values or calculations, but it changes the certified UI dependency.
 
 This is not a global or multi-source certification. In the current release, campaign metrics are imported through GA4. Meta, Instagram, LinkedIn, TikTok, and other non-GA4 main-source Trend paths are not configured. The positive `Paid Acquisition Funnel` and multi-source `Source Contribution` branches are therefore excluded; their correct GA4-only behavior is to remain hidden.
 
@@ -102,4 +102,4 @@ Before any non-GA4 main source is enabled for this release, its positive conditi
 - `APP_PRODUCTION_READINESS.md` was not modified.
 - The pre-existing uncommitted ledger edit and unrelated untracked paths were preserved.
 - No product code, shared contract, existing test, or existing certificate was changed by this certification record.
-- This recertification update is uncommitted and unpushed pending explicit approval.
+- The post-certification UI candidate is committed and pushed at `52bf90fb2b26642e8268434f268857ffaab96c01`, but remains unverified until that exact revision is deployed and browser-confirmed.

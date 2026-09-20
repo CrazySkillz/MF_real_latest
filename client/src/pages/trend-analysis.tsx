@@ -585,13 +585,13 @@ export default function TrendAnalysis() {
     revenue: historicalRevenue,
     conversions: historicalFinancialConversions,
   });
-  const authoritativeTrendPrevious = exactTrafficComparison ? {
-    users: exactTrafficComparison.previous.users,
-    sessions: exactTrafficComparison.previous.sessions,
-    engagedSessions: exactTrafficComparison.previous.engagedSessions,
-    conversions: exactTrafficComparison.previous.conversions,
-    engagementRate: exactTrafficComparison.previous.engagementRate,
-    cvr: exactTrafficComparison.previous.cvr,
+  const authoritativeTrendPrevious = exactTrafficComparison || compatibleFinancialDaily ? {
+    users: exactTrafficComparison?.previous.users ?? null,
+    sessions: exactTrafficComparison?.previous.sessions ?? null,
+    engagedSessions: exactTrafficComparison?.previous.engagedSessions ?? null,
+    conversions: exactTrafficComparison?.previous.conversions ?? null,
+    engagementRate: exactTrafficComparison?.previous.engagementRate ?? null,
+    cvr: exactTrafficComparison?.previous.cvr ?? null,
     revenue: historicalRevenue,
     spend: historicalSpend,
     roas: historicalFinancialRatios.roas,

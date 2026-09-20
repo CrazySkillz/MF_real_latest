@@ -113,7 +113,9 @@ describe("campaign current-value financial source contract", () => {
     expect(storageMock.getSpendTotalForRange).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-12", "ga4");
     expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith("properties/123", "token", "2026-05-20", "2026-08-12", [], "USD");
     expect(ga4ServiceMock.getAcquisitionBreakdown).not.toHaveBeenCalled();
-    expect(await getCampaignMetricTotalsAtDate("campaign-1", "2026-06-30")).toBeNull();
+    expect(await getCampaignMetricTotalsAtDate("campaign-1", "2026-06-30"))
+      .toMatchObject({ revenue: 1300, ga4Revenue: 1000, financialConversions: 40, ga4Available: false });
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenLastCalledWith("properties/123", "token", "2026-05-20", "2026-06-30", [], "USD");
     expect(await getCampaignMetricTotalsAtDate("campaign-1", "2026-02-30")).toBeNull();
   });
 
@@ -142,6 +144,32 @@ describe("campaign current-value financial source contract", () => {
       ga4FinancialSource: "pre_campaign_zero",
     });
     expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledTimes(1);
+    expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
+  });
+
+  it("retains exact financials before the GA4 traffic import boundary", async () => {
+    storageMock.getCampaign.mockResolvedValue({
+      id: "campaign-1",
+      createdAt: "2026-09-08T10:06:04.469Z",
+      currency: "USD",
+      reportingTimeZone: "Europe/Amsterdam",
+    });
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 57400, sourceIds: ["revenue-1"] });
+    storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 300, sourceIds: ["spend-1"] });
+
+    const totals = await getCampaignMetricTotalsAtDate("campaign-1", "2026-06-21");
+
+    expect(totals).toMatchObject({
+      revenue: 57400,
+      ga4Revenue: 0,
+      spend: 300,
+      financialConversions: 0,
+      ga4Available: false,
+      ga4RevenueAvailable: true,
+      financialConversionsAvailable: true,
+      ga4FinancialSource: "pre_campaign_zero",
+    });
+    expect(storageMock.getGA4DailyMetrics).not.toHaveBeenCalled();
     expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 

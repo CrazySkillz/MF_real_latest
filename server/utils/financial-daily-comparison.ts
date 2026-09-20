@@ -60,7 +60,8 @@ export async function deriveFinancialDailyComparisonSnapshot(
   if (!campaign || !primary || isYesopMockProperty(primary.propertyId)) return null;
 
   const window = resolveGA4ImportToDateWindow(primary.importStartDate, campaign.reportingTimeZone, dependencies.now());
-  if (!window || reportingDate < window.startDate || reportingDate > window.endDate) return null;
+  if (!window || reportingDate < "1900-01-01" || reportingDate > window.endDate) return null;
+  const financialWindowStartDate = reportingDate < window.startDate ? "1900-01-01" : window.startDate;
 
   const [totals, revenueSourceTotal, spendSourceTotal] = await Promise.all([
     dependencies.getCampaignMetricTotalsAtDate(campaignId, reportingDate),
@@ -93,7 +94,7 @@ export async function deriveFinancialDailyComparisonSnapshot(
         version: "performance_summary_aggregate_v3",
         currentValueWindow: {
           mode: "initial_import_to_latest_completed_day",
-          startDate: window.startDate,
+          startDate: financialWindowStartDate,
           endDate: reportingDate,
           dataThroughDate: reportingDate,
           reportingTimeZone: window.reportingTimeZone,

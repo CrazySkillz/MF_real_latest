@@ -156,13 +156,16 @@ export const resolveCompatibleTrendFinancialDaily = (args: {
 }) => {
   const { snapshot, campaignId, comparisonDate, campaignCurrency, currentValueWindow } = args;
   const financialDaily = snapshot?.metrics?.financialDaily;
+  const expectedStartDate = comparisonDate < String(currentValueWindow?.startDate || "")
+    ? "1900-01-01"
+    : currentValueWindow?.startDate;
   return snapshot?.campaignId === campaignId
     && snapshot?.snapshotType === "financial_daily"
     && snapshot?.reportingDate === comparisonDate
     && financialDaily?.version === "financial_daily_snapshot_v1"
     && financialDaily?.currency === campaignCurrency
     && financialDaily?.currentValueWindow?.mode === "initial_import_to_latest_completed_day"
-    && financialDaily?.currentValueWindow?.startDate === currentValueWindow?.startDate
+    && financialDaily?.currentValueWindow?.startDate === expectedStartDate
     && financialDaily?.currentValueWindow?.endDate === comparisonDate
     && financialDaily?.currentValueWindow?.dataThroughDate === comparisonDate
     && financialDaily?.currentValueWindow?.reportingTimeZone === currentValueWindow?.reportingTimeZone

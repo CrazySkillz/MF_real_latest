@@ -156,11 +156,12 @@ async function getCampaignMetricTotalsForEndDate(
     : null;
   if (primary?.propertyId && !ga4Window) return null;
   const startDate = ga4Window?.startDate || toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
+  const isBeforeGA4ImportStart = Boolean(exactEndDate && ga4Window && exactEndDate < ga4Window.startDate);
   const parsedExactEndDate = exactEndDate ? new Date(`${exactEndDate}T00:00:00.000Z`) : null;
   if (exactEndDate && (!/^\d{4}-\d{2}-\d{2}$/.test(exactEndDate)
     || !parsedExactEndDate || Number.isNaN(parsedExactEndDate.getTime())
     || parsedExactEndDate.toISOString().slice(0, 10) !== exactEndDate
-    || !ga4Window || exactEndDate < ga4Window.startDate || exactEndDate > ga4Window.endDate)) return null;
+    || !ga4Window || exactEndDate < "1900-01-01" || exactEndDate > ga4Window.endDate)) return null;
   const endDate = exactEndDate || ga4Window?.endDate || todayUTC();
   const financialStartDate = toISODateUTC((campaign as any)?.startDate)
     || toISODateUTC((campaign as any)?.createdAt)
@@ -174,9 +175,12 @@ async function getCampaignMetricTotalsForEndDate(
   let ga4FinancialSource: CampaignMetricTotals["ga4FinancialSource"] = null;
   if (primary?.propertyId) {
     const propertyId = String(primary.propertyId);
-    const rows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, endDate).catch(() => null as any);
+    if (isBeforeGA4ImportStart && isYesopMockProperty(propertyId)) return null;
+    const rows = isBeforeGA4ImportStart
+      ? []
+      : await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, endDate).catch(() => null as any);
     if (!rows) return null;
-    ga4Available = true;
+    ga4Available = !isBeforeGA4ImportStart;
     ga4RevenueAvailable = true;
     let engagementSum = 0;
     let engagementRows = 0;

@@ -131,10 +131,16 @@ describe("read-only financial daily comparison derivation", () => {
     });
   });
 
-  it("fails closed outside the import window and on source/currency inconsistencies", async () => {
+  it("uses source-to-date financials before import and fails closed on invalid dates or source inconsistencies", async () => {
     const beforeImport = dependencies();
-    expect(await deriveFinancialDailyComparisonSnapshot({ campaignId, reportingDate: "2026-08-08" }, beforeImport)).toBeNull();
-    expect(beforeImport.getCampaignMetricTotalsAtDate).not.toHaveBeenCalled();
+    const beforeImportResult = await deriveFinancialDailyComparisonSnapshot({ campaignId, reportingDate: "2026-08-08" }, beforeImport);
+    expect((beforeImportResult?.metrics as any)?.financialDaily?.currentValueWindow).toMatchObject({
+      startDate: "1900-01-01",
+      endDate: "2026-08-08",
+      dataThroughDate: "2026-08-08",
+    });
+    expect(beforeImport.getCampaignMetricTotalsAtDate).toHaveBeenCalledWith(campaignId, "2026-08-08");
+    expect(await deriveFinancialDailyComparisonSnapshot({ campaignId, reportingDate: "1899-12-31" }, dependencies())).toBeNull();
 
     const currencyMismatch = dependencies({
       getRevenueTotalForRange: vi.fn().mockResolvedValue({ totalRevenue: 50, currency: "EUR", sourceIds: ["revenue-1"] }),

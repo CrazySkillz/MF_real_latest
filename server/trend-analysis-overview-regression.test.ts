@@ -230,6 +230,32 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(resolveCompatibleTrendFinancialDaily({ ...args, campaignCurrency: "EUR" })).toBeNull();
     expect(resolveCompatibleTrendFinancialDaily({ ...args, campaignId: "campaign-2" })).toBeNull();
 
+    const preImportSnapshot = {
+      ...snapshot,
+      reportingDate: "2026-06-21",
+      metrics: {
+        financialDaily: {
+          ...snapshot.metrics.financialDaily,
+          currentValueWindow: {
+            ...snapshot.metrics.financialDaily.currentValueWindow,
+            startDate: "1900-01-01",
+            endDate: "2026-06-21",
+            dataThroughDate: "2026-06-21",
+          },
+        },
+      },
+    };
+    expect(resolveCompatibleTrendFinancialDaily({ ...args, snapshot: preImportSnapshot, comparisonDate: "2026-06-21" }))
+      .toBe(preImportSnapshot.metrics.financialDaily);
+    expect(resolveCompatibleTrendFinancialDaily({
+      ...args,
+      snapshot: {
+        ...preImportSnapshot,
+        metrics: { financialDaily: { ...preImportSnapshot.metrics.financialDaily, currentValueWindow: { ...preImportSnapshot.metrics.financialDaily.currentValueWindow, startDate: "2026-06-21" } } },
+      },
+      comparisonDate: "2026-06-21",
+    })).toBeNull();
+
     const ratios = deriveTrendFinancialRatios({ spend: 2699.75, revenue: 72766.69, conversions: 251 });
     expect(ratios.roas).toBeCloseTo(72766.69 / 2699.75, 10);
     expect(ratios.roi).toBeCloseTo(((72766.69 - 2699.75) / 2699.75) * 100, 10);
@@ -268,6 +294,8 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).not.toContain("Financial KPIs are campaign-to-date");
     expect(page).not.toContain("current campaign-to-date financial KPIs remain visible");
     expect(page).not.toContain("Traffic cards are cumulative from the initial import");
+    expect(page).toContain("const authoritativeTrendPrevious = exactTrafficComparison || compatibleFinancialDaily ? {");
+    expect(page).toContain("users: exactTrafficComparison?.previous.users ?? null");
   });
 
   it("wires the Efficiency Metrics tab to aggregate-backed derived metrics", () => {

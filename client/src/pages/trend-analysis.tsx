@@ -490,7 +490,7 @@ export default function TrendAnalysis() {
     return date.toISOString().slice(0, 10);
   })() : "";
   // Provider coverage verifies freshness; persisted daily facts remain the shared Overview/Trend display source.
-  const verifiedTrendGA4DailyRows = usesCumulativeGA4Consumer && !trendGA4CoverageError && trendGA4Coverage?.verified === true ? resolveVerifiedTrendGA4DailyRows({
+  const verifiedTrendGA4DailyRows = usesCumulativeGA4Consumer && !trendGA4CoverageError ? resolveVerifiedTrendGA4DailyRows({
     dailyResponse: ga4Daily,
     coverageResponse: {
       ...trendGA4Coverage,
@@ -1465,7 +1465,7 @@ export default function TrendAnalysis() {
                       <p className="font-medium text-foreground">{trendGA4StoredHistoryMismatch ? "Trend data is awaiting the shared GA4 refresh" : trendDataStale ? "Trend data may be stale" : "Some Trend data is unavailable"}</p>
                       <p className="text-sm text-muted-foreground">
                         {trendGA4StoredHistoryMismatch
-                          ? "Showing the same saved totals as GA4 Overview. Daily chart values are withheld until the shared GA4 refresh reconciles them."
+                          ? "Showing the same saved totals and daily chart values as GA4 Overview until the shared GA4 refresh reconciles them."
                           : trendDataStale
                           ? "Showing the latest available Trend values. Latest completed-day coverage or a background refresh could not be verified."
                           : "Available values remain shown; failed inputs and dependent sections are withheld."}

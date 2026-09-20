@@ -806,11 +806,26 @@ export default function TrendAnalysis() {
       const parsed = Number(value);
       return Number.isFinite(parsed) ? parsed : null;
     };
+    const ga4DailyRowsByDate = new Map<string, any>(
+      (usesCumulativeGA4Consumer && Array.isArray(ga4Daily?.data) ? ga4Daily.data : [])
+        .map((row: any) => [String(row?.date || "").slice(0, 10), row]),
+    );
+    const verifiedNoActivityDates = new Set<string>(
+      (usesCumulativeGA4Consumer && Array.isArray(verifiedTrendGA4DailyRows) ? verifiedTrendGA4DailyRows : [])
+        .filter((row: any) => Number(row?.sessions) === 0 && Number(row?.conversions) === 0 && Number(row?.users) === 0)
+        .map((row: any) => String(row?.date || "").slice(0, 10)),
+    );
 
     const series = rows.map((row: any) => {
       const date = String(row?.date || "").slice(0, 10);
       const metrics = row?.metrics || {};
       const engagementRate = toMetric(metrics.engagementRate);
+      const ga4DailyRow = ga4DailyRowsByDate.get(date);
+      const ga4DailyRowMatches = ga4DailyRow
+        && Number(ga4DailyRow.sessions) === Number(metrics.sessions || 0)
+        && Number(ga4DailyRow.conversions) === Number(metrics.conversions || 0)
+        && engagementRate !== null
+        && Math.abs(normalizeRateToPercent(Number(ga4DailyRow.engagementRate)) - normalizeRateToPercent(engagementRate)) < 0.01;
       return {
         date,
         label: format(new Date(`${date}T00:00:00`), 'MMM dd'),
@@ -820,6 +835,7 @@ export default function TrendAnalysis() {
         clicks: Number(metrics.clicks || 0),
         impressions: Number(metrics.impressions || 0),
         sessions: Number(metrics.sessions || 0),
+        engagedSessions: ga4DailyRowMatches ? toMetric(ga4DailyRow.engagedSessions) : null,
         roas: toMetric(metrics.roas),
         roi: toMetric(metrics.roi),
         cpa: toMetric(metrics.cpa),
@@ -837,11 +853,20 @@ export default function TrendAnalysis() {
     const efficiencyChartSeries = currentPeriod.length > 0
       ? (usesCumulativeGA4Consumer
         ? expandTrendRowsToCalendarWindow(series, String(currentValueWindow?.dataThroughDate || ""), perfDays, String(currentValueWindow?.startDate || ""))
-        : expandAggregateTrendWindow(series, aggregate, perfDays)).map((row) => ({
-        roas: null, roi: null, cpa: null, cpc: null, cpm: null, ctr: null, cvr: null, engagementRate: null,
-        ...row,
-        label: format(new Date(`${row.date}T00:00:00`), 'MMM dd'),
-      }))
+        : expandAggregateTrendWindow(series, aggregate, perfDays)).map((row) => {
+        const noActivity = verifiedNoActivityDates.has(String(row.date || ""));
+        return {
+          roas: null, roi: null, cpa: null, cpc: null, cpm: null, ctr: null,
+          ...row,
+          sessions: noActivity ? 0 : row.sessions,
+          conversions: noActivity ? 0 : row.conversions,
+          engagedSessions: noActivity ? 0 : row.engagedSessions,
+          cvr: noActivity ? null : row.cvr,
+          engagementRate: noActivity ? null : row.engagementRate,
+          noActivity: noActivity ? 0 : null,
+          label: format(new Date(`${row.date}T00:00:00`), 'MMM dd'),
+        };
+      })
       : currentPeriod;
     const previousPeriod = usesCumulativeGA4Consumer
       ? series.slice(-perfDays * 2, -perfDays)
@@ -923,7 +948,7 @@ export default function TrendAnalysis() {
       hasCostEfficiency: !usesCumulativeGA4Consumer && (hasValue("cpa") || hasValue("cpc") || hasValue("cpm")),
       hasRateEfficiency: hasValue("ctr") || hasValue("cvr") || hasValue("engagementRate"),
     };
-  }, [trendAggregate, perfDays, usesCumulativeGA4Consumer, authoritativeTrendCurrent, authoritativeTrendPrevious, trendComparisonDate, campaignCurrency]);
+  }, [trendAggregate, ga4Daily, verifiedTrendGA4DailyRows, perfDays, usesCumulativeGA4Consumer, authoritativeTrendCurrent, authoritativeTrendPrevious, trendComparisonDate, campaignCurrency]);
 
   const conversionFunnelData = useMemo<any>(() => {
     const aggregate = trendAggregate;
@@ -1743,7 +1768,16 @@ export default function TrendAnalysis() {
 
                         {efficiencyTrendData.series.length > 0 && efficiencyTrendData.hasRateEfficiency && (
                           <Card className="lg:col-span-2">
-                            <CardHeader><CardTitle>Conversion Quality Trend</CardTitle></CardHeader>
+                            <CardHeader>
+                              <CardTitle>Conversion Quality Trend</CardTitle>
+                              {usesCumulativeGA4Consumer && <p className="text-xs text-muted-foreground">Daily rates; hover a date to see the exact counts used.</p>}
+                              {usesCumulativeGA4Consumer && efficiencyTrendData.series.some((row: any) => row.noActivity === 0) && (
+                                <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                                  <span className="h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-white" aria-hidden="true" />
+                                  No activity — 0 sessions; rates unavailable
+                                </p>
+                              )}
+                            </CardHeader>
                             <CardContent>
                               <div className="h-64">
                                 <ResponsiveContainer width="100%" height="100%">
@@ -1751,11 +1785,40 @@ export default function TrendAnalysis() {
                                     <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                                     <XAxis dataKey="label" className="text-xs" />
                                     <YAxis className="text-xs" />
-                                    <Tooltip contentStyle={tooltipStyle} formatter={(value: any, name: string) => [formatPct(Number(value)), name]} />
+                                    {usesCumulativeGA4Consumer ? (
+                                      <Tooltip content={({ active, payload, label }: any) => {
+                                        if (!active || !payload?.length) return null;
+                                        const row = payload[0]?.payload || {};
+                                        if (row.noActivity === 0) {
+                                          return (
+                                            <div className="rounded-md border bg-background p-3 text-sm shadow-sm">
+                                              <p className="mb-2 font-medium">{label}</p>
+                                              <p>Sessions: 0</p>
+                                              <p>Conversions: 0</p>
+                                              <p>Engaged Sessions: 0</p>
+                                              <p className="mt-2 text-amber-600">No activity — rates unavailable</p>
+                                            </div>
+                                          );
+                                        }
+                                        return (
+                                          <div className="rounded-md border bg-background p-3 text-sm shadow-sm">
+                                            <p className="mb-2 font-medium">{label}</p>
+                                            <p>Sessions: {formatExactTrendCount(Number(row.sessions || 0))}</p>
+                                            <p>Conversions: {formatExactTrendCount(Number(row.conversions || 0))}</p>
+                                            <p>Engaged Sessions: {row.engagedSessions === null || typeof row.engagedSessions === "undefined" ? "Unavailable" : formatExactTrendCount(Number(row.engagedSessions))}</p>
+                                            {row.cvr !== null && typeof row.cvr !== "undefined" && <p className="mt-2 text-[#8b5cf6]">CVR: {formatPct(Number(row.cvr))}</p>}
+                                            {row.engagementRate !== null && typeof row.engagementRate !== "undefined" && <p className="text-[#10b981]">Engagement Rate: {formatPct(Number(row.engagementRate))}</p>}
+                                          </div>
+                                        );
+                                      }} />
+                                    ) : (
+                                      <Tooltip contentStyle={tooltipStyle} formatter={(value: any, name: string) => [formatPct(Number(value)), name]} />
+                                    )}
                                     <Legend />
                                     {efficiencyTrendData.current.ctr !== null && <Line isAnimationActive={false} type="monotone" dataKey="ctr" stroke="#3b82f6" strokeWidth={2} dot={false} name="CTR" />}
                                     {efficiencyTrendData.current.cvr !== null && <Line isAnimationActive={false} type="monotone" dataKey="cvr" stroke="#8b5cf6" strokeWidth={2} dot={false} name="CVR" />}
                                     {efficiencyTrendData.current.engagementRate !== null && <Line isAnimationActive={false} type="monotone" dataKey="engagementRate" stroke="#10b981" strokeWidth={2} dot={false} name="Engagement Rate" />}
+                                    {usesCumulativeGA4Consumer && <Line isAnimationActive={false} type="linear" dataKey="noActivity" stroke="transparent" dot={{ r: 5, fill: '#f59e0b', stroke: '#ffffff', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#f59e0b', stroke: '#ffffff', strokeWidth: 2 }} legendType="none" name="No activity" />}
                                   </LineChart>
                                 </ResponsiveContainer>
                               </div>

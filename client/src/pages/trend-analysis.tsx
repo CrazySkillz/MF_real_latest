@@ -1882,6 +1882,42 @@ export default function TrendAnalysis() {
                     </div>
                   )}
 
+                  {/* Anomaly Alerts */}
+                  {overviewTrendData.anomalies.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <AlertTriangle className="w-5 h-5 text-orange-500" />
+                          <span>Anomaly Detection</span>
+                          <Badge variant="outline" className="text-xs">{overviewTrendData.anomalies.length} detected</Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          {overviewTrendData.anomalies.slice(0, 8).map((a: any, i: number) => {
+                            const isSpike = a.value > a.expected;
+                            return (
+                              <div key={i} className={`p-3 rounded-lg border ${a.severity === 'critical' ? 'border-red-200 bg-red-50 dark:bg-red-900/20' : 'border-orange-200 bg-orange-50 dark:bg-orange-900/20'}`}>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    {isSpike ? <TrendingUp className="w-4 h-4 text-orange-600" /> : <TrendingDown className="w-4 h-4 text-blue-600" />}
+                                    <span className="text-sm font-medium capitalize">{a.metric} {isSpike ? 'spike' : 'drop'}</span>
+                                    <Badge variant={a.severity === 'critical' ? 'destructive' : 'outline'} className="text-xs">{a.severity}</Badge>
+                                    <Badge variant="outline" className="text-xs">{a.label}</Badge>
+                                  </div>
+                                  <div className="text-sm text-muted-foreground/70">
+                                    <span className="font-semibold">{a.metric === 'spend' || a.metric === 'cpa' ? fmtTrendCurrency(a.value) : a.value.toLocaleString()}</span>
+                                    <span className="text-xs ml-1">(previous 7-day average ~{a.metric === 'spend' || a.metric === 'cpa' ? fmtTrendCurrency(a.expected) : Math.round(a.expected).toLocaleString()})</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
                   {conversionFunnelData?.webAvailable && (
                     <Card>
                       <CardHeader>
@@ -2022,42 +2058,6 @@ export default function TrendAnalysis() {
                             </div>
                           </div>
                         )}
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Anomaly Alerts */}
-                  {overviewTrendData.anomalies.length > 0 && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center space-x-2">
-                          <AlertTriangle className="w-5 h-5 text-orange-500" />
-                          <span>Anomaly Detection</span>
-                          <Badge variant="outline" className="text-xs">{overviewTrendData.anomalies.length} detected</Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          {overviewTrendData.anomalies.slice(0, 8).map((a: any, i: number) => {
-                            const isSpike = a.value > a.expected;
-                            return (
-                              <div key={i} className={`p-3 rounded-lg border ${a.severity === 'critical' ? 'border-red-200 bg-red-50 dark:bg-red-900/20' : 'border-orange-200 bg-orange-50 dark:bg-orange-900/20'}`}>
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-2">
-                                    {isSpike ? <TrendingUp className="w-4 h-4 text-orange-600" /> : <TrendingDown className="w-4 h-4 text-blue-600" />}
-                                    <span className="text-sm font-medium capitalize">{a.metric} {isSpike ? 'spike' : 'drop'}</span>
-                                    <Badge variant={a.severity === 'critical' ? 'destructive' : 'outline'} className="text-xs">{a.severity}</Badge>
-                                    <Badge variant="outline" className="text-xs">{a.label}</Badge>
-                                  </div>
-                                  <div className="text-sm text-muted-foreground/70">
-                                    <span className="font-semibold">{a.metric === 'spend' || a.metric === 'cpa' ? fmtTrendCurrency(a.value) : a.value.toLocaleString()}</span>
-                                    <span className="text-xs ml-1">(expected ~{a.metric === 'spend' || a.metric === 'cpa' ? fmtTrendCurrency(a.expected) : Math.round(a.expected).toLocaleString()})</span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
                       </CardContent>
                     </Card>
                   )}

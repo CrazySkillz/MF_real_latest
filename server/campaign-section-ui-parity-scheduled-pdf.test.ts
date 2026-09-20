@@ -86,6 +86,46 @@ const performanceSummary = {
   }],
 };
 
+const financialInputs = {
+  revenue: [
+    {
+      id: "ga4_native_revenue", value: 55966.70, campaignId: "campaign-1", scopeMode: "campaign_to_date",
+      startDate: "2026-07-02", endDate: "2026-08-27", currency: "USD", currencyVerified: true,
+    },
+    {
+      id: "revenue-1", value: 16799.99, campaignId: "campaign-1", scopeMode: "source_to_date",
+      startDate: "1900-01-01", endDate: "2026-08-27", currency: "USD", currencyVerified: true,
+    },
+  ],
+  spend: [{
+    id: "spend-1", value: 2699.75, campaignId: "campaign-1", scopeMode: "source_to_date",
+    startDate: "1900-01-01", endDate: "2026-08-27", currency: "USD", currencyVerified: true,
+  }],
+};
+
+const financialDecisionContext = {
+  version: "financial_decision_context_v1",
+  status: "ready",
+  campaignId: "campaign-1",
+  currency: "USD",
+  dataThroughDate: "2026-08-27",
+  revenueModel: "ga4_campaign_to_date_plus_imported_source_to_date",
+  spendModel: "source_to_date",
+  roas: 72766.69 / 2699.75,
+};
+
+const completeTrendComparisonRows = () => Array.from({ length: 60 }, (_, index) => {
+  const date = new Date("2026-06-29T00:00:00.000Z");
+  date.setUTCDate(date.getUTCDate() + index);
+  const currentWindow = index >= 30;
+  const sessions = 10;
+  const conversions = currentWindow ? 2 : 1;
+  return {
+    date: date.toISOString().slice(0, 10),
+    metrics: { users: 8, sessions, conversions, cvr: (conversions / sessions) * 100, engagementRate: 0.8 },
+  };
+});
+
 const report = (reportType: string, selectedSections: string[]) => ({
   id: `report-${reportType}`,
   name: `${reportType} report`,
@@ -168,6 +208,8 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     aggregateCampaignMetricsMock.mockResolvedValue({
       detailedMetrics: {
         performanceSummary,
+        financialDecisionContext,
+        financialInputs,
         trendAnalysis: {
           campaignId: "campaign-1",
           dateRange: "90days",
@@ -211,8 +253,8 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfTextCalls).not.toContain("Paid Acquisition Funnel");
     expect(pdfTextCalls).not.toContain("Source Contribution");
     expect(pdfTextCalls).toContain("Executive Recommendations");
-    expect(pdfTextCalls.some((text) => text.includes("Selected-Window Comparison") && text.includes("Jul 28, 2026"))).toBe(true);
-    expect(pdfTextCalls.some((text) => text.includes("Campaign-to-Date ROAS") && text.includes("26.95x"))).toBe(true);
+    expect(pdfTextCalls.some((text) => text.includes("Selected-Window Comparison"))).toBe(false);
+    expect(pdfTextCalls.some((text) => text.includes("Campaign-to-Date ROAS") && text.includes("26.95x") && text.includes("Reconciled Sources"))).toBe(true);
     expect(pdfTextCalls.some((text) => text.includes("Campaign-to-Date Conversion Volume") && text.includes("12.8 conversions per 100 sessions"))).toBe(true);
     expect(pdfTextCalls.some((text) => text.includes("Sessions: 1,179"))).toBe(false);
     expect(pdfTextCalls.some((text) => text.includes("Sessions: 30"))).toBe(false);
@@ -220,6 +262,68 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfTextCalls.some((text) => text.includes("Click-through rate: Unavailable"))).toBe(false);
     expect(getCampaignMetricTotalsMock).not.toHaveBeenCalled();
     expect(resolveFinancialDailyComparisonPreviousMock).not.toHaveBeenCalled();
+  });
+
+  it("withholds ROAS budget guidance when financial decision inputs do not reconcile", async () => {
+    aggregateCampaignMetricsMock.mockResolvedValueOnce({
+      detailedMetrics: {
+        performanceSummary,
+        financialDecisionContext,
+        financialInputs: {
+          ...financialInputs,
+          spend: [{ ...financialInputs.spend[0], value: 2600 }],
+        },
+        trendAnalysis: {
+          campaignId: "campaign-1",
+          dateRange: "90days",
+          endDate: "2026-08-27",
+          dailyTotals: [],
+          sources: performanceSummary.sources,
+        },
+      },
+    });
+
+    await buildPdfAttachmentForReport({
+      report: report("trend-analysis", ["trend-analysis:overview"]),
+      windowStart: "2026-07-29",
+      windowEnd: "2026-08-27",
+      campaignName: "Campaign",
+    });
+
+    expect(pdfTextCalls.some((text) => text.includes("ROAS Decision Context Not Verified"))).toBe(true);
+    expect(pdfTextCalls.some((text) => text.includes("withheld from executive budget guidance"))).toBe(true);
+    expect(pdfTextCalls.some((text) => text.includes("Campaign-to-Date ROAS") && text.includes("Reconciled Sources"))).toBe(false);
+  });
+
+  it("emits an actionable comparison only when both exact 30-day windows are complete", async () => {
+    storageMock.getPrimaryGA4Connection.mockResolvedValueOnce({ propertyId: "properties/123", importStartDate: "2026-06-29" });
+    aggregateCampaignMetricsMock.mockResolvedValueOnce({
+      detailedMetrics: {
+        performanceSummary,
+        financialDecisionContext,
+        financialInputs,
+        trendAnalysis: {
+          campaignId: "campaign-1",
+          dateRange: "90days",
+          endDate: "2026-08-27",
+          dailyTotals: completeTrendComparisonRows(),
+          sources: performanceSummary.sources,
+        },
+      },
+    });
+
+    await buildPdfAttachmentForReport({
+      report: report("trend-analysis", ["trend-analysis:overview"]),
+      windowStart: "2026-07-29",
+      windowEnd: "2026-08-27",
+      campaignName: "Campaign",
+    });
+
+    expect(pdfTextCalls.some((text) => text.includes("Conversions Increased — Validate the Drivers")
+      && text.includes("2026-07-29 to 2026-08-27 recorded 60 conversions from 300 sessions")
+      && text.includes("versus 30 conversions from 300 sessions")
+      && text.includes("Next action:"))).toBe(true);
+    expect(pdfTextCalls.some((text) => text.includes("Selected-Window Comparison"))).toBe(false);
   });
 
   it("uses the same read-only exact-date financial fallback when a stored Trend comparison is absent", async () => {

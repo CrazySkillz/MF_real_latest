@@ -18,6 +18,7 @@ import { format, subDays } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useMemo } from "react";
 import {
+  detectTrendAnomalies,
   deriveExactCumulativeGA4Traffic,
   deriveTrendFinancialRatios,
   expandTrendRowsToCalendarWindow,
@@ -68,53 +69,6 @@ const expandAggregateTrendWindow = (rows: any[], aggregate: any, days: number) =
   expandTrendRowsToCalendarWindow(rows, String(aggregate?.endDate || ""), days, String(aggregate?.startDate || ""));
 
 // ─── Anomaly Detection ──────────────────────────────────────────────
-interface Anomaly {
-  date: string;
-  label: string;
-  metric: string;
-  value: number;
-  expected: number;
-  severity: 'warning' | 'critical';
-}
-
-function detectAnomalies(series: any[], metrics: string[]): Anomaly[] {
-  const anomalies: Anomaly[] = [];
-  metrics.forEach(metric => {
-    const values: Array<number | null> = series.map((row) => {
-      const rawValue = row?.[metric];
-      if (rawValue === null || typeof rawValue === 'undefined' || rawValue === '') return null;
-      const value = Number(rawValue);
-      return Number.isFinite(value) ? value : null;
-    });
-    if (values.length < 8) return;
-    const firstActivityIndex = values.findIndex((value) => value !== null && value !== 0);
-    if (firstActivityIndex < 0) return;
-    for (let i = Math.max(7, firstActivityIndex + 7); i < values.length; i++) {
-      const window = values.slice(i - 7, i);
-      const val = values[i];
-      if (val === null || window.some((value) => value === null)) continue;
-      const comparableWindow = window as number[];
-      const mean = comparableWindow.reduce((a, b) => a + b, 0) / comparableWindow.length;
-      const variance = comparableWindow.reduce((a, b) => a + (b - mean) ** 2, 0) / comparableWindow.length;
-      const stddev = Math.sqrt(variance);
-      if (stddev > 0) {
-        const deviations = Math.abs(val - mean) / stddev;
-        if (deviations > 2) {
-          anomalies.push({
-            date: series[i].date,
-            label: series[i].label,
-            metric,
-            value: val,
-            expected: mean,
-            severity: deviations > 3 ? 'critical' : 'warning',
-          });
-        }
-      }
-    }
-  });
-  return anomalies;
-}
-
 // ─── Main Component ─────────────────────────────────────────────────
 export default function TrendAnalysis() {
   const { id: campaignId } = useParams();
@@ -459,7 +413,7 @@ export default function TrendAnalysis() {
       cpa: pctChange(current.cpa, previous.cpa),
     };
 
-    const anomalies = detectAnomalies(currentPeriod, ['spend', 'clicks', 'conversions', 'impressions', 'revenue', 'cpa', 'roas']);
+    const anomalies = detectTrendAnomalies(currentPeriod, ['spend', 'clicks', 'conversions', 'impressions', 'revenue', 'cpa', 'roas']);
 
     // Platform totals for breakdown tab
     const platformTotals = [
@@ -506,7 +460,7 @@ export default function TrendAnalysis() {
     ? coverageStartDate
     : requestedAnomalyTrendStartDate;
   // Provider coverage verifies freshness; persisted daily facts remain the shared Overview/Trend display source.
-  const verifiedTrendGA4DailyRows = usesCumulativeGA4Consumer && !trendGA4CoverageError ? resolveVerifiedTrendGA4DailyRows({
+  const verifiedTrendGA4DailyRows = usesCumulativeGA4Consumer && trendGA4Coverage && !trendGA4CoverageError ? resolveVerifiedTrendGA4DailyRows({
     dailyResponse: ga4Daily,
     coverageResponse: {
       ...trendGA4Coverage,
@@ -516,7 +470,7 @@ export default function TrendAnalysis() {
     propertyId: trendGA4PropertyId,
     selectedStartDate: selectedTrendStartDate,
   }) : null;
-  const verifiedTrendGA4ComparisonRows = usesCumulativeGA4Consumer && !trendGA4CoverageError ? resolveVerifiedTrendGA4DailyRows({
+  const verifiedTrendGA4ComparisonRows = usesCumulativeGA4Consumer && trendGA4Coverage && !trendGA4CoverageError ? resolveVerifiedTrendGA4DailyRows({
     dailyResponse: ga4Daily,
     coverageResponse: {
       ...trendGA4Coverage,
@@ -526,7 +480,7 @@ export default function TrendAnalysis() {
     propertyId: trendGA4PropertyId,
     selectedStartDate: selectedTrendComparisonStartDate,
   }) : null;
-  const verifiedTrendGA4AnomalyRows = usesCumulativeGA4Consumer && !trendGA4CoverageError ? resolveVerifiedTrendGA4DailyRows({
+  const verifiedTrendGA4AnomalyRows = usesCumulativeGA4Consumer && trendGA4Coverage && !trendGA4CoverageError ? resolveVerifiedTrendGA4DailyRows({
     dailyResponse: ga4Daily,
     coverageResponse: {
       ...trendGA4Coverage,
@@ -744,7 +698,10 @@ export default function TrendAnalysis() {
       const sources = aggregate?.metrics?.[metricName]?.sources;
       return Array.isArray(sources) ? sources.map(String) : [];
     };
-    const hasMetric = (metricName: string) => sourcesFor(metricName).length > 0;
+    const hasMetric = (metricName: string) => usesCumulativeGA4Consumer
+      ? ["users", "sessions", "conversions"].includes(metricName)
+        && authoritativeTrendCurrent?.[metricName as "users" | "sessions" | "conversions"] != null
+      : sourcesFor(metricName).length > 0;
     const hasEngagementRate = Array.isArray(aggregate?.sources)
       && aggregate.sources.some((source: any) => Array.isArray(source?.includedMetrics) && source.includedMetrics.includes("engagementRate"));
 
@@ -869,7 +826,7 @@ export default function TrendAnalysis() {
       previous,
       comparison,
       availableSeries,
-      anomalies: detectAnomalies(anomalySeries, anomalyKeys).filter((anomaly) => currentPeriodDates.has(anomaly.date)),
+      anomalies: detectTrendAnomalies(anomalySeries, anomalyKeys).filter((anomaly) => currentPeriodDates.has(anomaly.date)),
       hasPrevious: Object.values(comparison).some((value) => typeof value === "number"),
       hasCompleteCurrentPeriod: usesCumulativeGA4Consumer ? Boolean(authoritativeTrendCurrent) : currentPeriod.length >= perfDays,
       currentValuesUnavailable: usesCumulativeGA4Consumer && !authoritativeTrendCurrent,
@@ -902,7 +859,18 @@ export default function TrendAnalysis() {
 
   const efficiencyTrendData = useMemo<any>(() => {
     const aggregate = trendAggregate;
-    const rows = Array.isArray(aggregate?.dailyTotals) ? aggregate.dailyTotals : [];
+    const rows = usesCumulativeGA4Consumer && Array.isArray(verifiedTrendGA4DailyRows)
+      ? verifiedTrendGA4DailyRows.map((row: any) => ({
+        date: row.date,
+        metrics: {
+          users: row.users,
+          sessions: row.sessions,
+          conversions: row.conversions,
+          cvr: Number(row.sessions) > 0 ? (Number(row.conversions) / Number(row.sessions)) * 100 : null,
+          engagementRate: row.engagementRate,
+        },
+      }))
+      : Array.isArray(aggregate?.dailyTotals) ? aggregate.dailyTotals : [];
     if (rows.length === 0 && !authoritativeTrendCurrent) return null;
 
     const toMetric = (value: any) => {

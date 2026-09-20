@@ -4,6 +4,52 @@ const hasNonNegativeMetric = (value: any) => value !== null && typeof value !== 
 
 export type TrendConsumerMode = "pending" | "unavailable" | "cumulative_ga4" | "aggregate";
 
+export type TrendAnomaly = {
+  date: string;
+  label: string;
+  metric: string;
+  value: number;
+  expected: number;
+  severity: "warning" | "critical";
+};
+
+export const detectTrendAnomalies = (series: any[], metrics: string[]): TrendAnomaly[] => {
+  const anomalies: TrendAnomaly[] = [];
+  metrics.forEach((metric) => {
+    const values: Array<number | null> = series.map((row) => {
+      const rawValue = row?.[metric];
+      if (rawValue === null || typeof rawValue === "undefined" || rawValue === "") return null;
+      const value = Number(rawValue);
+      return Number.isFinite(value) ? value : null;
+    });
+    if (values.length < 8) return;
+    const firstActivityIndex = values.findIndex((value) => value !== null && value !== 0);
+    if (firstActivityIndex < 0) return;
+    for (let i = Math.max(7, firstActivityIndex + 7); i < values.length; i++) {
+      const window = values.slice(i - 7, i);
+      const value = values[i];
+      if (value === null || window.some((candidate) => candidate === null)) continue;
+      const comparableWindow = window as number[];
+      const mean = comparableWindow.reduce((sum, candidate) => sum + candidate, 0) / comparableWindow.length;
+      const variance = comparableWindow.reduce((sum, candidate) => sum + (candidate - mean) ** 2, 0) / comparableWindow.length;
+      const stddev = Math.sqrt(variance);
+      if (stddev <= 0) continue;
+      const deviations = Math.abs(value - mean) / stddev;
+      if (deviations > 2) {
+        anomalies.push({
+          date: series[i].date,
+          label: series[i].label,
+          metric,
+          value,
+          expected: mean,
+          severity: deviations > 3 ? "critical" : "warning",
+        });
+      }
+    }
+  });
+  return anomalies;
+};
+
 export const resolveTrendConsumerMode = (args: {
   outcomeTotalsFetched: boolean;
   performanceSummary: any;

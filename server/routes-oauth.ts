@@ -89,6 +89,11 @@ type CampaignOutcomeTotalsReader = (campaignId: string, dateRange: string) => Pr
 let campaignOutcomeTotalsReader: CampaignOutcomeTotalsReader | null = null;
 
 export async function readCertifiedCampaignPerformanceSummary(campaignId: string, dateRange = "90days"): Promise<any> {
+  const outcomeTotals = await readCertifiedCampaignOutcomeTotals(campaignId, dateRange);
+  return outcomeTotals.performanceSummary;
+}
+
+export async function readCertifiedCampaignOutcomeTotals(campaignId: string, dateRange = "90days"): Promise<any> {
   const normalizedCampaignId = String(campaignId || "").trim();
   if (!normalizedCampaignId || !campaignOutcomeTotalsReader) {
     throw new Error("Certified Campaign DeepDive aggregate reader is unavailable");
@@ -98,7 +103,7 @@ export async function readCertifiedCampaignPerformanceSummary(campaignId: string
   if (outcomeTotals?.success !== true || performanceSummary?.version !== "performance_summary_aggregate_v3") {
     throw new Error("Certified Campaign DeepDive aggregate is unavailable");
   }
-  return performanceSummary;
+  return outcomeTotals;
 }
 
 export function isValidReportScheduleFrequency(value: string): boolean {
@@ -15330,6 +15335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ],
         spend: financialSpendInputs,
       };
+      const financialRevenueDecisionInputs = financialInputs.revenue;
       const performanceSummary = buildCampaignPerformanceSummaryAggregate({
         campaignId,
         dateRange,
@@ -15370,7 +15376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const exactFinancialSourceSet = (expected: string[], actual: string[]) => expected.length === actual.length
         && new Set(actual).size === actual.length
         && expected.every((id, index) => id === actual[index]);
-      const financialInputMetadataReady = currentValueWindow && [...financialRevenueInputs, ...financialSpendInputs].every((input: any) =>
+      const financialInputMetadataReady = currentValueWindow && [...financialRevenueDecisionInputs, ...financialSpendInputs].every((input: any) =>
         input?.campaignId === campaignId
         && ["campaign_to_date", "source_to_date"].includes(String(input?.scopeMode || ""))
         && /^\d{4}-\d{2}-\d{2}$/.test(String(input?.startDate || ""))
@@ -15380,7 +15386,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         && input?.currencyVerified === true
         && Number.isFinite(Number(input?.value))
       );
-      const financialRevenueInputTotal = financialRevenueInputs.reduce((sum: number, input: any) => sum + Number(input?.value || 0), 0);
+      const financialRevenueInputTotal = financialRevenueDecisionInputs.reduce((sum: number, input: any) => sum + Number(input?.value || 0), 0);
       const financialSpendInputTotal = financialSpendInputs.reduce((sum: number, input: any) => sum + Number(input?.value || 0), 0);
       const financialInputsReconcile = Math.abs(financialRevenueInputTotal - totalRevenueUnified) < 0.005
         && Math.abs(financialSpendInputTotal - financialSpendForOutcome) < 0.005;
@@ -15389,7 +15395,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const financialDecisionReady = Boolean(currentValueWindow
         && performanceSummary?.totals?.revenue?.available === true
         && performanceSummary?.totals?.spend?.available === true
-        && financialRevenueInputs.length > 0
+        && financialRevenueDecisionInputs.length > 0
         && financialSpendInputs.length > 0
         && financialSpendForOutcome > 0
         && financialInputMetadataReady

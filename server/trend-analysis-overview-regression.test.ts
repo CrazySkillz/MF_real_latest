@@ -184,7 +184,8 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(overviewModel).toContain('hasPrevious: Object.values(comparison).some((value) => typeof value === "number")');
     expect(overviewModel).toContain("currentPeriodDays: currentPeriod.length");
     expect(overviewModel).toContain("requestedPeriodDays: perfDays");
-    expect(page).toContain("Current cumulative values are not being reused as historical values.");
+    expect(page.match(/usesCumulativeGA4Consumer && trendGA4Coverage && !trendGA4CoverageError \? resolveVerifiedTrendGA4DailyRows\(\{/g)).toHaveLength(3);
+    expect(page).toContain("usesCumulativeGA4Consumer && Array.isArray(verifiedTrendGA4DailyRows)");
     const cumulativeQueryStart = page.indexOf("data: ga4Daily");
     const cumulativeQueryEnd = page.indexOf("const { data: linkedinDaily", cumulativeQueryStart);
     expect(page.slice(cumulativeQueryStart, cumulativeQueryEnd)).not.toContain("placeholderData: keepPreviousData");
@@ -466,8 +467,12 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(executiveView).toContain("Contribution Over Time");
     expect(executiveView).toContain("Executive Recommendations");
     expect(executiveView).toContain("executiveTrendInsights.map");
-    expect(page).toContain("Selected-Window Comparison");
+    expect(page).not.toContain("Selected-Window Comparison");
+    expect(page).toContain("Conversions Increased — Validate the Drivers");
     expect(page).toContain("Campaign-to-Date ROAS");
+    expect(page).toContain('financialDecisionContext?.version === "financial_decision_context_v1"');
+    expect(page).toContain("ROAS Decision Context Not Verified");
+    expect(page).toContain("withheld from executive budget guidance");
     expect(page).toContain("Campaign-to-Date Conversion Volume");
     expect(page).toContain("conversions per 100 sessions");
     expect(executiveView).not.toContain("Prioritized actions based on");

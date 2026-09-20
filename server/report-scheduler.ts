@@ -1113,6 +1113,8 @@ function formatCampaignDeepDiveRecordValue(record: any, value: unknown): string 
 type CampaignDeepDiveReportContext = {
   campaign: any | null;
   performanceSummary: any | null;
+  financialDecisionContext: any | null;
+  financialInputs: any | null;
   executiveSummary: any | null;
   trendAnalysis: any | null;
   kpis: any[];
@@ -1126,13 +1128,13 @@ async function buildCampaignDeepDiveReportContext(campaignId: string, selectedSe
   const needsKpiRows = selectedSections.some((section) => section.startsWith("performance-summary:") || section === "kpis");
   const needsBenchmarkRows = selectedSections.some((section) => section.startsWith("performance-summary:") || section === "benchmarks");
   const allowIsolatedTestAggregate = process.env.NODE_ENV === "test";
-  const certifiedPerformanceSummaryPromise = allowIsolatedTestAggregate
+  const certifiedOutcomeTotalsPromise = allowIsolatedTestAggregate
     ? Promise.resolve(null)
-    : import("./routes-oauth.js").then(({ readCertifiedCampaignPerformanceSummary }) =>
-        readCertifiedCampaignPerformanceSummary(campaignId, "90days")
+    : import("./routes-oauth.js").then(({ readCertifiedCampaignOutcomeTotals }) =>
+        readCertifiedCampaignOutcomeTotals(campaignId, "90days")
       );
-  const [certifiedPerformanceSummary, campaignMetrics, campaign, kpis, benchmarks, executiveKpis, executiveBenchmarks] = await Promise.all([
-    certifiedPerformanceSummaryPromise,
+  const [certifiedOutcomeTotals, campaignMetrics, campaign, kpis, benchmarks, executiveKpis, executiveBenchmarks] = await Promise.all([
+    certifiedOutcomeTotalsPromise,
     needsTrendAnalysis || allowIsolatedTestAggregate
       ? aggregateCampaignMetrics(campaignId, { includeTrendAnalysis: needsTrendAnalysis }).catch(() => null)
       : Promise.resolve(null),
@@ -1142,9 +1144,13 @@ async function buildCampaignDeepDiveReportContext(campaignId: string, selectedSe
     needsExecutiveSummary ? storage.getCampaignKPIs(campaignId).catch(() => []) : Promise.resolve([]),
     needsExecutiveSummary ? storage.getCampaignBenchmarks(campaignId).catch(() => []) : Promise.resolve([]),
   ]);
-  const performanceSummary = certifiedPerformanceSummary
+  const performanceSummary = certifiedOutcomeTotals?.performanceSummary
     || (allowIsolatedTestAggregate ? (campaignMetrics as any)?.detailedMetrics?.performanceSummary : null);
   if (!performanceSummary) throw new Error("Certified Campaign DeepDive aggregate is unavailable");
+  const financialDecisionContext = certifiedOutcomeTotals?.financialDecisionContext
+    || (allowIsolatedTestAggregate ? (campaignMetrics as any)?.detailedMetrics?.financialDecisionContext : null);
+  const financialInputs = certifiedOutcomeTotals?.financialInputs
+    || (allowIsolatedTestAggregate ? (campaignMetrics as any)?.detailedMetrics?.financialInputs : null);
   const trendAnalysis = needsTrendAnalysis ? ((campaignMetrics as any)?.detailedMetrics?.trendAnalysis || null) : null;
   const aggregateSources = Array.isArray(performanceSummary?.sources)
     ? performanceSummary.sources.filter((source: any) => source?.connected === true && source?.category !== "financial")
@@ -1162,7 +1168,17 @@ async function buildCampaignDeepDiveReportContext(campaignId: string, selectedSe
     benchmarks: usesGA4ExecutiveRows ? executiveGA4Benchmarks : executiveBenchmarks,
     usesGA4PlatformRows: usesGA4ExecutiveRows,
   } : null;
-  return { campaign, performanceSummary, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources };
+  return {
+    campaign,
+    performanceSummary,
+    financialDecisionContext,
+    financialInputs,
+    executiveSummary,
+    trendAnalysis,
+    kpis,
+    benchmarks,
+    aggregateSources,
+  };
 }
 
 async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
@@ -1185,8 +1201,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   const campaignId = String(report?.campaignId || cfg?.campaignId || "").trim();
   const reportContext = campaignId
     ? await buildCampaignDeepDiveReportContext(campaignId, selectedSections)
-    : { campaign: null, performanceSummary: null, executiveSummary: null, trendAnalysis: null, kpis: [], benchmarks: [], aggregateSources: [] };
-  const { campaign, performanceSummary, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources } = reportContext;
+    : { campaign: null, performanceSummary: null, financialDecisionContext: null, financialInputs: null, executiveSummary: null, trendAnalysis: null, kpis: [], benchmarks: [], aggregateSources: [] };
+  const { campaign, performanceSummary, financialDecisionContext, financialInputs, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources } = reportContext;
   const cumulativeGA4Connection = campaignId && aggregateSources.length === 1 && aggregateSources[0]?.id === "ga4"
     ? await storage.getPrimaryGA4Connection(campaignId).catch(() => null)
     : null;
@@ -2135,10 +2151,44 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         });
       }
       const currentRoas = trendCurrentMetric("roas");
-      if (currentRoas !== null) {
+      const currentRevenue = trendCurrentMetric("revenue");
+      const currentSpend = trendCurrentMetric("spend");
+      const trendCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase() || "USD";
+      const trendFinancialWindow = performanceSummary?.currentValueWindow;
+      const trendFinancialInputsReady = (["revenue", "spend"] as const).every((metricName) => {
+        const inputs = financialInputs?.[metricName];
+        const expectedTotal = metricName === "revenue" ? currentRevenue : currentSpend;
+        return expectedTotal !== null && Array.isArray(inputs) && inputs.length > 0
+          && Math.abs(inputs.reduce((sum: number, input: any) => sum + Number(input?.value || 0), 0) - expectedTotal) < 0.005
+          && inputs.every((input: any) => input?.campaignId === campaignId
+            && input?.scopeMode === (metricName === "revenue" && input?.id === "ga4_native_revenue" ? "campaign_to_date" : "source_to_date")
+            && /^\d{4}-\d{2}-\d{2}$/.test(String(input?.startDate || ""))
+            && input.startDate <= trendFinancialWindow?.endDate
+            && input?.endDate === trendFinancialWindow?.endDate
+            && String(input?.currency || "").trim().toUpperCase() === trendCurrency
+            && input?.currencyVerified === true
+            && Number.isFinite(Number(input?.value)));
+      });
+      const trendROASDecisionReady = currentRoas !== null && currentRevenue !== null && currentSpend !== null && currentSpend > 0
+        && Math.abs(currentRoas - (currentRevenue / currentSpend)) < 0.005
+        && financialDecisionContext?.version === "financial_decision_context_v1"
+        && financialDecisionContext?.status === "ready"
+        && financialDecisionContext?.campaignId === campaignId
+        && financialDecisionContext?.currency === trendCurrency
+        && financialDecisionContext?.dataThroughDate === trendFinancialWindow?.endDate
+        && financialDecisionContext?.revenueModel === "ga4_campaign_to_date_plus_imported_source_to_date"
+        && financialDecisionContext?.spendModel === "source_to_date"
+        && Math.abs(Number(financialDecisionContext?.roas) - (currentRevenue / currentSpend)) < 0.005
+        && trendFinancialInputsReady;
+      if (trendROASDecisionReady) {
         trendRecommendations.push({
-          title: "Campaign-to-Date ROAS",
-          message: `Campaign-to-date ROAS is ${currentRoas.toFixed(2)}x. Compare it with approved profit and margin targets and source capacity before changing spend.`,
+          title: "Campaign-to-Date ROAS — Reconciled Sources",
+          message: `Cumulative ROAS is ${currentRoas.toFixed(2)}x using financial records dated no later than ${trendFinancialWindow.endDate}. It reconciles live GA4 native campaign-to-date revenue and every active stored imported revenue and spend source-to-date, all in ${trendCurrency}. Compare it with approved profit and ROAS targets before any budget change.`,
+        });
+      } else if (currentRoas !== null) {
+        trendRecommendations.push({
+          title: "ROAS Decision Context Not Verified",
+          message: `A descriptive cumulative ROAS of ${currentRoas.toFixed(2)}x is available, but its active sources, scope metadata, currency, and input totals did not all reconcile. It is withheld from executive budget guidance.`,
         });
       }
       if (performancePageTrafficTotals && Number(performancePageTrafficTotals.sessions) > 0) {

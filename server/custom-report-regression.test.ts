@@ -389,7 +389,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduler).toContain("type CampaignDeepDiveReportContext = {");
     expect(scheduler).toContain("async function buildCampaignDeepDiveReportContext");
     expect(scheduler).toContain("const reportContext = campaignId");
-    expect(scheduler).toContain("const { campaign, performanceSummary, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources } = reportContext;");
+    expect(scheduler).toContain("const { campaign, performanceSummary, financialDecisionContext, financialInputs, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources } = reportContext;");
     expect(scheduler).toContain("const addSelectedSectionBody = (section: string) => {");
     expect(scheduler).toContain('addText("Selected section content", { size: 14, bold: true });');
     expect(scheduler).toContain("selectedSections.forEach(addSelectedSectionBody);");
@@ -466,13 +466,13 @@ describe("campaign Custom Report regression guard", () => {
     const routes = readFileSync(join(process.cwd(), "server/routes-oauth.ts"), "utf-8");
 
     expect(scheduler).toContain("async function buildCampaignDeepDiveReportContext");
-    expect(scheduler).toContain('import("./routes-oauth.js").then(({ readCertifiedCampaignPerformanceSummary }) =>');
-    expect(scheduler).toContain('readCertifiedCampaignPerformanceSummary(campaignId, "90days")');
-    expect(scheduler).toContain("const performanceSummary = certifiedPerformanceSummary");
+    expect(scheduler).toContain('import("./routes-oauth.js").then(({ readCertifiedCampaignOutcomeTotals }) =>');
+    expect(scheduler).toContain('readCertifiedCampaignOutcomeTotals(campaignId, "90days")');
+    expect(scheduler).toContain("const performanceSummary = certifiedOutcomeTotals?.performanceSummary");
     expect(scheduler).toContain("storage.getCampaign(campaignId)");
     expect(scheduler).toContain("const aggregateSources = Array.isArray(performanceSummary?.sources)");
     expect(scheduler).toContain("const reportContext = campaignId");
-    expect(scheduler).toContain("const { campaign, performanceSummary, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources } = reportContext;");
+    expect(scheduler).toContain("const { campaign, performanceSummary, financialDecisionContext, financialInputs, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources } = reportContext;");
     expect(routes).toContain('layer?.route?.path === "/api/campaigns/:id/outcome-totals"');
     expect(routes).toContain("const campaignOutcomeTotalsHandler = campaignOutcomeTotalsRoute?.route?.stack?.at(-1)?.handle");
     expect(routes).toContain("campaignOutcomeTotalsReader = async");

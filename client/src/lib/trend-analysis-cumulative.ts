@@ -184,6 +184,43 @@ export const deriveExactCumulativeGA4Traffic = (response: any, comparisonDate: s
   };
 };
 
+export const resolveVerifiedProviderCumulativeGA4Traffic = (args: {
+  dailyResponse: any;
+  coverageResponse: any;
+  propertyId: string;
+  comparisonDate: string;
+}) => {
+  const { dailyResponse, coverageResponse, propertyId, comparisonDate } = args;
+  const providerWindow = coverageResponse?.providerCumulativeWindow;
+  const dataThroughDate = String(dailyResponse?.dataThroughDate || "");
+  const overviewStartDate = String(dailyResponse?.overviewStartDate || "");
+  if (providerWindow?.currentVerified !== true || !ISO_DATE_PATTERN.test(comparisonDate)
+    || !ISO_DATE_PATTERN.test(dataThroughDate) || !ISO_DATE_PATTERN.test(overviewStartDate)
+    || providerWindow?.startDate !== overviewStartDate || providerWindow?.endDate !== dataThroughDate
+    || providerWindow?.comparisonDate !== comparisonDate
+    || String(coverageResponse?.propertyId || "").replace(/^properties\//i, "") !== String(propertyId || "").replace(/^properties\//i, "")
+    || String(coverageResponse?.reportingTimeZone || "") !== String(dailyResponse?.reportingTimeZone || "")) return null;
+  const normalize = (raw: any) => {
+    if ([raw?.users, raw?.sessions, raw?.conversions, raw?.engagedSessions]
+      .some((value) => !hasNonNegativeMetric(value))) return null;
+    const users = Number(raw.users);
+    const sessions = Number(raw.sessions);
+    const conversions = Number(raw.conversions);
+    const engagedSessions = Number(raw.engagedSessions);
+    return {
+      users, sessions, conversions, engagedSessions,
+      engagementRate: sessions > 0 ? (engagedSessions / sessions) * 100 : 0,
+      cvr: sessions > 0 ? (conversions / sessions) * 100 : 0,
+    };
+  };
+  const current = normalize(providerWindow.currentTotals);
+  if (!current) return null;
+  const previous = providerWindow.comparisonVerified === true
+    ? normalize(providerWindow.comparisonTotals)
+    : null;
+  return { current, previous, comparisonDate };
+};
+
 export const resolveCompatibleTrendFinancialDaily = (args: {
   snapshot: any;
   campaignId: string;

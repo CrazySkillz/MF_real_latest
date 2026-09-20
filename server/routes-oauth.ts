@@ -9400,10 +9400,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ success: false, error: "GA4_CONNECTION_UNAVAILABLE" });
     }
     const requestedDays = Number.parseInt(String(req.query.days || "60"), 10);
+    const requestedComparisonDaysRaw = String(req.query.comparisonDays || "").trim();
+    if (requestedComparisonDaysRaw && !/^(7|14|30|90)$/.test(requestedComparisonDaysRaw)) {
+      return res.status(400).json({ success: false, error: "comparisonDays must be 7, 14, 30, or 90" });
+    }
+    const requestedComparisonDays = requestedComparisonDaysRaw ? Number.parseInt(requestedComparisonDaysRaw, 10) : null;
     const window = getReportingDateWindow(requestedDays === 90 ? 90 : 60, (campaign as any)?.reportingTimeZone);
     const configuredStart = String((connection as any)?.importStartDate || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(configuredStart)) return res.status(400).json({ success: false, error: "GA4_IMPORT_START_DATE_INVALID" });
-    const startDate = configuredStart > window.startDate ? configuredStart : window.startDate;
+    const requestedWindowStart = configuredStart > window.startDate ? configuredStart : window.startDate;
+    const startDate = requestedComparisonDays === null ? requestedWindowStart : configuredStart;
     const base = {
       success: true,
       propertyId: connection.propertyId,
@@ -9452,7 +9458,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const providerDailyRows = Array.from(providerByDate.entries())
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([date, row]) => addDerivedGA4EngagedSessions({ ...row, date }));
+      let providerCumulativeWindow: any = undefined;
+      if (requestedComparisonDays !== null) {
+        const comparisonDateValue = new Date(`${window.endDate}T00:00:00.000Z`);
+        comparisonDateValue.setUTCDate(comparisonDateValue.getUTCDate() - requestedComparisonDays);
+        const comparisonDate = comparisonDateValue.toISOString().slice(0, 10);
+        providerCumulativeWindow = {
+          startDate: configuredStart,
+          endDate: window.endDate,
+          comparisonDate,
+          currentVerified: false,
+          comparisonVerified: false,
+          currentTotals: null,
+          comparisonTotals: null,
+        };
+        const summarizeProviderRows = (rows: any[]) => {
+          const totals = rows.reduce((sum: any, row: any) => ({
+            users: sum.users + Number(row.users || 0),
+            sessions: sum.sessions + Number(row.sessions || 0),
+            conversions: sum.conversions + Number(row.conversions || 0),
+            engagedSessions: sum.engagedSessions + Number(row.engagedSessions || 0),
+          }), { users: 0, sessions: 0, conversions: 0, engagedSessions: 0 });
+          return { ...totals, engagementRate: totals.sessions > 0 ? totals.engagedSessions / totals.sessions : 0 };
+        };
+        const providerDatesComplete = Array.from(presence).every((date) => providerByDate.has(date));
+        providerCumulativeWindow.currentVerified = providerDatesComplete;
+        providerCumulativeWindow.currentTotals = providerDatesComplete ? summarizeProviderRows(providerDailyRows) : null;
+        if (!providerDatesComplete) {
+          providerCumulativeWindow.reason = "provider_daily_history_incomplete";
+        } else if (comparisonDate < configuredStart) {
+          providerCumulativeWindow.reason = "comparison_precedes_import_start";
+        } else {
+          providerCumulativeWindow.comparisonTotals = summarizeProviderRows(
+            providerDailyRows.filter((row: any) => row.date <= comparisonDate),
+          );
+          providerCumulativeWindow.comparisonVerified = true;
+        }
+      }
       return res.json({ ...base, verified, providerVerified: true, providerZeroDatesVerified: true, providerZeroDates, zeroDatesVerified: true, zeroDates, dailyRows: stored.map(addDerivedGA4EngagedSessions), providerDailyRows, checkedAt: new Date().toISOString(),
+        ...(providerCumulativeWindow ? { providerCumulativeWindow } : {}),
         ...(!verified ? { reason: "stored_daily_history_differs_from_ga4" } : {}) });
     } catch (error: any) {
       console.warn("[GA4 Trends] Zero-day verification unavailable:", error?.message || error);

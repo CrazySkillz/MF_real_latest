@@ -18,13 +18,13 @@ import { format, subDays } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useMemo } from "react";
 import {
-  deriveExactCumulativeGA4Traffic,
   deriveTrendFinancialRatios,
   expandTrendRowsToCalendarWindow,
   filterTrendRowsToCalendarWindow,
   formatExactTrendCount,
   formatTrendComparison,
   resolveVerifiedTrendGA4DailyRows,
+  resolveVerifiedProviderCumulativeGA4Traffic,
   resolveCompatibleTrendFinancialDaily,
   resolveTrendConsumerMode,
   resolveTrendComparisonDate,
@@ -175,10 +175,10 @@ export default function TrendAnalysis() {
   });
 
   const { data: trendGA4Coverage, isFetching: trendGA4CoverageFetching, error: trendGA4CoverageError } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-insights-trends-coverage", "90days-provider", trendGA4PropertyId, ga4Daily?.dataThroughDate, ga4Daily?.lastCompletedRefreshAt],
+    queryKey: ["/api/campaigns", campaignId, "ga4-insights-trends-coverage", "90days-provider", perfDays, trendGA4PropertyId, ga4Daily?.dataThroughDate, ga4Daily?.lastCompletedRefreshAt],
     enabled: !!campaignId && !!trendGA4PropertyId && ga4Daily !== undefined,
     queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/ga4-insights-trends-coverage?propertyId=${encodeURIComponent(trendGA4PropertyId)}&days=90`);
+      const response = await fetch(`/api/campaigns/${campaignId}/ga4-insights-trends-coverage?propertyId=${encodeURIComponent(trendGA4PropertyId)}&days=90&comparisonDays=${perfDays}`);
       const data = await response.json().catch(() => null);
       if (!response.ok || !data || data?.success === false) throw new Error(data?.error || "Failed to verify GA4 Trend daily history");
       return data;
@@ -536,25 +536,17 @@ export default function TrendAnalysis() {
     && currentValueWindow.startDate <= currentValueWindow.endDate
     && currentValueWindow?.dataThroughDate === currentValueWindow?.endDate
     && Boolean(String(currentValueWindow?.reportingTimeZone || "").trim());
-  const currentTraffic = cumulativeGA4CurrentCompatible
-    ? deriveExactCumulativeGA4Traffic(ga4Daily, trendComparisonDate)?.current || (() => {
-      const totals = ga4Daily?.overviewTotals || {};
-      if ([totals.users, totals.sessions, totals.conversions, totals.engagedSessions]
-        .some((value) => value === null || typeof value === "undefined" || value === "")) return null;
-      const users = Number(totals.users);
-      const sessions = Number(totals.sessions);
-      const conversions = Number(totals.conversions);
-      const engagedSessions = Number(totals.engagedSessions);
-      if ([users, sessions, conversions, engagedSessions].some((value) => !Number.isFinite(value) || value < 0)) return null;
-      return {
-        users, sessions, conversions, engagedSessions,
-        engagementRate: sessions > 0 ? (engagedSessions / sessions) * 100 : 0,
-        cvr: sessions > 0 ? (conversions / sessions) * 100 : 0,
-      };
-    })()
+  const providerCumulativeTraffic = cumulativeGA4CurrentCompatible
+    ? resolveVerifiedProviderCumulativeGA4Traffic({
+        dailyResponse: ga4Daily,
+        coverageResponse: trendGA4Coverage,
+        propertyId: trendGA4PropertyId,
+        comparisonDate: trendComparisonDate,
+      })
     : null;
-  const exactTrafficComparison = cumulativeGA4CurrentCompatible
-    ? deriveExactCumulativeGA4Traffic(ga4Daily, trendComparisonDate)
+  const currentTraffic = providerCumulativeTraffic?.current || null;
+  const exactTrafficComparison = providerCumulativeTraffic?.previous
+    ? { ...providerCumulativeTraffic, previous: providerCumulativeTraffic.previous }
     : null;
   const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase() || "USD";
   const fmtTrendCurrency = (value: number) => fmtCur(value, campaignCurrency);
@@ -573,6 +565,13 @@ export default function TrendAnalysis() {
     return input?.available === true && Array.isArray(input?.sources) && input.sources.length > 0
       && Number.isFinite(value) && value >= 0 ? value : null;
   };
+  const currentRevenue = aggregateMetricValue("revenue");
+  const currentSpend = aggregateMetricValue("spend");
+  const currentFinancialRatios = deriveTrendFinancialRatios({
+    spend: currentSpend,
+    revenue: currentRevenue,
+    conversions: currentTraffic?.conversions ?? null,
+  });
   const authoritativeTrendCurrent = cumulativeGA4CurrentCompatible && currentTraffic ? {
     users: currentTraffic.users,
     sessions: currentTraffic.sessions,
@@ -580,11 +579,11 @@ export default function TrendAnalysis() {
     conversions: currentTraffic.conversions,
     engagementRate: currentTraffic.engagementRate,
     cvr: currentTraffic.cvr,
-    revenue: aggregateMetricValue("revenue"),
-    spend: aggregateMetricValue("spend"),
-    roas: aggregateMetricValue("roas"),
-    roi: aggregateMetricValue("roi"),
-    cpa: aggregateMetricValue("cpa"),
+    revenue: currentRevenue,
+    spend: currentSpend,
+    roas: currentFinancialRatios.roas,
+    roi: currentFinancialRatios.roi,
+    cpa: currentFinancialRatios.cpa,
     impressions: aggregateMetricValue("impressions"),
     clicks: aggregateMetricValue("clicks"),
     ctr: aggregateMetricValue("ctr"),
@@ -594,25 +593,24 @@ export default function TrendAnalysis() {
   const authoritativeHeadlineCurrent = hasAuthoritativeHeadlineWindow ? {
     revenue: aggregateMetricValue("revenue"),
     spend: aggregateMetricValue("spend"),
-    roas: aggregateMetricValue("roas"),
-    roi: aggregateMetricValue("roi"),
-    conversions: aggregateMetricValue("conversions"),
-    cpa: aggregateMetricValue("cpa"),
+    roas: usesCumulativeGA4Consumer ? authoritativeTrendCurrent?.roas ?? null : aggregateMetricValue("roas"),
+    roi: usesCumulativeGA4Consumer ? authoritativeTrendCurrent?.roi ?? null : aggregateMetricValue("roi"),
+    conversions: usesCumulativeGA4Consumer ? authoritativeTrendCurrent?.conversions ?? null : aggregateMetricValue("conversions"),
+    cpa: usesCumulativeGA4Consumer ? authoritativeTrendCurrent?.cpa ?? null : aggregateMetricValue("cpa"),
     cpc: aggregateMetricValue("cpc"),
     cpm: aggregateMetricValue("cpm"),
-    sessions: aggregateMetricValue("sessions"),
-    users: aggregateMetricValue("users"),
-    cvr: aggregateMetricValue("cvr"),
+    sessions: usesCumulativeGA4Consumer ? authoritativeTrendCurrent?.sessions ?? null : aggregateMetricValue("sessions"),
+    users: usesCumulativeGA4Consumer ? authoritativeTrendCurrent?.users ?? null : aggregateMetricValue("users"),
+    cvr: usesCumulativeGA4Consumer ? authoritativeTrendCurrent?.cvr ?? null : aggregateMetricValue("cvr"),
     engagementRate: authoritativeTrendCurrent?.engagementRate ?? null,
     ctr: aggregateMetricValue("ctr"),
   } : null;
   const historicalSpend = historicalFinancialValue("spend");
   const historicalRevenue = historicalFinancialValue("revenue");
-  const historicalFinancialConversions = historicalFinancialValue("conversions");
   const historicalFinancialRatios = deriveTrendFinancialRatios({
     spend: historicalSpend,
     revenue: historicalRevenue,
-    conversions: historicalFinancialConversions,
+    conversions: exactTrafficComparison?.previous.conversions ?? null,
   });
   const authoritativeTrendPrevious = exactTrafficComparison || compatibleFinancialDaily ? {
     users: exactTrafficComparison?.previous.users ?? null,
@@ -1338,20 +1336,23 @@ export default function TrendAnalysis() {
     (outcomeTotalsError && !outcomeTotals)
     || (trendAnalysisError && !trendAnalysisResponse)
     || (usesCumulativeGA4Consumer && trendGA4ConnectionsError && !trendGA4ConnectionsResponse)
-    || (usesCumulativeGA4Consumer && trendGA4DailyError && !ga4Daily),
+    || (usesCumulativeGA4Consumer && trendGA4DailyError && !ga4Daily)
+    || (usesCumulativeGA4Consumer && trendGA4CoverageError && !trendGA4Coverage),
   );
   const trendRetainedRefreshFailed = Boolean(
     (outcomeTotalsError && outcomeTotals)
     || (trendAnalysisError && trendAnalysisResponse)
     || (trendFinancialComparisonError && trendFinancialComparison)
     || (usesCumulativeGA4Consumer && trendGA4ConnectionsError && trendGA4ConnectionsResponse)
-    || (usesCumulativeGA4Consumer && trendGA4DailyError && ga4Daily),
+    || (usesCumulativeGA4Consumer && trendGA4DailyError && ga4Daily)
+    || (usesCumulativeGA4Consumer && trendGA4CoverageError && trendGA4Coverage),
   );
   const trendDataStale = trendRetainedRefreshFailed || (usesCumulativeGA4Consumer && ga4Daily?.refreshIsStale === true);
   const trendPartialLoadFailure = trendInitialLoadFailed && overviewHasData;
   const cumulativeConsumerLoading = usesCumulativeGA4Consumer && (
     !trendGA4ConnectionsFetched
     || (!!trendGA4PropertyId && !trendGA4DailyFetched)
+    || (!!trendGA4PropertyId && trendGA4CoverageFetching && !trendGA4Coverage)
     || (!!trendComparisonDate && !trendFinancialComparisonFetched)
   );
   const overviewLoading = !overviewTrendData && (

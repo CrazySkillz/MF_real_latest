@@ -288,7 +288,8 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).not.toContain("ArrowUpRight");
     expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).not.toContain("text-green-600");
     expect(page).not.toContain("const isFinancialCard");
-    expect(page).toContain('hasAuthoritativeHeadlineWindow && comparisonDateLabel && typeof card.change !== "number"');
+    expect(page).toContain('hasAuthoritativeHeadlineWindow && comparisonDateLabel && typeof card.change !== "number" && !("comparisonPending" in card && card.comparisonPending)');
+    expect(page.match(/comparisonPending: !trendFinancialComparisonFetched/g)).toHaveLength(5);
     expect(page).toContain("<div>Comparison unavailable</div>");
     expect(page).toContain("<div>vs {comparisonDateLabel}</div>");
     expect(page).not.toContain("Financial KPIs are campaign-to-date");

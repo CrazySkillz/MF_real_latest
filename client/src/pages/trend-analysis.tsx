@@ -1466,12 +1466,12 @@ export default function TrendAnalysis() {
                   )}
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                       {[
-                        { label: 'Revenue', value: authoritativeHeadlineCurrent.revenue === null ? null : fmtHeadlineCurrency(authoritativeHeadlineCurrent.revenue), change: headlineComparison.revenue },
-                        { label: 'Spend', value: authoritativeHeadlineCurrent.spend === null ? null : fmtHeadlineCurrency(authoritativeHeadlineCurrent.spend), change: headlineComparison.spend, invertColor: true },
-                        { label: 'ROAS', value: authoritativeHeadlineCurrent.roas === null ? null : `${authoritativeHeadlineCurrent.roas.toFixed(1)}x`, change: headlineComparison.roas },
-                        authoritativeHeadlineEfficiencyCards.find((card) => card.key === "roi") || { label: 'ROI', value: null, change: null },
+                        { label: 'Revenue', value: authoritativeHeadlineCurrent.revenue === null ? null : fmtHeadlineCurrency(authoritativeHeadlineCurrent.revenue), change: headlineComparison.revenue, comparisonPending: !trendFinancialComparisonFetched },
+                        { label: 'Spend', value: authoritativeHeadlineCurrent.spend === null ? null : fmtHeadlineCurrency(authoritativeHeadlineCurrent.spend), change: headlineComparison.spend, invertColor: true, comparisonPending: !trendFinancialComparisonFetched },
+                        { label: 'ROAS', value: authoritativeHeadlineCurrent.roas === null ? null : `${authoritativeHeadlineCurrent.roas.toFixed(1)}x`, change: headlineComparison.roas, comparisonPending: !trendFinancialComparisonFetched },
+                        { ...(authoritativeHeadlineEfficiencyCards.find((card) => card.key === "roi") || { label: 'ROI', value: null, change: null }), comparisonPending: !trendFinancialComparisonFetched },
                         { label: 'Conversions', value: authoritativeHeadlineCurrent.conversions === null ? null : formatExactTrendCount(authoritativeHeadlineCurrent.conversions), change: headlineComparison.conversions },
-                        { label: 'CPA', value: authoritativeHeadlineCurrent.cpa === null ? null : fmtHeadlineCurrency(authoritativeHeadlineCurrent.cpa), change: headlineComparison.cpa, invertColor: true },
+                        { label: 'CPA', value: authoritativeHeadlineCurrent.cpa === null ? null : fmtHeadlineCurrency(authoritativeHeadlineCurrent.cpa), change: headlineComparison.cpa, invertColor: true, comparisonPending: !trendFinancialComparisonFetched },
                         authoritativeHeadlineEfficiencyCards.find((card) => card.key === "cpc") || { label: 'CPC', value: null, change: null, invertColor: true },
                         authoritativeHeadlineEfficiencyCards.find((card) => card.key === "cpm") || { label: 'CPM', value: null, change: null, invertColor: true },
                         { label: 'Sessions', value: authoritativeHeadlineCurrent.sessions === null ? null : formatExactTrendCount(authoritativeHeadlineCurrent.sessions), change: headlineComparison.sessions },
@@ -1516,7 +1516,7 @@ export default function TrendAnalysis() {
                                   </div>
                                 )
                               )}
-                              {hasAuthoritativeHeadlineWindow && comparisonDateLabel && typeof card.change !== "number" && (
+                              {hasAuthoritativeHeadlineWindow && comparisonDateLabel && typeof card.change !== "number" && !("comparisonPending" in card && card.comparisonPending) && (
                                 <div className="text-xs text-muted-foreground mt-1 leading-tight">
                                   <div>Comparison unavailable</div>
                                   <div>vs {comparisonDateLabel}</div>

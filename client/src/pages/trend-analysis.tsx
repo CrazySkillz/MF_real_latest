@@ -501,12 +501,8 @@ export default function TrendAnalysis() {
     selectedStartDate: selectedTrendStartDate,
   }) : null;
   const trendGA4DailyHistoryVerified = !usesCumulativeGA4Consumer || verifiedTrendGA4DailyRows !== null;
-  const trendGA4DailyHistoryPending = usesCumulativeGA4Consumer && ga4Daily !== undefined && trendGA4CoverageFetching;
-  const trendGA4StoredHistoryMismatch = usesCumulativeGA4Consumer
-    && trendGA4Coverage?.reason === "stored_daily_history_differs_from_ga4"
-    && String(trendGA4Coverage?.propertyId || "").replace(/^properties\//i, "") === String(trendGA4PropertyId || "").replace(/^properties\//i, "")
-    && String(trendGA4Coverage?.endDate || "") === String(ga4Daily?.dataThroughDate || "")
-    && String(trendGA4Coverage?.reportingTimeZone || "") === String(ga4Daily?.reportingTimeZone || "");
+  const trendGA4DailyHistoryPending = usesCumulativeGA4Consumer && ga4Daily !== undefined
+    && trendGA4CoverageFetching && !trendGA4Coverage;
   const ga4TrendSource = Array.isArray(trendAggregate?.sources)
     ? trendAggregate.sources.find((source: any) => source?.id === "ga4")
     : null;
@@ -1365,8 +1361,7 @@ export default function TrendAnalysis() {
     || (usesCumulativeGA4Consumer && trendGA4DailyError && ga4Daily)
     || (usesCumulativeGA4Consumer && trendGA4CoverageError && trendGA4Coverage),
   );
-  const trendDataStale = trendRetainedRefreshFailed || trendGA4StoredHistoryMismatch
-    || (usesCumulativeGA4Consumer && ga4Daily?.refreshIsStale === true);
+  const trendDataStale = trendRetainedRefreshFailed || (usesCumulativeGA4Consumer && ga4Daily?.refreshIsStale === true);
   const trendPartialLoadFailure = trendInitialLoadFailed && overviewHasData;
   const cumulativeConsumerLoading = usesCumulativeGA4Consumer && (
     !trendGA4ConnectionsFetched
@@ -1462,11 +1457,9 @@ export default function TrendAnalysis() {
                   <CardContent className="flex items-start gap-3 p-4">
                     <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
                     <div>
-                      <p className="font-medium text-foreground">{trendGA4StoredHistoryMismatch ? "Trend data is awaiting the shared GA4 refresh" : trendDataStale ? "Trend data may be stale" : "Some Trend data is unavailable"}</p>
+                      <p className="font-medium text-foreground">{trendDataStale ? "Trend data may be stale" : "Some Trend data is unavailable"}</p>
                       <p className="text-sm text-muted-foreground">
-                        {trendGA4StoredHistoryMismatch
-                          ? "Showing the same saved totals and daily chart values as GA4 Overview until the shared GA4 refresh reconciles them."
-                          : trendDataStale
+                        {trendDataStale
                           ? "Showing the latest available Trend values. Latest completed-day coverage or a background refresh could not be verified."
                           : "Available values remain shown; failed inputs and dependent sections are withheld."}
                       </p>
@@ -1632,6 +1625,18 @@ export default function TrendAnalysis() {
                     {usesCumulativeGA4Consumer && overviewTrendData.series.length > 0 && (
                       <CardHeader>
                         <p className="text-xs text-muted-foreground">Verified daily values: {overviewTrendData.currentPeriodDays} of {overviewTrendData.chartCalendarDays} calendar dates; missing dates remain gaps unless GA4 verifies them as zero.</p>
+                        {overviewTrendData.anomalies.some((anomaly: any) => overviewVisibleSeries.has(anomaly.metric)) && (
+                          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground" aria-label="Anomaly marker legend">
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" aria-hidden="true" />
+                              Critical anomaly
+                            </span>
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-white" aria-hidden="true" />
+                              Warning anomaly
+                            </span>
+                          </div>
+                        )}
                       </CardHeader>
                     )}
                     <CardContent>

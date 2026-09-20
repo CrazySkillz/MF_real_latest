@@ -51,14 +51,14 @@ export default function ExecutiveSummary() {
   });
 
   const executiveOutcomeDateRange = "90days";
-  const { data: outcomeTotals, isLoading: outcomeTotalsLoading } = useQuery({
+  const { data: outcomeTotals, isLoading: outcomeTotalsLoading, error: outcomeTotalsError } = useQuery({
     queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, executiveOutcomeDateRange, "live", "executive-summary"],
     enabled: !!campaignId,
     queryFn: async () => {
       const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=${executiveOutcomeDateRange}&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date`;
       const resp = await fetch(url, { credentials: "include" });
-      if (!resp.ok) return null;
-      return resp.json().catch(() => null);
+      if (!resp.ok) throw new Error(`Executive Summary outcome totals request failed (${resp.status})`);
+      return resp.json();
     },
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
@@ -68,13 +68,13 @@ export default function ExecutiveSummary() {
   });
 
   const executiveTrajectoryReportingDate = String((outcomeTotals as any)?.performanceSummary?.currentValueWindow?.endDate || "");
-  const { data: executiveTrajectoryData, isLoading: executiveTrajectoryLoading } = useQuery({
+  const { data: executiveTrajectoryData, isLoading: executiveTrajectoryLoading, error: executiveTrajectoryError } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "executive-summary", "trajectory", executiveTrajectoryReportingDate],
     enabled: !!campaignId && /^\d{4}-\d{2}-\d{2}$/.test(executiveTrajectoryReportingDate),
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/executive-summary/trajectory?reportingDate=${encodeURIComponent(executiveTrajectoryReportingDate)}`, { credentials: "include" });
-      if (!resp.ok) return null;
-      return resp.json().catch(() => null);
+      if (!resp.ok) throw new Error(`Executive Summary trajectory request failed (${resp.status})`);
+      return resp.json();
     },
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
@@ -102,7 +102,7 @@ export default function ExecutiveSummary() {
     );
   }
 
-  if (campaignError || !campaign || summaryError || !executiveSummary) {
+  if (campaignError || !campaign || summaryError || !executiveSummary || outcomeTotalsError || !outcomeTotals || executiveTrajectoryError) {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
@@ -114,7 +114,7 @@ export default function ExecutiveSummary() {
                 {!campaign ? 'Campaign Not Found' : 'Unable to Load Executive Summary'}
               </h1>
               <p className="text-muted-foreground/70">
-                {!campaign ? 'Unable to load campaign data for executive summary.' : 'Please ensure at least one platform (LinkedIn Ads, Meta/Facebook, Google Analytics, or Custom Integration) is connected to this campaign.'}
+                {!campaign ? 'Unable to load campaign data for executive summary.' : 'Executive Summary data could not be loaded safely. Please try again.'}
               </p>
             </div>
           </main>
@@ -238,6 +238,7 @@ export default function ExecutiveSummary() {
       const benchmarkState = bm.status === "behind" ? "behind benchmark" : bm.status === "needs_attention" ? "needs attention" : "on track";
       targetComparisons.push(`${targetMetricLabels[metric]} Benchmark is ${benchmarkState}`);
     });
+    targetComparisons.splice(0, targetComparisons.length, ...Array.from(new Set(targetComparisons)).sort((left, right) => left.localeCompare(right)));
     const targetComparisonText = targetComparisons.length > 0
       ? `Target check: ${targetComparisons.join("; ")}.`
       : targetText
@@ -401,15 +402,28 @@ export default function ExecutiveSummary() {
   const riskBenchmarkMissCount = executiveBenchmarkComparison.filter((bm: any) => bm.status === "behind").length;
   const benchmarkMonitorCount = executiveBenchmarkComparison.filter((bm: any) => bm.status === "needs_attention").length;
   const hasMonitorConditions = benchmarkMonitorCount > 0;
-  const riskFreshnessWarnings = (Array.isArray((executiveSummary as any)?.dataFreshness?.warnings) ? (executiveSummary as any).dataFreshness.warnings : [])
+  const executiveFreshnessWarnings = Array.isArray((executiveSummary as any)?.dataFreshness?.warnings) ? (executiveSummary as any).dataFreshness.warnings : [];
+  const riskFreshnessWarnings = executiveFreshnessWarnings
     .filter((warning: any) => !(hasAuthoritativeGA4Window && warning?.source === "Google Analytics"));
+  if (hasAuthoritativeGA4Window) {
+    riskFreshnessWarnings.push(...executiveFreshnessWarnings.filter((warning: any) =>
+      warning?.source === "Google Analytics" && warning?.verificationStatus === "stale"
+    ));
+  }
+  const orderedFreshnessWarnings = Array.from(new Map(riskFreshnessWarnings.map((warning: any) => [
+    `${String(warning?.severity || "")}\u0000${String(warning?.source || "")}\u0000${String(warning?.message || "")}`,
+    warning,
+  ])).values()).sort((left: any, right: any) => {
+    const severityOrder = Number(right?.severity === "high") - Number(left?.severity === "high");
+    return severityOrder || String(left?.source || "").localeCompare(String(right?.source || "")) || String(left?.message || "").localeCompare(String(right?.message || ""));
+  });
+  riskFreshnessWarnings.splice(0, riskFreshnessWarnings.length, ...orderedFreshnessWarnings);
   const trendPercentage = hasAuthoritativeGA4Window
     ? (executiveTrajectoryData as any)?.available === true ? Number((executiveTrajectoryData as any).trendPercentage) || 0 : 0
     : Number((executiveSummary as any)?.health?.trendPercentage) || 0;
   const paidRiskSources = aggregateSources.filter((source: any) =>
     source?.connected === true &&
-    source?.category !== "financial" &&
-    source?.category !== "web_analytics" &&
+    source?.category === "paid_media" &&
     Array.isArray(source?.includedMetrics) &&
     ["spend", "revenue", "conversions"].some((metricName) => source.includedMetrics.includes(metricName))
   );

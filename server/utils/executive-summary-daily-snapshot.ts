@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createHash } from "crypto";
 import type { MetricSnapshot } from "../../shared/schema";
 import { getExpectedDailyRefreshAt } from "./reporting-timezone";
 
@@ -54,6 +55,61 @@ const normalizeMetric = (metric: any) => metric?.available === true && Number.is
   ? { value: Number(metric.value), available: true as const, sources: Array.isArray(metric?.sources) ? metric.sources.map(String).sort() : [] }
   : { value: null, available: false as const, sources: [] as string[] };
 
+const volatileFinancialConfigurationKeys = new Set([
+  "breakdown", "campaignValueRevenueTotals", "csvHeaders", "csvRowCount", "csvSampleRows",
+  "csvStoredRevenueRows", "csvStoredSpendRows", "dateRange", "fetchedAt", "lastConversionValue",
+  "lastGoodAt", "lastMatchedOrderCount", "lastRefreshAttemptAt", "lastRefreshError",
+  "lastRefreshFailureAt", "lastRefreshRunId", "lastRefreshSuccessAt", "lastRefreshTrigger",
+  "lastSyncedAt", "lastTotalRevenue", "pipelineCurrency", "pipelineLastUpdatedAt",
+  "pipelineProxyMode", "pipelineTotalToDate", "pipelineValueRevenueTotals", "pipelineWarning",
+  "providerQueryAudit", "refreshStatus", "sheetHeaders", "sheetRowCount", "sheetSampleRows",
+]);
+
+const normalizeFinancialConfiguration = (value: any): any => {
+  if (Array.isArray(value)) return value.map(normalizeFinancialConfiguration);
+  if (value && typeof value === "object") {
+    return Object.keys(value).sort().reduce((normalized: Record<string, any>, key) => {
+      if (!volatileFinancialConfigurationKeys.has(key)) normalized[key] = normalizeFinancialConfiguration(value[key]);
+      return normalized;
+    }, {});
+  }
+  return value ?? null;
+};
+
+export function buildExecutiveSummaryFinancialSourceIdentity(source: any) {
+  const id = String(source?.id || "").trim();
+  if (!id) throw new Error("Executive Summary financial source identity is unavailable");
+  let mappingConfig: any = source?.mappingConfig ?? null;
+  if (typeof mappingConfig === "string" && mappingConfig.trim()) {
+    try {
+      mappingConfig = JSON.parse(mappingConfig);
+    } catch {
+      mappingConfig = { unparseableMappingConfig: mappingConfig };
+    }
+  }
+  const configuration = normalizeFinancialConfiguration({
+    sourceType: String(source?.sourceType || "").trim().toLowerCase(),
+    platformContext: String(source?.platformContext || "ga4").trim().toLowerCase(),
+    currency: String(source?.currency || "").trim().toUpperCase(),
+    mappingConfig,
+  });
+  return {
+    id,
+    configurationFingerprint: createHash("sha256").update(JSON.stringify(configuration)).digest("hex"),
+  };
+}
+
+const formatFinancialSourceIdentity = (kind: "revenue_source" | "spend_source", identity: any) => {
+  if (identity && typeof identity === "object" && !Array.isArray(identity)) {
+    const id = String(identity.id || "").trim();
+    const fingerprint = String(identity.configurationFingerprint || "").trim().toLowerCase();
+    if (!id || !/^[a-f0-9]{64}$/.test(fingerprint)) throw new Error("Executive Summary financial source configuration identity is unavailable");
+    return `${kind}:${id}:configuration_sha256:${fingerprint}`;
+  }
+  const id = String(identity || "").trim();
+  return id ? `${kind}:${id}` : "";
+};
+
 export function buildExecutiveSummaryDailySnapshotInput(input: {
   campaignId: string;
   currency: string;
@@ -66,9 +122,9 @@ export function buildExecutiveSummaryDailySnapshotInput(input: {
   const window = summary?.currentValueWindow;
   const explicitFinancialSignature = input.financialSourceIdentities
     ? [
-        ...input.financialSourceIdentities.revenue.map((id) => `revenue_source:${String(id || "").trim()}`),
-        ...input.financialSourceIdentities.spend.map((id) => `spend_source:${String(id || "").trim()}`),
-      ].filter((identity) => !identity.endsWith(":"))
+        ...input.financialSourceIdentities.revenue.map((identity) => formatFinancialSourceIdentity("revenue_source", identity)),
+        ...input.financialSourceIdentities.spend.map((identity) => formatFinancialSourceIdentity("spend_source", identity)),
+      ].filter(Boolean)
     : null;
   const summarySourceSignature = (Array.isArray(summary?.sources) ? summary.sources : [])
     .filter((source: any) => source?.connected === true)

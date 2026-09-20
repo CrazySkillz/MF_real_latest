@@ -12,6 +12,7 @@ import { assertValidGA4KPIUpdate, GA4_KPI_ACTIVE_METRIC_CONFLICT, GA4_KPI_INVALI
 import { buildShopifyRepairConfirmation, deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, getShopifyOrderUtm, resolveShopifyGa4RevenueCurrency, shopifyRepairConfirmationMatches, shouldPreserveShopifyDevelopmentStoreLastGood } from './utils/shopify-revenue';
 import { fetchShopifyOrderCustomerJourneyUtms, getShopifyApiVersion, hasShopifyAllOrdersScope, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain, parseShopifyExpiringOfflineToken, refreshShopifyOfflineAccessToken, requireShopifyCampaignOrderWindow, requireShopifyOrderScope, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, resolveShopifyCampaignOrderWindow, SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE, SHOPIFY_RECENT_ORDER_WINDOW_DAYS, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
 import { assertProductionTokenEncryptionConfigured, resolveOAuthStateSigningSecret } from './utils/tokenVault';
+import { parseExecutiveSummaryStoredMetricValue } from './utils/executive-summary-target-eligibility';
 import { buildGoogleAdsOAuthAuthorization, resolveGoogleAdsOAuthAuthorization } from './google-ads-oauth-authorization';
 import { buildGA4GoogleAdsSpendMaterialization } from './ga4-google-ads-spend';
 import multer from "multer";
@@ -62,7 +63,7 @@ import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getGA
 import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
-import { buildExecutiveSummaryDailySnapshotInput, evaluateExecutiveSummaryTrajectory, hasRefreshedGA4RowsForExecutiveSummarySnapshot } from "./utils/executive-summary-daily-snapshot";
+import { buildExecutiveSummaryDailySnapshotInput, buildExecutiveSummaryFinancialSourceIdentity, evaluateExecutiveSummaryTrajectory, hasRefreshedGA4RowsForExecutiveSummarySnapshot } from "./utils/executive-summary-daily-snapshot";
 import { isAlertDecisionBreached } from "./utils/alert-decision";
 import { HUBSPOT_PAGINATION_ERROR_CODE, MAX_HUBSPOT_PAGES, hubspotPaginationError, nextHubspotPageCursor } from "./utils/hubspot-pagination";
 import { resolveHubspotRevenueCurrency } from "./utils/hubspot-currency";
@@ -15429,6 +15430,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (String(req.query.captureExecutiveSnapshot || "").trim() === "1" && currentValueWindow) {
         try {
           if (!executiveGA4SnapshotRefreshReady) throw new Error("Persisted GA4 property metrics have not refreshed for the completed reporting day");
+          const executiveRevenueSourceDefinitions = new Map(financialRevenueSourceDefinitions.map((source: any) => [String(source?.id || ""), source]));
+          const executiveSpendSourceDefinitions = new Map(financialSpendSourceDefinitions.map((source: any) => [String(source?.id || ""), source]));
           const executiveSnapshot = buildExecutiveSummaryDailySnapshotInput({
             campaignId,
             currency: campaignCurrency,
@@ -15436,8 +15439,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter,
             performanceSummary,
             financialSourceIdentities: {
-              revenue: financialRevenueInputs.map((source: any) => source.id),
-              spend: financialSpendInputs.map((source: any) => source.id),
+              revenue: financialRevenueInputs.map((source: any) => source.id).map((sourceId: any) => buildExecutiveSummaryFinancialSourceIdentity(executiveRevenueSourceDefinitions.get(String(sourceId)))),
+              spend: financialSpendInputs.map((source: any) => source.id).map((sourceId: any) => buildExecutiveSummaryFinancialSourceIdentity(executiveSpendSourceDefinitions.get(String(sourceId)))),
             },
           });
           if (!executiveSnapshot.totals.revenue.available) throw new Error("Authoritative revenue is unavailable");
@@ -31956,6 +31959,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ga4Metrics.users = parseNum((metrics as any)?.impressions);
             ga4Metrics.revenue = 0;
             ga4Metrics.bounceRate = parseNum((metrics as any)?.bounceRate);
+            ga4LastUpdate = getReportingDateWindow(1, (campaign as any)?.reportingTimeZone, now).endDate;
             usedGA4SourceTruth = true;
           } catch {
             // Fall back to persisted GA4 daily rows below if the Connected Platforms GA4 metric source is unavailable.
@@ -32173,14 +32177,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch KPI progress
       let kpiProgress: any[] = [];
       const recommendationTargetMetrics = new Set<string>();
+      const executiveTargetSourceCache = new Map<string, Promise<any>>();
       try {
         const kpis = hasGA4Connection
           ? await storage.getPlatformKPIs("google_analytics", id)
           : await storage.getCampaignKPIs(id);
-        for (const kpi of kpis) {
+        const evaluatedKpis = hasGA4Connection
+          ? await Promise.all(kpis.map((kpi: any) => resolveAlertCurrentValueForDecision(kpi, executiveTargetSourceCache, {
+              allowCredentialRefresh: false,
+              requireCurrentTrafficFreshness: true,
+            })))
+          : kpis;
+        for (const kpi of evaluatedKpis) {
           const isGA4Kpi = kpi?.platformType === "google_analytics";
+          if (isGA4Kpi && kpi?.__alertDecisionEligible !== true) continue;
           const aggregateKpiMetric = isGA4Kpi ? resolveConnectedSourceMetric(kpi) : resolveKpiAggregateMetric(kpi);
           if (!aggregateKpiMetric) continue;
+          if (isGA4Kpi && parseExecutiveSummaryStoredMetricValue(kpi.currentValue) === null) continue;
           const currentValue = isGA4Kpi ? parseNum(kpi.currentValue) : aggregateMetricValue(aggregateKpiMetric);
           const targetValue = parseNum(kpi.targetValue);
           if (targetValue <= 0) continue;
@@ -32227,10 +32240,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const benchmarks = hasGA4Connection
           ? await storage.getPlatformBenchmarks("google_analytics", id)
           : await storage.getCampaignBenchmarks(id);
-        for (const bm of benchmarks) {
+        const evaluatedBenchmarks = hasGA4Connection
+          ? await Promise.all(benchmarks.map((benchmark: any) => resolveAlertCurrentValueForDecision(benchmark, executiveTargetSourceCache, {
+              allowCredentialRefresh: false,
+              requireCurrentTrafficFreshness: true,
+            })))
+          : benchmarks;
+        for (const bm of evaluatedBenchmarks) {
           const isGA4Benchmark = bm?.platformType === "google_analytics";
+          if (isGA4Benchmark && bm?.__alertDecisionEligible !== true) continue;
           const aggregateBenchmarkMetric = isGA4Benchmark ? resolveConnectedSourceMetric(bm) : resolveKpiAggregateMetric(bm);
           if (!aggregateBenchmarkMetric) continue;
+          if (isGA4Benchmark && parseExecutiveSummaryStoredMetricValue(bm.currentValue) === null) continue;
           const currentVal = isGA4Benchmark ? parseNum(bm.currentValue) : aggregateMetricValue(aggregateBenchmarkMetric);
           const targetVal = parseNum(bm.benchmarkValue);
           if (targetVal <= 0) continue;
@@ -32272,7 +32293,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Data freshness validation
       const dataFreshnessWarnings: any[] = [];
 
-      const checkFreshness = (lastUpdate: string | null, source: string) => {
+      const checkFreshness = (lastUpdate: string | null, source: string, verificationStatus?: "stale") => {
         if (lastUpdate) {
           const age = (now.getTime() - new Date(lastUpdate).getTime()) / (1000 * 60 * 60 * 24);
           if (age > 7) {
@@ -32280,7 +32301,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               source,
               age: Math.round(age),
               severity: age > 14 ? 'high' : 'medium',
-              message: `${source} data is ${Math.round(age)} days old - recommendations may be outdated`
+              message: `${source} data is ${Math.round(age)} days old - recommendations may be outdated`,
+              ...(verificationStatus ? { verificationStatus } : {}),
             });
           }
         }
@@ -32288,7 +32310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       checkFreshness(linkedinLastUpdate, 'LinkedIn Ads');
       checkFreshness(metaLastUpdate, 'Meta/Facebook');
-      checkFreshness(ga4LastUpdate, 'Google Analytics');
+      checkFreshness(ga4LastUpdate, 'Google Analytics', 'stale');
       checkFreshness(customIntegrationLastUpdate, 'Custom Integration');
       checkFreshness(googleAdsLastUpdate, 'Google Ads');
       checkFreshness(instagramLastUpdate, 'Instagram Ads');

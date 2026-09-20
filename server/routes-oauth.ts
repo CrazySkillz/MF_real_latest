@@ -14822,14 +14822,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let canonicalPerformanceSummarySpendAvailable = !currentValueWindow && Array.isArray((spendTotals as any)?.sourceIds)
         && (spendTotals as any).sourceIds.length > 0;
       let financialSpendInputs: any[] = [];
+      let financialSpendSourceDefinitions: any[] = [];
       try {
         // Imported spend is source-to-date; the GA4 import boundary applies only to native GA4 metrics.
         const spendStartDate = "1900-01-01";
         const spendEndDate = currentValueWindow?.endDate || new Date().toISOString().slice(0, 10);
-        const [spendToDateTotals, spendBreakdown] = await Promise.all([
+        const [spendToDateTotals, spendBreakdown, spendSourceDefinitions] = await Promise.all([
           storage.getSpendTotalForRange(campaignId, spendStartDate, spendEndDate, "ga4"),
           storage.getSpendBreakdownBySource(campaignId, spendStartDate, spendEndDate, "ga4"),
+          storage.getSpendSources(campaignId, "ga4"),
         ]);
+        financialSpendSourceDefinitions = spendSourceDefinitions;
         const spendSourceIds = Array.isArray((spendToDateTotals as any)?.sourceIds)
           ? (spendToDateTotals as any).sourceIds.map((id: any) => String(id)).filter(Boolean)
           : [];
@@ -14842,7 +14845,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             label: String(source?.displayName || source?.sourceType || "Spend Source"),
             sourceType: String(source?.sourceType || "spend_source"),
             value: parseNum(source?.spend),
-            currency: source?.currency || null,
+            campaignId,
+            scopeMode: "source_to_date",
+            startDate: spendStartDate,
+            endDate: spendEndDate,
+            currency: String(source?.currency || (spendToDateTotals as any)?.currency || "").trim().toUpperCase() || null,
+            currencyVerified: true,
           }));
         const spendToDate = parseNum((spendToDateTotals as any)?.totalSpend);
         if (currentValueWindow || spendToDate > persistedSpend) {
@@ -14865,6 +14873,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let importedRevenueToDateTotal = 0;
       let importedRevenueSources: any[] = [];
       let financialRevenueInputs: any[] = [];
+      let financialRevenueSourceDefinitions: any[] = [];
       let importedRevenueAvailable = false;
       let hasImportedRevenueSource = false;
       const materializedRevenueSourceTypes = new Set<string>();
@@ -14877,6 +14886,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           storage.getRevenueBreakdownBySource(campaignId, revenueStartDate, revenueEndDate, "ga4"),
           storage.getRevenueSources(campaignId, "ga4"),
         ]);
+        financialRevenueSourceDefinitions = revenueSourceDefinitions;
         hasImportedRevenueSource = revenueSourceDefinitions.some((source: any) => source?.isActive !== false) || revenueBreakdown.length > 0;
         importedRevenueAvailable = true;
         const revenueSourceDefinitionsById = new Map((revenueSourceDefinitions as any[]).map((source: any) => [String(source?.id || ""), source]));
@@ -14890,7 +14900,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             label: String(source?.displayName || source?.sourceType || "Revenue Source"),
             sourceType: String(source?.sourceType || "revenue_source"),
             value: parseNum(source?.revenue),
-            currency: source?.currency || null,
+            campaignId,
+            scopeMode: "source_to_date",
+            startDate: revenueStartDate,
+            endDate: revenueEndDate,
+            currency: String(source?.currency || (revenueTotals as any)?.currency || "").trim().toUpperCase() || null,
+            currencyVerified: true,
           }));
         importedRevenueSources = revenueBreakdown
           .map((source: any) => ({
@@ -15086,6 +15101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let campaignFinancialConversions: number | null = null;
       let executivePropertyEngagementRate: number | null = null;
       let executiveGA4SnapshotRefreshReady = false;
+      let financialNativeRevenueStartDate = "";
       if (webAnalyticsProvider === "ga4" && activeGA4 && persistedPropertyId && !isYesopMockProperty(persistedPropertyId)) {
         if (!currentValueWindow) {
           financialGa4Totals = { ...financialGa4Totals, available: false };
@@ -15106,6 +15122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const date = new Date(raw);
             return Number.isNaN(date.getTime()) ? "2000-01-01" : formatISODateUTC(date);
           })();
+          financialNativeRevenueStartDate = financialStartDateUsed;
           const endDateUsed = currentValueWindow.endDate;
           const persistedFinancialRows = await storage.getGA4DailyMetrics(campaignId, persistedPropertyId, financialStartDateUsed, endDateUsed).catch(() => [] as any[]);
           const latestPersistedFinancialDate = persistedFinancialRows.reduce(
@@ -15301,7 +15318,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 label: "GA4 Revenue",
                 sourceType: "Native GA4 revenue",
                 value: onsiteRevenue,
-                currency: null,
+                campaignId,
+                scopeMode: "campaign_to_date",
+                startDate: financialNativeRevenueStartDate,
+                endDate: currentValueWindow?.endDate || endDate,
+                currency: campaignCurrency,
+                currencyVerified: financialGa4Totals?.source === "ga4_to_date",
               }]
             : []),
           ...financialRevenueInputs,
@@ -15338,6 +15360,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         revenueSources,
       });
+      const normalizeFinancialIds = (values: unknown[]) => values.map((value) => String(value || "").trim()).filter(Boolean).sort();
+      const activeSpendSourceIds = normalizeFinancialIds(financialSpendSourceDefinitions.map((source: any) => source?.id));
+      const activeRevenueSourceIds = normalizeFinancialIds(financialRevenueSourceDefinitions.map((source: any) => source?.id));
+      const spendInputSourceIds = normalizeFinancialIds(financialSpendInputs.map((source: any) => source?.id));
+      const revenueInputSourceIds = normalizeFinancialIds(financialRevenueInputs
+        .filter((source: any) => source?.scopeMode === "source_to_date")
+        .map((source: any) => source?.id));
+      const exactFinancialSourceSet = (expected: string[], actual: string[]) => expected.length === actual.length
+        && new Set(actual).size === actual.length
+        && expected.every((id, index) => id === actual[index]);
+      const financialInputMetadataReady = currentValueWindow && [...financialRevenueInputs, ...financialSpendInputs].every((input: any) =>
+        input?.campaignId === campaignId
+        && ["campaign_to_date", "source_to_date"].includes(String(input?.scopeMode || ""))
+        && /^\d{4}-\d{2}-\d{2}$/.test(String(input?.startDate || ""))
+        && input.startDate <= currentValueWindow.endDate
+        && input?.endDate === currentValueWindow.endDate
+        && String(input?.currency || "").trim().toUpperCase() === campaignCurrency
+        && input?.currencyVerified === true
+        && Number.isFinite(Number(input?.value))
+      );
+      const financialRevenueInputTotal = financialRevenueInputs.reduce((sum: number, input: any) => sum + Number(input?.value || 0), 0);
+      const financialSpendInputTotal = financialSpendInputs.reduce((sum: number, input: any) => sum + Number(input?.value || 0), 0);
+      const financialInputsReconcile = Math.abs(financialRevenueInputTotal - totalRevenueUnified) < 0.005
+        && Math.abs(financialSpendInputTotal - financialSpendForOutcome) < 0.005;
+      const financialSourcesComplete = exactFinancialSourceSet(activeRevenueSourceIds, revenueInputSourceIds)
+        && exactFinancialSourceSet(activeSpendSourceIds, spendInputSourceIds);
+      const financialDecisionReady = Boolean(currentValueWindow
+        && performanceSummary?.totals?.revenue?.available === true
+        && performanceSummary?.totals?.spend?.available === true
+        && financialRevenueInputs.length > 0
+        && financialSpendInputs.length > 0
+        && financialSpendForOutcome > 0
+        && financialInputMetadataReady
+        && financialInputsReconcile
+        && financialSourcesComplete);
+      const financialDecisionContext = {
+        version: "financial_decision_context_v1",
+        status: financialDecisionReady ? "ready" : "unavailable",
+        reason: financialDecisionReady ? null
+          : !currentValueWindow ? "reporting_window_unavailable"
+            : !financialInputMetadataReady ? "financial_scope_metadata_unverified"
+              : !financialSourcesComplete ? "active_financial_sources_incomplete"
+                : !financialInputsReconcile ? "financial_inputs_do_not_reconcile"
+                  : financialSpendForOutcome <= 0 ? "positive_spend_required"
+                    : "authoritative_financial_inputs_unavailable",
+        campaignId,
+        currency: campaignCurrency,
+        dataThroughDate: currentValueWindow?.endDate || null,
+        revenueModel: "ga4_campaign_to_date_plus_imported_source_to_date",
+        spendModel: "source_to_date",
+        roas: financialDecisionReady ? totalRevenueUnified / financialSpendForOutcome : null,
+      };
       if (useExecutiveCampaignToDateFinancials && executivePropertyEngagementRate !== null) {
         (performanceSummary as any).totals.engagementRate = {
           value: executivePropertyEngagementRate,
@@ -15417,6 +15491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         financials,
         revenueSources,
         financialInputs,
+        financialDecisionContext,
         performanceSummary,
       });
     } catch (error: any) {

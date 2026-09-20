@@ -611,6 +611,38 @@ export default function TrendAnalysis() {
     revenue: currentRevenue,
     conversions: currentTraffic?.conversions ?? null,
   });
+  const financialDecisionContext = outcomeTotals?.financialDecisionContext;
+  const executiveROASDecisionReady = hasAuthoritativeHeadlineWindow
+    && currentRevenue !== null
+    && currentSpend !== null
+    && currentSpend > 0
+    && financialDecisionContext?.version === "financial_decision_context_v1"
+    && financialDecisionContext?.status === "ready"
+    && financialDecisionContext?.campaignId === campaignId
+    && financialDecisionContext?.currency === campaignCurrency
+    && financialDecisionContext?.dataThroughDate === currentValueWindow?.endDate
+    && financialDecisionContext?.revenueModel === "ga4_campaign_to_date_plus_imported_source_to_date"
+    && financialDecisionContext?.spendModel === "source_to_date"
+    && Math.abs(Number(financialDecisionContext?.roas) - (currentRevenue / currentSpend)) < 0.005
+    && (["revenue", "spend"] as const).every((metricName) => {
+      const inputs = outcomeTotals?.financialInputs?.[metricName];
+      const expectedTotal = metricName === "revenue" ? currentRevenue : currentSpend;
+      return Array.isArray(inputs) && inputs.length > 0
+        && Math.abs(inputs.reduce((sum: number, input: any) => sum + Number(input?.value || 0), 0) - expectedTotal) < 0.005
+        && inputs.every((input: any) => {
+          const expectedScope = metricName === "revenue" && input?.id === "ga4_native_revenue"
+            ? "campaign_to_date"
+            : "source_to_date";
+          return input?.campaignId === campaignId
+            && input?.scopeMode === expectedScope
+            && ISO_DATE_PATTERN.test(String(input?.startDate || ""))
+            && input.startDate <= currentValueWindow?.endDate
+            && input?.endDate === currentValueWindow?.endDate
+            && String(input?.currency || "").trim().toUpperCase() === campaignCurrency
+            && input?.currencyVerified === true
+            && Number.isFinite(Number(input?.value));
+        });
+    });
   const authoritativeTrendCurrent = cumulativeGA4CurrentCompatible && currentTraffic ? {
     users: currentTraffic.users,
     sessions: currentTraffic.sessions,
@@ -1240,23 +1272,17 @@ export default function TrendAnalysis() {
           title: "Selected-Window Comparison",
           message: `Current totals are compared with cumulative totals through ${exactDateLabel}. Differences show activity added since that date, not like-for-like period performance.`,
         });
-      } else if (typeof revenueChange === "number" && revenueChange < -10) {
-        pushInsight({
-          type: "warning",
-          title: "Revenue Trend Needs Review",
-          message: `Revenue is down ${Math.abs(revenueChange).toFixed(1)}% versus the previous comparable period. Review the source and funnel tabs before changing spend.`,
-        });
-      } else if (typeof conversionsChange === "number" && conversionsChange < -10) {
-        pushInsight({
-          type: "warning",
-          title: "Conversion Trend Needs Review",
-          message: `Conversions are down ${Math.abs(conversionsChange).toFixed(1)}% versus the previous comparable period. Check traffic quality and conversion path changes.`,
-        });
       } else {
+        const observedChanges = [
+          typeof revenueChange === "number" ? `revenue ${revenueChange >= 0 ? "+" : ""}${revenueChange.toFixed(1)}%` : null,
+          typeof conversionsChange === "number" ? `conversions ${conversionsChange >= 0 ? "+" : ""}${conversionsChange.toFixed(1)}%` : null,
+        ].filter(Boolean);
         pushInsight({
-          type: "success",
-          title: "Performance Trend Stable",
-          message: "No major negative movement is visible in the current comparable trend window. Continue monitoring source-level changes before making budget decisions.",
+          type: "info",
+          title: "Comparable-Period Movement",
+          message: observedChanges.length > 0
+            ? `${observedChanges.join(" and ")} versus the previous comparable period. These are observed changes, not evidence of cause; compare them with approved campaign targets and source-level evidence before changing budget.`
+            : "Comparable-period values are available, but no supported revenue or conversion change is available for executive interpretation.",
         });
       }
     } else if (overviewTrendData?.currentPeriodDays) {
@@ -1272,23 +1298,29 @@ export default function TrendAnalysis() {
     if (efficiencyTrendData?.cards?.length) {
       const roas = efficiencyTrendData.current?.roas;
       const cpa = efficiencyTrendData.current?.cpa;
-      if (usesCumulativeGA4Consumer && typeof roas === "number") {
+      if (usesCumulativeGA4Consumer && typeof roas === "number" && executiveROASDecisionReady) {
         pushInsight({
           type: "info",
-          title: "Campaign-to-Date ROAS",
-          message: `Campaign-to-date ROAS is ${roas.toFixed(2)}x. Compare it with approved profit and margin targets and source capacity before changing spend.`,
+          title: "Campaign-to-Date ROAS — Reconciled Sources",
+          message: `Cumulative ROAS is ${roas.toFixed(2)}x using financial records dated no later than ${currentValueWindow.endDate}. It reconciles live GA4 native campaign-to-date revenue and every active stored imported revenue and spend source-to-date, all in ${campaignCurrency}. Compare it with approved profit and ROAS targets before any budget change.`,
         });
-      } else if (typeof roas === "number" && roas >= 4) {
+      } else if (usesCumulativeGA4Consumer && typeof roas === "number") {
         pushInsight({
-          type: "success",
-          title: "Revenue Efficiency Is Strong",
-          message: `ROAS is ${roas.toFixed(2)}x from available revenue and spend inputs. Consider scaling only after source capacity and campaign goals are confirmed.`,
+          type: "warning",
+          title: "ROAS Decision Context Not Verified",
+          message: `A descriptive cumulative ROAS of ${roas.toFixed(2)}x is available, but its active sources, scope metadata, currency, and input totals did not all reconcile. It is withheld from executive budget guidance.`,
+        });
+      } else if (typeof roas === "number") {
+        pushInsight({
+          type: "info",
+          title: "Observed Revenue Efficiency",
+          message: `ROAS is ${roas.toFixed(2)}x from the available revenue and spend inputs. This is descriptive, not a scaling signal; compare it with an approved campaign ROAS and profit target before changing budget.`,
         });
       } else if (typeof cpa === "number" && cpa > 0) {
         pushInsight({
           type: "info",
-          title: "Cost Efficiency Available",
-          message: `CPA is ${fmtTrendCurrency(cpa)}. Use this with conversion trend movement before deciding whether spend needs optimization.`,
+          title: "Observed Acquisition Cost",
+          message: `CPA is ${fmtTrendCurrency(cpa)} from the available spend and conversion inputs. Compare it with an approved campaign CPA target and confirm the conversion definition before changing budget.`,
         });
       }
     } else {
@@ -1304,20 +1336,14 @@ export default function TrendAnalysis() {
       if (usesCumulativeGA4Consumer && typeof webCvr === "number") {
         pushInsight({
           type: "info",
-          title: "Campaign-to-Date Conversion Volume",
-          message: `Current cumulative data shows ${webCvr.toFixed(1)} conversions per 100 sessions. Review conversion-event configuration and campaign targets before judging conversion quality.`,
-        });
-      } else if (typeof webCvr === "number" && webCvr < 2) {
-        pushInsight({
-          type: "warning",
-          title: "Conversion Path Opportunity",
-          message: `Web conversion rate is ${formatPct(webCvr)}. Review landing pages, offer clarity, and conversion tracking before increasing acquisition activity.`,
+          title: "Campaign-to-Date Conversion Volume & Frequency",
+          message: `Current cumulative data shows ${formatExactTrendCount(conversionFunnelData.current.conversions)} conversions, or ${webCvr.toFixed(1)} conversions per 100 sessions. Review conversion-event configuration and campaign targets before judging conversion quality.`,
         });
       } else if (typeof webCvr === "number") {
         pushInsight({
-          type: "success",
-          title: "Web Funnel Is Converting",
-          message: `Web conversion rate is ${formatPct(webCvr)} from available sessions and conversions. Monitor whether this holds as more daily history accumulates.`,
+          type: "info",
+          title: "Observed Web Conversion Frequency",
+          message: `${formatExactTrendCount(conversionFunnelData.current.conversions)} conversions from ${formatExactTrendCount(conversionFunnelData.current.sessions)} sessions produced ${formatPct(webCvr)}. This ratio does not establish conversion quality; compare it with an approved campaign target and verify the conversion-event definition.`,
         });
       }
     }
@@ -1339,7 +1365,7 @@ export default function TrendAnalysis() {
     }
 
     return insights.slice(0, 5);
-  }, [trendAggregate, overviewTrendData, efficiencyTrendData, conversionFunnelData, platformBreakdownData, campaignCurrency, usesCumulativeGA4Consumer]);
+  }, [trendAggregate, overviewTrendData, efficiencyTrendData, conversionFunnelData, platformBreakdownData, campaignCurrency, usesCumulativeGA4Consumer, executiveROASDecisionReady]);
 
   const toggleSeries = (key: string) => {
     setVisibleSeries(prev => {

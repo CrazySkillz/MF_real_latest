@@ -2,7 +2,11 @@
 
 ## Decision
 
-Status: **PASS — bounded production certification for the current GA4-first Trend Analysis surface at deployed revision `58a93a81feb189cbf7b502f3ae57a72120a9a80d`.**
+Status: **PASS — bounded production certification for the current GA4-first Trend Analysis surface at deployed revision `637d0c31e1466ff2b2d7f0ad25543c5ec3ddd828`.**
+
+The earlier `58a93a81feb189cbf7b502f3ae57a72120a9a80d` decision is historical. The current revision was revalidated after the initial-render, cumulative-input, anomaly-helper, financial-reconciliation, and Executive Recommendation changes. This decision applies only to the exact scope and evidence below.
+
+Post-certification local candidate: **UNVERIFIED pending deployment and browser confirmation.** The subsequent top-card title and directional-color presentation change does not alter metric values or calculations, but it changes the certified UI dependency.
 
 This is not a global or multi-source certification. In the current release, campaign metrics are imported through GA4. Meta, Instagram, LinkedIn, TikTok, and other non-GA4 main-source Trend paths are not configured. The positive `Paid Acquisition Funnel` and multi-source `Source Contribution` branches are therefore excluded; their correct GA4-only behavior is to remain hidden.
 
@@ -10,14 +14,14 @@ This is not a global or multi-source certification. In the current release, camp
 
 - Branch: local `main`, matching `origin/main` at validation.
 - Deployed service: `https://marketforensics.onrender.com`.
-- Deployed health revision: `58a93a81feb189cbf7b502f3ae57a72120a9a80d`.
+- Deployed health revision: `637d0c31e1466ff2b2d7f0ad25543c5ec3ddd828`.
 - Audited production campaign: `Campaign2`.
 - Main source boundary: exactly one connected `ga4` source (`Google Analytics`).
 - Campaign currency: `USD`.
 - Campaign reporting timezone: `Europe/Amsterdam`.
-- Browser observation data-through date: `2026-09-18`.
-- Browser default-window observation: 15 daily records across 30 calendar dates; missing dates remained gaps.
-- Later deployed PDF/API observation at the same revision: Revenue `70473.69`, Spend `338`, Conversions `96`, Sessions `569`, and Users `569`. These values were compared dynamically between the production aggregate and generated PDF rather than against stale hardcoded values.
+- Browser observation data-through date: `2026-09-19`.
+- Authenticated selector observation: the 7-, 14-, and 30-day selections rendered charts; the 90-day selection rendered the explicit insufficient-history state rather than an empty or fabricated chart. Their corresponding `2x` aggregate requests returned 12, 14, 17, and 40 stored daily rows respectively.
+- Deployed browser/PDF observation at the same revision: Revenue `124297.10`, Spend `2759.75`, Conversions `349`, Sessions `2728`, and Users `2730`. These values were compared dynamically between the authenticated browser cards and a newly generated production PDF rather than against stale hardcoded values.
 
 ## Subsection Results
 
@@ -28,7 +32,7 @@ This is not a global or multi-source certification. In the current release, camp
 | 3. Efficiency Trends | **PASS** | Return, cost, and rate series render only with compatible inputs. Valid zero is preserved; unavailable financial history is explained instead of rendered as fabricated zero performance. |
 | 4. Website Engagement & Conversion Summary | **PASS** | Sessions, engaged sessions, conversions, engagement rate, and conversions per 100 sessions remain GA4-scoped and use consistent cumulative numerator/denominator windows. |
 | 5. Anomaly Detection | **PASS** | Browser anomaly flags derive from compatible daily history, preserve observed zero drops, and use descriptive—not causal—wording. This is a browser decision-support panel, not a claim of cause. |
-| 6. Executive Recommendations | **PASS** | Recommendations use only available Trend signals, distinguish selected-window from campaign-to-date context, and require business targets/source capacity before spend decisions. No causal improvement claim is made. |
+| 6. Executive Recommendations | **PASS** | Complete adjacent windows produce an evidence-labelled, actionable traffic/conversion comparison. Campaign-to-date ROAS guidance is promoted only when active revenue/spend inputs, scope, dates, currency, and formula totals reconcile; otherwise budget guidance fails closed. No causal improvement claim is made. |
 
 ## Combined-Page Results
 
@@ -46,30 +50,33 @@ Overall combined page: **PASS within the certified GA4-first boundary.**
 | Unavailable | **PASS** | Invalid or incomplete consumer contracts withheld dependent values and displayed the unavailable state. |
 | Failure | **PASS** | Non-2xx core Trend responses throw, initial failure is distinct from empty data, and background failure retains last-good values with a warning. |
 | Refresh propagation | **PASS — request/data path** | Queries refetch on focus and at the existing interval. A later read-only deployed observation at the same revision returned the next current aggregate values. No separate Trend write path was introduced or claimed. |
-| Browser/scheduled Trend report parity | **PASS — shared renderer** | A deployed one-off Trend PDF at the exact revision matched current production aggregate values and correctly omitted both unsupported conditional panels. Browser one-off and scheduled Trend PDFs call the same server renderer; focused parity regressions cover the shared output. No new scheduled firing or email was required. |
+| Browser/scheduled Trend report parity | **PASS — shared renderer, bounded fields** | A deployed one-off Trend PDF at the exact revision matched browser Revenue, Spend, Conversions, Sessions, and Users; included the reconciled ROAS guidance; removed the redundant Selected-Window Comparison recommendation; and correctly omitted both unsupported conditional panels. Browser one-off and scheduled Trend PDFs call the same server renderer. Anomaly Detection remains a browser-only decision-support panel and is not claimed as PDF content. No new scheduled firing or email was required. |
 
 ## Dependency-Impact Comparison
 
-Compared with the prior certified runtime `cd35bba1c4ff4bb0b045c3bc6c176f2847cd80eb`:
+Compared with the previously certified runtime `58a93a81feb189cbf7b502f3ae57a72120a9a80d`:
 
-- Changed and revalidated: `client/src/pages/trend-analysis.tsx`, the Trend endpoint/composition in `server/routes-oauth.ts`, `server/utils/trend-analysis-aggregate.ts`, and the Trend section of `server/report-scheduler.ts`.
-- The changed runtime added exact calendar-window handling, cumulative GA4 summary alignment, valid-zero handling, campaign-currency formatting, GA4/paid-source isolation, conditional report sections, and distinct loading/empty/stale/unavailable/failure behavior.
-- Relevant persisted-read contracts and shared Trend field meanings remain compatible. Changes elsewhere in `server/storage.ts` and `shared/schema.ts` did not change the audited Trend read contract.
-- The relevant scheduler snapshot composition still uses the existing `aggregateCampaignMetrics` → `trend_analysis_aggregate_v1` path. File-level scheduler changes outside that path were not treated as Trend evidence.
-- No shared API response contract, database schema, or source ownership boundary was changed by the final unavailable-state fix.
+- Changed and revalidated: `client/src/lib/trend-analysis-cumulative.ts`, `client/src/pages/trend-analysis.tsx`, the certified outcome-total reader in `server/routes-oauth.ts`, and the Trend PDF branch in `server/report-scheduler.ts`.
+- The page now waits for the GA4 coverage contract before deriving verified daily rows, preventing the initial blank/render exception while retaining explicit loading and failure states.
+- Cumulative GA4 Users, Sessions, Conversions, CVR, Engagement Rate, and anomaly rows are derived from the verified GA4 daily path; financial decisions use reconciled campaign-scoped revenue and spend inputs.
+- The anomaly algorithm is shared as a deterministic helper without changing its descriptive seven-comparable-date statistical contract. Direct warning, critical, valid-zero, missing-value, and zero-variance cases are regression-covered.
+- The relevant scheduler composition still uses `aggregateCampaignMetrics` → `trend_analysis_aggregate_v1`; the PDF ROAS recommendation now fails closed unless the full financial decision context reconciles.
+- No shared API response shape, database schema, source ownership boundary, or unrelated page architecture changed.
 
 ## Evidence
 
 Fresh current-revision evidence:
 
-- focused Trend/UI/report packet: **71/71 passed** across six focused files
-- `npm run check`: passed once after the final fix
-- `npm run build`: passed once after the final fix
-- deployed health: exact revision matched
-- authenticated deployed browser validation: all selectors and six visible subsections passed
-- exact deployed-bundle state validation: empty, stale, unavailable, and failure passed
-- deployed one-off GA4-only Trend PDF: valid PDF, current aggregate values present, unsupported conditional panels absent
-- PDF validation created no campaign, analytics, report, snapshot, schedule, or email records
+- focused Trend/UI/report packet: **94/94 passed** across nine focused files
+- adjacent financial/Overview/scheduler packet: **79/79 passed** across eight files
+- `npm run check`: passed after the final implementation
+- `npm run build`: passed after the final implementation
+- deployed health: HTTP 200 and exact revision matched
+- authenticated deployed browser validation: initial render remained stable; all four selectors requested the matching `dateRange` and `2x` history; all required browser sections loaded; no page error or critical Trend request failure occurred
+- current-revision focused regressions covered loading, empty, valid-zero, stale, unavailable, initial-failure, and background-failure branches; the authenticated deployed run separately proved the normal live state and initial-render path
+- deployed one-off GA4-only Trend PDF: valid PDF; current browser Revenue, Spend, Conversions, Sessions, and Users matched; reconciled ROAS guidance was present; the redundant comparison recommendation and unsupported conditional panels were absent
+- strict persistence checks proved campaign, GA4 daily, revenue, report, and snapshot records unchanged. A concurrent three-minute Google Sheets spend refresh regenerated row IDs and `lastSyncedAt`; a repeat gate compared the spend business-value projection and proved dates, amounts, currency, source scope, and totals unchanged
+- the repository-wide suite was not globally clean: 2012 tests passed and 45 unrelated tests failed across 38 suites. None of the failing suite filenames belonged to the bounded Trend packet, so this certificate makes no whole-repository or whole-application claim
 
 Reused evidence, after dependency comparison:
 
@@ -95,4 +102,4 @@ Before any non-GA4 main source is enabled for this release, its positive conditi
 - `APP_PRODUCTION_READINESS.md` was not modified.
 - The pre-existing uncommitted ledger edit and unrelated untracked paths were preserved.
 - No product code, shared contract, existing test, or existing certificate was changed by this certification record.
-- This certificate is uncommitted and unpushed pending explicit approval.
+- This recertification update is uncommitted and unpushed pending explicit approval.

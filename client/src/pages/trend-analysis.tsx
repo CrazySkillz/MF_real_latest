@@ -1612,11 +1612,14 @@ export default function TrendAnalysis() {
                 <>
                   {/* Executive KPI scorecard: one card per decision metric. */}
                   {authoritativeHeadlineCurrent ? <>
-                  {cumulativeDataThroughLabel && (
-                    <p className="text-sm text-muted-foreground">
-                      Current totals are cumulative through {cumulativeDataThroughLabel}; the selector controls charts and the exact comparison date.
-                    </p>
-                  )}
+                  <div className="space-y-1">
+                    <h2 className="text-2xl font-semibold text-foreground">Campaign-to-Date Performance Summary</h2>
+                    {cumulativeDataThroughLabel && (
+                      <p className="text-sm text-muted-foreground">
+                        Current totals are cumulative through {cumulativeDataThroughLabel}; the selector controls charts and the exact comparison date.
+                      </p>
+                    )}
+                  </div>
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                       {[
                         { label: 'Revenue', value: authoritativeHeadlineCurrent.revenue === null ? null : fmtHeadlineCurrency(authoritativeHeadlineCurrent.revenue), change: headlineComparison.revenue, comparisonPending: !trendFinancialComparisonFetched },
@@ -1633,7 +1636,11 @@ export default function TrendAnalysis() {
                         { label: 'Engagement Rate', value: authoritativeHeadlineCurrent.engagementRate === null ? null : formatPct(normalizeRateToPercent(authoritativeHeadlineCurrent.engagementRate)), change: headlineComparison.engagementRate },
                         { label: 'CTR', value: authoritativeHeadlineCurrent.ctr === null ? null : formatPct(authoritativeHeadlineCurrent.ctr), change: headlineComparison.ctr },
                       ].filter((card) => card.value !== null).map((card, i) => {
-                        const isGood = card.invertColor ? card.change <= 0 : card.change >= 0;
+                        const comparisonColorClass = Number(card.change) > 0
+                          ? "text-green-600"
+                          : Number(card.change) < 0
+                            ? "text-red-600"
+                            : "text-muted-foreground";
                         const countKey = ({ Conversions: "conversions", Sessions: "sessions", Users: "users" } as Record<string, string>)[card.label];
                         const rateKey = ({ CVR: "cvr", "Engagement Rate": "engagementRate", CTR: "ctr" } as Record<string, string>)[card.label];
                         const comparisonKey = countKey || rateKey;
@@ -1653,14 +1660,14 @@ export default function TrendAnalysis() {
                               <div className="min-h-[5rem]">
                               {overviewTrendData.hasPrevious && typeof card.change === "number" && (
                                 cumulativeComparison ? (
-                                  <div className="text-xs text-muted-foreground mt-1 leading-tight">
-                                    <div>{cumulativeComparison.value}</div>
-                                    <div>{cumulativeComparison.context}</div>
+                                  <div className="text-xs mt-1 leading-tight">
+                                    <div className={comparisonColorClass}>{cumulativeComparison.value}</div>
+                                    <div className="text-muted-foreground">{cumulativeComparison.context}</div>
                                   </div>
                                 ) : (
                                   <div className="text-xs mt-1 leading-tight">
-                                    <div className={`flex items-center ${isGood ? 'text-green-600' : 'text-red-600'}`}>
-                                      {card.change >= 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
+                                    <div className={`flex items-center ${comparisonColorClass}`}>
+                                      {card.change > 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : card.change < 0 ? <ArrowDownRight className="w-3 h-3 mr-0.5" /> : null}
                                       {card.change >= 0 ? '+' : ''}{card.change.toFixed(1)}%
                                     </div>
                                     {usesCumulativeGA4Consumer && comparisonDateLabel && (

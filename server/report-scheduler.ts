@@ -1710,7 +1710,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       const current = Number(trendCurrentMetric(key));
       const currency = String((campaign as any)?.currency || "USD").trim().toUpperCase() || "USD";
       const previous = trendPreviousMetric(key);
-      let comparison = `Comparison unavailable - ${trendComparisonDate || "unknown date"}`;
+      let comparison = `Comparison unavailable vs ${trendComparisonDate || "unknown date"}`;
       if (previous !== null && previous > 0) {
         if (["users", "sessions", "conversions", "cvr", "engagementRate"].includes(key)) {
           const exact = formatTrendComparison({
@@ -1719,10 +1719,10 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
             comparisonDate: trendComparisonDate,
             kind: ["cvr", "engagementRate"].includes(key) ? "rate" : "count",
           });
-          comparison = exact ? `${exact.value}; ${exact.context}` : comparison;
+          comparison = exact ? `${exact.value} ${exact.context}` : comparison;
         } else {
           const change = ((current - previous) / Math.abs(previous)) * 100;
-          comparison = `${change >= 0 ? "+" : ""}${change.toFixed(1)}%; ${trendComparisonDate}`;
+          comparison = `${change >= 0 ? "+" : ""}${change.toFixed(1)}% vs ${trendComparisonDate}`;
         }
       }
       addText(`- ${campaignDeepDiveMetricLabels[key] || key}: ${formatCampaignDeepDiveMetricValue(key, current, currency)} (${comparison})`, { indent });

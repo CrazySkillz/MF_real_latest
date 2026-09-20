@@ -110,7 +110,7 @@ export default function TrendAnalysis() {
   const { id: campaignId } = useParams();
 
   // Page-level state
-  const [perfPeriod, setPerfPeriod] = useState<string>("30d");
+  const [perfPeriod, setPerfPeriod] = useState<string>("7d");
   const [visibleSeries, setVisibleSeries] = useState<Set<string>>(new Set(['spend', 'revenue', 'conversions']));
   const [platformMetric, setPlatformMetric] = useState<string>("spend");
 
@@ -1511,7 +1511,7 @@ export default function TrendAnalysis() {
                                       {card.change >= 0 ? '+' : ''}{card.change.toFixed(1)}%
                                     </div>
                                     {usesCumulativeGA4Consumer && comparisonDateLabel && (
-                                      <div className="text-muted-foreground">{comparisonDateLabel}</div>
+                                      <div className="text-muted-foreground">vs {comparisonDateLabel}</div>
                                     )}
                                   </div>
                                 )
@@ -1519,7 +1519,7 @@ export default function TrendAnalysis() {
                               {hasAuthoritativeHeadlineWindow && comparisonDateLabel && typeof card.change !== "number" && (
                                 <div className="text-xs text-muted-foreground mt-1 leading-tight">
                                   <div>Comparison unavailable</div>
-                                  <div>{comparisonDateLabel}</div>
+                                  <div>vs {comparisonDateLabel}</div>
                                 </div>
                               )}
                               </div>

@@ -195,6 +195,7 @@ describe("scheduled Executive Summary PDF", () => {
 
     expect(pdfTextCalls.some((text) => text.includes("Revenue target: Current Unavailable; Target Unavailable"))).toBe(true);
     expect(pdfTextCalls).toContain("Risk Level: MEDIUM");
-    expect(pdfTextCalls).not.toContain("Risk Assessment");
+    expect(pdfTextCalls).toContain("Risk Assessment");
+    expect(pdfTextCalls).toContain("- Data Freshness: Not Verified - Connected-source freshness is unavailable in this report context");
   });
 });

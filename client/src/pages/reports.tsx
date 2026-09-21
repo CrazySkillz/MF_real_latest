@@ -467,7 +467,7 @@ export default function Reports() {
   // Load reports from storage
   useEffect(() => {
     const loadReports = () => {
-      const allReports = reportStorage.getReports();
+      const allReports = campaignContextId ? reportStorage.getReports() : [];
       
       if (allReports.length === 0) {
         setAllStoredReports([]);

@@ -24,6 +24,7 @@ describe("campaign Custom Report regression guard", () => {
   it("keeps an empty standalone report library free of fabricated demo history", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 
+    expect(reports).toContain("const allReports = campaignContextId ? reportStorage.getReports() : [];");
     expect(reports).toContain("if (allReports.length === 0) {");
     expect(reports).toContain("setAllStoredReports([]);");
     expect(reports).not.toContain("const mockReports = [");

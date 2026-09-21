@@ -5642,7 +5642,7 @@ export default function CampaignDetail() {
                       >
                         <Settings className="w-5 h-5" />
                         <div className="text-left">
-                          <div className="font-medium">Custom Report</div>
+                          <div className="font-medium">Reports</div>
                           <div className="text-xs text-muted-foreground">Build your own</div>
                         </div>
                       </Button>

@@ -170,13 +170,12 @@ dependency. Its lifecycle authority remains
 `f4a648a8` and deployed runtime `f8061d13`; the Performance Summary certificate
 does not recertify or broaden that source boundary.
 
-Remaining DeepDive certification order after the completed Budget and Trend
-reviews:
+Remaining DeepDive certification order after the completed Budget, Trend, and
+Executive Summary reviews:
 
 1. Platform Comparison if it remains visible; otherwise hide it and mark it
    `EXCLUDED` before app certification
-2. Executive Summary
-3. Custom Reports
+2. Custom Reports
 
 Budget & Financial Analysis completed its fresh four-packet and combined-page
 review at deployed application runtime `b36047bbce419df9d606239c340398e69a409211`.
@@ -218,6 +217,29 @@ passed. Positive paid-media `Paid Acquisition Funnel`, positive multi-source
 uncertified and require separate evidence. Global scheduler health, a new
 scheduled firing, provider delivery, inbox receipt, whole-application readiness,
 and global multi-source readiness are also outside this certificate.
+
+Executive Summary completed its fresh four-packet and combined-page review for
+the exact `ga4_mock` boundary at certified implementation commit
+`2d9625437683ccef081e60831f2a59c76246d438`. Certificate commit
+`1d646c0cfef12e45035ae0770f2ebcebb19a33b2` and documentation-alignment commit
+`686abb2e316292a4118a91a7c83c8f704f6d6e31` changed documentation only; the
+certified application implementation remained unchanged.
+
+| Order | Executive Summary review | Work state | Fresh certification status | Boundary |
+| ---: | --- | --- | --- | --- |
+| - | Combined Executive Summary | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY / NO-OVERCLAIMING` for the exact `ga4_mock`, property `542352127`, USD, Europe/Amsterdam, GA4-first configuration documented by `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_CERTIFICATE_2026-09-21.md`; all four packets passed together and required steps remaining within that boundary: 0. |
+| 1 | 7-Day Snapshot Trajectory and Risk Level | `COMPLETE` | `CERTIFIED` | PASS for the exact snapshot identity, current live `incompatible_history` state, compatible/missing/unavailable deterministic branches, Risk Level, and the factual four-bullet narrative within the certified boundary. A naturally observed compatible seven-day production trajectory remains a standing future evidence opportunity, not a required gate. |
+| 2 | Marketing Funnel Performance | `COMPLETE` | `CERTIFIED` | PASS for source-capability-driven funnel stages, conditional rates, Bottom of Funnel values, all five metric cards, formulas, provenance, currency, valid-zero/unavailable behavior, and the absence of invented paid-media metrics. |
+| 3 | KPIs & Benchmarks | `COMPLETE` | `CERTIFIED` | PASS for exception, no-exception, unavailable, target-direction, verified-current classification, and downstream risk/action behavior. User-configured target commercial reasonableness and disabled standalone campaign-level KPI/Benchmark tabs remain outside this packet. |
+| 4 | Recommended Actions | `COMPLETE` | `CERTIFIED` | PASS for eligibility, evidence and target context, freshness handling, ordering/deduplication, non-causal wording, paid-media guardrails, and the fail-closed no-evidence state. |
+
+This certificate does not extend to Campaign2, other campaigns, properties,
+tenants, currencies, timezones, source configurations, paid-media variants,
+other Campaign DeepDive sections, source lifecycle recertification, PDFs,
+reports, schedules/delivery surfaces, inbox receipt, or target commercial
+reasonableness. Source-configuration changes require the certificate's stated
+identity, capability, aggregation, snapshot, KPI/Benchmark, risk/action, and
+deployed-source-mix revalidation gates.
 
 Each DeepDive certificate must consume certified GA4 and enabled connected-platform
 inputs without independently changing or reinterpreting upstream values. An
@@ -298,7 +320,7 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 | Budget & Financial Analysis | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_CERTIFICATE_2026-09-19.md`; historical `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md` | Current bounded clean certificate: deployed application runtime `b36047bbce419df9d606239c340398e69a409211`; all four visible sections and the combined page passed, including budget/date add-edit-delete and both hidden/visible Paid Media Efficiency conditions. Executive Action is deterministic V1 decision support, not causal attribution, accounting-profit analysis, source-overlap detection, or automatic budget optimization. Required steps remaining inside the exact certificate boundary: 0. |
 | Platform Comparison | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_PLATFORM_COMPARISON_PRODUCTION_READY.md` | Current aggregate-backed implementation and Render-validated GA4-only scenario. |
 | Trend Analysis | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_CERTIFICATION_2026-09-20.md`; supporting `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md` | Current bounded clean certificate: application runtime `7dc72dc8dc5ba302146128b62c45f3bf7d86f6eb`, deployed within documentation-only successor `595268463c79b111e77b181ad3003e58f912d208`; documentation-alignment commit `08df7c98856c132c55b7cdec9511fedb1ececf81` is not an application runtime. All six current sections and the combined single-GA4 page passed with 0 required implementation/certification steps remaining inside the exact boundary. Positive conditional panels, non-GA4/future source mixes, global scheduler health, new timer firing, provider/inbox delivery, and whole-app/global multi-source claims remain excluded. |
-| Executive Summary | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md` | Exact GA4-first deployed runtime `ec1305b92e5eba439ce74685ea2d06ecd3fabd50`. |
+| Executive Summary | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_CERTIFICATE_2026-09-21.md`; supporting `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md` | Current bounded clean certificate: application implementation `2d9625437683ccef081e60831f2a59c76246d438`, certificate commit `1d646c0cfef12e45035ae0770f2ebcebb19a33b2`, and deployed documentation-alignment commit `686abb2e316292a4118a91a7c83c8f704f6d6e31`. All four sections and the combined page passed for the exact documented `ga4_mock` GA4-first configuration, with 0 required steps remaining inside that boundary. Campaign2, other campaigns/configurations, other DeepDive sections, PDFs/reports, scheduling/delivery surfaces, target commercial reasonableness, and the certificate's standing future gates remain excluded. |
 | Custom Report | `RELEASE_CANDIDATE` | `CAMPAIGN_DEEPDIVE_CUSTOM_REPORT_PRODUCTION_READY.md` | Current status requires deployment validation for changed Performance Summary PDF composition. |
 | Whole Campaign DeepDive | `RECONCILE` | `CAMPAIGN_DEEPDIVE_PRODUCTION_READY_STATUS.md` plus subsection authorities | The top-level file explicitly says it is not a whole-section certificate and contains a stale Custom Report summary. |
 

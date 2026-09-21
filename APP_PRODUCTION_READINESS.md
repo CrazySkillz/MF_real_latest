@@ -173,9 +173,9 @@ does not recertify or broaden that source boundary.
 Remaining DeepDive certification order after the completed Budget, Trend, and
 Executive Summary reviews:
 
-1. Platform Comparison if it remains visible; otherwise hide it and mark it
+1. Reports
+2. Platform Comparison if it remains visible; otherwise hide it and mark it
    `EXCLUDED` before app certification
-2. Custom Reports
 
 Budget & Financial Analysis completed its fresh four-packet and combined-page
 review at deployed application runtime `b36047bbce419df9d606239c340398e69a409211`.
@@ -240,6 +240,29 @@ reports, schedules/delivery surfaces, inbox receipt, or target commercial
 reasonableness. Source-configuration changes require the certificate's stated
 identity, capability, aggregation, snapshot, KPI/Benchmark, risk/action, and
 deployed-source-mix revalidation gates.
+
+Reports completed its fresh four-packet and combined-surface review for the
+exact enabled GA4-first boundary at deployed runtime
+`809227f7aefba97d50d9c7649de8e7d06c022371`. Controlling evidence is
+`CAMPAIGN_DEEPDIVE_REPORTS_CERTIFICATION_2026-09-21.md` with supporting audit
+`CAMPAIGN_DEEPDIVE_REPORTS_AUDIT_2026-09-21.md`; documentation commit
+`826e1a89f03361d276e62ef9909a20afd395f968` changed documentation only.
+
+| Order | Reports review | Work state | Fresh certification status | Boundary |
+| ---: | --- | --- | --- | --- |
+| - | Combined Reports | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY / NO-OVERCLAIMING` for the exact documented GA4-first, USD, Europe/Amsterdam configuration at deployed runtime `809227f7aefba97d50d9c7649de8e7d06c022371`; all four packets and the standalone fail-closed Combined Reports surface passed together. Required certification steps remaining within this boundary: 0. |
+| 1 | Report Builder & Source Selection | `COMPLETE` | `CERTIFIED` | PASS for campaign context/navigation, owner/client/campaign/platform isolation, connected-source capability gating, and the enabled creation types. Legacy saved Platform Comparison and `custom` configurations are recoverable during edit but are not offered for unsupported new GA4-only creation. |
+| 2 | Report Content & PDF Parity | `COMPLETE` | `CERTIFIED` | PASS for six production PDF compositions, exact values, currency, formatting, windows, selected metrics/KPIs/Benchmarks, unavailable/freshness guards, and non-persisting direct generation. Deployed parity from `c4fbc498` is reused only because the intervening product change did not touch renderer dependencies. |
+| 3 | Scheduled Report Library & Lifecycle | `COMPLETE` | `CERTIFIED` | PASS for create and invalid-create, scoped list, edit, reschedule, pause, resume, latest-value snapshot/download, cross-owner denial, delete/repeated-delete, concurrency, deduplication, and exact cleanup. Lifecycle evidence from `243a3be1` is reused under unchanged route, storage, and contract dependencies. |
+| 4 | Delivery, Artifacts & Failure Safety | `COMPLETE` | `CERTIFIED` | PASS for access and campaign/platform consistency, immutable artifacts, scheduler deduplication, fail-closed missing campaign/artifact/send states, provider-acceptance versus confirmed-delivery terminology, and send bookkeeping. Prior Mailgun delivery evidence is reused under unchanged dependencies; no email was sent and no scheduler was triggered during final certification. |
+
+The standalone Combined Reports surface is certified only as fail-closed: it
+shows a real empty state and ignores legacy unscoped browser-local rows without
+deleting them; no combined authoring, aggregation, scheduling, or local
+lifecycle is claimed. Live source-backed valid-zero behavior was not observed
+and remains deterministic regression evidence. Google Ads, Meta, Instagram,
+TikTok, other main-source mixes, and future Combined Reports authoring remain
+outside this exact certificate.
 
 Each DeepDive certificate must consume certified GA4 and enabled connected-platform
 inputs without independently changing or reinterpreting upstream values. An
@@ -321,7 +344,7 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 | Platform Comparison | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_PLATFORM_COMPARISON_PRODUCTION_READY.md` | Current aggregate-backed implementation and Render-validated GA4-only scenario. |
 | Trend Analysis | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_CERTIFICATION_2026-09-20.md`; supporting `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md` | Current bounded clean certificate: application runtime `7dc72dc8dc5ba302146128b62c45f3bf7d86f6eb`, deployed within documentation-only successor `595268463c79b111e77b181ad3003e58f912d208`; documentation-alignment commit `08df7c98856c132c55b7cdec9511fedb1ececf81` is not an application runtime. All six current sections and the combined single-GA4 page passed with 0 required implementation/certification steps remaining inside the exact boundary. Positive conditional panels, non-GA4/future source mixes, global scheduler health, new timer firing, provider/inbox delivery, and whole-app/global multi-source claims remain excluded. |
 | Executive Summary | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_CERTIFICATE_2026-09-21.md`; supporting `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md` | Current bounded clean certificate: application implementation `2d9625437683ccef081e60831f2a59c76246d438`, certificate commit `1d646c0cfef12e45035ae0770f2ebcebb19a33b2`, and deployed documentation-alignment commit `686abb2e316292a4118a91a7c83c8f704f6d6e31`. All four sections and the combined page passed for the exact documented `ga4_mock` GA4-first configuration, with 0 required steps remaining inside that boundary. Campaign2, other campaigns/configurations, other DeepDive sections, PDFs/reports, scheduling/delivery surfaces, target commercial reasonableness, and the certificate's standing future gates remain excluded. |
-| Custom Report | `RELEASE_CANDIDATE` | `CAMPAIGN_DEEPDIVE_CUSTOM_REPORT_PRODUCTION_READY.md` | Current status requires deployment validation for changed Performance Summary PDF composition. |
+| Reports | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_REPORTS_CERTIFICATION_2026-09-21.md`; supporting `CAMPAIGN_DEEPDIVE_REPORTS_AUDIT_2026-09-21.md` | Current bounded clean certificate: deployed runtime `809227f7aefba97d50d9c7649de8e7d06c022371`, documentation commit `826e1a89f03361d276e62ef9909a20afd395f968`, all four Reports packets, and the standalone fail-closed Combined Reports surface passed with 0 required certification steps remaining. The certificate's reused-evidence limits, no-final-send/no-final-scheduler qualification, deterministic-only live-zero coverage, GA4-first source scope, and future-source/authoring exclusions remain controlling. |
 | Whole Campaign DeepDive | `RECONCILE` | `CAMPAIGN_DEEPDIVE_PRODUCTION_READY_STATUS.md` plus subsection authorities | The top-level file explicitly says it is not a whole-section certificate and contains a stale Custom Report summary. |
 
 ## Connected Platform Ledger
@@ -348,7 +371,7 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 | Campaign-level KPIs and Benchmarks | `RECONCILE` | `CAMPAIGN_LEVEL_KPI_BENCHMARK_PRODUCTION_READY.md` preserves historical evidence; standalone tabs are absent from normal navigation | Outside the fresh certification queue. Legacy `#kpis`/`#benchmarks` still render content, so verify release visibility before marking `EXCLUDED`; audit any visible GA4 KPI/Benchmark consumers within their own sections. |
 | Notifications page and bell | `NO_CERTIFICATE` | Targeted visibility audit and alert/notification regression evidence | One whole-surface certificate covering list, filters, links, dismiss/recreate, ownership, email status, and source changes. |
 | Global Dashboard | `UNVERIFIED` | Architecture says the Dashboard still needs refinement | Complete value inventory, scope, formulas, lifecycle, and downstream trace. |
-| Global Reports route/library | `UNVERIFIED` | GA4 Reports and Campaign DeepDive Custom Report have separate records | Certify the visible route as a composition of only its supported report families. |
+| Global Reports route/library | `UNVERIFIED` | GA4 Reports and Campaign DeepDive Reports have separate records | Certify the visible route as a composition of only its supported report families. |
 | Audiences | `NO_CERTIFICATE` | Visible application route; no readiness document found | Decide supported release scope, then certify or explicitly exclude. |
 | Freestyle Chat | `UNVERIFIED` | Architecture describes it as still in progress | Complete and certify, or hide and mark `EXCLUDED` for this release. |
 | Global scheduler health | `UNVERIFIED` | Several exact target jobs are certified; current evidence repeatedly excludes obsolete/test failures | Define active production job inventory and pass one global healthy-cycle gate without treating excluded jobs as success. |
@@ -427,9 +450,9 @@ consumers. Do not revoke unrelated sections.
 2. **Trend Analysis is complete:** carry forward only within the exact
    controlling GA4-first certificate boundary and reopen affected paths when its
    code, source contracts, configuration, or deployment changes.
-3. **Continue Campaign DeepDive:** freshly review visible Platform Comparison,
-   Executive Summary, and Custom Reports. Preserve
-   historical bounded certificates; do not promote unverified input paths.
+3. **Continue Campaign DeepDive:** freshly review Reports, then visible Platform
+   Comparison if it remains in the supported release. Preserve historical
+   bounded certificates; do not promote unverified input paths.
 4. **Complete pending GA4 work and its roll-up:** finish the remaining Overview
    and Reports gates independently; create the GA4 roll-up only after all six
    section certificates pass. Keep the existing certified rows unchanged.

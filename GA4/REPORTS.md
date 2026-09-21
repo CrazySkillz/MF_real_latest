@@ -4,11 +4,9 @@
 
 This file defines the GA4 `Reports` tab and the current report-creation, download, scheduling, and report-output model.
 
-Current status: GA4 Reports is `UNVERIFIED` for the current candidate. The browser-generated Overview Campaign Breakdown passed exact deployed value parity at runtime `08d7abe5`; exact-current scheduled/server Campaign Breakdown artifact parity remains pending. The prior `94f1096f3d08c1443f27a032bc5a44c8468c1a7e` certification remains historical evidence only. The exact evidence and open gate live in `GA4/REPORTS_PRODUCTION_READINESS.md`.
-Ad Comparison report-output note: the GA4 Ad Comparison section remains
-`PRODUCTION_READY`. Local browser/scheduled output guards pass, and the deployed
-revision and direct-consumer parity gates in
-`GA4/AD_COMPARISON_PRODUCTION_READINESS.md` remain open.
+Current status (2026-09-21): **CLEAN-CERTIFIED / PRODUCTION_READY** for the bounded GA4 Reports surface at exact deployed runtime `a7271fc18058b6db78a11e88bf79b887abda5f44`. Exact scope, evidence, exclusions, and invalidation rules are recorded in `GA4/REPORTS_CERTIFICATION_2026-09-21.md`; Campaign DeepDive Reports remain excluded. The older machine record in `GA4/certifications/ga4-reports.json` is retained as historical fail-closed evidence and is not the current dated certificate.
+
+Ad Comparison report-output note: the Reports-owned browser/server consumer boundary passed in the dated Reports packet. That does not broaden or replace the separate live-tab boundary in `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`.
 
 ## Reports Tab Structure
 
@@ -216,7 +214,8 @@ Current behavior:
 
 - creating a new unscheduled GA4 platform report surfaces a `Generate & Download Report` action so the user can download it immediately
 - GA4 platform ad hoc downloads do not create a persistent backend library entry or Standard Reports card
-- existing saved report configurations can also be downloaded again from latest page state
+- existing saved report configurations can also be downloaded again from latest page state; the saved-card action awaits generation and shows a visible failure instead of silently continuing
+- browser generation accepts only `overview`, `kpis`, `benchmarks`, `ads`, `insights`, and `custom`; an unsupported saved type fails visibly rather than falling back to a plausible report
 - custom-report generation should require at least one selected section before download
 - the modal should remain open if generation fails so the user can correct the issue
 
@@ -240,7 +239,7 @@ When scheduling is enabled, users can configure:
 - frequency: `daily`, `weekly`, `monthly`, `quarterly`
 - weekly day
 - monthly day: 1st day, 15th day, or last day of month
-- quarterly timing: start of quarter or end of quarter
+- quarterly timing: start-of-quarter or end-of-quarter month, plus first day, 15th day, or last day of that month
 - time
 - email recipients
 
@@ -250,16 +249,20 @@ Important meaning:
 
 - scheduled delivery timing should be interpreted in the user's saved time zone, not raw server time
 - scheduled reports can be paused and resumed so users can temporarily stop recurring email delivery without deleting the saved report configuration
-- scheduled reports must have at least one non-empty recipient when saved; unscheduled reports can still be saved without recipients
+- scheduled GA4 reports must have at least one syntactically valid email recipient when created or updated; unscheduled reports can still be saved without recipients
+- the scheduler revalidates recipients before PDF or provider work so an invalid legacy GA4 recipient fails closed
+- quarterly scheduling honors the saved day of month for both start and end timing, clamps it to the selected quarter month, and preserves legacy defaults of the first day for start and the last day for end
 - scheduled reports are production-visible outputs and must be guarded by campaign/platform ownership checks
 - before sending a campaign-scoped scheduled report, the scheduler must verify that the campaign still exists
 - if the campaign is missing, the scheduler must not create a report snapshot, recompute GA4 KPI/Benchmark state, generate/send the email, or update report `lastSentAt`
 - if the campaign is proven missing, the scheduler should disable only that orphaned report's schedule so it does not keep retrying on future ticks, including when a previous skipped send event already exists
 - report test-send must also fail closed when the resolved report has no valid campaign so stale helper-level callers cannot send orphaned reports
-- direct report snapshot JSON/PDF routes must verify report access and snapshot/report campaign-platform consistency; PDF reads additionally verify report-type consistency and require the immutable Campaign DeepDive PDF artifact
+- direct report snapshot JSON/PDF routes must verify report access and snapshot/report campaign-platform consistency; PDF reads additionally verify report-type consistency
+- GA4 and Campaign DeepDive snapshot PDF routes return the immutable PDF artifact stored at snapshot creation/send time; a legacy, missing, or invalid artifact fails closed instead of regenerating different bytes from current data
 - scheduler report selection must deduplicate report rows by report ID before due checks because the shared report table can be reached through legacy and platform-specific storage paths
 - scheduled send events remain the audit/idempotency layer for each `reportId + scheduledKey`
 - on the configured production Mailgun path, scheduled report snapshots and `lastSentAt` represent delivery-confirmed artifacts; failed or unconfirmed sends update `report_send_events` only and do not create a misleading sent/downloadable snapshot
+- successful GA4 scheduled snapshots persist the exact PDF bytes attached to that send
 - scheduled and test-send report emails must include the generated PDF attachment; the email body is delivery scaffolding, not the report content
 - report emails should remain plain transactional messages with simple subject/body text and no marketing banner, dashboard CTA, or styled report body because Gmail deliverability rejected the richer report-email payload
 - Mailgun/API acceptance is not proof of inbox delivery; when provider delivery events are available, test-send and scheduler diagnostics must distinguish accepted, delivered, failed, and pending delivery states
@@ -314,9 +317,7 @@ Important meaning:
 
 ## Current-State Note
 
-The current GA4 Reports candidate is locally validated but remains unverified until the changed cumulative Overview table values are checked in deployed browser and server artifacts.
-
-Historically aligned at the prior certified boundary; unchanged mechanics remain locally covered:
+The exact deployed `a7271fc18058b6db78a11e88bf79b887abda5f44` boundary is clean-certified for the bounded surface in `GA4/REPORTS_CERTIFICATION_2026-09-21.md`. Exact-current Campaign Breakdown scheduled/server artifact parity is closed. The implementation at this boundary includes:
 
 - ad hoc GA4 downloads are rendered client-side from live GA4 page state
 - once the tab inputs are refreshed, on-demand GA4 downloads reflect the refreshed values
@@ -331,8 +332,8 @@ Historically aligned at the prior certified boundary; unchanged mechanics remain
 - `Custom` server-side rendering reuses those same section renderers and respects the saved selected sections/subsections
 - standard-template and custom-report PDFs should now be evaluated for section parity against the live tab, not against older lightweight cover-page output
 - report delete status now reflects whether a row was actually deleted
-- direct snapshot PDF downloads reuse the same report PDF builder as scheduled/test-send delivery and must not use legacy `MetricMind Report Snapshot` branding or a separate basic fallback layout
-- direct GA4 snapshot PDF downloads run a suppress-alert GA4 KPI/Benchmark preflight before regenerating the PDF so KPI rows are refreshed from the current completed GA4 reporting date and the route fails closed if the target campaign is skipped; deployed validation passed after commit `4d3a3838`
+- manual GA4 snapshot creation uses the shared report PDF builder and stores the resulting immutable PDF artifact
+- direct GA4 snapshot PDF downloads return that stored artifact byte-for-byte; they do not rerun preflight or regenerate from later campaign state, and legacy snapshots without a valid artifact return `422`
 - scheduled delivery skips or fails closed when a campaign-scoped report no longer has a valid campaign
 - scheduled delivery deduplicates report rows before due checks
 - scheduled report email delivery uses the configured email provider detected at send time; if Mailgun API credentials are present, scheduled reports use the Mailgun HTTP API instead of falling back to unauthenticated SMTP
@@ -341,7 +342,7 @@ Historically aligned at the prior certified boundary; unchanged mechanics remain
 - platform report test-send verifies Mailgun delivery status when the provider exposes events and returns failure when the provider later rejects the accepted message
 - scheduled send events keep one audit/idempotency row per `reportId + scheduledKey`; successful rows must not display stale errors from earlier failed email audit rows
 - a stale failed scheduled send with no `sentAt` can retry once after the underlying provider issue is fixed; if that retry fails, it is marked as a retry failure and does not loop every scheduler tick
-- GA4 report validation passed across targeted report regression tests, TypeScript check, production build, GA4 report test-send/PDF delivery, direct snapshot PDF output, deployed GA4 unscheduled report download, deployed scheduled Overview revenue-label output, and deployed GA4 scheduled report create/edit/delete
+- GA4 report validation passed across the consolidated focused regressions, TypeScript check, production build, exact-current owner-authenticated CRUD/manual-artifact validation, exact-current Campaign Breakdown server artifact parity, and an explicitly authorized natural scheduled send with immutable attachment parity, provider-delivered evidence, and user-confirmed resend receipt
 
 Important caveats:
 
@@ -349,7 +350,7 @@ Important caveats:
 - the current `Ad Comparison` report output reflects the current GA4 comparison implementation, which is campaign-row comparison rather than true ad/creative-level reporting
 - the shared scheduler and report-link helper still contain legacy LinkedIn-oriented infrastructure details
 - Campaign DeepDive scheduled report visibility, campaign scoping, lifecycle actions, immutable artifacts, and the standalone fail-closed surface are certified in `CAMPAIGN_DEEPDIVE_REPORTS_CERTIFICATION_2026-09-21.md`; this does not broaden the separate GA4 Reports certificate
-- Deployed GA4 Overview Report email delivery is user-confirmed for the recorded 2026-07-03 Overview packet. Future scheduled/test deliveries and report variants, including GA4 Ad Comparison PDF attachment provenance if separately questioned, still require their own runtime evidence. Local code still preserves the generated-PDF attachment path and provider-acceptance-vs-delivery distinction
+- The exact-current natural Benchmark send/resend packet is user-confirmed for its recorded recipient and attachment. The first provider-marked-delivered attempt was not observed in the inbox and is not counted as inbox evidence. Future recipients, scheduled slots, provider behavior, and report variants require their own runtime evidence
 - provider acceptance alone must not be shown to users as successful delivery when the provider subsequently reports a failed delivery event
 
 ## Report Library Meaning

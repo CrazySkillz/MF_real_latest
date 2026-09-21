@@ -15,8 +15,14 @@ try {
       r.schedule_time,
       r.schedule_time_zone,
       r.schedule_recipients,
+      r.last_sent_at,
+      c.currency,
+      c.reporting_time_zone,
+      c.ga4_campaign_filter,
+      g.property_id,
       e.scheduled_key,
       e.created_at AS send_created_at,
+      e.sent_at AS event_sent_at,
       e.status AS send_status,
       e.error AS send_error,
       e.snapshot_id,
@@ -29,6 +35,14 @@ try {
       a.metadata AS audit_metadata,
       s.snapshot_json
     FROM linkedin_reports r
+    JOIN campaigns c ON c.id = r.campaign_id
+    JOIN LATERAL (
+      SELECT property_id
+      FROM ga4_connections
+      WHERE campaign_id = r.campaign_id AND is_active = true
+      ORDER BY is_primary DESC, created_at
+      LIMIT 1
+    ) g ON true
     JOIN LATERAL (
       SELECT *
       FROM report_send_events e
@@ -77,6 +91,16 @@ try {
     ORDER BY created_at DESC
     LIMIT 5
   `, [result.rows[0].report_id]) : { rows: [] };
+  const duplicateKeys = result.rows.length === 1 ? await client.query(`
+    SELECT count(*)::int AS count
+    FROM (
+      SELECT scheduled_key
+      FROM report_send_events
+      WHERE report_id = $1
+      GROUP BY scheduled_key
+      HAVING count(*) > 1
+    ) duplicates
+  `, [result.rows[0].report_id]) : { rows: [{ count: 0 }] };
   await client.query("ROLLBACK");
   if (result.rows.length !== 1) throw new Error(`Expected one target report; found ${result.rows.length}`);
   const row = result.rows[0];
@@ -94,6 +118,16 @@ try {
       return {};
     }
   })();
+  const savedFilterCount = (() => {
+    const value = String(row.ga4_campaign_filter || "").trim();
+    if (!value) return 0;
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed.filter(Boolean).length : 1;
+    } catch {
+      return 1;
+    }
+  })();
   const providerStatus = row.provider === "mailgun-api" && row.provider_response_id
     ? await waitForMailgunDelivery(String(row.provider_response_id), {
       attempts: 1,
@@ -104,6 +138,12 @@ try {
   console.log(JSON.stringify({
     reportHash: sha(row.report_id),
     reportType: row.report_type,
+    sourceBoundary: {
+      propertyId: String(row.property_id || "").replace(/^properties\//, ""),
+      savedFilterCount,
+      currency: row.currency,
+      reportingTimeZone: row.reporting_time_zone,
+    },
     restoredSchedule: {
       time: row.schedule_time,
       timeZone: row.schedule_time_zone,
@@ -112,9 +152,17 @@ try {
     latestEvent: {
       scheduledKey: row.scheduled_key,
       createdAt: row.send_created_at,
+      sentAtPresent: Boolean(row.event_sent_at),
       status: row.send_status,
       error: row.send_error,
       snapshotPresent: Boolean(row.snapshot_id),
+    },
+    bookkeeping: {
+      lastSentAtPresent: Boolean(row.last_sent_at),
+      lastSentDeltaMs: row.last_sent_at && row.event_sent_at
+        ? Math.abs(new Date(row.last_sent_at).getTime() - new Date(row.event_sent_at).getTime())
+        : null,
+      duplicateScheduledKeys: Number(duplicateKeys.rows[0]?.count || 0),
     },
     audit: {
       provider: row.provider,

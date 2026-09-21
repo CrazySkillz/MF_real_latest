@@ -232,7 +232,7 @@ try {
     const sessions = Number(row?.sessions || 0);
     const users = Number(row?.users || 0);
     const conversions = Number(row?.conversions || 0);
-    const conversionRate = sessions > 0 ? (conversions / sessions) * 100 : 0;
+    const conversionRate = Number(row?.sessionKeyEventRate || 0) * 100;
     const displayedRevenue = round2(Number(row?.revenue || 0) + Number(resolution.revenueByCampaign.get(campaignName) || 0));
     for (const value of [campaignName, String(sessions), String(users), String(conversions), `${conversionRate.toFixed(1)}%`, `${currency} ${displayedRevenue.toFixed(2)}`]) {
       assert(pdfText.includes(compact(value)), `Scheduled-consumer PDF is missing ${campaignName} value ${value}`);

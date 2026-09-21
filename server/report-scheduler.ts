@@ -2315,6 +2315,12 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       } else {
         addText("- No Evidence-Backed Actions Available: Available campaign data and configured targets do not support a reliable recommendation yet.", { indent: 8 });
       }
+    } else if (section === "metrics") {
+      addMetricRows(selectedMetrics, 8, validExecutiveCurrency || "USD");
+    } else if (section === "kpis") {
+      addKpiRows();
+    } else if (section === "benchmarks") {
+      addBenchmarkRows();
     } else {
       addMetricRows(["users", "sessions", "conversions", "revenue", "cvr", "spend", "roas", "roi"]);
     }

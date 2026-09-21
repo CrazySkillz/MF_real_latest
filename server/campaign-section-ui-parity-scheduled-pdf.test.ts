@@ -130,13 +130,13 @@ const completeTrendComparisonRows = () => Array.from({ length: 60 }, (_, index) 
   };
 });
 
-const report = (reportType: string, selectedSections: string[]) => ({
+const report = (reportType: string, selectedSections: string[], selectedMetrics: string[] = []) => ({
   id: `report-${reportType}`,
   name: `${reportType} report`,
   platformType: "campaign_deepdive",
   campaignId: "campaign-1",
   reportType: "custom",
-  configuration: { reportType, selectedSections, selectedMetrics: [] },
+  configuration: { reportType, selectedSections, selectedMetrics },
 });
 
 describe("scheduled Campaign DeepDive UI value parity", () => {
@@ -341,6 +341,24 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
       });
       expect(pdf).not.toBeNull();
     }
+  });
+
+  it("renders only selected custom metrics plus the requested KPI and Benchmark rows", async () => {
+    storageMock.getPlatformBenchmarks.mockResolvedValue([
+      { id: "ga4-benchmark", platformType: "google_analytics", name: "Revenue benchmark", metric: "revenue", currentValue: "72766.69", benchmarkValue: "80000", unit: "$" },
+    ]);
+
+    await buildPdfAttachmentForReport({
+      report: report("custom", ["metrics", "kpis", "benchmarks"], ["revenue"]),
+      windowStart: "2026-07-29",
+      windowEnd: "2026-08-27",
+      campaignName: "Campaign",
+    });
+
+    expect(pdfTextCalls).toContain("- Revenue: $72,766.69");
+    expect(pdfTextCalls).not.toContain("- Users: 1,184");
+    expect(pdfTextCalls).toContain("- Sessions target: Current 1,183; Target 2,000");
+    expect(pdfTextCalls).toContain("- Revenue benchmark: Yours $72,766.69; Benchmark $80,000.00");
   });
 
   it("uses cumulative UI traffic, current financial totals, and the default 30-day Trend comparison", async () => {

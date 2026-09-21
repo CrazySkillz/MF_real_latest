@@ -2,16 +2,16 @@
 
 ## Decision
 
-**Audit complete locally. Full-scope clean certification is PENDING DEPLOYMENT VALIDATION.**
+**Audit complete. The scoped production certification PASSED.**
 
-Campaign-scoped Campaign DeepDive Reports passed the current GA4-first builder, PDF, saved-library, lifecycle, artifact, scheduler-safety, and delivery-contract gates. The separate standalone Combined Reports surface now fails closed for every browser profile by ignoring the legacy unscoped browser-local library without deleting it. Deployment validation is the only remaining certification gate.
+Campaign-scoped Campaign DeepDive Reports passed the current GA4-first builder, PDF, saved-library, lifecycle, artifact, scheduler-safety, and delivery-contract gates. The separate standalone Combined Reports surface fails closed for every browser profile by ignoring the legacy unscoped browser-local library without deleting it. The deployed isolation behavior passed with an injected legacy browser record.
 
-`CAMPAIGN_DEEPDIVE_REPORTS_CERTIFICATION_2026-09-21.md` has not yet been created because the final Combined Reports isolation change is not deployed. No existing certificate or master ledger was modified.
+`CAMPAIGN_DEEPDIVE_REPORTS_CERTIFICATION_2026-09-21.md` records the exact certified scope, evidence, exclusions, reused evidence, and remaining steps. No existing certificate or master ledger was modified.
 
 ## Runtime And Configuration
 
 - Production URL: `https://marketforensics.onrender.com`
-- Verified deployed revision: `c4fbc4983630f9332bbcc3a48c9758f1a2ac7313`
+- Verified deployed revision: `809227f7aefba97d50d9c7649de8e7d06c022371`
 - Local `main`, refreshed `origin/main`, and Render `/api/health` matched that revision before production validation.
 - Render environment reported: `production`
 - Local validation tooling: Node `v22.17.1`, npm `10.9.2`
@@ -42,7 +42,7 @@ Therefore:
 - Paid-media-only metrics remain gated when no capable paid-media source is enabled.
 - New campaign-scoped types validated: Performance Summary, Budget & Financial Analysis, Trend Analysis, and Executive Summary.
 - Legacy Platform Comparison remains recoverable for saved configurations but is not offered for unsupported new GA4-only creation.
-- Custom output validated with selected metrics plus KPI and Benchmark sections.
+- Legacy saved `custom` output recovery was validated with selected metrics plus KPI and Benchmark sections; `custom` is not offered for new Campaign DeepDive report creation.
 
 ## 2. Report Content & PDF Parity — PASS (Enabled GA4-first Fixture)
 
@@ -60,6 +60,8 @@ Authenticated non-persisting production validation on `c4fbc498` passed all six 
 The validation confirmed application report, snapshot, send-event, and email-event counts were unchanged. Direct PDF generation created no stored report or snapshot and invoked no scheduler or email delivery.
 
 Deterministic regressions cover unavailable currency, unavailable metrics, missing freshness, empty KPI/Benchmark rows, deduplicated legacy composition, and Executive Risk Assessment fail-closed states. The production fixture did not contain a source-backed valid-zero metric, so a live valid-zero example was not sampled.
+
+The main Executive Summary page intentionally retains only its top Risk Level and does not restore the former full Risk Assessment card. Executive report PDFs add a report-specific Risk Assessment breakdown derived from the same KPI, Benchmark, freshness, ROI/ROAS, trajectory, and paid-source inputs.
 
 ## 3. Scheduled Report Library & Lifecycle — PASS (Campaign Scope)
 
@@ -89,7 +91,7 @@ The disposable snapshot was `7,086` bytes with SHA-256 `9b8e5aaa961466f2dc13215f
 - Current `c4fbc498` GET-only validation re-read a `7,270` byte immutable PDF with SHA-256 `1c64a9253a05551f2fbac70eaee965dc532220ec7e28b23b8b1d809bba2a42a5` and observed zero application writes.
 - No email was sent and no scheduler was triggered during the final validation.
 
-## 5. Combined Reports Surface — LOCAL PASS, DEPLOYMENT REQUIRED
+## 5. Combined Reports Surface — PASS (FAIL-CLOSED SURFACE)
 
 Current deployed fresh-browser behavior passed:
 
@@ -99,7 +101,7 @@ Current deployed fresh-browser behavior passed:
 - no unsourced `Create Report` action;
 - zero application writes.
 
-The final local correction prevents standalone `/reports` from reading historical `marketpulse_reports` rows at all. It does not delete or rewrite them, and it leaves campaign-scoped backend Reports unchanged. Focused regressions, TypeScript, and the production build pass. The correction must be deployed and checked with an injected legacy browser row before this surface is certified.
+The deployed correction prevents standalone `/reports` from reading historical `marketpulse_reports` rows at all. It does not delete or rewrite them, and it leaves campaign-scoped backend Reports unchanged. An isolated production browser profile was seeded with a legacy report row; the row remained stored but was absent from the UI, the real empty state rendered, no Create Report action appeared, and the application made zero write requests. This certifies the surface as fail-closed, not as a combined report-authoring lifecycle.
 
 ## Final Validation
 
@@ -114,10 +116,12 @@ The final local correction prevents standalone `/reports` from reading historica
 
 One stale test assertion was corrected locally after the final batch initially expected Executive Summary to omit the newly required Risk Assessment section. The rerun passed all 97 tests. This was a test-only correction; deployed product code was unchanged.
 
+Post-certification documentation alignment updated the architecture, Campaign DeepDive tracker, and GA4 reporting references to the deployed contract. The directly affected Custom Report and Executive Summary regression suites passed `59/59`; no product runtime code changed in that alignment pass.
+
 ## Exclusions And Required Remaining Work
 
-1. Commit, deploy, and read-only validate the final standalone Combined Reports isolation correction.
+1. No required implementation or deployment step remains for the enabled GA4-first scope.
 2. A live source-backed valid-zero fixture may be added if live-environment zero evidence is required beyond deterministic regression coverage.
 3. Google Ads, Meta, Instagram, TikTok, and other main-source mixes were not enabled in this fixture and are not certified by this GA4-first evidence.
 
-Until item 1 is completed, the requested full-scope certificate remains pending. Campaign-scoped Campaign DeepDive Reports are validated for the exact GA4-first configuration documented above.
+Campaign-scoped Campaign DeepDive Reports and the fail-closed standalone Combined Reports surface are certified for the exact scope documented above.

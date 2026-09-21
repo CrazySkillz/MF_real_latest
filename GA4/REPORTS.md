@@ -162,7 +162,7 @@ Important meaning:
 - scheduled report card `Pause` should disable the backend schedule, persist backend status `paused`, keep the paused report visible without a separate visible Status field, and switch paused cards to `Resume` so users can re-enable the saved backend schedule
 - Pause/Resume controls recurring email delivery without deleting the saved report setup
 - scheduled report card `Download latest report` should regenerate the report from the latest connected-source values for the saved report type, selected tabs, and selected metrics
-- the top-level `Create Report` action should reset edit state, report type, selected tabs, and selected metric state so it opens an empty create form after prior edits
+- the campaign-scoped top-level `Create Report` action should reset edit state, report type, selected tabs, and selected metric state so it opens an empty create form after prior edits
 - existing saved report compositions are not migrated; the composition picker remains available during edit for backward compatibility
 - Campaign connected-source data in the create dialog should list connected source names, not internal selectable metric keys
 - unscheduled create mode should show `Download Report`, download the selected report sections as a PDF, and create no browser or backend report-library row
@@ -175,22 +175,22 @@ Important meaning:
 - browser and scheduled Trend PDFs use cumulative persisted GA4 traffic for current headline values, `/outcome-totals.performanceSummary` for current financial values, and the source-aware `/trend-analysis` daily rows for the default 30-day chart window; comparisons use the exact date 30 days before data-through and fail closed when compatible history is unavailable
 - legacy saved Trend section keys normalize to the single Executive View, preventing duplicate retired-tab content while preserving saved report compatibility
 - one-off generated/downloaded Campaign DeepDive reports should not create a report card, while scheduled reports should appear directly on the campaign-scoped Reports page
-- the standalone `/reports` route retains its separate report-library tabs and browser storage behavior
+- the standalone `/reports` route retains its separate tab shell but fails closed: it does not read or render legacy `marketpulse_reports` browser records and does not expose `Create Report`; Campaign DeepDive creation and lifecycle actions require campaign context
 - the scheduled report card download action should say `Download latest report`, create one immutable server snapshot from the latest required campaign inputs, and download the exact stored PDF artifact
 - scheduled Campaign DeepDive PDFs should build the same latest-value server context before rendering: campaign context, `performanceSummary`, Executive Summary context when an Executive Summary tab is selected, KPI rows when selected tabs need KPI context, Benchmark rows when selected tabs need Benchmark context, and Trend Analysis aggregate only when a Trend Analysis tab is selected
 - scheduled create mode should use `Schedule Automated Report`, default to `Daily`, and show `Schedule Report` in the same filled primary button style as `Download Report`
 - the Custom Report schedule form should create a backend scheduled report record with recipients, schedule time, browser time zone, and saved Campaign DeepDive report composition
 - future work should preserve section-based composition
 - top-level custom sections are parent headers, not checkboxes
-- subsection checkboxes default to unchecked for new custom reports
-- KPI and Benchmark selection is item-based
-- when no GA4 KPI or Benchmark rows exist, the Custom Report picker should show `No KPIs created yet` or `No Benchmarks created yet` in the expanded KPI/Benchmark section instead of leaving a blank list
-- subsection picker layout is presentation only; saved report meaning comes from the checked subsection keys and selected KPI/Benchmark ids
+- `custom` is not offered for new Campaign DeepDive report creation; legacy saved `custom` reports retain their section and metric picker during edit so stored configurations remain recoverable
+- legacy Custom KPI and Benchmark selection remains item-based
+- when a legacy Custom edit has no GA4 KPI or Benchmark rows, the picker should show `No KPIs created yet` or `No Benchmarks created yet` instead of leaving a blank list
+- legacy picker layout is presentation only; saved report meaning comes from the stored section keys and selected KPI/Benchmark ids
 
 Campaign-scoped Report Type menu:
 
 - `Performance Summary`: `Performance Summary`
-- `Budget & Financial Analysis`: `Overview`, `ROI & ROAS`, `Cost Analysis`, `Budget Allocation`, `Insights`
+- `Budget & Financial Analysis`: `Budget & Financial Analysis`
 - `Trend Analysis`: `Executive View`
 - `Executive Summary`: `Executive Summary`
 
@@ -348,7 +348,7 @@ Important caveats:
 - saved report configurations do not have their own recompute job
 - the current `Ad Comparison` report output reflects the current GA4 comparison implementation, which is campaign-row comparison rather than true ad/creative-level reporting
 - the shared scheduler and report-link helper still contain legacy LinkedIn-oriented infrastructure details
-- Campaign DeepDive Scheduled Report Visibility is the only report-visibility validation still deferred, and it will be validated when the Campaign DeepDive section is refined
+- Campaign DeepDive scheduled report visibility, campaign scoping, lifecycle actions, immutable artifacts, and the standalone fail-closed surface are certified in `CAMPAIGN_DEEPDIVE_REPORTS_CERTIFICATION_2026-09-21.md`; this does not broaden the separate GA4 Reports certificate
 - Deployed GA4 Overview Report email delivery is user-confirmed for the recorded 2026-07-03 Overview packet. Future scheduled/test deliveries and report variants, including GA4 Ad Comparison PDF attachment provenance if separately questioned, still require their own runtime evidence. Local code still preserves the generated-PDF attachment path and provider-acceptance-vs-delivery distinction
 - provider acceptance alone must not be shown to users as successful delivery when the provider subsequently reports a failed delivery event
 

@@ -875,7 +875,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(executive).toContain("No Benchmark Exceptions");
     expect(executive).toContain("7-Day Snapshot Trajectory:");
     expect(executive).toContain("Risk Level:");
-    expect(executive).not.toContain('addText("Risk Assessment"');
+    expect(executive).toContain('addText("Risk Assessment"');
+    expect(executive).toContain("Connected-source freshness is unavailable in this report context");
     expect(executive).toContain('addText("Recommended Actions"');
     expect(executive).toContain('addText("Data Accuracy Notice"');
     expect(executive).toContain("No connected paid-media source is available, so paid-media recommendations are unavailable");

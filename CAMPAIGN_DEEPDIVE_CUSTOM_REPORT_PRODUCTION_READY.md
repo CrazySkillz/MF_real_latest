@@ -18,15 +18,15 @@ This tracker exists so Custom Report follows the same connected-source aggregate
 
 ## Current Status
 
-**DEPLOYMENT VALIDATION REQUIRED** for the changed Performance Summary PDF composition. The rest of the previously certified GA4-first Custom Report lifecycle remains unchanged by this local correction.
+**PRODUCTION_READY** for the scoped GA4-first implementation certified in `CAMPAIGN_DEEPDIVE_REPORTS_CERTIFICATION_2026-09-21.md` at deployed revision `809227f7aefba97d50d9c7649de8e7d06c022371`.
 
 The production certificate is limited to Campaign DeepDive -> Custom Report with GA4 configured as the main analytics platform. Google Ads, Meta, Instagram, and TikTok were not enabled/configured and are not certified by this evidence. Performance Summary, Budget & Financial Analysis, Platform Comparison, Trend Analysis, Executive Summary, and the certified GA4 platform section remain fixed upstream contracts; this certification proves Custom Report consumes and propagates those contracts without re-certifying their internal calculations.
 
 Campaign DeepDive preserves campaign context with `/reports?campaignId=<campaignId>`. In campaign context the Reports page displays the active campaign's backend scheduled report cards directly. One-off reports download without creating a report-library row. Saved scheduled reports support create, edit, reschedule, pause/disable, resume, delete, latest-value download, immutable snapshots, scheduled PDF delivery, and send-event bookkeeping.
 
-The prior deployed evidence remains historical proof for the lifecycle and artifact paths tested at commit `41ec6015b4aae0090e834294a5355c06fbccaa34`. Deployed commit `350709360229c1bbd1efd534b0119fbf8f398053` proved the consolidated body shape but the attached `perf_summary_2026-08-28.pdf` disproved value parity, so it does not certify the changed Performance Summary PDF path.
+The prior deployed evidence remains historical proof for the lifecycle and artifact paths tested at commit `41ec6015b4aae0090e834294a5355c06fbccaa34`. Later defects and superseded evidence are retained below as history; the 2026-09-21 certificate is the controlling current result for Campaign DeepDive Reports.
 
-## Current Authoritative Implementation And Certification - 2026-08-28
+## Historical Implementation And Certification Evidence - 2026-08-28
 
 ### Implemented path
 
@@ -59,10 +59,10 @@ The prior deployed evidence remains historical proof for the lifecycle and artif
 - **Previously proven and unaffected:** entry, campaign/client/owner/platform scoping, report list isolation, create/edit/delete, schedule/reschedule/disable, immutable artifact storage, scheduler deduplication, provider delivery, inbox receipt, and send bookkeeping.
 - **Incorrect at the attached deployed runtime:** the first artifact rendered retired tab bodies; after the body correction, `perf_summary_2026-08-28.pdf` still reported Sessions `1,179` and Revenue `$51,072.99` from `/outcome-totals.performanceSummary` instead of the Performance Summary UI's persisted/current-financial values.
 - **Incorrect Trend body at attached deployed runtime:** `trend_2026-08-28.pdf` included the headline values and daily-record count but omitted the UI's actual daily traffic points, conversion-quality points, Website Engagement & Conversion Summary, and Executive Recommendations.
-- **Proven locally:** the shared renderer selects the same GA4-first inputs and single-page structure as Performance Summary, Budget & Financial Analysis, Trend Analysis, and Executive Summary; legacy keys normalize without duplicate bodies and unavailable UI-aligned inputs fail closed.
+- **Proven locally:** the shared renderer selects the fixed GA4-first inputs and mapped single-page report composition for Performance Summary, Budget & Financial Analysis, Trend Analysis, and Executive Summary; legacy keys normalize without duplicate bodies and unavailable source-aligned inputs fail closed.
 - **Proven locally for the Trend omission:** the shared direct/snapshot/scheduled renderer now emits those four missing UI-visible Trend content groups from the already-loaded campaign-scoped inputs; unavailable headline cards remain hidden as they are in the UI.
 - **Deployed Budget body verified:** exact deployed runtime `19f055372abe8aee789dd4205eba5decef5f39a5` returned the current campaign-to-date Spend `$2,699.75`, Revenue `$72,766.69`, Profit `$70,066.94`, ROAS `26.95x`, ROI `2595.3%`, CPA `$10.76`, traffic CVR `12.8%`, and Campaign Budget `$150,000.00`; the user confirmed the corrected ROAS in the generated UI download. The same renderer is used by one-off, snapshot, and scheduled Campaign DeepDive PDFs. This Budget evidence does not certify the other changed subsection bodies.
-- **Subsection-specific status:** Performance Summary and Executive Summary retain their own deployed-validation status. The corrected Trend body later received the bounded deployed browser/PDF comparison recorded in `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_CERTIFICATION_2026-09-20.md`; that evidence is limited to its exact GA4-first fields and does not certify other report bodies, a new scheduled firing, or delivery. Exact-date financial history remains fail-closed when equivalent inputs are unavailable.
+- **Current controlling status:** `CAMPAIGN_DEEPDIVE_REPORTS_CERTIFICATION_2026-09-21.md` supersedes the downstream report-body gaps recorded here for the enabled GA4-first Reports scope. Exact-date financial history still fails closed when equivalent inputs are unavailable, and future source mixes still require their own evidence.
 - **Unverified/out of scope:** future or disabled Google Ads, Meta, Instagram, TikTok, and other source mixes; internal behavior of the protected upstream Campaign DeepDive/GA4 contracts.
 
 ## Required Product Rule
@@ -137,7 +137,7 @@ Tasks:
 Validation:
 
 - From a campaign, opening Custom Report retains the campaign ID.
-- Global Reports remains reachable and unchanged unless explicitly touched.
+- Standalone `/reports` remains reachable but is intentionally fail-closed and non-authoring; Campaign DeepDive report creation requires campaign context.
 
 Status:
 
@@ -146,7 +146,7 @@ Status:
 - [x] Completed locally: campaign-scoped Reports pages show `Back to main Campaign Overview` above the `Reports` heading and link back to `/campaigns/<campaignId>`.
 - [x] Completed: campaign-scoped Reports pages display only the active campaign's backend scheduled report cards and hide the standalone Standard Reports/Scheduled Reports/All Reports tab and filter shell.
 - [x] Completed locally: campaign-scoped Reports pages do not seed global/demo reports when launched from Campaign DeepDive.
-- [x] Completed locally: global `/reports` route remains unchanged.
+- [x] Completed and deployed: standalone `/reports` retains its tab shell, ignores legacy `marketpulse_reports` browser rows without deleting them, and exposes no `Create Report` action.
 - [x] User validation passed on 2026-05-28: Campaign DeepDive Custom Report opens with `campaignId` in the URL.
 
 ### Commit 2: Shared Aggregate Input
@@ -263,10 +263,10 @@ Status:
 - [x] Completed locally: new scheduled reports default to `Daily`, while edit mode preserves the saved schedule frequency.
 - [x] Completed locally: Monthly schedules expose logical day-of-month options, and Quarterly schedules expose start/end-of-quarter options instead of silently saving hidden defaults.
 - [x] Completed locally: Schedule form now creates backend scheduled report records for Campaign DeepDive Custom Reports, including recipients, schedule time, browser time zone, and saved report composition.
-- [x] Completed: standalone `/reports` retains its report-library tabs; campaign-scoped `/reports?campaignId=...` hides that tab/filter shell and displays the active campaign's backend scheduled report cards directly.
+- [x] Completed: standalone `/reports` retains its tab shell as a fail-closed non-authoring surface; campaign-scoped `/reports?campaignId=...` hides that shell and displays the active campaign's backend scheduled report cards directly.
 - [x] Completed: one-off campaign reports download immediately and create no report-library row; scheduled reports appear as backend cards with `Download latest report`.
 - [x] Completed: `Download latest report` creates an immutable server snapshot from current certified inputs and downloads that exact stored artifact; the browser no longer builds a separate Campaign DeepDive PDF.
-- [x] Completed locally: campaign-scoped Custom Report creation exposes Campaign DeepDive subsection report types and automatically stores each type's single-page composition; the create screen has no `Tabs to include` picker, while the standalone `/reports` route keeps its broader report type options when reached directly.
+- [x] Completed locally: campaign-scoped Custom Report creation exposes Campaign DeepDive subsection report types and automatically stores each type's single-page composition; the create screen has no `Tabs to include` picker, while standalone `/reports` exposes no creation flow.
 - [x] Completed locally: generated report cards no longer show the `Generated` status pill.
 - [x] Completed locally: report delete icons open the shared website-style confirmation dialog before deleting the stored report.
 - [x] Completed locally: Scheduled Reports no longer renders hard-coded demo scheduled cards with nonfunctional delete buttons; the tab shows stored scheduled report records that use the shared confirmed delete path.
@@ -276,7 +276,7 @@ Status:
 - [x] Completed locally: Scheduled Reports card `Pause` disables the backend schedule with backend status `paused`, marks the local card as paused, keeps the report visible in Scheduled Reports, and changes the card action to `Resume` so users can re-enable the saved backend schedule. Scheduled cards do not show a separate Status field; the action label shows whether the schedule can be paused or resumed. Scheduled cards also expose `Download latest report` backed by the same latest-value PDF regeneration path.
 - [x] Completed locally: Pause/Resume is intentionally limited to Scheduled Reports because it temporarily stops or restarts recurring email delivery without forcing users to delete and recreate the saved report setup.
 - [x] Completed locally: `Campaign connected-source data` lists connected source names as bullets and no longer displays internal selectable metric keys.
-- [x] Completed locally: Executive Summary PDF exports one current UI-aligned body: 7-Day Snapshot Trajectory, Risk Level, Executive Summary, Marketing Funnel Performance, KPI Exceptions, Benchmark Exceptions, and Recommended Actions. Retired selections and the removed full Risk Assessment body do not render.
+- [x] Completed and deployed: Executive Summary PDF exports one current report body: 7-Day Snapshot Trajectory, Risk Level, Executive Summary, Marketing Funnel Performance, KPI Exceptions, Benchmark Exceptions, a report-specific Risk Assessment breakdown, and Recommended Actions. The main Executive Summary page still omits the former full Risk Assessment card. Retired selection keys do not duplicate report content, and unavailable freshness fails closed as `Not Verified`.
 - [x] Completed locally on 2026-08-28: Performance Summary PDF exports normalize all legacy `performance-summary:*` selections to one consolidated body with `Key Outcomes`, `Campaign Health`, `Top Priority Action`, `Recent Movement`, and `Recommended Actions`. The renderer no longer prints retired bodies or raw KPI/Benchmark dumps, and the GA4-first body now uses the same persisted Summary traffic and campaign-to-date financial reader as the UI instead of differing aggregate values.
 - [x] Completed locally: Budget & Financial Analysis PDF exports one current UI-aligned body: Financial Position, Budget & Pacing, conditional Paid Media Efficiency, Allocation & Sources, and Executive Action. Legacy Financial tab keys normalize to this one body.
 - [x] Completed locally: Platform Comparison PDF exports include the same major web-tab section set: Overview exports Platform Performance Summary Cards, Channel Performance Overview, Revenue Tracking Platforms, and Total Revenue; Performance Metrics exports Detailed Performance Metrics, Efficiency Comparison, and Volume Comparison; Financial Comparison exports Cost per Conversion, Budget Allocation, ROI/ROAS, or the no-paid-media state; Insights exports Platform Performance Insights, source availability, paid-media comparison availability, comparison insight headings, and Strategic Recommendations where those inputs exist.
@@ -285,7 +285,7 @@ Status:
 Current campaign-scoped Report Type menu:
 
 - `Performance Summary`: `Performance Summary`
-- `Budget & Financial Analysis`: `Overview`, `ROI & ROAS`, `Cost Analysis`, `Budget Allocation`, `Insights`
+- `Budget & Financial Analysis`: `Budget & Financial Analysis`
 - `Trend Analysis`: `Executive View`
 - `Executive Summary`: `Executive Summary`
 
@@ -304,7 +304,7 @@ Required tests:
 - Financial child sources do not appear as main platforms.
 - Saved custom report config cannot force unavailable metrics into output.
 - Campaign-scoped Custom Report uses the active campaign ID.
-- Global Reports behavior is not accidentally changed.
+- Standalone Reports remains fail-closed and does not re-enable browser-local records or unsourced creation.
 
 Status:
 
@@ -313,7 +313,7 @@ Status:
 - [x] Completed locally: regression guard covers financial child-source exclusion from main source rows.
 - [x] Completed locally: regression guard covers unavailable saved metrics rendering as unavailable.
 - [x] Completed locally: regression guard covers campaign-scoped Custom Report routing and saved campaign ID.
-- [x] Completed locally: regression guard covers global `/reports` route preservation.
+- [x] Completed and deployed: regression guard covers the standalone `/reports` fail-closed contract, including no browser-local row rendering and no unsourced create action.
 - [x] Completed locally: regression guard confirms All Reports cards do not render inline connected-source detail previews or the old `Includes: KPIs, Benchmarks` line.
 - [x] Completed locally: regression guard confirms report cards support edit mode through the report dialog and suppress edit-mode autofocus.
 - [x] User validation passed on 2026-05-28: All Reports cards show the summary-only card layout without `Includes: KPIs, Benchmarks`.
@@ -370,7 +370,7 @@ Custom Report is production-ready when:
 - card `Data Included` shows selected tab labels from the saved `selectedSections` composition
 - Pause disables the backend schedule and persists status `paused`; Resume re-enables the preserved schedule without recreating report content
 - `Download latest report` creates one immutable server PDF artifact from current certified inputs and downloads those exact bytes
-- The top-level `Create Report` action opens an empty create form, clears report type, selected tabs, custom metric selections, and edit mode
+- The campaign-scoped top-level `Create Report` action opens an empty create form, clears report type, selected tabs, custom metric selections, and edit mode
 - unscheduled create mode shows `Download Report`, downloads the selected report sections through `/api/campaigns/:campaignId/custom-report-pdf`, and creates no report-library or snapshot row
 - direct snapshot JSON/PDF routes verify report access plus campaign/platform consistency; PDF reads additionally verify report-type consistency, and historical snapshots without immutable artifacts fail closed
 - Downloaded PDFs render the selected single-page body from that subsection's fixed upstream inputs
@@ -393,7 +393,7 @@ Custom Report is production-ready when:
 - regression coverage guards GA4-only and future paid-media source scenarios
 - documentation matches the implemented behavior
 
-## Outstanding Tasks
+## Task Completion
 
 - [x] Commit 1: Campaign-scoped entry point
 - [x] Commit 2: Shared aggregate input
@@ -403,19 +403,19 @@ Custom Report is production-ready when:
 - [x] Commit 6: Regression coverage
 - [x] Commit 7: Documentation and final validation for the implemented aggregate-consumer scope
 
-Open production-readiness tasks before Custom Report can be called fully production-ready:
+Production-readiness tasks for the certified GA4-first scope:
 
 - [x] Add dedicated Trend Analysis PDF parity so the canonical Executive View exports real source-aware trend content instead of generic fallback output.
 - [x] Make scheduled Campaign DeepDive PDFs include selected section body content from latest campaign data, not only report metadata and selected section names.
 - [x] Add regression coverage proving every Campaign DeepDive report type has a dedicated renderer, including Trend Analysis.
 - [x] Add regression coverage proving scheduled Campaign DeepDive PDFs include selected section body content, not just selected section names.
-- [ ] Deploy the consolidated Performance Summary PDF correction and verify one fresh UI download against the deployed Performance Summary page.
+- [x] Deployed and verified the consolidated Performance Summary PDF correction through the current six-report production parity run recorded in `CAMPAIGN_DEEPDIVE_REPORTS_CERTIFICATION_2026-09-21.md`.
 
 Commit 5 final implementation status:
 
 - [x] Scheduled Campaign DeepDive PDF body rendering is covered for every current Campaign DeepDive report type and tab.
 - [x] Scheduled Campaign DeepDive PDF regression coverage verifies the scheduler uses latest campaign aggregate inputs and selected-section body renderers.
-- [x] Browser downloads are production-ready locally for the implemented GA4/current aggregate-consumer scope.
+- [x] Browser downloads are production-ready for the deployed GA4/current aggregate-consumer scope documented in the 2026-09-21 certificate.
 - [x] Scheduled PDFs now build one server-side `CampaignDeepDiveReportContext` from latest campaign context, `performanceSummary`, Executive Summary context where selected, KPI rows, Benchmark rows, and Trend Analysis aggregate where selected.
 - [x] Deployed scheduled email evidence passed on 2026-08-28 with provider delivery-event proof and user-confirmed inbox receipt.
 
@@ -453,6 +453,8 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 
 ## Validation Evidence
 
+- Current controlling evidence: `CAMPAIGN_DEEPDIVE_REPORTS_CERTIFICATION_2026-09-21.md`, deployed revision `809227f7aefba97d50d9c7649de8e7d06c022371`, six focused files and `97/97` tests, current production six-report parity, deployed GET-only UI/artifact/isolation validation, and zero final production writes or emails.
+- Documentation/code alignment validation: `server/custom-report-regression.test.ts` and `server/executive-summary-regression.test.ts` passed `59/59` after the current contract statements and Executive page/report distinction were synchronized.
 - Commit 1 local regression guard added in `server/custom-report-regression.test.ts`.
 - Commit 1 user validation passed on 2026-05-28.
 - Commit 2 local regression guard added in `server/custom-report-regression.test.ts`.
@@ -477,12 +479,12 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Create Report reset fix added on 2026-05-28: top-level create opens a fresh empty form after prior edits.
 - Create Report action split added on 2026-05-28: unscheduled create mode downloads the selected sections, while scheduled create mode saves with `Schedule Automated Report` and `Schedule Report`.
 - Download Report content fix added on 2026-05-28 and pushed in commit `ec6f9234`: Campaign DeepDive subsection exports now print selected tab bodies from the connected-source aggregate instead of only listing selected tab names.
-- Report Type composition updated on 2026-05-28 and pushed in commit `f8dfeee0`: Campaign DeepDive Custom Report creation exposes Campaign DeepDive subsection report types and saves selected subsection tabs; the standalone `/reports` route keeps broader report-type choices when reached directly.
+- Report Type composition updated on 2026-05-28 and pushed in commit `f8dfeee0`: Campaign DeepDive Custom Report creation exposes Campaign DeepDive subsection report types and saves selected subsection tabs. The historical standalone creation behavior was retired by deployed revision `809227f7`; standalone `/reports` now fails closed without a create action.
 - Commit 7 documentation updated on 2026-05-28.
 - Report delete confirmation and connected-source source-list cleanup added on 2026-05-29.
 - Executive Summary `Executive Overview` PDF section parity fix added on 2026-05-29.
 - Executive Summary `Strategic Recommendations` PDF section parity fix added on 2026-05-29.
-- Performance Summary PDF section parity was originally recorded on 2026-05-29. It was superseded on 2026-08-28 when one artifact exposed retired bodies and the later `perf_summary_2026-08-28.pdf` exposed a second root cause: the consolidated renderer read differing outcome-aggregate values instead of the fixed Performance Summary page inputs. The local correction now uses the UI-aligned reader and awaits deployed download validation.
+- Performance Summary PDF section parity was originally recorded on 2026-05-29. It was superseded on 2026-08-28 when one artifact exposed retired bodies and the later `perf_summary_2026-08-28.pdf` exposed a second root cause: the consolidated renderer read differing outcome-aggregate values instead of the fixed Performance Summary page inputs. The UI-aligned correction is deployed and covered by the 2026-09-21 certificate.
 - Budget & Financial Analysis PDF parity was updated on 2026-08-28 for the current one-page UI; legacy five-tab selections now normalize to one body using the same aggregate, pacing, allocation, and action inputs as the page.
 - Platform Comparison PDF section parity fix added on 2026-05-29: selected Platform Comparison tabs now export the matching web-tab section structure instead of the generic DeepDive metric-list fallback.
 - Trend Analysis PDF parity was updated again on 2026-08-28 after `trend_2026-08-28.pdf` proved the first downstream correction still omitted UI-visible detail. Legacy selections normalize to one body; headline traffic is cumulative; current financials use the page aggregate; the chart window is 30 days; exact daily traffic and conversion-quality points, the website summary, and UI-equivalent recommendations now render; comparisons require exact compatible history.

@@ -46,7 +46,7 @@ saved source configuration.
 | 3 | Benchmarks | `COMPLETE` |
 | 4 | Ad Comparison | `COMPLETE` |
 | 5 | Insights | `COMPLETE` |
-| 6 | Reports | `QUEUED` |
+| 6 | Reports | `COMPLETE` |
 
 #### GA4 Overview certification breakdown
 
@@ -123,6 +123,31 @@ The existing whole-live-tab Insights certificate at `4be16c54c550a45dbf3104313c8
 | 2 | Trends | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the Trends card's Daily, 7d, 30d, and Monthly values, charts, and fail-closed states on the certificate's two owned campaigns/property `542352127` at deployed runtime `757cfc5926d59dbae4addd0a4d4a0531f675f3f7`; controlling certificate: `GA4/INSIGHTS_TRENDS_CERTIFICATION_2026-09-17.md` (documentation commit `77d65bc5`). Required Trends gates remaining within that boundary: 0. A natural GA4 daily timer run on this exact commit and a production provider outage or divergent stored/provider data remain unverified; Reports/PDFs, other Insights sections, protected sections, arbitrary properties, and overall mobile layout (including existing 390px horizontal scroll) remain excluded. The fresh combined Insights page is not certified by this row. |
 | 3 | Data Summary | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the on-screen Sessions, Conversions, imported-history label, conversion rate, and valid-zero/stale/unavailable states on the exact campaign `eee3e654-b736-4e8e-86ec-1050e4d905c0`, property `542352127`, and saved filters at tested application runtime `0bce5024b1b5ab7dd6cbbbf1f7f91e81b94b24cf`; controlling certificate: `GA4/INSIGHTS_DATA_SUMMARY_CERTIFICATION_2026-09-17.md` (documentation/script commit `d59b1ccf`, deployed without application-code changes). Required gates remaining for this on-screen scope: 0. Top Channel, the source/medium channel breakdown, and channel warnings are disabled and excluded; findings-rule logic, other Insights sections, protected sections, Reports/PDFs/delivery, other campaigns/properties, future provider failures, and an exact-commit natural scheduler run are not certified by this row. This subsection row alone does not certify the combined page. |
 | 4 | What to investigate next | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED` for the on-screen findings and Total/High/Medium cards on the certificate's owned campaign `eee3e654-b736-4e8e-86ec-1050e4d905c0`, property `542352127`, saved filters, and imported-history boundary at deployed product runtime `6673a976f98d853b9eb37ddc99a2afc195f302d9`; controlling certificate: `GA4/INSIGHTS_FINDINGS_CERTIFICATION_2026-09-18.md` (documentation commit `31d066860eceb88d3c40cd8f01d90efe65a55d73`). Required gates remaining within this on-screen scope: 0. A natural timer run on this commit, live configured KPI/Benchmark target findings, other campaigns/properties, an immutable creation-day snapshot, other Insights and protected sections, browser/server PDFs, Reports, and report delivery remain excluded; the broader report-copy regression is not counted as passing. This subsection row alone does not certify the combined page. |
+
+#### GA4 Reports fresh subsection validation
+
+GA4 Reports completed its fresh four-packet and combined-tab review for the
+exact bounded configuration in `GA4/REPORTS_CERTIFICATION_2026-09-21.md` and
+`GA4/REPORTS_PRODUCTION_READINESS.md`. Certified application behavior is
+`a7271fc18058b6db78a11e88bf79b887abda5f44`; documentation commit
+`5a49100711ea07b6b7ff851b353d5532950a31ae` does not broaden or change that
+runtime behavior.
+
+| Order | GA4 Reports review | Work state | Fresh certification status | Boundary |
+| ---: | --- | --- | --- | --- |
+| - | Combined GA4 Reports tab | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY / NO-OVERCLAIMING` for the exact documented owner/client/campaign, property `542352127`, three saved campaign filters, USD, Europe/Amsterdam configuration at application-behavior revision `a7271fc18058b6db78a11e88bf79b887abda5f44`; all four packets and the combined tab passed together. Required gates remaining within this boundary: 0. |
+| 1 | Report Library & CRUD | `COMPLETE` | `CERTIFIED` | PASS for list, legitimate empty versus failure, create, unchanged-edit guard, update, delete/repeated-delete, download, campaign/platform/type fields, owner/campaign/platform isolation, schedule-recipient validation, and exact cleanup. |
+| 2 | Standard Templates & Ad Hoc Downloads | `COMPLETE` | `CERTIFIED` | PASS for Overview, KPIs, Benchmarks, Ad Comparison, and Insights report-consumer rendering, windows, values, currency, valid-zero/unavailable guards, failure visibility, and download-only ad hoc behavior. Exact-current server Campaign Breakdown artifact parity closed the prior blocker. |
+| 3 | Custom Report Builder & Composition | `COMPLETE` | `CERTIFIED` | PASS for authoritative selected sections and KPI/Benchmark IDs, empty-selection safety, documented output order, campaign/property/filter scoping, exact Campaign Breakdown values and mapped-revenue treatment, and absence of unintended selection expansion. |
+| 4 | Scheduling, Snapshots & Delivery | `COMPLETE` | `CERTIFIED` | PASS for schedule/timezone/recipient validation, quarterly recurrence, natural scheduler execution, report/slot deduplication, immutable attachment and snapshot parity, send-event and `lastSentAt` ordering, provider acceptance versus confirmed delivery, user-confirmed resend receipt, cleanup, and fail-closed failure states. |
+
+The certificate reuses only unchanged historical owner isolation, empty/error UI,
+browser Campaign Breakdown values, and combined-tab presentation evidence; all
+changed scheduler, recipient, server PDF, snapshot, provider, and inbox paths
+were rerun on `a7271fc1`. Campaign DeepDive Reports, other platforms, arbitrary
+clients/owners/campaigns/properties/filters/currencies/timezones, future provider
+or mailbox behavior, legacy snapshots without immutable artifacts, production
+failure injection, and full upstream-tab recertification remain excluded.
 
 Each GA4 section must independently pass the complete no-overclaim standard at
 an exact current runtime: visible/downstream value inventory, provider/query and
@@ -311,7 +336,7 @@ known broken. They mean the app-wide production-ready claim is not yet proven.
 | GA4 Benchmarks | `CERTIFIED` | `GA4/OVERVIEW_BENCHMARKs_CERTIFICATION_2026-09-15.md`; `GA4/OVERVIEW_BENCHMARKS_DEPENDENCY_MANIFEST_2026-09-15.md`; `GA4/BENCHMARKS_PRODUCTION_READINESS.md` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact documented Benchmark boundary at application runtime `47180dcf96586fa4fff9a83e7a097e33e42c0721`; deployed evidence commit `bdecb67142bdbe505084d397f195e252db40a4f8` changed Benchmark documentation only. The earlier `236afff9` runtime and `a96ba06e` machine record remain historical. GA4 Overview and KPIs are not recertified by this entry. |
 | GA4 Ad Comparison | `CERTIFIED` | `GA4/certifications/ga4-ad-comparison.json`; `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`; `GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md`; `GA4/AD_COMPARISON_REVENUE_BREAKDOWN_CERTIFICATION_2026-09-16.md` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact Campaign2/property/saved-filter/USD retained live-tab boundary at deployed runtime `70b73a229ebb9e1021c3d18d63119d05bdee7e26`; chart/cards/summary and Revenue Breakdown passed together, All Campaigns absent. Reports delivery and other configurations excluded; required steps remaining: 0. |
 | GA4 Insights | `CERTIFIED` | `GA4/INSIGHTS_COMBINED_ONSCREEN_CERTIFICATION_2026-09-18.md`; historical `GA4/certifications/ga4-insights.json` and `GA4/INSIGHTS_PRODUCTION_READINESS.md` | Current combined on-screen Insights page is `CLEAN-CERTIFIED / PRODUCTION_READY` only for the exact Campaign2/property/saved-filter/USD/Amsterdam boundary at deployed runtime `f74167597d8f9aad09a43466f3a94ce3b7c7cedd`; required gates within that boundary: 0. Reports/PDFs, other configurations, natural timer firing, and global scheduler health are excluded. The earlier `4be16c54` machine certificate remains historical and was not renewed. |
-| GA4 Reports | `UNVERIFIED` | `GA4/certifications/ga4-reports.json`; `GA4/REPORTS_PRODUCTION_READINESS.md` | Exact-current scheduled/server Campaign Breakdown artifact parity remains pending. |
+| GA4 Reports | `CERTIFIED` | `GA4/REPORTS_CERTIFICATION_2026-09-21.md`; `GA4/REPORTS_PRODUCTION_READINESS.md`; historical `GA4/certifications/ga4-reports.json` | `CLEAN-CERTIFIED / PRODUCTION_READY` for all five bounded GA4 Reports areas at application-behavior revision `a7271fc18058b6db78a11e88bf79b887abda5f44`, recorded by documentation commit `5a49100711ea07b6b7ff851b353d5532950a31ae`; required gates remaining: 0. Campaign DeepDive Reports, arbitrary future configurations, future provider/mailbox behavior, and the certificate's other exclusions remain outside this claim. |
 | GA4 reporting timezone | `RECONCILE` | `GA4/REPORTING_TIMEZONE_PRODUCTION_READINESS.md` | Individual validation commits are recorded, but the document has no single current whole-path certificate. |
 | GA4 KPI/Benchmark alerts and notifications | `RECONCILE` | `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md` | Lifecycle evidence exists, but its broad KPI status conflicts with the newer KPI machine record. |
 | Whole GA4 roll-up | `RECONCILE` | Section rows above override `GA4_PRODUCTION_READY_TRACKER.md` and `GA4_PRODUCTION_READINESS_OUTSTANDING.md` | The broad tracker says all tabs are production-ready while four current machine records say `UNVERIFIED`. |

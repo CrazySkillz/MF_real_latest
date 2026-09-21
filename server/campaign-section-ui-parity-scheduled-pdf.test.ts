@@ -587,6 +587,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     for (const heading of ["Financial Position", "Budget & Pacing", "Allocation & Sources", "Executive Action"]) {
       expect(pdfTextCalls.filter((text) => text === heading)).toHaveLength(1);
     }
+    expect(pdfTextCalls).toContain("Metric window: 2026-07-02 to 2026-08-27 (Europe/Amsterdam). Connected-source traffic is cumulative; financial values are campaign-to-date.");
     expect(pdfTextCalls).toContain("- Revenue: $72,766.69");
     expect(pdfTextCalls).toContain("- Spend: $2,699.75");
     expect(pdfTextCalls).toContain("- ROAS: 26.95x");

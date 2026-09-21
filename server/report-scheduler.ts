@@ -2330,7 +2330,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   addText(`Campaign: ${campaignName || "Campaign"}`);
   addText(`Report Type: ${campaignDeepDiveReportTypeLabels[reportType] || reportType || "Custom Report"}`);
   addText(isFinancialAnalysisReport
-    ? "Metric basis: cumulative connected-source traffic through the latest completed reporting day; financial values are campaign-to-date."
+    ? `${customReportWindowLabel} Connected-source traffic is cumulative; financial values are campaign-to-date.`
     : isExecutiveSummaryReport
       ? executiveMetricBasis
       : isCampaignDeepDiveCustomReportComposition

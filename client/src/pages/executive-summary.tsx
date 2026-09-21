@@ -458,7 +458,6 @@ export default function ExecutiveSummary() {
     : `${displayedRiskFactors.map((factor) => factor.message).join(". ")}.`;
   const executiveSummaryNarrative = `${executiveMetricSummary} Risk: ${displayedRiskLevel}. ${executiveTrajectorySummary}`;
   const executiveSummaryBullets = [
-    `${executiveWindowDescription}.`,
     ...(executiveMetricParts.length > 0 ? executiveMetricParts.map((part) => `${part}.`) : ["ROI and ROAS are unavailable."]),
     `Risk: ${displayedRiskLevel}.`,
     executiveTrajectorySummary,
@@ -728,12 +727,9 @@ export default function ExecutiveSummary() {
                         </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
 
-              {/* Key Metrics Dashboard - Complete Funnel Flow */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                    {/* Key Metrics Dashboard - Complete Funnel Flow */}
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                 <Card className="border-l-4 border-green-500">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium text-muted-foreground/70">Total Revenue</CardTitle>
@@ -807,7 +803,10 @@ export default function ExecutiveSummary() {
                     </div>
                   </CardContent>
                 </Card>
-              </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* KPI Exceptions */}
               {executiveKpiProgress.length === 0 && (

@@ -808,6 +808,11 @@ export default function ExecutiveSummary() {
                 </CardContent>
               </Card>
 
+              <section className="space-y-6" aria-labelledby="kpis-benchmarks-heading">
+              <div className="pt-2">
+                <h2 id="kpis-benchmarks-heading" className="text-2xl font-semibold text-foreground">KPIs &amp; Benchmarks</h2>
+              </div>
+
               {/* KPI Exceptions */}
               {executiveKpiProgress.length === 0 && (
                 <Card>
@@ -957,6 +962,7 @@ export default function ExecutiveSummary() {
                   </CardContent>
                 </Card>
               )}
+              </section>
 
               {/* Recommended Actions */}
               <div className="pt-2">

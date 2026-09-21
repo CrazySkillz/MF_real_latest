@@ -21,6 +21,16 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("campaignId: activeCampaignId || undefined,");
   });
 
+  it("keeps an empty standalone report library free of fabricated demo history", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+
+    expect(reports).toContain("if (allReports.length === 0) {");
+    expect(reports).toContain("setAllStoredReports([]);");
+    expect(reports).not.toContain("const mockReports = [");
+    expect(reports).not.toContain("Q3 Performance Analysis");
+    expect(reports).not.toContain("team@company.com");
+  });
+
   it("reads connected-source aggregate input for campaign-scoped custom reports", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 

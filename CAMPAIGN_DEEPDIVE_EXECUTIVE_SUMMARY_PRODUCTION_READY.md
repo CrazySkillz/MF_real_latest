@@ -4,9 +4,149 @@
 
 Before using this document to answer an audit, review, or production-readiness question, apply PRODUCTION_READINESS.md and AGENTS.md. Do not repeat any production-ready or status claim from this file unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current documented evidence. A prior readiness statement is not evidence. A passing test suite is not enough unless it covers the traced value paths. If any path is incomplete, classify it as partially reviewed or not locally verifiable and update the fix queue instead of calling it production-ready.
 
-## Current Authoritative Implementation And Certification — 2026-08-27
+## Current Authoritative Implementation And Certification - 2026-09-21
 
-This section is the current source of truth for Campaign DeepDive `Executive Summary`. The implementation-plan material later in this file is retained as historical context and is non-normative where it conflicts with this section.
+This section is the current source of truth for Campaign DeepDive `Executive Summary`. The 2026-08-27 certification snapshot and implementation-plan material later in this file are retained as historical context and are non-normative where they conflict with this section.
+
+The detailed current evidence is recorded in `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_CERTIFICATE_2026-09-21.md`. The earlier `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_CERTIFICATE_2026-09-20.md` remains an immutable historical certificate for its own revision and production state.
+
+### Current Revision And Certified Boundary
+
+- last deployed revision observed during this alignment: `1d646c0cfef12e45035ae0770f2ebcebb19a33b2`
+- certified application implementation revision: `2d9625437683ccef081e60831f2a59c76246d438`
+- revision relationship: `1d646c0c` adds only the 2026-09-21 certificate; application code is identical to `2d962543`. Any commit containing only this documentation alignment also leaves that application implementation unchanged.
+- campaign: `ga4_mock` (`8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`)
+- GA4 property: `542352127`
+- campaign currency: `USD`
+- campaign reporting timezone: `Europe/Amsterdam`
+- current reporting window: `2026-07-02` through completed day `2026-09-20`
+- aggregate contract: `performance_summary_aggregate_v3`
+- main source: GA4 web analytics
+- child financial configuration: five active revenue sources and four active spend sources selected by the GA4 context contract, including its legacy-null compatibility rule
+- connected paid-media main sources: none
+
+Certification is limited to this campaign, property, currency, timezone, source mix, and page. It does not cover Campaign2, other campaigns, future configuration changes, paid-media variants, other Campaign DeepDive sections, Custom Reports, PDFs, scheduled reports, email delivery, or inbox receipt.
+
+### Current UI Contract
+
+Executive Summary is one continuous page containing:
+
+1. `7-Day Snapshot Trajectory`, `Risk Level`, and a concise four-bullet Executive Summary.
+2. `Marketing Funnel Performance`, including all funnel stages, the four Bottom of Funnel metrics, and the five metric cards inside the same section.
+3. `KPIs & Benchmarks`, containing the applicable KPI and Benchmark exception, no-exception, or unavailable cards.
+4. `Recommended Actions`, including the connected-source scope notice, evidence, target context, freshness warning when applicable, and fail-closed no-action state.
+
+Current presentation details:
+
+- `7-Day Snapshot Trajectory` and `Marketing Funnel Performance` use the same title size.
+- The concise summary bullets show ROI, ROAS, Risk, and trajectory; the prior visible `Through YYYY-MM-DD` bullet is not rendered.
+- Incompatible history renders `History not comparable yet`, not the generic missing-history label.
+- Bottom of Funnel places Conversions, Revenue, ROAS, and Return on Investment on one row.
+- The five cards are Total Revenue/ROI, Return on Ad Spend/Spend, Total Conversions/CVR, Sessions/source, and Users/source.
+- KPI and Benchmark cards are grouped under the visible `KPIs & Benchmarks` heading.
+- The current evidence-backed action is named from eligible exception metrics; it is not the former generic `Investigate below-target website outcomes` title.
+
+The former tabs, full Risk Assessment card, Campaign Grade, Health Score, Campaign Story, duplicate alert cards, and duplicate Platform Performance presentation are not part of the current visible contract. Backend compatibility fields do not make removed UI elements current product behavior.
+
+### Current Query, Calculation, And Persistence Trace
+
+The page has one campaign identity query plus three analytics queries:
+
+| Visible consumer | Frontend query | Authoritative path |
+| --- | --- | --- |
+| Campaign identity/currency | `GET /api/campaigns/:id` | campaign access and persisted campaign configuration |
+| KPI, Benchmark, and freshness inputs | `GET /api/campaigns/:id/executive-summary` | campaign access; GA4 platform KPI/Benchmark selection; verified-current resolver; shared target classification |
+| Narrative, funnel, conditional metrics, formulas, cards, and source capabilities | `GET /api/campaigns/:id/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date` | `performance_summary_aggregate_v3`; completed-day GA4 window; source-to-date financial reconciliation; gated daily snapshot |
+| Seven-day trajectory | `GET /api/campaigns/:id/executive-summary/trajectory?reportingDate=YYYY-MM-DD` | exact current and seven-day-prior `executive_summary_daily` rows through `evaluateExecutiveSummaryTrajectory` |
+
+The current-value queries refetch on mount, window focus, and every 60 seconds while active. The trajectory query refetches on mount/focus after the authoritative reporting date is available. Campaign, Executive Summary, outcome totals, and the applicable trajectory request are required before the completed page renders. A required request failure renders `Unable to Load Executive Summary` rather than cached-looking zeros.
+
+### Current Metric And Source Rules
+
+- GA4 traffic, conversions, native revenue, and Engagement Rate use the connected property and configured campaign scope through the latest completed day in the campaign timezone.
+- Imported revenue and spend use active GA4-context source-to-date inputs through that same data-through date.
+- `Total Revenue = GA4-native revenue + imported connected revenue`.
+- `CVR = conversions / sessions * 100` when both inputs are available and sessions are positive.
+- `ROAS = revenue / spend` and `ROI = (revenue - spend) / spend * 100` when revenue and spend are available and spend is positive.
+- Engagement Rate is conditional and is calculated from persisted engaged sessions divided by sessions for the exact GA4 property window.
+- Valid zero remains available when source capability proves the metric exists. Missing, non-finite, unsupported, stale/unverified, and denominator-blocked inputs remain unavailable.
+- Counts are truncated before locale formatting. Currency, percentages, and ratios display two decimals while calculations use aggregate values.
+- GA4 supports Users, Sessions, Conversions, and Revenue for the certified aggregate. It does not invent paid Clicks, Impressions, CTR, CPC, CPM, or paid-media recommendations.
+
+### Current Trajectory, Risk, KPI, Benchmark, And Action Rules
+
+Trajectory snapshot identity is `executive_summary_daily_snapshot_v2` and includes campaign, currency, GA4 property, campaign filter, aggregate version, initial-import start, timezone, main-source capabilities, and configuration-fingerprinted financial source IDs. The writer fails closed before completed-day GA4 refresh evidence exists.
+
+Trajectory requires current and exact seven-day-prior snapshots with compatible identities and available revenue. More than +10% is `accelerating`, less than -10% is `declining`, and the remainder is `stable`. Unavailable reasons are distinct:
+
+- `not_enough_history`: no exact usable pair
+- `incompatible_history`: property, window, source, or reporting configuration differs
+- `revenue_history_unavailable`: revenue is unavailable or the comparison denominator is invalid
+
+Risk starts at Low. High requires negative ROI or a high-severity applicable freshness warning. Medium requires at least one configured risk factor, including ROAS below 1x, paid concentration when applicable, compatible decline greater than 15%, an eligible KPI below target, an eligible Benchmark behind, or an applicable freshness warning. Benchmark `needs_attention` is monitor-only by itself.
+
+KPI and Benchmark eligibility requires a finite verified current value, a positive target, supported metric identity, and applicable reporting window. Target direction uses the shared policy, including lower-is-better cost metrics. Invalid, stale, unsupported, refresh-failed, or targetless rows do not affect exception, risk, or action state.
+
+Website-outcome actions require connected web/outcome evidence plus an eligible exception in Conversion Rate, Conversions, or Revenue. Engagement Rate can contribute to Risk Level but is intentionally outside the action-name metric set. Evidence, target lines, and freshness warnings are deduplicated and deterministically ordered. Wording is investigative and non-causal. With no eligible evidence or exception, the page shows `No Evidence-Backed Actions Available`.
+
+### Current Exact Production Evidence
+
+| Metric/state | Current value |
+| --- | ---: |
+| Users | 2,824 |
+| Sessions | 2,822 |
+| Engaged sessions | 1,924 |
+| Engagement Rate | 68.18% |
+| Conversions | 363 |
+| Conversion Rate | 12.86% |
+| Total Revenue | USD 126,865.36 |
+| Spend | USD 2,759.75 |
+| ROAS | 45.97x |
+| ROI | 4,496.99% |
+
+Current state:
+
+- trajectory: unavailable with `incompatible_history`; current `2026-09-20`, comparison `2026-09-13`
+- visible trajectory label: `History not comparable yet`
+- Risk Level: `MEDIUM`, from two eligible KPI exceptions
+- KPI rows: eight eligible; Conversion Rate `12.86% / 39.00%` and Engagement Rate `68.18% / 90.00%` are below target
+- Benchmark rows: two eligible; no Benchmark exception
+- freshness warning: absent
+- action: `Investigate Conversion Rate`
+- paid-media recommendation: absent
+- current snapshot: `78c8c879-9358-4d63-9abb-57d6aa4273b7`, reporting date `2026-09-20`
+- source identity: active GA4 plus five revenue and four spend definitions exactly matched the persisted snapshot signature
+
+The 39% and 90% targets are user-configured. Certification covers retrieval, classification, display, and propagation, not their commercial reasonableness.
+
+### Current Scheduler And Validation Evidence
+
+Current deployed scheduler health is `healthy`:
+
+- GA4 daily scheduler: `22:30 UTC`, `runOnStartup=false`, timer armed
+- auto-refresh scheduler: `22:00 UTC`, `runOnStartup=false`, timer armed
+- next GA4 data-through date at validation: `2026-09-20`
+
+Scheduler implementation/configuration were unchanged from the applicable certified evidence. No new natural `22:30 UTC` firing was claimed during the 2026-09-21 delta revalidation.
+
+Current validation record:
+
+- 13 focused in-scope suites and 79 tests passed
+- TypeScript validation passed
+- production build passed once
+- deployed identity, ownership rejection, all three analytics queries, formulas, layout, copy, source configuration, persistence isolation, and combined page passed
+- snapshot fingerprint was unchanged by capture-disabled deployed validation
+- Engagement Rate was independently reproduced from 1,924 / 2,822 persisted, non-simulated GA4 facts
+
+An excluded Performance Summary scheduled-PDF suite has a stale mock that lacks `getCampaignMetricTotalsAtDate`. That report path is outside this page contract and is not represented as passing.
+
+### Current Classification
+
+The exact `ga4_mock` Executive Summary boundary above is clean-certified. Alternate compatible-trajectory, valid-zero, unavailable, target-direction, stale, and failure branches are deterministic regression evidence, not claimed live production observations. Reports, delivery surfaces, other campaigns, other source mixes, and target commercial reasonableness remain excluded.
+
+## Historical Certification Snapshot - 2026-08-27
+
+This section preserves the 2026-08-27 evidence exactly as historical context. It is non-normative and must not be used as the current contract or current production state.
 
 ### Certified Boundary
 

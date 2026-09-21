@@ -31,6 +31,13 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).not.toContain("team@company.com");
   });
 
+  it("fails closed on unsourced standalone report creation", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+
+    expect(reports).toContain("{campaignContextId && (\n                  <Button onClick={openCreateReport}>");
+    expect(reports).toContain("Try adjusting your filters or create a new report from a campaign page.");
+  });
+
   it("reads connected-source aggregate input for campaign-scoped custom reports", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 

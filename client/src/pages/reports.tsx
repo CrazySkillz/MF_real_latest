@@ -2055,10 +2055,12 @@ export default function Reports() {
                 setShowCreateDialog(open);
                 if (!open) resetForm();
               }}>
-                <Button onClick={openCreateReport}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Report
-                </Button>
+                {campaignContextId && (
+                  <Button onClick={openCreateReport}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Report
+                  </Button>
+                )}
                 <DialogContent
                   data-campaign-report-dialog
                   className="max-w-2xl max-h-[80vh] overflow-y-auto"

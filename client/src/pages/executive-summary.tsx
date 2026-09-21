@@ -1,6 +1,6 @@
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, TrendingUp, TrendingDown, Target, Users, DollarSign, Award, AlertTriangle, CheckCircle, Zap, Eye, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Brain, Activity, Info, ChevronDown } from "lucide-react";
+import { ArrowLeft, Briefcase, TrendingUp, TrendingDown, Target, Users, DollarSign, Award, AlertTriangle, CheckCircle, Zap, Eye, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Brain, Activity, Info, ChevronDown, Percent } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -680,7 +680,7 @@ export default function ExecutiveSummary() {
                           <div className="text-sm font-semibold text-purple-900 dark:text-purple-300 uppercase tracking-wide">Bottom of Funnel</div>
                           <div className="text-xs text-purple-700 dark:text-purple-400 mt-1">Are visits becoming conversions and revenue?</div>
                         </div>
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-4 gap-4">
                           <div className="text-center">
                             <div className="flex justify-center mb-2">
                               <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
@@ -692,7 +692,7 @@ export default function ExecutiveSummary() {
                               {formatAggregateInteger("conversions")}
                             </div>
                           </div>
-                          <div className="text-center border-l border-r border-border dark:border-slate-600">
+                          <div className="text-center border-l border-border dark:border-slate-600">
                             <div className="flex justify-center mb-2">
                               <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
                                 <DollarSign className="w-5 h-5 text-white" />
@@ -703,7 +703,7 @@ export default function ExecutiveSummary() {
                               {formatAggregateCurrency("revenue")}
                             </div>
                           </div>
-                          <div className="text-center">
+                          <div className="text-center border-l border-border dark:border-slate-600">
                             <div className="flex justify-center mb-2">
                               <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
                                 <TrendingUp className="w-5 h-5 text-white" />
@@ -714,11 +714,16 @@ export default function ExecutiveSummary() {
                               {formatAggregateRatio("roas")}
                             </div>
                           </div>
-                        </div>
-                        <div className="mt-4 pt-4 border-t border-border dark:border-slate-600 text-center">
-                          <div className="text-sm text-muted-foreground/70">Return on Investment</div>
-                          <div className={`text-2xl font-bold ${!roiAvailable ? 'text-muted-foreground' : roiValue >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                            {formatAggregatePercent("roi")}
+                          <div className="text-center border-l border-border dark:border-slate-600">
+                            <div className="flex justify-center mb-2">
+                              <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center">
+                                <Percent className="w-5 h-5 text-white" />
+                              </div>
+                            </div>
+                            <div className="text-sm text-emerald-700 dark:text-emerald-400">Return on Investment</div>
+                            <div className={`text-2xl font-bold ${!roiAvailable ? 'text-muted-foreground' : roiValue >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                              {formatAggregatePercent("roi")}
+                            </div>
                           </div>
                         </div>
                       </div>

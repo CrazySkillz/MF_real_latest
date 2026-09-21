@@ -999,6 +999,47 @@ const campaignDeepDiveTabLabels: Record<string, string> = {
   "executive-summary:recommendations": "Executive Summary",
 };
 
+const campaignDeepDiveCustomMetricKeys = new Set([
+  "users", "sessions", "cvr", "conversions", "revenue", "impressions", "clicks", "spend",
+  "ctr", "cpc", "cpm", "cpa", "roas", "roi", "leads",
+]);
+
+export function isValidCampaignDeepDiveReportConfiguration(value: unknown): boolean {
+  let configuration: any;
+  try {
+    configuration = typeof value === "string" ? JSON.parse(value || "{}") : value;
+  } catch {
+    return false;
+  }
+  if (!configuration || typeof configuration !== "object" || Array.isArray(configuration)) return false;
+
+  const reportType = String(configuration.reportType || "").trim();
+  const sections = Array.isArray(configuration.selectedSections)
+    ? configuration.selectedSections.map(String).filter(Boolean)
+    : [];
+  const supportedReportType = reportType === "custom" || Object.prototype.hasOwnProperty.call(campaignDeepDiveReportTypeLabels, reportType);
+  const sectionsMatchReportType = sections.every((section: string) => reportType === "custom"
+    ? ["metrics", "kpis", "benchmarks"].includes(section)
+    : Object.prototype.hasOwnProperty.call(campaignDeepDiveTabLabels, section) && section.startsWith(`${reportType}:`));
+
+  return supportedReportType && sections.length > 0 && sectionsMatchReportType;
+}
+
+export function isValidCampaignDeepDiveReportConfigurationForPersistence(value: unknown): boolean {
+  if (!isValidCampaignDeepDiveReportConfiguration(value)) return false;
+
+  const configuration: any = typeof value === "string" ? JSON.parse(value) : value;
+  if (typeof configuration.selectedMetrics !== "undefined" && !Array.isArray(configuration.selectedMetrics)) return false;
+  const selectedMetrics: unknown[] = configuration.selectedMetrics || [];
+  if (!selectedMetrics.every((metric) => typeof metric === "string" && campaignDeepDiveCustomMetricKeys.has(metric))) return false;
+  if (new Set(selectedMetrics).size !== selectedMetrics.length) return false;
+
+  const reportType = String(configuration.reportType || "").trim();
+  const sections = configuration.selectedSections.map(String);
+  if (reportType === "custom") return !sections.includes("metrics") || selectedMetrics.length > 0;
+  return selectedMetrics.length === 0;
+}
+
 const normalizeCampaignDeepDiveTrendSections = (value: unknown): string[] => {
   const sections = Array.isArray(value) ? value.map(String).filter(Boolean) : [];
   let performanceSummaryIncluded = false;
@@ -1193,8 +1234,10 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   const cfg = typeof report?.configuration === "string"
     ? JSON.parse(report.configuration || "{}")
     : (report?.configuration || {});
+  if (!isValidCampaignDeepDiveReportConfiguration(cfg)) return null;
   const reportType = String(cfg?.reportType || "").trim();
-  const selectedSections = normalizeCampaignDeepDiveExecutiveSections(cfg?.selectedSections);
+  const configuredSections = Array.isArray(cfg?.selectedSections) ? cfg.selectedSections.map(String).filter(Boolean) : [];
+  const selectedSections = normalizeCampaignDeepDiveExecutiveSections(configuredSections);
   const selectedMetrics = Array.isArray(cfg?.selectedMetrics) ? cfg.selectedMetrics.map(String).filter(Boolean) : [];
   const isFinancialAnalysisReport = reportType === "financial-analysis" || selectedSections.some((section: string) => section.startsWith("financial-analysis:"));
   const isExecutiveSummaryReport = reportType === "executive-summary" || selectedSections.some((section: string) => section.startsWith("executive-summary:"));
@@ -1817,7 +1860,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       };
       const pacingStartDate = parsePacingDate((campaign as any)?.pacingStartDate);
       const pacingEndDate = parsePacingDate((campaign as any)?.pacingEndDate);
-      const pacingToday = getZonedParts(new Date(), String((report as any)?.scheduleTimeZone || (campaign as any)?.reportingTimeZone || "UTC"));
+      const pacingToday = getZonedParts(new Date(), String((campaign as any)?.reportingTimeZone || "UTC"));
       const today = new Date(Date.UTC(pacingToday.year, pacingToday.month - 1, pacingToday.day));
       const effectiveElapsedEnd = pacingEndDate && pacingEndDate.getTime() < today.getTime() ? pacingEndDate : today;
       const elapsedDays = pacingStartDate && effectiveElapsedEnd.getTime() >= pacingStartDate.getTime()

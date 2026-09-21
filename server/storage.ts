@@ -22,6 +22,20 @@ const devLog = (...args: any[]) => {
 export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration';
 export type SpendPlatformContext = RevenuePlatformContext;
 export type KPINotificationHide = { id: string; campaignId: string; metadata: string };
+export type CampaignDeepDiveReportLimitCode = "REPORT_LIMIT_REACHED" | "SCHEDULED_REPORT_LIMIT_REACHED";
+export type CampaignDeepDiveReportLimits = { maxActiveReports: number; maxScheduledActiveReports: number };
+export type CampaignDeepDiveReportWriteResult = { report: LinkedInReport | undefined; limitCode: CampaignDeepDiveReportLimitCode | null };
+export function resolveCampaignDeepDiveReportWriteLimit(
+  existingReports: Array<{ status: string | null; scheduleEnabled: boolean | null }>,
+  change: { incrementsActiveCount: boolean; incrementsScheduledActiveCount: boolean },
+  limits: CampaignDeepDiveReportLimits,
+): CampaignDeepDiveReportLimitCode | null {
+  const activeReports = existingReports.filter((report) => String(report.status || "active") !== "archived");
+  if (change.incrementsActiveCount && activeReports.length >= limits.maxActiveReports) return "REPORT_LIMIT_REACHED";
+  const scheduledActiveReports = activeReports.filter((report) => report.scheduleEnabled === true && String(report.status || "") === "active");
+  if (change.incrementsScheduledActiveCount && scheduledActiveReports.length >= limits.maxScheduledActiveReports) return "SCHEDULED_REPORT_LIMIT_REACHED";
+  return null;
+}
 export const selectMaterializedRevenueTotal = (aggregate: number, subCampaign: number, hasAggregate: boolean) =>
   hasAggregate ? aggregate : subCampaign;
 
@@ -378,7 +392,9 @@ export interface IStorage {
   getPlatformReports(platformType: string, campaignId?: string): Promise<LinkedInReport[]>;
   getScheduledPlatformReports(platformTypes?: string[]): Promise<LinkedInReport[]>;
   createPlatformReport(report: any): Promise<LinkedInReport>;
+  createCampaignDeepDivePlatformReport(report: any, limits: CampaignDeepDiveReportLimits): Promise<CampaignDeepDiveReportWriteResult>;
   updatePlatformReport(id: string, report: any): Promise<LinkedInReport | undefined>;
+  updateCampaignDeepDivePlatformReport(id: string, campaignId: string, report: any, limits: CampaignDeepDiveReportLimits): Promise<CampaignDeepDiveReportWriteResult>;
   deletePlatformReport(id: string): Promise<boolean>;
 
   // Custom Integrations
@@ -4420,9 +4436,81 @@ export class DatabaseStorage implements IStorage {
     return this.createLinkedInReport(report);
   }
 
+  async createCampaignDeepDivePlatformReport(report: any, limits: CampaignDeepDiveReportLimits): Promise<CampaignDeepDiveReportWriteResult> {
+    const campaignId = String(report?.campaignId || "").trim();
+    if (!campaignId) throw new Error("Campaign DeepDive report campaign is required");
+    return await db.transaction(async (tx: any) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`campaign_deepdive_reports:${campaignId}`}, 0))`);
+      const existingReports = await tx.select({
+        status: linkedinReports.status,
+        scheduleEnabled: linkedinReports.scheduleEnabled,
+      }).from(linkedinReports).where(and(
+        eq(linkedinReports.campaignId, campaignId),
+        eq(linkedinReports.platformType, "campaign_deepdive"),
+      ));
+      const nextStatus = String(report?.status || "active");
+      const change = {
+        incrementsActiveCount: nextStatus !== "archived",
+        incrementsScheduledActiveCount: report?.scheduleEnabled === true && nextStatus === "active",
+      };
+      const limitCode = resolveCampaignDeepDiveReportWriteLimit(existingReports, change, limits);
+      if (limitCode) return { report: undefined, limitCode };
+
+      const [created] = await tx.insert(linkedinReports).values({
+        ...report,
+        campaignId,
+        platformType: "campaign_deepdive",
+      }).returning();
+      if (!created) throw new Error("Campaign DeepDive report creation failed");
+      return { report: created, limitCode: null };
+    });
+  }
+
   async updatePlatformReport(id: string, report: any): Promise<LinkedInReport | undefined> {
     // For now, use LinkedIn reports table for all platforms
     return this.updateLinkedInReport(id, report);
+  }
+
+  async updateCampaignDeepDivePlatformReport(id: string, campaignId: string, report: any, limits: CampaignDeepDiveReportLimits): Promise<CampaignDeepDiveReportWriteResult> {
+    const normalizedCampaignId = String(campaignId || "").trim();
+    if (!normalizedCampaignId) throw new Error("Campaign DeepDive report campaign is required");
+    return await db.transaction(async (tx: any) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`campaign_deepdive_reports:${normalizedCampaignId}`}, 0))`);
+      const campaignReports = await tx.select({
+        id: linkedinReports.id,
+        status: linkedinReports.status,
+        scheduleEnabled: linkedinReports.scheduleEnabled,
+      }).from(linkedinReports).where(and(
+        eq(linkedinReports.campaignId, normalizedCampaignId),
+        eq(linkedinReports.platformType, "campaign_deepdive"),
+      ));
+      const current = campaignReports.find((candidate: any) => String(candidate.id) === String(id));
+      if (!current) return { report: undefined, limitCode: null };
+      const next = {
+        status: typeof report?.status === "undefined" ? String(current.status || "active") : String(report.status || "active"),
+        scheduleEnabled: typeof report?.scheduleEnabled === "undefined" ? current.scheduleEnabled === true : report.scheduleEnabled === true,
+      };
+      const otherReports = campaignReports.filter((candidate: any) => String(candidate.id) !== String(id));
+      const currentCountsTowardActive = String(current.status || "active") !== "archived";
+      const currentCountsTowardScheduledActive = current.scheduleEnabled === true && String(current.status || "") === "active";
+      const nextCountsTowardActive = next.status !== "archived";
+      const nextCountsTowardScheduledActive = next.scheduleEnabled && next.status === "active";
+      const limitCode = resolveCampaignDeepDiveReportWriteLimit(otherReports, {
+        incrementsActiveCount: nextCountsTowardActive && !currentCountsTowardActive,
+        incrementsScheduledActiveCount: nextCountsTowardScheduledActive && !currentCountsTowardScheduledActive,
+      }, limits);
+      if (limitCode) return { report: undefined, limitCode };
+
+      const [updated] = await tx.update(linkedinReports)
+        .set({ ...report, updatedAt: new Date() })
+        .where(and(
+          eq(linkedinReports.id, id),
+          eq(linkedinReports.campaignId, normalizedCampaignId),
+          eq(linkedinReports.platformType, "campaign_deepdive"),
+        ))
+        .returning();
+      return { report: updated || undefined, limitCode: null };
+    });
   }
 
   async deletePlatformReport(id: string): Promise<boolean> {

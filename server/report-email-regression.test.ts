@@ -8,6 +8,7 @@ import {
   isValidReportScheduleQuarterTiming,
   isValidReportScheduleTime,
   isValidReportScheduleTimeZone,
+  resolveUnavailableCampaignDeepDiveSelectedMetrics,
 } from "./routes-oauth";
 
 const REPORT_SCHEDULER_FILE = join(__dirname, "report-scheduler.ts");
@@ -416,6 +417,38 @@ describe("scheduled report email regression guard", () => {
     expect(isValidReportScheduleQuarterTiming("start")).toBe(true);
     expect(isValidReportScheduleQuarterTiming("end")).toBe(true);
     expect(isValidReportScheduleQuarterTiming("middle")).toBe(false);
+  });
+
+  it("matches Campaign DeepDive metric selection to live connected-source capability", () => {
+    const configuration = {
+      reportType: "custom",
+      selectedSections: ["metrics"],
+      selectedMetrics: ["users", "spend"],
+    };
+    const performanceSummary = {
+      version: "performance_summary_aggregate_v3",
+      totals: {
+        users: { available: true, value: 0 },
+        spend: { available: true, value: 0 },
+      },
+      sources: [{ connected: true, category: "web_analytics", includedMetrics: ["users"] }],
+    };
+
+    expect(resolveUnavailableCampaignDeepDiveSelectedMetrics(configuration, performanceSummary)).toEqual(["spend"]);
+    expect(resolveUnavailableCampaignDeepDiveSelectedMetrics(configuration, {
+      ...performanceSummary,
+      sources: [...performanceSummary.sources, { connected: true, category: "paid_media", includedMetrics: ["impressions"] }],
+    })).toEqual([]);
+    expect(resolveUnavailableCampaignDeepDiveSelectedMetrics(configuration, {
+      ...performanceSummary,
+      totals: { ...performanceSummary.totals, users: { available: false, value: null } },
+    })).toEqual(["users", "spend"]);
+    expect(resolveUnavailableCampaignDeepDiveSelectedMetrics({
+      reportType: "performance-summary",
+      selectedSections: ["performance-summary:overview"],
+      selectedMetrics: [],
+    }, null)).toEqual([]);
+    expect(resolveUnavailableCampaignDeepDiveSelectedMetrics(configuration, { ...performanceSummary, version: "unknown" })).toBeNull();
   });
 
   it("discovers scheduled platform reports through an explicit shared-table scheduler path", () => {

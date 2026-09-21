@@ -85,6 +85,9 @@ const escapeOAuthPopupHtml = (value: unknown): string => String(value ?? "")
   .replace(/'/g, "&#39;");
 
 const REPORT_SCHEDULE_FREQUENCIES = new Set(["daily", "weekly", "monthly", "quarterly"]);
+const CAMPAIGN_DEEPDIVE_PAID_METRIC_KEYS = new Set(["impressions", "clicks", "spend", "ctr", "cpc", "cpm", "cpa", "roas", "roi", "leads"]);
+const MAX_ACTIVE_REPORTS_PER_CAMPAIGN = 50;
+const MAX_SCHEDULED_ACTIVE_REPORTS_PER_CAMPAIGN = 10;
 
 type CampaignOutcomeTotalsReader = (campaignId: string, dateRange: string) => Promise<any>;
 let campaignOutcomeTotalsReader: CampaignOutcomeTotalsReader | null = null;
@@ -105,6 +108,65 @@ export async function readCertifiedCampaignOutcomeTotals(campaignId: string, dat
     throw new Error("Certified Campaign DeepDive aggregate is unavailable");
   }
   return outcomeTotals;
+}
+
+export function resolveUnavailableCampaignDeepDiveSelectedMetrics(configuration: unknown, performanceSummary: any): string[] | null {
+  let parsed: any;
+  try {
+    parsed = typeof configuration === "string" ? JSON.parse(configuration) : configuration;
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+  const selectedSections = Array.isArray(parsed.selectedSections) ? parsed.selectedSections.map(String) : [];
+  if (String(parsed.reportType || "").trim() !== "custom" || !selectedSections.includes("metrics")) return [];
+  if (!Array.isArray(parsed.selectedMetrics) || performanceSummary?.version !== "performance_summary_aggregate_v3") return null;
+
+  const availableMetricKeys = new Set(Object.entries(performanceSummary?.totals || {})
+    .filter(([, metric]: [string, any]) => metric?.available === true)
+    .map(([key]) => key));
+  const connectedSources = Array.isArray(performanceSummary?.sources)
+    ? performanceSummary.sources.filter((source: any) => source?.connected === true && source?.category !== "financial")
+    : [];
+  const hasPaidMediaSource = connectedSources.some((source: any) => {
+    const includedMetrics = Array.isArray(source?.includedMetrics) ? source.includedMetrics : [];
+    return source?.category === "paid_media" && includedMetrics.some((metric: string) => CAMPAIGN_DEEPDIVE_PAID_METRIC_KEYS.has(metric));
+  });
+
+  return parsed.selectedMetrics.filter((metric: string) =>
+    !availableMetricKeys.has(metric) || (CAMPAIGN_DEEPDIVE_PAID_METRIC_KEYS.has(metric) && !hasPaidMediaSource));
+}
+
+async function getCampaignDeepDiveMetricCapabilityWriteFailure(campaignId: string, configuration: unknown): Promise<{ status: number; body: any } | null> {
+  const parsed: any = typeof configuration === "string" ? JSON.parse(configuration) : configuration;
+  const selectedSections = Array.isArray(parsed?.selectedSections) ? parsed.selectedSections.map(String) : [];
+  if (String(parsed?.reportType || "").trim() !== "custom" || !selectedSections.includes("metrics")) return null;
+
+  let performanceSummary: any;
+  try {
+    performanceSummary = (await readCertifiedCampaignOutcomeTotals(campaignId, "90days")).performanceSummary;
+  } catch (error) {
+    console.error("Campaign DeepDive metric capability check error:", error);
+    return {
+      status: 503,
+      body: { success: false, message: "Unable to verify Campaign DeepDive metric availability; report was not saved", code: "CAMPAIGN_DEEPDIVE_CAPABILITY_UNAVAILABLE" },
+    };
+  }
+
+  const unavailableMetrics = resolveUnavailableCampaignDeepDiveSelectedMetrics(configuration, performanceSummary);
+  if (unavailableMetrics === null) {
+    return {
+      status: 503,
+      body: { success: false, message: "Unable to verify Campaign DeepDive metric availability; report was not saved", code: "CAMPAIGN_DEEPDIVE_CAPABILITY_UNAVAILABLE" },
+    };
+  }
+  if (unavailableMetrics.length > 0) {
+    return {
+      status: 400,
+      body: { success: false, message: "Selected metrics are unavailable from this campaign's connected sources", code: "CAMPAIGN_DEEPDIVE_METRIC_UNAVAILABLE", metrics: unavailableMetrics },
+    };
+  }
+  return null;
 }
 
 export function isValidReportScheduleFrequency(value: string): boolean {
@@ -29027,10 +29089,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { platformType } = req.params;
       const body = (req.body || {}) as any;
 
-      // Soft caps to prevent report-library bloat (enterprise hygiene)
-      const MAX_ACTIVE_REPORTS_PER_CAMPAIGN = 50;
-      const MAX_SCHEDULED_ACTIVE_REPORTS_PER_CAMPAIGN = 10;
-
       const campaignId = body?.campaignId ? String(body.campaignId) : null;
       if (!campaignId) {
         return res.status(400).json({ success: false, message: "campaignId is required" });
@@ -29056,8 +29114,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               code: "SCHEDULED_REPORT_LIMIT_REACHED",
             });
           }
-        } catch {
-          // Don't block on count failures
+        } catch (error) {
+          if (String(platformType || "").trim().toLowerCase() === "campaign_deepdive") {
+            console.error("Campaign DeepDive report limit check error:", error);
+            return res.status(503).json({
+              success: false,
+              message: "Unable to verify report limits; report was not created",
+              code: "REPORT_LIMIT_CHECK_UNAVAILABLE",
+            });
+          }
         }
       }
 
@@ -29116,6 +29181,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: `reportType must be one of: ${Array.from(allowedReportTypes).join(", ")}`,
         });
       }
+      if (normalizedPlatformType === "campaign_deepdive" && reportType !== "custom") {
+        return res.status(400).json({ success: false, message: "Campaign DeepDive reportType must be custom" });
+      }
 
       // Normalize configuration to string for DB safety
       const configuration =
@@ -29124,6 +29192,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : typeof body.configuration === "string"
             ? body.configuration
             : JSON.stringify(body.configuration);
+      if (normalizedPlatformType === "campaign_deepdive") {
+        const { isValidCampaignDeepDiveReportConfigurationForPersistence } = await import("./report-scheduler.js");
+        if (!isValidCampaignDeepDiveReportConfigurationForPersistence(configuration)) {
+          return res.status(400).json({ success: false, message: "Invalid Campaign DeepDive report configuration" });
+        }
+        const capabilityFailure = await getCampaignDeepDiveMetricCapabilityWriteFailure(campaignId, configuration);
+        if (capabilityFailure) return res.status(capabilityFailure.status).json(capabilityFailure.body);
+      }
 
       const requestData = {
         ...body,
@@ -29134,7 +29210,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const validated = insertLinkedInReportSchema.parse(requestData);
-      const report = await storage.createPlatformReport(validated);
+      let report;
+      if (normalizedPlatformType === "campaign_deepdive") {
+        const result = await storage.createCampaignDeepDivePlatformReport(validated, {
+          maxActiveReports: MAX_ACTIVE_REPORTS_PER_CAMPAIGN,
+          maxScheduledActiveReports: MAX_SCHEDULED_ACTIVE_REPORTS_PER_CAMPAIGN,
+        });
+        if (result.limitCode === "REPORT_LIMIT_REACHED") {
+          return res.status(400).json({ success: false, message: `Report limit reached (${MAX_ACTIVE_REPORTS_PER_CAMPAIGN}). Archive older reports to keep the library clean.`, code: result.limitCode });
+        }
+        if (result.limitCode === "SCHEDULED_REPORT_LIMIT_REACHED") {
+          return res.status(400).json({ success: false, message: `Scheduled report limit reached (${MAX_SCHEDULED_ACTIVE_REPORTS_PER_CAMPAIGN}). Archive/disable an existing scheduled report first.`, code: result.limitCode });
+        }
+        report = result.report;
+      } else {
+        report = await storage.createPlatformReport(validated);
+      }
+      if (!report) throw new Error("Platform report creation failed");
 
       res.status(201).json(report);
     } catch (error) {
@@ -29215,6 +29307,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: `reportType must be one of: ${Array.from(allowedReportTypes).join(", ")}`,
           });
         }
+        if (normalizedPlatformType === "campaign_deepdive" && reportType !== "custom") {
+          return res.status(400).json({ success: false, message: "Campaign DeepDive reportType must be custom" });
+        }
         body.reportType = reportType;
       }
 
@@ -29225,6 +29320,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : typeof body.configuration === "string"
               ? body.configuration
               : JSON.stringify(body.configuration);
+        if (normalizedPlatformType === "campaign_deepdive") {
+          const { isValidCampaignDeepDiveReportConfigurationForPersistence } = await import("./report-scheduler.js");
+          if (!isValidCampaignDeepDiveReportConfigurationForPersistence(body.configuration)) {
+            return res.status(400).json({ success: false, message: "Invalid Campaign DeepDive report configuration" });
+          }
+          const capabilityFailure = await getCampaignDeepDiveMetricCapabilityWriteFailure(String((existing as any).campaignId || ""), body.configuration);
+          if (capabilityFailure) return res.status(capabilityFailure.status).json(capabilityFailure.body);
+        }
       }
 
       const validated = insertLinkedInReportSchema.partial().parse({
@@ -29236,7 +29339,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       delete validated.campaignId;
       delete validated.platformType;
 
-      const report = await storage.updatePlatformReport(reportId, validated);
+      let report;
+      if (normalizedPlatformType === "campaign_deepdive") {
+        const result = await storage.updateCampaignDeepDivePlatformReport(reportId, String((existing as any).campaignId || ""), validated, {
+          maxActiveReports: MAX_ACTIVE_REPORTS_PER_CAMPAIGN,
+          maxScheduledActiveReports: MAX_SCHEDULED_ACTIVE_REPORTS_PER_CAMPAIGN,
+        });
+        if (result.limitCode === "REPORT_LIMIT_REACHED") {
+          return res.status(400).json({ success: false, message: `Report limit reached (${MAX_ACTIVE_REPORTS_PER_CAMPAIGN}). Archive older reports to keep the library clean.`, code: result.limitCode });
+        }
+        if (result.limitCode === "SCHEDULED_REPORT_LIMIT_REACHED") {
+          return res.status(400).json({ success: false, message: `Scheduled report limit reached (${MAX_SCHEDULED_ACTIVE_REPORTS_PER_CAMPAIGN}). Archive/disable an existing scheduled report first.`, code: result.limitCode });
+        }
+        report = result.report;
+      } else {
+        report = await storage.updatePlatformReport(reportId, validated);
+      }
       if (!report) {
         return res.status(404).json({ message: "Report not found" });
       }

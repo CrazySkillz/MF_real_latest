@@ -51,7 +51,11 @@ vi.mock("jspdf", () => ({
   },
 }));
 
-import { buildPdfAttachmentForReport } from "./report-scheduler";
+import {
+  buildPdfAttachmentForReport,
+  isValidCampaignDeepDiveReportConfiguration,
+  isValidCampaignDeepDiveReportConfigurationForPersistence,
+} from "./report-scheduler";
 
 const metric = (value: number, sources = ["ga4"]) => ({ available: true, value, sources, unavailableReasons: [] });
 const performanceSummary = {
@@ -227,6 +231,117 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
   });
 
   afterEach(() => vi.useRealTimers());
+
+  it("fails closed before loading report data when no sections are selected", async () => {
+    const pdf = await buildPdfAttachmentForReport({
+      report: report("performance-summary", []),
+      windowStart: "2026-07-29",
+      windowEnd: "2026-08-27",
+      campaignName: "Campaign",
+    });
+
+    expect(pdf).toBeNull();
+    expect(pdfTextCalls).toHaveLength(0);
+    expect(aggregateCampaignMetricsMock).not.toHaveBeenCalled();
+    expect(storageMock.getCampaign).not.toHaveBeenCalled();
+  });
+
+  it("fails closed for unknown or report-type-mismatched sections", async () => {
+    const invalidReports = [
+      report("unknown", ["unknown:overview"]),
+      report("performance-summary", ["financial-analysis:overview"]),
+      report("performance-summary", ["performance-summary:unknown"]),
+    ];
+
+    for (const invalidReport of invalidReports) {
+      const pdf = await buildPdfAttachmentForReport({
+        report: invalidReport,
+        windowStart: "2026-07-29",
+        windowEnd: "2026-08-27",
+        campaignName: "Campaign",
+      });
+      expect(pdf).toBeNull();
+    }
+
+    expect(pdfTextCalls).toHaveLength(0);
+    expect(aggregateCampaignMetricsMock).not.toHaveBeenCalled();
+    expect(storageMock.getCampaign).not.toHaveBeenCalled();
+  });
+
+  it("validates Campaign DeepDive configurations before persistence or rendering", () => {
+    expect(isValidCampaignDeepDiveReportConfiguration({
+      reportType: "performance-summary",
+      selectedSections: ["performance-summary:overview"],
+    })).toBe(true);
+    expect(isValidCampaignDeepDiveReportConfiguration(JSON.stringify({
+      reportType: "custom",
+      selectedSections: ["metrics", "kpis"],
+    }))).toBe(true);
+    expect(isValidCampaignDeepDiveReportConfiguration({
+      reportType: "platform-comparison",
+      selectedSections: ["platform-comparison:overview"],
+    })).toBe(true);
+
+    expect(isValidCampaignDeepDiveReportConfiguration(null)).toBe(false);
+    expect(isValidCampaignDeepDiveReportConfiguration("{")).toBe(false);
+    expect(isValidCampaignDeepDiveReportConfiguration({ reportType: "performance-summary", selectedSections: [] })).toBe(false);
+    expect(isValidCampaignDeepDiveReportConfiguration({ reportType: "unknown", selectedSections: ["unknown:overview"] })).toBe(false);
+    expect(isValidCampaignDeepDiveReportConfiguration({ reportType: "performance-summary", selectedSections: ["financial-analysis:overview"] })).toBe(false);
+    expect(isValidCampaignDeepDiveReportConfiguration({ reportType: "performance-summary", selectedSections: ["performance-summary:unknown"] })).toBe(false);
+
+    expect(isValidCampaignDeepDiveReportConfigurationForPersistence({
+      reportType: "custom",
+      selectedSections: ["metrics"],
+      selectedMetrics: ["users", "revenue"],
+    })).toBe(true);
+    expect(isValidCampaignDeepDiveReportConfigurationForPersistence({
+      reportType: "custom",
+      selectedSections: ["kpis", "benchmarks"],
+      selectedMetrics: [],
+    })).toBe(true);
+    expect(isValidCampaignDeepDiveReportConfigurationForPersistence({
+      reportType: "performance-summary",
+      selectedSections: ["performance-summary:overview"],
+      selectedMetrics: [],
+    })).toBe(true);
+    expect(isValidCampaignDeepDiveReportConfigurationForPersistence({
+      reportType: "custom",
+      selectedSections: ["metrics"],
+      selectedMetrics: [],
+    })).toBe(false);
+    expect(isValidCampaignDeepDiveReportConfigurationForPersistence({
+      reportType: "custom",
+      selectedSections: ["metrics"],
+      selectedMetrics: ["users", "unknown"],
+    })).toBe(false);
+    expect(isValidCampaignDeepDiveReportConfigurationForPersistence({
+      reportType: "custom",
+      selectedSections: ["metrics"],
+      selectedMetrics: ["users", "users"],
+    })).toBe(false);
+    expect(isValidCampaignDeepDiveReportConfigurationForPersistence({
+      reportType: "performance-summary",
+      selectedSections: ["performance-summary:overview"],
+      selectedMetrics: ["users"],
+    })).toBe(false);
+  });
+
+  it("keeps supported legacy Platform Comparison and custom section keys renderable", async () => {
+    const legacyReports = [
+      report("platform-comparison", ["platform-comparison:overview"]),
+      report("custom", ["metrics", "kpis", "benchmarks"]),
+    ];
+
+    for (const legacyReport of legacyReports) {
+      const pdf = await buildPdfAttachmentForReport({
+        report: legacyReport,
+        windowStart: "2026-07-29",
+        windowEnd: "2026-08-27",
+        campaignName: "Campaign",
+      });
+      expect(pdf).not.toBeNull();
+    }
+  });
 
   it("uses cumulative UI traffic, current financial totals, and the default 30-day Trend comparison", async () => {
     await buildPdfAttachmentForReport({
@@ -462,6 +577,30 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfTextCalls).toContain("- Imported Spend: $2,699.75");
     expect(pdfTextCalls).not.toContain("ROI & ROAS");
     expect(getCampaignMetricTotalsMock).not.toHaveBeenCalled();
+  });
+
+  it("uses the campaign reporting timezone for financial pacing instead of the delivery timezone", async () => {
+    vi.setSystemTime(new Date("2026-08-28T23:30:00.000Z"));
+    storageMock.getCampaign.mockResolvedValue({
+      id: "campaign-1",
+      name: "Campaign",
+      currency: "USD",
+      reportingTimeZone: "Pacific/Honolulu",
+      budget: "10799",
+      pacingStartDate: "2026-08-28",
+      pacingEndDate: "2026-08-31",
+    });
+
+    await buildPdfAttachmentForReport({
+      report: { ...report("financial-analysis", ["financial-analysis:overview"]), scheduleTimeZone: "Pacific/Kiritimati" },
+      windowStart: "2026-07-29",
+      windowEnd: "2026-08-27",
+      campaignName: "Campaign",
+    });
+
+    expect(pdfTextCalls).toContain("- Daily Burn Rate Basis: Based on 1 elapsed budget-period day");
+    expect(pdfTextCalls).toContain("- Pacing Status: On Track");
+    expect(pdfTextCalls).not.toContain("- Daily Burn Rate Basis: Based on 2 elapsed budget-period days");
   });
 
   it("keeps available zero-valued GA4, revenue, and spend provenance visible", async () => {

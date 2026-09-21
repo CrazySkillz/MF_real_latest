@@ -103,6 +103,24 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("{reportDescription.length}/{REPORT_DESCRIPTION_MAX_LENGTH}");
   });
 
+  it("keeps paused reports paused during edits and reserves activation for Resume", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+    const saveStart = reports.indexOf("const saveReport = async () => {");
+    const saveEnd = reports.indexOf("const deletePendingReport = async () => {", saveStart);
+    const saveFlow = reports.slice(saveStart, saveEnd);
+    const resumeStart = reports.indexOf("const resumeScheduledReport = async (report: StoredReport) => {");
+    const resumeEnd = reports.indexOf("const localVisibleReports", resumeStart);
+    const resumeFlow = reports.slice(resumeStart, resumeEnd);
+
+    expect(saveFlow).toContain('const preservePausedStatus = scheduleEnabled && String(existingReport?.status || "").toLowerCase() === "paused";');
+    expect(saveFlow).toContain("if (preservePausedStatus) {");
+    expect(saveFlow).toContain("if (backendReportId) await disableBackendScheduledReport(backendReportId, backendPlatformType, reportPayload);");
+    expect(saveFlow).toContain('reportStorage.updateReport(editingReportId, { ...reportPayload, status: "Paused" });');
+    expect(saveFlow.indexOf("if (preservePausedStatus) {")).toBeLessThan(saveFlow.indexOf("else if (scheduleEnabled) {"));
+    expect(resumeFlow).toContain("const backendReport = await saveBackendScheduledReport(reportPayload, report.backendReportId);");
+    expect(resumeFlow).toContain('status: "Scheduled",');
+  });
+
   it("keeps create mode blank and separates download from scheduling", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 
@@ -434,7 +452,8 @@ describe("campaign Custom Report regression guard", () => {
 
     expect(builder).toContain('(campaign as any)?.pacingStartDate');
     expect(builder).toContain('(campaign as any)?.pacingEndDate');
-    expect(builder).toContain('getZonedParts(new Date(), String((report as any)?.scheduleTimeZone || (campaign as any)?.reportingTimeZone || "UTC"))');
+    expect(builder).toContain('getZonedParts(new Date(), String((campaign as any)?.reportingTimeZone || "UTC"))');
+    expect(builder).not.toContain('(report as any)?.scheduleTimeZone || (campaign as any)?.reportingTimeZone');
     expect(builder).not.toContain('(campaign as any)?.startDate');
     expect(builder).not.toContain('(campaign as any)?.endDate');
     expect(builder).toContain('const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase() || "USD";');
@@ -613,6 +632,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('label: "Executive Summary"');
     expect(reports).toContain('const campaignReportTypeOptions = editingReportId && reportType === "platform-comparison"');
     expect(reports).toContain('campaignDeepDiveReportTypes.filter((type) => type.key !== "platform-comparison")');
+    expect(reports).toContain('editingReportId && reportType === "custom" ? [{ key: "custom", label: "Custom Report", tabs: [] }] : []');
     expect(reports).toContain('campaignReportTypeOptions.map((type) => (');
     expect(reports.indexOf('label: "Performance Summary"')).toBeLessThan(reports.indexOf('label: "Budget & Financial Analysis"'));
     expect(reports.indexOf('label: "Budget & Financial Analysis"')).toBeLessThan(reports.indexOf('label: "Platform Comparison"'));
@@ -643,6 +663,71 @@ describe("campaign Custom Report regression guard", () => {
     for (const gates of Object.values(dedicatedRendererGates)) {
       gates.forEach((gate) => expect(reports).toContain(gate));
     }
+  });
+
+  it("rejects invalid Campaign DeepDive configurations before create or update persistence", () => {
+    const routes = readFileSync(join(process.cwd(), "server/routes-oauth.ts"), "utf-8");
+    const createRoute = routes.slice(
+      routes.indexOf('app.post("/api/platforms/:platformType/reports"'),
+      routes.indexOf('app.patch("/api/platforms/:platformType/reports/:reportId"'),
+    );
+    const updateRoute = routes.slice(
+      routes.indexOf('app.patch("/api/platforms/:platformType/reports/:reportId"'),
+      routes.indexOf('app.delete("/api/platforms/:platformType/reports/:reportId"'),
+    );
+
+    expect(createRoute).toContain('normalizedPlatformType === "campaign_deepdive"');
+    expect(createRoute).toContain("isValidCampaignDeepDiveReportConfigurationForPersistence(configuration)");
+    expect(createRoute.indexOf("isValidCampaignDeepDiveReportConfigurationForPersistence(configuration)"))
+      .toBeLessThan(createRoute.indexOf("storage.createPlatformReport"));
+    expect(createRoute).toContain("getCampaignDeepDiveMetricCapabilityWriteFailure(campaignId, configuration)");
+    expect(createRoute.indexOf("getCampaignDeepDiveMetricCapabilityWriteFailure(campaignId, configuration)"))
+      .toBeLessThan(createRoute.indexOf("storage.createPlatformReport"));
+    expect(updateRoute).toContain('if (typeof body?.configuration !== "undefined")');
+    expect(updateRoute).toContain("isValidCampaignDeepDiveReportConfigurationForPersistence(body.configuration)");
+    expect(updateRoute.indexOf("isValidCampaignDeepDiveReportConfigurationForPersistence(body.configuration)"))
+      .toBeLessThan(updateRoute.indexOf("storage.updatePlatformReport"));
+    expect(updateRoute).toContain('getCampaignDeepDiveMetricCapabilityWriteFailure(String((existing as any).campaignId || ""), body.configuration)');
+    expect(updateRoute.indexOf("getCampaignDeepDiveMetricCapabilityWriteFailure"))
+      .toBeLessThan(updateRoute.indexOf("storage.updatePlatformReport"));
+  });
+
+  it("requires the Campaign DeepDive outer report type while preserving partial updates", () => {
+    const routes = readFileSync(join(process.cwd(), "server/routes-oauth.ts"), "utf-8");
+    const createRoute = routes.slice(
+      routes.indexOf('app.post("/api/platforms/:platformType/reports"'),
+      routes.indexOf('app.patch("/api/platforms/:platformType/reports/:reportId"'),
+    );
+    const updateRoute = routes.slice(
+      routes.indexOf('app.patch("/api/platforms/:platformType/reports/:reportId"'),
+      routes.indexOf('app.delete("/api/platforms/:platformType/reports/:reportId"'),
+    );
+    const updateReportTypeBlock = updateRoute.slice(
+      updateRoute.indexOf('if (typeof body?.reportType !== "undefined")'),
+      updateRoute.indexOf('if (typeof body?.configuration !== "undefined")'),
+    );
+
+    expect(createRoute).toContain('normalizedPlatformType === "campaign_deepdive" && reportType !== "custom"');
+    expect(createRoute).toContain('message: "Campaign DeepDive reportType must be custom"');
+    expect(createRoute.indexOf('message: "Campaign DeepDive reportType must be custom"'))
+      .toBeLessThan(createRoute.indexOf("storage.createPlatformReport"));
+    expect(updateReportTypeBlock).toContain('normalizedPlatformType === "campaign_deepdive" && reportType !== "custom"');
+    expect(updateReportTypeBlock).toContain('message: "Campaign DeepDive reportType must be custom"');
+  });
+
+  it("fails closed before Campaign DeepDive report creation when the library limit check is unavailable", () => {
+    const routes = readFileSync(join(process.cwd(), "server/routes-oauth.ts"), "utf-8");
+    const createRoute = routes.slice(
+      routes.indexOf('app.post("/api/platforms/:platformType/reports"'),
+      routes.indexOf('app.patch("/api/platforms/:platformType/reports/:reportId"'),
+    );
+
+    expect(createRoute).toContain('if (String(platformType || "").trim().toLowerCase() === "campaign_deepdive")');
+    expect(createRoute).toContain('code: "REPORT_LIMIT_CHECK_UNAVAILABLE"');
+    expect(createRoute).toContain('message: "Unable to verify report limits; report was not created"');
+    expect(createRoute.indexOf('code: "REPORT_LIMIT_CHECK_UNAVAILABLE"'))
+      .toBeLessThan(createRoute.indexOf("storage.createPlatformReport"));
+    expect(createRoute).not.toContain("Don't block on count failures");
   });
 
   it("renders one consolidated Executive Summary PDF section with the live section set", () => {

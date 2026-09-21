@@ -458,7 +458,10 @@ export default function Reports() {
   const customReportSelectableMetricSet = new Set(customReportSelectableMetricKeys);
   const campaignReportTypeOptions = editingReportId && reportType === "platform-comparison"
     ? campaignDeepDiveReportTypes
-    : campaignDeepDiveReportTypes.filter((type) => type.key !== "platform-comparison");
+    : [
+        ...campaignDeepDiveReportTypes.filter((type) => type.key !== "platform-comparison"),
+        ...(editingReportId && reportType === "custom" ? [{ key: "custom", label: "Custom Report", tabs: [] }] : []),
+      ];
   const campaignReportTabs = campaignContextId ? getCampaignReportTabs(reportType) : [];
 
   // Load reports from storage
@@ -840,11 +843,15 @@ export default function Reports() {
       const existingReport = editingReportId
         ? storedReportsForEdit.find((report) => report.id === editingReportId)
         : undefined;
+      const preservePausedStatus = scheduleEnabled && String(existingReport?.status || "").toLowerCase() === "paused";
       const backendReportId = existingReport?.backendReportId;
       const backendPlatformType = existingReport?.backendPlatformType || CAMPAIGN_DEEPDIVE_REPORT_PLATFORM;
 
       if (editingReportId) {
-        if (scheduleEnabled) {
+        if (preservePausedStatus) {
+          if (backendReportId) await disableBackendScheduledReport(backendReportId, backendPlatformType, reportPayload);
+          reportStorage.updateReport(editingReportId, { ...reportPayload, status: "Paused" });
+        } else if (scheduleEnabled) {
           const backendReport = await saveBackendScheduledReport(reportPayload, backendReportId);
           reportStorage.updateReport(editingReportId, {
             ...reportPayload,

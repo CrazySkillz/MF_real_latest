@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const pdfTextCalls = vi.hoisted((): string[] => []);
 const aggregateCampaignMetricsMock = vi.hoisted(() => vi.fn());
 const getCampaignMetricTotalsMock = vi.hoisted(() => vi.fn());
+const getCampaignMetricTotalsAtDateMock = vi.hoisted(() => vi.fn());
 const storageMock = vi.hoisted(() => ({
   getCampaign: vi.fn(),
   getCampaignKPIs: vi.fn(),
@@ -16,7 +17,10 @@ const storageMock = vi.hoisted(() => ({
 
 vi.mock("./storage", () => ({ storage: storageMock }));
 vi.mock("./scheduler", () => ({ aggregateCampaignMetrics: aggregateCampaignMetricsMock }));
-vi.mock("./utils/campaign-current-values", () => ({ getCampaignMetricTotals: getCampaignMetricTotalsMock }));
+vi.mock("./utils/campaign-current-values", () => ({
+  getCampaignMetricTotals: getCampaignMetricTotalsMock,
+  getCampaignMetricTotalsAtDate: getCampaignMetricTotalsAtDateMock,
+}));
 vi.mock("./db", () => ({ db: {} }));
 vi.mock("./services/email-service", () => ({ emailService: {} }));
 vi.mock("./ga4-kpi-benchmark-jobs", () => ({ runGA4DailyKPIAndBenchmarkJobs: vi.fn() }));

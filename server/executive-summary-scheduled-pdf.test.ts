@@ -117,11 +117,8 @@ describe("scheduled Executive Summary PDF", () => {
     expect(storageMock.getPlatformBenchmarks).not.toHaveBeenCalled();
   });
 
-  it("keeps certified GA4 rows separate when another report section also needs them", async () => {
-    storageMock.getPlatformKPIs.mockResolvedValue([{ id: "ga4-kpi", name: "Certified GA4 KPI", currentValue: "12", targetValue: "15", unit: "count" }]);
-    storageMock.getPlatformBenchmarks.mockResolvedValue([{ id: "ga4-bm", name: "Certified GA4 Benchmark", currentValue: "12", benchmarkValue: "15", unit: "count" }]);
-
-    await buildPdfAttachmentForReport({
+  it("rejects mixed preset sections before loading report data", async () => {
+    const buffer = await buildPdfAttachmentForReport({
       report: executiveReport(["performance-summary:overview", "executive-summary:overview"]),
       windowStart: "2026-07-01",
       windowEnd: "2026-07-30",
@@ -129,12 +126,10 @@ describe("scheduled Executive Summary PDF", () => {
       isTest: true,
     });
 
-    expect(pdfTextCalls.some((text) => text.includes("Certified GA4 KPI"))).toBe(true);
-    expect(pdfTextCalls.some((text) => text.includes("Revenue target"))).toBe(true);
-    expect(storageMock.getPlatformKPIs).toHaveBeenCalledWith("google_analytics", "campaign-1");
-    expect(storageMock.getPlatformBenchmarks).toHaveBeenCalledWith("google_analytics", "campaign-1");
-    expect(storageMock.getCampaignKPIs).toHaveBeenCalledWith("campaign-1");
-    expect(storageMock.getCampaignBenchmarks).toHaveBeenCalledWith("campaign-1");
+    expect(buffer).toBeNull();
+    expect(storageMock.getCampaign).not.toHaveBeenCalled();
+    expect(storageMock.getPlatformKPIs).not.toHaveBeenCalled();
+    expect(storageMock.getCampaignKPIs).not.toHaveBeenCalled();
   });
 
   it("labels cumulative Executive Summary exceptions with the aggregate reporting window", async () => {

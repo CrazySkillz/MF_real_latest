@@ -194,6 +194,12 @@ export default function ExecutiveSummary() {
     if (!aggregateMetricAvailable(metricName)) return "Unavailable";
     return `${aggregateMetricValue(metricName).toFixed(2)}x`;
   };
+  const websiteOutcomeMetricLabels: Record<string, string> = { cvr: "Conversion Rate", revenue: "Revenue", conversions: "Conversions" };
+  const formatMetricLabelList = (labels: string[]): string => labels.length <= 1
+    ? labels[0] || "website outcomes"
+    : labels.length === 2
+      ? `${labels[0]} and ${labels[1]}`
+      : `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
   const getRecommendationExpectedImpactItems = (rec: any): string[] => {
     if (rec?.category !== "Website Outcomes") return [];
     const webMetrics: string[] = [];
@@ -208,10 +214,9 @@ export default function ExecutiveSummary() {
       ? unavailableTargetText
       : (expectedImpact.match(/KPI or Benchmark targets exist for [^.]+; compare against those targets before judging quality\./)?.[0] || "");
     const evidenceText = webMetrics.length > 0 ? `Current evidence: ${webMetrics.join(", ")}.` : "";
-    const targetMetricLabels: Record<string, string> = { cvr: "Conversion rate", revenue: "Revenue", conversions: "Conversions" };
-    const targetMetrics = new Set(Object.keys(targetMetricLabels));
+    const targetMetrics = new Set(Object.keys(websiteOutcomeMetricLabels));
     const targetComparisons: string[] = [];
-    let hasBelowTarget = false;
+    const exceptionMetricLabels: string[] = [];
     executiveKpiProgress.forEach((kpi: any) => {
       const metric = resolveExecutiveKpiMetric(kpi);
       if (!metric || !targetMetrics.has(metric)) return;
@@ -220,8 +225,8 @@ export default function ExecutiveSummary() {
       const targetState = resolveExecutiveKpiTargetState(kpi);
       if (!targetState) return;
       const isBelow = targetState?.band === "below";
-      if (isBelow) hasBelowTarget = true;
-      targetComparisons.push(`${targetMetricLabels[metric]} KPI is ${isBelow ? "below target" : "on track"}`);
+      if (isBelow) exceptionMetricLabels.push(websiteOutcomeMetricLabels[metric]);
+      targetComparisons.push(`${websiteOutcomeMetricLabels[metric]} KPI is ${isBelow ? "below target" : "on track"}`);
     });
     executiveBenchmarkComparison.forEach((bm: any) => {
       const metric = bm.aggregateMetric || resolveKpiAggregateMetric(bm);
@@ -229,11 +234,12 @@ export default function ExecutiveSummary() {
       const benchmark = Number(bm.benchmark) || 0;
       if (benchmark <= 0) return;
       const isBelow = bm.status !== "on_track";
-      if (isBelow) hasBelowTarget = true;
+      if (isBelow) exceptionMetricLabels.push(websiteOutcomeMetricLabels[metric]);
       const benchmarkState = bm.status === "behind" ? "behind benchmark" : bm.status === "needs_attention" ? "needs attention" : "on track";
-      targetComparisons.push(`${targetMetricLabels[metric]} Benchmark is ${benchmarkState}`);
+      targetComparisons.push(`${websiteOutcomeMetricLabels[metric]} Benchmark is ${benchmarkState}`);
     });
     targetComparisons.splice(0, targetComparisons.length, ...Array.from(new Set(targetComparisons)).sort((left, right) => left.localeCompare(right)));
+    const orderedExceptionMetricLabels = Array.from(new Set(exceptionMetricLabels)).sort((left, right) => left.localeCompare(right));
     const targetComparisonText = targetComparisons.length > 0
       ? `Target check: ${targetComparisons.join("; ")}.`
       : targetText
@@ -241,8 +247,8 @@ export default function ExecutiveSummary() {
         : "";
     const nextActionText = targetComparisons.length === 0
       ? "Next action: create or confirm KPI/Benchmark targets for conversion rate, revenue, and conversions before judging quality."
-      : hasBelowTarget
-        ? "Next action: investigate the below-target outcome metrics, then inspect relevant landing pages, conversion paths, and revenue-source drivers."
+      : orderedExceptionMetricLabels.length > 0
+        ? `Next action: investigate ${formatMetricLabelList(orderedExceptionMetricLabels)}, then inspect the relevant measurement and reporting inputs.`
         : "Next action: continue monitoring these outcome targets.";
     return [evidenceText, targetComparisonText, nextActionText]
       .filter(Boolean)
@@ -397,11 +403,14 @@ export default function ExecutiveSummary() {
   const hasConnectedPaidMediaSource = aggregateSources.some((source: any) =>
     source?.connected === true && source?.category === "paid_media"
   );
-  const hasWebsiteOutcomeTargetException = [...executiveKpiExceptions, ...executiveBenchmarkExceptions]
-    .some((record: any) => ["cvr", "conversions", "revenue"].includes(String(record?.metricKey || record?.aggregateMetric || record?.metric || "")));
+  const websiteOutcomeExceptionMetricKeys = Array.from(new Set([...executiveKpiExceptions, ...executiveBenchmarkExceptions]
+    .map((record: any) => String(record?.metricKey || record?.aggregateMetric || record?.metric || ""))
+    .filter((metric) => Object.prototype.hasOwnProperty.call(websiteOutcomeMetricLabels, metric))))
+    .sort((left, right) => websiteOutcomeMetricLabels[left].localeCompare(websiteOutcomeMetricLabels[right]));
+  const hasWebsiteOutcomeTargetException = websiteOutcomeExceptionMetricKeys.length > 0;
   const sourceBackedRecommendations = hasWebAnalyticsOutcomeEvidence && hasWebsiteOutcomeTargetException ? [{
     category: "Website Outcomes",
-    action: "Investigate below-target website outcomes",
+    action: `Investigate ${formatMetricLabelList(websiteOutcomeExceptionMetricKeys.map((metric) => websiteOutcomeMetricLabels[metric]))}`,
   }] : [];
   const riskKpiMissCount = executiveKpiExceptions.length;
   const riskBenchmarkMissCount = executiveBenchmarkComparison.filter((bm: any) => bm.status === "behind").length;

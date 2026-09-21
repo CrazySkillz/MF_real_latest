@@ -552,8 +552,9 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("const formatAggregateInteger = (metricName: string) =>");
     expect(page).toContain("aggregateMetricAvailable(metricName) ? Math.trunc(aggregateMetricValue(metricName)).toLocaleString() : \"Unavailable\";");
     expect(page).toContain("return `${aggregateMetricValue(metricName).toFixed(2)}x`;");
-    expect(page).toContain('GA4 property traffic and conversion metrics cover ${currentValueWindow.startDate} to ${currentValueWindow.endDate}; connected ${sourceToDateFinancialLabel}');
-    expect(page).toContain('source-to-date through ${currentValueWindow.endDate}. Combined connected-source financial metrics show');
+    expect(page).toContain('? `Through ${currentValueWindow.endDate}`');
+    expect(page).toContain('`${executiveWindowDescription}: ${executiveMetricParts.join(", ")}.`');
+    expect(page).toContain('`${executiveWindowDescription}: ROI and ROAS are unavailable.`');
     expect(page).toContain("const getRecommendationExpectedImpactItems = (rec: any): string[] => {");
     expect(page).toContain('if (rec?.category !== "Website Outcomes") return [];');
     expect(page).toContain('if (aggregateMetricAvailable("users")) webMetrics.push');
@@ -605,7 +606,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).not.toContain("Campaign is performing well");
     expect(page).toContain('if (aggregateMetricAvailable("roi")) executiveMetricParts.push(`ROI is ${formatAggregatePercent("roi")}`);');
     expect(page).toContain('if (aggregateMetricAvailable("roas")) executiveMetricParts.push(`ROAS is ${formatAggregateRatio("roas")}`);');
-    expect(page).toContain("const executiveSummaryNarrative = `${(campaign as any)?.name}: ${executiveMetricSummary} Risk level is ${displayedRiskLevel}. ${executiveTrajectorySummary}`;");
+    expect(page).toContain('`${displayedRiskFactors.map((factor) => factor.message).join(". ")}.`');
+    expect(page).toContain("const executiveSummaryNarrative = `${executiveMetricSummary} Risk: ${displayedRiskLevel}. ${executiveTrajectorySummary}`;");
     expect(page).toContain("const resolveKpiAggregateMetric = (kpi: any): string | null => {");
     expect(page).toContain("const resolveExecutiveKpiMetric = (kpi: any): string =>");
     expect(page).toContain("const executiveKpiProgress = Array.isArray((executiveSummary as any).kpiProgress)");
@@ -628,7 +630,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("KPI Status Unavailable");
     expect(page).toContain("No KPI Exceptions");
     expect(page).toContain('currentValueWindow?.mode === "initial_import_to_latest_completed_day"');
-    expect(page).toContain('`the ${currentValueWindow.startDate} to ${currentValueWindow.endDate} reporting window`');
+    expect(page).toContain('`Through ${currentValueWindow.endDate}`');
     expect(page).toContain("No campaign KPI has both an available value and a positive target in its configured connected-source reporting window.");
     expect(page).toContain("No below-target KPI was found among campaign KPIs evaluated in their configured connected-source reporting windows.");
     expect(page).toContain("{executiveBenchmarkExceptions.length > 0 && (");
@@ -741,7 +743,10 @@ describe("campaign Executive Summary regression guard", () => {
     expect(overview).not.toContain("health.grade");
     expect(overview).not.toContain("health.score");
     expect(overview).toContain("7-Day Snapshot Trajectory");
-    expect(overview).toContain("Not enough history");
+    expect(overview).toContain("{executiveTrajectoryUnavailableLabel}");
+    expect(page).toContain('? "History not comparable yet"');
+    expect(page).toContain('? "Revenue history unavailable"');
+    expect(page).toContain(': "Not enough history";');
     expect(page).toContain("No matching Executive Summary reading exists for seven days earlier yet.");
     expect(page).toContain("Earlier readings used different sources or reporting settings, so they cannot be compared safely.");
     expect(page).toContain("Revenue was unavailable in one of the two readings.");

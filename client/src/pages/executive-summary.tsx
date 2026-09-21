@@ -165,19 +165,14 @@ export default function ExecutiveSummary() {
     && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.startDate || ""))
     && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.endDate || ""))
     && currentValueWindow.startDate <= currentValueWindow.endDate
-    ? `the ${currentValueWindow.startDate} to ${currentValueWindow.endDate} reporting window`
-    : "this 90-day view";
+    ? `Through ${currentValueWindow.endDate}`
+    : "Current view";
   const aggregateMetric = (metricName: string) => (performanceSummary as any)?.totals?.[metricName];
   const aggregateMetricAvailable = (metricName: string) => aggregateMetric(metricName)?.available === true;
   const aggregateMetricValue = (metricName: string): number => {
     const metric = aggregateMetric(metricName);
     return metric?.available === true && metric?.value !== null ? Number(metric.value) || 0 : 0;
   };
-  const sourceToDateFinancialKinds = [
-    aggregateSources.some((source: any) => source?.connected === true && source?.category === "financial" && source?.includedMetrics?.includes("revenue")) ? "revenue" : null,
-    aggregateMetric("spend")?.sources?.includes("canonical_spend_sources") ? "spend" : null,
-  ].filter(Boolean) as string[];
-  const sourceToDateFinancialLabel = sourceToDateFinancialKinds.join(" and ");
   const aggregateMetricReason = (metricName: string): string => {
     if ((metricName === "clicks" || metricName === "impressions") && !aggregateMetricAvailable(metricName)) {
       return "Unavailable from connected sources";
@@ -274,23 +269,33 @@ export default function ExecutiveSummary() {
   if (aggregateMetricAvailable("roi")) executiveMetricParts.push(`ROI is ${formatAggregatePercent("roi")}`);
   if (aggregateMetricAvailable("roas")) executiveMetricParts.push(`ROAS is ${formatAggregateRatio("roas")}`);
   const executiveMetricSummary = executiveMetricParts.length > 0
-    ? hasAuthoritativeGA4Window && sourceToDateFinancialKinds.length > 0
-      ? `GA4 property traffic and conversion metrics cover ${currentValueWindow.startDate} to ${currentValueWindow.endDate}; connected ${sourceToDateFinancialLabel} ${sourceToDateFinancialKinds.length === 1 ? "input is" : "inputs are"} source-to-date through ${currentValueWindow.endDate}. Combined connected-source financial metrics show ${executiveMetricParts.join(" and ")}.`
-      : `For ${executiveWindowDescription}, connected-source metrics show ${executiveMetricParts.join(" and ")}.`
-    : `For ${executiveWindowDescription}, connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS.`;
+    ? `${executiveWindowDescription}: ${executiveMetricParts.join(", ")}.`
+    : `${executiveWindowDescription}: ROI and ROAS are unavailable.`;
   const executiveTrajectory = hasAuthoritativeGA4Window
     ? (executiveTrajectoryData as any)?.available === true ? (executiveTrajectoryData as any).trajectory : null
     : (executiveSummary as any)?.health?.trajectory;
+  const executiveTrajectoryUnavailableReason = hasAuthoritativeGA4Window
+    ? String((executiveTrajectoryData as any)?.reason || "")
+    : "";
+  const executiveTrajectoryUnavailableLabel = executiveTrajectoryUnavailableReason === "incompatible_history"
+    ? "History not comparable yet"
+    : executiveTrajectoryUnavailableReason === "revenue_history_unavailable"
+      ? "Revenue history unavailable"
+      : "Not enough history";
   const executiveTrajectoryUnavailableDetail = hasAuthoritativeGA4Window
-    ? (executiveTrajectoryData as any)?.reason === "incompatible_history"
+    ? executiveTrajectoryUnavailableReason === "incompatible_history"
       ? "Earlier readings used different sources or reporting settings, so they cannot be compared safely."
-      : (executiveTrajectoryData as any)?.reason === "revenue_history_unavailable"
+      : executiveTrajectoryUnavailableReason === "revenue_history_unavailable"
         ? "Revenue was unavailable in one of the two readings."
         : "No matching Executive Summary reading exists for seven days earlier yet."
     : "Based on compatible aggregate snapshots, not the removed date selector.";
   const executiveTrajectorySummary = executiveTrajectory
-    ? `7-day snapshot trajectory is ${executiveTrajectory}.`
-    : "7-day snapshot trajectory does not have enough compatible history yet.";
+    ? `7-day trend: ${executiveTrajectory}.`
+    : executiveTrajectoryUnavailableReason === "incompatible_history"
+      ? "The 7-day trend is not comparable yet."
+      : executiveTrajectoryUnavailableReason === "revenue_history_unavailable"
+        ? "The 7-day trend is unavailable."
+        : "The 7-day trend needs more history.";
   const kpiMetricAliases: Record<string, string> = {
     totalusers: "users",
     users: "users",
@@ -450,8 +455,8 @@ export default function ExecutiveSummary() {
     ? hasMonitorConditions
       ? "No configured risk factor meets the risk threshold; lower-severity exceptions require monitoring."
       : "No configured risk factors identified from available connected-source inputs."
-    : "Risk factors include configured KPI and Benchmark evaluations from their connected-source reporting contracts.";
-  const executiveSummaryNarrative = `${(campaign as any)?.name}: ${executiveMetricSummary} Risk level is ${displayedRiskLevel}. ${executiveTrajectorySummary}`;
+    : `${displayedRiskFactors.map((factor) => factor.message).join(". ")}.`;
+  const executiveSummaryNarrative = `${executiveMetricSummary} Risk: ${displayedRiskLevel}. ${executiveTrajectorySummary}`;
   const kpiRiskStatus = riskKpiMissCount > 0 ? "Risk" : executiveKpiProgress.length > 0 ? "No Risk" : "Not Applicable";
   const kpiRiskDetail = riskKpiMissCount > 0
     ? `${riskKpiMissCount} KPI${riskKpiMissCount === 1 ? " is" : "s are"} classified below target`
@@ -530,7 +535,7 @@ export default function ExecutiveSummary() {
                             </span>
                           </div>
                         ) : (
-                          <div className="text-lg font-medium text-muted-foreground">Not enough history</div>
+                          <div className="text-lg font-medium text-muted-foreground">{executiveTrajectoryUnavailableLabel}</div>
                         )}
                         <p className="text-xs text-muted-foreground/70 mt-1">{executiveTrajectoryUnavailableDetail}</p>
                       </div>

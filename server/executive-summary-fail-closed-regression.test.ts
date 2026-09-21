@@ -31,8 +31,8 @@ describe("Executive Summary request failure guard", () => {
   });
 
   it("preserves valid unavailable and incompatible trajectory responses", () => {
-    expect(page).toContain('reason === "incompatible_history"');
-    expect(page).toContain('reason === "revenue_history_unavailable"');
+    expect(page).toContain('executiveTrajectoryUnavailableReason === "incompatible_history"');
+    expect(page).toContain('executiveTrajectoryUnavailableReason === "revenue_history_unavailable"');
     expect(page).toContain("No matching Executive Summary reading exists for seven days earlier yet.");
   });
 });

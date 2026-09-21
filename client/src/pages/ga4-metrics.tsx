@@ -462,6 +462,15 @@ export default function GA4Metrics() {
   };
   const validateGA4ScheduledReportFields = (): boolean => {
     if (!ga4ReportForm.scheduleEnabled) { setGa4ReportFormErrors({}); return true; }
+    const recipients = normalizeReportRecipients(ga4ReportForm.emailRecipients);
+    if (recipients.length === 0) {
+      setGa4ReportFormErrors({ emailRecipients: "Enter at least one email recipient" });
+      return false;
+    }
+    if (recipients.some((recipient) => !z.string().email().safeParse(recipient).success)) {
+      setGa4ReportFormErrors({ emailRecipients: "Enter valid email addresses separated by commas" });
+      return false;
+    }
     setGa4ReportFormErrors({});
     return true;
   };
@@ -3230,7 +3239,10 @@ export default function GA4Metrics() {
   };
 
   const downloadGA4Report = async (opts: { reportType: string; configuration?: any; reportName?: string }) => {
-    const reportType = String(opts.reportType || "overview");
+    const reportType = String(opts.reportType || "overview").toLowerCase();
+    if (!["overview", "kpis", "benchmarks", "ads", "insights", "custom"].includes(reportType)) {
+      throw new Error(`Cannot generate this report because "${reportType}" is not a supported GA4 report type.`);
+    }
     const cfg = opts.configuration || ga4ReportForm.configuration || {};
     const reportAdComparisonMetric = ["sessions", "users", "conversions", "revenue", "conversionRate"].includes(String(cfg?.adComparisonMetric || ""))
       ? String(cfg.adComparisonMetric)
@@ -8761,7 +8773,7 @@ export default function GA4Metrics() {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => {
+                                    onClick={async () => {
                                       let cfg: any = { sections: { overview: true } };
                                       try {
                                         const parsed = r.configuration ? JSON.parse(String(r.configuration)) : {};
@@ -8769,18 +8781,26 @@ export default function GA4Metrics() {
                                       } catch {
                                         // keep default
                                       }
-                                      downloadGA4Report({
-                                        reportType: String(r.reportType || "overview"),
-                                        configuration: {
-                                          ...cfg,
-                                          ...((String(r.reportType || "overview") === "ads" || (String(r.reportType || "overview") === "custom" && cfg?.sections?.ads === true)) ? {
-                                            adComparisonMetric: ["sessions", "users", "conversions", "revenue", "conversionRate"].includes(String(cfg?.adComparisonMetric || ""))
-                                              ? String(cfg.adComparisonMetric)
-                                              : "sessions",
-                                          } : {}),
-                                        },
-                                        reportName: String(r.name || "GA4 Report"),
-                                      });
+                                      try {
+                                        await downloadGA4Report({
+                                          reportType: String(r.reportType || "overview"),
+                                          configuration: {
+                                            ...cfg,
+                                            ...((String(r.reportType || "overview") === "ads" || (String(r.reportType || "overview") === "custom" && cfg?.sections?.ads === true)) ? {
+                                              adComparisonMetric: ["sessions", "users", "conversions", "revenue", "conversionRate"].includes(String(cfg?.adComparisonMetric || ""))
+                                                ? String(cfg.adComparisonMetric)
+                                                : "sessions",
+                                            } : {}),
+                                          },
+                                          reportName: String(r.name || "GA4 Report"),
+                                        });
+                                      } catch (error: any) {
+                                        toast({
+                                          title: "Failed to generate report",
+                                          description: error?.message || "An unexpected error occurred",
+                                          variant: "destructive",
+                                        });
+                                      }
                                     }}
                                   >
                                     <Download className="w-4 h-4 mr-2" />

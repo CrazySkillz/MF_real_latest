@@ -53,6 +53,7 @@ vi.mock("./utils/campaign-current-values", () => ({
   refreshCampaignCurrentValuesForCampaign: refreshCampaignCurrentValuesForCampaignMock,
   resolveCampaignCurrentValueForAlert: resolveCampaignCurrentValueForAlertMock,
   getCampaignMetricTotals: getCampaignMetricTotalsMock,
+  getCampaignMetricTotalsAtDate: getCampaignMetricTotalsMock,
 }));
 vi.mock("./middleware/rateLimiter", () => {
   const passThrough = (_req: any, _res: any, next: any) => next();

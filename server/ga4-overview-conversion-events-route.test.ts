@@ -16,6 +16,7 @@ vi.mock("./db", () => ({ db: null, pool: null }));
 vi.mock("@clerk/express", () => ({ getAuth: vi.fn(() => ({ userId: authState.userId })) }));
 vi.mock("./utils/campaign-current-values", () => ({
   getCampaignMetricTotals: vi.fn(),
+  getCampaignMetricTotalsAtDate: vi.fn(),
   refreshCampaignCurrentValuesForCampaign: vi.fn(),
   resolveCampaignCurrentValueForAlert: vi.fn(async (row: any) => row),
 }));

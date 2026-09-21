@@ -7,6 +7,7 @@ import { and, desc, eq } from "drizzle-orm";
 import type { LinkedInReport } from "../shared/schema";
 import * as cron from "node-cron";
 import { DateTime } from "luxon";
+import { z } from "zod";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { aggregateCampaignMetrics } from "./scheduler";
 import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, computeEffectiveDeltaPct, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "../shared/kpi-math";
@@ -33,6 +34,10 @@ interface ReportWithCampaign extends LinkedInReport {
 }
 
 const SCHEDULED_REPORT_PLATFORM_TYPES = ['linkedin', 'google_analytics', 'google_ads', 'instagram', 'tiktok', 'google_sheets', 'custom-integration', 'campaign_deepdive'];
+
+export function isValidScheduledReportRecipient(value: unknown): boolean {
+  return z.string().trim().email().safeParse(value).success;
+}
 
 // Monitoring metrics for scheduler health
 const schedulerMetrics = {
@@ -3026,7 +3031,9 @@ function isReportDueNow(report: ReportWithCampaign, now: Date): { due: boolean; 
       const isQuarterStartMonth = [0, 3, 6, 9].includes(month);
       const isQuarterEndMonth = [2, 5, 8, 11].includes(month);
       if (quarterTiming === "start") {
-        matches = isQuarterStartMonth && dayOfMonth === 1;
+        const raw = typeof report.scheduleDayOfMonth === "number" ? report.scheduleDayOfMonth : 1;
+        const target = raw === 0 ? monthLast : Math.min(Math.max(raw, 1), monthLast);
+        matches = isQuarterStartMonth && dayOfMonth === target;
       } else {
         // End of quarter month, default to last day unless scheduleDayOfMonth overrides
         if (!isQuarterEndMonth) { matches = false; break; }
@@ -3338,6 +3345,16 @@ export async function checkScheduledReports(): Promise<void> {
         continue;
       }
 
+      if (String((report as any).platformType || "").trim().toLowerCase() === "google_analytics" && recipients.some((recipient) => !isValidScheduledReportRecipient(recipient))) {
+        console.warn(`[Report Scheduler] GA4 report "${report.name}" has an invalid recipient; scheduled send skipped: report=${report.id}`);
+        await db
+          .update(reportSendEvents)
+          .set({ status: "skipped", error: "Invalid GA4 schedule recipient configured" } as any)
+          .where(and(eq(reportSendEvents.reportId, String((report as any).id)), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
+          .catch(() => { });
+        continue;
+      }
+
       // Compute report window (align to LinkedIn analytics: last 30 complete UTC days)
       const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
       const start = new Date(end.getTime());
@@ -3416,10 +3433,10 @@ export async function checkScheduledReports(): Promise<void> {
         isTest: false,
       });
       console.log(`[Report Scheduler] PDF attachment bytes: ${pdfBuffer ? pdfBuffer.length : 0}`);
-      const customReportPdfArtifact = snapshotPlatformType === "campaign_deepdive" && pdfBuffer
+      const customReportPdfArtifact = (snapshotPlatformType === "campaign_deepdive" || snapshotPlatformType === "google_analytics") && pdfBuffer
         ? createReportPdfArtifact(pdfBuffer)
         : null;
-      if (platformRequiresSourceBackedReportOutput(snapshotPlatformType) && (!pdfBuffer || (snapshotPlatformType === "campaign_deepdive" && !customReportPdfArtifact))) {
+      if (platformRequiresSourceBackedReportOutput(snapshotPlatformType) && (!pdfBuffer || ((snapshotPlatformType === "campaign_deepdive" || snapshotPlatformType === "google_analytics") && !customReportPdfArtifact))) {
         const error = `${sourceBackedReportOutputUnavailableMessage(snapshotPlatformType)}; skipped scheduled report`;
         console.warn(`[Report Scheduler] ${error}: report=${report.id}, campaign=${(report as any).campaignId || "none"}`);
         await db
@@ -3624,6 +3641,9 @@ export async function sendTestReport(reportId: string): Promise<{ success: boole
     if (recipients.length === 0) {
       console.error(`[Report Scheduler] No recipients configured for report: ${reportId}`);
       return { success: false, message: "No recipients configured", recipients: [] };
+    }
+    if (String((report as any).platformType || "").trim().toLowerCase() === "google_analytics" && recipients.some((recipient) => !isValidScheduledReportRecipient(recipient))) {
+      return { success: false, message: "Invalid GA4 schedule recipient configured", recipients: [] };
     }
 
     console.log(`[Report Scheduler] Attempting to send test email to: ${recipients.join(', ')}`);

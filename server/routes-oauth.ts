@@ -202,6 +202,10 @@ export function isValidReportScheduleTimeZone(value: string): boolean {
   }
 }
 
+export function isValidReportScheduleRecipient(value: unknown): boolean {
+  return z.string().trim().email().safeParse(value).success;
+}
+
 function withReportingTimeZone<T extends Record<string, any>>(campaign: T): T {
   return {
     ...campaign,
@@ -29139,6 +29143,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!recipients?.some((recipient: unknown) => String(recipient || "").trim())) {
           return res.status(400).json({ success: false, message: "scheduleRecipients must include at least one recipient when scheduleEnabled=true" });
         }
+        if (String(platformType || "").trim().toLowerCase() === "google_analytics" && recipients.some((recipient: unknown) => !isValidReportScheduleRecipient(recipient))) {
+          return res.status(400).json({ success: false, message: "scheduleRecipients must contain only valid email addresses" });
+        }
 
         if (freq === "weekly") {
           const dow = Number(body?.scheduleDayOfWeek);
@@ -29263,6 +29270,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!isValidReportScheduleTime(time)) return res.status(400).json({ success: false, message: "scheduleTime must be HH:MM (24h) when scheduleEnabled=true" });
         if (!recipients?.some((recipient: unknown) => String(recipient || "").trim())) {
           return res.status(400).json({ success: false, message: "scheduleRecipients must include at least one recipient when scheduleEnabled=true" });
+        }
+        if (String(platformType || "").trim().toLowerCase() === "google_analytics" && recipients.some((recipient: unknown) => !isValidReportScheduleRecipient(recipient))) {
+          return res.status(400).json({ success: false, message: "scheduleRecipients must contain only valid email addresses" });
         }
 
         if (freq === "weekly") {
@@ -29582,9 +29592,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const label = sourceBackedReportPlatform === "campaign_deepdive" ? "Custom Report" : sourceBackedReportPlatform === "google_analytics" ? "GA4" : sourceBackedReportPlatform === "tiktok" ? "TikTok" : sourceBackedReportPlatform === "google_sheets" ? "Google Sheets" : sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration" ? "Custom Integration" : "Instagram";
           return res.status(422).json({ success: false, error: `${label} source-backed PDF output unavailable; snapshot not created` });
         }
-        if (sourceBackedReportPlatform === "campaign_deepdive") {
+        if (sourceBackedReportPlatform === "campaign_deepdive" || sourceBackedReportPlatform === "google_analytics") {
           const pdfArtifact = createReportPdfArtifact(buf);
-          if (!pdfArtifact) return res.status(422).json({ success: false, error: "Custom Report PDF artifact is invalid; snapshot not created" });
+          if (!pdfArtifact) {
+            const label = sourceBackedReportPlatform === "google_analytics" ? "GA4 Report" : "Custom Report";
+            return res.status(422).json({ success: false, error: `${label} PDF artifact is invalid; snapshot not created` });
+          }
           (payload as any).pdfArtifact = pdfArtifact;
         }
       }
@@ -29680,9 +29693,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const windowStart = String((row as any).windowStart || (row as any).window_start || payload?.windowStart || "");
       const windowEnd = String((row as any).windowEnd || (row as any).window_end || payload?.windowEnd || "");
-      if (snapshotPlatform === "campaign_deepdive") {
+      if (snapshotPlatform === "campaign_deepdive" || snapshotPlatform === "google_analytics") {
         const immutablePdf = readReportPdfArtifact(payload);
-        if (!immutablePdf) return res.status(422).json({ success: false, error: "Immutable Custom Report PDF artifact unavailable" });
+        if (!immutablePdf) {
+          const error = snapshotPlatform === "google_analytics"
+            ? "Immutable GA4 Report PDF artifact unavailable"
+            : "Immutable Custom Report PDF artifact unavailable";
+          return res.status(422).json({ success: false, error });
+        }
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader("Content-Disposition", `attachment; filename="mimosaas_report_${snapshotId}.pdf"`);
         return res.send(immutablePdf);

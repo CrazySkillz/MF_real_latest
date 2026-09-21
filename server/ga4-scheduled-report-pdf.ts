@@ -1251,6 +1251,40 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     }
   }
 
+  if (sections.kpis && (reportType !== "custom" || cfg.subsections?.kpis?.items === true)) {
+    const items = payload.platformKPIs.filter((item: any) => !selectedCustomKpiIds || selectedCustomKpiIds.has(String(item.id)));
+    if (items.length > 0) {
+      addSimpleTable(
+        "Key Performance Indicators",
+        ["KPI", "CURRENT", "TARGET"],
+        items.map((item: any) => [
+          String(item?.name || item?.metric || "KPI"),
+          String(item?.currentValue || "0"),
+          String(item?.targetValue || "0"),
+        ]),
+        [96, 40, 48],
+        COLORS.kpis
+      );
+    }
+  }
+
+  if (sections.benchmarks && (reportType !== "custom" || cfg.subsections?.benchmarks?.items === true)) {
+    const items = payload.benchmarks.filter((item: any) => !selectedCustomBenchmarkIds || selectedCustomBenchmarkIds.has(String(item.id)));
+    if (items.length > 0) {
+      addSimpleTable(
+        "Performance Benchmarks",
+        ["BENCHMARK", "CURRENT", "TARGET"],
+        items.map((item: any) => [
+          String(item?.name || item?.metric || "Benchmark"),
+          String(item?.currentValue || "0"),
+          String(item?.benchmarkValue || "0"),
+        ]),
+        [96, 40, 48],
+        COLORS.benchmarks
+      );
+    }
+  }
+
   if (sections.ads) {
     const s = cfg.subsections?.ads || {};
     const includeTopCampaigns = reportType !== "custom" || s.topCampaigns === true || s.summary === true;
@@ -1559,40 +1593,6 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         doc.text(`+ ${payload.insightsItems.length - topInsights.length} more insights`, MX + 4, y + 2);
         y += 8;
       }
-    }
-  }
-
-  if (sections.kpis && (reportType !== "custom" || cfg.subsections?.kpis?.items === true)) {
-    const items = payload.platformKPIs.filter((item: any) => !selectedCustomKpiIds || selectedCustomKpiIds.has(String(item.id)));
-    if (items.length > 0) {
-      addSimpleTable(
-        "Key Performance Indicators",
-        ["KPI", "CURRENT", "TARGET"],
-        items.map((item: any) => [
-          String(item?.name || item?.metric || "KPI"),
-          String(item?.currentValue || "0"),
-          String(item?.targetValue || "0"),
-        ]),
-        [96, 40, 48],
-        COLORS.kpis
-      );
-    }
-  }
-
-  if (sections.benchmarks && (reportType !== "custom" || cfg.subsections?.benchmarks?.items === true)) {
-    const items = payload.benchmarks.filter((item: any) => !selectedCustomBenchmarkIds || selectedCustomBenchmarkIds.has(String(item.id)));
-    if (items.length > 0) {
-      addSimpleTable(
-        "Performance Benchmarks",
-        ["BENCHMARK", "CURRENT", "TARGET"],
-        items.map((item: any) => [
-          String(item?.name || item?.metric || "Benchmark"),
-          String(item?.currentValue || "0"),
-          String(item?.benchmarkValue || "0"),
-        ]),
-        [96, 40, 48],
-        COLORS.benchmarks
-      );
     }
   }
 

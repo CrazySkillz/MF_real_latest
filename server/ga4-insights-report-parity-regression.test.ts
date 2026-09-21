@@ -22,7 +22,7 @@ describe("GA4 Insights report parity", () => {
     const reportSection = page.slice(reportStart, reportEnd);
 
     const scheduledStart = pdf.indexOf("if (sections.insights) {");
-    const scheduledEnd = pdf.indexOf("if (sections.kpis", scheduledStart);
+    const scheduledEnd = pdf.indexOf("  addFooter();", scheduledStart);
     const scheduledSection = pdf.slice(scheduledStart, scheduledEnd);
 
     expect(liveStart).toBeGreaterThan(-1);
@@ -53,7 +53,9 @@ describe("GA4 Insights report parity", () => {
     expect(scheduledSection).toContain(reportTrendCopy);
     expect(reportSection).toContain("Total across revenue sources");
     expect(scheduledSection).toContain("Total across revenue sources");
-    expect(liveSection).toContain("Exact completed-day window");
+    expect(liveSection).toContain("Latest imported day");
+    expect(liveSection).toContain("Last refreshed");
+    expect(liveSection).not.toContain("Exact completed-day window");
     for (const section of [reportSection, scheduledSection]) {
       expect(section).toContain("Current GA4 total");
     }
@@ -85,7 +87,7 @@ describe("GA4 Insights report parity", () => {
     const reportSection = page.slice(reportStart, reportEnd);
 
     const scheduledStart = pdf.indexOf("if (sections.insights) {");
-    const scheduledEnd = pdf.indexOf("if (sections.kpis", scheduledStart);
+    const scheduledEnd = pdf.indexOf("  addFooter();", scheduledStart);
     const scheduledSection = pdf.slice(scheduledStart, scheduledEnd);
 
     expect(reportSection).toContain("const top = items.slice(0, 12);");

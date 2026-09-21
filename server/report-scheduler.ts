@@ -2261,10 +2261,13 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       const paidConcentrationRisk = paidSources.length === 1 || paidTopSpendShare > 70;
       const roiRoasRisk = (executiveMetricAvailable("roi") && executiveMetricNumber("roi") < 0) || (executiveMetricAvailable("roas") && executiveMetricNumber("roas") < 1);
       const trendRisk = trajectoryName === "declining" && trajectoryPct < -15;
+      const kpiRiskCount = executiveKpiRows.filter((row: any) => executiveKpiProgressPct(row) < 70).length;
+      const kpiMonitorCount = executiveKpiExceptions.filter((row: any) => executiveKpiProgressPct(row) >= 70).length;
       const benchmarkRiskCount = executiveBenchmarkRows.filter((row: any) => benchmarkThresholdResult(row).status === "behind").length;
+      const benchmarkMonitorCount = executiveBenchmarkRows.filter((row: any) => benchmarkThresholdResult(row).status === "needs_attention").length;
       const executiveRiskLevel = executiveMetricAvailable("roi") && executiveMetricNumber("roi") < 0
         ? "high"
-        : roiRoasRisk || trendRisk || paidConcentrationRisk || executiveKpiExceptions.length > 0 || benchmarkRiskCount > 0 ? "medium" : "low";
+        : roiRoasRisk || trendRisk || paidConcentrationRisk || kpiRiskCount > 0 || benchmarkRiskCount > 0 || !executiveHasAuthoritativeGA4Window ? "medium" : "low";
       const metricSummary = [
         executiveMetricAvailable("roi") ? `ROI is ${executiveMetricValue("roi")}` : "",
         executiveMetricAvailable("roas") ? `ROAS is ${executiveMetricValue("roas")}` : "",
@@ -2298,6 +2301,16 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         const status = threshold.status === "needs_attention" ? "Needs Attention" : "Behind";
         addText(`- ${row?.name || row?.metric || "Benchmark"}: Yours ${formatExecutiveRecordValue(row, reportRecordCurrentValue(row))}; Benchmark ${formatExecutiveRecordValue(row, row?.benchmarkValue)} (${threshold.labelPct}%) - ${status}`, { indent: 8 });
       });
+      const riskInputRows = [
+        { label: "KPI Risk", status: kpiRiskCount > 0 ? "Risk" : kpiMonitorCount > 0 ? "Monitor" : executiveKpiRows.length > 0 ? "No Risk" : "Not Applicable", detail: kpiRiskCount > 0 ? `${kpiRiskCount} KPI${kpiRiskCount === 1 ? " is" : "s are"} below 70% of target${kpiMonitorCount > 0 ? `; ${kpiMonitorCount} additional KPI${kpiMonitorCount === 1 ? " is" : "s are"} below the target policy but at or above the 70% risk cutoff` : ""}` : kpiMonitorCount > 0 ? `${kpiMonitorCount} KPI${kpiMonitorCount === 1 ? " is" : "s are"} below the target policy but at or above the 70% risk cutoff` : executiveKpiRows.length > 0 ? "Mapped KPIs meet the configured target policy" : "No evaluable campaign KPIs available" },
+        { label: "Benchmark Risk", status: benchmarkRiskCount > 0 ? "Risk" : benchmarkMonitorCount > 0 ? "Monitor" : executiveBenchmarkRows.length > 0 ? "No Risk" : "Not Applicable", detail: benchmarkRiskCount > 0 ? `${benchmarkRiskCount} benchmark${benchmarkRiskCount === 1 ? " is" : "s are"} classified behind${benchmarkMonitorCount > 0 ? `; ${benchmarkMonitorCount} additional benchmark${benchmarkMonitorCount === 1 ? " is" : "s are"} classified needs attention` : ""}` : benchmarkMonitorCount > 0 ? `${benchmarkMonitorCount} benchmark${benchmarkMonitorCount === 1 ? " is" : "s are"} classified needs attention; none is classified behind` : executiveBenchmarkRows.length > 0 ? "Mapped benchmarks are on track" : "No evaluable campaign benchmarks available" },
+        { label: "Data Freshness", status: executiveHasAuthoritativeGA4Window ? "No Risk" : "Not Verified", detail: executiveHasAuthoritativeGA4Window ? `GA4 outcome metrics cover through ${executiveCurrentValueWindow.endDate}` : "Connected-source freshness is unavailable in this report context" },
+        { label: "ROI / ROAS Risk", status: roiRoasRisk ? "Risk" : executiveMetricAvailable("roi") || executiveMetricAvailable("roas") ? "No Risk" : "Not Applicable", detail: executiveMetricAvailable("roi") || executiveMetricAvailable("roas") ? [executiveMetricAvailable("roi") ? `ROI ${executiveMetricValue("roi")}` : "", executiveMetricAvailable("roas") ? `ROAS ${executiveMetricValue("roas")}` : ""].filter(Boolean).join(", ") : "ROI and ROAS unavailable from connected sources" },
+        { label: "7-Day Trend Risk", status: trendRisk ? "Risk" : trajectoryName ? "No Risk" : "Not Enough History", detail: trajectoryName ? `${trajectoryName}${trajectoryPct ? ` (${trajectoryPct.toFixed(1)}%)` : ""}` : "Not enough compatible aggregate snapshot history" },
+        { label: "Paid Platform Concentration Risk", status: paidSources.length === 0 ? "Not Applicable" : paidConcentrationRisk ? "Risk" : "No Risk", detail: paidSources.length === 0 ? "No connected paid-media source" : paidConcentrationRisk ? (paidSources.length === 1 ? "Only one paid platform connected" : `${paidTopSpendShare.toFixed(0)}% of paid spend is concentrated`) : "Paid source mix is not concentrated" },
+      ];
+      addText("Risk Assessment", { bold: true, indent: 4 });
+      riskInputRows.forEach((row) => addText(`- ${row.label}: ${row.status} - ${row.detail}`, { indent: 8 }));
       const hasWebAnalytics = aggregateSources.some((source: any) => source?.category === "web_analytics");
       const hasWebsiteEvidence = hasWebAnalytics && (executiveMetricAvailable("users") || executiveMetricAvailable("sessions")) && (executiveMetricAvailable("conversions") || executiveMetricAvailable("revenue"));
       const hasWebsiteOutcomeTargetException = [...executiveKpiExceptions, ...executiveBenchmarkExceptions].some((row: any) => ["cvr", "conversions", "revenue"].includes(reportRecordMetric(row)));

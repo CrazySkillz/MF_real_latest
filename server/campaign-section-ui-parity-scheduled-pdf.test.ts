@@ -675,7 +675,26 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfTextCalls).not.toContain("- Revenue: $51,072.99");
     expect(pdfTextCalls.some((text) => text.includes("Sessions target"))).toBe(true);
     expect(pdfTextCalls.some((text) => text.includes("Wrong campaign KPI"))).toBe(false);
+    expect(pdfTextCalls).toContain("Risk Assessment");
+    expect(pdfTextCalls).toContain("- KPI Risk: Risk - 1 KPI is below 70% of target");
+    expect(pdfTextCalls).toContain("- Benchmark Risk: Not Applicable - No evaluable campaign benchmarks available");
+    expect(pdfTextCalls).toContain("- Data Freshness: No Risk - GA4 outcome metrics cover through 2026-08-27");
     expect(storageMock.getExecutiveSummaryDailyComparisonData).toHaveBeenCalledWith("campaign-1", "2026-08-27", "2026-08-20");
     expect(getCampaignMetricTotalsMock).toHaveBeenCalledWith("campaign-1", true);
+  });
+
+  it("fails Executive Summary freshness closed when the certified GA4 window is unavailable", async () => {
+    aggregateCampaignMetricsMock.mockResolvedValue({
+      detailedMetrics: { performanceSummary: { ...performanceSummary, currentValueWindow: null }, financialDecisionContext, financialInputs },
+    });
+
+    await buildPdfAttachmentForReport({
+      report: report("executive-summary", ["executive-summary:overview"]),
+      windowStart: "2026-07-29",
+      windowEnd: "2026-08-27",
+      campaignName: "Campaign",
+    });
+
+    expect(pdfTextCalls).toContain("- Data Freshness: Not Verified - Connected-source freshness is unavailable in this report context");
   });
 });

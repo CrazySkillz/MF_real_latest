@@ -457,6 +457,12 @@ export default function ExecutiveSummary() {
       : "No configured risk factors identified from available connected-source inputs."
     : `${displayedRiskFactors.map((factor) => factor.message).join(". ")}.`;
   const executiveSummaryNarrative = `${executiveMetricSummary} Risk: ${displayedRiskLevel}. ${executiveTrajectorySummary}`;
+  const executiveSummaryBullets = [
+    `${executiveWindowDescription}.`,
+    ...(executiveMetricParts.length > 0 ? executiveMetricParts.map((part) => `${part}.`) : ["ROI and ROAS are unavailable."]),
+    `Risk: ${displayedRiskLevel}.`,
+    executiveTrajectorySummary,
+  ];
   const kpiRiskStatus = riskKpiMissCount > 0 ? "Risk" : executiveKpiProgress.length > 0 ? "No Risk" : "Not Applicable";
   const kpiRiskDetail = riskKpiMissCount > 0
     ? `${riskKpiMissCount} KPI${riskKpiMissCount === 1 ? " is" : "s are"} classified below target`
@@ -561,9 +567,12 @@ export default function ExecutiveSummary() {
                       <Briefcase className="w-5 h-5 text-muted-foreground/70 mt-0.5" />
                       <div>
                         <div className="text-sm font-semibold text-foreground mb-1">Executive Summary</div>
-                        <p className="text-sm text-foreground/80/60 leading-relaxed">
-                          {executiveSummaryNarrative}
-                        </p>
+                        <ul
+                          className="list-disc pl-5 space-y-1 text-sm text-foreground/80/60 leading-relaxed"
+                          data-full-summary={executiveSummaryNarrative}
+                        >
+                          {executiveSummaryBullets.map((item) => <li key={item}>{item}</li>)}
+                        </ul>
                       </div>
                     </div>
                   </div>

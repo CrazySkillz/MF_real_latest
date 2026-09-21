@@ -29612,7 +29612,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/report-snapshots/:snapshotId", async (req, res) => {
     try {
       res.setHeader("Cache-Control", "no-store");
-      const { snapshotId } = req.params;
+      const actorId = getActorId(req as any);
+      if (!actorId) return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      const parsedSnapshotId = z.string().uuid().safeParse(req.params.snapshotId);
+      if (!parsedSnapshotId.success) return res.status(400).json({ success: false, error: "Invalid snapshotId" });
+      const snapshotId = parsedSnapshotId.data;
       const { db } = await import("./db");
       if (!db) return res.status(503).json({ success: false, error: "Database not configured" });
       const { reportSnapshots } = await import("../shared/schema");
@@ -29641,7 +29645,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/report-snapshots/:snapshotId/pdf", async (req, res) => {
     try {
       res.setHeader("Cache-Control", "no-store");
-      const { snapshotId } = req.params;
+      const actorId = getActorId(req as any);
+      if (!actorId) return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      const parsedSnapshotId = z.string().uuid().safeParse(req.params.snapshotId);
+      if (!parsedSnapshotId.success) return res.status(400).json({ success: false, error: "Invalid snapshotId" });
+      const snapshotId = parsedSnapshotId.data;
       const { db } = await import("./db");
       if (!db) return res.status(503).json({ success: false, error: "Database not configured" });
       const { reportSnapshots } = await import("../shared/schema");

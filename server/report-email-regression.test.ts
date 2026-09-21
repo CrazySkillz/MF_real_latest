@@ -230,6 +230,10 @@ describe("scheduled report email regression guard", () => {
     );
 
     for (const route of [snapshotReadRoute, snapshotPdfRoute]) {
+      expect(route).toContain("const actorId = getActorId(req as any);");
+      expect(route).toContain("z.string().uuid().safeParse(req.params.snapshotId)");
+      expect(route.indexOf("const actorId = getActorId(req as any);")).toBeLessThan(route.indexOf('await import("./db")'));
+      expect(route.indexOf("z.string().uuid().safeParse(req.params.snapshotId)")).toBeLessThan(route.indexOf('await import("./db")'));
       expect(route).toContain("ensurePlatformReportAccess");
       expect(route).toContain("snapshotCampaignId !== reportCampaignId");
       expect(route).toContain("snapshotPlatform !== reportPlatform");

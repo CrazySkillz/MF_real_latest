@@ -68,6 +68,16 @@ describe("alert email retry regression guard", () => {
 
   it("processes due retries through the same audit row and dedupe key", () => {
     const alertMonitoring = source("server/services/alert-monitoring.ts");
+    const staleClaims = sliceBetween(
+      alertMonitoring,
+      "private async finalizeStaleAlertEmailClaims",
+      "async sendImmediateKPIAlertIfNeeded"
+    );
+    const retryClaim = sliceBetween(
+      alertMonitoring,
+      "private async claimDueAlertEmailRetry",
+      "async sendImmediateKPIAlertIfNeeded"
+    );
     const retryProcessor = sliceBetween(
       alertMonitoring,
       "async processDueAlertEmailRetries",
@@ -75,13 +85,26 @@ describe("alert email retry regression guard", () => {
     );
 
     expect(retryProcessor).toContain('eq(emailAlertEvents.deliveryStatus, "retry_scheduled")');
+    expect(retryProcessor).toContain("await this.finalizeStaleAlertEmailClaims(now)");
     expect(retryProcessor).toContain("lte(emailAlertEvents.nextAttemptAt, now)");
     expect(retryProcessor).toContain("if (attemptCount >= ALERT_EMAIL_MAX_ATTEMPTS)");
     expect(retryProcessor).toContain("auditEventId: id,");
     expect(retryProcessor).toContain("dedupeKey,");
-    expect(retryProcessor).toContain("attemptCount: attemptCount + 1,");
+    expect(retryProcessor).toContain("attemptCount,");
     expect(retryProcessor).toContain("await this.sendImmediateKPIAlertIfNeeded(entityId, retryClaim)");
     expect(retryProcessor).toContain("await this.sendImmediateBenchmarkAlertIfNeeded(entityId, retryClaim)");
+    expect(retryClaim).toContain('deliveryStatus: "sending"');
+    expect(retryClaim).toContain('eq(emailAlertEvents.deliveryStatus, "retry_scheduled")');
+    expect(retryClaim).toContain("eq(emailAlertEvents.attemptCount, retryClaim.attemptCount)");
+    expect(retryClaim).toContain("lte(emailAlertEvents.nextAttemptAt, now)");
+    expect(retryClaim).toContain(".returning({");
+    expect(alertMonitoring.match(/const retryLease = retryClaim \? await this\.claimDueAlertEmailRetry\(retryClaim\) : null;/g) || []).toHaveLength(2);
+    expect(alertMonitoring).toContain("ALERT_EMAIL_SENDING_STALE_AFTER_MS = 60 * 60 * 1000");
+    expect(staleClaims).toContain('eq(emailAlertEvents.deliveryStatus, "sending")');
+    expect(staleClaims).toContain("lte(emailAlertEvents.lastAttemptAt, staleBefore)");
+    expect(staleClaims).toContain('deliveryStatus: "failed"');
+    expect(staleClaims).toContain("automatic retry suppressed to avoid duplicate delivery");
+    expect(staleClaims).toContain(".returning({ id: emailAlertEvents.id })");
   });
 
   it("does not carry an Immediate retry into a later breach episode", () => {
@@ -95,6 +118,21 @@ describe("alert email retry regression guard", () => {
     expect(retryProcessor).toContain(":immediate:(episode-[0-9a-f]{16})");
     expect(retryProcessor).toContain("buildImmediateAlertEpisodeDedupeToken(currentEpisodeKey) !== claimedEpisodeToken");
     expect(retryProcessor).toContain('"retry skipped: breach episode ended"');
+  });
+
+  it("cannot skip or exhaust an audit row after another worker leases it", () => {
+    const alertMonitoring = source("server/services/alert-monitoring.ts");
+    const skipped = sliceBetween(alertMonitoring, "private async markAlertEmailRetrySkipped", "private async markAlertEmailRetryExhausted");
+    const exhausted = sliceBetween(alertMonitoring, "private async markAlertEmailRetryExhausted", "private async isKPIAlertRetryStillSendable");
+
+    for (const update of [skipped, exhausted]) {
+      expect(update).toContain(".where(and(");
+      expect(update).toContain("eq(emailAlertEvents.id, id)");
+      expect(update).toContain('eq(emailAlertEvents.kind, "alert")');
+      expect(update).toContain('eq(emailAlertEvents.deliveryStatus, "retry_scheduled")');
+      expect(update).toContain("eq(emailAlertEvents.attemptCount, Number(row?.attemptCount || 0))");
+      expect(update).not.toContain(".where(eq(emailAlertEvents.id, id))");
+    }
   });
 
   it("suppresses retries when KPI or Benchmark alerts are no longer sendable", () => {
@@ -128,8 +166,7 @@ describe("alert email retry regression guard", () => {
   it("does not create duplicate claims or KPI alert rows for retries", () => {
     const alertMonitoring = source("server/services/alert-monitoring.ts");
 
-    expect(alertMonitoring).toContain("const claim = retryClaim || await this.claimAlertEmailWindow({");
-    expect(alertMonitoring).toContain("const claim = retryClaim || await this.claimAlertEmailWindow({");
+    expect(alertMonitoring.match(/const claim = retryClaim \? retryLease : await this\.claimAlertEmailWindow\(\{/g) || []).toHaveLength(2);
     expect(alertMonitoring).toContain("if (!retryClaim) {");
     expect(alertMonitoring).toContain("const retries = await this.processDueAlertEmailRetries();");
   });

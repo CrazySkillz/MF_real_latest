@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { linkedinDailyMetrics, notifications, kpis } from "../shared/schema";
-import { and, desc, eq, isNotNull } from "drizzle-orm";
+import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import type { KPI, InsertNotification, Notification as AppNotification } from "../shared/schema";
 import { storage } from "./storage";
 import { parseAlertNumber } from "./utils/alert-evaluation";
@@ -131,9 +131,16 @@ export async function createKPIAlert(kpi: KPI, options: { providerCoverageThroug
     if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared');
     return;
   }
-  const campaign = await storage.getCampaign(campaignId).catch(() => undefined);
+  const campaign = await storage.getCampaign(campaignId).catch((error) => {
+    if (platformType === "google_analytics") throw error;
+    return undefined;
+  });
   if (!campaign) {
     if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared');
+    return;
+  }
+  if (platformType === "google_analytics" && !String((campaign as any).ownerId || '').trim()) {
+    await resolveKPIAlerts(String(kpi.id), 'cleared');
     return;
   }
 
@@ -301,7 +308,29 @@ export async function createKPIAlert(kpi: KPI, options: { providerCoverageThroug
     metadata
   };
 
-  await db.insert(notifications).values(notification);
+  if (usesSingleActiveAlert) {
+    const inserted = await db.transaction(async (tx: any) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`active-alert:kpi:${String(kpi.id)}`}, 0))`);
+      const latestAlerts = await tx.select().from(notifications).where(eq(notifications.type, 'performance-alert')) as AppNotification[];
+      const activeExists = latestAlerts.some((alert) => {
+        try {
+          const meta = typeof alert.metadata === 'string' ? JSON.parse(alert.metadata) : alert.metadata;
+          return String(meta?.kpiId || '') === String(kpi.id) && !meta?.resolved && !meta?.dismissedAt;
+        } catch {
+          return false;
+        }
+      });
+      if (activeExists) return false;
+      await tx.insert(notifications).values(notification);
+      return true;
+    });
+    if (!inserted) {
+      console.log(`[KPI Notification] Skipping concurrent duplicate alert for KPI: ${kpi.name}`);
+      return;
+    }
+  } else {
+    await db.insert(notifications).values(notification);
+  }
   console.log(`[KPI Notification] Created alert for KPI: ${kpi.name}`);
 }
 

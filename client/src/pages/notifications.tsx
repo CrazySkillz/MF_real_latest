@@ -38,7 +38,7 @@ export default function Notifications() {
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
-  const { data: campaigns = [], isLoading: campaignsLoading } = useQuery<Campaign[]>({
+  const { data: campaigns = [], isLoading: campaignsLoading, isError: isCampaignsError } = useQuery<Campaign[]>({
     queryKey: ["/api/campaigns"],
   });
   const ga4CampaignIds = campaigns
@@ -52,7 +52,7 @@ export default function Notifications() {
     isError: isGA4ReconciliationError,
   } = useQuery({
     queryKey: ["/api/notifications/ga4-reconciliation", ...ga4CampaignIds],
-    enabled: !campaignsLoading && ga4CampaignIds.length > 0,
+    enabled: !campaignsLoading && !isCampaignsError && ga4CampaignIds.length > 0,
     staleTime: Infinity,
     refetchOnMount: "always",
     refetchOnWindowFocus: false,
@@ -177,7 +177,7 @@ export default function Notifications() {
   const selectedNotification = selectedNotificationId
     ? notifications.find((notification) => String(notification.id) === selectedNotificationId)
     : undefined;
-  const selectedNotificationMissing = Boolean(selectedNotificationId && !isLoading && !alertVerificationInProgress && !isError && !isGA4ReconciliationError && !selectedNotification);
+  const selectedNotificationMissing = Boolean(selectedNotificationId && !isLoading && !alertVerificationInProgress && !isError && !isCampaignsError && !isGA4ReconciliationError && !selectedNotification);
   const selectedNotificationVisible = selectedNotificationId
     ? paginatedNotifications.some((notification) => String(notification.id) === selectedNotificationId)
     : false;
@@ -393,8 +393,8 @@ export default function Notifications() {
                         <SelectItem value="all">All Dates</SelectItem>
                         <SelectItem value="today">Today</SelectItem>
                         <SelectItem value="yesterday">Yesterday</SelectItem>
-                        <SelectItem value="this-week">This Week</SelectItem>
-                        <SelectItem value="this-month">This Month</SelectItem>
+                        <SelectItem value="this-week">Last 7 Days</SelectItem>
+                        <SelectItem value="this-month">Last 30 Days</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -431,7 +431,7 @@ export default function Notifications() {
                   </div>
                 </CardContent>
               </Card>
-            ) : (isError || isGA4ReconciliationError) ? (
+            ) : (isError || isCampaignsError || isGA4ReconciliationError) ? (
               <Card data-testid="notifications-unavailable">
                 <CardContent className="py-12">
                   <div className="text-center">

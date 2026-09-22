@@ -7082,6 +7082,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const p = normalizeNotificationKey(value);
     return p === "googleanalytics" || p === "ga4";
   };
+  const getGA4AlertEmailRecipientsError = (row: any): string | null => {
+    if (!isGA4NotificationPlatform(row?.platformType) || row?.alertsEnabled !== true || row?.emailNotifications !== true) return null;
+    const recipients = String(row?.emailRecipients || "").split(",").map((email) => email.trim()).filter(Boolean);
+    if (recipients.length === 0) return "Enter at least one email recipient";
+    return recipients.some((recipient) => !isValidReportScheduleRecipient(recipient))
+      ? "Enter valid email addresses separated by commas"
+      : null;
+  };
   const notificationPlatformLabel = (platformType?: string | null): string => {
     const p = String(platformType || '').trim().toLowerCase();
     if (!p || p === 'campaign') return 'Campaign-level';
@@ -7175,7 +7183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!isGA4NotificationPlatform(kpi?.platformType)) return true;
     const campaignId = String(kpi?.campaignId || "").trim();
     if (!campaignId) return true;
-    const rows = await storage.getPlatformKPIs("google_analytics", campaignId).catch(() => [] as any[]);
+    const rows = await storage.getPlatformKPIs("google_analytics", campaignId);
     const latestIdsByKey = getLatestGA4KPIIdsByDuplicateKey(Array.isArray(rows) ? rows : []);
     return isLatestGA4KPIForDuplicateKey(kpi, latestIdsByKey);
   };
@@ -7294,8 +7302,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               return enrichPerformanceAlertNotification(n, resolvedBenchmark, "benchmark");
             }
             if (isPerformanceAlert) return null;
-          } catch {
-            if (isPerformanceAlertNotification(n, notificationMetadata(n?.metadata))) return null;
+          } catch (error) {
+            if (isPerformanceAlertNotification(n, notificationMetadata(n?.metadata))) throw error;
           }
           return n;
         }));
@@ -7304,7 +7312,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // In-memory fallback (dev/no-DB): filter using campaign ownership in memory.
-      const campaignsAll = await storage.getCampaigns().catch(() => [] as any[]);
+      const campaignsAll = await storage.getCampaigns();
       const ownedIds = (Array.isArray(campaignsAll) ? campaignsAll : [])
         .filter((c: any) => {
           const ownerId = String(c?.ownerId || "").trim();
@@ -7313,7 +7321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .map((c: any) => String(c?.id || ""))
         .filter(Boolean);
 
-      const allNotifications = await storage.getNotifications().catch(() => [] as any[]);
+      const allNotifications = await storage.getNotifications();
       const fallbackRows = await Promise.all((Array.isArray(allNotifications) ? allNotifications : []).map(async (n: any) => {
         if (!ownedIds.includes(String((n as any)?.campaignId || ""))
           || isNotificationDismissed(n)
@@ -7322,7 +7330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const isPerformanceAlert = isPerformanceAlertNotification(n, meta);
         if (!isPerformanceAlert) return n;
         if (meta?.kpiId) {
-          const kpi = await storage.getKPI(String(meta.kpiId)).catch(() => undefined as any);
+          const kpi = await storage.getKPI(String(meta.kpiId));
           if (!kpi || String((kpi as any).campaignId || "") !== String((n as any).campaignId || "")) return null;
           if (!(await isLatestGA4NotificationKPI(kpi))) return null;
           (kpi as any).__providerCoverageThroughDate = meta?.providerCoverageThroughDate;
@@ -7332,7 +7340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : null;
         }
         if (meta?.benchmarkId) {
-          const benchmark = await storage.getBenchmark(String(meta.benchmarkId)).catch(() => undefined as any);
+          const benchmark = await storage.getBenchmark(String(meta.benchmarkId));
           if (!benchmark || String((benchmark as any).campaignId || "") !== String((n as any).campaignId || "")) return null;
           (benchmark as any).__providerCoverageThroughDate = meta?.providerCoverageThroughDate;
           const resolvedBenchmark = await resolveNotificationBenchmarkAlertRowForRequest(benchmark, validationReadOnly);
@@ -28055,6 +28063,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const validatedKPI = insertKPISchema.parse(requestData);
+      const emailRecipientsError = getGA4AlertEmailRecipientsError(validatedKPI);
+      if (emailRecipientsError) return res.status(400).json({ message: emailRecipientsError });
 
       const kpi = await storage.createKPI(validatedKPI);
       await refreshInstagramKpisIfNeeded(platformType, validatedKPI.campaignId).catch((e: any) => {
@@ -28139,6 +28149,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const key of Object.keys(validated)) {
         if (typeof validated[key] === "undefined") delete validated[key];
       }
+
+      const emailRecipientsError = getGA4AlertEmailRecipientsError({ ...okKpi, ...validated });
+      if (emailRecipientsError) return res.status(400).json({ message: emailRecipientsError });
 
       if (String((okKpi as any)?.platformType || "").trim().toLowerCase() === "google_analytics") {
         const kpiCampaign = await storage.getCampaign(String((okKpi as any).campaignId || ""));
@@ -29749,6 +29762,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
 
       const validatedData = insertBenchmarkSchema.parse(req.body);
+      const emailRecipientsError = getGA4AlertEmailRecipientsError(validatedData);
+      if (emailRecipientsError) return res.status(400).json({ message: emailRecipientsError });
 
       // Calculate initial variance if current value exists
       if (validatedData.currentValue && validatedData.benchmarkValue) {
@@ -29797,6 +29812,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }) as any;
       delete validated.campaignId;
       delete validated.platformType;
+
+      const emailRecipientsError = getGA4AlertEmailRecipientsError({ ...existing, ...validated });
+      if (emailRecipientsError) return res.status(400).json({ message: emailRecipientsError });
 
       const benchmark = await storage.updateBenchmark(id, validated);
 

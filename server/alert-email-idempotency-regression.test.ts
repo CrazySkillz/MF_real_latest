@@ -206,12 +206,14 @@ describe("alert email idempotency regression guard", () => {
     expect(first.dedupeKey).not.toBe(nextWindow.dedupeKey);
   });
 
-  it("allows immediate retries to reclaim failed alert email claims without duplicating successful sends", () => {
+  it("reclaims skipped Immediate claims without bypassing scheduled retry backoff or terminal failure", () => {
     const audit = source("server/utils/alert-email-audit.ts");
 
     expect(audit).toContain('import { and, eq, inArray } from "drizzle-orm";');
     expect(audit).toContain('if (!dedupeKey || !dedupeKey.includes(":immediate:")) return null;');
-    expect(audit).toContain('const reclaimableStatuses = ["failed", "skipped", "retry_scheduled"];');
+    expect(audit).toContain('const reclaimableStatuses = ["skipped"];');
+    expect(audit).not.toContain('const reclaimableStatuses = ["failed", "skipped"];');
+    expect(audit).not.toContain('const reclaimableStatuses = ["failed", "skipped", "retry_scheduled"];');
     expect(audit).toContain('eq(emailAlertEvents.dedupeKey, dedupeKey)');
     expect(audit).toContain('inArray(emailAlertEvents.deliveryStatus, reclaimableStatuses)');
     expect(audit).toContain('deliveryStatus: "sending"');

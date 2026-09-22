@@ -228,7 +228,7 @@ async function insertAlertEmailClaimRow(values: AlertEmailClaimInsertValues): Pr
 
   const dedupeKey = String(values.dedupeKey || "").trim();
   if (!dedupeKey || !dedupeKey.includes(":immediate:")) return null;
-  const reclaimableStatuses = ["failed", "skipped", "retry_scheduled"];
+  const reclaimableStatuses = ["skipped"];
   const reclaimed = await db
     .update(emailAlertEvents)
     .set({

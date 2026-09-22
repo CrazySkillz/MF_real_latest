@@ -12,6 +12,7 @@ describe("benchmark alert lifecycle regression guard", () => {
     expect(schedulerSource).toContain("if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared');");
     expect(kpiSource).toContain("if (!campaignId) {");
     expect(kpiSource).toContain("if (!campaign) {");
+    expect(kpiSource).toContain('if (platformType === "google_analytics" && !String((campaign as any).ownerId || \'\').trim()) {');
     expect(kpiSource).toContain("if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared');");
   });
 
@@ -33,7 +34,7 @@ describe("benchmark alert lifecycle regression guard", () => {
     const source = readFileSync(join(process.cwd(), "server", "benchmark-notifications.ts"), "utf-8");
 
     expect(source).toContain('const campaignId = String(b.campaignId || "").trim();');
-    expect(source).toContain('const campaign = await storage.getCampaign(campaignId).catch(() => undefined);');
+    expect(source).toContain('if (platformType === "google_analytics") throw error;');
     expect(source).toContain('if (!campaignId) {');
     expect(source).toContain('if (!campaign) {');
     expect(source).toContain('if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");');
@@ -58,5 +59,21 @@ describe("benchmark alert lifecycle regression guard", () => {
     expect(benchmarkSource).toContain('resolvedReason: "superseded"');
     expect(kpiSource).toContain("const sameKpiAlerts = existingAlerts.filter");
     expect(kpiSource).toContain("resolvedReason: 'superseded'");
+  });
+
+  it("serializes the final GA4/campaign active-alert insert per rule", () => {
+    const benchmarkSource = readFileSync(join(process.cwd(), "server", "benchmark-notifications.ts"), "utf-8");
+    const kpiSource = readFileSync(join(process.cwd(), "server", "kpi-notifications.ts"), "utf-8");
+
+    expect(kpiSource).toContain("pg_advisory_xact_lock(hashtextextended");
+    expect(kpiSource).toContain("active-alert:kpi:");
+    expect(kpiSource).toContain("const latestAlerts = await tx.select().from(notifications)");
+    expect(kpiSource).toContain("if (activeExists) return false;");
+    expect(kpiSource).toContain("await tx.insert(notifications).values(notification);");
+    expect(benchmarkSource).toContain("pg_advisory_xact_lock(hashtextextended");
+    expect(benchmarkSource).toContain("active-alert:benchmark:");
+    expect(benchmarkSource).toContain("const latestAlerts = await tx.select().from(notifications)");
+    expect(benchmarkSource).toContain("if (activeExists) return false;");
+    expect(benchmarkSource).toContain("await tx.insert(notifications).values(notification);");
   });
 });

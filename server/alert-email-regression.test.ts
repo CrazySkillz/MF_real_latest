@@ -100,7 +100,7 @@ describe("alert email regression guard", () => {
     expect(source).toContain("if (this.shouldThrottleAlert(kpi.lastAlertSent, frequencyHours)) {");
     expect(source).toContain("if (this.shouldThrottleAlert(benchmark.lastAlertSent, frequencyHours)) {");
     const parseIndex = kpiImmediate.indexOf("const currentValue = this.parseAlertNumber(kpi.currentValue);");
-    const claimIndex = kpiImmediate.indexOf("const claim = retryClaim || await this.claimAlertEmailWindow({");
+    const claimIndex = kpiImmediate.indexOf("const retryLease = retryClaim ? await this.claimDueAlertEmailRetry(retryClaim) : null;");
     const sendIndex = kpiImmediate.indexOf("const emailSent = await emailService.sendAlertEmail(recipients, {");
     expect(parseIndex).toBeGreaterThan(-1);
     expect(claimIndex).toBeGreaterThan(parseIndex);
@@ -129,6 +129,19 @@ describe("alert email regression guard", () => {
     const source = readFileSync(GA4_METRICS_FILE, "utf-8");
 
     expect(source.match(/<SelectItem value="immediate">Immediate \(once per breach\)<\/SelectItem>/g) || []).toHaveLength(2);
+  });
+
+  it("rejects missing or invalid GA4 alert email recipients before persistence", () => {
+    const routes = readRoutes();
+    const page = readFileSync(GA4_METRICS_FILE, "utf-8");
+
+    expect(page).toContain("const getAlertEmailRecipientsError = (enabled: boolean, value: unknown): string | null => {");
+    expect(page.match(/const emailRecipientsError = getAlertEmailRecipientsError\(/g) || []).toHaveLength(2);
+    expect(page).toContain('toast({ title: "Invalid email recipients", description: emailRecipientsError, variant: "destructive" });');
+    expect(routes).toContain("const getGA4AlertEmailRecipientsError = (row: any): string | null => {");
+    expect(routes).toContain("!isGA4NotificationPlatform(row?.platformType)");
+    expect(routes.match(/const emailRecipientsError = getGA4AlertEmailRecipientsError\(/g) || []).toHaveLength(4);
+    expect(routes.match(/return res\.status\(400\)\.json\(\{ message: emailRecipientsError \}\);/g) || []).toHaveLength(4);
   });
 
   it("honors scheduled KPI alert email delivery metadata before sending", () => {

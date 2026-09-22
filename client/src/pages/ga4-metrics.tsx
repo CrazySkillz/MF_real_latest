@@ -105,8 +105,20 @@ const summarizeKpiToleranceLabels = (labels: string[]) => {
   return "each KPI's tolerance";
 };
 
+const parseEmailRecipients = (value: string) =>
+  value.split(",").map((email) => email.trim()).filter(Boolean);
+
 const normalizeReportRecipients = (value: string) =>
-  value.split(",").map((email) => email.trim()).filter(Boolean).sort();
+  parseEmailRecipients(value).sort();
+
+const getAlertEmailRecipientsError = (enabled: boolean, value: unknown): string | null => {
+  if (!enabled) return null;
+  const recipients = parseEmailRecipients(String(value || ""));
+  if (recipients.length === 0) return "Enter at least one email recipient";
+  return recipients.some((recipient) => !z.string().email().safeParse(recipient).success)
+    ? "Enter valid email addresses separated by commas"
+    : null;
+};
 
 const getGA4ReportFormSignature = (values: {
   name: string;
@@ -1006,6 +1018,15 @@ export default function GA4Metrics() {
       alertThreshold: data.alertThreshold ? stripNumberFormatting(String(data.alertThreshold)) : data.alertThreshold,
     };
 
+    const emailRecipientsError = getAlertEmailRecipientsError(
+      cleaned.alertsEnabled && cleaned.emailNotifications,
+      cleaned.emailRecipients,
+    );
+    if (emailRecipientsError) {
+      toast({ title: "Invalid email recipients", description: emailRecipientsError, variant: "destructive" });
+      return;
+    }
+
     // For custom KPIs, require an explicit unit selection.
     if (!cleaned.unit || String(cleaned.unit) === SELECT_UNIT) {
       toast({
@@ -1206,6 +1227,14 @@ export default function GA4Metrics() {
       emailNotifications: newBenchmark.emailNotifications || false,
       emailRecipients: newBenchmark.emailRecipients || "",
     };
+    const emailRecipientsError = getAlertEmailRecipientsError(
+      cleanedBenchmark.alertsEnabled && cleanedBenchmark.emailNotifications,
+      cleanedBenchmark.emailRecipients,
+    );
+    if (emailRecipientsError) {
+      toast({ title: "Invalid email recipients", description: emailRecipientsError, variant: "destructive" });
+      return;
+    }
     // Benchmarks table requires a category; for fully custom benchmarks (no metric selected),
     // default to a generic category.
     if (!String(cleanedBenchmark.category || "").trim()) {

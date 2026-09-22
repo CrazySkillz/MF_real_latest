@@ -95,11 +95,12 @@ describe("notification visibility regression guard", () => {
     expect(routesFile).toContain('if (!benchmark || String((benchmark as any).campaignId || "") !== String(n.campaignId || "")) return null;');
     expect(routesFile).toContain("if (isPerformanceAlert) return null;");
     expect(routesFile).toContain('if (!isPerformanceAlert) return n;');
-    expect(routesFile).toContain("const kpi = await storage.getKPI(String(meta.kpiId)).catch(() => undefined as any);");
-    expect(routesFile).toContain("const benchmark = await storage.getBenchmark(String(meta.benchmarkId)).catch(() => undefined as any);");
+    expect(routesFile).toContain("const kpi = await storage.getKPI(String(meta.kpiId));");
+    expect(routesFile).toContain("const benchmark = await storage.getBenchmark(String(meta.benchmarkId));");
     expect(routesFile).toContain('if (!(await isLatestGA4NotificationKPI(kpi))) return null;');
     expect(routesFile).toContain('return enrichPerformanceAlertNotification(n, resolvedKpi, "kpi");');
     expect(routesFile).toContain('return enrichPerformanceAlertNotification(n, resolvedBenchmark, "benchmark");');
+    expect(routesFile).toContain('if (isPerformanceAlertNotification(n, notificationMetadata(n?.metadata))) throw error;');
   });
 
   it("hides performance alert notifications when the linked row no longer breaches", () => {
@@ -211,12 +212,12 @@ describe("notification visibility regression guard", () => {
     expect(kpiNotificationsFile).toContain("if (!shouldTriggerAlert(kpi)) {");
     expect(kpiNotificationsFile).toContain("await resolveKPIAlerts(String(kpi.id), 'cleared');");
     expect(kpiNotificationsFile).toContain('const campaignId = String(kpi.campaignId || "").trim();');
-    expect(kpiNotificationsFile).toContain("const campaign = await storage.getCampaign(campaignId).catch(() => undefined);");
+    expect(kpiNotificationsFile).toContain('if (platformType === "google_analytics") throw error;');
     expect(kpiNotificationsFile).toContain("if (!campaign) {");
     expect(kpiNotificationsFile).toContain("if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared');");
     expect(kpiNotificationsFile).toContain('const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";');
     expect(benchmarkNotificationsFile).toContain('const campaignId = String(b.campaignId || "").trim();');
-    expect(benchmarkNotificationsFile).toContain("const campaign = await storage.getCampaign(campaignId).catch(() => undefined);");
+    expect(benchmarkNotificationsFile).toContain('if (platformType === "google_analytics") throw error;');
     expect(benchmarkNotificationsFile).toContain("if (!campaign) {");
     expect(benchmarkNotificationsFile).toContain('if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");');
     expect(benchmarkNotificationsFile).toContain('const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";');
@@ -547,7 +548,7 @@ describe("notification visibility regression guard", () => {
       "utf-8"
     );
 
-    expect(notificationsPage).toContain("const selectedNotificationMissing = Boolean(selectedNotificationId && !isLoading && !alertVerificationInProgress && !isError && !isGA4ReconciliationError && !selectedNotification);");
+    expect(notificationsPage).toContain("const selectedNotificationMissing = Boolean(selectedNotificationId && !isLoading && !alertVerificationInProgress && !isError && !isCampaignsError && !isGA4ReconciliationError && !selectedNotification);");
     expect(notificationsPage).toContain('data-testid="selected-notification-missing-alert"');
     expect(notificationsPage).toContain("Selected alert is no longer active");
     expect(notificationsPage).toContain("This alert may have been dismissed, resolved, deleted, or is no longer available in your active notifications.");
@@ -585,6 +586,10 @@ describe("notification visibility regression guard", () => {
     expect(notificationsPage).toContain('<Label htmlFor="campaign-filter">Campaign</Label>');
     expect(notificationsPage).toContain('data-testid="select-campaign-filter"');
     expect(notificationsPage).toContain("All Campaigns");
+    expect(notificationsPage).toContain('<SelectItem value="this-week">Last 7 Days</SelectItem>');
+    expect(notificationsPage).toContain('<SelectItem value="this-month">Last 30 Days</SelectItem>');
+    expect(notificationsPage).toContain('const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);');
+    expect(notificationsPage).toContain('const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);');
     expect(notificationsPage).not.toContain("const matchesRead =");
     expect(notificationsPage).toContain("const paginatedNotifications = filteredNotifications.slice(startIndex, endIndex);");
     expect(notificationsPage).toContain("No active alerts found");
@@ -614,11 +619,13 @@ describe("notification visibility regression guard", () => {
     expect(notificationsPage).toContain("Notifications unavailable");
     expect(notificationsPage).toContain("Refresh the page to try again.");
     expect(notificationsPage).toContain("No active alerts found");
-    expect(notificationsPage).toContain(") : (isError || isGA4ReconciliationError) ? (");
+    expect(notificationsPage).toContain("isError: isCampaignsError");
+    expect(notificationsPage).toContain("enabled: !campaignsLoading && !isCampaignsError && ga4CampaignIds.length > 0");
+    expect(notificationsPage).toContain(") : (isError || isCampaignsError || isGA4ReconciliationError) ? (");
     expect(notificationsPage.indexOf('data-testid="notifications-unavailable"')).toBeLessThan(
       notificationsPage.indexOf(") : filteredNotifications.length === 0 ? (")
     );
-    expect(notificationsPage).toContain("selectedNotificationId && !isLoading && !alertVerificationInProgress && !isError && !isGA4ReconciliationError && !selectedNotification");
+    expect(notificationsPage).toContain("selectedNotificationId && !isLoading && !alertVerificationInProgress && !isError && !isCampaignsError && !isGA4ReconciliationError && !selectedNotification");
   });
 
   it("does not render read-state header controls on the Notifications page", () => {

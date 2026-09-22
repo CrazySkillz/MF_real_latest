@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { benchmarks, linkedinDailyMetrics, notifications } from "../shared/schema";
-import { and, desc, eq, isNotNull } from "drizzle-orm";
+import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import type { InsertNotification } from "../shared/schema";
 import { storage } from "./storage";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
@@ -186,7 +186,10 @@ async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, prov
       if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
       continue;
     }
-    const campaign = await storage.getCampaign(campaignId).catch(() => undefined);
+    const campaign = await storage.getCampaign(campaignId).catch((error) => {
+      if (platformType === "google_analytics") throw error;
+      return undefined;
+    });
     if (!campaign) {
       if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
       continue;
@@ -299,8 +302,27 @@ async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, prov
       metadata,
     };
 
-    await db.insert(notifications).values(notification);
-    created += 1;
+    if (usesSingleActiveAlert) {
+      const inserted = await db.transaction(async (tx: any) => {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`active-alert:benchmark:${String(b.id)}`}, 0))`);
+        const latestAlerts = await tx.select().from(notifications).where(eq(notifications.type, "performance-alert"));
+        const activeExists = latestAlerts.some((alert: any) => {
+          try {
+            const meta = typeof alert?.metadata === "string" ? JSON.parse(alert.metadata) : alert?.metadata;
+            return String(meta?.benchmarkId || "") === String(b.id) && !meta?.resolved && !meta?.dismissedAt;
+          } catch {
+            return false;
+          }
+        });
+        if (activeExists) return false;
+        await tx.insert(notifications).values(notification);
+        return true;
+      });
+      if (inserted) created += 1;
+    } else {
+      await db.insert(notifications).values(notification);
+      created += 1;
+    }
   }
 
   return created;

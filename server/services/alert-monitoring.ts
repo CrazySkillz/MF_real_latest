@@ -22,10 +22,12 @@ interface AlertCheck {
 }
 
 type ExistingAlertEmailClaim = {
-  auditEventId?: string;
+  auditEventId: string;
   dedupeKey: string;
   attemptCount: number;
 }
+
+const ALERT_EMAIL_SENDING_STALE_AFTER_MS = 60 * 60 * 1000;
 
 class AlertMonitoringService {
   
@@ -140,6 +142,67 @@ class AlertMonitoringService {
     return lastClear?.id ? `cleared:${String(lastClear.id)}:${String(lastClear.metadata.resolvedAt)}` : "initial";
   }
 
+  private async claimDueAlertEmailRetry(retryClaim: ExistingAlertEmailClaim, now: Date = new Date()): Promise<ExistingAlertEmailClaim | null> {
+    const nextAttemptCount = retryClaim.attemptCount + 1;
+    const [claimed] = await db.update(emailAlertEvents)
+      .set({
+        deliveryStatus: "sending",
+        provider: "pending",
+        success: false,
+        attemptCount: nextAttemptCount,
+        lastAttemptAt: now,
+        nextAttemptAt: null,
+        failedAt: null,
+        error: null,
+      } as any)
+      .where(and(
+        eq(emailAlertEvents.id, retryClaim.auditEventId),
+        eq(emailAlertEvents.kind, "alert"),
+        eq(emailAlertEvents.dedupeKey, retryClaim.dedupeKey),
+        eq(emailAlertEvents.deliveryStatus, "retry_scheduled"),
+        eq(emailAlertEvents.attemptCount, retryClaim.attemptCount),
+        lte(emailAlertEvents.nextAttemptAt, now),
+      ))
+      .returning({
+        id: emailAlertEvents.id,
+        dedupeKey: emailAlertEvents.dedupeKey,
+        attemptCount: emailAlertEvents.attemptCount,
+      })
+      .catch((error: any) => {
+        console.warn("[Alert Email Retry] Failed to claim due retry:", error?.message || error);
+        return [];
+      });
+    if (!claimed?.id || !claimed?.dedupeKey) return null;
+    return {
+      auditEventId: String(claimed.id),
+      dedupeKey: String(claimed.dedupeKey),
+      attemptCount: Number(claimed.attemptCount),
+    };
+  }
+
+  private async finalizeStaleAlertEmailClaims(now: Date): Promise<number> {
+    const staleBefore = new Date(now.getTime() - ALERT_EMAIL_SENDING_STALE_AFTER_MS);
+    const finalized = await db.update(emailAlertEvents)
+      .set({
+        deliveryStatus: "failed",
+        success: false,
+        nextAttemptAt: null,
+        failedAt: now,
+        error: "Alert email send outcome unknown after stale sending claim; automatic retry suppressed to avoid duplicate delivery",
+      } as any)
+      .where(and(
+        eq(emailAlertEvents.kind, "alert"),
+        eq(emailAlertEvents.deliveryStatus, "sending"),
+        lte(emailAlertEvents.lastAttemptAt, staleBefore),
+      ))
+      .returning({ id: emailAlertEvents.id })
+      .catch((error: any) => {
+        console.warn("[Alert Email Retry] Failed to finalize stale sending claims:", error?.message || error);
+        return [];
+      });
+    return finalized.length;
+  }
+
   async sendImmediateKPIAlertIfNeeded(kpiId: string, retryClaim?: ExistingAlertEmailClaim): Promise<boolean> {
     const [rawKpi] = await db.select().from(kpis).where(eq(kpis.id, kpiId));
     if (!rawKpi || !rawKpi.alertsEnabled || !rawKpi.emailNotifications || !rawKpi.emailRecipients) return false;
@@ -161,7 +224,8 @@ class AlertMonitoringService {
 
     const recipients = this.parseEmailRecipients(kpi.emailRecipients);
     if (recipients.length === 0) return false;
-    const claim = retryClaim || await this.claimAlertEmailWindow({
+    const retryLease = retryClaim ? await this.claimDueAlertEmailRetry(retryClaim) : null;
+    const claim = retryClaim ? retryLease : await this.claimAlertEmailWindow({
       itemType: "kpi",
       itemId: kpi.id,
       itemName: kpi.name,
@@ -186,7 +250,7 @@ class AlertMonitoringService {
       dedupeKey: claim.dedupeKey,
       campaignId: (kpi as any).campaignId || undefined,
       campaignName,
-      attemptCount: retryClaim?.attemptCount || 1,
+      attemptCount: retryLease?.attemptCount || 1,
     });
 
     if (!emailSent) return false;
@@ -228,7 +292,8 @@ class AlertMonitoringService {
 
     const recipients = this.parseEmailRecipients(benchmark.emailRecipients);
     if (recipients.length === 0) return false;
-    const claim = retryClaim || await this.claimAlertEmailWindow({
+    const retryLease = retryClaim ? await this.claimDueAlertEmailRetry(retryClaim) : null;
+    const claim = retryClaim ? retryLease : await this.claimAlertEmailWindow({
       itemType: "benchmark",
       itemId: benchmark.id,
       itemName: benchmark.name,
@@ -253,7 +318,7 @@ class AlertMonitoringService {
       dedupeKey: claim.dedupeKey,
       campaignId: (benchmark as any).campaignId || undefined,
       campaignName,
-      attemptCount: retryClaim?.attemptCount || 1,
+      attemptCount: retryLease?.attemptCount || 1,
     });
 
     if (!emailSent) return false;
@@ -275,7 +340,12 @@ class AlertMonitoringService {
           originalDedupeKey: row?.dedupeKey || null,
         }),
       } as any)
-      .where(eq(emailAlertEvents.id, id));
+      .where(and(
+        eq(emailAlertEvents.id, id),
+        eq(emailAlertEvents.kind, "alert"),
+        eq(emailAlertEvents.deliveryStatus, "retry_scheduled"),
+        eq(emailAlertEvents.attemptCount, Number(row?.attemptCount || 0)),
+      ));
   }
 
   private async markAlertEmailRetryExhausted(row: any): Promise<void> {
@@ -292,7 +362,12 @@ class AlertMonitoringService {
           originalDedupeKey: row?.dedupeKey || null,
         }),
       } as any)
-      .where(eq(emailAlertEvents.id, id));
+      .where(and(
+        eq(emailAlertEvents.id, id),
+        eq(emailAlertEvents.kind, "alert"),
+        eq(emailAlertEvents.deliveryStatus, "retry_scheduled"),
+        eq(emailAlertEvents.attemptCount, Number(row?.attemptCount || 0)),
+      ));
   }
 
   private async isKPIAlertRetryStillSendable(kpiId: string): Promise<boolean> {
@@ -328,6 +403,7 @@ class AlertMonitoringService {
   }
 
   async processDueAlertEmailRetries(now: Date = new Date()): Promise<number> {
+    await this.finalizeStaleAlertEmailClaims(now);
     const rows = await db
       .select()
       .from(emailAlertEvents)
@@ -336,11 +412,7 @@ class AlertMonitoringService {
         eq(emailAlertEvents.deliveryStatus, "retry_scheduled"),
         lte(emailAlertEvents.nextAttemptAt, now),
       ))
-      .limit(50)
-      .catch((error: any) => {
-        console.warn("[Alert Email Retry] Failed to load due retries:", error?.message || error);
-        return [];
-      });
+      .limit(50);
 
     let retried = 0;
     for (const row of rows as any[]) {
@@ -380,7 +452,7 @@ class AlertMonitoringService {
       const retryClaim = {
         auditEventId: id,
         dedupeKey,
-        attemptCount: attemptCount + 1,
+        attemptCount,
       };
       const sent = entityType === "kpi"
         ? await this.sendImmediateKPIAlertIfNeeded(entityId, retryClaim)

@@ -14,11 +14,22 @@ const sliceBetween = (source: string, startNeedle: string, endNeedle: string) =>
 
 describe("Google Ads GA4 Overview spend lifecycle and downstream regression guard", () => {
   it("allows GA4 Spend OAuth setup without a developer token while retaining the Connected Platform guard", () => {
-    const route = sliceBetween(read("server", "routes-oauth.ts"), 'app.post("/api/auth/google-ads/connect"', 'app.get("/api/auth/google-ads/callback"');
+    const routes = read("server", "routes-oauth.ts");
+    const credentials = sliceBetween(routes, "const getGoogleAdsOAuthClientCredentials = (spendOnly: boolean) =>", "const getGoogleAdsOAuthStateSecret");
+    const route = sliceBetween(routes, 'app.post("/api/auth/google-ads/connect"', 'app.get("/api/auth/google-ads/callback"');
+    const callback = sliceBetween(routes, 'app.get("/api/auth/google-ads/callback"', 'app.post("/api/google-ads/:campaignId/select-customer"');
+    const selection = sliceBetween(routes, 'app.post("/api/google-ads/:campaignId/select-customer"', 'app.post("/api/google-ads/:campaignId/connect-test"');
+    expect(credentials).toContain('spendOnly && !process.env.GOOGLE_ADS_CLIENT_ID && !process.env.GOOGLE_ADS_CLIENT_SECRET');
+    expect(credentials).toContain('process.env.GOOGLE_CLIENT_ID : process.env.GOOGLE_ADS_CLIENT_ID');
+    expect(credentials).toContain('process.env.GOOGLE_CLIENT_SECRET : process.env.GOOGLE_ADS_CLIENT_SECRET');
     expect(route).toContain('const spendOnly = !!(req.body as any)?.spendOnly;');
+    expect(route).toContain('getGoogleAdsOAuthClientCredentials(spendOnly)');
     expect(route).toContain('!clientId || !clientSecret || (!spendOnly && !developerToken)');
-    expect(route).toContain('Set GOOGLE_ADS_CLIENT_ID and GOOGLE_ADS_CLIENT_SECRET.');
+    expect(route).toContain('Google Ads OAuth is not configured for this app.');
     expect(route).toContain('Set GOOGLE_ADS_CLIENT_ID, GOOGLE_ADS_CLIENT_SECRET, and GOOGLE_ADS_DEVELOPER_TOKEN.');
+    expect(callback).toContain('getGoogleAdsOAuthClientCredentials(spendOnly)');
+    expect(selection).toContain('getGoogleAdsOAuthClientCredentials(spendOnly)');
+    expect(selection).toContain('clientSecret: clientSecret ||');
   });
 
   it("routes GA4 Overview Google Ads spend imports through a GA4-scoped ad-platform source with selected campaign IDs", () => {

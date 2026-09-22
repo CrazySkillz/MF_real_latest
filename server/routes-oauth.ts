@@ -26048,6 +26048,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const GOOGLE_ADS_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
+  const getGoogleAdsOAuthClientCredentials = (spendOnly: boolean) => {
+    const useSharedGoogleClient = spendOnly && !process.env.GOOGLE_ADS_CLIENT_ID && !process.env.GOOGLE_ADS_CLIENT_SECRET;
+    return {
+      clientId: useSharedGoogleClient ? process.env.GOOGLE_CLIENT_ID : process.env.GOOGLE_ADS_CLIENT_ID,
+      clientSecret: useSharedGoogleClient ? process.env.GOOGLE_CLIENT_SECRET : process.env.GOOGLE_ADS_CLIENT_SECRET,
+    };
+  };
+
   const getGoogleAdsOAuthStateSecret = (): string => {
     const secret = process.env.GOOGLE_ADS_OAUTH_STATE_SECRET || process.env.SESSION_SECRET || process.env.APP_SECRET;
     if (secret) return secret;
@@ -26094,15 +26102,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const accessOk = await ensureCampaignAccess(req as any, res as any, parsedCampaignId.data);
       if (!accessOk) return;
 
-      const clientId = process.env.GOOGLE_ADS_CLIENT_ID;
-      const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET;
-      const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
       const spendOnly = !!(req.body as any)?.spendOnly;
+      const { clientId, clientSecret } = getGoogleAdsOAuthClientCredentials(spendOnly);
+      const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
 
       if (!clientId || !clientSecret || (!spendOnly && !developerToken)) {
         return res.status(500).json({
           message: spendOnly
-            ? "Google Ads OAuth not configured. Set GOOGLE_ADS_CLIENT_ID and GOOGLE_ADS_CLIENT_SECRET."
+            ? "Google Ads OAuth is not configured for this app."
             : "Google Ads OAuth not configured. Set GOOGLE_ADS_CLIENT_ID, GOOGLE_ADS_CLIENT_SECRET, and GOOGLE_ADS_DEVELOPER_TOKEN.",
           setupRequired: true,
         });
@@ -26169,8 +26176,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const accessOk = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!accessOk) return;
 
-      const clientId = process.env.GOOGLE_ADS_CLIENT_ID!;
-      const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET!;
+      const { clientId, clientSecret } = getGoogleAdsOAuthClientCredentials(spendOnly);
+      if (!clientId || !clientSecret) throw new Error("Google Ads OAuth client credentials are unavailable");
       const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '';
 
       const rawBaseUrl = process.env.APP_BASE_URL || process.env.RENDER_EXTERNAL_URL ||
@@ -26284,8 +26291,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: `Google Ads account timezone ${customerTimeZone || "is unavailable"}; select an account using ${campaignTimeZone}` });
       }
 
-      const clientId = process.env.GOOGLE_ADS_CLIENT_ID || '';
-      const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET || '';
+      const { clientId, clientSecret } = getGoogleAdsOAuthClientCredentials(spendOnly);
+      if (spendOnly && (!clientId || !clientSecret)) return res.status(500).json({ error: "Google Ads OAuth client credentials are unavailable" });
       const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '';
 
       const expiresAt = expiresIn ? new Date(Date.now() + expiresIn * 1000) : undefined;
@@ -26307,8 +26314,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         managerAccountId: managerAccountId || null,
         accessToken,
         refreshToken,
-        clientId,
-        clientSecret,
+        clientId: clientId || '',
+        clientSecret: clientSecret || '',
         developerToken,
         method: 'oauth',
         expiresAt,

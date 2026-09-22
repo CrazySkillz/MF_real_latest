@@ -1,5 +1,18 @@
 # KPI Notifications - Testing Guide
 
+> Historical test guide: the instructions below describe an older LinkedIn/period-tracking and read/unread prototype. They are **not** current GA4-first Notifications validation instructions. In particular, do not run `test-kpi-notifications.ts` against production: it writes synthetic period snapshots and notifications for every active KPI. Current bounded certification and evidence are in `NOTIFICATIONS_CERTIFICATION_2026-09-21.md`.
+
+## Current GA4-first Notifications behavior
+
+- The top-bar bell shows a red dot when the owner-scoped `/api/notifications` response contains an active KPI or Benchmark performance alert. It opens `/notifications`; the sidebar also has a Notifications link. Neither surface has a visible unread/read, Mark All as Read, or dismiss control.
+- The Notifications page shows the owner's visible campaign-scoped notifications; KPI/Benchmark performance alerts are included only while their current resolved values still breach. It has priority, client, campaign, and date filters and 10-item pagination. `?selected=<notificationId>` selects an alert; `?highlight=<notificationId>` remains a compatibility input. A missing selected alert gets an explicit unavailable message.
+- Alert cards display current value, threshold, unit, and created date when KPI/Benchmark metadata is present. `View KPI` and `View Benchmark` open the exact item on the GA4 Metrics tab for that campaign; opening an alert does not mark it read or resolve its breach.
+- Opening this page runs GA4 alert reconciliation through campaign-scoped POST requests, then refetches the active list. Do not treat a normal production page visit as read-only validation. The owner-scoped GET endpoint supports `?readOnly=1` for controlled read-only checks.
+- Email requires the KPI/Benchmark alert opt-in and valid recipient configuration. Immediate and scheduled email paths are distinct; the scheduled runner defaults to a 15-minute check interval unless configured otherwise. An accepted provider request is not confirmed delivery; use a provider delivery event or actual inbox receipt for a delivery claim.
+- For current regression evidence, use the focused notification/alert tests and exact-runtime record in `NOTIFICATIONS_CERTIFICATION_2026-09-21.md`. Retained read/dismiss/clear APIs are access-guarded legacy paths, not visible product controls. Use only isolated, authorized disposable records for lifecycle or email testing.
+
+## Archived prototype instructions (not current validation guidance)
+
 ## Overview
 This guide explains how to test the complete KPI notifications and period tracking feature.
 

@@ -114,11 +114,11 @@ Important meaning:
 - `Dashboard` is global navigation
 - the `Notifications` page is a global surface that aggregates notifications across campaigns
 - users can filter that page by client after opening it
-- dismissing a notification hides the current alert record only; it does not resolve the underlying KPI or benchmark breach
-- clearing or dismissing notifications is a visibility action, not proof that the underlying breached KPI or Benchmark is resolved
+- the current page and top-bar bell do not expose read, clear, or dismiss controls; retained legacy API dismiss/clear actions hide the current alert record only and do not resolve the underlying KPI or Benchmark breach
+- clearing or dismissing through a retained legacy API is a visibility action, not proof that the underlying breached KPI or Benchmark is resolved
 - if a breached KPI or Benchmark still exists, the next valid alert check may create a new active alert row; this must be scoped to the exact campaign and item that breached
 - campaign deletion should hide/remove only notifications for that deleted campaign and must not remove notifications for other campaigns
-- KPI and Benchmark alert links from both the bell and the Notifications page should deep-link to the correct campaign, correct analytics tab, and exact item card
+- the top-bar bell opens `/notifications`; KPI and Benchmark alert links on that page should deep-link to the correct campaign, analytics tab, and exact item card
 
 ### Current-State Note: Dashboard
 

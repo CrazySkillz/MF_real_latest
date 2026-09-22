@@ -1,5 +1,7 @@
 # KPI Alerts & Period Tracking - Implementation Proposal
 
+> Historical proposal only. Its "Current State Analysis" records the state at proposal time, not the current GA4-first Notifications UI or email implementation. See `KPI_NOTIFICATIONS_TESTING_GUIDE.md` (Current GA4-first Notifications behavior) and `NOTIFICATIONS_CERTIFICATION_2026-09-21.md` before using this file for any implementation or validation decision.
+
 ## Question 1: Integrating KPI Alerts with Notifications System
 
 ### **Current State Analysis**

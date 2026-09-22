@@ -1,5 +1,7 @@
 # KPI In-App Notifications - Implementation Plan
 
+> Historical proposal only. Its LinkedIn-first monthly reminder/period-complete flow, unread badge, and "email later" plan do not describe the current GA4-first implementation. For current behavior and safe testing, see `KPI_NOTIFICATIONS_TESTING_GUIDE.md` (Current GA4-first Notifications behavior); for exact-runtime certification, see `NOTIFICATIONS_CERTIFICATION_2026-09-21.md`. Do not implement this plan as a current requirement.
+
 ## **Approved: Phase 1 - In-App Notifications Only**
 
 **Effort:** 2-3 days

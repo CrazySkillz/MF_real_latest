@@ -26899,7 +26899,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { benchmarkId } = req.params;
 
       // Verify benchmark exists and get campaignId for access check
-      const existingBenchmark = await storage.getMetaBenchmarkById(benchmarkId);
+      let existingBenchmark;
+      try {
+        existingBenchmark = await storage.getMetaBenchmarkById(benchmarkId);
+      } catch (error: any) {
+        const cause = error?.cause || error;
+        if (cause?.code === "42P01" && String(cause?.message || "").includes('"meta_benchmarks"')) return next();
+        throw error;
+      }
       if (!existingBenchmark) {
         return next();
       }

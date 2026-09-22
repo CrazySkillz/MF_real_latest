@@ -394,13 +394,31 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 | Campaign create/manage lifecycle | `NO_CERTIFICATE` | Architecture contract and platform-specific flow tests | Certify create/edit/delete, draft/finalization, source attachment, owner/client scope, and damaged-data boundary. |
 | Campaign Overview and Connected Platforms | `NO_CERTIFICATE` | Platform-specific trackers and Campaign DeepDive launchers | One whole-surface inventory covering source cards, statuses, navigation, refresh, and unavailable states. |
 | Campaign-level KPIs and Benchmarks | `RECONCILE` | `CAMPAIGN_LEVEL_KPI_BENCHMARK_PRODUCTION_READY.md` preserves historical evidence; standalone tabs are absent from normal navigation | Outside the fresh certification queue. Legacy `#kpis`/`#benchmarks` still render content, so verify release visibility before marking `EXCLUDED`; audit any visible GA4 KPI/Benchmark consumers within their own sections. |
-| Notifications page and bell | `NO_CERTIFICATE` | Targeted visibility audit and alert/notification regression evidence | One whole-surface certificate covering list, filters, links, dismiss/recreate, ownership, email status, and source changes. |
+| Notifications page and bell | `CERTIFIED` | `NOTIFICATIONS_CERTIFICATION_2026-09-21.md`; targeted visibility and alert/notification regression evidence | `CLEAN-CERTIFIED / PRODUCTION_READY` only for the certificate's GA4-first global Notifications, bell, active KPI/Benchmark alert, and email boundary at validated application runtime `e6a9d7cb17e9389bfa12c80f9f9563da44f33bb1`; required in-scope gates remaining: 0. Scheduled email reached provider-confirmed delivery, not independently confirmed inbox receipt. Unconfigured platforms and global scheduler health remain excluded. |
 | Global Dashboard | `UNVERIFIED` | Architecture says the Dashboard still needs refinement | Complete value inventory, scope, formulas, lifecycle, and downstream trace. |
 | Global Reports route/library | `UNVERIFIED` | GA4 Reports and Campaign DeepDive Reports have separate records | Certify the visible route as a composition of only its supported report families. |
 | Audiences | `NO_CERTIFICATE` | Visible application route; no readiness document found | Decide supported release scope, then certify or explicitly exclude. |
 | Freestyle Chat | `UNVERIFIED` | Architecture describes it as still in progress | Complete and certify, or hide and mark `EXCLUDED` for this release. |
 | Global scheduler health | `UNVERIFIED` | Several exact target jobs are certified; current evidence repeatedly excludes obsolete/test failures | Define active production job inventory and pass one global healthy-cycle gate without treating excluded jobs as success. |
 | App-wide destructive/visibility behavior | `RECONCILE` | `TARGETED_DESTRUCTIVE_VISIBILITY_AUDIT.md` contains broad targeted evidence | Convert completed evidence into an explicit exact-runtime certificate and preserve unresolved rows. |
+
+### Notifications fresh certification breakdown
+
+Notifications is a global, owner-scoped active-alert surface. The combined
+GA4-first scope below passed at validated application runtime
+`e6a9d7cb17e9389bfa12c80f9f9563da44f33bb1`, controlled by
+`NOTIFICATIONS_CERTIFICATION_2026-09-21.md`. Later documentation/script-only
+commits are not a new application runtime. GA4 KPI/Benchmark and connected-source
+certifications remain read-only dependencies; the current UI has no read-state
+or dismiss controls. The certificate's exclusions remain controlling.
+
+| Order | Notifications review | Work state | Certification status | Required validation boundary |
+| ---: | --- | --- | --- | --- |
+| - | Combined Notifications surface | `COMPLETE` | `CERTIFIED` | All four reviews passed together for the exact GA4-first scope at application runtime `e6a9d7cb17e9389bfa12c80f9f9563da44f33bb1`; required in-scope gates remaining: 0. No whole-app, unconfigured-platform, or global scheduler-health claim. |
+| 1 | Bell and active-alert state | `COMPLETE` | `CERTIFIED` | PASS for the owner-scoped active-breach indicator, direct navigation, disabled current-page state, and empty/error behavior; fixture-only failure states retain the certificate's limitation. |
+| 2 | Active-alert list, filters, and navigation | `COMPLETE` | `CERTIFIED` | PASS for priority/client/campaign/date filters, pagination, selected/missing states, values, and links; KPI link and unit branches were code-traced/regression-guarded rather than all live-clicked. |
+| 3 | Alert reconciliation and lifecycle | `COMPLETE` | `CERTIFIED` | PASS for the exact exercised GA4 KPI/Benchmark create/edit/clear/re-breach/delete, owner isolation, soft-hidden history, deduplication, and concurrency boundary; production fault injection was not performed. |
+| 4 | Email alert scheduling and delivery evidence | `COMPLETE` | `CERTIFIED` | PASS for the observed natural daily-frequency audit, atomic deduplication, and Mailgun provider-confirmed `delivered` state; the new scheduled email's inbox receipt was not independently checked. Retry/failure states have local evidence only. |
 
 ## Automatic Scheduler Validation Track
 
@@ -554,6 +572,7 @@ The following records are preserved and indexed by this ledger:
 - `TIKTOK_CONNECTED_PLATFORM_PRODUCTION_READY.md`
 - `GOOGLE_SHEETS_CONNECTED_PLATFORM_PRODUCTION_READY.md`
 - `CUSTOM_INTEGRATION_CONNECTED_PLATFORM_PRODUCTION_READY.md`
+- `NOTIFICATIONS_CERTIFICATION_2026-09-21.md`
 - `TARGETED_DESTRUCTIVE_VISIBILITY_AUDIT.md`
 
 GA4 machine records:

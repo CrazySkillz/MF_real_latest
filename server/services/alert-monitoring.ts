@@ -167,10 +167,6 @@ class AlertMonitoringService {
         id: emailAlertEvents.id,
         dedupeKey: emailAlertEvents.dedupeKey,
         attemptCount: emailAlertEvents.attemptCount,
-      })
-      .catch((error: any) => {
-        console.warn("[Alert Email Retry] Failed to claim due retry:", error?.message || error);
-        return [];
       });
     if (!claimed?.id || !claimed?.dedupeKey) return null;
     return {
@@ -195,11 +191,7 @@ class AlertMonitoringService {
         eq(emailAlertEvents.deliveryStatus, "sending"),
         lte(emailAlertEvents.lastAttemptAt, staleBefore),
       ))
-      .returning({ id: emailAlertEvents.id })
-      .catch((error: any) => {
-        console.warn("[Alert Email Retry] Failed to finalize stale sending claims:", error?.message || error);
-        return [];
-      });
+      .returning({ id: emailAlertEvents.id });
     return finalized.length;
   }
 

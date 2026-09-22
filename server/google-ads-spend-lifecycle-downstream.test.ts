@@ -13,6 +13,14 @@ const sliceBetween = (source: string, startNeedle: string, endNeedle: string) =>
 };
 
 describe("Google Ads GA4 Overview spend lifecycle and downstream regression guard", () => {
+  it("allows GA4 Spend OAuth setup without a developer token while retaining the Connected Platform guard", () => {
+    const route = sliceBetween(read("server", "routes-oauth.ts"), 'app.post("/api/auth/google-ads/connect"', 'app.get("/api/auth/google-ads/callback"');
+    expect(route).toContain('const spendOnly = !!(req.body as any)?.spendOnly;');
+    expect(route).toContain('!clientId || !clientSecret || (!spendOnly && !developerToken)');
+    expect(route).toContain('Set GOOGLE_ADS_CLIENT_ID and GOOGLE_ADS_CLIENT_SECRET.');
+    expect(route).toContain('Set GOOGLE_ADS_CLIENT_ID, GOOGLE_ADS_CLIENT_SECRET, and GOOGLE_ADS_DEVELOPER_TOKEN.');
+  });
+
   it("routes GA4 Overview Google Ads spend imports through a GA4-scoped ad-platform source with selected campaign IDs", () => {
     const ga4Page = read("client", "src", "pages", "ga4-metrics.tsx");
     const modal = read("client", "src", "components", "AddSpendWizardModal.tsx");

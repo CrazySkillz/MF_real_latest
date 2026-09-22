@@ -26097,10 +26097,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const clientId = process.env.GOOGLE_ADS_CLIENT_ID;
       const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET;
       const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
+      const spendOnly = !!(req.body as any)?.spendOnly;
 
-      if (!clientId || !clientSecret || !developerToken) {
+      if (!clientId || !clientSecret || (!spendOnly && !developerToken)) {
         return res.status(500).json({
-          message: "Google Ads OAuth not configured. Set GOOGLE_ADS_CLIENT_ID, GOOGLE_ADS_CLIENT_SECRET, and GOOGLE_ADS_DEVELOPER_TOKEN.",
+          message: spendOnly
+            ? "Google Ads OAuth not configured. Set GOOGLE_ADS_CLIENT_ID and GOOGLE_ADS_CLIENT_SECRET."
+            : "Google Ads OAuth not configured. Set GOOGLE_ADS_CLIENT_ID, GOOGLE_ADS_CLIENT_SECRET, and GOOGLE_ADS_DEVELOPER_TOKEN.",
           setupRequired: true,
         });
       }
@@ -26111,7 +26114,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseUrl = rawBaseUrl.replace(/\/+$/, '');
       const redirectUri = `${baseUrl}/api/auth/google-ads/callback`;
 
-      const spendOnly = !!(req.body as any)?.spendOnly;
       const state = signGoogleAdsOAuthState(String(campaignId), spendOnly);
 
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +

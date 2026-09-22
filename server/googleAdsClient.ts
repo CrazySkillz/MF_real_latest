@@ -77,9 +77,9 @@ export class GoogleAdsClient {
 
     const headers: Record<string, string> = {
       'Authorization': `Bearer ${this.accessToken}`,
-      'developer-token': this.developerToken,
       'Content-Type': 'application/json',
     };
+    if (this.developerToken) headers['developer-token'] = this.developerToken;
     if (this.managerAccountId) {
       headers['login-customer-id'] = this.managerAccountId;
     }
@@ -136,7 +136,7 @@ export class GoogleAdsClient {
       {
         headers: {
           'Authorization': `Bearer ${this.accessToken}`,
-          'developer-token': this.developerToken,
+          ...(this.developerToken ? { 'developer-token': this.developerToken } : {}),
         },
       }
     );
@@ -151,7 +151,7 @@ export class GoogleAdsClient {
           baseURL: `${GOOGLE_ADS_BASE_URL}/customers/${customerId}`,
           headers: {
             'Authorization': `Bearer ${this.accessToken}`,
-            'developer-token': this.developerToken,
+            ...(this.developerToken ? { 'developer-token': this.developerToken } : {}),
             'Content-Type': 'application/json',
           },
         });

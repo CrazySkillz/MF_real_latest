@@ -20,6 +20,18 @@ describe('Google Ads REST SearchStream', () => {
     accessToken: 'token', developerToken: 'developer-token', customerId: '123-456',
   });
 
+  it('omits the sunset developer-token header when absent and retains it for existing clients', async () => {
+    mocks.get.mockResolvedValue({ data: { resourceNames: ['customers/123456'] } });
+    mocks.post.mockResolvedValue({ data: [{ results: [{ customer: { id: '123456' } }] }] });
+    const spendClient = new GoogleAdsClient({ accessToken: 'token', developerToken: '', customerId: '123-456' });
+    await spendClient.getAccessibleCustomers();
+    expect(mocks.create.mock.calls[0][0].headers).not.toHaveProperty('developer-token');
+    expect(mocks.get.mock.calls[0][1].headers).not.toHaveProperty('developer-token');
+    expect(mocks.create.mock.calls[1][0].headers).not.toHaveProperty('developer-token');
+    client();
+    expect(mocks.create.mock.calls[2][0].headers['developer-token']).toBe('developer-token');
+  });
+
   it('uses a supported API version and reads every customer and campaign batch', async () => {
     mocks.get.mockResolvedValue({ data: { resourceNames: ['customers/123456'] } });
     mocks.post.mockResolvedValueOnce({ data: [

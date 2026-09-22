@@ -60,10 +60,10 @@ separate: `IN_PROGRESS` never means production-ready.
 | - | Overview (whole tab) | `IN_PROGRESS` | `UNVERIFIED` | Every enabled subsection and combined Overview gate must pass. |
 | 1 | Summary | `QUEUED` | `UNVERIFIED` | Requires a fresh current-runtime certification. |
 | - | Revenue & Financials (parent section) | `IN_PROGRESS` | `UNVERIFIED` | Revenue, Spend, Performance, combined totals, and provenance must all pass. |
-| 2 | Revenue & Financials - Revenue | `COMPLETE` | `CERTIFIED` | Clean-certified for the exact combined GA4 Overview Revenue boundary at deployed application commit `8a4b463b`; controlling certificate: `GA4/OVERVIEW_REVENUE_SECTION_PRODUCTION_READINESS.md`; required steps remaining: 0. |
+| 2 | Revenue & Financials - Revenue | `COMPLETE` | `CERTIFIED` | Clean-certified for the exact combined GA4 Overview Revenue boundary at deployed application commit `8a4b463b`; controlling certificate: `GA4/OVERVIEW_REVENUE_SECTION_PRODUCTION_READINESS.md`. The affected fresh-campaign, no-explicit-start-date native Revenue path was recertified at deployed runtime `dda53f441aab938700f808eb6a5d2aedd035f9e6`; supplemental evidence: `GA4/OVERVIEW_FRESH_CAMPAIGN_REVENUE_BREAKDOWN_RECERTIFICATION_2026-09-22.md`. Required steps remaining within these exact boundaries: 0. |
 | 3 | Revenue & Financials - Spend | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the documented Google Sheets and CSV Spend boundary at deployed runtime `002a7caa`; evidence commit `8d3da627`; required steps remaining: 0. Google Ads is not configured and remains excluded. |
 | - | Revenue & Financials - Performance (`Profit`, `ROAS`, `ROI`, `CPA`) | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact four-card Performance boundary at deployed runtime `0c49cc6a`; controlling certificate: `GA4/OVERVIEW_PERFORMANCE_CERTIFICATION_2026-09-14.md`; evidence commit `93a69edc`; required steps remaining: 0. Google Ads remains excluded. |
-| 4 | Campaign Breakdown | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact documented Campaign Breakdown boundary at current deployed commit `9b2a090d9b3673a94dae7891b3e355e3bc269b4f`; controlling certificate: `GA4/OVERVIEW_CAMPAIGN_BREAKDOWN_CERTIFICATION_2026-09-14.md`; required steps remaining: 0. |
+| 4 | Campaign Breakdown | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact boundary in `GA4/OVERVIEW_CAMPAIGN_BREAKDOWN_CERTIFICATION_2026-09-14.md`. The affected fresh-campaign, no-explicit-start-date API/UI/refresh path was recertified at deployed runtime `dda53f441aab938700f808eb6a5d2aedd035f9e6`; supplemental evidence: `GA4/OVERVIEW_FRESH_CAMPAIGN_REVENUE_BREAKDOWN_RECERTIFICATION_2026-09-22.md`. Campaign3 PDF consumers remain excluded from the supplemental run. Required steps remaining within these exact boundaries: 0. |
 | 5 | Landing Pages | `QUEUED` | `UNVERIFIED` | Requires a fresh current-runtime certification. |
 | 6 | Conversion Events | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact documented campaign, property, date, provider-to-API-to-UI-to-PDF, refresh, failure, pagination, and ownership boundary at application runtime `176d02ef00a65091917136f1ed2bd8c7cc817fcb`; controlling certificate: `GA4/OVERVIEW_CONVERSION_EVENTS_CERTIFICATION_2026-09-15.md`; latest documentation commit: `9ec5ba5d6c2153c90b02b004f6068cb3488cd5d3`; required steps remaining: 0. The user-accepted `48 / 48 / 48` display is UI smoke evidence only; independent Google Analytics reconciliation remains deferred. |
 
@@ -541,6 +541,7 @@ The following records are preserved and indexed by this ledger:
 - `GA4/OVERVIEW_REVENUE_HUBSPOT_PRODUCTION_READINESS.md`
 - `GA4/OVERVIEW_REVENUE_SALESFORCE_PRODUCTION_READINESS.md`
 - `GA4/OVERVIEW_REVENUE_SECTION_PRODUCTION_READINESS.md`
+- `GA4/OVERVIEW_FRESH_CAMPAIGN_REVENUE_BREAKDOWN_RECERTIFICATION_2026-09-22.md`
 - `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md`
 - `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md`
 - `GA4/KPIS_PRODUCTION_READINESS.md`

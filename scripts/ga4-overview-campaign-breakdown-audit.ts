@@ -10,11 +10,14 @@ const BASE_URL = process.env.GA4_OVERVIEW_BASE_URL || 'https://marketforensics.o
 const EXPECTED_SHA = String(process.env.GA4_OVERVIEW_EXPECTED_SHA || '').trim();
 const CAMPAIGN_ID = String(process.env.GA4_OVERVIEW_CAMPAIGN_ID || '8aa735ee-c02f-41e2-bb1f-7c3f43bb9458').trim();
 const PROPERTY_ID = String(process.env.GA4_OVERVIEW_PROPERTY_ID || '542352127').trim();
+const AUDIT_SCOPE = String(process.env.GA4_OVERVIEW_BREAKDOWN_AUDIT_SCOPE || 'complete').trim().toLowerCase();
 const clerkSecret = String(process.env.CLERK_SECRET_KEY || '').trim();
 
 if (!pool) throw new Error('DATABASE_URL is required');
 if (!clerkSecret) throw new Error('CLERK_SECRET_KEY is required');
 if (!/^[0-9a-f]{40}$/i.test(EXPECTED_SHA)) throw new Error('GA4_OVERVIEW_EXPECTED_SHA must be a full Git SHA');
+if (!['complete', 'ui'].includes(AUDIT_SCOPE)) throw new Error('GA4_OVERVIEW_BREAKDOWN_AUDIT_SCOPE must be complete or ui');
+const uiOnly = AUDIT_SCOPE === 'ui';
 
 const assert = (condition: unknown, message: string): asserts condition => {
   if (!condition) throw new Error(message);
@@ -87,7 +90,9 @@ try {
   exact(new Set(selectedKeys).size, selectedKeys.length, 'duplicate normalized saved GA4 campaign scope');
   const expectedTrafficWindow = resolveGA4ImportToDateWindow(record.import_start_date, record.reporting_time_zone);
   assert(expectedTrafficWindow, 'Initial-import window is unavailable');
-  const expectedNativeStart = new Date(record.start_date || record.created_at).toISOString().slice(0, 10);
+  const expectedNativeStart = record.start_date
+    ? new Date(record.start_date).toISOString().slice(0, 10)
+    : String(record.import_start_date || '').trim() || new Date(record.created_at).toISOString().slice(0, 10);
 
   const [isolationInventory, revenueIntegrity, scheduledSnapshotInventory] = await Promise.all([
     client.query(`
@@ -280,6 +285,10 @@ try {
   await page.clock.fastForward(10 * 60 * 1000);
   exact((await automaticResponse).status(), 200, 'automatic-interval Campaign Breakdown refetch');
 
+  let browserPdfVerified = false;
+  let scheduledPdfVerified = false;
+  let scheduledSnapshot: any = null;
+  if (!uiOnly) {
   await page.getByRole('tab', { name: 'Reports', exact: true }).click();
   await page.getByRole('button', { name: 'Create Report', exact: true }).click();
   const reportDialog = page.getByRole('dialog').filter({ hasText: 'Report Type' });
@@ -304,9 +313,10 @@ try {
     assert(reportText.includes(rowRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })),
       `Browser PDF is missing ${campaignName} revenue`);
   }
+  browserPdfVerified = true;
 
   exact(scheduledSnapshotInventory.rowCount, 1, 'existing GA4 Overview scheduled-PDF snapshot fixture');
-  const scheduledSnapshot = scheduledSnapshotInventory.rows[0];
+  scheduledSnapshot = scheduledSnapshotInventory.rows[0];
   const authToken = await page.evaluate(() => (window as any).Clerk?.session?.getToken());
   assert(authToken, 'Clerk session token is unavailable for scheduled-PDF validation');
   const scheduledPdfResponse = await context.request.get(
@@ -331,10 +341,13 @@ try {
     assert(scheduledReportText.includes(`${currency} ${rowRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`),
       `Scheduled PDF is missing ${campaignName} revenue`);
   }
+  scheduledPdfVerified = true;
+  }
 
   console.log(JSON.stringify({
     status: 'passed',
     certificationStatus: 'deployed_validation_only',
+    auditScope: AUDIT_SCOPE,
     deployedSha: health.commit,
     campaignHash: hash(CAMPAIGN_ID),
     clientHash: hash(record.client_id),
@@ -361,10 +374,12 @@ try {
     consumerParity: {
       api: true,
       renderedUi: true,
-      browserPdf: true,
-      scheduledPdf: true,
-      scheduledSnapshotHash: hash(scheduledSnapshot.snapshot_id),
-      scheduledSnapshotGeneratedAt: new Date(scheduledSnapshot.generated_at).toISOString(),
+      browserPdf: browserPdfVerified,
+      scheduledPdf: scheduledPdfVerified,
+      ...(scheduledSnapshot ? {
+        scheduledSnapshotHash: hash(scheduledSnapshot.snapshot_id),
+        scheduledSnapshotGeneratedAt: new Date(scheduledSnapshot.generated_at).toISOString(),
+      } : {}),
     },
     accessControl: { unauthenticated: 'denied', crossOwner: 'denied' },
     productionDataIntegrity: {
@@ -377,6 +392,7 @@ try {
     excludedFromCertification: [
       'Summary', 'Landing Pages', 'Conversion Events', 'Reports as a section',
       'Revenue & Financials as a parent section', 'Google Ads',
+      ...(uiOnly ? ['Browser and scheduled PDF parity for this fresh-campaign portability run'] : []),
     ],
   }, null, 2));
 } finally {

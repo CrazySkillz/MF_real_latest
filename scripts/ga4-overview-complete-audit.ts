@@ -40,6 +40,13 @@ const exact = (actual: unknown, expected: unknown, label: string) => {
   if (actual !== expected) throw new Error(`${label}: expected ${expected}, received ${actual}`);
 };
 const total = (items: any[], key: string) => round2(items.reduce((sum, item) => sum + (Number(item?.[key]) || 0), 0));
+const formatCurrency = (value: unknown, currency: unknown) => new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: String(currency || 'USD').trim().toUpperCase(),
+  currencyDisplay: 'narrowSymbol',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+}).format(round2(value));
 const revenueSourceDisplayLabel = (source: any) => {
   const type = String(source?.sourceType || '').trim().toLowerCase();
   if (type === 'ga4') return 'Imported GA4 Revenue';
@@ -350,13 +357,13 @@ try {
     Conversions: Number(summary?.conversions).toLocaleString('en-US'),
     'Engagement Rate': `${((Number(summary?.engagementRate) || 0) * 100).toFixed(1).replace(/\.0$/, '')}%`,
     'Conv. Rate': `${((Number(summary?.conversions) / Number(summary?.sessions)) * 100).toFixed(1).replace(/\.0$/, '')}%`,
-    'Total Revenue': `$${financialRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-    'Total Spend': `$${financialSpend.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-    Profit: `$${round2(financialRevenue - financialSpend).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    'Total Revenue': formatCurrency(financialRevenue, record.currency),
+    'Total Spend': formatCurrency(financialSpend, record.currency),
+    Profit: formatCurrency(financialRevenue - financialSpend, record.currency),
     ROAS: financialSpend > 0 ? `${(financialRevenue / financialSpend).toFixed(2)}x` : '—',
     ROI: financialSpend > 0 ? `${(((financialRevenue - financialSpend) / financialSpend) * 100).toFixed(1).replace(/\.0$/, '')}%` : '—',
     CPA: financialSpend > 0 && financialConversions > 0
-      ? `$${round2(financialSpend / financialConversions).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      ? formatCurrency(financialSpend / financialConversions, record.currency)
       : '—',
   };
   for (const [label, value] of Object.entries(expectedDisplay).filter(([label]) => cardLabels.includes(label))) {
@@ -372,16 +379,19 @@ try {
   const successfulPipelineResponses = [responses.hubspotPipeline, responses.salesforcePipeline]
     .filter((response: any) => response.ok && response.body?.success === true);
   if (successfulPipelineResponses.length === 0) {
-    for (let attempt = 0; attempt < 120 && !renderedCards['Pipeline Proxy'].includes('Unavailable'); attempt += 1) {
+    const pipelineConfigured = revenueSources.some((source: any) =>
+      ['hubspot', 'salesforce'].includes(String(source?.sourceType || '').trim().toLowerCase()));
+    const expectedPipelineState = pipelineConfigured ? 'Unavailable' : 'Not configured';
+    for (let attempt = 0; attempt < 120 && !renderedCards['Pipeline Proxy'].includes(expectedPipelineState); attempt += 1) {
       await page.waitForTimeout(1000);
       renderedCards['Pipeline Proxy'] = await cardText('Pipeline Proxy');
     }
-    assert(renderedCards['Pipeline Proxy'].includes('Unavailable'), 'Pipeline Proxy did not fail closed as unavailable');
+    assert(renderedCards['Pipeline Proxy'].includes(expectedPipelineState), `Pipeline Proxy did not show ${expectedPipelineState}`);
   } else {
     const pipelineTotal = round2(successfulPipelineResponses.reduce(
       (sum: number, response: any) => sum + Number(response.body?.totalToDate || 0), 0,
     ));
-    const expectedPipeline = `$${pipelineTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const expectedPipeline = formatCurrency(pipelineTotal, record.currency);
     for (let attempt = 0; attempt < 120 && !renderedCards['Pipeline Proxy'].includes(expectedPipeline); attempt += 1) {
       await page.waitForTimeout(1000);
       renderedCards['Pipeline Proxy'] = await cardText('Pipeline Proxy');
@@ -403,7 +413,7 @@ try {
       const conversionRate = Number(row.sessions) > 0 ? (Number(row.conversions) / Number(row.sessions)) * 100 : 0;
       exact(cells[4], `${conversionRate.toFixed(1).replace(/\.0$/, '')}%`, `${name} rendered conversion rate`);
       const displayedRevenue = round2(Number(row.revenue) + Number(matchedImportedRevenue.get(name) || 0));
-      exact(cells[5], `$${displayedRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, `${name} rendered revenue`);
+      exact(cells[5], formatCurrency(displayedRevenue, record.currency), `${name} rendered revenue`);
     }
     for (const row of conversionRows) {
       const rendered = page.locator('tr').filter({ hasText: String(row.eventName) }).first();
@@ -417,10 +427,10 @@ try {
   const revenueDialog = page.getByRole('dialog').filter({ hasText: 'Revenue Sources' });
   await revenueDialog.waitFor({ timeout: 30000 });
   const revenueDialogText = compact(await revenueDialog.innerText());
-  const nativeRevenueDisplay = `$${nativeRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const nativeRevenueDisplay = formatCurrency(nativeRevenue, record.currency);
   assert(revenueDialogText.includes(nativeRevenueDisplay), `Revenue Sources modal is missing native ${nativeRevenueDisplay}`);
   for (const row of revenueRows) {
-    const amount = `$${round2(row.revenue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const amount = formatCurrency(row.revenue, record.currency);
     const sourceText = revenueSourceDisplayLabel(row);
     const sourceEntry = revenueDialog.locator('div.rounded-md.border').filter({ hasText: sourceText }).filter({ hasText: amount });
     assert(await sourceEntry.count() > 0, `Revenue Sources modal is missing ${sourceText} ${amount}`);
@@ -434,7 +444,7 @@ try {
     await spendDialog.waitFor({ timeout: 30000 });
     const spendDialogText = compact(await spendDialog.innerText());
     for (const row of spendRows) {
-      const amount = `$${round2(row.spend).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const amount = formatCurrency(row.spend, record.currency);
       const sourceText = String(row.displayName || row.sourceType || '').trim();
       const sourceEntry = spendDialog.locator('div.rounded-md.border').filter({ hasText: sourceText }).filter({ hasText: amount });
       assert(await sourceEntry.count() > 0, `Spend Sources modal is missing ${sourceText} ${amount}`);

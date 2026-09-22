@@ -9616,10 +9616,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
       const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
 
-      // Native financial totals remain campaign-to-date. The GA4 import boundary
-      // applies to cumulative traffic metrics, not this financial endpoint.
-      const startDateUsed = (() => {
-        const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
+      // Native financial totals remain campaign-to-date. An explicit campaign
+      // start wins; otherwise the saved GA4 import start is the stable boundary.
+      const explicitCampaignStartDate = (() => {
+        const raw = (campaign as any)?.startDate || null;
+        if (!raw) return null;
+        const d = new Date(raw);
+        if (Number.isNaN(d.getTime())) return null;
+        return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+      })();
+      let startDateUsed = explicitCampaignStartDate || (() => {
+        const raw = (campaign as any)?.createdAt || null;
         if (!raw) return "2000-01-01";
         const d = new Date(raw);
         if (Number.isNaN(d.getTime())) return "2000-01-01";
@@ -9722,6 +9729,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (!connection || connection.method !== "access_token" || !connection.accessToken) {
         return res.status(404).json({ success: false, error: "No GA4 OAuth connection found for this property/campaign." });
+      }
+      const savedImportStartDate = String((connection as any)?.importStartDate || "").trim();
+      if (!explicitCampaignStartDate && savedImportStartDate) {
+        const savedImportWindow = resolveGA4ImportToDateWindow(
+          savedImportStartDate,
+          (campaign as any)?.reportingTimeZone,
+        );
+        if (savedImportWindow) startDateUsed = savedImportWindow.startDate;
+      } else if (explicitCampaignStartDate) {
+        startDateUsed = explicitCampaignStartDate;
       }
       if (startDateUsed > endDateUsed) {
         return res.json({
@@ -13366,6 +13383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
       let importToDateWindow: ReturnType<typeof resolveGA4ImportToDateWindow> = null;
+      let savedImportStartDate = '';
       let resolvedPropertyId = propertyId;
       const completedDayWindow = windowMode === 'import-to-date'
         ? null
@@ -13376,6 +13394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!connection) {
           return res.status(404).json({ success: false, error: 'NO_GA4_CONNECTION' });
         }
+        savedImportStartDate = String((connection as any)?.importStartDate || '').trim();
         importToDateWindow = resolveGA4ImportToDateWindow(
           (connection as any)?.importStartDate,
           (campaign as any)?.reportingTimeZone,
@@ -13458,6 +13477,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let nativeRevenueWindow: { source: 'ga4'; startDate: string; endDate: string; revenueMetric: string } | undefined;
       if (overviewCampaignBreakdown && providerEndDate) {
         const revenueStartDate = ((campaign as any)?.startDate ? toISODateUTC((campaign as any).startDate) : null)
+          || (savedImportStartDate ? importToDateWindow?.startDate : null)
           || toISODateUTC((campaign as any)?.createdAt)
           || '2000-01-01';
         const revenueResult = revenueStartDate <= providerEndDate

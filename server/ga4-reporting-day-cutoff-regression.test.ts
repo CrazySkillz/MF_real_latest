@@ -128,9 +128,10 @@ describe("GA4 reporting-day cutoff", () => {
 
     expect(routeStart).toBeGreaterThan(-1);
     expect(routeEnd).toBeGreaterThan(routeStart);
-    expect(route).toContain("const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;");
-    expect(route).toContain("const startDateUsed = (() => {");
-    expect(route).not.toContain("startDateUsed = currentValueWindow.startDate;");
+    expect(route).toContain("const explicitCampaignStartDate = (() => {");
+    expect(route).toContain("let startDateUsed = explicitCampaignStartDate || (() => {");
+    expect(route).toContain("if (!explicitCampaignStartDate && savedImportStartDate)");
+    expect(route).toContain("if (savedImportWindow) startDateUsed = savedImportWindow.startDate;");
     expect(route).toContain("if (startDateUsed > endDateUsed)");
     expect(route).toContain("noCompletedWindow: true");
     expect(route).toContain("No completed GA4 reporting day is available for this campaign yet.");

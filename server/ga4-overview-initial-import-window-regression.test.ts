@@ -79,6 +79,7 @@ describe('GA4 Overview initial historical import boundary', () => {
     expect(route.match(/if \(windowMode === 'import-to-date'\)/g)).toHaveLength(3);
     expect(route.match(/resolveGA4ImportToDateWindow\(/g)?.length).toBeGreaterThanOrEqual(5);
     expect(route).toContain('revenueWindow: nativeRevenueWindow');
+    expect(route).toContain("|| (savedImportStartDate ? importToDateWindow?.startDate : null)");
     expect(route).toContain("throw new Error('GA4_OVERVIEW_CAMPAIGN_REVENUE_UNVERIFIED')");
     expect(page).toContain('campaignBreakdownRevenueVerified');
     expect(page).toContain('Math.abs(campaignBreakdownNativeRowRevenue - Number((ga4Breakdown as any)?.totals?.revenue || 0)) < 0.01');

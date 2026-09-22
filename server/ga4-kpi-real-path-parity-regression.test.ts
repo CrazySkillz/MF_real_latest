@@ -115,6 +115,7 @@ const connection = {
   accessToken: "token",
   isPrimary: true,
   lookbackDays: 30,
+  importStartDate: "2026-07-02",
 };
 const dailyRow = {
   date: "2026-07-31",
@@ -672,8 +673,82 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(ga4ServiceMock.getAcquisitionBreakdown).not.toHaveBeenCalled();
   });
 
-  it("keeps Overview traffic import-to-date while replacing native row revenue with exact campaign-to-date GA4 revenue", async () => {
+  it("uses the saved GA4 import boundary for a new campaign without a start date", async () => {
+    storageMock.getCampaign.mockResolvedValue({ ...campaign, startDate: null, createdAt: "2999-01-01T00:00:00.000Z" });
+    vi.useRealTimers();
+
+    const response = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-to-date?propertyId=" + encodeURIComponent(connection.propertyId) + "&readOnly=1");
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      success: true,
+      startDate: connection.importStartDate,
+      revenueMetric: "purchaseRevenue",
+      totals: { revenue: 150 },
+    });
+    expect(body.noCompletedWindow).not.toBe(true);
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith(
+      connection.propertyId,
+      connection.accessToken,
+      connection.importStartDate,
+      body.endDate,
+      campaign.ga4CampaignFilter,
+      campaign.currency,
+    );
+  });
+
+  it("preserves an explicit campaign start ahead of the saved GA4 import boundary", async () => {
+    vi.useRealTimers();
+
+    const response = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-to-date?propertyId=" + encodeURIComponent(connection.propertyId) + "&readOnly=1");
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.startDate).toBe("2026-07-01");
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith(
+      connection.propertyId,
+      connection.accessToken,
+      "2026-07-01",
+      body.endDate,
+      campaign.ga4CampaignFilter,
+      campaign.currency,
+    );
+  });
+
+  it("preserves the explicit campaign start for simulated GA4 without requiring a saved connection", async () => {
+    vi.useRealTimers();
+
+    const response = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-to-date?propertyId=yesop&mock=1");
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ success: true, propertyId: "yesop", startDate: "2026-07-01" });
+    expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
+  });
+
+  it("preserves the creation-date fallback when a legacy connection has no saved import boundary", async () => {
     storageMock.getCampaign.mockResolvedValue({ ...campaign, startDate: null, createdAt: "2026-06-24T00:00:00.000Z" });
+    storageMock.getGA4Connection.mockResolvedValue({ ...connection, importStartDate: null });
+    vi.useRealTimers();
+
+    const response = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-to-date?propertyId=" + encodeURIComponent(connection.propertyId) + "&readOnly=1");
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.startDate).toBe("2026-06-24");
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith(
+      connection.propertyId,
+      connection.accessToken,
+      "2026-06-24",
+      body.endDate,
+      campaign.ga4CampaignFilter,
+      campaign.currency,
+    );
+  });
+
+  it("keeps Overview traffic import-to-date while replacing native row revenue from the saved boundary for a new campaign", async () => {
+    storageMock.getCampaign.mockResolvedValue({ ...campaign, startDate: null, createdAt: "2999-01-01T00:00:00.000Z" });
     ga4ServiceMock.getAcquisitionBreakdown
       .mockResolvedValueOnce({
         rows: [{ campaign: "parity_campaign", ...dailyRow, revenue: 100 }],
@@ -695,14 +770,14 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
       validationReadOnly: true,
       totals: { sessions: 100, users: 80, conversions: 5, revenue: 150 },
       rows: [{ campaign: "parity_campaign", sessions: 100, users: 80, conversions: 5, revenue: 150 }],
-      revenueWindow: { source: "ga4", startDate: "2026-06-24", revenueMetric: "totalRevenue" },
+      revenueWindow: { source: "ga4", startDate: connection.importStartDate, revenueMetric: "totalRevenue" },
     });
     expect(body.revenueWindow.endDate).toBe(body.endDate);
     expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenNthCalledWith(
       2,
       campaign.id,
       storageMock,
-      "2026-06-24",
+      connection.importStartDate,
       connection.propertyId,
       2000,
       campaign.ga4CampaignFilter,

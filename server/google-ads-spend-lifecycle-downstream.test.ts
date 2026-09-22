@@ -256,4 +256,38 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     expect(materialize).toContain('storage.getSpendTotalForRange(campaignId, "1900-01-01", endDate, "ga4")');
     expect(materialize).not.toContain("deleteSpendRecordsBySource");
   });
+
+  it("shows the saved Spend-only connection with refresh and exact disconnect controls", () => {
+    const modal = read("client", "src", "components", "AddSpendWizardModal.tsx");
+    const routes = read("server", "routes-oauth.ts");
+    const storage = read("server", "storage.ts");
+    const chooser = sliceBetween(modal, '{step === "select" && (', '{step === "ad_platform" && (');
+    const disconnectRoute = sliceBetween(
+      routes,
+      "app.delete('/api/campaigns/:id/ga4/google-ads-spend/disconnect'",
+      'app.get("/api/campaigns/:id/spend-totals"'
+    );
+    const disconnectStorage = sliceBetween(
+      storage,
+      "async disconnectGa4GoogleAdsSpend(campaignId: string)",
+      "async deleteSpendRecordsBySource"
+    );
+
+    expect(modal).toContain('/connection?spendPreview=1`');
+    expect(chooser).toContain('googleAdsSpendConnected ? "Connected" : "Reconnect required"');
+    expect(chooser).toContain('title="Disconnect Google Ads Spend"');
+    expect(chooser).toContain("The separate Google Ads Connected Platform is preserved.");
+    expect(modal).toContain('/ga4/google-ads-spend/disconnect`');
+    expect(modal).toContain('/refresh?spendPreview=1`');
+    expect(modal).toContain('"Refresh data"');
+    expect(modal).toContain('"No campaigns with spend found yet."');
+    expect(modal).toContain('style: "currency", currency: props.currency || "USD"');
+    expect(disconnectRoute).toContain("requireCampaignAccessParamId");
+    expect(disconnectRoute).toContain("storage.disconnectGa4GoogleAdsSpend(campaignId)");
+    expect(disconnectRoute).toContain("await recalcCampaignSpend(campaignId);");
+    expect(disconnectRoute).toContain('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");');
+    expect(disconnectStorage).toContain("eq(googleAdsConnections.spendOnly, true)");
+    expect(disconnectStorage).toContain("ga4GoogleAdsSpendDailyMetrics");
+    expect(disconnectStorage).toContain("ga4GoogleAdsSpendConnections");
+  });
 });

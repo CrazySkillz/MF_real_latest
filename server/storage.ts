@@ -196,6 +196,7 @@ export interface IStorage {
   deleteSpendSource(sourceId: string): Promise<boolean>;
   deleteSpendSourceWithRecords(campaignId: string, sourceId: string, platformContext: SpendPlatformContext): Promise<boolean>;
   disconnectGa4GoogleSheetsSpend(campaignId: string): Promise<{ sourceIds: string[]; connectionIds: string[] }>;
+  disconnectGa4GoogleAdsSpend(campaignId: string): Promise<{ sourceIds: string[]; connectionRemoved: boolean }>;
   hardDeleteInactiveSpendSource(campaignId: string, sourceId: string): Promise<boolean>;
   deleteSpendRecordsBySource(sourceId: string): Promise<boolean>;
   countSpendRecordsBySource(sourceId: string): Promise<number>;
@@ -1387,6 +1388,65 @@ export class DatabaseStorage implements IStorage {
         }
       }
       return { sourceIds, connectionIds };
+    });
+  }
+
+  async disconnectGa4GoogleAdsSpend(campaignId: string): Promise<{ sourceIds: string[]; connectionRemoved: boolean }> {
+    return await db.transaction(async (tx: any) => {
+      const candidates = await tx.select({
+        id: spendSources.id, displayName: spendSources.displayName, mappingConfig: spendSources.mappingConfig,
+      }).from(spendSources).where(and(
+        eq(spendSources.campaignId, campaignId),
+        eq(spendSources.sourceType, 'ad_platforms'),
+        eq(spendSources.isActive, true),
+        or(eq(spendSources.platformContext, 'ga4' as any), isNull(spendSources.platformContext)),
+      ));
+      const targetSources = candidates.filter((source: any) => {
+        if (String(source.displayName || '').trim() === 'Google Ads') return true;
+        try {
+          const mapping = source.mappingConfig ? JSON.parse(String(source.mappingConfig)) : {};
+          return String(mapping?.platform || '').trim().toLowerCase() === 'google_ads';
+        } catch { return false; }
+      });
+      if (targetSources.length > 1) {
+        throw Object.assign(new Error('Multiple active Google Ads Spend sources require exact removal from Spend Sources'), { code: 'GOOGLE_ADS_SPEND_MULTIPLE_SOURCES' });
+      }
+      const dedicatedConnections = await tx.select({ id: ga4GoogleAdsSpendConnections.id })
+        .from(ga4GoogleAdsSpendConnections).where(eq(ga4GoogleAdsSpendConnections.campaignId, campaignId));
+      const legacyConnections = await tx.select({ id: googleAdsConnections.id })
+        .from(googleAdsConnections).where(and(eq(googleAdsConnections.campaignId, campaignId), eq(googleAdsConnections.spendOnly, true)));
+      if (targetSources.length === 0 && dedicatedConnections.length === 0 && legacyConnections.length === 0) {
+        throw Object.assign(new Error('No active Google Ads Spend connection found'), { code: 'GOOGLE_ADS_SPEND_CONNECTION_NOT_FOUND' });
+      }
+
+      const sourceIds = targetSources.map((source: any) => String(source.id));
+      if (sourceIds.length > 0) {
+        const disabledSources = await tx.update(spendSources).set({ isActive: false } as any).where(and(
+          eq(spendSources.campaignId, campaignId),
+          eq(spendSources.sourceType, 'ad_platforms'),
+          eq(spendSources.isActive, true),
+          or(eq(spendSources.platformContext, 'ga4' as any), isNull(spendSources.platformContext)),
+          inArray(spendSources.id, sourceIds),
+        )).returning({ id: spendSources.id });
+        if (disabledSources.length !== sourceIds.length) throw new Error('Google Ads Spend source changed during disconnect');
+        await tx.delete(spendRecords).where(and(eq(spendRecords.campaignId, campaignId), inArray(spendRecords.spendSourceId, sourceIds)));
+      }
+      if (sourceIds.length > 0 || dedicatedConnections.length > 0) {
+        await tx.delete(ga4GoogleAdsSpendDailyMetrics).where(eq(ga4GoogleAdsSpendDailyMetrics.campaignId, campaignId));
+      }
+      if (dedicatedConnections.length > 0) {
+        const removed = await tx.delete(ga4GoogleAdsSpendConnections)
+          .where(eq(ga4GoogleAdsSpendConnections.campaignId, campaignId)).returning({ id: ga4GoogleAdsSpendConnections.id });
+        if (removed.length !== dedicatedConnections.length) throw new Error('Google Ads Spend connection changed during disconnect');
+      }
+      if (legacyConnections.length > 0) {
+        await tx.delete(googleAdsDailyMetrics).where(eq(googleAdsDailyMetrics.campaignId, campaignId));
+        const removed = await tx.delete(googleAdsConnections).where(and(
+          eq(googleAdsConnections.campaignId, campaignId), eq(googleAdsConnections.spendOnly, true),
+        )).returning({ id: googleAdsConnections.id });
+        if (removed.length !== legacyConnections.length) throw new Error('Legacy Google Ads Spend connection changed during disconnect');
+      }
+      return { sourceIds, connectionRemoved: dedicatedConnections.length > 0 || legacyConnections.length > 0 };
     });
   }
 

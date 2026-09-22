@@ -64,6 +64,15 @@ const isCsvDateLikeValue = (value: unknown) => {
 const isCsvDateLikeHeader = (header: string) =>
   /(^|[_\s-])(date|day|timestamp)($|[_\s-])/i.test(header.trim());
 
+const isGoogleAdsSpendSource = (source: any) => {
+  if (source?.isActive === false || String(source?.sourceType || "").toLowerCase() !== "ad_platforms") return false;
+  if (String(source?.displayName || "").trim() === "Google Ads") return true;
+  try {
+    const mapping = source?.mappingConfig ? JSON.parse(String(source.mappingConfig)) : {};
+    return String(mapping?.platform || "").trim().toLowerCase() === "google_ads";
+  } catch { return false; }
+};
+
 export function AddSpendWizardModal(props: {
   campaignId: string;
   open: boolean;
@@ -121,6 +130,9 @@ export function AddSpendWizardModal(props: {
   const [hasGoogleSheetsSpendSource, setHasGoogleSheetsSpendSource] = useState(false);
   const [activeCsvSpendSources, setActiveCsvSpendSources] = useState<Array<any>>([]);
   const [isRemovingCsvSpendSource, setIsRemovingCsvSpendSource] = useState(false);
+  const [activeGoogleAdsSpendSources, setActiveGoogleAdsSpendSources] = useState<Array<any>>([]);
+  const [googleAdsSpendConnected, setGoogleAdsSpendConnected] = useState(false);
+  const [isRemovingGoogleAdsSpend, setIsRemovingGoogleAdsSpend] = useState(false);
   const [selectedSheetConnectionId, setSelectedSheetConnectionId] = useState<string>("");
   const [sheetsPreview, setSheetsPreview] = useState<any>(null);
   const [isSheetsLoading, setIsSheetsLoading] = useState(false);
@@ -245,6 +257,8 @@ export function AddSpendWizardModal(props: {
       setGoogleAdsSpendCustomers([]);
       setSelectedGoogleAdsCustomerId("");
       setGoogleAdsPendingAuthorization(null);
+      setGoogleAdsSpendConnected(false);
+      setActiveGoogleAdsSpendSources([]);
   }, [props.open, props.initialSource]);
 
   // Prefill when editing an existing spend source (e.g., after ROAS/ROI are computed).
@@ -421,17 +435,30 @@ export function AddSpendWizardModal(props: {
     let mounted = true;
     setHasGoogleSheetsSpendSource(false);
     setActiveCsvSpendSources([]);
+    setActiveGoogleAdsSpendSources([]);
+    setGoogleAdsSpendConnected(false);
     (async () => {
       try {
         const contextQuery = props.platformContext ? `?platformContext=${encodeURIComponent(props.platformContext)}` : "";
-        const resp = await fetch(`/api/campaigns/${props.campaignId}/spend-sources${contextQuery}`, { credentials: "include" });
-        const json = await resp.json().catch(() => null);
-        if (!mounted || !resp.ok || json?.success !== true) return;
+        const [resp, connectionResp] = await Promise.all([
+          fetch(`/api/campaigns/${props.campaignId}/spend-sources${contextQuery}`, { credentials: "include" }),
+          props.platformContext === "ga4"
+            ? fetch(`/api/google-ads/${props.campaignId}/connection?spendPreview=1`, { credentials: "include", cache: "no-store" })
+            : Promise.resolve(null),
+        ]);
+        const [json, connectionJson] = await Promise.all([
+          resp.json().catch(() => null),
+          connectionResp?.json().catch(() => null),
+        ]);
+        if (!mounted) return;
+        setGoogleAdsSpendConnected(connectionJson?.connected === true);
+        if (!resp.ok || json?.success !== true) return;
         const sources = Array.isArray(json?.sources) ? json.sources : [];
         setHasGoogleSheetsSpendSource(sources.some((source: any) => source?.isActive !== false && String(source?.sourceType || "").toLowerCase() === "google_sheets"));
         setActiveCsvSpendSources(sources.filter((source: any) => source?.isActive !== false && String(source?.sourceType || "").toLowerCase() === "csv"));
+        setActiveGoogleAdsSpendSources(sources.filter(isGoogleAdsSpendSource));
       } catch {
-        // Do not show Connected unless the active Spend source is confirmed.
+        // Keep the existing chooser stable when source or connection status is unavailable.
       }
     })();
     return () => { mounted = false; };
@@ -902,6 +929,27 @@ export function AddSpendWizardModal(props: {
     }
   };
 
+  const handleGoogleAdsSpendDisconnect = async () => {
+    setIsRemovingGoogleAdsSpend(true);
+    try {
+      const resp = await fetch(`/api/campaigns/${props.campaignId}/ga4/google-ads-spend/disconnect`, { method: "DELETE", credentials: "include" });
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok || json?.success !== true) throw new Error(json?.error || "Failed to disconnect Google Ads Spend");
+      setActiveGoogleAdsSpendSources([]);
+      setGoogleAdsSpendConnected(false);
+      setAdPlatformConnected(false);
+      setAdPlatformConnectionName("");
+      setAdPlatformCampaigns([]);
+      setSelectedAdPlatformCampaignIds([]);
+      props.onProcessed?.();
+      toast({ title: "Google Ads disconnected", description: "Spend source and connection removed. Total Spend has been recalculated." });
+    } catch (error: any) {
+      toast({ title: "Disconnect failed", description: error?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setIsRemovingGoogleAdsSpend(false);
+    }
+  };
+
   const handleCsvSpendSourceRemove = async () => {
     const sourceId = activeCsvSpendSources.length === 1 ? String(activeCsvSpendSources[0]?.id || "").trim() : "";
     if (!sourceId) return;
@@ -1268,6 +1316,20 @@ export function AddSpendWizardModal(props: {
     }
   };
 
+  const refreshGoogleAdsSpendPreview = async () => {
+    setIsAdPlatformLoading(true);
+    try {
+      const resp = await fetch(`/api/google-ads/${props.campaignId}/refresh?spendPreview=1`, { method: "POST", credentials: "include" });
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok || json?.success !== true) throw new Error(json?.error || "Failed to refresh Google Ads Spend");
+      await fetchAdPlatformPreview("google_ads");
+    } catch (error: any) {
+      toast({ title: "Refresh failed", description: error?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setIsAdPlatformLoading(false);
+    }
+  };
+
   // Import ad platform spend (selected campaigns only)
   const importAdPlatformSpend = async () => {
     if (!selectedPlatform || selectedAdPlatformCampaignIds.length === 0) {
@@ -1562,6 +1624,9 @@ export function AddSpendWizardModal(props: {
     step === "select"
       ? "Choose where your spend data comes from."
       : `Currency: ${props.currency || "USD"} • Spend is treated as "to date" (campaign lifetime)`;
+  const formatAdPlatformSpend = (amount: number) => selectedPlatform === "google_ads"
+    ? new Intl.NumberFormat(undefined, { style: "currency", currency: props.currency || "USD" }).format(amount)
+    : `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -1589,13 +1654,52 @@ export function AddSpendWizardModal(props: {
             {/* ═══════════════════ STEP: SELECT SOURCE ═══════════════════ */}
             {step === "select" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => { setSelectedPlatform("google_ads"); setStep("ad_platform"); }}>
+                <Card
+                  className={`${activeGoogleAdsSpendSources.length > 0 ? "cursor-default" : "cursor-pointer hover:border-blue-500"} transition-colors ${isRemovingGoogleAdsSpend ? "opacity-60 pointer-events-none" : ""}`}
+                  onClick={() => {
+                    if (activeGoogleAdsSpendSources.length > 0) return;
+                    setSelectedPlatform("google_ads");
+                    setStep("ad_platform");
+                  }}
+                >
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Zap className="w-4 h-4" />
                       Google Ads
+                      {(googleAdsSpendConnected || activeGoogleAdsSpendSources.length > 0) && (
+                        <span className="ml-auto flex items-center gap-1">
+                          <span className={`text-xs font-normal ${googleAdsSpendConnected ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}`}>
+                            {googleAdsSpendConnected ? "Connected" : "Reconnect required"}
+                          </span>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button type="button" className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30" title="Disconnect Google Ads Spend" aria-label="Disconnect Google Ads Spend" onClick={(event) => event.stopPropagation()}>
+                                <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent onClick={(event) => event.stopPropagation()}>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Disconnect Google Ads Spend</AlertDialogTitle>
+                                <AlertDialogDescription>This removes the Google Ads Spend source, its imported rows, and its Spend-only OAuth connection. The separate Google Ads Connected Platform is preserved.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction className="bg-red-600 hover:bg-red-700" disabled={isRemovingGoogleAdsSpend} onClick={() => void handleGoogleAdsSpendDisconnect()}>
+                                  {isRemovingGoogleAdsSpend ? "Disconnecting..." : "Disconnect"}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </span>
+                      )}
                     </CardTitle>
-                    <CardDescription>Pull spend via Google Ads API.</CardDescription>
+                    <CardDescription>
+                      {activeGoogleAdsSpendSources.length > 0
+                        ? "Already added. Edit campaigns from Spend Sources."
+                        : googleAdsSpendConnected
+                          ? "Account connected. Select a campaign to add spend."
+                          : "Pull spend via Google Ads API."}
+                    </CardDescription>
                   </CardHeader>
                 </Card>
 
@@ -2122,10 +2226,17 @@ export function AddSpendWizardModal(props: {
                           </>
                         ) : (
                           <>
-                            <div className="text-sm font-medium text-green-600 dark:text-green-400">
-                              {selectedPlatform === "meta" ? "Meta / Facebook Ads" : "Google Ads"} — Connected
-                              {adPlatformConnectionName && (
-                                <span className="text-muted-foreground/70 font-normal ml-1">({adPlatformConnectionName})</span>
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="text-sm font-medium text-green-600 dark:text-green-400">
+                                {selectedPlatform === "meta" ? "Meta / Facebook Ads" : "Google Ads"} — Connected
+                                {adPlatformConnectionName && (
+                                  <span className="text-muted-foreground/70 font-normal ml-1">({adPlatformConnectionName})</span>
+                                )}
+                              </div>
+                              {selectedPlatform === "google_ads" && (
+                                <Button type="button" variant="outline" size="sm" disabled={isAdPlatformLoading} onClick={() => void refreshGoogleAdsSpendPreview()}>
+                                  {isAdPlatformLoading ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Refreshing…</> : "Refresh data"}
+                                </Button>
                               )}
                             </div>
 
@@ -2167,7 +2278,7 @@ export function AddSpendWizardModal(props: {
                                           <td className="py-2 px-3">
                                             <div className="font-medium text-xs">{c.name}</div>
                                           </td>
-                                          <td className="py-2 px-3 text-right tabular-nums">${c.spend.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                          <td className="py-2 px-3 text-right tabular-nums">{formatAdPlatformSpend(c.spend)}</td>
                                           <td className="py-2 px-3 text-right tabular-nums">{c.impressions.toLocaleString()}</td>
                                           <td className="py-2 px-3 text-right tabular-nums">{c.clicks.toLocaleString()}</td>
                                         </tr>
@@ -2180,17 +2291,16 @@ export function AddSpendWizardModal(props: {
                                     {selectedAdPlatformCampaignIds.length} of {adPlatformCampaigns.length} campaigns selected
                                   </span>
                                   <span className="font-bold text-foreground">
-                                    Total: ${adPlatformCampaigns
+                                    Total: {formatAdPlatformSpend(adPlatformCampaigns
                                       .filter(c => selectedAdPlatformCampaignIds.includes(c.id))
-                                      .reduce((sum, c) => sum + c.spend, 0)
-                                      .toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                      .reduce((sum, c) => sum + c.spend, 0))}
                                   </span>
                                 </div>
                               </>
                             ) : (
                               <div className="space-y-3">
                                 <p className="text-xs text-muted-foreground/70">
-                                  No campaigns found.
+                                  {selectedPlatform === "google_ads" ? "No campaigns with spend found yet." : "No campaigns found."}
                                 </p>
                                 {selectedPlatform === "meta" && ENABLE_AD_PLATFORM_TEST_MODE && (
                                   <Button

@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const storageMock = vi.hoisted(() => ({
   getCampaign: vi.fn(),
   getGoogleAdsConnection: vi.fn(),
   getSpendSources: vi.fn(),
   getGoogleAdsDailyMetrics: vi.fn(),
+  getGA4GoogleAdsSpendDailyMetrics: vi.fn(),
   replaceSpendRecordsForSource: vi.fn(),
   getSpendTotalForRange: vi.fn(),
   updateCampaign: vi.fn(),
@@ -30,6 +31,8 @@ const successfulRecompute = {
 
 describe("GA4 Google Ads scheduler materialization", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-06T12:00:00.000Z"));
     vi.clearAllMocks();
     storageMock.getSpendSources.mockResolvedValue([{
       id: "source-1",
@@ -46,11 +49,15 @@ describe("GA4 Google Ads scheduler materialization", () => {
       date: "2026-08-04",
       spend: "12.34",
     }]);
+    storageMock.getGA4GoogleAdsSpendDailyMetrics.mockResolvedValue([{
+      campaignId: "campaign-1", googleCampaignId: "ads-1", date: "2026-08-04", spend: "12.34",
+    }]);
     storageMock.replaceSpendRecordsForSource.mockResolvedValue(undefined);
     storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 12.34, currency: "USD", sourceIds: ["source-1"] });
     storageMock.updateCampaign.mockResolvedValue(undefined);
     runJobsMock.mockResolvedValue(successfulRecompute);
   });
+  afterEach(() => vi.useRealTimers());
 
   it("uses the actual provider facts, exact selected scope, completed day, and downstream recompute", async () => {
     const campaign = {
@@ -84,7 +91,7 @@ describe("GA4 Google Ads scheduler materialization", () => {
     expect(runJobsMock).toHaveBeenCalledWith({ campaignId: campaign.id });
   });
 
-  it("fails before replacement when saved source and OAuth selected campaign scopes differ", async () => {
+  it("uses the saved spend-source selection when the connection selection differs", async () => {
     const campaign = { id: "campaign-1", currency: "USD", startDate: "2026-08-01", reportingTimeZone: "Europe/Amsterdam" };
     const connection = {
       campaignId: campaign.id,
@@ -94,9 +101,40 @@ describe("GA4 Google Ads scheduler materialization", () => {
       lastRefreshAt: new Date().toISOString(),
     };
 
-    await expect(materializeGA4GoogleAdsSpendForCampaign(campaign.id, campaign, connection))
-      .rejects.toThrow("selected campaign scope mismatch");
+    const result = await materializeGA4GoogleAdsSpendForCampaign(campaign.id, campaign, connection);
+    expect(result.sourceId).toBe("source-1");
+    expect(storageMock.replaceSpendRecordsForSource).toHaveBeenCalledOnce();
+    expect(runJobsMock).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the same source identity on repeated and overlapping materialization calls", async () => {
+    const campaign = { id: "campaign-1", currency: "USD", startDate: "2026-08-01", reportingTimeZone: "Europe/Amsterdam" };
+    const connection = {
+      method: "oauth", spendOnly: true, selectedCampaignIds: "[]", lastRefreshAt: new Date().toISOString(),
+    };
+    await materializeGA4GoogleAdsSpendForCampaign(campaign.id, campaign, connection);
+    await Promise.all([
+      materializeGA4GoogleAdsSpendForCampaign(campaign.id, campaign, connection),
+      materializeGA4GoogleAdsSpendForCampaign(campaign.id, campaign, connection),
+    ]);
+    expect(storageMock.replaceSpendRecordsForSource).toHaveBeenCalledTimes(3);
+    expect(storageMock.replaceSpendRecordsForSource.mock.calls.every((call) => call[1] === "source-1")).toBe(true);
+  });
+
+  it("fails closed when the Spend source inventory cannot be read", async () => {
+    storageMock.getSpendSources.mockRejectedValue(new Error("source read failed"));
+    const campaign = { id: "campaign-1", currency: "USD", startDate: "2026-08-01", reportingTimeZone: "Europe/Amsterdam" };
+    const connection = { method: "oauth", spendOnly: true, lastRefreshAt: new Date().toISOString() };
+    await expect(materializeGA4GoogleAdsSpendForCampaign(campaign.id, campaign, connection)).rejects.toThrow("source read failed");
     expect(storageMock.replaceSpendRecordsForSource).not.toHaveBeenCalled();
-    expect(runJobsMock).not.toHaveBeenCalled();
+  });
+
+  it("uses only dedicated GA4 Spend daily facts when the connection is dedicated", async () => {
+    const campaign = { id: "campaign-1", currency: "USD", startDate: "2026-08-01", reportingTimeZone: "Europe/Amsterdam" };
+    const connection = { method: "oauth", spendOnly: true, lastRefreshAt: new Date().toISOString() };
+    const result = await materializeGA4GoogleAdsSpendForCampaign(campaign.id, campaign, connection, true);
+    expect(result.totalSpend).toBe(12.34);
+    expect(storageMock.getGA4GoogleAdsSpendDailyMetrics).toHaveBeenCalledWith(campaign.id, "2026-08-01", "2026-08-05");
+    expect(storageMock.getGoogleAdsDailyMetrics).not.toHaveBeenCalled();
   });
 });

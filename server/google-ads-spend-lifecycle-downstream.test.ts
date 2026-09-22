@@ -31,6 +31,10 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
       "const importAdPlatformSpend = async () =>",
       "// Check Meta / Google Ads connection when entering ad_platform step"
     );
+    const connectCustomer = sliceBetween(modal, "const connectGoogleAdsSpendCustomer = async () =>", "// Handle test mode toggle for Meta demos only");
+    const routes = read("server", "routes-oauth.ts");
+    const selectCustomer = sliceBetween(routes, 'app.post("/api/google-ads/:campaignId/select-customer"', 'app.post("/api/google-ads/:campaignId/connect-test"');
+    const connectionStatus = sliceBetween(routes, 'app.get("/api/google-ads/:campaignId/connection"', 'app.delete("/api/google-ads/:campaignId/connection"');
 
     expect(ga4SpendModal).toContain('platformContext="ga4"');
     expect(preview).toContain('const spendPreviewParam = platform === "google_ads" ? "&spendPreview=1" : "";');
@@ -47,6 +51,18 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     expect(importFlow).toContain("breakdown: selectedCampaigns.map");
     expect(importFlow).toContain('testMode: selectedPlatform === "meta" ? isAdPlatformTestMode : false');
     expect(importFlow).not.toContain("/spend/ad-platform/import");
+    expect(connectCustomer).toContain('/select-customer`');
+    expect(modal).toContain('/connection?spendPreview=1`');
+    expect(connectCustomer).toContain('await fetchAdPlatformPreview("google_ads")');
+    expect(connectCustomer).not.toContain('/refresh`');
+    expect(selectCustomer).toContain("await provider.getDailyMetrics(startDate, endDate)");
+    expect(selectCustomer).toContain("if (spendOnly) {");
+    expect(selectCustomer).toContain("await storage.replaceGA4GoogleAdsSpendConnection(connectionData, initialDailyMetrics as any);");
+    expect(selectCustomer).toContain("await storage.replaceGoogleAdsConnection(connectionData, initialDailyMetrics as any);");
+    expect(selectCustomer).toContain('storage.getSpendSources(campaignId, "ga4")');
+    expect(selectCustomer).toContain("Delete the existing Google Ads Spend source before changing its account.");
+    expect(selectCustomer.indexOf("hasGoogleAdsSpendSource")).toBeLessThan(selectCustomer.indexOf("await provider.getDailyMetrics(startDate, endDate)"));
+    expect(connectionStatus).toContain("storage.getGA4GoogleAdsSpendConnection(campaignId)");
   });
 
   it("preserves campaign/source identity when a Google Ads spend source is added or edited through the manual spend route", () => {
@@ -59,6 +75,13 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
 
     expect(manualRoute).toContain("const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);");
     expect(manualRoute).toContain("const effectiveSourceType = spendSourceTypeForPlatformContext(platformContext, overrideSourceType);");
+    const googleAdsAdd = sliceBetween(manualRoute, "if (isGA4GoogleAdsSpend) {", "if (!connection || !connection.spendOnly)");
+    expect(googleAdsAdd).toContain("if (!existingSourceId) {");
+    expect(googleAdsAdd).toContain('storage.getSpendSources(campaignId, "ga4")');
+    expect(googleAdsAdd).toContain('source.sourceType !== "ad_platforms"');
+    expect(googleAdsAdd).toContain('String(mapping.platform || "").trim().toLowerCase() === "google_ads"');
+    expect(googleAdsAdd).toContain("res.status(409)");
+    expect(googleAdsAdd).toContain("storage.getGA4GoogleAdsSpendConnection(campaignId)");
     expect(manualRoute).toContain("const existingSource = await storage.getSpendSource(campaignId, existingSourceId);");
     expect(manualRoute).toContain("spendSourceMatchesPlatformContext(existingSource, platformContext)");
     expect(manualRoute).toContain('String((existingSource as any)?.sourceType || "").trim() !== effectiveSourceType');
@@ -191,8 +214,9 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     expect(cards).toContain("formatMoney(Number(financialCPA || 0))");
   });
 
-  it("fails closed in the dedicated scheduler when saved Google Ads campaign scope is missing or mismatched", () => {
+  it("uses saved Google Ads Spend selection and fails closed when that selection is missing", () => {
     const scheduler = read("server", "google-ads-scheduler.ts");
+    const fetch = sliceBetween(scheduler, "async function fetchRealGoogleAdsData", "const parseSelectedGoogleAdsCampaignIds");
     const materialize = sliceBetween(
       scheduler,
       "export async function materializeGA4GoogleAdsSpendForCampaign",
@@ -202,8 +226,11 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     expect(materialize).toContain('storage.getSpendSources(campaignId, "ga4")');
     expect(materialize).toContain('String(mapping.platform || "").trim().toLowerCase() === "google_ads"');
     expect(materialize).toContain("const sourceIds = parseSelectedGoogleAdsCampaignIds(mapping.selectedCampaignIds)");
-    expect(materialize).toContain("const connectionIds = parseSelectedGoogleAdsCampaignIds(connection.selectedCampaignIds)");
-    expect(materialize).toContain("sourceIds.length === 0 || JSON.stringify(sourceIds) !== JSON.stringify(connectionIds)");
+    expect(fetch).toContain('storage.getSpendSources(campaignId, "ga4")');
+    expect(fetch).toContain('String(source.displayName || "").trim() === "Google Ads"');
+    expect(fetch).toContain('source mapping is unavailable');
+    expect(fetch).toContain("selectedIds = mapping ? parseSelectedGoogleAdsCampaignIds(mapping.selectedCampaignIds) : undefined");
+    expect(materialize).toContain("if (sourceIds.length === 0) throw new Error");
     expect(materialize).toContain("buildGA4GoogleAdsSpendMaterialization({");
     expect(materialize).toContain("selectedCampaignIds: sourceIds");
     expect(materialize).toContain("await storage.replaceSpendRecordsForSource(");

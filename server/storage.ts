@@ -1,5 +1,6 @@
 import { type Client, type InsertClient, type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GA4DailyMetric, type InsertGA4DailyMetric, type LinkedInDailyMetric, type InsertLinkedInDailyMetric, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type MetaDailyMetric, type InsertMetaDailyMetric, type MetaKpi, type InsertMetaKpi, type MetaBenchmark, type InsertMetaBenchmark, type MetaReport, type InsertMetaReport, type GoogleAdsConnection, type InsertGoogleAdsConnection, type GoogleAdsDailyMetric, type InsertGoogleAdsDailyMetric, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type KPIReport, type InsertKPIReport, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type FinancialDailySnapshotInput, financialDailySnapshotInputSchema, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, clients, campaigns, metrics, integrations, performanceData, ga4Connections, ga4DailyMetrics, linkedinDailyMetrics, spendSources, spendRecords, revenueSources, revenueRecords, notifications, emailAlertEvents, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, metaDailyMetrics, metaKpis, metaBenchmarks, metaReports, googleAdsConnections, googleAdsDailyMetrics, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, reportSnapshots, reportSendEvents, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, kpiReports, benchmarks, benchmarkHistory, metricSnapshots, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { type InstagramConnection, type InsertInstagramConnection, type InstagramDailyMetric, type InsertInstagramDailyMetric, type TikTokConnection, type InsertTikTokConnection, type TikTokDailyMetric, type InsertTikTokDailyMetric, instagramConnections, instagramDailyMetrics, tiktokConnections, tiktokDailyMetrics } from "@shared/schema";
+import { type GA4GoogleAdsSpendConnection, type InsertGA4GoogleAdsSpendConnection, type GA4GoogleAdsSpendDailyMetric, type InsertGA4GoogleAdsSpendDailyMetric, ga4GoogleAdsSpendConnections, ga4GoogleAdsSpendDailyMetrics } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql, gte, lte, inArray, ne } from "drizzle-orm";
@@ -337,6 +338,11 @@ export interface IStorage {
   upsertGoogleAdsDailyMetrics(metrics: InsertGoogleAdsDailyMetric[]): Promise<{ upserted: number }>;
   replaceGoogleAdsDailyMetricsForWindow(campaignId: string, startDate: string, endDate: string, metrics: InsertGoogleAdsDailyMetric[]): Promise<{ replaced: number }>;
   updateGoogleAdsDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ googleCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }>;
+  getGA4GoogleAdsSpendConnection(campaignId: string): Promise<GA4GoogleAdsSpendConnection | undefined>;
+  replaceGA4GoogleAdsSpendConnection(connection: InsertGA4GoogleAdsSpendConnection, dailyMetrics: InsertGA4GoogleAdsSpendDailyMetric[]): Promise<GA4GoogleAdsSpendConnection>;
+  updateGA4GoogleAdsSpendConnection(campaignId: string, connection: Partial<InsertGA4GoogleAdsSpendConnection>): Promise<GA4GoogleAdsSpendConnection | undefined>;
+  getGA4GoogleAdsSpendDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<GA4GoogleAdsSpendDailyMetric[]>;
+  replaceGA4GoogleAdsSpendDailyMetricsForWindow(campaignId: string, startDate: string, endDate: string, metrics: InsertGA4GoogleAdsSpendDailyMetric[]): Promise<{ replaced: number }>;
   updateMetaDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ metaCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }>;
   updateLinkedInDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ linkedinCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }>;
 
@@ -716,6 +722,7 @@ export class DatabaseStorage implements IStorage {
     await tx.delete(instagramDailyMetrics).where(eq(instagramDailyMetrics.campaignId, campaignId));
     await tx.delete(tiktokDailyMetrics).where(eq(tiktokDailyMetrics.campaignId, campaignId));
     await tx.delete(googleAdsDailyMetrics).where(eq(googleAdsDailyMetrics.campaignId, campaignId));
+    await deleteOptionalCampaignTable("ga4_google_ads_spend_daily_metrics");
     await tx.delete(ga4Connections).where(eq(ga4Connections.campaignId, campaignId));
     await tx.delete(googleSheetsConnections).where(eq(googleSheetsConnections.campaignId, campaignId));
     await tx.delete(hubspotConnections).where(eq(hubspotConnections.campaignId, campaignId));
@@ -726,6 +733,7 @@ export class DatabaseStorage implements IStorage {
     await tx.delete(instagramConnections).where(eq(instagramConnections.campaignId, campaignId));
     await tx.delete(tiktokConnections).where(eq(tiktokConnections.campaignId, campaignId));
     await tx.delete(googleAdsConnections).where(eq(googleAdsConnections.campaignId, campaignId));
+    await deleteOptionalCampaignTable("ga4_google_ads_spend_connections");
     await deleteOptionalCampaignTable("meta_kpis");
     await deleteOptionalCampaignTable("meta_benchmarks");
     await deleteOptionalCampaignTable("meta_reports");
@@ -3908,6 +3916,86 @@ export class DatabaseStorage implements IStorage {
         },
       });
     return { upserted: metrics.length };
+  }
+
+  // GA4 Google Ads Spend connection and daily facts stay separate from the main Google Ads platform.
+  async getGA4GoogleAdsSpendConnection(campaignId: string): Promise<GA4GoogleAdsSpendConnection | undefined> {
+    const [connection] = await db.select().from(ga4GoogleAdsSpendConnections)
+      .where(eq(ga4GoogleAdsSpendConnections.campaignId, campaignId));
+    return connection ? hydrateDecryptedTokens(connection) as any : undefined;
+  }
+
+  async replaceGA4GoogleAdsSpendConnection(connection: InsertGA4GoogleAdsSpendConnection, dailyMetrics: InsertGA4GoogleAdsSpendDailyMetric[]): Promise<GA4GoogleAdsSpendConnection> {
+    assertProductionTokenEncryptionConfigured();
+    const encryptedTokens = buildEncryptedTokens({
+      accessToken: (connection as any).accessToken,
+      refreshToken: (connection as any).refreshToken,
+      clientSecret: (connection as any).clientSecret,
+    });
+    return await db.transaction(async (tx: any) => {
+      await tx.delete(ga4GoogleAdsSpendConnections).where(eq(ga4GoogleAdsSpendConnections.campaignId, connection.campaignId));
+      await tx.delete(ga4GoogleAdsSpendDailyMetrics).where(eq(ga4GoogleAdsSpendDailyMetrics.campaignId, connection.campaignId));
+      const [saved] = await tx.insert(ga4GoogleAdsSpendConnections).values({
+        ...connection, accessToken: null, refreshToken: null, clientSecret: null,
+        encryptedTokens, spendOnly: true, lastRefreshAt: new Date(),
+      } as any).returning();
+      if (dailyMetrics.length) await tx.insert(ga4GoogleAdsSpendDailyMetrics).values(dailyMetrics.map((row) => ({
+        campaignId: connection.campaignId, googleCampaignId: row.googleCampaignId,
+        googleCampaignName: row.googleCampaignName, date: row.date,
+        impressions: row.impressions, clicks: row.clicks, spend: row.spend,
+      })) as any);
+      return hydrateDecryptedTokens(saved) as any;
+    });
+  }
+
+  async updateGA4GoogleAdsSpendConnection(campaignId: string, connection: Partial<InsertGA4GoogleAdsSpendConnection>): Promise<GA4GoogleAdsSpendConnection | undefined> {
+    const [existing] = await db.select().from(ga4GoogleAdsSpendConnections)
+      .where(eq(ga4GoogleAdsSpendConnections.campaignId, campaignId));
+    if (!existing) return undefined;
+    const setObj: any = { ...connection };
+    if (Object.prototype.hasOwnProperty.call(connection, "accessToken") ||
+        Object.prototype.hasOwnProperty.call(connection, "refreshToken") ||
+        Object.prototype.hasOwnProperty.call(connection, "clientSecret")) {
+      setObj.encryptedTokens = buildEncryptedTokens({
+        accessToken: (connection as any).accessToken,
+        refreshToken: (connection as any).refreshToken,
+        clientSecret: (connection as any).clientSecret,
+        prev: (existing as any).encryptedTokens,
+      });
+      setObj.accessToken = null;
+      setObj.refreshToken = null;
+      setObj.clientSecret = null;
+    }
+    const [updated] = await db.update(ga4GoogleAdsSpendConnections).set(setObj)
+      .where(eq(ga4GoogleAdsSpendConnections.campaignId, campaignId)).returning();
+    return updated ? hydrateDecryptedTokens(updated) as any : undefined;
+  }
+
+  async getGA4GoogleAdsSpendDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<GA4GoogleAdsSpendDailyMetric[]> {
+    return await db.select().from(ga4GoogleAdsSpendDailyMetrics).where(and(
+      eq(ga4GoogleAdsSpendDailyMetrics.campaignId, campaignId),
+      gte(ga4GoogleAdsSpendDailyMetrics.date, startDate),
+      lte(ga4GoogleAdsSpendDailyMetrics.date, endDate),
+    )).orderBy(ga4GoogleAdsSpendDailyMetrics.date);
+  }
+
+  async replaceGA4GoogleAdsSpendDailyMetricsForWindow(campaignId: string, startDate: string, endDate: string, metrics: InsertGA4GoogleAdsSpendDailyMetric[]): Promise<{ replaced: number }> {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate) || startDate > endDate ||
+        metrics.some((row) => row.campaignId !== campaignId || !/^\d{4}-\d{2}-\d{2}$/.test(row.date) || row.date < startDate || row.date > endDate)) {
+      throw new Error("Google Ads Spend replacement rows are outside the campaign window");
+    }
+    return await db.transaction(async (tx: any) => {
+      await tx.delete(ga4GoogleAdsSpendDailyMetrics).where(and(
+        eq(ga4GoogleAdsSpendDailyMetrics.campaignId, campaignId),
+        gte(ga4GoogleAdsSpendDailyMetrics.date, startDate),
+        lte(ga4GoogleAdsSpendDailyMetrics.date, endDate),
+      ));
+      if (metrics.length) await tx.insert(ga4GoogleAdsSpendDailyMetrics).values(metrics.map((row) => ({
+        campaignId, googleCampaignId: row.googleCampaignId, googleCampaignName: row.googleCampaignName,
+        date: row.date, impressions: row.impressions, clicks: row.clicks, spend: row.spend,
+      })) as any);
+      return { replaced: metrics.length };
+    });
   }
 
   // Google Ads Connection methods

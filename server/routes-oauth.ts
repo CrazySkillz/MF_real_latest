@@ -5832,7 +5832,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (String(clientMappingConfig?.platform || "").trim().toLowerCase() !== "google_ads") {
           return res.status(400).json({ success: false, error: "Google Ads is the only enabled GA4 ad-platform spend source" });
         }
-        const connection: any = await storage.getGoogleAdsConnection(campaignId);
+        if (!existingSourceId) {
+          const sources = await storage.getSpendSources(campaignId, "ga4");
+          const existingGoogleAdsSource = sources.some((source: any) => {
+            if (source.sourceType !== "ad_platforms") return false;
+            if (String(source.displayName || "").trim() === "Google Ads") return true;
+            try {
+              const mapping = typeof source.mappingConfig === "string" ? JSON.parse(source.mappingConfig) : source.mappingConfig || {};
+              return String(mapping.platform || "").trim().toLowerCase() === "google_ads";
+            } catch { return false; }
+          });
+          if (existingGoogleAdsSource) return res.status(409).json({ success: false, error: "Google Ads spend source already exists. Edit the existing source." });
+        }
+        const dedicatedConnection = await storage.getGA4GoogleAdsSpendConnection(campaignId);
+        const legacyConnection = dedicatedConnection ? null : await storage.getGoogleAdsConnection(campaignId);
+        const connection: any = dedicatedConnection || (legacyConnection?.spendOnly ? legacyConnection : null);
         if (!connection || !connection.spendOnly) {
           return res.status(400).json({ success: false, error: "Google Ads spend connection is unavailable" });
         }
@@ -5851,7 +5865,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             currency: cur,
             accountName: String(connection.customerName || "Google Ads Account"),
             selectedCampaignIds: clientMappingConfig?.selectedCampaignIds,
-            rows: await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate),
+            rows: dedicatedConnection
+              ? await storage.getGA4GoogleAdsSpendDailyMetrics(campaignId, startDate, endDate)
+              : await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate),
             startDate,
             endDate,
             fetchedAt: connection.lastRefreshAt,
@@ -26238,6 +26254,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Google Ads authorization is invalid or expired" });
       }
       const { accessToken, refreshToken, expiresIn, customerName, managerAccountId, customerCurrency, customerTimeZone, spendOnly } = pending;
+      if (spendOnly) {
+        const sources = await storage.getSpendSources(campaignId, "ga4");
+        const hasGoogleAdsSpendSource = sources.some((source: any) => {
+          if (source.sourceType !== "ad_platforms") return false;
+          if (String(source.displayName || "").trim() === "Google Ads") return true;
+          try {
+            const mapping = typeof source.mappingConfig === "string" ? JSON.parse(source.mappingConfig) : source.mappingConfig || {};
+            return String(mapping.platform || "").trim().toLowerCase() === "google_ads";
+          } catch { return false; }
+        });
+        if (hasGoogleAdsSpendSource) {
+          const dedicated = await storage.getGA4GoogleAdsSpendConnection(campaignId);
+          const legacy = dedicated ? null : await storage.getGoogleAdsConnection(campaignId);
+          const currentCustomer = dedicated || (legacy?.spendOnly ? legacy : null);
+          if (!currentCustomer || String(currentCustomer.customerId || "").replace(/-/g, "") !== String(customerId).replace(/-/g, "")) {
+            return res.status(409).json({ error: "Delete the existing Google Ads Spend source before changing its account." });
+          }
+        }
+      }
       const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
       if (!customerCurrency || customerCurrency !== campaignCurrency) {
         return res.status(400).json({ error: `Google Ads account currency ${customerCurrency || "is unavailable"}; select an account using ${campaignCurrency}` });
@@ -26263,7 +26298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!spendOnly) await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);
 
-      await storage.replaceGoogleAdsConnection({
+      const connectionData = {
         campaignId,
         customerId,
         customerName: customerName || null,
@@ -26276,7 +26311,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         method: 'oauth',
         expiresAt,
         spendOnly: !!spendOnly,
-      } as any, initialDailyMetrics as any);
+      } as any;
+      if (spendOnly) {
+        await storage.replaceGA4GoogleAdsSpendConnection(connectionData, initialDailyMetrics as any);
+      } else {
+        await storage.replaceGoogleAdsConnection(connectionData, initialDailyMetrics as any);
+      }
 
       console.log(`[Google Ads] Customer ${customerId} connected to campaign ${campaignId} (spendOnly: ${spendOnly})`);
       res.json({ success: true, message: 'Google Ads customer connected' });
@@ -26336,8 +26376,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { campaignId } = req.params;
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
-      const connection = await storage.getGoogleAdsConnection(campaignId);
-      if (!connection) return res.json({ connected: false });
+      const spendPreview = String((req.query as any)?.spendPreview || "") === "1";
+      const dedicatedConnection = spendPreview ? await storage.getGA4GoogleAdsSpendConnection(campaignId) : null;
+      const legacyConnection = dedicatedConnection ? null : await storage.getGoogleAdsConnection(campaignId);
+      const connection = spendPreview ? dedicatedConnection || (legacyConnection?.spendOnly ? legacyConnection : null) : legacyConnection;
+      if (!connection || (spendPreview && connection.method !== "oauth")) return res.json({ connected: false });
       res.json({
         connected: true,
         customerId: connection.customerId,
@@ -26381,9 +26424,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { campaignId } = req.params;
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
-      const connection = await storage.getGoogleAdsConnection(campaignId);
-      if (!connection) return res.json({ success: true, metrics: [] });
       const spendPreview = String((req.query as any)?.spendPreview || "").toLowerCase() === "1" || String((req.query as any)?.spendPreview || "").toLowerCase() === "true";
+      const dedicatedConnection = spendPreview ? await storage.getGA4GoogleAdsSpendConnection(campaignId) : null;
+      const legacyConnection = dedicatedConnection ? null : await storage.getGoogleAdsConnection(campaignId);
+      const connection = spendPreview ? dedicatedConnection || (legacyConnection?.spendOnly ? legacyConnection : null) : legacyConnection;
+      if (!connection) return res.json({ success: true, metrics: [] });
       if ((connection as any).spendOnly && !spendPreview) return res.json({ success: true, metrics: [] });
       if ((connection as any).spendOnly && String((connection as any).method || "") === "test_mode") return res.json({ success: true, metrics: [] });
       const { startDate, endDate } = req.query;
@@ -26403,7 +26448,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       })();
       const selectedSet = new Set(selectedCampaignIds);
-      const metrics = (await storage.getGoogleAdsDailyMetrics(campaignId, start, end))
+      const metrics = (dedicatedConnection
+        ? await storage.getGA4GoogleAdsSpendDailyMetrics(campaignId, start, end)
+        : await storage.getGoogleAdsDailyMetrics(campaignId, start, end))
         .filter((row: any) => selectedSet.size === 0 || selectedSet.has(String(row?.googleCampaignId || "")));
       res.json({ success: true, metrics, startDate: start, endDate: end, currency: String((campaign as any)?.currency || "USD") });
     } catch (error: any) {
@@ -26419,11 +26466,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { campaignId } = req.params;
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
-      const connection = await storage.getGoogleAdsConnection(campaignId);
+      const spendPreview = String((req.query as any)?.spendPreview || "") === "1";
+      const dedicatedConnection = spendPreview ? await storage.getGA4GoogleAdsSpendConnection(campaignId) : null;
+      const legacyConnection = dedicatedConnection ? null : await storage.getGoogleAdsConnection(campaignId);
+      const connection = spendPreview ? dedicatedConnection || (legacyConnection?.spendOnly ? legacyConnection : null) : legacyConnection;
       if (!connection) return res.status(404).json({ error: 'No Google Ads connection found' });
 
       const { refreshGoogleAdsForCampaign } = await import('./google-ads-scheduler');
-      const refresh = await refreshGoogleAdsForCampaign(campaignId, connection, { advanceTestDay: true });
+      const refresh = await refreshGoogleAdsForCampaign(campaignId, connection, { advanceTestDay: true, ga4SpendConnection: !!dedicatedConnection });
 
       res.json({ success: true, message: 'Google Ads data refreshed', ...refresh });
     } catch (error: any) {

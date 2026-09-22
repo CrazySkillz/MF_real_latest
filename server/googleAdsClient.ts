@@ -1,6 +1,6 @@
 /**
  * Google Ads API Client
- * Uses Google Ads API v18 via REST with GAQL (Google Ads Query Language)
+ * Uses Google Ads API v25 via REST with GAQL (Google Ads Query Language)
  */
 import axios, { AxiosInstance } from 'axios';
 
@@ -44,8 +44,18 @@ export interface GoogleAdsDailyInsight {
   searchImpressionShare: number;
 }
 
-const GOOGLE_ADS_API_VERSION = 'v18';
+const GOOGLE_ADS_API_VERSION = 'v25';
 const GOOGLE_ADS_BASE_URL = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}`;
+
+const searchStreamRows = (data: unknown): any[] => {
+  if (!Array.isArray(data)) throw new Error('Invalid Google Ads SearchStream response');
+  return data.flatMap((batch: any) => {
+    if (!batch || typeof batch !== 'object' || (batch.results !== undefined && !Array.isArray(batch.results))) {
+      throw new Error('Invalid Google Ads SearchStream batch');
+    }
+    return batch.results || [];
+  });
+};
 
 export class GoogleAdsClient {
   private accessToken: string;
@@ -150,7 +160,7 @@ export class GoogleAdsClient {
           query: `SELECT customer.id, customer.descriptive_name, customer.resource_name, customer.manager, customer.currency_code, customer.time_zone FROM customer LIMIT 1`,
         });
 
-        const results = detailResponse.data?.[0]?.results || [];
+        const results = searchStreamRows(detailResponse.data);
         if (results.length > 0) {
           const customer = results[0].customer;
           customers.push({
@@ -174,7 +184,7 @@ export class GoogleAdsClient {
     const response = await this.api.post('/googleAds:searchStream', {
       query: `SELECT customer.id, customer.descriptive_name, customer.resource_name, customer.manager, customer.currency_code, customer.time_zone FROM customer LIMIT 1`,
     });
-    const customer = response.data?.[0]?.results?.[0]?.customer;
+    const customer = searchStreamRows(response.data)[0]?.customer;
     if (!customer?.id) throw new Error('Google Ads customer metadata is unavailable');
     return {
       id: String(customer.id),
@@ -203,7 +213,7 @@ export class GoogleAdsClient {
       `,
     });
 
-    const results = response.data?.[0]?.results || [];
+    const results = searchStreamRows(response.data);
     return results.map((r: any) => ({
       id: r.campaign.id,
       name: r.campaign.name,
@@ -240,7 +250,7 @@ export class GoogleAdsClient {
           metrics.average_cpc,
           metrics.average_cpm,
           metrics.interaction_rate,
-          metrics.video_views,
+          metrics.video_trueview_views,
           metrics.search_impression_share
         FROM campaign
         WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
@@ -250,7 +260,7 @@ export class GoogleAdsClient {
       `,
     });
 
-    const results = response.data?.[0]?.results || [];
+    const results = searchStreamRows(response.data);
     return results.map((r: any) => ({
       date: r.segments.date,
       campaignId: r.campaign.id,
@@ -264,7 +274,7 @@ export class GoogleAdsClient {
       averageCpc: Number(r.metrics.averageCpc || 0),
       averageCpm: Number(r.metrics.averageCpm || 0),
       interactionRate: Number(r.metrics.interactionRate || 0),
-      videoViews: Number(r.metrics.videoViews || 0),
+      videoViews: Number(r.metrics.videoTrueviewViews || 0),
       searchImpressionShare: Number(r.metrics.searchImpressionShare || 0),
     }));
   }

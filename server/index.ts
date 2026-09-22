@@ -971,6 +971,55 @@ process.on('uncaughtException', (error: Error) => {
           console.error('⚠️  Migration warning (may already exist):', error instanceof Error ? error.message : String(error));
         }
 
+        // GA4 Google Ads Spend storage is independent of the existing Connected Platform tables.
+        try {
+          await db.execute(sql`
+            CREATE TABLE IF NOT EXISTS ga4_google_ads_spend_connections (
+              id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+              campaign_id TEXT NOT NULL,
+              customer_id TEXT NOT NULL,
+              customer_name TEXT,
+              manager_account_id TEXT,
+              access_token TEXT,
+              refresh_token TEXT,
+              client_id TEXT,
+              client_secret TEXT,
+              developer_token TEXT,
+              encrypted_tokens JSONB,
+              method TEXT NOT NULL,
+              spend_only BOOLEAN NOT NULL DEFAULT TRUE,
+              last_refresh_at TIMESTAMP,
+              expires_at TIMESTAMP,
+              connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+          await db.execute(sql`
+            CREATE UNIQUE INDEX IF NOT EXISTS ga4_google_ads_spend_connections_campaign_unique
+            ON ga4_google_ads_spend_connections(campaign_id);
+          `);
+          await db.execute(sql`
+            CREATE TABLE IF NOT EXISTS ga4_google_ads_spend_daily_metrics (
+              id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+              campaign_id TEXT NOT NULL,
+              google_campaign_id TEXT NOT NULL,
+              google_campaign_name TEXT,
+              date TEXT NOT NULL,
+              impressions INTEGER NOT NULL DEFAULT 0,
+              clicks INTEGER NOT NULL DEFAULT 0,
+              spend NUMERIC(12, 2) NOT NULL DEFAULT 0,
+              imported_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+          await db.execute(sql`
+            CREATE UNIQUE INDEX IF NOT EXISTS ga4_google_ads_spend_daily_metrics_campaign_day_unique
+            ON ga4_google_ads_spend_daily_metrics(campaign_id, google_campaign_id, date);
+          `);
+          log('GA4 Google Ads Spend storage ready');
+        } catch (error) {
+          console.error('GA4 Google Ads Spend storage migration failed:', error instanceof Error ? error.message : String(error));
+        }
+
         // Seed dashboard dummy data (idempotent — only runs when tables are empty)
         try {
           await seedDashboardData();

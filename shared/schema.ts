@@ -981,6 +981,47 @@ export const financialDailySnapshotInputSchema = z.object({
   }
 });
 
+export const ga4GoogleAdsSpendConnections = pgTable("ga4_google_ads_spend_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  customerId: text("customer_id").notNull(),
+  customerName: text("customer_name"),
+  managerAccountId: text("manager_account_id"),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  clientId: text("client_id"),
+  clientSecret: text("client_secret"),
+  developerToken: text("developer_token"),
+  encryptedTokens: jsonb("encrypted_tokens"),
+  method: text("method").notNull(),
+  spendOnly: boolean("spend_only").notNull().default(true),
+  lastRefreshAt: timestamp("last_refresh_at"),
+  expiresAt: timestamp("expires_at"),
+  connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  campaignUnique: uniqueIndex("ga4_google_ads_spend_connections_campaign_unique").on(table.campaignId),
+}));
+
+export const ga4GoogleAdsSpendDailyMetrics = pgTable("ga4_google_ads_spend_daily_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  googleCampaignId: text("google_campaign_id").notNull(),
+  googleCampaignName: text("google_campaign_name"),
+  date: text("date").notNull(),
+  impressions: integer("impressions").notNull().default(0),
+  clicks: integer("clicks").notNull().default(0),
+  spend: decimal("spend", { precision: 12, scale: 2 }).notNull().default(sql`0`),
+  importedAt: timestamp("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  campaignDateUnique: uniqueIndex("ga4_google_ads_spend_daily_metrics_campaign_day_unique").on(table.campaignId, table.googleCampaignId, table.date),
+}));
+
+export type GA4GoogleAdsSpendConnection = typeof ga4GoogleAdsSpendConnections.$inferSelect;
+export type InsertGA4GoogleAdsSpendConnection = typeof ga4GoogleAdsSpendConnections.$inferInsert;
+export type GA4GoogleAdsSpendDailyMetric = typeof ga4GoogleAdsSpendDailyMetrics.$inferSelect;
+export type InsertGA4GoogleAdsSpendDailyMetric = typeof ga4GoogleAdsSpendDailyMetrics.$inferInsert;
+
 export type FinancialDailySnapshotInput = z.infer<typeof financialDailySnapshotInputSchema>;
 
 export const abTests = pgTable("ab_tests", {

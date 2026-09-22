@@ -1330,7 +1330,7 @@ export function AddSpendWizardModal(props: {
     if (platform === "linkedin") return; // LinkedIn has its own flow
     try {
       const endpoint = platform === "google_ads"
-        ? `/api/google-ads/${props.campaignId}/connection`
+        ? `/api/google-ads/${props.campaignId}/connection?spendPreview=1`
         : `/api/meta/${props.campaignId}/connection`;
       const resp = await fetch(endpoint, { credentials: "include" });
       const json = await resp.json().catch(() => null);
@@ -1379,13 +1379,6 @@ export function AddSpendWizardModal(props: {
       });
       const json = await resp.json().catch(() => null);
       if (!resp.ok || json?.success === false) throw new Error(json?.error || json?.message || "Failed to connect Google Ads account");
-
-      const refreshResp = await fetch(`/api/google-ads/${props.campaignId}/refresh`, {
-        method: "POST",
-        credentials: "include",
-      });
-      const refreshJson = await refreshResp.json().catch(() => null);
-      if (!refreshResp.ok || refreshJson?.success === false) throw new Error(refreshJson?.error || refreshJson?.message || "Failed to refresh Google Ads spend data");
 
       setAdPlatformConnected(true);
       setAdPlatformConnectionName(selected.descriptiveName || "Google Ads Account");

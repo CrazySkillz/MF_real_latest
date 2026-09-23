@@ -6543,7 +6543,6 @@ export default function GA4Metrics() {
                   <TabsTrigger value="campaigns">Ad Comparison</TabsTrigger>
                   <TabsTrigger value="insights">Insights</TabsTrigger>
                   <TabsTrigger value="reports">Reports</TabsTrigger>
-                  <TabsTrigger value="connection-details">Connection details</TabsTrigger>
                     </>
                   )}
                 </TabsList>

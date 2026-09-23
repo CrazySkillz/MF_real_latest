@@ -2663,6 +2663,12 @@ export class GoogleAnalytics4Service {
               Number(latestPrimaryDateKey.slice(6, 8)) + 1,
             )).toISOString().slice(0, 10)
           : dateRange;
+        const exactCampaignFilters = this.normalizeCampaignFilter(campaignFilter)
+          .map((name) => this.buildExactUtmCampaignPageLocationFilter(name))
+          .filter(Boolean);
+        const fallbackFilters = exactCampaignFilters.length > 1
+          ? exactCampaignFilters
+          : [pageLocationCampaignFilter];
         const utmResults: any[] = [];
         if (/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(fallbackStartDate) && completedEndDateKey) {
           const chunks: Array<{ startDate: string; endDate: string }> = [];
@@ -2679,12 +2685,41 @@ export class GoogleAnalytics4Service {
             chunkEnd = previousChunkEnd.toISOString().slice(0, 10);
           }
           for (const chunk of chunks) {
-            utmResults.push(await runWithRevenueFallback(pageLocationCampaignFilter, chunk.startDate, chunk.endDate));
+            for (const fallbackFilter of fallbackFilters) {
+              utmResults.push(await runWithRevenueFallback(fallbackFilter, chunk.startDate, chunk.endDate));
+            }
           }
         } else {
-          utmResults.push(await runWithRevenueFallback(pageLocationCampaignFilter, fallbackStartDate));
+          for (const fallbackFilter of fallbackFilters) {
+            utmResults.push(await runWithRevenueFallback(fallbackFilter, fallbackStartDate));
+          }
         }
-        const utmRows = utmResults.flatMap((result) => Array.isArray(result?.data?.rows) ? result.data.rows : []);
+        const utmRevenueMetrics = new Set(utmResults.map((result) => result?.revenueMetric).filter(Boolean));
+        if (utmRevenueMetrics.size > 1) throw new Error('GA4_DAILY_REVENUE_METRIC_MISMATCH');
+        const rawUtmRows = utmResults.flatMap((result) => Array.isArray(result?.data?.rows) ? result.data.rows : []);
+        let utmRows = rawUtmRows;
+        if (fallbackFilters.length > 1) {
+          const utmRowsByDate = new Map<string, any>();
+          for (const row of rawUtmRows) {
+            const date = providerDateKey(row);
+            if (!date) continue;
+            const existing = utmRowsByDate.get(date) || {
+              dimensionValues: [{ value: date }],
+              metricValues: Array.from({ length: 7 }, () => ({ value: '0' })),
+            };
+            for (let index = 0; index < 6; index += 1) {
+              existing.metricValues[index].value = String(
+                (Number(existing.metricValues[index]?.value) || 0) + (Number(row?.metricValues?.[index]?.value) || 0),
+              );
+            }
+            const sessions = Number(existing.metricValues[0]?.value) || 0;
+            const engagedSessions = Number(existing.metricValues[5]?.value) || 0;
+            existing.metricValues[6].value = String(sessions > 0 ? engagedSessions / sessions : 0);
+            utmRowsByDate.set(date, existing);
+          }
+          utmRows = Array.from(utmRowsByDate.values())
+            .sort((a: any, b: any) => providerDateKey(a).localeCompare(providerDateKey(b)));
+        }
         if (utmRows.length > 0) {
           if (primaryRows.length === 0) {
             data = { ...utmResults[0].data, rows: utmRows };

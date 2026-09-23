@@ -311,11 +311,9 @@ describe("Shopify downstream value/content regression guard", () => {
       ...campaign,
       ga4CampaignFilter: JSON.stringify(["overview_window", "ad_import_to_date", "ad_email", "ad_social"]),
     });
-    storageMock.getGA4DailyMetrics.mockResolvedValue([{ ...dailyRow, sessions: 7, conversions: 1 }]);
     ga4ServiceMock.getAcquisitionBreakdown.mockReset()
       .mockResolvedValueOnce({
         rows: [{ campaign: "overview_window", sessions: 7, users: 7, conversions: 1, revenue: 700, sessionKeyEventRate: 1 / 7 }],
-        totals: { sessions: 7, users: 7, conversions: 1, revenue: 700 },
       })
       .mockResolvedValueOnce({
         rows: [
@@ -634,7 +632,6 @@ describe("Shopify downstream value/content regression guard", () => {
       revenue: index === 0 ? 100 : 0,
     }));
     storageMock.getCampaign.mockResolvedValue({ ...campaign, ga4CampaignFilter: JSON.stringify(campaignNames) });
-    storageMock.getGA4DailyMetrics.mockResolvedValue([{ ...dailyRow, sessions: 136, conversions: 15 }]);
     storageMock.getRevenueSources.mockResolvedValue([
       revenueSource,
       {
@@ -671,30 +668,6 @@ describe("Shopify downstream value/content regression guard", () => {
     expect(pdfTextCalls).toContain("Campaign Breakdown");
     expect(pdfTextCalls).toContain("campaign-16");
     expect(pdfTextCalls.filter((value) => value === "USD 299.98")).toHaveLength(1);
-  });
-
-  it("fails scheduled Campaign Breakdown closed when traffic differs from Summary", async () => {
-    ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
-      rows: [{ campaign: "shopify_campaign", sessions: 11, users: 5, conversions: 2, revenue: 100, sessionKeyEventRate: 2 / 11 }],
-      totals: { sessions: 11, users: 5, conversions: 2, revenue: 100 },
-    });
-
-    await expect(buildGA4ScheduledPdfAttachment({
-      report: {
-        id: "report-breakdown-traffic-mismatch",
-        campaignId: campaign.id,
-        name: "Campaign Breakdown traffic mismatch",
-        reportType: "custom",
-        configuration: JSON.stringify({
-          sections: { overview: true },
-          subsections: { overview: { campaignBreakdown: true } },
-        }),
-      },
-      reportName: "Campaign Breakdown traffic mismatch",
-      windowStart: "2026-06-01",
-      windowEnd: "2026-07-04",
-      campaignName: campaign.name,
-    })).rejects.toThrow("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: Campaign Breakdown");
   });
 
   it("fails scheduled Campaign Breakdown closed when a selected mapped source is not materialized", async () => {

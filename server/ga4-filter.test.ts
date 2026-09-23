@@ -386,6 +386,57 @@ describe("GA4 campaign value picker", () => {
     expect(fallbackBody.dimensions).toEqual([{ name: "date" }]);
   });
 
+  it("sums exact per-campaign UTM daily rows so Summary matches Campaign Breakdown", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const scope = JSON.stringify(body?.dimensionFilter || {});
+      const isPageLocationScope = scope.includes("pageLocation");
+      const includesFixtureDate = body?.dateRanges?.[0]?.endDate === "2026-09-22";
+      const values = isPageLocationScope && includesFixtureDate && scope.includes("yesop_brand_search")
+        ? ["1452", "2000", "145", "1449", "37518.74", "1000", "0"]
+        : isPageLocationScope && includesFixtureDate && scope.includes("yesop_paid_social")
+          ? ["807", "1000", "0", "807", "0", "538", "0"]
+          : null;
+      return {
+        ok: true,
+        json: async () => ({
+          rows: values ? [{
+            dimensionValues: [{ value: "20260922" }],
+            metricValues: values.map((value) => ({ value })),
+          }] : [],
+        }),
+      } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await ga4Service.getTimeSeriesWithToken(
+      "properties/542352127",
+      "token",
+      "2026-08-23",
+      ["yesop_brand_search", "yesop_paid_social"],
+      "2026-09-22",
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      date: "2026-09-22",
+      sessions: 2259,
+      users: 2256,
+      conversions: 145,
+      revenue: 37518.74,
+      engagedSessions: 1538,
+      pageviews: 3000,
+    });
+    expect(result[0].engagementRate).toBeCloseTo(1538 / 2259);
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    const fallbackScopes = fetchMock.mock.calls.slice(1).map((call) =>
+      JSON.stringify(JSON.parse(String(call[1]?.body || "{}"))?.dimensionFilter || {}),
+    );
+    expect(fallbackScopes.filter((scope) => scope.includes("yesop_brand_search"))).toHaveLength(2);
+    expect(fallbackScopes.filter((scope) => scope.includes("yesop_paid_social"))).toHaveLength(2);
+    expect(fallbackScopes.every((scope) => !(scope.includes("yesop_brand_search") && scope.includes("yesop_paid_social")))).toBe(true);
+  });
+
   it("retains UTM-only daily dates when primary campaign rows are partial across the scheduler window", async () => {
     const metricValues = (sessions: string) => [
       { value: sessions },

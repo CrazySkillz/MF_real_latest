@@ -2049,7 +2049,6 @@ export default function GA4Metrics() {
     data: ga4Breakdown,
     isLoading: breakdownLoading,
     isError: breakdownError,
-    error: breakdownQueryError,
     isPlaceholderData: breakdownPlaceholder,
   } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", activeTab === "insights" ? dateRange : "import-to-date", selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly],
@@ -2953,12 +2952,9 @@ export default function GA4Metrics() {
     revenueDisplaySources.some((source: any) =>
       campaignBreakdownRevenueResolution.mappedSourceIds.has(String(source?.sourceId || source?.id || "")) &&
       (source?.materializedRevenueStatus === "unavailable" || source?.revenue == null));
-  const campaignBreakdownSnapshotMismatch = String((breakdownQueryError as any)?.message || "")
-    .includes("does not match the stored Summary snapshot");
   const campaignBreakdownUnavailable =
     !ga4ConnectionUsable ||
     breakdownPlaceholder ||
-    campaignBreakdownSnapshotMismatch ||
     !campaignBreakdownRevenueVerified ||
     !campaignBreakdownRatesValid ||
     campaignBreakdownImportedRevenueUnavailable ||
@@ -6817,9 +6813,7 @@ export default function GA4Metrics() {
                             <div className="h-32 bg-muted rounded animate-pulse" />
                           ) : campaignBreakdownUnavailable ? (
                             <div className="text-sm text-destructive">
-                              {campaignBreakdownSnapshotMismatch
-                                ? "Campaign breakdown is unavailable because it does not match the imported Summary snapshot."
-                                : "Campaign breakdown is unavailable. Refresh the page to try again."}
+                              Campaign breakdown is unavailable. Refresh the page to try again.
                             </div>
                           ) : campaignBreakdownAgg.length > 0 ? (
                             <div className="overflow-hidden border rounded-md">

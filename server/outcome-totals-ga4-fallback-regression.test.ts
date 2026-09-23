@@ -147,7 +147,8 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("let financialGa4Totals = { ...ga4Totals, available: currentValueWindow ? false : ga4TotalsAvailable };");
     expect(route).toContain("const financialStartDateUsed = (() => {");
     expect(route).not.toContain("if (!useExecutiveCampaignToDateFinancials) return currentValueWindow.startDate;");
-    expect(route).toContain("const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;");
+    expect(route).toContain("const raw = (campaign as any)?.startDate || currentValueWindow.startDate || (campaign as any)?.createdAt || null;");
+    expect(route).not.toContain("const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;");
     expect(route).toContain("storage.getGA4DailyMetrics(campaignId, persistedPropertyId, financialStartDateUsed, endDateUsed)");
     expect(route).toContain("storage.getGA4DailyMetrics(campaignId, persistedPropertyId, currentValueWindow.startDate, endDateUsed)");
     expect(route).toContain("financialStartDateUsed,");

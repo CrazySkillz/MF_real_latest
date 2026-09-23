@@ -238,7 +238,7 @@ describe("campaign Executive Summary regression guard", () => {
 
     expect(route).toContain('String(req.query.executiveFinancialScope || "").trim() === "campaign_to_date"');
     expect(route).not.toContain("if (!useExecutiveCampaignToDateFinancials) return currentValueWindow.startDate;");
-    expect(route).toContain('const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;');
+    expect(route).toContain('const raw = (campaign as any)?.startDate || currentValueWindow.startDate || (campaign as any)?.createdAt || null;');
     expect(route).toContain("financialStartDateUsed,\n                endDateUsed,");
     expect(route).toContain("storage.getGA4DailyMetrics(campaignId, persistedPropertyId, currentValueWindow.startDate, endDateUsed)");
     expect(route).toContain('source: "ga4_property_window"');

@@ -15251,7 +15251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let propertyWindowTrafficCandidate: any = null;
           const primaryGA4 = persistedPrimaryGA4;
           const financialStartDateUsed = (() => {
-            const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
+            const raw = (campaign as any)?.startDate || currentValueWindow.startDate || (campaign as any)?.createdAt || null;
             if (!raw) return "2000-01-01";
             const date = new Date(raw);
             return Number.isNaN(date.getTime()) ? "2000-01-01" : formatISODateUTC(date);

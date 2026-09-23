@@ -1660,51 +1660,18 @@ export function AddSpendWizardModal(props: {
             {step === "select" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card
-                  className={`${activeGoogleAdsSpendSources.length > 0 ? "cursor-default" : "cursor-pointer hover:border-blue-500"} transition-colors ${isRemovingGoogleAdsSpend ? "opacity-60 pointer-events-none" : ""}`}
-                  onClick={() => {
-                    if (activeGoogleAdsSpendSources.length > 0) return;
-                    setSelectedPlatform("google_ads");
-                    setStep("ad_platform");
-                  }}
+                  className="cursor-not-allowed opacity-50"
+                  aria-disabled="true"
                 >
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Zap className="w-4 h-4" />
                       Google Ads
-                      {(googleAdsSpendConnected || activeGoogleAdsSpendSources.length > 0) && (
-                        <span className="ml-auto flex items-center gap-1">
-                          <span className={`text-xs font-normal ${googleAdsSpendConnected ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}`}>
-                            {googleAdsSpendConnected ? "Connected" : "Reconnect required"}
-                          </span>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <button type="button" className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30" title="Disconnect Google Ads Spend" aria-label="Disconnect Google Ads Spend" onClick={(event) => event.stopPropagation()}>
-                                <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                              </button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent onClick={(event) => event.stopPropagation()}>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Disconnect Google Ads Spend</AlertDialogTitle>
-                                <AlertDialogDescription>This removes the Google Ads Spend source, its imported rows, and its Spend-only OAuth connection. The separate Google Ads Connected Platform is preserved.</AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction className="bg-red-600 hover:bg-red-700" disabled={isRemovingGoogleAdsSpend} onClick={() => void handleGoogleAdsSpendDisconnect()}>
-                                  {isRemovingGoogleAdsSpend ? "Disconnecting..." : "Disconnect"}
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </span>
-                      )}
+                      <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                        Coming Soon
+                      </span>
                     </CardTitle>
-                    <CardDescription>
-                      {activeGoogleAdsSpendSources.length > 0
-                        ? "Already added. Edit campaigns from Spend Sources."
-                        : googleAdsSpendConnected
-                          ? "Account connected. Select a campaign to add spend."
-                          : "Pull spend via Google Ads API."}
-                    </CardDescription>
+                    <CardDescription>Google Ads spend import will be available soon.</CardDescription>
                   </CardHeader>
                 </Card>
 

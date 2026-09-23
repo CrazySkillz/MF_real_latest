@@ -257,7 +257,7 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     expect(materialize).not.toContain("deleteSpendRecordsBySource");
   });
 
-  it("shows the saved Spend-only connection with refresh and exact disconnect controls", () => {
+  it("keeps Google Ads Spend disabled in the chooser while retaining its backend connection controls", () => {
     const modal = read("client", "src", "components", "AddSpendWizardModal.tsx");
     const routes = read("server", "routes-oauth.ts");
     const storage = read("server", "storage.ts");
@@ -274,9 +274,15 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     );
 
     expect(modal).toContain('/connection?spendPreview=1`');
-    expect(chooser).toContain('googleAdsSpendConnected ? "Connected" : "Reconnect required"');
-    expect(chooser).toContain('title="Disconnect Google Ads Spend"');
-    expect(chooser).toContain("The separate Google Ads Connected Platform is preserved.");
+    expect(chooser).toContain('aria-disabled="true"');
+    expect(chooser).toContain('className="cursor-not-allowed opacity-50"');
+    expect(chooser).toContain("Coming Soon");
+    expect(chooser).toContain("Google Ads spend import will be available soon.");
+    expect(chooser).not.toContain("googleAdsSpendConnected");
+    expect(chooser).not.toContain("Reconnect required");
+    expect(chooser).not.toContain('title="Disconnect Google Ads Spend"');
+    expect(chooser).not.toContain('setSelectedPlatform("google_ads")');
+    expect(modal).toContain("const handleGoogleAdsSpendDisconnect = async () =>");
     expect(modal).toContain('/ga4/google-ads-spend/disconnect`');
     expect(modal).toContain('/refresh?spendPreview=1`');
     expect(modal).toContain('"Refresh data"');

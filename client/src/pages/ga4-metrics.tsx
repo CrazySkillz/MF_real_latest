@@ -8969,11 +8969,6 @@ export default function GA4Metrics() {
                       const executiveSpendAvailable = executive.spendAvailable;
                       const spendSourceLabels = executive.spendSourceLabels;
                       const revenueSourceLabels = executive.revenueSourceLabels;
-                      const nativeEndDate = String((ga4ToDateResp as any)?.endDate || "");
-                      const spendEndDate = String(spendToDateResp?.endDate || "");
-                      const importedRevenueEndDate = String(importedRevenueToDateResp?.endDate || "");
-                      const mixedFinancialWindows = Boolean(nativeEndDate && spendEndDate && importedRevenueEndDate &&
-                        (nativeEndDate !== spendEndDate || nativeEndDate !== importedRevenueEndDate));
                       return <Card className="border-border" data-testid="insights-executive-financials">
                       <CardHeader>
                         <CardTitle className="text-lg">Executive Financials</CardTitle>
@@ -9054,11 +9049,6 @@ export default function GA4Metrics() {
                               {revenueSourceLabels.length > 0 ? revenueSourceLabels.join(", ") : ga4NoCompletedWindow ? "GA4 native revenue — no completed day yet" : "Not connected"}
                             </div>
                           </div>
-                          {mixedFinancialWindows && (
-                            <div className="mt-2 text-amber-800 dark:text-amber-300" data-testid="insights-financial-window-note">
-                              Different cutoffs: GA4 native revenue through {nativeEndDate}, Spend through {spendEndDate}, and imported revenue through {importedRevenueEndDate}. Profit, ROAS, and ROI combine these source windows.
-                            </div>
-                          )}
                         </div>
                       </CardContent>
                     </Card>;

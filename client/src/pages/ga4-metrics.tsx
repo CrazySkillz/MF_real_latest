@@ -9171,7 +9171,7 @@ export default function GA4Metrics() {
                             if (rollingWindow) {
                               return (
                                 <div className="text-sm text-muted-foreground/70 py-4">
-                                  {insightsTrendMode === "30d" ? <>30-day comparison unavailable. Both adjacent calendar windows must contain every completed reporting day. Missing dates are not assumed to be zero.</> : trendsZeroDaysVerified ? <>{rollingWindow.label} comparison unavailable. Both adjacent calendar windows must contain every completed reporting day. Current {rollingWindow.current.startDate} → {rollingWindow.current.endDate}: {rollingWindow.current.days}/{rollingWindow.current.expectedDays} verified days. Prior {rollingWindow.prior.startDate} → {rollingWindow.prior.endDate}: {rollingWindow.prior.days}/{rollingWindow.prior.expectedDays} verified days.{intradayHistoryNote}</> : <>{rollingWindow.label} comparison unavailable. Both adjacent calendar windows must contain every completed reporting day. Current {rollingWindow.current.startDate} → {rollingWindow.current.endDate}: {rollingWindow.current.days}/{rollingWindow.current.expectedDays} imported days. Prior {rollingWindow.prior.startDate} → {rollingWindow.prior.endDate}: {rollingWindow.prior.days}/{rollingWindow.prior.expectedDays} imported days. Total imported rows in the 60-day response: {dailyRows.length}. Missing dates are not assumed to be zero.{intradayHistoryNote}</>}
+                                  {insightsTrendMode === "30d" ? <>30-day comparison unavailable. Both adjacent calendar windows must contain every completed reporting day. Missing dates are not assumed to be zero.</> : trendsZeroDaysVerified ? <>{rollingWindow.label} comparison unavailable. Both adjacent calendar windows must contain every completed reporting day.{intradayHistoryNote}</> : <>{rollingWindow.label} comparison unavailable. Both adjacent calendar windows must contain every completed reporting day. Current {rollingWindow.current.startDate} → {rollingWindow.current.endDate}: {rollingWindow.current.days}/{rollingWindow.current.expectedDays} imported days. Prior {rollingWindow.prior.startDate} → {rollingWindow.prior.endDate}: {rollingWindow.prior.days}/{rollingWindow.prior.expectedDays} imported days. Total imported rows in the 60-day response: {dailyRows.length}. Missing dates are not assumed to be zero.{intradayHistoryNote}</>}
                                 </div>
                               );
                             }
@@ -9520,9 +9520,6 @@ export default function GA4Metrics() {
                               <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-sessions">
                                 <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Sessions</p>
                                 <p className="text-xl font-bold text-foreground mt-1">{formatNumber(dataSummaryHistorySessions)}</p>
-                                <p className="text-xs text-muted-foreground/70 mt-0.5">
-                                  Import-to-date GA4 sessions
-                                </p>
                               </div>
                             )}
                             {dataSummaryHistoryAvailable && (
@@ -9587,9 +9584,6 @@ export default function GA4Metrics() {
                       </Card>
                     </div>
 
-                    <p className="text-xs text-muted-foreground/70">
-                      Verified KPI and Benchmark conclusions are counted separately. Shared unverified-source effects are consolidated. Total findings also include positive and informational items.
-                    </p>
                     <Card className="border-border" data-testid="insights-findings">
                       <CardHeader>
                         <CardTitle className="text-lg">What to investigate next</CardTitle>

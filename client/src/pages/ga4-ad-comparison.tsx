@@ -372,7 +372,7 @@ export default function GA4AdComparison({
         <CardHeader className="pb-2">
           <CardTitle className="text-lg">Revenue Breakdown</CardTitle>
           <CardDescription>
-            GA4 revenue uses the initial-import-to-latest-completed-day comparison window. Imported sources are source-to-date provenance and are excluded from campaign ranking.
+            GA4 revenue uses the initial-import-to-latest-completed-day comparison window. Imported sources are source-to-date provenance.
           </CardDescription>
         </CardHeader>
         <CardContent>

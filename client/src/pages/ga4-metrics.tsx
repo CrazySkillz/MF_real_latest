@@ -7541,7 +7541,7 @@ export default function GA4Metrics() {
                       <div>
                         <h2 className="text-lg font-semibold text-foreground">Key Performance Indicators</h2>
                         <p className="text-sm text-muted-foreground/70 mt-1">
-                          KPI current values use the initial import boundary through the latest completed reporting day. Unverified items are excluded from scoring.
+                          KPI current values use the initial import boundary through the latest completed reporting day.
                         </p>
                       </div>
                       <Button size="sm" onClick={openCreateKPI} disabled={isAnalyticsSavePending}>

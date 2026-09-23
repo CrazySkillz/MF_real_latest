@@ -1278,10 +1278,15 @@ export function AddSpendWizardModal(props: {
         `/api/${apiPath}/${props.campaignId}/daily-metrics?startDate=${startDate}&endDate=${endDate}${spendPreviewParam}`
       , { credentials: "include" });
       const json = await resp.json().catch(() => ({ metrics: [] }));
-      const metrics = json?.metrics || [];
+      if (!resp.ok || json?.success === false) throw new Error(json?.error || "Could not fetch spend data.");
+      const metrics = Array.isArray(json?.metrics) ? json.metrics : [];
 
       if (!metrics.length) {
-        toast({ title: "No data found", description: `No ${platform === "google_ads" ? "Google Ads" : "Meta"} spend data available.`, variant: "destructive" });
+        if (platform === "google_ads") {
+          toast({ title: "No spend yet", description: "Refresh completed. Google Ads has not reported spend for this campaign yet." });
+        } else {
+          toast({ title: "No data found", description: "No Meta spend data available.", variant: "destructive" });
+        }
         setIsAdPlatformLoading(false);
         return;
       }

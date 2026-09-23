@@ -281,6 +281,9 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     expect(modal).toContain('/refresh?spendPreview=1`');
     expect(modal).toContain('"Refresh data"');
     expect(modal).toContain('"No campaigns with spend found yet."');
+    expect(modal).toContain('title: "No spend yet"');
+    expect(modal).toContain('Refresh completed. Google Ads has not reported spend for this campaign yet.');
+    expect(modal).toContain('if (!resp.ok || json?.success === false)');
     expect(modal).toContain('style: "currency", currency: props.currency || "USD"');
     expect(disconnectRoute).toContain("requireCampaignAccessParamId");
     expect(disconnectRoute).toContain("storage.disconnectGa4GoogleAdsSpend(campaignId)");

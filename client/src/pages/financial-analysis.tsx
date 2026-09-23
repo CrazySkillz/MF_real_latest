@@ -1000,16 +1000,16 @@ export default function FinancialAnalysis() {
                                 <p className="text-sm font-medium">Pacing Status</p>
                                 <p className="text-xs text-muted-foreground">Requires campaign spend, budget, and budget period dates</p>
                               </div>
-                              <Badge className={
-                                pacingStatus === "unavailable" ? "bg-gray-100 text-base text-gray-700" :
-                                pacingStatus === "ahead" ? "bg-red-100 text-red-700" :
-                                pacingStatus === "behind" ? "bg-yellow-100 text-yellow-700" :
-                                "bg-green-100 text-green-700"
-                              }>
-                                {pacingStatus === "unavailable" ? "Unavailable" :
-                                  pacingStatus === "ahead" ? `${formatPercentage(pacingPercentage - 100)} Over` :
-                                  pacingStatus === "behind" ? `${formatPercentage(100 - pacingPercentage)} Under` : "On Track"}
-                              </Badge>
+                              {pacingStatus === "unavailable" ? (
+                                <p className="font-semibold">Unavailable</p>
+                              ) : (
+                                <Badge className={pacingStatus === "ahead" ? "bg-red-100 text-red-700" :
+                                  pacingStatus === "behind" ? "bg-yellow-100 text-yellow-700" :
+                                  "bg-green-100 text-green-700"}>
+                                  {pacingStatus === "ahead" ? `${formatPercentage(pacingPercentage - 100)} Over` :
+                                    pacingStatus === "behind" ? `${formatPercentage(100 - pacingPercentage)} Under` : "On Track"}
+                                </Badge>
+                              )}
                             </div>
                             {isOverBudget && (
                               <p className="border-t pt-3 text-xs font-medium text-red-600 dark:text-red-400">

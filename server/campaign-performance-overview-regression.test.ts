@@ -237,6 +237,9 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(getChanges).toContain('currentSourceIds.join("\\u0000") !== baselineSourceIds.join("\\u0000")');
     expect(getChanges).toContain("const pctChange = prevVal > 0 ? ((change / prevVal) * 100) : null;");
     expect(page).toContain("const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('24h');");
+    expect(page).toContain("const [selectedTimeRange, setSelectedTimeRange] = useState<'24h' | '7d' | '30d'>('24h');");
+    expect(page).toContain('if (recentMovementSelectionPending && !historicalRevenueFetching && !historicalSpendFetching && !comparisonDataFetching)');
+    expect(page).toContain('<Select value={selectedTimeRange} disabled={recentMovementSelectionPending}');
     expect(page).toContain('<SelectItem value="7d">Compare with 7 days ago</SelectItem>');
     expect(page).toContain("item.pctChange === null ? ''");
     expect(page).toContain('performanceGA4SpendSourcesResponse?.success === true');
@@ -304,7 +307,8 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     const spendRoute = routes.slice(routeStart, routeEnd);
 
     expect(page).toContain('resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), timeRange)');
-    expect(page).toContain('spend-to-date?platformContext=ga4&endDate=${encodeURIComponent(spendComparisonEndDate)}');
+    expect(page).toContain('resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), selectedTimeRange)');
+    expect(page).toContain('spend-to-date?platformContext=ga4&endDate=${encodeURIComponent(requestedSpendComparisonEndDate)}');
     expect(page).toContain('spend-sources?platformContext=ga4');
     expect(page).toContain('historicalSpendResponse?.endDate === spendComparisonEndDate');
     expect(page).toContain('datedFinancialSourceIds(performanceGA4SpendSourcesResponse, "spend"');
@@ -348,8 +352,8 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(ga4Route).toContain("requestedEndDate > latestCompletedEndDate");
     expect(ga4Route).toContain("Exact-date simulated GA4 revenue is unavailable");
     expect(page).toContain("const revenueComparisonEndDate = resolveSpendComparisonEndDate");
-    expect(page).toContain("ga4-to-date?propertyId=${encodeURIComponent(performanceGA4PropertyId)}&insightsScope=1&readOnly=1&endDate=${encodeURIComponent(revenueComparisonEndDate)}");
-    expect(page).toContain("revenue-to-date?platformContext=ga4&endDate=${encodeURIComponent(revenueComparisonEndDate)}");
+    expect(page).toContain("ga4-to-date?propertyId=${encodeURIComponent(performanceGA4PropertyId)}&insightsScope=1&readOnly=1&endDate=${encodeURIComponent(requestedRevenueComparisonEndDate)}");
+    expect(page).toContain("revenue-to-date?platformContext=ga4&endDate=${encodeURIComponent(requestedRevenueComparisonEndDate)}");
     expect(page).toContain("revenue-sources?platformContext=ga4");
     expect(page).toContain('const recentMovementMetricOrder = ["Sessions", "Conversions", "Spend", "Total Revenue"]');
     expect(movement).toContain('metric: "Total Revenue"');

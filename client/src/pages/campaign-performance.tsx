@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Activity, Users, Target, DollarSign, Clock, FlaskConical } from "lucide-react";
@@ -65,6 +65,7 @@ export default function CampaignPerformanceSummary() {
   const [, params] = useRoute("/campaigns/:id/performance");
   const campaignId = params?.id;
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('24h');
+  const [selectedTimeRange, setSelectedTimeRange] = useState<'24h' | '7d' | '30d'>('24h');
   const [demoMode, setDemoMode] = useState(false);
   const { toast } = useToast();
 
@@ -215,27 +216,29 @@ export default function CampaignPerformanceSummary() {
   });
 
   // Derive API params from unified time range
-  const comparisonType = timeRange === '24h' ? 'yesterday' : timeRange === '7d' ? 'last_week' : 'last_month';
+  const comparisonType = selectedTimeRange === '24h' ? 'yesterday' : selectedTimeRange === '7d' ? 'last_week' : 'last_month';
   const trendPeriod = timeRange === '24h' ? 'daily' : timeRange === '7d' ? 'weekly' : 'monthly';
   const spendComparisonEndDate = resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), timeRange);
   const revenueComparisonEndDate = resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), timeRange);
-  const { data: historicalRevenueResponse, isError: historicalRevenueError, isPlaceholderData: historicalRevenuePlaceholder } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-total-revenue-comparison", performanceGA4PropertyId, revenueComparisonEndDate],
-    enabled: !!campaignId && !!performanceGA4PropertyId && !!revenueComparisonEndDate && !demoMode,
+  const requestedRevenueComparisonEndDate = resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), selectedTimeRange);
+  const requestedSpendComparisonEndDate = resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), selectedTimeRange);
+  const { data: historicalRevenueResponse, isError: historicalRevenueError, isPlaceholderData: historicalRevenuePlaceholder, isFetching: historicalRevenueFetching } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-total-revenue-comparison", performanceGA4PropertyId, requestedRevenueComparisonEndDate],
+    enabled: !!campaignId && !!performanceGA4PropertyId && !!requestedRevenueComparisonEndDate && !demoMode,
     placeholderData: keepPreviousData,
     queryFn: async () => {
       const [nativeResponse, importedResponse] = await Promise.all([
-        fetch(`/api/campaigns/${campaignId}/ga4-to-date?propertyId=${encodeURIComponent(performanceGA4PropertyId)}&insightsScope=1&readOnly=1&endDate=${encodeURIComponent(revenueComparisonEndDate)}`),
-        fetch(`/api/campaigns/${campaignId}/revenue-to-date?platformContext=ga4&endDate=${encodeURIComponent(revenueComparisonEndDate)}`),
+        fetch(`/api/campaigns/${campaignId}/ga4-to-date?propertyId=${encodeURIComponent(performanceGA4PropertyId)}&insightsScope=1&readOnly=1&endDate=${encodeURIComponent(requestedRevenueComparisonEndDate)}`),
+        fetch(`/api/campaigns/${campaignId}/revenue-to-date?platformContext=ga4&endDate=${encodeURIComponent(requestedRevenueComparisonEndDate)}`),
       ]);
       const [native, imported] = await Promise.all([
         nativeResponse.json().catch(() => null),
         importedResponse.json().catch(() => null),
       ]);
-      if (!nativeResponse.ok || !native || native?.success === false || String(native?.propertyId || "") !== performanceGA4PropertyId || native?.endDate !== revenueComparisonEndDate) {
+      if (!nativeResponse.ok || !native || native?.success === false || String(native?.propertyId || "") !== performanceGA4PropertyId || native?.endDate !== requestedRevenueComparisonEndDate) {
         throw new Error(native?.error || "Failed to fetch exact-date GA4 revenue");
       }
-      if (!importedResponse.ok || !imported || imported?.success === false || imported?.platformContext !== "ga4" || imported?.endDate !== revenueComparisonEndDate) {
+      if (!importedResponse.ok || !imported || imported?.success === false || imported?.platformContext !== "ga4" || imported?.endDate !== requestedRevenueComparisonEndDate) {
         throw new Error(imported?.error || "Failed to fetch exact-date imported GA4 revenue");
       }
       return { native, imported };
@@ -272,20 +275,20 @@ export default function CampaignPerformanceSummary() {
       return data;
     },
   });
-  const { data: historicalSpendResponse, isError: historicalSpendError, isPlaceholderData: historicalSpendPlaceholder } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-spend-to-date-comparison", spendComparisonEndDate],
-    enabled: !!campaignId && !!performanceGA4PropertyId && !!spendComparisonEndDate && !demoMode,
+  const { data: historicalSpendResponse, isError: historicalSpendError, isPlaceholderData: historicalSpendPlaceholder, isFetching: historicalSpendFetching } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-spend-to-date-comparison", requestedSpendComparisonEndDate],
+    enabled: !!campaignId && !!performanceGA4PropertyId && !!requestedSpendComparisonEndDate && !demoMode,
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4&endDate=${encodeURIComponent(spendComparisonEndDate)}`);
+      const response = await fetch(`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4&endDate=${encodeURIComponent(requestedSpendComparisonEndDate)}`);
       const data = await response.json().catch(() => null);
-      if (!response.ok || data?.success !== true || data?.endDate !== spendComparisonEndDate) throw new Error(data?.error || "Failed to fetch historical Spend");
+      if (!response.ok || data?.success !== true || data?.endDate !== requestedSpendComparisonEndDate) throw new Error(data?.error || "Failed to fetch historical Spend");
       return data;
     },
   });
 
   // Fetch comparison data — keepPreviousData prevents UI flash when switching filters
-  const { data: comparisonData } = useQuery<{
+  const { data: comparisonData, isFetching: comparisonDataFetching } = useQuery<{
     current: any | null;
     previous: any | null;
   }>({
@@ -306,6 +309,13 @@ export default function CampaignPerformanceSummary() {
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
+
+  const recentMovementSelectionPending = selectedTimeRange !== timeRange;
+  useLayoutEffect(() => {
+    if (recentMovementSelectionPending && !historicalRevenueFetching && !historicalSpendFetching && !comparisonDataFetching) {
+      setTimeRange(selectedTimeRange);
+    }
+  }, [comparisonDataFetching, historicalRevenueFetching, historicalSpendFetching, recentMovementSelectionPending, selectedTimeRange]);
 
   if (campaignLoading) {
     return (
@@ -1638,7 +1648,7 @@ export default function CampaignPerformanceSummary() {
                           View Trend Analysis
                         </Button>
                       </Link>
-                      <Select value={timeRange} onValueChange={(value: '24h' | '7d' | '30d') => setTimeRange(value)}>
+                      <Select value={selectedTimeRange} disabled={recentMovementSelectionPending} onValueChange={(value: '24h' | '7d' | '30d') => setSelectedTimeRange(value)}>
                       <SelectTrigger className="w-[230px]">
                         <SelectValue />
                       </SelectTrigger>

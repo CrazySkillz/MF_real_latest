@@ -4,7 +4,7 @@ import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow, resolveG
 import { computeCpa, computeRoiPercent, normalizeRateToPercent, formatPct as formatMetricPct } from "../shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
 import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
-import { mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
+import { assertGA4OverviewCampaignTrafficMatchesSnapshot, mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import { resolveExactGA4CampaignBreakdownRevenue } from "../shared/ga4-campaign-breakdown";
 import { computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "../shared/kpi-math";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
@@ -584,6 +584,15 @@ async function buildGA4ReportPayload(report: any) {
   if (overviewDailyRows.length === 0 && overviewStartDate === dailyStart) {
     overviewDailyRows = dailyRows;
   }
+  const overviewSummedTotals = summarizeGA4TrafficRows(overviewDailyRows);
+  if (overviewRequirements.campaignBreakdown) {
+    try {
+      if (overviewDailyRows.length === 0) throw new Error('GA4_OVERVIEW_CAMPAIGN_TRAFFIC_SNAPSHOT_UNAVAILABLE');
+      assertGA4OverviewCampaignTrafficMatchesSnapshot((breakdown as any)?.totals, overviewSummedTotals);
+    } catch (error) {
+      logPartFailure('campaign traffic snapshot', error);
+    }
+  }
   const activeRevenueSources = revenueSources.filter((source: any) => source?.isActive !== false);
   const hasMaterializedRevenue = (row: any) => row?.revenue != null && Number.isFinite(Number(row.revenue));
   const revenueBreakdownSourceIds = new Set(revenueBreakdown.filter(hasMaterializedRevenue).map((row: any) => String(row?.sourceId || "")));
@@ -636,6 +645,7 @@ async function buildGA4ReportPayload(report: any) {
   if (overviewRequirements.campaignBreakdown && (
     failedParts.has("acquisition breakdown") ||
     failedParts.has("campaign revenue breakdown") ||
+    failedParts.has("campaign traffic snapshot") ||
     failedParts.has("revenue sources") ||
     overviewCampaignBreakdownMaterializedRevenueUnavailable
   )) {
@@ -698,8 +708,6 @@ async function buildGA4ReportPayload(report: any) {
   }, { sessions: 0, users: 0, conversions: 0, revenue: 0, engagedSessions: 0, pageviews: 0 });
   dailySummedTotals.revenue = Number(dailySummedTotals.revenue.toFixed(2));
   dailySummedTotals.engagementRate = dailySummedTotals.sessions > 0 ? dailySummedTotals.engagedSessions / dailySummedTotals.sessions : 0;
-  const overviewSummedTotals = summarizeGA4TrafficRows(overviewDailyRows);
-
   const breakdownFinancialRows = Array.isArray((breakdown as any)?.rows) ? (breakdown as any).rows : [];
   const breakdownFinancialSummed = breakdownFinancialRows.reduce(
     (acc: { sessions: number; users: number; conversions: number; revenue: number; engagedSessions: number }, row: any) => ({

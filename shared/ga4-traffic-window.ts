@@ -30,6 +30,19 @@ export const summarizeGA4TrafficRows = (rows: any[]) => {
   };
 };
 
+export const assertGA4OverviewCampaignTrafficMatchesSnapshot = (
+  breakdownTotals: any,
+  snapshotTotals: any,
+) => {
+  for (const metric of ["sessions", "conversions"] as const) {
+    const breakdownValue = Number(breakdownTotals?.[metric]);
+    const snapshotValue = Number(snapshotTotals?.[metric]);
+    if (!Number.isFinite(breakdownValue) || !Number.isFinite(snapshotValue) || breakdownValue !== snapshotValue) {
+      throw new Error("GA4_OVERVIEW_CAMPAIGN_TRAFFIC_SNAPSHOT_MISMATCH");
+    }
+  }
+};
+
 export const mergeGA4OverviewCampaignRevenueRows = (
   trafficRows: any[],
   revenueRows: any[],

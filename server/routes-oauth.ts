@@ -52,7 +52,7 @@ import { observeFinancialDailySnapshotReadiness } from "./utils/financial-daily-
 import { resolveFinancialDailyComparisonPrevious } from "./utils/financial-daily-comparison";
 import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
 import { isGA4FinancialTotalsCandidate, parseGA4FinancialNumber, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
-import { addDerivedGA4EngagedSessions, mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
+import { addDerivedGA4EngagedSessions, assertGA4OverviewCampaignTrafficMatchesSnapshot, mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import {
   getGA4KpiMetricDependencies,
   isGA4FinancialKpiMetricIdentity,
@@ -13514,6 +13514,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         result = { ...result, rows, totals: { ...result.totals, revenue: providerRevenue } };
         nativeRevenueWindow = { source: 'ga4', startDate: revenueStartDate, endDate: providerEndDate, revenueMetric: String(revenueResult.meta?.revenueMetric || '') };
       }
+      if (overviewCampaignBreakdown && importToDateWindow) {
+        const snapshotRows = await storage.getGA4DailyMetrics(
+          campaignId,
+          String(resolvedPropertyId),
+          importToDateWindow.startDate,
+          importToDateWindow.endDate,
+        );
+        if (!snapshotRows.length) throw new Error('GA4_OVERVIEW_CAMPAIGN_TRAFFIC_SNAPSHOT_UNAVAILABLE');
+        assertGA4OverviewCampaignTrafficMatchesSnapshot(result.totals, summarizeGA4TrafficRows(snapshotRows));
+      }
       const dimensionDiagnostics = dimensionDiagnosticsRequested
         ? await ga4Service.getOverviewDimensionDiagnostics(
             campaignId,
@@ -13562,6 +13572,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: 'TOKEN_EXPIRED',
           requiresReauthorization: true,
           message: 'GA4 token expired. Please reconnect Google Analytics.',
+        });
+      }
+      if (error instanceof Error && (
+        error.message === 'GA4_OVERVIEW_CAMPAIGN_TRAFFIC_SNAPSHOT_MISMATCH' ||
+        error.message === 'GA4_OVERVIEW_CAMPAIGN_TRAFFIC_SNAPSHOT_UNAVAILABLE'
+      )) {
+        return res.status(409).json({
+          success: false,
+          error: error.message,
+          message: 'Campaign Breakdown is unavailable because it does not match the stored Summary snapshot.',
         });
       }
       res.status(500).json({ success: false, error: error?.message || 'Failed to fetch GA4 breakdown' });

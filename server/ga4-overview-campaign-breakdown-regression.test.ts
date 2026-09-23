@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolveExactGA4CampaignBreakdownRevenue } from "../shared/ga4-campaign-breakdown";
-import { mergeGA4OverviewCampaignRevenueRows } from "../shared/ga4-traffic-window";
+import { assertGA4OverviewCampaignTrafficMatchesSnapshot, mergeGA4OverviewCampaignRevenueRows } from "../shared/ga4-traffic-window";
 
 const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), "utf8");
 const client = read("client", "src", "pages", "ga4-metrics.tsx");
@@ -19,6 +19,17 @@ const between = (source: string, startText: string, endText: string) => {
 };
 
 describe("GA4 Overview Campaign Breakdown", () => {
+  it("fails closed when campaign traffic differs from the stored Summary snapshot", () => {
+    expect(() => assertGA4OverviewCampaignTrafficMatchesSnapshot(
+      { sessions: 2259, conversions: 145 },
+      { sessions: 2245, conversions: 144 },
+    )).toThrow("GA4_OVERVIEW_CAMPAIGN_TRAFFIC_SNAPSHOT_MISMATCH");
+    expect(() => assertGA4OverviewCampaignTrafficMatchesSnapshot(
+      { sessions: 2245, conversions: 144 },
+      { sessions: 2245, conversions: 144 },
+    )).not.toThrow();
+  });
+
   it("adds imported revenue only through an exact saved mapping", () => {
     const rows = [{ name: "Paid_Social" }, { name: "Email" }];
     const result = resolveExactGA4CampaignBreakdownRevenue(rows, [
@@ -189,6 +200,7 @@ describe("GA4 Overview Campaign Breakdown", () => {
     expect(route.indexOf("GA4_CAMPAIGN_SCOPE_REQUIRED")).toBeLessThan(providerCall);
     expect(route).toContain("storage.getGA4Connection(campaignId, propertyId)");
     expect(route).toContain("mergeGA4OverviewCampaignRevenueRows(result.rows, revenueResult.rows, selectedCampaignNames)");
+    expect(route).toContain("assertGA4OverviewCampaignTrafficMatchesSnapshot(result.totals, summarizeGA4TrafficRows(snapshotRows))");
     expect(analytics).toContain('value: `.*[?&]utm_campaign=${escapeRegex(candidate)}(?:[&#].*)?$`');
   });
 
@@ -218,6 +230,7 @@ describe("GA4 Overview Campaign Breakdown", () => {
     expect(query).toContain("refetchInterval: 10 * 60 * 1000");
     expect(query).toContain("refetchIntervalInBackground: true");
     expect(client).toContain("(breakdownError && ga4Breakdown === undefined)");
+    expect(client).toContain("campaignBreakdownSnapshotMismatch");
     expect(client).toContain("revenueSourcesResp === undefined ||");
   });
 

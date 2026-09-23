@@ -64,7 +64,7 @@ const resolveSpendComparisonEndDate = (dataThroughDate: string, timeRange: '24h'
 export default function CampaignPerformanceSummary() {
   const [, params] = useRoute("/campaigns/:id/performance");
   const campaignId = params?.id;
-  const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('7d');
+  const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('24h');
   const [demoMode, setDemoMode] = useState(false);
   const { toast } = useToast();
 

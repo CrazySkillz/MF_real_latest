@@ -236,6 +236,7 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(getChanges).toContain("const baselineSourceIds = aggregateMetricSourceIds(baselineAggregate, config.key);");
     expect(getChanges).toContain('currentSourceIds.join("\\u0000") !== baselineSourceIds.join("\\u0000")');
     expect(getChanges).toContain("const pctChange = prevVal > 0 ? ((change / prevVal) * 100) : null;");
+    expect(page).toContain("const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('24h');");
     expect(page).toContain('<SelectItem value="7d">Compare with 7 days ago</SelectItem>');
     expect(page).toContain("item.pctChange === null ? ''");
   });

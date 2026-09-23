@@ -918,7 +918,7 @@ export default function FinancialAnalysis() {
                 <div>
                   <h2 id="budget-pacing-heading" className="text-xl font-semibold">Budget & Pacing</h2>
                   <p className="text-sm text-muted-foreground">
-                    Budget metadata affects pacing only; it never filters or changes connected-source spend or revenue.
+                    Budget metadata affects pacing only.
                   </p>
                 </div>
                 <div className="grid gap-6 lg:grid-cols-2">
@@ -1001,7 +1001,7 @@ export default function FinancialAnalysis() {
                                 <p className="text-xs text-muted-foreground">Requires campaign spend, budget, and budget period dates</p>
                               </div>
                               <Badge className={
-                                pacingStatus === "unavailable" ? "bg-gray-100 text-gray-700" :
+                                pacingStatus === "unavailable" ? "bg-gray-100 text-base text-gray-700" :
                                 pacingStatus === "ahead" ? "bg-red-100 text-red-700" :
                                 pacingStatus === "behind" ? "bg-yellow-100 text-yellow-700" :
                                 "bg-green-100 text-green-700"

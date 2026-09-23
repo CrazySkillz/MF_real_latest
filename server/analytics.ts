@@ -1641,6 +1641,23 @@ export class GoogleAnalytics4Service {
         0,
       );
     };
+    const reportMetricRowSum = (report: any, metricIndex: number) =>
+      (Array.isArray(report?.rows) ? report.rows : []).reduce(
+        (sum: number, row: any) => sum + (Number(row?.metricValues?.[metricIndex]?.value) || 0),
+        0,
+      );
+    const reportMetricWeightedRate = (report: any, rateIndex: number, weightIndex = 0) => {
+      let totalWeight = 0;
+      let weightedRate = 0;
+      for (const row of Array.isArray(report?.rows) ? report.rows : []) {
+        const weight = Number(row?.metricValues?.[weightIndex]?.value) || 0;
+        const rate = Number(row?.metricValues?.[rateIndex]?.value);
+        if (weight > 0 && (!Number.isFinite(rate) || rate < 0 || rate > 1)) return Number.NaN;
+        totalWeight += weight;
+        weightedRate += weight * (Number.isFinite(rate) ? rate : 0);
+      }
+      return totalWeight > 0 ? weightedRate / totalWeight : 0;
+    };
 
     const isUninformativeRow = (dimValues: any[], dimsNames: string[]) => {
       // Heuristic: if acquisition fields are all "(not set)" / "Unassigned", treat as uninformative.
@@ -1723,10 +1740,10 @@ export class GoogleAnalytics4Service {
       for (const campaignName of this.normalizeCampaignFilter(campaignFilter)) {
         const exactPageLocationFilter = this.buildExactUtmCampaignPageLocationFilter(campaignName);
         const exactPageLocation = useExactPageLocationFinancials
-          ? await fetchWithRevenueFallback([], exactPageLocationFilter)
+          ? await fetchWithRevenueFallback([{ name: 'date' }], exactPageLocationFilter)
           : null;
         const traffic = exactPageLocation?.data || await fetchReport(
-          'totalRevenue', [], undefined, exactPageLocationFilter, endDate || 'yesterday',
+          'totalRevenue', [{ name: 'date' }], undefined, exactPageLocationFilter, endDate || 'yesterday',
           [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'engagedSessions' }, { name: 'sessionKeyEventRate' }],
         );
         const financial = exactPageLocation || await fetchWithRevenueFallback(
@@ -1736,12 +1753,12 @@ export class GoogleAnalytics4Service {
         rebuiltRows.push({
           dimensionValues: [{ value: campaignName }],
           metricValues: [
-            { value: String(reportMetricTotal(traffic, 0)) },
-            { value: String(reportMetricTotal(traffic, 1)) },
-            { value: String(reportMetricTotal(financial.data, 2)) },
-            { value: String(reportMetricTotal(financial.data, 3)) },
-            { value: String(reportMetricTotal(traffic, exactPageLocation ? 4 : 2)) },
-            { value: String(traffic?.totals?.[0]?.metricValues?.[exactPageLocation ? 5 : 3]?.value ?? traffic?.rows?.[0]?.metricValues?.[exactPageLocation ? 5 : 3]?.value ?? '') },
+            { value: String(reportMetricRowSum(traffic, 0)) },
+            { value: String(reportMetricRowSum(traffic, 1)) },
+            { value: String(exactPageLocation ? reportMetricRowSum(financial.data, 2) : reportMetricTotal(financial.data, 2)) },
+            { value: String(exactPageLocation ? reportMetricRowSum(financial.data, 3) : reportMetricTotal(financial.data, 3)) },
+            { value: String(reportMetricRowSum(traffic, exactPageLocation ? 4 : 2)) },
+            { value: String(reportMetricWeightedRate(traffic, exactPageLocation ? 5 : 3)) },
           ],
         });
       }

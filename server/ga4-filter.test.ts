@@ -393,9 +393,9 @@ describe("GA4 campaign value picker", () => {
       const isPageLocationScope = scope.includes("pageLocation");
       const includesFixtureDate = body?.dateRanges?.[0]?.endDate === "2026-09-22";
       const values = isPageLocationScope && includesFixtureDate && scope.includes("yesop_brand_search")
-        ? ["1452", "2000", "145", "1449", "37518.74", "1000", "0"]
+        ? ["1449", "2000", "145", "1449", "37518.74", "1051", "0"]
         : isPageLocationScope && includesFixtureDate && scope.includes("yesop_paid_social")
-          ? ["807", "1000", "0", "807", "0", "538", "0"]
+          ? ["807", "1000", "0", "807", "0", "484", "0"]
           : null;
       return {
         ok: true,
@@ -420,14 +420,14 @@ describe("GA4 campaign value picker", () => {
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       date: "2026-09-22",
-      sessions: 2259,
+      sessions: 2256,
       users: 2256,
       conversions: 145,
       revenue: 37518.74,
-      engagedSessions: 1538,
+      engagedSessions: 1535,
       pageviews: 3000,
     });
-    expect(result[0].engagementRate).toBeCloseTo(1538 / 2259);
+    expect(result[0].engagementRate).toBeCloseTo(1535 / 2256);
     expect(fetchMock).toHaveBeenCalledTimes(5);
     const fallbackScopes = fetchMock.mock.calls.slice(1).map((call) =>
       JSON.stringify(JSON.parse(String(call[1]?.body || "{}"))?.dimensionFilter || {}),
@@ -968,7 +968,7 @@ describe("GA4 campaign value picker", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it('uses exact UTM native revenue when campaignName reports a conflicting smaller total', async () => {
+  it('uses exact UTM daily row sums when provider aggregates are non-additive', async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || '{}'));
       const dimensions = (body?.dimensions || []).map((item: any) => item?.name);
@@ -988,12 +988,19 @@ describe("GA4 campaign value picker", () => {
         ok: true,
         json: async () => ({
           metadata: { currencyCode: 'USD' },
-          rowCount: dimensions.length > 1 ? 1 : 0,
+          rowCount: dimensions.length > 0 ? 1 : 0,
           rows: dimensions.length > 1 ? [{
-            dimensionValues: ['20260618', 'Email', 'newsletter', 'email', 'yesop_email_nurture', 'desktop', 'NL']
-              .map((value) => ({ value })),
-            metricValues: [...['23', '23', '23', '4631.1', '23'], ...(hasSessionRate ? ['0'] : [])].map((value) => ({ value })),
-          }] : [],
+              dimensionValues: ['20260618', 'Email', 'newsletter', 'email', 'yesop_email_nurture', 'desktop', 'NL']
+                .map((value) => ({ value })),
+              metricValues: [...['23', '23', '23', '4631.1', '23'], ...(hasSessionRate ? ['0'] : [])].map((value) => ({ value })),
+            }]
+            : dimensions[0] === 'date' ? [{
+                dimensionValues: [{ value: '20260618' }],
+                metricValues: [...(filterText.includes('yesop_retargeti')
+                  ? ['200', '202', '35', '6411.3', '145']
+                  : ['180', '181', '0', '0', '138']), ...(hasSessionRate ? [sessionRate] : [])].map((value) => ({ value })),
+              }]
+              : [],
           totals: [{ metricValues: [...totals, ...(hasSessionRate ? [sessionRate] : [])].map((value) => ({ value })) }],
         }),
       } as any;
@@ -1009,22 +1016,24 @@ describe("GA4 campaign value picker", () => {
     );
 
     expect(result.rows).toEqual([
-      expect.objectContaining({ campaign: 'yesop_retargeti', sessions: 204, users: 204, conversions: 35, revenue: 6411.3, engagedSessions: 148, sessionKeyEventRate: 0.25 }),
+      expect.objectContaining({ campaign: 'yesop_retargeti', sessions: 200, users: 202, conversions: 35, revenue: 6411.3, engagedSessions: 145, sessionKeyEventRate: 0.25 }),
       expect.objectContaining({ campaign: 'yesop_email_nurture', sessions: 180, users: 181, conversions: 0, revenue: 0, engagedSessions: 138, sessionKeyEventRate: 0 }),
     ]);
-    expect(result.totals).toMatchObject({ sessions: 384, users: 385, conversions: 35, revenue: 6411.3, engagedSessions: 286 });
+    expect(result.totals).toMatchObject({ sessions: 380, users: 383, conversions: 35, revenue: 6411.3, engagedSessions: 283 });
     expect(result.meta.overviewCampaignAttribution).toMatchObject({
       selected: true,
       standardRevenue: 4631.1,
-      rebuiltSessions: 384,
+      rebuiltSessions: 380,
       rebuiltConversions: 35,
       rebuiltRevenue: 6411.3,
     });
     const trafficBodies = fetchMock.mock.calls
       .map(([, init]) => JSON.parse(String((init as any)?.body || '{}')))
       .filter((body) => (body?.dimensions || []).length === 0);
-    expect(trafficBodies).toHaveLength(3);
-    const campaignTrafficBodies = trafficBodies.filter((body) => body?.dimensionFilter?.filter);
+    expect(trafficBodies).toHaveLength(1);
+    const campaignTrafficBodies = fetchMock.mock.calls
+      .map(([, init]) => JSON.parse(String((init as any)?.body || '{}')))
+      .filter((body) => body?.dimensions?.[0]?.name === 'date' && body?.dimensionFilter?.filter);
     expect(campaignTrafficBodies).toHaveLength(2);
     expect(campaignTrafficBodies.map((body) => body?.dimensionFilter?.filter?.stringFilter?.matchType)).toEqual([
       'FULL_REGEXP', 'FULL_REGEXP',

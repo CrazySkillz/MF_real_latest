@@ -240,6 +240,20 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain("item.pctChange === null ? ''");
   });
 
+  it("formats Recent Movement currency values using the campaign currency", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
+    const recentMovementStart = page.indexOf("{/* Recent Movement */}");
+    const recentMovementEnd = page.indexOf("{/* Trend Charts", recentMovementStart);
+    const recentMovement = page.slice(recentMovementStart, recentMovementEnd);
+
+    expect(page).toContain("currency?: string;");
+    expect(page).toContain("currency: String(campaign?.currency || 'USD').trim().toUpperCase()");
+    expect(recentMovement).toContain("formatRecentMovementCurrencyValue(item.current)");
+    expect(recentMovement).toContain("formatRecentMovementCurrencyValue(item.change)");
+    expect(recentMovement).toContain("formatRecentMovementCurrencyValue(item.previous)");
+    expect(new Intl.NumberFormat("en-US", { style: "currency", currency: "EUR", currencyDisplay: "narrowSymbol", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(37518.744892)).toBe("€37,518.74");
+  });
+
   it("derives GA4 traffic movement from Summary totals and a valid GA4 daily window", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
     const start = page.indexOf('const ga4MovementMetricKeys = new Set(["sessions", "users", "conversions"]);');

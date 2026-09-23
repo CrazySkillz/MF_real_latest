@@ -30,6 +30,7 @@ interface Campaign {
   id: string;
   name: string;
   budget?: string;
+  currency?: string;
   status: string;
   reportingTimeZone?: string;
 }
@@ -685,6 +686,13 @@ export default function CampaignPerformanceSummary() {
   const sourceMetricValue = (source: any, metricName: string) => parseNum(source?.metrics?.[metricName]);
   const formatCurrencyValue = (value: number) =>
     `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatRecentMovementCurrencyValue = (value: number) => new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: String(campaign?.currency || 'USD').trim().toUpperCase(),
+    currencyDisplay: 'narrowSymbol',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
   const formatNumberValue = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 0 });
   const exactDateWindowKey = (startValue: any, endValue: any) => {
     const start = String(startValue || '').trim().slice(0, 10);
@@ -1673,7 +1681,7 @@ export default function CampaignPerformanceSummary() {
                               <div className="text-sm font-medium text-muted-foreground/70 mb-1">{item.metric}</div>
                               <div className="flex items-baseline space-x-2">
                                 <span className="text-2xl font-bold text-foreground">
-                                  {item.isCurrency ? formatCurrencyValue(item.current) : item.current.toLocaleString()}
+                                  {item.isCurrency ? formatRecentMovementCurrencyValue(item.current) : item.current.toLocaleString()}
                                 </span>
                               </div>
                               <div className="flex items-center mt-2 space-x-2">
@@ -1685,13 +1693,13 @@ export default function CampaignPerformanceSummary() {
                                   'text-muted-foreground/70'
                                 }`}>
                                   {item.comparisonUnavailable ? item.comparisonUnavailableLabel || 'Comparison unavailable — incomplete GA4 daily history' : isFlat ? 'No change' :
-                                    `${isUp ? '+' : ''}${item.isCurrency ? formatCurrencyValue(item.change) : item.change.toLocaleString()}${item.pctChange === null ? '' : ` (${isUp ? '+' : ''}${item.pctChange.toFixed(Math.abs(item.pctChange) < 0.05 && item.pctChange !== 0 ? 2 : 1)}%)`}`
+                                    `${isUp ? '+' : ''}${item.isCurrency ? formatRecentMovementCurrencyValue(item.change) : item.change.toLocaleString()}${item.pctChange === null ? '' : ` (${isUp ? '+' : ''}${item.pctChange.toFixed(Math.abs(item.pctChange) < 0.05 && item.pctChange !== 0 ? 2 : 1)}%)`}`
                                   }
                                 </span>
                               </div>
                               {!item.comparisonUnavailable && (
                                 <div className="text-xs text-muted-foreground mt-1">
-                                  Previous: {item.isCurrency ? formatCurrencyValue(item.previous) : item.previous.toLocaleString()}
+                                  Previous: {item.isCurrency ? formatRecentMovementCurrencyValue(item.previous) : item.previous.toLocaleString()}
                                 </div>
                               )}
                               <div className="text-xs text-muted-foreground mt-1">

@@ -111,6 +111,10 @@
     margin-right: 0 !important;
   }
 
+  body[data-scroll-locked]:has([data-ga4-report-dialog]) {
+    margin-right: 0 !important;
+  }
+
   * {
     @apply border-border;
   }

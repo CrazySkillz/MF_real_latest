@@ -58,6 +58,14 @@ describe("GA4 UI regression guard", () => {
     expect(styles).toMatch(/body\[data-scroll-locked\]:has\(\[data-add-revenue-dialog\]\)\s*\{\s*margin-right:\s*0\s*!important;\s*\}/);
   });
 
+  it("prevents GA4 Create and Edit Report modal transitions from shifting the page", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const styles = readClient("index.css");
+
+    expect(ga4Metrics).toContain("<DialogContent data-ga4-report-dialog");
+    expect(styles).toMatch(/body\[data-scroll-locked\]:has\(\[data-ga4-report-dialog\]\)\s*\{\s*margin-right:\s*0\s*!important;\s*\}/);
+  });
+
   it("keeps Add Revenue source picker copy aligned with the production wording", () => {
     const revenueModal = readClient("components/AddRevenueWizardModal.tsx");
 

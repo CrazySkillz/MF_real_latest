@@ -10278,7 +10278,7 @@ export default function GA4Metrics() {
           }
         }}
       >
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogContent data-ga4-report-dialog className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">Report Type</DialogTitle>
           </DialogHeader>

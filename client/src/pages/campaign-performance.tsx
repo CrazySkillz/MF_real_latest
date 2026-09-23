@@ -1285,6 +1285,12 @@ export default function CampaignPerformanceSummary() {
     const change = changeData.changes.find((item) => item.metric === metric);
     return change ? [change] : [];
   });
+  const showSpendNotConnected = !demoMode
+    && !performanceGA4SpendSourcesError
+    && performanceGA4SpendSourcesResponse?.success === true
+    && Array.isArray(performanceGA4SpendSourcesResponse.sources)
+    && performanceGA4SpendSourcesResponse.sources.length === 0
+    && !recentMovementChanges.some((item) => item.metric === "Spend");
 
   const getOverviewMetric = (metricName: string, fallbackValue: number) => {
     const metric = performanceSummary?.totals?.[metricName];
@@ -1708,6 +1714,13 @@ export default function CampaignPerformanceSummary() {
                             </div>
                           );
                         })}
+                        {showSpendNotConnected && (
+                          <div data-testid="recent-movement-spend-not-connected" className="p-4 rounded-lg border border-border bg-muted/40">
+                            <div className="text-sm font-medium text-muted-foreground/70 mb-1">Spend</div>
+                            <div className="text-2xl font-bold text-muted-foreground">Not connected</div>
+                            <div className="text-xs text-muted-foreground mt-2">Connect a spend source to compare movement.</div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

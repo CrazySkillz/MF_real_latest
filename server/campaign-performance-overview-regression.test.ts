@@ -239,6 +239,10 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain("const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('24h');");
     expect(page).toContain('<SelectItem value="7d">Compare with 7 days ago</SelectItem>');
     expect(page).toContain("item.pctChange === null ? ''");
+    expect(page).toContain('performanceGA4SpendSourcesResponse?.success === true');
+    expect(page).toContain('&& !performanceGA4SpendSourcesError');
+    expect(page).toContain('performanceGA4SpendSourcesResponse.sources.length === 0');
+    expect(page).toContain('data-testid="recent-movement-spend-not-connected"');
   });
 
   it("formats Recent Movement currency values using the campaign currency", () => {

@@ -845,7 +845,7 @@ export default function FinancialAnalysis() {
                 <div>
                   <h2 id="financial-position-heading" className="text-xl font-semibold">Financial Position</h2>
                   <p className="text-sm text-muted-foreground">
-                    Campaign-wide financial totals from the connected-source aggregate. Unavailable inputs are never displayed as zero.
+                    Campaign-wide financial totals from the connected-source aggregate.
                   </p>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

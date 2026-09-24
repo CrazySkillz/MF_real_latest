@@ -1661,7 +1661,10 @@ export default function TrendAnalysis() {
                               {overviewTrendData.hasPrevious && typeof card.change === "number" && (
                                 cumulativeComparison ? (
                                   <div className="text-xs mt-1 leading-tight">
-                                    <div className={comparisonColorClass}>{cumulativeComparison.value}</div>
+                                    <div className={`flex items-center ${comparisonColorClass}`}>
+                                      {card.change > 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : card.change < 0 ? <ArrowDownRight className="w-3 h-3 mr-0.5" /> : null}
+                                      {cumulativeComparison.value}
+                                    </div>
                                     <div className="text-muted-foreground">{cumulativeComparison.context}</div>
                                   </div>
                                 ) : (

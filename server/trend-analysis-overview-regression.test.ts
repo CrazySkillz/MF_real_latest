@@ -328,13 +328,15 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain("formatExactTrendCount(authoritativeHeadlineCurrent.users)");
     expect(page).toContain("Campaign-to-Date Performance Summary");
     expect(page).toContain("const cumulativeComparison = usesCumulativeGA4Consumer && comparisonKey && trendComparisonDate");
-    expect(page).toContain('<div className={comparisonColorClass}>{cumulativeComparison.value}</div>');
+    expect(page).toContain('<div className={`flex items-center ${comparisonColorClass}`}>');
+    expect(page).toContain("{cumulativeComparison.value}");
     expect(page).toContain('<div className="text-muted-foreground">{cumulativeComparison.context}</div>');
     expect(page).toContain("{usesCumulativeGA4Consumer && comparisonDateLabel && (");
     expect(page.match(/<div(?: className="text-muted-foreground")?>vs \{comparisonDateLabel\}<\/div>/g)).toHaveLength(2);
     const cumulativeRenderStart = page.indexOf("cumulativeComparison ? (");
     const cumulativeRenderEnd = page.indexOf(") : (", cumulativeRenderStart);
-    expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).not.toContain("ArrowUpRight");
+    expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).toContain("ArrowUpRight");
+    expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).toContain("ArrowDownRight");
     expect(page).toContain('Number(card.change) > 0');
     expect(page).toContain('? "text-green-600"');
     expect(page).toContain('Number(card.change) < 0');

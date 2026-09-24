@@ -92,7 +92,8 @@ describe("Trend Analysis window regression guard", () => {
 
     const cumulativeRenderStart = page.indexOf("cumulativeComparison ? (");
     const cumulativeRenderEnd = page.indexOf(") : (", cumulativeRenderStart);
-    expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).not.toContain("ArrowUpRight");
+    expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).toContain("ArrowUpRight");
+    expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).toContain("ArrowDownRight");
     expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).toContain("comparisonColorClass");
     expect(page).toContain("Campaign-to-Date Performance Summary");
   });

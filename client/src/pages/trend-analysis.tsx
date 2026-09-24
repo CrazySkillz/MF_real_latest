@@ -1743,7 +1743,6 @@ export default function TrendAnalysis() {
                                 Warning statistical change
                               </span>
                             </div>
-                            <p>Conversion markers compare each date with the previous 7 comparable dates; severity shows how unusual the change is, not whether it is good or bad.</p>
                           </div>
                         )}
                       </CardHeader>

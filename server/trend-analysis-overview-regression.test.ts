@@ -475,6 +475,7 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(executiveView).toContain("Contribution Over Time");
     expect(executiveView).toContain("Executive Recommendations");
     expect(executiveView).toContain("executiveTrendInsights.map");
+    expect(executiveView).toContain('executiveTrendInsights.length === 2 ? "lg:grid-cols-2" : "lg:grid-cols-3"');
     expect(page).not.toContain("Selected-Window Comparison");
     expect(page).toContain("Conversions Increased — Validate the Drivers");
     expect(page).toContain("Campaign-to-Date ROAS");

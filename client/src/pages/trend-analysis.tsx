@@ -2111,7 +2111,7 @@ export default function TrendAnalysis() {
                           Decision guidance based on the available campaign trend, efficiency, and conversion signals.
                         </p>
                       </CardHeader>
-                      <CardContent className="grid gap-4 lg:grid-cols-3">
+                      <CardContent className={`grid gap-4 ${executiveTrendInsights.length === 1 ? "lg:grid-cols-1" : executiveTrendInsights.length === 2 ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
                         {executiveTrendInsights.map((insight, index) => {
                           const style = insight.type === "warning"
                             ? "border-l-orange-500 bg-orange-50 dark:bg-orange-900/20"

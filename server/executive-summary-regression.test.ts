@@ -663,6 +663,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("classified below target");
     expect(page).toContain("classified needs attention; none is classified behind");
     expect(page).toContain('No configured risk factor meets the risk threshold; lower-severity exceptions require monitoring.');
+    expect(page).toContain('Low based on available data; ROI and ROAS are unavailable.');
     expect(page).toContain('{ label: "KPI Risk", status: kpiRiskStatus, detail: kpiRiskDetail }');
     expect(page).toContain('{ label: "Benchmark Risk", status: benchmarkRiskStatus, detail: benchmarkRiskDetail }');
     expect(page).not.toContain('{ label: "KPI Risk", status: riskKpiMissCount > 0 ? "Risk"');

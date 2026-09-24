@@ -463,7 +463,9 @@ export default function ExecutiveSummary() {
   const displayedRiskExplanation = displayedRiskLevel === "low"
     ? hasMonitorConditions
       ? "No configured risk factor meets the risk threshold; lower-severity exceptions require monitoring."
-      : "No configured risk factors identified from available connected-source inputs."
+      : !aggregateMetricAvailable("roi") && !aggregateMetricAvailable("roas")
+        ? "Low based on available data; ROI and ROAS are unavailable."
+        : "No configured risk factors identified from available connected-source inputs."
     : `${displayedRiskFactors.map((factor) => factor.message).join(". ")}.`;
   const executiveSummaryNarrative = `${executiveMetricSummary} Risk: ${displayedRiskLevel}. ${executiveTrajectorySummary}`;
   const executiveSummaryBullets = [

@@ -1849,7 +1849,7 @@ export default function TrendAnalysis() {
                         {efficiencyTrendData.series.length > 0 && efficiencyTrendData.hasRateEfficiency && (
                           <Card className="lg:col-span-2">
                             <CardHeader>
-                              <CardTitle>Conversion Quality Trend</CardTitle>
+                              <CardTitle className="text-xl font-semibold leading-7 tracking-normal text-foreground">Conversion Quality Trend</CardTitle>
                               {usesCumulativeGA4Consumer && <p className="text-xs text-muted-foreground">Daily rates; hover a date to see the exact counts used.</p>}
                               {usesCumulativeGA4Consumer && efficiencyTrendData.series.some((row: any) => row.noActivity === 0) && (
                                 <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">

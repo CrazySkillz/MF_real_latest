@@ -454,8 +454,9 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(executiveView).not.toContain("fmtTrendCurrency(overviewTrendData.current.cpc)");
     expect(executiveView).not.toContain("fmtTrendCurrency(overviewTrendData.current.cpm)");
     expect(executiveView).toContain("Efficiency Trends");
+    expect(executiveView).toContain("Track conversion quality over time.");
     expect(executiveView).toContain("Conversion Quality Trend");
-    expect(executiveView).toContain("Current campaign-to-date financial totals remain shown above.");
+    expect(executiveView).not.toContain("Return and cost trends are unavailable");
     expect(executiveView).not.toContain("financial KPIs above");
     expect(executiveView).toContain("<Legend />");
     expect(executiveView).toContain('<Card className="lg:col-span-2">');

@@ -272,6 +272,8 @@ describe("Trend Analysis Overview regression guard", () => {
     };
     const args = { snapshot, campaignId: "campaign-1", comparisonDate: "2026-08-15", campaignCurrency: "USD", currentValueWindow };
     expect(resolveCompatibleTrendFinancialDaily(args)).toBe(snapshot.metrics.financialDaily);
+    const withoutSpend = { ...snapshot, metrics: { financialDaily: { ...snapshot.metrics.financialDaily, inputs: { ...snapshot.metrics.financialDaily.inputs, spend: { value: null, available: false, sources: [] } } } } };
+    expect(resolveCompatibleTrendFinancialDaily({ ...args, snapshot: withoutSpend })).toBe(withoutSpend.metrics.financialDaily);
     expect(resolveCompatibleTrendFinancialDaily({ ...args, comparisonDate: "2026-08-14" })).toBeNull();
     expect(resolveCompatibleTrendFinancialDaily({ ...args, campaignCurrency: "EUR" })).toBeNull();
     expect(resolveCompatibleTrendFinancialDaily({ ...args, campaignId: "campaign-2" })).toBeNull();

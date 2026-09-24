@@ -58,7 +58,7 @@ describe("read-only financial daily comparison derivation", () => {
 
     const result = await deriveFinancialDailyComparisonSnapshot({ campaignId, reportingDate }, deps);
 
-    expect(deps.getCampaignMetricTotalsAtDate).toHaveBeenCalledWith(campaignId, reportingDate);
+    expect(deps.getCampaignMetricTotalsAtDate).toHaveBeenCalledWith(campaignId, reportingDate, "2026-08-09");
     expect(deps.getGA4Connections).toHaveBeenCalledWith(campaignId, { migrateLegacyTokens: false });
     expect(deps.getRevenueTotalForRange).toHaveBeenCalledWith(campaignId, "1900-01-01", reportingDate, "ga4");
     expect(deps.getSpendTotalForRange).toHaveBeenCalledWith(campaignId, "1900-01-01", reportingDate, "ga4");
@@ -100,6 +100,38 @@ describe("read-only financial daily comparison derivation", () => {
     expect(deps.getCampaignMetricTotalsAtDate).not.toHaveBeenCalled();
   });
 
+  it("preserves exact import-to-date revenue and conversions when spend is unavailable", async () => {
+    const totals = await dependencies().getCampaignMetricTotalsAtDate();
+    const deps = dependencies({
+      getCampaignMetricTotalsAtDate: vi.fn().mockResolvedValue({ ...totals, spend: 0, spendAvailable: false }),
+      getSpendTotalForRange: vi.fn().mockResolvedValue({ totalSpend: 0, currency: "", sourceIds: [] }),
+    });
+
+    const result = await deriveFinancialDailyComparisonSnapshot({ campaignId, reportingDate }, deps);
+
+    expect((result?.metrics as any)?.financialDaily?.inputs).toEqual({
+      spend: { value: null, available: false, sources: [] },
+      revenue: { value: "150.00", available: true, sources: ["ga4", "revenue-source:revenue-1"] },
+      conversions: { value: 5, available: true, sources: ["ga4"] },
+    });
+  });
+
+  it("preserves an explicit campaign start as the financial comparison boundary", async () => {
+    const deps = dependencies({
+      getCampaign: vi.fn().mockResolvedValue({
+        id: campaignId,
+        currency: "USD",
+        reportingTimeZone: "Europe/Amsterdam",
+        startDate: "2026-08-20T00:00:00.000Z",
+      }),
+    });
+
+    const result = await deriveFinancialDailyComparisonSnapshot({ campaignId, reportingDate }, deps);
+
+    expect(deps.getCampaignMetricTotalsAtDate).toHaveBeenCalledWith(campaignId, reportingDate, "2026-08-20");
+    expect((result?.metrics as any)?.financialDaily?.currentValueWindow.startDate).toBe("2026-08-20");
+  });
+
   it("preserves source totals with authoritative native zero before campaign start", async () => {
     const deps = dependencies({
       getCampaignMetricTotalsAtDate: vi.fn().mockResolvedValue({
@@ -139,7 +171,7 @@ describe("read-only financial daily comparison derivation", () => {
       endDate: "2026-08-08",
       dataThroughDate: "2026-08-08",
     });
-    expect(beforeImport.getCampaignMetricTotalsAtDate).toHaveBeenCalledWith(campaignId, "2026-08-08");
+    expect(beforeImport.getCampaignMetricTotalsAtDate).toHaveBeenCalledWith(campaignId, "2026-08-08", "2026-08-09");
     expect(await deriveFinancialDailyComparisonSnapshot({ campaignId, reportingDate: "1899-12-31" }, dependencies())).toBeNull();
 
     const currencyMismatch = dependencies({

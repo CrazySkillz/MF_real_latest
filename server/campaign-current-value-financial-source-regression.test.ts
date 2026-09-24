@@ -147,6 +147,22 @@ describe("campaign current-value financial source contract", () => {
     expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 
+  it("uses an explicit import boundary for an exact historical financial query", async () => {
+    storageMock.getCampaign.mockResolvedValue({
+      id: "campaign-1",
+      createdAt: "2026-09-08T10:06:04.469Z",
+      currency: "USD",
+      reportingTimeZone: "Europe/Amsterdam",
+    });
+    storageMock.getGA4DailyMetrics.mockResolvedValue([{ revenue: 5572.8, conversions: 25 }]);
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ totals: { revenue: 5572.8, conversions: 25 } });
+
+    const totals = await getCampaignMetricTotalsAtDate("campaign-1", "2026-09-05", "2026-08-09");
+
+    expect(totals).toMatchObject({ ga4Revenue: 5572.8, financialConversions: 25, ga4FinancialSource: "provider_to_date" });
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith("properties/123", "token", "2026-08-09", "2026-09-05", [], "USD");
+  });
+
   it("retains exact financials before the GA4 traffic import boundary", async () => {
     storageMock.getCampaign.mockResolvedValue({
       id: "campaign-1",

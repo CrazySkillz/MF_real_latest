@@ -12,7 +12,7 @@ type SourceTotal = { totalRevenue?: number; totalSpend?: number; currency?: stri
 type ComparisonDependencies = {
   getCampaign: (campaignId: string) => Promise<any>;
   getGA4Connections: (campaignId: string, options?: { migrateLegacyTokens?: boolean }) => Promise<any[]>;
-  getCampaignMetricTotalsAtDate: (campaignId: string, reportingDate: string) => Promise<CampaignMetricTotals | null>;
+  getCampaignMetricTotalsAtDate: (campaignId: string, reportingDate: string, financialStartDate?: string) => Promise<CampaignMetricTotals | null>;
   getRevenueTotalForRange: (campaignId: string, startDate: string, endDate: string, platformContext: "ga4") => Promise<SourceTotal>;
   getSpendTotalForRange: (campaignId: string, startDate: string, endDate: string, platformContext: "ga4") => Promise<SourceTotal>;
   now: () => Date;
@@ -61,10 +61,14 @@ export async function deriveFinancialDailyComparisonSnapshot(
 
   const window = resolveGA4ImportToDateWindow(primary.importStartDate, campaign.reportingTimeZone, dependencies.now());
   if (!window || reportingDate < "1900-01-01" || reportingDate > window.endDate) return null;
-  const financialWindowStartDate = reportingDate < window.startDate ? "1900-01-01" : window.startDate;
+  const campaignStart = campaign.startDate ? new Date(campaign.startDate) : null;
+  const financialStartDate = campaignStart && !Number.isNaN(campaignStart.getTime())
+    ? campaignStart.toISOString().slice(0, 10)
+    : window.startDate;
+  const financialWindowStartDate = reportingDate < financialStartDate ? "1900-01-01" : financialStartDate;
 
   const [totals, revenueSourceTotal, spendSourceTotal] = await Promise.all([
-    dependencies.getCampaignMetricTotalsAtDate(campaignId, reportingDate),
+    dependencies.getCampaignMetricTotalsAtDate(campaignId, reportingDate, financialStartDate),
     dependencies.getRevenueTotalForRange(campaignId, "1900-01-01", reportingDate, "ga4"),
     dependencies.getSpendTotalForRange(campaignId, "1900-01-01", reportingDate, "ga4"),
   ]);
@@ -82,7 +86,7 @@ export async function deriveFinancialDailyComparisonSnapshot(
   const spendAvailable = totals.spendAvailable !== false && spendSourceIds.length > 0;
   const revenueAvailable = totals.revenueAvailable !== false && totals.ga4RevenueAvailable !== false;
   const conversionsAvailable = totals.financialConversionsAvailable !== false;
-  if (!spendAvailable || !revenueAvailable || !conversionsAvailable) return null;
+  if (!revenueAvailable || !conversionsAvailable) return null;
 
   let snapshot;
   try {
@@ -100,7 +104,9 @@ export async function deriveFinancialDailyComparisonSnapshot(
           reportingTimeZone: window.reportingTimeZone,
         },
         totals: {
-          spend: { value: totals.spend, available: true, sources: ["canonical_spend_sources"] },
+          spend: spendAvailable
+            ? { value: totals.spend, available: true, sources: ["canonical_spend_sources"] }
+            : { value: null, available: false, sources: [] },
           revenue: {
             value: totals.revenue,
             available: true,

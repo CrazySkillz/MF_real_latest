@@ -154,7 +154,7 @@ describe("compact daily financial snapshot contract", () => {
     expect(route).toContain("resolveFinancialDailyComparisonPrevious({");
     expect(scheduler).toContain("if (trendFinancialComparison && !trendFinancialComparison.previous)");
     expect(scheduler).toContain("resolveFinancialDailyComparisonPrevious({");
-    expect(fallback).toContain("getCampaignMetricTotalsAtDate(campaignId, reportingDate)");
+    expect(fallback).toContain("getCampaignMetricTotalsAtDate(campaignId, reportingDate, financialStartDate)");
     expect(fallback).not.toContain("upsertFinancialDailySnapshot");
   });
 });

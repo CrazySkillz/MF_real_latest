@@ -131,6 +131,7 @@ async function getCampaignMetricTotalsForEndDate(
   campaignId: string,
   useFullFinancialCandidate: boolean,
   exactEndDate?: string,
+  exactFinancialStartDate?: string,
 ): Promise<CampaignMetricTotals | null> {
   const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
   if (!campaign) return null;
@@ -163,7 +164,8 @@ async function getCampaignMetricTotalsForEndDate(
     || parsedExactEndDate.toISOString().slice(0, 10) !== exactEndDate
     || !ga4Window || exactEndDate < "1900-01-01" || exactEndDate > ga4Window.endDate)) return null;
   const endDate = exactEndDate || ga4Window?.endDate || todayUTC();
-  const financialStartDate = toISODateUTC((campaign as any)?.startDate)
+  const financialStartDate = toISODateUTC(exactFinancialStartDate)
+    || toISODateUTC((campaign as any)?.startDate)
     || toISODateUTC((campaign as any)?.createdAt)
     || "2000-01-01";
   const isBeforeFinancialStart = Boolean(exactEndDate && exactEndDate < financialStartDate);
@@ -319,8 +321,9 @@ async function getCampaignMetricTotalsForEndDate(
 export async function getCampaignMetricTotalsAtDate(
   campaignId: string,
   reportingDate: string,
+  financialStartDate?: string,
 ): Promise<CampaignMetricTotals | null> {
-  return getCampaignMetricTotalsForEndDate(campaignId, true, String(reportingDate || "").trim());
+  return getCampaignMetricTotalsForEndDate(campaignId, true, String(reportingDate || "").trim(), financialStartDate);
 }
 
 export { getCampaignMetricTotals };

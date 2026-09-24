@@ -35,6 +35,7 @@ This certification is limited to:
 It does not certify:
 
 - future or different GA4 properties, campaign filters, currencies, or source configurations without their own parity evidence
+- exact cent-for-cent equality between a direct native GA4 Revenue aggregate and the sum of persisted two-decimal GA4 daily Revenue rows
 - multi-source Trend behavior for a source that has not passed its own source-specific readiness gate
 - a new scheduler timer firing, provider delivery, or inbox receipt; the shared renderer was checked, but those transport gates remain in `CAMPAIGN_DEEPDIVE_CUSTOM_REPORT_PRODUCTION_READY.md`
 - protected GA4 Overview, KPI, Benchmark, Ad Comparison, Insights, Reports, or machine certification records; none were changed by this Trend work
@@ -98,6 +99,28 @@ For the certified GA4-only consumer:
 - `CPA = Spend / Conversions` when Spend is available and Conversions are greater than zero. In the certified cumulative GA4 browser consumer, the denominator is the same verified cumulative GA4 Conversions value shown by the page; exact historical CPA uses the compatible historical Spend value and exact cumulative GA4 Conversions through the comparison date.
 - Optional `CPC`, `CPM`, and `CTR` cards render only when the aggregate marks the required paid-media inputs available; they are absent in the certified GA4-only configuration.
 - Currency comes from the campaign currency and exact financial comparisons require the same currency.
+
+### Known Native GA4 Revenue Precision Boundary - 2026-09-24
+
+This is a bounded post-certification finding, not an expansion of the `Campaign2` certificate.
+
+- A read-only `Campaign3` reconciliation for property `542352127`, campaign filters `yesop_brand_search` and `yesop_paid_social`, currency `EUR`, reporting timezone `Europe/Amsterdam`, and initial-import boundary `2026-08-23` found a current native GA4 Revenue aggregate of `EUR 37,518.74` through `2026-09-23` and an exact-date aggregate baseline of `EUR 25,306.25` through `2026-09-16`. The visible `+48.3%` comparison is therefore correct under the authoritative aggregate contract.
+- The persisted `ga4_daily_metrics` Revenue rows through `2026-09-23` sum to `EUR 37,518.72`, a `EUR 0.02` difference. `ga4_daily_metrics.revenue` is stored as `decimal(15,2)`, so each daily value is quantized to cents before a later consumer sums those rows. The observed difference is consistent with GA4 retaining more precision in the values underlying its aggregate, but the current evidence does not inspect GA4's internal aggregation implementation.
+- The headline Revenue card and exact-date Revenue comparison must continue to use the authoritative scoped aggregate. They must not be changed to the lower daily-row sum merely to make the two grains agree.
+- Persisted daily Revenue remains suitable for daily chart shape and date-level history, but the current version does **not** claim exact cent-for-cent additivity from stored daily rows back to the direct GA4 aggregate. Any small residual must not be assigned to an arbitrary day or hidden by fabricated adjustment rows.
+- The read-only check found no active imported Revenue source, simulated daily row, or duplicate daily date in this exact boundary. No production data was changed.
+
+Risk and decision:
+
+- This is a known low-severity cross-granularity precision limitation, not evidence that the aggregate Revenue card is wrong.
+- Higher-precision daily Revenue storage and exact-source backfill are deferred to the next application version. Until that work is complete, exact daily-to-aggregate Revenue reconciliation for this path is **unproven** and excluded from the current readiness claim.
+
+Next-version acceptance criteria:
+
+1. Preserve the provider's available daily Revenue precision through import and persistence, and round only at the final currency display or final aggregate boundary.
+2. Migrate and re-fetch/backfill daily values from the exact GA4 property, campaign scope, revenue metric, timezone, and date window; do not manufacture precision from existing two-decimal rows.
+3. Add a reconciliation guard comparing the rounded sum of higher-precision daily Revenue with the rounded direct provider aggregate for the same scope and window, with any provider-defined exception surfaced rather than silently adjusted.
+4. Revalidate browser cards, daily charts, exact-date comparisons, PDFs, snapshots, and downstream financial consumers before restoring an exact cross-granularity reconciliation claim.
 
 ### Selector And Comparison Contract
 
@@ -166,7 +189,7 @@ The `Trend & comparison window` selector accepts `7`, `14`, `30`, and `90` days.
 - The repository-wide suite was not globally clean during certification: `2012` tests passed and `45` unrelated tests failed across `38` suites. This document therefore makes no whole-repository or whole-application claim.
 - The older `2026-08-26` `cd35bba1...` Campaign2 evidence remains historical implementation evidence only; it is not the controlling current boundary.
 
-Stable future answer: Trend Analysis is production-ready only for the exact current GA4-first boundary documented in the 2026-09-20 certificate. New main sources or a changed relevant implementation require source-specific parity and a renewed affected-boundary review.
+Stable future answer: Trend Analysis is production-ready only for the exact current GA4-first boundary documented in the 2026-09-20 certificate. That statement does not claim exact cent-for-cent equality between direct native GA4 Revenue aggregates and persisted two-decimal daily Revenue sums. New main sources, higher-precision daily Revenue work, or another changed relevant implementation require source-specific parity and a renewed affected-boundary review.
 
 ## Required Architecture
 

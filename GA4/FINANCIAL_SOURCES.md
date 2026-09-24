@@ -83,6 +83,10 @@ Important clarification:
 - if old synthetic `revenue_records` rows with `revenue_source_id = 'ga4_daily_metrics'` are found, cleanup must target only the proven orphan row IDs and must not delete active imported CRM, ecommerce, CSV, Google Sheets, manual, or other source-backed revenue rows
 - Budget & Financial Analysis pacing metadata, including campaign start and end dates entered from the Budget Pacing & Burn Rate card, must not filter GA4 `Total Revenue`, `Revenue Breakdown`, or the `Revenue Sources` modal. Those platform-level revenue values are source-backed and must include all active revenue-source records to date.
 - the `GA4 Revenue` source entry in the `Total Revenue` source modal should show that full aggregated GA4 amount, not a partial or single-day figure
+- native GA4 headline and exact-date Revenue comparisons use the authoritative scoped aggregate; they must not be replaced by a sum of daily rows solely to force cross-granularity agreement
+- `ga4_daily_metrics.revenue` is currently stored at two decimal places, so summing individually quantized daily values can differ from an aggregate that retains more underlying precision. A `2026-09-24` read-only Campaign3 check observed `EUR 37,518.74` from the aggregate and `EUR 37,518.72` from the stored daily-row sum through `2026-09-23`; this evidence does not inspect GA4's internal aggregation implementation
+- this bounded few-cent difference is a known precision limitation, not permission to add a synthetic adjustment row, assign the residual to an arbitrary date, or report the daily sum as the authoritative campaign-to-date amount
+- exact cent-for-cent daily-to-aggregate Revenue reconciliation is excluded from the current readiness claim until a next-version migration preserves higher provider precision, re-fetches/backfills exact-source daily values, and revalidates all affected browser, report, snapshot, and downstream consumers
 - GA4 `Ad Comparison` campaign rows, rankings, chart, and totals use only
   GA4-native revenue from the fixed initial-import-to-latest-completed-day window;
   source-to-date imported revenue is separate provenance and is excluded from

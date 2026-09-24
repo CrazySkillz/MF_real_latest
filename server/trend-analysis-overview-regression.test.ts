@@ -371,6 +371,8 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain("Daily ROAS and ROI trends are unavailable because no compatible cumulative financial series exists.");
     expect(page).toContain("if (usesCumulativeGA4Consumer && !authoritativeTrendCurrent) return null;");
     expect(page).toContain("Validate full-period efficiency trends after enough daily history exists.");
+    expect(page).toContain('dataKey="cvr" stroke="#8b5cf6" strokeWidth={2} dot={usesCumulativeGA4Consumer ? { r: 2 } : false}');
+    expect(page).toContain('dataKey="engagementRate" stroke="#10b981" strokeWidth={2} dot={usesCumulativeGA4Consumer ? { r: 2 } : false}');
     expect(efficiency).toContain("No connected source efficiency metrics available");
     expect(efficiency).toContain("ROAS and ROI require both spend and revenue from connected source data.");
     expect(efficiency).not.toContain("crossPlatformData");

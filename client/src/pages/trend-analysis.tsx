@@ -1899,8 +1899,8 @@ export default function TrendAnalysis() {
                                     )}
                                     <Legend />
                                     {efficiencyTrendData.current.ctr !== null && <Line isAnimationActive={false} type="monotone" dataKey="ctr" stroke="#3b82f6" strokeWidth={2} dot={false} name="CTR" />}
-                                    {efficiencyTrendData.current.cvr !== null && <Line isAnimationActive={false} type="monotone" dataKey="cvr" stroke="#8b5cf6" strokeWidth={2} dot={false} name="CVR" />}
-                                    {efficiencyTrendData.current.engagementRate !== null && <Line isAnimationActive={false} type="monotone" dataKey="engagementRate" stroke="#10b981" strokeWidth={2} dot={false} name="Engagement Rate" />}
+                                    {efficiencyTrendData.current.cvr !== null && <Line isAnimationActive={false} type="monotone" dataKey="cvr" stroke="#8b5cf6" strokeWidth={2} dot={usesCumulativeGA4Consumer ? { r: 2 } : false} name="CVR" />}
+                                    {efficiencyTrendData.current.engagementRate !== null && <Line isAnimationActive={false} type="monotone" dataKey="engagementRate" stroke="#10b981" strokeWidth={2} dot={usesCumulativeGA4Consumer ? { r: 2 } : false} name="Engagement Rate" />}
                                     {usesCumulativeGA4Consumer && <Line isAnimationActive={false} type="linear" dataKey="noActivity" stroke="transparent" dot={{ r: 5, fill: '#f59e0b', stroke: '#ffffff', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#f59e0b', stroke: '#ffffff', strokeWidth: 2 }} legendType="none" name="No activity" />}
                                   </LineChart>
                                 </ResponsiveContainer>

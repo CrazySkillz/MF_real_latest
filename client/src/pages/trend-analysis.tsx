@@ -1529,7 +1529,6 @@ export default function TrendAnalysis() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Trend & comparison window</span>
                 <Select value={perfPeriod} onValueChange={setPerfPeriod}>
                   <SelectTrigger className="w-[140px] h-9">
                     <Calendar className="w-3.5 h-3.5 mr-1.5" />

@@ -74,7 +74,7 @@ describe("Trend Analysis window regression guard", () => {
     expect(page).toContain("efficiencyTrendData.series.length === 0");
     expect(page).toContain("{perfDays}-day efficiency trend unavailable: {trendWindowCalendar.length} of {perfDays} calendar days are available.");
     expect(page).toContain("No daily efficiency data for {trendWindowStartLabel}–{trendWindowEndLabel}.");
-    expect(page).toContain("Trend & comparison window");
+    expect(page).not.toContain("Trend & comparison window");
   });
 
   it("keeps KPI card height stable and avoids redundant availability paragraphs", () => {

@@ -11,6 +11,7 @@ const storageMock = vi.hoisted(() => ({
 }));
 const ga4ServiceMock = vi.hoisted(() => ({
   getTrendsDailyPresenceWithToken: vi.fn(),
+  refreshAccessToken: vi.fn(),
 }));
 vi.mock("./storage", () => ({ storage: storageMock }));
 vi.mock("./analytics", () => ({ ga4Service: ga4ServiceMock }));
@@ -138,6 +139,46 @@ describe("Insights Trends zero-day coverage route", () => {
     const body = await (await request()).json();
     expect(body).toMatchObject({ verified: false, reason: "provider_verification_unavailable", zeroDates: [] });
     expect(body.zeroDatesVerified).toBeUndefined();
+  });
+
+  it("refreshes once after a confirmed auth failure and retries provider coverage", async () => {
+    storageMock.getGA4Connection.mockResolvedValue({
+      ...connection, id: "connection-1", accessToken: "expired-token", refreshToken: "refresh-token",
+      clientId: "client-id", clientSecret: "client-secret",
+    });
+    ga4ServiceMock.getTrendsDailyPresenceWithToken
+      .mockRejectedValueOnce(new Error('GA4 API Error: {"error":{"code":401,"status":"UNAUTHENTICATED"}}'))
+      .mockResolvedValueOnce({ dailyRows, presentDates: dailyRows.map((row) => row.date) });
+    ga4ServiceMock.refreshAccessToken.mockResolvedValue({ access_token: "fresh-token", expires_in: 3600 });
+
+    const response = await request();
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ verified: true, providerVerified: true, zeroDatesVerified: true });
+    expect(ga4ServiceMock.refreshAccessToken).toHaveBeenCalledWith("refresh-token", "client-id", "client-secret");
+    expect(storageMock.updateGA4ConnectionTokens).toHaveBeenCalledWith("connection-1", {
+      accessToken: "fresh-token", refreshToken: "refresh-token", expiresAt: new Date("2026-09-17T13:00:00.000Z"),
+    });
+    expect(ga4ServiceMock.getTrendsDailyPresenceWithToken).toHaveBeenNthCalledWith(
+      2, connection.propertyId, "fresh-token", "2026-09-04", "2026-09-16", ["spring", "summer"], "USD",
+    );
+  });
+
+  it("does not refresh provider coverage after a non-auth failure", async () => {
+    storageMock.getGA4Connection.mockResolvedValue({
+      ...connection, id: "connection-1", refreshToken: "refresh-token", clientId: "client-id", clientSecret: "client-secret",
+    });
+    ga4ServiceMock.getTrendsDailyPresenceWithToken.mockRejectedValue(
+      new Error('GA4 API Error: {"error":{"code":403,"status":"PERMISSION_DENIED"}}'),
+    );
+
+    const body = await (await request()).json();
+
+    expect(body).toMatchObject({ verified: false, reason: "provider_verification_unavailable", zeroDates: [] });
+    expect(ga4ServiceMock.getTrendsDailyPresenceWithToken).toHaveBeenCalledTimes(1);
+    expect(ga4ServiceMock.refreshAccessToken).not.toHaveBeenCalled();
+    expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
   });
 
   it("fails closed if a presence date falls outside the completed window", async () => {

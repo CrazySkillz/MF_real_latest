@@ -12,11 +12,13 @@ const storageMock = vi.hoisted(() => ({
   getCampaignBenchmarks: vi.fn(),
   updateKPI: vi.fn(),
   updateBenchmark: vi.fn(),
+  updateGA4ConnectionTokens: vi.fn(),
 }));
 
 const ga4ServiceMock = vi.hoisted(() => ({
   getTotalsWithRevenue: vi.fn(),
   getAcquisitionBreakdown: vi.fn(),
+  refreshAccessToken: vi.fn(),
 }));
 
 vi.mock("./storage", () => ({ storage: storageMock }));
@@ -161,6 +163,45 @@ describe("campaign current-value financial source contract", () => {
 
     expect(totals).toMatchObject({ ga4Revenue: 5572.8, financialConversions: 25, ga4FinancialSource: "provider_to_date" });
     expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith("properties/123", "token", "2026-08-09", "2026-09-05", [], "USD");
+  });
+
+  it("refreshes once after a confirmed auth failure and retries the exact financial query", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-17T12:00:00.000Z"));
+    storageMock.getGA4Connections.mockResolvedValue([{
+      id: "connection-1", propertyId: "properties/123", method: "access_token", accessToken: "expired-token",
+      refreshToken: "refresh-token", clientId: "client-id", clientSecret: "client-secret", isPrimary: true, importStartDate: "2026-07-01",
+    }]);
+    storageMock.getGA4DailyMetrics.mockResolvedValue([]);
+    ga4ServiceMock.getTotalsWithRevenue
+      .mockRejectedValueOnce(new Error('GA4 API Error: {"error":{"code":401,"status":"UNAUTHENTICATED"}}'))
+      .mockResolvedValueOnce({ totals: { revenue: 5572.8, conversions: 25 } });
+    ga4ServiceMock.refreshAccessToken.mockResolvedValue({ access_token: "fresh-token", expires_in: 3600 });
+
+    const totals = await getCampaignMetricTotalsAtDate("campaign-1", "2026-09-05", "2026-08-09");
+
+    expect(totals).toMatchObject({ ga4Revenue: 5572.8, financialConversions: 25, ga4FinancialSource: "provider_to_date" });
+    expect(ga4ServiceMock.refreshAccessToken).toHaveBeenCalledWith("refresh-token", "client-id", "client-secret");
+    expect(storageMock.updateGA4ConnectionTokens).toHaveBeenCalledWith("connection-1", {
+      accessToken: "fresh-token", refreshToken: "refresh-token", expiresAt: new Date("2026-09-17T13:00:00.000Z"),
+    });
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenNthCalledWith(2, "properties/123", "fresh-token", "2026-08-09", "2026-09-05", [], "USD");
+  });
+
+  it("does not refresh the financial query after a non-auth provider failure", async () => {
+    storageMock.getGA4Connections.mockResolvedValue([{
+      id: "connection-1", propertyId: "properties/123", method: "access_token", accessToken: "token",
+      refreshToken: "refresh-token", clientId: "client-id", clientSecret: "client-secret", isPrimary: true, importStartDate: "2026-07-01",
+    }]);
+    storageMock.getGA4DailyMetrics.mockResolvedValue([]);
+    ga4ServiceMock.getTotalsWithRevenue.mockRejectedValue(new Error('GA4 API Error: {"error":{"code":403,"status":"PERMISSION_DENIED"}}'));
+
+    const totals = await getCampaignMetricTotalsAtDate("campaign-1", "2026-09-05", "2026-08-09");
+
+    expect(totals).toMatchObject({ ga4RevenueAvailable: false, financialConversionsAvailable: false });
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledTimes(1);
+    expect(ga4ServiceMock.refreshAccessToken).not.toHaveBeenCalled();
+    expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
   });
 
   it("retains exact financials before the GA4 traffic import boundary", async () => {

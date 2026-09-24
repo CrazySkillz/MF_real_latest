@@ -9533,14 +9533,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
     if (startDate > window.endDate) return res.json({ ...base, verified: false, zeroDates: [], reason: "no_completed_import_days" });
     try {
-      const { dailyRows, presentDates } = await ga4Service.getTrendsDailyPresenceWithToken(
-        String(connection.propertyId),
-        String(connection.accessToken),
-        startDate,
-        window.endDate,
-        parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter),
-        String((campaign as any)?.currency || "USD"),
+      const fetchPresence = (accessToken: string) => ga4Service.getTrendsDailyPresenceWithToken(
+        String(connection.propertyId), accessToken, startDate, window.endDate,
+        parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter), String((campaign as any)?.currency || "USD"),
       );
+      let providerPresence;
+      try {
+        providerPresence = await fetchPresence(String(connection.accessToken));
+      } catch (error) {
+        const message = String((error as any)?.message || error || "").toLowerCase();
+        const isAuth = /"code"\s*:\s*401\b/.test(message)
+          || message.includes("unauthenticated")
+          || message.includes("invalid authentication credentials")
+          || message.includes("invalid_grant");
+        if (!isAuth || !(connection as any).id || !(connection as any).refreshToken) throw error;
+        const refresh = await ga4Service.refreshAccessToken(
+          String((connection as any).refreshToken),
+          (connection as any).clientId || undefined,
+          (connection as any).clientSecret || undefined,
+        );
+        await storage.updateGA4ConnectionTokens((connection as any).id, {
+          accessToken: refresh.access_token,
+          refreshToken: String((connection as any).refreshToken),
+          expiresAt: new Date(Date.now() + refresh.expires_in * 1000),
+        });
+        providerPresence = await fetchPresence(String(refresh.access_token));
+      }
+      const { dailyRows, presentDates } = providerPresence;
       const stored = await storage.getGA4DailyMetrics(campaignId, String(connection.propertyId), startDate, window.endDate);
       const providerByDate = new Map<string, any>();
       for (const row of dailyRows) {

@@ -65,6 +65,14 @@ const isCampaignLevel = (row: any) => {
 const isFinancialMetric = (metric: unknown) =>
   ["revenue", "profit", "roas", "roi", "cpa"].includes(String(metric || "").trim().toLowerCase());
 
+const isGA4ProviderAuthError = (error: unknown) => {
+  const message = String((error as any)?.message || error || "").toLowerCase();
+  return /"code"\s*:\s*401\b/.test(message)
+    || message.includes("unauthenticated")
+    || message.includes("invalid authentication credentials")
+    || message.includes("invalid_grant");
+};
+
 const normalizePropertyIdForMock = (propertyId: string) => {
   const raw = String(propertyId || "").trim();
   const match = raw.match(/properties\/(\d+)/i);
@@ -224,14 +232,27 @@ async function getCampaignMetricTotalsForEndDate(
         verifiedToDateFinancialCandidateAvailable = true;
       } else if ((primary as any)?.method === "access_token" && (primary as any)?.accessToken && financialStartDate <= financialEndDate) {
         try {
-          const toDate = await ga4Service.getTotalsWithRevenue(
-            propertyId,
-            String((primary as any).accessToken),
-            financialStartDate,
-            financialEndDate,
-            campaignFilter,
+          const fetchToDate = (accessToken: string) => ga4Service.getTotalsWithRevenue(
+            propertyId, accessToken, financialStartDate, financialEndDate, campaignFilter,
             String((campaign as any)?.currency || "USD").trim().toUpperCase(),
           );
+          let toDate;
+          try {
+            toDate = await fetchToDate(String((primary as any).accessToken));
+          } catch (error) {
+            if (!isGA4ProviderAuthError(error) || !(primary as any)?.id || !(primary as any)?.refreshToken) throw error;
+            const refresh = await ga4Service.refreshAccessToken(
+              String((primary as any).refreshToken),
+              (primary as any).clientId || undefined,
+              (primary as any).clientSecret || undefined,
+            );
+            await storage.updateGA4ConnectionTokens((primary as any).id, {
+              accessToken: refresh.access_token,
+              refreshToken: String((primary as any).refreshToken),
+              expiresAt: new Date(Date.now() + refresh.expires_in * 1000),
+            });
+            toDate = await fetchToDate(String(refresh.access_token));
+          }
           toDateCandidate = (toDate as any)?.totals || {};
           verifiedToDateFinancialCandidateAvailable = isGA4FinancialTotalsCandidate(toDateCandidate);
         } catch {

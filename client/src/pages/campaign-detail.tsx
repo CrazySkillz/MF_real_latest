@@ -225,7 +225,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     queryKey: [`/api/campaigns/${campaign.id}/ga4-daily`, kpiGA4PropertyId, kpiGA4LookbackDays],
     enabled: !!campaign.id && !!kpiGA4PropertyId,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaign.id}/ga4-daily?days=${encodeURIComponent(String(kpiGA4LookbackDays))}&propertyId=${encodeURIComponent(kpiGA4PropertyId)}`);
+      const resp = await fetch(`/api/campaigns/${campaign.id}/ga4-daily?days=${encodeURIComponent(String(kpiGA4LookbackDays))}&propertyId=${encodeURIComponent(kpiGA4PropertyId)}&readOnly=1`);
       if (!resp.ok) return null;
       return resp.json().catch(() => null);
     },
@@ -2571,7 +2571,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     queryKey: [`/api/campaigns/${campaign.id}/ga4-daily`, benchGA4PropertyId, benchGA4LookbackDays, "benchmarks"],
     enabled: !!campaign.id && !!benchGA4PropertyId,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaign.id}/ga4-daily?days=${encodeURIComponent(String(benchGA4LookbackDays))}&propertyId=${encodeURIComponent(benchGA4PropertyId)}`);
+      const resp = await fetch(`/api/campaigns/${campaign.id}/ga4-daily?days=${encodeURIComponent(String(benchGA4LookbackDays))}&propertyId=${encodeURIComponent(benchGA4PropertyId)}&readOnly=1`);
       if (!resp.ok) return null;
       return resp.json().catch(() => null);
     },

@@ -104,13 +104,11 @@ Current meaning:
 
 - Trends uses persisted GA4 daily facts for the selected campaign/property/scope and shows only reporting dates on or after the campaign creation calendar date in the campaign reporting timezone; this display filter does not delete pre-creation stored rows or change other sections
 - Insights requests an isolated 60-calendar-day window through the latest completed reporting day so two exact 30-day windows can be evaluated without changing Overview or KPI windows; GA4 may return sparse rows, so returned row count is not treated as consecutive-day coverage
-- the normal Insights daily request is read-only; scheduled or explicit refresh paths update stored facts, while the separate Trends zero-day coverage check refetches on property/completed-day/refresh-marker changes and polls every 30 minutes while Insights is active
+- all normal browser daily-history requests are read-only; Insights Trends renders scheduler-produced stored facts and does not run a live GA4 coverage request when the page loads
 - today's intraday data is excluded until it becomes a completed reporting day
-- `Latest imported day` is the latest persisted row eligible for Trends after the creation-date filter, and `Last refreshed` shows the daily response's refresh timestamp; the completed-day cutoff still controls eligible rows but is not displayed as a separate label
+- `Latest imported day` is the latest persisted row eligible for Trends after the creation-date filter, and `Last refreshed` shows when that persisted daily history was refreshed; opening or revisiting the page does not rewrite it
 - `7d` and `30d` show rolling totals for non-rate metrics and weighted averages for rates
-- a missing GA4 row becomes zero only after a separate read-only check verifies no matching campaign values for that completed day; unverified missing dates remain gaps and cannot complete comparison windows
-- when that exact same-property, same-window check also confirms the stored activity rows match GA4, sparse zero-activity dates do not leave Insights incorrectly marked stale; failed, unavailable, or mismatched verification remains fail-closed
-- while that check is pending for a newly loaded daily response, Trends holds the chart and table in a fixed loading area instead of briefly drawing unverified gaps
+- a missing stored GA4 row remains a gap and cannot complete a comparison window; the browser does not query GA4 live or invent a zero for that date
 - explicit zero engaged sessions remain zero; only a genuinely absent legacy value is derived from that row's sessions and engagement rate
 - the metric selector uses a native select; Users is available only in Daily because daily distinct-user counts cannot be summed across days
 
@@ -127,7 +125,7 @@ Shows GA4 Sessions and Conversions for the selected campaign/property's imported
 
 Current meaning:
 
-- on-screen traffic values use the saved historical-import start through the latest completed reporting day; missing days are excluded and verified zero remains distinct from unavailable data
+- on-screen traffic values use the saved historical-import start through the latest completed reporting day; missing stored days are excluded and explicit stored zero remains distinct from unavailable data
 - this app version does not show Top Channel, a source/medium channel table, or channel-availability warnings in Data Summary or its browser-generated PDF; those values are excluded from Data Summary certification
 - the existing GA4 acquisition response remains available to other Insights features under their own evidence and certification boundaries
 - campaign-to-date financial values remain in Executive Financials and are not duplicated in Data Summary
@@ -156,9 +154,8 @@ Current meaning:
 
 - findings are grouped by investigation type
 - daily trend findings use refreshed, stored rows for the selected campaign/property within the 60-day response, including imported dates before campaign creation; adjacent 7-day windows take precedence over a 3-day fallback
-- provider-verified absent dates can count as zero; unverified missing dates cannot complete a comparison window
-- stale, failed, or confirmed provider-mismatched daily history withholds daily trend comparisons and standalone top-channel context; verified financial and current target findings can still appear from their separate inputs
-- if provider coverage is unavailable, complete observed daily windows may still produce trend findings, but no unverified zero dates are inferred
+- only stored daily rows can count toward a complete comparison window; missing dates are never inferred as zero by the browser
+- stale or failed daily history withholds daily trend comparisons and standalone top-channel context; verified financial and current target findings can still appear from their separate inputs
 - channel details in KPI/Benchmark recommendations require a reconciled breakdown and can remain when daily history is stale or mismatched; missing or wrong-property snapshots withhold streak/history context, not verified current target evaluations
 - invalid KPI or Benchmark targets are shown as configuration issues before performance conclusions
 - standard KPI and Benchmark targets are absolute goals evaluated against their authoritative current values: traffic metrics use the initial-import-through-latest-completed-day cumulative window, while financial metrics use campaign-to-date inputs

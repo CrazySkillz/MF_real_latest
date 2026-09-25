@@ -184,12 +184,12 @@ Important meaning:
 
 ## GA4 Page Query Refetch Timing
 
-The GA4 analytics page has live query refetches in addition to the background scheduler:
+The GA4 analytics page periodically rereads saved values in addition to the background scheduler:
 
-- `/api/campaigns/:id/ga4-daily` refetches on page load, browser focus/reconnect, and every 5 minutes while the page is open
+- `/api/campaigns/:id/ga4-daily` refetches on page load, browser focus/reconnect, and every 5 minutes while the page is open, but normal browser callers use `readOnly=1` and cannot query GA4 or rewrite daily history
 - `/api/campaigns/:id/ga4-to-date` and `/api/campaigns/:id/ga4-breakdown` refetch on page load, browser focus/reconnect, and every 10 minutes while the page is open
 - `/api/campaigns/:id/ga4-breakdown`, `/api/campaigns/:id/ga4-landing-pages`, and `/api/campaigns/:id/ga4-conversion-events` use the fixed initial-import boundary through the latest completed day for Overview and refetch on page load, browser focus/reconnect, and every 10 minutes for the selected property and saved GA4 campaign scope; the separate Insights breakdown request retains its analysis window
-- `/ga4-daily` reads persisted daily rows first; if the selected campaign/property has no stored rows for the requested window, it attempts an on-demand Data API backfill, persists the rows, and returns the stored result
+- `/ga4-daily` reads persisted daily rows; mutation-capable server or explicit refresh callers may omit `readOnly=1` to perform an on-demand Data API backfill, but normal analytics and campaign-detail page reads cannot do so
 - `/ga4-daily` returns backward-compatible refresh evidence (`providerRefreshAttempted`, `providerRefreshOutcome`, row count, and `providerCoverageThroughDate`) alongside its existing expected/latest/stale fields; successful coverage is distinct from the latest returned activity date, and `empty` or absent activity dates are not converted into zero-valued metric rows
 - if persisted selected-campaign daily rows already have traffic but no conversions or native revenue, `/ga4-daily` may self-repair them by rerunning the same selected-campaign daily import; conversions and revenue are evaluated independently, and a successful response replaces the exact requested window rather than leaving absent old rows behind
 - `Landing Pages` and `Conversion Events` are not reconstructed from `ga4_daily_metrics`; they fetch row-level GA4 Data API views directly. Landing Pages retains its documented exact row supplementation, while Conversion Events uses only its fixed-order exact session/first-user campaign queries and does not use `pageLocation`
@@ -199,7 +199,7 @@ Important timing:
 
 - cumulative Overview table values can update after GA4 has processed the latest completed day and the relevant page query refetches
 - live financial to-date queries may update separately; they do not change the completed-day boundary of the three Overview tables
-- Trends uses persisted completed-day rows through the campaign reporting timezone's latest completed day, so same-day script events generally do not become a new Trends day until the following reporting day and a scheduler/on-demand backfill reads them
+- Trends uses persisted completed-day rows through the campaign reporting timezone's latest completed day; opening the page only rereads those rows, so chart history and its refresh timestamp change after the scheduler or an explicit refresh path persists new daily facts
 - Connection Details shows the successful provider check-through date separately from the latest stored activity date. The normal campaign header does not insert that success text after load; Overview still warns when no successful current coverage exists or a stale refresh attempt fails, and retains stored values on failure
 - generic GA4 `403 PERMISSION_DENIED` responses are provider/permission failures, not confirmed authentication expiry; this includes the daily time-series fetch before and after a confirmed token refresh, and only confirmed authentication signals may trigger token refresh/reconnect handling
 

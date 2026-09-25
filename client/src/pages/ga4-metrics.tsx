@@ -315,7 +315,6 @@ export default function GA4Metrics() {
 
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const insightsValidationReadOnly = new URLSearchParams(search).get("readOnly") === "1";
-  const insightsDailyReadOnly = activeTab === "insights" || insightsValidationReadOnly;
   const [highlightedItemId, setHighlightedItemId] = useState<string>(initialHighlight);
   useEffect(() => {
     const nextSearchParams = new URLSearchParams(search);
@@ -1847,7 +1846,7 @@ export default function GA4Metrics() {
     })) || 0;
 
   const { data: ga4DailyResp, isLoading: ga4Loading, error: ga4Error, isPlaceholderData: ga4DailyPlaceholder } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-daily", GA4_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, insightsDailyReadOnly],
+    queryKey: ["/api/campaigns", campaignId, "ga4-daily", GA4_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     placeholderData: keepPreviousData,
     staleTime: 0,
@@ -1859,7 +1858,7 @@ export default function GA4Metrics() {
       const response = await fetch(
         `/api/campaigns/${campaignId}/ga4-daily?days=${encodeURIComponent(String(GA4_DAILY_LOOKBACK_DAYS))}&propertyId=${encodeURIComponent(
           String(selectedGA4PropertyId)
-        )}${insightsDailyReadOnly ? "&readOnly=1" : ""}`
+        )}&readOnly=1`
       );
       const data = await response.json().catch(() => null);
       if (!response.ok && data?.requiresReauthorization) {
@@ -1877,7 +1876,7 @@ export default function GA4Metrics() {
     isLoading: ga4InsightsDailyLoading,
     error: ga4InsightsDailyError,
   } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, insightsDailyReadOnly],
+    queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId],
     enabled: activeTab === "insights" && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -1886,7 +1885,7 @@ export default function GA4Metrics() {
     refetchIntervalInBackground: true,
     queryFn: async () => {
       const response = await fetch(
-        `/api/campaigns/${campaignId}/ga4-daily?days=${GA4_INSIGHTS_DAILY_LOOKBACK_DAYS}&propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}${insightsDailyReadOnly ? "&readOnly=1" : ""}`
+        `/api/campaigns/${campaignId}/ga4-daily?days=${GA4_INSIGHTS_DAILY_LOOKBACK_DAYS}&propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}&readOnly=1`
       );
       const data = await response.json().catch(() => null);
       if (!response.ok || !data || data?.success === false) {
@@ -1901,11 +1900,8 @@ export default function GA4Metrics() {
 
   const { data: ga4TrendsCoverage, error: ga4TrendsCoverageError, isLoading: ga4TrendsCoverageLoading } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-insights-trends-coverage", selectedGA4PropertyId, ga4InsightsDailyResp?.dataThroughDate, ga4InsightsDailyResp?.lastCompletedRefreshAt],
-    enabled: activeTab === "insights" && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId && ga4InsightsDailyResp !== undefined,
-    staleTime: 30 * 60 * 1000,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: 30 * 60 * 1000,
+    // Insights Trends must use scheduler-produced daily history, never a live provider check on page load.
+    enabled: false,
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/ga4-insights-trends-coverage?propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}`);
       const data = await response.json().catch(() => null);
@@ -2024,7 +2020,6 @@ export default function GA4Metrics() {
     coverageRequestError: ga4TrendsCoverageError,
     propertyId: selectedGA4PropertyId,
   });
-  const trendsCoveragePending = ga4InsightsDailyResp !== undefined && ga4TrendsCoverageLoading && ga4TrendsCoverage === undefined;
   const trendsZeroDaysVerified = (ga4TrendsCoverage?.verified === true || ga4TrendsCoverage?.zeroDatesVerified === true) && Array.isArray(ga4TrendsCoverage?.dailyRows) &&
     String(ga4TrendsCoverage?.propertyId || "").replace(/^properties\//i, "") === String(selectedGA4PropertyId || "").replace(/^properties\//i, "") &&
     String(ga4TrendsCoverage?.endDate || "") === trendsDataThroughDate &&
@@ -9120,13 +9115,6 @@ export default function GA4Metrics() {
                             Current GA4 values differ from the last imported daily rows. Charts show imported values; confirmed no-activity days show 0. Dates with GA4 activity not yet imported remain gaps.
                           </div>
                         )}
-                        {ga4InsightsDailyResp !== undefined && !trendsZeroDaysVerified && (
-                          <div className="text-sm text-muted-foreground" data-testid="insights-trends-zero-day-status">
-                            {ga4TrendsCoverageError || (ga4TrendsCoverage !== undefined && !trendsZeroDaysVerified)
-                              ? "GA4 could not verify days without stored rows. Those days remain gaps until verification succeeds."
-                              : "Checking GA4 daily coverage before showing Trends."}
-                          </div>
-                        )}
                         {ga4InsightsDailyError && ga4InsightsDailyResp === undefined && (
                           <div className="rounded-md border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-900">
                             GA4 daily history is unavailable. Trend values and trend-based recommendations are withheld.
@@ -9135,11 +9123,8 @@ export default function GA4Metrics() {
                         {timeSeriesLoading && ga4InsightsDailyResp === undefined && (
                           <div className="h-64 rounded-md bg-muted animate-pulse" aria-label="Loading GA4 Insights daily history" />
                         )}
-                        {trendsCoveragePending && (
-                          <div className="h-64 rounded-md bg-muted animate-pulse" aria-label="Checking GA4 Trends daily coverage" />
-                        )}
                         {/* Trends line chart */}
-                        {!trendsCoveragePending && (!ga4InsightsDailyError || ga4InsightsDailyResp !== undefined) && (!timeSeriesLoading || ga4InsightsDailyResp !== undefined) && (() => {
+                        {(!ga4InsightsDailyError || ga4InsightsDailyResp !== undefined) && (!timeSeriesLoading || ga4InsightsDailyResp !== undefined) && (() => {
                           const dailyRows = trendsDailyRows.filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(r?.date || "")));
                           const sorted = [...dailyRows].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
                           const complete7DayRows = insightsTrendMode === "7d"

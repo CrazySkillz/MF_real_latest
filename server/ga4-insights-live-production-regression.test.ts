@@ -15,7 +15,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(page.match(/insightsValidationReadOnly \? "&readOnly=1" : ""/g)?.length).toBe(2);
     expect(page).toContain('"ga4-breakdown", activeTab === "insights" ? dateRange : "import-to-date", selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly');
     expect(page).toContain('activeTab === "insights" ? `dateRange=${encodeURIComponent(dateRange)}` : "window=import-to-date"');
-    expect(page).toContain('selectedGA4PropertyId, insightsDailyReadOnly]');
+    expect(page).toContain('"ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId]');
     expect(page).toContain('["/api/ga4/check-connection", campaignId, insightsValidationReadOnly]');
     expect(page).toContain('activeTab === "insights"');
     expect(page).toContain('String(data?.propertyId || "") !== String(selectedGA4PropertyId)');
@@ -24,18 +24,25 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).not.toContain('queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_DAILY_LOOKBACK_DAYS');
   });
 
-  it("keeps overlapping 30-day and 60-day Insights history reads non-mutating", () => {
+  it("keeps browser daily-history reads non-mutating and leaves live coverage disabled", () => {
     const page = read("client", "src", "pages", "ga4-metrics.tsx");
+    const campaignDetail = read("client", "src", "pages", "campaign-detail.tsx");
     const overviewDailyStart = page.indexOf('"ga4-daily", GA4_DAILY_LOOKBACK_DAYS');
     const insightsDailyStart = page.indexOf('"ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS');
     const overviewDaily = page.slice(overviewDailyStart, insightsDailyStart);
     const insightsDaily = page.slice(insightsDailyStart, page.indexOf("const ga4DailyDataThroughDate", insightsDailyStart));
+    const coverageStart = page.indexOf('"ga4-insights-trends-coverage"');
+    const coverageQuery = page.slice(coverageStart, page.indexOf("const ga4DailyDataThroughDate", coverageStart));
 
-    expect(page).toContain('const insightsDailyReadOnly = activeTab === "insights" || insightsValidationReadOnly;');
-    expect(overviewDaily).toContain("selectedGA4PropertyId, insightsDailyReadOnly");
-    expect(insightsDaily).toContain("selectedGA4PropertyId, insightsDailyReadOnly");
-    expect(overviewDaily).toContain('insightsDailyReadOnly ? "&readOnly=1" : ""');
-    expect(insightsDaily).toContain('insightsDailyReadOnly ? "&readOnly=1" : ""');
+    expect(page).not.toContain("insightsDailyReadOnly");
+    expect(overviewDaily).toContain("&readOnly=1");
+    expect(insightsDaily).toContain("&readOnly=1");
+    expect(campaignDetail.match(/\/ga4-daily\?[^`]+&readOnly=1`/g)?.length).toBe(2);
+    expect(coverageQuery).toContain("enabled: false");
+    expect(coverageQuery).not.toContain("refetchOnWindowFocus");
+    expect(coverageQuery).not.toContain("refetchInterval");
+    expect(page).not.toContain("Checking GA4 daily coverage before showing Trends.");
+    expect(page).not.toContain('aria-label="Checking GA4 Trends daily coverage"');
   });
 
   it("withholds failed or stale history instead of emitting recommendations from it", () => {

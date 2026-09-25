@@ -109,6 +109,7 @@ Current meaning:
 - `Latest imported day` is the latest persisted row eligible for Trends after the creation-date filter, and `Last refreshed` shows the daily response's refresh timestamp; the completed-day cutoff still controls eligible rows but is not displayed as a separate label
 - `7d` and `30d` show rolling totals for non-rate metrics and weighted averages for rates
 - a missing GA4 row becomes zero only after a separate read-only check verifies no matching campaign values for that completed day; unverified missing dates remain gaps and cannot complete comparison windows
+- when that exact same-property, same-window check also confirms the stored activity rows match GA4, sparse zero-activity dates do not leave Insights incorrectly marked stale; failed, unavailable, or mismatched verification remains fail-closed
 - while that check is pending for a newly loaded daily response, Trends holds the chart and table in a fixed loading area instead of briefly drawing unverified gaps
 - explicit zero engaged sessions remain zero; only a genuinely absent legacy value is derived from that row's sessions and engagement rate
 - the metric selector uses a native select; Users is available only in Daily because daily distinct-user counts cannot be summed across days

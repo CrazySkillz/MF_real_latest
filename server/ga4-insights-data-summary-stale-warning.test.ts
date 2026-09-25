@@ -1,6 +1,7 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { describe, expect, it } from "vitest";
+import { resolveGA4InsightsRefreshIsStale } from "../shared/ga4-insights";
 import { resolveGA4DailyFreshness } from "./utils/reporting-timezone";
 
 describe("GA4 Insights Data Summary stale warning", () => {
@@ -24,9 +25,46 @@ describe("GA4 Insights Data Summary stale warning", () => {
 
     expect(start).toBeGreaterThan(-1);
     expect(end).toBeGreaterThan(start);
-    expect(page).toContain("Boolean((ga4InsightsDailyResp as any)?.refreshIsStale) || Boolean(ga4InsightsDailyError && ga4InsightsDailyResp !== undefined)");
+    expect(page).toContain("const trendsRefreshIsStale = resolveGA4InsightsRefreshIsStale({");
     expect(section).toContain("trendsRefreshIsStale && dataSummaryHistoryAvailable");
     expect(section).toContain('data-testid="insights-data-summary-stale"');
     expect(section).toContain("Daily data may be out of date; verify the refresh before using these figures.");
+  });
+
+  it("accepts exact live coverage of sparse zero-activity dates without hiding real failures", () => {
+    const dailyResponse = {
+      propertyId: "542352127",
+      startDate: "2026-07-27",
+      dataThroughDate: "2026-09-24",
+      reportingTimeZone: "Europe/Amsterdam",
+      refreshIsStale: true,
+    };
+    const coverageResponse = {
+      propertyId: "properties/542352127",
+      startDate: "2026-08-23",
+      endDate: "2026-09-24",
+      reportingTimeZone: "Europe/Amsterdam",
+      verified: true,
+      providerVerified: true,
+      providerZeroDatesVerified: true,
+      dailyRows: [],
+    };
+    const resolve = (overrides: Record<string, unknown> = {}) => resolveGA4InsightsRefreshIsStale({
+      dailyResponse,
+      dailyRequestError: null,
+      coverageResponse,
+      coverageRequestError: null,
+      propertyId: "542352127",
+      ...overrides,
+    });
+
+    expect(resolve()).toBe(false);
+    expect(resolve({ dailyRequestError: new Error("daily read failed") })).toBe(true);
+    expect(resolve({ coverageRequestError: new Error("coverage check failed") })).toBe(true);
+    expect(resolve({ coverageResponse: { ...coverageResponse, verified: false } })).toBe(true);
+    expect(resolve({ coverageResponse: { ...coverageResponse, endDate: "2026-09-23" } })).toBe(true);
+    expect(resolve({ coverageResponse: { ...coverageResponse, propertyId: "other-property" } })).toBe(true);
+    expect(resolve({ coverageResponse: { ...coverageResponse, reportingTimeZone: "UTC" } })).toBe(true);
+    expect(resolve({ dailyResponse: { ...dailyResponse, refreshIsStale: false }, coverageResponse: undefined })).toBe(false);
   });
 });

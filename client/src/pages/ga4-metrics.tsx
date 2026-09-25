@@ -42,7 +42,7 @@ import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy
 import { resolveGA4KpiLiveValue } from "@shared/ga4-kpi-live-value";
 import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "@shared/ga4-kpi-metric-identity";
 import { getGA4KpiReportingWindowLabel, resolveGA4InsightTargetPeriodCompatibility, resolveGA4KpiConsumerState, type GA4KpiInputState, type GA4KpiListState } from "@shared/ga4-kpi-consumer-state";
-import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, countGA4InsightsConsecutiveDays, filterGA4InsightsBreakdownRowsToImportedDates, hasGA4InsightsAnalyticsHistory, isGA4InsightsAnalyticsHistoryInSelectedPropertyScope, normalizeGA4InsightsDailyRows, resolveGA4InsightsCampaignToDateSufficiencyReason, resolveGA4InsightsRevenueWindowState, selectUniqueLowestGA4InsightsConversionRateChannel } from "@shared/ga4-insights";
+import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, countGA4InsightsConsecutiveDays, filterGA4InsightsBreakdownRowsToImportedDates, hasGA4InsightsAnalyticsHistory, isGA4InsightsAnalyticsHistoryInSelectedPropertyScope, normalizeGA4InsightsDailyRows, resolveGA4InsightsCampaignToDateSufficiencyReason, resolveGA4InsightsRefreshIsStale, resolveGA4InsightsRevenueWindowState, selectUniqueLowestGA4InsightsConversionRateChannel } from "@shared/ga4-insights";
 
 interface Campaign {
   id: string;
@@ -2017,7 +2017,13 @@ export default function GA4Metrics() {
     ? (ga4InsightsDailyResp as any)?.lastCompletedRefreshAt
     : (ga4InsightsDailyResp as any)?.lastUpdated;
   const trendsLastRefreshedLabel = formatReportingTimestampLabel(trendsLastRefreshValue, trendsReportingTimeZone);
-  const trendsRefreshIsStale = Boolean((ga4InsightsDailyResp as any)?.refreshIsStale) || Boolean(ga4InsightsDailyError && ga4InsightsDailyResp !== undefined);
+  const trendsRefreshIsStale = resolveGA4InsightsRefreshIsStale({
+    dailyResponse: ga4InsightsDailyResp,
+    dailyRequestError: ga4InsightsDailyError,
+    coverageResponse: ga4TrendsCoverage,
+    coverageRequestError: ga4TrendsCoverageError,
+    propertyId: selectedGA4PropertyId,
+  });
   const trendsCoveragePending = ga4InsightsDailyResp !== undefined && ga4TrendsCoverageLoading && ga4TrendsCoverage === undefined;
   const trendsZeroDaysVerified = (ga4TrendsCoverage?.verified === true || ga4TrendsCoverage?.zeroDatesVerified === true) && Array.isArray(ga4TrendsCoverage?.dailyRows) &&
     String(ga4TrendsCoverage?.propertyId || "").replace(/^properties\//i, "") === String(selectedGA4PropertyId || "").replace(/^properties\//i, "") &&

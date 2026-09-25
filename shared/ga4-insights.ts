@@ -37,6 +37,29 @@ const toGA4InsightsDateOnly = (value: unknown): string | null => {
   return DATE_ONLY.test(normalized) ? normalized : null;
 };
 
+export const resolveGA4InsightsRefreshIsStale = (input: {
+  dailyResponse: any;
+  dailyRequestError: unknown;
+  coverageResponse: any;
+  coverageRequestError: unknown;
+  propertyId: unknown;
+}): boolean => {
+  const daily = input.dailyResponse;
+  const coverage = input.coverageResponse;
+  const dataThroughDate = String(daily?.dataThroughDate || "");
+  const dailyStartDate = String(daily?.startDate || "");
+  const coverageStartDate = String(coverage?.startDate || "");
+  const coverageVerifiesCurrentHistory = !input.coverageRequestError && coverage?.verified === true &&
+    coverage?.providerVerified === true && coverage?.providerZeroDatesVerified === true &&
+    Array.isArray(coverage?.dailyRows) && DATE_ONLY.test(dataThroughDate) && DATE_ONLY.test(dailyStartDate) &&
+    DATE_ONLY.test(coverageStartDate) && coverageStartDate >= dailyStartDate && coverageStartDate <= dataThroughDate &&
+    String(coverage?.propertyId || "").replace(/^properties\//i, "") === String(input.propertyId || "").replace(/^properties\//i, "") &&
+    String(coverage?.endDate || "") === dataThroughDate &&
+    String(coverage?.reportingTimeZone || "") === String(daily?.reportingTimeZone || "");
+  return Boolean(input.dailyRequestError && daily !== undefined) ||
+    (Boolean(daily?.refreshIsStale) && !coverageVerifiesCurrentHistory);
+};
+
 export const countGA4InsightsConsecutiveDays = <T>(
   rows: T[],
   getRecordedAt: (row: T) => unknown,

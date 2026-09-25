@@ -16,6 +16,11 @@ const csvSpendRoute = () => {
 };
 
 describe("GA4 Overview Upload CSV spend validation packet", () => {
+  it("keeps the Spend modal description limited to the campaign currency", () => {
+    expect(spendModalSource).toContain('`Currency: ${props.currency || "USD"}`');
+    expect(spendModalSource).not.toContain('Spend is treated as "to date" (campaign lifetime)');
+  });
+
   it.each([
     {
       name: "BOM and CRLF comma export with a quoted currency value",

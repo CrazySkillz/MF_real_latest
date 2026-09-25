@@ -1628,7 +1628,7 @@ export function AddSpendWizardModal(props: {
   const description =
     step === "select"
       ? "Choose where your spend data comes from."
-      : `Currency: ${props.currency || "USD"} • Spend is treated as "to date" (campaign lifetime)`;
+      : `Currency: ${props.currency || "USD"}`;
   const formatAdPlatformSpend = (amount: number) => selectedPlatform === "google_ads"
     ? new Intl.NumberFormat(undefined, { style: "currency", currency: props.currency || "USD" }).format(amount)
     : `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;

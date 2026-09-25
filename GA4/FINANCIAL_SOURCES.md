@@ -764,7 +764,7 @@ The user journey is:
 3. the user uploads a CSV file
 4. the system generates a preview of headers and sample rows
 5. the user selects the spend column
-6. the user can optionally select a date column for daily spend tracking
+6. the user selects a required date column so the import can materialize dated daily spend records
 7. the user can optionally select a campaign identifier column and one or more campaign values
 8. the user confirms the mapping and runs the import
 9. the system saves a CSV spend source with the mapping configuration
@@ -774,17 +774,17 @@ The user journey is:
 Important meaning:
 
 - CSV spend is a structured import workflow, not a file attachment
-- CSV spend can materialize daily spend records when a date column is mapped; if no date column is selected, it remains a spend-to-date snapshot-style source
+- new GA4 CSV spend sources require a mapped Date column and materialize dated daily spend records; only an already-undated saved source may remain an undated snapshot-style continuity source
 - campaign filtering must consider only the selected campaign values and must sum every selected positive-spend row for snapshot imports
 - when a date column is mapped, every selected positive-spend row must have a valid date; blank or invalid dates must fail before source mutation because the app must not invent a spend date
-- the CSV Date column must be None or a different column from the selected Spend and Campaign identifier columns; the UI must omit those conflicting choices and the server must reject forged or stale duplicate-role mappings before aggregation
+- for a new GA4 CSV spend source, the Date column must be different from the selected Spend and Campaign identifier columns; `None` is available only when editing an already-undated saved continuity source, and a dated source cannot be converted to undated
 - for CSV preview mapping, Date choices must contain only columns whose non-empty sampled values are date-like; purely numeric metric values must not be treated as dates or coerced into calendar years
 - GA4 CSV spend must accept and persist explicit `platformContext=ga4`; legacy null-context sources remain readable for compatibility and self-heal to `ga4` only when that exact source is edited
 - an import with no selected positive-spend rows must fail before creating or updating a source
 - CSV spend source add/edit and replacement spend records must commit in one campaign/source/type-scoped transaction; record materialization failure must roll back and return failure rather than false success
-- the CSV upload/re-upload helper text should list only the required primary column as `Required columns: Spend`; optional campaign mapping is handled on the mapping screen
+- the CSV upload/re-upload helper text should list the required primary value column as `Required columns: Spend`; the required GA4 Date mapping and optional campaign mapping are handled on the mapping screen
 - the CSV spend mapping screen should show `Spend` as a direct dropdown field; it should not require an `Edit columns` sub-action to change the spend column
-- the CSV spend mapping screen should not show extra section headings named `Columns` or `Campaign mapping`; the visible controls are the spend dropdown, optional date-column dropdown, optional campaign identifier/value controls, preview table, and action buttons
+- the CSV spend mapping screen should not show extra section headings named `Columns` or `Campaign mapping`; for a new GA4 source, the visible controls are the spend dropdown, required date-column dropdown, optional campaign identifier/value controls, preview table, and action buttons
 - CSV spend does not auto-refresh on a schedule
 - CSV spend preview should show all uploaded columns in the preview table, not only mapped processing columns
 - CSV spend edit should expose `Back` from mapping to upload so the user can replace the CSV file before previewing again
@@ -911,7 +911,7 @@ Whole-Overview Current Commit 7 aligns frontend cache freshness after GA4 spend 
 - `Meta / Facebook` and `Google Ads` spend currently use connected-platform selection flows, but their current persisted spend handling is still more snapshot-like than a fully specialized connector pipeline
 - scheduled Meta / Facebook and Google Ads spend refresh must reuse the saved selected campaign IDs and replace the source's prior materialized spend records rather than append duplicates
 - `Upload CSV` revenue is manual for import cadence and requires re-upload for source-file updates; when a date column is mapped, it can still materialize daily revenue rows
-- `Upload CSV` spend is manual for import cadence; when a date column is mapped, it can still materialize daily spend rows, and spend-source edit can recalculate from the stored imported dataset when only campaign-value selection changes
+- `Upload CSV` spend is manual for import cadence; new GA4 CSV sources require a Date column and materialize daily spend rows, while already-undated saved sources remain continuity-only snapshot sources; spend-source edit can recalculate from the stored imported dataset when only campaign-value selection changes
 - existing stored `Manual` revenue/spend remains a manual snapshot source and requires direct manual updates
 - new direct `Manual` source creation is no longer available from the production pickers
 

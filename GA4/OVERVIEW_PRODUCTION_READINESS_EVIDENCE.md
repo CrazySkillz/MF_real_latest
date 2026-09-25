@@ -95,7 +95,7 @@ These exclusions do **not** exclude their effect on GA4 Total Spend, Profit, ROA
 The following cannot be deferred out of complete Overview certification because they are visible, enabled, retained, or currently contribute to included values:
 
 - Google Sheets Revenue and Google Sheets Spend
-- Upload CSV Spend with the optional no-date mode
+- already-undated legacy Upload CSV Spend continuity sources
 - any retained active legacy Manual spend/revenue source until exact inventory and reviewed deletion/disposition; GA4 Manual create/edit is blocked
 - active legacy Salesforce revenue and Pipeline Proxy sources
 - retained Meta/LinkedIn/custom spend sources because spend storage reads have no GA4 platform-context filter

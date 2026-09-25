@@ -24,36 +24,38 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).not.toContain('queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_DAILY_LOOKBACK_DAYS');
   });
 
-  it("keeps browser daily-history reads non-mutating and leaves live coverage disabled", () => {
+  it("keeps browser daily-history reads non-mutating and removes live coverage reads", () => {
     const page = read("client", "src", "pages", "ga4-metrics.tsx");
     const campaignDetail = read("client", "src", "pages", "campaign-detail.tsx");
     const overviewDailyStart = page.indexOf('"ga4-daily", GA4_DAILY_LOOKBACK_DAYS');
     const insightsDailyStart = page.indexOf('"ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS');
     const overviewDaily = page.slice(overviewDailyStart, insightsDailyStart);
     const insightsDaily = page.slice(insightsDailyStart, page.indexOf("const ga4DailyDataThroughDate", insightsDailyStart));
-    const coverageStart = page.indexOf('"ga4-insights-trends-coverage"');
-    const coverageQuery = page.slice(coverageStart, page.indexOf("const ga4DailyDataThroughDate", coverageStart));
 
     expect(page).not.toContain("insightsDailyReadOnly");
     expect(overviewDaily).toContain("&readOnly=1");
     expect(insightsDaily).toContain("&readOnly=1");
     expect(campaignDetail.match(/\/ga4-daily\?[^`]+&readOnly=1`/g)?.length).toBe(2);
-    expect(coverageQuery).toContain("enabled: false");
-    expect(coverageQuery).not.toContain("refetchOnWindowFocus");
-    expect(coverageQuery).not.toContain("refetchInterval");
+    expect(page).not.toContain('"ga4-insights-trends-coverage"');
     expect(page).not.toContain("Checking GA4 daily coverage before showing Trends.");
     expect(page).not.toContain('aria-label="Checking GA4 Trends daily coverage"');
   });
 
-  it("withholds failed or stale history instead of emitting recommendations from it", () => {
+  it("withholds failed history without factoring scheduler freshness into findings", () => {
     const page = read("client", "src", "pages", "ga4-metrics.tsx");
 
     expect(page).toContain('id: "integrity:daily_history_unavailable"');
-    expect(page).toContain('id: "integrity:daily_history_stale"');
-    expect(page).toContain("!trendsRefreshIsStale && !findingsHistoryMismatch && findingRollups.last7.complete && findingRollups.prior7.complete");
+    expect(page).not.toContain('id: "integrity:daily_history_stale"');
+    expect(page).toContain("const sevenDayComparisonReady = findingRollups.last7.complete && findingRollups.prior7.complete");
+    expect(page).not.toContain("trendsRefreshIsStale");
     expect(page).not.toContain('data-testid="insights-trends-stale"');
     expect(page).not.toContain("Showing last-good GA4 daily history.");
-    expect(page).toContain('id: "integrity:daily_history_outdated"');
+    expect(page).not.toContain('id: "integrity:daily_history_outdated"');
+    expect(page).toContain('(ga4DailyResp as any)?.refreshIsStale === true');
+    expect(page).toContain('trafficState: schedulerSynchronizedTrafficState');
+    expect(page).toContain('financialConversionsState: schedulerSynchronizedConversionsState');
+    expect(page).toContain('const findingsDailyRows = trendsDailyRows;');
+    expect(page).not.toContain('id: "info:scheduler_no_history"');
     expect(page).toContain('id: "integrity:analytics_history_unavailable"');
     expect(page).toContain("if (!resp.ok) throw new Error(json?.message || json?.error || \"Failed to fetch KPI analytics history\")");
   });

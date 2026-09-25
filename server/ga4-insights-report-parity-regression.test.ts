@@ -54,7 +54,7 @@ describe("GA4 Insights report parity", () => {
     expect(reportSection).toContain("Total across revenue sources");
     expect(scheduledSection).toContain("Total across revenue sources");
     expect(liveSection).toContain("Latest imported day");
-    expect(liveSection).toContain("Last scheduler refresh");
+    expect(liveSection).not.toContain("Last scheduler refresh");
     expect(liveSection).not.toContain("Exact completed-day window");
     for (const section of [reportSection, scheduledSection]) {
       expect(section).toContain("Current GA4 total");

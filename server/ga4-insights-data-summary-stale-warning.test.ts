@@ -5,7 +5,7 @@ import { resolveGA4InsightsRefreshIsStale } from "../shared/ga4-insights";
 import { resolveGA4DailyFreshness } from "./utils/reporting-timezone";
 
 describe("GA4 Insights Data Summary stale warning", () => {
-  it("labels visible daily values when refresh or coverage is stale", () => {
+  it("keeps stale freshness state out of the visible Data Summary", () => {
     const current = {
       dataThroughDate: "2026-09-16",
       expectedRefreshAt: new Date("2026-09-17T10:05:00.000Z"),
@@ -25,10 +25,11 @@ describe("GA4 Insights Data Summary stale warning", () => {
 
     expect(start).toBeGreaterThan(-1);
     expect(end).toBeGreaterThan(start);
-    expect(page).toContain("const trendsRefreshIsStale = resolveGA4InsightsRefreshIsStale({");
-    expect(section).toContain("trendsRefreshIsStale && dataSummaryHistoryAvailable");
-    expect(section).toContain('data-testid="insights-data-summary-stale"');
-    expect(section).toContain("Daily data may be out of date; verify the refresh before using these figures.");
+    expect(page).not.toContain("const trendsRefreshIsStale = resolveGA4InsightsRefreshIsStale({");
+    expect(section).not.toContain("trendsRefreshIsStale && dataSummaryHistoryAvailable");
+    expect(section).not.toContain('data-testid="insights-data-summary-stale"');
+    expect(section).not.toContain("Daily data may be out of date; verify the refresh before using these figures.");
+    expect(section).toContain("no-activity days count as 0.");
   });
 
   it("accepts exact live coverage of sparse zero-activity dates without hiding real failures", () => {

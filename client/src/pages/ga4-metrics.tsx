@@ -42,7 +42,7 @@ import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy
 import { resolveGA4KpiLiveValue } from "@shared/ga4-kpi-live-value";
 import { getGA4KpiMetricDependencies, resolveGA4KpiMetricIdentity } from "@shared/ga4-kpi-metric-identity";
 import { getGA4KpiReportingWindowLabel, resolveGA4InsightTargetPeriodCompatibility, resolveGA4KpiConsumerState, type GA4KpiInputState, type GA4KpiListState } from "@shared/ga4-kpi-consumer-state";
-import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, countGA4InsightsConsecutiveDays, filterGA4InsightsBreakdownRowsToImportedDates, hasGA4InsightsAnalyticsHistory, isGA4InsightsAnalyticsHistoryInSelectedPropertyScope, normalizeGA4InsightsDailyRows, resolveGA4InsightsCampaignToDateSufficiencyReason, resolveGA4InsightsRefreshIsStale, resolveGA4InsightsRevenueWindowState, selectUniqueLowestGA4InsightsConversionRateChannel } from "@shared/ga4-insights";
+import { addGA4InsightsDateDays, areGA4InsightsMonthsAdjacent, buildGA4InsightsCalendarRollup, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, buildGA4InsightsSpendSourceLabels, calculateGA4InsightsDeltaPct, countGA4InsightsConsecutiveDays, filterGA4InsightsBreakdownRowsToImportedDates, isGA4InsightsAnalyticsHistoryInSelectedPropertyScope, normalizeGA4InsightsDailyRows, resolveGA4InsightsCampaignToDateSufficiencyReason, resolveGA4InsightsRevenueWindowState, selectUniqueLowestGA4InsightsConversionRateChannel } from "@shared/ga4-insights";
 
 interface Campaign {
   id: string;
@@ -1898,18 +1898,6 @@ export default function GA4Metrics() {
     },
   });
 
-  const { data: ga4TrendsCoverage, error: ga4TrendsCoverageError, isLoading: ga4TrendsCoverageLoading } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-insights-trends-coverage", selectedGA4PropertyId, ga4InsightsDailyResp?.dataThroughDate, ga4InsightsDailyResp?.lastCompletedRefreshAt],
-    // Insights Trends must use scheduler-produced daily history, never a live provider check on page load.
-    enabled: false,
-    queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/ga4-insights-trends-coverage?propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}`);
-      const data = await response.json().catch(() => null);
-      if (!response.ok || !data || data?.success === false) throw new Error("GA4 Trends zero-day check failed");
-      return data;
-    },
-  });
-
   const ga4DailyDataThroughDate = String((ga4DailyResp as any)?.dataThroughDate || (ga4DailyResp as any)?.endDate || "").trim();
 
   const ga4DailyRows = useMemo<any[]>(() => {
@@ -2013,13 +2001,6 @@ export default function GA4Metrics() {
     ? (ga4InsightsDailyResp as any)?.lastCompletedRefreshAt
     : (ga4InsightsDailyResp as any)?.lastUpdated;
   const trendsLastRefreshedLabel = formatReportingTimestampLabel(trendsLastRefreshValue, trendsReportingTimeZone);
-  const trendsRefreshIsStale = resolveGA4InsightsRefreshIsStale({
-    dailyResponse: ga4InsightsDailyResp,
-    dailyRequestError: ga4InsightsDailyError,
-    coverageResponse: ga4TrendsCoverage,
-    coverageRequestError: ga4TrendsCoverageError,
-    propertyId: selectedGA4PropertyId,
-  });
   const trendsDailyRows = useMemo(() => {
     if (!trendsCampaignStartDate || !/^\d{4}-\d{2}-\d{2}$/.test(trendsDataThroughDate) || trendsCampaignStartDate > trendsDataThroughDate) return [];
     const rowsByDate = new Map(
@@ -4891,7 +4872,6 @@ export default function GA4Metrics() {
       revenueKpiInputState === "loading" ||
       spendKpiInputState === "loading" ||
       (ga4InsightsDailyLoading && ga4InsightsDailyResp === undefined) ||
-      (ga4TrendsCoverageLoading && ga4TrendsCoverage === undefined) ||
       (breakdownLoading && ga4Breakdown === undefined) ||
       kpiAnalyticsQueries.some((query: any) => query?.isLoading && query?.data === undefined) ||
       benchmarkAnalyticsQueries.some((query: any) => query?.isLoading && query?.data === undefined)
@@ -4925,8 +4905,7 @@ export default function GA4Metrics() {
       id.startsWith("integrity:") ||
       id === "financial:ga4_to_date_unavailable" ||
       id === "financial:revenue_missing" ||
-      id === "financial:spend_missing" ||
-      id === "info:scheduler_no_history"
+      id === "financial:spend_missing"
     ) return "setup";
     if (id.startsWith("kpi:") || id.startsWith("bench:")) return "targets";
     if (
@@ -4946,7 +4925,6 @@ export default function GA4Metrics() {
     if (id === "integrity:target_period_mismatch") return "Saved target period + current-value reporting window";
     if (id === "integrity:targets_unverified") return "Required source state + saved KPI/Benchmark configuration";
     if (id === "integrity:target_lists_unverified") return "Campaign-scoped KPI/Benchmark list requests";
-    if (id === "integrity:daily_history_outdated") return "GA4 provider daily values + saved campaign/property daily rows";
     if (id.startsWith("integrity:kpi")) return "Saved KPI configuration";
     if (id.startsWith("integrity:bench")) return "Saved Benchmark configuration";
     if (id === "financial:ga4_to_date_unavailable" || id === "financial:ga4_to_date_stale") return "GA4 to-date totals";
@@ -4957,9 +4935,8 @@ export default function GA4Metrics() {
     if (id.startsWith("bench:")) return "Saved Benchmark + current values";
     if (id === "info:top_channel") return "GA4 campaign breakdown";
     if (id.startsWith("anomaly:") || id.startsWith("positive:sessions:") || id.startsWith("positive:revenue:") || id.startsWith("positive:conversions:")) {
-      return "GA4 completed daily history for this campaign/property, including pre-creation dates and verified zero days when available";
+      return "GA4 completed daily history from campaign creation, with no-activity dates counted as 0";
     }
-    if (id === "info:scheduler_no_history") return "KPI/Benchmark snapshot history";
     if (id === "integrity:analytics_history_primary_property_only") return "KPI/Benchmark snapshot history + selected property";
     return "Current campaign data";
   };
@@ -4972,7 +4949,6 @@ export default function GA4Metrics() {
       id === "financial:ga4_to_date_stale" ||
       id === "financial:revenue_missing" ||
       id === "financial:spend_missing" ||
-      id === "info:scheduler_no_history" ||
       id === "anomaly:not-enough-history"
     ) return "High";
     if (id.includes(":3d")) return "Low";
@@ -4982,27 +4958,52 @@ export default function GA4Metrics() {
     return "Medium";
   };
 
-  const findingsCoverageMatchesDaily =
-    String(ga4TrendsCoverage?.propertyId || "").replace(/^properties\//i, "") === String(selectedGA4PropertyId || "").replace(/^properties\//i, "") &&
-    String(ga4TrendsCoverage?.endDate || "") === trendsDataThroughDate &&
-    String(ga4TrendsCoverage?.reportingTimeZone || "") === String((ga4InsightsDailyResp as any)?.reportingTimeZone || "") &&
-    /^\d{4}-\d{2}-\d{2}$/.test(String(ga4TrendsCoverage?.startDate || "")) &&
-    String(ga4TrendsCoverage?.startDate || "") <= trendsDataThroughDate;
-  const findingsZeroDaysVerified = findingsCoverageMatchesDaily && ga4TrendsCoverage?.verified === true && Array.isArray(ga4TrendsCoverage?.dailyRows);
-  const findingsDailyRows = useMemo(() => {
-    if (!findingsZeroDaysVerified) return ga4InsightsTimeSeries;
-    const verifiedRows = normalizeGA4InsightsDailyRows(ga4TrendsCoverage.dailyRows, trendsDataThroughDate);
-    const knownDates = new Set(verifiedRows.map((row: any) => String(row.date)));
-    const verifiedZeroRows = (Array.isArray(ga4TrendsCoverage?.zeroDates) ? ga4TrendsCoverage.zeroDates : [])
-      .filter((date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date) && date >= ga4TrendsCoverage.startDate && date >= String((ga4InsightsDailyResp as any)?.startDate || "") && date <= trendsDataThroughDate && !knownDates.has(date))
-      .map((date: string) => ({ date, sessions: 0, users: 0, conversions: 0, revenue: 0, pageviews: 0, engagedSessions: 0, engagementRate: 0 }));
-    return [...verifiedRows, ...verifiedZeroRows];
-  }, [ga4InsightsTimeSeries, ga4TrendsCoverage, ga4InsightsDailyResp, findingsZeroDaysVerified, trendsDataThroughDate]);
+  const findingsDailyRows = trendsDailyRows;
   const findingsRollups = useMemo(
     () => buildGA4InsightsRollups(findingsDailyRows, trendsDataThroughDate),
     [findingsDailyRows, trendsDataThroughDate],
   );
-  const findingsHistoryMismatch = findingsCoverageMatchesDaily && ga4TrendsCoverage?.reason === "stored_daily_history_differs_from_ga4";
+  const schedulerSynchronizedTrafficState: GA4KpiInputState =
+    ga4DailyResp !== undefined && !ga4Error && !ga4ConnectionError && (ga4DailyResp as any)?.refreshIsStale === true
+      ? "ready"
+      : kpiTrafficInputState;
+  const schedulerSynchronizedConversionsState: GA4KpiInputState =
+    schedulerSynchronizedTrafficState === "ready" &&
+    financialConversionsKpiInputState === "stale" &&
+    ga4FinancialTotalsSource === dailySummedTotals
+      ? "ready"
+      : financialConversionsKpiInputState;
+  const getFindingKpiConsumerState = (kpi: any) => {
+    const deps = getMissingDependenciesForMetric(String(kpi?.metric || kpi?.name || ""));
+    const sufficiency = getKpiDataSufficiency(kpi);
+    return resolveGA4KpiConsumerState({
+      metric: kpi?.metric,
+      name: kpi?.name,
+      listState: kpiListState,
+      trafficState: schedulerSynchronizedTrafficState,
+      revenueState: revenueKpiInputState,
+      spendState: spendKpiInputState,
+      financialConversionsState: schedulerSynchronizedConversionsState,
+      missingDependencies: deps.missing,
+      sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
+    });
+  };
+  const getFindingBenchmarkConsumerState = (benchmark: any) => {
+    const deps = getMissingDependenciesForMetric(String(benchmark?.metric || benchmark?.name || ""));
+    const sufficiency = getBenchmarkDataSufficiency(benchmark);
+    return resolveGA4KpiConsumerState({
+      metric: benchmark?.metric,
+      name: benchmark?.name,
+      listState: benchmarkListState,
+      trafficState: schedulerSynchronizedTrafficState,
+      revenueState: revenueKpiInputState,
+      spendState: spendKpiInputState,
+      financialConversionsState: schedulerSynchronizedConversionsState,
+      missingDependencies: deps.missing,
+      sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
+      entityLabel: "Benchmark",
+    });
+  };
   const insights = useMemo<InsightItem[]>(() => {
     const out: InsightItem[] = [];
     const findingRollups = findingsRollups;
@@ -5023,22 +5024,6 @@ export default function GA4Metrics() {
         title: "GA4 trend history is unavailable",
         description: "The campaign/property-scoped daily-history request failed. Trend comparisons and recommendations are withheld rather than treating the failure as zero or insufficient history.",
         recommendation: "Refresh the tab or reconnect the selected GA4 property before acting on trend signals.",
-      });
-    } else if (trendsRefreshIsStale) {
-      out.push({
-        id: "integrity:daily_history_stale",
-        severity: "medium",
-        title: "GA4 trend history is stale",
-        description: "The tab is showing last-good daily values, but trend comparisons and recommendations are withheld until a current refresh succeeds.",
-        recommendation: "Run the campaign GA4 refresh and confirm the completed-day coverage before acting on trend signals.",
-      });
-    } else if (findingsHistoryMismatch) {
-      out.push({
-        id: "integrity:daily_history_outdated",
-        severity: "high",
-        title: "Refresh GA4 data before reviewing trends",
-        description: "GA4's completed daily values differ from the saved data for this campaign and property. Trend findings are paused to avoid misleading recommendations.",
-        recommendation: "Refresh this campaign's GA4 data, then review its traffic and conversion trends again.",
       });
     }
 
@@ -5072,24 +5057,24 @@ export default function GA4Metrics() {
       .map((k: any) => {
         const metricKey = String((k as any)?.metric || (k as any)?.name || "");
         const deps = getMissingDependenciesForMetric(metricKey);
-        return getKpiConsumerState(k).code === "blocked" ? { k, missing: deps.missing } : null;
+        return getFindingKpiConsumerState(k).code === "blocked" ? { k, missing: deps.missing } : null;
       })
       .filter(Boolean) as Array<{ k: any; missing: Array<"Spend" | "Revenue"> }>;
 
     const unverifiedKpis = (Array.isArray(platformKPIs) ? platformKPIs : [])
-      .map((k: any) => ({ k, consumerState: getKpiConsumerState(k) }))
+      .map((k: any) => ({ k, consumerState: getFindingKpiConsumerState(k) }))
       .filter(({ consumerState }) => !consumerState.eligible && consumerState.code !== "blocked");
 
     const blockedBenchmarks = (Array.isArray(benchmarks) ? benchmarks : [])
       .map((b: any) => {
         const metricKey = String((b as any)?.metric || "");
         const deps = getMissingDependenciesForMetric(metricKey);
-        return getBenchmarkConsumerState(b).code === "blocked" ? { b, missing: deps.missing } : null;
+        return getFindingBenchmarkConsumerState(b).code === "blocked" ? { b, missing: deps.missing } : null;
       })
       .filter(Boolean) as Array<{ b: any; missing: Array<"Spend" | "Revenue"> }>;
 
     const unverifiedBenchmarks = (Array.isArray(benchmarks) ? benchmarks : [])
-      .map((b: any) => ({ b, consumerState: getBenchmarkConsumerState(b) }))
+      .map((b: any) => ({ b, consumerState: getFindingBenchmarkConsumerState(b) }))
       .filter(({ consumerState }) => !consumerState.eligible && consumerState.code !== "blocked");
 
     const invalidKpis = (Array.isArray(platformKPIs) ? platformKPIs : [])
@@ -5107,12 +5092,12 @@ export default function GA4Metrics() {
       .filter(Boolean) as Array<{ b: any; reason: string }>;
 
     const periodMismatchKpis = (Array.isArray(platformKPIs) ? platformKPIs : []).filter((k: any) =>
-      getKpiConsumerState(k).eligible &&
+      getFindingKpiConsumerState(k).eligible &&
       !getInvalidKpiConfigReason(k) &&
       !getKpiInsightPeriodCompatibility(k).comparable
     );
     const periodMismatchBenchmarks = (Array.isArray(benchmarks) ? benchmarks : []).filter((b: any) =>
-      getBenchmarkConsumerState(b).eligible &&
+      getFindingBenchmarkConsumerState(b).eligible &&
       !getInvalidBenchmarkConfigReason(b) &&
       !getBenchmarkInsightPeriodCompatibility(b).comparable
     );
@@ -5317,7 +5302,7 @@ export default function GA4Metrics() {
 
     // 1) Actionable insights from KPI performance
     for (const k of Array.isArray(platformKPIs) ? platformKPIs : []) {
-      if (!getKpiConsumerState(k).eligible) continue; // non-verified KPIs are handled in integrity checks above
+      if (!getFindingKpiConsumerState(k).eligible) continue; // non-verified KPIs are handled in integrity checks above
       if (getInvalidKpiConfigReason(k)) continue; // invalid KPIs are handled in integrity checks above
       if (!getKpiInsightPeriodCompatibility(k).comparable) continue;
       const p = computeKpiProgress(k);
@@ -5415,7 +5400,7 @@ export default function GA4Metrics() {
 
     // 2) Actionable insights from Benchmark performance
     for (const b of Array.isArray(benchmarks) ? benchmarks : []) {
-      if (!getBenchmarkConsumerState(b).eligible) continue; // non-verified Benchmarks are handled in integrity checks above
+      if (!getFindingBenchmarkConsumerState(b).eligible) continue; // non-verified Benchmarks are handled in integrity checks above
       if (getInvalidBenchmarkConfigReason(b)) continue; // invalid benchmarks are handled in integrity checks above
       if (!getBenchmarkInsightPeriodCompatibility(b).comparable) continue;
       const p = computeBenchmarkProgress(b);
@@ -5470,21 +5455,7 @@ export default function GA4Metrics() {
       });
     }
 
-    // 2b) Scheduler dependency: inform user when analytics history is missing
-    const historyEligibleKpis = (Array.isArray(platformKPIs) ? platformKPIs : []).filter((k: any) =>
-      getKpiConsumerState(k).eligible && !getInvalidKpiConfigReason(k)
-    );
-    const historyEligibleBenchmarks = (Array.isArray(benchmarks) ? benchmarks : []).filter((b: any) =>
-      getBenchmarkConsumerState(b).eligible && !getInvalidBenchmarkConfigReason(b)
-    );
-    const hasKpis = historyEligibleKpis.length > 0;
-    const hasKpiAnalytics = hasKpis && historyEligibleKpis.every((k: any) =>
-      hasGA4InsightsAnalyticsHistory(kpiAnalyticsById.get(String(k?.id || "")), "progress")
-    );
-    const hasBenchmarks = historyEligibleBenchmarks.length > 0;
-    const hasBenchmarkAnalytics = hasBenchmarks && historyEligibleBenchmarks.every((b: any) =>
-      hasGA4InsightsAnalyticsHistory(benchmarkAnalyticsById.get(String(b?.id || "")), "history")
-    );
+    // 2b) Scheduler dependency failures: surface actual request failures, not scheduler timing or missing snapshots.
     if (insightsAnalyticsHistoryMatchesSelectedProperty && (kpiAnalyticsFailed || benchmarkAnalyticsFailed)) {
       const failed: string[] = [];
       if (kpiAnalyticsFailed) failed.push("KPI");
@@ -5496,25 +5467,13 @@ export default function GA4Metrics() {
         description: `The live ${failed.join("/")} analytics request failed, so streak and trend recommendations are withheld.`,
         recommendation: "Refresh the tab. If the request still fails, verify campaign access and the analytics snapshot endpoint before acting on trend recommendations.",
       });
-    } else if (insightsAnalyticsHistoryMatchesSelectedProperty && ((hasKpis && !hasKpiAnalytics) || (hasBenchmarks && !hasBenchmarkAnalytics))) {
-      const missing: string[] = [];
-      if (hasKpis && !hasKpiAnalytics) missing.push("KPI");
-      if (hasBenchmarks && !hasBenchmarkAnalytics) missing.push("Benchmark");
-      out.push({
-        id: "info:scheduler_no_history",
-        severity: "low",
-        title: `${missing.join(" and ")} trend history is unavailable`,
-        description: `No daily analytics snapshot is available for ${missing.join("/")} insights. Streak and trend context is withheld until a successful snapshot exists.`,
-        recommendation: "Confirm the daily KPI/Benchmark analytics job completed successfully before using streak or trend context.",
-      });
     }
 
-    // 3) Anomaly detection uses two complete calendar windows. Missing dates
-    // fail closed as insufficient history instead of widening either period.
+    // 3) Anomaly detection uses the same scheduler-synchronized, zero-filled calendar dates as Trends.
     const dates = findingRollups.rows.map((row) => row.date);
-    const historyCoverageLabel = findingsZeroDaysVerified ? "observed or verified-zero" : "observed";
-    const historyRowsLabel = `${dates.length} campaign/property daily dates are available`;
-    const sevenDayComparisonReady = !trendsRefreshIsStale && !findingsHistoryMismatch && findingRollups.last7.complete && findingRollups.prior7.complete;
+    const historyCoverageLabel = "completed";
+    const historyRowsLabel = `${dates.length} campaign dates are available`;
+    const sevenDayComparisonReady = findingRollups.last7.complete && findingRollups.prior7.complete;
     if (sevenDayComparisonReady) {
       const a = findingRollups.last7;
       const b = findingRollups.prior7;
@@ -5619,7 +5578,7 @@ export default function GA4Metrics() {
           recommendation: "Check which traffic sources and conversion paths contributed before changing campaign delivery.",
         });
       }
-    } else if (!trendsRefreshIsStale && !findingsHistoryMismatch && findingRollups.last3.complete && findingRollups.prior3.complete) {
+    } else if (findingRollups.last3.complete && findingRollups.prior3.complete) {
       // Short-window fallback: 3d vs 3d with higher thresholds to reduce false positives
       const crA3 = findingRollups.last3.cr;
       const crB3 = findingRollups.prior3.cr;
@@ -5708,19 +5667,19 @@ export default function GA4Metrics() {
         });
       }
 
-    } else if (!trendsRefreshIsStale && !findingsHistoryMismatch && ga4InsightsDailyResp !== undefined) {
+    } else if (ga4InsightsDailyResp !== undefined) {
       out.push({
         id: "anomaly:not-enough-history",
         severity: "low",
         title: "Trend signals need more history",
         description: `Current 7-day window ${findingRollups.last7.startDate} to ${findingRollups.last7.endDate}: ${findingRollups.last7.days}/${findingRollups.last7.expectedDays} ${historyCoverageLabel} days. Prior 7-day window ${findingRollups.prior7.startDate} to ${findingRollups.prior7.endDate}: ${findingRollups.prior7.days}/${findingRollups.prior7.expectedDays} ${historyCoverageLabel} days. Current 3-day window ${findingRollups.last3.startDate} to ${findingRollups.last3.endDate}: ${findingRollups.last3.days}/${findingRollups.last3.expectedDays} ${historyCoverageLabel} days. Prior window ${findingRollups.prior3.startDate} to ${findingRollups.prior3.endDate}: ${findingRollups.prior3.days}/${findingRollups.prior3.expectedDays} ${historyCoverageLabel} days. Both adjacent calendar windows must be complete before comparisons run; ${historyRowsLabel}.`,
-        recommendation: "Check whether the missing days are genuine zero-activity days or an incomplete import before using trend comparisons.",
+        recommendation: "Wait until the campaign has enough completed calendar days for a reliable comparison.",
       });
     }
 
     // 4) Positive saved-target signals
     for (const k of Array.isArray(platformKPIs) ? platformKPIs : []) {
-      if (!getKpiConsumerState(k).eligible) continue;
+      if (!getFindingKpiConsumerState(k).eligible) continue;
       if (getInvalidKpiConfigReason(k)) continue;
       if (!getKpiInsightPeriodCompatibility(k).comparable) continue;
       const p = computeKpiProgress(k);
@@ -5745,7 +5704,7 @@ export default function GA4Metrics() {
     }
 
     // 5) Surface channel concentration only when it warrants a specific check.
-    if (!trendsRefreshIsStale && !findingsHistoryMismatch && findingRollups.last7.complete) {
+    if (findingRollups.last7.complete) {
       if (findingChannelAnalysis && findingChannelAnalysis.topSessionChannel && findingChannelAnalysis.channelCount >= 2 && findingChannelAnalysis.topSessionShare > 70) {
         const ch = findingChannelAnalysis.topSessionChannel;
         const share = findingChannelAnalysis.topSessionShare;
@@ -5774,8 +5733,6 @@ export default function GA4Metrics() {
     findingsRollups,
     ga4InsightsDailyError,
     ga4InsightsDailyResp,
-    trendsRefreshIsStale,
-    findingsHistoryMismatch,
     breakdownTotals,
     ga4Metrics,
     financialSpend,
@@ -5798,7 +5755,8 @@ export default function GA4Metrics() {
     kpiAnalyticsFailed,
     benchmarkAnalyticsFailed,
     recommendationChannelAnalysis,
-    findingsZeroDaysVerified,
+    schedulerSynchronizedTrafficState,
+    schedulerSynchronizedConversionsState,
     kpiListState,
     kpiTrafficInputState,
     trafficKpiInputState,
@@ -5810,26 +5768,23 @@ export default function GA4Metrics() {
   ]);
 
   const insightsActionDescription = useMemo(() => {
-    const availableDays = Number(insightsRollups?.availableDays || 0);
-    const importedRowLabel = `${availableDays} imported row${availableDays === 1 ? "" : "s"} in the 60-day response`;
-    const current3Coverage = `${insightsRollups.last3.startDate} to ${insightsRollups.last3.endDate}: ${insightsRollups.last3.days}/${insightsRollups.last3.expectedDays} imported days`;
-    const prior3Coverage = `${insightsRollups.prior3.startDate} to ${insightsRollups.prior3.endDate}: ${insightsRollups.prior3.days}/${insightsRollups.prior3.expectedDays} imported days`;
-    const current7Coverage = `${insightsRollups.last7.startDate} to ${insightsRollups.last7.endDate}: ${insightsRollups.last7.days}/${insightsRollups.last7.expectedDays} imported days`;
-    const prior7Coverage = `${insightsRollups.prior7.startDate} to ${insightsRollups.prior7.endDate}: ${insightsRollups.prior7.days}/${insightsRollups.prior7.expectedDays} imported days`;
+    const availableDays = Number(findingsRollups?.availableDays || 0);
+    const completedDayLabel = `${availableDays} completed campaign day${availableDays === 1 ? "" : "s"}`;
+    const current3Coverage = `${findingsRollups.last3.startDate} to ${findingsRollups.last3.endDate}: ${findingsRollups.last3.days}/${findingsRollups.last3.expectedDays} completed days`;
+    const prior3Coverage = `${findingsRollups.prior3.startDate} to ${findingsRollups.prior3.endDate}: ${findingsRollups.prior3.days}/${findingsRollups.prior3.expectedDays} completed days`;
+    const current7Coverage = `${findingsRollups.last7.startDate} to ${findingsRollups.last7.endDate}: ${findingsRollups.last7.days}/${findingsRollups.last7.expectedDays} completed days`;
+    const prior7Coverage = `${findingsRollups.prior7.startDate} to ${findingsRollups.prior7.endDate}: ${findingsRollups.prior7.days}/${findingsRollups.prior7.expectedDays} completed days`;
     if (ga4InsightsDailyError && ga4InsightsDailyResp === undefined) {
       return "GA4 trend history is unavailable. Trend recommendations are withheld; setup and verified KPI/Benchmark checks still run.";
     }
-    if (trendsRefreshIsStale) {
-      return `Showing last-good history (${importedRowLabel}). Trend recommendations are withheld until refresh succeeds.`;
+    if (!findingsRollups.last3.complete || !findingsRollups.prior3.complete) {
+      return `Current 3-day window ${current3Coverage}; prior window ${prior3Coverage}. Both adjacent calendar windows must be complete before trend comparisons run. ${completedDayLabel}; setup and KPI/Benchmark checks still run.`;
     }
-    if (!insightsRollups.last3.complete || !insightsRollups.prior3.complete) {
-      return `Current 3-day window ${current3Coverage}; prior window ${prior3Coverage}. Both adjacent calendar windows must be complete before trend comparisons run. ${importedRowLabel}; setup and KPI/Benchmark checks still run.`;
+    if (!findingsRollups.last7.complete || !findingsRollups.prior7.complete) {
+      return `Current 7-day window ${current7Coverage}; prior window ${prior7Coverage}. Short-window checks are active, but both adjacent 7-day calendar windows must be complete before 7-day comparisons run. ${completedDayLabel}.`;
     }
-    if (!insightsRollups.last7.complete || !insightsRollups.prior7.complete) {
-      return `Current 7-day window ${current7Coverage}; prior window ${prior7Coverage}. Short-window checks are active, but both adjacent 7-day calendar windows must be complete before 7-day comparisons run. ${importedRowLabel}.`;
-    }
-    return `Current 7-day window ${current7Coverage}; prior window ${prior7Coverage}. Both windows are complete, so 7-day comparisons run alongside KPI/Benchmark checks. ${importedRowLabel}.`;
-  }, [ga4InsightsDailyError, ga4InsightsDailyResp, insightsRollups, trendsRefreshIsStale]);
+    return `Current 7-day window ${current7Coverage}; prior window ${prior7Coverage}. Both windows are complete, so 7-day comparisons run alongside KPI/Benchmark checks. ${completedDayLabel}.`;
+  }, [ga4InsightsDailyError, ga4InsightsDailyResp, findingsRollups]);
 
   // Collect GA4 campaign names from the current campaign's saved GA4 scope.
   const normalizeCampaignKey = normalizeGA4CampaignAllocationKey;
@@ -9101,8 +9056,7 @@ export default function GA4Metrics() {
                       <CardContent className="space-y-4">
                         <div className="flex flex-wrap gap-x-2 gap-y-1 text-sm text-muted-foreground/80">
                           <span className="whitespace-nowrap">Latest imported day <span className="font-medium text-foreground">{trendsLatestImportedDateLabel}</span> <span aria-hidden="true">|</span></span>
-                          <span className="whitespace-nowrap">Chart through <span className="font-medium text-foreground">{trendsDataThroughLabel}</span> <span aria-hidden="true">|</span></span>
-                          <span className="whitespace-nowrap">Last scheduler refresh <span className="font-medium text-foreground">{trendsLastRefreshedLabel}</span></span>
+                          <span className="whitespace-nowrap">Chart through <span className="font-medium text-foreground">{trendsDataThroughLabel}</span></span>
                         </div>
                         {ga4InsightsDailyError && ga4InsightsDailyResp === undefined && (
                           <div className="rounded-md border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-900">
@@ -9471,17 +9425,12 @@ export default function GA4Metrics() {
                           {ga4InsightsDailyError && ga4InsightsDailyResp === undefined && (
                             <div className="mb-4 text-sm text-destructive">GA4 summary values are unavailable; no zero values are inferred.</div>
                           )}
-                          {trendsRefreshIsStale && dataSummaryHistoryAvailable && (
-                            <div className="mb-4 text-sm text-amber-700 dark:text-amber-300" data-testid="insights-data-summary-stale">
-                              Showing the latest available GA4 summary values. Daily data may be out of date; verify the refresh before using these figures.
-                            </div>
-                          )}
                           {ga4InsightsDailyResp !== undefined && !dataSummaryHistoryAvailable && (
                             <div className="mb-4 text-sm text-muted-foreground">GA4 summary values are unavailable: no usable imported history was returned for this property.</div>
                           )}
                           {dataSummaryHistoryAvailable && (
                             <p className="mb-4 text-xs text-muted-foreground/70" data-testid="insights-data-summary-scope-note">
-                              GA4 imported history: {dataSummaryHistoryStartDate} to {dataSummaryHistoryEndDate} ({trendsReportingTimeZoneLabel}); missing days excluded.
+                              GA4 imported history: {dataSummaryHistoryStartDate} to {dataSummaryHistoryEndDate} ({trendsReportingTimeZoneLabel}); no-activity days count as 0.
                             </p>
                           )}
                           {timeSeriesLoading && ga4InsightsDailyResp === undefined && (

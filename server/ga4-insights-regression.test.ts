@@ -122,7 +122,7 @@ describe("GA4 Insights regression guard", () => {
     expect(trackerSection).toContain("Total findings");
     expect(trackerSection).toContain("High-severity findings");
     expect(trackerSection).toContain("Medium-severity findings");
-    expect(trackerSection).toContain("Shared unverified-source effects are consolidated.");
+    expect(trackerSection).not.toContain("Shared unverified-source effects are consolidated.");
     expect(content).toContain("{groupInsights.length} shown");
   });
   it("withholds transient tracker counts and findings until all initial inputs settle", () => {
@@ -174,8 +174,8 @@ describe("GA4 Insights regression guard", () => {
     expect(section).toContain('if (attPct >= 100) continue;');
     expect(section).toContain("const periodMismatchLabels = [");
     expect(section).toContain('Affected: ${periodMismatchLabels.join(", ")}.');
-    expect(section).toContain("trend history is unavailable");
-    expect(section).toContain("Confirm the daily KPI/Benchmark analytics job completed successfully");
+    expect(section).not.toContain('id: "info:scheduler_no_history"');
+    expect(section).not.toContain("Confirm the daily KPI/Benchmark analytics job completed successfully");
     expect(section).not.toContain("ROAS is strong");
     expect(content).not.toContain("const POSITIVE_ROAS_STRONG");
     expect(content).not.toContain("const KPI_BEHIND_PCT");
@@ -244,14 +244,14 @@ describe("GA4 Insights regression guard", () => {
 
     expect(copyStart).toBeGreaterThan(-1);
     expect(copyEnd).toBeGreaterThan(copyStart);
-    expect(copySection).toContain("!insightsRollups.last3.complete || !insightsRollups.prior3.complete");
+    expect(copySection).toContain("!findingsRollups.last3.complete || !findingsRollups.prior3.complete");
     expect(copySection).toContain("Current 3-day window ${current3Coverage}; prior window ${prior3Coverage}");
-    expect(copySection).toContain("!insightsRollups.last7.complete || !insightsRollups.prior7.complete");
+    expect(copySection).toContain("!findingsRollups.last7.complete || !findingsRollups.prior7.complete");
     expect(copySection).toContain("Current 7-day window ${current7Coverage}; prior window ${prior7Coverage}");
     expect(copySection).toContain("both adjacent 7-day calendar windows must be complete");
     expect(copySection).toContain("Both windows are complete, so 7-day comparisons run");
-    expect(copySection).toContain("imported row${availableDays === 1 ? \"\" : \"s\"} in the 60-day response");
-    expect(copySection).not.toContain("completed GA4 day${availableDays");
+    expect(copySection).toContain("completed campaign day${availableDays === 1 ? \"\" : \"s\"}");
+    expect(copySection).not.toContain("imported row${availableDays");
     expect(renderSection).not.toContain("<CardDescription>");
   });
 

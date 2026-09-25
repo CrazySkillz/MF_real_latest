@@ -725,7 +725,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).not.toContain("Completed-day cutoff <span");
     expect(ga4Metrics).toContain("Latest imported day");
     expect(ga4Metrics).not.toContain("<span>Reporting timezone <span");
-    expect(ga4Metrics).toContain("Last scheduler refresh <span");
+    expect(ga4Metrics).not.toContain("Last scheduler refresh <span");
     expect(ga4Metrics).not.toContain("Expected refresh <span");
     expect(ga4Metrics).not.toContain("Daily history has not refreshed since the expected {trendsExpectedRefreshLabel} run.");
     expect(ga4Metrics).toContain('`${dailyRows.length} imported row${dailyRows.length === 1 ? "" : "s"}`');

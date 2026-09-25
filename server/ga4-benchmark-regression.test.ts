@@ -75,7 +75,7 @@ describe("GA4 Benchmark regression guard", () => {
     expect(cardSection).toContain('const isInsufficient = consumerState.code === "insufficient_data";');
     expect(cardSection).toContain("const consumerState = getBenchmarkConsumerState(benchmark);");
     expect(cardSection).toContain("sufficiency.reason || \"This Benchmark needs more data before it can be scored.\"");
-    expect(insightsSection).toContain("if (!getBenchmarkConsumerState(b).eligible) continue;");
+    expect(insightsSection).toContain("if (!getFindingBenchmarkConsumerState(b).eligible) continue;");
     expect(reportSection).toContain("const sufficiency = getBenchmarkDataSufficiency(b);");
     expect(reportSection).toContain("Insufficient data -");
     expect(ga4MetricsFile).toContain("Some Benchmarks Need More Data");

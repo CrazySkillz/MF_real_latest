@@ -96,7 +96,7 @@ describe("GA4 Insights authentication and tenant scope", () => {
     expect(update.indexOf("await storage.getClients(actorId)")).toBeLessThan(update.indexOf("storage.updateCampaign"));
   });
 
-  it("invalidates campaign-scoped GA4 facts before refreshing a changed filter or reporting timezone", () => {
+  it("invalidates changed GA4 scope and waits for the daily scheduler to repopulate it", () => {
     const source = routes();
     const start = source.indexOf('app.patch("/api/campaigns/:id"');
     const end = source.indexOf('// Get a single campaign by ID', start);
@@ -104,7 +104,7 @@ describe("GA4 Insights authentication and tenant scope", () => {
 
     expect(route).toContain("const ga4DailyScopeChanged =");
     expect(route).toContain("await storage.updateCampaignWithGA4DailyInvalidation(campaignId, validatedData)");
-    expect(route).toContain("await runGA4DailyRefreshPipeline({ campaignId, suppressAlerts: true })");
+    expect(route).not.toContain("runGA4DailyRefreshPipeline");
     const storageSource = readFileSync(join(process.cwd(), "server", "storage.ts"), "utf8");
     const methodStart = storageSource.indexOf("async updateCampaignWithGA4DailyInvalidation");
     const methodEnd = storageSource.indexOf("async deleteCampaign", methodStart);

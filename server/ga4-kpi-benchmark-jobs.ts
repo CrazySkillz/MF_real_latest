@@ -305,37 +305,8 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       const recordedAt = toRecordedAtUtc(date);
       if (opts?.campaignId) reportedDate = date;
 
-      // Ensure the daily row exists (best-effort backfill)
-      let daily = await storage.getGA4DailyMetrics(campaignId, propertyId, date, date).catch(() => []);
-      if (!daily || daily.length === 0) {
-        const series = await ga4Service.getTimeSeriesData(
-          campaignId,
-          storage,
-          date, // explicit YYYY-MM-DD
-          propertyId,
-          campaignFilter,
-          date,
-        ).catch(() => []);
-        const rows = Array.isArray(series) ? series : [];
-        const upserts = rows
-          .map((r: any) => ({
-            campaignId,
-            propertyId,
-            date: String(r?.date || "").trim(),
-            users: Number(r?.users || 0) || 0,
-            sessions: Number(r?.sessions || 0) || 0,
-            engagedSessions: r?.engagedSessions == null ? null : Math.max(0, Math.round(Number(r.engagedSessions) || 0)),
-            pageviews: Number(r?.pageviews || 0) || 0,
-            conversions: Number(r?.conversions || 0) || 0,
-            revenue: String(Number(r?.revenue || 0).toFixed(2)),
-            engagementRate: (r as any)?.engagementRate ?? null,
-            revenueMetric: (r as any)?.revenueMetric ?? null,
-            isSimulated: Boolean((campaign as any)?.ga4CampaignFilter && String((campaign as any).ga4CampaignFilter).toLowerCase().includes("mock")),
-          }))
-          .filter((x: any) => String(x.date) === date);
-        await storage.replaceGA4DailyMetricsWindow(campaignId, propertyId, date, date, upserts as any);
-        daily = await storage.getGA4DailyMetrics(campaignId, propertyId, date, date).catch(() => []);
-      }
+      // Daily history is materialized only by the GA4 daily scheduler.
+      const daily = await storage.getGA4DailyMetrics(campaignId, propertyId, date, date).catch(() => []);
 
       let row = Array.isArray(daily) ? (daily as any[])[0] : null;
       const hasExactDailyRow = Boolean(row && String((row as any)?.date || "") === date);

@@ -5,6 +5,8 @@ const storageMock = vi.hoisted(() => ({
   getCampaign: vi.fn(),
   getPlatformKPIs: vi.fn(),
   getPlatformBenchmarks: vi.fn(),
+  getGA4Connections: vi.fn(),
+  getLatestGA4DailyMetric: vi.fn(),
 }));
 const refreshMock = vi.hoisted(() => vi.fn());
 const kpiAlertMock = vi.hoisted(() => vi.fn());
@@ -56,6 +58,8 @@ describe("Notifications GA4 reconciliation route proof", () => {
     storageMock.getCampaign.mockResolvedValue({ id: "campaign-1", ownerId: "owner-1", reportingTimeZone: "UTC" });
     storageMock.getPlatformKPIs.mockResolvedValue([]);
     storageMock.getPlatformBenchmarks.mockResolvedValue([]);
+    storageMock.getGA4Connections.mockResolvedValue([{ propertyId: "properties/123", isPrimary: true }]);
+    storageMock.getLatestGA4DailyMetric.mockResolvedValue({ date: "2026-09-24" });
   });
 
   afterAll(async () => new Promise<void>((resolve, reject) => server.close((error: any) => error ? reject(error) : resolve())));
@@ -70,18 +74,18 @@ describe("Notifications GA4 reconciliation route proof", () => {
     expect(benchmarkAlertMock).not.toHaveBeenCalled();
   });
 
-  it("still refreshes and reconciles an enabled KPI alert", async () => {
+  it("reconciles an enabled KPI alert from the latest scheduler-stored date", async () => {
     storageMock.getPlatformKPIs.mockResolvedValue([{ alertsEnabled: true, alertThreshold: "70" }]);
 
     const response = await fetch(`${baseUrl}/api/campaigns/campaign-1/ga4-notifications/reconcile`, { method: "POST" });
 
     expect(response.status).toBe(200);
-    expect(refreshMock).toHaveBeenCalledWith({ campaignId: "campaign-1", suppressAlerts: true });
-    expect(kpiAlertMock).toHaveBeenCalledWith("campaign-1", expect.any(String));
-    expect(benchmarkAlertMock).toHaveBeenCalledWith("campaign-1", expect.any(String));
+    expect(refreshMock).not.toHaveBeenCalled();
+    expect(kpiAlertMock).toHaveBeenCalledWith("campaign-1", "2026-09-24");
+    expect(benchmarkAlertMock).toHaveBeenCalledWith("campaign-1", "2026-09-24");
   });
 
-  it("still refreshes and reconciles an enabled active Benchmark alert", async () => {
+  it("reconciles an enabled active Benchmark alert without refreshing history", async () => {
     storageMock.getPlatformBenchmarks.mockResolvedValue([{
       status: "active",
       alertsEnabled: true,
@@ -91,9 +95,9 @@ describe("Notifications GA4 reconciliation route proof", () => {
     const response = await fetch(`${baseUrl}/api/campaigns/campaign-1/ga4-notifications/reconcile`, { method: "POST" });
 
     expect(response.status).toBe(200);
-    expect(refreshMock).toHaveBeenCalledWith({ campaignId: "campaign-1", suppressAlerts: true });
-    expect(kpiAlertMock).toHaveBeenCalledWith("campaign-1", expect.any(String));
-    expect(benchmarkAlertMock).toHaveBeenCalledWith("campaign-1", expect.any(String));
+    expect(refreshMock).not.toHaveBeenCalled();
+    expect(kpiAlertMock).toHaveBeenCalledWith("campaign-1", "2026-09-24");
+    expect(benchmarkAlertMock).toHaveBeenCalledWith("campaign-1", "2026-09-24");
   });
 
   it("checks ownership before reading alert rules", async () => {

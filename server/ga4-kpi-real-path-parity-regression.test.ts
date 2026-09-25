@@ -545,14 +545,7 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(storageMock.recordBenchmarkHistory).not.toHaveBeenCalled();
     expect(result.kpisRecorded).toBe(0);
     expect(result.benchmarksRecorded).toBe(0);
-    expect(ga4ServiceMock.getTimeSeriesData).toHaveBeenCalledWith(
-      campaign.id,
-      storageMock,
-      "2026-07-31",
-      connection.propertyId,
-      campaign.ga4CampaignFilter,
-      "2026-07-31",
-    );
+    expect(ga4ServiceMock.getTimeSeriesData).not.toHaveBeenCalled();
   });
 
   it("keeps date-dimension Engagement Rate authoritative when the dimensionless aggregate differs", async () => {
@@ -623,14 +616,20 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
   });
 
-  it("rejects malformed on-demand GA4 daily provider values before replacing persisted history", async () => {
+  it("ignores mutation-capable ga4-daily requests and serves scheduler storage only", async () => {
     storageMock.getGA4DailyMetrics.mockResolvedValue([]);
     ga4ServiceMock.getTimeSeriesData.mockResolvedValue([{ ...dailyRow, date: "2026-07-31", sessions: "not-a-number" }]);
     vi.useRealTimers();
 
     const response = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-daily?days=30&propertyId=" + encodeURIComponent(connection.propertyId));
 
-    expect(response.status).toBe(500);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      validationReadOnly: true,
+      providerRefreshAttempted: false,
+      providerRefreshOutcome: "read_only",
+    });
+    expect(ga4ServiceMock.getTimeSeriesData).not.toHaveBeenCalled();
     expect(storageMock.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
   });
 

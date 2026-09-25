@@ -66,46 +66,41 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("financialInputs,");
   });
 
-  it("refreshes system-generated yesop GA4 test data without requiring a live OAuth token", () => {
+  it("rejects manual GA4 daily-history refreshes so only the scheduler can update charts", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.post("/api/campaigns/:id/ga4/refresh"');
     const routeEnd = routes.indexOf('app.post("/api/campaigns/:id/linkedin-daily/mock"', routeStart);
     const route = routes.slice(routeStart, routeEnd);
 
-    expect(route).toContain("const simulated = isYesopMockProperty(String(primaryConn.propertyId || \"\"));");
-    expect(route).toContain("simulated");
-    expect(route).toContain("simulateGA4({");
-    expect(route).toContain('dateRange: "7days"');
-    expect(route).toContain("ga4Service.getMetricsWithAutoRefresh");
-    expect(route).toContain("isSimulated: simulated");
+    expect(route).toContain('error: "GA4_DAILY_HISTORY_SCHEDULER_MANAGED"');
+    expect(route).not.toContain("storage.upsertGA4DailyMetrics");
+    expect(route).not.toContain("ga4Service.getMetricsWithAutoRefresh");
   });
 
-  it("keeps ga4-daily backfill revenue in native GA4 daily metrics instead of synthetic imported revenue records", () => {
+  it("keeps ga4-daily reads storage-only even when readOnly is omitted", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/ga4-daily"');
     const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-to-date"', routeStart);
     const route = routes.slice(routeStart, routeEnd);
 
-    expect(route).toContain("await storage.replaceGA4DailyMetricsWindow(");
+    expect(route).toContain("const readOnly = true;");
+    expect(route).toContain("the scheduler is the sole live writer");
+    expect(route).not.toContain("await storage.replaceGA4DailyMetricsWindow(");
+    expect(route).not.toContain("ga4Service.getTimeSeriesData(");
     expect(route).not.toContain("storage.createRevenueRecords");
     expect(route).not.toContain("revenueSourceId: 'ga4_daily_metrics'");
     expect(route).not.toContain('revenueSourceId: "ga4_daily_metrics"');
   });
 
-  it("reconciles stored GA4 daily rows after an exact repair refetch, including authoritative zeros", () => {
-    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
-    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/ga4-daily"');
-    const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-to-date"', routeStart);
-    const route = routes.slice(routeStart, routeEnd);
+  it("materializes authoritative scheduler zeros without an on-demand repair writer", () => {
+    const scheduler = readFileSync(join(process.cwd(), "server", "ga4-daily-scheduler.ts"), "utf-8");
 
-    expect(route).toContain("const needsConversionRevenueRepair = (rows: any[]) =>");
-    expect(route).toContain("const hasTraffic = list.some");
-    expect(route).toContain("const hasConversions = list.some");
-    expect(route).toContain("const hasRevenue = list.some");
-    expect(route).toContain("return hasTraffic && !hasObservedProviderRevenueShape && (!hasConversions || !hasRevenue);");
-    expect(route).toContain("} else if (needsConversionRevenueRepair(stored)) {");
-    expect(route).toContain("await storage.replaceGA4DailyMetricsWindow(");
-    expect(route).not.toContain("const recoveredConversionRevenue = upserts.some");
+    expect(scheduler).toContain("getTrendsDailyPresenceWithToken(");
+    expect(scheduler).toContain("GA4 reported activity for a date without a complete daily metric row");
+    expect(scheduler).toContain("const completeRows = getDateRange(storageStartDate, reportingWindow.endDate)");
+    expect(scheduler).toContain("sessions: 0");
+    expect(scheduler).toContain("conversions: 0");
+    expect(scheduler).toContain("revenue: 0");
   });
 
   it("derives engagedSessions in the ga4-daily response from stored sessions and engagementRate", () => {

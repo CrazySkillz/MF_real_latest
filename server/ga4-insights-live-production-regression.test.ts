@@ -192,7 +192,10 @@ describe("live GA4 Insights production boundary", () => {
       expect(route).toContain("ensureCampaignAccess");
     }
     expect(daily).toContain("getReportingDateWindow(days, (campaign as any)?.reportingTimeZone)");
-    expect(daily).toContain("campaignFilter,\n          endDate,");
+    expect(daily).toContain("the scheduler is the sole live writer");
+    expect(daily).toContain("storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate)");
+    expect(daily).not.toContain("ga4Service.getTimeSeriesData(");
+    expect(daily).not.toContain("storage.replaceGA4DailyMetricsWindow(");
     expect(toDate).toContain("getReportingDateWindow(");
     expect(toDate).toContain("(campaign as any)?.reportingTimeZone");
     expect(breakdown).toContain("getReportingDateWindow(dateRangeToDays(dateRange), (campaign as any)?.reportingTimeZone)");

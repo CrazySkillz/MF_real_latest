@@ -5,7 +5,7 @@ import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./
 import { checkGA4BenchmarkPerformanceAlertsForCampaign, checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
 import { getLatestCompleteReportingDate, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { createHash } from "crypto";
-import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
+import { addGA4InsightsDateDays, normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 import { beginFinancialDailySnapshotRefreshObservation, recordFinancialDailySnapshotRefreshEvidence } from "./utils/financial-daily-snapshot-observation";
 import { writeFinancialDailySnapshotIfReady } from "./utils/financial-daily-snapshot-writer";
 
@@ -113,6 +113,14 @@ const parseGA4CampaignFilter = (raw: any): CampaignFilter => {
   return s;
 };
 
+const getDateRange = (startDate: string, endDate: string): string[] => {
+  const dates: string[] = [];
+  for (let date: string | null = startDate; date && date <= endDate; date = addGA4InsightsDateDays(date, 1)) {
+    dates.push(date);
+  }
+  return dates;
+};
+
 const getZonedParts = (date: Date, reportingTimeZone: string) => {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: reportingTimeZone,
@@ -155,7 +163,7 @@ export function getGA4DailySchedulerConfig(env: NodeJS.ProcessEnv = process.env)
   const reportingTimeZone = normalizeReportingTimeZone(env.GA4_DAILY_REFRESH_TIME_ZONE || "UTC");
   const hour = parseBoundedInt(env.GA4_DAILY_REFRESH_HOUR, 3, 0, 23);
   const minute = parseBoundedInt(env.GA4_DAILY_REFRESH_MINUTE, 0, 0, 59);
-  const runOnStartup = String(env.GA4_DAILY_REFRESH_RUN_ON_STARTUP ?? "true").toLowerCase() !== "false";
+  const runOnStartup = false;
   return { reportingTimeZone, hour, minute, runOnStartup };
 }
 
@@ -181,14 +189,13 @@ const formatSchedulerLocalTime = (date: Date, reportingTimeZone: string) =>
     timeZoneName: "short",
   }).format(date);
 
-export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOptions = {}): Promise<GA4DailyRefreshResult> {
+export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOptions = {}, now = new Date()): Promise<GA4DailyRefreshResult> {
   const campaignId = String(opts.campaignId || "").trim();
   const lookbackDays = Math.min(
     Math.max(parseInt(process.env.GA4_DAILY_LOOKBACK_DAYS || "90", 10) || 90, 7),
     365
   );
 
-  const now = new Date();
   console.log(`[GA4 Daily] Refresh starting (lookbackDays=${lookbackDays}${campaignId ? `, campaignId=${campaignId}` : ""})`);
 
   const campaigns = campaignId
@@ -215,18 +222,42 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
     let failed = false;
     for (const connection of activeConnections) {
       try {
-        const series = await ga4Service.getTimeSeriesData(
+        const configuredImportStartDate = String(connection?.importStartDate || "").trim();
+        const storageStartDate = /^\d{4}-\d{2}-\d{2}$/.test(configuredImportStartDate)
+          ? configuredImportStartDate > reportingWindow.startDate ? configuredImportStartDate : reportingWindow.startDate
+          : reportingWindow.startDate;
+        if (storageStartDate > reportingWindow.endDate) throw new Error("GA4 daily import starts after the completed-day window");
+        const propertyId = String(connection.propertyId);
+        const initialSeries = await ga4Service.getTimeSeriesData(
           currentCampaignId,
           storage,
-          reportingWindow.startDate,
-          String(connection.propertyId),
+          storageStartDate,
+          propertyId,
           campaignFilter,
           reportingWindow.endDate,
+          String((c as any)?.currency || "").trim().toUpperCase(),
         );
-        const rows = Array.isArray(series) ? series : [];
+        const hasCampaignFilter = Array.isArray(campaignFilter)
+          ? campaignFilter.length > 0
+          : Boolean(String(campaignFilter || "").trim());
+        const providerResult = hasCampaignFilter
+          ? await (async () => {
+              const refreshedConnection = await storage.getGA4Connection(currentCampaignId, propertyId);
+              if (!refreshedConnection?.accessToken) throw new Error("GA4 access token is unavailable for daily presence verification");
+              return ga4Service.getTrendsDailyPresenceWithToken(
+                propertyId,
+                String(refreshedConnection.accessToken),
+                storageStartDate,
+                reportingWindow.endDate,
+                campaignFilter,
+                String((c as any)?.currency || "").trim().toUpperCase(),
+              );
+            })()
+          : { dailyRows: initialSeries, presentDates: (Array.isArray(initialSeries) ? initialSeries : []).map((row: any) => String(row?.date || "")) };
+        const rows = Array.isArray(providerResult.dailyRows) ? providerResult.dailyRows : [];
         const normalizedRows = rows.map((r: any) => normalizeGA4InsightsDailyMetricValues({
           campaignId: currentCampaignId,
-          propertyId: String(connection.propertyId),
+          propertyId,
           date: String(r?.date || "").trim(),
           users: r?.users,
           sessions: r?.sessions,
@@ -242,19 +273,40 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
         const toUpsert = normalizedRows as any[];
         if (toUpsert.some((row: any) =>
           !/^\d{4}-\d{2}-\d{2}$/.test(String(row.date || "")) ||
-          row.date < reportingWindow.startDate ||
+          row.date < storageStartDate ||
           row.date > reportingWindow.endDate
         )) throw new Error("GA4 returned a daily row outside the requested completed-day window");
+        const rowsByDate = new Map(toUpsert.map((row: any) => [String(row.date), row]));
+        if (rowsByDate.size !== toUpsert.length) throw new Error("GA4 returned duplicate daily rows");
+        for (const presentDate of providerResult.presentDates) {
+          if (!rowsByDate.has(String(presentDate))) {
+            throw new Error("GA4 reported activity for a date without a complete daily metric row");
+          }
+        }
+        const completeRows = getDateRange(storageStartDate, reportingWindow.endDate).map((date) => rowsByDate.get(date) || {
+          campaignId: currentCampaignId,
+          propertyId,
+          date,
+          users: 0,
+          sessions: 0,
+          engagedSessions: 0,
+          pageviews: 0,
+          conversions: 0,
+          revenue: 0,
+          engagementRate: 0,
+          revenueMetric: null,
+          isSimulated: false,
+        });
 
         const res = await storage.replaceGA4DailyMetricsWindow(
           currentCampaignId,
-          String(connection.propertyId),
-          reportingWindow.startDate,
+          propertyId,
+          storageStartDate,
           reportingWindow.endDate,
-          toUpsert as any,
+          completeRows as any,
         );
         upserted += Number(res?.replaced || 0);
-        propertyIdsProcessed.push(String(connection.propertyId));
+        propertyIdsProcessed.push(propertyId);
       } catch (e: any) {
         failed = true;
         propertyIdsFailed.push(String(connection.propertyId));
@@ -390,10 +442,6 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
   }
 }
 
-export async function runGA4DailyRefreshPipeline(opts: GA4DailyRefreshPipelineOptions = {}): Promise<void> {
-  await runGA4DailyRefreshPipelineForTrigger("manual", opts);
-}
-
 export function getGA4DailySchedulerStatus() {
   const config = ga4DailySchedulerStatus.config || getGA4DailySchedulerConfig();
   return {
@@ -424,7 +472,7 @@ export function getGA4DailySchedulerStatus() {
 
 /**
  * Start the GA4 daily refresh scheduler
- * Runs at the configured local reporting time, with an optional startup run.
+ * Runs only at the configured local reporting time.
  */
 export function startGA4DailyScheduler(): void {
   if ((global as any).ga4DailySchedulerTimer || (global as any).ga4DailySchedulerInterval) {
@@ -451,12 +499,6 @@ export function startGA4DailyScheduler(): void {
   };
 
   console.log(`[GA4 Daily] Scheduler started (time=${String(config.hour).padStart(2, "0")}:${String(config.minute).padStart(2, "0")}, timezone=${config.reportingTimeZone}, startupRun=${config.runOnStartup})`);
-
-  if (config.runOnStartup) {
-    runGA4DailyRefreshPipelineForTrigger("startup").catch((e) => {
-      console.warn("[GA4 Daily] Startup pipeline failed:", (e as any)?.message || e);
-    });
-  }
 
   scheduleNextRun();
 }

@@ -43,7 +43,7 @@ import { eq, inArray, sql } from "drizzle-orm";
 import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign, refreshTikTokBenchmarksForCampaign, refreshTikTokKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./kpi-scheduler";
 import { refreshGoogleSheetsDataForCampaign, runGoogleSheetsRevenueSourceRefreshForValidation, runGoogleSheetsSpendSourceRefreshForValidation, runHubSpotRevenueSourceRefreshForValidation, runShopifyRevenueSourceRefreshForValidation } from "./auto-refresh-scheduler";
-import { getGA4DailySchedulerConfig, getGA4DailySchedulerStatus, runGA4DailyRefreshPipeline } from "./ga4-daily-scheduler";
+import { getGA4DailySchedulerConfig, getGA4DailySchedulerStatus } from "./ga4-daily-scheduler";
 import { isInternalAutoRefreshRequest } from "./internal-request-auth";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { createReportPdfArtifact, readReportPdfArtifact } from "./utils/report-pdf-artifact";
@@ -8108,111 +8108,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Manual trigger: refresh GA4 data + persist daily metrics (useful for testing).
+  // GA4 daily history is scheduler-managed; manual writes are intentionally disabled.
   app.post("/api/campaigns/:id/ga4/refresh", async (req, res) => {
     try {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = String(req.params.id || "");
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
-
-      // Get GA4 connection for this campaign
-      const connections = await storage.getGA4Connections(campaignId);
-      const primaryConn = connections.find((c: any) => c.isPrimary) || connections[0];
-
-      if (!primaryConn) {
-        return res.status(404).json({ success: false, error: "No GA4 connection found for this campaign" });
-      }
-
-      const campaign = await storage.getCampaign(campaignId);
-      if (!campaign) {
-        return res.status(404).json({ success: false, error: "Campaign not found" });
-      }
-
-      // Fetch GA4 metrics for yesterday (latest complete day)
-      const yesterday = new Date();
-      yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-      const dateStr = yesterday.toISOString().slice(0, 10);
-
-      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
-
-      try {
-        const simulated = isYesopMockProperty(String(primaryConn.propertyId || ""));
-        const metrics = simulated
-          ? (() => {
-              const sim = simulateGA4({
-                campaignId,
-                propertyId: primaryConn.propertyId,
-                dateRange: "7days",
-                noRevenue: isNoRevenueFilter((campaign as any)?.ga4CampaignFilter),
-                ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter,
-              });
-              return (sim.timeSeries || []).find((row: any) => row.date === dateStr) || (sim.timeSeries || []).at(-1) || {};
-            })()
-          : await ga4Service.getMetricsWithAutoRefresh(
-              campaignId,
-              storage,
-              dateStr,
-              primaryConn.propertyId,
-              campaignFilter
-            );
-
-        const metricsAny = metrics as any;
-        const users = Number(metricsAny?.users || 0);
-        const sessions = Number(metricsAny?.sessions || 0);
-        const conversions = Number(metricsAny?.conversions || 0);
-        const pageviews = Number(metricsAny?.pageviews || 0);
-        const newUsers = metricsAny?.newUsers == null ? null : Number(metricsAny.newUsers || 0);
-        const engagedSessions = metricsAny?.engagedSessions == null ? null : Number(metricsAny.engagedSessions || 0);
-        const engagementRate = metricsAny?.engagementRate == null ? null : Number(metricsAny.engagementRate || 0);
-        const totalEvents = metricsAny?.eventCount == null ? null : Number(metricsAny.eventCount || 0);
-        const eventsPerSession = metricsAny?.eventsPerSession == null ? null : Number(metricsAny.eventsPerSession || 0);
-
-        // Upsert daily metrics with populated values
-        await storage.upsertGA4DailyMetrics([
-          {
-            campaignId: campaignId,
-            propertyId: primaryConn.propertyId,
-            date: dateStr,
-            users: users,
-            sessions: sessions,
-            engagedSessions: engagedSessions,
-            pageviews: pageviews,
-            conversions: conversions,
-            revenue: String(metricsAny?.revenue || "0"),
-            engagementRate: engagementRate == null ? null : String(engagementRate),
-            revenueMetric: metricsAny?.revenueMetric || "totalRevenue",
-            isSimulated: simulated,
-          }
-        ]);
-
-        try {
-          await runGA4DailyKPIAndBenchmarkJobs({ campaignId, date: dateStr });
-        } catch (e: any) {
-          console.warn("[GA4 Refresh] KPI/Benchmark recompute failed:", e?.message || e);
-        }
-
-        res.json({
-          success: true,
-          message: "GA4 metrics refreshed successfully",
-          metrics: {
-            users,
-            sessions,
-            conversions,
-            pageviews,
-            newUsers,
-            engagedSessions,
-            engagementRate,
-            totalEvents,
-            eventsPerSession,
-          }
-        });
-      } catch (err: any) {
-        console.error("Error refreshing GA4 metrics:", err);
-        res.status(500).json({ success: false, error: err?.message || "Failed to fetch GA4 metrics" });
-      }
+      return res.status(409).json({
+        success: false,
+        error: "GA4_DAILY_HISTORY_SCHEDULER_MANAGED",
+        message: "GA4 daily history is updated only by the daily scheduler.",
+      });
     } catch (e: any) {
-      res.status(500).json({ success: false, error: e?.message || "Failed to refresh GA4 data" });
+      res.status(500).json({ success: false, error: e?.message || "Failed to validate GA4 refresh request" });
     }
   });
 
@@ -9053,13 +8962,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
       }
-      if (ga4DailyScopeChanged) {
-        try {
-          await runGA4DailyRefreshPipeline({ campaignId, suppressAlerts: true });
-        } catch (error: any) {
-          console.warn(`[Campaign Update] GA4 daily scope refresh failed for campaign ${campaignId}:`, error?.message || error);
-        }
-      }
       res.json(withReportingTimeZone(campaign as any));
     } catch (error) {
       console.error('Campaign update error:', error);
@@ -9102,7 +9004,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Campaign-scoped manual validation trigger for the deployed GA4 daily pipeline.
+  // GA4 daily history is scheduler-managed; manual pipeline runs are intentionally disabled.
   app.post("/api/campaigns/:id/ga4-daily-scheduler/run-now", async (req, res) => {
     try {
       res.setHeader("Cache-Control", "no-store");
@@ -9110,23 +9012,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
 
-      const before = getGA4DailySchedulerStatus();
-      await runGA4DailyRefreshPipeline({ campaignId, suppressAlerts: true });
-      const after = getGA4DailySchedulerStatus();
-
-      res.json({
-        success: true,
-        certificationStatus: "validation_output_only",
-        productionReadinessNote: "This campaign-scoped trigger runs the deployed GA4 daily refresh plus KPI/Benchmark recompute path for validation. It is not clean certification by itself until the response evidence is reviewed and recorded.",
-        limitations: [
-          "Requires campaign access and runs only for the authorized campaign.",
-          "Suppresses the global alert sweep to avoid cross-campaign side effects; Benchmark alert delivery remains covered by separate alert-email validation evidence.",
-          "A manual success proves the deployed pipeline can run on demand for this campaign; it does not prove the daily timer fired by itself.",
-        ],
-        campaignId,
-        trigger: "manual",
-        before,
-        after,
+      return res.status(409).json({
+        success: false,
+        error: "GA4_DAILY_HISTORY_SCHEDULER_MANAGED",
+        message: "GA4 daily history is updated only by the daily scheduler.",
       });
     } catch (error: any) {
       res.status(500).json({
@@ -9152,13 +9041,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasEnabledAlertRule = alertKPIs.some((row: any) => row?.alertsEnabled && row?.alertThreshold != null)
         || alertBenchmarks.some((row: any) => row?.status === "active" && row?.alertsEnabled && row?.alertThreshold != null);
       if (!hasEnabledAlertRule) return res.json({ success: true, campaignId });
-      const providerCoverageThroughDate = getGA4KPIReportingWindow((campaign as any)?.reportingTimeZone).endDate;
-
-      await runGA4DailyRefreshPipeline({ campaignId, suppressAlerts: true });
-      const refreshStatus = getGA4DailySchedulerStatus();
-      if (refreshStatus.lastRunStatus === "skipped" && refreshStatus.inProgress) {
-        return res.status(409).json({ success: false, message: "GA4 refresh already in progress" });
-      }
+      const connections = await storage.getGA4Connections(campaignId);
+      const primaryConnection = connections.find((connection: any) => connection?.isPrimary) || connections[0];
+      const latestDailyMetric = primaryConnection
+        ? await storage.getLatestGA4DailyMetric(campaignId, String(primaryConnection.propertyId)).catch(() => null)
+        : null;
+      const providerCoverageThroughDate = String((latestDailyMetric as any)?.date || "").trim();
+      if (!providerCoverageThroughDate) return res.json({ success: true, campaignId });
       await checkGA4PerformanceAlertsForCampaign(campaignId, providerCoverageThroughDate);
       const { checkGA4BenchmarkPerformanceAlertsForCampaign } = await import("./benchmark-notifications.js");
       await checkGA4BenchmarkPerformanceAlertsForCampaign(campaignId, providerCoverageThroughDate);
@@ -9179,7 +9068,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const days = Math.min(Math.max(parseInt(String(req.query.days || "30"), 10) || 30, 7), 365);
       const propertyId = req.query.propertyId as string; // optional
       const forceMock = String((req.query as any)?.mock || "").toLowerCase() === "1" || String((req.query as any)?.mock || "").toLowerCase() === "true";
-      const readOnly = ["1", "true", "yes"].includes(String((req.query as any)?.readOnly || "").trim().toLowerCase());
+      const readOnly = true;
       const requestedPropertyId = propertyId ? String(propertyId) : "";
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
 
@@ -9291,9 +9180,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
-      const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
-
       // Resolve connection(s)
       let connections: any[] = [];
       if (propertyId) {
@@ -9323,116 +9209,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const toDailyMetricUpserts = (series: any[]) => (Array.isArray(series) ? series : [])
-        .map((r: any) => {
-          const date = String(r?.date || "").trim();
-          if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < startDate || date > endDate) {
-            throw new Error("GA4 returned a daily metric outside the requested window");
-          }
-          const normalized = normalizeGA4InsightsDailyMetricValues(r);
-          if (!normalized) throw new Error("GA4 returned an invalid daily metric value");
-          return {
-            ...r,
-            ...normalized,
-            campaignId,
-            propertyId: String(selectedConnection.propertyId),
-            date,
-            revenue: normalized.revenue!.toFixed(2),
-            revenueMetric: r?.revenueMetric ?? null,
-            isSimulated: false,
-          };
-        });
-
-      const hasCampaignFilter = Array.isArray(campaignFilter)
-        ? campaignFilter.length > 0
-        : !!String(campaignFilter || "").trim();
-      const needsConversionRevenueRepair = (rows: any[]) => {
-        const list = Array.isArray(rows) ? rows : [];
-        if (!hasCampaignFilter || list.length === 0) return false;
-        const hasTraffic = list.some((r: any) =>
-          Number(r?.sessions || 0) > 0 ||
-          Number(r?.users || 0) > 0 ||
-          Number(r?.pageviews || 0) > 0
-        );
-        const hasConversions = list.some((r: any) => Number(r?.conversions || 0) !== 0);
-        const hasRevenue = list.some((r: any) => Number(r?.revenue || 0) !== 0);
-        const hasObservedProviderRevenueShape = list
-          .filter((r: any) => Number(r?.sessions || 0) !== 0 || Number(r?.users || 0) !== 0 || Number(r?.pageviews || 0) !== 0)
-          .every((r: any) => String(r?.revenueMetric || "").trim().length > 0);
-        return hasTraffic && !hasObservedProviderRevenueShape && (!hasConversions || !hasRevenue);
-      };
-
-      // Read from persisted store first
-      let providerRefreshWarning: string | null = null;
-      let providerRefreshAttempted = false;
-      let providerRefreshOutcome: "not_needed" | "read_only" | "rows_returned" | "empty" | "failed" = readOnly ? "read_only" : "not_needed";
-      let providerRefreshRowCount = 0;
-      let providerRefreshCompletedAt: string | null = null;
-      let providerCoverageThroughDate: string | null = null;
-      let stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate).catch(() => []);
-      const refreshFromProvider = async () => {
-        providerRefreshAttempted = true;
-        const series = await ga4Service.getTimeSeriesData(
-          campaignId,
-          storage,
-          startDate, // explicit YYYY-MM-DD
-          String(selectedConnection.propertyId),
-          campaignFilter,
-          endDate,
-        );
-        const upserts = toDailyMetricUpserts(series);
-        providerRefreshRowCount = upserts.length;
-        providerRefreshOutcome = upserts.length > 0 ? "rows_returned" : "empty";
-
-        await storage.replaceGA4DailyMetricsWindow(
-          campaignId,
-          String(selectedConnection.propertyId),
-          startDate,
-          endDate,
-          upserts as any,
-        );
-        stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate);
-        providerRefreshCompletedAt = new Date().toISOString();
-        providerCoverageThroughDate = dataThroughDate;
-      };
-
-      if (!readOnly) {
-        if (!stored || stored.length === 0) {
-          // Best-effort backfill on demand for empty daily history. Preserve existing behavior: surface provider errors.
-          await refreshFromProvider();
-        } else if (getOldestDueMissingDailyDate(getLatestStoredDailyDate(stored))) {
-          // Existing rows can still be stale. Try to fill due missing completed days, but keep serving stored rows if the provider fails.
-          try {
-            await refreshFromProvider();
-          } catch (e: any) {
-            providerRefreshOutcome = "failed";
-            providerRefreshWarning = e?.message || "Failed to refresh missing GA4 daily rows";
-          }
-        } else if (needsConversionRevenueRepair(stored)) {
-          providerRefreshAttempted = true;
-          const series = await ga4Service.getTimeSeriesData(
-            campaignId,
-            storage,
-            startDate,
-            String(selectedConnection.propertyId),
-            campaignFilter,
-            endDate,
-          );
-          const upserts = toDailyMetricUpserts(series);
-          providerRefreshRowCount = upserts.length;
-          providerRefreshOutcome = upserts.length > 0 ? "rows_returned" : "empty";
-          await storage.replaceGA4DailyMetricsWindow(
-            campaignId,
-            String(selectedConnection.propertyId),
-            startDate,
-            endDate,
-            upserts as any,
-          );
-          stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate);
-          providerRefreshCompletedAt = new Date().toISOString();
-          providerCoverageThroughDate = dataThroughDate;
-        }
-      }
+      // Daily history reads never contact GA4 or write storage; the scheduler is the sole live writer.
+      const providerRefreshWarning: string | null = null;
+      const providerRefreshAttempted = false;
+      const providerRefreshOutcome = "read_only" as const;
+      const providerRefreshRowCount = 0;
+      const providerRefreshCompletedAt: string | null = null;
+      const providerCoverageThroughDate: string | null = null;
+      const stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate).catch(() => []);
       const latestStoredDailyDate = getLatestStoredDailyDate(stored);
       const configuredOverviewStartDate = String((selectedConnection as any)?.importStartDate || '').trim();
       const overviewStartCandidate = configuredOverviewStartDate || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE;
@@ -9474,7 +9258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         providerRefreshOutcome,
         providerRefreshRowCount,
         ...buildFreshness(providerRefreshCompletedAt || lastUpdated, latestStoredDailyDate, providerRefreshWarning, providerCoverageThroughDate),
-        lastUpdated: lastUpdated || new Date().toISOString(),
+        lastUpdated,
       });
     } catch (error: any) {
       console.error("[GA4 Daily] Error:", error);

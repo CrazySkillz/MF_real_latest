@@ -11,21 +11,21 @@ const schedulerSource = () => readFileSync(join(process.cwd(), "server", "ga4-da
 
 describe("GA4 daily scheduler timing", () => {
   afterEach(() => vi.restoreAllMocks());
-  it("defaults to a controlled 03:00 UTC daily run with startup enabled", () => {
+  it("defaults to a controlled 03:00 UTC daily run with startup disabled", () => {
     expect(getGA4DailySchedulerConfig({} as any)).toEqual({
       reportingTimeZone: "UTC",
       hour: 3,
       minute: 0,
-      runOnStartup: true,
+      runOnStartup: false,
     });
   });
 
-  it("uses configured reporting timezone and clamps invalid schedule values", () => {
+  it("uses configured reporting timezone, clamps invalid schedule values, and keeps startup disabled", () => {
     expect(getGA4DailySchedulerConfig({
       GA4_DAILY_REFRESH_TIME_ZONE: "Europe/Amsterdam",
       GA4_DAILY_REFRESH_HOUR: "99",
       GA4_DAILY_REFRESH_MINUTE: "-2",
-      GA4_DAILY_REFRESH_RUN_ON_STARTUP: "false",
+      GA4_DAILY_REFRESH_RUN_ON_STARTUP: "true",
     } as any)).toEqual({
       reportingTimeZone: "Europe/Amsterdam",
       hour: 23,
@@ -39,7 +39,7 @@ describe("GA4 daily scheduler timing", () => {
       reportingTimeZone: "Europe/Amsterdam",
       hour: 3,
       minute: 0,
-      runOnStartup: true,
+      runOnStartup: false,
     };
 
     expect(getNextGA4DailyRunAt(new Date("2026-06-20T22:30:00.000Z"), config).toISOString()).toBe("2026-06-21T01:00:00.000Z");
@@ -52,9 +52,10 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("GA4_DAILY_REFRESH_TIME_ZONE");
     expect(source).toContain("GA4_DAILY_REFRESH_HOUR");
     expect(source).toContain("GA4_DAILY_REFRESH_MINUTE");
-    expect(source).toContain("GA4_DAILY_REFRESH_RUN_ON_STARTUP");
+    expect(source).not.toContain("GA4_DAILY_REFRESH_RUN_ON_STARTUP");
+    expect(source).not.toContain('runGA4DailyRefreshPipelineForTrigger("startup")');
     expect(source).toContain("type GA4DailyRefreshPipelineOptions");
-    expect(source).toContain("export async function runGA4DailyRefreshPipeline(opts: GA4DailyRefreshPipelineOptions = {})");
+    expect(source).not.toContain("export async function runGA4DailyRefreshPipeline");
     expect(source).toContain("const campaignId = String(opts.campaignId || \"\").trim();");
     expect(source).toContain("const campaigns = campaignId");
     expect(source).toMatch(/runGA4DailyKPIAndBenchmarkJobs\(campaignId\s*\? \{ campaignId, suppressAlerts: true \}/);
@@ -142,43 +143,72 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("const reportingWindow = getReportingDateWindow(lookbackDays, (c as any)?.reportingTimeZone, now);");
     expect(source).toContain("for (const connection of activeConnections)");
     expect(source).toContain("connection?.isActive !== false");
-    expect(source).toMatch(/getTimeSeriesData\([\s\S]*?String\(connection\.propertyId\),\s*campaignFilter,\s*reportingWindow\.endDate,\s*\)/);
+    expect(source).toContain("const storageStartDate =");
+    expect(source).toMatch(/getTimeSeriesData\([\s\S]*?propertyId,\s*campaignFilter,\s*reportingWindow\.endDate,/);
+    expect(source).toContain("getTrendsDailyPresenceWithToken(");
+    expect(source).toContain("GA4 reported activity for a date without a complete daily metric row");
+    expect(source).toContain("const completeRows = getDateRange(storageStartDate, reportingWindow.endDate)");
     expect(source).toContain("row.date > reportingWindow.endDate");
     expect(source.indexOf("row.date > reportingWindow.endDate")).toBeLessThan(source.indexOf("storage.replaceGA4DailyMetricsWindow("));
-    expect(source).toContain("propertyId: String(connection.propertyId)");
-    expect(source).toMatch(/replaceGA4DailyMetricsWindow\([\s\S]*?currentCampaignId,[\s\S]*?String\(connection\.propertyId\),[\s\S]*?reportingWindow\.startDate,[\s\S]*?reportingWindow\.endDate,[\s\S]*?toUpsert as any/);
+    expect(source).toMatch(/replaceGA4DailyMetricsWindow\([\s\S]*?currentCampaignId,[\s\S]*?propertyId,[\s\S]*?storageStartDate,[\s\S]*?reportingWindow\.endDate,[\s\S]*?completeRows as any/);
   });
 
-  it("executes the production refresh path for every active property and excludes inactive properties", async () => {
-    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1", reportingTimeZone: "UTC", ga4CampaignFilter: "saved-filter" }] as any);
+  it("materializes explicit zero rows for every absent completed date and excludes inactive properties", async () => {
+    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1", reportingTimeZone: "UTC", currency: "USD" }] as any);
     vi.spyOn(storage, "getGA4Connections").mockResolvedValue([
-      { propertyId: "properties/active-1", isActive: true },
-      { propertyId: "properties/active-2", isActive: true },
+      { propertyId: "properties/active-1", importStartDate: "2026-08-03", isActive: true },
+      { propertyId: "properties/active-2", importStartDate: "2026-08-03", isActive: true },
       { propertyId: "properties/inactive", isActive: false },
     ] as any);
     vi.spyOn(ga4Service, "getTimeSeriesData").mockImplementation(async (_campaign, _storage, startDate, propertyId, _filter, endDate) => [{
       date: endDate,
       sessions: propertyId === "properties/active-1" ? 1 : 2,
     }]);
-    const replace = vi.spyOn(storage, "replaceGA4DailyMetricsWindow").mockResolvedValue({ replaced: 1 } as any);
+    const replace = vi.spyOn(storage, "replaceGA4DailyMetricsWindow").mockImplementation(async (_campaignId, _propertyId, _startDate, _endDate, rows) => ({ replaced: rows.length }));
 
-    const result = await refreshAllGA4DailyMetrics();
+    const result = await refreshAllGA4DailyMetrics({}, new Date("2026-08-06T12:00:00.000Z"));
 
     expect(result).toMatchObject({
       campaignIdsProcessed: ["campaign-1"],
       campaignIdsFailed: [],
       propertyIdsProcessed: ["properties/active-1", "properties/active-2"],
       propertyIdsFailed: [],
-      rowsUpserted: 2,
+      rowsUpserted: 6,
     });
     expect(ga4Service.getTimeSeriesData).toHaveBeenCalledTimes(2);
     expect(replace).toHaveBeenCalledTimes(2);
     expect(replace.mock.calls.map((call) => call[1])).toEqual(["properties/active-1", "properties/active-2"]);
+    for (const call of replace.mock.calls) {
+      expect(call.slice(2, 4)).toEqual(["2026-08-03", "2026-08-05"]);
+      expect(call[4].map((row: any) => row.date)).toEqual(["2026-08-03", "2026-08-04", "2026-08-05"]);
+      expect(call[4].slice(0, 2)).toEqual([
+        expect.objectContaining({ sessions: 0, users: 0, conversions: 0, revenue: 0 }),
+        expect.objectContaining({ sessions: 0, users: 0, conversions: 0, revenue: 0 }),
+      ]);
+    }
+  });
+
+  it("preserves last-good storage instead of writing a false zero for provider activity without a complete row", async () => {
+    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1", reportingTimeZone: "UTC", currency: "USD", ga4CampaignFilter: "saved-filter" }] as any);
+    vi.spyOn(storage, "getGA4Connections").mockResolvedValue([{ propertyId: "properties/active", importStartDate: "2026-08-03", isActive: true }] as any);
+    vi.spyOn(storage, "getGA4Connection").mockResolvedValue({ propertyId: "properties/active", accessToken: "fresh-token" } as any);
+    vi.spyOn(ga4Service, "getTimeSeriesData").mockResolvedValue([{ date: "2026-08-05", sessions: 1 }] as any);
+    vi.spyOn(ga4Service, "getTrendsDailyPresenceWithToken").mockResolvedValue({
+      dailyRows: [{ date: "2026-08-05", sessions: 1 }],
+      presentDates: ["2026-08-04", "2026-08-05"],
+    } as any);
+    const replace = vi.spyOn(storage, "replaceGA4DailyMetricsWindow").mockResolvedValue({ replaced: 3 } as any);
+
+    const result = await refreshAllGA4DailyMetrics({}, new Date("2026-08-06T12:00:00.000Z"));
+
+    expect(result.campaignIdsFailed).toEqual(["campaign-1"]);
+    expect(result.propertyIdsFailed).toEqual(["properties/active"]);
+    expect(replace).not.toHaveBeenCalled();
   });
 
   it("preserves last-good storage when any provider daily value is invalid", async () => {
-    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1", reportingTimeZone: "UTC" }] as any);
-    vi.spyOn(storage, "getGA4Connections").mockResolvedValue([{ propertyId: "properties/active", isActive: true }] as any);
+    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1", reportingTimeZone: "UTC", currency: "USD" }] as any);
+    vi.spyOn(storage, "getGA4Connections").mockResolvedValue([{ propertyId: "properties/active", importStartDate: "2026-08-03", isActive: true }] as any);
     vi.spyOn(ga4Service, "getTimeSeriesData").mockResolvedValue([{ date: "2026-08-05", sessions: "not-a-number" }] as any);
     const replace = vi.spyOn(storage, "replaceGA4DailyMetricsWindow").mockResolvedValue({ replaced: 1 } as any);
 

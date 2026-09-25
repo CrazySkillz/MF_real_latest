@@ -21,7 +21,7 @@ describe("GA4 KPI exact engaged-session persistence", () => {
     expect(legacy).toMatchObject({ sessions: 400, engagedSessions: 260, engagementRate: 0.65 });
   });
 
-  it("requests and carries exact engagedSessions through every GA4 daily producer", () => {
+  it("requests and carries exact engagedSessions through the scheduler-owned daily producer", () => {
     const analytics = source("server/analytics.ts");
     const scheduler = source("server/ga4-daily-scheduler.ts");
     const jobs = source("server/ga4-kpi-benchmark-jobs.ts");
@@ -31,10 +31,8 @@ describe("GA4 KPI exact engaged-session persistence", () => {
     expect(analytics).toContain("const engagedSessions = Number.parseInt(String(row.metricValues[5]?.value || '0'), 10) || 0;");
     expect(scheduler).toContain("const normalizedRows = rows.map((r: any) => normalizeGA4InsightsDailyMetricValues({");
     expect(scheduler).toContain("engagedSessions: r?.engagedSessions,");
-    expect(jobs).toContain("engagedSessions: r?.engagedSessions == null ? null");
-    expect(routes).toContain("const normalized = normalizeGA4InsightsDailyMetricValues(r);");
-    expect(routes).toContain("...normalized,");
-    expect(routes).toContain("engagedSessions: engagedSessions");
+    expect(scheduler).toContain("engagedSessions: 0");
+    expect(jobs).not.toContain("replaceGA4DailyMetricsWindow");
     expect(routes).toContain("engagedSessions: d.engagedSessions");
     expect(routes).toContain("addDerivedGA4EngagedSessions(row || {}).engagedSessions");
   });

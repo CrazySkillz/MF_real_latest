@@ -269,6 +269,7 @@ export default function ExecutiveSummary() {
     users: "Users",
   };
   const conversionRateLabel = aggregateMetricAvailable("clicks") ? "Click-Through CVR" : "Conversion Rate";
+  const showSupplementalFunnelCards = aggregateMetricAvailable("spend") || aggregateMetricAvailable("cpc");
   const roiAvailable = aggregateMetricAvailable("roi");
   const roiValue = aggregateMetricValue("roi");
   const executiveMetricParts: string[] = [];
@@ -736,10 +737,18 @@ export default function ExecutiveSummary() {
                             </div>
                           </div>
                         </div>
+                        {aggregateMetricAvailable("revenue")
+                          && !aggregateMetricAvailable("spend")
+                          && !aggregateMetricAvailable("roas")
+                          && !aggregateMetricAvailable("roi") && (
+                          <div className="mt-4 text-center text-xs text-muted-foreground">
+                            ROAS and ROI unavailable — spend data required.
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    {/* Key Metrics Dashboard - Complete Funnel Flow */}
+                    {showSupplementalFunnelCards && (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                 <Card className="border-l-4 border-green-500">
                   <CardHeader className="pb-3">
@@ -815,6 +824,7 @@ export default function ExecutiveSummary() {
                   </CardContent>
                 </Card>
                     </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

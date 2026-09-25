@@ -769,6 +769,9 @@ describe("campaign Executive Summary regression guard", () => {
     expect(overview).toContain('{formatAggregateInteger("conversions")}');
     expect(overview).toContain('{formatAggregateCurrency("revenue")}');
     expect(overview).toContain('{formatAggregateRatio("roas")}');
+    expect(overview).toContain('ROAS and ROI unavailable — spend data required.');
+    expect(page).toContain('const showSupplementalFunnelCards = aggregateMetricAvailable("spend") || aggregateMetricAvailable("cpc");');
+    expect(overview).toContain('{showSupplementalFunnelCards && (');
     expect(page).not.toContain("formatAggregateNumber");
     expect(page).not.toContain("const formatNumber =");
     expect(overview).not.toContain("{formatNumber((executiveSummary as any).metrics.totalImpressions)} Impressions");

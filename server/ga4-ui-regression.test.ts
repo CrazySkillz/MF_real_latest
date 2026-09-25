@@ -712,9 +712,8 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain('const complete30DayRows = insightsTrendMode === "30d"');
     expect(ga4Metrics).toContain(': complete30DayRows.length > 0');
     expect(ga4Metrics).toContain('const requiredHistory = insightsTrendMode === "monthly" ? "1 calendar month" : `${minRequiredDays} imported daily rows`;');
-    expect(ga4Metrics).toContain("Both adjacent calendar windows must contain every completed reporting day.");
-    expect(ga4Metrics).toContain("30-day comparison unavailable. Both adjacent calendar windows must contain every completed reporting day. Missing dates are not assumed to be zero.");
-    expect(ga4Metrics).toContain("Missing dates are not assumed to be zero.");
+    expect(ga4Metrics).toContain("The campaign does not yet contain enough completed calendar days for both adjacent windows.");
+    expect(ga4Metrics).not.toContain("Missing dates are not assumed to be zero.");
     expect(ga4Metrics).not.toContain("Need at least 2 days of GA4 daily history. Available: {dailyRows.length}.");
     expect(ga4Metrics).toContain('const DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE = "UTC";');
     expect(ga4Metrics).toContain("const trendsReportingTimeZone = normalizeClientReportingTimeZone((ga4InsightsDailyResp as any)?.reportingTimeZone);");
@@ -726,7 +725,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).not.toContain("Completed-day cutoff <span");
     expect(ga4Metrics).toContain("Latest imported day");
     expect(ga4Metrics).not.toContain("<span>Reporting timezone <span");
-    expect(ga4Metrics).toContain("Last refreshed <span");
+    expect(ga4Metrics).toContain("Last scheduler refresh <span");
     expect(ga4Metrics).not.toContain("Expected refresh <span");
     expect(ga4Metrics).not.toContain("Daily history has not refreshed since the expected {trendsExpectedRefreshLabel} run.");
     expect(ga4Metrics).toContain('`${dailyRows.length} imported row${dailyRows.length === 1 ? "" : "s"}`');

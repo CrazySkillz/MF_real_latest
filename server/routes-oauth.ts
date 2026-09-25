@@ -59,7 +59,7 @@ import {
   resolveGA4KpiMetricIdentity,
 } from "../shared/ga4-kpi-metric-identity";
 import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getGA4HistoricalImportStartDate, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getGA4HistoricalImportStartDate, getLatestCompleteReportingDate, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
@@ -9239,6 +9239,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return !latest || ts > latest ? ts : latest;
           }, null)
           : null;
+      const storedDates = new Set((stored as any[]).map((row: any) => String(row?.date || "")));
+      const storedCoverageStartDate = overviewStartDate > startDate ? overviewStartDate : startDate;
+      let storedCoverageComplete = storedCoverageStartDate <= dataThroughDate;
+      for (let date: string | null = storedCoverageStartDate; storedCoverageComplete && date && date <= dataThroughDate; date = addDateOnlyDays(date, 1)) {
+        if (!storedDates.has(date)) storedCoverageComplete = false;
+      }
+      const lastCompletedRefreshAt = storedCoverageComplete ? lastUpdated : null;
+      const storedUpdateDataThroughDate = lastUpdated
+        ? getLatestCompleteReportingDate(reportingTimeZone, new Date(lastUpdated))
+        : null;
+      const historyDataThroughDate = [latestStoredDailyDate, storedUpdateDataThroughDate]
+        .filter((date): date is string => Boolean(date && /^\d{4}-\d{2}-\d{2}$/.test(date) && date <= dataThroughDate))
+        .sort()
+        .at(-1) || null;
 
       res.json({
         success: true,
@@ -9250,6 +9264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dataThroughDate,
         days,
         reportingTimeZone,
+        historyDataThroughDate,
         data: stored.map(addDerivedEngagedSessions),
         validationReadOnly: readOnly,
         overviewStartDate,
@@ -9257,7 +9272,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         providerRefreshAttempted,
         providerRefreshOutcome,
         providerRefreshRowCount,
-        ...buildFreshness(providerRefreshCompletedAt || lastUpdated, latestStoredDailyDate, providerRefreshWarning, providerCoverageThroughDate),
+        schedulerCoverageComplete: storedCoverageComplete,
+        ...buildFreshness(lastUpdated, latestStoredDailyDate, providerRefreshWarning, providerCoverageThroughDate),
+        lastCompletedRefreshAt,
         lastUpdated,
       });
     } catch (error: any) {

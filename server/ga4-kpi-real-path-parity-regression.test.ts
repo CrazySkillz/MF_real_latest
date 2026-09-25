@@ -611,6 +611,9 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(body.validationReadOnly).toBe(true);
     expect(body.providerRefreshAttempted).toBe(false);
     expect(body.providerRefreshOutcome).toBe("read_only");
+    expect(body.schedulerCoverageComplete).toBe(false);
+    expect(body.lastCompletedRefreshAt).toBeNull();
+    expect(body.historyDataThroughDate).toBeNull();
     expect(ga4ServiceMock.getTimeSeriesData).not.toHaveBeenCalled();
     expect(storageMock.upsertGA4DailyMetrics).not.toHaveBeenCalled();
     expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
@@ -888,7 +891,9 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     vi.useRealTimers();
     const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/ga4-daily?days=30&readOnly=true&propertyId=${encodeURIComponent(connection.propertyId)}`);
     expect(response.status).toBe(200);
-    expect((await response.json()).data[0]).toMatchObject({ conversions: 0, revenue: "0.00" });
+    const body = await response.json();
+    expect(body.data[0]).toMatchObject({ conversions: 0, revenue: "0.00" });
+    expect(body).toMatchObject({ historyDataThroughDate: "2026-07-31", schedulerCoverageComplete: false, lastCompletedRefreshAt: null });
     expect(ga4ServiceMock.getTimeSeriesData).not.toHaveBeenCalled();
     expect(storageMock.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
   });

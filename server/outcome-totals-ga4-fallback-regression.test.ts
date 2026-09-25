@@ -85,6 +85,9 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
 
     expect(route).toContain("const readOnly = true;");
     expect(route).toContain("the scheduler is the sole live writer");
+    expect(route).toContain("schedulerCoverageComplete: storedCoverageComplete");
+    expect(route).toContain("const lastCompletedRefreshAt = storedCoverageComplete ? lastUpdated : null;");
+    expect(route).toContain("historyDataThroughDate");
     expect(route).not.toContain("await storage.replaceGA4DailyMetricsWindow(");
     expect(route).not.toContain("ga4Service.getTimeSeriesData(");
     expect(route).not.toContain("storage.createRevenueRecords");

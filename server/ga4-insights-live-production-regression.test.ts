@@ -61,12 +61,8 @@ describe("live GA4 Insights production boundary", () => {
   it("reports exact rolling-window coverage instead of calling scattered rows complete days", () => {
     const page = read("client", "src", "pages", "ga4-metrics.tsx");
 
-    expect(page).toContain("Both adjacent calendar windows must contain every completed reporting day.");
-    expect(page).toContain('insightsTrendMode === "30d" ? <>30-day comparison unavailable. Both adjacent calendar windows must contain every completed reporting day. Missing dates are not assumed to be zero.</>');
-    expect(page).toContain("{rollingWindow.current.days}/{rollingWindow.current.expectedDays} imported days");
-    expect(page).toContain("{rollingWindow.prior.days}/{rollingWindow.prior.expectedDays} imported days");
-    expect(page).toContain("Total imported rows in the 60-day response: {dailyRows.length}.");
-    expect(page).toContain("Missing dates are not assumed to be zero.");
+    expect(page).toContain("The campaign does not yet contain enough completed calendar days for both adjacent windows.");
+    expect(page).not.toContain("Missing dates are not assumed to be zero.");
     expect(page).not.toContain("`${dailyRows.length} complete ${trendsReportingTimeZoneLabel} day");
     expect(page).not.toContain("completed GA4 day${availableDays");
     expect(page).not.toContain("Full 7-day week-over-week analysis will activate after");
@@ -92,14 +88,14 @@ describe("live GA4 Insights production boundary", () => {
     expect(page.indexOf('data-testid="insights-daily-chart-coverage"')).toBeGreaterThan(page.indexOf('data-testid="insights-trends-chart"'));
     expect(page).toContain('data-testid="insights-7d-chart-coverage"');
     expect(page.indexOf('data-testid="insights-7d-chart-coverage"')).toBeGreaterThan(page.indexOf('data-testid="insights-trends-chart"'));
-    expect(page).toContain("Each point totals 7 consecutive calendar days. Missing dates exclude affected windows, not treated as zero.");
+    expect(page).toContain("Each point totals 7 consecutive calendar days; no-activity dates count as 0.");
     expect(page).toContain('data-testid="insights-monthly-comparison-note"');
     expect(page.indexOf('data-testid="insights-monthly-comparison-note"')).toBeGreaterThan(page.indexOf('data-testid="insights-trends-chart"'));
     expect(page).toContain("Monthly comparison requires two adjacent complete calendar months. Partial months are shown but not compared.");
     expect(page).toContain('data-testid="insights-trend-metric"');
-    expect(page).toContain("Missing dates are shown as gaps, not treated as zero.");
+    expect(page).toContain("Missing stored dates are shown as 0.");
     expect(page).toContain("value: row ? (isRate");
-    expect(page).toContain(": null,");
+    expect(page).toContain(": 0,");
     expect(page).toContain("connectNulls={false}");
     expect(page).not.toContain('connectNulls={insightsTrendMode === "daily"}');
     expect(page).toContain('dot={insightsTrendMode === "daily" ? { r: 3 } : chartData.length === 1 ? { r: 3 } : false}');

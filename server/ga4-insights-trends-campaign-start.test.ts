@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ScriptTarget, transpileModule } from "typescript";
-import { addGA4InsightsDateDays, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups, normalizeGA4InsightsDailyRows } from "../shared/ga4-insights";
+import { addGA4InsightsDateDays, buildGA4InsightsMonthlySeries, buildGA4InsightsRollups } from "../shared/ga4-insights";
 
 const page = readFileSync(join(process.cwd(), "client/src/pages/ga4-metrics.tsx"), "utf8").replace(/\r\n/g, "\n");
 const extract = (startMarker: string, endMarker: string) => {
@@ -15,21 +15,17 @@ const js = (source: string) => transpileModule(source, { compilerOptions: { targ
 
 const getStartDate = new Function(js(`${extract("const getTrendsCampaignStartDate =", "\nconst formatReportingTimeZoneLabel")}; return getTrendsCampaignStartDate;`))() as
   (createdAt: string | null, reportingTimeZone: string) => string;
-const zeroDatesVerified = new Function("ga4TrendsCoverage", "selectedGA4PropertyId", "trendsDataThroughDate", "ga4InsightsDailyResp", js(`
-  ${extract("  const trendsZeroDaysVerified =", ";\n  const trendsDailyRows")};
-  return trendsZeroDaysVerified;
-`)) as (coverage: any, propertyId: string, cutoff: string, daily: any) => boolean;
-const buildRows = new Function("normalizeGA4InsightsDailyRows", js(`
-  return (ga4InsightsTimeSeries: any[], ga4TrendsCoverage: any, trendsZeroDaysVerified: boolean, trendsDataThroughDate: string, trendsCampaignStartDate: string) => {
-    ${extract("    if (!trendsCampaignStartDate) return [];", "\n  }, [ga4InsightsTimeSeries,")}
+const buildRows = new Function("addGA4InsightsDateDays", js(`
+  return (ga4InsightsTimeSeries: any[], trendsDataThroughDate: string, trendsCampaignStartDate: string) => {
+    ${extract("    if (!trendsCampaignStartDate ||", "\n  }, [ga4InsightsTimeSeries,")}
   };
-`))(normalizeGA4InsightsDailyRows) as (rows: any[], coverage: any, verified: boolean, cutoff: string, startDate: string) => any[];
+`))(addGA4InsightsDateDays) as (rows: any[], cutoff: string, startDate: string) => any[];
 const importedRows = new Function(js(`
-  return (ga4InsightsTimeSeries: any[], ga4TrendsCoverage: any, trendsZeroDaysVerified: boolean, trendsCampaignStartDate: string) => {
+  return (ga4InsightsTimeSeries: any[], trendsCampaignStartDate: string, trendsDataThroughDate: string) => {
     ${extract("  const trendsImportedRows =", "\n  const trendsLatestImportedDate =")}
     return trendsImportedRows;
   };
-`))() as (rows: any[], coverage: any, verified: boolean, startDate: string) => any[];
+`))() as (rows: any[], startDate: string, cutoff: string) => any[];
 const dailyChart = new Function("addGA4InsightsDateDays", js(`
   return (sorted: any[], trendsCampaignStartDate: string) => {
     const metric = "sessions";
@@ -52,18 +48,18 @@ describe("GA4 Insights Trends campaign creation boundary", () => {
     expect(getStartDate("invalid", "Europe/Amsterdam")).toBe("");
   });
 
-  it("excludes verified zero and imported dates before creation from every Trends rollup", () => {
+  it("excludes dates before creation and materializes every later missing date as zero", () => {
     const startDate = getStartDate("2026-09-08T10:06:04.469Z", "Europe/Amsterdam");
     const coverage = {
       startDate: "2026-08-18",
       dailyRows: [row("2026-09-07", 39), row("2026-09-09", 38), row("2026-09-10", 38), row("2026-09-12", 74), row("2026-09-13", 36), row("2026-09-14", 32), row("2026-09-15", 31), row("2026-09-16", 34)],
       zeroDates: ["2026-08-18", "2026-09-08", "2026-09-11"],
     };
-    const rows = buildRows([], coverage, true, "2026-09-16", startDate);
+    const rows = buildRows(coverage.dailyRows, "2026-09-16", startDate);
     expect(rows.map((item) => item.date)).toEqual(Array.from({ length: 9 }, (_, index) => addGA4InsightsDateDays("2026-09-08", index)));
     expect(rows.find((item) => item.date === "2026-09-08")?.sessions).toBe(0);
     expect(rows.find((item) => item.date === "2026-09-11")?.sessions).toBe(0);
-    expect(importedRows([], coverage, true, startDate).map((item) => item.date)).toEqual(coverage.dailyRows.slice(1).map((item) => item.date));
+    expect(importedRows(coverage.dailyRows, startDate, "2026-09-16").map((item) => item.date)).toEqual(coverage.dailyRows.slice(1).map((item) => item.date));
 
     const rollups = buildGA4InsightsRollups(rows, "2026-09-16");
     expect(rollups.last7.complete).toBe(true);
@@ -78,27 +74,33 @@ describe("GA4 Insights Trends campaign creation boundary", () => {
     expect(page).toContain('comparable ? "No % baseline" : "Not comparable"');
   });
 
-  it("keeps unverified missing days absent and fails closed without a creation date", () => {
+  it("renders missing completed dates as zero and fails closed without a creation date", () => {
     const rows = [row("2026-09-03", 10), row("2026-09-04", 30), row("2026-09-06", 34)];
-    expect(buildRows(rows, null, false, "2026-09-16", "2026-09-04").map((item) => item.date)).toEqual(["2026-09-04", "2026-09-06"]);
-    expect(buildRows(rows, null, false, "2026-09-16", "")).toEqual([]);
-    expect(importedRows(rows, null, false, "")).toEqual([]);
+    expect(buildRows(rows, "2026-09-06", "2026-09-04")).toEqual([
+      row("2026-09-04", 30),
+      row("2026-09-05", 0),
+      row("2026-09-06", 34),
+    ]);
+    expect(buildRows(rows, "2026-09-16", "")).toEqual([]);
+    expect(importedRows(rows, "", "2026-09-16")).toEqual([]);
     const chart = dailyChart([row("2026-09-09", 38), row("2026-09-10", 38)], "2026-09-08");
     expect(chart.dailyChartStartDate).toBe("2026-09-08");
-    expect(chart.chartData.map((point) => point.value)).toEqual([null, 38, 38]);
+    expect(chart.chartData.map((point) => point.value)).toEqual([0, 38, 38]);
   });
 
-  it("renders independently verified zeros while populated GA4 values differ from storage", () => {
-    const coverage = {
-      verified: false, zeroDatesVerified: true, propertyId: "542352127",
-      startDate: "2026-08-09", endDate: "2026-09-17", reportingTimeZone: "Europe/Amsterdam",
-      dailyRows: [row("2026-09-09", 38), row("2026-09-17", 8)],
-      zeroDates: ["2026-09-08", "2026-09-11"],
-    };
-    const daily = { startDate: "2026-07-20", reportingTimeZone: "Europe/Amsterdam" };
-    expect(zeroDatesVerified(coverage, "542352127", "2026-09-17", daily)).toBe(true);
-    expect(buildRows([], coverage, true, "2026-09-17", "2026-09-08").filter((item) => item.sessions === 0).map((item) => item.date)).toEqual(["2026-09-08", "2026-09-11"]);
-    expect(zeroDatesVerified({ ...coverage, zeroDatesVerified: false }, "542352127", "2026-09-17", daily)).toBe(false);
-    expect(zeroDatesVerified({ ...coverage, propertyId: "other" }, "542352127", "2026-09-17", daily)).toBe(false);
+  it("keeps zero-filled chart rows bounded by creation and the completed-day cutoff", () => {
+    const rows = buildRows([row("2026-09-09", 38), row("2026-09-17", 8)], "2026-09-17", "2026-09-08");
+    expect(rows).toHaveLength(10);
+    expect(rows.filter((item) => item.sessions === 0).map((item) => item.date)).toEqual([
+      "2026-09-08", "2026-09-10", "2026-09-11", "2026-09-12", "2026-09-13", "2026-09-14", "2026-09-15", "2026-09-16",
+    ]);
+  });
+
+  it("renders Campaign3 from Sep 22 through Sep 24 with explicit zero points", () => {
+    expect(buildRows([row("2026-09-22", 127)], "2026-09-24", "2026-09-22").map((item) => ({ date: item.date, sessions: item.sessions }))).toEqual([
+      { date: "2026-09-22", sessions: 127 },
+      { date: "2026-09-23", sessions: 0 },
+      { date: "2026-09-24", sessions: 0 },
+    ]);
   });
 });

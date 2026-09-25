@@ -44,6 +44,8 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain('id: "integrity:daily_history_unavailable"');
     expect(page).toContain('id: "integrity:daily_history_stale"');
     expect(page).toContain("!trendsRefreshIsStale && !findingsHistoryMismatch && findingRollups.last7.complete && findingRollups.prior7.complete");
+    expect(page).not.toContain('data-testid="insights-trends-stale"');
+    expect(page).not.toContain("Showing last-good GA4 daily history.");
     expect(page).toContain('id: "integrity:daily_history_outdated"');
     expect(page).toContain('id: "integrity:analytics_history_unavailable"');
     expect(page).toContain("if (!resp.ok) throw new Error(json?.message || json?.error || \"Failed to fetch KPI analytics history\")");

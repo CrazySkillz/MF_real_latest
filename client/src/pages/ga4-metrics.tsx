@@ -9109,11 +9109,6 @@ export default function GA4Metrics() {
                           <span className="whitespace-nowrap">Latest imported day <span className="font-medium text-foreground">{trendsLatestImportedDateLabel}</span> <span aria-hidden="true">|</span></span>
                           <span className="whitespace-nowrap">Last refreshed <span className="font-medium text-foreground">{trendsLastRefreshedLabel}</span></span>
                         </div>
-                        {trendsRefreshIsStale && ga4InsightsDailyResp !== undefined && (
-                          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900" data-testid="insights-trends-stale">
-                            Showing last-good GA4 daily history. Refresh is stale; trend recommendations are withheld until refresh succeeds.
-                          </div>
-                        )}
                         {trendsZeroDaysVerified && ga4TrendsCoverage?.verified === false && (
                           <div className="text-sm text-muted-foreground" data-testid="insights-trends-import-drift">
                             Current GA4 values differ from the last imported daily rows. Charts show imported values; confirmed no-activity days show 0. Dates with GA4 activity not yet imported remain gaps.

@@ -2534,7 +2534,7 @@ export function AddSpendWizardModal(props: {
                         }}
                       />
                       <p className="text-xs text-muted-foreground/70">
-                        You can map the columns next
+                        Required: a Spend column and a Date column. You’ll map them next.
                       </p>
                     </div>
                     <div className="flex justify-end gap-2">

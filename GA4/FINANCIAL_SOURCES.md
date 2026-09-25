@@ -782,7 +782,7 @@ Important meaning:
 - GA4 CSV spend must accept and persist explicit `platformContext=ga4`; legacy null-context sources remain readable for compatibility and self-heal to `ga4` only when that exact source is edited
 - an import with no selected positive-spend rows must fail before creating or updating a source
 - CSV spend source add/edit and replacement spend records must commit in one campaign/source/type-scoped transaction; record materialization failure must roll back and return failure rather than false success
-- the CSV upload/re-upload helper text should list the required primary value column as `Required columns: Spend`; the required GA4 Date mapping and optional campaign mapping are handled on the mapping screen
+- the CSV upload/re-upload helper text should state `Required: a Spend column and a Date column. You’ll map them next.`; the column names do not need to be literal, and the mappings are selected on the next screen
 - the CSV spend mapping screen should show `Spend` as a direct dropdown field; it should not require an `Edit columns` sub-action to change the spend column
 - the CSV spend mapping screen should not show extra section headings named `Columns` or `Campaign mapping`; for a new GA4 source, the visible controls are the spend dropdown, required date-column dropdown, optional campaign identifier/value controls, preview table, and action buttons
 - CSV spend does not auto-refresh on a schedule

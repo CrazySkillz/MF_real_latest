@@ -9138,7 +9138,7 @@ export default function GA4Metrics() {
                               .map((r: any) => String(r?.date || "").slice(0, 7))
                               .filter((ym: string) => /^\d{4}-\d{2}$/.test(ym))
                           ).size;
-                          const minRequiredDays = insightsTrendMode === "daily" ? 2 : 0;
+                          const minRequiredDays = insightsTrendMode === "daily" ? 1 : 0;
                           const hasRequiredHistory = insightsTrendMode === "monthly"
                             ? availableMonths >= 1
                             : insightsTrendMode === "daily"

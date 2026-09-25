@@ -706,7 +706,7 @@ describe("GA4 UI regression guard", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
 
     expect(ga4Metrics).toContain("const availableMonths = new Set(");
-    expect(ga4Metrics).toContain('const minRequiredDays = insightsTrendMode === "daily" ? 2 : 0;');
+    expect(ga4Metrics).toContain('const minRequiredDays = insightsTrendMode === "daily" ? 1 : 0;');
     expect(ga4Metrics).toContain('const complete7DayRows = insightsTrendMode === "7d"');
     expect(ga4Metrics).toContain('? complete7DayRows.length > 0');
     expect(ga4Metrics).toContain('const complete30DayRows = insightsTrendMode === "30d"');

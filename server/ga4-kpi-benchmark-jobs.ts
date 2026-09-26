@@ -330,10 +330,20 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       // Production path: GA4 API totals (with automatic token refresh).
       // Stored daily totals are retained only for the explicit mock/demo property.
       const financialStartDate = (() => {
-        const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
-        if (!raw) return "2000-01-01";
-        const date = new Date(raw);
-        return Number.isNaN(date.getTime()) ? "2000-01-01" : isoDateUTC(date);
+        const explicitStart = (campaign as any)?.startDate || null;
+        if (explicitStart) {
+          const date = new Date(explicitStart);
+          if (!Number.isNaN(date.getTime())) return isoDateUTC(date);
+        }
+        const savedImportStart = String(primary.importStartDate || "").trim();
+        if (savedImportStart) {
+          const savedImportWindow = resolveGA4ImportToDateWindow(savedImportStart, (campaign as any)?.reportingTimeZone);
+          if (savedImportWindow) return savedImportWindow.startDate;
+        }
+        const createdAtRaw = (campaign as any)?.createdAt || null;
+        if (!createdAtRaw) return "2000-01-01";
+        const createdAt = new Date(createdAtRaw);
+        return Number.isNaN(createdAt.getTime()) ? "2000-01-01" : isoDateUTC(createdAt);
       })();
       const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
       const [reportingRows, toDateRows] = await Promise.all([

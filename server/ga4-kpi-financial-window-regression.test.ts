@@ -149,6 +149,75 @@ describe("GA4 KPI persisted financial source window", () => {
     expect(checkPerformanceAlertsMock).toHaveBeenCalledExactlyOnceWith("campaign-1", "2026-06-27");
   });
 
+  it("uses the saved GA4 import boundary for financial values when no campaign start is configured", async () => {
+    storageMock.getCampaign.mockResolvedValue({
+      id: "campaign-1",
+      ownerId: "owner-1",
+      createdAt: "2026-06-22T15:59:49.000Z",
+      startDate: null,
+      currency: "USD",
+      reportingTimeZone: "Europe/Amsterdam",
+    });
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({
+      currencyCode: "USD",
+      totals: { users: 2256, sessions: 2256, pageviews: 3000, conversions: 145, revenue: 37518.74 },
+    });
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0, currency: "USD", sourceIds: [] });
+    storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 1250, currency: "USD", sourceIds: ["spend-source"] });
+    storageMock.getPlatformKPIs.mockResolvedValue([
+      { id: "kpi-sessions", metric: "Sessions" },
+      { id: "kpi-revenue", metric: "Revenue" },
+      { id: "kpi-roas", metric: "ROAS" },
+      { id: "kpi-cpa", metric: "CPA" },
+    ]);
+    storageMock.getPlatformBenchmarks.mockResolvedValue([
+      { id: "benchmark-revenue", metric: "Revenue", benchmarkValue: "80000" },
+      { id: "benchmark-roas", metric: "ROAS", benchmarkValue: "50" },
+    ]);
+
+    await runGA4DailyKPIAndBenchmarkJobs({ campaignId: "campaign-1", date: "2026-06-27" });
+
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith(
+      "properties/123",
+      "token",
+      "2026-06-01",
+      "2026-06-27",
+      undefined,
+      "USD",
+    );
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-sessions", { currentValue: "100" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-revenue", { currentValue: "37518.74" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-roas", { currentValue: "30.01" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-cpa", { currentValue: "8.62" });
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-revenue", { currentValue: "37518.74" });
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-roas", { currentValue: "30.01" });
+  });
+
+  it("retains the creation-date fallback when no campaign or import start is available", async () => {
+    vi.setSystemTime(new Date("2026-08-01T12:00:00.000Z"));
+    storageMock.getCampaign.mockResolvedValue({
+      id: "campaign-1",
+      ownerId: "owner-1",
+      createdAt: "2026-06-22T15:59:49.000Z",
+      startDate: null,
+      currency: "USD",
+      reportingTimeZone: "Europe/Amsterdam",
+    });
+    storageMock.getGA4Connections.mockResolvedValue([{ propertyId: "properties/123", isPrimary: true, method: "service_account" }]);
+    storageMock.getGA4DailyMetrics.mockResolvedValue([{ ...dailyRow, date: "2026-07-31" }]);
+
+    await runGA4DailyKPIAndBenchmarkJobs({ campaignId: "campaign-1", date: "2026-07-31" });
+
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith(
+      "properties/123",
+      "token",
+      "2026-06-22",
+      "2026-07-31",
+      undefined,
+      "USD",
+    );
+  });
+
   it("updates Benchmark current values and skips same-date history even when the target date is not latest", async () => {
     storageMock.getPlatformKPIs.mockResolvedValue([]);
     storageMock.getPlatformBenchmarks.mockResolvedValue([

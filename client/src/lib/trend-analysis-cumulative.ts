@@ -136,37 +136,41 @@ export const expandTrendRowsToCalendarWindow = (rows: any[], dataThroughDate: st
 
 export const resolveVerifiedTrendGA4DailyRows = (args: {
   dailyResponse: any;
-  coverageResponse: any;
   propertyId: string;
   selectedStartDate: string;
 }): any[] | null => {
-  const { dailyResponse, coverageResponse, propertyId, selectedStartDate } = args;
+  const { dailyResponse, propertyId, selectedStartDate } = args;
   const dataThroughDate = String(dailyResponse?.dataThroughDate || "");
   const overviewStartDate = String(dailyResponse?.overviewStartDate || "");
-  if (coverageResponse?.providerVerified !== true || coverageResponse?.providerZeroDatesVerified !== true
-    || !Array.isArray(coverageResponse?.providerDailyRows) || !Array.isArray(coverageResponse?.providerZeroDates)
-    || !ISO_DATE_PATTERN.test(selectedStartDate) || !ISO_DATE_PATTERN.test(dataThroughDate)
-    || !ISO_DATE_PATTERN.test(overviewStartDate) || selectedStartDate > dataThroughDate
-    || String(coverageResponse?.propertyId || "").replace(/^properties\//i, "") !== String(propertyId || "").replace(/^properties\//i, "")
-    || String(coverageResponse?.endDate || "") !== dataThroughDate
-    || String(coverageResponse?.reportingTimeZone || "") !== String(dailyResponse?.reportingTimeZone || "")
+  const responseStartDate = String(dailyResponse?.startDate || "");
+  const providerRefreshOutcome = String(dailyResponse?.providerRefreshOutcome || "");
+  const schedulerBacked = providerRefreshOutcome === "read_only"
+    && dailyResponse?.schedulerCoverageComplete === true
+    && Boolean(String(dailyResponse?.lastCompletedRefreshAt || "").trim());
+  const simulated = providerRefreshOutcome === "simulated";
+  if (dailyResponse?.success !== true || dailyResponse?.validationReadOnly !== true
+    || dailyResponse?.providerRefreshAttempted !== false || (!schedulerBacked && !simulated)
+    || !Array.isArray(dailyResponse?.data) || !ISO_DATE_PATTERN.test(selectedStartDate)
+    || !ISO_DATE_PATTERN.test(dataThroughDate) || !ISO_DATE_PATTERN.test(overviewStartDate)
+    || !ISO_DATE_PATTERN.test(responseStartDate) || selectedStartDate > dataThroughDate
+    || responseStartDate > dataThroughDate || overviewStartDate > dataThroughDate
+    || String(dailyResponse?.endDate || "") !== dataThroughDate
+    || !String(dailyResponse?.reportingTimeZone || "").trim()
+    || String(dailyResponse?.propertyId || "").replace(/^properties\//i, "") !== String(propertyId || "").replace(/^properties\//i, "")
   ) return null;
   const effectiveStartDate = selectedStartDate > overviewStartDate ? selectedStartDate : overviewStartDate;
-  if (!ISO_DATE_PATTERN.test(String(coverageResponse?.startDate || "")) || coverageResponse.startDate > effectiveStartDate) return null;
+  if (responseStartDate > effectiveStartDate) return null;
   const rowsByDate = new Map<string, any>();
   const seenDates = new Set<string>();
-  for (const row of coverageResponse.providerDailyRows) {
-    const date = String(row?.date || "");
-    if (!ISO_DATE_PATTERN.test(date) || date < coverageResponse.startDate || date > dataThroughDate || seenDates.has(date)
+  for (const row of dailyResponse.data) {
+    const date = String(row?.date || "").slice(0, 10);
+    if (!ISO_DATE_PATTERN.test(date) || date < responseStartDate || date > dataThroughDate || seenDates.has(date)
       || !["users", "sessions", "conversions"].every((metric) => hasNonNegativeMetric(row?.[metric]))) return null;
     seenDates.add(date);
-    if (date >= effectiveStartDate) rowsByDate.set(date, row);
+    if (date >= effectiveStartDate) rowsByDate.set(date, { ...row, date });
   }
-  for (const rawDate of coverageResponse.providerZeroDates) {
-    const date = String(rawDate || "");
-    if (!ISO_DATE_PATTERN.test(date) || date < coverageResponse.startDate || date > dataThroughDate || seenDates.has(date)) return null;
-    seenDates.add(date);
-    if (date >= effectiveStartDate) rowsByDate.set(date, { date, users: 0, sessions: 0, conversions: 0 });
+  for (const date = new Date(`${effectiveStartDate}T00:00:00.000Z`); date.toISOString().slice(0, 10) <= dataThroughDate; date.setUTCDate(date.getUTCDate() + 1)) {
+    if (!rowsByDate.has(date.toISOString().slice(0, 10))) return null;
   }
   return Array.from(rowsByDate.values()).sort((a, b) => String(a.date).localeCompare(String(b.date)));
 };

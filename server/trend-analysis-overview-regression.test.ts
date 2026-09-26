@@ -112,30 +112,31 @@ describe("Trend Analysis Overview regression guard", () => {
       .toBeLessThan(overview.indexOf("No connected source trend data available"));
   });
 
-  it("uses one exact provider-verified history for all four campaign performance windows", () => {
-    const dailyResponse = {
-      propertyId: "542352127",
-      dataThroughDate: "2026-09-19",
-      overviewStartDate: "2026-06-01",
-      reportingTimeZone: "Europe/Amsterdam",
-    };
-    const providerDailyRows = Array.from({ length: 89 }, (_, index) => {
+  it("uses one complete scheduler-stored history for all four campaign performance windows", () => {
+    const storedDailyRows = Array.from({ length: 90 }, (_, index) => {
       const date = new Date("2026-06-22T00:00:00.000Z");
       date.setUTCDate(date.getUTCDate() + index);
-      return { date: date.toISOString().slice(0, 10), users: index + 1, sessions: index + 2, conversions: index % 8 };
+      return index === 89
+        ? { date: "2026-09-19", users: 0, sessions: 0, conversions: 0 }
+        : { date: date.toISOString().slice(0, 10), users: index + 1, sessions: index + 2, conversions: index % 8 };
     });
-    const coverageResponse = {
-      providerVerified: true,
-      providerZeroDatesVerified: true,
+    const dailyResponse = {
+      success: true,
       propertyId: "542352127",
       startDate: "2026-06-22",
       endDate: "2026-09-19",
+      dataThroughDate: "2026-09-19",
+      overviewStartDate: "2026-06-01",
       reportingTimeZone: "Europe/Amsterdam",
-      providerDailyRows,
-      providerZeroDates: ["2026-09-19"],
+      validationReadOnly: true,
+      providerRefreshAttempted: false,
+      providerRefreshOutcome: "read_only",
+      schedulerCoverageComplete: true,
+      lastCompletedRefreshAt: "2026-09-20T03:05:00.000Z",
+      data: storedDailyRows,
     };
     const resolve = (selectedStartDate: string) => resolveVerifiedTrendGA4DailyRows({
-      dailyResponse, coverageResponse, propertyId: "542352127", selectedStartDate,
+      dailyResponse, propertyId: "542352127", selectedStartDate,
     });
 
     expect(resolve("2026-09-13")).toHaveLength(7);
@@ -144,10 +145,13 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(resolve("2026-06-22")).toHaveLength(90);
     expect(resolve("2026-09-13")?.at(-1)).toEqual({ date: "2026-09-19", users: 0, sessions: 0, conversions: 0 });
     expect(resolveVerifiedTrendGA4DailyRows({
-      dailyResponse, coverageResponse: { ...coverageResponse, providerVerified: false }, propertyId: "542352127", selectedStartDate: "2026-09-13",
+      dailyResponse: { ...dailyResponse, schedulerCoverageComplete: false }, propertyId: "542352127", selectedStartDate: "2026-09-13",
     })).toBeNull();
     expect(resolveVerifiedTrendGA4DailyRows({
-      dailyResponse, coverageResponse: { ...coverageResponse, propertyId: "other-property" }, propertyId: "542352127", selectedStartDate: "2026-09-13",
+      dailyResponse: { ...dailyResponse, propertyId: "other-property" }, propertyId: "542352127", selectedStartDate: "2026-09-13",
+    })).toBeNull();
+    expect(resolveVerifiedTrendGA4DailyRows({
+      dailyResponse: { ...dailyResponse, data: storedDailyRows.filter((row) => row.date !== "2026-09-18") }, propertyId: "542352127", selectedStartDate: "2026-09-13",
     })).toBeNull();
   });
 
@@ -163,11 +167,11 @@ describe("Trend Analysis Overview regression guard", () => {
 
     expect(page).toContain("ga4-connections?readOnly=1");
     expect(page).toContain("ga4-daily?days=${TREND_GA4_DAILY_DAYS}&propertyId=${encodeURIComponent(trendGA4PropertyId)}&readOnly=1");
-    expect(page).toContain("ga4-insights-trends-coverage?propertyId=${encodeURIComponent(trendGA4PropertyId)}&days=90");
+    expect(page).not.toContain("ga4-insights-trends-coverage");
     expect(page).toContain("resolveVerifiedTrendGA4DailyRows({");
     expect(overviewModel).toContain("verifiedTrendGA4DailyRows.map");
     expect(page).toContain("trendGA4DailyHistoryVerified && overviewTrendData.series.length > 0");
-    expect(page).toContain("Campaign performance daily values are withheld because current GA4 data could not be verified.");
+    expect(page).toContain("Campaign performance daily values are withheld because complete scheduler-stored GA4 history is unavailable.");
     expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", "persisted-only"]');
     expect(page).toContain("outcome-totals?dateRange=90days&persistedOnly=1");
     expect(page).toContain("snapshotType=financial_daily&comparisonDate=${trendComparisonDate}&persistedOnly=1");
@@ -197,7 +201,9 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(overviewModel).toContain('hasPrevious: Object.values(comparison).some((value) => typeof value === "number")');
     expect(overviewModel).toContain("currentPeriodDays: currentPeriod.length");
     expect(overviewModel).toContain("requestedPeriodDays: perfDays");
-    expect(page.match(/usesCumulativeGA4Consumer && trendGA4Coverage && !trendGA4CoverageError \? resolveVerifiedTrendGA4DailyRows\(\{/g)).toHaveLength(3);
+    expect(page.match(/usesCumulativeGA4Consumer \? resolveVerifiedTrendGA4DailyRows\(\{/g)).toHaveLength(3);
+    expect(page).toContain("Scheduler daily values:");
+    expect(page).toContain("complete scheduler-stored GA4 history is unavailable");
     expect(page).toContain("usesCumulativeGA4Consumer && Array.isArray(verifiedTrendGA4DailyRows)");
     const cumulativeQueryStart = page.indexOf("data: ga4Daily");
     const cumulativeQueryEnd = page.indexOf("const { data: linkedinDaily", cumulativeQueryStart);

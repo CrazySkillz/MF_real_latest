@@ -137,21 +137,6 @@ export default function TrendAnalysis() {
     refetchOnWindowFocus: true,
   });
 
-  const { data: trendGA4Coverage, isFetching: trendGA4CoverageFetching, error: trendGA4CoverageError } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-insights-trends-coverage", "90days-provider", trendGA4PropertyId, ga4Daily?.dataThroughDate, ga4Daily?.lastCompletedRefreshAt],
-    enabled: !!campaignId && !!trendGA4PropertyId && ga4Daily !== undefined,
-    queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/ga4-insights-trends-coverage?propertyId=${encodeURIComponent(trendGA4PropertyId)}&days=90`);
-      const data = await response.json().catch(() => null);
-      if (!response.ok || !data || data?.success === false) throw new Error(data?.error || "Failed to verify GA4 Trend daily history");
-      return data;
-    },
-    staleTime: 0,
-    refetchInterval: 30 * 60 * 1000,
-    refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
-  });
-
   const { data: outcomeTotals, isFetched: outcomeTotalsFetched, error: outcomeTotalsError } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", "persisted-only"],
     enabled: !!campaignId,
@@ -454,45 +439,29 @@ export default function TrendAnalysis() {
   })() : "";
   const requestedAnomalyTrendStartDate = resolveTrendComparisonDate(selectedTrendStartDate, 7);
   const selectedTrendComparisonStartDate = resolveTrendComparisonDate(selectedTrendStartDate, perfDays);
-  const coverageStartDate = String(trendGA4Coverage?.startDate || "");
+  const schedulerHistoryStartDate = String(ga4Daily?.overviewStartDate || "");
   const anomalyTrendStartDate = ISO_DATE_PATTERN.test(requestedAnomalyTrendStartDate)
-    && ISO_DATE_PATTERN.test(coverageStartDate) && coverageStartDate > requestedAnomalyTrendStartDate
-    ? coverageStartDate
+    && ISO_DATE_PATTERN.test(schedulerHistoryStartDate) && schedulerHistoryStartDate > requestedAnomalyTrendStartDate
+    ? schedulerHistoryStartDate
     : requestedAnomalyTrendStartDate;
-  // Provider coverage verifies freshness; persisted daily facts remain the shared Overview/Trend display source.
-  const verifiedTrendGA4DailyRows = usesCumulativeGA4Consumer && trendGA4Coverage && !trendGA4CoverageError ? resolveVerifiedTrendGA4DailyRows({
+  // Campaign Performance Trend reads only the complete daily window materialized by the scheduler.
+  const verifiedTrendGA4DailyRows = usesCumulativeGA4Consumer ? resolveVerifiedTrendGA4DailyRows({
     dailyResponse: ga4Daily,
-    coverageResponse: {
-      ...trendGA4Coverage,
-      providerDailyRows: trendGA4Coverage.dailyRows,
-      providerZeroDates: trendGA4Coverage.zeroDates,
-    },
     propertyId: trendGA4PropertyId,
     selectedStartDate: selectedTrendStartDate,
   }) : null;
-  const verifiedTrendGA4ComparisonRows = usesCumulativeGA4Consumer && trendGA4Coverage && !trendGA4CoverageError ? resolveVerifiedTrendGA4DailyRows({
+  const verifiedTrendGA4ComparisonRows = usesCumulativeGA4Consumer ? resolveVerifiedTrendGA4DailyRows({
     dailyResponse: ga4Daily,
-    coverageResponse: {
-      ...trendGA4Coverage,
-      providerDailyRows: trendGA4Coverage.dailyRows,
-      providerZeroDates: trendGA4Coverage.zeroDates,
-    },
     propertyId: trendGA4PropertyId,
     selectedStartDate: selectedTrendComparisonStartDate,
   }) : null;
-  const verifiedTrendGA4AnomalyRows = usesCumulativeGA4Consumer && trendGA4Coverage && !trendGA4CoverageError ? resolveVerifiedTrendGA4DailyRows({
+  const verifiedTrendGA4AnomalyRows = usesCumulativeGA4Consumer ? resolveVerifiedTrendGA4DailyRows({
     dailyResponse: ga4Daily,
-    coverageResponse: {
-      ...trendGA4Coverage,
-      providerDailyRows: trendGA4Coverage.dailyRows,
-      providerZeroDates: trendGA4Coverage.zeroDates,
-    },
     propertyId: trendGA4PropertyId,
     selectedStartDate: anomalyTrendStartDate,
   }) : null;
   const trendGA4DailyHistoryVerified = !usesCumulativeGA4Consumer || verifiedTrendGA4DailyRows !== null;
-  const trendGA4DailyHistoryPending = usesCumulativeGA4Consumer && ga4Daily !== undefined
-    && trendGA4CoverageFetching && !trendGA4Coverage;
+  const trendGA4DailyHistoryPending = usesCumulativeGA4Consumer && !trendGA4DailyFetched;
   const ga4TrendSource = Array.isArray(trendAggregate?.sources)
     ? trendAggregate.sources.find((source: any) => source?.id === "ga4")
     : null;
@@ -1457,23 +1426,20 @@ export default function TrendAnalysis() {
     (outcomeTotalsError && !outcomeTotals)
     || (trendAnalysisError && !trendAnalysisResponse)
     || (usesCumulativeGA4Consumer && trendGA4ConnectionsError && !trendGA4ConnectionsResponse)
-    || (usesCumulativeGA4Consumer && trendGA4DailyError && !ga4Daily)
-    || (usesCumulativeGA4Consumer && trendGA4CoverageError && !trendGA4Coverage),
+    || (usesCumulativeGA4Consumer && trendGA4DailyError && !ga4Daily),
   );
   const trendRetainedRefreshFailed = Boolean(
     (outcomeTotalsError && outcomeTotals)
     || (trendAnalysisError && trendAnalysisResponse)
     || (trendFinancialComparisonError && trendFinancialComparison)
     || (usesCumulativeGA4Consumer && trendGA4ConnectionsError && trendGA4ConnectionsResponse)
-    || (usesCumulativeGA4Consumer && trendGA4DailyError && ga4Daily)
-    || (usesCumulativeGA4Consumer && trendGA4CoverageError && trendGA4Coverage),
+    || (usesCumulativeGA4Consumer && trendGA4DailyError && ga4Daily),
   );
   const trendDataStale = trendRetainedRefreshFailed || (usesCumulativeGA4Consumer && ga4Daily?.refreshIsStale === true);
   const trendPartialLoadFailure = trendInitialLoadFailed && overviewHasData;
   const cumulativeConsumerLoading = usesCumulativeGA4Consumer && (
     !trendGA4ConnectionsFetched
     || (!!trendGA4PropertyId && !trendGA4DailyFetched)
-    || (!!trendGA4PropertyId && trendGA4CoverageFetching && !trendGA4Coverage)
     || (!!trendComparisonDate && !trendFinancialComparisonFetched)
   );
   const overviewLoading = !overviewTrendData && (
@@ -1748,7 +1714,7 @@ export default function TrendAnalysis() {
                   <Card>
                     {usesCumulativeGA4Consumer && overviewTrendData.series.length > 0 && (
                       <CardHeader>
-                        <p className="text-xs text-muted-foreground">Verified daily values: {overviewTrendData.currentPeriodDays} of {overviewTrendData.chartCalendarDays} calendar dates; missing dates remain gaps unless GA4 verifies them as zero.</p>
+                        <p className="text-xs text-muted-foreground">Scheduler daily values: {overviewTrendData.currentPeriodDays} of {overviewTrendData.chartCalendarDays} calendar dates; no-activity dates are stored as 0.</p>
                         {overviewTrendData.anomalies.some((anomaly: any) => overviewVisibleSeries.has(anomaly.metric)) && (
                           <div className="space-y-1 text-xs text-muted-foreground" aria-label="Anomaly marker legend">
                             <div className="flex flex-wrap items-center gap-4">
@@ -1804,7 +1770,7 @@ export default function TrendAnalysis() {
                     <Card>
                       <CardContent className="p-8 text-center text-sm text-muted-foreground">
                         {usesCumulativeGA4Consumer && !trendGA4DailyHistoryVerified
-                          ? <>Campaign performance daily values are withheld because current GA4 data could not be verified.</>
+                          ? <>Campaign performance daily values are withheld because complete scheduler-stored GA4 history is unavailable.</>
                           : usesCumulativeGA4Consumer && trendWindowCalendar.length < perfDays && trendWindowStartLabel
                           ? <>{perfDays}-day trend unavailable: {trendWindowCalendar.length} of {perfDays} calendar days are available. Data begins {trendWindowStartLabel}.</>
                           : usesCumulativeGA4Consumer && trendWindowStartLabel && trendWindowEndLabel

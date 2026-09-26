@@ -40,18 +40,18 @@ It does not certify:
 - a new scheduler timer firing, provider delivery, or inbox receipt; the shared renderer was checked, but those transport gates remain in `CAMPAIGN_DEEPDIVE_CUSTOM_REPORT_PRODUCTION_READY.md`
 - protected GA4 Overview, KPI, Benchmark, Ad Comparison, Insights, Reports, or machine certification records; none were changed by this Trend work
 
-### Post-certification financial-read alignment — 2026-09-26
+### Post-certification scheduler-read alignment — 2026-09-26
 
-The current local implementation changes the mounted GA4-first Performance Summary financial path after the certified runtime above. Therefore the affected current/historical financial-card path and CPA presentation are **not covered by the 2026-09-20 certificate until proportionate deployed revalidation is completed**.
+The current local implementation changes the mounted GA4-first financial path and Campaign Performance Trend daily-read path after the certified runtime above. Therefore the affected current/historical financial-card path, CPA presentation, and scheduler-only daily chart are **not covered by the 2026-09-20 certificate until proportionate deployed revalidation is completed**.
 
 - Trend Analysis requests persisted-only mode from `/outcome-totals` and the exact-date `financial_daily` comparison route. Those Trend requests do not run the outcome route's live GA4 aggregate reads or the comparison route's live historical reconstruction fallback.
 - Current `Revenue` and `Spend` require a compatible scheduler-written `financial_daily_snapshot_v1` for the latest completed reporting date. Historical `Revenue` and `Spend` require the same snapshot contract for the exact selected comparison date. `ROAS`, `ROI`, and `CPA` derive from those accepted financial inputs and compatible persisted traffic values.
 - A missing, mismatched, or unavailable current or historical financial snapshot fails closed. The mounted financial-card path does not replace it with a summed daily Revenue value or initiate a live aggregate fallback.
 - The five GA4-first financial card positions remain mounted when the current scheduler snapshot is unavailable. Each shows `Unavailable` and `Waiting for daily scheduler`, so scheduler availability changes values without changing the card count. Optional unsupported paid-media cards remain hidden.
 - The ten GA4-first summary cards use a five-column by two-row desktop grid and retain the existing responsive one/two-column layout on smaller screens.
-- The separate GA4 daily-coverage request remains a provider verification path for traffic history and zero-date handling. Financial values returned incidentally by that verification path do not populate the mounted financial cards.
+- Campaign Performance Trend and the GA4 efficiency history read only the complete scheduler-stored `/ga4-daily` response. The Trend page no longer calls the live GA4 coverage route, does not create zero points in the browser, and fails closed if the scheduler window is incomplete. Completed no-activity dates appear as zero only because the scheduler persisted explicit zero rows.
 - CPA direction styling is business-semantic in the headline cards: a lower CPA is green and a higher CPA is red. Other headline metrics retain their existing numeric-direction styling; Spend is not automatically classified as beneficial merely because it decreases.
-- Local validation for this change passed 101 focused Trend/financial/adjacent regression tests, TypeScript checking, and the production build. This is implementation evidence only and does not replace the required deployed revalidation of the affected paths.
+- The earlier financial-card change passed 101 focused Trend/financial/adjacent regression tests. The scheduler-only daily-chart change passed 33 focused Trend/scheduler tests, TypeScript checking, and the production build. This is implementation evidence only and does not replace the required deployed revalidation of the affected paths.
 
 ### Current Visible Implementation
 
@@ -73,7 +73,7 @@ The page-level selector defaults to `Last 7 days`; `Last 14 days`, `Last 30 days
 | Visible surface | Implemented contract | Current certification boundary |
 | --- | --- | --- |
 | Connected-Source Performance Summary | Capability-gated cumulative traffic cards; scheduler-snapshot current and exact-date financial cards; CPA-aware direction color | The 2026-09-20 boundary remains historical evidence; the changed financial-read and CPA-color paths require current deployed revalidation |
-| Campaign Performance Trend | Selected exact calendar window; GA4 Users, Sessions, and Conversions; missing dates are gaps; provider-verified zero remains zero | Certified for the audited GA4-only selectors and insufficient-history behavior |
+| Campaign Performance Trend | Selected exact calendar window; GA4 Users, Sessions, and Conversions from a complete scheduler-stored daily window; scheduler-written no-activity rows remain zero | Changed after the 2026-09-20 certificate; local regression coverage exists, but deployed revalidation is pending |
 | Efficiency Trends | Return, cost, and rate charts render independently only when their daily inputs exist; verified no-activity dates get a marker instead of a fabricated rate | Certified for the audited GA4-only conversion-quality path and unavailable daily financial-history state |
 | Anomaly Detection | Conditional browser-only statistical markers and list, using the deterministic seven-value rule below | Certified as descriptive decision support for the audited GA4-only conversion series; no causal claim |
 | Website Engagement & Conversion Summary | Cumulative Sessions, Engaged Sessions (or Users when engaged sessions are unavailable), Conversions, Engagement Rate, and conversions per 100 Sessions | Certified for the audited GA4-only cumulative path |
@@ -151,9 +151,9 @@ The `Trend & comparison window` selector accepts `7`, `14`, `30`, and `90` days.
 
 ### Daily Charts And Missing Data
 
-- Charts use actual persisted daily rows inside the exact selected calendar dates.
-- Missing dates remain gaps; lines do not connect across missing dates.
-- Dates that GA4 explicitly verifies as zero remain valid zero values. In `Conversion Quality Trend`, a verified date with zero Sessions, Users, and Conversions is shown as an amber `No activity — 0 sessions; rates unavailable` marker while the CVR and Engagement Rate lines remain broken for that date.
+- GA4-first charts use actual scheduler-persisted daily rows inside the exact selected calendar dates and make no live GA4 coverage request when the page opens.
+- The scheduler materializes completed no-activity dates as explicit zero rows. The browser does not infer zero; an incomplete scheduler window fails closed instead of plotting missing dates.
+- In `Conversion Quality Trend`, a scheduler-stored date with zero Sessions, Users, and Conversions is shown as an amber `No activity — 0 sessions; rates unavailable` marker while the CVR and Engagement Rate lines remain broken for that date.
 - Chart animation is disabled so a stale/placeholder chart does not transform after load.
 - All selector options remain selectable. If the campaign does not yet cover the full requested calendar window, the page explains the available boundary. If the window exists but has no daily activity rows, it shows the exact empty date range and latest recorded date.
 - Efficiency charts render only when their required daily inputs exist. Current financial cards require their own compatible scheduler snapshot and can remain available while daily return/cost trend charts are withheld.
@@ -164,7 +164,7 @@ The `Trend & comparison window` selector accepts `7`, `14`, `30`, and `90` days.
 - A candidate date is compared with its immediately preceding seven present, numeric daily values. Only candidates at least seven entries after the first non-zero activity value can be evaluated.
 - The displayed `previous 7-day average` is the arithmetic mean of those seven values; it is historical context, not a forecast.
 - A warning requires an absolute change greater than two population standard deviations from that mean. A critical marker requires greater than three. Exactly two standard deviations is not flagged; exactly three is a warning. A zero-variance comparison window is skipped.
-- The anomaly helper skips explicit null, undefined, empty, or non-numeric values. In the certified GA4 path, unresolved missing calendar dates are not injected as zero; provider-verified zero is a valid observed value and may therefore produce a drop marker. Non-GA4 aggregate anomaly behavior remains outside the current certification.
+- The anomaly helper skips explicit null, undefined, empty, or non-numeric values. In the GA4-first path, the browser does not inject missing calendar dates as zero; an explicit scheduler-stored zero is a valid observed value and may therefore produce a drop marker. Non-GA4 aggregate anomaly behavior remains outside the current certification.
 - The chart legend appears only when a detected anomaly belongs to a currently visible series. The separate `Anomaly Detection` panel appears only when anomalies exist, labels spike/drop descriptively, and displays at most the first eight results.
 - Severity indicates statistical unusualness only; it does not establish cause, business impact, or whether the movement is good or bad.
 
@@ -240,7 +240,7 @@ The former daily-financial query-parameter mismatch is fixed: the retained compa
   - Contains a retained unmounted legacy tab/model block, but the mounted Executive View is driven by the verified cumulative GA4 consumer or source-aware Trend aggregate.
 
 - `client/src/lib/trend-analysis-cumulative.ts`
-  - Validates cumulative GA4 consumer contracts, exact comparison dates, provider-verified daily/zero rows, compatible financial snapshots, formulas, formatting, and deterministic anomaly detection.
+  - Validates cumulative GA4 consumer contracts, exact comparison dates, complete scheduler-stored daily/zero rows, compatible financial snapshots, formulas, formatting, and deterministic anomaly detection.
 
 - `server/utils/trend-analysis-aggregate.ts`
   - Builds `trend_analysis_aggregate_v1` from connected normalized sources and compatible daily financial rows.

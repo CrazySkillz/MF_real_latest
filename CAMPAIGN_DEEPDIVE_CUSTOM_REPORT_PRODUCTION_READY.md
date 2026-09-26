@@ -18,13 +18,16 @@ This tracker exists so Custom Report follows the same connected-source aggregate
 
 ## Current Status
 
-**PRODUCTION_READY** for the scoped GA4-first implementation certified in `CAMPAIGN_DEEPDIVE_REPORTS_CERTIFICATION_2026-09-21.md` at deployed revision `809227f7aefba97d50d9c7649de8e7d06c022371`.
+**RECERTIFICATION_REQUIRED** for the current revision. The scoped GA4-first result in
+`CAMPAIGN_DEEPDIVE_REPORTS_CERTIFICATION_2026-09-21.md` remains historical evidence for
+deployed revision `809227f7aefba97d50d9c7649de8e7d06c022371`, but it predates the
+`budget_pacing_v1` input now required by Budget & Financial Analysis reports.
 
-The production certificate is limited to Campaign DeepDive -> Custom Report with GA4 configured as the main analytics platform. Google Ads, Meta, Instagram, and TikTok were not enabled/configured and are not certified by this evidence. Performance Summary, Budget & Financial Analysis, Platform Comparison, Trend Analysis, Executive Summary, and the certified GA4 platform section remain fixed upstream contracts; this certification proves Custom Report consumes and propagates those contracts without re-certifying their internal calculations.
+The historical production certificate is limited to Campaign DeepDive -> Custom Report with GA4 configured as the main analytics platform. Google Ads, Meta, Instagram, and TikTok were not enabled/configured and are not certified by that evidence. It proved the recorded report consumer against the then-current upstream contracts without re-certifying their internal calculations; it does not certify the later `budget_pacing_v1` Budget report dependency.
 
 Campaign DeepDive preserves campaign context with `/reports?campaignId=<campaignId>`. In campaign context the Reports page displays the active campaign's backend scheduled report cards directly. One-off reports download without creating a report-library row. Saved scheduled reports support create, edit, reschedule, pause/disable, resume, delete, latest-value download, immutable snapshots, scheduled PDF delivery, and send-event bookkeeping.
 
-The prior deployed evidence remains historical proof for the lifecycle and artifact paths tested at commit `41ec6015b4aae0090e834294a5355c06fbccaa34`. Later defects and superseded evidence are retained below as history; the 2026-09-21 certificate is the controlling current result for Campaign DeepDive Reports.
+The prior deployed evidence remains historical proof for the lifecycle and artifact paths tested at commit `41ec6015b4aae0090e834294a5355c06fbccaa34`. Later defects and superseded evidence are retained below as history. Current code has targeted local direct/snapshot/scheduled parity coverage for the Budget report correction, but a deployed current-revision Budget artifact and delivery comparison is still required before Campaign DeepDive Reports can return to a certified status.
 
 ## Historical Implementation And Certification Evidence - 2026-08-28
 
@@ -32,11 +35,11 @@ The prior deployed evidence remains historical proof for the lifecycle and artif
 
 - Entry: Campaign DeepDive opens `/reports?campaignId=<campaignId>`.
 - Library read: `GET /api/platforms/campaign_deepdive/reports?campaignId=<campaignId>` returns only campaign-scoped `campaign_deepdive` rows after campaign-access verification.
-- Aggregate input: browser and scheduled Custom Reports use the certified `/api/campaigns/:campaignId/outcome-totals?dateRange=90days` `performance_summary_aggregate_v3` contract.
+- Aggregate input: browser and scheduled Custom Reports use `/api/campaigns/:campaignId/outcome-totals?dateRange=90days`; Budget reports consume both `performance_summary_aggregate_v3` totals and the compatible `budget_pacing_v1` derivative.
 - One-off download: `POST /api/campaigns/:campaignId/custom-report-pdf` returns a server-rendered PDF without creating a report or snapshot row.
 - Saved-report download: `POST /api/platforms/campaign_deepdive/reports/:reportId/snapshots` creates one immutable snapshot, then `GET /api/report-snapshots/:snapshotId/pdf` returns the exact stored PDF artifact.
 - Snapshot safety: Campaign DeepDive snapshots store `report_pdf_base64_v1`. Direct JSON/PDF reads verify report access and campaign/platform consistency; PDF reads additionally verify report-type consistency. Pre-deployment metadata-only snapshots have no recoverable PDF artifact and fail closed instead of being regenerated from current data.
-- Scheduler: `server/report-scheduler.ts` deduplicates report rows by report ID, reserves one `report_send_events` row per `reportId + scheduledKey`, verifies campaign existence, builds the PDF from the current certified aggregate, and sends the same PDF buffer as the attachment. On the certified production Mailgun API path, it creates a snapshot only after delivery confirmation.
+- Scheduler: `server/report-scheduler.ts` deduplicates report rows by report ID, reserves one `report_send_events` row per `reportId + scheduledKey`, verifies campaign existence, builds the PDF from the current required report inputs, and sends the same PDF buffer as the attachment. On the historically certified production Mailgun API path, it creates a snapshot only after delivery confirmation.
 - Failure behavior: missing campaigns disable only the affected schedule; missing recipients and invalid artifacts do not create sent/downloadable snapshots or advance `lastSentAt`. On the configured Mailgun API path, provider failures and unconfirmed delivery also fail closed.
 - Delivery terminology: provider acceptance is not called delivery. `sent` and snapshot creation require confirmed delivery for the configured Mailgun API path.
 
@@ -265,7 +268,7 @@ Status:
 - [x] Completed locally: Schedule form now creates backend scheduled report records for Campaign DeepDive Custom Reports, including recipients, schedule time, browser time zone, and saved report composition.
 - [x] Completed: standalone `/reports` retains its tab shell as a fail-closed non-authoring surface; campaign-scoped `/reports?campaignId=...` hides that shell and displays the active campaign's backend scheduled report cards directly.
 - [x] Completed: one-off campaign reports download immediately and create no report-library row; scheduled reports appear as backend cards with `Download latest report`.
-- [x] Completed: `Download latest report` creates an immutable server snapshot from current certified inputs and downloads that exact stored artifact; the browser no longer builds a separate Campaign DeepDive PDF.
+- [x] Completed: `Download latest report` creates an immutable server snapshot from current required inputs and downloads that exact stored artifact; the browser no longer builds a separate Campaign DeepDive PDF.
 - [x] Completed locally: campaign-scoped Custom Report creation exposes Campaign DeepDive subsection report types and automatically stores each type's single-page composition; the create screen has no `Tabs to include` picker, while standalone `/reports` exposes no creation flow.
 - [x] Completed locally: generated report cards no longer show the `Generated` status pill.
 - [x] Completed locally: report delete icons open the shared website-style confirmation dialog before deleting the stored report.
@@ -369,7 +372,7 @@ Custom Report is production-ready when:
 - the page shows a clear empty state when there are no scheduled report records
 - card `Data Included` shows selected tab labels from the saved `selectedSections` composition
 - Pause disables the backend schedule and persists status `paused`; Resume re-enables the preserved schedule without recreating report content
-- `Download latest report` creates one immutable server PDF artifact from current certified inputs and downloads those exact bytes
+- `Download latest report` creates one immutable server PDF artifact from current required inputs and downloads those exact bytes
 - The campaign-scoped top-level `Create Report` action opens an empty create form, clears report type, selected tabs, custom metric selections, and edit mode
 - unscheduled create mode shows `Download Report`, downloads the selected report sections through `/api/campaigns/:campaignId/custom-report-pdf`, and creates no report-library or snapshot row
 - direct snapshot JSON/PDF routes verify report access plus campaign/platform consistency; PDF reads additionally verify report-type consistency, and historical snapshots without immutable artifacts fail closed
@@ -377,7 +380,7 @@ Custom Report is production-ready when:
 - Downloaded Executive Summary PDFs use cumulative persisted GA4 traffic, connected-source financial values, GA4 platform KPI/Benchmark rows, and compatible seven-day trajectory inputs
 - legacy Executive Summary selection keys normalize to the one current `executive-summary:overview` composition so retired selections cannot duplicate output
 - Downloaded Performance Summary PDFs normalize legacy section keys to one consolidated body and render `Key Outcomes`, `Campaign Health`, `Top Priority Action`, the default seven-day `Recent Movement`, and `Recommended Actions`; in the GA4-first path, current traffic and financial outcomes use the existing Performance Summary UI-aligned reader, target decisions use campaign-scoped GA4 KPI/Benchmark records, and unavailable inputs or incompatible historical comparisons fail closed
-- Downloaded Budget & Financial Analysis PDFs expose one current page using `/outcome-totals.performanceSummary` for connected-source financial totals/source availability, persisted financial source rows for allocation detail, and the campaign row for budget/start/end pacing inputs
+- Downloaded Budget & Financial Analysis PDFs expose one current page using `/outcome-totals.performanceSummary` for connected-source financial totals/source availability, persisted financial source rows for allocation detail, the campaign row for budget-period metadata, and the compatible `/outcome-totals.budgetPacing` derivative for Budget Position, burn, pacing, and budget guidance
 - Downloaded Platform Comparison PDFs include the same major sections shown in the selected Platform Comparison web tabs, using `/outcome-totals.performanceSummary.sources` for connected-source rows and source capability gating for paid-media-only comparison sections
 - Downloaded Trend Analysis PDFs expose one canonical `Executive View`: cumulative persisted GA4 traffic and current aggregate financial headline values, the source-aware `/trend-analysis` rows for the default 30-day chart window, and an exact comparison date 30 days before data-through
 - Trend comparisons use only compatible persisted exact-date history; missing history remains unavailable instead of substituting another window
@@ -415,7 +418,7 @@ Commit 5 final implementation status:
 
 - [x] Scheduled Campaign DeepDive PDF body rendering is covered for every current Campaign DeepDive report type and tab.
 - [x] Scheduled Campaign DeepDive PDF regression coverage verifies the scheduler uses latest campaign aggregate inputs and selected-section body renderers.
-- [x] Browser downloads are production-ready for the deployed GA4/current aggregate-consumer scope documented in the 2026-09-21 certificate.
+- [ ] Current-revision Budget browser/snapshot/scheduled downloads require deployed artifact parity against `budget_pacing_v1`; the 2026-09-21 aggregate-Spend evidence is historical.
 - [x] Scheduled PDFs now build one server-side `CampaignDeepDiveReportContext` from latest campaign context, `performanceSummary`, Executive Summary context where selected, KPI rows, Benchmark rows, and Trend Analysis aggregate where selected.
 - [x] Deployed scheduled email evidence passed on 2026-08-28 with provider delivery-event proof and user-confirmed inbox receipt.
 
@@ -485,7 +488,7 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Executive Summary `Executive Overview` PDF section parity fix added on 2026-05-29.
 - Executive Summary `Strategic Recommendations` PDF section parity fix added on 2026-05-29.
 - Performance Summary PDF section parity was originally recorded on 2026-05-29. It was superseded on 2026-08-28 when one artifact exposed retired bodies and the later `perf_summary_2026-08-28.pdf` exposed a second root cause: the consolidated renderer read differing outcome-aggregate values instead of the fixed Performance Summary page inputs. The UI-aligned correction is deployed and covered by the 2026-09-21 certificate.
-- Budget & Financial Analysis PDF parity was updated on 2026-08-28 for the current one-page UI; legacy five-tab selections now normalize to one body using the same aggregate, pacing, allocation, and action inputs as the page.
+- Budget & Financial Analysis PDF parity was updated on 2026-08-28 for the current one-page UI; that evidence is historical for pacing. Current code at `4298cfda` keeps legacy five-tab normalization but replaces aggregate-Spend pacing with the same compatible `budget_pacing_v1` derivative used by the browser. Targeted local direct/snapshot/scheduled parity tests passed; current deployed Budget artifact parity remains open.
 - Platform Comparison PDF section parity fix added on 2026-05-29: selected Platform Comparison tabs now export the matching web-tab section structure instead of the generic DeepDive metric-list fallback.
 - Trend Analysis PDF parity was updated again on 2026-08-28 after `trend_2026-08-28.pdf` proved the first downstream correction still omitted UI-visible detail. Legacy selections normalize to one body; headline traffic is cumulative; current financials use the page aggregate; the chart window is 30 days; exact daily traffic and conversion-quality points, the website summary, and UI-equivalent recommendations now render; comparisons require exact compatible history.
 - Commit `cd35bba1` deployed the Trend report-consumer correction. Focused Trend/Custom Report regression tests passed `56/56`, TypeScript and production build passed, read-only production-data PDF parity returned Sessions `1,183`, Users `1,184`, and Conversions `152`, and the deployed Reports bundle exposed only `Executive View` as the selectable Trend section.
@@ -515,4 +518,4 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 
 ## Historical 2026-07-30 Commit 10 Status
 
-Commit `ec265895` was an earlier bounded implementation stage. Its `performance_summary_aggregate_v2` and attachment-evidence-pending statements are historical and are superseded by the authoritative 2026-08-28 certification above. Current production browser and scheduler paths consume `performance_summary_aggregate_v3` through the certified Campaign DeepDive aggregate reader, persist immutable PDF artifacts, and have passed deployed attachment, provider-delivery, and inbox validation.
+Commit `ec265895` was an earlier bounded implementation stage. Its `performance_summary_aggregate_v2` and attachment-evidence-pending statements are historical. The later recorded browser and scheduler paths consumed `performance_summary_aggregate_v3`, persisted immutable PDF artifacts, and passed the documented deployed attachment, provider-delivery, and inbox validation. Current Budget reports additionally consume `budget_pacing_v1`, so that earlier validation remains historical until the changed Budget value path is deployed-recertified.

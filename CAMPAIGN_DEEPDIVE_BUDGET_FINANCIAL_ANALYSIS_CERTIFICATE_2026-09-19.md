@@ -1,5 +1,12 @@
 # Campaign DeepDive — Budget & Financial Analysis Certificate
 
+> **Current status (2026-09-26): SUPERSEDED — RECERTIFICATION REQUIRED.** This
+> certificate is historical evidence for revision `b36047bb...`. It calculated
+> Budget Position and pacing from aggregate Total Spend. Current revisions
+> `4298cfda` / `162e9b6b` use the separate period-bounded `budget_pacing_v1`
+> Spend contract and revised Executive Action copy. Do not use the PASS below as
+> certification of the current Budget & Financial Analysis or Budget report path.
+
 Date: 2026-09-19
 
 Decision: **PASS — bounded production certification**

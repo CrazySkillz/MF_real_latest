@@ -1,5 +1,12 @@
 # Campaign DeepDive Reports Production Certificate — 2026-09-21
 
+> **Current dependency status (2026-09-26): RECERTIFICATION REQUIRED.** The
+> certificate below is historical evidence for revision `809227f7...`. The Budget &
+> Financial report renderer now consumes the separate `budget_pacing_v1` Spend contract
+> introduced at `4298cfda`. Targeted local direct/snapshot/scheduled parity tests passed,
+> but no current deployed Budget report artifact or delivery comparison has recertified
+> that changed value path. Unaffected historical lifecycle evidence is preserved.
+
 ## Certification Status
 
 **CERTIFIED — scoped GA4-first production configuration**

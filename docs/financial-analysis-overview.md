@@ -1,6 +1,8 @@
 # Budget & Financial Analysis - Current Single-Page Contract
 
-Last reconciled with the current implementation on 2026-08-28.
+Last reconciled with the current implementation on 2026-09-26 at `162e9b6b`.
+The budget-period Spend contract was introduced in `4298cfda`; the current Executive
+Action copy was finalized in `162e9b6b`.
 
 ## Current Visible Contract
 
@@ -70,6 +72,10 @@ import boundary through the latest completed reporting day.
 - `Budget-period Spend` is the sum of verified dated Spend records from
   `pacingStartDate` through the earlier of `pacingEndDate` or the connected-source
   data-through date.
+- The derivative is available only when aggregate Spend uses canonical normalized
+  Spend records, the active Spend source IDs exactly match the available provenance
+  set, and currency matches the campaign. It fails closed as `Unavailable` rather
+  than substituting aggregate Total Spend when those checks fail.
 - `Remaining Budget = Campaign Budget - Budget-period Spend`.
 - `Budget Used % = Budget-period Spend / Campaign Budget * 100`.
 - `Daily Burn Rate = Budget-period Spend / inclusive elapsed budget-period days`.
@@ -80,7 +86,19 @@ import boundary through the latest completed reporting day.
   judgment. A completed period stops elapsed days at `pacingEndDate`.
 - The inline editor writes only `budget`, `pacingStartDate`, and `pacingEndDate` through
   the existing campaign update route. Budget accepts numeric input and displays two
-  decimals after blur.
+  decimals after blur. Draft edits do not affect calculations until `Save` succeeds.
+- Either date may be cleared and saved independently. Clearing both dates while leaving
+  the budget populated retains the budget and makes the dependent Budget Position and
+  pacing values `Unavailable`.
+- `Delete inputs` has no confirmation step and clears all three saved fields: budget,
+  budget-period start, and budget-period end. It does not delete or modify financial
+  source records.
+- After Save/Delete, the returned campaign row replaces the campaign cache and the
+  outcome-totals query is invalidated. During that refetch, an older `budgetPacing`
+  contract whose dates no longer match is rejected; aggregate Financial Position values
+  remain independent of the pacing edit.
+- Browser, one-off, snapshot, and scheduled Budget report calculations consume the same
+  compatible `budget_pacing_v1` derivative and fail closed when it is unavailable.
 
 ### Efficiency And Provenance
 
@@ -98,6 +116,9 @@ import boundary through the latest completed reporting day.
 ### Executive Action Rules
 
 The three cards are fixed decision categories, not a ranked or prioritized list:
+
+The visible subtitle is: `Financial return, budget-period pacing, and spend-source
+guidance from verified connected-source values.`
 
 - Return: uses the displayed compatible ROAS and ROI; unavailable inputs fail closed,
   values below break-even warn, and otherwise the card reports positive return.
@@ -240,7 +261,7 @@ Daily Burn Rate requires verified budget-period Spend and a valid `pacingStartDa
 
 If the budget period has only one elapsed day, Daily Burn Rate equals budget-period Spend because the formula is `budget-period spend / 1 elapsed day`. The card shows the elapsed-day count under Daily Burn Rate so this is visible to users.
 
-When budget, budget-period start date, or budget-period end date are missing or invalid, the Budget Pacing & Burn Rate card shows inline campaign metadata inputs. When those values are already present, the card exposes an edit action. Saving those inputs updates the existing campaign `budget`, `pacingStartDate`, and `pacingEndDate` fields through `PATCH /api/campaigns/:id`, then the card refetches the dated budget-period Spend contract and recalculates the budget values. Users can cancel edit mode with the `x` control, which restores the draft fields from the saved campaign values without calling the API. Users can also delete the pacing inputs, which clears those same campaign metadata fields and returns dependent pacing values to `Unavailable`. The card does not ask users to enter calculated values directly.
+When budget, budget-period start date, or budget-period end date are missing or invalid, the Budget Pacing & Burn Rate card shows inline campaign metadata inputs. When those values are already present, the card exposes an edit action. Saving those inputs updates the existing campaign `budget`, `pacingStartDate`, and `pacingEndDate` fields through `PATCH /api/campaigns/:id`, then the card refetches the dated budget-period Spend contract and recalculates the budget values. Users can cancel edit mode with the `x` control, which restores the draft fields from the saved campaign values without calling the API. Users may clear one or both date fields and save while retaining the budget; dependent values then fail closed when the date range is incomplete. `Delete inputs` has no confirmation step and clears the budget plus both dates, returning dependent pacing values to `Unavailable`. The card does not ask users to enter calculated values directly.
 
 The Campaign Budget input only accepts numeric input, auto-formats with thousands separators as values are typed, such as `150,000.00`, and saves the numeric value without commas.
 
@@ -248,7 +269,9 @@ The card keeps its inputs synchronized from both upstream paths. Campaign budget
 
 Budget Pacing & Burn Rate inputs write only to the existing campaign metadata fields: `budget`, `pacingStartDate`, and `pacingEndDate`. Because Campaign Management displays the same campaign `budget` field, saving or deleting the Budget Pacing budget also updates the Budget value shown on the Campaign Management campaign card and edit form after the campaign query refreshes.
 
-Within Budget & Financial Analysis, those fields impact the Overview tab only:
+In the superseded rollback renderer, those fields affected its former Overview tab. In
+the current visible page and current Budget report body, they affect only the following
+budget-specific outputs:
 - Campaign Health Score: budget utilization and pacing sub-scores.
 - Budget Utilization: budget used percentage and remaining budget.
 - Budget Pacing & Burn Rate: daily burn rate, target daily spend, pacing status, budget-exhaustion projection, and over-budget warning.
@@ -263,9 +286,9 @@ The visible row helper text reflects availability:
 
 Daily Burn Rate can be tested with a controlled campaign after dated Spend is available: confirm `/api/campaigns/{campaignId}/outcome-totals?dateRange=90days` returns the expected `budgetPacing.spend.value`, confirm `pacingStartDate` and `pacingEndDate`, then verify the UI value equals budget-period Spend divided by inclusive elapsed budget-period days. For an active period, elapsed days stop at the current date. For a completed period, elapsed days stop at `pacingEndDate`.
 
-The 2026-09-26 local correction has targeted regression coverage for the browser and report consumers. Deployed validation remains required before production recertification.
+The 2026-09-26 correction has targeted regression coverage for browser and report consumers. Campaign3 browser screenshots supplied after deployment confirmed the expected period filtering, date-cleared unavailable state, unchanged aggregate Financial Position, unchanged provenance, and Executive Action copy. A current deployed report-parity recertification remains outstanding.
 
-Render validation passed after the Commit 7 refresh/history deploy: Overview and Budget & Financial Analysis values remained in sync with the aggregate contract.
+Historical Render validation passed after the earlier Commit 7 refresh/history deploy. That evidence predates the separate `budget_pacing_v1` derivative and does not certify the current pacing path.
 
 **Pacing status:**
 - **On Track:** 85-115% of target daily spend
@@ -274,9 +297,9 @@ Render validation passed after the Commit 7 refresh/history deploy: Overview and
 
 In Campaign Health Score, the displayed Pacing Status percentage is `daily burn rate / target daily spend * 100`. A very low value, such as `3.2%`, is critical because the campaign is spending far below the expected daily pace and is more than 50% away from target.
 
-**Budget projection:** At the current burn rate, calculates when the budget will be exhausted and whether that's before or after the campaign end date.
+**Budget projection:** At the current burn rate, calculates when the budget will be exhausted and whether that is before or after the budget-period end date.
 
-**Over-budget guard:** If a positive campaign budget exists and `totalSpend > campaignBudget`, shows "Budget exceeded by $X" instead of a negative days-remaining projection. If the campaign budget has been deleted or is missing, the warning is hidden because there is no budget threshold to exceed.
+**Over-budget guard:** If a positive campaign budget exists and `budgetPeriodSpend > campaignBudget`, shows "Budget exceeded by $X" instead of a negative days-remaining projection. If the campaign budget has been deleted or is missing, the warning is hidden because there is no budget threshold to exceed.
 
 ### 5. Cost Efficiency Metrics
 

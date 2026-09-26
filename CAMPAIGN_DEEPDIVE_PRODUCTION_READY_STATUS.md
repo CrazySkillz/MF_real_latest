@@ -31,14 +31,16 @@ Performance Summary certification reconciliation (2026-08-26): Performance Summa
 
 Performance Summary current-implementation reconciliation (2026-09-26): current application revision `ca1fc5a873ab69fb747937768c31fcd53e16fd64` adds campaign-currency Key Outcomes and Recommended Actions, campaign-currency Recent Movement, a stable all-requests-settled comparison transition, and scheduled-PDF recommendation currency parity. The focused 5-file / 70-test packet, TypeScript check, and production build passed locally. No exact-revision deployed recertification has been recorded, so the current implementation is `RECERTIFICATION_PENDING`; the prior exact-runtime certificates remain historical and do not certify `ca1fc5a8`.
 
-Budget & Financial Analysis reconciliation (2026-08-23): the current consumer through
-`1205ed49` renders one executive financial page rather than multiple visible tabs.
-Financial Position, Budget & Pacing, conditional Paid Media Efficiency, Sources Used,
-and the three fixed Executive Action categories consume the same cumulative aggregate.
-Budget-period dates are dedicated `pacingStartDate` / `pacingEndDate` campaign fields;
-they do not filter revenue or spend. The post-certification commits changed only the
-Budget consumer/helper and its focused regression test, not protected GA4 runtime,
-storage, routes, calculations, or machine certification records.
+Budget & Financial Analysis reconciliation (2026-09-26): current revision `162e9b6b`
+renders one executive financial page rather than multiple visible tabs. Financial
+Position, conditional Paid Media Efficiency, Allocation & Sources, and return/source
+guidance consume the cumulative aggregate and financial provenance. Budget Position,
+burn, pacing, budget guidance, and Budget report equivalents additionally consume the
+separate `budget_pacing_v1` Spend derivative introduced at `4298cfda`, containing only
+verified dated Spend inside the selected budget period. Budget dates do not filter
+aggregate Revenue, Total Spend, Profit, ROI, ROAS, CPA, or provenance. Campaign3 browser
+scenarios and targeted local report tests passed, but current combined-page and deployed
+Budget report recertification remain open; the 2026-09-19 certificate is historical.
 
 Trend Analysis reconciliation (2026-09-20): the bounded current application runtime
 `7dc72dc8` (deployed within documentation-only successor `59526846`) renders one
@@ -152,11 +154,11 @@ Boundary:
 | Subsection | Current status | Source-of-truth path | Remaining item |
 | --- | --- | --- | --- |
 | Performance Summary | **RECERTIFICATION_PENDING** for current implementation `ca1fc5a8`; prior exact-runtime certificates preserved as historical | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary`, cumulative GA4 Summary inputs, refreshed KPI/Benchmark targets, exact-date GA4 Revenue and dated Spend reads | Run authenticated exact-revision deployed API/UI reconciliation for the current campaign-currency and stable-transition behavior; future/refined sources retain source-specific proof |
-| Budget & Financial Analysis | Current single-page consumer aligned through `1205ed49`; focused regression, TypeScript, and build passed | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary` and `financialInputs`, plus campaign `budget`, `pacingStartDate`, and `pacingEndDate` | Confirm the latest consumer SHA in production if that deployment has not already been checked; future sources retain their own source-specific validation |
+| Budget & Financial Analysis | **RECERTIFICATION_PENDING** for current implementation `162e9b6b`; prior exact-runtime certificate preserved as historical | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary`, `financialInputs`, and compatible `budgetPacing`, plus campaign `budget`, `pacingStartDate`, and `pacingEndDate` | Recertify the current combined page and deployed one-off/snapshot/scheduled Budget report value path; future sources retain source-specific proof |
 | Platform Comparison | Production-ready locally and Render-validated for GA4-only | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary.sources` | Live multi-platform validation |
 | Trend Analysis | Bounded PASS for the exact audited GA4-first boundary at application runtime `7dc72dc8`, deployed within documentation-only successor `59526846`; one comprehensive Executive View | `/ga4-daily` + GA4 coverage verification + `/outcome-totals.performanceSummary` + exact-date financial comparison + `/trend-analysis` daily aggregate | Repeat source-specific validation for every future/refined main-source mix; positive paid-media and multi-source panels remain unverified |
 | Executive Summary | Production-ready locally as an aggregate consumer | `/api/campaigns/:campaignId/executive-summary` plus `/outcome-totals` | Future source-mix deployed validation and source-specific acceptance gates |
-| Custom Report | **PRODUCTION_READY** for GA4-first scope at deployed runtime `41ec6015` | `/reports?campaignId=...`, `/outcome-totals`, immutable report snapshots, scheduled delivery audit | Revalidate for any future/refined source mix or other email provider |
+| Custom Report | **RECERTIFICATION_PENDING** for the changed Budget report value path; prior GA4-first runtime evidence preserved as historical | `/reports?campaignId=...`, `/outcome-totals` including `budgetPacing`, immutable report snapshots, scheduled delivery audit | Recertify current deployed Budget one-off/snapshot/scheduled artifact and delivery parity; revalidate future/refined source mixes or other email providers |
 
 ## Future Integration Rule
 

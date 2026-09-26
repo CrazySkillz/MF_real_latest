@@ -1,5 +1,10 @@
 # Campaign DeepDive Reports Audit — 2026-09-21
 
+> **Current dependency status (2026-09-26): RECERTIFICATION REQUIRED.** This audit is
+> historical evidence for deployed revision `809227f7...`. The later Budget & Financial
+> report change at `4298cfda` replaced aggregate-Spend pacing with `budget_pacing_v1`.
+> Current deployed Budget artifact and delivery parity have not been recertified.
+
 ## Decision
 
 **Audit complete. The scoped production certification PASSED.**

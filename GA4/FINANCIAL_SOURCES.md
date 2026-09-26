@@ -58,7 +58,7 @@ Campaign DeepDive financial provenance rule:
 
 ### V1 reporting boundary
 
-- Campaign metadata dates are not financial reporting or aggregation boundaries in V1. Budget Pacing uses them for pacing formulas. A source connector may still have its own provider-import window; that controls which source records are materialized, not which materialized records the reports include.
+- Campaign metadata dates are not financial reporting or aggregation boundaries in V1. `pacingStartDate` and `pacingEndDate` bound only the separate Budget Pacing Spend derivative used by budget calculations and Budget report equivalents. A source connector may still have its own provider-import window; that controls which source records are materialized, not which materialized records the aggregate financial totals include.
 - Native GA4 Revenue and its matching financial Conversions use the saved initial-import date through the latest completed reporting day.
 - Imported Revenue and Spend use every available mapped record materialized by the active source. Legacy route or UI names such as `revenue-to-date`, `spend-to-date`, and `source-to-date` refer to this all-mapped-record total; they do not mean "since app creation" or "since a campaign metadata date."
 - Overview, Campaign DeepDive, KPI/Benchmark evaluation, alerts, snapshots, and reports must use these same boundaries.
@@ -148,7 +148,7 @@ Spend is not imported from the GA4 API by default.
 
 Imported `Total Spend`, `Spend Breakdown`, and the `Spend Sources` modal must use the same active source-backed spend record window so the card total and source provenance cannot drift.
 
-Budget & Financial Analysis pacing metadata, including budget-period start and end dates entered from the Budget Pacing & Burn Rate card, must not filter GA4 `Total Spend`, `Spend Breakdown`, or the `Spend Sources` modal. Those platform-level spend values are source-backed and must include all available mapped spend records. Budget-only calculations consume a separate verified derivative that sums dated Spend records inside the selected budget period; that derivative does not replace GA4 Total Spend.
+Budget & Financial Analysis pacing metadata, including budget-period start and end dates entered from the Budget Pacing & Burn Rate card, must not filter GA4 `Total Spend`, `Spend Breakdown`, or the `Spend Sources` modal. Those platform-level spend values are source-backed and must include all available mapped spend records. Browser and Budget report calculations consume a separate `budget_pacing_v1` derivative that sums dated Spend records inside the selected budget period through the financial data-through date. That derivative is available only when aggregate Spend uses canonical normalized records, its active Spend-source IDs exactly match the available provenance set, and currency matches the campaign; otherwise budget calculations fail closed instead of reusing GA4 Total Spend.
 
 Google Sheets spend add mode is additive. Creating a new Google Sheets spend source must not reuse or overwrite an existing source just because the same Google Sheets connection or tab is selected. Edit/refresh mode may update an existing source only when the stable spend `sourceId` is explicitly passed.
 

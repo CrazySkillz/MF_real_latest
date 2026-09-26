@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "fs";
+import { join } from "path";
 import { detectTrendAnomalies } from "../client/src/lib/trend-analysis-cumulative";
 
 const conversionSeries = (values: Array<number | null>) => values.map((value, index) => ({
@@ -8,6 +10,11 @@ const conversionSeries = (values: Array<number | null>) => values.map((value, in
 }));
 
 describe("Trend Analysis anomaly detection", () => {
+  it("renders warning severity badges with the established orange treatment", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
+    expect(page).toContain("border-transparent bg-orange-500 text-white hover:bg-orange-500");
+  });
+
   it("classifies warning and critical changes against the previous seven comparable values", () => {
     const baseline = [4, 5, 6, 5, 4, 6, 5];
     expect(detectTrendAnomalies(conversionSeries([...baseline, 7]), ["conversions"]))

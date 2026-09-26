@@ -1924,7 +1924,7 @@ export default function TrendAnalysis() {
                                   <div className="flex items-center space-x-2">
                                     {isSpike ? <TrendingUp className="w-4 h-4 text-orange-600" /> : <TrendingDown className="w-4 h-4 text-blue-600" />}
                                     <span className="text-sm font-medium capitalize">{a.metric} {isSpike ? 'spike' : 'drop'}</span>
-                                    <Badge variant={a.severity === 'critical' ? 'destructive' : 'outline'} className="text-xs">{a.severity}</Badge>
+                                    <Badge variant={a.severity === 'critical' ? 'destructive' : 'outline'} className={`text-xs ${a.severity === 'warning' ? 'border-transparent bg-orange-500 text-white hover:bg-orange-500' : ''}`}>{a.severity}</Badge>
                                     <Badge variant="outline" className="text-xs">{a.label}</Badge>
                                   </div>
                                   <div className="text-sm text-muted-foreground/70">

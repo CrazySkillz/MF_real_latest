@@ -153,10 +153,10 @@ export default function TrendAnalysis() {
   });
 
   const { data: outcomeTotals, isFetched: outcomeTotalsFetched, error: outcomeTotalsError } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", "live"],
+    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", "persisted-only"],
     enabled: !!campaignId,
     queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/outcome-totals?dateRange=90days`, { credentials: "include" });
+      const response = await fetch(`/api/campaigns/${campaignId}/outcome-totals?dateRange=90days&persistedOnly=1`, { credentials: "include" });
       const data = await response.json().catch(() => null);
       if (!response.ok || !data?.performanceSummary) throw new Error(data?.error || "Failed to fetch cumulative Trend totals");
       return data;
@@ -171,7 +171,7 @@ export default function TrendAnalysis() {
     String(outcomeTotals?.performanceSummary?.currentValueWindow?.dataThroughDate || ""),
     perfDays,
   );
-  const trendFinancialComparisonUrl = `/api/campaigns/${campaignId}/snapshots/comparison?type=last_week&snapshotType=financial_daily&comparisonDate=${trendComparisonDate}`;
+  const trendFinancialComparisonUrl = `/api/campaigns/${campaignId}/snapshots/comparison?type=last_week&snapshotType=financial_daily&comparisonDate=${trendComparisonDate}&persistedOnly=1`;
   const { data: trendFinancialComparison, isFetched: trendFinancialComparisonFetched, error: trendFinancialComparisonError } = useQuery<any>({
     queryKey: [trendFinancialComparisonUrl, "trend-exact-financial"],
     enabled: !!campaignId && !!trendComparisonDate,
@@ -555,22 +555,30 @@ export default function TrendAnalysis() {
   const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase() || "USD";
   const fmtTrendCurrency = (value: number) => fmtCur(value, campaignCurrency);
   const fmtHeadlineCurrency = (value: number) => fmtCur(value, campaignCurrency);
-  const compatibleFinancialDaily = resolveCompatibleTrendFinancialDaily({
+  const currentFinancialDate = String(currentValueWindow?.endDate || "");
+  const compatibleCurrentFinancialDaily = resolveCompatibleTrendFinancialDaily({
+    snapshot: trendFinancialComparison?.current,
+    campaignId: String(campaignId || ""),
+    comparisonDate: currentFinancialDate,
+    campaignCurrency,
+    currentValueWindow,
+  });
+  const compatibleHistoricalFinancialDaily = resolveCompatibleTrendFinancialDaily({
     snapshot: trendFinancialComparison?.previous,
     campaignId: String(campaignId || ""),
     comparisonDate: trendComparisonDate,
     campaignCurrency,
     currentValueWindow,
   });
-  const historicalFinancialValue = (metricName: "spend" | "revenue" | "conversions"): number | null => {
-    const input = compatibleFinancialDaily?.inputs?.[metricName];
+  const financialSnapshotValue = (financialDaily: any, metricName: "spend" | "revenue" | "conversions"): number | null => {
+    const input = financialDaily?.inputs?.[metricName];
     if (input?.value === null || typeof input?.value === "undefined" || input?.value === "") return null;
     const value = Number(input?.value);
     return input?.available === true && Array.isArray(input?.sources) && input.sources.length > 0
       && Number.isFinite(value) && value >= 0 ? value : null;
   };
-  const currentRevenue = aggregateMetricValue("revenue");
-  const currentSpend = aggregateMetricValue("spend");
+  const currentRevenue = financialSnapshotValue(compatibleCurrentFinancialDaily, "revenue");
+  const currentSpend = financialSnapshotValue(compatibleCurrentFinancialDaily, "spend");
   const currentFinancialRatios = deriveTrendFinancialRatios({
     spend: currentSpend,
     revenue: currentRevenue,
@@ -627,8 +635,8 @@ export default function TrendAnalysis() {
     cpm: aggregateMetricValue("cpm"),
   } : null;
   const authoritativeHeadlineCurrent = hasAuthoritativeHeadlineWindow ? {
-    revenue: aggregateMetricValue("revenue"),
-    spend: aggregateMetricValue("spend"),
+    revenue: usesCumulativeGA4Consumer ? authoritativeTrendCurrent?.revenue ?? null : aggregateMetricValue("revenue"),
+    spend: usesCumulativeGA4Consumer ? authoritativeTrendCurrent?.spend ?? null : aggregateMetricValue("spend"),
     roas: usesCumulativeGA4Consumer ? authoritativeTrendCurrent?.roas ?? null : aggregateMetricValue("roas"),
     roi: usesCumulativeGA4Consumer ? authoritativeTrendCurrent?.roi ?? null : aggregateMetricValue("roi"),
     conversions: usesCumulativeGA4Consumer ? authoritativeTrendCurrent?.conversions ?? null : aggregateMetricValue("conversions"),
@@ -641,14 +649,14 @@ export default function TrendAnalysis() {
     engagementRate: authoritativeTrendCurrent?.engagementRate ?? null,
     ctr: aggregateMetricValue("ctr"),
   } : null;
-  const historicalSpend = historicalFinancialValue("spend");
-  const historicalRevenue = historicalFinancialValue("revenue");
+  const historicalSpend = financialSnapshotValue(compatibleHistoricalFinancialDaily, "spend");
+  const historicalRevenue = financialSnapshotValue(compatibleHistoricalFinancialDaily, "revenue");
   const historicalFinancialRatios = deriveTrendFinancialRatios({
     spend: historicalSpend,
     revenue: historicalRevenue,
     conversions: exactTrafficComparison?.previous.conversions ?? null,
   });
-  const authoritativeTrendPrevious = exactTrafficComparison || compatibleFinancialDaily ? {
+  const authoritativeTrendPrevious = exactTrafficComparison || compatibleHistoricalFinancialDaily ? {
     users: exactTrafficComparison?.previous.users ?? null,
     sessions: exactTrafficComparison?.previous.sessions ?? null,
     engagedSessions: exactTrafficComparison?.previous.engagedSessions ?? null,
@@ -1635,10 +1643,11 @@ export default function TrendAnalysis() {
                         { label: 'Engagement Rate', value: authoritativeHeadlineCurrent.engagementRate === null ? null : formatPct(normalizeRateToPercent(authoritativeHeadlineCurrent.engagementRate)), change: headlineComparison.engagementRate },
                         { label: 'CTR', value: authoritativeHeadlineCurrent.ctr === null ? null : formatPct(authoritativeHeadlineCurrent.ctr), change: headlineComparison.ctr },
                       ].filter((card) => card.value !== null).map((card, i) => {
+                        const invertComparisonColor = card.label === "CPA";
                         const comparisonColorClass = Number(card.change) > 0
-                          ? "text-green-600"
+                          ? invertComparisonColor ? "text-red-600" : "text-green-600"
                           : Number(card.change) < 0
-                            ? "text-red-600"
+                            ? invertComparisonColor ? "text-green-600" : "text-red-600"
                             : "text-muted-foreground";
                         const countKey = ({ Conversions: "conversions", Sessions: "sessions", Users: "users" } as Record<string, string>)[card.label];
                         const rateKey = ({ CVR: "cvr", "Engagement Rate": "engagementRate", CTR: "ctr" } as Record<string, string>)[card.label];

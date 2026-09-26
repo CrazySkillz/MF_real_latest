@@ -150,7 +150,8 @@ describe("compact daily financial snapshot contract", () => {
     expect(route).toContain("snapshotType && snapshotType !== 'financial_daily'");
     expect(route).toContain("snapshotType === 'financial_daily' && !comparisonDate");
     expect(route).toContain("storage.getFinancialDailyComparisonData(id, latestComparisonDate, comparisonDate)");
-    expect(route).toContain("snapshotType === 'financial_daily' && !comparisonData.previous");
+    expect(route).toContain('const persistedOnly = String((req.query as any)?.persistedOnly || "").trim() === "1";');
+    expect(route).toContain("snapshotType === 'financial_daily' && !comparisonData.previous && !persistedOnly");
     expect(route).toContain("resolveFinancialDailyComparisonPrevious({");
     expect(scheduler).toContain("if (trendFinancialComparison && !trendFinancialComparison.previous)");
     expect(scheduler).toContain("resolveFinancialDailyComparisonPrevious({");

@@ -153,6 +153,10 @@ describe("Trend Analysis Overview regression guard", () => {
 
   it("uses cumulative current values and exact-date history only for the compatible GA4 consumer", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const outcomeRouteStart = routes.indexOf('app.get("/api/campaigns/:id/outcome-totals"');
+    const outcomeRouteEnd = routes.indexOf("const campaignOutcomeTotalsRoute", outcomeRouteStart);
+    const outcomeRoute = routes.slice(outcomeRouteStart, outcomeRouteEnd);
     const overviewStart = page.indexOf("const overviewTrendData = useMemo<any>(() => {");
     const overviewEnd = page.indexOf("const overviewVisibleSeries", overviewStart);
     const overviewModel = page.slice(overviewStart, overviewEnd);
@@ -164,8 +168,17 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(overviewModel).toContain("verifiedTrendGA4DailyRows.map");
     expect(page).toContain("trendGA4DailyHistoryVerified && overviewTrendData.series.length > 0");
     expect(page).toContain("Campaign performance daily values are withheld because current GA4 data could not be verified.");
-    expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", "live"]');
-    expect(page).toContain("snapshotType=financial_daily&comparisonDate=${trendComparisonDate}");
+    expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", "persisted-only"]');
+    expect(page).toContain("outcome-totals?dateRange=90days&persistedOnly=1");
+    expect(page).toContain("snapshotType=financial_daily&comparisonDate=${trendComparisonDate}&persistedOnly=1");
+    expect(page).toContain("snapshot: trendFinancialComparison?.current");
+    expect(page).toContain('const currentRevenue = financialSnapshotValue(compatibleCurrentFinancialDaily, "revenue");');
+    expect(page).toContain('const currentSpend = financialSnapshotValue(compatibleCurrentFinancialDaily, "spend");');
+    expect(page).toContain('revenue: usesCumulativeGA4Consumer ? authoritativeTrendCurrent?.revenue ?? null : aggregateMetricValue("revenue")');
+    expect(page).toContain('spend: usesCumulativeGA4Consumer ? authoritativeTrendCurrent?.spend ?? null : aggregateMetricValue("spend")');
+    expect(outcomeRoute).toContain('const persistedOnly = String(req.query.persistedOnly || "").trim() === "1";');
+    expect(outcomeRoute).toContain("} else if (!persistedOnly) {");
+    expect(outcomeRoute).toContain('if (!persistedOnly && primaryGA4?.method === "access_token" && primaryGA4?.accessToken)');
     expect(page).toContain('performanceSummary?.version === "performance_summary_aggregate_v3"');
     expect(page).toContain("performanceSummary?.campaignId === campaignId");
     expect(page).toContain('const usesCumulativeGA4Consumer = trendConsumerMode === "cumulative_ga4";');
@@ -338,9 +351,10 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).toContain("ArrowUpRight");
     expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).toContain("ArrowDownRight");
     expect(page).toContain('Number(card.change) > 0');
-    expect(page).toContain('? "text-green-600"');
+    expect(page).toContain('const invertComparisonColor = card.label === "CPA";');
+    expect(page).toContain('? invertComparisonColor ? "text-red-600" : "text-green-600"');
     expect(page).toContain('Number(card.change) < 0');
-    expect(page).toContain('? "text-red-600"');
+    expect(page).toContain('? invertComparisonColor ? "text-green-600" : "text-red-600"');
     expect(page).not.toContain("card.invertColor ? card.change <= 0 : card.change >= 0");
     expect(page).not.toContain("const isFinancialCard");
     expect(page).toContain('hasAuthoritativeHeadlineWindow && comparisonDateLabel && typeof card.change !== "number" && !("comparisonPending" in card && card.comparisonPending)');
@@ -350,7 +364,7 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).not.toContain("Financial KPIs are campaign-to-date");
     expect(page).not.toContain("current campaign-to-date financial KPIs remain visible");
     expect(page).not.toContain("Traffic cards are cumulative from the initial import");
-    expect(page).toContain("const authoritativeTrendPrevious = exactTrafficComparison || compatibleFinancialDaily ? {");
+    expect(page).toContain("const authoritativeTrendPrevious = exactTrafficComparison || compatibleHistoricalFinancialDaily ? {");
     expect(page).toContain("users: exactTrafficComparison?.previous.users ?? null");
   });
 

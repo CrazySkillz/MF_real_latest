@@ -40,6 +40,17 @@ It does not certify:
 - a new scheduler timer firing, provider delivery, or inbox receipt; the shared renderer was checked, but those transport gates remain in `CAMPAIGN_DEEPDIVE_CUSTOM_REPORT_PRODUCTION_READY.md`
 - protected GA4 Overview, KPI, Benchmark, Ad Comparison, Insights, Reports, or machine certification records; none were changed by this Trend work
 
+### Post-certification financial-read alignment — 2026-09-26
+
+The current local implementation changes the mounted GA4-first Performance Summary financial path after the certified runtime above. Therefore the affected current/historical financial-card path and CPA presentation are **not covered by the 2026-09-20 certificate until proportionate deployed revalidation is completed**.
+
+- Trend Analysis requests persisted-only mode from `/outcome-totals` and the exact-date `financial_daily` comparison route. Those Trend requests do not run the outcome route's live GA4 aggregate reads or the comparison route's live historical reconstruction fallback.
+- Current `Revenue` and `Spend` require a compatible scheduler-written `financial_daily_snapshot_v1` for the latest completed reporting date. Historical `Revenue` and `Spend` require the same snapshot contract for the exact selected comparison date. `ROAS`, `ROI`, and `CPA` derive from those accepted financial inputs and compatible persisted traffic values.
+- A missing, mismatched, or unavailable current or historical financial snapshot fails closed. The mounted financial-card path does not replace it with a summed daily Revenue value or initiate a live aggregate fallback.
+- The separate GA4 daily-coverage request remains a provider verification path for traffic history and zero-date handling. Financial values returned incidentally by that verification path do not populate the mounted financial cards.
+- CPA direction styling is business-semantic in the headline cards: a lower CPA is green and a higher CPA is red. Other headline metrics retain their existing numeric-direction styling; Spend is not automatically classified as beneficial merely because it decreases.
+- Local validation for this change passed 101 focused Trend/financial/adjacent regression tests, TypeScript checking, and the production build. This is implementation evidence only and does not replace the required deployed revalidation of the affected paths.
+
 ### Current Visible Implementation
 
 Trend Analysis renders one comprehensive view. The retired tab navigation is not visible. The mounted view contains:
@@ -59,7 +70,7 @@ The page-level selector defaults to `Last 7 days`; `Last 14 days`, `Last 30 days
 
 | Visible surface | Implemented contract | Current certification boundary |
 | --- | --- | --- |
-| Connected-Source Performance Summary | Capability-gated cumulative cards; exact-date comparison; numeric direction colors | Certified for the observed GA4-only card set; optional paid-media cards are not positively certified |
+| Connected-Source Performance Summary | Capability-gated cumulative traffic cards; scheduler-snapshot current and exact-date financial cards; CPA-aware direction color | The 2026-09-20 boundary remains historical evidence; the changed financial-read and CPA-color paths require current deployed revalidation |
 | Campaign Performance Trend | Selected exact calendar window; GA4 Users, Sessions, and Conversions; missing dates are gaps; provider-verified zero remains zero | Certified for the audited GA4-only selectors and insufficient-history behavior |
 | Efficiency Trends | Return, cost, and rate charts render independently only when their daily inputs exist; verified no-activity dates get a marker instead of a fabricated rate | Certified for the audited GA4-only conversion-quality path and unavailable daily financial-history state |
 | Anomaly Detection | Conditional browser-only statistical markers and list, using the deterministic seven-value rule below | Certified as descriptive decision support for the audited GA4-only conversion series; no causal claim |
@@ -93,7 +104,7 @@ For the certified GA4-only consumer:
 - These traffic totals accumulate from the fixed initial-import date through the latest completed reporting day; they are not rolling `7/14/30/90-day` totals.
 - `CVR = Conversions / Sessions * 100`.
 - `Engagement Rate = Engaged Sessions / Sessions * 100`.
-- `Revenue` and `Spend` come from `/outcome-totals.performanceSummary` only when each metric is available, has source provenance, and the cumulative current-value window is valid.
+- For the mounted cumulative GA4 consumer, current `Revenue` and `Spend` come only from a compatible scheduler-written `financial_daily_snapshot_v1` for the cumulative window's completed end date. The persisted-only `/outcome-totals` response supplies the window/source contract but cannot replace a missing snapshot with a live GA4 read or a daily-row Revenue sum.
 - `ROAS = Revenue / Spend`.
 - `ROI = (Revenue - Spend) / Spend * 100`.
 - `CPA = Spend / Conversions` when Spend is available and Conversions are greater than zero. In the certified cumulative GA4 browser consumer, the denominator is the same verified cumulative GA4 Conversions value shown by the page; exact historical CPA uses the compatible historical Spend value and exact cumulative GA4 Conversions through the comparison date.
@@ -106,7 +117,7 @@ This is a bounded post-certification finding, not an expansion of the `Campaign2
 
 - A read-only `Campaign3` reconciliation for property `542352127`, campaign filters `yesop_brand_search` and `yesop_paid_social`, currency `EUR`, reporting timezone `Europe/Amsterdam`, and initial-import boundary `2026-08-23` found a current native GA4 Revenue aggregate of `EUR 37,518.74` through `2026-09-23` and an exact-date aggregate baseline of `EUR 25,306.25` through `2026-09-16`. The visible `+48.3%` comparison is therefore correct under the authoritative aggregate contract.
 - The persisted `ga4_daily_metrics` Revenue rows through `2026-09-23` sum to `EUR 37,518.72`, a `EUR 0.02` difference. `ga4_daily_metrics.revenue` is stored as `decimal(15,2)`, so each daily value is quantized to cents before a later consumer sums those rows. The observed difference is consistent with GA4 retaining more precision in the values underlying its aggregate, but the current evidence does not inspect GA4's internal aggregation implementation.
-- The headline Revenue card and exact-date Revenue comparison must continue to use the authoritative scoped aggregate. They must not be changed to the lower daily-row sum merely to make the two grains agree.
+- The scheduler captures the authoritative scoped aggregate in `financial_daily_snapshot_v1`; the headline Revenue card and exact-date Revenue comparison use those compatible snapshots. They must not be changed to the lower daily-row sum merely to make the two grains agree.
 - Persisted daily Revenue remains suitable for daily chart shape and date-level history, but the current version does **not** claim exact cent-for-cent additivity from stored daily rows back to the direct GA4 aggregate. Any small residual must not be assigned to an arbitrary day or hidden by fabricated adjustment rows.
 - The read-only check found no active imported Revenue source, simulated daily row, or duplicate daily date in this exact boundary. No production data was changed.
 
@@ -131,8 +142,8 @@ The `Trend & comparison window` selector accepts `7`, `14`, `30`, and `90` days.
 - It does not change the cumulative current traffic totals or connected-source financial totals.
 - Count comparisons show the exact absolute difference and percentage difference.
 - Rate comparisons show percentage-point change.
-- Comparison text is green for a positive numeric change, red for a negative numeric change, and neutral for zero. This is direction styling only; it does not classify the change as beneficial or harmful. In particular, a decrease in CPA or Spend is still red under the implemented rule.
-- A comparison appears only when the exact historical value is reconstructable from compatible persisted rows or an exact compatible financial snapshot.
+- Most comparison text is green for a positive numeric change, red for a negative numeric change, and neutral for zero. CPA is the deliberate exception: a decrease is green and an increase is red because lower acquisition cost is favorable. Spend retains numeric-direction styling because a decrease in Spend is not inherently good without delivery context.
+- A traffic comparison appears only when the exact historical value is reconstructable from compatible persisted rows. A financial comparison appears only when an exact compatible scheduler-written financial snapshot exists.
 - Missing, partial, mismatched-property, mismatched-window, mismatched-timezone, mismatched-currency, duplicate-date, provider-warning, or unavailable exact historical data fails closed.
 - The current cumulative value is never reused as a historical fallback.
 
@@ -143,7 +154,7 @@ The `Trend & comparison window` selector accepts `7`, `14`, `30`, and `90` days.
 - Dates that GA4 explicitly verifies as zero remain valid zero values. In `Conversion Quality Trend`, a verified date with zero Sessions, Users, and Conversions is shown as an amber `No activity — 0 sessions; rates unavailable` marker while the CVR and Engagement Rate lines remain broken for that date.
 - Chart animation is disabled so a stale/placeholder chart does not transform after load.
 - All selector options remain selectable. If the campaign does not yet cover the full requested calendar window, the page explains the available boundary. If the window exists but has no daily activity rows, it shows the exact empty date range and latest recorded date.
-- Efficiency charts render only when their required daily inputs exist. Current financial cards can remain available while daily return/cost trend charts are withheld.
+- Efficiency charts render only when their required daily inputs exist. Current financial cards require their own compatible scheduler snapshot and can remain available while daily return/cost trend charts are withheld.
 
 ### Anomaly Detection Contract
 
@@ -177,7 +188,7 @@ The `Trend & comparison window` selector accepts `7`, `14`, `30`, and `90` days.
 - The shared Trend PDF renderer uses a fixed 30-day calendar window ending on the latest completed reporting day; the browser selector remains independent and defaults to 7 days. GA4-only report rows fail closed when the saved initial-import boundary begins after the requested 30-day start.
 - The PDF includes current decision metrics, Campaign Performance Trend daily traffic, available Efficiency Trends, Website Engagement & Conversion Summary, eligible paid/source sections, and up to three eligible Executive Recommendations. `Anomaly Detection` is browser-only and is not represented as PDF content.
 - Scheduler snapshots retain `metrics.trendAnalysis.version = trend_analysis_aggregate_v1`; incompatible legacy snapshots remain ineligible for comparison.
-- Core cumulative GA4, outcome-total, exact financial-comparison, and Trend aggregate queries refetch every 30 seconds while the page is visible and on window focus. Provider coverage verification refetches every 30 minutes and on focus. This lets the next successful scheduler/import refresh propagate through the existing stored-data path without a separate Trend write path; it does not guarantee that an upstream scheduler run succeeded.
+- Core cumulative GA4, persisted-only outcome-total, persisted-only exact financial-comparison, and Trend aggregate queries refetch every 30 seconds while the page is visible and on window focus. These rereads do not initiate live GA4 financial aggregation. Provider coverage verification refetches every 30 minutes and on focus for traffic-history verification only. The next successful scheduler refresh writes the eligible current financial snapshot; exact selected comparisons remain unavailable until a compatible snapshot exists for that historical date.
 
 ### Validation Evidence
 

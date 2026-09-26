@@ -14483,6 +14483,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = String(req.params.id || "");
       const dateRange = String(req.query.dateRange || "30days");
+      const persistedOnly = String(req.query.persistedOnly || "").trim() === "1";
 
       // Demo mode: return realistic mock data for testing Attribution tab
       if (req.query.demo === "1") {
@@ -14667,7 +14668,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             };
             ga4TotalsFromSourceTruth = true;
             ga4TotalsAvailable = true;
-          } else {
+          } else if (!persistedOnly) {
             const result = await ga4Service.getAcquisitionBreakdown(campaignId, storage, ga4DateRange, primaryPropertyId || undefined, 2000, campaignFilter);
             ga4Totals = {
               connected: true,
@@ -15084,7 +15085,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ? Number((propertyWindowTrafficCandidate.engagementRate * 100).toFixed(2))
               : null;
           }
-          if (primaryGA4?.method === "access_token" && primaryGA4?.accessToken) {
+          if (!persistedOnly && primaryGA4?.method === "access_token" && primaryGA4?.accessToken) {
             try {
               const toDate = await ga4Service.getTotalsWithRevenue(
                 String(primaryGA4.propertyId),
@@ -31268,6 +31269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { type } = req.query;
       const snapshotType = String((req.query as any)?.snapshotType || "").trim();
+      const persistedOnly = String((req.query as any)?.persistedOnly || "").trim() === "1";
 
       if (!type || !['yesterday', 'last_week', 'last_month'].includes(type as string)) {
         return res.status(400).json({ message: "Invalid comparison type. Use: yesterday, last_week, or last_month" });
@@ -31296,7 +31298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             (req as any)._campaign?.reportingTimeZone,
             comparisonDate || undefined,
           );
-      if (snapshotType === 'financial_daily' && !comparisonData.previous) {
+      if (snapshotType === 'financial_daily' && !comparisonData.previous && !persistedOnly) {
         comparisonData.previous = await resolveFinancialDailyComparisonPrevious({
           campaignId: id,
           reportingDate: comparisonDate,

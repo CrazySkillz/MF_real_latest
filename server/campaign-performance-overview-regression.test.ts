@@ -250,12 +250,18 @@ describe("campaign Performance Summary consolidated view regression guard", () =
 
   it("formats Recent Movement currency values using the campaign currency", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
+    const keyOutcomesStart = page.indexOf('data-testid="performance-key-outcomes"');
+    const keyOutcomesEnd = page.indexOf('data-testid="performance-campaign-health"', keyOutcomesStart);
+    const keyOutcomes = page.slice(keyOutcomesStart, keyOutcomesEnd);
     const recentMovementStart = page.indexOf("{/* Recent Movement */}");
     const recentMovementEnd = page.indexOf("{/* Trend Charts", recentMovementStart);
     const recentMovement = page.slice(recentMovementStart, recentMovementEnd);
 
     expect(page).toContain("currency?: string;");
     expect(page).toContain("currency: String(campaign?.currency || 'USD').trim().toUpperCase()");
+    expect(keyOutcomes).toContain("formatOverviewValue(overviewRevenue, formatRecentMovementCurrencyValue)");
+    expect(keyOutcomes).toContain("formatOverviewValue(overviewSpend, formatRecentMovementCurrencyValue)");
+    expect(keyOutcomes).not.toContain('`$${value.toLocaleString');
     expect(recentMovement).toContain("formatRecentMovementCurrencyValue(item.current)");
     expect(recentMovement).toContain("formatRecentMovementCurrencyValue(item.change)");
     expect(recentMovement).toContain("formatRecentMovementCurrencyValue(item.previous)");

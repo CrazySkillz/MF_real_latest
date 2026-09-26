@@ -1493,7 +1493,7 @@ export default function CampaignPerformanceSummary() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {formatOverviewValue(overviewRevenue, (value) => `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)}
+                      {formatOverviewValue(overviewRevenue, formatRecentMovementCurrencyValue)}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {overviewSourceLabel(overviewRevenue, "Sources unavailable")}
@@ -1508,7 +1508,7 @@ export default function CampaignPerformanceSummary() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {formatOverviewValue(overviewSpend, (value) => `$${value.toLocaleString()}`)}
+                      {formatOverviewValue(overviewSpend, formatRecentMovementCurrencyValue)}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {overviewSourceLabel(overviewSpend, `LinkedIn: $${linkedinSpend.toLocaleString()} | CI: $${ciSpend.toLocaleString()}`)}

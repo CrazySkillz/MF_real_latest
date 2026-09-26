@@ -979,11 +979,12 @@ export default function FinancialAnalysis() {
                             <div className="flex items-start justify-between gap-4">
                               <div>
                                 <p className="text-sm font-medium">Daily Burn Rate</p>
-                                <p className="text-xs text-muted-foreground">Requires campaign spend and budget period start</p>
-                                {overviewSpendMetric.available && campaignElapsedDays > 0 && (
+                                {overviewSpendMetric.available && campaignElapsedDays > 0 ? (
                                   <p className="text-xs text-muted-foreground">
                                     Based on {campaignElapsedDays} elapsed budget-period {campaignElapsedDays === 1 ? "day" : "days"}
                                   </p>
+                                ) : (
+                                  <p className="text-xs text-muted-foreground">Requires campaign spend and budget period start</p>
                                 )}
                               </div>
                               <p className="font-semibold">{overviewSpendMetric.available && campaignElapsedDays > 0 ? formatCurrency(dailyBurnRate) : "Unavailable"}</p>
@@ -991,14 +992,22 @@ export default function FinancialAnalysis() {
                             <div className="flex items-start justify-between gap-4">
                               <div>
                                 <p className="text-sm font-medium">Target Daily Spend</p>
-                                <p className="text-xs text-muted-foreground">Requires campaign budget and budget period dates</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {hasPacingInputs
+                                    ? `Based on ${campaignTotalDays} total budget-period ${campaignTotalDays === 1 ? "day" : "days"}`
+                                    : "Requires campaign budget and budget period dates"}
+                                </p>
                               </div>
                               <p className="font-semibold">{hasPacingInputs ? formatCurrency(targetDailySpend) : "Unavailable"}</p>
                             </div>
                             <div className="flex items-start justify-between gap-4">
                               <div>
                                 <p className="text-sm font-medium">Pacing Status</p>
-                                <p className="text-xs text-muted-foreground">Requires campaign spend, budget, and budget period dates</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {pacingStatus === "unavailable"
+                                    ? "Requires campaign spend, budget, and budget period dates"
+                                    : "Daily burn rate compared with target daily spend"}
+                                </p>
                               </div>
                               {pacingStatus === "unavailable" ? (
                                 <p className="font-semibold">Unavailable</p>
@@ -1528,11 +1537,12 @@ export default function FinancialAnalysis() {
                             <div className="flex items-start justify-between gap-4">
                               <div>
                                 <span className="text-sm font-medium">Daily Burn Rate</span>
-                                <p className="text-xs text-muted-foreground">Requires campaign spend and budget period start</p>
-                                {overviewSpendMetric.available && campaignElapsedDays > 0 && (
+                                {overviewSpendMetric.available && campaignElapsedDays > 0 ? (
                                   <p className="text-xs text-muted-foreground">
                                     Based on {campaignElapsedDays} elapsed budget-period {campaignElapsedDays === 1 ? "day" : "days"}
                                   </p>
+                                ) : (
+                                  <p className="text-xs text-muted-foreground">Requires campaign spend and budget period start</p>
                                 )}
                               </div>
                               <span className="text-sm font-bold">{overviewSpendMetric.available && campaignElapsedDays > 0 ? formatCurrency(dailyBurnRate) : "Unavailable"}</span>
@@ -1540,14 +1550,22 @@ export default function FinancialAnalysis() {
                             <div className="flex items-start justify-between gap-4">
                               <div>
                                 <span className="text-sm font-medium">Target Daily Spend</span>
-                                <p className="text-xs text-muted-foreground">Requires campaign budget and budget period dates</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {hasPacingInputs
+                                    ? `Based on ${campaignTotalDays} total budget-period ${campaignTotalDays === 1 ? "day" : "days"}`
+                                    : "Requires campaign budget and budget period dates"}
+                                </p>
                               </div>
                               <span className="text-sm text-muted-foreground">{hasPacingInputs ? formatCurrency(targetDailySpend) : "Unavailable"}</span>
                             </div>
                             <div className="flex items-start justify-between gap-4">
                               <div>
                                 <span className="text-sm font-medium">Pacing Status</span>
-                                <p className="text-xs text-muted-foreground">Requires campaign spend, budget, and budget period dates</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {pacingStatus === 'unavailable'
+                                    ? "Requires campaign spend, budget, and budget period dates"
+                                    : "Daily burn rate compared with target daily spend"}
+                                </p>
                               </div>
                               <Badge className={
                                 pacingStatus === 'unavailable' ? 'bg-gray-100 text-gray-700' :

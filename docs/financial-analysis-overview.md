@@ -250,10 +250,10 @@ Within Budget & Financial Analysis, those fields impact the Overview tab only:
 
 These inputs do not change aggregate spend, revenue, conversions, ROI, ROAS, CPC, CPA, CPM, CTR, CVR, source breakdowns, Budget Allocation source rows, or historical snapshot values. Aggregate financial values remain sourced from `/api/campaigns/:id/outcome-totals`; campaign start/end dates must not filter revenue or spend provenance. GA4 platform `Total Revenue`, `Revenue Breakdown`, `Total Spend`, and `Spend Breakdown` are source-backed values and must also ignore Budget Pacing start/end dates.
 
-The visible row helper text is:
-- Daily Burn Rate: `Requires campaign spend and start date`
-- Target Daily Spend: `Requires campaign budget, start date, and end date`
-- Pacing Status: `Requires campaign spend, budget, start date, and end date`
+The visible row helper text reflects availability:
+- Daily Burn Rate shows the elapsed budget-period day count when available; otherwise it lists the required spend and budget-period start.
+- Target Daily Spend shows the total budget-period day count when available; otherwise it lists the required budget and budget-period dates.
+- Pacing Status states that daily burn is compared with target daily spend when available; otherwise it lists the required spend, budget, and budget-period dates.
 
 Daily Burn Rate can be tested with a controlled GA4/mock-live campaign after spend is present in the aggregate: confirm `/api/campaigns/{campaignId}/outcome-totals?dateRange=90days` returns the expected `performanceSummary.totals.spend.value`, confirm the campaign start date, then verify the UI value equals `spend / inclusive elapsed campaign days`. For an active campaign, elapsed days stop at the current date. For a completed campaign, elapsed days stop at the campaign end date. A mock-live GA4 setup is useful for end-to-end source refresh validation, but the burn-rate formula itself depends on aggregate spend and campaign start date, not on users entering a burn-rate value.
 

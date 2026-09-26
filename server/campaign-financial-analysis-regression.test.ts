@@ -482,8 +482,13 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("setPacingBudgetInput(formatBudgetInputValue(campaign.budget, true));");
     expect(overview).toContain("Requires campaign spend and budget period start");
     expect(overview).toContain('Based on {campaignElapsedDays} elapsed budget-period {campaignElapsedDays === 1 ? "day" : "days"}');
+    expect(page.split("overviewSpendMetric.available && campaignElapsedDays > 0 ? (")).toHaveLength(3);
     expect(overview).toContain("Requires campaign budget and budget period dates");
+    expect(overview).toContain('`Based on ${campaignTotalDays} total budget-period ${campaignTotalDays === 1 ? "day" : "days"}`');
+    expect(page.split("Based on ${campaignTotalDays} total budget-period")).toHaveLength(3);
     expect(overview).toContain("Requires campaign spend, budget, and budget period dates");
+    expect(overview).toContain("Daily burn rate compared with target daily spend");
+    expect(page.split("Daily burn rate compared with target daily spend")).toHaveLength(3);
     expect(overview).toContain("const shouldShowPacingInputForm = isEditingPacingInputs || !hasCampaignBudget || !hasCampaignStartDate || !hasCampaignEndDate || !hasCampaignDateRange;");
     expect(overview).toContain('data-testid="input-pacing-budget"');
     expect(overview).toContain("onChange={(event) => setPacingBudgetInput(formatBudgetInputValue(event.target.value))}");

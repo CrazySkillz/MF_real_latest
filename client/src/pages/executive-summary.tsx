@@ -269,7 +269,6 @@ export default function ExecutiveSummary() {
     users: "Users",
   };
   const conversionRateLabel = aggregateMetricAvailable("clicks") ? "Click-Through CVR" : "Conversion Rate";
-  const showSupplementalFunnelCards = aggregateMetricAvailable("spend") || aggregateMetricAvailable("cpc");
   const roiAvailable = aggregateMetricAvailable("roi");
   const roiValue = aggregateMetricValue("roi");
   const executiveMetricParts: string[] = [];
@@ -691,7 +690,7 @@ export default function ExecutiveSummary() {
                           <div className="text-sm font-semibold text-purple-900 dark:text-purple-300 uppercase tracking-wide">Bottom of Funnel</div>
                           <div className="text-xs text-purple-700 dark:text-purple-400 mt-1">Are visits becoming conversions and revenue?</div>
                         </div>
-                        <div className="grid grid-cols-4 gap-4">
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                           <div className="text-center">
                             <div className="flex justify-center mb-2">
                               <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
@@ -703,7 +702,7 @@ export default function ExecutiveSummary() {
                               {formatAggregateInteger("conversions")}
                             </div>
                           </div>
-                          <div className="text-center border-l border-border dark:border-slate-600">
+                          <div className="text-center lg:border-l lg:border-border lg:dark:border-slate-600">
                             <div className="flex justify-center mb-2">
                               <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
                                 <DollarSign className="w-5 h-5 text-white" />
@@ -714,7 +713,18 @@ export default function ExecutiveSummary() {
                               {formatAggregateCurrency("revenue")}
                             </div>
                           </div>
-                          <div className="text-center border-l border-border dark:border-slate-600">
+                          <div className="text-center lg:border-l lg:border-border lg:dark:border-slate-600">
+                            <div className="flex justify-center mb-2">
+                              <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center">
+                                <DollarSign className="w-5 h-5 text-white" />
+                              </div>
+                            </div>
+                            <div className="text-sm text-amber-700 dark:text-amber-400">Spend</div>
+                            <div className="text-2xl font-bold text-amber-900 dark:text-amber-100">
+                              {formatAggregateCurrency("spend")}
+                            </div>
+                          </div>
+                          <div className="text-center lg:border-l lg:border-border lg:dark:border-slate-600">
                             <div className="flex justify-center mb-2">
                               <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
                                 <TrendingUp className="w-5 h-5 text-white" />
@@ -725,7 +735,7 @@ export default function ExecutiveSummary() {
                               {formatAggregateRatio("roas")}
                             </div>
                           </div>
-                          <div className="text-center border-l border-border dark:border-slate-600">
+                          <div className="text-center lg:border-l lg:border-border lg:dark:border-slate-600">
                             <div className="flex justify-center mb-2">
                               <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center">
                                 <Percent className="w-5 h-5 text-white" />
@@ -748,83 +758,6 @@ export default function ExecutiveSummary() {
                       </div>
                     </div>
 
-                    {showSupplementalFunnelCards && (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                <Card className="border-l-4 border-green-500">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-muted-foreground/70">Total Revenue</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-foreground mb-1">
-                      {formatAggregateCurrency("revenue")}
-                    </div>
-                    <div className="flex items-center text-muted-foreground/70">
-                      <span className="text-sm font-medium">ROI: {formatAggregatePercent("roi")}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-l-4 border-blue-500">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-muted-foreground/70">Return on Ad Spend</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-foreground mb-1">
-                      {formatAggregateRatio("roas")}
-                    </div>
-                    <div className="flex items-center text-muted-foreground/70">
-                      <span className="text-sm font-medium">Spend: {formatAggregateCurrency("spend")}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-l-4 border-purple-500">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-muted-foreground/70">Total Conversions</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-foreground mb-1">
-                      {formatAggregateInteger("conversions")}
-                    </div>
-                    <div className="flex items-center text-muted-foreground/70">
-                      <span className="text-sm font-medium">CVR: {formatAggregatePercent("cvr")}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-l-4 border-indigo-500">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-muted-foreground/70">{engagementMetricLabels[engagementMetricKey]}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-foreground mb-1">
-                      {formatAggregateInteger(engagementMetricKey)}
-                    </div>
-                    <div className="flex items-center text-muted-foreground/70">
-                      <span className="text-sm font-medium">
-                        {aggregateMetricAvailable("cpc") ? `CPC: ${formatAggregateCurrency("cpc", true)}` : aggregateMetricSourceLabel(engagementMetricKey)}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-l-4 border-orange-500">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-muted-foreground/70">{reachMetricLabels[reachMetricKey]}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-foreground mb-1">
-                      {formatAggregateInteger(reachMetricKey)}
-                    </div>
-                    <div className="flex items-center text-muted-foreground/70">
-                      <span className="text-sm font-medium">
-                        {aggregateMetricAvailable("ctr") ? `CTR: ${formatAggregatePercent("ctr")}` : aggregateMetricSourceLabel(reachMetricKey)}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-                    </div>
-                    )}
                   </div>
                 </CardContent>
               </Card>

@@ -4,7 +4,7 @@
 
 Before using this document to answer an audit, review, or production-readiness question, apply PRODUCTION_READINESS.md and AGENTS.md. Do not repeat any production-ready or status claim from this file unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current documented evidence. A prior readiness statement is not evidence. A passing test suite is not enough unless it covers the traced value paths. If any path is incomplete, classify it as partially reviewed or not locally verifiable and update the fix queue instead of calling it production-ready.
 
-## Current Authoritative Implementation And Certification - 2026-09-21
+## Current Authoritative Implementation And Historical Certification
 
 This section is the current source of truth for Campaign DeepDive `Executive Summary`. The 2026-08-27 certification snapshot and implementation-plan material later in this file are retained as historical context and are non-normative where they conflict with this section.
 
@@ -27,12 +27,18 @@ The detailed current evidence is recorded in `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMAR
 
 Certification is limited to this campaign, property, currency, timezone, source mix, and page. It does not cover Campaign2, other campaigns, future configuration changes, paid-media variants, other Campaign DeepDive sections, Custom Reports, PDFs, scheduled reports, email delivery, or inbox receipt.
 
+### Post-Certification Funnel Simplification - 2026-09-26
+
+The current local implementation removes the five duplicate metric cards below `Marketing Funnel Performance` and adds `Spend` to the Bottom of Funnel row. The row now presents Conversions, Revenue, Spend, ROAS, and Return on Investment once. This is a presentation-only change: queries, aggregate values, formulas, risk, trajectory, KPI/Benchmark logic, recommendations, snapshot persistence, and report rendering are unchanged.
+
+The 2026-09-21 certificate remains historical evidence for its exact runtime and earlier five-card layout. The changed current Marketing Funnel layout and combined page require proportionate deployed revalidation before they are described as current production-certified behavior.
+
 ### Current UI Contract
 
 Executive Summary is one continuous page containing:
 
 1. `7-Day Snapshot Trajectory`, `Risk Level`, and a concise four-bullet Executive Summary.
-2. `Marketing Funnel Performance`, including all funnel stages, the four Bottom of Funnel metrics, and the five metric cards inside the same section.
+2. `Marketing Funnel Performance`, including all funnel stages and the five Bottom of Funnel metrics without a duplicate card row.
 3. `KPIs & Benchmarks`, containing the applicable KPI and Benchmark exception, no-exception, or unavailable cards.
 4. `Recommended Actions`, including the connected-source scope notice, evidence, target context, freshness warning when applicable, and fail-closed no-action state.
 
@@ -41,8 +47,8 @@ Current presentation details:
 - `7-Day Snapshot Trajectory` and `Marketing Funnel Performance` use the same title size.
 - The concise summary bullets show ROI, ROAS, Risk, and trajectory; the prior visible `Through YYYY-MM-DD` bullet is not rendered.
 - Incompatible history renders `History not comparable yet`, not the generic missing-history label.
-- Bottom of Funnel places Conversions, Revenue, ROAS, and Return on Investment on one row.
-- The five cards are Total Revenue/ROI, Return on Ad Spend/Spend, Total Conversions/CVR, Sessions/source, and Users/source.
+- Bottom of Funnel places Conversions, Revenue, Spend, ROAS, and Return on Investment on one responsive row.
+- The former duplicate Total Revenue, Return on Ad Spend, Total Conversions, Sessions, and Users cards are not rendered.
 - KPI and Benchmark cards are grouped under the visible `KPIs & Benchmarks` heading.
 - The current evidence-backed action is named from eligible exception metrics; it is not the former generic `Investigate below-target website outcomes` title.
 
@@ -91,7 +97,7 @@ KPI and Benchmark eligibility requires a finite verified current value, a positi
 
 Website-outcome actions require connected web/outcome evidence plus an eligible exception in Conversion Rate, Conversions, or Revenue. Engagement Rate can contribute to Risk Level but is intentionally outside the action-name metric set. Evidence, target lines, and freshness warnings are deduplicated and deterministically ordered. Wording is investigative and non-causal. With no eligible evidence or exception, the page shows `No Evidence-Backed Actions Available`.
 
-### Current Exact Production Evidence
+### Historical Exact Production Evidence For The Certified Runtime
 
 | Metric/state | Current value |
 | --- | ---: |
@@ -121,7 +127,7 @@ Current state:
 
 The 39% and 90% targets are user-configured. Certification covers retrieval, classification, display, and propagation, not their commercial reasonableness.
 
-### Current Scheduler And Validation Evidence
+### Historical Scheduler And Validation Evidence For The Certified Runtime
 
 Current deployed scheduler health is `healthy`:
 
@@ -144,7 +150,7 @@ An excluded Performance Summary scheduled-PDF suite has a stale mock that lacks 
 
 ### Current Classification
 
-The exact `ga4_mock` Executive Summary boundary above is clean-certified. Alternate compatible-trajectory, valid-zero, unavailable, target-direction, stale, and failure branches are deterministic regression evidence, not claimed live production observations. Reports, delivery surfaces, other campaigns, other source mixes, and target commercial reasonableness remain excluded.
+The exact `ga4_mock` Executive Summary boundary above remains historically clean-certified. The current duplicate-card removal and Bottom of Funnel Spend presentation have local regression evidence only; the changed Marketing Funnel packet and combined page are pending deployed revalidation. Unchanged trajectory/risk, KPI/Benchmark, recommendation, data, formula, persistence, and report paths retain their documented historical evidence without being promoted to a new current-runtime certificate. Reports, delivery surfaces, other campaigns, other source mixes, and target commercial reasonableness remain excluded.
 
 ## Historical Certification Snapshot - 2026-08-27
 

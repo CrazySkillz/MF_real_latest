@@ -768,10 +768,15 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("aggregateMetricValue(metricName).toFixed(2)");
     expect(overview).toContain('{formatAggregateInteger("conversions")}');
     expect(overview).toContain('{formatAggregateCurrency("revenue")}');
+    expect(overview).toContain('grid gap-4 sm:grid-cols-2 lg:grid-cols-5');
+    expect(overview).toContain('>Spend</div>');
+    expect(overview).toContain('{formatAggregateCurrency("spend")}');
     expect(overview).toContain('{formatAggregateRatio("roas")}');
     expect(overview).toContain('ROAS and ROI unavailable — spend data required.');
-    expect(page).toContain('const showSupplementalFunnelCards = aggregateMetricAvailable("spend") || aggregateMetricAvailable("cpc");');
-    expect(overview).toContain('{showSupplementalFunnelCards && (');
+    expect(page).not.toContain('showSupplementalFunnelCards');
+    expect(overview).not.toContain('>Total Revenue</CardTitle>');
+    expect(overview).not.toContain('>Return on Ad Spend</CardTitle>');
+    expect(overview).not.toContain('>Total Conversions</CardTitle>');
     expect(page).not.toContain("formatAggregateNumber");
     expect(page).not.toContain("const formatNumber =");
     expect(overview).not.toContain("{formatNumber((executiveSummary as any).metrics.totalImpressions)} Impressions");

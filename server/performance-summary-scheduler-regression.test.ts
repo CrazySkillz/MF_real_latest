@@ -82,7 +82,7 @@ describe("Performance Summary scheduler snapshot alignment", () => {
     expect(page).toContain('{ key: "sessions", label: "Sessions" }');
     expect(page).toContain('{ key: "users", label: "Users" }');
     expect(page).toContain('{ key: "revenue", label: "Total Revenue", isCurrency: true }');
-    expect(getChanges).toContain("const baseline = comparisonData?.previous;");
+    expect(getChanges).toContain("const baseline = displayedComparisonData?.previous;");
     expect(getChanges).not.toContain("comparisonData?.previous || comparisonData?.current");
     expect(getChanges).toContain('return { changes: [], baselineTimestamp: null, emptyReason: "not_enough_history" };');
     expect(getChanges).toContain("const baselineAggregate = baseline?.metrics?.performanceSummary;");

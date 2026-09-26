@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Activity, Users, Target, DollarSign, Clock, FlaskConical } from "lucide-react";
@@ -67,6 +67,7 @@ export default function CampaignPerformanceSummary() {
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('24h');
   const [selectedTimeRange, setSelectedTimeRange] = useState<'24h' | '7d' | '30d'>('24h');
   const [demoMode, setDemoMode] = useState(false);
+  const settledRecentMovementDataRef = useRef<any>(null);
   const { toast } = useToast();
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
@@ -288,7 +289,7 @@ export default function CampaignPerformanceSummary() {
   });
 
   // Fetch comparison data — keepPreviousData prevents UI flash when switching filters
-  const { data: comparisonData, isFetching: comparisonDataFetching } = useQuery<{
+  const { data: comparisonData, isFetching: comparisonDataFetching, isError: comparisonDataError, isPlaceholderData: comparisonDataPlaceholder } = useQuery<{
     current: any | null;
     previous: any | null;
   }>({
@@ -312,10 +313,41 @@ export default function CampaignPerformanceSummary() {
 
   const recentMovementSelectionPending = selectedTimeRange !== timeRange;
   useLayoutEffect(() => {
-    if (recentMovementSelectionPending && !historicalRevenueFetching && !historicalSpendFetching && !comparisonDataFetching) {
+    if (!recentMovementSelectionPending) {
+      settledRecentMovementDataRef.current = {
+        comparisonData,
+        historicalRevenueResponse,
+        historicalRevenueError,
+        historicalRevenuePlaceholder,
+        historicalSpendResponse,
+        historicalSpendError,
+        historicalSpendPlaceholder,
+      };
+    }
+  }, [comparisonData, historicalRevenueError, historicalRevenuePlaceholder, historicalRevenueResponse, historicalSpendError, historicalSpendPlaceholder, historicalSpendResponse, recentMovementSelectionPending]);
+  const settledRecentMovementData = recentMovementSelectionPending ? settledRecentMovementDataRef.current : null;
+  const displayedComparisonData = settledRecentMovementData ? settledRecentMovementData.comparisonData : comparisonData;
+  const displayedHistoricalRevenueResponse = settledRecentMovementData ? settledRecentMovementData.historicalRevenueResponse : historicalRevenueResponse;
+  const displayedHistoricalRevenueError = settledRecentMovementData ? settledRecentMovementData.historicalRevenueError : historicalRevenueError;
+  const displayedHistoricalRevenuePlaceholder = settledRecentMovementData ? settledRecentMovementData.historicalRevenuePlaceholder : historicalRevenuePlaceholder;
+  const displayedHistoricalSpendResponse = settledRecentMovementData ? settledRecentMovementData.historicalSpendResponse : historicalSpendResponse;
+  const displayedHistoricalSpendError = settledRecentMovementData ? settledRecentMovementData.historicalSpendError : historicalSpendError;
+  const displayedHistoricalSpendPlaceholder = settledRecentMovementData ? settledRecentMovementData.historicalSpendPlaceholder : historicalSpendPlaceholder;
+  const historicalRevenueSelectionSettled = demoMode || !performanceGA4PropertyId || !requestedRevenueComparisonEndDate || historicalRevenueError || (
+    !historicalRevenuePlaceholder
+    && historicalRevenueResponse?.native?.endDate === requestedRevenueComparisonEndDate
+    && historicalRevenueResponse?.imported?.endDate === requestedRevenueComparisonEndDate
+  );
+  const historicalSpendSelectionSettled = demoMode || !performanceGA4PropertyId || !requestedSpendComparisonEndDate || historicalSpendError || (
+    !historicalSpendPlaceholder && historicalSpendResponse?.endDate === requestedSpendComparisonEndDate
+  );
+  const comparisonDataSelectionSettled = comparisonDataError || (!comparisonDataPlaceholder && comparisonData !== undefined);
+  useLayoutEffect(() => {
+    if (recentMovementSelectionPending && !historicalRevenueFetching && !historicalSpendFetching && !comparisonDataFetching
+      && historicalRevenueSelectionSettled && historicalSpendSelectionSettled && comparisonDataSelectionSettled) {
       setTimeRange(selectedTimeRange);
     }
-  }, [comparisonDataFetching, historicalRevenueFetching, historicalSpendFetching, recentMovementSelectionPending, selectedTimeRange]);
+  }, [comparisonDataFetching, comparisonDataSelectionSettled, historicalRevenueFetching, historicalRevenueSelectionSettled, historicalSpendFetching, historicalSpendSelectionSettled, recentMovementSelectionPending, selectedTimeRange]);
 
   if (campaignLoading) {
     return (
@@ -1131,7 +1163,7 @@ export default function CampaignPerformanceSummary() {
 
   // Calculate what's changed from compatible aggregate snapshots only.
   const getChanges = () => {
-    const baseline = comparisonData?.previous;
+    const baseline = displayedComparisonData?.previous;
     const ga4Changes: { metric: string; current: number; previous: number; change: number; pctChange: number | null; direction: string; isCurrency?: boolean; isCostMetric?: boolean; comparisonUnavailable?: boolean; comparisonUnavailableLabel?: string; sourceLabel: string }[] = [];
     let ga4BaselineTimestamp: string | null = null;
     const addGA4Change = (config: any) => {
@@ -1160,19 +1192,19 @@ export default function CampaignPerformanceSummary() {
     changeMetricConfigs.forEach(addGA4Change);
     const activeSpendSourceIds = datedFinancialSourceIds(performanceGA4SpendSourcesResponse, "spend", String(performanceGA4SpendResponse?.currency || "").toUpperCase());
     const spendSourcesCompatible = activeSpendSourceIds !== null && activeSpendSourceIds.length > 0
-      && datedFinancialSourceSetsCompatible(activeSpendSourceIds, performanceGA4SpendResponse?.sourceIds, historicalSpendResponse?.sourceIds);
+      && datedFinancialSourceSetsCompatible(activeSpendSourceIds, performanceGA4SpendResponse?.sourceIds, displayedHistoricalSpendResponse?.sourceIds);
     if (!demoMode && performanceGA4PropertyId && trafficInputState === "ready" && spendInputState === "ready" && spendComparisonEndDate
-      && !historicalSpendError && !historicalSpendPlaceholder && !performanceGA4SpendSourcesError
-      && historicalSpendResponse?.endDate === spendComparisonEndDate
+      && !displayedHistoricalSpendError && !displayedHistoricalSpendPlaceholder && !performanceGA4SpendSourcesError
+      && displayedHistoricalSpendResponse?.endDate === spendComparisonEndDate
       && performanceGA4SpendResponse?.endDate === performanceGA4FinancialEndDate
-      && String(performanceGA4SpendResponse?.currency || "").toUpperCase() === String(historicalSpendResponse?.currency || "").toUpperCase()
+      && String(performanceGA4SpendResponse?.currency || "").toUpperCase() === String(displayedHistoricalSpendResponse?.currency || "").toUpperCase()
       && !performanceGA4SummaryResponse?.refreshIsStale && !performanceGA4SummaryResponse?.providerRefreshWarning
       && performanceSummary?.currentValueWindow?.dataThroughDate === performanceGA4FinancialEndDate
       && aggregateSnapshotMetricAvailable(performanceSummary, "spend")
       && spendSourcesCompatible) {
       const current = Number(performanceGA4SpendResponse?.spendToDate);
-      const previous = Number(historicalSpendResponse?.spendToDate);
-      if (typeof historicalSpendResponse?.spendToDate === "number" && Number.isFinite(current) && Number.isFinite(previous)
+      const previous = Number(displayedHistoricalSpendResponse?.spendToDate);
+      if (typeof displayedHistoricalSpendResponse?.spendToDate === "number" && Number.isFinite(current) && Number.isFinite(previous)
         && current >= 0 && previous >= 0 && current === aggregateSnapshotMetricValue(performanceSummary, "spend")) {
         const change = current - previous;
         const sourceLabels = aggregateMetricSources(performanceSummary, "spend");
@@ -1203,26 +1235,26 @@ export default function CampaignPerformanceSummary() {
     }
 
     const currentRevenue = revenueResponseTotal(performanceGA4RevenueResponse);
-    const historicalRevenue = revenueResponseTotal(historicalRevenueResponse);
+    const historicalRevenue = revenueResponseTotal(displayedHistoricalRevenueResponse);
     const activeRevenueSourceIds = datedFinancialSourceIds(performanceGA4RevenueSourcesResponse, "revenue", String(performanceGA4RevenueResponse?.imported?.currency || "").toUpperCase());
     const currentRevenueDate = String(performanceGA4SummaryResponse?.dataThroughDate || "");
     const currentRevenueDatesMatch = performanceGA4RevenueResponse?.native?.endDate === currentRevenueDate
       && performanceGA4RevenueResponse?.imported?.endDate === currentRevenueDate;
-    const historicalRevenueDatesMatch = historicalRevenueResponse?.native?.endDate === revenueComparisonEndDate
-      && historicalRevenueResponse?.imported?.endDate === revenueComparisonEndDate;
+    const historicalRevenueDatesMatch = displayedHistoricalRevenueResponse?.native?.endDate === revenueComparisonEndDate
+      && displayedHistoricalRevenueResponse?.imported?.endDate === revenueComparisonEndDate;
     const hasCurrentRevenueSource = activeRevenueSourceIds !== null && (activeRevenueSourceIds.length > 0
       || !!String(performanceGA4RevenueResponse?.native?.revenueMetric || "").trim()
       || Number(performanceGA4RevenueResponse?.native?.totals?.revenue) !== 0);
     const revenueSourcesCompatible = hasCurrentRevenueSource
-      && datedFinancialSourceSetsCompatible(activeRevenueSourceIds, performanceGA4RevenueResponse?.imported?.sourceIds, historicalRevenueResponse?.imported?.sourceIds)
-      && datedNativeRevenueResponsesCompatible(performanceGA4RevenueResponse?.native, historicalRevenueResponse?.native)
-      && String(performanceGA4RevenueResponse?.imported?.currency || "").toUpperCase() === String(historicalRevenueResponse?.imported?.currency || "").toUpperCase();
+      && datedFinancialSourceSetsCompatible(activeRevenueSourceIds, performanceGA4RevenueResponse?.imported?.sourceIds, displayedHistoricalRevenueResponse?.imported?.sourceIds)
+      && datedNativeRevenueResponsesCompatible(performanceGA4RevenueResponse?.native, displayedHistoricalRevenueResponse?.native)
+      && String(performanceGA4RevenueResponse?.imported?.currency || "").toUpperCase() === String(displayedHistoricalRevenueResponse?.imported?.currency || "").toUpperCase();
     if (!demoMode && performanceGA4PropertyId && trafficInputState === "ready" && revenueInputState === "ready" && currentRevenue !== null && currentRevenueDatesMatch) {
       const sourceLabels = [
         ...(String(performanceGA4RevenueResponse?.native?.revenueMetric || "").trim() || Number(performanceGA4RevenueResponse?.native?.totals?.revenue) !== 0 ? ["GA4 native revenue"] : []),
         ...(Array.isArray(performanceGA4RevenueResponse?.imported?.sourceIds) && performanceGA4RevenueResponse.imported.sourceIds.length > 0 ? ["Imported revenue"] : []),
       ];
-      if (!historicalRevenueError && !historicalRevenuePlaceholder && !performanceGA4RevenueSourcesError
+      if (!displayedHistoricalRevenueError && !displayedHistoricalRevenuePlaceholder && !performanceGA4RevenueSourcesError
         && historicalRevenue !== null && historicalRevenueDatesMatch && revenueSourcesCompatible) {
         const change = currentRevenue - historicalRevenue;
         ga4Changes.push({

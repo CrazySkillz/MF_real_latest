@@ -238,7 +238,15 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(getChanges).toContain("const pctChange = prevVal > 0 ? ((change / prevVal) * 100) : null;");
     expect(page).toContain("const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('24h');");
     expect(page).toContain("const [selectedTimeRange, setSelectedTimeRange] = useState<'24h' | '7d' | '30d'>('24h');");
-    expect(page).toContain('if (recentMovementSelectionPending && !historicalRevenueFetching && !historicalSpendFetching && !comparisonDataFetching)');
+    expect(page).toContain("const settledRecentMovementDataRef = useRef<any>(null);");
+    expect(page).toContain("const displayedHistoricalRevenueResponse = settledRecentMovementData ? settledRecentMovementData.historicalRevenueResponse : historicalRevenueResponse;");
+    expect(page).toContain("const displayedHistoricalSpendResponse = settledRecentMovementData ? settledRecentMovementData.historicalSpendResponse : historicalSpendResponse;");
+    expect(page).toContain("const historicalRevenueSelectionSettled = demoMode || !performanceGA4PropertyId || !requestedRevenueComparisonEndDate || historicalRevenueError");
+    expect(page).toContain("const historicalSpendSelectionSettled = demoMode || !performanceGA4PropertyId || !requestedSpendComparisonEndDate || historicalSpendError");
+    expect(page).toContain("&& historicalRevenueSelectionSettled && historicalSpendSelectionSettled && comparisonDataSelectionSettled");
+    expect(getChanges).toContain("const baseline = displayedComparisonData?.previous;");
+    expect(getChanges).toContain("revenueResponseTotal(displayedHistoricalRevenueResponse)");
+    expect(getChanges).toContain("displayedHistoricalSpendResponse?.spendToDate");
     expect(page).toContain('<Select value={selectedTimeRange} disabled={recentMovementSelectionPending}');
     expect(page).toContain('<SelectItem value="7d">Compare with 7 days ago</SelectItem>');
     expect(page).toContain("item.pctChange === null ? ''");
@@ -316,11 +324,11 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain('resolveSpendComparisonEndDate(String(performanceGA4SummaryResponse?.dataThroughDate || ""), selectedTimeRange)');
     expect(page).toContain('spend-to-date?platformContext=ga4&endDate=${encodeURIComponent(requestedSpendComparisonEndDate)}');
     expect(page).toContain('spend-sources?platformContext=ga4');
-    expect(page).toContain('historicalSpendResponse?.endDate === spendComparisonEndDate');
+    expect(page).toContain('displayedHistoricalSpendResponse?.endDate === spendComparisonEndDate');
     expect(page).toContain('datedFinancialSourceIds(performanceGA4SpendSourcesResponse, "spend"');
-    expect(page).toContain('datedFinancialSourceSetsCompatible(activeSpendSourceIds, performanceGA4SpendResponse?.sourceIds, historicalSpendResponse?.sourceIds)');
+    expect(page).toContain('datedFinancialSourceSetsCompatible(activeSpendSourceIds, performanceGA4SpendResponse?.sourceIds, displayedHistoricalSpendResponse?.sourceIds)');
     expect(page).toContain('current === aggregateSnapshotMetricValue(performanceSummary, "spend")');
-    expect(page).toContain('!historicalSpendError && !historicalSpendPlaceholder');
+    expect(page).toContain('!displayedHistoricalSpendError && !displayedHistoricalSpendPlaceholder');
     expect(spendRoute).toContain('requireCampaignAccessParamId');
     expect(spendRoute).toContain('requestedEndDate > latestEndDate');
     expect(spendRoute).toContain('storage.getSpendTotalForRange(campaignId, startDate, endDate, platformContext)');
@@ -364,10 +372,10 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).toContain('const recentMovementMetricOrder = ["Sessions", "Conversions", "Spend", "Total Revenue"]');
     expect(movement).toContain('metric: "Total Revenue"');
     expect(movement).toContain("comparisonUnavailable: true");
-    expect(movement).toContain("datedNativeRevenueResponsesCompatible(performanceGA4RevenueResponse?.native, historicalRevenueResponse?.native)");
+    expect(movement).toContain("datedNativeRevenueResponsesCompatible(performanceGA4RevenueResponse?.native, displayedHistoricalRevenueResponse?.native)");
     expect(movement).toContain('datedFinancialSourceIds(performanceGA4RevenueSourcesResponse, "revenue"');
-    expect(movement).toContain('datedFinancialSourceSetsCompatible(activeRevenueSourceIds, performanceGA4RevenueResponse?.imported?.sourceIds, historicalRevenueResponse?.imported?.sourceIds)');
-    expect(movement).toContain('!historicalRevenueError && !historicalRevenuePlaceholder');
+    expect(movement).toContain('datedFinancialSourceSetsCompatible(activeRevenueSourceIds, performanceGA4RevenueResponse?.imported?.sourceIds, displayedHistoricalRevenueResponse?.imported?.sourceIds)');
+    expect(movement).toContain('!displayedHistoricalRevenueError && !displayedHistoricalRevenuePlaceholder');
   });
 
   it("renders one streamlined live view without repeated tabs, detail lists, source cards, or trend charts", () => {

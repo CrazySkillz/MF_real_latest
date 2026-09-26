@@ -235,8 +235,8 @@ export default function ExecutiveSummary() {
       if (benchmark <= 0) return;
       const isBelow = bm.status !== "on_track";
       if (isBelow) exceptionMetricLabels.push(websiteOutcomeMetricLabels[metric]);
-      const benchmarkState = bm.status === "behind" ? "behind benchmark" : bm.status === "needs_attention" ? "needs attention" : "on track";
-      targetComparisons.push(`${websiteOutcomeMetricLabels[metric]} Benchmark is ${benchmarkState}`);
+      const benchmarkState = bm.status === "behind" ? "is behind benchmark" : bm.status === "needs_attention" ? "needs attention" : "is on track";
+      targetComparisons.push(`${websiteOutcomeMetricLabels[metric]} Benchmark ${benchmarkState}`);
     });
     targetComparisons.splice(0, targetComparisons.length, ...Array.from(new Set(targetComparisons)).sort((left, right) => left.localeCompare(right)));
     const orderedExceptionMetricLabels = Array.from(new Set(exceptionMetricLabels)).sort((left, right) => left.localeCompare(right));

@@ -570,7 +570,9 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("return [evidenceText, targetComparisonText, nextActionText]");
     expect(page).not.toContain("interpretationText");
     expect(page).toContain("Target check: ${targetComparisons.join(\"; \")}.");
-    expect(page).toContain('bm.status === "behind" ? "behind benchmark" : bm.status === "needs_attention" ? "needs attention" : "on track"');
+    expect(page).toContain('bm.status === "behind" ? "is behind benchmark" : bm.status === "needs_attention" ? "needs attention" : "is on track"');
+    expect(page).toContain('`${websiteOutcomeMetricLabels[metric]} Benchmark ${benchmarkState}`');
+    expect(page).not.toContain('Benchmark is ${benchmarkState}');
     expect(page).toContain("const orderedExceptionMetricLabels = Array.from(new Set(exceptionMetricLabels)).sort");
     expect(page).toContain("Next action: investigate ${formatMetricLabelList(orderedExceptionMetricLabels)}, then inspect the relevant measurement and reporting inputs.");
     expect(page).toContain("Next action: create or confirm KPI/Benchmark targets for conversion rate, revenue, and conversions before judging quality.");

@@ -21,22 +21,25 @@ The visible sections, in order, are:
 
 - `/api/campaigns/{campaignId}/outcome-totals?dateRange=90days` supplies
   `performanceSummary.totals`, `performanceSummary.sources`, the cumulative
-  `currentValueWindow`, unavailable reasons, and `financialInputs` provenance.
+  `currentValueWindow`, unavailable reasons, `financialInputs` provenance, and the
+  separate `budgetPacing.spend` derivative.
 - `/api/campaigns/{campaignId}` supplies `budget`, `currency`, `pacingStartDate`, and
   `pacingEndDate`.
 - The visible values refetch every 30 seconds while the page is visible and on window
   focus. This is bounded polling, not real-time push.
 - Refetch keeps the last compatible aggregate visible while loading. A failed or
   missing aggregate does not fall back to stale page-local financial totals.
-- Revenue, spend, conversions, ROI, ROAS, CPA, CPC, CPM, CTR, and CVR are read from
-  the shared aggregate. Budget metadata never filters or changes those source totals.
+- Revenue, Total Spend, conversions, ROI, ROAS, CPA, CPC, CPM, CTR, and CVR are read
+  from the shared aggregate. Budget metadata never filters or changes those source
+  totals; it filters only the separate budget-period Spend derivative.
 - In the GA4-first path, Users, Sessions, traffic Conversions, and CVR retain the fixed
   initial-import-to-latest-completed-day traffic window. Budget Conversion Efficiency
   reuses that same aggregate CVR input. Native GA4 Revenue and the conversion input used
   by CPA use GA4 Overview's ordered saved-initial-import-to-latest-completed-day
   financial-source contract. Imported Revenue and Spend use all available mapped records.
-- Financial Position, Budget & Pacing, and Executive Action reuse the same aggregate
-  Spend, Revenue, ROI, and ROAS metric objects. Paid Media Efficiency uses only the
+- Financial Position uses aggregate Spend, Revenue, ROI, and ROAS. Budget & Pacing and
+  budget guidance use `budgetPacing.spend`; return and allocation guidance retain the
+  aggregate financial metrics. Paid Media Efficiency uses only the
   compatible aggregate CPC/CPM/CTR inputs, Conversion Efficiency uses aggregate GA4
   traffic CVR, and Sources Used renders the matching `financialInputs` provenance rows.
 
@@ -64,9 +67,12 @@ import boundary through the latest completed reporting day.
 - Budget period dates are the dedicated campaign `pacingStartDate` and
   `pacingEndDate` fields. They are separate from financial source dates and campaign
   revenue windows.
-- `Remaining Budget = Campaign Budget - Total Spend`.
-- `Budget Used % = Total Spend / Campaign Budget * 100`.
-- `Daily Burn Rate = Total Spend / inclusive elapsed budget-period days`.
+- `Budget-period Spend` is the sum of verified dated Spend records from
+  `pacingStartDate` through the earlier of `pacingEndDate` or the connected-source
+  data-through date.
+- `Remaining Budget = Campaign Budget - Budget-period Spend`.
+- `Budget Used % = Budget-period Spend / Campaign Budget * 100`.
+- `Daily Burn Rate = Budget-period Spend / inclusive elapsed budget-period days`.
 - `Target Daily Spend = Campaign Budget / inclusive total budget-period days`.
 - `Pacing % = Daily Burn Rate / Target Daily Spend * 100`.
 - `On Track` is 85%-115%, `Under` is below 85%, and `Over` is above 115%.
@@ -133,12 +139,12 @@ The current production path is the shared campaign aggregate:
 
 | API Endpoint | Data Source | What It Provides |
 |---|---|---|
-| `/api/campaigns/{campaignId}/outcome-totals?dateRange=90days` | Campaign aggregate contract | `performanceSummary.totals`, connected source capabilities, source breakdowns, unavailable reasons, and financial input provenance |
-| `/api/campaigns/{campaignId}` | Campaign record | budget, start date, end date |
+| `/api/campaigns/{campaignId}/outcome-totals?dateRange=90days` | Campaign aggregate contract | `performanceSummary.totals`, the separate `budgetPacing.spend` contract, connected source capabilities, source breakdowns, unavailable reasons, and financial input provenance |
+| `/api/campaigns/{campaignId}` | Campaign record | budget, budget-period start date, budget-period end date |
 
 The page may still load legacy platform endpoints for older fallback paths, but completed production tabs should use the aggregate contract when `performanceSummary` is present.
 
-Financial source-of-truth rule: platform-level connected-source revenue and spend records feed the Budget & Financial aggregate. Budget & Financial Analysis must not write, override, filter, or reinterpret platform revenue/spend totals. Budget Pacing inputs only update campaign metadata used for pacing formulas.
+Financial source-of-truth rule: platform-level connected-source revenue and spend records feed the Budget & Financial aggregate. Budget & Financial Analysis must not write, override, filter, or reinterpret platform revenue/spend totals. The aggregate Total Spend remains all mapped Spend. Budget calculations use the separate `budgetPacing.spend` value filtered to the selected budget period; this derivative does not change source records or aggregate Total Spend.
 
 Tab navigation follows the same content-width tab format as Campaign DeepDive Performance Summary. It must not use full-page equal-width grid tabs.
 
@@ -185,7 +191,7 @@ A composite score from 4 equally-weighted sub-scores, each worth 0-25 points:
 | **ROI** | >= 100% | >= 50% | >= 0% | Negative ROI |
 | **ROAS** | >= 3.0x | >= 1.5x | >= 1.0x | < 1.0x |
 
-Budget Utilization requires both available spend and a configured campaign budget. Pacing requires available spend, a configured campaign budget, a valid campaign start date, and a valid campaign end date. If any required input is missing, the related sub-scores are unavailable and contribute 0 points instead of being treated as 0% utilization or 100% on-track pacing.
+Budget Utilization requires verified budget-period Spend and a configured campaign budget. Pacing requires verified budget-period Spend, a configured campaign budget, and valid budget-period start and end dates. If any required input is missing, the related sub-scores are unavailable and contribute 0 points instead of being treated as 0% utilization or 100% on-track pacing.
 
 Campaign ROI and Campaign ROAS in this health card are campaign-level aggregate health inputs read from `performanceSummary.totals.roi` and `performanceSummary.totals.roas`. They use the same formulas as platform ROI/ROAS, but their scope is the campaign aggregate across eligible connected-source financial inputs. GA4 platform ROI/ROAS is the GA4 platform-specific financial view for that campaign's GA4 scope and GA4 financial child inputs. When GA4 is the only connected financial source, the values should align; when additional connected financial sources exist, the campaign aggregate can differ from the GA4 platform view.
 
@@ -212,35 +218,35 @@ If only some health inputs are available, the displayed header score is normaliz
 
 | Metric | Formula |
 |---|---|
-| Budget Used % | `(totalSpend / campaignBudget) * 100` |
-| Remaining Budget | `campaignBudget - totalSpend` |
+| Budget Used % | `(budgetPeriodSpend / campaignBudget) * 100` |
+| Remaining Budget | `campaignBudget - budgetPeriodSpend` |
 
 Requires the campaign to have a `budget` field set. Displays a progress bar capped at 100%.
 
 Overview financial cards must use `performanceSummary.totals` from `/api/campaigns/:id/outcome-totals?dateRange=90days` when live aggregate data has been requested. If that aggregate response fails or returns without `performanceSummary`, the page must keep prior aggregate data during refetch or show the metric as unavailable. It must not fall back to legacy local platform totals because those can display stale values, such as an old spend total.
 
-Campaign budget pacing dates must not filter aggregate imported revenue or spend. Total Revenue and Total Spend in Budget & Financial Overview come from the full active platform/source provenance in the aggregate contract; the campaign start/end dates entered in Budget Pacing & Burn Rate are used only for pacing calculations.
+Budget-period dates do not filter aggregate Total Revenue or Total Spend. Those Financial Position values continue to use the full active source provenance. The dates filter only the separate budget-period Spend derivative used by Budget Position, Budget Utilization, Daily Burn Rate, Pacing Status, budget health/guidance, and their report equivalents.
 
 ### 4. Budget Pacing & Burn Rate
 
 | Metric | Formula |
 |---|---|
-| Days Elapsed | Inclusive days from campaign `startDate` to today for active campaigns; if today is after the campaign `endDate`, elapsed days stop at the campaign `endDate` |
-| Daily Burn Rate | `totalSpend / daysElapsed` |
-| Target Daily Spend | `campaignBudget / inclusive total campaign days` |
+| Days Elapsed | Inclusive days from `pacingStartDate` to today for an active budget period; if today is after `pacingEndDate`, elapsed days stop at `pacingEndDate` |
+| Daily Burn Rate | `budgetPeriodSpend / daysElapsed` |
+| Target Daily Spend | `campaignBudget / inclusive total budget-period days` |
 | Pacing % | `(dailyBurnRate / targetDailySpend) * 100` |
 
-Daily Burn Rate requires available spend and a valid campaign start date. Target Daily Spend requires campaign budget, a valid campaign start date, and a valid campaign end date. Pacing Status requires available spend, campaign budget, a valid campaign start date, and a valid campaign end date. Without an end date, the card still shows current daily burn and projected budget exhaustion when spend/budget/start date are available, but target daily spend and pacing are unavailable.
+Daily Burn Rate requires verified budget-period Spend and a valid `pacingStartDate`. Target Daily Spend requires campaign budget plus a valid `pacingStartDate` and `pacingEndDate`. Pacing Status requires all of those inputs. If the authoritative Spend sources cannot be safely date-bounded and reconciled, budget calculations fail closed as unavailable instead of using aggregate Total Spend.
 
-If the campaign has only one elapsed pacing day, Daily Burn Rate will equal Total Spend because the formula is `total spend / 1 elapsed day`. The card shows the elapsed-day count under Daily Burn Rate so this is visible to users.
+If the budget period has only one elapsed day, Daily Burn Rate equals budget-period Spend because the formula is `budget-period spend / 1 elapsed day`. The card shows the elapsed-day count under Daily Burn Rate so this is visible to users.
 
-When budget, start date, or end date are missing or invalid, the Budget Pacing & Burn Rate card shows inline campaign metadata inputs. When those values are already present, the card exposes an edit action. Saving those inputs updates the existing campaign `budget`, `startDate`, and `endDate` fields through `PATCH /api/campaigns/:id`, then the card recalculates Daily Burn Rate, Target Daily Spend, and Pacing Status from the saved campaign metadata and aggregate spend. Users can cancel edit mode with the `x` control, which restores the draft fields from the saved campaign values without calling the API. Users can also delete the pacing inputs, which clears those same campaign metadata fields and returns dependent pacing values to `Unavailable`. The card does not ask users to enter Daily Burn Rate, Target Daily Spend, or Pacing Status directly.
+When budget, budget-period start date, or budget-period end date are missing or invalid, the Budget Pacing & Burn Rate card shows inline campaign metadata inputs. When those values are already present, the card exposes an edit action. Saving those inputs updates the existing campaign `budget`, `pacingStartDate`, and `pacingEndDate` fields through `PATCH /api/campaigns/:id`, then the card refetches the dated budget-period Spend contract and recalculates the budget values. Users can cancel edit mode with the `x` control, which restores the draft fields from the saved campaign values without calling the API. Users can also delete the pacing inputs, which clears those same campaign metadata fields and returns dependent pacing values to `Unavailable`. The card does not ask users to enter calculated values directly.
 
 The Campaign Budget input only accepts numeric input, auto-formats with thousands separators as values are typed, such as `150,000.00`, and saves the numeric value without commas.
 
-The card keeps its inputs synchronized from both upstream paths. Campaign budget/start/end metadata refetches while the page is visible and on window focus, and aggregate spend refetches from `/api/campaigns/:id/outcome-totals` on the same cadence. Saving or deleting pacing metadata immediately updates the campaign cache from the returned campaign row and invalidates the aggregate totals query so the next calculation uses current budget, dates, and spend.
+The card keeps its inputs synchronized from both upstream paths. Campaign budget and budget-period metadata refetch while the page is visible and on window focus, and `budgetPacing.spend` refetches from `/api/campaigns/:id/outcome-totals` on the same cadence. Saving or deleting pacing metadata immediately updates the campaign cache from the returned campaign row and invalidates the outcome-totals query so the next calculation uses the current budget, dates, and matching dated Spend.
 
-Budget Pacing & Burn Rate inputs write only to the existing campaign metadata fields: `budget`, `startDate`, and `endDate`. Because Campaign Management displays the same campaign `budget` field, saving or deleting the Budget Pacing budget also updates the Budget value shown on the Campaign Management campaign card and edit form after the campaign query refreshes.
+Budget Pacing & Burn Rate inputs write only to the existing campaign metadata fields: `budget`, `pacingStartDate`, and `pacingEndDate`. Because Campaign Management displays the same campaign `budget` field, saving or deleting the Budget Pacing budget also updates the Budget value shown on the Campaign Management campaign card and edit form after the campaign query refreshes.
 
 Within Budget & Financial Analysis, those fields impact the Overview tab only:
 - Campaign Health Score: budget utilization and pacing sub-scores.
@@ -248,16 +254,16 @@ Within Budget & Financial Analysis, those fields impact the Overview tab only:
 - Budget Pacing & Burn Rate: daily burn rate, target daily spend, pacing status, budget-exhaustion projection, and over-budget warning.
 - Financial Performance Insights: Budget Management and budget-underutilized opportunity copy through `overviewBudgetUtilization`.
 
-These inputs do not change aggregate spend, revenue, conversions, ROI, ROAS, CPC, CPA, CPM, CTR, CVR, source breakdowns, Budget Allocation source rows, or historical snapshot values. Aggregate financial values remain sourced from `/api/campaigns/:id/outcome-totals`; campaign start/end dates must not filter revenue or spend provenance. GA4 platform `Total Revenue`, `Revenue Breakdown`, `Total Spend`, and `Spend Breakdown` are source-backed values and must also ignore Budget Pacing start/end dates.
+These inputs do not change aggregate Total Spend, revenue, conversions, ROI, ROAS, CPC, CPA, CPM, CTR, CVR, source breakdowns, Allocation source rows, or historical snapshot values. They select which dated Spend records feed the separate budget-period Spend derivative. GA4 platform `Total Revenue`, `Revenue Breakdown`, `Total Spend`, and `Spend Breakdown` remain source-backed all-mapped values and ignore Budget Pacing dates.
 
 The visible row helper text reflects availability:
 - Daily Burn Rate shows the elapsed budget-period day count when available; otherwise it lists the required spend and budget-period start.
 - Target Daily Spend shows the total budget-period day count when available; otherwise it lists the required budget and budget-period dates.
 - Pacing Status states that daily burn is compared with target daily spend when available; otherwise it lists the required spend, budget, and budget-period dates.
 
-Daily Burn Rate can be tested with a controlled GA4/mock-live campaign after spend is present in the aggregate: confirm `/api/campaigns/{campaignId}/outcome-totals?dateRange=90days` returns the expected `performanceSummary.totals.spend.value`, confirm the campaign start date, then verify the UI value equals `spend / inclusive elapsed campaign days`. For an active campaign, elapsed days stop at the current date. For a completed campaign, elapsed days stop at the campaign end date. A mock-live GA4 setup is useful for end-to-end source refresh validation, but the burn-rate formula itself depends on aggregate spend and campaign start date, not on users entering a burn-rate value.
+Daily Burn Rate can be tested with a controlled campaign after dated Spend is available: confirm `/api/campaigns/{campaignId}/outcome-totals?dateRange=90days` returns the expected `budgetPacing.spend.value`, confirm `pacingStartDate` and `pacingEndDate`, then verify the UI value equals budget-period Spend divided by inclusive elapsed budget-period days. For an active period, elapsed days stop at the current date. For a completed period, elapsed days stop at `pacingEndDate`.
 
-Latest validation for this logic is covered by commit `7878a2df Validate budget pacing date inputs`: `npm run check`, `npm test -- server/campaign-financial-analysis-regression.test.ts`, and targeted `git diff --check` passed.
+The 2026-09-26 local correction has targeted regression coverage for the browser and report consumers. Deployed validation remains required before production recertification.
 
 Render validation passed after the Commit 7 refresh/history deploy: Overview and Budget & Financial Analysis values remained in sync with the aggregate contract.
 
@@ -383,11 +389,11 @@ Authoritative rules:
 
 - Performance Summary uses aggregate ROAS and ROI. Unavailable is neutral; ROAS below 1.0x or ROI below 0% is warning; otherwise success.
 - Cost Efficiency uses aggregate CPA. Unavailable is neutral; CPA below $25 is success; otherwise warning.
-- Budget Management uses aggregate spend versus campaign budget. Underutilized or over-budget states are warnings; normal usage is neutral.
+- Budget Management uses verified budget-period Spend versus campaign budget. Underutilized or over-budget states are warnings; normal usage is neutral.
 - Source Performance Insights use spend-capable connected source breakdowns. With one source, the row is labeled `Source Performance`; with multiple sources, the best-relative row is labeled `Strongest Source`.
 - Source rows are styled as success only when ROAS is at least 3.0x. Sources below 1.0x ROAS are treated as underperforming.
-- Budget Underutilized appears only when spend is below 50% of budget and ROAS is strong.
-- Budget Capacity appears only when spend is 85-100% of budget and ROAS is strong.
+- Budget Underutilized appears only when budget-period Spend is below 50% of budget and aggregate ROAS is strong.
+- Budget Capacity appears only when budget-period Spend is 85-100% of budget and aggregate ROAS is strong.
 - GA4-only campaigns with no connected spend-capable ad platform show that paid-media optimization insights require a connected ad platform.
 - Budget reallocation recommendations appear only when multiple spend-capable connected sources exist.
 - Cost Optimization Insights are generated only from available aggregate CTR, CVR, CPC, CPM, and CPA metrics.
@@ -436,9 +442,10 @@ Trend indicators use `metrics.performanceSummary` from snapshots only when the s
 | Edge Case | Behavior |
 |---|---|
 | No budget set | Campaign Health budget and pacing sub-scores show `Unavailable` and contribute 0 points |
-| No campaign start date | Daily Burn Rate, pacing sub-score, Target Daily Spend, and Pacing Status show `Unavailable` |
-| No campaign end date | Pacing sub-score, Target Daily Spend, and Pacing Status show `Unavailable` |
+| No budget-period start date | Daily Burn Rate, pacing sub-score, Target Daily Spend, and Pacing Status show `Unavailable` |
+| No budget-period end date | Pacing sub-score, Target Daily Spend, and Pacing Status show `Unavailable` |
 | End date before start date | Pacing sub-score, Target Daily Spend, and Pacing Status show `Unavailable` |
+| Spend source cannot be safely date-bounded | Budget Position, utilization, burn rate, and pacing show `Unavailable`; aggregate Total Spend is unchanged |
 | Over-budget | Shows "Budget exceeded by $X" only when a positive campaign budget exists; no days-remaining projection |
 | Missing aggregate metric | Shows `Unavailable` plus the aggregate unavailable reason |
 | No available health inputs | Campaign Health header shows `Unavailable` / `No score` |

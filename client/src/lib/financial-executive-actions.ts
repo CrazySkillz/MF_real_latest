@@ -6,6 +6,12 @@ export type FinancialExecutiveAction = {
 
 export type FinancialPacingStatus = "unavailable" | "ahead" | "behind" | "on-track";
 
+export type FinancialBudgetPeriodSpendMetric = {
+  available: boolean;
+  value: number;
+  unavailableReasons: string[];
+};
+
 const FINANCIAL_PACING_DAY_MS = 24 * 60 * 60 * 1000;
 
 const parseFinancialPacingDateOrdinal = (value?: string | null): number | null => {
@@ -69,6 +75,34 @@ export function resolveFinancialPacingCalendar(input: {
     hasDateRange,
     elapsedDays,
     totalDays,
+  };
+}
+
+export function resolveFinancialBudgetPeriodSpend(input: {
+  contract?: any;
+  campaignId?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  currency?: string | null;
+}): FinancialBudgetPeriodSpendMetric {
+  const contract = input.contract;
+  const spend = contract?.spend;
+  const value = Number(spend?.value);
+  const compatible = contract?.version === "budget_pacing_v1"
+    && String(contract?.campaignId || "") === String(input.campaignId || "")
+    && String(contract?.periodStartDate || "") === String(input.startDate || "")
+    && String(contract?.periodEndDate || "") === String(input.endDate || "")
+    && String(contract?.currency || "").trim().toUpperCase() === String(input.currency || "").trim().toUpperCase();
+  if (compatible && spend?.available === true && spend?.value !== null && spend?.value !== undefined && spend?.value !== "" && Number.isFinite(value) && value >= 0) {
+    return { available: true, value, unavailableReasons: [] };
+  }
+  const reasons = Array.isArray(spend?.unavailableReasons)
+    ? spend.unavailableReasons.map(String).filter(Boolean)
+    : [];
+  return {
+    available: false,
+    value: 0,
+    unavailableReasons: reasons.length > 0 ? reasons : ["Budget-period Spend is unavailable"],
   };
 }
 

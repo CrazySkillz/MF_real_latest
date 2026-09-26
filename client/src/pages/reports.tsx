@@ -30,6 +30,7 @@ import {
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { reportStorage, type StoredReport } from "@/lib/reportStorage";
+import { resolveFinancialBudgetPeriodSpend } from "@/lib/financial-executive-actions";
 import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
 
 const customReportMetricGroups = [
@@ -1040,6 +1041,7 @@ export default function Reports() {
       : [];
     const latestCampaignOutcomeTotals = latestOutcomeTotalsResult?.data ?? campaignOutcomeTotals;
     const customReportPerformanceSummary = latestCampaignOutcomeTotals?.performanceSummary;
+    const customReportBudgetPacing = latestCampaignOutcomeTotals?.budgetPacing;
     const customReportAllSources = Array.isArray(customReportPerformanceSummary?.sources) ? customReportPerformanceSummary.sources : [];
     const customReportSources = customReportAllSources.filter((source: any) => source?.connected === true && source?.category !== "financial");
     const customReportCurrentValueWindow = customReportPerformanceSummary?.currentValueWindow;
@@ -1285,15 +1287,23 @@ export default function Reports() {
       const spend = metricNumber("spend");
       const revenue = metricNumber("revenue");
       const conversions = metricNumber("conversions");
-      const budgetUtilization = campaignBudget > 0 && metricAvailable("spend") ? (spend / campaignBudget) * 100 : null;
-      const remainingBudget = campaignBudget - spend;
-      const dailyBurnRate = campaignElapsedDays > 0 && metricAvailable("spend") ? spend / campaignElapsedDays : null;
+      const budgetPeriodSpendMetric = resolveFinancialBudgetPeriodSpend({
+        contract: customReportBudgetPacing,
+        campaignId: reportCampaignId,
+        startDate: campaignFinancialContext?.pacingStartDate,
+        endDate: campaignFinancialContext?.pacingEndDate,
+        currency: executiveCurrency,
+      });
+      const budgetPeriodSpend = budgetPeriodSpendMetric.available ? budgetPeriodSpendMetric.value : null;
+      const budgetUtilization = campaignBudget > 0 && budgetPeriodSpend !== null ? (budgetPeriodSpend / campaignBudget) * 100 : null;
+      const remainingBudget = budgetPeriodSpend !== null ? campaignBudget - budgetPeriodSpend : null;
+      const dailyBurnRate = campaignElapsedDays > 0 && budgetPeriodSpend !== null ? budgetPeriodSpend / campaignElapsedDays : null;
       const targetDailySpend = campaignTotalDays > 0 && campaignBudget > 0 ? campaignBudget / campaignTotalDays : null;
       const pacingPercentage = dailyBurnRate !== null && targetDailySpend !== null && targetDailySpend > 0
         ? (dailyBurnRate / targetDailySpend) * 100
         : null;
       const pacingStatus = pacingPercentage === null ? "Unavailable" : pacingPercentage > 115 ? `${(pacingPercentage - 100).toFixed(1)}% Over` : pacingPercentage < 85 ? `${(100 - pacingPercentage).toFixed(1)}% Under` : "On Track";
-      const projectedExhaustionDays = dailyBurnRate !== null && dailyBurnRate > 0 && remainingBudget > 0 ? remainingBudget / dailyBurnRate : null;
+      const projectedExhaustionDays = dailyBurnRate !== null && dailyBurnRate > 0 && remainingBudget !== null && remainingBudget > 0 ? remainingBudget / dailyBurnRate : null;
       const sourceIncludesMetric = (source: any, metricName: string) => Array.isArray(source?.includedMetrics) && source.includedMetrics.includes(metricName);
       const sourceMetricNumber = (source: any, metricName: string) => {
         const value = metricName === "revenue"
@@ -1397,18 +1407,18 @@ export default function Reports() {
         addRow("Profit", metricAvailable("revenue") && metricAvailable("spend") ? formatCustomReportMetricValue("revenue", revenue - spend) : "Unavailable");
         addFinancialMetricRow("Conversions", "conversions");
         addText("Budget Utilization", { bold: true, indent: 4 });
-        addRow("Budget Used", `${metricValue("spend")} of ${campaignBudget > 0 ? formatCustomReportMetricValue("spend", campaignBudget) : "Unavailable"}`);
+        addRow("Budget Used", `${budgetPeriodSpend === null ? "Unavailable" : formatCustomReportMetricValue("spend", budgetPeriodSpend)} of ${campaignBudget > 0 ? formatCustomReportMetricValue("spend", campaignBudget) : "Unavailable"}`);
         addRow("Utilized", budgetUtilization === null ? "Unavailable" : `${budgetUtilization.toFixed(1)}% utilized`);
-        addRow("Remaining", campaignBudget > 0 && metricAvailable("spend") ? formatCustomReportMetricValue("spend", remainingBudget) : "Unavailable");
+        addRow("Remaining", campaignBudget > 0 && remainingBudget !== null ? formatCustomReportMetricValue("spend", remainingBudget) : "Unavailable");
         addText("Budget Pacing & Burn Rate", { bold: true, indent: 4 });
         addRow("Daily Burn Rate", dailyBurnRate === null ? "Unavailable" : formatCustomReportMetricValue("spend", dailyBurnRate));
-        addRow("Daily Burn Rate Basis", campaignElapsedDays > 0 ? `Based on ${campaignElapsedDays} elapsed budget-period ${campaignElapsedDays === 1 ? "day" : "days"}` : "Requires campaign spend and budget period start");
+        addRow("Daily Burn Rate Basis", budgetPeriodSpend !== null && campaignElapsedDays > 0 ? `Based on ${campaignElapsedDays} elapsed budget-period ${campaignElapsedDays === 1 ? "day" : "days"}` : budgetPeriodSpendMetric.unavailableReasons[0] || "Requires budget-period Spend and budget period start");
         addRow("Target Daily Spend", targetDailySpend === null ? "Unavailable" : formatCustomReportMetricValue("spend", targetDailySpend));
         addRow("Pacing Status", pacingStatus);
         addRow("Campaign Budget", campaignBudget > 0 ? formatCustomReportMetricValue("spend", campaignBudget) : "Unavailable");
         addRow("Budget Period Start", formatDate(campaignStartDate));
         addRow("Budget Period End", formatDate(campaignEndDate));
-        if (remainingBudget < 0 && campaignBudget > 0 && metricAvailable("spend")) {
+        if (remainingBudget !== null && remainingBudget < 0 && campaignBudget > 0) {
           addRow("Budget exceeded by", formatCustomReportMetricValue("spend", Math.abs(remainingBudget)));
         }
         if (projectedExhaustionDays !== null) {

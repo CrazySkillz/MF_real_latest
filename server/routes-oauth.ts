@@ -14756,10 +14756,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         && (spendTotals as any).sourceIds.length > 0;
       let financialSpendInputs: any[] = [];
       let financialSpendSourceDefinitions: any[] = [];
+      const financialSpendDataThroughDate = currentValueWindow?.endDate || new Date().toISOString().slice(0, 10);
       try {
         // Imported spend is source-to-date; the GA4 import boundary applies only to native GA4 metrics.
         const spendStartDate = "1900-01-01";
-        const spendEndDate = currentValueWindow?.endDate || new Date().toISOString().slice(0, 10);
+        const spendEndDate = financialSpendDataThroughDate;
         const [spendToDateTotals, spendBreakdown, spendSourceDefinitions] = await Promise.all([
           storage.getSpendTotalForRange(campaignId, spendStartDate, spendEndDate, "ga4"),
           storage.getSpendBreakdownBySource(campaignId, spendStartDate, spendEndDate, "ga4"),
@@ -15315,6 +15316,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
         && Math.abs(financialSpendInputTotal - financialSpendForOutcome) < 0.005;
       const financialSourcesComplete = exactFinancialSourceSet(activeRevenueSourceIds, revenueInputSourceIds)
         && exactFinancialSourceSet(activeSpendSourceIds, spendInputSourceIds);
+      const pacingStartDate = String((campaign as any)?.pacingStartDate || "").trim();
+      const pacingEndDate = String((campaign as any)?.pacingEndDate || "").trim();
+      const validPacingDate = (value: string) => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+        const parsed = new Date(`${value}T00:00:00.000Z`);
+        return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+      };
+      const hasValidPacingRange = validPacingDate(pacingStartDate)
+        && validPacingDate(pacingEndDate)
+        && pacingStartDate <= pacingEndDate;
+      const aggregateUsesCanonicalSpendRecords = Array.isArray(performanceSummary?.totals?.spend?.sources)
+        && performanceSummary.totals.spend.sources.includes("canonical_spend_sources");
+      const budgetPacing = {
+        version: "budget_pacing_v1",
+        campaignId,
+        currency: campaignCurrency,
+        periodStartDate: pacingStartDate || null,
+        periodEndDate: pacingEndDate || null,
+        dataThroughDate: financialSpendDataThroughDate,
+        spend: {
+          value: null as number | null,
+          available: false,
+          sources: [] as string[],
+          unavailableReasons: [] as string[],
+        },
+      };
+      if (!hasValidPacingRange) {
+        budgetPacing.spend.unavailableReasons = ["Set valid budget period start and end dates"];
+      } else if (performanceSummary?.totals?.spend?.available !== true) {
+        budgetPacing.spend.unavailableReasons = ["Connected-source Spend is unavailable"];
+      } else if (!aggregateUsesCanonicalSpendRecords || !exactFinancialSourceSet(activeSpendSourceIds, spendInputSourceIds)) {
+        budgetPacing.spend.unavailableReasons = ["Budget-period Spend is unavailable for one or more connected spend sources"];
+      } else {
+        try {
+          const periodSpendEndDate = pacingEndDate < financialSpendDataThroughDate ? pacingEndDate : financialSpendDataThroughDate;
+          const periodSpendTotals = pacingStartDate <= periodSpendEndDate
+            ? await storage.getSpendTotalForRange(campaignId, pacingStartDate, periodSpendEndDate, "ga4")
+            : { totalSpend: 0, currency: campaignCurrency, sourceIds: [] as string[] };
+          const periodSpendCurrency = String((periodSpendTotals as any)?.currency || campaignCurrency).trim().toUpperCase();
+          if (periodSpendCurrency !== campaignCurrency) throw new Error("Budget-period Spend currency does not match the campaign currency");
+          budgetPacing.dataThroughDate = periodSpendEndDate;
+          budgetPacing.spend = {
+            value: Number(parseNum((periodSpendTotals as any)?.totalSpend).toFixed(2)),
+            available: true,
+            sources: activeSpendSourceIds,
+            unavailableReasons: [],
+          };
+        } catch {
+          budgetPacing.spend.unavailableReasons = ["Budget-period Spend could not be verified"];
+        }
+      }
       const financialDecisionReady = Boolean(currentValueWindow
         && performanceSummary?.totals?.revenue?.available === true
         && performanceSummary?.totals?.spend?.available === true
@@ -15422,6 +15474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         financials,
         revenueSources,
         financialInputs,
+        budgetPacing,
         financialDecisionContext,
         performanceSummary,
       });

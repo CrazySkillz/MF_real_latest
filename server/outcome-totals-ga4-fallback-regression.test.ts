@@ -35,7 +35,8 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("resolveGA4ImportToDateWindow((persistedPrimaryGA4 as any)?.importStartDate");
     expect(route).toContain('mode: "initial_import_to_latest_completed_day" as const');
     expect(route).toContain('const spendStartDate = "1900-01-01";');
-    expect(route).toContain('const spendEndDate = currentValueWindow?.endDate || new Date().toISOString().slice(0, 10);');
+    expect(route).toContain('const financialSpendDataThroughDate = currentValueWindow?.endDate || new Date().toISOString().slice(0, 10);');
+    expect(route).toContain('const spendEndDate = financialSpendDataThroughDate;');
     expect(route).toContain("Imported spend is source-to-date; the GA4 import boundary applies only to native GA4 metrics.");
     expect(route).toContain('storage.getSpendTotalForRange(campaignId, spendStartDate, spendEndDate, "ga4")');
     expect(route).toContain('storage.getSpendBreakdownBySource(campaignId, spendStartDate, spendEndDate, "ga4")');

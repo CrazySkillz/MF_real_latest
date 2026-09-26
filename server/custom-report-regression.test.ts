@@ -425,7 +425,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduler).toContain("type CampaignDeepDiveReportContext = {");
     expect(scheduler).toContain("async function buildCampaignDeepDiveReportContext");
     expect(scheduler).toContain("const reportContext = campaignId");
-    expect(scheduler).toContain("const { campaign, performanceSummary, financialDecisionContext, financialInputs, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources } = reportContext;");
+    expect(scheduler).toContain("const { campaign, performanceSummary, budgetPacing, financialDecisionContext, financialInputs, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources } = reportContext;");
     expect(scheduler).toContain("const addSelectedSectionBody = (section: string) => {");
     expect(scheduler).toContain('addText("Selected section content", { size: 14, bold: true });');
     expect(scheduler).toContain("selectedSections.forEach(addSelectedSectionBody);");
@@ -478,8 +478,9 @@ describe("campaign Custom Report regression guard", () => {
     expect(builder).toContain('rawBudget === null || rawBudget === undefined || String(rawBudget).trim() === ""');
     expect(builder).toContain('const effectiveElapsedEnd = pacingEndDate && pacingEndDate.getTime() < today.getTime() ? pacingEndDate : today;');
     expect(builder).toContain('Math.floor((effectiveElapsedEnd.getTime() - pacingStartDate.getTime()) / (24 * 60 * 60 * 1000)) + 1');
-    expect(builder).toContain('const remainingBudget = campaignBudget !== null && spend !== null ? campaignBudget - spend : null;');
-    expect(builder).toContain('const dailyBurnRate = spend !== null && elapsedDays > 0 ? spend / elapsedDays : null;');
+    expect(builder).toContain('const budgetPeriodSpendMetric = resolveFinancialBudgetPeriodSpend({');
+    expect(builder).toContain('const remainingBudget = campaignBudget !== null && budgetPeriodSpend !== null ? campaignBudget - budgetPeriodSpend : null;');
+    expect(builder).toContain('const dailyBurnRate = budgetPeriodSpend !== null && elapsedDays > 0 ? budgetPeriodSpend / elapsedDays : null;');
     expect(builder).toContain('const targetDailySpend = campaignBudget !== null && totalDays > 0 ? campaignBudget / totalDays : null;');
     expect(builder).toContain('pacingPercentage > 115');
     expect(builder).toContain('pacingPercentage < 85');
@@ -509,7 +510,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduler).toContain("storage.getCampaign(campaignId)");
     expect(scheduler).toContain("const aggregateSources = Array.isArray(performanceSummary?.sources)");
     expect(scheduler).toContain("const reportContext = campaignId");
-    expect(scheduler).toContain("const { campaign, performanceSummary, financialDecisionContext, financialInputs, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources } = reportContext;");
+    expect(scheduler).toContain("const { campaign, performanceSummary, budgetPacing, financialDecisionContext, financialInputs, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources } = reportContext;");
     expect(routes).toContain('layer?.route?.path === "/api/campaigns/:id/outcome-totals"');
     expect(routes).toContain("const campaignOutcomeTotalsHandler = campaignOutcomeTotalsRoute?.route?.stack?.at(-1)?.handle");
     expect(routes).toContain("campaignOutcomeTotalsReader = async");
@@ -829,6 +830,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).not.toContain('`${pacingPercentage === null ? "Unavailable" : `${pacingPercentage.toFixed(1)}%`} - ${pacingHealthStatus}`');
     expect(reports).toContain("Budget Utilization");
     expect(reports).toContain("Budget Used");
+    expect(reports).toContain("resolveFinancialBudgetPeriodSpend");
     expect(reports).toContain("Remaining");
     expect(reports).toContain("Budget Pacing & Burn Rate");
     expect(reports).toContain("Daily Burn Rate");

@@ -75,7 +75,7 @@ describe("GA4 spend source-scope regression guard", () => {
     expect(currentValues).toContain('storage.getSpendBreakdownBySource(campaignId, spendSourceStartDate, endDate, "ga4")');
     expect(jobs).toContain('getSpendTotalForRange(campaignId, spendSourceWindow.startDate, spendSourceWindow.endDate, "ga4")');
     expect(damagedCleanup).toContain('getSpendTotalForRange(campaignId, "1900-01-01", financialEndDate, "ga4")');
-    expect(roasCleanup).toContain('getSpendTotalForRange(campaignId, "2000-01-01", date, "ga4")');
+    expect(roasCleanup).toContain('getSpendTotalForRange(campaignId, "1900-01-01", date, "ga4")');
     expect(routes).toContain('getSpendTotalForRange(campaignId, spendSourceWindow.startDate, spendSourceWindow.endDate, "ga4")');
     expect(routes).toContain('getSpendTotalForRange(campaignId, startDate, endDate, "ga4")');
     expect(routes).toContain('getSpendBreakdownBySource(campaignId, spendStartDate, spendEndDate, "ga4")');

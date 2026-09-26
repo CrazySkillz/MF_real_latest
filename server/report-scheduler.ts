@@ -14,7 +14,7 @@ import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, computeEffe
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { resolveGA4InsightTargetPeriodCompatibility } from "../shared/ga4-kpi-consumer-state";
 import { buildPerformanceRecommendedActions, resolvePerformanceAggregateMetricValue, resolvePerformanceConfiguredMetricValue, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, resolvePerformancePriorityRank } from "../client/src/lib/performance-recommended-actions";
-import { buildFinancialAllocationAction, buildFinancialBudgetAction } from "../client/src/lib/financial-executive-actions";
+import { buildFinancialAllocationAction, buildFinancialBudgetAction, resolveFinancialBudgetPeriodSpend } from "../client/src/lib/financial-executive-actions";
 import { deriveTrendFinancialRatios, formatTrendComparison, resolveCompatibleTrendFinancialDaily } from "../client/src/lib/trend-analysis-cumulative";
 import { mapMailgunDeliveryToAlertEmailStatus, waitForMailgunDelivery } from "./utils/mailgun-delivery";
 import { getCampaignMetricTotals } from "./utils/campaign-current-values";
@@ -1159,6 +1159,7 @@ function formatCampaignDeepDiveRecordValue(record: any, value: unknown): string 
 type CampaignDeepDiveReportContext = {
   campaign: any | null;
   performanceSummary: any | null;
+  budgetPacing: any | null;
   financialDecisionContext: any | null;
   financialInputs: any | null;
   executiveSummary: any | null;
@@ -1193,6 +1194,8 @@ async function buildCampaignDeepDiveReportContext(campaignId: string, selectedSe
   const performanceSummary = certifiedOutcomeTotals?.performanceSummary
     || (allowIsolatedTestAggregate ? (campaignMetrics as any)?.detailedMetrics?.performanceSummary : null);
   if (!performanceSummary) throw new Error("Certified Campaign DeepDive aggregate is unavailable");
+  const budgetPacing = certifiedOutcomeTotals?.budgetPacing
+    || (allowIsolatedTestAggregate ? (campaignMetrics as any)?.detailedMetrics?.budgetPacing : null);
   const financialDecisionContext = certifiedOutcomeTotals?.financialDecisionContext
     || (allowIsolatedTestAggregate ? (campaignMetrics as any)?.detailedMetrics?.financialDecisionContext : null);
   const financialInputs = certifiedOutcomeTotals?.financialInputs
@@ -1217,6 +1220,7 @@ async function buildCampaignDeepDiveReportContext(campaignId: string, selectedSe
   return {
     campaign,
     performanceSummary,
+    budgetPacing,
     financialDecisionContext,
     financialInputs,
     executiveSummary,
@@ -1249,8 +1253,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   const campaignId = String(report?.campaignId || cfg?.campaignId || "").trim();
   const reportContext = campaignId
     ? await buildCampaignDeepDiveReportContext(campaignId, selectedSections)
-    : { campaign: null, performanceSummary: null, financialDecisionContext: null, financialInputs: null, executiveSummary: null, trendAnalysis: null, kpis: [], benchmarks: [], aggregateSources: [] };
-  const { campaign, performanceSummary, financialDecisionContext, financialInputs, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources } = reportContext;
+    : { campaign: null, performanceSummary: null, budgetPacing: null, financialDecisionContext: null, financialInputs: null, executiveSummary: null, trendAnalysis: null, kpis: [], benchmarks: [], aggregateSources: [] };
+  const { campaign, performanceSummary, budgetPacing, financialDecisionContext, financialInputs, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources } = reportContext;
   const cumulativeGA4Connection = campaignId && aggregateSources.length === 1 && aggregateSources[0]?.id === "ga4"
     ? await storage.getPrimaryGA4Connection(campaignId).catch(() => null)
     : null;
@@ -1878,9 +1882,17 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         : 0;
       const spend = metricAvailable("spend") ? metricNumber("spend") : null;
       const revenue = metricAvailable("revenue") ? metricNumber("revenue") : null;
-      const remainingBudget = campaignBudget !== null && spend !== null ? campaignBudget - spend : null;
-      const budgetUtilization = campaignBudget !== null && spend !== null ? (spend / campaignBudget) * 100 : null;
-      const dailyBurnRate = spend !== null && elapsedDays > 0 ? spend / elapsedDays : null;
+      const budgetPeriodSpendMetric = resolveFinancialBudgetPeriodSpend({
+        contract: budgetPacing,
+        campaignId: (campaign as any)?.id,
+        startDate: (campaign as any)?.pacingStartDate,
+        endDate: (campaign as any)?.pacingEndDate,
+        currency: campaignCurrency,
+      });
+      const budgetPeriodSpend = budgetPeriodSpendMetric.available ? budgetPeriodSpendMetric.value : null;
+      const remainingBudget = campaignBudget !== null && budgetPeriodSpend !== null ? campaignBudget - budgetPeriodSpend : null;
+      const budgetUtilization = campaignBudget !== null && budgetPeriodSpend !== null ? (budgetPeriodSpend / campaignBudget) * 100 : null;
+      const dailyBurnRate = budgetPeriodSpend !== null && elapsedDays > 0 ? budgetPeriodSpend / elapsedDays : null;
       const targetDailySpend = campaignBudget !== null && totalDays > 0 ? campaignBudget / totalDays : null;
       const pacingPercentage = dailyBurnRate !== null && targetDailySpend !== null && targetDailySpend > 0
         ? (dailyBurnRate / targetDailySpend) * 100
@@ -1905,12 +1917,12 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       addText("Budget & Pacing", { bold: true, indent: 4 });
       addText("Budget Position", { bold: true, indent: 8 });
       addText(`- Campaign Budget: ${money(campaignBudget)}`, { indent: 12 });
-      addText(`- Budget Used: ${money(spend)}`, { indent: 12 });
+      addText(`- Budget Used: ${money(budgetPeriodSpend)}`, { indent: 12 });
       addText(`- Remaining Budget: ${money(remainingBudget)}`, { indent: 12 });
       addText(`- Budget Utilization: ${budgetUtilization === null ? "Unavailable" : `${budgetUtilization.toFixed(1)}%`}`, { indent: 12 });
       addText("Budget Pacing & Burn Rate", { bold: true, indent: 8 });
       addText(`- Daily Burn Rate: ${money(dailyBurnRate)}`, { indent: 12 });
-      addText(`- Daily Burn Rate Basis: ${elapsedDays > 0 ? `Based on ${elapsedDays} elapsed budget-period ${elapsedDays === 1 ? "day" : "days"}` : "Requires campaign spend and budget period start"}`, { indent: 12 });
+      addText(`- Daily Burn Rate Basis: ${budgetPeriodSpend !== null && elapsedDays > 0 ? `Based on ${elapsedDays} elapsed budget-period ${elapsedDays === 1 ? "day" : "days"}` : budgetPeriodSpendMetric.unavailableReasons[0] || "Requires budget-period Spend and budget period start"}`, { indent: 12 });
       addText(`- Target Daily Spend: ${money(targetDailySpend)}`, { indent: 12 });
       addText(`- Pacing Status: ${pacingStatus}`, { indent: 12 });
       addText(`- Budget Period Start: ${pacingDate(pacingStartDate)}`, { indent: 12 });
@@ -1938,8 +1950,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         : { title: "Return cannot be assessed", body: "Compatible revenue and spend are required to assess return." };
       const budgetAction = buildFinancialBudgetAction({
         hasCampaignBudget: campaignBudget !== null,
-        spendAvailable: spend !== null,
-        spendUnavailableText: "A compatible spend source is required to assess budget pacing.",
+        spendAvailable: budgetPeriodSpend !== null,
+        spendUnavailableText: budgetPeriodSpendMetric.unavailableReasons[0] || "Compatible dated spend is required to assess budget pacing.",
         isOverBudget: remainingBudget !== null && remainingBudget < 0,
         overBudgetAmountText: money(Math.abs(remainingBudget || 0)),
         hasValidDateRange: hasPacingRange,

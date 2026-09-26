@@ -90,6 +90,16 @@ const performanceSummary = {
   }],
 };
 
+const budgetPacing = {
+  version: "budget_pacing_v1",
+  campaignId: "campaign-1",
+  currency: "USD",
+  periodStartDate: "2026-07-02",
+  periodEndDate: "2026-09-30",
+  dataThroughDate: "2026-08-27",
+  spend: metric(2699.75, ["spend-1"]),
+};
+
 const financialInputs = {
   revenue: [
     {
@@ -212,6 +222,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     aggregateCampaignMetricsMock.mockResolvedValue({
       detailedMetrics: {
         performanceSummary,
+        budgetPacing,
         financialDecisionContext,
         financialInputs,
         trendAnalysis: {
@@ -609,6 +620,18 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
       pacingStartDate: "2026-08-28",
       pacingEndDate: "2026-08-31",
     });
+    aggregateCampaignMetricsMock.mockResolvedValueOnce({
+      detailedMetrics: {
+        performanceSummary,
+        budgetPacing: {
+          ...budgetPacing,
+          periodStartDate: "2026-08-28",
+          periodEndDate: "2026-08-31",
+        },
+        financialDecisionContext,
+        financialInputs,
+      },
+    });
 
     await buildPdfAttachmentForReport({
       report: { ...report("financial-analysis", ["financial-analysis:overview"]), scheduleTimeZone: "Pacific/Kiritimati" },
@@ -640,6 +663,10 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
             ...source,
             metrics: { ...source.metrics, revenue: 0 },
           })),
+        },
+        budgetPacing: {
+          ...budgetPacing,
+          spend: metric(0, ["spend-1"]),
         },
       },
     });

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { insertCampaignSchema } from "@shared/schema";
-import { buildFinancialAllocationAction, buildFinancialBudgetAction, resolveFinancialPacingCalendar, resolveFinancialPaidMediaEfficiencyCompatibility } from "../client/src/lib/financial-executive-actions";
+import { buildFinancialAllocationAction, buildFinancialBudgetAction, resolveFinancialBudgetPeriodSpend, resolveFinancialPacingCalendar, resolveFinancialPaidMediaEfficiencyCompatibility } from "../client/src/lib/financial-executive-actions";
 
 describe("campaign Budget & Financial Analysis regression guard", () => {
   it("withholds paid-media efficiency when contributing source sets are incompatible", () => {
@@ -72,6 +72,32 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
       reportingTimeZone: "Europe/Amsterdam",
       now: new Date("2026-03-30T12:00:00.000Z"),
     }).elapsedDays).toBe(10);
+  });
+
+  it("accepts only a matching verified budget-period Spend contract", () => {
+    const contract = {
+      version: "budget_pacing_v1",
+      campaignId: "campaign-3",
+      currency: "EUR",
+      periodStartDate: "2026-09-21",
+      periodEndDate: "2026-11-30",
+      spend: { available: true, value: 0, unavailableReasons: [] },
+    };
+
+    expect(resolveFinancialBudgetPeriodSpend({
+      contract,
+      campaignId: "campaign-3",
+      startDate: "2026-09-21",
+      endDate: "2026-11-30",
+      currency: "EUR",
+    })).toEqual({ available: true, value: 0, unavailableReasons: [] });
+    expect(resolveFinancialBudgetPeriodSpend({
+      contract,
+      campaignId: "campaign-3",
+      startDate: "2026-09-22",
+      endDate: "2026-11-30",
+      currency: "EUR",
+    }).available).toBe(false);
   });
 
   it("uses actual budget pacing instead of total-budget utilization alone", () => {
@@ -413,6 +439,9 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(route).toContain("const platformSpendFallback = parseFloat((linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend + parseNum(googleSheets?.metrics?.spend) + parseNum(custom?.spend)).toFixed(2));");
     expect(route).toContain("mainPlatformSources: { googleAds, instagram, tiktok, googleSheets }");
     expect(route).toContain("buildGoogleSheetsPlatformSourceForAggregate(campaign, googleSheetsConnections as any[], googleSheetsFinancials, !currentValueWindow)");
+    expect(route).toContain('version: "budget_pacing_v1"');
+    expect(route).toContain('storage.getSpendTotalForRange(campaignId, pacingStartDate, periodSpendEndDate, "ga4")');
+    expect(route).toContain("budgetPacing,");
   });
 
   it("wires the Overview tab to aggregate financial metrics with unavailable states", () => {
@@ -443,7 +472,8 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const hasCampaignStartDate = pacingCalendar.hasStartDate;");
     expect(page).toContain("const hasCampaignEndDate = pacingCalendar.hasEndDate;");
     expect(page).toContain("const hasCampaignDateRange = pacingCalendar.hasDateRange;");
-    expect(overview).toContain("const hasBudgetHealthInputs = hasCampaignBudget && overviewSpendMetric.available;");
+    expect(page).toContain("const budgetPeriodSpendMetric = demoMode ? overviewSpendMetric : resolveFinancialBudgetPeriodSpend({");
+    expect(overview).toContain("const hasBudgetHealthInputs = hasCampaignBudget && budgetPeriodSpendMetric.available;");
     expect(page).toContain("const campaignElapsedDays = pacingCalendar.elapsedDays;");
     expect(page).toContain("const campaignTotalDays = pacingCalendar.totalDays;");
     expect(overview).toContain("const hasPacingHealthInputs = hasBudgetHealthInputs && hasCampaignDateRange && campaignElapsedDays > 0;");
@@ -465,10 +495,10 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(overview).toContain("Campaign budget is required for budget health");
     expect(overview).toContain("Campaign budget is required for pacing");
     expect(overview).toContain("Budget period end is required for pacing");
-    expect(overview).toContain("const hasPacingInputs = hasCampaignBudget && overviewSpendMetric.available && hasCampaignDateRange && campaignElapsedDays > 0;");
+    expect(overview).toContain("const hasPacingInputs = hasCampaignBudget && budgetPeriodSpendMetric.available && hasCampaignDateRange && campaignElapsedDays > 0;");
     expect(overview).toContain('{hasPacingInputs ? formatCurrency(targetDailySpend) : "Unavailable"}');
-    expect(overview).toContain('{overviewSpendMetric.available && campaignElapsedDays > 0 ? formatCurrency(dailyBurnRate) : "Unavailable"}');
-    expect(overview).toContain("const isOverBudget = hasCampaignBudget && overviewSpendMetric.available && overviewRemainingBudget < 0;");
+    expect(overview).toContain('{budgetPeriodSpendMetric.available && campaignElapsedDays > 0 ? formatCurrency(dailyBurnRate) : "Unavailable"}');
+    expect(overview).toContain("const isOverBudget = hasCampaignBudget && budgetPeriodSpendMetric.available && overviewRemainingBudget < 0;");
     expect(page).toContain("const updatePacingInputsMutation = useMutation({");
     expect(page).toContain('apiRequest("PATCH", `/api/campaigns/${campaignId}`');
     expect(page).toContain('queryClient.setQueryData(["/api/campaigns", campaignId], updatedCampaign);');
@@ -480,13 +510,13 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain('if (padDecimals) return `${formattedInteger}.${decimalPart.slice(0, 2).padEnd(2, "0")}`;');
     expect(page).toContain('replace(/[^\\d.]/g, "")');
     expect(page).toContain("setPacingBudgetInput(formatBudgetInputValue(campaign.budget, true));");
-    expect(overview).toContain("Requires campaign spend and budget period start");
+    expect(overview).toContain("Requires budget-period Spend and budget period start");
     expect(overview).toContain('Based on {campaignElapsedDays} elapsed budget-period {campaignElapsedDays === 1 ? "day" : "days"}');
-    expect(page.split("overviewSpendMetric.available && campaignElapsedDays > 0 ? (")).toHaveLength(3);
+    expect(page.split("budgetPeriodSpendMetric.available && campaignElapsedDays > 0 ? (")).toHaveLength(3);
     expect(overview).toContain("Requires campaign budget and budget period dates");
     expect(overview).toContain('`Based on ${campaignTotalDays} total budget-period ${campaignTotalDays === 1 ? "day" : "days"}`');
     expect(page.split("Based on ${campaignTotalDays} total budget-period")).toHaveLength(3);
-    expect(overview).toContain("Requires campaign spend, budget, and budget period dates");
+    expect(overview).toContain("Requires budget-period Spend, budget, and budget period dates");
     expect(overview).toContain("Daily burn rate compared with target daily spend");
     expect(page.split("Daily burn rate compared with target daily spend")).toHaveLength(3);
     expect(overview).toContain("const shouldShowPacingInputForm = isEditingPacingInputs || !hasCampaignBudget || !hasCampaignStartDate || !hasCampaignEndDate || !hasCampaignDateRange;");
@@ -620,11 +650,11 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(insightsTab).toContain("const platformsWithRoas = platformsWithSpend.filter");
     expect(insightsTab).toContain("financialRoasMetric.available && financialRoiMetric.available");
     expect(insightsTab).toContain("overviewCpaMetric.available");
-    expect(insightsTab).toContain("overviewSpendMetric.available");
+    expect(insightsTab).toContain("budgetPeriodSpendMetric.available");
     expect(insightsTab).toContain("overviewCtrMetric.available");
     expect(insightsTab).toContain("overviewCvrMetric.available");
-    expect(insightsTab).toContain("const isBudgetUnderutilized = overviewSpendMetric.available && overviewBudgetUtilization < 50;");
-    expect(insightsTab).toContain("const hasBudgetCapacity = overviewSpendMetric.available && overviewBudgetUtilization > 85 && overviewBudgetUtilization <= 100;");
+    expect(insightsTab).toContain("const isBudgetUnderutilized = budgetPeriodSpendMetric.available && overviewBudgetUtilization < 50;");
+    expect(insightsTab).toContain("const hasBudgetCapacity = budgetPeriodSpendMetric.available && overviewBudgetUtilization > 85 && overviewBudgetUtilization <= 100;");
     expect(insightsTab).toContain("const financialPerformanceTone: InsightTone = !financialRoasMetric.available || !financialRoiMetric.available");
     expect(insightsTab).toContain("financialRoasMetric.value < 1 || financialRoiMetric.value < 0");
     expect(insightsTab).toContain("const topPerformerTone: InsightTone = !topPerformer");

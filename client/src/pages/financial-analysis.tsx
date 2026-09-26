@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest } from "@/lib/queryClient";
-import { buildFinancialAllocationAction, buildFinancialBudgetAction, resolveFinancialPacingCalendar, resolveFinancialPaidMediaEfficiencyCompatibility } from "@/lib/financial-executive-actions";
+import { buildFinancialAllocationAction, buildFinancialBudgetAction, resolveFinancialBudgetPeriodSpend, resolveFinancialPacingCalendar, resolveFinancialPaidMediaEfficiencyCompatibility } from "@/lib/financial-executive-actions";
 import { formatPct } from "@shared/metric-math";
 
 interface Campaign {
@@ -517,8 +517,16 @@ export default function FinancialAnalysis() {
   const overviewRoiMetric = getOverviewMetric("roi", roi);
   const overviewRoasMetric = getOverviewMetric("roas", roas);
   const overviewSpend = overviewSpendMetric.available ? overviewSpendMetric.value : 0;
-  const overviewBudgetUtilization = hasCampaignBudget && overviewSpendMetric.available ? (overviewSpend / campaignBudget) * 100 : 0;
-  const overviewRemainingBudget = campaignBudget - overviewSpend;
+  const budgetPeriodSpendMetric = demoMode ? overviewSpendMetric : resolveFinancialBudgetPeriodSpend({
+    contract: outcomeTotals?.budgetPacing,
+    campaignId,
+    startDate: campaign.pacingStartDate,
+    endDate: campaign.pacingEndDate,
+    currency: campaignCurrency,
+  });
+  const budgetPeriodSpend = budgetPeriodSpendMetric.available ? budgetPeriodSpendMetric.value : 0;
+  const overviewBudgetUtilization = hasCampaignBudget && budgetPeriodSpendMetric.available ? (budgetPeriodSpend / campaignBudget) * 100 : 0;
+  const overviewRemainingBudget = campaignBudget - budgetPeriodSpend;
   const overviewMetricUnavailableText = (metric: { unavailableReasons: string[] }, fallback: string) =>
     metric.unavailableReasons[0] || fallback;
   const hasSavedPacingMetadata = hasCampaignBudget || hasCampaignStartDate || hasCampaignEndDate;
@@ -737,9 +745,9 @@ export default function FinancialAnalysis() {
   const financialProfit = financialProfitAvailable
     ? financialRevenueMetric.value - financialSpendMetric.value
     : 0;
-  const dailyBurnRate = campaignElapsedDays > 0 ? overviewSpend / campaignElapsedDays : 0;
-  const isOverBudget = hasCampaignBudget && overviewSpendMetric.available && overviewRemainingBudget < 0;
-  const hasPacingInputs = hasCampaignBudget && overviewSpendMetric.available && hasCampaignDateRange && campaignElapsedDays > 0;
+  const dailyBurnRate = campaignElapsedDays > 0 ? budgetPeriodSpend / campaignElapsedDays : 0;
+  const isOverBudget = hasCampaignBudget && budgetPeriodSpendMetric.available && overviewRemainingBudget < 0;
+  const hasPacingInputs = hasCampaignBudget && budgetPeriodSpendMetric.available && hasCampaignDateRange && campaignElapsedDays > 0;
   const targetDailySpend = campaignTotalDays > 0 ? campaignBudget / campaignTotalDays : 0;
   const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
   const pacingStatus = !hasPacingInputs ? "unavailable" : pacingPercentage > 115 ? "ahead" : pacingPercentage < 85 ? "behind" : "on-track";
@@ -767,8 +775,8 @@ export default function FinancialAnalysis() {
 
   executiveFinancialActions.push(buildFinancialBudgetAction({
     hasCampaignBudget,
-    spendAvailable: overviewSpendMetric.available,
-    spendUnavailableText: overviewMetricUnavailableText(overviewSpendMetric, "A compatible spend source is required to assess budget pacing."),
+    spendAvailable: budgetPeriodSpendMetric.available,
+    spendUnavailableText: overviewMetricUnavailableText(budgetPeriodSpendMetric, "Compatible dated spend is required to assess budget pacing."),
     isOverBudget,
     overBudgetAmountText: formatCurrency(Math.abs(overviewRemainingBudget)),
     hasValidDateRange: hasCampaignDateRange,
@@ -918,7 +926,7 @@ export default function FinancialAnalysis() {
                 <div>
                   <h2 id="budget-pacing-heading" className="text-xl font-semibold">Budget & Pacing</h2>
                   <p className="text-sm text-muted-foreground">
-                    Budget metadata affects pacing only.
+                    Budget calculations use Spend dated within the selected budget period.
                   </p>
                 </div>
                 <div className="grid gap-6 lg:grid-cols-2">
@@ -938,21 +946,21 @@ export default function FinancialAnalysis() {
                         <div>
                           <p className="text-xs text-muted-foreground">Remaining Budget</p>
                           <p className="text-lg font-semibold">
-                            {hasCampaignBudget && overviewSpendMetric.available ? formatCurrency(overviewRemainingBudget) : "Unavailable"}
+                            {hasCampaignBudget && budgetPeriodSpendMetric.available ? formatCurrency(overviewRemainingBudget) : "Unavailable"}
                           </p>
                         </div>
                       </div>
-                      {hasCampaignBudget && overviewSpendMetric.available ? (
+                      {hasCampaignBudget && budgetPeriodSpendMetric.available ? (
                         <>
                           <div className="flex items-center justify-between text-sm">
                             <span>{formatPercentage(overviewBudgetUtilization)} used</span>
-                            <span className="text-muted-foreground">{formatCurrency(overviewSpend)} spent</span>
+                            <span className="text-muted-foreground">{formatCurrency(budgetPeriodSpend)} spent in budget period</span>
                           </div>
                           <Progress value={Math.min(Math.max(overviewBudgetUtilization, 0), 100)} className="h-2" />
                         </>
                       ) : (
                         <p className="text-sm text-muted-foreground">
-                          {!hasCampaignBudget ? "Set a campaign budget to calculate utilization and remaining budget." : overviewMetricUnavailableText(overviewSpendMetric, "Spend is unavailable")}
+                          {!hasCampaignBudget ? "Set a campaign budget to calculate utilization and remaining budget." : overviewMetricUnavailableText(budgetPeriodSpendMetric, "Budget-period Spend is unavailable")}
                         </p>
                       )}
                     </CardContent>
@@ -979,15 +987,15 @@ export default function FinancialAnalysis() {
                             <div className="flex items-start justify-between gap-4">
                               <div>
                                 <p className="text-sm font-medium">Daily Burn Rate</p>
-                                {overviewSpendMetric.available && campaignElapsedDays > 0 ? (
+                                {budgetPeriodSpendMetric.available && campaignElapsedDays > 0 ? (
                                   <p className="text-xs text-muted-foreground">
                                     Based on {campaignElapsedDays} elapsed budget-period {campaignElapsedDays === 1 ? "day" : "days"}
                                   </p>
                                 ) : (
-                                  <p className="text-xs text-muted-foreground">Requires campaign spend and budget period start</p>
+                                  <p className="text-xs text-muted-foreground">Requires budget-period Spend and budget period start</p>
                                 )}
                               </div>
-                              <p className="font-semibold">{overviewSpendMetric.available && campaignElapsedDays > 0 ? formatCurrency(dailyBurnRate) : "Unavailable"}</p>
+                              <p className="font-semibold">{budgetPeriodSpendMetric.available && campaignElapsedDays > 0 ? formatCurrency(dailyBurnRate) : "Unavailable"}</p>
                             </div>
                             <div className="flex items-start justify-between gap-4">
                               <div>
@@ -1005,7 +1013,7 @@ export default function FinancialAnalysis() {
                                 <p className="text-sm font-medium">Pacing Status</p>
                                 <p className="text-xs text-muted-foreground">
                                   {pacingStatus === "unavailable"
-                                    ? "Requires campaign spend, budget, and budget period dates"
+                                    ? "Requires budget-period Spend, budget, and budget period dates"
                                     : "Daily burn rate compared with target daily spend"}
                                 </p>
                               </div>
@@ -1105,7 +1113,7 @@ export default function FinancialAnalysis() {
                                 </Button>
                               </div>
                             )}
-                            {overviewSpendMetric.available && !isOverBudget && projectedEndDateOrdinal !== null && daysRemaining > 0 && (
+                            {budgetPeriodSpendMetric.available && !isOverBudget && projectedEndDateOrdinal !== null && daysRemaining > 0 && (
                               <p className="border-t pt-3 text-xs text-muted-foreground">
                                 At current rate, budget will be exhausted in <strong>{Math.ceil(daysRemaining)} days</strong>
                                 {pacingCalendar.endDateOrdinal !== null && <span> ({projectedEndDateOrdinal > pacingCalendar.endDateOrdinal ? "after" : "before"} budget period end)</span>}
@@ -1264,14 +1272,14 @@ export default function FinancialAnalysis() {
                 </CardHeader>
                 <CardContent>
                   {(() => {
-                    const hasBudgetHealthInputs = hasCampaignBudget && overviewSpendMetric.available;
+                    const hasBudgetHealthInputs = hasCampaignBudget && budgetPeriodSpendMetric.available;
                     const hasPacingHealthInputs = hasBudgetHealthInputs && hasCampaignDateRange && campaignElapsedDays > 0;
                     const calculateHealthScore = () => {
                       let score = 0;
                       
                       const budgetScore = hasBudgetHealthInputs ? (overviewBudgetUtilization <= 80 ? 25 : overviewBudgetUtilization <= 95 ? 15 : overviewBudgetUtilization <= 100 ? 10 : 0) : 0;
                       
-                      const dailyBurnRate = campaignElapsedDays > 0 ? overviewSpend / campaignElapsedDays : 0;
+                      const dailyBurnRate = campaignElapsedDays > 0 ? budgetPeriodSpend / campaignElapsedDays : 0;
                       const targetDailySpend = campaignTotalDays > 0 ? campaignBudget / campaignTotalDays : 0;
                       const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
                       const pacingDeviation = Math.abs(pacingPercentage - 100);
@@ -1372,7 +1380,7 @@ export default function FinancialAnalysis() {
                               <div className={`w-3 h-3 rounded-full ${getStatusColor(healthData.pacing.status)}`} />
                             </div>
                             <div className="text-2xl font-bold">{(() => {
-                              const dailyBurnRate = campaignElapsedDays > 0 ? overviewSpend / campaignElapsedDays : 0;
+                              const dailyBurnRate = campaignElapsedDays > 0 ? budgetPeriodSpend / campaignElapsedDays : 0;
                               const targetDailySpend = campaignTotalDays > 0 ? campaignBudget / campaignTotalDays : 0;
                               const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
                               return hasPacingHealthInputs ? formatPercentage(pacingPercentage) : "Unavailable";
@@ -1489,16 +1497,16 @@ export default function FinancialAnalysis() {
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">Budget Used</span>
                         <span className="text-sm text-muted-foreground">
-                          {formatOverviewCurrency(overviewSpendMetric)} of {formatCurrency(campaignBudget)}
+                          {formatOverviewCurrency(budgetPeriodSpendMetric)} of {formatCurrency(campaignBudget)}
                         </span>
                       </div>
                       <Progress value={Math.min(overviewBudgetUtilization, 100)} className="h-2" />
                       <div className="flex items-center justify-between text-sm">
                         <span className={overviewBudgetUtilization > 90 ? "text-red-600" : "text-green-600"}>
-                          {overviewSpendMetric.available ? `${formatPercentage(overviewBudgetUtilization)} utilized` : overviewMetricUnavailableText(overviewSpendMetric, "Spend unavailable")}
+                          {budgetPeriodSpendMetric.available ? `${formatPercentage(overviewBudgetUtilization)} utilized` : overviewMetricUnavailableText(budgetPeriodSpendMetric, "Budget-period Spend unavailable")}
                         </span>
                         <span className="text-muted-foreground">
-                          {overviewSpendMetric.available ? `${formatCurrency(overviewRemainingBudget)} remaining` : "Remaining unavailable"}
+                          {budgetPeriodSpendMetric.available ? `${formatCurrency(overviewRemainingBudget)} remaining` : "Remaining unavailable"}
                         </span>
                       </div>
                     </div>
@@ -1518,14 +1526,14 @@ export default function FinancialAnalysis() {
                   <CardContent>
                     <div className="space-y-4">
                       {(() => {
-                        const dailyBurnRate = campaignElapsedDays > 0 ? overviewSpend / campaignElapsedDays : 0;
-                        const isOverBudget = hasCampaignBudget && overviewSpendMetric.available && overviewRemainingBudget < 0;
+                        const dailyBurnRate = campaignElapsedDays > 0 ? budgetPeriodSpend / campaignElapsedDays : 0;
+                        const isOverBudget = hasCampaignBudget && budgetPeriodSpendMetric.available && overviewRemainingBudget < 0;
                         const daysRemaining = (!isOverBudget && dailyBurnRate > 0) ? overviewRemainingBudget / dailyBurnRate : 0;
                         const projectedEndDateOrdinal = (!isOverBudget && dailyBurnRate > 0)
                           ? pacingCalendar.todayDateOrdinal + Math.ceil(daysRemaining) * 24 * 60 * 60 * 1000
                           : null;
                         
-                        const hasPacingInputs = hasCampaignBudget && overviewSpendMetric.available && hasCampaignDateRange && campaignElapsedDays > 0;
+                        const hasPacingInputs = hasCampaignBudget && budgetPeriodSpendMetric.available && hasCampaignDateRange && campaignElapsedDays > 0;
                         const targetDailySpend = campaignTotalDays > 0 ? campaignBudget / campaignTotalDays : 0;
                         
                         const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
@@ -1537,15 +1545,15 @@ export default function FinancialAnalysis() {
                             <div className="flex items-start justify-between gap-4">
                               <div>
                                 <span className="text-sm font-medium">Daily Burn Rate</span>
-                                {overviewSpendMetric.available && campaignElapsedDays > 0 ? (
+                                {budgetPeriodSpendMetric.available && campaignElapsedDays > 0 ? (
                                   <p className="text-xs text-muted-foreground">
                                     Based on {campaignElapsedDays} elapsed budget-period {campaignElapsedDays === 1 ? "day" : "days"}
                                   </p>
                                 ) : (
-                                  <p className="text-xs text-muted-foreground">Requires campaign spend and budget period start</p>
+                                  <p className="text-xs text-muted-foreground">Requires budget-period Spend and budget period start</p>
                                 )}
                               </div>
-                              <span className="text-sm font-bold">{overviewSpendMetric.available && campaignElapsedDays > 0 ? formatCurrency(dailyBurnRate) : "Unavailable"}</span>
+                              <span className="text-sm font-bold">{budgetPeriodSpendMetric.available && campaignElapsedDays > 0 ? formatCurrency(dailyBurnRate) : "Unavailable"}</span>
                             </div>
                             <div className="flex items-start justify-between gap-4">
                               <div>
@@ -1563,7 +1571,7 @@ export default function FinancialAnalysis() {
                                 <span className="text-sm font-medium">Pacing Status</span>
                                 <p className="text-xs text-muted-foreground">
                                   {pacingStatus === 'unavailable'
-                                    ? "Requires campaign spend, budget, and budget period dates"
+                                    ? "Requires budget-period Spend, budget, and budget period dates"
                                     : "Daily burn rate compared with target daily spend"}
                                 </p>
                               </div>
@@ -1674,7 +1682,7 @@ export default function FinancialAnalysis() {
                                 </Button>
                               </div>
                             )}
-                            {overviewSpendMetric.available && !isOverBudget && projectedEndDateOrdinal !== null && daysRemaining > 0 && (
+                            {budgetPeriodSpendMetric.available && !isOverBudget && projectedEndDateOrdinal !== null && daysRemaining > 0 && (
                               <div className="pt-3 border-t">
                                 <p className="text-xs text-muted-foreground">
                                   At current rate, budget will be exhausted in <strong>{Math.ceil(daysRemaining)} days</strong>
@@ -2349,9 +2357,9 @@ export default function FinancialAnalysis() {
                       warning: "text-sm text-yellow-800 dark:text-yellow-200",
                       info: "text-sm text-foreground/80",
                     };
-                    const isBudgetUnderutilized = overviewSpendMetric.available && overviewBudgetUtilization < 50;
+                    const isBudgetUnderutilized = budgetPeriodSpendMetric.available && overviewBudgetUtilization < 50;
                     const hasStrongRoas = financialRoasMetric.available && financialRoasMetric.value > 2;
-                    const hasBudgetCapacity = overviewSpendMetric.available && overviewBudgetUtilization > 85 && overviewBudgetUtilization <= 100;
+                    const hasBudgetCapacity = budgetPeriodSpendMetric.available && overviewBudgetUtilization > 85 && overviewBudgetUtilization <= 100;
                     const financialPerformanceTone: InsightTone = !financialRoasMetric.available || !financialRoiMetric.available
                       ? "info"
                       : financialRoasMetric.value < 1 || financialRoiMetric.value < 0
@@ -2368,7 +2376,7 @@ export default function FinancialAnalysis() {
                       : overviewCpaMetric.value < 25
                         ? "success"
                         : "warning";
-                    const budgetManagementTone: InsightTone = !overviewSpendMetric.available
+                    const budgetManagementTone: InsightTone = !budgetPeriodSpendMetric.available
                       ? "info"
                       : overviewBudgetUtilization > 100 || isBudgetUnderutilized
                         ? "warning"
@@ -2399,9 +2407,9 @@ export default function FinancialAnalysis() {
                           <div className={insightCardClass[budgetManagementTone]}>
                             <h4 className={insightTitleClass[budgetManagementTone]}>Budget Management</h4>
                             <p className={insightBodyClass[budgetManagementTone]}>
-                              {overviewSpendMetric.available
+                              {budgetPeriodSpendMetric.available
                                 ? `You have utilized ${formatPercentage(overviewBudgetUtilization)} of your budget. ${overviewBudgetUtilization > 100 ? "Campaign spend is over budget." : isBudgetUnderutilized ? "Budget is underutilized relative to the total campaign budget." : overviewBudgetUtilization > 85 ? "Monitor remaining budget closely." : "Budget usage is currently within range."}`
-                                : overviewMetricUnavailableText(overviewSpendMetric, "Budget management requires available spend.")}
+                                : overviewMetricUnavailableText(budgetPeriodSpendMetric, "Budget management requires available budget-period Spend.")}
                             </p>
                           </div>
                         </div>

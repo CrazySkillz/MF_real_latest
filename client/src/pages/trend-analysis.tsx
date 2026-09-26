@@ -1493,6 +1493,7 @@ export default function TrendAnalysis() {
     ? format(new Date(`${cumulativeDataThroughDate}T00:00:00`), "MMM d, yyyy")
     : "";
   const headlineComparison = usesCumulativeGA4Consumer ? overviewTrendData?.comparison || {} : {};
+  const schedulerFinancialCardLabels = new Set(["Revenue", "Spend", "ROAS", "ROI", "CPA"]);
   const authoritativeHeadlineEfficiencyCards = authoritativeHeadlineCurrent ? [
     { key: "roi", label: "ROI", value: authoritativeHeadlineCurrent.roi === null ? null : formatPct(authoritativeHeadlineCurrent.roi), change: headlineComparison.roi },
     { key: "cpc", label: "CPC", value: authoritativeHeadlineCurrent.cpc === null ? null : fmtHeadlineCurrency(authoritativeHeadlineCurrent.cpc), change: headlineComparison.cpc, invertColor: true },
@@ -1642,7 +1643,10 @@ export default function TrendAnalysis() {
                         { label: 'CVR', value: authoritativeHeadlineCurrent.cvr === null ? null : formatPct(authoritativeHeadlineCurrent.cvr), change: headlineComparison.cvr },
                         { label: 'Engagement Rate', value: authoritativeHeadlineCurrent.engagementRate === null ? null : formatPct(normalizeRateToPercent(authoritativeHeadlineCurrent.engagementRate)), change: headlineComparison.engagementRate },
                         { label: 'CTR', value: authoritativeHeadlineCurrent.ctr === null ? null : formatPct(authoritativeHeadlineCurrent.ctr), change: headlineComparison.ctr },
-                      ].filter((card) => card.value !== null).map((card, i) => {
+                      ].filter((card) => card.value !== null || (usesCumulativeGA4Consumer && schedulerFinancialCardLabels.has(card.label))).map((card, i) => {
+                        const schedulerFinancialUnavailable = usesCumulativeGA4Consumer
+                          && schedulerFinancialCardLabels.has(card.label)
+                          && card.value === null;
                         const invertComparisonColor = card.label === "CPA";
                         const comparisonColorClass = Number(card.change) > 0
                           ? invertComparisonColor ? "text-red-600" : "text-green-600"
@@ -1664,9 +1668,12 @@ export default function TrendAnalysis() {
                           <Card key={i} className="h-full">
                             <CardContent className="p-4 h-full">
                               <div className="text-xs text-muted-foreground/70 mb-1">{card.label}</div>
-                              <div className="text-xl font-bold text-foreground">{card.value}</div>
+                              <div className="text-xl font-bold text-foreground">{schedulerFinancialUnavailable ? "Unavailable" : card.value}</div>
                               <div className="min-h-[5rem]">
-                              {overviewTrendData.hasPrevious && typeof card.change === "number" && (
+                              {schedulerFinancialUnavailable && (
+                                <div className="text-xs text-muted-foreground mt-1">Waiting for daily scheduler</div>
+                              )}
+                              {!schedulerFinancialUnavailable && overviewTrendData.hasPrevious && typeof card.change === "number" && (
                                 cumulativeComparison ? (
                                   <div className="text-xs mt-1 leading-tight">
                                     <div className={`flex items-center ${comparisonColorClass}`}>
@@ -1687,7 +1694,7 @@ export default function TrendAnalysis() {
                                   </div>
                                 )
                               )}
-                              {hasAuthoritativeHeadlineWindow && comparisonDateLabel && typeof card.change !== "number" && !("comparisonPending" in card && card.comparisonPending) && (
+                              {!schedulerFinancialUnavailable && hasAuthoritativeHeadlineWindow && comparisonDateLabel && typeof card.change !== "number" && !("comparisonPending" in card && card.comparisonPending) && (
                                 <div className="text-xs text-muted-foreground mt-1 leading-tight">
                                   <div>Comparison unavailable</div>
                                   <div>vs {comparisonDateLabel}</div>

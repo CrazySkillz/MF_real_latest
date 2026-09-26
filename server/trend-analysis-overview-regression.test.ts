@@ -340,6 +340,10 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain("formatExactTrendCount(authoritativeHeadlineCurrent.sessions)");
     expect(page).toContain("formatExactTrendCount(authoritativeHeadlineCurrent.users)");
     expect(page).toContain("Connected-Source Performance Summary");
+    expect(page).toContain('const schedulerFinancialCardLabels = new Set(["Revenue", "Spend", "ROAS", "ROI", "CPA"]);');
+    expect(page).toContain("card.value !== null || (usesCumulativeGA4Consumer && schedulerFinancialCardLabels.has(card.label))");
+    expect(page).toContain('schedulerFinancialUnavailable ? "Unavailable" : card.value');
+    expect(page).toContain("Waiting for daily scheduler");
     expect(page).toContain("const cumulativeComparison = usesCumulativeGA4Consumer && comparisonKey && trendComparisonDate");
     expect(page).toContain('<div className={`flex items-center ${comparisonColorClass}`}>');
     expect(page).toContain("{cumulativeComparison.value}");

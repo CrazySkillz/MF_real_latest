@@ -366,7 +366,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(executiveDecisions).toContain("buildFinancialBudgetAction({");
     expect(executiveDecisions).toContain("buildFinancialAllocationAction({");
     expect(executiveDecisions).not.toContain("overviewBudgetUtilization < 50");
-    expect(executiveView).toContain("Financial return, pacing, and spend-source guidance from the same displayed aggregate values.");
+    expect(executiveView).toContain("Financial return, budget-period pacing, and spend-source guidance from verified connected-source values.");
     expect(executiveView).not.toContain("Prioritized financial risks and actions");
     expect(page).toContain("const paidMediaEfficiencyMetrics = [");
     expect(page).toContain("const paidMediaEfficiencyCompatibility = resolveFinancialPaidMediaEfficiencyCompatibility(financialMainSources);");

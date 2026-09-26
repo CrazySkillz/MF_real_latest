@@ -615,6 +615,7 @@ export default function CampaignPerformanceSummary() {
     financialRevenue: scoringRevenue,
     financialSpend: scoringSpend,
     financialConversions: scoringFinancialConversions,
+    currency: String(campaign?.currency || "USD").trim().toUpperCase(),
   });
   const getScoringMissingDependencies = (item: any) => {
     const dependencies = getGA4KpiMetricDependencies(item?.metric, item?.metricName, item?.name);

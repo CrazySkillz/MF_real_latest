@@ -40,6 +40,7 @@ export type PerformanceRecommendedActionsInput = {
   financialRevenue: number;
   financialSpend: number;
   financialConversions: number;
+  currency?: string;
 };
 
 export const resolvePerformanceHealthCoverage = (input: {
@@ -106,9 +107,10 @@ export const resolvePerformanceAggregateMetricValue = (item: any, totals: any): 
   return metric?.available === true ? parseNumber(metric?.value) : null;
 };
 
-const formatMetricValue = (identity: GA4KpiMetricIdentity, value: number): string => {
+const formatMetricValue = (identity: GA4KpiMetricIdentity, value: number, currency = "USD"): string => {
   if (identity === "revenue" || identity === "cpa") {
-    return `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const normalizedCurrency = /^[A-Z]{3}$/.test(currency.trim().toUpperCase()) ? currency.trim().toUpperCase() : "USD";
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: normalizedCurrency, currencyDisplay: "narrowSymbol", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
   }
   if (identity === "conversion_rate" || identity === "engagement_rate" || identity === "roi") {
     return `${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}%`;
@@ -254,8 +256,8 @@ export function buildPerformanceRecommendedActions(input: PerformanceRecommended
         blockedLabels.push(`${entity} ${label}`);
         continue;
       }
-      const currentText = formatMetricValue(identity, current);
-      const targetText = formatMetricValue(identity, target);
+      const currentText = formatMetricValue(identity, current, input.currency);
+      const targetText = formatMetricValue(identity, target, input.currency);
       const currentWindow = getGA4KpiReportingWindowLabel(identity, row?.name).toLowerCase();
       if (entity === "KPI") {
         const lowerIsBetter = isLowerIsBetterKpi({ metric: identity, name: row?.name });

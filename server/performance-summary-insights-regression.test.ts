@@ -295,6 +295,18 @@ describe("Performance Summary Recommended Actions decision engine", () => {
     expect(action.message).not.toContain("$2,000.00");
   });
 
+  it("formats financial recommendations in the campaign currency", () => {
+    const [action] = buildPerformanceRecommendedActions(baseInput({
+      currency: "EUR",
+      financialRevenue: 37_518.74,
+      kpis: [{ metric: "revenue", targetValue: 80_000 }],
+    }));
+
+    expect(action.message).toContain("Verified \u20ac37,518.74");
+    expect(action.message).toContain("\u20ac80,000.00 KPI target");
+    expect(action.message).not.toContain("$");
+  });
+
   it("ignores an older saved Benchmark value and withholds unavailable Revenue", () => {
     const [benchmarkAction] = buildPerformanceRecommendedActions(baseInput({
       benchmarks: [{ metric: "conversions", currentValue: 500, benchmarkValue: 300 }],
@@ -386,6 +398,7 @@ describe("Performance Summary Recommended Actions decision engine", () => {
 
   it("wires the page renderer only to the target-backed decision engine", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
+    const scheduler = readFileSync(join(process.cwd(), "server", "report-scheduler.ts"), "utf-8");
     const insights = page.slice(page.indexOf("{/* Insights Tab */}"));
 
     expect(page).not.toContain("hasOneCompatiblePerformanceScoringTarget");
@@ -401,6 +414,8 @@ describe("Performance Summary Recommended Actions decision engine", () => {
     expect(page).toContain("trafficState: trafficInputState");
     expect(page).toContain("trafficTotals: scoringTrafficTotals");
     expect(page).toContain("trafficMetricAvailability: scoringTrafficMetricAvailability");
+    expect(page).toContain('currency: String(campaign?.currency || "USD").trim().toUpperCase()');
+    expect(scheduler).toContain('currency: validExecutiveCurrency || "USD"');
     expect(insights).toContain("const recommendedInsights = recommendedActions;");
     expect(insights).not.toContain("buildPerformanceInsights()");
   });

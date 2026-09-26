@@ -1757,6 +1757,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     financialRevenue: performanceMetricNumber("revenue"),
     financialSpend: performanceMetricNumber("spend"),
     financialConversions: performanceFinancialConversions,
+    currency: validExecutiveCurrency || "USD",
   });
   const performancePriorityAction = () => {
     if (!["users", "sessions", "conversions", "revenue", "spend"].some((key) => performanceMetricAvailable(key))) {

@@ -687,7 +687,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).not.toContain('(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations');
     expect(page).toContain("const displayedRiskFactors = [");
     expect(page).toContain("const riskInputRows = [");
-    expect(page).toContain("Actions shown below are limited to connected web analytics, outcome metrics, and configured targets.");
+    expect(page).not.toContain("Actions shown below are limited to connected web analytics, outcome metrics, and configured targets.");
+    expect(page).not.toContain('<div className="text-sm text-muted-foreground/70 mt-1">{rec.category}</div>');
     expect(page).not.toContain("No connected paid-media source is available. Actions shown below");
     expect(page).not.toContain("excluded from strategic recommendations and risk assessment");
     expect(page).toContain('label: "KPI Risk"');

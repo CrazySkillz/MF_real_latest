@@ -1,6 +1,6 @@
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, TrendingUp, TrendingDown, Target, Users, DollarSign, Award, AlertTriangle, CheckCircle, Zap, Eye, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Brain, Activity, Info, ChevronDown, Percent } from "lucide-react";
+import { ArrowLeft, Briefcase, TrendingUp, TrendingDown, Target, Users, DollarSign, Award, AlertTriangle, CheckCircle, Zap, Eye, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Brain, Activity, ChevronDown, Percent } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -400,9 +400,6 @@ export default function ExecutiveSummary() {
     source?.connected === true && source?.category === "web_analytics"
   ) && (aggregateMetricAvailable("users") || aggregateMetricAvailable("sessions"))
     && (aggregateMetricAvailable("conversions") || aggregateMetricAvailable("revenue"));
-  const hasConnectedPaidMediaSource = aggregateSources.some((source: any) =>
-    source?.connected === true && source?.category === "paid_media"
-  );
   const websiteOutcomeExceptionMetricKeys = Array.from(new Set([...executiveKpiExceptions, ...executiveBenchmarkExceptions]
     .map((record: any) => String(record?.metricKey || record?.aggregateMetric || record?.metric || ""))
     .filter((metric) => Object.prototype.hasOwnProperty.call(websiteOutcomeMetricLabels, metric))))
@@ -922,20 +919,6 @@ export default function ExecutiveSummary() {
               <div className="pt-2">
                 <h2 className="text-2xl font-semibold text-foreground">Recommended Actions</h2>
               </div>
-              {/* Data Accuracy Notice */}
-              {!hasConnectedPaidMediaSource && hasWebAnalyticsOutcomeEvidence && (
-                <Card className="border-border bg-muted">
-                  <CardContent className="p-4">
-                    <div className="flex items-start space-x-3">
-                      <Info className="w-5 h-5 text-muted-foreground/70 mt-0.5 flex-shrink-0" />
-                      <div className="text-sm text-foreground/80/60">
-                        <strong>Note:</strong> Actions shown below are limited to connected web analytics, outcome metrics, and configured targets.
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
               {/* Data Freshness Warnings */}
               {riskFreshnessWarnings.length > 0 && (
                 <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20">
@@ -979,7 +962,6 @@ export default function ExecutiveSummary() {
                             <div className="flex items-center space-x-3">
                               <CardTitle className="text-lg">{formatRecommendationText(rec.action)}</CardTitle>
                             </div>
-                            <div className="text-sm text-muted-foreground/70 mt-1">{rec.category}</div>
                           </div>
                         </div>
                       </CardHeader>

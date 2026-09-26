@@ -58,7 +58,7 @@ describe("Trend Analysis window regression guard", () => {
 
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
     expect(page).toContain('strokeDasharray="6 4"');
-    expect(page).toContain("missing dates remain gaps");
+    expect(page).toContain("no-activity dates are stored as 0");
     expect(page).toContain("No GA4 daily records for {trendWindowStartLabel}–{trendWindowEndLabel}.");
     expect(page).toContain("Latest recorded date: ${latestTrendDailyDateLabel}.");
     expect(page).not.toContain("No daily activity is available in this trend window");

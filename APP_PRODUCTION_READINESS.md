@@ -220,21 +220,23 @@ require current-revision recertification.
 the Financial Position packet and combined-page gate, not omitted or declared
 certified when no compatible paid-media source is configured.
 
-Trend Analysis completed its fresh six-packet and combined-page review for the
+Trend Analysis completed a historical six-packet and combined-page review for the
 exact GA4-first boundary at application runtime
 `7dc72dc8dc5ba302146128b62c45f3bf7d86f6eb`, deployed within documentation-only
-successor `595268463c79b111e77b181ad3003e58f912d208`. Documentation-alignment
-commit `08df7c98856c132c55b7cdec9511fedb1ececf81` is not a new application runtime.
+successor `595268463c79b111e77b181ad3003e58f912d208`. The later scheduler-only
+daily-read, persisted financial-card, fixed-layout, CPA-color, no-activity-copy,
+and anomaly-warning changes reopen the affected current paths. The historical
+certificate remains evidence only for its exact runtime.
 
 | Order | Trend Analysis review | Work state | Fresh certification status | Boundary |
 | ---: | --- | --- | --- | --- |
-| - | Combined Trend Analysis | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY / NO-OVERCLAIMING` for the exact audited Campaign2, one-GA4-source, USD, Europe/Amsterdam, data-through `2026-09-19` boundary at application runtime `7dc72dc8dc5ba302146128b62c45f3bf7d86f6eb`; controlling evidence: `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_CERTIFICATION_2026-09-20.md`; supporting contract: `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`; required implementation/certification steps remaining within that scope: 0. |
-| 1 | Connected-Source Performance Summary | `COMPLETE` | `CERTIFIED` | PASS within the exact certified GA4-first scope for the observed Revenue, Spend, ROAS, ROI, Conversions, CPA, Sessions, Users, CVR, and Engagement Rate paths, guarded formulas, currency, windows, and valid-zero/unavailable distinction. Positive paid-media CPC, CPM, and CTR card paths are not certified. |
-| 2 | Campaign Performance Trend | `COMPLETE` | `CERTIFIED` | PASS within the exact certified GA4-first scope for all four selectors, actual daily rows, missing-date gaps, provider-verified zero, and the explicit 90-day insufficient-history state. |
-| 3 | Efficiency Trends | `COMPLETE` | `CERTIFIED` | PASS within the exact certified GA4-first conversion-quality and unavailable-daily-financial-history boundary; return, cost, and rate series remain independently capability-gated and do not fabricate unavailable performance. |
-| 4 | Website Engagement & Conversion Summary | `COMPLETE` | `CERTIFIED` | PASS within the exact certified GA4-first scope for Sessions, Engaged Sessions, Conversions, Engagement Rate, conversions per 100 sessions, and compatible cumulative numerator/denominator windows. |
-| 5 | Anomaly Detection | `COMPLETE` | `CERTIFIED` | PASS within the exact certified GA4-first conversion-history scope, including descriptive statistical flags, eligible observed-zero drops, no-anomaly/missing-data handling, and non-causal wording. This panel remains browser-only and is not claimed as PDF content. |
-| 6 | Executive Recommendations | `COMPLETE` | `CERTIFIED` | PASS within the exact certified GA4-first scope for evidence-gated adjacent-window and reconciled financial guidance, fail-closed incomplete context, ordering/cap, and non-causal/non-automatic-action limits. |
+| - | Combined Trend Analysis | `REVALIDATION_REQUIRED` | `UNVERIFIED` | The 2026-09-20 `Campaign2` certificate is historical. Current code has focused local tests and a dated read-only `Campaign3` check, but the changed combined page requires exact-revision deployed revalidation. Controlling current contract: `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`. |
+| 1 | Connected-Source Performance Summary | `REVALIDATION_REQUIRED` | `UNVERIFIED` | Current financial cards require compatible scheduler snapshots, retain five unavailable card positions in the five-column desktop layout, and apply business-semantic CPA color. Focused local and `Campaign3` read-only evidence exists; current deployed certification is pending. |
+| 2 | Campaign Performance Trend | `REVALIDATION_REQUIRED` | `UNVERIFIED` | Current charts accept only complete scheduler-stored daily windows, use scheduler-written zeros, make no live coverage request, and withhold incomplete windows such as the observed `34 of 90` Campaign3 case. Current deployed certification is pending. |
+| 3 | Efficiency Trends | `REVALIDATION_REQUIRED` | `UNVERIFIED` | Current Conversion Quality uses the same complete scheduler history, leaves rates unavailable on no-activity dates, and shows amber markers. Formula and local/read-only evidence exists; current deployed certification is pending. |
+| 4 | Website Engagement & Conversion Summary | `REVALIDATION_REQUIRED` | `UNVERIFIED` | Current cumulative formulas are unchanged, and Campaign3 read-only values reconcile, but the changed verified daily input path requires current deployed certification. |
+| 5 | Anomaly Detection | `REVALIDATION_REQUIRED` | `UNVERIFIED` | The deterministic seven-value rule remains regression-covered; current scheduler-only input and orange warning treatment have local evidence. Current deployed certification is pending, and the panel remains browser-only. |
+| 6 | Executive Recommendations | `REVALIDATION_REQUIRED` | `UNVERIFIED` | The browser still shows at most three evidence-gated recommendations. Campaign3 adjacent-window and cumulative inputs reconcile read-only, but the changed input path requires current deployed certification. |
 
 `Paid Acquisition Funnel` and `Source Contribution` are conditional visible
 panels rather than separate requested packets. Their hidden single-GA4 behavior
@@ -368,7 +370,7 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 | Performance Summary | `RECERTIFY` | `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_PRODUCTION_READY.md`; preserved exact-boundary certificate `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md` | Current implementation `ca1fc5a8` is locally validated but not deployed-recertified. The preserved certificate remains valid only for exact deployed runtime `ee6e11ebf8cb0a13dd182dde54af790a3757ef2f`, its two recorded campaigns, property `542352127`, USD, Europe/Amsterdam, and `2026-09-18` data-through boundary. Current campaign-currency Key Outcomes/Recent Movement/Recommended Actions, stable comparison transitions, and scheduled-PDF recommendation currency require exact-revision deployed reconciliation. |
 | Budget & Financial Analysis | `RECERTIFY` | `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md`; historical certificate `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_CERTIFICATE_2026-09-19.md` | Current implementation `162e9b6b` uses the separate `budget_pacing_v1` Spend derivative introduced at `4298cfda`. Campaign3 browser behavior is manually confirmed; current combined-page and Budget report delivery parity require recertification. |
 | Platform Comparison | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_PLATFORM_COMPARISON_PRODUCTION_READY.md` | Current aggregate-backed implementation and Render-validated GA4-only scenario. |
-| Trend Analysis | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_CERTIFICATION_2026-09-20.md`; supporting `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md` | Current bounded clean certificate: application runtime `7dc72dc8dc5ba302146128b62c45f3bf7d86f6eb`, deployed within documentation-only successor `595268463c79b111e77b181ad3003e58f912d208`; documentation-alignment commit `08df7c98856c132c55b7cdec9511fedb1ececf81` is not an application runtime. All six current sections and the combined single-GA4 page passed with 0 required implementation/certification steps remaining inside the exact boundary. Positive conditional panels, non-GA4/future source mixes, global scheduler health, new timer firing, provider/inbox delivery, and whole-app/global multi-source claims remain excluded. |
+| Trend Analysis | `RECERTIFY` | Current contract: `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`; historical certificate: `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_CERTIFICATION_2026-09-20.md` | The historical certificate remains valid only for its exact `Campaign2` runtime. Current scheduler-only daily history, financial snapshot gating, fixed layout, CPA color, no-activity copy, anomaly warning styling, and their combined-page effects have local/read-only evidence but require exact-revision deployed recertification. Positive conditional panels, non-GA4/future source mixes, and global scheduler health remain excluded. |
 | Executive Summary | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_CERTIFICATE_2026-09-21.md`; supporting `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md` | Current bounded clean certificate: application implementation `2d9625437683ccef081e60831f2a59c76246d438`, certificate commit `1d646c0cfef12e45035ae0770f2ebcebb19a33b2`, and deployed documentation-alignment commit `686abb2e316292a4118a91a7c83c8f704f6d6e31`. All four sections and the combined page passed for the exact documented `ga4_mock` GA4-first configuration, with 0 required steps remaining inside that boundary. Campaign2, other campaigns/configurations, other DeepDive sections, PDFs/reports, scheduling/delivery surfaces, target commercial reasonableness, and the certificate's standing future gates remain excluded. |
 | Reports | `RECERTIFY` | `CAMPAIGN_DEEPDIVE_REPORTS_CERTIFICATION_2026-09-21.md`; supporting `CAMPAIGN_DEEPDIVE_REPORTS_AUDIT_2026-09-21.md` | The prior report certificate remains historical. The Budget & Financial report renderer now consumes `budget_pacing_v1`; local direct/snapshot/scheduled parity tests passed, but current deployed Budget report artifact and delivery parity are not recertified. Unaffected report lifecycle evidence is not broadened or revoked by this row. |
 | Whole Campaign DeepDive | `RECONCILE` | `CAMPAIGN_DEEPDIVE_PRODUCTION_READY_STATUS.md` plus subsection authorities | The top-level file explicitly says it is not a whole-section certificate and now records the current Budget/Reports recertification gates. |
@@ -488,9 +490,9 @@ consumers. Do not revoke unrelated sections.
 1. **Recertify Budget & Financial Analysis:** the source contract changed at
    `4298cfda`; close the current combined-page and Budget report gates without
    treating the historical aggregate-Spend certificate as current evidence.
-2. **Trend Analysis is complete:** carry forward only within the exact
-   controlling GA4-first certificate boundary and reopen affected paths when its
-   code, source contracts, configuration, or deployment changes.
+2. **Recertify the changed Trend Analysis paths:** preserve the historical
+   `Campaign2` certificate, then validate the current combined GA4-first page on
+   its exact deployed revision without promoting local/read-only evidence.
 3. **Continue Campaign DeepDive:** freshly review Reports, then visible Platform
    Comparison if it remains in the supported release. Preserve historical
    bounded certificates; do not promote unverified input paths.

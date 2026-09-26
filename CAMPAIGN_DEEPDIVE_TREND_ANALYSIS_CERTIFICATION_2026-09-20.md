@@ -1,8 +1,10 @@
 # Campaign DeepDive Trend Analysis Certification — 2026-09-20
 
+> **Historical record notice — 2026-09-26:** This certificate applies only to the exact `Campaign2` runtime identified below. The current implementation now uses scheduler-only complete daily windows, scheduler-stored zero rows for completed no-activity dates, persisted financial snapshots, a fixed five-column summary layout, and updated anomaly-warning styling. Use `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md` for the current contract and evidence status. Do not treat this historical certificate's provider-coverage, missing-gap, or earlier presentation statements as descriptions of the current code.
+
 ## Decision
 
-Status: **PASS — bounded production certification for the current GA4-first Trend Analysis surface at application runtime `7dc72dc8dc5ba302146128b62c45f3bf7d86f6eb`, currently deployed within documentation-only successor `595268463c79b111e77b181ad3003e58f912d208`.**
+Status: **PASS — historical bounded production certification for the GA4-first Trend Analysis surface at application runtime `7dc72dc8dc5ba302146128b62c45f3bf7d86f6eb`, observed within documentation-only successor `595268463c79b111e77b181ad3003e58f912d208`.**
 
 The earlier `58a93a81feb189cbf7b502f3ae57a72120a9a80d` decision is historical. The current revision was revalidated after the initial-render, cumulative-input, anomaly-helper, financial-reconciliation, and Executive Recommendation changes. This decision applies only to the exact scope and evidence below.
 
@@ -64,9 +66,9 @@ Compared with the previously certified runtime `58a93a81feb189cbf7b502f3ae57a721
 - The relevant scheduler composition still uses `aggregateCampaignMetrics` → `trend_analysis_aggregate_v1`; the PDF ROAS recommendation now fails closed unless the full financial decision context reconciles.
 - No shared API response shape, database schema, source ownership boundary, or unrelated page architecture changed.
 
-## Documentation-To-Implementation Alignment
+## Historical Documentation-To-Implementation Alignment At The Certified Runtime
 
-The current documentation was rechecked against `client/src/pages/trend-analysis.tsx`, `client/src/lib/trend-analysis-cumulative.ts`, `server/utils/trend-analysis-aggregate.ts`, the relevant Trend composition in `server/routes-oauth.ts`, and the shared PDF branch in `server/report-scheduler.ts`.
+At the certified runtime, the documentation was rechecked against `client/src/pages/trend-analysis.tsx`, `client/src/lib/trend-analysis-cumulative.ts`, `server/utils/trend-analysis-aggregate.ts`, the relevant Trend composition in `server/routes-oauth.ts`, and the shared PDF branch in `server/report-scheduler.ts`.
 
 - The browser selector defaults to 7 days, supports 7/14/30/90 days, controls chart dates and the exact cumulative comparison date, and requests `2x` daily history for comparison context.
 - Top-card current values remain cumulative; the selector does not turn them into rolling-window totals. Direction colors describe numeric movement only and do not encode whether a movement is favorable.

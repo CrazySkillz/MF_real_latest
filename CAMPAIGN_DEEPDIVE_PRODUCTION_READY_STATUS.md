@@ -42,16 +42,22 @@ aggregate Revenue, Total Spend, Profit, ROI, ROAS, CPA, or provenance. Campaign3
 scenarios and targeted local report tests passed, but current combined-page and deployed
 Budget report recertification remain open; the 2026-09-19 certificate is historical.
 
-Trend Analysis reconciliation (2026-09-20): the bounded current application runtime
-`7dc72dc8` (deployed within documentation-only successor `59526846`) renders one
-comprehensive Executive View rather than five visible tabs. GA4-only
+Trend Analysis reconciliation (updated 2026-09-26): the historical certified runtime
+`7dc72dc8` (deployed within documentation-only successor `59526846`) rendered one
+comprehensive Executive View rather than five visible tabs. The current GA4-only view
+retains that structure, but later scheduler-only daily-read, financial snapshot,
+fixed-layout, CPA-color, no-activity-copy, and anomaly-warning changes require renewed
+deployed certification. GA4-only
 traffic totals remain cumulative from the saved initial-import boundary through the
 latest completed reporting day. The browser defaults to 7 days; its `7/14/30/90-day` selector changes exact cumulative
-comparison dates and chart windows, not the current totals. Sparse daily rows remain
-calendar gaps. Browser and scheduled Trend report consumers expose one `Executive View`,
+comparison dates and chart windows, not the current totals. The current browser accepts
+only complete scheduler-stored daily windows and uses scheduler-written zero rows for
+completed no-activity dates; it does not create zeros or call live GA4 coverage. Browser
+and scheduled Trend report consumers expose one `Executive View`,
 normalize legacy Trend selections, and use exact calendar dates within the authoritative
-GA4 boundary; the shared PDF renderer uses its separate fixed 30-day window. Exact evidence
-and exclusions are recorded in `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_CERTIFICATION_2026-09-20.md`.
+GA4 boundary; the shared PDF renderer uses its separate fixed 30-day window. The current
+contract and evidence status are recorded in `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`;
+`CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_CERTIFICATION_2026-09-20.md` is historical.
 
 Custom Report reconciliation (2026-08-28): Campaign DeepDive -> Custom Report is
 **PRODUCTION_READY** for the GA4-first scope at deployed runtime commit
@@ -67,7 +73,7 @@ providers are not certified by this evidence. Exact values and artifact hashes a
 
 Do not use this top-level file as a whole-Campaign-DeepDive production certification. Each subsection and source remains bounded by its own exact-SHA readiness evidence. The latest preserved Performance Summary certificate applies only to exact runtime `ee6e11eb` and its recorded scope; earlier runtime `12789c1e` remains historical evidence. Current implementation `ca1fc5a8` is implemented and locally validated but remains `RECERTIFICATION_PENDING`; later revisions or different source mixes do not inherit a prior certificate.
 
-Trend Analysis has a bounded PASS only for the exact GA4-first boundary recorded in `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_CERTIFICATION_2026-09-20.md`: application runtime `7dc72dc8`, currently deployed within documentation-only successor `59526846`. Future/refined source mixes still require their own source-specific proof.
+Trend Analysis is **RECERTIFICATION_PENDING** for the current implementation. Its bounded PASS remains historical evidence only for the exact GA4-first `Campaign2` runtime recorded in `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_CERTIFICATION_2026-09-20.md`. Current focused tests and a dated read-only `Campaign3` check are recorded in `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`; they do not replace exact-revision deployed certification. Future/refined source mixes still require their own source-specific proof.
 
 The remaining source-specific validation items can wait until future/refined live/deployed integration evidence is available. LinkedIn source-specific validation passed on 2026-05-31 and is tracked in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Google Ads local source-specific validation passed through Commit 29 on 2026-06-04 and is tracked in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Meta/Facebook local source-specific code/test validation and Commit 15 browser smoke passed on 2026-06-04 and are tracked in `META_FACEBOOK_CONNECTED_PLATFORM_PRODUCTION_READY.md`; Commit 18 browser validation, live OAuth, and deployed scheduled-report evidence remain separate. Instagram Commit 1 documentation validation and Commit 2 API/source-contract validation passed, Commit 3 schema/storage foundation is implemented, Commit 4A-4F backend-only contract work is pushed and validation passed, Commit 5A Create Campaign option, Commit 5B test setup path, Commit 5C finalization guard, Commit 5D query invalidation, and Commit 5E Create Campaign closeout validation passed by connecting to the Instagram test account. Instagram Commit 6A Connected Platforms backend status, Commit 6B card shell, Commit 6C add-source setup, Commit 6D state/invalidation, and Commit 6E Connected Platforms closeout validation passed by connecting to the Instagram test account; Commit 6F Connected Platforms disconnect UI mapping validation passed by disconnecting Instagram from Connected Platforms; Commit 7A Campaign Overview source-status boundary, Commit 7B unavailable metric state, Commit 7C source-backed daily-row metric read, and Commit 7D Campaign Overview validation closeout passed by connecting to the Instagram test account; Commit 8A Instagram analytics route shell, Commit 8B daily metrics endpoint, Commit 8C Overview tab, Commit 8D Campaign Breakdown tab, Commit 8E unavailable/error/freshness states, and Commit 8F guarded analytics link/validation closeout validation passed by connecting to the Instagram test account; Commit 9A Instagram aggregate source builder, Commit 9B aggregate source composition, Commit 9C Meta/Facebook plus Instagram no-double-counting guard, Commit 9D Campaign DeepDive aggregate route wiring, and Commit 9E aggregate validation closeout validation passed by connecting to the Instagram test account; Commit 10A Instagram financial platform-context allowlist, Commit 10B spend source identity guard, Commit 10C revenue source identity guard, and Commit 10D revenue/spend validation closeout validation passed by connecting to the Instagram test account and running focused regression checks; Commit 11A-11F refresh and scheduler foundation validation passed through `npm run check` plus the focused regression suite; Commit 12A-12F validation passed for lifecycle, test data, core metrics, and Campaign DeepDive source-backed inclusion; Commit 13A Instagram KPI current-value source contract, Commit 13B Instagram Benchmark current-value source contract, Commit 13C Instagram analytics tab shell cleanup, Commit 13D Instagram KPI tab management UI parity, Commit 13E Instagram test-mode missing daily-row self-heal, Commit 13F Instagram Create KPI modal parity, Commit 13G Instagram Create KPI modal input constraints, Commit 13H Instagram analytics connection loading-state stability, Commit 13I Instagram Overview metrics loading-state stability, Commit 13J Instagram Benchmark tab management UI parity, Commit 13K Instagram Ad Comparison selected-campaign UI parity, and Commit 13L Instagram Insights tab source-backed UI parity are pushed with user validation pending; Commit 13M Instagram Insights missing-data and revenue-readiness guidance is implemented locally; the startup migration correction for Commit 5C is pushed, and source-specific planning is tracked in `INSTAGRAM_CONNECTED_PLATFORM_PRODUCTION_READY.md`.
 
@@ -90,15 +96,17 @@ These items do not reopen the bounded Performance Summary certification above.
 They belong to other subsection boundaries or to source mixes that were not part
 of the certified GA4-only Performance Summary packet.
 
-### 1. Trend Analysis Future Source Validation
+### 1. Trend Analysis Current Revalidation And Future Sources
 
-Status: the exact audited GA4-first Trend boundary has a bounded PASS at application runtime `7dc72dc8`, currently deployed within documentation-only successor `59526846`; future/refined main-source mixes remain source-specific work. The earlier `cd35bba1` boundary is historical.
+Status: **RECERTIFICATION_PENDING** for the current GA4-first Trend implementation. The exact audited boundary at application runtime `7dc72dc8` remains a historical bounded PASS; future/refined main-source mixes remain separate source-specific work. The earlier `cd35bba1` boundary is also historical.
 
-Proven for the GA4-only boundary:
+Current local/read-only evidence:
 
 - current values use the fixed initial-import boundary through the latest completed reporting day
 - all `7/14/30/90-day` selections use exact comparison dates and exact calendar chart windows
 - missing exact historical and financial comparison inputs fail closed
+- complete scheduler-stored daily windows are required; scheduler-written no-activity dates remain explicit zeros
+- the mounted page makes no live GA4 coverage request and does not manufacture missing dates
 - browser and scheduled report consumers normalize legacy selections to one Executive View
 
 Still required for a new source mix:
@@ -156,7 +164,7 @@ Boundary:
 | Performance Summary | **RECERTIFICATION_PENDING** for current implementation `ca1fc5a8`; prior exact-runtime certificates preserved as historical | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary`, cumulative GA4 Summary inputs, refreshed KPI/Benchmark targets, exact-date GA4 Revenue and dated Spend reads | Run authenticated exact-revision deployed API/UI reconciliation for the current campaign-currency and stable-transition behavior; future/refined sources retain source-specific proof |
 | Budget & Financial Analysis | **RECERTIFICATION_PENDING** for current implementation `162e9b6b`; prior exact-runtime certificate preserved as historical | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary`, `financialInputs`, and compatible `budgetPacing`, plus campaign `budget`, `pacingStartDate`, and `pacingEndDate` | Recertify the current combined page and deployed one-off/snapshot/scheduled Budget report value path; future sources retain source-specific proof |
 | Platform Comparison | Production-ready locally and Render-validated for GA4-only | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary.sources` | Live multi-platform validation |
-| Trend Analysis | Bounded PASS for the exact audited GA4-first boundary at application runtime `7dc72dc8`, deployed within documentation-only successor `59526846`; one comprehensive Executive View | `/ga4-daily` + GA4 coverage verification + `/outcome-totals.performanceSummary` + exact-date financial comparison + `/trend-analysis` daily aggregate | Repeat source-specific validation for every future/refined main-source mix; positive paid-media and multi-source panels remain unverified |
+| Trend Analysis | **RECERTIFICATION_PENDING** for the current implementation; the `7dc72dc8` `Campaign2` certificate is historical | read-only `/ga4-daily` scheduler history + persisted-only `/outcome-totals.performanceSummary` + persisted-only exact-date financial comparison + `/trend-analysis` daily aggregate; no live coverage request | Recertify the current combined GA4-first page on its exact deployed revision; repeat source-specific validation for future/refined main-source mixes; positive paid-media and multi-source panels remain unverified |
 | Executive Summary | Production-ready locally as an aggregate consumer | `/api/campaigns/:campaignId/executive-summary` plus `/outcome-totals` | Future source-mix deployed validation and source-specific acceptance gates |
 | Custom Report | **RECERTIFICATION_PENDING** for the changed Budget report value path; prior GA4-first runtime evidence preserved as historical | `/reports?campaignId=...`, `/outcome-totals` including `budgetPacing`, immutable report snapshots, scheduled delivery audit | Recertify current deployed Budget one-off/snapshot/scheduled artifact and delivery parity; revalidate future/refined source mixes or other email providers |
 

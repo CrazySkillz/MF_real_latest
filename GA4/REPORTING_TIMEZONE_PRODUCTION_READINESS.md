@@ -235,8 +235,8 @@ Implementation note:
 - `/api/campaigns/:id/ga4-daily` now returns `expectedRefreshAt`, `refreshScheduleTimeZone`, `lastCompletedRefreshAt`, and `refreshIsStale`
 - expected refresh is computed from `dataThroughDate` plus the configured GA4 daily scheduler time and timezone
 - `refreshIsStale` is true only after the expected refresh time has passed and the latest completed daily refresh timestamp is missing or older than that expected refresh
-- at that revision, GA4 Insights Trends showed `Expected refresh` beside the completed-day-cutoff/timezone/last-refreshed metadata; the current live header intentionally shows only `Completed-day cutoff`, `Latest imported day`, and `Last refreshed`, while the API retains expected-refresh and timezone metadata for freshness logic
-- GA4 Insights Trends shows a factual warning when `refreshIsStale` is true; metric values and history gating are unchanged
+- at that revision, GA4 Insights Trends showed `Expected refresh` beside completed-day/timezone/last-refreshed metadata; the current live header instead shows `Latest imported day` and `Chart through`
+- the API retains legacy freshness fields for compatibility, but the current scheduler-backed Insights UI does not show a stale-history warning or use `refreshIsStale` alone to withhold trend/target findings
 
 Local validation:
 
@@ -265,7 +265,7 @@ Scope:
 
 Implementation note:
 
-- ad hoc GA4 Insights PDF output now includes `Completed-day cutoff`, `Reporting timezone`, and `Last refreshed` metadata from the same Trends response values used by the live Insights UI
+- ad hoc GA4 Insights PDF output at that revision included `Completed-day cutoff`, `Reporting timezone`, and `Last refreshed` metadata from the Trends response; those report-owned fields are not a claim that the current live header displays the same labels
 - scheduled/test-send GA4 Insights PDFs now derive `Completed-day cutoff` and `Reporting timezone` from the campaign reporting timezone helper and `Last refreshed` from the latest persisted GA4 daily-row `updatedAt`
 - report metric rows, financial totals, trend rollups, and source inputs are unchanged
 
@@ -297,12 +297,12 @@ Scope:
 - update `GA4/INSIGHTS.md`
 - update `GA4/REFRESH_AND_PROCESSING.md`
 - update manual validation notes for Render logs and local timezone checks
-- document how to test startup refresh separately from scheduled refresh
+- document how the then-available startup refresh differed from scheduled refresh
 
 Implementation note:
 
-- `GA4/INSIGHTS.md` now documents Trends freshness labels, UTC fallback, expected refresh, and stale-warning behavior
-- `GA4/REFRESH_AND_PROCESSING.md` now documents GA4 daily and external value scheduler environment variables, Render/log timezone interpretation, and separate startup-versus-scheduled validation paths
+- historical result: `GA4/INSIGHTS.md` documented the earlier Trends freshness labels, UTC fallback, expected refresh, and stale-warning behavior; the current functional doc supersedes that UI contract
+- historical result: `GA4/REFRESH_AND_PROCESSING.md` documented the earlier startup-versus-scheduled paths; current GA4 daily startup/manual writes are disabled, while external-value jobs retain their separate documented behavior
 - no metric formulas, scheduler code, response shapes, or source-refresh behavior changed
 
 Local validation:

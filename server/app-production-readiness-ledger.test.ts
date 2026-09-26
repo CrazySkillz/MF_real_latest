@@ -85,7 +85,7 @@ describe("application production-readiness ledger", () => {
     expect(ledger).toContain("| GA4 Ad Comparison | `CERTIFIED`");
     expect(ledger).toContain("| GA4 Reports | `UNVERIFIED`");
     expect(ledger).toContain("| GA4 Benchmarks | `CERTIFIED`");
-    expect(ledger).toContain("| GA4 Insights | `CERTIFIED`");
+    expect(ledger).toContain("| GA4 Insights | `UNVERIFIED`");
     expect(ledger).toContain("| HubSpot Revenue and Pipeline Proxy | `CERTIFIED`");
     expect(ledger).toContain("490c8ae685821389d1f433a5943f856478f52e5c");
     expect(ledger).toContain("| Google Sheets Revenue | `CERTIFIED`");

@@ -13,9 +13,9 @@ Campaign-level KPI/Benchmark production-readiness tracking lives in `CAMPAIGN_LE
 Current GA4 tab production-readiness status:
 
 <!-- ga4-insights-current-status -->
-<!-- ga4-insights-certification-status: PRODUCTION_READY -->
+<!-- ga4-insights-certification-status: UNVERIFIED -->
 
-- GA4 Insights is **PRODUCTION_READY** only for the exact certified runtime boundary in `GA4/certifications/ga4-insights.json`, `4be16c54c550a45dbf3104313c820ea47b453604`. Authenticated value parity remains bounded to the recorded campaign/property/configuration.
+- GA4 Insights is **UNVERIFIED for the current implementation** pending exact-revision deployed recertification. The scheduler-only, zero-filled implementation was introduced through `4372efadc96523c9df2abe2dd7915f9e1a0443a7` and is unchanged in application runtime `ca1fc5a873ab69fb747937768c31fcd53e16fd64`. Older Insights certificates remain historical evidence for their exact revisions only.
 
 <!-- /ga4-insights-current-status -->
 
@@ -131,7 +131,7 @@ Important meaning:
 - `GA4/INSIGHTS.md`
   Short functional overview of the live GA4 Insights tab, including sections, scope contract, and refresh pattern.
 - `GA4/INSIGHTS_PRODUCTION_READINESS.md`
-  Canonical live-tab Insights production-readiness source of truth. Current status: **PRODUCTION_READY** for certified runtime boundary `4be16c54c550a45dbf3104313c820ea47b453604`. Reports-owned behavior remains separately certified by the Reports record.
+  Canonical live-tab Insights production-readiness source of truth. Current implementation status: **UNVERIFIED** pending exact-revision deployed recertification. Reports-owned behavior remains separately controlled by the Reports record.
 - `GA4/REPORTS.md`
   Covers GA4 report creation, scheduling, downloads, report-library behavior, and current-state caveats. Current bounded status: **CLEAN-CERTIFIED / PRODUCTION_READY** at exact deployed runtime `a7271fc18058b6db78a11e88bf79b887abda5f44`. Campaign DeepDive is excluded.
 - `GA4/REPORTS_PRODUCTION_READINESS.md`
@@ -177,7 +177,7 @@ The required GA4 platform pattern is:
 
 ## Template Readiness Status
 
-GA4 is ready to use as the implementation template for the next integration work.
+GA4's individually certified patterns may be used as implementation templates inside their exact recorded boundaries. The current Insights scheduler/zero-date pattern is documented but remains unverified pending current-revision deployed recertification, so it must not be copied as certified evidence for another platform.
 
 This means future integrations should copy the validated GA4 patterns for:
 
@@ -237,14 +237,16 @@ These are now part of the GA4 template contract:
   saved-report, snapshot, scheduler, delivery, and report-library behavior
   belongs to the Reports certification
 - GA4 daily time-series/backfill uses the same selected-campaign import rule as Overview: query campaign attribution dimensions first, use `pageLocation` `utm_campaign` only when the primary daily result has no rows, and supplement missing conversion/revenue fields from a compatible selected-campaign `campaignName` query when GA4 splits traffic and purchase attribution across dimensions. Visible Trends rows remain completed-day rows and exclude today's intraday data.
-- GA4 Insights Trends history gating is mode-specific: `Daily` needs 2 eligible completed dates (stored or GA4-verified zero); `7d` and `30d` require complete calendar windows for chart values and two complete adjacent windows for comparison; `Monthly` can show one calendar month, marked partial when incomplete, but needs two complete adjacent months for comparison. Pre-creation imported history is excluded from Trends only. The current Trends-only evidence is `GA4/INSIGHTS_TRENDS_CERTIFICATION_2026-09-17.md`; older whole-Insights certifications remain revision-specific.
+- GA4 Insights daily history is scheduler-managed: startup and manual/run-now writes are disabled, `/ga4-daily` is storage-only, and page refetches cannot contact GA4 or rewrite history. The scheduler stores explicit zero rows for provider-verified completed no-activity dates and preserves last-good storage on failure or incomplete provider evidence.
+- GA4 Insights Trends history gating is mode-specific: `Daily` needs one eligible campaign date; `7d` and `30d` chart complete calendar windows and need two adjacent windows only for comparison; `Monthly` can show one faded, labelled partial month but compares only adjacent complete months. From campaign creation through `Chart through`, no-activity/missing bounded dates count as zero; pre-creation history remains hidden. Older Trends certificates remain revision-specific historical evidence.
 - GA4 reporting timezone is a campaign-level setting. `Create New Campaign` and `Edit Campaign` both expose a `Reporting Timezone` select, default new campaigns from the browser timezone when available, fall back to `UTC`, and save the selected IANA timezone through the campaign create/update payload. Dropdown labels remove underscores for readability while preserving exact saved values such as `America/New_York`.
 - GA4 live/mock property boundary is part of the template contract: numeric GA4 property IDs must use live GA4 import/query paths, while only explicit `yesop` demo connections or request-level `?mock=1` may use deterministic simulation. Commit `4074d282` fixed the prior leakage where property `498536418` was treated as the Yesop simulator; user validation passed.
-- GA4 Insights is `PRODUCTION_READY` for certified runtime boundary `4be16c54c550a45dbf3104313c820ea47b453604`. `GA4/INSIGHTS_PRODUCTION_READINESS.md` and `GA4/certifications/ga4-insights.json` are controlling.
+- GA4 Insights is `UNVERIFIED` for the current implementation until a new exact-revision deployed packet passes. `GA4/INSIGHTS_PRODUCTION_READINESS.md` and `GA4/certifications/ga4-insights.json` are controlling; dated certificates are historical only.
 - The Overview financial-source chooser is outside the Insights certification boundary and remains governed by `GA4/OVERVIEW.md` and `GA4/FINANCIAL_SOURCES.md`. Insights may consume only documented GA4-context totals; foreign platform contexts must not feed GA4 Insights totals.
 - GA4 Insights Executive Financials source copy is conditional on actual connected sources: it must not claim imported revenue or source-backed spend unless those sources are present, and it should not append date-range copy because Trends owns freshness/date context
-- GA4 Insights Trends enforces the completed reporting-day cutoff internally and displays `Latest imported day` for the latest persisted row visible after the campaign-creation-date filter, plus `Last refreshed`; it does not display a separate completed-day-cutoff label
-- GA4 Insights `What to investigate next` and its Total/High/Medium cards have a separate on-screen certificate for deployed revision `6673a976f98d853b9eb37ddc99a2afc195f302d9`: `GA4/INSIGHTS_FINDINGS_CERTIFICATION_2026-09-18.md`. It does not recertify the other Insights sections or Reports.
+- GA4 Insights Trends enforces the completed reporting-day cutoff internally and displays `Latest imported day` for the latest actual persisted row visible after the campaign-creation filter plus `Chart through` for the scheduler-derived displayed-history boundary; it does not display a page-load refresh timestamp
+- GA4 Insights Data Summary uses the imported-history Sessions and Conversions returned with the storage-only daily response; completed no-activity dates count as zero, while a failed request without a response remains unavailable
+- GA4 Insights `What to investigate next` uses the same campaign-start, scheduler-synchronized, zero-filled calendar as Trends. Legacy stale metadata on an otherwise successful persisted response does not create a stale-history/setup card or withhold target evaluation; actual request/source/list/history failures remain fail-closed. The older findings certificate at deployed revision `6673a976f98d853b9eb37ddc99a2afc195f302d9` is historical and does not recertify current behavior.
 
 Live GA4 processing caveat:
 

@@ -54,7 +54,7 @@ Current conclusion:
 
 ## Broader GA4 Production Validation Outside The Certified Overview Boundary
 
-1. Complete real GA4 validation for other properties/configurations and separately controlled tabs. The exact certified Overview fixture is already closed:
+1. Complete real GA4 validation for other properties/configurations and separately controlled tabs. The listed exact-runtime certificates are historical boundaries, not a blanket current pass. GA4 Insights is currently unverified after its scheduler, zero-date, UI/findings, and financial-window changes and requires a new deployed packet:
    - campaign creation
    - OAuth connect
    - property selection

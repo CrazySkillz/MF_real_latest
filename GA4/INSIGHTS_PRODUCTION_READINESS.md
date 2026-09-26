@@ -1,19 +1,19 @@
 # GA4 Insights Production Readiness
 
-2026-08-28 revalidation: the authoritative machine record certifies deployed runtime boundary `4be16c54c550a45dbf3104313c820ea47b453604`. Focused, current-version, TypeScript, build, exact-health, authenticated-owner, tenant-isolation, and deployed read-only Insights checks passed. Older narrative SHA references below are revision-specific history where they differ.
+2026-09-26 status reconciliation: significant Insights behavior changed after the last exact-runtime certificates. The current implementation was introduced through `4372efadc96523c9df2abe2dd7915f9e1a0443a7` and is unchanged in application runtime `ca1fc5a873ab69fb747937768c31fcd53e16fd64`, but it has not received a new exact-revision deployed certification packet. The older evidence below remains historical and revision-specific.
 
 ## Controlling Current Status
 
 <!-- ga4-insights-current-status -->
-<!-- ga4-insights-certification-status: PRODUCTION_READY -->
+<!-- ga4-insights-certification-status: UNVERIFIED -->
 
-Section status: **PRODUCTION_READY** for certified live GA4 Insights runtime boundary `4be16c54c550a45dbf3104313c820ea47b453604`.
+Section status: **UNVERIFIED for the current implementation** pending current-revision deployed recertification.
 
-Authenticated read-only value parity, expected-stale handling, tenant isolation, protected regressions, TypeScript, and the production build passed. The controlled rerun matched five Executive Financial values, three summary values, three channel rows, four trend modes, three tracker values, the visible findings, exact cumulative KPI/Benchmark inputs, and unchanged semantic persistence. Financial totals reconciled at Revenue `$72,766.69`, Spend `$2,699.75`, Profit `$70,066.94`, ROAS `26.9531`, ROI `2595.31%`, CPA `$10.76`, and `251` financial conversions. The temporary Clerk-only non-owner was deleted during cleanup.
+Current code implements scheduler-only daily-history writes, explicit zero rows for completed no-activity dates, campaign-creation-bounded zero-filled charts and findings, one-row Daily rendering, `Latest imported day` plus `Chart through` labels, no stale-history warning/findings for a successful persisted response, and the corrected financial KPI/Benchmark import boundary. These changes invalidate the earlier exact-SHA certification as a current claim. Local regression validation can make this revision eligible for certification; authenticated deployed value parity, exact-revision tenant checks, provider behavior, and a natural scheduler cycle remain external gates.
 
 <!-- /ga4-insights-current-status -->
 
-Previous certified SHA: `09e3b64ed67fec70aa84f969a09aae1f368a4f02`. Its evidence is preserved in the machine record and below as historical revision-specific evidence; it does not certify the current boundary.
+Historical certified SHA: `4be16c54c550a45dbf3104313c820ea47b453604`. The previous `09e3b64ed67fec70aa84f969a09aae1f368a4f02` evidence is also preserved in the machine record. Neither certifies the current implementation.
 
 Previous certified configuration fingerprint: `f9106c79d9735b88cdc3adac06f435072810fb691486567256254006825d0be0`
 
@@ -25,7 +25,19 @@ Natural scheduler carry-forward: on deployed scheduler-fix SHA `85f5233ebfc298af
 
 Historical later-change classification through deployed `7374e824`: `950307b6`, `1a93d8d8`, and `3d762260` were legitimate KPI/Benchmark freshness-consumer and Notification changes; `7366051f`, `d6656e11`, `c6487555`, `ab26b36b`, and `e8a83b2a` were evidence/documentation changes; `7374e824` changed only Insights documentation, its machine record, and the certification checker/test. Twelve recorded Insights dependencies changed after `85f5233e`: five documentation files, three regression-test files, one non-runtime certification checker, and three runtime files confined to KPI/Benchmark freshness consumption and Notification visibility. None changed `server/ga4-daily-scheduler.ts`, `server/analytics.ts`, daily storage, reporting-timezone helpers, timer wiring, or scheduler configuration parsing. At that historical checkpoint, production health reconfirmed `UTC`, `22:00`, with GA4 startup refresh disabled.
 
-Decision: the live GA4 Insights section is production-ready at the exact certified boundary above. Natural scheduler evidence is explicitly carried from `85f5233e` across byte-identical scheduler/producer/job files; no exact-`b8c73621` natural timer firing or global all-campaign scheduler-health claim is made. Reports-owned behavior remains separately certified.
+Historical decision: the live GA4 Insights section was production-ready only at the exact older boundaries recorded below. Current scheduler/producer/UI/finding dependencies are not byte-identical, so that evidence cannot be carried forward. Reports-owned behavior remains separately controlled.
+
+### Current Implemented Contract (post-certificate)
+
+- `server/ga4-daily-scheduler.ts` is the sole live writer of `ga4_daily_metrics`; startup refresh is disabled and only the configured daily timer schedules the pipeline.
+- Manual GA4 daily refresh and campaign `run-now` routes return `409 GA4_DAILY_HISTORY_SCHEDULER_MANAGED` after campaign access is verified.
+- The scheduler queries the selected active property and saved campaign filter through the latest completed reporting day, verifies provider date presence where required, stores an explicit row for every completed date in its authorized window, and uses zeros only for verified no-activity dates. Provider failure or incomplete activity evidence preserves the last-good window.
+- Browser `/ga4-daily` calls are storage-only. Page load, focus/reconnect, and polling can reread saved state but cannot contact GA4 or rewrite daily history.
+- Trends excludes pre-creation dates and materializes every date from campaign creation through the scheduler-derived `Chart through` date. Missing/no-activity dates in that bounded calendar are shown as zero. `Latest imported day` remains the latest actual persisted row.
+- Daily can render one eligible date; 7d/30d rollups use consecutive calendar days including zero/no-activity dates; Monthly can show a faded, labelled partial month but compares only adjacent complete months. Users remains Daily-only because distinct users are non-additive.
+- Data Summary shows imported-history Sessions, Conversions, and CVR. No-activity dates count as zero; a failed request without a response is unavailable and is not converted to zero.
+- Findings use the same campaign-start, scheduler-synchronized, zero-filled calendar as Trends. Successful persisted responses do not generate stale-history cards or withhold target/trend conclusions merely from legacy freshness metadata. Actual request/source/list failures still fail closed, and KPI/Benchmark analytics-history failures withhold only history/streak context.
+- Native financial KPI/Benchmark refresh uses explicit campaign start when configured, otherwise the saved GA4 import boundary, then campaign creation as the final fallback.
 
 August 12, 2026 exact-SHA re-verification: the KPI same-date history correction intentionally affects the history consumed by Insights, so this connection was not assumed unchanged. The authenticated production validator passed on deployed `ee22f0e470826f1cb247115497c9a15229d0142d`: all Executive Financials, Data Summary, channel, Daily/7d/30d/Monthly Trends, tracker, and visible finding values matched the scoped APIs; Daily rendered 111, 108, 106, and 103 on the exact imported dates with gaps elsewhere; tenant isolation failed closed; and campaign persistence remained unchanged. The campaign-scoped manual scheduler run succeeded with all 12 KPIs and both Benchmarks updated and none skipped/failed. The complete protected boundary passed 44 files / 496 tests; TypeScript and the production build passed. A natural timer firing on this SHA is not claimed.
 
@@ -130,29 +142,32 @@ This documentation-only evidence commit does not alter the certified runtime bou
 
 | Surface | Visible values | Authoritative live inputs and transforms |
 |---|---|---|
-| Shared live-tab context | Client, Campaign, selected GA4 Property ID, saved Property Campaigns filter, delayed/provider-refresh warning when applicable | authenticated client and campaign responses; selected active GA4 connection; 30-day daily response freshness metadata |
+| Shared live-tab context | Client, Campaign, selected GA4 Property ID, saved Property Campaigns filter | authenticated client and campaign responses; selected active GA4 connection; storage-only daily response |
 | Executive Financials | Spend, Revenue, Profit, ROAS, ROI, source labels, loading/unavailable/not-connected/last-good state | GA4-context spend sources and totals; native GA4 to-date totals; GA4-context imported revenue; fixed native-source precedence; Revenue = native + imported; Profit = Revenue - Spend; ROAS = Revenue / Spend only when Spend > 0; ROI uses shared metric math only when Spend > 0 |
-| Trends | Sessions, Users in Daily only, Conversions, Revenue, Page Views, Engagement Rate; Daily, 7d, 30d, Monthly; completed-day cutoff, latest-imported-day, and last-refreshed labels | non-mutating Insights reads for overlapping 30-day and isolated 60-day `ga4-daily` responses; selected property; completed campaign-reporting days; Daily chart bounded to the latest 30 calendar days and beginning at the first imported date; shared calendar rollups; session-weighted engagement preserving explicit zero engaged sessions; prior-calendar-day deltas; partial/incomplete month labeling |
-| Data Summary | 30-day Sessions, Conversions, conversion rate, Top Channel, channel Sessions/Share/Conversions/CR | exact last 30 calendar days from the isolated daily response; raw same-window GA4 acquisition breakdown for the selected property/filter; no campaign-to-date financial duplication; no proportional allocation |
+| Trends | Sessions, Users in Daily only, Conversions, Revenue, Page Views, Engagement Rate; Daily, 7d, 30d, Monthly; `Latest imported day` and `Chart through` labels | storage-only isolated 60-day `ga4-daily` response; selected property; campaign-creation filter; zero-filled completed calendar through the scheduler-derived history boundary; Daily up to 30 dates; shared rollups; session-weighted engagement; partial-month opacity/labeling |
+| Data Summary | imported-history Sessions, Conversions, conversion rate | `overviewTotals` and `overviewStartDate` through `dataThroughDate` from the storage-only daily response; no-activity days count as zero; no channel table or campaign-to-date financial duplication |
 | Tracker cards | Total findings, High-severity findings, Medium-severity findings | full generated finding list before the visible finding cap; verified KPI/Benchmark conclusions are counted separately; shared unverified-source effects are consolidated; total includes positive and informational findings |
-| What to investigate next | stable page header; settled-input tracker counts; grouped finding title, description, recommended check, severity, basis, confidence, hidden count | initial multi-query readiness gate; financial integrity rules; eligible KPI/Benchmark values and snapshot analytics; fail-closed saved-target/current-window period matching with affected target identification; saved KPI priority and factual below-target status; consolidated unverified-target readiness finding; factual no-snapshot state; complete 3-day or 7-day calendar comparisons; raw same-window channel context; explicit unavailable/stale/configuration findings; no generic total-ROAS strength inference |
+| What to investigate next | stable page header; settled-input tracker counts; grouped finding title, description, recommended check, severity, basis, confidence, hidden count | same zero-filled campaign calendar as Trends; 7-day then 3-day adjacent-window evaluation; financial integrity rules; eligible current KPI/Benchmark values; fail-closed list/input/history failures; no stale-daily-history or missing-snapshot scheduler-timing finding; reconciled channel context only |
 
 ## End-To-End Path Matrix
 
 ### Daily and trend values
 
 `campaign reporting timezone + selected property + saved ga4CampaignFilter`
--> authenticated `GET /api/campaigns/:id/ga4-daily?days=60&propertyId=...`
--> campaign/property connection lookup
--> GA4 provider refresh when due
--> atomic exact-window replacement in `ga4_daily_metrics` by campaign, property, and date, including successful empty provider windows
--> response cutoff/freshness metadata
+-> configured daily scheduler
+-> selected active property and saved-filter provider query through the latest completed reporting day
+-> provider presence/completeness validation
+-> explicit zero rows for verified no-activity dates
+-> atomic exact-window replacement in `ga4_daily_metrics`
+-> authenticated storage-only `GET /api/campaigns/:id/ga4-daily?days=60&propertyId=...&readOnly=1`
+-> response cutoff/history metadata
 -> property identity check
 -> `normalizeGA4InsightsDailyRows`
+-> campaign-creation filter and calendar zero-fill through `historyDataThroughDate`
 -> `buildGA4InsightsRollups`, `buildGA4InsightsCalendarRollup`, or `buildGA4InsightsMonthlySeries`
 -> Trends, Data Summary, tracker inputs, and trend findings.
 
-Daily charts consider the latest 30 calendar dates ending at the latest imported date, begin at the first imported date in that range, and render later `null` dates as gaps so non-consecutive observations are not presented as a continuous trend. Rollups use persisted `engagedSessions` whenever present, including zero, and derive it from that row's normalized engagement rate only for legacy absence.
+Daily charts consider up to 30 calendar dates from campaign creation through `Chart through`; no-activity dates are zero points rather than gaps. Rollups use persisted `engagedSessions` whenever present, including zero, and derive it from that row's normalized engagement rate only for legacy absence.
 
 ### Channel values
 
@@ -204,8 +219,9 @@ An analytics request failure produces an integrity finding. It is not converted 
 | valid zero | render numeric zero when the source response/configuration proves availability |
 | not connected | show Not connected and block denominator-dependent metrics |
 | unavailable/failed | show unavailable and withhold affected comparisons/recommendations |
-| stale/last-good | label last-good state; withhold trend recommendations until refresh succeeds |
-| insufficient data | show exact missing calendar coverage; do not widen the window |
+| successful persisted response with legacy stale metadata | treat scheduler-backed history as authoritative; do not show a stale-history card or withhold current target/trend evaluation solely for that metadata |
+| request/source failure with no response | show unavailable and withhold only conclusions that depend on the failed input; never infer zero |
+| insufficient data | show the exact campaign-age/window coverage; zero/no-activity dates still count as calendar coverage |
 | no completed campaign day | label native GA4 revenue as awaiting the first completed day; do not call it disconnected or score revenue-dependent conclusions |
 | blocked configuration | show setup/configuration finding before performance guidance |
 | partial/incomplete month | label partial and do not compare it with a full month |
@@ -356,12 +372,12 @@ No Minor finding changes a visible numeric result after the fixes above.
 ## Persistence, Refresh, And Destructive Safety
 
 - the live tab itself performs no delete or destructive write
-- successful daily provider refreshes atomically replace only the authorized campaign/property/date window; successful empty responses remove stale rows in that window, failures preserve the last good window, and out-of-scope replacement rows fail before deletion
+- successful scheduled daily provider refreshes atomically replace only the authorized campaign/property/date window with a complete calendar including verified zero/no-activity dates; provider failures or incomplete activity evidence preserve the last-good window, and out-of-scope replacement rows fail before deletion
 - saved GA4 filter or reporting-timezone changes atomically invalidate only that campaign's daily facts before deterministic scoped refresh
 - KPI/Benchmark history is retained but only the exact selected property/filter/timezone/currency marker is eligible for live Insights; mismatched and legacy history is not deleted or rendered
 - imported source add/edit/delete/refresh paths recompute only the owning campaign and GA4 platform context
 - source deletion can change live financial values but cannot broaden to another campaign or platform
-- the campaign-scoped deterministic scheduler trigger runs the deployed daily refresh plus KPI/Benchmark recompute for only the authorized campaign and suppresses the global alert sweep
+- startup refresh, browser refresh, manual GA4 refresh, and campaign-scoped `run-now` writes are disabled; only the configured daily timer invokes the daily refresh/recompute pipeline
 - a timer status alone is not a successful value refresh
 
 Existing damaged-data cleanup is not authorized by this audit. No cleanup is required for the removed client-only channel allocation because it was not persisted.
@@ -542,10 +558,10 @@ All required gates passed on the historical frozen boundary:
 The certification remains valid only for the recorded SHA, dependencies, configuration fingerprint, and exclusions. Any relevant change or contradictory production result immediately invalidates this certification until a new exact-revision packet passes.
 ## Known Limitations And Remaining Validation
 
-- The current production property/filter has sparse activity rows and does not contain two complete adjacent 7-day or 30-day windows. The correct live behavior is an exact coverage/unavailable state, not a fabricated comparison.
+- Trend comparisons still require enough campaign calendar age for adjacent 7-day or 30-day windows. Completed no-activity dates count as zero; an actual failed/unavailable daily response does not.
 - Google Ads has no authorized live test account and is excluded from this certification. LinkedIn, Meta/Facebook, and Instagram are not enabled as Insights inputs in this release.
 - Reports, PDFs, scheduled reports, report schedulers, and email delivery are outside the Insights certification definition.
-- The historical `ee22f0e470826f1cb247115497c9a15229d0142d` boundary had no remaining production-only validation. The current release-candidate boundary is recorded in the controlling status block; final production certification and the final combined GA4 certification remain intentionally unperformed.
+- The historical exact-SHA packets below do not exercise the current scheduler-only writer, persisted zero-date materialization, current page/finding behavior, or corrected financial import window. Current exact-revision deployment, owner UI/API parity, tenant isolation, provider failure/last-good behavior, and a natural scheduler cycle remain unverified.
 
 ## Historical Note
 

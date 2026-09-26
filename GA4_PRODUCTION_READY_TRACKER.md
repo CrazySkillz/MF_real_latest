@@ -39,13 +39,13 @@ Conversion Events supersession note (2026-09-15): the older exact-key supplement
 
 ## Current Status
 
-The final combined GA4 audit is complete at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`. GA4 Overview, KPIs, Benchmarks, Ad Comparison, Insights, and Reports are **PRODUCTION_READY** for their exact recorded boundaries. This does not certify other campaigns, future configurations, Campaign DeepDive, excluded platforms, future provider availability, or the 17 obsolete campaigns outside the active scheduler boundary.
+The final combined GA4 audit at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817` is historical. Its exact recorded tab boundaries remain historical evidence, but it does not certify later implementation changes. In particular, the current GA4 Insights implementation is **UNVERIFIED** pending exact-revision deployed recertification; use `GA4/INSIGHTS_PRODUCTION_READINESS.md` and `GA4/certifications/ga4-insights.json` for the controlling decision.
 
 GA4 KPIs are **PRODUCTION_READY** for the recorded boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`; exact evidence is in `GA4/KPIS_PRODUCTION_READINESS.md`.
 
 GA4 Benchmarks are **PRODUCTION_READY** for the recorded boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`; exact evidence is in `GA4/BENCHMARKS_PRODUCTION_READINESS.md`.
 
-GA4 Insights is **PRODUCTION_READY** for the recorded live-tab boundary at deployed runtime `892ff3396ec9c9332008128897e5703cc6bb3817`; exact evidence is in `GA4/INSIGHTS_PRODUCTION_READINESS.md`.
+GA4 Insights is **UNVERIFIED for the current implementation**. The older deployed boundaries remain historical only; the scheduler-only, zero-filled behavior introduced through `4372efadc96523c9df2abe2dd7915f9e1a0443a7` requires a new deployed packet.
 
 This status does not close the newer findings below. Later shared report/source infrastructure changes can affect GA4 even when the visible GA4 page is not directly edited.
 
@@ -63,6 +63,9 @@ This status does not close the newer findings below. Later shared report/source 
 - [x] Overview Commit 2 `7e4cd063` - added `GA4/OVERVIEW_PRODUCTION_READINESS.md` as the canonical Overview production-readiness and future-platform template document. Its then-current status is historical; the canonical file now records the current release-candidate decision.
 - [x] Overview Landing Pages follow-up - supplemented missing row conversions from same-scope `pageLocation` UTM rows only by exact landing-page/source/medium match, without allocating campaign-level conversions into page rows.
 - [x] Overview metric propagation follow-up - aligned Summary `Conversions`, Conversion Events exact-key supplementation, KPI create fallback values, Insights CPA, and scheduled/server GA4 report Summary totals to the relevant Overview source model.
+- [x] Insights scheduler synchronization follow-up (`95bc4be8` through `f3f199a6`) - removed page-load/live daily-history writes and stale-history guidance, disabled startup/manual/run-now refresh, and made the configured daily scheduler the sole GA4 daily-history writer.
+- [x] Insights zero-date follow-up (`592d56f2`, `2265e80c`) - scheduler-verified completed no-activity dates are stored as zero, and the visible Trends/findings calendar runs from campaign creation through `Chart through` with bounded missing dates shown as zero.
+- [x] Insights one-day and financial-window follow-up (`732f6904`, `4372efad`) - Daily renders one eligible point, and native financial KPI/Benchmark refresh falls back to the saved GA4 import boundary before campaign creation when no explicit campaign start exists.
 
 Validation completed:
 

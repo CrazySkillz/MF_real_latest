@@ -114,9 +114,10 @@ This scheduler now runs the GA4 daily refresh pipeline:
 1. finds campaigns with a GA4 connection
 2. resolves the campaign's GA4 campaign filter
 3. fetches GA4 time-series data
-4. atomically replaces the exact authorized campaign/property/date window in `ga4_daily_metrics`, including successful empty provider responses
-5. recomputes GA4 KPI and Benchmark values from the refreshed daily facts
-6. runs KPI and Benchmark alert checks after recompute
+4. verifies provider date presence/completeness, materializes an explicit row for every completed date in the authorized window, and uses zero values only for verified no-activity dates
+5. atomically replaces the exact authorized campaign/property/date window in `ga4_daily_metrics`
+6. recomputes GA4 KPI and Benchmark values from the refreshed daily facts
+7. runs KPI and Benchmark alert checks after recompute
 
 Important meaning:
 
@@ -125,6 +126,7 @@ Important meaning:
 - it is campaign-scoped and refreshes every active property independently
 - campaigns whose provider refresh succeeds continue into KPI/Benchmark recompute even when unrelated campaigns fail; failed and skipped campaign IDs are excluded from recompute
 - any provider failure keeps the process-wide run failed and suppresses the unsafe global alert sweep; successful in-scope recompute evidence does not become a global scheduler-success claim
+- a property-level provider failure, incomplete activity evidence, invalid row, duplicate row, or out-of-window row prevents replacement for that property and preserves its last-good stored window
 - a saved campaign-filter or reporting-timezone change invalidates only that campaign's prior daily facts before scoped refresh, so old-scope rows cannot remain visible
 - this is only one part of `Overview` freshness; `Overview` also depends on refreshed external revenue and spend source state where applicable
 - it does not replace the external value auto-refresh scheduler or the report delivery scheduler
@@ -134,13 +136,13 @@ Runtime cadence:
 - the scheduler starts from the server startup background-scheduler block, about 5 seconds after the server begins listening
 - it schedules one daily run at `GA4_DAILY_REFRESH_HOUR:GA4_DAILY_REFRESH_MINUTE` in `GA4_DAILY_REFRESH_TIME_ZONE`, defaulting to `03:00 UTC`
 - `GA4_DAILY_REFRESH_TIME_ZONE` is a deployment-level scheduler setting, not a per-campaign UI setting
-- `GA4_DAILY_REFRESH_RUN_ON_STARTUP` controls the best-effort startup run and defaults to `true`
+- startup refresh is disabled in code; `GA4_DAILY_REFRESH_RUN_ON_STARTUP` does not trigger a GA4 daily-history write
 - scheduler logs include the next UTC run time, local reporting-time label, timezone, and expected `dataThroughDate`
 - an in-process overlap guard skips a second GA4 daily pipeline if one is already running
 - it fetches a lookback window controlled by `GA4_DAILY_LOOKBACK_DAYS`, defaulting to `90` days and bounded between `7` and `365`
 - daily facts are persisted by date; Overview Summary and Trends use only completed daily rows through the campaign reporting timezone's latest completed day, so current-day intraday data is excluded
 - when compatible campaign attribution splits traffic from conversion/revenue, the provider query supplements only missing conversion/revenue fields on the exact affected daily rows and never overwrites populated traffic or outcome values
-- the Trends UI separates the completed-day cutoff from the latest imported row; if GA4 returns no row for a completed day, the app does not invent a zero row for that date
+- the scheduler writes explicit zero rows for completed dates that provider verification proves had no activity; the Trends UI also presents the campaign calendar from creation through its scheduler-derived history boundary, with those no-activity dates as zero
 
 ## Live GA4 UTM And Measurement Protocol Behavior
 
@@ -167,20 +169,14 @@ Mock-live seed scripts used for validation should send standard GA4 events:
 
 They should not send a separate standalone `user_engagement` event unless the test explicitly validates that event. Some GA4 test properties can mark `user_engagement` as a key event, which inflates native GA4 `Conversions` after delayed processing.
 
-## On-Demand GA4 Refresh
+## On-Demand GA4 Daily Refresh
 
-The GA4 on-demand refresh endpoint follows the same downstream dependency rule for the refreshed campaign:
+On-demand GA4 daily-history writes are disabled.
 
-1. refresh the latest complete GA4 daily row
-2. recompute GA4 KPI and Benchmark values for that campaign
-3. run KPI and Benchmark alert checks through the existing GA4 recompute path
-
-Important meaning:
-
-- on-demand GA4 refresh should not leave KPIs, Benchmarks, or Insights relying on stale daily GA4 facts
-- external revenue/spend source refresh remains handled by the external value auto-refresh scheduler
-- system-generated GA4 test properties such as `yesop` use the deterministic GA4 simulator during on-demand refresh and must not require a live OAuth token
-- Render validation passed for the `yesop` on-demand refresh path: the endpoint returned `success: true` with refreshed metric values instead of `TOKEN_EXPIRED`
+- `POST /api/campaigns/:id/ga4/refresh` verifies campaign access and returns `409 GA4_DAILY_HISTORY_SCHEDULER_MANAGED`
+- `POST /api/campaigns/:id/ga4-daily-scheduler/run-now` verifies campaign access and returns the same scheduler-managed response
+- page loads, browser focus/reconnect, polling, notification reconciliation, and validation reads cannot invoke the daily provider import or rewrite `ga4_daily_metrics`
+- external revenue/spend source refresh remains handled by its documented source scheduler or user-driven snapshot flow; disabling manual GA4 daily writes does not disable those separate source lifecycles
 
 ## GA4 Page Query Refetch Timing
 
@@ -189,9 +185,9 @@ The GA4 analytics page periodically rereads saved values in addition to the back
 - `/api/campaigns/:id/ga4-daily` refetches on page load, browser focus/reconnect, and every 5 minutes while the page is open, but normal browser callers use `readOnly=1` and cannot query GA4 or rewrite daily history
 - `/api/campaigns/:id/ga4-to-date` and `/api/campaigns/:id/ga4-breakdown` refetch on page load, browser focus/reconnect, and every 10 minutes while the page is open
 - `/api/campaigns/:id/ga4-breakdown`, `/api/campaigns/:id/ga4-landing-pages`, and `/api/campaigns/:id/ga4-conversion-events` use the fixed initial-import boundary through the latest completed day for Overview and refetch on page load, browser focus/reconnect, and every 10 minutes for the selected property and saved GA4 campaign scope; the separate Insights breakdown request retains its analysis window
-- `/ga4-daily` reads persisted daily rows; mutation-capable server or explicit refresh callers may omit `readOnly=1` to perform an on-demand Data API backfill, but normal analytics and campaign-detail page reads cannot do so
-- `/ga4-daily` returns backward-compatible refresh evidence (`providerRefreshAttempted`, `providerRefreshOutcome`, row count, and `providerCoverageThroughDate`) alongside its existing expected/latest/stale fields; successful coverage is distinct from the latest returned activity date, and `empty` or absent activity dates are not converted into zero-valued metric rows
-- if persisted selected-campaign daily rows already have traffic but no conversions or native revenue, `/ga4-daily` may self-repair them by rerunning the same selected-campaign daily import; conversions and revenue are evaluated independently, and a successful response replaces the exact requested window rather than leaving absent old rows behind
+- `/ga4-daily` is hard read-only on the server even if a caller omits `readOnly=1`; it never contacts GA4 and never rewrites daily history
+- `/ga4-daily` returns stored rows, scheduler/history coverage metadata, and `providerRefreshOutcome: "read_only"`; its browser refetch cadence is not a live GA4 refresh
+- scheduler-written zero/no-activity dates are returned as normal stored rows; the Insights client additionally fills any bounded legacy gap from campaign creation through `historyDataThroughDate` with zero for chart/finding consistency
 - `Landing Pages` and `Conversion Events` are not reconstructed from `ga4_daily_metrics`; they fetch row-level GA4 Data API views directly. Landing Pages retains its documented exact row supplementation, while Conversion Events uses only its fixed-order exact session/first-user campaign queries and does not use `pageLocation`
 - numeric live or live-test GA4 property IDs can correctly show `Conversions = 0` on Landing Pages when GA4 returns zero for that exact grain. Conversion Events deliberately excludes zero-conversion rows and renders an empty result only after its complete exact-scope queries return no positive conversion rows
 
@@ -199,7 +195,7 @@ Important timing:
 
 - cumulative Overview table values can update after GA4 has processed the latest completed day and the relevant page query refetches
 - live financial to-date queries may update separately; they do not change the completed-day boundary of the three Overview tables
-- Trends uses persisted completed-day rows through the campaign reporting timezone's latest completed day; opening the page only rereads those rows, so chart history and its refresh timestamp change after the scheduler or an explicit refresh path persists new daily facts
+- Trends uses persisted completed-day rows and a scheduler-derived `historyDataThroughDate`; opening the page only rereads those values. The visible chart/history boundary changes only after the daily scheduler persists a newer state
 - Connection Details shows the successful provider check-through date separately from the latest stored activity date. The normal campaign header does not insert that success text after load; Overview still warns when no successful current coverage exists or a stale refresh attempt fails, and retains stored values on failure
 - generic GA4 `403 PERMISSION_DENIED` responses are provider/permission failures, not confirmed authentication expiry; this includes the daily time-series fetch before and after a confirmed token refresh, and only confirmed authentication signals may trigger token refresh/reconnect handling
 
@@ -228,7 +224,7 @@ LinkedIn and Meta schedulers persist their analytics in their canonical platform
 
 Runtime cadence:
 
-- the scheduler starts from the server startup background-scheduler block, about 5 seconds after the server begins listening
+- the scheduler timer is registered from the server startup background-scheduler block, about 5 seconds after the server begins listening; registration does not run the refresh pipeline
 - it schedules one daily run at `AUTO_REFRESH_DAILY_HOUR:AUTO_REFRESH_DAILY_MINUTE` in `AUTO_REFRESH_TIME_ZONE`
 - active Google Sheets spend sources and active GA4 Google Sheets revenue sources use sequential isolated passes on the Google Sheets financial polling timer controlled by `GOOGLE_SHEETS_SPEND_REFRESH_INTERVAL_MINUTES`, default `1` and bounded to `1..60`; the revenue pass does not refresh CSV, CRM, ecommerce, non-GA4 revenue, LinkedIn, Meta, or Google Ads
 - one CRM polling timer is controlled by `SALESFORCE_PIPELINE_REFRESH_INTERVAL_MINUTES`, default `5` and bounded to `1..60`. Its Salesforce pass reprocesses every active exact GA4 Salesforce source with saved selected values, including revenue-only sources; its HubSpot pass currently reprocesses only Pipeline-enabled sources with a saved stage ID. Both reuse the saved mapping and stable revenue source ID
@@ -253,25 +249,19 @@ Local/server time checks:
 GA4 daily scheduled-refresh validation:
 
 1. Set `GA4_DAILY_REFRESH_TIME_ZONE`, `GA4_DAILY_REFRESH_HOUR`, and `GA4_DAILY_REFRESH_MINUTE` to the intended schedule.
-2. Set `GA4_DAILY_REFRESH_RUN_ON_STARTUP=false` when validating the scheduled path.
-3. Redeploy or restart and confirm:
+2. Redeploy or restart and confirm:
    - `[GA4 Daily] Scheduler started`
    - `[GA4 Daily] Next scheduled run at ... timezone=... dataThroughDate=...`
-4. After the scheduled time, confirm:
+3. After the scheduled time, confirm:
    - `[GA4 Daily] Pipeline starting (trigger=scheduled)`
    - `[GA4 Daily] Pipeline done (trigger=scheduled, elapsedSeconds=...)`
-5. In Insights Trends, confirm the visible `Last refreshed` value is current. In the authenticated `ga4-daily` response, confirm `lastCompletedRefreshAt` is at or after `expectedRefreshAt` and `refreshIsStale=false`; the live Trends header intentionally does not render `Expected refresh`.
+4. In the authenticated `ga4-daily` response, confirm the scheduler-written rows cover the expected completed calendar through `historyDataThroughDate`, including explicit zeros for verified no-activity dates. In Insights Trends, confirm `Latest imported day`, `Chart through`, chart rows, and findings match that persisted state. Loading the page must not change the rows or timestamps.
 
 Current deployed evidence:
 
 - June 29, 2026: the controlled Render validation passed for the scheduled GA4 daily path. This proves the GA4 daily scheduler timing path, not scheduled report sending or provider/email delivery.
 
-GA4 daily startup-refresh validation:
-
-- set `GA4_DAILY_REFRESH_RUN_ON_STARTUP=true`
-- restart the server
-- confirm `[GA4 Daily] Pipeline starting (trigger=startup)` and `[GA4 Daily] Pipeline done (trigger=startup, ...)`
-- this proves the startup path only; it does not prove the daily scheduled path fired
+GA4 daily startup-refresh validation is not applicable: startup execution is disabled in code, so changing `GA4_DAILY_REFRESH_RUN_ON_STARTUP` must not run the GA4 daily pipeline.
 
 External revenue/spend scheduled-refresh validation:
 
@@ -455,14 +445,16 @@ The current `Insights` tab is downstream of:
 
 Trend history gates:
 
-- `Daily` requires at least 2 daily rows
-- `7d` requires complete coverage of two adjacent 7-calendar-day windows
-- `30d` requires complete coverage of two adjacent 30-calendar-day windows
-- `Monthly` requires at least 2 calendar months
+- `Daily` requires at least 1 eligible campaign date and can render a single point
+- `7d` can chart each complete 7-calendar-day window; its latest comparison requires two adjacent 7-day windows
+- `30d` can chart each complete 30-calendar-day window; its latest comparison requires two adjacent 30-day windows
+- `Monthly` can show one partial calendar month with reduced opacity and a partial label; comparison requires two adjacent complete months
 
-These requirements are history requirements, not event-count requirements. Running a seed script repeatedly on the same UTC day can increase current metrics, but it does not create multiple daily-history rows for trend comparisons.
+These are campaign-age/calendar requirements, not activity-row or event-count requirements. Completed no-activity dates count as zero. Running a seed script repeatedly on the same UTC day can increase current metrics, but it does not create multiple completed campaign dates.
 
 KPI/Benchmark snapshot history used by live Insights is eligible only when its versioned marker matches the selected GA4 property, saved campaign filter, campaign reporting timezone, and campaign currency. Legacy or mismatched history is retained but withheld from the live tab.
+
+For native financial KPI/Benchmark recompute, the campaign-to-date start boundary is the explicit campaign start date when configured, otherwise the saved GA4 `importStartDate`, then campaign creation as the final fallback. This keeps fresh campaigns without an explicit start aligned with their historical GA4 import instead of truncating native revenue to the creation date.
 
 ## Reports Refresh
 
@@ -499,7 +491,7 @@ What is true today:
 - Overview freshness is updated through the GA4 daily refresh pipeline plus external-value auto-refresh processing
 - the GA4 daily refresh pipeline refreshes GA4 daily facts, then recomputes GA4 KPI/Benchmark state, then runs KPI/Benchmark alert checks
 - the generic KPI scheduler can skip its duplicate GA4 KPI/Benchmark recompute when `GA4_DAILY_PIPELINE_OWNS_RECOMPUTE=true`
-- the on-demand GA4 refresh endpoint recomputes GA4 KPI/Benchmark state after updating the latest daily GA4 row
+- manual/on-demand GA4 daily-history writes are disabled; the configured daily scheduler owns daily refresh and its dependent KPI/Benchmark recompute
 - external source auto-refresh calls the GA4 KPI/Benchmark recompute helper directly after a campaign's upstream source values change
 - the GA4 KPI/Benchmark recompute helper also reconciles campaign-level KPI and Benchmark persisted `currentValue` fields from connected-platform totals after GA4, revenue, or spend refresh changes
 - when a GA4 KPI/Benchmark recompute runs for a campaign, breached GA4 KPIs and Benchmarks should restore exactly one active in-app alert row if the row is missing

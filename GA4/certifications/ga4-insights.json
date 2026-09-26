@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "sectionId": "ga4-insights-live",
-  "status": "PRODUCTION_READY",
-  "lastReviewedSha": "4be16c54c550a45dbf3104313c820ea47b453604",
-  "certifiedSha": "4be16c54c550a45dbf3104313c820ea47b453604",
-  "deployedSha": "4be16c54c550a45dbf3104313c820ea47b453604",
-  "invalidationReason": null,
+  "status": "UNVERIFIED",
+  "lastReviewedSha": "ca1fc5a873ab69fb747937768c31fcd53e16fd64",
+  "certifiedSha": null,
+  "deployedSha": null,
+  "invalidationReason": "Insights scheduler, daily-history, zero-date, UI, findings, and financial-window behavior changed after the last exact-runtime certificate; current deployed recertification is pending.",
   "previousCertification": {
     "status": "PRODUCTION_READY",
-    "certifiedSha": "09e3b64ed67fec70aa84f969a09aae1f368a4f02",
-    "deployedSha": "09e3b64ed67fec70aa84f969a09aae1f368a4f02"
+    "certifiedSha": "4be16c54c550a45dbf3104313c820ea47b453604",
+    "deployedSha": "4be16c54c550a45dbf3104313c820ea47b453604"
   },
   "configurationBoundary": {
     "scope": "live GA4 Insights tab only",
@@ -31,8 +31,9 @@
       "raw channel rows only; no guessed or proportional allocation"
     ],
     "windowRules": [
-      "campaign-reporting-timezone completed days only; the Daily chart ends on the latest imported day while rolling comparisons remain completed-day-cutoff anchored",
-      "two exact complete calendar windows for comparisons",
+      "scheduler-written campaign-reporting-timezone completed days only; page reads never contact GA4 or write daily history",
+      "visible Trends and findings begin at campaign creation and count bounded no-activity or missing dates as zero through the scheduler-derived history boundary",
+      "Daily requires one eligible campaign date; rolling comparison requires two adjacent complete calendar windows",
       "partial or incomplete months are not compared with full months",
       "valid zero, unavailable, stale last-good, blocked, and insufficient data remain distinct"
     ],
@@ -477,60 +478,60 @@
   "requiredTests": [
     {
       "id": "focused_freshness_live_scheduler",
-      "status": "passed",
-      "evidence": "The focused certification gate passes with explicit current-status mirror contradiction coverage; it is included in the current 44-file protected packet."
+      "status": "pending",
+      "evidence": "Historical scheduler coverage does not certify the current scheduler-only writer and zero-date materialization; focused current-revision validation is required."
     },
     {
       "id": "affected_shared_auth_scope",
-      "status": "passed",
-      "evidence": "The exact-4be16c54 current-version run passed the Insights/shared dependency boundary within 1,624 passing tests and zero blocking failures."
+      "status": "pending",
+      "evidence": "The exact-4be16c54 packet is historical. The current Insights dependency boundary must be rerun and frozen."
     },
     {
       "id": "typescript",
-      "status": "passed",
-      "evidence": "npm run check passed for certified runtime boundary 4be16c54c550a45dbf3104313c820ea47b453604."
+      "status": "pending",
+      "evidence": "Current-revision TypeScript validation is required before recertification."
     },
     {
       "id": "build",
-      "status": "passed",
-      "evidence": "npm run build passed for certified runtime boundary 4be16c54c550a45dbf3104313c820ea47b453604."
+      "status": "pending",
+      "evidence": "Current-revision production build validation is required before recertification."
     },
     {
       "id": "machine_gate",
-      "status": "passed",
-      "evidence": "The fail-closed machine checker passes after September 5 a58ff3a4 hash synchronization. Exact diff review limits changed shared runtime/test lines to the alert-enabled KPI-create wait and existing Notifications-query refresh; Insights inputs, finding calculations, UI, and report consumers are unchanged. Its scope and certified SHA remain 4be16c54."
+      "status": "pending",
+      "evidence": "The machine record is intentionally fail-closed as UNVERIFIED until current dependency hashes and exact-revision evidence are recorded."
     }
   ],
   "externalGates": [
     {
       "id": "exact_sha_deployment",
-      "status": "passed",
-      "evidence": "Render /api/health returned HTTP 200 with exact certified runtime boundary 4be16c54c550a45dbf3104313c820ea47b453604 on 2026-08-28."
+      "status": "pending",
+      "evidence": "The exact current application revision has not been confirmed and frozen in the deployed environment for Insights recertification."
     },
     {
       "id": "authenticated_owner_api_ui_parity",
-      "status": "passed",
-      "evidence": "Authenticated exact-4be16c54 read-only owner validation passed for property 542352127, Europe/Amsterdam, USD, three saved filters, exact cumulative and breakdown boundaries, source totals, expected-stale state, and unchanged campaign-scoped persistence."
+      "status": "pending",
+      "evidence": "Authenticated current-revision API/UI parity is required for scheduler-backed zero dates, chart boundaries, Data Summary, findings, and current targets."
     },
     {
       "id": "live_surface_value_parity",
-      "status": "passed",
-      "evidence": "All five Executive Financial values, summary values, channel rows, four Trends modes, tracker values, and visible findings matched the exact page-consumed scoped production inputs on deployed 4be16c54; Revenue was 72,766.69, Spend 2,699.75, Profit 70,066.94, ROAS 26.9531, ROI 2595.31%, and CPA 10.76."
+      "status": "pending",
+      "evidence": "Historical surface values do not prove the changed current Trends, Data Summary, findings, or financial refresh-window behavior."
     },
     {
       "id": "tenant_isolation",
-      "status": "passed",
-      "evidence": "Exact-4be16c54 tenant isolation failed closed with HTTP 404. The authorized temporary Clerk-only test user was deleted and its sessions revoked after validation; no analytics data was changed."
+      "status": "pending",
+      "evidence": "Current-revision authenticated owner and non-owner isolation must be reconfirmed for the changed dependency boundary."
     },
     {
       "id": "deterministic_scheduler",
-      "status": "passed",
-      "evidence": "The post-scheduler target audit on runtime 3c45aae7 carries to deployed revision 4be16c54 across byte-identical GA4 scheduler and recompute files. No exact-4be16c54 timer firing or global all-campaign scheduler-health claim is made; unrelated invalid test campaigns remain excluded."
+      "status": "pending",
+      "evidence": "The scheduler and recompute files changed materially; a current natural timer cycle must prove scoped zero-date persistence, last-good retention, and dependent recompute."
     },
     {
       "id": "dependency_hashes",
-      "status": "passed",
-      "evidence": "All protected dependency hashes match the exact revalidated boundary. The exact-4be16c54 machine gate, authenticated functional validator, 1,659-test current-version suite, TypeScript check, and production build passed."
+      "status": "pending",
+      "evidence": "Stored hashes describe the historical certified boundary. Current dependency hashes will be recorded only after the recertification candidate is frozen."
     }
   ],
   "configurationFingerprint": {

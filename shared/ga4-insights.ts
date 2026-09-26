@@ -413,6 +413,6 @@ export const resolveGA4InsightsCampaignToDateSufficiencyReason = (input: {
   const identity = resolveGA4KpiMetricIdentity(input.metric, input.name);
   const dependencies = getGA4KpiMetricDependencies(input.metric, input.name);
   return identity === "cpa" || dependencies.requiresRevenue && !input.hasImportedRevenueSource
-    ? "No completed GA4 reporting day is available for this campaign-to-date value yet."
+    ? "No completed GA4 reporting day is available for this connected-source value yet."
     : null;
 };

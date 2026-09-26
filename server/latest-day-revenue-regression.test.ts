@@ -287,6 +287,20 @@ describe("Latest Day Revenue regression guard", () => {
     expect(spendBreakdownRoute).not.toContain("toISODateUTC((campaign as any)?.startDate)");
   });
 
+  it("Campaign Chat uses the same all-records financial source boundary", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+    const chatStart = routesFile.indexOf('app.post("/api/campaigns/:id/chat"');
+    expect(chatStart).toBeGreaterThan(-1);
+    const chatRoute = routesFile.slice(chatStart);
+    expect(chatRoute).toContain('const connectedSourceStartDate = "1900-01-01";');
+    expect(chatRoute).toContain("storage.getSpendBreakdownBySource(campaignId, connectedSourceStartDate, today)");
+    expect(chatRoute).toContain("storage.getRevenueBreakdownBySource(campaignId, connectedSourceStartDate, today)");
+    expect(chatRoute).not.toContain("campaign.startDate ?");
+  });
+
   it("Auto-refresh scheduler has source-specific spend failure logs", () => {
     const schedulerFile = readFileSync(
       join(process.cwd(), "server", "auto-refresh-scheduler.ts"),

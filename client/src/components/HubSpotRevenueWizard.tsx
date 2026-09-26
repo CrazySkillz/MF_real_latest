@@ -96,7 +96,7 @@ export function HubSpotRevenueWizard(props: {
   // Default to offsite since the user is explicitly importing revenue in this flow.
   // Keep as an Advanced toggle to prevent double-counting when GA4 revenue is also present.
   const [revenueClassification, setRevenueClassification] = useState<"onsite_in_ga4" | "offsite_not_in_ga4">("offsite_not_in_ga4");
-  // Revenue is treated as revenue-to-date (campaign lifetime). Use a large lookback to avoid
+  // Revenue uses all available mapped records. Use a large lookback to avoid
   // forcing users to reason about windowing/date ranges in this flow.
   const [days] = useState<number>(3650);
   // Which HubSpot date field to use for revenue dating (close date vs last modified vs created)

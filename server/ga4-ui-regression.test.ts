@@ -213,7 +213,7 @@ describe("GA4 UI regression guard", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
 
     expect(ga4Metrics).toContain(
-      "Traffic metrics are cumulative from the initial GA4 import; Revenue is native GA4 campaign-to-date plus exact campaign-mapped imported revenue.",
+      "Traffic metrics are cumulative from the initial GA4 import; Revenue combines native GA4 revenue from the imported data window with exact campaign-mapped imported revenue.",
     );
   });
 
@@ -698,7 +698,7 @@ describe("GA4 UI regression guard", () => {
     expect(breakdownStart).toBeGreaterThan(-1);
     expect(breakdownEnd).toBeGreaterThan(breakdownStart);
     expect(breakdownSection).toContain(
-      "Traffic metrics are cumulative from the initial GA4 import; Revenue is native GA4 campaign-to-date plus exact campaign-mapped imported revenue.",
+      "Traffic metrics are cumulative from the initial GA4 import; Revenue combines native GA4 revenue from the imported data window with exact campaign-mapped imported revenue.",
     );
   });
 

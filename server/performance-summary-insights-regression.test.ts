@@ -274,15 +274,15 @@ describe("Performance Summary Recommended Actions decision engine", () => {
     expect(action.message).not.toContain("13.25%");
   });
 
-  it("uses campaign-to-date financial inputs and lower-is-better CPA direction", () => {
+  it("uses connected-source financial inputs and lower-is-better CPA direction", () => {
     const [action] = buildPerformanceRecommendedActions(baseInput({
       kpis: [{ metric: "cpa", name: "Cost Per Acquisition", currentValue: 10.76, targetValue: 9, timeframe: "lifetime", priority: "high" }],
     }));
 
     expect(action.type).toBe("warning");
     expect(action.title).toBe("Review Cost Per Acquisition");
-    expect(action.message).toContain("Verified $10.76 from campaign-to-date financial inputs versus the $9.00 KPI target");
-    expect(action.message).toContain("campaign-to-date financial inputs");
+    expect(action.message).toContain("Verified $10.76 from connected-source financial inputs versus the $9.00 KPI target");
+    expect(action.message).toContain("connected-source financial inputs");
   });
 
   it("ignores an older saved KPI value when verified source totals are newer", () => {
@@ -371,7 +371,7 @@ describe("Performance Summary Recommended Actions decision engine", () => {
 
     expect(action.type).toBe("success");
     expect(action.title).toBe("ROAS on target");
-    expect(action.message).toContain("Verified 26.95x from campaign-to-date financial inputs versus the 25x KPI target");
+    expect(action.message).toContain("Verified 26.95x from connected-source financial inputs versus the 25x KPI target");
     expect(action.message).toContain("No corrective action");
   });
 

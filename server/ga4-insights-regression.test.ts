@@ -225,7 +225,7 @@ describe("GA4 Insights regression guard", () => {
     expect(metadataSection).toContain("Saved KPI target + current values");
     expect(metadataSection).toContain("Saved Benchmark + current values");
     expect(metadataSection).toContain("GA4 completed daily history");
-    expect(metadataSection).toContain("Revenue/spend to-date totals");
+    expect(metadataSection).toContain("Connected-source revenue/spend totals");
     expect(metadataSection).toContain("GA4 native + imported revenue");
     expect(content).toContain("dataBasis: getInsightDataBasis(item),");
     expect(content).toContain("confidence: getInsightConfidence(item),");

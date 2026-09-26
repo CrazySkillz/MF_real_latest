@@ -80,8 +80,9 @@ Current consumer-only refinements after the `e5195f9a` GA4 certification-record 
   reason.
 - `1205ed49`: reconciled CSV/Google Sheets spend inputs can drive factual spend-source
   mix guidance; the Executive Action subtitle no longer calls fixed cards prioritized.
-- `4d54dd89`: current financial Revenue and CPA Conversions use GA4 Overview's ordered
-  campaign-to-date financial source instead of the cumulative traffic import boundary.
+- `4d54dd89`: historical correction that aligned financial Revenue and CPA Conversions
+  with GA4 Overview's ordered financial source; the current V1 boundary is the saved
+  initial-import date as documented below.
 - `1bea01ef` / `4be16c54`: Conversion Efficiency uses the same one-decimal traffic CVR
   shown by GA4 Overview and omits redundant numerator/denominator copy.
 - `19f05537`: the shared Budget PDF body preserves the live Financial Position ROAS
@@ -125,12 +126,18 @@ the GA4 analytics experience.
 - For a GA4-first campaign, cumulative Users, Sessions, traffic Conversions, and traffic
   CVR stay on the fixed initial-import-to-latest-completed-day window. Budget Conversion
   Efficiency reuses that same GA4 CVR input. Native GA4 Revenue and CPA Conversions use
-  GA4 Overview's ordered campaign-to-date financial source. These contracts are carried
+  GA4 Overview's ordered initial-import-to-latest-completed-day financial source, while
+  imported Revenue and Spend include all available mapped records. These contracts are carried
   separately through the shared aggregate and must not overwrite one another.
 - Source refresh and page refetch keep the consumers synchronized; synchronization is
   through authoritative backend state, never through tab-to-tab value copying.
 
 ### 2026-08-28 Current-Value Correction
+
+This historical correction used `campaign-to-date` terminology. The V1 boundary was
+standardized on `2026-09-26`: campaign metadata dates are pacing-only, native GA4
+financial values use the saved initial-import boundary, and imported financial sources
+use all available mapped records. That current rule supersedes the older boundary wording below.
 
 Root cause: ordinary `/outcome-totals` requests used the cumulative GA4 traffic import
 start as the native financial request start. That truncated campaign-to-date GA4

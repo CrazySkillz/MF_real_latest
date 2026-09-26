@@ -61,10 +61,7 @@ export async function deriveFinancialDailyComparisonSnapshot(
 
   const window = resolveGA4ImportToDateWindow(primary.importStartDate, campaign.reportingTimeZone, dependencies.now());
   if (!window || reportingDate < "1900-01-01" || reportingDate > window.endDate) return null;
-  const campaignStart = campaign.startDate ? new Date(campaign.startDate) : null;
-  const financialStartDate = campaignStart && !Number.isNaN(campaignStart.getTime())
-    ? campaignStart.toISOString().slice(0, 10)
-    : window.startDate;
+  const financialStartDate = window.startDate;
   const financialWindowStartDate = reportingDate < financialStartDate ? "1900-01-01" : financialStartDate;
 
   const [totals, revenueSourceTotal, spendSourceTotal] = await Promise.all([

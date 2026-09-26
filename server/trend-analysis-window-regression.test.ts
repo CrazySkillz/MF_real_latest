@@ -95,6 +95,6 @@ describe("Trend Analysis window regression guard", () => {
     expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).toContain("ArrowUpRight");
     expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).toContain("ArrowDownRight");
     expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).toContain("comparisonColorClass");
-    expect(page).toContain("Campaign-to-Date Performance Summary");
+    expect(page).toContain("Connected-Source Performance Summary");
   });
 });

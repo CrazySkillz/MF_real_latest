@@ -387,8 +387,8 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfTextCalls).not.toContain("Source Contribution");
     expect(pdfTextCalls).toContain("Executive Recommendations");
     expect(pdfTextCalls.some((text) => text.includes("Selected-Window Comparison"))).toBe(false);
-    expect(pdfTextCalls.some((text) => text.includes("Campaign-to-Date ROAS") && text.includes("26.95x") && text.includes("Reconciled Sources"))).toBe(true);
-    expect(pdfTextCalls.some((text) => text.includes("Campaign-to-Date Conversion Volume") && text.includes("12.8 conversions per 100 sessions"))).toBe(true);
+    expect(pdfTextCalls.some((text) => text.includes("Connected-Source ROAS") && text.includes("26.95x") && text.includes("Reconciled Sources"))).toBe(true);
+    expect(pdfTextCalls.some((text) => text.includes("Connected-Source Conversion Volume") && text.includes("12.8 conversions per 100 sessions"))).toBe(true);
     expect(pdfTextCalls.some((text) => text.includes("Sessions: 1,179"))).toBe(false);
     expect(pdfTextCalls.some((text) => text.includes("Sessions: 30"))).toBe(false);
     expect(pdfTextCalls.some((text) => text.includes("Cost per click: Unavailable"))).toBe(false);
@@ -425,7 +425,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
 
     expect(pdfTextCalls.some((text) => text.includes("ROAS Decision Context Not Verified"))).toBe(true);
     expect(pdfTextCalls.some((text) => text.includes("withheld from executive budget guidance"))).toBe(true);
-    expect(pdfTextCalls.some((text) => text.includes("Campaign-to-Date ROAS") && text.includes("Reconciled Sources"))).toBe(false);
+    expect(pdfTextCalls.some((text) => text.includes("Connected-Source ROAS") && text.includes("Reconciled Sources"))).toBe(false);
   });
 
   it("emits an actionable comparison only when both exact 30-day windows are complete", async () => {
@@ -587,7 +587,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     for (const heading of ["Financial Position", "Budget & Pacing", "Allocation & Sources", "Executive Action"]) {
       expect(pdfTextCalls.filter((text) => text === heading)).toHaveLength(1);
     }
-    expect(pdfTextCalls).toContain("Metric window: 2026-07-02 to 2026-08-27 (Europe/Amsterdam). Connected-source traffic is cumulative; financial values are campaign-to-date.");
+    expect(pdfTextCalls).toContain("Metric window: 2026-07-02 to 2026-08-27 (Europe/Amsterdam). Financial values use connected-source totals.");
     expect(pdfTextCalls).toContain("- Revenue: $72,766.69");
     expect(pdfTextCalls).toContain("- Spend: $2,699.75");
     expect(pdfTextCalls).toContain("- ROAS: 26.95x");

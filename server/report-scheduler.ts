@@ -2005,7 +2005,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         });
       }
       addText("Efficiency Trends", { bold: true, indent: 4 });
-      addText("- Return and cost trends are unavailable when compatible daily financial history is unavailable. Current campaign-to-date financial totals remain shown above.", { indent: 8 });
+      addText("- Return and cost trends are unavailable when compatible daily financial history is unavailable. Current connected-source financial totals remain shown above.", { indent: 8 });
       const qualityRows = trendWindowRows.filter((row: any) => dailyRate(row, "cvr") !== null || dailyRate(row, "engagementRate") !== null);
       if (qualityRows.length > 0) {
         addText("Conversion Quality Trend", { bold: true, indent: 8 });
@@ -2231,8 +2231,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         && trendFinancialInputsReady;
       if (trendROASDecisionReady) {
         trendRecommendations.push({
-          title: "Campaign-to-Date ROAS — Reconciled Sources",
-          message: `Cumulative ROAS is ${currentRoas.toFixed(2)}x using financial records dated no later than ${trendFinancialWindow.endDate}. It reconciles live GA4 native campaign-to-date revenue and every active stored imported revenue and spend source-to-date, all in ${trendCurrency}. Compare it with approved profit and ROAS targets before any budget change.`,
+          title: "Connected-Source ROAS — Reconciled Sources",
+          message: `Cumulative ROAS is ${currentRoas.toFixed(2)}x using financial records dated no later than ${trendFinancialWindow.endDate}. It reconciles GA4 native revenue from the imported data window and every active stored imported revenue and spend source-to-date, all in ${trendCurrency}. Compare it with approved profit and ROAS targets before any budget change.`,
         });
       } else if (currentRoas !== null) {
         trendRecommendations.push({
@@ -2243,7 +2243,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       if (performancePageTrafficTotals && Number(performancePageTrafficTotals.sessions) > 0) {
         const webCvr = (Number(performancePageTrafficTotals.conversions) / Number(performancePageTrafficTotals.sessions)) * 100;
         trendRecommendations.push({
-          title: "Campaign-to-Date Conversion Volume",
+          title: "Connected-Source Conversion Volume",
           message: `Current cumulative data shows ${webCvr.toFixed(1)} conversions per 100 sessions. Review conversion-event configuration and campaign targets before judging conversion quality.`,
         });
       }
@@ -2349,7 +2349,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   addText(`Campaign: ${campaignName || "Campaign"}`);
   addText(`Report Type: ${campaignDeepDiveReportTypeLabels[reportType] || reportType || "Custom Report"}`);
   addText(isFinancialAnalysisReport
-    ? `${customReportWindowLabel} Connected-source traffic is cumulative; financial values are campaign-to-date.`
+    ? `${customReportWindowLabel} Financial values use connected-source totals.`
     : isExecutiveSummaryReport
       ? executiveMetricBasis
       : isCampaignDeepDiveCustomReportComposition

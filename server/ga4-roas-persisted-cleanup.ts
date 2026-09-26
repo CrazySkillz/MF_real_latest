@@ -9,6 +9,7 @@ import {
   kpiProgress,
 } from "@shared/schema";
 import { computeBenchmarkRating, computeBenchmarkVariance } from "./ga4-kpi-benchmark-jobs";
+import { resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 
 type CleanupMode = "dry-run" | "apply";
 
@@ -63,16 +64,6 @@ export const computePersistedRoasRatio = (revenue: number, spend: number) => {
   return round2(spend > 0 ? revenue / spend : 0);
 };
 
-const isoDateUTC = (date: Date) => date.toISOString().slice(0, 10);
-
-const campaignStartDate = (campaign: any) => {
-  const raw = campaign?.startDate || campaign?.createdAt || null;
-  if (!raw) return "2000-01-01";
-  const date = new Date(raw);
-  if (Number.isNaN(date.getTime())) return "2000-01-01";
-  return isoDateUTC(date);
-};
-
 async function getActivePropertyIds(campaignId: string): Promise<string[]> {
   const rows = await db
     .select({ propertyId: ga4Connections.propertyId })
@@ -83,14 +74,18 @@ async function getActivePropertyIds(campaignId: string): Promise<string[]> {
 
 async function getPersistedRoasForDate(campaign: any, propertyId: string, date: string) {
   const campaignId = String(campaign?.id || "");
-  const startDate = campaignStartDate(campaign);
-  const daily = await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, date);
+  const connection = await storage.getGA4Connection(campaignId, propertyId);
+  const importWindow = resolveGA4ImportToDateWindow(connection?.importStartDate, campaign?.reportingTimeZone);
+  if (!importWindow) throw new Error("GA4 import window is unavailable for persisted ROAS cleanup");
+  const daily = date < importWindow.startDate
+    ? []
+    : await storage.getGA4DailyMetrics(campaignId, propertyId, importWindow.startDate, date);
   const ga4Revenue = (Array.isArray(daily) ? daily : []).reduce(
     (sum, row: any) => sum + parseNumber(row?.revenue),
     0
   );
-  const importedRevenue = await storage.getRevenueTotalForRange(campaignId, "2000-01-01", date, "ga4");
-  const spend = await storage.getSpendTotalForRange(campaignId, "2000-01-01", date, "ga4");
+  const importedRevenue = await storage.getRevenueTotalForRange(campaignId, "1900-01-01", date, "ga4");
+  const spend = await storage.getSpendTotalForRange(campaignId, "1900-01-01", date, "ga4");
   const totalRevenue = round2(ga4Revenue + parseNumber((importedRevenue as any)?.totalRevenue));
   const totalSpend = round2(parseNumber((spend as any)?.totalSpend));
 

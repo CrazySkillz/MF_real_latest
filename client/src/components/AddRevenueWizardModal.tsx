@@ -1823,7 +1823,7 @@ export function AddRevenueWizardModal(props: {
 
   const description = step === "select"
     ? (platformContext === 'linkedin' ? "Choose the source that attributes revenue back to LinkedIn ad activity." : platformContext === 'google_ads' ? "Choose the source that attributes revenue back to Google Ads activity." : platformContext === 'instagram' ? "Choose the source that attributes revenue back to Instagram ad activity." : platformContext === 'tiktok' ? "Choose the source that attributes revenue back to TikTok ad activity." : platformContext === 'google_sheets' ? "Choose the confirmed revenue source for Google Sheets analytics." : platformContext === 'custom_integration' ? "Choose the confirmed revenue source for Custom Integration analytics." : "Choose where your revenue data comes from.")
-    : `Currency: ${currency} • Revenue is treated as “to date” (campaign lifetime)`;
+    : `Currency: ${currency} • Revenue uses all available mapped records`;
 
   const shouldShowGoogleSheetsCreatePicker = !isEditing && (platformContext === "google_sheets" || platformContext === "custom_integration") && !sheetsConnectionId;
   const isEmbeddedWizardStep = step === "hubspot" || step === "salesforce" || step === "shopify";
@@ -2160,7 +2160,7 @@ export function AddRevenueWizardModal(props: {
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base">Revenue</CardTitle>
-                    <CardDescription>Revenue to date (lifetime).</CardDescription>
+                    <CardDescription>Enter the current total revenue.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

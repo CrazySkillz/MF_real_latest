@@ -495,7 +495,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(builder).toContain("buildFinancialBudgetAction");
     expect(builder).toContain("buildFinancialAllocationAction");
     expect(builder).toContain('const isFinancialAnalysisReport = reportType === "financial-analysis" || selectedSections.some((section: string) => section.startsWith("financial-analysis:"));');
-    expect(builder).toContain('financial values are campaign-to-date');
+    expect(builder).toContain('Financial values use connected-source totals');
   });
 
   it("loads latest aggregate context for scheduled Campaign DeepDive PDFs", () => {

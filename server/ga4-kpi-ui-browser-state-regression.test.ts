@@ -46,8 +46,8 @@ describe("GA4 KPI Commit 7 UI/browser state contract", () => {
   it("states the exact standard reporting windows, including legacy aliases", () => {
     expect(getGA4KpiReportingWindowLabel("totalSessions")).toBe("Initial import through latest completed reporting day");
     expect(getGA4KpiReportingWindowLabel("Engagement Rate")).toBe("Initial import through latest completed reporting day");
-    expect(getGA4KpiReportingWindowLabel("totalRevenue")).toBe("Campaign-to-date financial inputs");
-    expect(getGA4KpiReportingWindowLabel("ROAS")).toBe("Campaign-to-date financial inputs");
+    expect(getGA4KpiReportingWindowLabel("totalRevenue")).toBe("Connected-source financial inputs");
+    expect(getGA4KpiReportingWindowLabel("ROAS")).toBe("Connected-source financial inputs");
     expect(getGA4KpiReportingWindowLabel("__custom__")).toBe("Saved custom value (no standard GA4 reporting window)");
   });
 
@@ -99,6 +99,7 @@ describe("GA4 KPI Commit 7 UI/browser state contract", () => {
     expect(pdf).toContain('getGA4KpiReportingWindowLabel("sessions")');
     expect(pdf).toContain('getGA4KpiReportingWindowLabel("revenue")');
     expect(pdf).not.toContain("Traffic/rate: 30 completed reporting days in campaign timezone. Financial: campaign-to-date.");
+    expect(pdf).not.toContain("Campaign-to-date financial inputs");
     expect(pdf).toContain('kpiTracker.scored > 0 ? `${Number(kpiTracker.avgPct || 0).toFixed(1)}%` : "—"');
     expect(cards).toContain("kpi.alertsEnabled && consumerState.eligible");
     expect(cards).toContain('const hasAlertThreshold = kpi.alertThreshold !== null && typeof kpi.alertThreshold !== "undefined"');

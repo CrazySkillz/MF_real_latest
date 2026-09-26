@@ -68,13 +68,6 @@ const buildExecutiveFinancialsDescription = (spendLabels: string[], revenueLabel
   return "No spend or revenue source is connected.";
 };
 
-const toISODateUTC = (value: any) => {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
-};
-
 const parseGA4CampaignFilter = (raw: any): CampaignFilter => {
   if (raw === null || raw === undefined) return undefined;
   const s = String(raw || "").trim();
@@ -326,10 +319,10 @@ const buildInsightsItems = (payload: any) => {
     items.push({
       severity: "high",
       title: "Spend without revenue",
-      description: `Spend-to-date is ${payload.formatMoney(financialSpend)}, but revenue-to-date is ${payload.formatMoney(0)}.`,
+      description: `Connected-source spend is ${payload.formatMoney(financialSpend)}, but connected-source revenue is ${payload.formatMoney(0)}.`,
       recommendation: "Validate revenue tracking and attribution for this campaign before increasing spend.",
       category: "finance",
-      dataBasis: "Revenue/spend to-date totals",
+      dataBasis: "Connected-source revenue/spend totals",
       confidence: "High",
     });
   }
@@ -481,9 +474,7 @@ async function buildGA4ReportPayload(report: any) {
     throw new Error('GA4_AD_COMPARISON_IMPORT_WINDOW_UNAVAILABLE');
   }
   const reportingWindow = getReportingDateWindow(lookbackDays, (campaign as any)?.reportingTimeZone);
-  const financialStartDate = toISODateUTC((campaign as any)?.startDate)
-    || toISODateUTC((campaign as any)?.createdAt)
-    || "2000-01-01";
+  const financialStartDate = reportCumulativeWindow.startDate;
   const financialEndDate = reportCumulativeWindow.endDate;
   const spendSourceStartDate = "1900-01-01";
   const importedRevenueStartDate = "1900-01-01";
@@ -1216,7 +1207,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         ]),
         [52, 22, 20, 28, 26, 36],
         COLORS.overview,
-        "Traffic metrics are cumulative from the initial GA4 import; Revenue is native GA4 campaign-to-date plus exact campaign-mapped imported revenue.",
+        "Traffic metrics are cumulative from the initial GA4 import; Revenue combines native GA4 revenue from the imported data window with exact campaign-mapped imported revenue.",
       );
     }
     if (includeLandingPages) {

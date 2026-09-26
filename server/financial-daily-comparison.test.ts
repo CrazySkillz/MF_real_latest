@@ -128,8 +128,8 @@ describe("read-only financial daily comparison derivation", () => {
 
     const result = await deriveFinancialDailyComparisonSnapshot({ campaignId, reportingDate }, deps);
 
-    expect(deps.getCampaignMetricTotalsAtDate).toHaveBeenCalledWith(campaignId, reportingDate, "2026-08-20");
-    expect((result?.metrics as any)?.financialDaily?.currentValueWindow.startDate).toBe("2026-08-20");
+    expect(deps.getCampaignMetricTotalsAtDate).toHaveBeenCalledWith(campaignId, reportingDate, "2026-08-09");
+    expect((result?.metrics as any)?.financialDaily?.currentValueWindow.startDate).toBe("2026-08-09");
   });
 
   it("preserves source totals with authoritative native zero before campaign start", async () => {

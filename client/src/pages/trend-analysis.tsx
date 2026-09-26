@@ -1310,8 +1310,8 @@ export default function TrendAnalysis() {
       if (usesCumulativeGA4Consumer && typeof roas === "number" && executiveROASDecisionReady) {
         pushInsight({
           type: "info",
-          title: "Campaign-to-Date ROAS — Reconciled Sources",
-          message: `Cumulative ROAS is ${roas.toFixed(2)}x using financial records dated no later than ${currentValueWindow.endDate}. It reconciles live GA4 native campaign-to-date revenue and every active stored imported revenue and spend source-to-date, all in ${campaignCurrency}. Compare it with approved profit and ROAS targets before any budget change.`,
+          title: "Connected-Source ROAS — Reconciled Sources",
+          message: `Cumulative ROAS is ${roas.toFixed(2)}x using financial records dated no later than ${currentValueWindow.endDate}. It reconciles GA4 native revenue from the imported data window and every active stored imported revenue and spend source-to-date, all in ${campaignCurrency}. Compare it with approved profit and ROAS targets before any budget change.`,
         });
       } else if (usesCumulativeGA4Consumer && typeof roas === "number") {
         pushInsight({
@@ -1345,7 +1345,7 @@ export default function TrendAnalysis() {
       if (usesCumulativeGA4Consumer && typeof webCvr === "number") {
         pushInsight({
           type: "info",
-          title: "Campaign-to-Date Conversion Volume & Frequency",
+          title: "Connected-Source Conversion Volume & Frequency",
           message: `Current cumulative data shows ${formatExactTrendCount(conversionFunnelData.current.conversions)} conversions, or ${webCvr.toFixed(1)} conversions per 100 sessions. Review conversion-event configuration and campaign targets before judging conversion quality.`,
         });
       } else if (typeof webCvr === "number") {
@@ -1612,7 +1612,7 @@ export default function TrendAnalysis() {
                   {/* Executive KPI scorecard: one card per decision metric. */}
                   {authoritativeHeadlineCurrent ? <>
                   <div className="space-y-1">
-                    <h2 className="text-2xl font-semibold text-foreground">Campaign-to-Date Performance Summary</h2>
+                    <h2 className="text-2xl font-semibold text-foreground">Connected-Source Performance Summary</h2>
                     {cumulativeDataThroughLabel && (
                       <p className="text-sm text-muted-foreground">
                         Current totals are cumulative through {cumulativeDataThroughLabel}; the selector controls charts and the exact comparison date.

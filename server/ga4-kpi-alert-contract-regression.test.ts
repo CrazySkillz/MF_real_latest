@@ -172,6 +172,26 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledTimes(1);
   });
 
+  it("uses the saved GA4 import start before createdAt when no campaign start is configured", async () => {
+    storageMock.getCampaign.mockResolvedValue({
+      ...campaign,
+      startDate: null,
+      createdAt: "2026-07-20T00:00:00.000Z",
+    });
+    enableProvider();
+
+    await resolveAlertCurrentValueForDecision(row("revenue"));
+
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith(
+      connection.propertyId,
+      "access-token",
+      "2026-07-01",
+      "2026-07-31",
+      "scoped_campaign",
+      "USD",
+    );
+  });
+
   it("shares an in-flight read but still waits for authoritative provider completion", async () => {
     enableProvider();
     const cache = new Map<string, Promise<any>>();
@@ -332,7 +352,7 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     expect(storageMock.getSpendTotalForRange).toHaveBeenCalledTimes(2);
   });
 
-  it.each(["campaign", "property", "token", "filter", "currency", "start", "end"])("keeps changed %s scope independent", async (changed) => {
+  it.each(["campaign", "property", "token", "filter", "currency", "end"])("keeps changed %s scope independent", async (changed) => {
     const oauth = enableProvider();
     const cache = new Map<string, Promise<any>>();
     await resolveAlertCurrentValueForDecision(row("revenue"), cache);
@@ -348,7 +368,6 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     }
     if (changed === "filter") storageMock.getCampaign.mockResolvedValue({ ...campaign, ga4CampaignFilter: "other_campaign" });
     if (changed === "currency") storageMock.getCampaign.mockResolvedValue({ ...campaign, currency: "EUR" });
-    if (changed === "start") storageMock.getCampaign.mockResolvedValue({ ...campaign, startDate: "2026-06-01" });
     if (changed === "end") vi.setSystemTime(new Date("2026-08-02T12:00:00Z"));
     await resolveAlertCurrentValueForDecision(next, cache);
     expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledTimes(2);
@@ -451,7 +470,7 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 
-  it("uses campaign-to-date financial conversions for CPA alerts while traffic keeps the import boundary", async () => {
+  it("uses import-window financial conversions for CPA alerts", async () => {
     storageMock.getCampaign.mockResolvedValue({
       ...campaign,
       startDate: "2026-06-20T00:00:00.000Z",
@@ -478,13 +497,13 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith(
       campaign.id,
       connection.propertyId,
-      "2026-06-20",
+      "2026-07-01",
       "2026-07-31",
     );
     expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith(
       connection.propertyId,
       "access-token",
-      "2026-06-20",
+      "2026-07-01",
       "2026-07-31",
       "scoped_campaign",
       "USD",

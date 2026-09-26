@@ -3618,7 +3618,7 @@ export default function GA4Metrics() {
             fC(Number((Number(c?.revenue || 0) + Number(campaignBreakdownMatchedExternalRevenue.get(String(c?.name || "")) || 0)).toFixed(2))),
           ]),
           [52, 22, 20, 28, 26, 36],
-          "Traffic metrics are cumulative from the initial GA4 import; Revenue is native GA4 campaign-to-date plus exact campaign-mapped imported revenue.",
+          "Traffic metrics are cumulative from the initial GA4 import; Revenue combines native GA4 revenue from the imported data window with exact campaign-mapped imported revenue.",
         );
       }
 
@@ -4927,10 +4927,10 @@ export default function GA4Metrics() {
     if (id === "integrity:target_lists_unverified") return "Campaign-scoped KPI/Benchmark list requests";
     if (id.startsWith("integrity:kpi")) return "Saved KPI configuration";
     if (id.startsWith("integrity:bench")) return "Saved Benchmark configuration";
-    if (id === "financial:ga4_to_date_unavailable" || id === "financial:ga4_to_date_stale") return "GA4 to-date totals";
+    if (id === "financial:ga4_to_date_unavailable" || id === "financial:ga4_to_date_stale") return "GA4 imported-window totals";
     if (id === "financial:revenue_missing" || id === "financial:spend_missing") return "Source configuration";
     if (id === "financial:negative_revenue") return "GA4 native + imported revenue sources available to this campaign";
-    if (id.startsWith("financial:")) return "Revenue/spend to-date totals";
+    if (id.startsWith("financial:")) return "Connected-source revenue/spend totals";
     if (id.startsWith("kpi:") || id.startsWith("positive:kpi:")) return "Saved KPI target + current values";
     if (id.startsWith("bench:")) return "Saved Benchmark + current values";
     if (id === "info:top_channel") return "GA4 campaign breakdown";
@@ -5190,17 +5190,17 @@ export default function GA4Metrics() {
       });
     }
 
-    // 0b) Executive financial integrity checks (to-date / lifetime)
+    // 0b) Executive financial integrity checks for connected-source totals.
     // These should update immediately when a user imports Spend/Revenue, even if no KPIs/Benchmarks exist yet.
     // IMPORTANT: distinguish "missing configuration" from true zeros (enterprise-grade reliability).
     if (ga4ToDateError) {
       out.push({
         id: ga4ToDateResp === undefined ? "financial:ga4_to_date_unavailable" : "financial:ga4_to_date_stale",
         severity: ga4ToDateResp === undefined ? "high" : "medium",
-        title: ga4ToDateResp === undefined ? "GA4 lifetime totals are unavailable" : "GA4 lifetime totals are stale",
+        title: ga4ToDateResp === undefined ? "GA4 imported-window totals are unavailable" : "GA4 imported-window totals are stale",
         description: ga4ToDateResp === undefined
-          ? "We couldn’t fetch GA4 to-date totals for this campaign/property, so revenue/conversion-based executive metrics are unavailable."
-          : "The latest GA4 to-date refresh failed. Last-good lifetime values remain visible, but financial performance conclusions are withheld until refresh succeeds.",
+          ? "We couldn’t fetch GA4 totals from the saved import date for this campaign/property, so revenue/conversion-based executive metrics are unavailable."
+          : "The latest GA4 imported-window refresh failed. Last-good values remain visible, but financial performance conclusions are withheld until refresh succeeds.",
         recommendation: "Reconnect GA4 for this campaign, then refresh. If the issue persists, verify OAuth scopes and property access.",
       });
     }
@@ -5219,7 +5219,7 @@ export default function GA4Metrics() {
         severity: "high",
         title: "Spend is not connected",
         description: "Spend is not configured for this campaign, so ROI/ROAS/CPA and spend-based KPIs/Benchmarks are blocked until a spend source is added.",
-        recommendation: "Import spend-to-date to enable spend-based executive metrics.",
+        recommendation: "Import spend to enable spend-based executive metrics.",
       });
     }
 
@@ -5227,8 +5227,8 @@ export default function GA4Metrics() {
       out.push({
         id: "financial:spend_no_revenue",
         severity: "high",
-        title: "Spend recorded, but revenue is $0 to date",
-        description: `Spend-to-date is ${formatMoney(Number(financialSpend || 0))}, but revenue-to-date is ${formatMoney(0)} (${toDateRangeLabel}).`,
+        title: "Spend recorded, but connected-source revenue is $0",
+        description: `Connected-source spend is ${formatMoney(Number(financialSpend || 0))}, but connected-source revenue is ${formatMoney(0)} (${toDateRangeLabel}).`,
         recommendation: "Verify revenue events and connected revenue source records for this campaign and reporting window.",
       });
     }
@@ -5237,8 +5237,8 @@ export default function GA4Metrics() {
       out.push({
         id: "financial:revenue_no_spend",
         severity: "medium",
-        title: "Revenue exists, but spend is $0 to date",
-        description: `Revenue-to-date is ${formatMoney(Number(financialRevenue || 0))} (${toDateRangeLabel}), but spend-to-date is ${formatMoney(0)}.`,
+        title: "Revenue exists, but connected-source spend is $0",
+        description: `Connected-source revenue is ${formatMoney(Number(financialRevenue || 0))} (${toDateRangeLabel}), but connected-source spend is ${formatMoney(0)}.`,
         recommendation: "Verify the connected spend source and reporting window before acting on ROI, ROAS, or CPA.",
       });
     }
@@ -5246,10 +5246,10 @@ export default function GA4Metrics() {
       out.push({
         id: "financial:ga4_no_completed_window",
         severity: "medium",
-        title: "GA4 campaign-to-date metrics are not available yet",
+        title: "GA4 connected-source metrics are not available yet",
         description: activeRevenueSource
-          ? "The campaign has no completed GA4 reporting day yet. Native revenue and conversion-dependent campaign-to-date values are withheld; independently imported revenue remains available."
-          : "The campaign has no completed GA4 reporting day yet. Native revenue and conversion-dependent campaign-to-date values are withheld rather than treated as zero or as a missing connection.",
+          ? "The campaign has no completed GA4 reporting day yet. Native revenue and conversion-dependent connected-source values are withheld; independently imported revenue remains available."
+          : "The campaign has no completed GA4 reporting day yet. Native revenue and conversion-dependent connected-source values are withheld rather than treated as zero or as a missing connection.",
         recommendation: "Wait until the campaign has a completed reporting day in its configured timezone, then refresh Insights.",
       });
     }
@@ -5258,8 +5258,8 @@ export default function GA4Metrics() {
       out.push({
         id: "financial:negative_revenue",
         severity: "high",
-        title: "Revenue is negative to date",
-        description: `Revenue-to-date is ${formatMoney(Number(financialRevenue || 0))} (${toDateRangeLabel}); it is not treated as zero. Revenue-to-date uses GA4 native revenue plus imported revenue sources.`,
+        title: "Connected-source revenue is negative",
+        description: `Connected-source revenue is ${formatMoney(Number(financialRevenue || 0))} (${toDateRangeLabel}); it is not treated as zero. The total uses GA4 native revenue from the imported data window plus imported revenue sources.`,
         recommendation: "Verify refunds, chargebacks, adjustments, and revenue-event configuration before acting on revenue, ROI, or ROAS.",
       });
     }
@@ -5268,8 +5268,8 @@ export default function GA4Metrics() {
       out.push({
         id: "financial:negative_spend",
         severity: "high",
-        title: "Spend is negative to date",
-        description: `Spend-to-date is ${formatMoney(Number(financialSpend || 0))}; ROI, ROAS, and CPA are withheld because negative spend is not a valid denominator.`,
+        title: "Connected-source spend is negative",
+        description: `Connected-source spend is ${formatMoney(Number(financialSpend || 0))}; ROI, ROAS, and CPA are withheld because negative spend is not a valid denominator.`,
         recommendation: "Verify credits, refunds, and spend-source signs before using spend-based metrics.",
       });
     }
@@ -6573,7 +6573,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Revenue & Financial</h3>
-                        <p className="text-sm text-muted-foreground/70">Campaign-to-date financial performance and return on investment</p>
+                        <p className="text-sm text-muted-foreground/70">Connected-source financial performance and return on investment</p>
                       </div>
                       {/* Revenue & Spend cards — always show when any financial data exists */}
                       <div className="grid gap-5 lg:grid-cols-2">
@@ -6752,7 +6752,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Campaign Breakdown</h3>
-                        <p className="text-sm text-muted-foreground/70">Traffic metrics are cumulative from the initial GA4 import; Revenue is native GA4 campaign-to-date plus exact campaign-mapped imported revenue.</p>
+                        <p className="text-sm text-muted-foreground/70">Traffic metrics are cumulative from the initial GA4 import; Revenue combines native GA4 revenue from the imported data window with exact campaign-mapped imported revenue.</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">

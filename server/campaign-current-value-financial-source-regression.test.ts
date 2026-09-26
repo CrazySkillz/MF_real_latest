@@ -60,7 +60,7 @@ describe("campaign current-value financial source contract", () => {
 
   afterEach(() => vi.useRealTimers());
 
-  it("keeps native revenue and conversions campaign-to-date while retaining source-to-date imports", async () => {
+  it("keeps native revenue and conversions on the import window while retaining source-to-date imports", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-21T12:00:00.000Z"));
     storageMock.getGA4DailyMetrics.mockResolvedValue([{ revenue: 500, conversions: 25 }]);
@@ -70,11 +70,11 @@ describe("campaign current-value financial source contract", () => {
     await refreshCampaignCurrentValuesForCampaign("campaign-1");
 
     expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-07-01", "2026-08-20");
-    expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-05-20", "2026-08-20");
+    expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledTimes(2);
     expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-20", "ga4");
     expect(storageMock.getSpendTotalForRange).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-20", "ga4");
     expect(storageMock.getSpendBreakdownBySource).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-20", "ga4");
-    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith("properties/123", "token", "2026-05-20", "2026-08-20", [], "USD");
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith("properties/123", "token", "2026-07-01", "2026-08-20", [], "USD");
     expect(storageMock.updateKPI).toHaveBeenCalledWith("campaign-revenue", { currentValue: "1300" });
   });
 
@@ -110,20 +110,21 @@ describe("campaign current-value financial source contract", () => {
     expect(totals).toMatchObject({ revenue: 1300, ga4Revenue: 1000, financialConversions: 40 });
     expect(storageMock.getGA4Connections).toHaveBeenCalledWith("campaign-1", { migrateLegacyTokens: false });
     expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-07-01", "2026-08-12");
-    expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-05-20", "2026-08-12");
+    expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledTimes(2);
     expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-12", "ga4");
     expect(storageMock.getSpendTotalForRange).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-12", "ga4");
-    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith("properties/123", "token", "2026-05-20", "2026-08-12", [], "USD");
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith("properties/123", "token", "2026-07-01", "2026-08-12", [], "USD");
     expect(ga4ServiceMock.getAcquisitionBreakdown).not.toHaveBeenCalled();
     expect(await getCampaignMetricTotalsAtDate("campaign-1", "2026-06-30"))
-      .toMatchObject({ revenue: 1300, ga4Revenue: 1000, financialConversions: 40, ga4Available: false });
-    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenLastCalledWith("properties/123", "token", "2026-05-20", "2026-06-30", [], "USD");
+      .toMatchObject({ revenue: 300, ga4Revenue: 0, financialConversions: 0, ga4Available: false, ga4FinancialSource: "pre_campaign_zero" });
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledTimes(1);
     expect(await getCampaignMetricTotalsAtDate("campaign-1", "2026-02-30")).toBeNull();
   });
 
-  it("retains exact source-to-date financials before the native campaign window", async () => {
+  it("ignores the unused campaign start field and uses the GA4 import window", async () => {
     storageMock.getCampaign.mockResolvedValue({
       id: "campaign-1",
+      startDate: "2026-09-08T00:00:00.000Z",
       createdAt: "2026-09-08T10:06:04.469Z",
       currency: "USD",
       reportingTimeZone: "Europe/Amsterdam",
@@ -131,22 +132,38 @@ describe("campaign current-value financial source contract", () => {
     storageMock.getGA4DailyMetrics.mockResolvedValue([{ revenue: 5572.8, conversions: 25 }]);
     storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 60902, sourceIds: ["revenue-1"] });
     storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 300, sourceIds: ["spend-1"] });
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ totals: { revenue: 5572.8, conversions: 25 } });
 
     const totals = await getCampaignMetricTotalsAtDate("campaign-1", "2026-09-05");
 
     expect(totals).toMatchObject({
-      revenue: 60902,
-      ga4Revenue: 0,
+      revenue: 66474.8,
+      ga4Revenue: 5572.8,
       spend: 300,
-      financialConversions: 0,
+      financialConversions: 25,
       revenueAvailable: true,
       spendAvailable: true,
       ga4RevenueAvailable: true,
       financialConversionsAvailable: true,
-      ga4FinancialSource: "pre_campaign_zero",
+      ga4FinancialSource: "provider_to_date",
     });
-    expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledTimes(1);
-    expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith("properties/123", "token", "2026-07-01", "2026-09-05", [], "USD");
+  });
+
+  it("uses the saved GA4 import start before createdAt when no campaign start is configured", async () => {
+    storageMock.getCampaign.mockResolvedValue({
+      id: "campaign-1",
+      createdAt: "2026-09-08T10:06:04.469Z",
+      currency: "USD",
+      reportingTimeZone: "Europe/Amsterdam",
+    });
+    storageMock.getGA4DailyMetrics.mockResolvedValue([{ revenue: 5572.8, conversions: 25 }]);
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ totals: { revenue: 5572.8, conversions: 25 } });
+
+    const totals = await getCampaignMetricTotalsAtDate("campaign-1", "2026-09-05");
+
+    expect(totals).toMatchObject({ ga4Revenue: 5572.8, financialConversions: 25, ga4FinancialSource: "provider_to_date" });
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith("properties/123", "token", "2026-07-01", "2026-09-05", [], "USD");
   });
 
   it("uses an explicit import boundary for an exact historical financial query", async () => {

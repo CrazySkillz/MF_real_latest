@@ -681,7 +681,7 @@ export default function FinancialAnalysis() {
   ) => demoMode || hasCampaignToDateWindow ? metric : {
     available: false,
     value: 0,
-    unavailableReasons: [`${metricName} is withheld until every input has a certified campaign-to-date window`],
+    unavailableReasons: [`${metricName} is withheld until every input has a certified connected-source scope`],
   };
   const paidMediaEfficiencyCompatibility = resolveFinancialPaidMediaEfficiencyCompatibility(financialMainSources);
   const paidMediaEfficiencyMetrics = [
@@ -1114,7 +1114,7 @@ export default function FinancialAnalysis() {
                 <section aria-labelledby="paid-media-efficiency-heading" className="space-y-4">
                   <div>
                     <h2 id="paid-media-efficiency-heading" className="text-xl font-semibold">Paid Media Efficiency</h2>
-                    <p className="text-sm text-muted-foreground">Shown only when compatible campaign-to-date paid-media inputs are available.</p>
+                    <p className="text-sm text-muted-foreground">Shown only when compatible connected-source paid-media inputs are available.</p>
                   </div>
                   <Card>
                     <CardContent className="space-y-5 p-6">

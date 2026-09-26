@@ -173,8 +173,7 @@ async function getCampaignMetricTotalsForEndDate(
     || !ga4Window || exactEndDate < "1900-01-01" || exactEndDate > ga4Window.endDate)) return null;
   const endDate = exactEndDate || ga4Window?.endDate || todayUTC();
   const financialStartDate = toISODateUTC(exactFinancialStartDate)
-    || toISODateUTC((campaign as any)?.startDate)
-    || toISODateUTC((campaign as any)?.createdAt)
+    || ga4Window?.startDate
     || "2000-01-01";
   const isBeforeFinancialStart = Boolean(exactEndDate && exactEndDate < financialStartDate);
   const financialSourceStartDate = "1900-01-01";

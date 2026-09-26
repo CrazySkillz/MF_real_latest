@@ -27,7 +27,7 @@ const state = (
 export function getGA4KpiReportingWindowLabel(metric: unknown, name?: unknown): string {
   const identity = resolveGA4KpiMetricIdentity(metric, name);
   if (identity === "revenue" || identity === "roas" || identity === "roi" || identity === "cpa") {
-    return "Campaign-to-date financial inputs";
+    return "Connected-source financial inputs";
   }
   if (identity) return "Initial import through latest completed reporting day";
   return "Saved custom value (no standard GA4 reporting window)";

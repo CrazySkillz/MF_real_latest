@@ -2604,7 +2604,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Spend-to-date (campaign lifetime) — single source of truth for exec financials (ROI/ROAS/etc).
+  // Spend across all available mapped records — single source of truth for exec financials (ROI/ROAS/etc).
   // This avoids forcing users to map dates for spend imports.
   app.get("/api/campaigns/:id/spend-to-date", requireCampaignAccessParamId, async (req, res) => {
     try {
@@ -3429,7 +3429,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // NOTE: GA4 to-date totals route is defined later in this file (single authoritative handler).
 
-  // Imported revenue "to date" (campaign lifetime). Used as fallback when GA4 has no revenue metric configured.
+  // Imported revenue across all available mapped records. Used as fallback when GA4 has no revenue metric configured.
   app.get("/api/campaigns/:id/revenue-to-date", async (req, res) => {
     try {
       res.setHeader("Cache-Control", "no-store");
@@ -4111,7 +4111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // NOTE: /api/campaigns/:id/revenue-to-date is defined above (campaign start -> yesterday).
+  // NOTE: /api/campaigns/:id/revenue-to-date is defined above (all available mapped records).
 
   const deactivateRevenueSourcesForCampaign = async (
     campaignId: string,
@@ -9438,7 +9438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GA4 to-date totals (campaign lifetime) for executive financial metrics.
+  // Native GA4 totals from the saved initial-import boundary for executive financial metrics.
   // Uses GA4 Data API directly (does not rely on the daily fact table retention window).
   app.get("/api/campaigns/:id/ga4-to-date", async (req, res) => {
     try {
@@ -9454,24 +9454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
       const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
 
-      // Native financial totals remain campaign-to-date. An explicit campaign
-      // start wins; otherwise the saved GA4 import start is the stable boundary.
-      const explicitCampaignStartDate = (() => {
-        const raw = (campaign as any)?.startDate || null;
-        if (!raw) return null;
-        const d = new Date(raw);
-        if (Number.isNaN(d.getTime())) return null;
-        return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
-      })();
-      let startDateUsed = explicitCampaignStartDate || (() => {
-        const raw = (campaign as any)?.createdAt || null;
-        if (!raw) return "2000-01-01";
-        const d = new Date(raw);
-        if (Number.isNaN(d.getTime())) return "2000-01-01";
-        return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
-      })();
-
-      // Keep lifetime financial totals on the same completed campaign-reporting
+      // Keep financial totals on the same completed campaign-reporting
       // day boundary used by daily facts, KPIs, Benchmarks, and Insights.
       const latestCompletedEndDate = getReportingDateWindow(
         1,
@@ -9495,6 +9478,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (mock || isYesopMockProperty(pidNormalized)) {
         const pid = requestedPropertyId || "yesop";
+        const simulatedConnection = await storage.getGA4Connection(campaignId, pid).catch(() => null as any);
+        const simulatedImportWindow = resolveGA4ImportToDateWindow(
+          (simulatedConnection as any)?.importStartDate,
+          (campaign as any)?.reportingTimeZone,
+        );
+        const startDateUsed = simulatedImportWindow?.startDate || "2000-01-01";
 
         // 1) Always compute simulation baseline (represents the initial GA4 historical import)
         const sim = simulateGA4({ campaignId, propertyId: pid, dateRange: "90days", noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
@@ -9568,16 +9557,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!connection || connection.method !== "access_token" || !connection.accessToken) {
         return res.status(404).json({ success: false, error: "No GA4 OAuth connection found for this property/campaign." });
       }
-      const savedImportStartDate = String((connection as any)?.importStartDate || "").trim();
-      if (!explicitCampaignStartDate && savedImportStartDate) {
-        const savedImportWindow = resolveGA4ImportToDateWindow(
-          savedImportStartDate,
-          (campaign as any)?.reportingTimeZone,
-        );
-        if (savedImportWindow) startDateUsed = savedImportWindow.startDate;
-      } else if (explicitCampaignStartDate) {
-        startDateUsed = explicitCampaignStartDate;
+      const savedImportWindow = resolveGA4ImportToDateWindow(
+        (connection as any)?.importStartDate,
+        (campaign as any)?.reportingTimeZone,
+      );
+      if (!savedImportWindow) {
+        return res.status(409).json({ success: false, error: "GA4 import window is unavailable." });
       }
+      const startDateUsed = savedImportWindow.startDate;
       if (startDateUsed > endDateUsed) {
         return res.json({
           success: true,
@@ -9684,24 +9671,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaign) return;
 
       const isISODate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
-      const campaignStartDate = (() => {
-        const raw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
-        if (!raw) return "2000-01-01";
-        const d = new Date(raw);
-        if (Number.isNaN(d.getTime())) return "2000-01-01";
-        return formatISODateUTC(d);
-      })();
       const previousCompleteUTCDate = (() => {
         const now = new Date();
         const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
         todayUtc.setUTCDate(todayUtc.getUTCDate() - 1);
         return formatISODateUTC(todayUtc);
       })();
-      const startDate = String(req.query.startDate || campaignStartDate).trim();
-      const endDate = String(req.query.endDate || previousCompleteUTCDate).trim();
-      if (!isISODate(startDate) || !isISODate(endDate) || startDate > endDate) {
-        return res.status(400).json({ success: false, error: "startDate/endDate must be YYYY-MM-DD and startDate must be <= endDate" });
-      }
       const simulateRefreshFailure = ["1", "true", "yes"].includes(String((req.query as any)?.simulateRefreshFailure || "").trim().toLowerCase());
       const disableTokenRefresh = ["1", "true", "yes"].includes(String((req.query as any)?.disableTokenRefresh || "").trim().toLowerCase());
 
@@ -9736,6 +9711,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const currentValueStartDate = currentValueWindow.startDate;
       const currentValueEndDate = currentValueWindow.endDate;
+      const startDate = String(req.query.startDate || currentValueStartDate).trim();
+      const endDate = String(req.query.endDate || previousCompleteUTCDate).trim();
+      if (!isISODate(startDate) || !isISODate(endDate) || startDate > endDate) {
+        return res.status(400).json({ success: false, error: "startDate/endDate must be YYYY-MM-DD and startDate must be <= endDate" });
+      }
 
       const round2Local = (value: number) => Number((Number.isFinite(value) ? value : 0).toFixed(2));
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
@@ -13314,9 +13294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
       let nativeRevenueWindow: { source: 'ga4'; startDate: string; endDate: string; revenueMetric: string } | undefined;
       if (overviewCampaignBreakdown && providerEndDate) {
-        const revenueStartDate = ((campaign as any)?.startDate ? toISODateUTC((campaign as any).startDate) : null)
-          || (savedImportStartDate ? importToDateWindow?.startDate : null)
-          || toISODateUTC((campaign as any)?.createdAt)
+        const revenueStartDate = (savedImportStartDate ? importToDateWindow?.startDate : null)
           || '2000-01-01';
         const revenueResult = revenueStartDate <= providerEndDate
           ? await ga4Service.getAcquisitionBreakdown(
@@ -14643,10 +14621,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
             const simRows = Array.isArray(sim?.timeSeries) ? sim.timeSeries : [];
             const end = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()) - 24 * 60 * 60 * 1000);
-            const startRaw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
-            const startDateUsed = startRaw && !Number.isNaN(new Date(startRaw).getTime())
-              ? new Date(startRaw).toISOString().slice(0, 10)
-              : "2000-01-01";
+            const simulatedImportWindow = resolveGA4ImportToDateWindow(
+              (primaryGA4 as any)?.importStartDate,
+              (campaign as any)?.reportingTimeZone,
+            );
+            const startDateUsed = simulatedImportWindow?.startDate || "2000-01-01";
             const toDateRows = await storage.getGA4DailyMetrics(campaignId, primaryPropertyId, startDateUsed, formatISODateUTC(end)).catch(() => [] as any[]);
             const dailyStart = new Date(end);
             dailyStart.setUTCDate(dailyStart.getUTCDate() - (dateRangeToDays(dateRange) - 1));
@@ -14791,7 +14770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? (spendToDateTotals as any).sourceIds.map((id: any) => String(id)).filter(Boolean)
           : [];
         if (currentValueWindow && spendSourceIds.length > 0 && String((spendToDateTotals as any)?.currency || "").trim().toUpperCase() !== campaignCurrency) {
-          throw new Error("Campaign-to-date spend currency does not match the campaign currency");
+          throw new Error("Connected-source spend currency does not match the campaign currency");
         }
         financialSpendInputs = spendBreakdown
           .map((source: any) => ({
@@ -15070,12 +15049,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let toDateFinancialCandidate: any = null;
           let propertyWindowTrafficCandidate: any = null;
           const primaryGA4 = persistedPrimaryGA4;
-          const financialStartDateUsed = (() => {
-            const raw = (campaign as any)?.startDate || currentValueWindow.startDate || (campaign as any)?.createdAt || null;
-            if (!raw) return "2000-01-01";
-            const date = new Date(raw);
-            return Number.isNaN(date.getTime()) ? "2000-01-01" : formatISODateUTC(date);
-          })();
+          const financialStartDateUsed = currentValueWindow.startDate;
           financialNativeRevenueStartDate = financialStartDateUsed;
           const endDateUsed = currentValueWindow.endDate;
           const persistedFinancialRows = await storage.getGA4DailyMetrics(campaignId, persistedPropertyId, financialStartDateUsed, endDateUsed).catch(() => [] as any[]);
@@ -36012,13 +35986,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Gather campaign context in parallel
       const campaignId = String(campaign.id);
       const today = new Date().toISOString().slice(0, 10);
-      const startDate = campaign.startDate ? new Date(campaign.startDate as any).toISOString().slice(0, 10) : "2020-01-01";
+      const connectedSourceStartDate = "1900-01-01";
 
       const [kpis, benchmarks, spendBreakdown, revenueBreakdown] = await Promise.all([
         storage.getCampaignKPIs(campaignId).catch(() => []),
         storage.getCampaignBenchmarks(campaignId).catch(() => []),
-        storage.getSpendBreakdownBySource(campaignId, startDate, today).catch(() => []),
-        storage.getRevenueBreakdownBySource(campaignId, startDate, today).catch(() => []),
+        storage.getSpendBreakdownBySource(campaignId, connectedSourceStartDate, today).catch(() => []),
+        storage.getRevenueBreakdownBySource(campaignId, connectedSourceStartDate, today).catch(() => []),
       ]);
 
       const totalSpend = spendBreakdown.reduce((sum: number, s: any) => sum + Number(s.spend || 0), 0);

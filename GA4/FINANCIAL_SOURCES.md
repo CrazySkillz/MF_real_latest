@@ -56,13 +56,21 @@ Campaign DeepDive financial provenance rule:
 
 ## Revenue Computation
 
+### V1 reporting boundary
+
+- Campaign metadata dates are not financial reporting boundaries in V1. They are used only by Budget Pacing.
+- Native GA4 Revenue and its matching financial Conversions use the saved initial-import date through the latest completed reporting day.
+- Imported Revenue and Spend use all available mapped source records.
+- Overview, Campaign DeepDive, KPI/Benchmark evaluation, alerts, snapshots, and reports must use these same boundaries.
+- Campaign `createdAt` is app metadata and must not be shown or used as a marketing campaign start date.
+
 ### Total Revenue
 
 `Total Revenue = selected scoped GA4 native financial revenue + imported revenue`
 
 Where:
 
-- GA4 native revenue comes from this campaign's GA4 scope and uses the same selected scoped GA4 financial source as Overview in fixed order: campaign-to-date provider totals, persisted daily totals where available to the caller, then configured-lookback breakdown only when earlier complete candidates are absent; valid zero and negative values remain authoritative, and conversions stay on that same source for CPA
+- GA4 native revenue comes from this campaign's GA4 scope and uses the same selected scoped GA4 financial source as Overview in fixed order: initial-import-to-latest-completed-day provider totals, compatible persisted daily totals where available to the caller, then configured-lookback breakdown only when earlier complete candidates are absent; valid zero and negative values remain authoritative, and conversions stay on that same source for CPA
 - imported revenue comes from active GA4-context revenue sources attached to this campaign
 - when a GA4 native revenue metric is configured, valid zero retains GA4-native source provenance; absence of both native capability and an active imported source is unavailable, not a fabricated `$0`
 - native GA4 financial requests use the campaign currency and verify the response metadata before combination; missing or mismatched currency fails closed
@@ -76,23 +84,23 @@ Important clarification:
 - in those cases, users may rely entirely on imported external revenue sources
 - the GA4 revenue metric is optional to the overall campaign revenue model; external revenue import is a valid primary path
 - when GA4 native revenue exists, refresh should update the GA4-native aggregated revenue amount for the campaign's selected GA4 scope
-- imported `Total Revenue` is a to-date total and includes source-backed revenue records through the current UTC day; no separate previous-day revenue card is rendered in the current GA4 Overview UI
+- imported `Total Revenue` includes all available mapped source records; no separate previous-day revenue card is rendered in the current GA4 Overview UI
 - imported `Total Revenue`, `Revenue Breakdown`, and the `Revenue Sources` modal must use the same active source-backed revenue record window so the card total and source provenance cannot drift
 - GA4 KPI financial alerts and Notifications visibility for `Revenue`, `Total Revenue`, `ROAS`, `ROI`, and `CPA` must use this same selected GA4 native revenue plus imported revenue model; `/api/notifications` must not keep an imported-only or stale persisted-row alert visible when the live KPI card no longer breaches
 - native GA4 daily backfill rows belong in `ga4_daily_metrics`; they must not be mirrored into imported `revenue_records` with a synthetic source ID such as `ga4_daily_metrics`
 - if old synthetic `revenue_records` rows with `revenue_source_id = 'ga4_daily_metrics'` are found, cleanup must target only the proven orphan row IDs and must not delete active imported CRM, ecommerce, CSV, Google Sheets, manual, or other source-backed revenue rows
-- Budget & Financial Analysis pacing metadata, including campaign start and end dates entered from the Budget Pacing & Burn Rate card, must not filter GA4 `Total Revenue`, `Revenue Breakdown`, or the `Revenue Sources` modal. Those platform-level revenue values are source-backed and must include all active revenue-source records to date.
+- Budget & Financial Analysis pacing metadata, including budget-period start and end dates entered from the Budget Pacing & Burn Rate card, must not filter GA4 `Total Revenue`, `Revenue Breakdown`, or the `Revenue Sources` modal. Those platform-level revenue values are source-backed and must include all available mapped revenue records.
 - the `GA4 Revenue` source entry in the `Total Revenue` source modal should show that full aggregated GA4 amount, not a partial or single-day figure
 - native GA4 headline and exact-date Revenue comparisons use the authoritative scoped aggregate; they must not be replaced by a sum of daily rows solely to force cross-granularity agreement
 - `ga4_daily_metrics.revenue` is currently stored at two decimal places, so summing individually quantized daily values can differ from an aggregate that retains more underlying precision. A `2026-09-24` read-only Campaign3 check observed `EUR 37,518.74` from the aggregate and `EUR 37,518.72` from the stored daily-row sum through `2026-09-23`; this evidence does not inspect GA4's internal aggregation implementation
-- this bounded few-cent difference is a known precision limitation, not permission to add a synthetic adjustment row, assign the residual to an arbitrary date, or report the daily sum as the authoritative campaign-to-date amount
+- this bounded few-cent difference is a known precision limitation, not permission to add a synthetic adjustment row, assign the residual to an arbitrary date, or report the daily sum as the authoritative native GA4 imported-window amount
 - exact cent-for-cent daily-to-aggregate Revenue reconciliation is excluded from the current readiness claim until a next-version migration preserves higher provider precision, re-fetches/backfills exact-source daily values, and revalidates all affected browser, report, snapshot, and downstream consumers
 - GA4 `Ad Comparison` campaign rows, rankings, chart, and totals use only
   GA4-native revenue from the fixed initial-import-to-latest-completed-day window;
   source-to-date imported revenue is separate provenance and is excluded from
   ranking
 - for GA4 `Overview -> Campaign Breakdown`, the same exact campaign-matched rule applies, so that table's column label should be `Revenue`, not `GA4 Revenue`
-- in that table, Sessions, Users, and Conversions use the fixed initial-import-to-latest-completed-day GA4 breakdown query; native revenue uses the campaign-start-to-latest-completed-day GA4 window and must reconcile to the GA4 Revenue card; exact campaign-matched imported revenue is then added source-to-date
+- in that table, Sessions, Users, Conversions, and native Revenue use the fixed initial-import-to-latest-completed-day GA4 window; native Revenue must reconcile to the GA4 Revenue card, and exact campaign-matched imported revenue is then added from all available mapped records
 - `Overview -> Landing Pages` and `Overview -> Conversion Events` remain GA4-native row views and intentionally omit revenue; imported revenue is not allocated into either table
 - any external revenue that cannot be matched safely must remain visible as `Unallocated External Revenue`, not proportionally distributed
 - in the GA4 `Ad Comparison` Revenue Breakdown table, a source may show an indented per-campaign subsection from its saved exact `campaignValueRevenueTotals`
@@ -140,7 +148,7 @@ Spend is not imported from the GA4 API by default.
 
 Imported `Total Spend`, `Spend Breakdown`, and the `Spend Sources` modal must use the same active source-backed spend record window so the card total and source provenance cannot drift.
 
-Budget & Financial Analysis pacing metadata, including campaign start and end dates entered from the Budget Pacing & Burn Rate card, must not filter GA4 `Total Spend`, `Spend Breakdown`, or the `Spend Sources` modal. Those platform-level spend values are source-backed and must include all active spend-source records to date.
+Budget & Financial Analysis pacing metadata, including budget-period start and end dates entered from the Budget Pacing & Burn Rate card, must not filter GA4 `Total Spend`, `Spend Breakdown`, or the `Spend Sources` modal. Those platform-level spend values are source-backed and must include all available mapped spend records.
 
 Google Sheets spend add mode is additive. Creating a new Google Sheets spend source must not reuse or overwrite an existing source just because the same Google Sheets connection or tab is selected. Edit/refresh mode may update an existing source only when the stable spend `sourceId` is explicitly passed.
 

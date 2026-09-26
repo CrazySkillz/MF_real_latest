@@ -326,7 +326,7 @@ describe("Trend Analysis Overview regression guard", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
     expect(page).toContain("formatExactTrendCount(authoritativeHeadlineCurrent.sessions)");
     expect(page).toContain("formatExactTrendCount(authoritativeHeadlineCurrent.users)");
-    expect(page).toContain("Campaign-to-Date Performance Summary");
+    expect(page).toContain("Connected-Source Performance Summary");
     expect(page).toContain("const cumulativeComparison = usesCumulativeGA4Consumer && comparisonKey && trendComparisonDate");
     expect(page).toContain('<div className={`flex items-center ${comparisonColorClass}`}>');
     expect(page).toContain("{cumulativeComparison.value}");
@@ -482,11 +482,11 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(executiveView).toContain('executiveTrendInsights.length === 2 ? "lg:grid-cols-2" : "lg:grid-cols-3"');
     expect(page).not.toContain("Selected-Window Comparison");
     expect(page).toContain("Conversions Increased — Validate the Drivers");
-    expect(page).toContain("Campaign-to-Date ROAS");
+    expect(page).toContain("Connected-Source ROAS");
     expect(page).toContain('financialDecisionContext?.version === "financial_decision_context_v1"');
     expect(page).toContain("ROAS Decision Context Not Verified");
     expect(page).toContain("withheld from executive budget guidance");
-    expect(page).toContain("Campaign-to-Date Conversion Volume");
+    expect(page).toContain("Connected-Source Conversion Volume");
     expect(page).toContain("conversions per 100 sessions");
     expect(executiveView).not.toContain("Prioritized actions based on");
     expect(executiveView).not.toContain("efficiencyTrendData.cards.map");

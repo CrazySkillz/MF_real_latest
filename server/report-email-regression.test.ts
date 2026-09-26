@@ -96,8 +96,7 @@ describe("scheduled report email regression guard", () => {
     expect(serverSource).toContain("const reportCumulativeWindow = resolveGA4ImportToDateWindow(");
     expect(serverSource).toContain("GA4_REPORT_CUMULATIVE_WINDOW_UNAVAILABLE");
     expect(serverSource).toContain("const overviewStartDate = reportCumulativeWindow.startDate;");
-    expect(serverSource).toContain("const financialStartDate = toISODateUTC((campaign as any)?.startDate)");
-    expect(serverSource).toContain('|| toISODateUTC((campaign as any)?.createdAt)');
+    expect(serverSource).toContain("const financialStartDate = reportCumulativeWindow.startDate;");
     expect(serverSource).toContain("const financialEndDate = reportCumulativeWindow.endDate;");
     expect(serverSource).toContain('const spendSourceStartDate = "1900-01-01";');
     expect(serverSource).toContain('storage.getSpendBreakdownBySource(campaignId, spendSourceStartDate, financialEndDate, "ga4")');
@@ -154,7 +153,7 @@ describe("scheduled report email regression guard", () => {
     expect(breakdownStart).toBeGreaterThan(-1);
     expect(breakdownEnd).toBeGreaterThan(breakdownStart);
     expect(breakdownSection).toContain(
-      "Traffic metrics are cumulative from the initial GA4 import; Revenue is native GA4 campaign-to-date plus exact campaign-mapped imported revenue.",
+      "Traffic metrics are cumulative from the initial GA4 import; Revenue combines native GA4 revenue from the imported data window with exact campaign-mapped imported revenue.",
     );
   });
 

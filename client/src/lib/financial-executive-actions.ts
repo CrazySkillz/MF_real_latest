@@ -209,7 +209,7 @@ export function buildFinancialAllocationAction(input: {
   if (input.sources.length === 0) {
     return {
       title: "Allocation is not available",
-      body: "No main connected source provides campaign-to-date spend. Financial input records still support campaign totals, but they are not standalone platforms for reallocation.",
+      body: "No main connected source provides spend. Financial input records still support connected-source totals, but they are not standalone platforms for reallocation.",
       tone: "info",
     };
   }

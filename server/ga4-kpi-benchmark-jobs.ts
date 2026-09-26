@@ -326,25 +326,10 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         continue;
       }
 
-      // Build GA4 to-date totals (campaign lifetime) for accurate financial KPIs (ROAS/ROI/CPA).
+      // Build native GA4 totals from the same initial-import boundary used by cumulative traffic.
       // Production path: GA4 API totals (with automatic token refresh).
       // Stored daily totals are retained only for the explicit mock/demo property.
-      const financialStartDate = (() => {
-        const explicitStart = (campaign as any)?.startDate || null;
-        if (explicitStart) {
-          const date = new Date(explicitStart);
-          if (!Number.isNaN(date.getTime())) return isoDateUTC(date);
-        }
-        const savedImportStart = String(primary.importStartDate || "").trim();
-        if (savedImportStart) {
-          const savedImportWindow = resolveGA4ImportToDateWindow(savedImportStart, (campaign as any)?.reportingTimeZone);
-          if (savedImportWindow) return savedImportWindow.startDate;
-        }
-        const createdAtRaw = (campaign as any)?.createdAt || null;
-        if (!createdAtRaw) return "2000-01-01";
-        const createdAt = new Date(createdAtRaw);
-        return Number.isNaN(createdAt.getTime()) ? "2000-01-01" : isoDateUTC(createdAt);
-      })();
+      const financialStartDate = reportingWindow.startDate;
       const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
       const [reportingRows, toDateRows] = await Promise.all([
         storage.getGA4DailyMetrics(campaignId, propertyId, reportingWindow.startDate, reportingWindow.endDate).catch(() => null as any),

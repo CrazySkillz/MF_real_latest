@@ -129,7 +129,7 @@ Current meaning:
 - on-screen traffic values use the saved historical-import start through the scheduler-backed history boundary; completed no-activity days count as zero, while a failed request with no response remains unavailable and is never inferred as zero
 - this app version does not show Top Channel, a source/medium channel table, or channel-availability warnings in Data Summary or its browser-generated PDF; those values are excluded from Data Summary certification
 - the existing GA4 acquisition response remains available to other Insights features under their own evidence and certification boundaries
-- campaign-to-date financial values remain in Executive Financials and are not duplicated in Data Summary
+- connected-source financial values remain in Executive Financials and are not duplicated in Data Summary
 
 ### Tracker Cards
 
@@ -159,7 +159,7 @@ Current meaning:
 - stale freshness metadata on an otherwise successful scheduler-backed response does not create a setup finding or withhold current target/trend evaluation; an actual daily-history request failure with no response still withholds affected trend conclusions
 - channel details in KPI/Benchmark recommendations require a reconciled breakdown and can remain when daily history is stale or mismatched; missing or wrong-property snapshots withhold streak/history context, not verified current target evaluations
 - invalid KPI or Benchmark targets are shown as configuration issues before performance conclusions
-- standard KPI and Benchmark targets are absolute goals evaluated against their authoritative current values: traffic metrics use the initial-import-through-latest-completed-day cumulative window, while financial metrics use campaign-to-date inputs
+- standard KPI and Benchmark targets are absolute goals evaluated against their authoritative current values: GA4 traffic and native financial metrics use the initial-import-through-latest-completed-day cumulative window, while imported Revenue and Spend use all available mapped records
 - below-target KPI findings use factual `Below Saved Target` wording and the priority saved on that KPI; attainment percentage does not invent severity
 - every verified, period-compatible KPI below its saved target is shown; arbitrary attainment bands do not hide a miss
 - legacy timeframe or period metadata must not replace the authoritative cumulative current-value window; unsupported custom metrics remain unscorable rather than being forced into a standard window
@@ -183,12 +183,12 @@ Insights is downstream of the GA4 refresh pipeline.
 Inputs include:
 
 - refreshed GA4 daily facts
-- refreshed GA4 to-date values
+- refreshed GA4 imported-window financial values
 - refreshed spend and revenue inputs
 - refreshed KPI context
 - refreshed Benchmark context
 
-Financial KPI/Benchmark snapshots consumed by Insights use the same campaign-to-date native-revenue and source-currency rules as the live financial cards. For real GA4 properties, an incomplete or failed live to-date response is unavailable; retained daily rows or a configured-lookback breakdown are not substituted for that different window. Last-good values may remain stored, but no new financial history point is recorded for an unavailable input.
+Financial KPI/Benchmark snapshots consumed by Insights use the same initial-import-to-latest-completed-day native-revenue and source-currency rules as the live financial cards. For real GA4 properties, an incomplete or failed provider response is unavailable; retained daily rows or a configured-lookback breakdown are not substituted for a complete provider result when imported revenue must be combined. Last-good values may remain stored, but no new financial history point is recorded for an unavailable input.
 
 Important meaning:
 
@@ -197,7 +197,7 @@ Important meaning:
 - the scheduler stores every completed date in its authorized window, using explicit zero rows only for verified no-activity dates and preserving last-good storage if provider completeness cannot be proven
 - GA4 can process Measurement Protocol events after the script or traffic event occurred, so values may increase later even when the seed script was not rerun
 - Trends requires completed daily facts; same-day Overview changes do not automatically create a completed Trends row
-- financial KPI/Benchmark native-revenue windows use explicit campaign start when configured, otherwise the saved GA4 import boundary, then campaign creation as the final boundary fallback
+- financial KPI/Benchmark native-revenue windows always use the saved GA4 import boundary; campaign metadata dates and app creation time are not financial reporting boundaries
 - the dedicated Google Ads scheduler refreshes provider daily facts, materializes the exact saved GA4 spend source through the latest completed campaign day, and then recomputes dependent KPI/Benchmark values; the general external-value scheduler does not duplicate that GA4 Google Ads write
 
 ## Production-Readiness Reference

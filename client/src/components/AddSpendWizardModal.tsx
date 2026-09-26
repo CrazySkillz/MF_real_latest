@@ -2601,7 +2601,7 @@ export function AddSpendWizardModal(props: {
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">Enter spend</CardTitle>
-                    <CardDescription>Spend to date for this campaign (lifetime). You can update it any time.</CardDescription>
+                    <CardDescription>Enter the current total spend. You can update it any time.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="space-y-2">

@@ -2,28 +2,28 @@
 
 ## Decision
 
-**CLEAN-CERTIFIED / PRODUCTION_READY for the exact fresh-campaign portability boundary documented below at deployed runtime `dda53f441aab938700f808eb6a5d2aedd035f9e6`.**
+**HISTORICAL RUNTIME EVIDENCE for the exact Campaign3 values documented below at deployed runtime `dda53f441aab938700f808eb6a5d2aedd035f9e6`. The boundary decision in this record is superseded by the current V1 contract.**
 
-Required steps remaining within this exact boundary: **0**.
+Current boundary rule: native GA4 Revenue always uses the saved GA4 initial-import date through the latest completed reporting day. Campaign metadata dates and app creation time are never substituted. Imported Revenue uses all available mapped records.
 
-This supplemental decision recertifies only the affected GA4 Overview paths for a newly created campaign that has a saved GA4 initial-import date but no explicit campaign start date:
+This record preserves the observed GA4 Overview results for a newly created campaign with a saved GA4 initial-import date:
 
 - native GA4 `Total Revenue` from API through the rendered Overview card and Revenue Sources modal;
 - saved GA4 campaign mappings through the Campaign Breakdown API and rendered table;
 - Campaign Breakdown reload, focus/visibility refresh, and ten-minute automatic refetch.
 
-It preserves, and does not broaden or replace, the existing Revenue source-family certificates or the existing Campaign Breakdown certificate.
+It does not independently certify the current boundary implementation; current behavior is controlled by `GA4/FINANCIAL_SOURCES.md` and the implementation aligned in `43c980da`.
 
 ## Confirmed root cause and correction
 
-Campaign creation correctly persisted the GA4 initial-import date and selected GA4 campaign values. The affected native-revenue path nevertheless fell back to the campaign creation timestamp when the optional campaign start date was absent. A newly created campaign therefore queried native revenue from its creation date instead of its saved GA4 import boundary, which could return no revenue and prevent the expected Campaign Breakdown result from appearing.
+Campaign creation correctly persisted the GA4 initial-import date and selected GA4 campaign values. A former native-revenue branch used app metadata instead of that saved import boundary, which could return no revenue and prevent the expected Campaign Breakdown result from appearing.
 
-The correction uses the saved GA4 initial-import date as the native-revenue start only when no explicit campaign start date exists. It preserves:
+The current correction always uses the saved GA4 initial-import date as the native-revenue start. It preserves:
 
-- explicit campaign start-date precedence;
 - the established simulated-property behavior;
-- the legacy connection fallback when neither saved date is available;
 - existing response shapes, formulas, currency behavior, mappings, ownership guards, and certified imported-source behavior.
+
+If the saved GA4 initial-import date is unavailable, the financial path fails closed rather than substituting campaign metadata or app creation time.
 
 ## Exact deployed evidence
 
@@ -70,7 +70,7 @@ The user separately confirmed that the corrected Revenue and Campaign Breakdown 
 - deployed Campaign Breakdown API/UI/refresh audit: **passed**;
 - validation transactions: read-only and rolled back.
 
-The focused regressions cover the new-campaign no-start-date path, explicit start-date precedence, simulated behavior, reporting-day cutoff, downstream KPI real-path parity, and the existing Campaign Breakdown initial-import contract.
+The focused regressions recorded here covered the then-current branches, simulated behavior, reporting-day cutoff, downstream KPI real-path parity, and Campaign Breakdown. They are historical evidence only for the current boundary rule.
 
 ## Preserved certifications and exclusions
 
@@ -91,4 +91,4 @@ The repository-wide test suite is not represented as globally green; unrelated u
 
 ## Final decision
 
-The repaired fresh-campaign native Revenue and Campaign Breakdown API/UI/refresh paths are clean-certified at deployed runtime `dda53f441aab938700f808eb6a5d2aedd035f9e6` for the exact configuration and limits above. Existing certified sections and source contracts remain unchanged.
+The recorded native Revenue and Campaign Breakdown API/UI/refresh values passed at deployed runtime `dda53f441aab938700f808eb6a5d2aedd035f9e6` for the exact configuration and limits above. The current V1 boundary is the saved GA4 initial-import date through the latest completed reporting day and is not certified by this older runtime record.

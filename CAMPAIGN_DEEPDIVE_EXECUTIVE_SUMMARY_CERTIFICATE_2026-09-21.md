@@ -76,8 +76,10 @@ No route, storage method, shared schema, aggregate formula, source-selection con
 | Visible consumer | Frontend query | Calculation and persistence | UI use |
 | --- | --- | --- | --- |
 | KPI, Benchmark, freshness | `GET /api/campaigns/:id/executive-summary` | campaign access; GA4 KPI/Benchmark selection; verified-current resolver; shared target policy | Risk Level, KPI/Benchmark states, action eligibility and freshness |
-| Narrative, funnel, cards, capabilities | `GET /api/campaigns/:id/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date` | shared aggregate; completed-day GA4 window; source-to-date financial reconciliation; gated daily snapshot | narrative, funnel stages, conditional metrics, formulas, five cards and action evidence |
+| Narrative, funnel, cards, capabilities | `GET /api/campaigns/:id/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date` | shared aggregate; completed-day GA4 window; saved-import native financials plus all mapped imported records; gated daily snapshot | narrative, funnel stages, conditional metrics, formulas, five cards and action evidence |
 | Seven-day trajectory | `GET /api/campaigns/:id/executive-summary/trajectory?reportingDate=2026-09-20` | exact current and seven-day-prior snapshot selection through the production evaluator | trajectory or explicit unavailable reason |
+
+The retained `executiveFinancialScope=campaign_to_date` request value is a backward-compatible API name only. Current native GA4 values start at the saved initial-import date; imported Revenue and Spend include every available mapped record.
 
 The three authenticated production queries succeeded. An unauthenticated campaign aggregate request was rejected. Required query failures remain wired to the explicit page-level `Unable to Load Executive Summary` state rather than rendered zeros.
 

@@ -58,9 +58,9 @@ Campaign DeepDive financial provenance rule:
 
 ### V1 reporting boundary
 
-- Campaign metadata dates are not financial reporting boundaries in V1. They are used only by Budget Pacing.
+- Campaign metadata dates are not financial reporting or aggregation boundaries in V1. Budget Pacing uses them for pacing formulas. A source connector may still have its own provider-import window; that controls which source records are materialized, not which materialized records the reports include.
 - Native GA4 Revenue and its matching financial Conversions use the saved initial-import date through the latest completed reporting day.
-- Imported Revenue and Spend use all available mapped source records.
+- Imported Revenue and Spend use every available mapped record materialized by the active source. Legacy route or UI names such as `revenue-to-date`, `spend-to-date`, and `source-to-date` refer to this all-mapped-record total; they do not mean "since app creation" or "since a campaign metadata date."
 - Overview, Campaign DeepDive, KPI/Benchmark evaluation, alerts, snapshots, and reports must use these same boundaries.
 - Campaign `createdAt` is app metadata and must not be shown or used as a marketing campaign start date.
 
@@ -97,7 +97,7 @@ Important clarification:
 - exact cent-for-cent daily-to-aggregate Revenue reconciliation is excluded from the current readiness claim until a next-version migration preserves higher provider precision, re-fetches/backfills exact-source daily values, and revalidates all affected browser, report, snapshot, and downstream consumers
 - GA4 `Ad Comparison` campaign rows, rankings, chart, and totals use only
   GA4-native revenue from the fixed initial-import-to-latest-completed-day window;
-  source-to-date imported revenue is separate provenance and is excluded from
+  all-mapped-record imported revenue is separate provenance and is excluded from
   ranking
 - for GA4 `Overview -> Campaign Breakdown`, the same exact campaign-matched rule applies, so that table's column label should be `Revenue`, not `GA4 Revenue`
 - in that table, Sessions, Users, Conversions, and native Revenue use the fixed initial-import-to-latest-completed-day GA4 window; native Revenue must reconcile to the GA4 Revenue card, and exact campaign-matched imported revenue is then added from all available mapped records
@@ -105,7 +105,7 @@ Important clarification:
 - any external revenue that cannot be matched safely must remain visible as `Unallocated External Revenue`, not proportionally distributed
 - in the GA4 `Ad Comparison` Revenue Breakdown table, a source may show an indented per-campaign subsection from its saved exact `campaignValueRevenueTotals`
 - in the GA4 `Ad Comparison` Revenue Breakdown table, `GA4 Revenue (imported to date)` is the sum of the same native rows used by the comparison
-- exact materialized imported source amounts are labeled source-to-date and no
+- exact materialized imported source amounts use all-mapped-record provenance and no
   combined `Total Revenue` or unallocated ranking row is rendered
 - saved configuration/definition totals are not an Ad Comparison value fallback
 
@@ -325,7 +325,7 @@ Important meaning:
 - Shopify is an attribution workflow
 - the user is not entering a single total; they are defining how Shopify order revenue should belong to this campaign
 - Shopify attribution keys include `UTM Campaign`, `UTM Source`, `UTM Medium`, `Discount code`, and `Tags`; tags are matched as exact individual Shopify order tags and are useful for no-card admin validation because Shopify order tags can be edited directly in Shopify Admin
-- Shopify test orders remain excluded for normal or unverified stores; only a store that Shopify GraphQL confirms as a Partner development store may include otherwise eligible test orders for validation, using the existing 3,650-day source-to-date window and visible test-data labels
+- Shopify test orders remain excluded for normal or unverified stores; only a store that Shopify GraphQL confirms as a Partner development store may include otherwise eligible test orders for validation, using the existing 3,650-day provider-import window and visible test-data labels
 - Shopify revenue edit mode should open on the saved `Review Settings` screen with the saved attribution key, selected Shopify values, revenue metric, and any saved campaign mappings populated
 - Shopify `Review Settings` should show revenue breakdown rows as campaign/value label plus amount only; do not append order-count text such as `(1 order)` to those amount rows
 - Shopify revenue edit mode should preserve the saved Shopify connection method on the first screen; token/Admin API connections should not fall back to showing OAuth when navigating back

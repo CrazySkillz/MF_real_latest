@@ -636,14 +636,14 @@ Status:
   - Delete removes only the selected Google Sheets revenue source and refetches Total Revenue, Google Sheets data, KPIs, Benchmarks, and Reports.
   - Follow-up root cause: the Total Revenue card was rendered only in the loading branch, so it flashed on initial load and disappeared when populated sheet data rendered.
   - Follow-up fix: the same Total Revenue card now renders in the populated Overview branch before Spreadsheet Data.
-  - Follow-up root cause: the card queried `dateRange=90days`, but imported Google Sheets confirmed revenue is treated as campaign-lifetime revenue; older dated source rows could produce `Sources (1)` while the card still showed `Not connected`.
+  - Follow-up root cause: the card queried `dateRange=90days`, but imported Google Sheets confirmed revenue uses every mapped record; older dated source rows could produce `Sources (1)` while the card still showed `Not connected`.
   - Follow-up fix: the Google Sheets Total Revenue card and revenue-wizard refetch path use `dateRange=all`, and the existing revenue totals route now supports `all`/`lifetime` without changing default 7/30/90-day behavior.
   - Follow-up root cause: the Google Sheets Overview rendered only the Total Revenue card from the Commit 9 financial template; Pipeline Proxy, ROAS, and ROI were not rendered even though the template requires them as separate financial cards.
   - Follow-up fix: Google Sheets Overview now renders Total Revenue, Pipeline Proxy, ROAS, and ROI as separate cards before Spreadsheet Data. Pipeline Proxy uses only CRM pipeline proxy configuration with `platformContext=google_sheets`; arbitrary sheet pipeline-like columns remain ordinary sheet metrics and do not feed Total Revenue, ROI, ROAS, KPIs, Benchmarks, Reports, or Campaign DeepDive confirmed financial totals.
   - Follow-up fix: Google Sheets ROAS/ROI use confirmed Google Sheets Total Revenue plus Google-Sheets-scoped confirmed spend via `spend-totals?platformContext=google_sheets&dateRange=all`; raw sheet `Revenue`, `Spend`, `ROI`, or `ROAS` columns do not unlock the cards.
 - [x] Completed for the Google Sheets confirmed Total Spend and derived-financial boundary:
   - Root cause: ROAS/ROI were correctly unavailable without spend, but the Overview did not clearly expose a matching Google-Sheets-scoped spend source action or card.
-  - Added a separate `Total Spend` card using only active spend sources with `platformContext="google_sheets"` and campaign-lifetime `spend-totals?platformContext=google_sheets&dateRange=all`.
+  - Added a separate `Total Spend` card using only active spend sources with `platformContext="google_sheets"` and all-mapped-record `spend-totals?platformContext=google_sheets&dateRange=all`.
   - Added a Google Sheets Spend Sources dialog with source totals plus edit/delete actions and delete confirmation.
   - The Total Spend `+` action opens `AddSpendWizardModal` with `platformContext="google_sheets"` through the shared source chooser pattern, matching the GA4/Meta-style wizard entry behavior instead of locking users directly into a sheets-only step.
   - CSV, Google Sheets, manual, LinkedIn, Meta, and Google Ads spend imports preserve the requested Google Sheets platform context when launched from the Google Sheets Overview spend card.
@@ -669,7 +669,7 @@ Status:
   - Card shows `Not connected` before a confirmed Google Sheets revenue source is mapped.
   - A raw spreadsheet `Revenue` column alone does not populate confirmed Total Revenue.
   - After explicit Google Sheets confirmed revenue mapping, the card updates to the formatted revenue total and shows `Sources (1)`.
-  - Google Sheets Total Revenue uses campaign-lifetime confirmed revenue, so older dated source rows are included after mapping.
+  - Google Sheets Total Revenue uses every mapped confirmed-revenue record, so older dated source rows are included after mapping.
   - `Sources (1)` opens the Google Sheets Revenue Sources dialog.
 - [x] Browser validation passed after deploy for the expanded Commit 9 financial-card scope:
   - Pipeline Proxy remains separate from confirmed Total Revenue and can show `Not configured` without blocking confirmed revenue.
@@ -997,7 +997,7 @@ Analytics:
 - [x] Benchmarks use current source-backed values for the Commit 7 Google Sheets Benchmark scope.
 - [x] Commit 7 Benchmark browser validation passed after deploy for metric tiles, read-only source-backed Current Value, successful Create Benchmark save, count edit-prefill formatting, GA4 `90% / 70%` tracker thresholds, and GA4-pattern Benchmark cards.
 - [x] Google Sheets Total Revenue follows the Meta-pattern confirmed revenue source boundary for the Commit 9 scope.
-- [x] Commit 9 browser validation passed after deploy for persistent Total Revenue card rendering, explicit confirmed revenue mapping, `Sources (1)` source dialog access, and campaign-lifetime revenue totals via `dateRange=all`.
+- [x] Commit 9 browser validation passed after deploy for persistent Total Revenue card rendering, explicit confirmed revenue mapping, `Sources (1)` source dialog access, and all-mapped-record revenue totals via `dateRange=all`.
 - [x] Commit 9 browser validation passed after deploy for Pipeline Proxy separation, ROAS/ROI requiring confirmed revenue plus confirmed spend, the separate Total Spend card and source dialog, Google-Sheets-scoped spend wizard behavior, seamless financial-card loading, and financial-source provenance that uses explicit source values rather than auto-inferred MimoSaaS campaign names.
 - [x] Insights use selected spreadsheet data metrics; Reports use current source-backed values.
 - [x] Commit 10 browser validation passed after deploy for refresh/scheduler/cache scope: manual refresh and scheduled refresh preserve main/general Google Sheets source scope and Google-Sheets-scoped confirmed financial sources.
@@ -1182,10 +1182,10 @@ Google Sheets can be marked locally production-ready only when:
   - Total Revenue now uses `AddRevenueWizardModal` with `platformContext="google_sheets"` and keeps revenue sources scoped to Google Sheets.
   - Source dialog lists Google Sheets revenue sources and delete recomputes/refetches dependent Google Sheets consumers.
   - Follow-up: Google Sheets Overview now renders Total Spend, Pipeline Proxy, ROAS, and ROI cards beside Total Revenue.
-  - Total Spend is sourced only from active spend sources with `platformContext="google_sheets"` and uses campaign-lifetime spend totals.
+  - Total Spend is sourced only from active spend sources with `platformContext="google_sheets"` and uses every mapped spend record.
   - The Total Spend `+` action opens the shared spend source chooser with `platformContext="google_sheets"` and keeps saved spend sources scoped to Google Sheets.
   - Pipeline Proxy is sourced only from CRM proxy configuration scoped with `platformContext=google_sheets`; pipeline-like sheet columns do not feed confirmed revenue or derived financial consumers.
-  - ROAS and ROI require confirmed Google Sheets revenue plus Google-Sheets-scoped confirmed spend, both using campaign-lifetime financial totals.
+  - ROAS and ROI require confirmed Google Sheets revenue plus Google-Sheets-scoped confirmed spend, both using all available mapped financial records.
 - Commit 9 Total Revenue loading follow-up completed locally:
   - Root cause: the Total Revenue card rendered only while Google Sheets data was loading.
   - Fix: the populated Overview branch also renders the Total Revenue card before Spreadsheet Data.

@@ -30,7 +30,7 @@ The finite-number guards return safe values internally at invalid denominator bo
 
 ### Revenue
 
-Revenue is the already-certified combined GA4 Overview Revenue value: native GA4 campaign-to-date revenue plus active GA4-context imported revenue selected by the certified aggregate-versus-attributed record rule.
+Revenue is the already-certified combined GA4 Overview Revenue value: native GA4 revenue from the saved initial-import boundary plus all active mapped GA4-context imported revenue selected by the certified aggregate-versus-attributed record rule.
 
 Controlling certificate: `GA4/OVERVIEW_REVENUE_SECTION_PRODUCTION_READINESS.md`.
 

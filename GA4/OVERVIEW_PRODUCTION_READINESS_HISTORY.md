@@ -32,7 +32,7 @@ This commit closes B11 only. It does not make Overview production-ready.
 Implemented, committed, and pushed to `main` on `2026-07-16` as `5cff21ad`, then deployed through Render.
 
 - resolve 30-day connection lookback versus hard-coded 90-day table queries
-- stop selecting maximum revenue across incompatible lifetime/daily/breakdown windows unless that behavior becomes an explicitly labeled product contract
+- stop selecting maximum revenue across incompatible saved-import/daily/breakdown windows unless that behavior becomes an explicitly labeled product contract
 - keep Summary metrics coherent, including Engagement Rate and valid zero
 - correct Users provenance copy
 - cover 30-day, 60-day, and 90-day connections, zero values, negative adjustments, and provider-empty fallbacks
@@ -51,7 +51,7 @@ Deployed validation:
 - user-confirmed bounded UI smoke passed for one configured campaign/window
 - Summary, Campaign Breakdown, Landing Pages, and Conversion Events showed the same configured completed-day label
 - the Users tooltip used the additive-users provenance copy
-- Revenue & Financial was labeled campaign-to-date
+- Revenue & Financial showed its connected-source boundary
 - the downloaded Overview report matched the observed screen values
 - this did not prove separate live 30/60/90 provider campaigns, failure injection, valid-zero/negative production fixtures, or scheduled/server delivery variants; those remain in later gates
 
@@ -185,7 +185,7 @@ Local evidence: the 3-test Current Commit 9 guard, 2 LinkedIn scheduler guards, 
 
 Root cause confirmed on `2026-07-30`:
 
-- scheduled/manual Campaign DeepDive aggregates read GA4 financial revenue, conversions, imported revenue, and spend from a 90-day subset while Overview, KPI, Benchmark, alert, and outcome-current-value paths use the shared ordered campaign-to-date financial contract
+- scheduled/manual Campaign DeepDive aggregates read GA4 financial revenue, conversions, imported revenue, and spend from a 90-day subset while Overview, KPI, Benchmark, alert, and outcome-current-value paths use the shared ordered connected-source financial contract
 - Trend snapshot SQL joined active financial sources but did not restrict their `platform_context`, allowing foreign-context rows into a GA4 aggregate on a multi-platform campaign
 - Performance Summary treated revenue as available only when it was positive, so valid zero revenue with positive spend incorrectly produced unavailable ROAS/ROI instead of `0` and `-100%`
 - the existing regression packet checked the shared selector in Overview/outcome/current-value paths but did not guard the scheduler consumer
@@ -193,7 +193,7 @@ Root cause confirmed on `2026-07-30`:
 Smallest safe implementation:
 
 - export and reuse the existing `getCampaignMetricTotals(campaignId, true)` helper in the existing scheduler aggregate path; no endpoint, storage, schema, provider-query, or response shape was added
-- retain the existing 90-day engagement and paid-platform windows, but read persisted GA4 financial sources campaign-to-date with explicit `platformContext="ga4"`
+- retain the existing 90-day engagement and paid-platform windows, but read persisted GA4 financial sources with their authoritative boundaries and explicit `platformContext="ga4"`
 - add the same GA4 platform-context predicate to Trend financial source joins
 - determine ROAS/ROI availability from source presence plus non-zero spend, preserving valid zero/negative revenue
 - bump only the Performance Summary compatibility marker to `performance_summary_aggregate_v2`; current consumers already compare versions dynamically, so old incompatible snapshots are ignored rather than mixed
@@ -376,8 +376,8 @@ Estimated remaining work: Current Commit 8 external provider/scheduler evidence,
 - Property `542352127` returned `isSimulated=false`. The visible test values were seeded into the live GA4 property; the app did not generate its simulation response.
 - Campaign Breakdown reconciled exactly: `yesop_retargeting` = `$3,818.40` native + `$16,100.00` HubSpot = `$19,918.40`; `yesop_email_nurture` = `$2,881.00` native + `$600.00` CSV = `$3,481.00`; `yesop_paid_social` = `$3,165.40` native + `$99.99` Shopify = `$3,265.39`.
 - Sessions, Users, Conversions, and native revenue are separate fields returned by the GA4 breakdown query. Conversion rate is calculated as `Conversions / Sessions`; the seeded rows therefore render 100%.
-- Root issue: the old subtitle implied every column used the last 30 completed days, while displayed Revenue adds exact campaign-matched source-to-date imports.
-- Smallest safe fix: regression-first copy-only change to `GA4 metrics: last 30 completed days; Revenue includes exact campaign-matched source-to-date imports.` No formula, query, mapping, API, persistence, scheduler, or unrelated tab changed.
+- Root issue: the old subtitle implied every column used the last 30 completed days, while displayed Revenue adds exact campaign-matched all-mapped-record imports.
+- Smallest safe fix: regression-first copy-only change to disclose the native comparison window and all-mapped-record imported provenance. No formula, query, mapping, API, persistence, scheduler, or unrelated tab changed.
 - Validation: the new guard failed before the runtime edit; `server/ga4-ui-regression.test.ts` passed 40/40 afterward. The exact current focused Overview packet passed 28 files / 288 tests, and the affected shared-dependency packet passed 10 files / 93 tests. Commit `82fc3a78` contains only the subtitle and guard.
 - Remaining gate: observe one natural `22:00 UTC` run and prove exact target persistence read-only. No manual scheduler trigger or final combined GA4 certification is part of this packet.
 

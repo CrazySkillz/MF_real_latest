@@ -10,7 +10,7 @@ This is a new current-runtime consumer/refresh check, not a replacement for or e
 
 The traced path is saved campaign/property and active GA4-context source records → campaign-access-guarded native GA4 to-date and imported revenue endpoints → aggregate-versus-attributed source-grain selection → Total Revenue card, source count, Revenue Sources modal, and confirmed-revenue input to Performance. Pipeline Proxy remains separate from confirmed Revenue. Database reads used read-only transactions and rollback; authenticated browser checks used temporary revoked Clerk sessions and made no application writes.
 
-| Audited campaign | Native GA4 window and amount | Imported source-to-date amount | Rendered Total Revenue |
+| Audited campaign | Native GA4 window and amount | Imported all-mapped-record amount | Rendered Total Revenue |
 | --- | --- | ---: | ---: |
 | Campaign2 `d9c8a3b7c4d0` | 2026-09-08–2026-09-16; `$8,862.30` | `$57,676.90` | `$66,539.20`, Sources (6) |
 | Pipeline campaign `fc734ddaf728` | 2026-06-24–2026-09-16; `$92,389.00` | `$22,700.00` | `$115,089.00`, Sources (6) |

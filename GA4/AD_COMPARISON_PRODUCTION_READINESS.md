@@ -150,7 +150,7 @@ leader-card, and summary sources are specified in `GA4/AD_COMPARISON.md`.
 | Conversions | Same acquisition rows | Same window/property/filter as sessions |
 | Conversion rate | GA4 sessionKeyEventRate * 100 | Zero only for a proven zero denominator; unavailable when the native rate is missing or invalid |
 | Native row revenue | GA4 totalRevenue, with purchaseRevenue compatibility fallback | Same import-to-latest-completed row scope; valid zero/negative retained |
-| Imported source revenue | Exact materialized source breakdown | Source-to-date provenance only; excluded from native ranking |
+| Imported source revenue | Exact materialized source breakdown | All-mapped-record provenance only; excluded from native ranking |
 | Row revenue | Native GA4 row revenue | No imported merge, stale fallback, invented row, or proportional allocation |
 | Revenue/session | Native row revenue / sessions | Numerator and denominator share the same property/filter/window |
 | Leader cards | `selectGA4AdComparisonLeaderCards` | Historical selected-metric ranking; current conversion-based rule is in `GA4/AD_COMPARISON.md` |
@@ -158,7 +158,7 @@ leader-card, and summary sources are specified in `GA4/AD_COMPARISON.md`.
 | Selected-metric summary | Normalized comparison rows | Sum the selected metric; conversion rate is weighted by sessions across campaign rows |
 | Campaigns Compared | Normalized comparison rows | Exact normalized row count |
 | All Campaigns | Sessions-descending normalized rows | Same native row values regardless of dropdown selection |
-| Revenue Breakdown | Import-to-latest-completed native row sum plus separate materialized source-to-date rows | Exact source ID/value; no same-type/config fallback or combined total |
+| Revenue Breakdown | Import-to-latest-completed native row sum plus separate materialized all-mapped-record rows | Exact source ID/value; no same-type/config fallback or combined total |
 | Loading/empty/stale/unavailable | Query state plus current-property verification | Previous-property rows are blocked; verified empty differs from failure; last-good data requires an explicit stale warning |
 
 ### Route, storage, lifecycle, and consumer inventory
@@ -219,7 +219,7 @@ production-configuration change invalidates the certification.
 | ID | Severity | Root cause and effect | Status |
 |---|---|---|---|
 | AC-01 | Critical | GA4 acquisition requests ordered high-cardinality rows by sessions and applied a 2,000-row limit without paging. | Fixed: page to provider `rowCount`; fail closed on incomplete/changed/oversized pagination |
-| AC-02 | Major | Native GA4 rows were combined with source-to-date imported totals. | Fixed: ranking/table/chart/totals use native rows for one common window; imported values are separate source-to-date provenance |
+| AC-02 | Major | Native GA4 rows were combined with all-mapped-record imported totals. | Fixed: ranking/table/chart/totals use native rows for one common window; imported values are separate all-mapped-record provenance |
 | AC-03 | Major | Failure/stale/unavailable inputs could render as plausible zero/normal output. | Fixed: explicit loading/ready/stale/unavailable states |
 | AC-05 | Major | Positive-only/config/ambiguous Salesforce fallbacks could omit valid zero or invent allocation. | Fixed: exact materialized amounts, valid zero retained, no definition/config value fallback or invented allocation |
 | AC-06 | Minor | Static first/last table colors implied a ranking unrelated to the selected metric. | Fixed: misleading row colors removed |
@@ -252,7 +252,7 @@ status above supersedes the `UNVERIFIED` state recorded at that time.
    - `08ea74af0344538259cd34ff1d8487492f4c8253`
    - Closed the live-tab findings with the minimum runtime and focused
      regression changes: complete GA4 pagination, aligned 30-day/native versus
-     source-to-date/imported semantics, exact valid-zero provenance, explicit
+     all-mapped-record imported semantics, exact valid-zero provenance, explicit
      unavailable/stale states, and current-property isolation. The same commit
      also changed Reports-owned PDF paths outside this certification boundary.
 4. **Commit 4 — record audit evidence and align documentation**

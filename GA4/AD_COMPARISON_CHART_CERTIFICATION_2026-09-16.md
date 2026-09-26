@@ -151,7 +151,7 @@ current deployed reconciliation and PDF gates remain pending. **UNVERIFIED.**
 The user clarified the chart contract: each dropdown and both summary cards
 must use the values displayed in GA4 Overview's Campaign Breakdown table.
 The current local candidate now takes Sessions, Users, Conversions, and rate
-from that table's campaign rows; Revenue also includes its campaign-to-date
+from that table's campaign rows; Revenue also includes its saved-import-window
 native GA4 amount plus exact matched imports. The chart and summary paths in
 both PDFs use those same table rows. The separate native Ad Comparison query
 continues to supply the excluded leader cards, All Campaigns, and Revenue

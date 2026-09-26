@@ -134,17 +134,15 @@ the GA4 analytics experience.
 
 ### 2026-08-28 Current-Value Correction
 
-This historical correction used `campaign-to-date` terminology. The V1 boundary was
-standardized on `2026-09-26`: campaign metadata dates are pacing-only, native GA4
-financial values use the saved initial-import boundary, and imported financial sources
-use all available mapped records. That current rule supersedes the older boundary wording below.
+The V1 boundary was standardized on `2026-09-26`: campaign metadata dates are
+pacing-only, native GA4 financial values use the saved initial-import boundary, and
+imported financial sources use all available mapped records.
 
-Root cause: ordinary `/outcome-totals` requests used the cumulative GA4 traffic import
-start as the native financial request start. That truncated campaign-to-date GA4
-Revenue and also reused traffic Conversions as the CPA denominator. The corrected
-shared path keeps property traffic on its fixed cumulative import window while using
-the GA4 Overview campaign-to-date financial source for native Revenue and financial
-Conversions.
+Root cause: ordinary `/outcome-totals` requests used an inconsistent native financial
+request start and also reused traffic Conversions as the CPA denominator. The corrected
+shared path keeps property traffic, native Revenue, and matching financial Conversions
+on the saved initial-import-to-latest-completed-day window. Imported Revenue and Spend
+use all available mapped records.
 
 Read-only reconciliation for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` proved
 native GA4 Revenue `$55,966.70`, imported Revenue `$16,799.99`, Spend `$2,699.75`,
@@ -407,7 +405,7 @@ Evidence:
 - Overview loading now waits for the aggregate response to avoid briefly rendering local hardcoded financial values before aggregate data arrives.
 - Budget utilization, pacing, ROI, ROAS, total spend, conversions, CPC, CPA, and conversion-rate displays use Overview-specific aggregate metric wrappers.
 - Missing required aggregate inputs render `Unavailable` plus the aggregate unavailable reason instead of silently showing zero.
-- Follow-up fix: `/api/campaigns/:id/outcome-totals` revenue now aligns with the GA4 financial card rule by adding imported revenue-to-date records from the GA4/campaign financial path to GA4 revenue before deriving ROAS and ROI.
+- Follow-up fix: `/api/campaigns/:id/outcome-totals` revenue now aligns with the GA4 financial card rule by adding every available mapped imported revenue record from the GA4/campaign financial path to native GA4 revenue before deriving ROAS and ROI.
 - Follow-up fix: aggregate `cvr` now uses paid-media `conversions / clicks` when clicks exist, and falls back to GA4/web `conversions / sessions` when the connected web source provides sessions.
 - Render validation passed after deploy: `performanceSummary.totals.cvr.value` populated from GA4 conversions and sessions for the current GA4-backed test campaign.
 - Other Budget & Financial tabs still use the previous calculations and are intentionally deferred to later commits.
@@ -634,4 +632,4 @@ Excluded future acceptance work (not blockers for the certified GA4-first bounda
 
 ## 2026-07-30 Current Commit 10 Status — Closed For Bounded Packet
 
-Root cause: scheduled/manual aggregates could calculate campaign financial cards from only the last 90 days, unlike Overview's ordered campaign-to-date GA4 financial source contract, and valid zero/negative revenue made ROAS/ROI appear unavailable. Commit `ec265895` deployed the fix while preserving engagement/platform windows, reading GA4-context persisted revenue/spend campaign-to-date, and separating corrected snapshots as `performance_summary_aggregate_v2`. On existing campaign `GA4 single` / `ga4_mock`, Budget & Financial Analysis → ROI & ROAS Total Revenue matched GA4 Overview Total Revenue. This closes the bounded Commit 10 code/browser packet; snapshot history, live multi-source, and zero/negative production-fixture proof remain external.
+Root cause: scheduled/manual aggregates could calculate campaign financial cards from only the last 90 days, unlike Overview's ordered connected-source financial contract, and valid zero/negative revenue made ROAS/ROI appear unavailable. Commit `ec265895` deployed the fix while preserving engagement/platform windows, reading GA4-context persisted Revenue and Spend with their authoritative boundaries, and separating corrected snapshots as `performance_summary_aggregate_v2`. On existing campaign `GA4 single` / `ga4_mock`, Budget & Financial Analysis → ROI & ROAS Total Revenue matched GA4 Overview Total Revenue. This closes the bounded Commit 10 code/browser packet; snapshot history, live multi-source, and zero/negative production-fixture proof remain external.

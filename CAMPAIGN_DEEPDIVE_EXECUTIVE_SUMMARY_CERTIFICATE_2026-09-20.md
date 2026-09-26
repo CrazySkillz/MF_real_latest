@@ -57,6 +57,8 @@ The campaign/client/property access boundary, currency, reporting timezone, and 
 | Narrative, funnel, cards, source capabilities | `GET /api/campaigns/:id/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date` | shared campaign performance aggregate; current window; financial source reconciliation; conditional snapshot upsert | campaign, GA4 connection/daily metrics, active revenue/spend definitions and records, `metric_snapshots` | narrative, all funnel stages, five cards, Risk Level, action evidence |
 | Seven-day trajectory | `GET /api/campaigns/:id/executive-summary/trajectory?reportingDate=YYYY-MM-DD` | exact date and exact seven-day comparison through `evaluateExecutiveSummaryTrajectory` | `metric_snapshots` where `snapshot_type='executive_summary_daily'` | trajectory or an explicit unavailable reason |
 
+The retained `executiveFinancialScope=campaign_to_date` request value is a backward-compatible API name only. Current native GA4 values start at the saved initial-import date; imported Revenue and Spend include every available mapped record.
+
 All three production endpoints returned `200`. The combined authenticated page rendered from the deployed bundle at the certified SHA. Final read-only page validation rewrote only `captureExecutiveSnapshot=1` to `0` in the browser request so the audit itself did not mutate production.
 
 Required query failures fail closed to the page-level `Unable to Load Executive Summary` state. Outcome and trajectory transport failures remain React Query errors; an HTTP failure cannot silently render cached-looking zero metrics.
@@ -72,7 +74,7 @@ Required query failures fail closed to the page-level `Unable to Load Executive 
 - comparison date: `2026-09-12`
 - visible explanation: earlier readings used different sources or reporting settings and cannot be compared safely
 - Risk Level: `MEDIUM`, driven by current KPI exceptions; no high-severity freshness or negative-ROI factor was present
-- narrative: factual current-window/source-to-date wording, current ROI/ROAS, current risk classification, and explicit lack of compatible trajectory history
+- narrative: factual saved-import native and all-mapped-record imported wording, current ROI/ROAS, current risk classification, and explicit lack of compatible trajectory history
 
 The unavailable trajectory is correct. The new current snapshot includes configuration-aware source identity, while the older comparison snapshot predates that compatible identity. The application did not combine the two.
 

@@ -13,7 +13,7 @@ This decision certifies the combined Revenue subsection only. It does not certif
 Included:
 
 - GA4 Overview `Total Revenue`, its displayed source count, and the `Revenue Sources` modal
-- native GA4 campaign-to-date revenue plus active GA4-context imported revenue
+- native GA4 revenue from the saved initial-import boundary plus all active mapped GA4-context imported revenue
 - the authoritative aggregate-versus-attributed record-grain selection
 - HubSpot and Salesforce Pipeline Proxy separation from confirmed Total Revenue
 - active-source filtering, stable source identity, campaign ownership, campaign currency, and cross-campaign isolation

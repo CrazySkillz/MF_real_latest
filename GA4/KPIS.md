@@ -128,7 +128,7 @@ Important meaning:
 - KPIs track the latest GA4-backed campaign state
 - KPI current values should stay consistent with the Overview and financial-source logic
 - GA4 traffic KPI current values accumulate from the saved initial-import boundary through the latest completed reporting day; the configured import depth does not become a rolling window after setup
-- financial KPI current values retain the campaign-to-date native/imported revenue and spend contract documented in `GA4/FINANCIAL_SOURCES.md`
+- financial KPI current values use the native saved-import-window and all-mapped-record imported Revenue/Spend contract documented in `GA4/FINANCIAL_SOURCES.md`
 - saved timeframe or tracking-period fields are target metadata; they do not replace the authoritative cumulative current-value window
 
 Current-value hierarchy:

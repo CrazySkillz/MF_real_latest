@@ -2,13 +2,13 @@
 
 ## Decision and boundary
 
-**CLEAN-CERTIFIED / PRODUCTION_READY for the four GA4 Overview Performance cards on the exact existing Campaign2/property/USD boundary at deployed application commit `5232f8978a4f70e05652d23459aeb9c964e7a83d`.** Required steps remaining for this exact boundary: **0**.
+**HISTORICAL EXACT-RUNTIME EVIDENCE for the four GA4 Overview Performance cards on the Campaign2/property/USD boundary at deployed application commit `5232f8978a4f70e05652d23459aeb9c964e7a83d`.** The later V1 financial-boundary correction invalidates this record as current production-readiness evidence. Current native financial values start at the saved GA4 initial-import date; imported Revenue and Spend include every mapped record.
 
 This is an independent consumer certification of **Profit, ROAS, ROI, and CPA**, not certification of source add/edit/delete, Summary Conversions, Campaign DeepDive, Reports, the Revenue & Financials parent, or the whole Overview tab. Existing Revenue, Spend, Performance, and Insights Executive Financials certificates remain untouched. The native GA4 financial-conversions value is a selected-property input, not a substitute from Summary.
 
 ## Inputs, formulas, and rendered parity
 
-Read-only authenticated APIs on Campaign2 (`d9c8a3b7c4d0`, property `542352127`, Europe/Amsterdam reporting timezone) returned native GA4 Revenue `$8,862.30` and **48** financial conversions for 2026-09-08–2026-09-16, imported Revenue `$57,676.90` through 2026-09-17, and source-backed Spend `$338.00` through the completed 2026-09-16 day. The Revenue breakdown summed to its total, the Spend breakdown matched its total, and the rendered cards matched these exact calculations:
+Historical read-only authenticated APIs on Campaign2 (`d9c8a3b7c4d0`, property `542352127`, Europe/Amsterdam reporting timezone) returned native GA4 Revenue `$8,862.30` and **48** financial conversions for 2026-09-08–2026-09-16, imported Revenue `$57,676.90` through 2026-09-17, and source-backed Spend `$338.00` through the completed 2026-09-16 day. The Revenue breakdown summed to its total, the Spend breakdown matched its total, and the rendered cards matched these exact calculations. This observed window is not the current boundary contract; current native financial values begin at the saved GA4 initial-import date and imported values include every mapped record:
 
 | Card | Formula | Rendered value |
 | --- | --- | ---: |

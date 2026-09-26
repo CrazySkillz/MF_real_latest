@@ -601,7 +601,7 @@ Current behavior:
   an imported-only row under its own contract.
 - Live Ad Comparison does not consume those adjusted rows. It shows the exact
   materialized HubSpot source amount and saved campaign-value subsections only
-  as separate source-to-date Revenue Breakdown provenance.
+  as separate all-mapped-record Revenue Breakdown provenance.
 - Ad Comparison never proportionally allocates HubSpot revenue and never merges
   it into native 30-day ranking, chart, summaries, or All Campaigns rows.
 
@@ -838,7 +838,7 @@ particular:
 | transaction and failure retention | Certified in scope | H1/H3/H4 deterministic rollback, pagination, write, delete, and disconnect failures plus H10c clean last-good state cover the negative contract. |
 | source modal and provenance | Certified in scope | H5 removes stale fallback authority; H10b inventory and provenance pass across three active sources. |
 | Total Revenue, Profit, ROAS, ROI, CPA | Certified in scope | H5/H6 financial-source parity plus deployed H10b report and configured KPI/Benchmark value packets use the same confirmed-revenue source and exclude proxy. |
-| Campaign Breakdown and Ad Comparison | Certified in scope | Campaign Breakdown uses its exact mapped-row contract. Live Ad Comparison uses the exact materialized source total and saved campaign-value subsections only as separate source-to-date provenance, excluded from native 30-day ranking. |
+| Campaign Breakdown and Ad Comparison | Certified in scope | Campaign Breakdown uses its exact mapped-row contract. Live Ad Comparison uses the exact materialized source total and saved campaign-value subsections only as separate all-mapped-record provenance, excluded from native 30-day ranking. |
 | KPI and Benchmark values | Certified in scope | H6/H8 current/persisted formula and recompute propagation guards plus deployed H10b configured-row packet pass. |
 | Campaign DeepDive/outcome | Certified in scope | H5/H6 canonical active-source/current-value parity and outcome/campaign-current formula tests cover the HubSpot contribution. |
 | Reports/snapshots/PDFs/emails | Certified in scope | Deployed 4.12 report/PDF, 4.14 received attachment/value packet, H7 proxy exclusion, and H10b report/PDF pass cover the configured report scope. |
@@ -1007,7 +1007,7 @@ materialized breakdown publishes `lastTotalRevenue: null` and
 provenance and for repair. Non-GA4 HubSpot contexts and non-HubSpot providers
 retain their prior fallback behavior.
 
-### Current Commit H6 — downstream native-source parity
+### Historical Commit H6 — downstream native-source parity
 
 Status: implemented locally on 2026-07-12; focused validation passed; deployment
 evidence pending.
@@ -1018,13 +1018,13 @@ evidence pending.
 - add parity tests for daily/to-date/breakdown disagreement and all five
   financial values
 
-H6 centralizes the native GA4 financial selector used by Overview, outcome
-totals, and campaign current values. Candidate order is to-date, persisted daily,
-then breakdown; the candidate with the greatest native revenue wins, and ties
-retain the earlier candidate. Conversions remain attached to the selected
-candidate for CPA rather than being independently maximized. Materialized
-imported revenue and spend use the complete persisted-source window, and Pipeline
-Proxy is not an input.
+H6 centralized the native GA4 financial selector used by Overview, outcome
+totals, and campaign current values. The current rule supersedes H6's former
+numeric selection: the first complete candidate wins in fixed order—saved-import-window
+provider, compatible persisted daily values, then configured-lookback breakdown
+only when earlier candidates are absent. Conversions remain attached to the selected
+candidate for CPA rather than being independently selected. Materialized imported
+Revenue and Spend use every mapped record, and Pipeline Proxy is not an input.
 
 ### Current Commit H7 — Reports Pipeline Proxy contract
 
@@ -1533,10 +1533,10 @@ Root cause fixed:
 
 - Overview selected the greatest-revenue GA4 candidate while outcome totals
   unconditionally replaced their existing GA4 result with to-date totals
-- campaign current values used persisted daily GA4 rows only, narrowed imported
-  financial sources to campaign start, and resolved an explicitly selected
+- campaign current values used persisted daily GA4 rows only, incorrectly narrowed imported
+  financial sources instead of using all mapped records, and resolved an explicitly selected
   `ga4` revenue input as zero
-- Campaign DeepDive financial formulas could combine selected lifetime revenue
+- Campaign DeepDive financial formulas could combine incompatible-window native revenue
   with date-range/fallback spend or conversions from a different GA4 candidate
 
 Local H6 behavior:
@@ -1573,8 +1573,9 @@ Files changed for H6:
 
 Local evidence:
 
-- pure tests prove greatest-revenue selection, whole-candidate conversion
-  retention, and deterministic tie handling
+- the original H6 pure tests proved whole-candidate conversion retention and
+  deterministic handling; current fixed-order selection is controlled by the
+  later provider-first parity tests and canonical financial-source contract
 - formula tests prove native GA4 plus exact materialized HubSpot revenue without
   duplication and aligned Revenue, Profit, ROAS, ROI, and CPA outputs
 - H1-H6, GA4 UI, outcome, Campaign DeepDive KPI/Benchmark, performance-summary,

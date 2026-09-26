@@ -292,7 +292,7 @@ export default defineConfig({
 
 Use this when verifying GA4 data accuracy against the real Google Analytics console.
 
-Current window contract: the selected 30/60/90-day setup window establishes the fixed initial-import boundary. Current GA4 traffic values then accumulate from that boundary through the latest completed reporting day; they are not rolling-window totals. GA4 financial values are campaign-to-date. Total Revenue is native GA4 revenue plus all active imported revenue sources.
+Current window contract: the selected 30/60/90-day setup window establishes the fixed initial-import boundary. Current GA4 traffic and native financial values accumulate from that boundary through the latest completed reporting day; they are not rolling-window totals. Imported Revenue and Spend use all available mapped records. Campaign metadata and app creation time are not financial boundaries.
 
 ### Overview Tab
 | MimoSaaS Metric | GA4 Console Location | Expected Match? |
@@ -507,11 +507,11 @@ If using the mock system, each "Run Refresh" injects one daily data point with t
 2. `(not set)` rows are filtered out — sum may be lower than Summary
 3. Users column should show a tooltip warning about non-additivity
 
-#### Landing Pages (ga4-landing-pages, campaign lifetime)
+#### Landing Pages (ga4-landing-pages, saved import window)
 
 - Top 50 landing pages by sessions
 - Users column has non-additivity tooltip
-- Date range = campaign lifetime (startDate → yesterday)
+- Date range = saved GA4 initial-import date through the latest completed reporting day
 
 #### Conversion Events (`ga4-conversion-events`, fixed initial-import boundary through latest completed day)
 
@@ -546,7 +546,7 @@ For each KPI template, the "Current Value" comes from:
 
 | KPI Template | Current Value Source | Example (yesop-brand) |
 |-------------|---------------------|----------------------|
-| Revenue | Persisted campaign-to-date all-source financial total | $2,850.00 |
+| Revenue | Persisted connected-source financial total | $2,850.00 |
 | ROAS | `revenue / spend` | 3.00x |
 | ROI | `computeRoiPercent(revenue, spend)` | 200.00% |
 | CPA | `computeCpa(spend, conversions)` | $25.00 |

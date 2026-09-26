@@ -397,7 +397,7 @@ Important meaning:
 - for GA4 mock/test flows, the stored KPI value used by alerts must be refreshed from the same total-construction model as the live KPI cards
 - `/api/notifications` must also resolve GA4 financial KPI visibility from the same selected financial-source model as the live KPI cards, so stale `performance-alert` rows disappear when the refreshed Revenue/ROAS/ROI/CPA value no longer breaches
 - if the exact report-date daily row is missing, an earlier current value may remain as last-good state, but the KPI recompute path must not record that value as target-day history
-- real-property financial KPI values require a complete live campaign-to-date GA4 response and campaign/native/imported/spend currency parity; retained daily totals or a configured-lookback breakdown must not substitute for that financial window
+- real-property financial KPI values require a complete live saved-import-window GA4 response and campaign/native/imported/spend currency parity; retained daily totals or a configured-lookback breakdown must not substitute for that financial window
 - if duplicate GA4 KPI rows exist for the same `campaign + metric`, only the newest row should remain eligible to emit the active alert
 
 ## After Overview Refresh: Benchmark Recompute And Alert Checks
@@ -415,7 +415,7 @@ Important meaning:
 - Benchmark alerts must run only after both the benchmark grid state and the Benchmark `Executive snapshot` state are coherent with the latest recomputed values
 - traffic Benchmark current values are recomputed from the fixed initial-import boundary through the latest completed reporting day; the scheduler repair window and saved target-period metadata must not replace that cumulative boundary
 - if the exact report-date daily row is missing, an earlier current value may remain as last-good state, but the benchmark recompute path must not record that value as target-day history
-- real-property financial Benchmark values follow the same live campaign-to-date and currency-parity requirements as financial KPI values
+- real-property financial Benchmark values follow the same live saved-import-window and currency-parity requirements as financial KPI values
 
 ## Ad Comparison Refresh
 
@@ -454,7 +454,7 @@ These are campaign-age/calendar requirements, not activity-row or event-count re
 
 KPI/Benchmark snapshot history used by live Insights is eligible only when its versioned marker matches the selected GA4 property, saved campaign filter, campaign reporting timezone, and campaign currency. Legacy or mismatched history is retained but withheld from the live tab.
 
-For native financial KPI/Benchmark recompute, the campaign-to-date start boundary is the explicit campaign start date when configured, otherwise the saved GA4 `importStartDate`, then campaign creation as the final fallback. This keeps fresh campaigns without an explicit start aligned with their historical GA4 import instead of truncating native revenue to the creation date.
+For native financial KPI/Benchmark recompute, the start boundary is always the saved GA4 `importStartDate`. The end boundary is the latest completed reporting day. Campaign metadata dates and app creation time are never substituted. Imported Revenue and Spend use all available mapped records, capped at the selected comparison date only for historical comparisons.
 
 ## Reports Refresh
 

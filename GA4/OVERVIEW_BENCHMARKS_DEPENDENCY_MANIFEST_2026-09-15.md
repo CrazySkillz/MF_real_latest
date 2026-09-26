@@ -34,7 +34,7 @@ The following are outside this dependency boundary unless a future change also m
 | Contract | Fields/rules consumed by Benchmarks |
 |---|---|
 | Campaign identity | `id`, `ownerId`, `clientId` |
-| Reporting configuration | `currency`, `reportingTimeZone`, `ga4CampaignFilter`, `startDate`, `createdAt` |
+| Reporting configuration | `currency`, `reportingTimeZone`, `ga4CampaignFilter`, selected connection `importStartDate`; campaign `startDate`/`createdAt` are not financial boundaries |
 | Campaign access | Every list, create, update, delete, analytics, history, recompute, alert, Executive Summary, and report operation must prove access to the campaign that owns the row. A row ID alone is not an authorization boundary. |
 | GA4 connection discovery | `/api/ga4/check-connection/:campaignId` and `/api/campaigns/:id/ga4-connections` |
 | Connection fields | `connected`, connection `id`, `propertyId`, `isPrimary`, `lookbackDays`, `importStartDate`, `method`, and active/usable state |
@@ -112,7 +112,7 @@ Current availability preconditions: import-to-date requests fail closed without 
 
 ### Window and precedence
 
-- Native financial start: campaign `startDate`, falling back to `createdAt` under the existing route/job contract.
+- Native financial start: selected connection `importStartDate`. Campaign `startDate` and `createdAt` are never substituted.
 - End: latest completed calendar day in the campaign reporting time zone.
 - Browser source selection is controlled by `selectGA4FinancialTotalsSource`.
 - Browser precedence is verified GA4 to-date totals, then persisted daily-summed totals, then bounded breakdown totals only where the existing imported-revenue currency-verification rule permits the fallback.
@@ -204,8 +204,8 @@ Additional rules:
 
 - Automatic current-value calculation is performed by `server/ga4-kpi-benchmark-jobs.ts` with the same metric identities, formulas, scopes, and currency checks used by live consumers. Its live-property financial acquisition is deliberately stricter than the browser fallback chain, as documented in section 4.
 - Traffic window: connection import start through the latest completed reporting day.
-- Native financial window: campaign start/creation fallback through the latest completed reporting day.
-- Imported revenue and spend aggregation retain their existing historical-start storage contract through that same completed-day boundary.
+- Native financial window: selected connection `importStartDate` through the latest completed reporting day.
+- Imported Revenue and Spend aggregation uses all available mapped records; historical comparisons cap those records at the selected comparison date.
 - The requested scheduler date may reduce the completed-day end boundary; it must never move the start before the manifested start date.
 - Daily refresh, manual refresh/recompute, financial-source changes, report preflight, and scheduled refresh must preserve selected-property, campaign, time-zone, currency, and platform scope.
 - Recompute writes `currentValue`/`lastUpdated`, then records at most one logical automatic history point for the manifested history identity.

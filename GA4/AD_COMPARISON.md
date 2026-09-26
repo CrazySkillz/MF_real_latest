@@ -130,7 +130,7 @@ It must not use:
 - unscoped revenue or spend sources
 - guessed external attribution
 - proportional revenue allocation
-- source-to-date imported revenue in native comparison rows
+- all-mapped-record imported revenue in native comparison rows
 - source definitions or saved configuration totals as a value fallback
 - display-only source labels as attribution keys when stable campaign identity is available
 
@@ -162,7 +162,7 @@ Row rules:
 - take conversion rate from GA4's native `sessionKeyEventRate` and convert its fraction to a percentage
 - use only native GA4 row revenue in the separate native comparison rows
 - never create a comparison row from imported-source configuration
-- never infer, merge, or proportionally allocate source-to-date revenue into the
+- never infer, merge, or proportionally allocate all-mapped-record imported revenue into the
   native rows
 
 ## Revenue Window Boundary
@@ -284,7 +284,7 @@ Rules:
 - active imported sources use the same campaign-scoped source definitions and
   materialized revenue records as Overview Revenue & Financials. The
   `revenue-breakdown` API reads records from `1900-01-01` through the current
-  UTC date. These source-to-date amounts remain separate from native All
+  UTC date. These all-mapped-record amounts remain separate from native All
   Campaigns rows; uniquely mapped amounts can appear in the Overview-based
   chart and leader cards.
 - source rows can include indented per-campaign subsections from saved exact `campaignValueRevenueTotals`.

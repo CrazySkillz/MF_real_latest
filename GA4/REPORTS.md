@@ -85,7 +85,7 @@ Current standard-template output rule:
 - scheduled/server Overview output must apply the same subsection-aware fail-closed rule: optional unselected section failures may retain bounded fallbacks, but a failed required selected Overview input aborts PDF generation and therefore prevents send/snapshot success
 - in `Overview` report output, `Campaign Breakdown` should use the column label `Revenue` because it can include exact campaign-matched imported revenue
 - in `Overview` report output, `Landing Pages` and `Conversion Events` should omit revenue
-- `Campaign Breakdown`, `Landing Pages`, and `Conversion Events` traffic/conversion metrics in browser and server Overview reports use the fixed initial-import boundary through the latest completed day, never a rolling 30-day display window; Campaign Breakdown native Revenue separately uses campaign start through the same completed day and then adds exact mapped imports
+- `Campaign Breakdown`, `Landing Pages`, and `Conversion Events` traffic/conversion metrics in browser and server Overview reports use the fixed initial-import boundary through the latest completed day, never a rolling 30-day display window; Campaign Breakdown native Revenue uses that same boundary and then adds all exact mapped imports
 - `KPIs` should follow the live KPI order
 - `Benchmarks` should follow the live Benchmark order
 - `Ad Comparison` should follow the live Ad Comparison order
@@ -93,7 +93,7 @@ Current standard-template output rule:
   `All Campaigns` use the same native import-to-date rows as live; imported
   external revenue cannot create or adjust ranked rows
 - `Ad Comparison` report Revenue Breakdown shows the same native import-to-date
-  row sum plus separate exact materialized source-to-date rows, with no combined
+  row sum plus separate exact all-mapped-record imported rows, with no combined
   total; browser and scheduled paths fail closed when selected required inputs
   are unavailable
 - `Insights` should follow the live Insights order
@@ -140,7 +140,7 @@ Important meaning:
 - custom reports store report configuration, not frozen analytics values
 - actual report values should come from refreshed GA4 tab inputs when the report is generated or sent
 - Campaign DeepDive Custom Report opens the Reports builder with campaign context and uses the same fixed inputs as the selected Campaign DeepDive subsection
-- Budget & Financial Analysis and Trend Analysis use current financial values from `/outcome-totals.performanceSummary`; GA4-first Performance Summary and Executive Summary use persisted cumulative GA4 traffic plus their existing campaign-to-date financial reader
+- Budget & Financial Analysis and Trend Analysis use current financial values from `/outcome-totals.performanceSummary`; GA4-first Performance Summary and Executive Summary use persisted cumulative GA4 traffic plus the shared connected-source financial reader
 - campaign-scoped Reports pages should show `Back to main Campaign Overview` and link to `/campaigns/<campaignId>`
 - campaign-scoped Reports pages should show the active campaign's backend scheduled report cards directly, without Standard Reports, Scheduled Reports, or All Reports tabs, report type filters, result counts, or global/demo reports
 - for GA4-first Campaign DeepDive Custom Reports, the metric picker exposes available Users, Sessions, Conversions, Revenue, and CVR; paid-media picker keys remain hidden without a connected main paid-media source. The certified aggregate/report bodies also contained source-backed Spend, ROAS, ROI, and CPA financial outcomes, while Impressions, Clicks, Leads, CPC, CPM, and CTR remained unavailable

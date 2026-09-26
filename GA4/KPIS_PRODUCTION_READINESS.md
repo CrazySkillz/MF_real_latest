@@ -399,7 +399,7 @@ Files changed:
 
 Validation on August 1, 2026:
 
-- `npm test -- server/ga4-kpi-reporting-window-regression.test.ts`: 1 file / 3 tests passed, including Los Angeles versus Amsterdam completed-day boundaries, explicit-date clamping, weighted Engagement Rate, exact persisted metric values, progress date, and unchanged lifetime CPA conversions
+- `npm test -- server/ga4-kpi-reporting-window-regression.test.ts`: 1 file / 3 tests passed, including Los Angeles versus Amsterdam completed-day boundaries, explicit-date clamping, weighted Engagement Rate, exact persisted metric values, progress date, and unchanged saved-import-window CPA conversions
 - relevant scheduler/consumer regression packet: 10 files / 67 tests passed
 - the Commit 4 notification-enrichment guard passed inside `server/notification-visibility-regression.test.ts`; the full file passed 33/35 and retained two unrelated, previously documented top-bar attention-indicator source-text failures
 - `npm run check` passed
@@ -410,7 +410,7 @@ What this proves:
 - the locally exercised persisted real job no longer uses campaign-start/UTC-yesterday inputs for standard traffic/count/rate KPIs
 - two campaigns at the same instant can resolve different latest completed reporting dates according to their reporting timezones
 - the shared aggregation is exercised with a weighted fixture, and the persisted-job and notification-enrichment paths are regression-wired to that same transform instead of unweighted/latest-row Engagement Rate
-- lifetime financial conversions remain separate in the focused CPA regression, preventing this commit from silently changing the documented financial window
+- saved-import-window financial conversions remain separate in the focused CPA regression, preventing this commit from silently changing the documented financial window
 
 What this does not prove:
 
@@ -424,7 +424,7 @@ Status: implemented and locally validated. Certification remains withdrawn.
 
 Root cause:
 
-- the persisted GA4 KPI/Benchmark job and notification enrichment each had a local "higher revenue wins" transform, so a later configured-lookback breakdown could replace an earlier complete campaign-to-date provider or persisted candidate
+- the persisted GA4 KPI/Benchmark job and notification enrichment each had a local "higher revenue wins" transform, so a later configured-lookback breakdown could replace an earlier complete saved-import-window provider or persisted candidate
 - falsy fallback expressions treated an authoritative provider zero as absent when a nonzero fallback existed
 - required imported-revenue and spend read failures were caught as zero before recompute, making source failure indistinguishable from a successful zero and allowing affected last-good values to be overwritten
 - the campaign current-value resolver treated an empty successful daily query as a complete zero-valued native candidate, so a fully unavailable native source could be presented as zero
@@ -432,7 +432,7 @@ Root cause:
 Smallest safe implementation:
 
 - the existing shared ordered selector now accepts only finite numeric or nonblank numeric-string revenue and conversion pairs; zero and negative values remain complete candidates, while blanks, booleans, arrays, missing fields, and non-finite values are rejected
-- persisted platform recompute, campaign current-value refresh, and notification enrichment select in fixed order: campaign-to-date provider totals, persisted campaign-to-date daily totals when rows exist, then the connection's configured-lookback breakdown only when no earlier complete candidate exists
+- persisted platform recompute, campaign current-value refresh, and notification enrichment select in fixed order: saved-import-window provider totals, compatible persisted daily totals when rows exist, then the connection's configured-lookback breakdown only when no earlier complete candidate exists
 - persisted recompute reads campaign-scoped imported revenue and spend independently and keeps a failure/malformed state as unavailable; dependency-aware gating skips only the affected financial KPI/Benchmark rows, so Revenue can still update when spend fails and CPA can still update when imported revenue fails
 - native candidate failure skips all affected financial KPI/Benchmark current-value and progress writes; the campaign current-value refresh likewise returns no replacement value, preserving each stored last-good value
 - Notifications recompute from the same ordered financial inputs and suppress an affected stale alert row when a required native/revenue/spend input cannot be verified
@@ -536,13 +536,13 @@ Root cause:
 - the KPI list query defaulted missing data to `[]` and discarded its error state, so a failed read rendered the same empty state as a successful zero-row response
 - KPI cards, breach pulse, tracker scoring, KPI-derived Insights, and browser PDF rows independently consumed numeric values without a shared browser eligibility state
 - React Query can retain last-good response data after a refresh failure; those retained values could therefore look freshly verified even though Current Commits 5-6 correctly fail closed in backend producers and alert consumers
-- the KPI UI and browser PDF did not state that traffic/rate KPIs use 30 completed reporting days in the campaign reporting timezone while financial KPIs use campaign-to-date inputs
+- the KPI UI and browser PDF did not state that traffic/rate KPIs use 30 completed reporting days in the campaign reporting timezone while native financial KPIs use the saved import window and imported Revenue/Spend use all mapped records
 
 Smallest safe implementation:
 
 - `shared/ga4-kpi-consumer-state.ts` resolves the standard/legacy metric dependency set to exactly one `loading`, `failed`, `unavailable`, `stale`, `blocked`, `insufficient_data`, or `verified` browser state and supplies the applicable reporting-window label
 - the existing KPI query now retains data presence separately from query failure; an initial failure is not empty, and a failed refresh of a retained empty list is not presented as a verified empty state
-- actual GA4 daily, connection, campaign-to-date revenue, imported-revenue, spend, and source-definition query results determine required input readiness without changing their fetches, response contracts, formulas, precedence, or scope
+- actual GA4 daily, connection, saved-import-window native revenue, imported-revenue, spend, and source-definition query results determine required input readiness without changing their fetches, response contracts, formulas, precedence, or scope
 - only `verified` KPI rows can enter tracker bands/average, display a breached-threshold pulse, or generate positive/negative KPI performance Insights; blocked, insufficient, unavailable, loading, failed, and stale rows remain fail-closed
 - stale rows may retain the last-good numeric value, but the card and browser PDF label it `Last-good — not verified`; unavailable/failed/loading/blocked rows do not present a numeric value as current
 - the browser PDF states the traffic/rate and financial windows, records excluded-state counts, and prints non-verified rows as state evidence rather than target-performance results
@@ -572,7 +572,7 @@ Validation on August 1, 2026:
 What this proves:
 
 - the locally exercised state matrix distinguishes successful empty, initial loading, list failure, retained-list staleness, required-source loading/unavailable/stale, missing-dependency blocking, insufficient denominator data, and verified values
-- standard and legacy traffic/rate aliases receive the 30-completed-day campaign-timezone label; Revenue/ROAS/ROI/CPA receive the campaign-to-date financial label; custom rows remain explicitly outside the standard GA4 window
+- standard and legacy traffic/rate aliases receive the 30-completed-day campaign-timezone label; Revenue/ROAS/ROI/CPA receive the connected-source financial label; custom rows remain explicitly outside the standard GA4 window
 - every traced browser KPI performance consumer calls the same state resolver, and only its `verified` result can score, pulse, or create KPI performance guidance
 
 What this does not prove:
@@ -712,7 +712,7 @@ Status: final closure rerun completed on August 3, 2026; certification remains w
 Fresh root-cause classification:
 
 - the deployed Commit 9 revision was confirmation of deployment only; it did not close any behavioral external gate
-- the three GA4 failures in the prior full suite were stale source-shape assertions: reporting-timezone import ordering, inline versus shared engaged-session derivation, and the superseded campaign-lifetime Benchmark input window. The runtime paths already matched the documented freshness helper, shared weighted traffic helper, and 30-completed-day window, so only those assertions changed
+- the three GA4 failures in the prior full suite were stale source-shape assertions: reporting-timezone import ordering, inline versus shared engaged-session derivation, and a superseded Benchmark input window. The runtime paths already matched the documented freshness helper, shared weighted traffic helper, and 30-completed-day window, so only those assertions changed
 - no runtime GA4 KPI defect was found by the focused packets or read-only database checks
 
 Exact local and read-only evidence on August 2, 2026:
@@ -720,7 +720,7 @@ Exact local and read-only evidence on August 2, 2026:
 - deployed schema: `kpi_progress.value`, `rolling_average_7d`, and `rolling_average_30d` are each `numeric(18,2)`; 679 rows were present, with maximum absolute values `384252.24`, `331863.10`, and `329829.74`
 - target inventory: dry-run mode, 0 candidates, 17 classified skips, 0 applied. The exact split is 7 access-token financial KPIs, 3 propertyless financial KPIs, and 7 immutable duplicate-email audit rows. Commit 10A closes inventory completeness: three access-token rows use deterministic `yesop` values that exactly match, three propertyless rows resolve unavailable under the fail-closed contract, and four live-property rows have complete stored/provider-boundary inventories. Gate 4 later closed their applicable provider success/failure classification without refreshing or persisting tokens. No `--apply` command or destructive production action was run
 - deployed child integrity: 23 GA4 KPI parents and 0 orphan KPI progress, alert, or period rows; Commit 10B additionally found 4 legacy KPI parents whose campaign no longer exists, all without progress/alert/period children
-- metric/value contract: all ten canonical identities (Revenue, Conversions, Sessions, Users, Pageviews, Conversion Rate, Engagement Rate, ROAS, ROI, CPA), supported `total*` aliases, formulas, dependency gates, 30-completed-day traffic/rate window, campaign-to-date financial window, fixed source precedence, authoritative zero, and unavailable/last-good handling are covered by the current shared resolvers and focused real-path packets
+- metric/value contract: all ten canonical identities (Revenue, Conversions, Sessions, Users, Pageviews, Conversion Rate, Engagement Rate, ROAS, ROI, CPA), supported `total*` aliases, formulas, dependency gates, 30-completed-day traffic/rate window, native saved-import financial window, all-mapped-record imported financial inputs, fixed source precedence, authoritative zero, and unavailable/last-good handling are covered by the current shared resolvers and focused real-path packets
 - lifecycle/consumer contract: actor/campaign/platform/property/source scope; add/edit/delete; refresh, recompute, scheduler wiring; thresholds; alerts/email eligibility; bell/Notifications; Insights; browser PDF; manual snapshot creation; direct snapshot PDF download; test-send; scheduled reports; and persistence rollback remain code-traced and regression-covered within the configuration boundary. There is no separate GA4 `manual-send` endpoint; historical uses of that phrase in this file mean manual snapshot creation
 - current packet on exact clean deployed `1166b9f27b81a06bd5c8b43072f77379e46453f4`: 44/46 files and 488/491 tests passed. Two failures are stale Benchmark structural slice boundaries; one Insights/report copy-parity boundary is unproven
 - certification regression 9/9, standalone checker, TypeScript, and production build passed
@@ -791,7 +791,7 @@ The public production `/api/health` response returned `nodeEnv=production` and e
 
 Exact production boundary:
 
-- 23 GA4 KPI parent rows exist. Nineteen join to an existing actor-owned campaign. Those rows were checked for campaign, primary property or proven absence, saved campaign filter, source mix, reporting timezone, applicable 30-completed-day or campaign-to-date window, persisted inputs/value, threshold, and notification linkage.
+- 23 GA4 KPI parent rows exist. Nineteen join to an existing actor-owned campaign. Those rows were checked for campaign, primary property or proven absence, saved campaign filter, source mix, reporting timezone, applicable 30-completed-day or connected-source financial boundary, persisted inputs/value, threshold, and notification linkage.
 - available state evidence includes propertyless/unavailable rows, expired-provider or persisted last-good candidates, verified deterministic simulated-property rows, UTC and Europe/Amsterdam reporting zones, filtered and unfiltered campaigns, and mixed native/imported revenue/spend inputs
 - production does not contain an authoritative valid-zero row: the only stored zero rows lack the required property and therefore resolve unavailable. It also has no campaign-valid fixture that safely proves blocked, insufficient-data, or natural failure without mutation or a provider/token-capable request
 - the normal GA4 daily GET was not used because its current path may backfill daily rows or refresh/persist tokens; calling it would violate this gate's non-mutating boundary

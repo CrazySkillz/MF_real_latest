@@ -970,7 +970,7 @@ Checkpoint after Journey 8:
 - [ ] If imported revenue exists, `Revenue Breakdown` lists every active
   GA4-context source separately; chart/card revenue uses only exact mapped
   imported amounts alongside its native GA4 campaign rows
-- [ ] An available imported source shows its exact materialized source-to-date
+- [ ] An available imported source shows its exact total across every mapped materialized record
   amount as separate Revenue Breakdown provenance; only uniquely mapped amounts
   may adjust Overview-based chart revenue, and no imported source creates a row
 - [ ] An unavailable imported source remains listed as `Unavailable`, does not
@@ -1032,7 +1032,7 @@ For each add/edit/delete action above, validate all related revenue surfaces:
   comparison rows for the displayed comparison window
 - [ ] Insights Executive Financials revenue matches Overview `Total Revenue`
 - [ ] Reports generated after the change use the updated revenue values from the current tab state
-- [ ] Campaign DeepDive Performance Summary Key Outcomes matches the authoritative cumulative traffic and campaign-to-date financial values
+- [ ] Campaign DeepDive Performance Summary Key Outcomes matches the authoritative cumulative traffic and connected-source financial values
 - [ ] Campaign Health, Top Priority Action, and Recommended Actions use the refreshed persisted KPI and Benchmark current values and fail closed when a configured metric is not safely scorable
 - [ ] Recent Movement compares Sessions and Conversions with cumulative values at the exact selected prior date, Spend with a compatible exact-date snapshot, and Total Revenue with exact-date same-source revenue; unavailable history must not reuse the current total
 

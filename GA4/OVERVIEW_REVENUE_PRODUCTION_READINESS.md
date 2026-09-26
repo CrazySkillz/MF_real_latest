@@ -147,7 +147,7 @@ The enabled CSV source is closed inside the exact Overview boundary. The remaini
 | Snapshot record | One record dated the latest completed reporting day when no Date column is mapped | Revenue-to-date style imported total | Scoped code path is covered; the certified current CSV source is materialized and USD without generalizing to unlisted mapping shapes. |
 | Imported revenue-to-date | `getRevenueTotalForRange` over active `ga4` sources and records | `/revenue-to-date`, GA4 Overview imported revenue | Exact current CSV contribution is $600 USD; the five-source imported total is $16,799.99 USD. |
 | Revenue breakdown | `getRevenueBreakdownBySource` over active sources/records | `/revenue-breakdown`, source amounts, Total Revenue composition | Exact CSV source amount/list/to-date parity passed; no Google Sheets Revenue source is configured in the target. |
-| Revenue source list | Active sources enriched with lifetime materialized breakdown amounts | `/revenue-sources`, Revenue Sources modal | Exact CSV source appears once at $600; missing materialization is unavailable and a materialized zero remains $0. |
+| Revenue source list | Active sources enriched with all-mapped-record materialized breakdown amounts | `/revenue-sources`, Revenue Sources modal | Exact CSV source appears once at $600; missing materialization is unavailable and a materialized zero remains $0. |
 | Total Revenue | Selected scoped GA4-native financial revenue plus imported GA4-context revenue | Overview Total Revenue | Exact CSV contribution is included once in current release-candidate Total Revenue `$72,766.69 USD`; native revenue and other source families are independently evidenced by the whole-Overview record. |
 | Profit | `Total Revenue - Total Spend` | Overview financial card | The certified exact CSV contribution flows through the shared Total Revenue input; Spend proof remains owned by the whole-Overview boundary. |
 | ROAS | `Total Revenue / Total Spend` | Overview financial card | Same exact-source/whole-Overview boundary as Profit. |
@@ -199,7 +199,7 @@ Historical bounded CSV evidence, supplemented by the current exact-source/USD re
 | Consumer | Expected Google Sheets/CSV Revenue propagation | Current evidence | Status |
 | --- | --- | --- | --- |
 | `revenue_records` | Exact selected positive rows materialize without loss or duplication | Exact enabled CSV rows are materialized and USD; CSV and Google Sheets replacements share the scoped transaction helper | Passed for current CSV; future Google Sheets provider data excluded |
-| `/revenue-to-date` | Equals active source lifetime records in scope | Exact CSV source is $600 and included once in imported total $16,799.99 | Passed for current CSV |
+| `/revenue-to-date` | Equals every active mapped source record in scope | Exact CSV source is $600 and included once in imported total $16,799.99 | Passed for current CSV |
 | `/revenue-breakdown` | Target source amount and total reconcile with revenue-to-date | Exact CSV amount, source ID, source list, and imported total reconcile | Passed for current CSV |
 | `/revenue-sources` | Stable active source identity, type, metadata, and amount | Exact current CSV source appears once at $600 USD | Passed for current CSV |
 | Open Overview Total Revenue | Imported contribution appears once and combines with independently selected native revenue | Exact CSV contribution is included in `$72,766.69` Total Revenue; foreground mutation invalidates immediately | Passed for current CSV |
@@ -394,7 +394,7 @@ Prior non-transactional behavior may have persisted damaged or ambiguous state. 
 - inactive GA4 CSV sources that still retain records;
 - proven CSV records whose source is missing, belongs to another campaign, or has the wrong source type;
 - suspicious duplicate active GA4 CSV sources or duplicate source/date/sub-campaign record grains;
-- retained CSV row totals that differ from the effective materialized lifetime total;
+- retained CSV row totals that differ from the effective all-mapped-record materialized total;
 - dated retained CSV rows whose selected positive revenue has a blank/invalid date;
 - active CSV mapping configs missing complete stored rows, headers, row count, or unique Revenue/Campaign/Date role metadata needed for a safe edit.
 

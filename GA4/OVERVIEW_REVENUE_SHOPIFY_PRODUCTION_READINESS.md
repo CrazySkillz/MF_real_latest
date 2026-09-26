@@ -258,7 +258,7 @@ Current matching behavior:
 - For discount codes, only the first code on an order is considered.
 - Campaign Breakdown may use `campaignValueRevenueTotals` plus optional exact
   campaign mappings. Live Ad Comparison uses Shopify only as separate
-  source-to-date Revenue Breakdown provenance; it does not merge Shopify into
+  all-mapped-record Revenue Breakdown provenance; it does not merge Shopify into
   30-day ranked rows. No proportional allocation is intended.
 
 Findings:
@@ -290,7 +290,7 @@ Official basis: Shopify documents the REST order financial-status meanings and i
 - Refunds are not modeled as separate financial events.
 - A later refund is intentionally restated on the original order's campaign-reporting-timezone `created_at` date when the full campaign-window snapshot is fetched again.
 - Fully refunded and cancelled orders are excluded; partially refunded orders use their current total.
-- Normal GA4 merchant stores fetch from campaign `startDate`, falling back to campaign `createdAt`; a verified Partner development store uses the wizard's 3,650-day validation window only with `read_all_orders`. Basic-scope OAuth uses the same campaign start boundary, so a campaign older than Shopify's standard order-access window still fails closed instead of silently truncating revenue.
+- Shopify provider ingestion has its own materialization window: normal merchant stores currently fetch from campaign `startDate`, falling back to campaign `createdAt`; a verified Partner development store uses the wizard's 3,650-day validation window only with `read_all_orders`. This provider-specific fetch limit does not become the GA4 financial reporting boundary. Once materialized, every mapped Shopify record is included in imported Revenue. Basic-scope OAuth fails closed when the requested provider window is inaccessible instead of silently truncating the materialized result.
 - The route does not merge an incremental `updated_at_min` result into a full snapshot. That would make replacement incomplete unless every unchanged order were also retained.
 
 Status: eligibility, current amount, order-ID deduplication, original-date restatement, reporting-timezone conversion, and fail-closed window behavior are proven locally. Real provider order/refund mutation convergence remains not locally verifiable.
@@ -323,7 +323,7 @@ No currency conversion is attempted or invented. This follows Shopify's definiti
 ### Date findings
 
 - GA4 uses campaign reporting timezone for both order dates and the source window.
-- Campaign `startDate` is authoritative for normal merchant stores and campaign `createdAt` is the fallback. A Shopify-verified Partner development store uses the isolated 3,650-day validation window only when historical-order access is granted; otherwise OAuth retains the campaign boundary and fails closed if it is inaccessible.
+- For Shopify provider ingestion only, campaign `startDate` currently defines the normal merchant fetch start and campaign `createdAt` is its fallback. This is not the GA4 reporting/aggregation boundary: imported Revenue includes every mapped Shopify record that was materialized. A Shopify-verified Partner development store uses the isolated 3,650-day validation window only when historical-order access is granted; otherwise OAuth retains the provider request boundary and fails closed if it is inaccessible.
 - Invalid, future, pre-window, and otherwise out-of-window matched order dates fail before replacement.
 - A complete result with no matched eligible orders writes one zero row on the campaign-timezone current date; no positive revenue is re-dated.
 
@@ -374,7 +374,7 @@ A structurally valid, completely paginated empty result is treated as authoritat
 | ROI | Shopify affects revenue and profit | `(Total Revenue - Total Spend) / Total Spend * 100` | Proven with existing unavailable semantics when spend is absent |
 | CPA | Shopify does not affect conversion denominator | `Total Spend / selected GA4 conversions` | Formula proven; Shopify changes do not directly change CPA |
 | Campaign Breakdown Revenue | Exact imported campaign-value amount is added to one normalized matching GA4 row; imported-only row can be created | Native row revenue plus exact matched imported amount | Proven locally, including exact-match/no-allocation guards |
-| Ad Comparison | Shows the exact materialized Shopify source amount and saved exact campaign-value subsections as separate source-to-date provenance | Excluded from native 30-day rows, ranking, chart, and summaries | Proven under the current tab contract |
+| Ad Comparison | Shows the exact materialized Shopify source amount and saved exact campaign-value subsections as separate all-mapped-record provenance | Excluded from native 30-day rows, ranking, chart, and summaries | Proven under the current tab contract |
 | Latest-day/internal daily revenue | Shopify is eligible because it materializes dated rows | Previous complete date in the campaign reporting timezone | Proven locally; refunds retain original order date |
 | Pipeline Proxy | No Shopify contribution | Not applicable | Proven excluded |
 

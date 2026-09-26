@@ -2,9 +2,9 @@
 
 ## Decision
 
-**CLEAN-CERTIFIED / PRODUCTION_READY only for the GA4 Overview `Campaign Breakdown` subsection. The certified implementation was introduced at runtime revision `96552fa5757a9fdeeecc6bfc20c89941148c8bd6` and was revalidated unchanged at deployed evidence revision `a5d4e85ac90d27011fb64ac3acb810c7e536e186`.**
+**HISTORICAL EXACT-RUNTIME EVIDENCE only for the GA4 Overview `Campaign Breakdown` subsection at runtime revisions `96552fa5757a9fdeeecc6bfc20c89941148c8bd6` and `a5d4e85ac90d27011fb64ac3acb810c7e536e186`.** The later V1 financial-boundary correction invalidates this record as current production-readiness evidence. Current traffic and native Revenue use the saved GA4 initial-import date through the latest completed day; imported Revenue includes every exact mapped record.
 
-Required steps remaining for this exact subsection boundary: **0**.
+This record retains its historical observations but does not certify the current deployed revision.
 
 This replaces the earlier certificate in this file. Later Campaign2 defects invalidated that older evidence and the subsection remained unproven until the fresh validation recorded here passed.
 
@@ -30,7 +30,7 @@ The certified rules are:
 - only exact normalized matches to the saved GA4 campaign values are returned; a campaign such as `yesop_retargeting` cannot match the saved value `yesop_retargeti`;
 - GA4 page-location UTM matching uses a full regular-expression boundary ending at `&`, `#`, or the URL end, never substring matching;
 - traffic uses the saved initial-import boundary through the latest completed day in the campaign reporting timezone;
-- native row revenue uses campaign start through the same latest completed day;
+- native row revenue uses the saved GA4 initial-import date through the same latest completed day;
 - native row revenue must reconcile to Campaign Breakdown's own native provider total or the subsection fails closed; the certified Campaign2 result also independently reconciles to the protected native GA4 Revenue total for the same window;
 - imported revenue is added only through exact saved campaign mappings;
 - unmatched imported revenue remains outside the rows and is never proportionally allocated;
@@ -81,7 +81,7 @@ The authenticated audit used:
 - campaign currency: `USD`
 - reporting timezone: `Europe/Amsterdam`
 - traffic window: `2026-08-09` through `2026-09-14`
-- native-revenue window: `2026-09-08` through `2026-09-14`
+- historical observed native-revenue window: `2026-09-08` through `2026-09-14`; this does not define the current contract, which starts at the saved GA4 initial-import date
 
 Exact row values:
 

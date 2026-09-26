@@ -30,7 +30,7 @@ Custom KPI values are user-supplied saved values and are not represented as GA4-
 | `conversions` | `ga4-daily.overviewTotals.conversions` | rounded count | Same traffic window |
 | `conversion_rate` | the same conversions and sessions | `conversions / sessions * 100` | Sessions must be sufficient; percentage |
 | `engagement_rate` | `ga4-daily.overviewTotals.engagementRate` | normalize ratio to percent, then 2 decimals | Same traffic window; weighted upstream aggregate |
-| `revenue` | selected native GA4 revenue plus campaign-scoped imported revenue | `nativeRevenue + importedRevenue` | Campaign/source-to-date inputs; campaign currency must reconcile |
+| `revenue` | selected native GA4 revenue plus campaign-scoped imported revenue | `nativeRevenue + importedRevenue` | Saved-import native plus all-mapped-record imported inputs; campaign currency must reconcile |
 | `roas` | certified revenue and campaign-scoped spend | `revenue / spend` | Spend must be available and positive; ratio |
 | `roi` | certified revenue and campaign-scoped spend | `(revenue - spend) / spend * 100` | Spend must be available and positive; percentage |
 | `cpa` | campaign-scoped spend and conversions from the fixed financial-source selection | `spend / conversions` | Spend and conversions must be available and conversions positive; campaign currency |

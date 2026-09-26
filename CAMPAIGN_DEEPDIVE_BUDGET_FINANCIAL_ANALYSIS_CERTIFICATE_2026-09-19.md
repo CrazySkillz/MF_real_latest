@@ -29,7 +29,7 @@ The result is bounded to the revision, runtime, configurations, and evidence bel
 - Campaign identifier hash: `fc734ddaf728`
 - Currency: `USD`
 - Reporting timezone: `Europe/Amsterdam`
-- Campaign-to-date window: `2026-07-02` through `2026-09-18`
+- Observed connected-source window: `2026-07-02` through `2026-09-18`
 - Total spend: `$2,759.75`
 - Total revenue: `$121,017.20`
 - Profit: `$118,257.45`
@@ -42,7 +42,7 @@ The result is bounded to the revision, runtime, configurations, and evidence bel
 - Calendar result: `48` elapsed days of `151`; status `behind`
 - Provenance: `6` revenue inputs and `4` spend inputs; both groups reconciled exactly to their displayed totals.
 - Executive actions: positive financial return, pacing below target, and spend-source-mix review.
-- Paid Media Efficiency: correctly hidden because no compatible certified campaign-to-date paid-media metric set was available.
+- Paid Media Efficiency: correctly hidden because no compatible certified cumulative paid-media metric set was available.
 
 This was read-only production validation. No mutation was attempted against the existing campaign.
 
@@ -52,11 +52,11 @@ This was read-only production validation. No mutation was attempted against the 
 - Currency: `USD`
 - Reporting timezone: `Europe/Amsterdam`
 - Aggregate contract: `performance_summary_aggregate_v3`
-- Campaign-to-date window: `2026-08-20` through `2026-09-18`; data-through date `2026-09-18`
+- Observed connected-source window: `2026-08-20` through `2026-09-18`; data-through date `2026-09-18`
 - Configuration: non-provider GA4 window marker plus isolated Instagram `test_mode` row for `2026-09-18`
 - Paid Media Efficiency displayed: `CTR 3.6%`
 - Displayed paid source: `Instagram Ads`
-- CPC and CPM: correctly withheld because campaign-to-date spend was not authoritative in this configuration.
+- CPC and CPM: correctly withheld because cumulative connected-source spend was not authoritative in this configuration.
 - Budget lifecycle through the deployed page:
   - add: `$10,000`, `2026-09-09` through `2026-10-09`
   - edit: `$12,000`, `2026-08-30` through `2026-10-29`
@@ -79,7 +79,7 @@ The temporary configuration proves the deployed conditional aggregate-to-UI path
 
 Paid Media Efficiency rules were proven as follows:
 
-- The section appears only when at least one compatible CPC, CPM, or CTR metric survives the campaign-to-date and contributor checks.
+- The section appears only when at least one compatible CPC, CPM, or CTR metric survives the connected-source boundary and contributor checks.
 - CPC requires every spend contributor to provide clicks.
 - CPM requires every spend contributor to provide impressions.
 - CTR requires the non-empty click and impression contributor sets to match exactly.

@@ -228,7 +228,7 @@ This inventory is complete for the current Reports surfaces, but completion of t
 
 ## Protected Overview And Insights Boundary
 
-- The current runtime keeps Overview detail-table traffic/conversion metrics on the fixed cumulative boundary and gives Campaign Breakdown a separate exact campaign-to-date native-revenue query before exact mapped imports are added. The unchanged recorded browser packet and exact-current server/manual immutable artifact matched the scoped Campaign Breakdown values at `a7271fc1`; the scheduled/server blocker is closed for this boundary.
+- The current runtime keeps Overview detail-table traffic/conversion metrics and native Revenue on the fixed saved-import boundary before exact mapped imports are added. The unchanged recorded browser packet and exact-current server/manual immutable artifact matched the scoped Campaign Breakdown values at `a7271fc1`; the scheduled/server blocker is closed for this boundary.
 - The separate rolling Insights breakdown request, Insights renderer, formulas, storage, and scheduler behavior remain unchanged and are covered by the adjacent regression packet.
 - server/routes-oauth.ts is a shared certification dependency. The localized Reports schedule-route changes do not alter Overview/Insights behavior, but dependency-hash rules still require the affected certification gates to be rerun before any prior certification is carried forward to a new revision.
 
@@ -952,4 +952,4 @@ Answer from `GA4/REPORTS_CERTIFICATION_2026-09-21.md`: **CLEAN-CERTIFIED / PRODU
 
 ## 2026-07-30 Current Commit 10 Boundary — Bounded Packet Closed
 
-The GA4 Reports certification above is unchanged for its recorded packets. Commit `ec265895` deployed the shared Campaign DeepDive scheduled/manual aggregate correction for ordered campaign-to-date GA4 financial values, GA4-context persisted sources, valid-zero/negative ROAS/ROI, and `performance_summary_aggregate_v2`. The user-confirmed browser packet covered Performance Summary Total Spend and Budget & Financial Analysis Total Revenue against GA4 Overview on `GA4 single` / `ga4_mock`; it did not inspect a scheduled report. Commit 10 is closed for the bounded code/browser packet, while current attachment values and delivery remain externally unproven.
+The GA4 Reports certification above is unchanged for its recorded packets. Commit `ec265895` deployed the shared Campaign DeepDive scheduled/manual aggregate correction for ordered connected-source GA4 financial values, GA4-context persisted sources, valid-zero/negative ROAS/ROI, and `performance_summary_aggregate_v2`. The user-confirmed browser packet covered Performance Summary Total Spend and Budget & Financial Analysis Total Revenue against GA4 Overview on `GA4 single` / `ga4_mock`; it did not inspect a scheduled report. Commit 10 is closed for the bounded code/browser packet, while current attachment values and delivery remain externally unproven.

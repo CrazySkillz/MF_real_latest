@@ -26,7 +26,7 @@ Included:
 - edit from retained rows, campaign-selection edit, re-upload replacement, and individual delete;
 - file/row bounds, malformed/ambiguous structures, amounts, dates, and campaign currency;
 - campaign ownership, source ownership, additive-source behavior, duplicate requests, overlapping edits, transactions, rollback, and post-commit response semantics;
-- active source list, source breakdown, source-to-date totals, daily rows, Total Revenue, Profit, ROAS, ROI, CPA non-effect, KPI/Benchmark current values, alerts, Campaign DeepDive financial consumers, and scheduled report reads;
+- active source list, source breakdown, all-mapped-record totals, daily rows, Total Revenue, Profit, ROAS, ROI, CPA non-effect, KPI/Benchmark current values, alerts, Campaign DeepDive financial consumers, and scheduled report reads;
 - current persisted GA4 CSV source/record integrity through a read-only transaction.
 
 Excluded and unchanged:
@@ -46,7 +46,7 @@ CSV Revenue is a **manual source**.
 
 - Users add or replace CSV data through the Revenue wizard.
 - Selecting a Date column changes materialization grain to daily rows; it does not make the file refreshable.
-- With no Date column, the selected positive revenue is stored as a source-to-date snapshot on the campaign's latest completed reporting day.
+- With no Date column, the selected positive revenue is stored as one undated cumulative snapshot on the campaign's latest completed reporting day.
 - `server/auto-refresh-scheduler.ts` selects Google Sheets and provider sources by explicit source type and does not select `csv` or call a CSV reprocessor.
 - The UI says both `Requires manual re-upload to update` and `CSV data won't auto-update`.
 
@@ -323,7 +323,7 @@ Current artifact:
 - Unauthenticated campaign access was rejected. On exact deployed commit `a9f7bc49`, an authorized owner requested a different owner's source list, total, preview, process, and delete paths; all returned HTTP 404, and read-only database state before and after was identical.
 - KPI, Benchmark, and report endpoints returned HTTP 200 on the disposable campaign, which has zero configured consumers. Configured-value propagation was therefore proven separately on the existing production campaign below rather than inferred from empty responses.
 - A separate existing production campaign supplied non-destructive configured-consumer evidence. Its active $600 GA4 CSV source predates eight GA4 KPIs, two GA4 Benchmarks, three scheduled GA4 reports, and 145 immutable report snapshots.
-- At `2026-09-13T08:35:33.764Z`, authorized read-only deployed checks returned HTTP 200 for source list, breakdown, source-to-date total, KPI, Benchmark, and report endpoints. The CSV source was exactly $600 in the source list, deployed breakdown, and internal source-keyed breakdown; the complete imported-source sum reconciled exactly into Total Revenue.
+- At `2026-09-13T08:35:33.764Z`, authorized read-only deployed checks returned HTTP 200 for source list, breakdown, all-mapped-record total, KPI, Benchmark, and report endpoints. The CSV source was exactly $600 in the source list, deployed breakdown, and internal source-keyed breakdown; the complete imported-source sum reconciled exactly into Total Revenue.
 - Configured Revenue (`98682.82`), ROAS (`35.76`), ROI (`3475.79`), and CPA (`8`) KPI values reconciled to their current inputs. CPA used spend and conversions rather than revenue. The configured revenue Benchmark (`102026.47`) matched the value captured in the latest sent Benchmark report snapshot.
 - Overview, Ads, and Benchmark reports each had an existing sent event and immutable snapshot after the CSV source was connected. The CSV source/record count and revenue were identical before and after the entire check. The deployed PDF route was not requested because it runs KPI/Benchmark preflight writes.
 - At `2026-09-13T08:43:15.527Z`, the exact current Benchmark PDF builder was run locally against production data with every database connection forced to `default_transaction_read_only=on`. It produced a valid 7,980-byte PDF whose parsed text contained the Revenue Benchmark value (`102026.47`) already reconciled to the imported-source total containing the exact $600 CSV source. Database state was identical before and after. A broader Overview PDF attempt failed closed because current provider sections were unavailable; it also made no writes. This is local production-data evidence, not a deployed HTTP-route claim.

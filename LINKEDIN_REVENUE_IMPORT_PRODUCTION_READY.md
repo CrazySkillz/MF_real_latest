@@ -37,7 +37,7 @@ The fixed gaps were:
 - The wording does not clearly explain that users are connecting revenue attribution for LinkedIn, not importing native LinkedIn revenue.
 - The LinkedIn revenue modal still contains older LinkedIn-only flow branches for CSV, Google Sheets, and some CRM/ecommerce paths instead of matching the GA4 revenue-source flow and changing only `platformContext`.
 - Before Commit 4F, the LinkedIn `Total Revenue` summary card was display-only and did not expose the GA4-style `+` action or `Sources (n)` link for managing multiple LinkedIn-scoped revenue sources.
-- LinkedIn Overview revenue totals previously read imported revenue through a 30-day window even though LinkedIn revenue imports are treated as campaign-lifetime revenue-to-date. Sources that materialized older daily rows could therefore be undercounted.
+- LinkedIn Overview revenue totals previously read imported revenue through a 30-day window even though LinkedIn imported Revenue uses every mapped record. Sources that materialized older daily rows could therefore be undercounted.
 - CRM imports can materialize both aggregate revenue rows and per-LinkedIn-campaign rows for attribution. Totals must not double-count those sub-campaign rows when an aggregate row exists for the same source.
 - LinkedIn Analytics `All Campaigns` campaign-row revenue needs two safe modes:
   - exact mapped revenue when a revenue source value is explicitly mapped to a LinkedIn campaign row
@@ -58,7 +58,7 @@ Production-ready behavior:
 - Imported LinkedIn revenue updates LinkedIn Overview, KPI, Benchmark, Campaign DeepDive, and Custom Report consumers through the existing cache/refetch pattern.
 - LinkedIn Analytics `All Campaigns` uses imported LinkedIn campaign-row metrics for names, status, spend, impressions, clicks, conversions, and leads. Revenue is exact when a CRM/ecommerce value is mapped to a LinkedIn campaign row; otherwise it is allocated from the Overview `Total Revenue` by each row's share of LinkedIn conversions.
 - LinkedIn Overview shows a top-level `Total Revenue` summary card; when no LinkedIn-scoped revenue source exists, the card says `Not connected` instead of showing a misleading zero.
-- LinkedIn Overview `Total Revenue` sums all active LinkedIn-scoped imported revenue sources using campaign-lifetime revenue-to-date semantics.
+- LinkedIn Overview `Total Revenue` sums every mapped record from all active LinkedIn-scoped imported revenue sources.
 - LinkedIn Overview `Total Revenue` follows the GA4 card pattern: `+` opens the LinkedIn-scoped add-revenue flow, and `Sources (n)` opens the LinkedIn-scoped source list for multiple active sources.
 - Removing the LinkedIn revenue source disables LinkedIn revenue-derived metrics immediately.
 - GA4 revenue does not make LinkedIn revenue, ROI, or ROAS available.

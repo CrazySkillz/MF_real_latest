@@ -65,7 +65,7 @@ This status does not close the newer findings below. Later shared report/source 
 - [x] Overview metric propagation follow-up - aligned Summary `Conversions`, Conversion Events exact-key supplementation, KPI create fallback values, Insights CPA, and scheduled/server GA4 report Summary totals to the relevant Overview source model.
 - [x] Insights scheduler synchronization follow-up (`95bc4be8` through `f3f199a6`) - removed page-load/live daily-history writes and stale-history guidance, disabled startup/manual/run-now refresh, and made the configured daily scheduler the sole GA4 daily-history writer.
 - [x] Insights zero-date follow-up (`592d56f2`, `2265e80c`) - scheduler-verified completed no-activity dates are stored as zero, and the visible Trends/findings calendar runs from campaign creation through `Chart through` with bounded missing dates shown as zero.
-- [x] Insights one-day and financial-window follow-up (`732f6904`, `4372efad`) - Daily renders one eligible point, and native financial KPI/Benchmark refresh falls back to the saved GA4 import boundary before campaign creation when no explicit campaign start exists.
+- [x] Insights one-day and financial-window follow-up (`732f6904`, `4372efad`, superseded by `43c980da`) - Daily renders one eligible point, and native financial KPI/Benchmark refresh now always uses the saved GA4 import boundary. Campaign metadata and app creation time are not financial boundaries.
 
 Validation completed:
 

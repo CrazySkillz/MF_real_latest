@@ -44,7 +44,7 @@ It does not certify:
 
 Trend Analysis renders one comprehensive view. The retired tab navigation is not visible. The mounted view contains:
 
-- `Campaign-to-Date Performance Summary` cards
+- `Connected-Source Performance Summary` cards
 - `Campaign Performance Trend`
 - `Efficiency Trends`
 - `Anomaly Detection` only when the selected window contains detected statistical changes
@@ -59,7 +59,7 @@ The page-level selector defaults to `Last 7 days`; `Last 14 days`, `Last 30 days
 
 | Visible surface | Implemented contract | Current certification boundary |
 | --- | --- | --- |
-| Campaign-to-Date Performance Summary | Capability-gated cumulative cards; exact-date comparison; numeric direction colors | Certified for the observed GA4-only card set; optional paid-media cards are not positively certified |
+| Connected-Source Performance Summary | Capability-gated cumulative cards; exact-date comparison; numeric direction colors | Certified for the observed GA4-only card set; optional paid-media cards are not positively certified |
 | Campaign Performance Trend | Selected exact calendar window; GA4 Users, Sessions, and Conversions; missing dates are gaps; provider-verified zero remains zero | Certified for the audited GA4-only selectors and insufficient-history behavior |
 | Efficiency Trends | Return, cost, and rate charts render independently only when their daily inputs exist; verified no-activity dates get a marker instead of a fabricated rate | Certified for the audited GA4-only conversion-quality path and unavailable daily financial-history state |
 | Anomaly Detection | Conditional browser-only statistical markers and list, using the deterministic seven-value rule below | Certified as descriptive decision support for the audited GA4-only conversion series; no causal claim |
@@ -128,7 +128,7 @@ The `Trend & comparison window` selector accepts `7`, `14`, `30`, and `90` days.
 
 - It controls the Campaign Performance and Efficiency chart calendar window.
 - It sets the exact historical comparison date to `dataThroughDate - selected days`.
-- It does not change the cumulative current traffic totals or campaign-to-date financial totals.
+- It does not change the cumulative current traffic totals or connected-source financial totals.
 - Count comparisons show the exact absolute difference and percentage difference.
 - Rate comparisons show percentage-point change.
 - Comparison text is green for a positive numeric change, red for a negative numeric change, and neutral for zero. This is direction styling only; it does not classify the change as beneficial or harmful. In particular, a decrease in CPA or Spend is still red under the implemented rule.
@@ -165,8 +165,8 @@ The `Trend & comparison window` selector accepts `7`, `14`, `30`, and `90` days.
 
 - The browser renders at most three recommendations after removing the internal `Connected Source Coverage` and `Single-Source Trend View` informational cards.
 - The actionable conversion comparison appears only when both the selected current window and the immediately preceding equal-length window contain every expected calendar date with non-negative Sessions and Conversions. It changes with the selector and states both exact date ranges, volumes, session counts, conversion frequency, and an investigation action; it does not infer cause.
-- Campaign-to-date ROAS guidance is decision-ready only when Revenue, Spend, ROAS, active input totals, source scopes, end dates, currency, formula reconciliation, and `financial_decision_context_v1` all agree. If a descriptive ROAS exists without that reconciliation, the UI explicitly withholds it from budget guidance.
-- Campaign-to-date conversion-volume guidance is shown only when cumulative Sessions are positive and tells the executive to review conversion-event configuration and campaign targets before judging quality.
+- Connected-source ROAS guidance is decision-ready only when Revenue, Spend, ROAS, active input totals, source scopes, end dates, currency, formula reconciliation, and `financial_decision_context_v1` all agree. If a descriptive ROAS exists without that reconciliation, the UI explicitly withholds it from budget guidance.
+- Cumulative conversion-volume guidance is shown only when cumulative Sessions are positive and tells the executive to review conversion-event configuration and campaign targets before judging quality.
 - Recommendations do not claim causality, automatic improvement, or permission to change spend without business targets and source context.
 
 ### Report, Snapshot, And Scheduler Contract

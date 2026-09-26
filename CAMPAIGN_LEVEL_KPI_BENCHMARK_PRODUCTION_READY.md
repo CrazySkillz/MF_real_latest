@@ -26,7 +26,7 @@ For a GA4-only campaign, campaign-level current values must match the connected 
 
 When connected-platform values change, campaign-level KPI and Benchmark current values must update from those connected-platform values. Do not add a separate selectable-source model or fallback path that can drift from connected-platform metrics.
 
-For GA4 traffic metrics, the connected-platform current value is cumulative from the saved initial-import boundary through the latest completed reporting day. The initial 30/60/90-day selection, where supported, establishes the starting boundary; it must not become a rolling window after setup. Financial KPI and Benchmark values retain the documented campaign-to-date revenue/spend contract. Saved timeframe or tracking-period fields are target metadata and must not replace these authoritative current-value windows.
+For GA4 traffic metrics, the connected-platform current value is cumulative from the saved initial-import boundary through the latest completed reporting day. The initial 30/60/90-day selection, where supported, establishes the starting boundary; it must not become a rolling window after setup. Native GA4 financial KPI and Benchmark values use that same fixed boundary, while imported Revenue and Spend use all available mapped records. Saved timeframe, tracking-period, app-creation, and budget-period dates must not replace these authoritative current-value boundaries.
 
 ## Outstanding Production-Ready Tasks
 

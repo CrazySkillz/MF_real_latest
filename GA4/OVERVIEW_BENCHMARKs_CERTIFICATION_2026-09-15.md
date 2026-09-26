@@ -51,7 +51,7 @@ It enumerates every Overview-facing campaign/connection field, API field, date w
 | CPA | `spend / selected financial conversions` | spend and financial conversions ready; conversions positive |
 | Custom | persisted user-entered current value | no automatic GA4 source claim |
 
-Traffic uses the selected connection import start through the latest completed day in the campaign reporting time zone. Native financial data uses its manifested campaign-to-completed-day window. Imported revenue and spend retain their manifested source-to-date contracts. The current incomplete day is excluded.
+Traffic and native financial data use the selected connection import start through the latest completed day in the campaign reporting time zone. Imported Revenue and Spend use every available mapped record. The current incomplete day is excluded.
 
 Ready numeric zero is authoritative and must not fall through to another source. Missing, stale, malformed, currency-mismatched, or insufficient input must not be turned into a verified zero or a fresh status/alert/report conclusion.
 

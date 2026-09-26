@@ -56,15 +56,17 @@ The page has one campaign identity query plus three analytics queries:
 | --- | --- | --- |
 | Campaign identity/currency | `GET /api/campaigns/:id` | campaign access and persisted campaign configuration |
 | KPI, Benchmark, and freshness inputs | `GET /api/campaigns/:id/executive-summary` | campaign access; GA4 platform KPI/Benchmark selection; verified-current resolver; shared target classification |
-| Narrative, funnel, conditional metrics, formulas, cards, and source capabilities | `GET /api/campaigns/:id/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date` | `performance_summary_aggregate_v3`; completed-day GA4 window; source-to-date financial reconciliation; gated daily snapshot |
+| Narrative, funnel, conditional metrics, formulas, cards, and source capabilities | `GET /api/campaigns/:id/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date` | `performance_summary_aggregate_v3`; completed-day GA4 window; saved-import native financials plus all mapped imported records; gated daily snapshot |
 | Seven-day trajectory | `GET /api/campaigns/:id/executive-summary/trajectory?reportingDate=YYYY-MM-DD` | exact current and seven-day-prior `executive_summary_daily` rows through `evaluateExecutiveSummaryTrajectory` |
 
 The current-value queries refetch on mount, window focus, and every 60 seconds while active. The trajectory query refetches on mount/focus after the authoritative reporting date is available. Campaign, Executive Summary, outcome totals, and the applicable trajectory request are required before the completed page renders. A required request failure renders `Unable to Load Executive Summary` rather than cached-looking zeros.
 
+`executiveFinancialScope=campaign_to_date` is a retained backward-compatible request value. Its name does not define the V1 financial boundary: native GA4 values use the saved initial-import date, and imported Revenue/Spend use every available mapped record.
+
 ### Current Metric And Source Rules
 
-- GA4 traffic, conversions, native revenue, and Engagement Rate use the connected property and configured campaign scope through the latest completed day in the campaign timezone.
-- Imported revenue and spend use active GA4-context source-to-date inputs through that same data-through date.
+- GA4 traffic, conversions, native revenue, and Engagement Rate use the connected property and configured campaign scope from the saved initial-import date through the latest completed day in the campaign timezone.
+- Imported Revenue and Spend use every available mapped active GA4-context record; historical comparisons cap those records at the selected comparison date.
 - `Total Revenue = GA4-native revenue + imported connected revenue`.
 - `CVR = conversions / sessions * 100` when both inputs are available and sessions are positive.
 - `ROAS = revenue / spend` and `ROI = (revenue - spend) / spend * 100` when revenue and spend are available and spend is positive.
@@ -193,7 +195,7 @@ The two current-value queries refetch on mount, window focus, and every 60 secon
 
 - GA4 web/outcome metrics are property-level, campaign-filtered inputs from the connected GA4 property. They are not legacy Campaign DeepDive KPI/Benchmark section values.
 - GA4 traffic/conversion current values use the saved initial-import boundary through the latest completed reporting day in the campaign reporting timezone.
-- GA4-native campaign revenue uses the validated campaign-to-date financial query. Imported revenue and spend use active GA4-context source-to-date records through the same data-through date.
+- GA4-native campaign revenue uses the saved initial-import boundary through the latest completed reporting day. Imported Revenue and Spend use all available mapped GA4-context records, capped at the selected date for historical comparisons.
 - `Total Revenue = GA4-native campaign revenue + imported connected revenue`.
 - `CVR = conversions / sessions * 100` when sessions and conversions are available.
 - `CPA = spend / conversions` when spend and conversions are available. A configured GA4 CPA KPI may legitimately use its own documented reporting contract and therefore is not interchangeable with this aggregate CPA.
@@ -1138,4 +1140,4 @@ Not covered by local implementation validation:
 
 ## Historical 2026-07-30 Commit 10 Status — Shared Input Deployed; External Evidence Was Open
 
-Executive Summary's live aggregate contract is unchanged. Commit `ec265895` deployed its scheduled/manual snapshot input alignment to the ordered campaign-to-date GA4 financial selection, GA4-context persisted financial sources, valid-zero/negative ROAS/ROI, and `performance_summary_aggregate_v2` compatibility. Commit 10 is closed for its bounded code/browser packet, but the recorded validation did not inspect Executive Summary trajectory, scheduled output, or a live multi-source campaign. Those exact evidence gates remain unproven.
+Executive Summary's live aggregate contract is unchanged. Commit `ec265895` deployed its scheduled/manual snapshot input alignment to the ordered connected-source GA4 financial selection, GA4-context persisted financial sources, valid-zero/negative ROAS/ROI, and `performance_summary_aggregate_v2` compatibility. Commit 10 is closed for its bounded code/browser packet, but the recorded validation did not inspect Executive Summary trajectory, scheduled output, or a live multi-source campaign. Those exact evidence gates remain unproven.

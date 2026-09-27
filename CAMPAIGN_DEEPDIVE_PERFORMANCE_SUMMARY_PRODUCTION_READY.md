@@ -8,9 +8,9 @@ Before using this document to answer an audit, review, or production-readiness q
 
 Record the implemented Campaign DeepDive `Performance Summary` contract, its validation boundary, and the historical work that led to the current implementation.
 
-## Current Implementation And Certification Status (2026-09-26)
+## Current Implementation And Certification Status (2026-09-27)
 
-**Current implementation: `ca1fc5a873ab69fb747937768c31fcd53e16fd64` — IMPLEMENTED AND LOCALLY VALIDATED; DEPLOYED RECERTIFICATION PENDING.**
+**Current implementation: `61c5add60205d42c5a11dcbc45bb50286e5b626c` — IMPLEMENTED AND LOCALLY VALIDATED; DEPLOYED RECERTIFICATION PENDING.**
 
 The latest preserved clean certificate is `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md` for exact deployed runtime `ee6e11ebf8cb0a13dd182dde54af790a3757ef2f`, its two recorded campaigns, property, USD currency, Europe/Amsterdam timezone, source inventory, and `2026-09-18` data-through boundary. That historical certificate remains valid only for its exact scope. It does not certify the current runtime.
 
@@ -21,15 +21,19 @@ Post-certificate implementation changes now include:
 - Recent Movement keeps the last settled cards visible while the new comparison requests load and commits the new selection only after the Revenue, Spend, and snapshot requests have settled against the requested dates. This prevents a transient `Comparison unavailable` state during a normal selection change.
 - Recent Movement uses campaign-currency formatting, directional arrows, and a dedicated `Not connected` Spend state.
 - Recommended Actions formats Revenue and CPA current/target values in the campaign currency. The same currency is passed to the scheduled Performance Summary PDF renderer.
+- Top Priority Action formats Revenue and CPA current/target values with the campaign currency formatter instead of appending a saved ISO unit as text.
+- The live Performance Summary header no longer exposes the `Demo Data` control or demo banner. The retained internal demo branches are fixed off and the visible page stays on the live-data path.
 
 Current local validation evidence:
 
-- the focused Performance Summary aggregate, Overview/Recent Movement, scheduler, scheduled-PDF, and recommendation-decision packet passed: 5 files / 70 tests
+- the focused Performance Summary aggregate, Overview/Recent Movement, scheduler, scheduled-PDF, and recommendation-decision packet passed: 5 files / 71 tests
 - `npm run check` passed
-- `npm run build` passed
-- no authenticated deployed exact-revision UI/API recertification has been recorded for `ca1fc5a8`; do not call the current runtime production-ready until that gate is completed
+- exact deployed predecessor `1f86a46ebb94eab079896d8de08059aec088c793` received a bounded Campaign3 authenticated, GET-only UI/API reconciliation through `2026-09-26`; current revision `61c5add6` changes only Top Priority currency presentation, removal of the Demo control/banner, and the focused regression guard
+- no authenticated deployed exact-revision UI/API recertification has been recorded for `61c5add6`; do not call the current runtime production-ready until that gate is completed
 
-## Current Controlling Implementation Contract (As Of `ca1fc5a8`)
+Bounded Campaign3 predecessor evidence: Key Outcomes reconciled at 2,256 Users, 2,256 Sessions, 145 Conversions, EUR 37,518.74 Total Revenue, and EUR 2,353.00 Total Spend. Campaign Health reconciled at 43% with 3 of 7 configured metrics on track; CPA was the Top Priority at EUR 16.23 against EUR 9.00. Recommended Actions were CPA, ROAS, and Revenue. Recent Movement reconciled all four visible cards for yesterday, seven days earlier, and one month earlier, including exact historical Revenue and compatible two-source Spend totals. Google Analytics was the only main Connected Platform; the two Spend inputs remained financial child provenance rather than separate main sources.
+
+## Current Controlling Implementation Contract (As Of `61c5add6`)
 
 This section supersedes older implementation descriptions in the chronological commit history below. It describes current code behavior, not a new production-readiness certificate.
 
@@ -38,15 +42,16 @@ This section supersedes older implementation descriptions in the chronological c
 - GA4 KPI and Benchmark persisted `currentValue` fields are recomputed from those cumulative traffic inputs. Native Revenue and matching financial Conversions use the saved initial-import boundary; imported Revenue and Spend use all available mapped records. ROAS, ROI, and CPA derive from those same inputs.
 - Key Outcomes renders `Total Users`, `Total Sessions`, `Total Conversions`, `Total Spend`, and `Total Revenue` from the authoritative current inputs. Revenue and Spend use the campaign currency. It does not derive a separate rolling Performance Summary total.
 - Campaign Health scores the complete configured GA4 KPI/Benchmark inventory only when every row is scorable from a verified current value and valid target. If any configured row is excluded, the section shows `Verification Needed` and does not calculate a partial health percentage.
-- Top Priority Action evaluates below-target KPIs first, orders them by configured KPI priority and then target-gap severity, and falls back to the worst eligible Benchmark only when no eligible KPI is below target. It fails closed for unavailable lists, unscorable inputs, incomplete coverage, invalid targets, and missing source metrics.
+- Top Priority Action evaluates below-target KPIs first, orders them by configured KPI priority and then target-gap severity, and falls back to the worst eligible Benchmark only when no eligible KPI is below target. Revenue and CPA current/target values use the campaign currency. It fails closed for unavailable lists, unscorable inputs, incomplete coverage, invalid targets, and missing source metrics.
 - Recommended Actions evaluates the refreshed KPI and Benchmark current values with the shared metric-aware direction, sufficiency, and threshold policies. It returns at most three target-backed cards, deduplicates repeated action categories, and identifies target gaps only. Revenue and CPA values and targets use the campaign currency in both the live section and scheduled Performance Summary PDF. The UI states that the underlying causes must be investigated before changing spend.
 - Recent Movement renders `Sessions`, `Conversions`, `Spend`, and `Total Revenue`. Yesterday and seven-day selections use the exact prior calendar date. One month uses the same calendar day in the previous month, clamped to that month's last valid day.
 - Sessions and Conversions derive the cumulative value at the exact prior date by subtracting covered intervening daily facts from the current cumulative Summary total. Spend reads the dated active-source total through the exact prior date and requires the current and historical source IDs and currencies to match the active campaign source set; the current Spend must also match the shared aggregate. Total Revenue requires same-source native/imported totals through the exact date. Missing, incompatible, ambiguous, stale, or failed inputs produce the final `Comparison unavailable` state; the current total is never presented as verified history.
 - The dropdown separates the requested comparison from the committed display period. During a selection change, the previous settled cards remain visible and the control is disabled until all exact-date requests have settled and match the requested boundary; the cards then update together without rendering mixed-period placeholder data.
 - The removed `Available comparisons use data from ...` microcopy must remain absent.
 - The disabled legacy Metric Trends render path is not a visible Performance Summary feature; users are directed to the separate Trend Analysis section.
+- The page does not expose a `Demo Data` control or demo banner; visible production use remains on the live-data path.
 
-Documentation/certification boundary: this update documents current implementation `ca1fc5a8` but does not certify it. The latest preserved clean certificate remains limited to exact runtime `ee6e11eb` and the scope in `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md`. This documentation update changes no production code, tests, validators, protected GA4 machine certification records, Trend Analysis boundary, or Budget & Financial Analysis boundary.
+Documentation/certification boundary: this update documents current implementation `61c5add6` but does not certify it. The latest preserved clean certificate remains limited to exact runtime `ee6e11eb` and the scope in `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md`. This documentation update changes no production code, tests, validators, protected GA4 machine certification records, Trend Analysis boundary, or Budget & Financial Analysis boundary.
 
 The intended product behavior is:
 
@@ -751,7 +756,7 @@ not an outstanding Performance Summary certification gate.
 
 ### Commit 6: Docs And Final Validation
 
-Historical status: completed for exact certified runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`; evidence-only commit `e175ac5c1764d06c199b375be45ace718b2fc785` was deployed and user-confirmed without changing production runtime code. This historical statement does not certify current implementation `ca1fc5a8`.
+Historical status: completed for exact certified runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`; evidence-only commit `e175ac5c1764d06c199b375be45ace718b2fc785` was deployed and user-confirmed without changing production runtime code. This historical statement does not certify current implementation `61c5add6`.
 
 Goal:
 
@@ -798,7 +803,7 @@ Implementation conclusion:
 - Implemented and regression-covered for the registered main Connected Platform aggregate path covering GA4, LinkedIn, Meta, and Custom Integration, with campaign financial totals able to include parent-platform child revenue/spend inputs when those inputs are configured inside the relevant platform flow.
 - The aggregate layer can accept future standalone platforms that supply valid `platformSources`, but that capability is not source-specific production-readiness proof.
 - Platform-specific production readiness for Google Ads, TikTok, Instagram, and other future sources still depends on each platform's own connection, storage, refresh, campaign scoping, and resolver validation.
-- Historical production-readiness evidence remains bounded to the exact runtimes and scopes in their certificate records. Current implementation `ca1fc5a8` remains `RECERTIFICATION_PENDING`; generic future-platform support remains an implementation contract, not source-specific certification evidence.
+- Historical production-readiness evidence remains bounded to the exact runtimes and scopes in their certificate records. Current implementation `61c5add6` remains `RECERTIFICATION_PENDING`; generic future-platform support remains an implementation contract, not source-specific certification evidence.
 
 ## Production Readiness Definition
 
@@ -819,16 +824,16 @@ Performance Summary is production ready only when:
 
 ## Current Status
 
-**Current implementation `ca1fc5a8`: `RECERTIFICATION_PENDING`. Implemented and locally validated, but not yet certified against the deployed exact revision.**
+**Current implementation `61c5add6`: `RECERTIFICATION_PENDING`. Implemented and locally validated, but not yet certified against the deployed exact revision.**
 
 The latest preserved clean certificate remains `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md` for exact deployed runtime `ee6e11ebf8cb0a13dd182dde54af790a3757ef2f` and its recorded boundary. Earlier exact-runtime evidence, including `12789c1e`, remains historical only.
 
 Implemented and locally regression-covered in the current revision:
 
 - the consolidated visible Performance Summary sections use the cumulative current-value and exact-date Recent Movement contracts in `Current Controlling Implementation Contract`
-- Key Outcomes, Campaign Health, Top Priority Action, Recommended Actions, and the four Recent Movement cards are covered by the focused current regression packet; deployed UI evidence belongs only to the preserved historical certificate boundaries
+- Key Outcomes, Campaign Health, Top Priority Action, Recommended Actions, and the four Recent Movement cards are covered by the focused current regression packet; bounded Campaign3 UI/API evidence exists for deployed predecessor `1f86a46e`, while exact deployed `61c5add6` evidence remains pending
 - Campaign Health fails closed rather than scoring only a verified subset; Top Priority uses configured KPI priority before gap severity; Recommended Actions use verified target gaps and do not claim causality
-- current exact-date logic for Sessions, Conversions, Spend, and Total Revenue is regression-covered for yesterday, seven days earlier, and one month earlier; deployed reconciliation evidence remains limited to the preserved historical certificate boundaries
+- current exact-date logic for Sessions, Conversions, Spend, and Total Revenue is regression-covered for yesterday, seven days earlier, and one month earlier; bounded Campaign3 reconciliation passed on deployed predecessor `1f86a46e`, while exact deployed `61c5add6` reconciliation remains pending
 - GA4 child revenue/spend inputs remain financial provenance under the parent campaign/platform path and do not become separate main Connected Platforms
 
 Supporting aggregate behavior proven locally, but not a broader deployed source-mix certification:

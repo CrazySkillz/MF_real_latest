@@ -277,13 +277,14 @@ export const resolveCompatibleTrendFinancialDaily = (args: {
   comparisonDate: string;
   campaignCurrency: string;
   currentValueWindow: any;
+  expectedInputs?: any;
 }) => {
-  const { snapshot, campaignId, comparisonDate, campaignCurrency, currentValueWindow } = args;
+  const { snapshot, campaignId, comparisonDate, campaignCurrency, currentValueWindow, expectedInputs } = args;
   const financialDaily = snapshot?.metrics?.financialDaily;
   const expectedStartDate = comparisonDate < String(currentValueWindow?.startDate || "")
     ? "1900-01-01"
     : currentValueWindow?.startDate;
-  return snapshot?.campaignId === campaignId
+  const compatible = snapshot?.campaignId === campaignId
     && snapshot?.snapshotType === "financial_daily"
     && snapshot?.reportingDate === comparisonDate
     && financialDaily?.version === "financial_daily_snapshot_v1"
@@ -292,9 +293,19 @@ export const resolveCompatibleTrendFinancialDaily = (args: {
     && financialDaily?.currentValueWindow?.startDate === expectedStartDate
     && financialDaily?.currentValueWindow?.endDate === comparisonDate
     && financialDaily?.currentValueWindow?.dataThroughDate === comparisonDate
-    && financialDaily?.currentValueWindow?.reportingTimeZone === currentValueWindow?.reportingTimeZone
-    ? financialDaily
-    : null;
+    && financialDaily?.currentValueWindow?.reportingTimeZone === currentValueWindow?.reportingTimeZone;
+  if (!compatible) return null;
+  if (!expectedInputs) return financialDaily;
+  const reconciles = (["spend", "revenue", "conversions"] as const).every((metricName) => {
+    const actual = financialDaily?.inputs?.[metricName];
+    const expected = expectedInputs?.[metricName];
+    return actual?.available === true && expected?.available === true
+      && Array.isArray(actual.sources) && actual.sources.length > 0
+      && Array.isArray(expected.sources) && expected.sources.length > 0
+      && hasNonNegativeMetric(actual.value) && hasNonNegativeMetric(expected.value)
+      && Math.abs(Number(actual.value) - Number(expected.value)) < 0.005;
+  });
+  return reconciles ? financialDaily : null;
 };
 
 export const deriveTrendFinancialRatios = (inputs: {

@@ -176,6 +176,7 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain("outcome-totals?dateRange=90days&persistedOnly=1");
     expect(page).toContain("snapshotType=financial_daily&comparisonDate=${trendComparisonDate}&persistedOnly=1");
     expect(page).toContain("snapshot: trendFinancialComparison?.current");
+    expect(page).toContain("expectedInputs: performanceSummary?.totals");
     expect(page).toContain('const currentRevenue = financialSnapshotValue(compatibleCurrentFinancialDaily, "revenue");');
     expect(page).toContain('const currentSpend = financialSnapshotValue(compatibleCurrentFinancialDaily, "spend");');
     expect(page).toContain('revenue: usesCumulativeGA4Consumer ? authoritativeTrendCurrent?.revenue ?? null : aggregateMetricValue("revenue")');
@@ -291,6 +292,27 @@ describe("Trend Analysis Overview regression guard", () => {
     };
     const args = { snapshot, campaignId: "campaign-1", comparisonDate: "2026-08-15", campaignCurrency: "USD", currentValueWindow };
     expect(resolveCompatibleTrendFinancialDaily(args)).toBe(snapshot.metrics.financialDaily);
+    const expectedInputs = {
+      spend: { value: 10, available: true, sources: ["canonical-spend"] },
+      revenue: { value: 100, available: true, sources: ["ga4"] },
+      conversions: { value: 5, available: true, sources: ["ga4"] },
+    };
+    const reconciledSnapshot = {
+      ...snapshot,
+      metrics: { financialDaily: { ...snapshot.metrics.financialDaily, inputs: expectedInputs } },
+    };
+    expect(resolveCompatibleTrendFinancialDaily({ ...args, snapshot: reconciledSnapshot, expectedInputs }))
+      .toBe(reconciledSnapshot.metrics.financialDaily);
+    expect(resolveCompatibleTrendFinancialDaily({
+      ...args,
+      snapshot: reconciledSnapshot,
+      expectedInputs: { ...expectedInputs, spend: { ...expectedInputs.spend, value: 20 } },
+    })).toBeNull();
+    expect(resolveCompatibleTrendFinancialDaily({
+      ...args,
+      snapshot: reconciledSnapshot,
+      expectedInputs: { ...expectedInputs, spend: { value: null, available: false, sources: [] } },
+    })).toBeNull();
     const withoutSpend = { ...snapshot, metrics: { financialDaily: { ...snapshot.metrics.financialDaily, inputs: { ...snapshot.metrics.financialDaily.inputs, spend: { value: null, available: false, sources: [] } } } } };
     expect(resolveCompatibleTrendFinancialDaily({ ...args, snapshot: withoutSpend })).toBe(withoutSpend.metrics.financialDaily);
     expect(resolveCompatibleTrendFinancialDaily({ ...args, comparisonDate: "2026-08-14" })).toBeNull();

@@ -531,6 +531,7 @@ export default function TrendAnalysis() {
     comparisonDate: currentFinancialDate,
     campaignCurrency,
     currentValueWindow,
+    expectedInputs: performanceSummary?.totals,
   });
   const compatibleHistoricalFinancialDaily = resolveCompatibleTrendFinancialDaily({
     snapshot: trendFinancialComparison?.previous,

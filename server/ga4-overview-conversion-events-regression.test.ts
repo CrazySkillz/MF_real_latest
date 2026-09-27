@@ -148,12 +148,18 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
       const filter = JSON.stringify(body.dimensionFilter || {});
-      if (filter.includes('"fieldName":"sessionCampaignName"') && body.metrics?.[0]?.name === "conversions") {
-        return { ok: false, text: async () => '{"error":{"code":400,"status":"INVALID_ARGUMENT"}}' } as any;
-      }
       const metricNames = (body.metrics || []).map((metric: any) => metric.name);
       if (body.metrics?.[0]?.name === "conversions" || (metricNames.includes("keyEvents") && metricNames.includes("eventCount"))) {
         return { ok: false, text: async () => '{"error":{"code":400,"status":"INVALID_ARGUMENT"}}' } as any;
+      }
+      if (filter.includes('"fieldName":"sessionCampaignName"')) {
+        return {
+          ok: true,
+          json: async () => ({
+            rowCount: 1,
+            rows: [{ dimensionValues: [{ value: "page_view" }], metricValues: [{ value: "0" }, { value: "8" }, { value: "0" }] }],
+          }),
+        } as any;
       }
       const metricValues = [{ value: "3" }, { value: "2" }, { value: "10" }];
       return {
@@ -175,10 +181,11 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     expect(result.totals.eventCount).toBeNull();
     const filters = fetchMock.mock.calls.map(([, init]) => JSON.stringify(JSON.parse(String((init as any)?.body || "{}")).dimensionFilter));
     expect(filters[0]).toContain("sessionCampaignName");
-    expect(filters.at(-1)).toContain('"fieldName":"sessionCampaignName"');
+    expect(filters.at(-1)).toContain('"fieldName":"campaignName"');
     const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
-    expect(bodies.some((body) => body.metrics?.[0]?.name === "keyEvents" && body.metrics.every((metric: any) => metric.name !== "eventCount"))).toBe(true);
+    expect(bodies).toHaveLength(6);
     expect(bodies.at(-1)?.metrics?.[0]?.name).toBe("keyEvents");
+    expect(bodies.at(-1)?.metrics.every((metric: any) => metric.name !== "eventCount")).toBe(true);
   });
 
   it("does not broaden attribution beyond the scheduler's campaign-name fallback", async () => {

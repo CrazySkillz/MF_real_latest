@@ -632,7 +632,12 @@ export class GoogleAnalytics4Service {
           fallback = await fetchRows(accessToken, fallbackFilter);
         } catch (error: any) {
           if (!isInvalidArgumentText(error?.message || error)) throw error;
-          fallback = await fetchRows(accessToken, fallbackFilter, limit, 'keyEvents');
+          try {
+            fallback = await fetchRows(accessToken, fallbackFilter, limit, 'keyEvents');
+          } catch (keyEventError: any) {
+            if (!isInvalidArgumentText(keyEventError?.message || keyEventError)) throw keyEventError;
+            fallback = await fetchRows(accessToken, fallbackFilter, limit, 'keyEvents', false);
+          }
         }
         assertUniqueEventRows(fallback);
         if (hasConversionRows(fallback)) return conversionRowsOnly(fallback);

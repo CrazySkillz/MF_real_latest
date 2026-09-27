@@ -513,7 +513,20 @@ const getGA4DailyFailureReason = (error: any) => {
   if (knownCode) return `${stage}:${knownCode}`;
   if (message.includes("do not reconcile")) return `${stage}:GA4_OVERVIEW_RECONCILIATION_FAILED`;
   const providerStatus = message.match(/\"status\"\s*:\s*\"([A-Z_]+)\"/i)?.[1];
-  if (providerStatus) return `${stage}:GA4_PROVIDER_${providerStatus.toUpperCase()}`;
+  if (providerStatus) {
+    const issue = /incompatib/i.test(message)
+      ? "INCOMPATIBLE_FIELDS"
+      : /not a valid metric/i.test(message)
+        ? "INVALID_METRIC"
+        : /not a valid dimension/i.test(message)
+          ? "INVALID_DIMENSION"
+          : "UNCLASSIFIED";
+    const fields = [
+      "eventName", "sessionCampaignName", "campaignName", "conversions", "keyEvents",
+      "eventCount", "totalUsers", "totalRevenue", "purchaseRevenue", "startDate", "endDate",
+    ].filter((field) => message.includes(field));
+    return `${stage}:GA4_PROVIDER_${providerStatus.toUpperCase()}:${issue}${fields.length > 0 ? `:${fields.join("+")}` : ""}`;
+  }
   return `${stage}:GA4_PROVIDER_REQUEST_FAILED`;
 };
 

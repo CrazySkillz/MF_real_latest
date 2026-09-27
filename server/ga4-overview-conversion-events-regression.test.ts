@@ -48,6 +48,8 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     expect(ui).toContain('users == null ? "Unavailable"');
     expect(browserPdf).toContain('users == null ? "Unavailable"');
     expect(scheduledPdf).toContain('users == null ? "Unavailable"');
+    expect(ui).toContain("GA4 source validation passed");
+    expect(ui).toContain("View exact GA4 Data API request");
   });
 
   it("keeps the route on campaign access, exact property, fixed import window, and the scheduler snapshot", () => {
@@ -247,7 +249,17 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
 
     expect(result.rows).toEqual([{ eventName: "purchase", conversions: 145, eventCount: 151, users: 133, revenue: 37518.74 }]);
     expect(result.totals).toEqual({ conversions: 145, eventCount: 151, users: 133, revenue: 37518.74 });
-    expect(result.version).toBe("ga4_conversion_events_daily_scope_v2");
+    expect(result.version).toBe("ga4_conversion_events_validation_v3");
+    expect(result.validation).toMatchObject({
+      status: "passed",
+      propertyId: "987654",
+      startDate: "2026-08-23",
+      endDate: "2026-09-26",
+      campaignScope: ["saved-a", "saved-b"],
+      expectedConversions: 145,
+      returnedTotals: { conversions: 145, eventCount: 151, users: 133 },
+    });
+    expect(result.validation.request.dimensionFilter).toBeTruthy();
     expect((result as any)._reconciliationSource).toBe("scheduler_page_location_conversions_with_event_count");
     const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
     expect(bodies).toHaveLength(3);
@@ -303,6 +315,8 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     expect(JSON.stringify(bodies.at(-1)?.dimensionFilter)).toContain('"fieldName":"date"');
     expect(JSON.stringify(bodies.at(-1)?.dimensionFilter)).toContain('"fieldName":"sessionCampaignName"');
     expect(JSON.stringify(bodies.at(-1)?.dimensionFilter)).toContain('"fieldName":"pageLocation"');
+    expect(result.validation.status).toBe("passed");
+    expect(result.validation.request.dimensionFilter).toEqual(bodies.at(-1)?.dimensionFilter);
   });
 
   it("does not broaden attribution beyond the scheduler's campaign-name fallback", async () => {

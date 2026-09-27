@@ -6913,8 +6913,9 @@ export default function GA4Metrics() {
                               Conversion event data is unavailable. Refresh the page to try again.
                             </div>
                           ) : Array.isArray(ga4ConversionEvents?.rows) && ga4ConversionEvents.rows.length > 0 ? (
-                            <div className="overflow-hidden border rounded-md">
-                              <table className="w-full text-sm table-fixed">
+                            <div className="space-y-3">
+                              <div className="overflow-hidden border rounded-md">
+                                <table className="w-full text-sm table-fixed">
                                 <thead className="bg-muted border-b">
                                   <tr>
                                     <th className="text-left p-3 w-[40%]">Event</th>
@@ -6951,7 +6952,28 @@ export default function GA4Metrics() {
                                     </tr>
                                   ))}
                                 </tbody>
-                              </table>
+                                </table>
+                              </div>
+                              {ga4ConversionEvents?.validation?.status === "passed" && (
+                                <details className="rounded-md border border-emerald-200 bg-emerald-50/60 p-3 text-sm">
+                                  <summary className="cursor-pointer font-medium text-emerald-800">GA4 source validation passed</summary>
+                                  <div className="mt-2 space-y-1 text-emerald-900">
+                                    <p>
+                                      Property {String(ga4ConversionEvents.validation.propertyId)} · {String(ga4ConversionEvents.validation.startDate)} to {String(ga4ConversionEvents.validation.endDate)}
+                                    </p>
+                                    <p>
+                                      Campaign scope: {(ga4ConversionEvents.validation.campaignScope || []).join(", ")}
+                                    </p>
+                                    <p>
+                                      GA4 returned {formatNumber(Number(ga4ConversionEvents.validation.returnedTotals?.conversions || 0))} conversions, {formatNumber(Number(ga4ConversionEvents.validation.returnedTotals?.eventCount || 0))} events, and {formatNumber(Number(ga4ConversionEvents.validation.returnedTotals?.users || 0))} users; conversions matched the scheduler total.
+                                    </p>
+                                    <details>
+                                      <summary className="cursor-pointer underline">View exact GA4 Data API request</summary>
+                                      <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded bg-white/80 p-2 text-xs text-foreground">{JSON.stringify(ga4ConversionEvents.validation.request, null, 2)}</pre>
+                                    </details>
+                                  </div>
+                                </details>
+                              )}
                             </div>
                           ) : (
                             <div className="text-sm text-muted-foreground/70">

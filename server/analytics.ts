@@ -30,7 +30,7 @@ interface GA4Metrics {
 
 import { JWT } from "google-auth-library";
 
-export const GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION = "ga4_conversion_events_daily_scope_v2";
+export const GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION = "ga4_conversion_events_validation_v3";
 
 export class GoogleAnalytics4Service {
   /**
@@ -426,6 +426,7 @@ export class GoogleAnalytics4Service {
     revenueMetric: 'totalRevenue' | 'purchaseRevenue';
     rows: Array<{ eventName: string; conversions: number; eventCount: number | null; users: number | null; revenue: number }>;
     totals: { conversions: number; eventCount: number | null; users: number | null; revenue: number };
+    validation: Record<string, any>;
   }> {
     const requestedPropertyId = this.normalizeGA4PropertyId(propertyId || '');
     if (!requestedPropertyId) throw new Error('GA4_PROPERTY_SCOPE_REQUIRED');
@@ -742,12 +743,14 @@ export class GoogleAnalytics4Service {
           const expectedTotal = expectedEntries.reduce((sum, row) => sum + row.conversions, 0);
           if (Number(exactResult?.totals?.conversions || 0) === expectedTotal) {
             reconciliationSource = 'scheduler_daily_scope_conversions_with_event_count';
+            reconciliationFilter = selectedScopeFilter;
             return exactResult;
           }
         } catch (error: any) {
           if (!isInvalidArgumentText(error?.message || error)) throw error;
         }
       }
+      reconciliationFilter = null;
       const byEvent = new Map<string, { eventName: string; conversions: number; eventCount: null; users: null; revenue: number }>();
       for (const row of selectedRows) {
         const current = byEvent.get(row.eventName) || {
@@ -800,12 +803,41 @@ export class GoogleAnalytics4Service {
       }
     };
     let reconciliationSource = 'none';
-    const selectConversionRows = (res: any, source: string) => {
+    let reconciliationFilter: any = campaignDimensionFilter;
+    const selectConversionRows = (res: any, source: string, scopeFilter: any) => {
       reconciliationSource = source;
+      reconciliationFilter = scopeFilter;
       return conversionRowsOnly(res);
     };
     const withReconciliationSource = (res: any) => {
-      const output = { version: GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION, propertyId: normalizedPropertyId, ...res };
+      const expectedConversions = expectedDailyConversions
+        ? Object.values(expectedDailyConversions).reduce((sum, value) => sum + Number(value || 0), 0)
+        : null;
+      const returnedTotals = {
+        conversions: Number(res?.totals?.conversions || 0),
+        eventCount: res?.totals?.eventCount == null ? null : Number(res.totals.eventCount),
+        users: res?.totals?.users == null ? null : Number(res.totals.users),
+      };
+      const detailsComplete = returnedTotals.eventCount != null && returnedTotals.users != null;
+      const reconciled = expectedConversions == null || returnedTotals.conversions === expectedConversions;
+      const validation = {
+        status: reconciled && detailsComplete ? 'passed' : 'incomplete',
+        provider: 'Google Analytics Data API',
+        propertyId: normalizedPropertyId,
+        startDate: dateRange,
+        endDate,
+        campaignScope: this.normalizeCampaignFilter(campaignFilter),
+        reconciliationSource,
+        expectedConversions,
+        returnedTotals,
+        request: {
+          dateRanges: [{ startDate: dateRange, endDate }],
+          dimensions: [{ name: 'eventName' }],
+          metrics: ['conversions', ...(detailsComplete ? ['eventCount'] : []), 'totalUsers', res?.revenueMetric || 'totalRevenue'].map((name) => ({ name })),
+          dimensionFilter: reconciliationFilter?.dimensionFilter || null,
+        },
+      };
+      const output = { version: GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION, propertyId: normalizedPropertyId, ...res, validation };
       Object.defineProperty(output, '_reconciliationSource', { value: reconciliationSource, enumerable: false });
       return output;
     };
@@ -815,24 +847,24 @@ export class GoogleAnalytics4Service {
       try {
         res = await fetchRows(accessToken, campaignDimensionFilter);
         assertUniqueEventRows(res);
-        if (hasConversionRows(res)) return selectConversionRows(res, 'session_conversions_with_event_count');
+        if (hasConversionRows(res)) return selectConversionRows(res, 'session_conversions_with_event_count', campaignDimensionFilter);
       } catch (error: any) {
         if (!isInvalidArgumentText(error?.message || error)) throw error;
         try {
           res = await fetchRows(accessToken, campaignDimensionFilter, limit, 'conversions', false);
           assertUniqueEventRows(res);
-          if (hasConversionRows(res)) return selectConversionRows(res, 'session_conversions');
+          if (hasConversionRows(res)) return selectConversionRows(res, 'session_conversions', campaignDimensionFilter);
         } catch (conversionError: any) {
           if (!isInvalidArgumentText(conversionError?.message || conversionError)) throw conversionError;
           try {
             res = await fetchRows(accessToken, campaignDimensionFilter, limit, 'keyEvents');
             assertUniqueEventRows(res);
-            if (hasConversionRows(res)) return selectConversionRows(res, 'session_key_events_with_event_count');
+            if (hasConversionRows(res)) return selectConversionRows(res, 'session_key_events_with_event_count', campaignDimensionFilter);
           } catch (keyEventError: any) {
             if (!isInvalidArgumentText(keyEventError?.message || keyEventError)) throw keyEventError;
             res = await fetchRows(accessToken, campaignDimensionFilter, limit, 'keyEvents', false);
             assertUniqueEventRows(res);
-            if (hasConversionRows(res)) return selectConversionRows(res, 'session_key_events');
+            if (hasConversionRows(res)) return selectConversionRows(res, 'session_key_events', campaignDimensionFilter);
           }
         }
       }
@@ -863,10 +895,10 @@ export class GoogleAnalytics4Service {
         assertUniqueEventRows(fallback);
         if (hasConversionRows(fallback)) {
           const eventCount = fallback?.totals?.eventCount == null ? 'without_event_count' : 'with_event_count';
-          return selectConversionRows(fallback, `campaign_${fallbackMetric}_${eventCount}`);
+          return selectConversionRows(fallback, `campaign_${fallbackMetric}_${eventCount}`, fallbackFilter);
         }
       }
-      return selectConversionRows(res || { revenueMetric: 'totalRevenue', rows: [], totals: {} }, 'none');
+      return selectConversionRows(res || { revenueMetric: 'totalRevenue', rows: [], totals: {} }, 'none', campaignDimensionFilter);
     };
     const resolveRows = async (accessToken: string) => {
       const result = await tryFetch(accessToken);
@@ -882,6 +914,7 @@ export class GoogleAnalytics4Service {
               const exactRows = conversionRowsOnly(pageLocationResult);
               if (Number(exactRows?.totals?.conversions || 0) === expectedTotal) {
                 reconciliationSource = 'scheduler_page_location_conversions_with_event_count';
+                reconciliationFilter = pageLocationFilter;
                 return exactRows;
               }
             } catch (error: any) {

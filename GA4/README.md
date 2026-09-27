@@ -216,8 +216,10 @@ These are now part of the GA4 template contract:
 - displayed Campaign Breakdown Revenue adds only exact campaign-matched all-mapped-record imported revenue, and the table subtitle must disclose the cumulative GA4 boundary and imported provenance
 - exact campaign-matched imported revenue can propagate into GA4 Overview
   `Campaign Breakdown` and Reports-owned output under their own contracts.
-  The live GA4 `Ad Comparison` chart, leader cards, and summaries use Overview
-  Campaign Breakdown rows, including only uniquely mapped imported revenue.
+  The live GA4 `Ad Comparison` chart, leader cards, and summaries use the
+  synchronized, daily-scheduler-published Overview Campaign Breakdown rows,
+  including only uniquely mapped imported revenue. Browser refetches reread
+  that stored snapshot rather than querying GA4 or rewriting scheduler-owned data.
   Separate native Ad Comparison rows use the saved initial-import boundary
   through the latest completed day for Revenue Breakdown; imported sources
   remain distinct all-mapped-record provenance and cannot create campaign rows
@@ -231,7 +233,7 @@ These are now part of the GA4 template contract:
 - GA4 KPI whole-tab status is **PRODUCTION_READY** only for deployed application runtime `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` and the dependency boundary recorded in `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md`.
 - GA4 Benchmark creation follows the same custom-entry pattern: `Create Custom Benchmark` is highlighted when selected, shows `Choose name + unit, then set values`, uses a constrained unit dropdown, keeps custom current/benchmark values in generic numeric format until a real unit is selected, disables `Create Benchmark` until `Benchmark Name` and `Benchmark Value` are entered, and disables `Update Benchmark` in edit mode until at least one form value changes
 - GA4 Benchmark whole-tab status is **CLEAN-CERTIFIED / PRODUCTION_READY** for application behavior at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d` and its explicit dependency manifest; evidence-only revision `d3d1cfa0c0b34a44b405a74d8970c1d9ac9c1e7f` did not change that behavior. Benchmark value propagation into documented consumers is included, while whole-Reports behavior remains separately controlled.
-- GA4 `Ad Comparison` leader cards, chart, and summary use Overview Campaign Breakdown rows; only uniquely mapped imported revenue may adjust their revenue values, while Revenue Breakdown shows separate native comparison-window and all-mapped-record imported provenance. The retired All Campaigns table is not part of the live tab
+- GA4 `Ad Comparison` leader cards, chart, and summary use the synchronized, daily-scheduler-published Overview Campaign Breakdown rows; only uniquely mapped imported revenue may adjust their revenue values, while Revenue Breakdown shows separate native comparison-window and all-mapped-record imported provenance. The retired All Campaigns table is not part of the live tab
 - GA4 `Ad Comparison` uses explicit loading/ready/stale/unavailable states,
   blocks previous-property placeholders, and retains valid source zero. Its
   current machine status is `PRODUCTION_READY` for certified runtime boundary

@@ -116,7 +116,8 @@ Supported dropdown metrics:
 
 The tab is built from:
 
-- GA4 Overview Campaign Breakdown rows for the chart, leader cards, and two summary cards
+- the synchronized, daily-scheduler-published GA4 Overview Campaign Breakdown
+  snapshot for the chart, leader cards, and two summary cards
 - separate native GA4 Ad Comparison rows for Revenue Breakdown
 - selected GA4 campaign/property scope from campaign setup
 - active, materialized revenue source rows for the same campaign and GA4
@@ -136,7 +137,8 @@ It must not use:
 
 ## Normalized Comparison Rows
 
-The chart, leader cards, and two summary cards use GA4 Overview Campaign Breakdown rows.
+The chart, leader cards, and two summary cards use the synchronized GA4 Overview
+Campaign Breakdown snapshot published atomically by the daily scheduler.
 The page first aggregates rows by their original campaign names; the chart/card/summary
 path then combines case variants under a lowercased name. The other Ad Comparison
 outputs use separate native comparison rows.
@@ -154,8 +156,9 @@ A normalized comparison row has:
 Row rules:
 
 - aggregate GA4 breakdown rows by campaign name
-- query the saved property and full saved campaign names with exact provider matching;
-  the page also checks returned names with its existing normalized allocation key,
+- the daily scheduler queries the saved property and full saved campaign names with
+  exact provider matching, reconciles the result, and publishes the snapshot; the
+  page rereads that stored snapshot and also checks returned names with its existing normalized allocation key,
   which is a secondary filter rather than the provider's exact-match rule
 - start at the selected connection's saved initial historical import boundary
 - end at the latest completed reporting day in the campaign timezone
@@ -328,11 +331,15 @@ The current tab has no dedicated Ad Comparison background job.
 
 It refreshes from the same refreshed inputs that power the GA4 page:
 
-1. GA4 campaign breakdown data is refetched from the provider.
-2. Revenue source definitions and exact materialized breakdown rows are
+1. The GA4 daily scheduler fetches and reconciles Campaign Breakdown, then
+   atomically publishes it with the synchronized Overview snapshot.
+2. Browser refetches reread that stored snapshot; they do not contact GA4 or
+   rewrite the snapshot.
+3. Revenue source definitions and exact materialized breakdown rows are
    refetched.
-3. Normalized comparison rows are rebuilt.
-4. The live tab renders from those rows.
+4. The separate native GA4 Ad Comparison request refreshes the GA4 row used by
+   Revenue Breakdown for its import-to-date window.
+5. Normalized comparison rows are rebuilt and the live tab renders from them.
 
 Do not add a separate Ad Comparison scheduler unless the product design explicitly changes.
 

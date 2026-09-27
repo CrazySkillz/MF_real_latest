@@ -425,15 +425,22 @@ The current `Ad Comparison` tab has no dedicated background job.
 
 It refreshes because:
 
-- GA4 breakdown inputs refresh
+- the daily scheduler atomically publishes the reconciled Overview Campaign
+  Breakdown snapshot with the completed-day daily facts
+- browser refetches reread that stored snapshot without contacting GA4 or
+  rewriting scheduler-owned data
+- the separate native Ad Comparison request refreshes the GA4 import-to-date
+  row used by Revenue Breakdown
 - revenue-source inputs refresh
 - the derived comparison view rerenders from those refreshed inputs
 
-Readiness note: GA4 Ad Comparison uses an isolated provider query from the saved
-initial-import boundary through the campaign-timezone latest completed day. It
-is `PRODUCTION_READY` for certified runtime boundary `12789c1e` and the
-recorded boundary. It has no independent scheduler; Reports-owned generation
-and delivery remain outside the tab boundary.
+Readiness note: the chart, leader cards, and summary cards consume the
+scheduler-published Overview Campaign Breakdown snapshot for the saved
+initial-import boundary through the campaign-timezone latest completed day.
+Revenue Breakdown uses a separate native provider query over that same named
+boundary. The tab is `PRODUCTION_READY` only for certified runtime boundary
+`12789c1e` and its recorded configuration. It has no independent scheduler;
+Reports-owned generation and delivery remain outside the tab boundary.
 
 ## Insights Refresh
 

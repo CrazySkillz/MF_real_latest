@@ -1630,6 +1630,7 @@ export class GoogleAnalytics4Service {
       dimensions: string[];
       rowCount: number;
       sessionsDerivedFromUsers: boolean;
+      currencyCode?: string;
       overviewCampaignAttribution?: Record<string, string | number | boolean>;
       insightsLandingCoverage?: Record<string, string | number | boolean>;
     };
@@ -2380,6 +2381,7 @@ export class GoogleAnalytics4Service {
         dimensions: chosenDims.map((d: any) => d.name),
         rowCount: rows.length,
         sessionsDerivedFromUsers: false,
+        ...(requestedCurrencyCode ? { currencyCode: requestedCurrencyCode } : {}),
         ...(overviewCampaignAttribution ? { overviewCampaignAttribution } : {}),
         ...(insightsLandingCoverage ? { insightsLandingCoverage } : {}),
       },

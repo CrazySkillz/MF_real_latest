@@ -51,6 +51,7 @@ The current local implementation changes the mounted GA4-first financial path an
 - The ten GA4-first summary cards use a five-column by two-row desktop grid and retain the existing responsive one/two-column layout on smaller screens.
 - Campaign Performance Trend and the GA4 efficiency history read only the complete scheduler-stored `/ga4-daily` response. The Trend page no longer calls the live GA4 coverage route, does not create zero points in the browser, and fails closed if the scheduler window is incomplete. Completed no-activity dates appear as zero only because the scheduler persisted explicit zero rows.
 - The read-only provider-coverage verifier treats a scheduler-written all-zero row as equal to a provider-confirmed absent date. It still reports a mismatch when an activity date is missing, any populated metric differs, or a provider-absent date contains a nonzero stored value.
+- The scheduler persists the GA4 Data API's verified report currency in `campaignBreakdown.meta.currencyCode` inside the atomic Overview snapshot. A missing or mismatched currency fails the refresh closed, and the startup snapshot bootstrap refreshes otherwise-current legacy snapshots that lack this proof. Persisted-only financial decision context accepts native GA4 Revenue currency only when that saved code matches the campaign currency; the visible numeric cards remain unchanged.
 - CPA direction styling is business-semantic in the headline cards: a lower CPA is green and a higher CPA is red. Other headline metrics retain their existing numeric-direction styling; Spend is not automatically classified as beneficial merely because it decreases.
 - The earlier financial-card change passed 101 focused Trend/financial/adjacent regression tests. The scheduler-only daily-chart change passed 33 focused Trend/scheduler tests, TypeScript checking, and the production build. This is implementation evidence only and does not replace the required deployed revalidation of the affected paths.
 
@@ -129,7 +130,7 @@ For the current GA4-first browser consumer:
 - `ROI = (Revenue - Spend) / Spend * 100`.
 - `CPA = Spend / Conversions` when Spend is available and Conversions are greater than zero. In the cumulative GA4 browser consumer, the denominator is the same verified cumulative GA4 Conversions value shown by the page; exact historical CPA uses the compatible historical Spend value and exact cumulative GA4 Conversions through the comparison date.
 - Optional `CPC`, `CPM`, and `CTR` cards render only when the aggregate marks the required paid-media inputs available; they are absent in the observed GA4-only configuration.
-- Currency comes from the campaign currency and exact financial comparisons require the same currency.
+- Currency comes from the campaign currency, GA4 revenue is requested in that currency, and the scheduler snapshot retains the matching GA4 response currency as verification. Exact financial comparisons require the same currency.
 
 ### Known Native GA4 Revenue Precision Boundary - 2026-09-24
 

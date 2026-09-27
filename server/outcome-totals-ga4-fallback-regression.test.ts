@@ -18,7 +18,9 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("revenue: totals.revenue + parseNum(row?.revenue)");
     expect(route).toContain('if (usedPersistedGA4) ga4Totals.fallbackSource = "ga4_daily_metrics";');
     expect(route).toContain("const overviewSnapshot = await getSynchronizedGA4OverviewSnapshot(");
-    expect(route).toContain('overviewFinancialCandidate = { ...overviewTotals, source: "ga4_overview_snapshot" };');
+    expect(route).toContain('currencyCode: String((overviewSnapshot as any)?.campaignBreakdown?.meta?.currencyCode || "").trim().toUpperCase()');
+    expect(route).toContain('financialGa4Totals?.source === "ga4_overview_snapshot"');
+    expect(route).toContain('String(financialGa4Totals?.currencyCode || "").trim().toUpperCase() === campaignCurrency');
     expect(route.indexOf("overviewFinancialCandidate,")).toBeLessThan(route.indexOf("persistedFinancialCandidate,\n            ], null as any)"));
   });
 

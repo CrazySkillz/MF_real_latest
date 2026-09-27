@@ -591,9 +591,10 @@ describe("GA4 campaign value picker", () => {
       })),
     };
 
-    await ga4Service.getAcquisitionBreakdown("campaign-1", storage, "30daysAgo", "123", 200, "summer_sale");
+    const result = await ga4Service.getAcquisitionBreakdown("campaign-1", storage, "30daysAgo", "123", 200, "summer_sale");
 
     expect(fetchMock).toHaveBeenCalled();
+    expect(result.meta.currencyCode).toBe("USD");
     for (const [, init] of fetchMock.mock.calls) {
       expect(JSON.parse(String((init as any)?.body || "{}")).currencyCode).toBe("USD");
     }

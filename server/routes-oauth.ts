@@ -15165,7 +15165,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ).catch(() => null);
           const overviewTotals = (overviewSnapshot as any)?.campaignBreakdown?.totals;
           if (isGA4FinancialTotalsCandidate(overviewTotals)) {
-            overviewFinancialCandidate = { ...overviewTotals, source: "ga4_overview_snapshot" };
+            overviewFinancialCandidate = {
+              ...overviewTotals,
+              currencyCode: String((overviewSnapshot as any)?.campaignBreakdown?.meta?.currencyCode || "").trim().toUpperCase(),
+              source: "ga4_overview_snapshot",
+            };
           }
           const propertyWindowRows = await storage.getGA4DailyMetrics(campaignId, persistedPropertyId, currentValueWindow.startDate, endDateUsed).catch(() => [] as any[]);
           if (useExecutiveCampaignToDateFinancials) {
@@ -15195,7 +15199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 String((campaign as any)?.currency || "USD").trim().toUpperCase(),
               );
               const totals = (toDate as any)?.totals || {};
-              toDateFinancialCandidate = { ...totals, source: "ga4_to_date" };
+              toDateFinancialCandidate = { ...totals, currencyCode: (toDate as any)?.currencyCode, source: "ga4_to_date" };
             } catch {
               // Keep the other complete GA4 candidates when to-date provider totals are unavailable.
             }
@@ -15353,7 +15357,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 startDate: financialNativeRevenueStartDate,
                 endDate: currentValueWindow?.endDate || endDate,
                 currency: campaignCurrency,
-                currencyVerified: financialGa4Totals?.source === "ga4_to_date",
+                currencyVerified: financialGa4Totals?.source === "ga4_to_date"
+                  || (financialGa4Totals?.source === "ga4_overview_snapshot"
+                    && String(financialGa4Totals?.currencyCode || "").trim().toUpperCase() === campaignCurrency),
               }]
             : []),
           ...financialRevenueInputs,

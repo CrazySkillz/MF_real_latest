@@ -83,10 +83,11 @@ describe("GA4 daily scheduler timing", () => {
 
   it("bootstraps only campaign-scoped Overview snapshots that are missing or out of sync", async () => {
     vi.spyOn(storage, "getCampaigns").mockResolvedValue([
-      { id: "campaign-missing", ga4CampaignFilter: "saved-filter" },
-      { id: "campaign-mismatched", ga4CampaignFilter: "saved-filter" },
-      { id: "campaign-outdated", ga4CampaignFilter: "saved-filter" },
-      { id: "campaign-current", ga4CampaignFilter: "saved-filter" },
+      { id: "campaign-missing", currency: "USD", ga4CampaignFilter: "saved-filter" },
+      { id: "campaign-mismatched", currency: "USD", ga4CampaignFilter: "saved-filter" },
+      { id: "campaign-outdated", currency: "USD", ga4CampaignFilter: "saved-filter" },
+      { id: "campaign-currency-missing", currency: "USD", ga4CampaignFilter: "saved-filter" },
+      { id: "campaign-current", currency: "USD", ga4CampaignFilter: "saved-filter" },
       { id: "campaign-unscoped", ga4CampaignFilter: null },
     ] as any);
     vi.spyOn(storage, "getGA4Connections").mockImplementation(async (campaignId: string) => [{
@@ -99,6 +100,13 @@ describe("GA4 daily scheduler timing", () => {
       if (campaignId === "campaign-current") return {
         windowStart: "2026-08-01",
         windowEnd: "2026-08-05",
+        campaignBreakdown: { meta: { currencyCode: "USD" } },
+        conversionEvents: { version: GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION },
+      } as any;
+      if (campaignId === "campaign-currency-missing") return {
+        windowStart: "2026-08-01",
+        windowEnd: "2026-08-05",
+        campaignBreakdown: { meta: {} },
         conversionEvents: { version: GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION },
       } as any;
       if (campaignId === "campaign-outdated") return {
@@ -115,8 +123,8 @@ describe("GA4 daily scheduler timing", () => {
     vi.spyOn(storage, "getLatestGA4DailyMetric").mockResolvedValue({ date: "2026-08-05" } as any);
     const runPipeline = vi.fn(async () => undefined);
 
-    await expect(backfillMissingGA4OverviewSnapshots(runPipeline)).resolves.toEqual(["campaign-missing", "campaign-mismatched", "campaign-outdated"]);
-    expect(runPipeline).toHaveBeenCalledTimes(3);
+    await expect(backfillMissingGA4OverviewSnapshots(runPipeline)).resolves.toEqual(["campaign-missing", "campaign-mismatched", "campaign-outdated", "campaign-currency-missing"]);
+    expect(runPipeline).toHaveBeenCalledTimes(4);
     expect(runPipeline).toHaveBeenCalledWith("snapshot_bootstrap", {
       campaignId: "campaign-missing",
       suppressAlerts: true,
@@ -127,6 +135,10 @@ describe("GA4 daily scheduler timing", () => {
     });
     expect(runPipeline).toHaveBeenCalledWith("snapshot_bootstrap", {
       campaignId: "campaign-outdated",
+      suppressAlerts: true,
+    });
+    expect(runPipeline).toHaveBeenCalledWith("snapshot_bootstrap", {
+      campaignId: "campaign-currency-missing",
       suppressAlerts: true,
     });
   });
@@ -297,7 +309,7 @@ describe("GA4 daily scheduler timing", () => {
     vi.spyOn(ga4Service, "getAcquisitionBreakdown").mockResolvedValue({
       rows: [{ campaign: "saved-filter", sessions: 10, conversions: 2, revenue: 20.02 }],
       totals: { sessions: 10, conversions: 2, revenue: 20.02 },
-      meta: {},
+      meta: { currencyCode: "USD" },
     } as any);
     vi.spyOn(ga4Service, "getLandingPagesReport").mockResolvedValue({ rows: [], totals: {} } as any);
     const conversionEvents = vi.spyOn(ga4Service, "getConversionEventsReport").mockResolvedValue({
@@ -321,6 +333,34 @@ describe("GA4 daily scheduler timing", () => {
     });
   });
 
+  it("keeps the last complete Overview snapshot when the provider report currency is not verified", async () => {
+    const dailyRows = [{ date: "2026-08-05", sessions: 4, conversions: 1, revenue: 10 }];
+    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{
+      id: "campaign-1", reportingTimeZone: "UTC", currency: "USD", ga4CampaignFilter: "saved-filter",
+    }] as any);
+    vi.spyOn(storage, "getGA4Connections").mockResolvedValue([{
+      propertyId: "properties/active", importStartDate: "2026-08-05", isActive: true,
+    }] as any);
+    vi.spyOn(storage, "getGA4Connection").mockResolvedValue({ propertyId: "properties/active", accessToken: "token" } as any);
+    vi.spyOn(ga4Service, "getTimeSeriesData").mockResolvedValue(dailyRows as any);
+    vi.spyOn(ga4Service, "getTrendsDailyPresenceWithToken").mockResolvedValue({ dailyRows, presentDates: ["2026-08-05"] } as any);
+    vi.spyOn(storage, "getGA4DailyMetrics").mockResolvedValue([] as any);
+    vi.spyOn(ga4Service, "getAcquisitionBreakdown").mockResolvedValue({
+      totals: { sessions: 4, conversions: 1, revenue: 10 }, rows: [], meta: {},
+    } as any);
+    vi.spyOn(ga4Service, "getLandingPagesReport").mockResolvedValue({ rows: [], totals: {} } as any);
+    vi.spyOn(ga4Service, "getConversionEventsReport").mockResolvedValue({ rows: [], totals: { conversions: 1 } } as any);
+    const replace = vi.spyOn(storage, "replaceGA4DailyMetricsWindow").mockResolvedValue({ replaced: 1 } as any);
+
+    const result = await refreshAllGA4DailyMetrics({}, new Date("2026-08-06T12:00:00.000Z"));
+
+    expect(result.campaignIdsFailed).toEqual(["campaign-1"]);
+    expect(result.failureReasonsByCampaign).toEqual({
+      "campaign-1": ["overview_campaign_breakdown:GA4_CURRENCY_UNVERIFIED"],
+    });
+    expect(replace).not.toHaveBeenCalled();
+  });
+
   it("keeps the last complete Overview snapshot when detail totals do not reconcile", async () => {
     vi.spyOn(storage, "getCampaigns").mockResolvedValue([{
       id: "campaign-1", reportingTimeZone: "UTC", currency: "USD", ga4CampaignFilter: "saved-filter",
@@ -334,7 +374,7 @@ describe("GA4 daily scheduler timing", () => {
       dailyRows: [{ date: "2026-08-05", sessions: 4, conversions: 1, revenue: 10 }], presentDates: ["2026-08-05"],
     } as any);
     vi.spyOn(storage, "getGA4DailyMetrics").mockResolvedValue([] as any);
-    vi.spyOn(ga4Service, "getAcquisitionBreakdown").mockResolvedValue({ totals: { sessions: 4, conversions: 1, revenue: 10 }, rows: [] } as any);
+    vi.spyOn(ga4Service, "getAcquisitionBreakdown").mockResolvedValue({ totals: { sessions: 4, conversions: 1, revenue: 10 }, rows: [], meta: { currencyCode: "USD" } } as any);
     vi.spyOn(ga4Service, "getLandingPagesReport").mockResolvedValue({ rows: [], totals: {} } as any);
     vi.spyOn(ga4Service, "getConversionEventsReport").mockResolvedValue({ rows: [], totals: { conversions: 2 } } as any);
     const replace = vi.spyOn(storage, "replaceGA4DailyMetricsWindow").mockResolvedValue({ replaced: 1 } as any);

@@ -339,6 +339,14 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
             currentCampaignId, storage, overviewStartDate, propertyId, 50, campaignFilter,
             reportingWindow.endDate, false, expectedDailyConversions,
           ));
+          const campaignCurrency = String((c as any)?.currency || "").trim().toUpperCase();
+          const verifiedOverviewCurrency = String(campaignBreakdown?.meta?.currencyCode || "").trim().toUpperCase();
+          if (!/^[A-Z]{3}$/.test(campaignCurrency) || verifiedOverviewCurrency !== campaignCurrency) {
+            throw Object.assign(new Error("GA4_CURRENCY_UNVERIFIED: GA4 Overview report currency is unverified"), {
+              code: "GA4_CURRENCY_UNVERIFIED",
+              ga4DailyStage: "overview_campaign_breakdown",
+            });
+          }
           // Daily revenue is stored at cent precision while GA4's aggregate can retain
           // more source precision. Permit only the maximum per-day quantization delta.
           const revenueRoundingTolerance = overviewRows.length * 0.005 + 1e-9;
@@ -586,9 +594,12 @@ export async function backfillMissingGA4OverviewSnapshots(
         storage.getGA4OverviewSnapshot(campaignId, propertyId),
         storage.getLatestGA4DailyMetric(campaignId, propertyId),
       ]);
+      const expectedCurrency = String((campaign as any)?.currency || "").trim().toUpperCase();
+      const snapshotCurrency = String((snapshot as any)?.campaignBreakdown?.meta?.currencyCode || "").trim().toUpperCase();
       if (!snapshot || !latestDaily || String(snapshot.windowStart) !== expectedStartDate ||
           String(snapshot.windowEnd) !== String(latestDaily.date) ||
-          String((snapshot as any)?.conversionEvents?.version || "") !== GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION) {
+          String((snapshot as any)?.conversionEvents?.version || "") !== GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION ||
+          (/^[A-Z]{3}$/.test(expectedCurrency) && snapshotCurrency !== expectedCurrency)) {
         needsBootstrap = true;
         break;
       }

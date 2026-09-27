@@ -156,7 +156,7 @@ export default function TrendAnalysis() {
     String(outcomeTotals?.performanceSummary?.currentValueWindow?.dataThroughDate || ""),
     perfDays,
   );
-  const trendFinancialComparisonUrl = `/api/campaigns/${campaignId}/snapshots/comparison?type=last_week&snapshotType=financial_daily&comparisonDate=${trendComparisonDate}&persistedOnly=1`;
+  const trendFinancialComparisonUrl = `/api/campaigns/${campaignId}/snapshots/comparison?type=last_week&snapshotType=financial_daily&comparisonDate=${trendComparisonDate}`;
   const { data: trendFinancialComparison, isFetched: trendFinancialComparisonFetched, error: trendFinancialComparisonError } = useQuery<any>({
     queryKey: [trendFinancialComparisonUrl, "trend-exact-financial"],
     enabled: !!campaignId && !!trendComparisonDate,

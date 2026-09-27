@@ -174,7 +174,8 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain("Campaign performance daily values are withheld because complete scheduler-stored GA4 history is unavailable.");
     expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", "persisted-only"]');
     expect(page).toContain("outcome-totals?dateRange=90days&persistedOnly=1");
-    expect(page).toContain("snapshotType=financial_daily&comparisonDate=${trendComparisonDate}&persistedOnly=1");
+    expect(page).toContain("snapshotType=financial_daily&comparisonDate=${trendComparisonDate}`");
+    expect(page).not.toContain("snapshotType=financial_daily&comparisonDate=${trendComparisonDate}&persistedOnly=1");
     expect(page).toContain("snapshot: trendFinancialComparison?.current");
     expect(page).toContain("expectedInputs: performanceSummary?.totals");
     expect(page).toContain('const currentRevenue = financialSnapshotValue(compatibleCurrentFinancialDaily, "revenue")');

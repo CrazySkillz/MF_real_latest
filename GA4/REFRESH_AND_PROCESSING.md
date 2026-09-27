@@ -137,7 +137,7 @@ Runtime cadence:
 - the scheduler starts from the server startup background-scheduler block, about 5 seconds after the server begins listening
 - it schedules one daily run at `GA4_DAILY_REFRESH_HOUR:GA4_DAILY_REFRESH_MINUTE` in `GA4_DAILY_REFRESH_TIME_ZONE`, defaulting to `03:00 UTC`
 - `GA4_DAILY_REFRESH_TIME_ZONE` is a deployment-level scheduler setting, not a per-campaign UI setting
-- startup refresh is disabled in code; `GA4_DAILY_REFRESH_RUN_ON_STARTUP` does not trigger a GA4 daily-history write
+- general startup refresh is disabled in code; `GA4_DAILY_REFRESH_RUN_ON_STARTUP` does not trigger an unconditional GA4 daily-history write. The bounded exception is snapshot initialization: startup discovery invokes the same campaign-scoped daily pipeline only for configured campaigns whose synchronized Overview snapshot is missing or mismatched, and skips campaigns that already have a valid snapshot
 - scheduler logs include the next UTC run time, local reporting-time label, timezone, and expected `dataThroughDate`
 - an in-process overlap guard skips a second GA4 daily pipeline if one is already running
 - it fetches a lookback window controlled by `GA4_DAILY_LOOKBACK_DAYS`, defaulting to `90` days and bounded between `7` and `365`

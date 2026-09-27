@@ -49,6 +49,7 @@ const ga4DailySchedulerStatus = {
   totalStartupRuns: 0,
   totalScheduledRuns: 0,
   totalManualRuns: 0,
+  totalSnapshotBootstrapRuns: 0,
   totalSkippedRuns: 0,
   lastRecomputeRecordedAt: null as Date | null,
   lastRecomputeEvidence: null as null | Record<string, string[]>,
@@ -391,6 +392,7 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
   if (trigger === "startup") ga4DailySchedulerStatus.totalStartupRuns += 1;
   else if (trigger === "scheduled") ga4DailySchedulerStatus.totalScheduledRuns += 1;
   else if (trigger === "manual") ga4DailySchedulerStatus.totalManualRuns += 1;
+  else if (trigger === "snapshot_bootstrap") ga4DailySchedulerStatus.totalSnapshotBootstrapRuns += 1;
   ga4DailySchedulerStatus.lastRunStartedAt = startedAtDate;
   ga4DailySchedulerStatus.lastRunFinishedAt = null;
   ga4DailySchedulerStatus.lastRunTrigger = trigger;
@@ -493,6 +495,53 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
   }
 }
 
+type GA4DailyPipelineRunner = (trigger: string, opts?: GA4DailyRefreshPipelineOptions) => Promise<void>;
+
+export async function backfillMissingGA4OverviewSnapshots(
+  runPipeline: GA4DailyPipelineRunner = runGA4DailyRefreshPipelineForTrigger,
+): Promise<string[]> {
+  const campaigns = await storage.getCampaigns();
+  const campaignIds: string[] = [];
+  for (const campaign of campaigns) {
+    const campaignId = String((campaign as any)?.id || "").trim();
+    const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+    const hasCampaignFilter = Array.isArray(campaignFilter)
+      ? campaignFilter.length > 0
+      : Boolean(String(campaignFilter || "").trim());
+    if (!campaignId || !hasCampaignFilter) continue;
+    const connections = await storage.getGA4Connections(campaignId);
+    const activeConnections = connections.filter((connection: any) =>
+      connection?.isActive !== false && String(connection?.propertyId || "").trim()
+    );
+    let needsBootstrap = false;
+    for (const connection of activeConnections) {
+      const propertyId = String(connection.propertyId);
+      const expectedStartDate = /^\d{4}-\d{2}-\d{2}$/.test(String(connection?.importStartDate || ""))
+        ? String(connection.importStartDate)
+        : GA4_OVERVIEW_LEGACY_IMPORT_START_DATE;
+      const [snapshot, latestDaily] = await Promise.all([
+        storage.getGA4OverviewSnapshot(campaignId, propertyId),
+        storage.getLatestGA4DailyMetric(campaignId, propertyId),
+      ]);
+      if (!snapshot || !latestDaily || String(snapshot.windowStart) !== expectedStartDate ||
+          String(snapshot.windowEnd) !== String(latestDaily.date)) {
+        needsBootstrap = true;
+        break;
+      }
+    }
+    if (needsBootstrap) campaignIds.push(campaignId);
+  }
+
+  for (const campaignId of campaignIds) {
+    try {
+      await runPipeline("snapshot_bootstrap", { campaignId, suppressAlerts: true });
+    } catch (error: any) {
+      console.warn(`[GA4 Daily] Overview snapshot bootstrap failed for campaign ${campaignId}:`, error?.message || error);
+    }
+  }
+  return campaignIds;
+}
+
 export function getGA4DailySchedulerStatus() {
   const config = ga4DailySchedulerStatus.config || getGA4DailySchedulerConfig();
   return {
@@ -515,6 +564,7 @@ export function getGA4DailySchedulerStatus() {
     totalStartupRuns: ga4DailySchedulerStatus.totalStartupRuns,
     totalScheduledRuns: ga4DailySchedulerStatus.totalScheduledRuns,
     totalManualRuns: ga4DailySchedulerStatus.totalManualRuns,
+    totalSnapshotBootstrapRuns: ga4DailySchedulerStatus.totalSnapshotBootstrapRuns,
     totalSkippedRuns: ga4DailySchedulerStatus.totalSkippedRuns,
     lastRecomputeRecordedAt: toIsoOrNull(ga4DailySchedulerStatus.lastRecomputeRecordedAt),
     lastRecomputeEvidence: ga4DailySchedulerStatus.lastRecomputeEvidence,
@@ -552,6 +602,13 @@ export function startGA4DailyScheduler(): void {
   console.log(`[GA4 Daily] Scheduler started (time=${String(config.hour).padStart(2, "0")}:${String(config.minute).padStart(2, "0")}, timezone=${config.reportingTimeZone}, startupRun=${config.runOnStartup})`);
 
   scheduleNextRun();
+  void backfillMissingGA4OverviewSnapshots().then((campaignIds) => {
+    if (campaignIds.length > 0) {
+      console.log(`[GA4 Daily] Overview snapshot bootstrap attempted for ${campaignIds.length} campaign(s)`);
+    }
+  }).catch((error: any) => {
+    console.warn("[GA4 Daily] Overview snapshot bootstrap discovery failed:", error?.message || error);
+  });
 }
 
 export function stopGA4DailyScheduler(): void {

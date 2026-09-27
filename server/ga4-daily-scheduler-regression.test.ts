@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { afterEach, vi } from "vitest";
 import { ga4Service } from "./analytics";
-import { getGA4DailyRecomputeFailure, getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getNextGA4DailyRunAt, refreshAllGA4DailyMetrics } from "./ga4-daily-scheduler";
+import { backfillMissingGA4OverviewSnapshots, getGA4DailyRecomputeFailure, getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getNextGA4DailyRunAt, refreshAllGA4DailyMetrics } from "./ga4-daily-scheduler";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { storage } from "./storage";
 
@@ -54,6 +54,8 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("GA4_DAILY_REFRESH_MINUTE");
     expect(source).not.toContain("GA4_DAILY_REFRESH_RUN_ON_STARTUP");
     expect(source).not.toContain('runGA4DailyRefreshPipelineForTrigger("startup")');
+    expect(source).toContain('await runPipeline("snapshot_bootstrap", { campaignId, suppressAlerts: true })');
+    expect(source).toContain("backfillMissingGA4OverviewSnapshots()");
     expect(source).toContain("type GA4DailyRefreshPipelineOptions");
     expect(source).not.toContain("export async function runGA4DailyRefreshPipeline");
     expect(source).toContain("const campaignId = String(opts.campaignId || \"\").trim();");
@@ -77,6 +79,45 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("__ga4DailyRefreshInProgress");
     expect(source).toContain("Skipping ${trigger} pipeline (already in progress)");
     expect(source).not.toContain("setInterval(() =>");
+  });
+
+  it("bootstraps only campaign-scoped Overview snapshots that are missing or out of sync", async () => {
+    vi.spyOn(storage, "getCampaigns").mockResolvedValue([
+      { id: "campaign-missing", ga4CampaignFilter: "saved-filter" },
+      { id: "campaign-mismatched", ga4CampaignFilter: "saved-filter" },
+      { id: "campaign-current", ga4CampaignFilter: "saved-filter" },
+      { id: "campaign-unscoped", ga4CampaignFilter: null },
+    ] as any);
+    vi.spyOn(storage, "getGA4Connections").mockImplementation(async (campaignId: string) => [{
+      campaignId,
+      propertyId: `properties/${campaignId}`,
+      importStartDate: "2026-08-01",
+      isActive: true,
+    }] as any);
+    vi.spyOn(storage, "getGA4OverviewSnapshot").mockImplementation(async (campaignId: string) => {
+      if (campaignId === "campaign-current") return {
+        windowStart: "2026-08-01",
+        windowEnd: "2026-08-05",
+      } as any;
+      if (campaignId === "campaign-mismatched") return {
+        windowStart: "2026-08-01",
+        windowEnd: "2026-08-04",
+      } as any;
+      return undefined;
+    });
+    vi.spyOn(storage, "getLatestGA4DailyMetric").mockResolvedValue({ date: "2026-08-05" } as any);
+    const runPipeline = vi.fn(async () => undefined);
+
+    await expect(backfillMissingGA4OverviewSnapshots(runPipeline)).resolves.toEqual(["campaign-missing", "campaign-mismatched"]);
+    expect(runPipeline).toHaveBeenCalledTimes(2);
+    expect(runPipeline).toHaveBeenCalledWith("snapshot_bootstrap", {
+      campaignId: "campaign-missing",
+      suppressAlerts: true,
+    });
+    expect(runPipeline).toHaveBeenCalledWith("snapshot_bootstrap", {
+      campaignId: "campaign-mismatched",
+      suppressAlerts: true,
+    });
   });
 
   it("keeps expected unavailable skips observable without failing the global run", () => {

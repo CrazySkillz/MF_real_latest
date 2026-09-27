@@ -513,6 +513,8 @@ export class GoogleAnalytics4Service {
       const t = String(txt || '').toLowerCase();
       return t.includes('"code": 401') || t.includes('unauthenticated') || t.includes('invalid authentication credentials') || t.includes('invalid_grant');
     };
+    const isInvalidArgumentText = (txt: string) =>
+      /"status"\s*:\s*"invalid_argument"/i.test(String(txt || ''));
 
     const incompletePaginationError = (message: string) =>
       new Error(`GA4_CONVERSION_EVENT_PAGINATION_INCOMPLETE: ${message}`);
@@ -584,9 +586,14 @@ export class GoogleAnalytics4Service {
     };
 
     const tryFetch = async (accessToken: string) => {
-      const res = await fetchRows(accessToken, campaignDimensionFilter);
-      assertUniqueEventRows(res);
-      if (hasConversionRows(res)) return conversionRowsOnly(res);
+      let res: any = null;
+      try {
+        res = await fetchRows(accessToken, campaignDimensionFilter);
+        assertUniqueEventRows(res);
+        if (hasConversionRows(res)) return conversionRowsOnly(res);
+      } catch (error: any) {
+        if (!isInvalidArgumentText(error?.message || error)) throw error;
+      }
       // Match the daily scheduler's conversion fallback. First-user attribution
       // is intentionally excluded because it can assign conversions outside the
       // session/UTM campaign scope used by the Overview totals.
@@ -598,7 +605,7 @@ export class GoogleAnalytics4Service {
         assertUniqueEventRows(fallback);
         if (hasConversionRows(fallback)) return conversionRowsOnly(fallback);
       }
-      return conversionRowsOnly(res);
+      return conversionRowsOnly(res || { revenueMetric: 'totalRevenue', rows: [], totals: {} });
     };
 
     try {

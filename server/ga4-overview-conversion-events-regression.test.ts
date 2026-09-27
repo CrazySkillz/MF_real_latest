@@ -141,6 +141,34 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     expect(JSON.stringify(bodies)).not.toContain("pageLocation");
   });
 
+  it("uses the exact campaign-name fallback when GA4 rejects the session-scoped event query", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const filter = JSON.stringify(body.dimensionFilter || {});
+      if (filter.includes('"fieldName":"sessionCampaignName"')) {
+        return { ok: false, text: async () => '{"error":{"code":400,"status":"INVALID_ARGUMENT"}}' } as any;
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          rowCount: 1,
+          rows: [{ dimensionValues: [{ value: "purchase" }], metricValues: [{ value: "3" }, { value: "4" }, { value: "2" }, { value: "10" }] }],
+        }),
+      } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await ga4Service.getConversionEventsReport(
+      "campaign-1", { getGA4Connection: vi.fn(async () => connection) },
+      "2026-08-01", "987654", 50, "saved-a", "2026-09-14",
+    );
+
+    expect(result.rows).toEqual([{ eventName: "purchase", conversions: 3, eventCount: 4, users: 2, revenue: 10 }]);
+    const filters = fetchMock.mock.calls.map(([, init]) => JSON.stringify(JSON.parse(String((init as any)?.body || "{}")).dimensionFilter));
+    expect(filters[0]).toContain("sessionCampaignName");
+    expect(filters.at(-1)).toContain('"fieldName":"campaignName"');
+  });
+
   it("does not broaden attribution beyond the scheduler's campaign-name fallback", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const filter = JSON.stringify(JSON.parse(String(init?.body || "{}")).dimensionFilter || {});

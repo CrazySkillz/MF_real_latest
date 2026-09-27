@@ -59,10 +59,11 @@ Executive use case:
 
 ## Current Implemented Consumer Contract
 
-Reconciled with the code at `162e9b6b` on 2026-09-26. The budget-period Spend
-correction is committed and pushed. Campaign3 browser screenshots supplied after the
-change confirm the expected visible behavior, but that evidence is not a full
-production recertification of every source family and report delivery path.
+Reconciled with the code and deployed application at
+`39fe902a6b94c461ff26fe2181806b35d7f4100e` on 2026-09-27. The current deployed
+Campaign3 path has an authenticated read-only persisted-fact, API, and rendered-UI
+reconciliation. That bounded evidence does not recertify every source family or the
+one-off, snapshot, and scheduled Budget report delivery paths.
 
 The visible Budget & Financial Analysis experience is now one executive page, not five
 tabs. It renders `Financial Position`, `Budget & Pacing`, conditional `Paid Media
@@ -158,6 +159,43 @@ the GA4 analytics experience.
   separately through the shared aggregate and must not overwrite one another.
 - Source refresh and page refetch keep the consumers synchronized; synchronization is
   through authoritative backend state, never through tab-to-tab value copying.
+
+### 2026-09-27 Campaign3 Bounded Production Reconciliation
+
+The exact deployed revision
+`39fe902a6b94c461ff26fe2181806b35d7f4100e` was validated read-only for Campaign3,
+campaign `e5edd8dc-fe84-49ce-b564-67203de18aea`, GA4 property `542352127`, currency
+`EUR`, and reporting timezone `Europe/Amsterdam`.
+
+- The cumulative current-value window was `2026-08-23` through `2026-09-26`.
+- Persisted GA4 traffic reconciled to 2,256 Users, 2,256 Sessions, and 145
+  Conversions.
+- Financial Position rendered Total Spend `EUR 2,353.00`, Total Revenue
+  `EUR 37,518.74`, Profit `EUR 35,165.74`, ROAS `15.95x`, ROI `1,494.5%`, CPA
+  `EUR 16.23`, and CVR `6.4%`.
+- Total Spend reconciled exactly to two active campaign-scoped inputs: Google Sheets
+  `EUR 1,103.00` and CSV `EUR 1,250.00`.
+- The campaign budget was `EUR 250,000.00` for `2026-07-01` through `2026-11-30`.
+  `budget_pacing_v1` correctly returned only the dated in-period CSV Spend,
+  `EUR 1,250.00`; it excluded the Google Sheets records dated January through May.
+- Budget Position rendered `EUR 248,750.00` remaining and `0.5%` used. Pacing rendered
+  `EUR 14.04` daily burn over 89 elapsed calendar days, `EUR 1,633.99` target daily
+  spend over 153 total days, and `99.1% Under`.
+- Allocation & Sources rendered GA4 Revenue plus both exact Spend inputs. Executive
+  Action rendered positive return, below-target pacing, and the reconciled largest
+  spend source (`Test_spend_alpha.csv`, `53.1%`).
+- Paid Media Efficiency was correctly omitted because no compatible connected source
+  supplied paid-media clicks or impressions.
+- The authoritative cumulative GA4 Revenue was `EUR 37,518.74`. The two-decimal daily
+  fact rows summed to `EUR 37,518.72`; the page correctly retained the provider-backed
+  cumulative value rather than replacing it with the quantized daily sum.
+- The browser trace observed no application write request. The focused five-file
+  financial suite passed 61/61 tests and `npm run check` passed.
+
+This is a bounded current-revision pass for Campaign3's visible page and configured
+GA4 financial inputs. It is not evidence for other source families, tenant isolation,
+Budget metadata mutation lifecycles, or deployed Budget report artifact/delivery
+parity.
 
 ### 2026-08-28 Current-Value Correction
 
@@ -573,10 +611,11 @@ Before marking this subsection production ready:
 
 ## Current Status
 
-**PARTIALLY REVIEWED - the budget-period Spend correction is committed, pushed,
-targeted regression-tested, and manually confirmed in the Campaign3 browser flow. A
-current deployed recertification of all source families plus one-off, snapshot, and
-scheduled Budget report delivery remains incomplete.**
+**PARTIALLY REVIEWED - the current deployed Campaign3 visible-page path passed an
+authenticated read-only persisted-fact, API, formula, and UI reconciliation at
+`39fe902a6b94c461ff26fe2181806b35d7f4100e`; 61/61 focused tests and TypeScript also
+passed. Other source families, mutation lifecycles, tenant isolation, and deployed
+one-off, snapshot, and scheduled Budget report delivery remain incomplete.**
 
 The earlier `19f055372abe8aee789dd4205eba5decef5f39a5` readiness statement is historical
 evidence only. It does not certify the corrected Budget Position and pacing path,
@@ -644,8 +683,12 @@ Proven:
 - Current server aggregation feeds registered Connected Platforms and financial inputs into `performanceSummary`; Google Ads is now included as a first-class normalized paid-media source when connected and populated with campaign-scoped daily metrics.
 - GA4 `yesop` test-data refresh uses the deterministic simulator and does not require a live OAuth token, so Render validation can trigger a GA4 refresh for system-generated test data without failing on `TOKEN_EXPIRED`.
 - Render validation passed for the GA4 `yesop` source-refresh path: manual refresh returned `success: true` with refreshed metrics, and the Budget & Financial current-value validation passed after refresh.
+- Current deployed Campaign3 proof reconciles the two active Spend inputs to aggregate
+  Total Spend, the period-bounded derivative to dated source records, all visible
+  Financial Position formulas, Budget Position and pacing outputs, provenance rows,
+  and the three Executive Action categories without mutating application data.
 
-Remaining validation outside the current local and Campaign3 browser proof:
+Remaining validation outside the current local and bounded Campaign3 production proof:
 
 - Each future live OAuth/source configuration requires its own source-family and
   deployed-provider validation before its values are included in this status.

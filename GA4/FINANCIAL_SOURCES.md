@@ -92,7 +92,7 @@ Important clarification:
 - Budget & Financial Analysis pacing metadata, including budget-period start and end dates entered from the Budget Pacing & Burn Rate card, must not filter GA4 `Total Revenue`, `Revenue Breakdown`, or the `Revenue Sources` modal. Those platform-level revenue values are source-backed and must include all available mapped revenue records.
 - the `GA4 Revenue` source entry in the `Total Revenue` source modal should show that full aggregated GA4 amount, not a partial or single-day figure
 - native GA4 headline and exact-date Revenue comparisons use the authoritative scoped aggregate. Campaign DeepDive Trend Analysis consumes that aggregate only after the daily scheduler captures it in a compatible `financial_daily_snapshot_v1`; its financial-card current/comparison requests are persisted-only and must not call GA4 or replace a missing snapshot with a sum of daily rows solely to force cross-granularity agreement
-- `ga4_daily_metrics.revenue` is currently stored at two decimal places, so summing individually quantized daily values can differ from an aggregate that retains more underlying precision. A `2026-09-24` read-only Campaign3 check observed `EUR 37,518.74` from the aggregate and `EUR 37,518.72` from the stored daily-row sum through `2026-09-23`; this evidence does not inspect GA4's internal aggregation implementation
+- `ga4_daily_metrics.revenue` is currently stored at two decimal places, so summing individually quantized daily values can differ from an aggregate that retains more underlying precision. A current-revision `2026-09-27` read-only Campaign3 check observed `EUR 37,518.74` from the authoritative aggregate and `EUR 37,518.72` from 35 stored daily rows covering `2026-08-23` through `2026-09-26`; this evidence confirms the application source choice but does not inspect GA4's internal aggregation implementation
 - this bounded few-cent difference is a known precision limitation, not permission to add a synthetic adjustment row, assign the residual to an arbitrary date, or report the daily sum as the authoritative native GA4 imported-window amount
 - exact cent-for-cent daily-to-aggregate Revenue reconciliation is excluded from the current readiness claim until a next-version migration preserves higher provider precision, re-fetches/backfills exact-source daily values, and revalidates all affected browser, report, snapshot, and downstream consumers
 - GA4 `Ad Comparison` campaign rows, rankings, chart, and totals use only
@@ -149,6 +149,12 @@ Spend is not imported from the GA4 API by default.
 Imported `Total Spend`, `Spend Breakdown`, and the `Spend Sources` modal must use the same active source-backed spend record window so the card total and source provenance cannot drift.
 
 Budget & Financial Analysis pacing metadata, including budget-period start and end dates entered from the Budget Pacing & Burn Rate card, must not filter GA4 `Total Spend`, `Spend Breakdown`, or the `Spend Sources` modal. Those platform-level spend values are source-backed and must include all available mapped spend records. Browser and Budget report calculations consume a separate `budget_pacing_v1` derivative that sums dated Spend records inside the selected budget period through the financial data-through date. That derivative is available only when aggregate Spend uses canonical normalized records, its active Spend-source IDs exactly match the available provenance set, and currency matches the campaign; otherwise budget calculations fail closed instead of reusing GA4 Total Spend.
+
+Current Campaign3 evidence at deployed `39fe902a...`: aggregate Total Spend reconciled
+to `EUR 2,353.00` from Google Sheets `EUR 1,103.00` plus CSV `EUR 1,250.00`.
+For the configured `2026-07-01` through `2026-11-30` budget period,
+`budget_pacing_v1` returned only `EUR 1,250.00`, correctly excluding the Google Sheets
+records dated January through May without changing aggregate Total Spend or provenance.
 
 Google Sheets spend add mode is additive. Creating a new Google Sheets spend source must not reuse or overwrite an existing source just because the same Google Sheets connection or tab is selected. Edit/refresh mode may update an existing source only when the stable spend `sourceId` is explicitly passed.
 

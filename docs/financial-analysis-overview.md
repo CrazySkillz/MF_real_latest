@@ -1,8 +1,9 @@
 # Budget & Financial Analysis - Current Single-Page Contract
 
-Last reconciled with the current implementation on 2026-09-26 at `162e9b6b`.
-The budget-period Spend contract was introduced in `4298cfda`; the current Executive
-Action copy was finalized in `162e9b6b`.
+Last reconciled with the current implementation and deployed application on 2026-09-27
+at `39fe902a6b94c461ff26fe2181806b35d7f4100e`. The budget-period Spend contract was
+introduced in `4298cfda`; the current Executive Action copy was finalized in
+`162e9b6b`.
 
 ## Current Visible Contract
 
@@ -44,11 +45,30 @@ The visible sections, in order, are:
   aggregate financial metrics. Paid Media Efficiency uses only the
   compatible aggregate CPC/CPM/CTR inputs, Conversion Efficiency uses aggregate GA4
   traffic CVR, and Sources Used renders the matching `financialInputs` provenance rows.
+- Native GA4 Revenue uses the authoritative cumulative scoped aggregate. It must not be
+  replaced by a sum of two-decimal daily fact rows solely to force cross-granularity
+  equality; that daily sum can differ by a few cents because each persisted day is
+  quantized separately.
 
 The accepted current-value window is `performance_summary_aggregate_v3` with mode
 `initial_import_to_latest_completed_day`, a valid start/end date, a matching
 `dataThroughDate`, and a reporting timezone. It is cumulative from the fixed initial
 import boundary through the latest completed reporting day.
+
+### Current Campaign3 Evidence
+
+An authenticated read-only validation on deployed revision `39fe902a...` reconciled
+Campaign3's persisted financial records, page-consumed API contract, formulas, and
+rendered UI. The visible page showed `EUR 2,353.00` Total Spend, `EUR 37,518.74` Total
+Revenue, `EUR 35,165.74` Profit, `15.95x` ROAS, `1,494.5%` ROI, `EUR 16.23` CPA, and
+`6.4%` CVR. The configured `EUR 250,000.00` budget ran from `2026-07-01` through
+`2026-11-30`; only `EUR 1,250.00` of the two Spend inputs fell inside that period, so
+Budget Position showed `EUR 248,750.00` remaining and `0.5%` used. The browser showed
+`EUR 14.04` daily burn, `EUR 1,633.99` target daily spend, and `99.1% Under` pacing.
+
+This evidence proves the current visible Campaign3 path only. Other source families,
+metadata mutation lifecycles, tenant isolation, and deployed Budget report artifacts
+remain separate validation gates.
 
 ### Financial Position
 

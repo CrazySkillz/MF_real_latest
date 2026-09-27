@@ -194,7 +194,7 @@ dependency. Its lifecycle authority remains
 `f4a648a8` and deployed runtime `f8061d13`; the Performance Summary certificate
 does not recertify or broaden that source boundary.
 
-Remaining DeepDive certification order after the completed Budget, Trend, and
+Remaining DeepDive certification order after the earlier bounded Budget, Trend, and
 Executive Summary reviews:
 
 1. Reports
@@ -205,16 +205,18 @@ Budget & Financial Analysis was certified at deployed application runtime
 `b36047bbce419df9d606239c340398e69a409211`. That certificate is now historical:
 `4298cfda` replaced aggregate-Spend pacing with the separate period-bounded
 `budget_pacing_v1` contract, and `162e9b6b` changed the visible Executive Action copy.
-The affected Budget & Pacing, Executive Action, combined-page, and Budget report paths
-require current-revision recertification.
+Deployed revision `39fe902a...` now has a bounded authenticated Campaign3
+persisted-fact/API/UI pass for the combined visible page. Other source families,
+metadata mutation and tenant-isolation gates, and Budget report paths still require
+current-revision recertification.
 
 | Order | Budget & Financial Analysis review | Work state | Fresh certification status | Boundary |
 | ---: | --- | --- | --- | --- |
-| - | Combined Budget & Financial Analysis | `REVALIDATION_REQUIRED` | `UNVERIFIED` | The prior `b36047bb...` certificate is historical because its pacing calculations used aggregate Total Spend. Current code uses `budget_pacing_v1`; Campaign3 browser behavior is manually confirmed, but the current combined page and report path are not recertified. |
-| 1 | Financial Position | `REVALIDATION_REQUIRED` | `UNVERIFIED` | The formulas remain aggregate-backed and Campaign3 browser values remained unchanged, but the current combined-page revision has not received an exact-revision certificate. |
-| 2 | Budget & Pacing | `REVALIDATION_REQUIRED` | `UNVERIFIED` | Current code uses verified Spend dated inside the selected budget period, not aggregate Total Spend. Campaign3 UI scenarios passed manual review; full current-revision and report recertification remain open. |
-| 3 | Allocation & Sources | `REVALIDATION_REQUIRED` | `UNVERIFIED` | Campaign3 provenance remained unchanged in browser evidence, but this row has not been recertified on the current combined-page revision. |
-| 4 | Executive Action | `REVALIDATION_REQUIRED` | `UNVERIFIED` | Current budget guidance uses period-bounded Spend and the subtitle changed at `162e9b6b`; exact-revision recertification remains open. |
+| - | Combined Budget & Financial Analysis | `BOUNDED_PASS` | `UNVERIFIED` | Deployed `39fe902a...` passed a read-only Campaign3 persisted-fact/API/UI reconciliation. The prior `b36047bb...` certificate remains historical; other source families, mutations, isolation, and Budget reports are not recertified. |
+| 1 | Financial Position | `BOUNDED_PASS` | `UNVERIFIED` | Campaign3's Spend, Revenue, Profit, ROAS, ROI, CPA, CVR, exact inputs, and rendered values reconciled on deployed `39fe902a...`; broader source-family proof remains open. |
+| 2 | Budget & Pacing | `BOUNDED_PASS` | `UNVERIFIED` | Campaign3's `EUR 1,250.00` period Spend reconciled to dated source records and correctly excluded `EUR 1,103.00` of pre-period Spend; budget, burn, target, and pacing UI values matched. Mutation and report gates remain open. |
+| 3 | Allocation & Sources | `BOUNDED_PASS` | `UNVERIFIED` | Campaign3 rendered the exact GA4 Revenue input and two Spend provenance inputs, reconciling to authoritative totals; other source mixes remain open. |
+| 4 | Executive Action | `BOUNDED_PASS` | `UNVERIFIED` | Campaign3 rendered the expected return, actual-pacing, and reconciled source-mix actions on deployed `39fe902a...`; broader configurations remain open. |
 
 `Paid Media Efficiency` has its own conditional UI heading. It is included in
 the Financial Position packet and combined-page gate, not omitted or declared
@@ -372,7 +374,7 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 | Subsection | Durable status | Controlling authority | Exact boundary or open gate |
 | --- | --- | --- | --- |
 | Performance Summary | `RECERTIFY` | `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_PRODUCTION_READY.md`; preserved exact-boundary certificate `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md` | Current implementation `ca1fc5a8` is locally validated but not deployed-recertified. The preserved certificate remains valid only for exact deployed runtime `ee6e11ebf8cb0a13dd182dde54af790a3757ef2f`, its two recorded campaigns, property `542352127`, USD, Europe/Amsterdam, and `2026-09-18` data-through boundary. Current campaign-currency Key Outcomes/Recent Movement/Recommended Actions, stable comparison transitions, and scheduled-PDF recommendation currency require exact-revision deployed reconciliation. |
-| Budget & Financial Analysis | `RECERTIFY` | `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md`; historical certificate `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_CERTIFICATE_2026-09-19.md` | Current implementation `162e9b6b` uses the separate `budget_pacing_v1` Spend derivative introduced at `4298cfda`. Campaign3 browser behavior is manually confirmed; current combined-page and Budget report delivery parity require recertification. |
+| Budget & Financial Analysis | `RECERTIFY` | `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md`; historical certificate `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_CERTIFICATE_2026-09-19.md` | Deployed `39fe902a...` has a bounded authenticated Campaign3 persisted-fact/API/UI pass for the current `budget_pacing_v1` implementation. Other source families, metadata mutation, tenant isolation, and deployed Budget report delivery parity require recertification. |
 | Platform Comparison | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_PLATFORM_COMPARISON_PRODUCTION_READY.md` | Current aggregate-backed implementation and Render-validated GA4-only scenario. |
 | Trend Analysis | `RECERTIFY` | Current contract: `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`; historical certificate: `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_CERTIFICATION_2026-09-20.md` | The historical certificate remains valid only for its exact `Campaign2` runtime. Current scheduler-only daily history, financial snapshot gating, fixed layout, CPA color, no-activity copy, anomaly warning styling, and their combined-page effects have local/read-only evidence but require exact-revision deployed recertification. Positive conditional panels, non-GA4/future source mixes, and global scheduler health remain excluded. |
 | Executive Summary | `RECERTIFY` | Current contract: `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md`; historical certificate: `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_CERTIFICATE_2026-09-21.md` | The historical certificate remains valid only for its exact `ga4_mock` runtime and earlier presentation. Current Bottom of Funnel and Recommended Actions presentation changes have local evidence but require exact-revision deployed recertification of those packets and the combined page. Data, formula, risk, trajectory, target classification, eligibility, persistence, and report paths were not changed. |
@@ -491,9 +493,10 @@ consumers. Do not revoke unrelated sections.
 
 ## Efficient Completion Order
 
-1. **Recertify Budget & Financial Analysis:** the source contract changed at
-   `4298cfda`; close the current combined-page and Budget report gates without
-   treating the historical aggregate-Spend certificate as current evidence.
+1. **Recertify Budget & Financial Analysis:** preserve the bounded current-revision
+   Campaign3 visible-page pass, then close other source-family, metadata mutation,
+   tenant-isolation, and deployed Budget report gates without treating the historical
+   aggregate-Spend certificate as current evidence.
 2. **Recertify the changed Trend Analysis paths:** preserve the historical
    `Campaign2` certificate, then validate the current combined GA4-first page on
    its exact deployed revision without promoting local/read-only evidence.

@@ -31,16 +31,20 @@ Performance Summary certification reconciliation (2026-08-26): Performance Summa
 
 Performance Summary current-implementation reconciliation (2026-09-26): current application revision `ca1fc5a873ab69fb747937768c31fcd53e16fd64` adds campaign-currency Key Outcomes and Recommended Actions, campaign-currency Recent Movement, a stable all-requests-settled comparison transition, and scheduled-PDF recommendation currency parity. The focused 5-file / 70-test packet, TypeScript check, and production build passed locally. No exact-revision deployed recertification has been recorded, so the current implementation is `RECERTIFICATION_PENDING`; the prior exact-runtime certificates remain historical and do not certify `ca1fc5a8`.
 
-Budget & Financial Analysis reconciliation (2026-09-26): current revision `162e9b6b`
-renders one executive financial page rather than multiple visible tabs. Financial
+Budget & Financial Analysis reconciliation (2026-09-27): deployed revision
+`39fe902a6b94c461ff26fe2181806b35d7f4100e` renders one executive financial page
+rather than multiple visible tabs. Financial
 Position, conditional Paid Media Efficiency, Allocation & Sources, and return/source
 guidance consume the cumulative aggregate and financial provenance. Budget Position,
 burn, pacing, budget guidance, and Budget report equivalents additionally consume the
 separate `budget_pacing_v1` Spend derivative introduced at `4298cfda`, containing only
 verified dated Spend inside the selected budget period. Budget dates do not filter
 aggregate Revenue, Total Spend, Profit, ROI, ROAS, CPA, or provenance. Campaign3 browser
-scenarios and targeted local report tests passed, but current combined-page and deployed
-Budget report recertification remain open; the 2026-09-19 certificate is historical.
+facts, page-consumed API values, formulas, and rendered values passed an authenticated
+read-only reconciliation on the exact deployed revision; the focused financial suite
+passed 61/61 tests and TypeScript passed. Other source families, metadata mutation and
+tenant-isolation gates, plus deployed Budget report recertification remain open; the
+2026-09-19 certificate is historical.
 
 Trend Analysis reconciliation (updated 2026-09-26): the historical certified runtime
 `7dc72dc8` (deployed within documentation-only successor `59526846`) rendered one
@@ -162,7 +166,7 @@ Boundary:
 | Subsection | Current status | Source-of-truth path | Remaining item |
 | --- | --- | --- | --- |
 | Performance Summary | **RECERTIFICATION_PENDING** for current implementation `ca1fc5a8`; prior exact-runtime certificates preserved as historical | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary`, cumulative GA4 Summary inputs, refreshed KPI/Benchmark targets, exact-date GA4 Revenue and dated Spend reads | Run authenticated exact-revision deployed API/UI reconciliation for the current campaign-currency and stable-transition behavior; future/refined sources retain source-specific proof |
-| Budget & Financial Analysis | **RECERTIFICATION_PENDING** for current implementation `162e9b6b`; prior exact-runtime certificate preserved as historical | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary`, `financialInputs`, and compatible `budgetPacing`, plus campaign `budget`, `pacingStartDate`, and `pacingEndDate` | Recertify the current combined page and deployed one-off/snapshot/scheduled Budget report value path; future sources retain source-specific proof |
+| Budget & Financial Analysis | **BOUNDED CURRENT-REVISION PASS / RECERTIFICATION_PENDING** at deployed `39fe902a...`; prior exact-runtime certificate preserved as historical | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary`, `financialInputs`, and compatible `budgetPacing`, plus campaign `budget`, `pacingStartDate`, and `pacingEndDate` | Campaign3's configured visible page is reconciled; validate other source families, metadata mutation and tenant isolation, then recertify deployed one-off/snapshot/scheduled Budget report parity |
 | Platform Comparison | Production-ready locally and Render-validated for GA4-only | `/api/campaigns/:campaignId/outcome-totals` -> `performanceSummary.sources` | Live multi-platform validation |
 | Trend Analysis | **RECERTIFICATION_PENDING** for the current implementation; the `7dc72dc8` `Campaign2` certificate is historical | read-only `/ga4-daily` scheduler history + persisted-only `/outcome-totals.performanceSummary` + persisted-only exact-date financial comparison + `/trend-analysis` daily aggregate; no live coverage request | Recertify the current combined GA4-first page on its exact deployed revision; repeat source-specific validation for future/refined main-source mixes; positive paid-media and multi-source panels remain unverified |
 | Executive Summary | **RECERTIFICATION_PENDING** for the current Marketing Funnel and Recommended Actions presentation; prior exact-runtime certificate preserved as historical | `/api/campaigns/:campaignId/executive-summary` plus `/outcome-totals` | Revalidate the current combined page, Bottom of Funnel, and Recommended Actions after the duplicate-card, Benchmark-copy, scope-note, and category-subtitle changes; data/formula/eligibility/report paths are unchanged; future source mixes retain source-specific gates |

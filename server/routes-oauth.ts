@@ -13329,6 +13329,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           endDate: snapshot.windowEnd,
           totals: result?.totals,
           rows: (Array.isArray(result?.rows) ? result.rows : []).slice(0, limit),
+          revenueWindow: {
+            source: 'ga4',
+            startDate: snapshot.windowStart,
+            endDate: snapshot.windowEnd,
+            revenueMetric: String(result?.meta?.revenueMetric || ''),
+          },
           ...(validationReadOnly ? { validationReadOnly: true } : {}),
           ...(debug ? { meta: result?.meta } : {}),
           lastUpdated: snapshot.updatedAt,

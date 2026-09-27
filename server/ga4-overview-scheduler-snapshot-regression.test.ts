@@ -49,6 +49,9 @@ describe("GA4 Overview scheduler snapshot contract", () => {
     expect(landing).toContain("snapshot.landingPages");
     expect(events).toContain("snapshot.conversionEvents");
     expect(breakdown).toContain("snapshot.campaignBreakdown");
+    expect(breakdown).toContain("revenueWindow:");
+    expect(breakdown).toContain("startDate: snapshot.windowStart");
+    expect(breakdown).toContain("endDate: snapshot.windowEnd");
     for (const route of [landing, events, breakdown]) {
       expect(route).toContain("getSynchronizedGA4OverviewSnapshot");
       expect(route).toContain("GA4_OVERVIEW_SNAPSHOT_UNAVAILABLE");

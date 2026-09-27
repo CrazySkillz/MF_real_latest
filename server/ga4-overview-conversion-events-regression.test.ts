@@ -226,6 +226,34 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     expect(bodies.at(-1)?.metrics.every((metric: any) => metric.name !== "eventCount")).toBe(true);
   });
 
+  it("returns Event Count and distinct Users from the exact scheduler UTM scope", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const filter = JSON.stringify(body.dimensionFilter || {});
+      const rows = filter.includes('"fieldName":"pageLocation"')
+        ? [{ dimensionValues: [{ value: "purchase" }], metricValues: ["145", "151", "133", "37518.744892"].map((value) => ({ value })) }]
+        : filter.includes('"fieldName":"campaignName"')
+          ? [{ dimensionValues: [{ value: "purchase" }], metricValues: ["221", "230", "190", "52833.44"].map((value) => ({ value })) }]
+          : [{ dimensionValues: [{ value: "page_view" }], metricValues: ["0", "8", "5", "0"].map((value) => ({ value })) }];
+      return { ok: true, json: async () => ({ rowCount: rows.length, rows }) } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await ga4Service.getConversionEventsReport(
+      "campaign-1", { getGA4Connection: vi.fn(async () => connection) },
+      "2026-08-23", "987654", 50, ["saved-a", "saved-b"], "2026-09-26", true,
+      { "2026-09-25": 145, "2026-09-26": 0 },
+    );
+
+    expect(result.rows).toEqual([{ eventName: "purchase", conversions: 145, eventCount: 151, users: 133, revenue: 37518.74 }]);
+    expect(result.totals).toEqual({ conversions: 145, eventCount: 151, users: 133, revenue: 37518.74 });
+    expect((result as any)._reconciliationSource).toBe("scheduler_page_location_conversions_with_event_count");
+    const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
+    expect(bodies).toHaveLength(3);
+    expect(bodies.at(-1)?.dimensions).toEqual([{ name: "eventName" }]);
+    expect(bodies.at(-1)?.metrics.map((metric: any) => metric.name)).toEqual(["conversions", "eventCount", "totalUsers", "totalRevenue"]);
+  });
+
   it("aligns event conversions to the scheduler-selected attribution on each date", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
@@ -259,7 +287,7 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     expect(result.totals).toEqual({ conversions: 3, eventCount: null, users: null, revenue: 10 });
     expect((result as any)._reconciliationSource).toBe("scheduler_daily_aligned");
     const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
-    expect(bodies).toHaveLength(5);
+    expect(bodies).toHaveLength(6);
     expect(bodies.slice(-3).every((body) => body.dimensions.map((dimension: any) => dimension.name).join(",") === "date,eventName")).toBe(true);
   });
 

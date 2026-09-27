@@ -839,6 +839,20 @@ export class GoogleAnalytics4Service {
         const expectedTotal = Object.values(expectedDailyConversions)
           .reduce((sum, value) => sum + Number(value || 0), 0);
         if (Number(result?.totals?.conversions || 0) !== expectedTotal) {
+          const pageLocationFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
+          if (pageLocationFilter) {
+            try {
+              const pageLocationResult = await fetchRows(accessToken, pageLocationFilter);
+              assertUniqueEventRows(pageLocationResult);
+              const exactRows = conversionRowsOnly(pageLocationResult);
+              if (Number(exactRows?.totals?.conversions || 0) === expectedTotal) {
+                reconciliationSource = 'scheduler_page_location_conversions_with_event_count';
+                return exactRows;
+              }
+            } catch (error: any) {
+              if (!isInvalidArgumentText(error?.message || error)) throw error;
+            }
+          }
           reconciliationSource = 'scheduler_daily_aligned';
           return schedulerAlignedRows(accessToken);
         }

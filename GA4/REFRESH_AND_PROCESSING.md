@@ -122,6 +122,7 @@ This scheduler now runs the GA4 daily refresh pipeline:
 Important meaning:
 
 - it keeps persisted GA4 daily facts current, and those exact property/campaign-scoped rows feed the Overview Summary and Trends completed-day windows
+- its Overview snapshot reconciliation requires exact Sessions and Conversions parity; native Revenue permits only the mathematical maximum difference caused by storing each daily value at cent precision, preserves the provider aggregate, and never creates a residual adjustment row
 - GA4 native daily revenue remains native GA4 fact data in `ga4_daily_metrics`; this pipeline must not create synthetic imported `revenue_records` for `ga4_daily_metrics`
 - it is campaign-scoped and refreshes every active property independently
 - campaigns whose provider refresh succeeds continue into KPI/Benchmark recompute even when unrelated campaigns fail; failed and skipped campaign IDs are excluded from recompute
@@ -183,17 +184,17 @@ On-demand GA4 daily-history writes are disabled.
 The GA4 analytics page periodically rereads saved values in addition to the background scheduler:
 
 - `/api/campaigns/:id/ga4-daily` refetches on page load, browser focus/reconnect, and every 5 minutes while the page is open, but normal browser callers use `readOnly=1` and cannot query GA4 or rewrite daily history
-- `/api/campaigns/:id/ga4-to-date` and `/api/campaigns/:id/ga4-breakdown` refetch on page load, browser focus/reconnect, and every 10 minutes while the page is open
-- `/api/campaigns/:id/ga4-breakdown`, `/api/campaigns/:id/ga4-landing-pages`, and `/api/campaigns/:id/ga4-conversion-events` use the fixed initial-import boundary through the latest completed day for Overview and refetch on page load, browser focus/reconnect, and every 10 minutes for the selected property and saved GA4 campaign scope; the separate Insights breakdown request retains its analysis window
+- `/api/campaigns/:id/ga4-to-date` and the Overview table endpoints refetch on page load, browser focus/reconnect, and every 10 minutes while the page is open; an Overview table refetch rereads storage and does not contact GA4
+- `/api/campaigns/:id/ga4-breakdown`, `/api/campaigns/:id/ga4-landing-pages`, and `/api/campaigns/:id/ga4-conversion-events` read the atomic scheduler snapshot for the fixed initial-import boundary through the exact stored day returned with Summary; the browser query identity includes that day so different scheduler generations are not mixed. The separate Insights breakdown request retains its live analysis-window behavior
 - `/ga4-daily` is hard read-only on the server even if a caller omits `readOnly=1`; it never contacts GA4 and never rewrites daily history
 - `/ga4-daily` returns stored rows, scheduler/history coverage metadata, and `providerRefreshOutcome: "read_only"`; its browser refetch cadence is not a live GA4 refresh
 - scheduler-written zero/no-activity dates are returned as normal stored rows; the Insights client additionally fills any bounded legacy gap from campaign creation through `historyDataThroughDate` with zero for chart/finding consistency
-- `Landing Pages` and `Conversion Events` are not reconstructed from `ga4_daily_metrics`; they fetch row-level GA4 Data API views directly. Landing Pages retains its documented exact row supplementation, while Conversion Events uses only its fixed-order exact session/first-user campaign queries and does not use `pageLocation`
+- `Landing Pages` and `Conversion Events` are native row-level GA4 payloads captured during the daily scheduler run rather than reconstructed from aggregate `ga4_daily_metrics`. Landing Pages retains its documented exact row supplementation, while Conversion Events uses only the exact session/campaign scopes shared with the scheduler and does not use first-user attribution or `pageLocation`
 - numeric live or live-test GA4 property IDs can correctly show `Conversions = 0` on Landing Pages when GA4 returns zero for that exact grain. Conversion Events deliberately excludes zero-conversion rows and renders an empty result only after its complete exact-scope queries return no positive conversion rows
 
 Important timing:
 
-- cumulative Overview table values can update after GA4 has processed the latest completed day and the relevant page query refetches
+- cumulative Overview table values update only after GA4 has processed the latest completed day and a successful daily scheduler run atomically publishes the reconciled detail snapshot with the daily facts; page refetches only reveal that published state
 - live financial to-date queries may update separately; they do not change the completed-day boundary of the three Overview tables
 - Trends uses persisted completed-day rows and a scheduler-derived `historyDataThroughDate`; opening the page only rereads those values. The visible chart/history boundary changes only after the daily scheduler persists a newer state
 - Connection Details shows the successful provider check-through date separately from the latest stored activity date. The normal campaign header does not insert that success text after load; Overview still warns when no successful current coverage exists or a stale refresh attempt fails, and retains stored values on failure

@@ -1,4 +1,4 @@
-import { type Client, type InsertClient, type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GA4DailyMetric, type InsertGA4DailyMetric, type LinkedInDailyMetric, type InsertLinkedInDailyMetric, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type MetaDailyMetric, type InsertMetaDailyMetric, type MetaKpi, type InsertMetaKpi, type MetaBenchmark, type InsertMetaBenchmark, type MetaReport, type InsertMetaReport, type GoogleAdsConnection, type InsertGoogleAdsConnection, type GoogleAdsDailyMetric, type InsertGoogleAdsDailyMetric, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type KPIReport, type InsertKPIReport, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type FinancialDailySnapshotInput, financialDailySnapshotInputSchema, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, clients, campaigns, metrics, integrations, performanceData, ga4Connections, ga4DailyMetrics, linkedinDailyMetrics, spendSources, spendRecords, revenueSources, revenueRecords, notifications, emailAlertEvents, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, metaDailyMetrics, metaKpis, metaBenchmarks, metaReports, googleAdsConnections, googleAdsDailyMetrics, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, reportSnapshots, reportSendEvents, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, kpiReports, benchmarks, benchmarkHistory, metricSnapshots, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
+import { type Client, type InsertClient, type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GA4DailyMetric, type InsertGA4DailyMetric, type GA4OverviewSnapshot, type LinkedInDailyMetric, type InsertLinkedInDailyMetric, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type MetaDailyMetric, type InsertMetaDailyMetric, type MetaKpi, type InsertMetaKpi, type MetaBenchmark, type InsertMetaBenchmark, type MetaReport, type InsertMetaReport, type GoogleAdsConnection, type InsertGoogleAdsConnection, type GoogleAdsDailyMetric, type InsertGoogleAdsDailyMetric, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type KPIReport, type InsertKPIReport, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type FinancialDailySnapshotInput, financialDailySnapshotInputSchema, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, clients, campaigns, metrics, integrations, performanceData, ga4Connections, ga4DailyMetrics, ga4OverviewSnapshots, linkedinDailyMetrics, spendSources, spendRecords, revenueSources, revenueRecords, notifications, emailAlertEvents, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, metaDailyMetrics, metaKpis, metaBenchmarks, metaReports, googleAdsConnections, googleAdsDailyMetrics, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, reportSnapshots, reportSendEvents, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, kpiReports, benchmarks, benchmarkHistory, metricSnapshots, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { type InstagramConnection, type InsertInstagramConnection, type InstagramDailyMetric, type InsertInstagramDailyMetric, type TikTokConnection, type InsertTikTokConnection, type TikTokDailyMetric, type InsertTikTokDailyMetric, instagramConnections, instagramDailyMetrics, tiktokConnections, tiktokDailyMetrics } from "@shared/schema";
 import { type GA4GoogleAdsSpendConnection, type InsertGA4GoogleAdsSpendConnection, type GA4GoogleAdsSpendDailyMetric, type InsertGA4GoogleAdsSpendDailyMetric, ga4GoogleAdsSpendConnections, ga4GoogleAdsSpendDailyMetrics } from "@shared/schema";
 import { randomUUID } from "crypto";
@@ -143,6 +143,14 @@ function hydrateDecryptedTokens<T extends Record<string, any>>(row: T): T {
   return merged;
 }
 
+export type GA4OverviewSnapshotInput = {
+  windowStart: string;
+  windowEnd: string;
+  campaignBreakdown: Record<string, any>;
+  landingPages: Record<string, any>;
+  conversionEvents: Record<string, any>;
+};
+
 export interface IStorage {
   // Campaigns
   getCampaigns(): Promise<Campaign[]>;
@@ -179,9 +187,10 @@ export interface IStorage {
 
   // GA4 Daily Metrics (daily facts)
   upsertGA4DailyMetrics(rows: InsertGA4DailyMetric[]): Promise<{ upserted: number }>;
-  replaceGA4DailyMetricsWindow(campaignId: string, propertyId: string, startDate: string, endDate: string, rows: InsertGA4DailyMetric[]): Promise<{ replaced: number }>;
+  replaceGA4DailyMetricsWindow(campaignId: string, propertyId: string, startDate: string, endDate: string, rows: InsertGA4DailyMetric[], overviewSnapshot?: GA4OverviewSnapshotInput): Promise<{ replaced: number }>;
   getGA4DailyMetrics(campaignId: string, propertyId: string, startDate: string, endDate: string): Promise<GA4DailyMetric[]>;
   getLatestGA4DailyMetric(campaignId: string, propertyId: string): Promise<GA4DailyMetric | undefined>;
+  getGA4OverviewSnapshot(campaignId: string, propertyId: string): Promise<GA4OverviewSnapshot | undefined>;
 
   // LinkedIn Daily Metrics (daily facts)
   upsertLinkedInDailyMetrics(rows: InsertLinkedInDailyMetric[]): Promise<{ upserted: number }>;
@@ -643,6 +652,7 @@ export class DatabaseStorage implements IStorage {
         .returning();
       if (!campaign) return undefined;
       await tx.delete(ga4DailyMetrics).where(eq(ga4DailyMetrics.campaignId, id));
+      await tx.delete(ga4OverviewSnapshots).where(eq(ga4OverviewSnapshots.campaignId, id));
       return campaign;
     });
   }
@@ -718,6 +728,7 @@ export class DatabaseStorage implements IStorage {
     await tx.delete(spendSources).where(eq(spendSources.campaignId, campaignId));
     await tx.delete(revenueSources).where(eq(revenueSources.campaignId, campaignId));
     await tx.delete(ga4DailyMetrics).where(eq(ga4DailyMetrics.campaignId, campaignId));
+    await tx.delete(ga4OverviewSnapshots).where(eq(ga4OverviewSnapshots.campaignId, campaignId));
     await tx.delete(linkedinDailyMetrics).where(eq(linkedinDailyMetrics.campaignId, campaignId));
     await tx.delete(metaDailyMetrics).where(eq(metaDailyMetrics.campaignId, campaignId));
     await tx.delete(instagramDailyMetrics).where(eq(instagramDailyMetrics.campaignId, campaignId));
@@ -968,6 +979,15 @@ export class DatabaseStorage implements IStorage {
       .set(setObj)
       .where(eq(ga4Connections.id, connectionId))
       .returning();
+    const invalidatesOverviewSnapshot = ['propertyId', 'importStartDate', 'isActive'].some((key) =>
+      Object.prototype.hasOwnProperty.call(connection, key) && String((connection as any)[key] ?? '') !== String((existing as any)[key] ?? '')
+    );
+    if (updated && invalidatesOverviewSnapshot) {
+      await db.delete(ga4OverviewSnapshots).where(and(
+        eq(ga4OverviewSnapshots.campaignId, String((existing as any).campaignId)),
+        eq(ga4OverviewSnapshots.propertyId, String((existing as any).propertyId)),
+      ));
+    }
     return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
   }
 
@@ -1029,10 +1049,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteGA4Connection(connectionId: string): Promise<boolean> {
-    const result = await db
-      .delete(ga4Connections)
-      .where(eq(ga4Connections.id, connectionId));
-    return (result.rowCount || 0) > 0;
+    return db.transaction(async (tx: any) => {
+      const [connection] = await tx.select().from(ga4Connections).where(eq(ga4Connections.id, connectionId));
+      if (!connection) return false;
+      await tx.delete(ga4OverviewSnapshots).where(and(
+        eq(ga4OverviewSnapshots.campaignId, String(connection.campaignId)),
+        eq(ga4OverviewSnapshots.propertyId, String(connection.propertyId)),
+      ));
+      const result = await tx.delete(ga4Connections).where(eq(ga4Connections.id, connectionId));
+      return (result.rowCount || 0) > 0;
+    });
   }
 
   async upsertGA4DailyMetrics(rows: InsertGA4DailyMetric[]): Promise<{ upserted: number }> {
@@ -1079,7 +1105,7 @@ export class DatabaseStorage implements IStorage {
     return { upserted: input.length };
   }
 
-  async replaceGA4DailyMetricsWindow(campaignId: string, propertyId: string, startDate: string, endDate: string, rows: InsertGA4DailyMetric[]): Promise<{ replaced: number }> {
+  async replaceGA4DailyMetricsWindow(campaignId: string, propertyId: string, startDate: string, endDate: string, rows: InsertGA4DailyMetric[], overviewSnapshot?: GA4OverviewSnapshotInput): Promise<{ replaced: number }> {
     const cid = String(campaignId || "").trim();
     const pid = String(propertyId || "").trim();
     const start = String(startDate || "").trim();
@@ -1102,6 +1128,13 @@ export class DatabaseStorage implements IStorage {
     if (scoped.length !== inputRows.length) {
       throw new Error("GA4 daily replacement row scope mismatch");
     }
+    if (overviewSnapshot && (
+      !/^\d{4}-\d{2}-\d{2}$/.test(String(overviewSnapshot.windowStart || "")) ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(String(overviewSnapshot.windowEnd || "")) ||
+      overviewSnapshot.windowStart > overviewSnapshot.windowEnd ||
+      overviewSnapshot.windowEnd !== end ||
+      !overviewSnapshot.campaignBreakdown || !overviewSnapshot.landingPages || !overviewSnapshot.conversionEvents
+    )) throw new Error("Invalid GA4 Overview snapshot");
 
     await db.transaction(async (tx: any) => {
       await tx.delete(ga4DailyMetrics).where(and(
@@ -1126,6 +1159,28 @@ export class DatabaseStorage implements IStorage {
           isSimulated: Boolean(row?.isSimulated),
           updatedAt: new Date(),
         } as any);
+      }
+      if (overviewSnapshot) {
+        await tx.insert(ga4OverviewSnapshots).values({
+          campaignId: cid,
+          propertyId: pid,
+          windowStart: overviewSnapshot.windowStart,
+          windowEnd: overviewSnapshot.windowEnd,
+          campaignBreakdown: overviewSnapshot.campaignBreakdown,
+          landingPages: overviewSnapshot.landingPages,
+          conversionEvents: overviewSnapshot.conversionEvents,
+          updatedAt: new Date(),
+        } as any).onConflictDoUpdate({
+          target: [ga4OverviewSnapshots.campaignId, ga4OverviewSnapshots.propertyId],
+          set: {
+            windowStart: overviewSnapshot.windowStart,
+            windowEnd: overviewSnapshot.windowEnd,
+            campaignBreakdown: overviewSnapshot.campaignBreakdown,
+            landingPages: overviewSnapshot.landingPages,
+            conversionEvents: overviewSnapshot.conversionEvents,
+            updatedAt: new Date(),
+          },
+        });
       }
     });
     return { replaced: scoped.length };
@@ -1160,6 +1215,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(ga4DailyMetrics.date))
       .limit(1);
     return (rows?.[0] as any) || undefined;
+  }
+
+  async getGA4OverviewSnapshot(campaignId: string, propertyId: string): Promise<GA4OverviewSnapshot | undefined> {
+    const [snapshot] = await db.select().from(ga4OverviewSnapshots).where(and(
+      eq(ga4OverviewSnapshots.campaignId, String(campaignId || "")),
+      eq(ga4OverviewSnapshots.propertyId, String(propertyId || "")),
+    )).limit(1);
+    return snapshot as any;
   }
 
   async upsertLinkedInDailyMetrics(rows: InsertLinkedInDailyMetric[]): Promise<{ upserted: number }> {

@@ -890,6 +890,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return fallback;
   };
 
+  const getSynchronizedGA4OverviewSnapshot = async (campaignId: string, propertyId: string, expectedStartDate: string, expectedEndDate = "") => {
+    const [snapshot, latestDaily] = await Promise.all([
+      storage.getGA4OverviewSnapshot(campaignId, propertyId),
+      storage.getLatestGA4DailyMetric(campaignId, propertyId),
+    ]);
+    if (!snapshot || !latestDaily || String(snapshot.windowStart) !== expectedStartDate ||
+        (expectedEndDate && String(snapshot.windowEnd) !== expectedEndDate) ||
+        String(snapshot.windowEnd) !== String(latestDaily.date)) return null;
+    return snapshot;
+  };
+
   const formatISODateUTC = (d: Date) => {
     const yyyy = d.getUTCFullYear();
     const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
@@ -12963,6 +12974,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const windowMode = String(req.query.window || '').trim().toLowerCase();
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 500);
+      const expectedSnapshotEndDate = String(req.query.snapshotEndDate || '').trim();
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
       const requestedPropertyId = propertyId ? String(propertyId) : '';
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
@@ -13047,6 +13059,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      if (importToDateWindow && resolvedPropertyId) {
+        const snapshot = await getSynchronizedGA4OverviewSnapshot(campaignId, resolvedPropertyId, importToDateWindow.startDate, expectedSnapshotEndDate);
+        if (!snapshot) return res.status(409).json({
+          success: false,
+          error: 'GA4_OVERVIEW_SNAPSHOT_UNAVAILABLE',
+          message: 'The GA4 daily scheduler has not published a synchronized Overview snapshot yet.',
+        });
+        const result: any = snapshot.landingPages;
+        return res.json({
+          success: true,
+          dateRange,
+          window: 'import-to-date',
+          ...importToDateWindow,
+          startDate: snapshot.windowStart,
+          endDate: snapshot.windowEnd,
+          ...(validationReadOnly ? { validationReadOnly: true } : {}),
+          ...result,
+          rows: (Array.isArray(result?.rows) ? result.rows : []).slice(0, limit),
+          lastUpdated: snapshot.updatedAt,
+        });
+      }
+
       const result = await ga4Service.getLandingPagesReport(campaignId, storage, ga4DateRange, resolvedPropertyId, limit, campaignFilter, importToDateWindow?.endDate, validationReadOnly);
       res.json({ success: true, dateRange, ...(importToDateWindow ? { window: 'import-to-date', ...importToDateWindow } : {}), ...(validationReadOnly ? { validationReadOnly: true } : {}), ...result, lastUpdated: new Date().toISOString() });
     } catch (error: any) {
@@ -13077,6 +13111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const windowMode = String(req.query.window || '').trim().toLowerCase();
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 500);
+      const expectedSnapshotEndDate = String(req.query.snapshotEndDate || '').trim();
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
       const requestedPropertyId = propertyId ? String(propertyId) : '';
       if (!requestedPropertyId) return res.status(400).json({ success: false, error: 'GA4_PROPERTY_SCOPE_REQUIRED' });
@@ -13158,6 +13193,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      if (importToDateWindow && resolvedPropertyId) {
+        const snapshot = await getSynchronizedGA4OverviewSnapshot(campaignId, resolvedPropertyId, importToDateWindow.startDate, expectedSnapshotEndDate);
+        if (!snapshot) return res.status(409).json({
+          success: false,
+          error: 'GA4_OVERVIEW_SNAPSHOT_UNAVAILABLE',
+          message: 'The GA4 daily scheduler has not published a synchronized Overview snapshot yet.',
+        });
+        const result: any = snapshot.conversionEvents;
+        return res.json({
+          success: true,
+          dateRange,
+          window: 'import-to-date',
+          ...importToDateWindow,
+          startDate: snapshot.windowStart,
+          endDate: snapshot.windowEnd,
+          ...(validationReadOnly ? { validationReadOnly: true } : {}),
+          ...result,
+          rows: (Array.isArray(result?.rows) ? result.rows : []).slice(0, limit),
+          lastUpdated: snapshot.updatedAt,
+        });
+      }
+
       const result = await ga4Service.getConversionEventsReport(campaignId, storage, ga4DateRange, resolvedPropertyId, limit, campaignFilter, importToDateWindow?.endDate, validationReadOnly);
       res.json({ success: true, dateRange, ...(importToDateWindow ? { window: 'import-to-date', ...importToDateWindow } : {}), ...(validationReadOnly ? { validationReadOnly: true } : {}), ...result, lastUpdated: new Date().toISOString() });
     } catch (error: any) {
@@ -13182,6 +13239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const windowMode = String(req.query.window || '').trim().toLowerCase();
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '2000'), 10) || 2000, 1), 10000);
+      const expectedSnapshotEndDate = String(req.query.snapshotEndDate || '').trim();
       const debug = String(req.query.debug || '').toLowerCase() === '1' || String(req.query.debug || '').toLowerCase() === 'true';
       const validationReadOnly = String(req.query.readOnly || '').trim() === '1';
       const dimensionDiagnosticsRequested = debug && validationReadOnly && String(req.query.dimensionDiagnostics || '').trim() === '1';
@@ -13250,6 +13308,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isSimulated: true,
           simulationReason: 'Simulated GA4 breakdown for demo/testing (propertyId yesop or ?mock=1).',
           lastUpdated: new Date().toISOString(),
+        });
+      }
+
+      if (overviewCampaignBreakdown && importToDateWindow && resolvedPropertyId) {
+        const snapshot = await getSynchronizedGA4OverviewSnapshot(campaignId, resolvedPropertyId, importToDateWindow.startDate, expectedSnapshotEndDate);
+        if (!snapshot) return res.status(409).json({
+          success: false,
+          error: 'GA4_OVERVIEW_SNAPSHOT_UNAVAILABLE',
+          message: 'The GA4 daily scheduler has not published a synchronized Overview snapshot yet.',
+        });
+        const result: any = snapshot.campaignBreakdown;
+        return res.json({
+          success: true,
+          propertyId: resolvedPropertyId,
+          dateRange,
+          window: 'import-to-date',
+          ...importToDateWindow,
+          startDate: snapshot.windowStart,
+          endDate: snapshot.windowEnd,
+          totals: result?.totals,
+          rows: (Array.isArray(result?.rows) ? result.rows : []).slice(0, limit),
+          ...(validationReadOnly ? { validationReadOnly: true } : {}),
+          ...(debug ? { meta: result?.meta } : {}),
+          lastUpdated: snapshot.updatedAt,
         });
       }
 

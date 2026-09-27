@@ -284,7 +284,7 @@ describe("GA4 Insights regression guard", () => {
     const content = ga4MetricsFile();
 
     expect(content).toContain("const insightsChannelBreakdownMatchesDaily =");
-    expect(content).toContain('activeTab === "insights" ? "&insightsChannelAttribution=1" : "&overviewCampaignBreakdown=1"');
+    expect(content).toContain('activeTab === "insights" ? "&insightsChannelAttribution=1" : `&overviewCampaignBreakdown=1&snapshotEndDate=${encodeURIComponent(ga4OverviewExpectedEndDate)}`');
     expect(content).toContain("channelAnalysis.totalSessions === insightsDataSummaryTotals.sessions");
     expect(content).toContain("channelAnalysis.totalConversions === insightsDataSummaryTotals.conversions");
     expect(content).toContain("const dataSummaryChannelAnalysis = insightsChannelBreakdownMatchesDaily ? channelAnalysis : null;");

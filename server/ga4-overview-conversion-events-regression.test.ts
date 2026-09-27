@@ -44,7 +44,7 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     expect(scheduledPdf).toContain("payload.conversionEvents?.rows || []).slice(0, 25)");
   });
 
-  it("keeps the route on campaign access, exact property, fixed import window, and read-only validation", () => {
+  it("keeps the route on campaign access, exact property, fixed import window, and the scheduler snapshot", () => {
     const routes = read("server/routes-oauth.ts");
     const section = between(
       routes,
@@ -55,7 +55,8 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     expect(section).toContain("ensureCampaignAccess(req as any, res as any, campaignId)");
     expect(section).toContain("storage.getGA4Connection(campaignId, propertyId)");
     expect(section).toContain("resolveGA4ImportToDateWindow((connection as any)?.importStartDate, (campaign as any)?.reportingTimeZone)");
-    expect(section).toContain("importToDateWindow?.endDate");
+    expect(section).toContain("getSynchronizedGA4OverviewSnapshot");
+    expect(section).toContain("GA4_OVERVIEW_SNAPSHOT_UNAVAILABLE");
     expect(section).toContain("GA4_PROPERTY_SCOPE_REQUIRED");
     expect(section).toContain("GA4_CAMPAIGN_SCOPE_REQUIRED");
     expect(section).toContain("validationReadOnly");
@@ -110,11 +111,11 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     expect(result.rows).toEqual([{ eventName: "purchase", conversions: 2.5, eventCount: 7, users: 5, revenue: 19 }]);
   });
 
-  it("uses only the ordered exact first-user fallback and excludes zero-conversion events", async () => {
+  it("uses only the daily scheduler's exact campaign fallback and excludes zero-conversion events", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
       const filter = JSON.stringify(body.dimensionFilter || {});
-      const rows = filter.includes("firstUserCampaignName")
+      const rows = filter.includes('"fieldName":"campaignName"')
         ? [
             { dimensionValues: [{ value: "purchase" }], metricValues: [{ value: "3" }, { value: "4" }, { value: "2" }, { value: "10" }] },
             { dimensionValues: [{ value: "page_view" }], metricValues: [{ value: "0" }, { value: "20" }, { value: "8" }, { value: "0" }] },
@@ -133,17 +134,17 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
     expect(bodies).toHaveLength(2);
     expect(JSON.stringify(bodies[0].dimensionFilter)).toContain("sessionCampaignName");
-    expect(JSON.stringify(bodies[1].dimensionFilter)).toContain("firstUserCampaignName");
+    expect(JSON.stringify(bodies[1].dimensionFilter)).toContain('"fieldName":"campaignName"');
     expect(bodies[1].dimensionFilter.filter.stringFilter).toMatchObject({
       matchType: "EXACT", value: "saved-a", caseSensitive: false,
     });
     expect(JSON.stringify(bodies)).not.toContain("pageLocation");
   });
 
-  it("reaches first-user manual campaign only after both preceding exact scopes have no conversions", async () => {
+  it("does not broaden attribution beyond the scheduler's campaign-name fallback", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const filter = JSON.stringify(JSON.parse(String(init?.body || "{}")).dimensionFilter || {});
-      const rows = filter.includes("firstUserManualCampaignName")
+      const rows = filter.includes('"fieldName":"campaignName"')
         ? [{ dimensionValues: [{ value: "manual_purchase" }], metricValues: [{ value: "1.25" }, { value: "2" }, { value: "2" }, { value: "0" }] }]
         : [{ dimensionValues: [{ value: "page_view" }], metricValues: [{ value: "0" }, { value: "5" }, { value: "4" }, { value: "0" }] }];
       return { ok: true, json: async () => ({ rowCount: rows.length, rows }) } as any;
@@ -155,10 +156,11 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
       "2026-08-01", "987654", 50, "saved-a", "2026-09-14",
     );
     const filters = fetchMock.mock.calls.map(([, init]) => JSON.stringify(JSON.parse(String((init as any)?.body || "{}")).dimensionFilter));
-    expect(filters).toHaveLength(3);
+    expect(filters).toHaveLength(2);
     expect(filters[0]).toContain("sessionCampaignName");
-    expect(filters[1]).toContain("firstUserCampaignName");
-    expect(filters[2]).toContain("firstUserManualCampaignName");
+    expect(filters[1]).toContain('"fieldName":"campaignName"');
+    expect(JSON.stringify(filters)).not.toContain("firstUserCampaignName");
+    expect(JSON.stringify(filters)).not.toContain("firstUserManualCampaignName");
     expect(result.rows).toEqual([{ eventName: "manual_purchase", conversions: 1.25, eventCount: 2, users: 2, revenue: 0 }]);
   });
 
@@ -237,7 +239,7 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     await expect(ga4Service.getConversionEventsReport(
       "campaign-1", storage, "2026-08-01", "987654", 1, "saved-a", "2026-09-14",
     )).resolves.toMatchObject({ rows: [], totals: { conversions: 0, eventCount: 0, users: 0, revenue: 0 } });
-    expect(canonicalFetch).toHaveBeenCalledTimes(3);
+    expect(canonicalFetch).toHaveBeenCalledTimes(2);
 
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ rows: [] }) })));
     await expect(ga4Service.getConversionEventsReport(

@@ -11,6 +11,7 @@ const storageMock = vi.hoisted(() => ({
   updateGA4ConnectionTokens: vi.fn(),
   getGA4DailyMetrics: vi.fn(),
   getLatestGA4DailyMetric: vi.fn(),
+  getGA4OverviewSnapshot: vi.fn(),
   upsertGA4DailyMetrics: vi.fn(),
   replaceGA4DailyMetricsWindow: vi.fn(),
   getRevenueSources: vi.fn(),
@@ -233,6 +234,20 @@ function setAuthoritativeFixture() {
   storageMock.getGA4Connection.mockResolvedValue(connection);
   storageMock.getGA4DailyMetrics.mockResolvedValue([dailyRow]);
   storageMock.getLatestGA4DailyMetric.mockResolvedValue(dailyRow);
+  storageMock.getGA4OverviewSnapshot.mockResolvedValue({
+    campaignId: campaign.id,
+    propertyId: connection.propertyId,
+    windowStart: connection.importStartDate,
+    windowEnd: dailyRow.date,
+    campaignBreakdown: {
+      rows: [{ campaign: "parity_campaign", ...dailyRow, revenue: 150 }],
+      totals: { ...dailyRow, revenue: 150 },
+      meta: { revenueMetric: "totalRevenue" },
+    },
+    landingPages: { rows: [], totals: {} },
+    conversionEvents: { rows: [], totals: { conversions: 5 } },
+    updatedAt: "2026-08-01T08:00:00.000Z",
+  });
   storageMock.replaceGA4DailyMetricsWindow.mockResolvedValue({ replaced: 1 });
   storageMock.getRevenueSources.mockResolvedValue([{ id: "revenue-source", sourceType: "csv", displayName: "Imported revenue", currency: "USD", isActive: true }]);
   storageMock.getSpendSources.mockResolvedValue([{ id: "spend-source", sourceType: "csv", displayName: "Imported spend", currency: "USD", isActive: true }]);
@@ -749,22 +764,11 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     );
   });
 
-  it("keeps Overview traffic import-to-date while replacing native row revenue from the saved boundary for a new campaign", async () => {
+  it("serves Overview Campaign Breakdown from the scheduler snapshot without provider work", async () => {
     storageMock.getCampaign.mockResolvedValue({ ...campaign, startDate: null, createdAt: "2999-01-01T00:00:00.000Z" });
-    ga4ServiceMock.getAcquisitionBreakdown
-      .mockResolvedValueOnce({
-        rows: [{ campaign: "parity_campaign", ...dailyRow, revenue: 100 }],
-        totals: { ...dailyRow, revenue: 100 },
-        meta: { revenueMetric: "totalRevenue" },
-      })
-      .mockResolvedValueOnce({
-        rows: [{ campaign: "parity_campaign", ...dailyRow, revenue: 150 }],
-        totals: { ...dailyRow, revenue: 150 },
-        meta: { revenueMetric: "totalRevenue" },
-      });
     vi.useRealTimers();
 
-    const response = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-breakdown?window=import-to-date&overviewCampaignBreakdown=1&propertyId=" + encodeURIComponent(connection.propertyId) + "&readOnly=1");
+    const response = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-breakdown?window=import-to-date&overviewCampaignBreakdown=1&propertyId=" + encodeURIComponent(connection.propertyId) + "&snapshotEndDate=" + dailyRow.date + "&readOnly=1");
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -772,35 +776,22 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
       validationReadOnly: true,
       totals: { sessions: 100, users: 80, conversions: 5, revenue: 150 },
       rows: [{ campaign: "parity_campaign", sessions: 100, users: 80, conversions: 5, revenue: 150 }],
-      revenueWindow: { source: "ga4", startDate: connection.importStartDate, revenueMetric: "totalRevenue" },
+      startDate: connection.importStartDate,
+      endDate: dailyRow.date,
     });
-    expect(body.revenueWindow.endDate).toBe(body.endDate);
-    expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenNthCalledWith(
-      2,
-      campaign.id,
-      storageMock,
-      connection.importStartDate,
-      connection.propertyId,
-      2000,
-      campaign.ga4CampaignFilter,
-      body.endDate,
-      true,
-      false,
-      "USD",
-      true,
-    );
+    expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledWith(campaign.id, connection.propertyId);
+    expect(ga4ServiceMock.getAcquisitionBreakdown).not.toHaveBeenCalled();
   });
 
-  it("fails Overview Campaign Breakdown closed when native campaign rows do not reconcile", async () => {
-    ga4ServiceMock.getAcquisitionBreakdown
-      .mockResolvedValueOnce({ rows: [{ campaign: "parity_campaign", ...dailyRow, revenue: 100 }], totals: { ...dailyRow, revenue: 100 }, meta: {} })
-      .mockResolvedValueOnce({ rows: [{ campaign: "parity_campaign", ...dailyRow, revenue: 149 }], totals: { ...dailyRow, revenue: 150 }, meta: { revenueMetric: "totalRevenue" } });
+  it("fails Overview Campaign Breakdown closed when no synchronized scheduler snapshot exists", async () => {
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(undefined);
     vi.useRealTimers();
 
     const response = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-breakdown?window=import-to-date&overviewCampaignBreakdown=1&propertyId=" + encodeURIComponent(connection.propertyId));
 
-    expect(response.status).toBe(500);
-    expect(await response.json()).toMatchObject({ success: false, error: "GA4_OVERVIEW_CAMPAIGN_REVENUE_UNVERIFIED" });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ success: false, error: "GA4_OVERVIEW_SNAPSHOT_UNAVAILABLE" });
+    expect(ga4ServiceMock.getAcquisitionBreakdown).not.toHaveBeenCalled();
   });
 
   it("uses the same recomputed revenue for actual alert truth and notification enrichment", async () => {

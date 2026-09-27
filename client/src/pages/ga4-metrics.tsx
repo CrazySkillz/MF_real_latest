@@ -1937,6 +1937,7 @@ export default function GA4Metrics() {
     }
     return null;
   }, [ga4DailyRows, ga4DailyDataThroughDate]);
+  const ga4OverviewExpectedEndDate = String((ga4DailyResp as any)?.latestStoredDailyDate || ga4ReportDate || "").trim();
 
   const ga4Metrics = useMemo<any>(() => {
     if (!ga4ReportDate) return null;
@@ -2026,12 +2027,12 @@ export default function GA4Metrics() {
     isError: breakdownError,
     isPlaceholderData: breakdownPlaceholder,
   } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", activeTab === "insights" ? dateRange : "import-to-date", selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly],
-    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
+    queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", activeTab === "insights" ? dateRange : "import-to-date", selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly, activeTab === "insights" ? "" : ga4OverviewExpectedEndDate],
+    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId && (activeTab === "insights" || !!ga4OverviewExpectedEndDate),
     placeholderData: (previousData: any, previousQuery: any) => {
       const previousKey = previousQuery?.queryKey;
       const currentWindow = activeTab === "insights" ? dateRange : "import-to-date";
-      return previousKey?.[3] === currentWindow && previousKey?.[4] === selectedGA4PropertyId
+      return previousKey?.[3] === currentWindow && previousKey?.[4] === selectedGA4PropertyId && previousKey?.[7] === (activeTab === "insights" ? "" : ga4OverviewExpectedEndDate)
         ? previousData
         : undefined;
     },
@@ -2044,7 +2045,7 @@ export default function GA4Metrics() {
       const resp = await fetch(
         `/api/campaigns/${campaignId}/ga4-breakdown?${activeTab === "insights" ? `dateRange=${encodeURIComponent(dateRange)}` : "window=import-to-date"}&propertyId=${encodeURIComponent(
           String(selectedGA4PropertyId)
-        )}${activeTab === "insights" ? "&insightsChannelAttribution=1" : "&overviewCampaignBreakdown=1"}${insightsValidationReadOnly ? "&readOnly=1" : ""}`
+        )}${activeTab === "insights" ? "&insightsChannelAttribution=1" : `&overviewCampaignBreakdown=1&snapshotEndDate=${encodeURIComponent(ga4OverviewExpectedEndDate)}`}${insightsValidationReadOnly ? "&readOnly=1" : ""}`
       );
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json || json?.success === false) {
@@ -2083,11 +2084,11 @@ export default function GA4Metrics() {
   });
 
   const { data: ga4LandingPages, isLoading: landingPagesLoading, isError: landingPagesError } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", "import-to-date", selectedGA4PropertyId],
-    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
+    queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", "import-to-date", selectedGA4PropertyId, ga4OverviewExpectedEndDate],
+    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId && !!ga4OverviewExpectedEndDate,
     placeholderData: (previousData: any, previousQuery: any) => {
       const previousKey = previousQuery?.queryKey;
-      return previousKey?.[1] === campaignId && previousKey?.[3] === "import-to-date" && previousKey?.[4] === selectedGA4PropertyId
+      return previousKey?.[1] === campaignId && previousKey?.[3] === "import-to-date" && previousKey?.[4] === selectedGA4PropertyId && previousKey?.[5] === ga4OverviewExpectedEndDate
         ? previousData
         : undefined;
     },
@@ -2101,6 +2102,7 @@ export default function GA4Metrics() {
         propertyId: String(selectedGA4PropertyId),
         window: 'import-to-date',
         limit: '50',
+        snapshotEndDate: ga4OverviewExpectedEndDate,
       });
       if (insightsValidationReadOnly) params.set('readOnly', '1');
       const resp = await fetch(
@@ -2115,11 +2117,11 @@ export default function GA4Metrics() {
   });
 
   const { data: ga4ConversionEvents, isLoading: conversionEventsLoading, isError: conversionEventsError } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", "import-to-date", selectedGA4PropertyId],
-    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
+    queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", "import-to-date", selectedGA4PropertyId, ga4OverviewExpectedEndDate],
+    enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId && !!ga4OverviewExpectedEndDate,
     placeholderData: (previousData: any, previousQuery: any) => {
       const previousKey = previousQuery?.queryKey;
-      return previousKey?.[1] === campaignId && previousKey?.[3] === "import-to-date" && previousKey?.[4] === selectedGA4PropertyId
+      return previousKey?.[1] === campaignId && previousKey?.[3] === "import-to-date" && previousKey?.[4] === selectedGA4PropertyId && previousKey?.[5] === ga4OverviewExpectedEndDate
         ? previousData
         : undefined;
     },
@@ -2133,6 +2135,7 @@ export default function GA4Metrics() {
         propertyId: String(selectedGA4PropertyId),
         window: 'import-to-date',
         limit: '50',
+        snapshotEndDate: ga4OverviewExpectedEndDate,
       });
       if (insightsValidationReadOnly) params.set('readOnly', '1');
       const resp = await fetch(

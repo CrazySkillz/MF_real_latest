@@ -119,6 +119,23 @@ export const ga4DailyMetrics = pgTable("ga4_daily_metrics", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// One complete Overview payload per campaign/property, published by the GA4 daily scheduler.
+export const ga4OverviewSnapshots = pgTable("ga4_overview_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  propertyId: text("property_id").notNull(),
+  windowStart: text("window_start").notNull(),
+  windowEnd: text("window_end").notNull(),
+  campaignBreakdown: jsonb("campaign_breakdown").notNull(),
+  landingPages: jsonb("landing_pages").notNull(),
+  conversionEvents: jsonb("conversion_events").notNull(),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  campaignPropertyUnique: uniqueIndex("ga4_overview_snapshots_campaign_property_unique")
+    .on(table.campaignId, table.propertyId),
+}));
+
 // Spend sources (manual, csv, google_sheets, ad_platforms, etc.)
 export const spendSources = pgTable("spend_sources", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -2075,6 +2092,7 @@ export type GA4Connection = typeof ga4Connections.$inferSelect;
 export type InsertGA4Connection = z.infer<typeof insertGA4ConnectionSchema>;
 export type GA4DailyMetric = typeof ga4DailyMetrics.$inferSelect;
 export type InsertGA4DailyMetric = z.infer<typeof insertGA4DailyMetricSchema>;
+export type GA4OverviewSnapshot = typeof ga4OverviewSnapshots.$inferSelect;
 export type SpendSource = typeof spendSources.$inferSelect;
 export type InsertSpendSource = z.infer<typeof insertSpendSourceSchema>;
 export type SpendRecord = typeof spendRecords.$inferSelect;

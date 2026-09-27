@@ -433,6 +433,26 @@ process.on('uncaughtException', (error: Error) => {
             ON ga4_daily_metrics(campaign_id, date);
           `);
 
+          // Atomic GA4 Overview detail payload published by the daily scheduler.
+          await db.execute(sql`
+            CREATE TABLE IF NOT EXISTS ga4_overview_snapshots (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              campaign_id TEXT NOT NULL,
+              property_id TEXT NOT NULL,
+              window_start TEXT NOT NULL,
+              window_end TEXT NOT NULL,
+              campaign_breakdown JSONB NOT NULL,
+              landing_pages JSONB NOT NULL,
+              conversion_events JSONB NOT NULL,
+              updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+          await db.execute(sql`
+            CREATE UNIQUE INDEX IF NOT EXISTS ga4_overview_snapshots_campaign_property_unique
+            ON ga4_overview_snapshots (campaign_id, property_id);
+          `);
+
           // LinkedIn daily metrics (persisted daily facts powering LinkedIn Insights anomaly detection)
           await db.execute(sql`
             CREATE TABLE IF NOT EXISTS linkedin_daily_metrics (

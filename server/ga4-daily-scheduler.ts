@@ -3,7 +3,7 @@ import { ga4Service } from "./analytics";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./kpi-scheduler";
 import { checkGA4BenchmarkPerformanceAlertsForCampaign, checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
-import { getLatestCompleteReportingDate, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getLatestCompleteReportingDate, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { createHash } from "crypto";
 import { addGA4InsightsDateDays, normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 import { beginFinancialDailySnapshotRefreshObservation, recordFinancialDailySnapshotRefreshEvidence } from "./utils/financial-daily-snapshot-observation";
@@ -298,12 +298,63 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
           isSimulated: false,
         });
 
+        const overviewStartDate = /^\d{4}-\d{2}-\d{2}$/.test(configuredImportStartDate)
+          ? configuredImportStartDate
+          : GA4_OVERVIEW_LEGACY_IMPORT_START_DATE;
+        let overviewSnapshot: any = undefined;
+        if (hasCampaignFilter) {
+          const [campaignBreakdown, landingPages, conversionEvents, existingOverviewRows] = await Promise.all([
+            ga4Service.getAcquisitionBreakdown(
+              currentCampaignId, storage, overviewStartDate, propertyId, 10000, campaignFilter,
+              reportingWindow.endDate, false, false, String((c as any)?.currency || "").trim().toUpperCase(), true,
+            ),
+            ga4Service.getLandingPagesReport(
+              currentCampaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, reportingWindow.endDate,
+            ),
+            ga4Service.getConversionEventsReport(
+              currentCampaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, reportingWindow.endDate,
+            ),
+            storage.getGA4DailyMetrics(currentCampaignId, propertyId, overviewStartDate, reportingWindow.endDate),
+          ]);
+          const overviewRowsByDate = new Map(
+            (Array.isArray(existingOverviewRows) ? existingOverviewRows : []).map((row: any) => [String(row.date), row]),
+          );
+          for (const row of completeRows) overviewRowsByDate.set(String(row.date), row);
+          const overviewRows = Array.from(overviewRowsByDate.values()).filter((row: any) =>
+            String(row.date) >= overviewStartDate && String(row.date) <= reportingWindow.endDate
+          );
+          const expected = overviewRows.reduce((totals: any, row: any) => ({
+            sessions: totals.sessions + Number(row?.sessions || 0),
+            conversions: totals.conversions + Number(row?.conversions || 0),
+            revenue: totals.revenue + Number(row?.revenue || 0),
+          }), { sessions: 0, conversions: 0, revenue: 0 });
+          // Daily revenue is stored at cent precision while GA4's aggregate can retain
+          // more source precision. Permit only the maximum per-day quantization delta.
+          const revenueRoundingTolerance = overviewRows.length * 0.005 + 1e-9;
+          const breakdownTotals = campaignBreakdown?.totals || {};
+          const eventTotals = conversionEvents?.totals || {};
+          if (
+            Number(breakdownTotals.sessions || 0) !== expected.sessions ||
+            Number(breakdownTotals.conversions || 0) !== expected.conversions ||
+            Math.abs(Number(breakdownTotals.revenue || 0) - expected.revenue) > revenueRoundingTolerance ||
+            Number(eventTotals.conversions || 0) !== expected.conversions
+          ) throw new Error("GA4 Overview detail totals do not reconcile with scheduler daily facts");
+          overviewSnapshot = {
+            windowStart: overviewStartDate,
+            windowEnd: reportingWindow.endDate,
+            campaignBreakdown,
+            landingPages,
+            conversionEvents,
+          };
+        }
+
         const res = await storage.replaceGA4DailyMetricsWindow(
           currentCampaignId,
           propertyId,
           storageStartDate,
           reportingWindow.endDate,
           completeRows as any,
+          overviewSnapshot,
         );
         upserted += Number(res?.replaced || 0);
         propertyIdsProcessed.push(propertyId);

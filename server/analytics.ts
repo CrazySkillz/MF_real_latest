@@ -587,7 +587,10 @@ export class GoogleAnalytics4Service {
       const res = await fetchRows(accessToken, campaignDimensionFilter);
       assertUniqueEventRows(res);
       if (hasConversionRows(res)) return conversionRowsOnly(res);
-      for (const dimension of ['firstUserCampaignName', 'firstUserManualCampaignName']) {
+      // Match the daily scheduler's conversion fallback. First-user attribution
+      // is intentionally excluded because it can assign conversions outside the
+      // session/UTM campaign scope used by the Overview totals.
+      for (const dimension of ['campaignName']) {
         const fallback = await fetchRows(
           accessToken,
           this.buildCampaignDimensionFilter(campaignFilter, dimension),

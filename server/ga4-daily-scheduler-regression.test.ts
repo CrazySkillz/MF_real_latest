@@ -218,4 +218,72 @@ describe("GA4 daily scheduler timing", () => {
     expect(result.propertyIdsFailed).toEqual(["properties/active"]);
     expect(replace).not.toHaveBeenCalled();
   });
+
+  it("publishes all Overview tables atomically with reconciled scheduler facts", async () => {
+    const dailyRows = [
+      { date: "2026-08-02", sessions: 0, conversions: 0, revenue: 0 },
+      { date: "2026-08-03", sessions: 4, conversions: 1, revenue: 10 },
+      { date: "2026-08-04", sessions: 6, conversions: 1, revenue: 10 },
+      { date: "2026-08-05", sessions: 0, conversions: 0, revenue: 0 },
+    ];
+    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{
+      id: "campaign-1", reportingTimeZone: "UTC", currency: "USD", ga4CampaignFilter: "saved-filter",
+    }] as any);
+    vi.spyOn(storage, "getGA4Connections").mockResolvedValue([{
+      propertyId: "properties/active", importStartDate: "2026-08-02", isActive: true,
+    }] as any);
+    vi.spyOn(storage, "getGA4Connection").mockResolvedValue({
+      propertyId: "properties/active", accessToken: "token",
+    } as any);
+    vi.spyOn(ga4Service, "getTimeSeriesData").mockResolvedValue(dailyRows as any);
+    vi.spyOn(ga4Service, "getTrendsDailyPresenceWithToken").mockResolvedValue({
+      dailyRows, presentDates: dailyRows.map((row) => row.date),
+    } as any);
+    vi.spyOn(storage, "getGA4DailyMetrics").mockResolvedValue([] as any);
+    vi.spyOn(ga4Service, "getAcquisitionBreakdown").mockResolvedValue({
+      rows: [{ campaign: "saved-filter", sessions: 10, conversions: 2, revenue: 20.02 }],
+      totals: { sessions: 10, conversions: 2, revenue: 20.02 },
+      meta: {},
+    } as any);
+    vi.spyOn(ga4Service, "getLandingPagesReport").mockResolvedValue({ rows: [], totals: {} } as any);
+    vi.spyOn(ga4Service, "getConversionEventsReport").mockResolvedValue({
+      rows: [{ eventName: "purchase", conversions: 2 }], totals: { conversions: 2 },
+    } as any);
+    const replace = vi.spyOn(storage, "replaceGA4DailyMetricsWindow").mockResolvedValue({ replaced: 4 } as any);
+
+    const result = await refreshAllGA4DailyMetrics({}, new Date("2026-08-06T12:00:00.000Z"));
+
+    expect(result.campaignIdsProcessed).toEqual(["campaign-1"]);
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(replace.mock.calls[0][5]).toMatchObject({
+      windowStart: "2026-08-02",
+      windowEnd: "2026-08-05",
+      campaignBreakdown: { totals: { sessions: 10, conversions: 2, revenue: 20.02 } },
+      conversionEvents: { totals: { conversions: 2 } },
+    });
+  });
+
+  it("keeps the last complete Overview snapshot when detail totals do not reconcile", async () => {
+    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{
+      id: "campaign-1", reportingTimeZone: "UTC", currency: "USD", ga4CampaignFilter: "saved-filter",
+    }] as any);
+    vi.spyOn(storage, "getGA4Connections").mockResolvedValue([{
+      propertyId: "properties/active", importStartDate: "2026-08-05", isActive: true,
+    }] as any);
+    vi.spyOn(storage, "getGA4Connection").mockResolvedValue({ propertyId: "properties/active", accessToken: "token" } as any);
+    vi.spyOn(ga4Service, "getTimeSeriesData").mockResolvedValue([{ date: "2026-08-05", sessions: 4, conversions: 1, revenue: 10 }] as any);
+    vi.spyOn(ga4Service, "getTrendsDailyPresenceWithToken").mockResolvedValue({
+      dailyRows: [{ date: "2026-08-05", sessions: 4, conversions: 1, revenue: 10 }], presentDates: ["2026-08-05"],
+    } as any);
+    vi.spyOn(storage, "getGA4DailyMetrics").mockResolvedValue([] as any);
+    vi.spyOn(ga4Service, "getAcquisitionBreakdown").mockResolvedValue({ totals: { sessions: 4, conversions: 1, revenue: 10 }, rows: [] } as any);
+    vi.spyOn(ga4Service, "getLandingPagesReport").mockResolvedValue({ rows: [], totals: {} } as any);
+    vi.spyOn(ga4Service, "getConversionEventsReport").mockResolvedValue({ rows: [], totals: { conversions: 2 } } as any);
+    const replace = vi.spyOn(storage, "replaceGA4DailyMetricsWindow").mockResolvedValue({ replaced: 1 } as any);
+
+    const result = await refreshAllGA4DailyMetrics({}, new Date("2026-08-06T12:00:00.000Z"));
+
+    expect(result.campaignIdsFailed).toEqual(["campaign-1"]);
+    expect(replace).not.toHaveBeenCalled();
+  });
 });

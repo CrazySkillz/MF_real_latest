@@ -7,7 +7,7 @@ This file defines the GA4 `Overview` tab and the GA4-specific scope rules that f
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: UNVERIFIED -->
 
-Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview remains **UNVERIFIED** overall. The `2026-09-14` Campaign Breakdown certificate is historical for its recorded revision; the current exact per-campaign daily UTM aggregation changes the Summary/Campaign Breakdown traffic path and requires fresh deployment evidence before recertification. Conversion Events is separately **PRODUCTION_READY only for the exact boundary** in `GA4/OVERVIEW_CONVERSION_EVENTS_CERTIFICATION_2026-09-15.md`, at application runtime `176d02ef00a65091917136f1ed2bd8c7cc817fcb` and deployed documentation revision `8dd0856bc2b63a65f56e90f45f8ec562b881f6fc`. That section-specific result does not certify Landing Pages populated-row accuracy, Revenue, Spend, the natural scheduler gate, Reports lifecycle, or the complete Overview.
+Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Overview remains **UNVERIFIED** overall. The `2026-09-14` Campaign Breakdown certificate and `2026-09-15` Conversion Events certificate are historical for their recorded revisions. The current scheduler-owned Overview table snapshot and conversion-attribution changes require fresh deployed evidence before either boundary can be recertified.
 
 <!-- /ga4-overview-current-status -->
 
@@ -72,30 +72,31 @@ Important clarification:
 - during property setup, the system stores the GA4 property, campaign selection/filter, and the 30-day historical-import depth
 - Summary starts with those 30 completed historical days and appends later completed-day facts; it must not discard the oldest imported day merely because the calendar advances
 - the cards remain computed from current persisted facts for that fixed import boundary through the latest completed day; they are not frozen UI values
-- the GA4 daily scheduler persists completed-day daily facts, but it is not the only Overview fetch path
-- `Campaign Breakdown`, `Landing Pages`, and `Conversion Events` are live GA4 Data API views for the selected property and saved campaign scope. Their traffic, conversion, and native Revenue metrics use the fixed initial-import boundary through the latest completed day. When session campaign dimensions are empty and multiple exact saved UTM campaigns are selected, the persisted daily Summary path queries those same exact campaign scopes separately and merges their daily metrics, matching Campaign Breakdown's additive Sessions and Conversions without inventing allocations. Campaign Breakdown row revenue remains validated against its own native provider total without depending on the protected GA4 Revenue card
+- the GA4 daily scheduler is the only production publisher for Summary facts and the three Overview detail tables
+- each successful scheduler run fetches `Campaign Breakdown`, `Landing Pages`, and `Conversion Events` for the selected property and saved campaign scope, using the fixed initial-import boundary through the same latest completed day as Summary. It reconciles Campaign Breakdown Sessions and Conversions plus Conversion Events Conversions exactly to the scheduler daily facts. Native Revenue may differ only within the mathematical maximum introduced by cent-quantizing each stored daily value; the provider aggregate remains authoritative and no residual is allocated. The scheduler then commits the daily repair window and all three table payloads atomically
+- browser requests bind all three tables to the exact latest stored day returned with Summary, read that complete scheduler snapshot, and never run separate live GA4 table queries for the Overview variants. If the requested generation is not available, the table request fails closed instead of mixing refresh generations
 - when GA4 campaign dimensions expose less session coverage than exact saved `pageLocation` `utm_campaign` queries, Overview Campaign Breakdown may rebuild rows from each exact saved UTM scope at the same daily grain as persisted Summary facts. If the combined exact UTM scope contains Conversions or Revenue, the rebuild uses per-campaign exact UTM financial values; otherwise it retains the compatible exact `campaignName` financial fallback. Rebuilt rows are selected only when they improve session coverage and their Conversions and Revenue reconcile to the selected combined provider scope; no proportional allocation is allowed
 - Landing Pages uses only GA4's session-scoped `landingPagePlusQueryString` result; ordinary `pageLocation` rows must never be relabeled as landing pages, and missing session-scoped attribution renders an unavailable/empty state
-- Conversion Events renders only event rows with nonzero GA4 Conversions; when `sessionCampaignName` has no positive conversion rows it uses the compatible exact `firstUserCampaignName` and then `firstUserManualCampaignName` scope in that fixed order, but it never substitutes zero-conversion page-view traffic or `pageLocation` rows
-- new live GA4 events appear in Overview only after GA4 has processed them and the page query refetches; Conversion Events refetches on page load, browser focus/reconnect, and every 10 minutes while the page is open
+- Conversion Events renders only event rows with nonzero GA4 Conversions; when `sessionCampaignName` has no positive conversion rows it uses the same exact `campaignName` fallback as the daily scheduler, never first-user attribution, zero-conversion page-view traffic, or `pageLocation` rows
+- new live GA4 events appear in Overview only after GA4 has processed them and the next successful daily scheduler run publishes a reconciled snapshot; browser refetches merely reread that persisted snapshot
 
 ## Source-Of-Truth Hierarchy
 
 The GA4 Overview should be understood through this hierarchy:
 
 1. campaign creation stores GA4 scope and campaign configuration
-2. GA4 queries fetch current base metrics for that saved scope
+2. the GA4 daily scheduler fetches and validates current base metrics for that saved scope
 3. revenue and spend sources contribute normalized campaign records where applicable
 4. Overview cards are recomputed outputs from those fetched and normalized inputs
 
 Important meaning:
 
 - setup stores scope, not frozen metric values
-- queries and normalized records are the real inputs
+- scheduler-validated daily facts and the atomic Overview snapshot are the GA4 inputs
 - the cards are the presentation layer for those recomputed results
-- GA4 Data API values can change after already-sent events are processed by Google; the app should display the latest refetched values rather than treating the first observed value as final
+- GA4 Data API values can change after already-sent events are processed by Google; the app adopts them only when a later successful scheduler run publishes a complete reconciled snapshot
 - a successful daily provider query can cover the completed-day window even when the latest returned activity row is older; Connection Details labels the check-through date and latest activity date separately without materializing absent dates as zero-valued metrics
-- Overview current/to-date values may update before `Insights -> Trends`, because Trends waits for persisted completed-day daily rows while Overview can use current to-date and breakdown query results
+- Summary, the three Overview tables, and `Insights -> Trends` share scheduler-persisted completed-day facts; the three table payloads cannot advance independently through a browser live query
 
 ## Fetched Vs Derived Values
 
@@ -115,7 +116,7 @@ These are the primary fetched values that come from the campaign's saved GA4 sco
 - `Engagement Rate`
 - GA4-native revenue when available
 
-These values are fetched from the current GA4 query paths, not stored as fixed values at campaign-creation time.
+These values are fetched by the daily scheduler and persisted; they are not fixed at campaign-creation time and browser reads do not contact GA4.
 
 Important clarification:
 
@@ -371,9 +372,9 @@ Important meaning:
 
 - revenue is intentionally not shown in `Conversion Events`; event rows remain conversion-volume context only
 - it uses the same fixed initial-import-to-latest-completed-day boundary as Summary and Campaign Breakdown, not a rolling 30-day window or the app campaign's start/created date
-- the provider query starts with an exact, case-insensitive match to the saved campaign values on `sessionCampaignName`; only when that complete result has no positive conversion rows does it try `firstUserCampaignName` and then `firstUserManualCampaignName` with the same exact saved values
-- the fallback order is fixed and fail-closed: attribution models are not merged, maximum values are not selected, and `pageLocation` is never used to create or supplement Conversion Events rows
-- only rows with native GA4 `Conversions > 0` are returned and displayed. Zero-conversion rows, including ordinary `page_view` traffic, are deliberately omitted; a successful empty result means all three complete exact-scope queries contained no positive conversion rows
+- the scheduler query starts with an exact, case-insensitive match to the saved campaign values on `sessionCampaignName`; only when that complete result has no positive conversion rows does it try the exact `campaignName` scope used by the daily conversion fallback
+- the fallback order is fixed and fail-closed: first-user attribution models are excluded, attribution models are not merged, maximum values are not selected, and `pageLocation` is never used to create or supplement Conversion Events rows
+- only rows with native GA4 `Conversions > 0` are returned and displayed. Zero-conversion rows, including ordinary `page_view` traffic, are deliberately omitted; a successful empty result means both complete exact-scope queries contained no positive conversion rows
 - `Conversions` preserves GA4 fractional attribution credit; `Event count` and `Users` remain the native values on that same event row
 - all provider pages are retrieved with deterministic conversion/event ordering before the API limit is applied; GA4's header-complete canonical empty response is accepted as zero rows, while a missing row count on any other response, changing row count, incomplete page, malformed response, or duplicate exact event name makes the table unavailable rather than returning partial values
 - campaign-matched imported revenue is not allocated into event rows unless a future source provides real event-level identifiers that can be matched safely
@@ -387,11 +388,11 @@ The current `Campaign Breakdown`, `Landing Pages`, and `Conversion Events` table
 Current code-path meaning:
 
 - in test mode, these tables can render from simulated GA4 responses
-- in production mode, they are intended to render from real GA4-backed query paths for the selected GA4 property and the campaign's saved GA4 campaign scope
-- production table population uses the real GA4 query path, not a mock-refresh design
+- in production mode, the daily scheduler populates them from real GA4 queries for the selected GA4 property and the campaign's saved GA4 campaign scope
+- production browser rendering reads the scheduler-persisted snapshot, not a separate live query or mock-refresh design
 - numeric GA4 property IDs must not be classified as the Yesop simulator; Overview values for live or mock-live numeric properties should come from the GA4 live import/query path plus persisted selected-campaign daily facts, not a deterministic simulation baseline
 - all three Overview tables use the selected connection's fixed initial-import boundary through the latest completed day; the 30-day setting defines only the initial historical import and does not become a rolling display window
-- `Landing Pages` and `Conversion Events` are not reconstructed from scheduler-populated `ga4_daily_metrics`; they fetch row-level GA4 views directly
+- `Landing Pages` and `Conversion Events` retain native row-level GA4 payloads captured by the scheduler; they are not reconstructed from aggregate `ga4_daily_metrics` rows and are not fetched live by the browser
 - `Landing Pages` never creates traffic rows from `pageLocation`; `pageLocation` can only supplement Conversions on an existing session-scoped row through the exact row-level match above. Conversion Events retains its separately documented behavior and is not changed or certified by this Landing Pages rule
 
 Important meaning:

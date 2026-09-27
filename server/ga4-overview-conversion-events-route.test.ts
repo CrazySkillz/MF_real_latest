@@ -5,8 +5,11 @@ const authState = vi.hoisted(() => ({ userId: "owner-1" }));
 const storageMock = vi.hoisted(() => ({
   getCampaign: vi.fn(),
   getGA4Connection: vi.fn(),
+  getGA4OverviewSnapshot: vi.fn(),
+  getLatestGA4DailyMetric: vi.fn(),
 }));
 const ga4ServiceMock = vi.hoisted(() => ({
+  getLandingPagesReport: vi.fn(),
   getConversionEventsReport: vi.fn(),
 }));
 
@@ -85,6 +88,26 @@ describe("GA4 Overview Conversion Events API route", () => {
     storageMock.getCampaign.mockReset().mockResolvedValue(campaign);
     storageMock.getGA4Connection.mockReset().mockImplementation(async (_campaignId: string, propertyId?: string) =>
       propertyId === connection.propertyId ? connection : undefined);
+    storageMock.getLatestGA4DailyMetric.mockReset().mockResolvedValue({ date: "2026-09-14" });
+    storageMock.getGA4OverviewSnapshot.mockReset().mockResolvedValue({
+      campaignId: campaign.id,
+      propertyId: connection.propertyId,
+      windowStart: "2026-08-01",
+      windowEnd: "2026-09-14",
+      landingPages: {
+        propertyId: connection.propertyId,
+        rows: [{ landingPage: "/saved", source: "google", medium: "cpc", sessions: 4, users: 3, conversions: 2 }],
+        totals: { sessions: 4, users: 3, conversions: 2 },
+      },
+      conversionEvents: {
+        propertyId: connection.propertyId,
+        revenueMetric: "totalRevenue",
+        rows: [{ eventName: "purchase", conversions: 2.5, eventCount: 4, users: 3, revenue: 20 }],
+        totals: { conversions: 2.5, eventCount: 4, users: 3, revenue: 20 },
+      },
+      updatedAt: new Date("2026-09-15T03:00:00.000Z"),
+    });
+    ga4ServiceMock.getLandingPagesReport.mockReset();
     ga4ServiceMock.getConversionEventsReport.mockReset().mockResolvedValue({
       propertyId: connection.propertyId,
       revenueMetric: "totalRevenue",
@@ -97,7 +120,7 @@ describe("GA4 Overview Conversion Events API route", () => {
   afterAll(async () => new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve())));
 
   it("passes the exact owner/property/window/saved scope through read-only mode", async () => {
-    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/ga4-conversion-events?window=import-to-date&propertyId=${connection.propertyId}&limit=50&readOnly=1`);
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/ga4-conversion-events?window=import-to-date&propertyId=${connection.propertyId}&limit=50&snapshotEndDate=2026-09-14&readOnly=1`);
     const body: any = await response.json();
 
     expect(response.status).toBe(200);
@@ -112,10 +135,22 @@ describe("GA4 Overview Conversion Events API route", () => {
       endDate: "2026-09-14",
       validationReadOnly: true,
     });
-    expect(ga4ServiceMock.getConversionEventsReport).toHaveBeenCalledWith(
-      campaign.id, storageMock, "2026-08-01", connection.propertyId, 50,
-      campaign.ga4CampaignFilter, "2026-09-14", true,
-    );
+    expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledWith(campaign.id, connection.propertyId);
+    expect(ga4ServiceMock.getConversionEventsReport).not.toHaveBeenCalled();
+  });
+
+  it("serves Landing Pages from the same scheduler generation without provider work", async () => {
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/ga4-landing-pages?window=import-to-date&propertyId=${connection.propertyId}&limit=50&snapshotEndDate=2026-09-14&readOnly=1`);
+    const body: any = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      success: true,
+      startDate: "2026-08-01",
+      endDate: "2026-09-14",
+      rows: [{ landingPage: "/saved", sessions: 4, conversions: 2 }],
+    });
+    expect(ga4ServiceMock.getLandingPagesReport).not.toHaveBeenCalled();
   });
 
   it("fails before provider access when property or saved campaign scope is absent", async () => {
@@ -141,10 +176,17 @@ describe("GA4 Overview Conversion Events API route", () => {
     expect(ga4ServiceMock.getConversionEventsReport).not.toHaveBeenCalled();
   });
 
-  it("preserves read-only evidence on token expiry", async () => {
-    ga4ServiceMock.getConversionEventsReport.mockRejectedValue(Object.assign(new Error("TOKEN_EXPIRED"), { isTokenExpired: true }));
+  it("fails closed when the daily scheduler has not published a synchronized snapshot", async () => {
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(undefined);
     const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/ga4-conversion-events?window=import-to-date&propertyId=${connection.propertyId}&readOnly=1`);
-    expect(response.status).toBe(401);
-    expect(await response.json()).toMatchObject({ error: "TOKEN_EXPIRED", validationReadOnly: true });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: "GA4_OVERVIEW_SNAPSHOT_UNAVAILABLE" });
+    expect(ga4ServiceMock.getConversionEventsReport).not.toHaveBeenCalled();
+  });
+
+  it("rejects a table generation newer than the Summary generation requested by the browser", async () => {
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/ga4-conversion-events?window=import-to-date&propertyId=${connection.propertyId}&snapshotEndDate=2026-09-13&readOnly=1`);
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: "GA4_OVERVIEW_SNAPSHOT_UNAVAILABLE" });
   });
 });

@@ -108,6 +108,17 @@ describe("Insights Trends zero-day coverage route", () => {
     expect(body.zeroDates).toHaveLength(10);
   });
 
+  it("accepts scheduler-written zero rows for provider-confirmed no-activity dates", async () => {
+    storageMock.getGA4DailyMetrics.mockResolvedValue([
+      ...dailyRows,
+      { date: "2026-09-05", sessions: 0, users: 0, conversions: 0, revenue: "0.00", pageviews: 0, engagedSessions: 0, engagementRate: 0 },
+    ]);
+    const body = await (await request()).json();
+    expect(body).toMatchObject({ verified: true, zeroDatesVerified: true });
+    expect(body.providerZeroDates).toContain("2026-09-05");
+    expect(body.zeroDates).not.toContain("2026-09-05");
+  });
+
   it("keeps verified zero days when a populated day's Page Views change after import", async () => {
     ga4ServiceMock.getTrendsDailyPresenceWithToken.mockResolvedValue({ dailyRows: [dailyRows[0], { ...dailyRows[1], pageviews: 51 }], presentDates: dailyRows.map((row) => row.date) });
     const body = await (await request()).json();
@@ -122,6 +133,7 @@ describe("Insights Trends zero-day coverage route", () => {
   it("returns provider-authoritative zeros even when an outdated stored row exists", async () => {
     ga4ServiceMock.getTrendsDailyPresenceWithToken.mockResolvedValue({ dailyRows: [dailyRows[1]], presentDates: [dailyRows[1].date] });
     const body = await (await request()).json();
+    expect(body).toMatchObject({ verified: false, reason: "stored_daily_history_differs_from_ga4" });
     expect(body.providerZeroDates).toContain("2026-09-04");
     expect(body.zeroDates).not.toContain("2026-09-04");
   });

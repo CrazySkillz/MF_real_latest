@@ -9384,10 +9384,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const storedByDate = new Map((stored || []).map((row: any) => [String(row.date), normalizeGA4InsightsDailyMetricValues(row)]));
       const fields = ["sessions", "users", "conversions", "revenue", "pageviews", "engagedSessions", "engagementRate"];
-      const matchesStored = providerByDate.size === storedByDate.size && storedByDate.size === stored.length && Array.from(providerByDate).every(([date, row]) => {
+      const valuesMatch = (expected: any, saved: any) => fields.every((field) =>
+        Math.abs(Number(expected?.[field] ?? 0) - Number(saved?.[field] ?? 0)) <= (field === "revenue" ? 0.01 : field === "engagementRate" ? 0.00005 : 0.000001)
+      );
+      const matchesStored = storedByDate.size === stored.length && Array.from(providerByDate).every(([date, row]) => {
         const saved: any = storedByDate.get(date);
-        return saved && fields.every((field) => Math.abs(Number(row[field] ?? 0) - Number(saved[field] ?? 0)) <= (field === "revenue" ? 0.01 : field === "engagementRate" ? 0.00005 : 0.000001));
-      });
+        return saved && valuesMatch(row, saved);
+      }) && Array.from(storedByDate).every(([date, saved]) => providerByDate.has(date) || valuesMatch({}, saved));
       const presence = new Set(presentDates);
       if (Array.from(presence).some((date) => !/^\d{4}-\d{2}-\d{2}$/.test(date) || date < startDate || date > window.endDate)) {
         throw new Error("GA4 Trends presence dates are invalid");
@@ -9399,7 +9402,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!presence.has(day)) providerZeroDates.push(day);
         if (!presence.has(day) && !storedByDate.has(day)) zeroDates.push(day);
       }
-      const verified = matchesStored && Array.from(presence).every((date) => storedByDate.has(date));
+      const verified = matchesStored && Array.from(presence).every((date) => providerByDate.has(date) && storedByDate.has(date));
       const providerDailyRows = Array.from(providerByDate.entries())
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([date, row]) => addDerivedGA4EngagedSessions({ ...row, date }));

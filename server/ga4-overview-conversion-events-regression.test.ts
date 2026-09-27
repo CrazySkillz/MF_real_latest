@@ -232,11 +232,14 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
       const dimensions = (body.dimensions || []).map((dimension: any) => dimension.name);
       const filter = JSON.stringify(body.dimensionFilter || {});
       const campaignScope = filter.includes('"fieldName":"campaignName"');
+      const pageLocationScope = filter.includes('"fieldName":"pageLocation"');
       if (dimensions.includes("date")) {
-        const rows = campaignScope ? [
-          { dimensionValues: [{ value: "20260911" }, { value: "purchase" }], metricValues: [{ value: "2" }, { value: "2" }] },
-          { dimensionValues: [{ value: "20260912" }, { value: "purchase" }], metricValues: [{ value: "3" }, { value: "10" }] },
-        ] : [];
+        const rows = pageLocationScope
+          ? [{ dimensionValues: [{ value: "20260912" }, { value: "purchase" }], metricValues: [{ value: "3" }, { value: "10" }] }]
+          : campaignScope ? [
+              { dimensionValues: [{ value: "20260911" }, { value: "purchase" }], metricValues: [{ value: "2" }, { value: "2" }] },
+              { dimensionValues: [{ value: "20260912" }, { value: "purchase" }], metricValues: [{ value: "4" }, { value: "12" }] },
+            ] : [];
         return { ok: true, json: async () => ({ rowCount: rows.length, rows }) } as any;
       }
       const rows = campaignScope
@@ -256,8 +259,8 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     expect(result.totals).toEqual({ conversions: 3, eventCount: null, users: null, revenue: 10 });
     expect((result as any)._reconciliationSource).toBe("scheduler_daily_aligned");
     const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
-    expect(bodies).toHaveLength(4);
-    expect(bodies.slice(-2).every((body) => body.dimensions.map((dimension: any) => dimension.name).join(",") === "date,eventName")).toBe(true);
+    expect(bodies).toHaveLength(5);
+    expect(bodies.slice(-3).every((body) => body.dimensions.map((dimension: any) => dimension.name).join(",") === "date,eventName")).toBe(true);
   });
 
   it("does not broaden attribution beyond the scheduler's campaign-name fallback", async () => {

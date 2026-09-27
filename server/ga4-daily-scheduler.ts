@@ -522,6 +522,8 @@ const getGA4DailyFailureReason = (error: any) => {
   const knownCode = [
     "TOKEN_EXPIRED", "NO_GA4_CONNECTION", "GA4_CURRENCY_UNVERIFIED",
     "GA4_API_PAGINATION_INCOMPLETE", "GA4_CONVERSION_EVENT_PROVIDER_VALUE_UNSAFE",
+    "GA4_CONVERSION_EVENT_DAILY_RECONCILIATION_FAILED", "GA4_CONVERSION_EVENT_REVENUE_METRIC_MISMATCH",
+    "GA4_CONVERSION_EVENT_LIMIT_EXCEEDED", "GA4_CONVERSION_EVENT_EXPECTED_DAILY_VALUES_UNSAFE",
   ].find((code) => message.includes(code));
   if (knownCode) return `${stage}:${knownCode}`;
   if (message.includes("do not reconcile")) {

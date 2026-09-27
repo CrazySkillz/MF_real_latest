@@ -670,6 +670,13 @@ export class GoogleAnalytics4Service {
         if (isInvalidArgumentText(error?.message || error)) return emptyDaily;
         throw error;
       });
+      const pageLocationFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
+      const pageLocationDaily = pageLocationFilter
+        ? await fetchDailyRows(accessToken, pageLocationFilter).catch((error: any) => {
+            if (isInvalidArgumentText(error?.message || error)) return emptyDaily;
+            throw error;
+          })
+        : emptyDaily;
       const campaignDaily = await fetchDailyRows(
         accessToken,
         this.buildCampaignDimensionFilter(campaignFilter, 'campaignName'),
@@ -680,18 +687,24 @@ export class GoogleAnalytics4Service {
         return grouped;
       };
       const sessionByDate = byDate(sessionDaily.rows);
+      const pageLocationByDate = byDate(pageLocationDaily.rows);
       const campaignByDate = byDate(campaignDaily.rows);
       const selectedRows: any[] = [];
       const selectedRevenueMetrics = new Set<string>();
       for (const expected of expectedEntries) {
         if (expected.conversions === 0) continue;
         const sessionRows = sessionByDate.get(expected.date) || [];
+        const pageLocationRows = pageLocationByDate.get(expected.date) || [];
         const campaignRows = campaignByDate.get(expected.date) || [];
         const sessionTotal = sessionRows.reduce((sum, row) => sum + row.conversions, 0);
+        const pageLocationTotal = pageLocationRows.reduce((sum, row) => sum + row.conversions, 0);
         const campaignTotal = campaignRows.reduce((sum, row) => sum + row.conversions, 0);
         if (sessionTotal === expected.conversions) {
           selectedRows.push(...sessionRows);
           selectedRevenueMetrics.add(sessionDaily.revenueMetric);
+        } else if (pageLocationTotal === expected.conversions) {
+          selectedRows.push(...pageLocationRows);
+          selectedRevenueMetrics.add(pageLocationDaily.revenueMetric);
         } else if (campaignTotal === expected.conversions) {
           selectedRows.push(...campaignRows);
           selectedRevenueMetrics.add(campaignDaily.revenueMetric);

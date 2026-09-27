@@ -611,15 +611,21 @@ export class GoogleAnalytics4Service {
       } catch (error: any) {
         if (!isInvalidArgumentText(error?.message || error)) throw error;
         try {
-          res = await fetchRows(accessToken, campaignDimensionFilter, limit, 'keyEvents');
+          res = await fetchRows(accessToken, campaignDimensionFilter, limit, 'conversions', false);
           assertUniqueEventRows(res);
           if (hasConversionRows(res)) return conversionRowsOnly(res);
-        } catch (keyEventError: any) {
-          if (!isInvalidArgumentText(keyEventError?.message || keyEventError)) throw keyEventError;
-          const keyEvents = await fetchRows(accessToken, campaignDimensionFilter, limit, 'keyEvents', false);
-          res = keyEvents;
-          assertUniqueEventRows(res);
-          if (hasConversionRows(res)) return conversionRowsOnly(res);
+        } catch (conversionError: any) {
+          if (!isInvalidArgumentText(conversionError?.message || conversionError)) throw conversionError;
+          try {
+            res = await fetchRows(accessToken, campaignDimensionFilter, limit, 'keyEvents');
+            assertUniqueEventRows(res);
+            if (hasConversionRows(res)) return conversionRowsOnly(res);
+          } catch (keyEventError: any) {
+            if (!isInvalidArgumentText(keyEventError?.message || keyEventError)) throw keyEventError;
+            res = await fetchRows(accessToken, campaignDimensionFilter, limit, 'keyEvents', false);
+            assertUniqueEventRows(res);
+            if (hasConversionRows(res)) return conversionRowsOnly(res);
+          }
         }
       }
       // Match the daily scheduler's conversion fallback. First-user attribution
@@ -633,10 +639,15 @@ export class GoogleAnalytics4Service {
         } catch (error: any) {
           if (!isInvalidArgumentText(error?.message || error)) throw error;
           try {
-            fallback = await fetchRows(accessToken, fallbackFilter, limit, 'keyEvents');
-          } catch (keyEventError: any) {
-            if (!isInvalidArgumentText(keyEventError?.message || keyEventError)) throw keyEventError;
-            fallback = await fetchRows(accessToken, fallbackFilter, limit, 'keyEvents', false);
+            fallback = await fetchRows(accessToken, fallbackFilter, limit, 'conversions', false);
+          } catch (conversionError: any) {
+            if (!isInvalidArgumentText(conversionError?.message || conversionError)) throw conversionError;
+            try {
+              fallback = await fetchRows(accessToken, fallbackFilter, limit, 'keyEvents');
+            } catch (keyEventError: any) {
+              if (!isInvalidArgumentText(keyEventError?.message || keyEventError)) throw keyEventError;
+              fallback = await fetchRows(accessToken, fallbackFilter, limit, 'keyEvents', false);
+            }
           }
         }
         assertUniqueEventRows(fallback);

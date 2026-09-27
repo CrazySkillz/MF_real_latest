@@ -144,12 +144,12 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     expect(JSON.stringify(bodies)).not.toContain("pageLocation");
   });
 
-  it("uses the exact campaign-name fallback when GA4 rejects the session-scoped event query", async () => {
+  it("preserves the scheduler conversions metric when GA4 rejects eventCount", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
       const filter = JSON.stringify(body.dimensionFilter || {});
       const metricNames = (body.metrics || []).map((metric: any) => metric.name);
-      if (body.metrics?.[0]?.name === "conversions" || (metricNames.includes("keyEvents") && metricNames.includes("eventCount"))) {
+      if (metricNames.includes("eventCount")) {
         return { ok: false, text: async () => '{"error":{"code":400,"status":"INVALID_ARGUMENT"}}' } as any;
       }
       if (filter.includes('"fieldName":"sessionCampaignName"')) {
@@ -183,7 +183,40 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     expect(filters[0]).toContain("sessionCampaignName");
     expect(filters.at(-1)).toContain('"fieldName":"campaignName"');
     const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
-    expect(bodies).toHaveLength(6);
+    expect(bodies).toHaveLength(4);
+    expect(bodies.at(-1)?.metrics?.[0]?.name).toBe("conversions");
+    expect(bodies.at(-1)?.metrics.every((metric: any) => metric.name !== "eventCount")).toBe(true);
+  });
+
+  it("uses keyEvents only when GA4 also rejects conversions without eventCount", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const filter = JSON.stringify(body.dimensionFilter || {});
+      const metricNames = (body.metrics || []).map((metric: any) => metric.name);
+      if (body.metrics?.[0]?.name === "conversions" || metricNames.includes("eventCount")) {
+        return { ok: false, text: async () => '{"error":{"code":400,"status":"INVALID_ARGUMENT"}}' } as any;
+      }
+      const values = filter.includes('"fieldName":"campaignName"')
+        ? ["3", "2", "10"]
+        : ["0", "8", "0"];
+      return {
+        ok: true,
+        json: async () => ({
+          rowCount: 1,
+          rows: [{ dimensionValues: [{ value: values[0] === "0" ? "page_view" : "purchase" }], metricValues: values.map((value) => ({ value })) }],
+        }),
+      } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await ga4Service.getConversionEventsReport(
+      "campaign-1", { getGA4Connection: vi.fn(async () => connection) },
+      "2026-08-01", "987654", 50, "saved-a", "2026-09-14",
+    );
+
+    expect(result.rows).toEqual([{ eventName: "purchase", conversions: 3, eventCount: null, users: 2, revenue: 10 }]);
+    const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
+    expect(bodies).toHaveLength(8);
     expect(bodies.at(-1)?.metrics?.[0]?.name).toBe("keyEvents");
     expect(bodies.at(-1)?.metrics.every((metric: any) => metric.name !== "eventCount")).toBe(true);
   });

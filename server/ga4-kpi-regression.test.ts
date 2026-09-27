@@ -241,6 +241,9 @@ describe("GA4 KPI regression guard", () => {
     expect(ga4MetricsFile).toContain('const formatKpiCardValue = (value: string, unit: string) => {');
     expect(ga4MetricsFile).toContain("const rounded = Math.round(numValue * 100) / 100;");
     expect(ga4MetricsFile).toContain('formatPct(abs).replace("%", "")');
+    expect(ga4MetricsFile).toContain("if (p.lowerIsBetter) {");
+    expect(ga4MetricsFile).toContain('? `${absStr}% below target`');
+    expect(ga4MetricsFile).toContain(': `${absStr}% above target`;');
     expect(ga4MetricsFile).toContain('formatKpiCardValue(getLiveKpiValue(kpi) || "0", kpi.unit)');
     expect(ga4MetricsFile).toContain('formatKpiCardValue(String(t.effectiveTarget), kpi.unit)');
   });

@@ -7853,6 +7853,12 @@ export default function GA4Metrics() {
                                               const abs = Math.abs(p.effectiveDeltaPct);
                                               const absStr = formatPct(abs).replace("%", "");
 
+                                              if (p.lowerIsBetter) {
+                                                return p.effectiveDeltaPct > 0
+                                                  ? `${absStr}% below target`
+                                                  : `${absStr}% above target`;
+                                              }
+
                                               return p.effectiveDeltaPct > 0
                                                 ? `${absStr}% above target`
                                                 : `${absStr}% below target`;

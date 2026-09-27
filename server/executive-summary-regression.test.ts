@@ -756,6 +756,9 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain('? "Revenue history unavailable"');
     expect(page).toContain(': "Not enough history";');
     expect(page).toContain("No matching Executive Summary reading exists for seven days earlier yet.");
+    expect(page).toContain('=== "financial_daily_fallback"');
+    expect(page).toContain("Revenue compared with aligned financial history from seven days earlier.");
+    expect(overview).toContain("{executiveTrajectoryDetail}");
     expect(page).toContain("Earlier readings used different sources or reporting settings, so they cannot be compared safely.");
     expect(page).toContain("Revenue was unavailable in one of the two readings.");
     expect(overview).not.toContain("Risk Assessment");

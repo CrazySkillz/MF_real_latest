@@ -295,6 +295,13 @@ export default function ExecutiveSummary() {
         ? "Revenue was unavailable in one of the two readings."
         : "No matching Executive Summary reading exists for seven days earlier yet."
     : "Based on compatible aggregate snapshots, not the removed date selector.";
+  const executiveTrajectoryDetail = executiveTrajectory
+    ? hasAuthoritativeGA4Window
+      ? (executiveTrajectoryData as any)?.source === "financial_daily_fallback"
+        ? "Revenue compared with aligned financial history from seven days earlier."
+        : "Revenue compared with the matching Executive Summary reading from seven days earlier."
+      : "Based on compatible aggregate snapshots, not the removed date selector."
+    : executiveTrajectoryUnavailableDetail;
   const executiveTrajectorySummary = executiveTrajectory
     ? `7-day trend: ${executiveTrajectory}.`
     : executiveTrajectoryUnavailableReason === "incompatible_history"
@@ -550,7 +557,7 @@ export default function ExecutiveSummary() {
                         ) : (
                           <div className="text-lg font-medium text-muted-foreground">{executiveTrajectoryUnavailableLabel}</div>
                         )}
-                        <p className="text-xs text-muted-foreground/70 mt-1">{executiveTrajectoryUnavailableDetail}</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">{executiveTrajectoryDetail}</p>
                       </div>
                       <div className="border-l border-border pl-6">
                         <div className="text-sm text-muted-foreground/70 mb-1">Risk Level</div>

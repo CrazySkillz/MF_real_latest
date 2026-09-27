@@ -33,6 +33,10 @@ describe("Executive Summary daily snapshot wiring", () => {
     expect(routes).toContain('app.get("/api/campaigns/:id/executive-summary/trajectory", requireCampaignAccessParamId');
     expect(routes).toContain("getExecutiveSummaryDailyComparisonData(campaignId, reportingDate, comparisonDate)");
     expect(routes).toContain("evaluateExecutiveSummaryTrajectory(snapshots.current, snapshots.previous)");
+    expect(routes).toContain('storage.getRevenueSources(campaignId, "ga4")');
+    expect(routes).toContain("activeRevenueSources.length === 0");
+    expect(routes).toContain("resolveFinancialDailyComparisonPrevious({");
+    expect(routes).toContain("evaluateExecutiveSummaryTrajectoryFromFinancialDaily(snapshots.current, financialHistory)");
   });
 
   it("captures the same canonical aggregate automatically without external authentication", () => {

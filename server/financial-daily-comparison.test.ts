@@ -116,6 +116,24 @@ describe("read-only financial daily comparison derivation", () => {
     });
   });
 
+  it("derives GA4-only history from persisted daily totals when provider totals are unavailable", async () => {
+    const totals = await dependencies().getCampaignMetricTotalsAtDate();
+    const deps = dependencies({
+      getCampaignMetricTotalsAtDate: vi.fn().mockResolvedValue({
+        ...totals,
+        revenue: 100,
+        ga4Revenue: 100,
+        ga4FinancialSource: "persisted_daily",
+      }),
+      getRevenueTotalForRange: vi.fn().mockResolvedValue({ totalRevenue: 0, currency: "", sourceIds: [] }),
+    });
+
+    const result = await deriveFinancialDailyComparisonSnapshot({ campaignId, reportingDate }, deps);
+
+    expect((result?.metrics as any)?.financialDaily?.inputs.revenue)
+      .toEqual({ value: "100.00", available: true, sources: ["ga4"] });
+  });
+
   it("preserves an explicit campaign start as the financial comparison boundary", async () => {
     const deps = dependencies({
       getCampaign: vi.fn().mockResolvedValue({

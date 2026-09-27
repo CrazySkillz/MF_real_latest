@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildExecutiveSummaryDailySnapshotInput,
   evaluateExecutiveSummaryTrajectory,
+  evaluateExecutiveSummaryTrajectoryFromFinancialDaily,
   hasRefreshedGA4RowsForExecutiveSummarySnapshot,
   type ExecutiveSummaryDailySnapshotInput,
 } from "./utils/executive-summary-daily-snapshot";
@@ -45,6 +46,30 @@ const row = (snapshot: ExecutiveSummaryDailySnapshotInput): any => {
   const { campaignId, reportingDate, ...executiveSummaryDaily } = snapshot;
   return { campaignId, reportingDate, snapshotType: "executive_summary_daily", metrics: { executiveSummaryDaily } };
 };
+
+const financialRow = (reportingDate: string, revenue: number, currency = "USD", sources = ["ga4"]): any => ({
+  campaignId: "campaign-1",
+  reportingDate,
+  snapshotType: "financial_daily",
+  metrics: {
+    financialDaily: {
+      version: "financial_daily_snapshot_v1",
+      currency,
+      currentValueWindow: {
+        mode: "initial_import_to_latest_completed_day",
+        startDate: "2026-07-02",
+        endDate: reportingDate,
+        dataThroughDate: reportingDate,
+        reportingTimeZone: "Europe/Amsterdam",
+      },
+      inputs: {
+        spend: { value: null, available: false, sources: [] },
+        revenue: { value: revenue.toFixed(2), available: true, sources },
+        conversions: { value: 100, available: true, sources: ["ga4"] },
+      },
+    },
+  },
+});
 
 describe("Executive Summary daily snapshot", () => {
   it("waits for persisted GA4 property rows to refresh after the reporting day closes", () => {
@@ -135,5 +160,30 @@ describe("Executive Summary daily snapshot", () => {
     previous.totals.revenue = { value: null, available: false, sources: [] };
     expect(evaluateExecutiveSummaryTrajectory(row(build("2026-08-25", 72766.69)), row(previous)))
       .toMatchObject({ available: false, reason: "revenue_history_unavailable" });
+  });
+
+  it("uses exact-date financial history when only the earlier Executive Summary snapshot is missing", () => {
+    const current = build("2026-08-25", 72766.69);
+    current.totals.revenue = { value: 72766.69, available: true, sources: ["ga4"] };
+    current.sourceSignature = current.sourceSignature.filter((identity) => !identity.startsWith("revenue_source:"));
+
+    expect(evaluateExecutiveSummaryTrajectoryFromFinancialDaily(row(current), financialRow("2026-08-18", 65000)))
+      .toMatchObject({ available: true, trajectory: "accelerating", source: "financial_daily_fallback" });
+  });
+
+  it("keeps the financial-history fallback closed for mismatched or imported revenue", () => {
+    const current = build("2026-08-25", 72766.69);
+    const ga4OnlyCurrent = structuredClone(current);
+    ga4OnlyCurrent.totals.revenue = { value: 72766.69, available: true, sources: ["ga4"] };
+    ga4OnlyCurrent.sourceSignature = ga4OnlyCurrent.sourceSignature.filter((identity: string) => !identity.startsWith("revenue_source:"));
+
+    expect(evaluateExecutiveSummaryTrajectoryFromFinancialDaily(row(current), financialRow("2026-08-18", 65000)))
+      .toMatchObject({ available: false, reason: "incompatible_history" });
+    expect(evaluateExecutiveSummaryTrajectoryFromFinancialDaily(row(ga4OnlyCurrent), financialRow("2026-08-18", 65000, "EUR")))
+      .toMatchObject({ available: false, reason: "incompatible_history" });
+    expect(evaluateExecutiveSummaryTrajectoryFromFinancialDaily(row(ga4OnlyCurrent), financialRow("2026-08-17", 65000)))
+      .toMatchObject({ available: false, reason: "incompatible_history" });
+    expect(evaluateExecutiveSummaryTrajectoryFromFinancialDaily(row(ga4OnlyCurrent), financialRow("2026-08-18", 65000, "USD", ["ga4", "revenue-source:1"])))
+      .toMatchObject({ available: false, reason: "incompatible_history" });
   });
 });

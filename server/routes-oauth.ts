@@ -63,7 +63,7 @@ import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getGA
 import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
-import { buildExecutiveSummaryDailySnapshotInput, buildExecutiveSummaryFinancialSourceIdentity, evaluateExecutiveSummaryTrajectory, hasRefreshedGA4RowsForExecutiveSummarySnapshot } from "./utils/executive-summary-daily-snapshot";
+import { buildExecutiveSummaryDailySnapshotInput, buildExecutiveSummaryFinancialSourceIdentity, evaluateExecutiveSummaryTrajectory, evaluateExecutiveSummaryTrajectoryFromFinancialDaily, hasRefreshedGA4RowsForExecutiveSummarySnapshot } from "./utils/executive-summary-daily-snapshot";
 import { isAlertDecisionBreached } from "./utils/alert-decision";
 import { HUBSPOT_PAGINATION_ERROR_CODE, MAX_HUBSPOT_PAGES, hubspotPaginationError, nextHubspotPageCursor } from "./utils/hubspot-pagination";
 import { resolveHubspotRevenueCurrency } from "./utils/hubspot-currency";
@@ -31358,11 +31358,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       comparison.setUTCDate(comparison.getUTCDate() - 7);
       const comparisonDate = comparison.toISOString().slice(0, 10);
       const snapshots = await storage.getExecutiveSummaryDailyComparisonData(campaignId, reportingDate, comparisonDate);
+      let trajectory = evaluateExecutiveSummaryTrajectory(snapshots.current, snapshots.previous);
+      if (!snapshots.previous && snapshots.current) {
+        const activeRevenueSources = await storage.getRevenueSources(campaignId, "ga4").catch(() => null);
+        if (Array.isArray(activeRevenueSources) && activeRevenueSources.length === 0) {
+          const financialHistory = await resolveFinancialDailyComparisonPrevious({
+            campaignId,
+            reportingDate: comparisonDate,
+          });
+          const fallback = evaluateExecutiveSummaryTrajectoryFromFinancialDaily(snapshots.current, financialHistory);
+          if (fallback.available) trajectory = fallback;
+        }
+      }
       res.json({
         success: true,
         reportingDate,
         comparisonDate,
-        ...evaluateExecutiveSummaryTrajectory(snapshots.current, snapshots.previous),
+        ...trajectory,
       });
     } catch (error) {
       console.error("Executive Summary trajectory fetch error:", error);

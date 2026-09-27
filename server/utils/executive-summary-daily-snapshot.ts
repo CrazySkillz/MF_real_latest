@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createHash } from "crypto";
-import type { MetricSnapshot } from "../../shared/schema";
+import { financialDailySnapshotInputSchema, type MetricSnapshot } from "../../shared/schema";
 import { getExpectedDailyRefreshAt } from "./reporting-timezone";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -192,4 +192,44 @@ export function evaluateExecutiveSummaryTrajectory(currentRow: MetricSnapshot | 
   const trendPercentage = ((currentRevenue.value - previousRevenue.value) / previousRevenue.value) * 100;
   const trajectory = trendPercentage > 10 ? "accelerating" : trendPercentage < -10 ? "declining" : "stable";
   return { available: true as const, trajectory, trendPercentage, reason: null };
+}
+
+export function evaluateExecutiveSummaryTrajectoryFromFinancialDaily(
+  currentRow: MetricSnapshot | null,
+  previousFinancialRow: MetricSnapshot | null,
+) {
+  const current = parseExecutiveSummaryDailySnapshot(currentRow);
+  const financialDaily = (previousFinancialRow?.metrics as any)?.financialDaily;
+  const previous = financialDailySnapshotInputSchema.safeParse({
+    ...financialDaily,
+    campaignId: previousFinancialRow?.campaignId,
+    reportingDate: previousFinancialRow?.reportingDate,
+  });
+  if (!current || !previous.success) {
+    return { available: false as const, trajectory: null, trendPercentage: null, reason: "not_enough_history" };
+  }
+  const previousSnapshot = previous.data;
+  const currentRevenue = current.totals.revenue;
+  const previousRevenue = previousSnapshot.inputs.revenue;
+  const ga4OnlyRevenue = currentRevenue.available && previousRevenue.available
+    && currentRevenue.sources.length === 1 && currentRevenue.sources[0] === "ga4"
+    && previousRevenue.sources.length === 1 && previousRevenue.sources[0] === "ga4"
+    && !current.sourceSignature.some((identity) => identity.startsWith("revenue_source:"));
+  const sameContract = ga4OnlyRevenue
+    && current.campaignId === previousSnapshot.campaignId
+    && current.currency === previousSnapshot.currency
+    && current.currentValueWindow.mode === previousSnapshot.currentValueWindow.mode
+    && current.currentValueWindow.startDate === previousSnapshot.currentValueWindow.startDate
+    && current.currentValueWindow.reportingTimeZone === previousSnapshot.currentValueWindow.reportingTimeZone
+    && daysBetween(current.reportingDate, previousSnapshot.reportingDate) === 7;
+  if (!sameContract) {
+    return { available: false as const, trajectory: null, trendPercentage: null, reason: "incompatible_history" };
+  }
+  const previousRevenueValue = Number(previousRevenue.value);
+  if (!Number.isFinite(previousRevenueValue) || previousRevenueValue <= 0) {
+    return { available: false as const, trajectory: null, trendPercentage: null, reason: "revenue_history_unavailable" };
+  }
+  const trendPercentage = ((currentRevenue.value - previousRevenueValue) / previousRevenueValue) * 100;
+  const trajectory = trendPercentage > 10 ? "accelerating" : trendPercentage < -10 ? "declining" : "stable";
+  return { available: true as const, trajectory, trendPercentage, reason: null, source: "financial_daily_fallback" as const };
 }

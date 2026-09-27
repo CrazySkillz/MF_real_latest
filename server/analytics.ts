@@ -445,7 +445,8 @@ export class GoogleAnalytics4Service {
       revenueMetric: 'totalRevenue' | 'purchaseRevenue',
       scopeFilter: any = campaignDimensionFilter,
       reportLimit: number = limit,
-      offset = 0
+      offset = 0,
+      conversionMetric: 'conversions' | 'keyEvents' = 'conversions',
     ) => {
       const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
@@ -454,9 +455,9 @@ export class GoogleAnalytics4Service {
           dateRanges: [{ startDate: dateRange, endDate }],
           dimensions: [{ name: 'eventName' }],
           ...(scopeFilter ? scopeFilter : {}),
-          metrics: [{ name: 'conversions' }, { name: 'eventCount' }, { name: 'totalUsers' }, { name: revenueMetric }],
+          metrics: [{ name: conversionMetric }, { name: 'eventCount' }, { name: 'totalUsers' }, { name: revenueMetric }],
           orderBys: [
-            { metric: { metricName: 'conversions' }, desc: true },
+            { metric: { metricName: conversionMetric }, desc: true },
             { dimension: { dimensionName: 'eventName' } },
           ],
           limit: Math.min(Math.max(reportLimit, 1), 10000),
@@ -518,9 +519,14 @@ export class GoogleAnalytics4Service {
 
     const incompletePaginationError = (message: string) =>
       new Error(`GA4_CONVERSION_EVENT_PAGINATION_INCOMPLETE: ${message}`);
-    const fetchRows = async (accessToken: string, scopeFilter: any, reportLimit: number = limit) => {
+    const fetchRows = async (
+      accessToken: string,
+      scopeFilter: any,
+      reportLimit: number = limit,
+      conversionMetric: 'conversions' | 'keyEvents' = 'conversions',
+    ) => {
       const fetchMetric = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
-        const firstPage = await run(accessToken, revenueMetric, scopeFilter, reportLimit, 0);
+        const firstPage = await run(accessToken, revenueMetric, scopeFilter, reportLimit, 0, conversionMetric);
         const hasRowCount = firstPage?.rowCount !== undefined && firstPage?.rowCount !== null;
         const rows = Array.isArray(firstPage?.rows) ? [...firstPage.rows] : [];
         const dimensionHeaderNames = Array.isArray(firstPage?.dimensionHeaders)
@@ -531,7 +537,7 @@ export class GoogleAnalytics4Service {
           : [];
         const canonicalEmptyResponse = rows.length === 0
           && JSON.stringify(dimensionHeaderNames) === JSON.stringify(['eventName'])
-          && JSON.stringify(metricHeaderNames) === JSON.stringify(['conversions', 'eventCount', 'totalUsers', revenueMetric]);
+          && JSON.stringify(metricHeaderNames) === JSON.stringify([conversionMetric, 'eventCount', 'totalUsers', revenueMetric]);
         const expectedRows = hasRowCount ? Number(firstPage.rowCount) : canonicalEmptyResponse ? 0 : Number.NaN;
         if (!Number.isInteger(expectedRows) || expectedRows < 0) {
           throw incompletePaginationError('provider rowCount is unavailable');
@@ -539,7 +545,7 @@ export class GoogleAnalytics4Service {
         if (expectedRows > 100000) throw incompletePaginationError(`rowCount ${expectedRows} exceeds safe maximum 100000`);
         if (rows.length > expectedRows) throw incompletePaginationError('provider returned more rows than rowCount');
         while (rows.length < expectedRows) {
-          const page = await run(accessToken, revenueMetric, scopeFilter, reportLimit, rows.length);
+          const page = await run(accessToken, revenueMetric, scopeFilter, reportLimit, rows.length, conversionMetric);
           if (Number(page?.rowCount) !== expectedRows) throw incompletePaginationError('rowCount changed during pagination');
           const pageRows = Array.isArray(page?.rows) ? page.rows : [];
           if (pageRows.length === 0) throw incompletePaginationError(`provider returned an empty page at offset ${rows.length}`);
@@ -598,10 +604,14 @@ export class GoogleAnalytics4Service {
       // is intentionally excluded because it can assign conversions outside the
       // session/UTM campaign scope used by the Overview totals.
       for (const dimension of ['campaignName']) {
-        const fallback = await fetchRows(
-          accessToken,
-          this.buildCampaignDimensionFilter(campaignFilter, dimension),
-        );
+        const fallbackFilter = this.buildCampaignDimensionFilter(campaignFilter, dimension);
+        let fallback: any;
+        try {
+          fallback = await fetchRows(accessToken, fallbackFilter);
+        } catch (error: any) {
+          if (!isInvalidArgumentText(error?.message || error)) throw error;
+          fallback = await fetchRows(accessToken, fallbackFilter, limit, 'keyEvents');
+        }
         assertUniqueEventRows(fallback);
         if (hasConversionRows(fallback)) return conversionRowsOnly(fallback);
       }

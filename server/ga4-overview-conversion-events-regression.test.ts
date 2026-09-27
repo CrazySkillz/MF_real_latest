@@ -148,6 +148,9 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
       if (filter.includes('"fieldName":"sessionCampaignName"')) {
         return { ok: false, text: async () => '{"error":{"code":400,"status":"INVALID_ARGUMENT"}}' } as any;
       }
+      if (body.metrics?.[0]?.name === "conversions") {
+        return { ok: false, text: async () => '{"error":{"code":400,"status":"INVALID_ARGUMENT"}}' } as any;
+      }
       return {
         ok: true,
         json: async () => ({
@@ -167,6 +170,8 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     const filters = fetchMock.mock.calls.map(([, init]) => JSON.stringify(JSON.parse(String((init as any)?.body || "{}")).dimensionFilter));
     expect(filters[0]).toContain("sessionCampaignName");
     expect(filters.at(-1)).toContain('"fieldName":"campaignName"');
+    const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
+    expect(bodies.at(-1)?.metrics?.[0]?.name).toBe("keyEvents");
   });
 
   it("does not broaden attribution beyond the scheduler's campaign-name fallback", async () => {

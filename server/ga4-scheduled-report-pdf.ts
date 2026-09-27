@@ -1233,7 +1233,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         (payload.conversionEvents?.rows || []).slice(0, 25).map((row: any) => [
           String(row?.eventName || "(not set)"),
           Number(row?.conversions || 0).toLocaleString("en-US", { maximumFractionDigits: 20 }),
-          formatNumber(row?.eventCount || 0),
+          row?.eventCount == null ? "Unavailable" : formatNumber(row.eventCount),
           formatNumber(row?.users || 0),
         ]),
         [76, 36, 36, 28],

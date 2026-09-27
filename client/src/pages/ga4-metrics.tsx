@@ -3645,7 +3645,7 @@ export default function GA4Metrics() {
         (Array.isArray(ga4ConversionEvents?.rows) ? ga4ConversionEvents.rows : []).slice(0, 25).map((r: any) => [
           String(r?.eventName || "(not set)"),
           Number(r?.conversions || 0).toLocaleString("en-US", { maximumFractionDigits: 20 }),
-          fN(Number(r?.eventCount || 0)),
+          r?.eventCount == null ? "Unavailable" : fN(Number(r.eventCount)),
           fN(Number(r?.users || 0)),
         ]),
         [76, 36, 36, 28]
@@ -6946,7 +6946,7 @@ export default function GA4Metrics() {
                                         </div>
                                       </td>
                                       <td className="p-3 text-right">{Number(r?.conversions || 0).toLocaleString("en-US", { maximumFractionDigits: 20 })}</td>
-                                      <td className="p-3 text-right">{formatNumber(Number(r?.eventCount || 0))}</td>
+                                      <td className="p-3 text-right">{r?.eventCount == null ? "Unavailable" : formatNumber(Number(r.eventCount))}</td>
                                       <td className="p-3 text-right">{formatNumber(Number(r?.users || 0))}</td>
                                     </tr>
                                   ))}

@@ -420,8 +420,8 @@ export class GoogleAnalytics4Service {
   ): Promise<{
     propertyId: string;
     revenueMetric: 'totalRevenue' | 'purchaseRevenue';
-    rows: Array<{ eventName: string; conversions: number; eventCount: number; users: number; revenue: number }>;
-    totals: { conversions: number; eventCount: number; users: number; revenue: number };
+    rows: Array<{ eventName: string; conversions: number; eventCount: number | null; users: number; revenue: number }>;
+    totals: { conversions: number; eventCount: number | null; users: number; revenue: number };
   }> {
     const requestedPropertyId = this.normalizeGA4PropertyId(propertyId || '');
     if (!requestedPropertyId) throw new Error('GA4_PROPERTY_SCOPE_REQUIRED');
@@ -446,7 +446,7 @@ export class GoogleAnalytics4Service {
       scopeFilter: any = campaignDimensionFilter,
       reportLimit: number = limit,
       offset = 0,
-      conversionMetric: 'conversions' | 'keyEvents' | 'eventCount' = 'conversions',
+      conversionMetric: 'conversions' | 'keyEvents' = 'conversions',
       includeEventCount = true,
     ) => {
       const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
@@ -480,7 +480,7 @@ export class GoogleAnalytics4Service {
 
     const parseRows = (json: any, revenueMetric: 'totalRevenue' | 'purchaseRevenue', includeEventCount = true) => {
       const rows: any[] = Array.isArray(json?.rows) ? json.rows : [];
-      const out: Array<{ eventName: string; conversions: number; eventCount: number; users: number; revenue: number }> = [];
+      const out: Array<{ eventName: string; conversions: number; eventCount: number | null; users: number; revenue: number }> = [];
       let totalConversions = 0;
       let totalEventCount = 0;
       let totalUsers = 0;
@@ -499,11 +499,11 @@ export class GoogleAnalytics4Service {
         const eventName = String(r?.dimensionValues?.[0]?.value ?? '').trim();
         if (!eventName) throw new Error('GA4_CONVERSION_EVENT_PROVIDER_VALUE_UNSAFE: eventName');
         const conversions = metricValue(r?.metricValues?.[0]?.value, 'conversions');
-        const eventCount = includeEventCount ? metricValue(r?.metricValues?.[1]?.value, 'eventCount', true) : 0;
+        const eventCount = includeEventCount ? metricValue(r?.metricValues?.[1]?.value, 'eventCount', true) : null;
         const users = metricValue(r?.metricValues?.[includeEventCount ? 2 : 1]?.value, 'users', true);
         const revenue = metricValue(r?.metricValues?.[includeEventCount ? 3 : 2]?.value, revenueMetric, false, true);
         totalConversions += conversions;
-        totalEventCount += eventCount;
+        totalEventCount += eventCount || 0;
         totalUsers += users;
         totalRevenue += revenue;
         out.push({ eventName, conversions, eventCount, users, revenue: Number(revenue.toFixed(2)) });
@@ -512,7 +512,7 @@ export class GoogleAnalytics4Service {
       return {
         revenueMetric,
         rows: out,
-        totals: { conversions: totalConversions, eventCount: totalEventCount, users: totalUsers, revenue: Number(totalRevenue.toFixed(2)) },
+        totals: { conversions: totalConversions, eventCount: includeEventCount ? totalEventCount : null, users: totalUsers, revenue: Number(totalRevenue.toFixed(2)) },
       };
     };
 
@@ -529,7 +529,7 @@ export class GoogleAnalytics4Service {
       accessToken: string,
       scopeFilter: any,
       reportLimit: number = limit,
-      conversionMetric: 'conversions' | 'keyEvents' | 'eventCount' = 'conversions',
+      conversionMetric: 'conversions' | 'keyEvents' = 'conversions',
       includeEventCount = true,
     ) => {
       const fetchMetric = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
@@ -585,7 +585,9 @@ export class GoogleAnalytics4Service {
         rows,
         totals: {
           conversions: rows.reduce((sum: number, row: any) => sum + (Number(row?.conversions) || 0), 0),
-          eventCount: rows.reduce((sum: number, row: any) => sum + (Number(row?.eventCount) || 0), 0),
+          eventCount: res?.totals?.eventCount != null && rows.every((row: any) => row?.eventCount != null)
+            ? rows.reduce((sum: number, row: any) => sum + (Number(row?.eventCount) || 0), 0)
+            : null,
           users: rows.reduce((sum: number, row: any) => sum + (Number(row?.users) || 0), 0),
           revenue: Number(rows.reduce((sum: number, row: any) => sum + (Number(row?.revenue) || 0), 0).toFixed(2)),
         },
@@ -615,17 +617,7 @@ export class GoogleAnalytics4Service {
         } catch (keyEventError: any) {
           if (!isInvalidArgumentText(keyEventError?.message || keyEventError)) throw keyEventError;
           const keyEvents = await fetchRows(accessToken, campaignDimensionFilter, limit, 'keyEvents', false);
-          const eventCounts = await fetchRows(accessToken, campaignDimensionFilter, limit, 'eventCount', false);
-          const eventCountByName = new Map(eventCounts.rows.map((row: any) => {
-            const eventCount = Number(row.conversions);
-            if (!Number.isInteger(eventCount)) throw new Error('GA4_CONVERSION_EVENT_PROVIDER_VALUE_UNSAFE: eventCount');
-            return [row.eventName, eventCount];
-          }));
-          res = {
-            ...keyEvents,
-            rows: keyEvents.rows.map((row: any) => ({ ...row, eventCount: Number(eventCountByName.get(row.eventName) || 0) })),
-          };
-          res.totals.eventCount = res.rows.reduce((sum: number, row: any) => sum + row.eventCount, 0);
+          res = keyEvents;
           assertUniqueEventRows(res);
           if (hasConversionRows(res)) return conversionRowsOnly(res);
         }

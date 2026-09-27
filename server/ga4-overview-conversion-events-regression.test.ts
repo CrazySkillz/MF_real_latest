@@ -42,6 +42,9 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     expect(ui).toContain("ga4ConversionEvents.rows.slice(0, 25)");
     expect(browserPdf).toContain("ga4ConversionEvents.rows : []).slice(0, 25)");
     expect(scheduledPdf).toContain("payload.conversionEvents?.rows || []).slice(0, 25)");
+    expect(ui).toContain('eventCount == null ? "Unavailable"');
+    expect(browserPdf).toContain('eventCount == null ? "Unavailable"');
+    expect(scheduledPdf).toContain('eventCount == null ? "Unavailable"');
   });
 
   it("keeps the route on campaign access, exact property, fixed import window, and the scheduler snapshot", () => {
@@ -152,9 +155,7 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
       if (body.metrics?.[0]?.name === "conversions" || (metricNames.includes("keyEvents") && metricNames.includes("eventCount"))) {
         return { ok: false, text: async () => '{"error":{"code":400,"status":"INVALID_ARGUMENT"}}' } as any;
       }
-      const metricValues = body.metrics?.[0]?.name === "eventCount"
-        ? [{ value: "4" }, { value: "2" }, { value: "10" }]
-        : [{ value: "3" }, { value: "2" }, { value: "10" }];
+      const metricValues = [{ value: "3" }, { value: "2" }, { value: "10" }];
       return {
         ok: true,
         json: async () => ({
@@ -170,13 +171,14 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
       "2026-08-01", "987654", 50, "saved-a", "2026-09-14",
     );
 
-    expect(result.rows).toEqual([{ eventName: "purchase", conversions: 3, eventCount: 4, users: 2, revenue: 10 }]);
+    expect(result.rows).toEqual([{ eventName: "purchase", conversions: 3, eventCount: null, users: 2, revenue: 10 }]);
+    expect(result.totals.eventCount).toBeNull();
     const filters = fetchMock.mock.calls.map(([, init]) => JSON.stringify(JSON.parse(String((init as any)?.body || "{}")).dimensionFilter));
     expect(filters[0]).toContain("sessionCampaignName");
     expect(filters.at(-1)).toContain('"fieldName":"sessionCampaignName"');
     const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
     expect(bodies.some((body) => body.metrics?.[0]?.name === "keyEvents" && body.metrics.every((metric: any) => metric.name !== "eventCount"))).toBe(true);
-    expect(bodies.at(-1)?.metrics?.[0]?.name).toBe("eventCount");
+    expect(bodies.at(-1)?.metrics?.[0]?.name).toBe("keyEvents");
   });
 
   it("does not broaden attribution beyond the scheduler's campaign-name fallback", async () => {

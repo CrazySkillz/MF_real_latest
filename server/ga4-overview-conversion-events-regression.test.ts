@@ -148,14 +148,18 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
       if (filter.includes('"fieldName":"sessionCampaignName"') && body.metrics?.[0]?.name === "conversions") {
         return { ok: false, text: async () => '{"error":{"code":400,"status":"INVALID_ARGUMENT"}}' } as any;
       }
-      if (body.metrics?.[0]?.name === "conversions") {
+      const metricNames = (body.metrics || []).map((metric: any) => metric.name);
+      if (body.metrics?.[0]?.name === "conversions" || (metricNames.includes("keyEvents") && metricNames.includes("eventCount"))) {
         return { ok: false, text: async () => '{"error":{"code":400,"status":"INVALID_ARGUMENT"}}' } as any;
       }
+      const metricValues = body.metrics?.[0]?.name === "eventCount"
+        ? [{ value: "4" }, { value: "2" }, { value: "10" }]
+        : [{ value: "3" }, { value: "2" }, { value: "10" }];
       return {
         ok: true,
         json: async () => ({
           rowCount: 1,
-          rows: [{ dimensionValues: [{ value: "purchase" }], metricValues: [{ value: "3" }, { value: "4" }, { value: "2" }, { value: "10" }] }],
+          rows: [{ dimensionValues: [{ value: "purchase" }], metricValues }],
         }),
       } as any;
     });
@@ -171,7 +175,8 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     expect(filters[0]).toContain("sessionCampaignName");
     expect(filters.at(-1)).toContain('"fieldName":"sessionCampaignName"');
     const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
-    expect(bodies.at(-1)?.metrics?.[0]?.name).toBe("keyEvents");
+    expect(bodies.some((body) => body.metrics?.[0]?.name === "keyEvents" && body.metrics.every((metric: any) => metric.name !== "eventCount"))).toBe(true);
+    expect(bodies.at(-1)?.metrics?.[0]?.name).toBe("eventCount");
   });
 
   it("does not broaden attribution beyond the scheduler's campaign-name fallback", async () => {

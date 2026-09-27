@@ -42,18 +42,18 @@ It does not certify:
 
 ### Post-certification scheduler-read alignment — 2026-09-26
 
-The current local implementation changes the mounted GA4-first financial path and Campaign Performance Trend daily-read path after the certified runtime above. Therefore the affected current/historical financial-card path, CPA presentation, and scheduler-only daily chart are **not covered by the 2026-09-20 certificate until proportionate deployed revalidation is completed**.
+The current implementation changes the mounted GA4-first financial path and Campaign Performance Trend daily-read path after the certified runtime above. Therefore the affected current/historical financial-card path, CPA presentation, scheduler-only daily chart, and saved GA4 currency proof are **not covered by the 2026-09-20 certificate until proportionate deployed revalidation is completed**.
 
 - Trend Analysis requests persisted-only mode from `/outcome-totals`. Its exact-date `financial_daily` comparison route prefers a scheduler-written snapshot and uses the existing read-only exact-date derivation only when the historical snapshot is missing. That fallback can query the scoped GA4 aggregate and reads dated financial-source records, but it does not write history.
 - Current `Revenue` and `Spend` prefer a compatible scheduler-written `financial_daily_snapshot_v1` and otherwise use the authoritative current `performance_summary_aggregate_v3` totals. Historical `Revenue` and `Spend` require either the exact compatible snapshot or the exact-date read-only derivation. `ROAS`, `ROI`, and `CPA` derive from those accepted financial inputs and compatible persisted traffic values.
 - A missing, mismatched, or unavailable current authoritative total or historical exact-date result fails closed. The mounted financial-card path does not replace Revenue with a summed daily value.
-- The five GA4-first financial card positions remain mounted when the current scheduler snapshot is unavailable. Each shows `Unavailable` and `Waiting for daily scheduler`, so scheduler availability changes values without changing the card count. Optional unsupported paid-media cards remain hidden.
+- The five GA4-first financial card positions remain mounted. Current Revenue and Spend use a compatible scheduler snapshot when present and otherwise use the authoritative persisted performance-summary totals; derived ROAS, ROI, and CPA follow those accepted current values. A card shows `Unavailable` / `Waiting for daily scheduler` only when its required current inputs are unavailable. A missing historical baseline instead leaves the current value visible with `Comparison unavailable`. Optional unsupported paid-media cards remain hidden.
 - The ten GA4-first summary cards use a five-column by two-row desktop grid and retain the existing responsive one/two-column layout on smaller screens.
 - Campaign Performance Trend and the GA4 efficiency history read only the complete scheduler-stored `/ga4-daily` response. The Trend page no longer calls the live GA4 coverage route, does not create zero points in the browser, and fails closed if the scheduler window is incomplete. Completed no-activity dates appear as zero only because the scheduler persisted explicit zero rows.
 - The read-only provider-coverage verifier treats a scheduler-written all-zero row as equal to a provider-confirmed absent date. It still reports a mismatch when an activity date is missing, any populated metric differs, or a provider-absent date contains a nonzero stored value.
 - The scheduler persists the GA4 Data API's verified report currency in `campaignBreakdown.meta.currencyCode` inside the atomic Overview snapshot. A missing or mismatched currency fails the refresh closed, and the startup snapshot bootstrap refreshes otherwise-current legacy snapshots that lack this proof. Persisted-only financial decision context accepts native GA4 Revenue currency only when that saved code matches the campaign currency; the visible numeric cards remain unchanged.
 - CPA direction styling is business-semantic in the headline cards: a lower CPA is green and a higher CPA is red. Other headline metrics retain their existing numeric-direction styling; Spend is not automatically classified as beneficial merely because it decreases.
-- The earlier financial-card change passed 101 focused Trend/financial/adjacent regression tests. The scheduler-only daily-chart change passed 33 focused Trend/scheduler tests, TypeScript checking, and the production build. This is implementation evidence only and does not replace the required deployed revalidation of the affected paths.
+- The earlier financial-card change passed 101 focused Trend/financial/adjacent regression tests. The scheduler-only daily-chart change passed 33 focused Trend/scheduler tests. The later verified-currency change passed 92 focused financial, scheduler, and Trend tests, TypeScript checking, and the production build. This is implementation evidence only and does not replace the required deployed revalidation of the affected paths.
 
 ### Current Campaign3 Read-Only Alignment Check — 2026-09-26
 
@@ -71,6 +71,10 @@ This is current implementation evidence for `Campaign3`, not an expansion of the
 | Executive recommendation input | Sep 19–25: 31 conversions from 494 sessions (`6.3` per 100); Sep 12–18: 66 from 992 (`6.7` per 100); cumulative guidance: 145 from 2,256 (`6.4` per 100) |
 
 These values are a dated read-only observation, not hardcoded expectations. Later scheduler runs may advance the completed date, totals, anomalies, and financial availability while the contracts above remain unchanged.
+
+### Current Campaign3 Deployed UI Check — 2026-09-27
+
+Deployed revision `9393d9de11abf07a7376e25f05a85e6af56caedf` returned healthy, and scheduler health recorded a successful snapshot-bootstrap run with one processed campaign while separately reporting failures for other token-expired campaigns. User-provided `Campaign3` UI evidence on that revision showed cumulative data through `2026-09-26`, Revenue `EUR 37,518.74`, Spend `EUR 2,353.00`, ROAS `15.95x`, ROI `1494.5%`, and CPA `EUR 16.23`. The exact financial baseline for `2026-09-19` remained unavailable, so the current financial values stayed visible with `Comparison unavailable`. Executive Recommendations showed `Connected-Source ROAS — Reconciled Sources`, stated `15.95x`, and identified EUR; `ROAS Decision Context Not Verified` was absent. This is bounded current UI evidence for that Campaign3 configuration, not a new whole-section or multi-source production certificate.
 
 ### Current Visible Implementation
 
@@ -91,7 +95,7 @@ The page-level selector defaults to `Last 7 days`; `Last 14 days`, `Last 30 days
 
 | Visible surface | Implemented contract | Current certification boundary |
 | --- | --- | --- |
-| Connected-Source Performance Summary | Capability-gated cumulative traffic cards; scheduler-snapshot current and exact-date financial cards; CPA-aware direction color | The 2026-09-20 boundary remains historical evidence; the changed financial-read and CPA-color paths require current deployed revalidation |
+| Connected-Source Performance Summary | Capability-gated cumulative traffic cards; current financial values from a compatible scheduler snapshot or authoritative persisted performance summary; exact-date snapshot/read-only derivation for financial comparison; CPA-aware direction color | The 2026-09-20 boundary remains historical evidence; the current Campaign3 values have bounded deployed UI evidence, while whole-path certification remains pending |
 | Campaign Performance Trend | Selected exact calendar window; GA4 Users, Sessions, and Conversions from a complete scheduler-stored daily window; scheduler-written no-activity rows remain zero | Changed after the 2026-09-20 certificate; local regression coverage exists, but deployed revalidation is pending |
 | Efficiency Trends | Return, cost, and rate charts render independently only when their daily inputs exist; verified no-activity dates get a marker instead of a fabricated rate | Formula/presentation evidence from the historical certificate remains bounded to that runtime; the current scheduler-only input path has local and read-only Campaign3 evidence, with deployed revalidation pending |
 | Anomaly Detection | Conditional browser-only statistical markers and list, using the deterministic seven-value rule below | The seven-value rule has historical evidence; the current scheduler-only input and orange warning presentation have local evidence, with deployed revalidation pending |
@@ -164,7 +168,7 @@ The `Trend & comparison window` selector accepts `7`, `14`, `30`, and `90` days.
 - Count comparisons show the exact absolute difference and percentage difference.
 - Rate comparisons show percentage-point change.
 - Most comparison text is green for a positive numeric change, red for a negative numeric change, and neutral for zero. CPA is the deliberate exception: a decrease is green and an increase is red because lower acquisition cost is favorable. Spend retains numeric-direction styling because a decrease in Spend is not inherently good without delivery context.
-- A traffic comparison appears only when the exact historical value is reconstructable from compatible persisted rows. A financial comparison appears only when an exact compatible scheduler-written financial snapshot exists.
+- A traffic comparison appears only when the exact historical value is reconstructable from compatible persisted rows. A financial comparison appears only when the route returns an exact compatible scheduler-written snapshot or the existing scoped read-only GA4/source derivation can reconstruct that exact date. The derivation does not write history.
 - Missing, partial, mismatched-property, mismatched-window, mismatched-timezone, mismatched-currency, duplicate-date, provider-warning, or unavailable exact historical data fails closed.
 - The current cumulative value is never reused as a historical fallback.
 
@@ -175,7 +179,7 @@ The `Trend & comparison window` selector accepts `7`, `14`, `30`, and `90` days.
 - In `Conversion Quality Trend`, a scheduler-stored date with zero Sessions, Users, and Conversions is shown as an amber `No activity — 0 sessions; rates unavailable` marker while the CVR and Engagement Rate lines remain broken for that date.
 - Chart animation is disabled so a stale/placeholder chart does not transform after load.
 - All selector options remain selectable. If the campaign does not yet cover the full requested calendar window, the page explains the available boundary. If the window exists but has no daily activity rows, it shows the exact empty date range and latest recorded date.
-- Efficiency charts render only when their required daily inputs exist. Current financial cards require their own compatible scheduler snapshot and can remain available while daily return/cost trend charts are withheld.
+- Efficiency charts render only when their required daily inputs exist. Current financial cards can use the authoritative persisted performance-summary totals when a compatible current financial snapshot is absent, while daily return/cost trend charts remain independently gated by their daily inputs.
 
 ### Anomaly Detection Contract
 
@@ -217,7 +221,7 @@ The `Trend & comparison window` selector accepts `7`, `14`, `30`, and `90` days.
 - `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_CERTIFICATION_2026-09-20.md` controls only its historical runtime and scope. The post-certification implementation evidence and the dated `Campaign3` read-only check above describe the changed current paths without promoting them to a new deployed certificate.
 - The historical certified application runtime is `7dc72dc8dc5ba302146128b62c45f3bf7d86f6eb`. Production health on `2026-09-20` returned deployed revision `595268463c79b111e77b181ad3003e58f912d208`; repository comparison proved that the later revision changed only the Trend certification record relative to that runtime.
 - Historical authenticated browser evidence covered the one-source `Campaign2` GA4 boundary, every selector, all mounted required sections, initial render, exact then-current values, and the insufficient-history 90-day state.
-- Focused evidence recorded in the historical certificate is `94/94` Trend/UI/report tests and `79/79` adjacent financial/Overview/scheduler tests, plus passing type-check and production build. A later documentation-alignment rerun selected nine Trend files and passed `92/92`; those counts do not replace current deployed revalidation.
+- Focused evidence recorded in the historical certificate is `94/94` Trend/UI/report tests and `79/79` adjacent financial/Overview/scheduler tests, plus passing type-check and production build. The verified-currency change later passed `92/92` focused financial, scheduler, and Trend tests; those counts support the implementation but do not replace the bounded deployed UI evidence or the remaining whole-page certification.
 - One-off deployed PDF parity is bounded to Revenue, Spend, Conversions, Sessions, Users, eligible guidance, and correctly hidden unsupported sections. Browser-only Anomaly Detection, a new scheduler firing, provider delivery, and inbox receipt are not claimed.
 - The repository-wide suite was not globally clean during certification: `2012` tests passed and `45` unrelated tests failed across `38` suites. This document therefore makes no whole-repository or whole-application claim.
 - The older `2026-08-26` `cd35bba1...` Campaign2 evidence remains historical implementation evidence only; it does not describe the current implementation boundary.
@@ -754,7 +758,7 @@ Trend Analysis is production ready only when:
 
 ## Current Status
 
-The `2026-09-20` certificate remains historical evidence only for its exact `Campaign2` runtime. The current scheduler-only daily-read path, financial snapshot requirement, fixed financial-card layout, CPA direction color, no-activity copy, and orange warning treatment were introduced later. They have focused local regression evidence and the dated read-only `Campaign3` check above, but they do not yet have a renewed deployed production certificate. Do not describe the changed current paths as production-certified until that revalidation is completed.
+The `2026-09-20` certificate remains historical evidence only for its exact `Campaign2` runtime. The current scheduler-only daily-read path, current-value fallback to the persisted performance summary, exact-date financial derivation, fixed financial-card layout, CPA direction color, no-activity copy, orange warning treatment, and persisted GA4 currency proof were introduced later. They have focused regression evidence plus the bounded deployed `Campaign3` UI check above, but they do not yet have a renewed whole-section production certificate. Do not describe the changed current paths or other source mixes as production-certified until that revalidation is completed.
 
 The historical `2026-08-26` boundary and Commit 1–10 records below remain implementation history and must not override the current implementation contract or its narrower evidence status.
 

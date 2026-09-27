@@ -328,7 +328,7 @@ describe("GA4 daily scheduler timing", () => {
 
     expect(result.campaignIdsFailed).toEqual(["campaign-1"]);
     expect(result.failureReasonsByCampaign).toEqual({
-      "campaign-1": ["overview_reconciliation:GA4_OVERVIEW_RECONCILIATION_FAILED"],
+      "campaign-1": ["overview_reconciliation:GA4_OVERVIEW_RECONCILIATION_FAILED:event_conversions"],
     });
     expect(replace).not.toHaveBeenCalled();
   });

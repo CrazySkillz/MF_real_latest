@@ -340,12 +340,16 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
           const revenueRoundingTolerance = overviewRows.length * 0.005 + 1e-9;
           const breakdownTotals = campaignBreakdown?.totals || {};
           const eventTotals = conversionEvents?.totals || {};
-          if (
-            Number(breakdownTotals.sessions || 0) !== expected.sessions ||
-            Number(breakdownTotals.conversions || 0) !== expected.conversions ||
-            Math.abs(Number(breakdownTotals.revenue || 0) - expected.revenue) > revenueRoundingTolerance ||
-            Number(eventTotals.conversions || 0) !== expected.conversions
-          ) throw Object.assign(new Error("GA4 Overview detail totals do not reconcile with scheduler daily facts"), { ga4DailyStage: "overview_reconciliation" });
+          const reconciliationMismatches = [
+            Number(breakdownTotals.sessions || 0) !== expected.sessions ? "breakdown_sessions" : "",
+            Number(breakdownTotals.conversions || 0) !== expected.conversions ? "breakdown_conversions" : "",
+            Math.abs(Number(breakdownTotals.revenue || 0) - expected.revenue) > revenueRoundingTolerance ? "breakdown_revenue" : "",
+            Number(eventTotals.conversions || 0) !== expected.conversions ? "event_conversions" : "",
+          ].filter(Boolean);
+          if (reconciliationMismatches.length > 0) throw Object.assign(
+            new Error(`GA4 Overview detail totals do not reconcile with scheduler daily facts: ${reconciliationMismatches.join("+")}`),
+            { ga4DailyStage: "overview_reconciliation" },
+          );
           overviewSnapshot = {
             windowStart: overviewStartDate,
             windowEnd: reportingWindow.endDate,
@@ -511,7 +515,10 @@ const getGA4DailyFailureReason = (error: any) => {
     "GA4_API_PAGINATION_INCOMPLETE", "GA4_CONVERSION_EVENT_PROVIDER_VALUE_UNSAFE",
   ].find((code) => message.includes(code));
   if (knownCode) return `${stage}:${knownCode}`;
-  if (message.includes("do not reconcile")) return `${stage}:GA4_OVERVIEW_RECONCILIATION_FAILED`;
+  if (message.includes("do not reconcile")) {
+    const mismatches = message.match(/facts:\s*([a-z_+]+)/i)?.[1];
+    return `${stage}:GA4_OVERVIEW_RECONCILIATION_FAILED${mismatches ? `:${mismatches}` : ""}`;
+  }
   const providerStatus = message.match(/\"status\"\s*:\s*\"([A-Z_]+)\"/i)?.[1];
   if (providerStatus) {
     const issue = /incompatib/i.test(message)

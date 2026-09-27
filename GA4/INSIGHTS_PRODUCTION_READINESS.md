@@ -1,6 +1,6 @@
 # GA4 Insights Production Readiness
 
-2026-09-26 status reconciliation: significant Insights behavior changed after the last exact-runtime certificates. The current implementation was introduced through `4372efadc96523c9df2abe2dd7915f9e1a0443a7` and is unchanged in application runtime `ca1fc5a873ab69fb747937768c31fcd53e16fd64`, but it has not received a new exact-revision deployed certification packet. The older evidence below remains historical and revision-specific.
+2026-09-27 status reconciliation: significant Insights behavior changed after the last exact-runtime certificates. Current deployed runtime `eab3231aa2910cc70ddeacfd254da1ac1017c6a2` has bounded Campaign3 read-only value-parity evidence, but it has not received a new exact-revision deployed certification packet. The older evidence below remains historical and revision-specific.
 
 ## Controlling Current Status
 
@@ -9,9 +9,13 @@
 
 Section status: **UNVERIFIED for the current implementation** pending current-revision deployed recertification.
 
-Current code implements scheduler-only daily-history writes, explicit zero rows for completed no-activity dates, campaign-creation-bounded zero-filled charts and findings, one-row Daily rendering, `Latest imported day` plus `Chart through` labels, no stale-history warning/findings for a successful persisted response, and the corrected financial KPI/Benchmark import boundary. These changes invalidate the earlier exact-SHA certification as a current claim. Local regression validation can make this revision eligible for certification; authenticated deployed value parity, exact-revision tenant checks, provider behavior, and a natural scheduler cycle remain external gates.
+Current code implements scheduler-only daily-history writes, explicit zero rows for completed no-activity dates, campaign-creation-bounded zero-filled charts and findings, a one-eligible-date Daily gate with 14 recent table rows initially and up to 30 through `Show all`, `Latest imported day` plus `Chart through` labels, no stale-history warning/findings for a successful persisted response, and the corrected financial KPI/Benchmark import boundary. These changes invalidate the earlier exact-SHA certification as a current claim. Bounded authenticated deployed value parity has now passed for Campaign3; exact-revision tenant checks, provider behavior, a natural scheduler cycle, and the remaining whole-tab certification gates are still outstanding.
 
 <!-- /ga4-insights-current-status -->
+
+Bounded Campaign3 evidence on deployed `eab3231aa2910cc70ddeacfd254da1ac1017c6a2` (`2026-09-27`): the owner-authenticated, read-only UI/API trace used property `542352127`, reporting timezone `Europe/Amsterdam`, currency `EUR`, and the two saved campaign filters. Imported history ran from `2026-08-23` through `2026-09-26` and reconciled to 2,256 Sessions, 145 Conversions, EUR 37,518.74 authoritative native revenue, EUR 2,353.00 Spend, EUR 35,165.74 Profit, 15.95x ROAS, 1,494.5% ROI, and EUR 16.23 CPA. The creation-bounded Daily calendar ran from `2026-09-22` through `2026-09-26` (127 Sessions followed by four completed zero-session dates); 7d and 30d correctly remained gated by insufficient campaign age, and Monthly accepted the partial month. All five Executive Financial values, three Data Summary values, three tracker values, and seven visible findings matched their page-consumed inputs. The database transaction rolled back and campaign persistence remained unchanged.
+
+This was not a full certification run. Tenant isolation was intentionally excluded, and neither a natural scheduler firing nor a new provider write was proven. The diagnostic harness was temporarily aligned to the current native trend selector, labels, and window semantics for this read-only run and then restored; the checked-in validator still requires the same alignment before it can serve as a reusable current-revision certification gate.
 
 Historical certified SHA: `4be16c54c550a45dbf3104313c820ea47b453604`. The previous `09e3b64ed67fec70aa84f969a09aae1f368a4f02` evidence is also preserved in the machine record. Neither certifies the current implementation.
 

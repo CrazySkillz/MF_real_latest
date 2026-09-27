@@ -15,7 +15,7 @@ Current GA4 tab production-readiness status:
 <!-- ga4-insights-current-status -->
 <!-- ga4-insights-certification-status: UNVERIFIED -->
 
-- GA4 Insights is **UNVERIFIED for the current implementation** pending exact-revision deployed recertification. The scheduler-only, zero-filled implementation was introduced through `4372efadc96523c9df2abe2dd7915f9e1a0443a7` and is unchanged in application runtime `ca1fc5a873ab69fb747937768c31fcd53e16fd64`. Older Insights certificates remain historical evidence for their exact revisions only.
+- GA4 Insights is **UNVERIFIED for the current implementation** pending exact-revision deployed recertification. Current deployed runtime `eab3231aa2910cc70ddeacfd254da1ac1017c6a2` has a bounded Campaign3 owner-authenticated read-only parity pass for Executive Financials, imported-history Data Summary, campaign-creation-bounded Trends, tracker cards, and findings through `2026-09-26`. Tenant isolation, a natural scheduler cycle, and a reusable current-revision validator remain outstanding, so older Insights certificates remain historical evidence for their exact revisions only.
 
 <!-- /ga4-insights-current-status -->
 
@@ -131,7 +131,7 @@ Important meaning:
 - `GA4/INSIGHTS.md`
   Short functional overview of the live GA4 Insights tab, including sections, scope contract, and refresh pattern.
 - `GA4/INSIGHTS_PRODUCTION_READINESS.md`
-  Canonical live-tab Insights production-readiness source of truth. Current implementation status: **UNVERIFIED** pending exact-revision deployed recertification. Reports-owned behavior remains separately controlled by the Reports record.
+  Canonical live-tab Insights production-readiness source of truth. Current implementation status: **UNVERIFIED** pending exact-revision deployed recertification. Runtime `eab3231a` has bounded Campaign3 read-only parity evidence, while tenant isolation, natural scheduler, reusable-validator, and whole-tab certification gates remain outstanding. Reports-owned behavior remains separately controlled by the Reports record.
 - `GA4/REPORTS.md`
   Covers GA4 report creation, scheduling, downloads, report-library behavior, and current-state caveats. Current bounded status: **CLEAN-CERTIFIED / PRODUCTION_READY** at exact deployed runtime `a7271fc18058b6db78a11e88bf79b887abda5f44`. Campaign DeepDive is excluded.
 - `GA4/REPORTS_PRODUCTION_READINESS.md`

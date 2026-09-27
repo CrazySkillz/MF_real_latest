@@ -11,7 +11,7 @@ Use `GA4/INSIGHTS_PRODUCTION_READINESS.md` for the tab-level production-readines
 
 Current controlling answer:
 
-GA4 Insights is **UNVERIFIED for the current implementation** pending exact-revision deployed recertification. The current behavior was introduced through `4372efadc96523c9df2abe2dd7915f9e1a0443a7` and is unchanged in the later application runtime `ca1fc5a873ab69fb747937768c31fcd53e16fd64`. Historical Insights certificates remain valid only for their recorded revisions and behavior; they do not certify the current scheduler-only, zero-filled implementation. Reports-owned behavior remains covered separately.
+GA4 Insights is **UNVERIFIED for the current implementation** pending exact-revision deployed recertification. Current deployed runtime `eab3231aa2910cc70ddeacfd254da1ac1017c6a2` has a bounded, owner-authenticated Campaign3 read-only parity pass from `2026-09-27`: the page-consumed APIs matched the current Executive Financials, imported-history Data Summary, campaign-creation-bounded Trends behavior, tracker cards, and seven visible findings through the latest completed reporting day (`2026-09-26`). Tenant isolation, a natural scheduler cycle, and a reusable current-revision validation harness were not established by that run, so it is supporting evidence rather than a whole-tab recertification. Historical Insights certificates remain valid only for their recorded revisions and behavior; they do not certify the current scheduler-only, zero-filled implementation. Reports-owned behavior remains covered separately.
 
 <!-- /ga4-insights-current-status -->
 

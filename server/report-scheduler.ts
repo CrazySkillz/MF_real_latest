@@ -20,8 +20,9 @@ import { mapMailgunDeliveryToAlertEmailStatus, waitForMailgunDelivery } from "./
 import { getCampaignMetricTotals } from "./utils/campaign-current-values";
 import { resolveFinancialDailyComparisonPrevious } from "./utils/financial-daily-comparison";
 import { evaluateExecutiveSummaryTrajectory } from "./utils/executive-summary-daily-snapshot";
-import { resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
+import { getLatestCompleteReportingDate, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { createReportPdfArtifact } from "./utils/report-pdf-artifact";
+import { getGA4AlignedRefreshState, isGA4AlignedRefreshReady } from "./ga4-daily-scheduler";
 
 /**
  * Report Scheduler - Automated Email Reports
@@ -50,6 +51,7 @@ const schedulerMetrics = {
   lastCheckFinishedAt: null as Date | null,
   lastScheduledReportsFound: 0,
   lastDueReportsFound: 0,
+  lastRefreshDeferredReports: 0,
   lastSuccessTime: null as Date | null,
   lastErrorTime: null as Date | null,
   lastError: null as string | null,
@@ -1003,6 +1005,30 @@ const campaignDeepDiveTabLabels: Record<string, string> = {
   "executive-summary:overview": "Executive Summary",
   "executive-summary:recommendations": "Executive Summary",
 };
+
+export async function getScheduledReportAlignedRefreshGate(report: any, now = new Date()): Promise<{ ready: boolean; reason?: string }> {
+  const platformType = String(report?.platformType || "").trim().toLowerCase();
+  if (platformType !== "google_analytics" && platformType !== "campaign_deepdive") return { ready: true };
+  const campaignId = String(report?.campaignId || "").trim();
+  if (!campaignId) return { ready: true };
+  try {
+    const [campaign, connections] = await Promise.all([
+      storage.getCampaign(campaignId),
+      storage.getGA4Connections(campaignId),
+    ]);
+    const hasActiveGA4 = (connections || []).some((connection: any) => {
+      const propertyId = String(connection?.propertyId || "").trim();
+      return connection?.isActive !== false && propertyId && propertyId.toLowerCase() !== "yesop";
+    });
+    if (!campaign || !hasActiveGA4) return { ready: true };
+    const reportingDate = getLatestCompleteReportingDate((campaign as any)?.reportingTimeZone, now);
+    return isGA4AlignedRefreshReady(getGA4AlignedRefreshState(campaignId), reportingDate)
+      ? { ready: true }
+      : { ready: false, reason: `waiting for aligned campaign refresh through ${reportingDate}` };
+  } catch {
+    return { ready: false, reason: "campaign refresh readiness could not be verified" };
+  }
+}
 
 const campaignDeepDiveCustomMetricKeys = new Set([
   "users", "sessions", "cvr", "conversions", "revenue", "impressions", "clicks", "spend",
@@ -3216,6 +3242,7 @@ export async function checkScheduledReports(): Promise<void> {
   schedulerMetrics.lastCheckFinishedAt = null;
   schedulerMetrics.lastScheduledReportsFound = 0;
   schedulerMetrics.lastDueReportsFound = 0;
+  schedulerMetrics.lastRefreshDeferredReports = 0;
   try {
     console.log('[Report Scheduler] Checking for due scheduled reports...');
 
@@ -3245,6 +3272,12 @@ export async function checkScheduledReports(): Promise<void> {
       const due = isReportDueNow(report, now);
       if (!due.due || !due.scheduledKey) continue;
       schedulerMetrics.lastDueReportsFound++;
+      const refreshGate = await getScheduledReportAlignedRefreshGate(report, now);
+      if (!refreshGate.ready) {
+        schedulerMetrics.lastRefreshDeferredReports++;
+        console.log(`[Report Scheduler] Deferring report "${report.name}" until the aligned campaign refresh succeeds (${refreshGate.reason || "refresh pending"})`);
+        continue;
+      }
       let retryingFailedSend = false;
 
       // Idempotency: ensure we only send once per scheduled slot.

@@ -8,6 +8,10 @@ Before using this document to answer an audit, review, or production-readiness q
 
 Track the outstanding work required to make the Campaign DeepDive `Budget & Financial Analysis` section production ready.
 
+## Ordered Daily Publication Alignment (2026-09-27)
+
+For active real GA4 campaigns, the GA4 daily pipeline now owns the compatible `platform_sync` aggregate snapshot used by snapshot-backed financial history. It writes that snapshot only after mapped financial refresh, atomic GA4 Overview publication, KPI/Benchmark recompute, and the guarded financial daily snapshot. The generic aggregate scheduler defers those campaigns to prevent process-start-relative history from racing the completed-day cycle. Current financial cards still read/refetch the authoritative aggregate. This is current implementation behavior, not new deployed scheduler certification.
+
 The intended product behavior is:
 
 - `Connected Platforms` shows which campaign-scoped main data sources are attached.

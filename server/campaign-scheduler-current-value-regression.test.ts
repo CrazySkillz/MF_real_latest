@@ -29,9 +29,9 @@ describe("campaign scheduler current-value regression guard", () => {
     expect(autoRefresh).toContain("await runGA4DailyKPIAndBenchmarkJobs({ campaignId }).catch");
     expect(autoRefresh).toContain("anyCampaignUpdated && !anyCampaignRecomputeFailed");
     expect(autoRefresh).toContain("recomputeResult.kpiIdsSkipped.length > 0");
-    expect(dailyScheduler).toMatch(/runGA4DailyKPIAndBenchmarkJobs\(campaignId\s*\? \{ campaignId, suppressAlerts: true \}/);
-    expect(dailyScheduler).toContain("getGA4DailyRecomputeFailure(recomputeResult, Boolean(campaignId))");
+    expect(dailyScheduler).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true })");
+    expect(dailyScheduler).toContain("getGA4DailyRecomputeFailure(recomputeResult, true)");
     expect(dailyScheduler).not.toContain("recomputeResult.kpiIdsSkipped.length > 0");
-    expect(dailyScheduler).toContain("benchmarkIdsFailed: hashEvidenceIds(recomputeResult.benchmarkIdsFailed)");
+    expect(dailyScheduler).toContain("benchmarkIdsFailed: hashEvidenceIds(recomputeEvidence.benchmarkIdsFailed)");
   });
 });

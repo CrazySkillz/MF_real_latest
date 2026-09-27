@@ -15119,6 +15119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       const useExecutiveCampaignToDateFinancials = String(req.query.captureExecutiveSnapshot || "").trim() === "1"
         && String(req.query.executiveFinancialScope || "").trim() === "campaign_to_date";
+      let executiveSummarySnapshotCaptured = false;
       let financialGa4Totals = { ...ga4Totals, available: currentValueWindow ? false : ga4TotalsAvailable };
       const financialWebAnalytics = { ...webAnalytics, available: webAnalyticsProvider === "ga4" ? financialGa4Totals.available : !webAnalyticsProvider || !custom?.error };
       let campaignFinancialConversions: number | null = null;
@@ -15526,9 +15527,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           if (!executiveSnapshot.totals.revenue.available) throw new Error("Authoritative revenue is unavailable");
           await storage.upsertExecutiveSummaryDailySnapshot(executiveSnapshot);
+          executiveSummarySnapshotCaptured = true;
         } catch (snapshotError: any) {
           console.warn(`[Executive Summary] Daily snapshot unavailable for campaign ${campaignId}:`, snapshotError?.message || snapshotError);
         }
+      }
+      if (useExecutiveCampaignToDateFinancials && isInternalAutoRefreshRequest(req) && !executiveSummarySnapshotCaptured) {
+        return res.status(503).json({ success: false, message: "Executive Summary snapshot was not written" });
       }
       const cumulativeFinancials = currentValueWindow
         ? resolveCampaignCumulativeFinancials({

@@ -19,6 +19,18 @@ function readReportScheduler(): string {
 }
 
 describe("scheduled report email regression guard", () => {
+  it("defers GA4 and Campaign DeepDive scheduled reports until the aligned refresh succeeds", () => {
+    const source = readReportScheduler();
+    const gate = source.indexOf("const refreshGate = await getScheduledReportAlignedRefreshGate(report, now);");
+    const sendEvent = source.indexOf(".insert(reportSendEvents)", gate);
+
+    expect(source).toContain('platformType !== "google_analytics" && platformType !== "campaign_deepdive"');
+    expect(source).toContain("waiting for aligned campaign refresh through ${reportingDate}");
+    expect(source).toContain("schedulerMetrics.lastRefreshDeferredReports++");
+    expect(gate).toBeGreaterThan(-1);
+    expect(sendEvent).toBeGreaterThan(gate);
+  });
+
   it("keeps the scheduled report email body focused on the attached report", () => {
     const source = readReportScheduler();
 

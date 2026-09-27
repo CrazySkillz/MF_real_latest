@@ -39,6 +39,10 @@ type AutoRefreshSchedulerConfig = {
   salesforcePipelineIntervalMinutes: number;
 };
 type AutoRefreshRunTrigger = "startup" | "scheduled" | "manual";
+export type AutoRefreshRunOptions = {
+  financialSourcesOnly?: boolean;
+  deferDownstream?: boolean;
+};
 type AutoRefreshRunStatus = "idle" | "running" | "success" | "failed" | "skipped";
 export type AutoRefreshRunSummary = {
   campaignsScanned: number;
@@ -963,7 +967,10 @@ export async function runSalesforcePipelineAutoRefreshOnce(): Promise<void> {
   }
 }
 
-export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "manual"): Promise<void> {
+export async function runDailyAutoRefreshOnce(
+  trigger: AutoRefreshRunTrigger = "manual",
+  opts: AutoRefreshRunOptions = {},
+): Promise<AutoRefreshRunSummary | null> {
   // Give the daily job priority without overlapping an interval financial refresh.
   if ((global as any).__autoRefreshInProgress) {
     autoRefreshSchedulerStatus.totalSkippedRuns += 1;
@@ -971,7 +978,7 @@ export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "
     autoRefreshSchedulerStatus.lastRunStatus = "skipped";
     autoRefreshSchedulerStatus.lastSkippedAt = new Date();
     console.log("[Auto Refresh] Skipping run (daily refresh already in progress)");
-    return;
+    return null;
   }
   // Claim priority before waiting so another interval financial refresh cannot start.
   (global as any).__autoRefreshInProgress = true;
@@ -999,7 +1006,8 @@ export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "
   let skipped = 0;
   let campaignErrors = 0;
   let anyCampaignRecomputeFailed = false;
-  let linkedInRefreshFailed = true;
+  let linkedInRefreshFailed = false;
+  let completedSummary: AutoRefreshRunSummary | null = null;
   console.log("\n=== DAILY AUTO-REFRESH + AUTO-PROCESS RUNNING ===");
   console.log(`Timestamp: ${new Date().toISOString()}`);
   console.log(`Run ID: ${refreshRunId}`);
@@ -1007,11 +1015,14 @@ export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "
   try {
     // 1) Refresh LinkedIn first (ensures latest conversions are available in latest import session).
     try {
-      console.log("[Auto Refresh] Step 1/2: Refreshing LinkedIn data for all campaigns...");
-      const linkedInTimeoutMs = Math.max(parseInt(String(process.env.AUTO_REFRESH_LINKEDIN_TIMEOUT_MS || "120000"), 10) || 120000, 10000);
-      await withTimeout("LinkedIn auto-refresh", refreshAllLinkedInData(), linkedInTimeoutMs);
-      linkedInRefreshFailed = false;
-      console.log("[Auto Refresh] ✅ LinkedIn refresh complete");
+      if (!opts.financialSourcesOnly) {
+        linkedInRefreshFailed = true;
+        console.log("[Auto Refresh] Step 1/2: Refreshing LinkedIn data for all campaigns...");
+        const linkedInTimeoutMs = Math.max(parseInt(String(process.env.AUTO_REFRESH_LINKEDIN_TIMEOUT_MS || "120000"), 10) || 120000, 10000);
+        await withTimeout("LinkedIn auto-refresh", refreshAllLinkedInData(), linkedInTimeoutMs);
+        linkedInRefreshFailed = false;
+        console.log("[Auto Refresh] ✅ LinkedIn refresh complete");
+      }
     } catch (e: any) {
       console.error("[Auto Refresh] ⚠️ LinkedIn refresh failed (continuing to revenue reprocess):", e?.message || e);
     }
@@ -1029,6 +1040,7 @@ export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "
       const campaignSucceededAtStart = succeeded;
       let campaignError = false;
       let campaignRecomputeFailed = false;
+      let deferCampaignDownstream = Boolean(opts.deferDownstream);
       try {
         let anyUpdated = false;
         // HubSpot revenue sources are the source of truth for saved campaign mappings.
@@ -1246,8 +1258,13 @@ export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "
           // ignore
         }
 
-        // If any upstream sources changed for this campaign, immediately recompute GA4 KPI/Benchmark series for Insights.
-        if (anyUpdated) {
+        // Active GA4 campaigns publish their downstream state only after the ordered GA4 daily pipeline completes.
+        const activeGA4Connections = await storage.getGA4Connections(campaignId).catch(() => [{ propertyId: "unverified", isActive: true }] as any[]);
+        deferCampaignDownstream = deferCampaignDownstream || activeGA4Connections.some((connection: any) => {
+          const propertyId = String(connection?.propertyId || "").trim();
+          return connection?.isActive !== false && propertyId && propertyId.toLowerCase() !== "yesop";
+        });
+        if (anyUpdated && !deferCampaignDownstream) {
           anyCampaignUpdated = true;
           const recomputeResult = await runGA4DailyKPIAndBenchmarkJobs({ campaignId }).catch((e: any) => {
             console.warn(`[Auto Refresh] KPI/Benchmark recompute failed for campaign ${campaignId}:`, e?.message || e);
@@ -1265,17 +1282,19 @@ export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "
       } finally {
         let linkedInConnection: any = null;
         let linkedInConnectionCheckFailed = false;
-        try {
-          linkedInConnection = await storage.getLinkedInConnection(campaignId);
-        } catch {
-          linkedInConnectionCheckFailed = true;
+        if (!opts.financialSourcesOnly) {
+          try {
+            linkedInConnection = await storage.getLinkedInConnection(campaignId);
+          } catch {
+            linkedInConnectionCheckFailed = true;
+          }
         }
         const failures = getCampaignAutoRefreshFailures({
           providerJobsAttempted: attempted - campaignAttemptedAtStart,
           providerJobsSucceeded: succeeded - campaignSucceededAtStart,
           campaignError,
           recomputeFailed: campaignRecomputeFailed,
-          linkedInRequired: Boolean(linkedInConnection),
+          linkedInRequired: !opts.financialSourcesOnly && Boolean(linkedInConnection),
           linkedInLastRefreshAt: linkedInConnection?.lastRefreshAt,
           runStartedAt: startedAtDate,
         });
@@ -1288,18 +1307,20 @@ export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "
           completedAt: new Date().toISOString(),
           failures,
         });
-        try {
-          const writeResult = await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate });
-          console.log(`[Auto Refresh] Financial snapshot ${writeResult.status} for campaign ${campaignId}${writeResult.reasons.length > 0 ? ` (${writeResult.reasons.join(", ")})` : ""}`);
-        } catch (error: any) {
-          campaignErrors++;
-          console.warn(`[Auto Refresh] Financial snapshot write failed for campaign ${campaignId}:`, error?.message || error);
+        if (!deferCampaignDownstream) {
+          try {
+            const writeResult = await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate });
+            console.log(`[Auto Refresh] Financial snapshot ${writeResult.status} for campaign ${campaignId}${writeResult.reasons.length > 0 ? ` (${writeResult.reasons.join(", ")})` : ""}`);
+          } catch (error: any) {
+            campaignErrors++;
+            console.warn(`[Auto Refresh] Financial snapshot write failed for campaign ${campaignId}:`, error?.message || error);
+          }
         }
       }
     }
 
     // Run alert check once per refresh cycle (avoid N-times per campaign).
-    if (anyCampaignUpdated && !anyCampaignRecomputeFailed) {
+    if (!opts.deferDownstream && anyCampaignUpdated && !anyCampaignRecomputeFailed) {
       await checkPerformanceAlerts().catch((e) => {
         console.warn("[Auto Refresh] Alert check failed after provider reprocess:", (e as any)?.message || e);
       });
@@ -1323,6 +1344,7 @@ export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "
       recomputeFailed: anyCampaignRecomputeFailed,
       linkedInRefreshFailed,
     };
+    completedSummary = summary;
     autoRefreshSchedulerStatus.lastRunSummary = summary;
     const failure = getAutoRefreshRunFailure(summary);
     if (failure) {
@@ -1343,6 +1365,7 @@ export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "
     const elapsedMs = Date.now() - startedAt;
     console.log(`=== AUTO-REFRESH COMPLETE (${Math.round(elapsedMs / 1000)}s) ===\n`);
   }
+  return completedSummary;
 }
 
 /**
@@ -1357,6 +1380,7 @@ export async function runDailyAutoRefreshOnce(trigger: AutoRefreshRunTrigger = "
  */
 export function startDailyAutoRefreshScheduler(): void {
   const config = getAutoRefreshSchedulerConfig();
+  const ga4DailyPipelineOwnsRefresh = String(process.env.GA4_DAILY_PIPELINE_OWNS_REFRESH || "true").toLowerCase() === "true";
   autoRefreshSchedulerStatus.config = config;
   if (!config.enabled) {
     console.log("[Auto Refresh] Scheduler disabled via AUTO_REFRESH_ENABLED=false");
@@ -1406,12 +1430,17 @@ export function startDailyAutoRefreshScheduler(): void {
     }, msUntilNextRun);
   };
 
-  if (config.runOnStartup) {
+  if (config.runOnStartup && !ga4DailyPipelineOwnsRefresh) {
     console.log("[Auto Refresh] Running once on startup (AUTO_REFRESH_RUN_ON_STARTUP=true)...");
     runDailyAutoRefreshOnce("startup");
   }
 
-  scheduleNextRun();
+  if (ga4DailyPipelineOwnsRefresh) {
+    autoRefreshSchedulerStatus.nextRunAt = null;
+    console.log("[Auto Refresh] Daily financial cycle is owned by the ordered GA4 daily pipeline");
+  } else {
+    scheduleNextRun();
+  }
 }
 
 

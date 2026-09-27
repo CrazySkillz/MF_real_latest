@@ -8,6 +8,10 @@ Before using this document to answer an audit, review, or production-readiness q
 
 Track the outstanding work required to make the Campaign DeepDive `Trend Analysis` section production ready.
 
+## Ordered Daily Publication Alignment (2026-09-27)
+
+For active real GA4 campaigns, mapped financial refresh now runs at the start of the GA4 daily pipeline. Trend Analysis receives its atomic GA4 daily/Overview facts and guarded `financial_daily_snapshot_v1` from that same cycle before aggregate and Executive Summary history, alerts, or scheduled reports are released. The short-interval source pollers remain source-refresh services, but the daily completed-day publication and report-readiness boundary is owned by the ordered GA4 cycle. This is current implementation behavior, not new deployed scheduler certification.
+
 The intended product behavior is:
 
 - `Connected Platforms` shows which campaign-scoped main data sources are attached.

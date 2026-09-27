@@ -26,6 +26,7 @@ describe("GA4 scheduler and scheduled report observability", () => {
     const daily = source("server/ga4-daily-scheduler.ts");
 
     expect(index).toContain('import { getGA4DailySchedulerStatus, startGA4DailyScheduler } from "./ga4-daily-scheduler";');
+    expect(index).toContain("startGA4DailyScheduler(port)");
     expect(index).toContain("ga4DailyScheduler: getGA4DailySchedulerStatus()");
     expect(daily).toContain("export function getGA4DailySchedulerStatus()");
     expect(daily).toContain("timerScheduled: Boolean((global as any).ga4DailySchedulerTimer)");
@@ -34,6 +35,10 @@ describe("GA4 scheduler and scheduled report observability", () => {
     expect(daily).toContain("lastRunStatus: ga4DailySchedulerStatus.lastRunStatus");
     expect(daily).toContain("lastRecomputeRecordedAt: toIsoOrNull(ga4DailySchedulerStatus.lastRecomputeRecordedAt)");
     expect(daily).toContain("lastRecomputeEvidence: ga4DailySchedulerStatus.lastRecomputeEvidence");
+    expect(daily).toContain("lastExecutiveSummarySnapshotRequestedAt: toIsoOrNull(ga4DailySchedulerStatus.lastExecutiveSummarySnapshotRequestedAt)");
+    expect(daily).toContain("lastExecutiveSummarySnapshotRequestFailures: ga4DailySchedulerStatus.lastExecutiveSummarySnapshotRequestFailures");
+    expect(daily).toContain("lastAlignedRefreshFailures: ga4DailySchedulerStatus.lastAlignedRefreshFailures");
+    expect(daily).toContain("alignedRefreshCampaigns: Array.from(alignedRefreshByCampaign.entries())");
     expect(daily).toContain('createHash("sha256")');
     expectBefore(daily, "ga4DailySchedulerStatus.nextRunAt = nextRunAt;", "setTimeout(() => {");
   });
@@ -58,7 +63,7 @@ describe("GA4 scheduler and scheduled report observability", () => {
     expect(daily).not.toContain("export async function runGA4DailyRefreshPipeline");
     expect(daily).toContain("const campaigns = campaignId");
     expect(daily).toContain("? [await storage.getCampaign(campaignId).catch(() => undefined)].filter(Boolean) as any[]");
-    expect(daily).toMatch(/runGA4DailyKPIAndBenchmarkJobs\(campaignId\s*\? \{ campaignId, suppressAlerts: true \}/);
+    expect(daily).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true })");
     expect(daily).toContain("if (!campaignId && !opts.suppressAlerts) {");
   });
   it("updates report scheduler health metrics on every scheduled check", () => {
@@ -69,10 +74,12 @@ describe("GA4 scheduler and scheduled report observability", () => {
     expect(reportScheduler).toContain("lastCheckFinishedAt: null as Date | null");
     expect(reportScheduler).toContain("lastScheduledReportsFound: 0");
     expect(reportScheduler).toContain("lastDueReportsFound: 0");
+    expect(reportScheduler).toContain("lastRefreshDeferredReports: 0");
     expect(reportScheduler).toContain("schedulerMetrics.totalChecks++");
     expect(reportScheduler).toContain("schedulerMetrics.lastCheckTime = now");
     expect(reportScheduler).toContain("schedulerMetrics.lastScheduledReportsFound = scheduledReports.length");
     expect(reportScheduler).toContain("schedulerMetrics.lastDueReportsFound++");
+    expect(reportScheduler).toContain("schedulerMetrics.lastRefreshDeferredReports++");
     expect(reportScheduler).toContain("schedulerMetrics.lastCheckFinishedAt = new Date()");
     expect(reportScheduler).toContain("schedulerMetrics.schedulerStartedAt = new Date()");
     expect(reportScheduler).toContain("schedulerMetrics.cronSchedule = cronSchedule");

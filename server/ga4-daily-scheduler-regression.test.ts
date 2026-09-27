@@ -3,11 +3,13 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { afterEach, vi } from "vitest";
 import { GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION, ga4Service } from "./analytics";
-import { backfillMissingGA4OverviewSnapshots, getGA4DailyRecomputeFailure, getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getNextGA4DailyRunAt, refreshAllGA4DailyMetrics } from "./ga4-daily-scheduler";
+import { backfillMissingGA4OverviewSnapshots, getGA4DailyRecomputeFailure, getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getNextGA4DailyRunAt, isGA4AlignedRefreshReady, refreshAllGA4DailyMetrics } from "./ga4-daily-scheduler";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { storage } from "./storage";
 
 const schedulerSource = () => readFileSync(join(process.cwd(), "server", "ga4-daily-scheduler.ts"), "utf-8");
+const aggregateSnapshotSchedulerSource = () => readFileSync(join(process.cwd(), "server", "scheduler.ts"), "utf-8");
+const kpiSchedulerSource = () => readFileSync(join(process.cwd(), "server", "kpi-scheduler.ts"), "utf-8");
 
 describe("GA4 daily scheduler timing", () => {
   afterEach(() => vi.restoreAllMocks());
@@ -60,18 +62,16 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).not.toContain("export async function runGA4DailyRefreshPipeline");
     expect(source).toContain("const campaignId = String(opts.campaignId || \"\").trim();");
     expect(source).toContain("const campaigns = campaignId");
-    expect(source).toMatch(/runGA4DailyKPIAndBenchmarkJobs\(campaignId\s*\? \{ campaignId, suppressAlerts: true \}/);
+    expect(source).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true })");
     expect(source).toContain("[GA4 Daily] KPI/Benchmark recompute result");
-    expect(source).toContain("kpiIdsUpdated: recomputeResult.kpiIdsUpdated");
-    expect(source).toContain("kpiIdsSkipped: recomputeResult.kpiIdsSkipped");
-    expect(source).toContain("kpiIdsFailed: recomputeResult.kpiIdsFailed");
+    expect(source).toContain("recomputeEvidence[key].push(...recomputeResult[key])");
     expect(source).toContain("lastRecomputeRecordedAt = new Date()");
-    expect(source).toContain("kpiIdsUpdated: hashEvidenceIds(recomputeResult.kpiIdsUpdated)");
-    expect(source).toContain("kpiIdsSkipped: hashEvidenceIds(recomputeResult.kpiIdsSkipped)");
-    expect(source).toContain("kpiIdsFailed: hashEvidenceIds(recomputeResult.kpiIdsFailed)");
-    expect(source).toContain("benchmarkIdsUpdated: hashEvidenceIds(recomputeResult.benchmarkIdsUpdated)");
-    expect(source).toContain("benchmarkIdsSkipped: hashEvidenceIds(recomputeResult.benchmarkIdsSkipped)");
-    expect(source).toContain("benchmarkIdsFailed: hashEvidenceIds(recomputeResult.benchmarkIdsFailed)");
+    expect(source).toContain("kpiIdsUpdated: hashEvidenceIds(recomputeEvidence.kpiIdsUpdated)");
+    expect(source).toContain("kpiIdsSkipped: hashEvidenceIds(recomputeEvidence.kpiIdsSkipped)");
+    expect(source).toContain("kpiIdsFailed: hashEvidenceIds(recomputeEvidence.kpiIdsFailed)");
+    expect(source).toContain("benchmarkIdsUpdated: hashEvidenceIds(recomputeEvidence.benchmarkIdsUpdated)");
+    expect(source).toContain("benchmarkIdsSkipped: hashEvidenceIds(recomputeEvidence.benchmarkIdsSkipped)");
+    expect(source).toContain("benchmarkIdsFailed: hashEvidenceIds(recomputeEvidence.benchmarkIdsFailed)");
     expect(source).toContain("if (!campaignId && !opts.suppressAlerts) {");
     expect(source).toContain("Next scheduled run at");
     expect(source).toContain("const dataThroughDate = getLatestCompleteReportingDate(config.reportingTimeZone, nextRunAt);");
@@ -79,6 +79,31 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("__ga4DailyRefreshInProgress");
     expect(source).toContain("Skipping ${trigger} pipeline (already in progress)");
     expect(source).not.toContain("setInterval(() =>");
+    expect(source).toContain('await runDailyAutoRefreshOnce("scheduled", {');
+    expect(source.indexOf('await runDailyAutoRefreshOnce("scheduled", {')).toBeLessThan(
+      source.indexOf("const refreshResult = await refreshAllGA4DailyMetrics({ campaignId });"),
+    );
+  });
+
+  it("releases downstream report readiness only for the completed aligned reporting date", () => {
+    const state = { reportingDate: "2026-09-26", completedAt: "2026-09-27T03:05:00.000Z" };
+    expect(isGA4AlignedRefreshReady(state, "2026-09-26")).toBe(true);
+    expect(isGA4AlignedRefreshReady(state, "2026-09-27")).toBe(false);
+    expect(isGA4AlignedRefreshReady(null, "2026-09-26")).toBe(false);
+  });
+
+  it("publishes GA4 campaign snapshots only inside the ordered daily pipeline", () => {
+    const source = schedulerSource();
+    const aggregateSource = aggregateSnapshotSchedulerSource();
+
+    expect(source.indexOf("await writeFinancialDailySnapshotIfReady")).toBeLessThan(source.indexOf("await recordCampaignMetrics(processedCampaignId"));
+    expect(source.indexOf("await recordCampaignMetrics(processedCampaignId")).toBeLessThan(source.indexOf("await captureExecutiveSummarySnapshot(executiveSummarySnapshotBaseUrl"));
+    expect(source.indexOf("await captureExecutiveSummarySnapshot(executiveSummarySnapshotBaseUrl")).toBeLessThan(source.indexOf("await checkGA4PerformanceAlertsForCampaign"));
+    expect(source.indexOf("await checkGA4PerformanceAlertsForCampaign")).toBeLessThan(source.indexOf("alignedRefreshByCampaign.set"));
+    expect(aggregateSource).toContain("if (!opts.allowScheduledGA4)");
+    expect(aggregateSource).toContain("snapshot is owned by the ordered GA4 daily pipeline");
+    expect(kpiSchedulerSource()).toContain('GA4_DAILY_PIPELINE_OWNS_RECOMPUTE || "true"');
+    expect(kpiSchedulerSource()).toContain("Skipping duplicate KPI/Benchmark recompute and alert sweeps because the GA4 daily pipeline owns them");
   });
 
   it("bootstraps only campaign-scoped Overview snapshots that are missing or out of sync", async () => {
@@ -164,6 +189,7 @@ describe("GA4 daily scheduler timing", () => {
 
   it("isolates partial refresh failures from successfully refreshed campaign recompute", async () => {
     const source = schedulerSource();
+    const finalFailureCheck = "if (refreshFailure || alignedRefreshFailures.length > 0)";
     vi.spyOn(storage, "getCampaigns").mockResolvedValue([
       { id: "campaign-ok" },
       { id: "campaign-failed" },
@@ -175,13 +201,25 @@ describe("GA4 daily scheduler timing", () => {
     });
 
     expect(result.campaignIdsSkipped).toEqual(["campaign-ok"]);
-    expect(source).toContain("campaignIds: refreshResult.campaignIdsProcessed");
+    expect(source).toContain("for (const processedCampaignId of refreshResult.campaignIdsProcessed)");
+    expect(source).toContain("alignedRefreshFailures.push({ campaignId: processedCampaignId, stage: \"kpi_benchmark_recompute_failed\" })");
     expect(source.indexOf("const recomputeResult = await runGA4DailyKPIAndBenchmarkJobs")).toBeLessThan(
-      source.indexOf("if (refreshFailure) throw new Error(refreshFailure);"),
+      source.indexOf(finalFailureCheck),
     );
     expect(source.indexOf('recordFinancialDailySnapshotRefreshEvidence("ga4_daily"')).toBeLessThan(
-      source.indexOf("if (refreshFailure) throw new Error(refreshFailure);"),
+      source.indexOf(finalFailureCheck),
     );
+    expect(source.indexOf("await captureExecutiveSummarySnapshot(executiveSummarySnapshotBaseUrl, processedCampaignId)")).toBeGreaterThan(
+      source.indexOf("await writeFinancialDailySnapshotIfReady({ campaignId: processedCampaignId, reportingDate })"),
+    );
+    expect(source.indexOf("await captureExecutiveSummarySnapshot(executiveSummarySnapshotBaseUrl, processedCampaignId)")).toBeLessThan(
+      source.indexOf(finalFailureCheck),
+    );
+    expect(source.indexOf("alignedRefreshByCampaign.set(processedCampaignId")).toBeLessThan(
+      source.indexOf(finalFailureCheck),
+    );
+    expect(source).toContain("if (!refreshFailure && alignedRefreshFailures.length === 0) {");
+    expect(source).toContain("Skipping global alert sweeps because ${refreshFailure || `${alignedRefreshFailures.length} campaign stage(s) failed`}");
   });
 
   it("fails a targeted run when its provider refresh failed or was skipped", () => {

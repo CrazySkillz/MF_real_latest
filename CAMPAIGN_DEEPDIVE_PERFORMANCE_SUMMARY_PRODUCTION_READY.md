@@ -8,6 +8,10 @@ Before using this document to answer an audit, review, or production-readiness q
 
 Record the implemented Campaign DeepDive `Performance Summary` contract, its validation boundary, and the historical work that led to the current implementation.
 
+## Ordered Daily Publication Alignment (2026-09-27)
+
+For active real GA4 campaigns, the generic interval/startup aggregate snapshot path defers to the GA4 daily pipeline. After mapped financial sources, GA4 Overview facts, and KPI/Benchmark recompute complete, that pipeline writes the compatible `platform_sync` aggregate snapshot used by Recent Movement and other snapshot-backed Performance Summary history. Current cards continue to read/refetch the authoritative aggregate. This implementation change is locally validated below but is not new deployed scheduler evidence or a production recertification.
+
 ## Current Implementation And Certification Status (2026-09-27)
 
 **Current implementation: `61c5add60205d42c5a11dcbc45bb50286e5b626c` — IMPLEMENTED AND LOCALLY VALIDATED; DEPLOYED RECERTIFICATION PENDING.**

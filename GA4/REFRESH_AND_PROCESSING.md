@@ -58,22 +58,23 @@ Current behavior:
 
 ## Cross-Tab Refresh Dependency Order
 
-The required GA4 platform pattern is:
+For active real GA4 campaigns, one ordered daily pipeline owns the publication cycle:
 
-1. refresh the GA4 `Overview` inputs first
-2. recompute dependent KPI values and KPI performance state
-3. refresh the KPI `Executive snapshot` cards from the recomputed KPI state
-4. recompute dependent Benchmark values and Benchmark performance state
-5. refresh the Benchmark `Executive snapshot` cards from the recomputed Benchmark state
-6. refresh `Ad Comparison` from refreshed breakdown and revenue inputs
-7. refresh `Insights` from refreshed Overview, KPI, and Benchmark context
-8. ensure `Reports` render from those refreshed inputs when generated or sent
+1. refresh mapped financial sources
+2. atomically refresh GA4 Overview facts and the Campaign Breakdown, Landing Pages, and Conversion Events snapshot
+3. recompute KPI and Benchmark values and classifications
+4. write the guarded financial daily snapshot used by Trend Analysis
+5. write the compatible campaign aggregate snapshot used by Performance Summary and Budget & Financial Analysis history
+6. capture the Executive Summary daily trajectory snapshot
+7. run campaign KPI and Benchmark alert checks; recommendations then read the same refreshed inputs
+8. release Ad Comparison, Insights, all four Campaign DeepDive sections, and scheduled-report readiness from that completed state
+9. permit due scheduled GA4 or Campaign DeepDive reports to send only after the campaign has completed the cycle for the expected reporting date
 
 Important meaning:
 
 - `Overview` is the upstream data layer
 - `KPIs`, `Benchmarks`, `Ad Comparison`, and `Insights` are downstream analytics layers
-- `Reports` is the output layer
+- `Campaign DeepDive`, alerts, recommendations, and `Reports` are downstream consumers; scheduled reports are the final output layer
 - because GA4 campaign scope feeds the entire chain, post-setup campaign-scope edits are not currently exposed in the GA4 analytics page
 - GA4 Overview is **UNVERIFIED** overall. The earlier production-ready decision remains historical evidence for its exact recorded runtime and campaign/property/source boundary only. The current scheduler-owned snapshot and attribution/reconciliation implementation is governed by `GA4/OVERVIEW_PRODUCTION_READINESS.md`; runtime `3e738697` has a bounded Campaign3 Conversion Events pass, not whole-Overview recertification.
 
@@ -111,13 +112,16 @@ Reason:
 
 This scheduler now runs the GA4 daily refresh pipeline:
 
-1. finds campaigns with a GA4 connection
-2. resolves the campaign's GA4 campaign filter
-3. fetches GA4 time-series data
-4. verifies provider date presence/completeness, materializes an explicit row for every completed date in the authorized window, and uses zero values only for verified no-activity dates
-5. atomically replaces the exact authorized campaign/property/date window in `ga4_daily_metrics`
-6. recomputes GA4 KPI and Benchmark values from the refreshed daily facts
-7. runs KPI and Benchmark alert checks after recompute
+1. runs the existing mapped financial-source refresh in financial-only/deferred-downstream mode
+2. finds campaigns with a GA4 connection and resolves each saved GA4 campaign filter
+3. fetches and validates GA4 time-series data, including explicit verified zero-activity dates
+4. atomically replaces the exact authorized `ga4_daily_metrics` window and synchronized Overview detail snapshot
+5. recomputes GA4 KPI and Benchmark values from the refreshed facts and financial inputs
+6. writes the guarded financial daily snapshot
+7. writes the compatible `platform_sync` campaign aggregate snapshot
+8. requests and confirms the guarded Executive Summary daily snapshot write
+9. runs campaign-scoped KPI and Benchmark alert checks
+10. records the campaign/reporting-date completion marker consumed by scheduled-report delivery
 
 Important meaning:
 
@@ -126,16 +130,24 @@ Important meaning:
 - GA4 native daily revenue remains native GA4 fact data in `ga4_daily_metrics`; this pipeline must not create synthetic imported `revenue_records` for `ga4_daily_metrics`
 - it is campaign-scoped and refreshes every active property independently
 - campaigns whose provider refresh succeeds continue into KPI/Benchmark recompute even when unrelated campaigns fail; failed and skipped campaign IDs are excluded from recompute
+- a failed or expired credential on an unrelated campaign does not prevent a successfully refreshed campaign from completing its campaign-scoped snapshots, alerts, or scheduled-report readiness marker; the process-wide run still records the unrelated failure and skips the unsafe global alert sweep
+- the campaign aggregate snapshot and Executive Summary capture run only after the same campaign's GA4 facts, KPI/Benchmark recompute, and financial daily snapshot succeed
+- Executive Summary capture failures are returned to the internal scheduler as failures, retained as hashed scheduler-health evidence, and prevent that campaign from being released as aligned for scheduled reports
+- the independent Executive Summary daily scheduler skips campaigns with an active GA4 property and remains active for campaigns that do not use the GA4 daily pipeline
+- the generic aggregate snapshot scheduler and source-triggered snapshot calls also defer active real GA4 campaigns to this ordered pipeline
+- the generic KPI scheduler defaults to leaving GA4 recompute ownership with this pipeline
 - any provider failure keeps the process-wide run failed and suppresses the unsafe global alert sweep; successful in-scope recompute evidence does not become a global scheduler-success claim
 - a property-level provider failure, incomplete activity evidence, invalid row, duplicate row, or out-of-window row prevents replacement for that property and preserves its last-good stored window
 - a saved campaign-filter or reporting-timezone change invalidates only that campaign's prior daily facts before scoped refresh, so old-scope rows cannot remain visible
 - this is only one part of `Overview` freshness; `Overview` also depends on refreshed external revenue and spend source state where applicable
-- it does not replace the external value auto-refresh scheduler or the report delivery scheduler
+- it owns the daily financial refresh invocation for active real GA4 campaigns by default, while the existing short-interval financial-source polling remains available
+- the report delivery scheduler remains separate, but due GA4 and Campaign DeepDive reports wait for this pipeline's exact reporting-date completion marker before creating send bookkeeping or sending
 
 Runtime cadence:
 
 - the scheduler starts from the server startup background-scheduler block, about 5 seconds after the server begins listening
 - it schedules one daily run at `GA4_DAILY_REFRESH_HOUR:GA4_DAILY_REFRESH_MINUTE` in `GA4_DAILY_REFRESH_TIME_ZONE`, defaulting to `03:00 UTC`
+- `GA4_DAILY_PIPELINE_OWNS_REFRESH` defaults to `true`, preventing the separate full daily financial timer from racing the GA4 pipeline at the same configured time
 - `GA4_DAILY_REFRESH_TIME_ZONE` is a deployment-level scheduler setting, not a per-campaign UI setting
 - general startup refresh is disabled in code; `GA4_DAILY_REFRESH_RUN_ON_STARTUP` does not trigger an unconditional GA4 daily-history write. The bounded exception is snapshot initialization: startup discovery invokes the same campaign-scoped daily pipeline only for configured campaigns whose synchronized Overview snapshot is missing or mismatched, and skips campaigns that already have a valid snapshot
 - scheduler logs include the next UTC run time, local reporting-time label, timezone, and expected `dataThroughDate`
@@ -473,6 +485,7 @@ Instead:
 
 - ad hoc GA4 reports use live refreshed page state at generation time
 - scheduled/server-generated reports use saved config plus shared report-generation infrastructure
+- due scheduled GA4 and Campaign DeepDive reports for active real GA4 campaigns wait for the ordered daily pipeline's exact campaign/reporting-date completion marker before send-event insertion, PDF generation, or email delivery
 - GA4 scheduled/server report generation resolves the saved initial-import boundary through the latest completed campaign reporting day and fails closed when that cumulative boundary cannot be proven
 - scheduled/server-generated GA4 reports and direct GA4 snapshot PDF downloads fail closed unless the campaign KPI/Benchmark recompute runs for the target campaign before PDF generation; direct GA4 snapshot PDF deployed validation passed after commit `4d3a3838`
 - platform report test-send uses the same email-provider compatibility rule as scheduled delivery, including Mailgun HTTP API when `MAILGUN_API_KEY` and `MAILGUN_DOMAIN` are configured
@@ -493,33 +506,32 @@ Important meaning:
 
 ## Current-State Notes
 
-The current codebase is broadly aligned with the required dependency order, but it is split rather than fully consolidated.
+The current implementation has one ordered daily publication cycle for active real GA4 campaigns. Short-interval source polling and shared report delivery remain separate services.
 
 What is true today:
 
-- Overview freshness is updated through the GA4 daily refresh pipeline plus external-value auto-refresh processing
-- the GA4 daily refresh pipeline refreshes GA4 daily facts, then recomputes GA4 KPI/Benchmark state, then runs KPI/Benchmark alert checks
-- the generic KPI scheduler can skip its duplicate GA4 KPI/Benchmark recompute when `GA4_DAILY_PIPELINE_OWNS_RECOMPUTE=true`
+- the GA4 daily pipeline invokes mapped financial refresh first, atomically refreshes GA4 facts and Overview detail, recomputes KPI/Benchmark state, writes financial and campaign aggregate snapshots, captures Executive Summary history, runs campaign alerts, and then records report readiness
+- the generic KPI scheduler defaults to skipping its duplicate KPI/Benchmark recompute and alert sweeps; the ordered GA4 pipeline performs both after the synchronized inputs and snapshots are ready. An explicit `GA4_DAILY_PIPELINE_OWNS_RECOMPUTE=false` override restores the legacy behavior
 - manual/on-demand GA4 daily-history writes are disabled; the configured daily scheduler owns daily refresh and its dependent KPI/Benchmark recompute
-- external source auto-refresh calls the GA4 KPI/Benchmark recompute helper directly after a campaign's upstream source values change
+- active real GA4 campaigns defer external-source downstream recompute/snapshot publication to the ordered GA4 cycle; non-GA4 campaigns retain the prior external-source behavior
 - the GA4 KPI/Benchmark recompute helper also reconciles campaign-level KPI and Benchmark persisted `currentValue` fields from connected-platform totals after GA4, revenue, or spend refresh changes
 - when a GA4 KPI/Benchmark recompute runs for a campaign, breached GA4 KPIs and Benchmarks should restore exactly one active in-app alert row if the row is missing
 - active bell and Notifications visibility remains breach-only: alert-enabled GA4 KPI/Benchmark rows that are not currently breached should not appear in `/api/notifications`, even if a stale `performance-alert` row exists; for GA4 financial KPI alerts, the breach check must use the same selected GA4 native revenue plus imported revenue/spend model as the live KPI cards
 - Ad Comparison refreshes indirectly from refreshed inputs
 - Insights refreshes indirectly from refreshed inputs
 - Campaign DeepDive Trend Analysis rereads its inputs every 30 seconds while visible and on window focus. Its current GA4-first outcome request is persisted-only: current Revenue and Spend prefer a compatible `financial_daily_snapshot_v1` row and otherwise use the authoritative persisted `performance_summary_aggregate_v3` totals. Its exact-date financial comparison prefers the matching snapshot and can invoke the existing scoped read-only GA4/source derivation when that snapshot is absent; this derivation writes no history and never substitutes the current value as the baseline. Missing current inputs show unavailable/scheduler-waiting, while a missing exact baseline leaves current values visible with `Comparison unavailable`. Campaign Performance Trend and GA4 efficiency charts use only complete scheduler-stored `/ga4-daily` rows; the mounted page makes no separate provider-coverage request. The scheduler stores the verified GA4 report currency in the atomic Overview snapshot, fails closed on a missing/mismatched code, and bootstraps legacy snapshots that lack that proof.
-- Campaign DeepDive Budget & Financial Analysis refreshes current aggregate financial values while visible and on window focus, and historical trend indicators use compatible `metrics.performanceSummary` snapshots created by the snapshot scheduler
-- report outputs are generated from already-refreshed tab inputs, with scheduled GA4 reports also performing a best-effort KPI/Benchmark recompute before PDF generation
+- Campaign DeepDive Performance Summary and Budget & Financial Analysis history use the compatible aggregate snapshot written inside the ordered cycle; their current cards still refetch authoritative aggregate values while visible and on window focus
+- Campaign DeepDive Executive Summary history uses the confirmed guarded snapshot from that same cycle
+- report outputs are generated from already-refreshed inputs; scheduled GA4/Campaign DeepDive delivery is deferred until the exact expected reporting date is marked aligned and can still perform its existing preflight checks
 - scheduled/server-generated GA4 reports now have dedicated server-side rendering for `Overview`, `Ad Comparison`, `Insights`, and `Custom`, using saved report config plus existing refreshed GA4 inputs
-- scheduled report processing now fails closed for missing campaign ownership and deduplicates report rows before due checks
+- scheduled report processing fails closed for missing campaign ownership, deduplicates report rows before due checks, and retries a due report after the aligned refresh completes without prematurely creating its idempotency row
 - scheduled/test-send report emails now use a simple `MimoSaaS report attached` transactional payload with the generated PDF attachment, and test-send checks Mailgun delivery events when available
 - GA4 report final validation passed for the report scheduler/output scope: targeted report regression tests, TypeScript check, production build, GA4 report test-send/PDF delivery, direct snapshot PDF output, and scheduled-report log-cycle behavior
 - July 3, 2026: deployed GA4 Overview Report email delivery was user-confirmed for the recorded Overview report packet; future scheduled/test deliveries and report variants still require their own runtime evidence if separately questioned
 
-What is not yet fully consolidated:
+What remains separate by design:
 
-- external revenue/spend source refresh is still handled by the external value auto-refresh scheduler
-- some immediate post-refresh behavior still relies on a generic KPI refresh helper
+- short-interval Google Sheets/CRM source polling remains in the external value scheduler; the ordered daily pipeline invokes its financial-only refresh mode for the synchronized publication cycle
 - scheduled email delivery still depends on shared scheduler/runtime email infrastructure rather than a GA4-only delivery path
 - opening the bell, opening Notifications, or simply loading the GA4 page is not itself a backfill trigger for missing GA4 in-app alert rows; reconciliation happens when the existing GA4 recompute / scheduler paths run
 

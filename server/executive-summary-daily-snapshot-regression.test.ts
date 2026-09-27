@@ -20,6 +20,8 @@ describe("Executive Summary daily snapshot wiring", () => {
     const outcomeEnd = routes.indexOf('// New route: Get all GA4 connections', outcomeStart);
     const outcome = routes.slice(outcomeStart, outcomeEnd);
     expect(outcome).toContain('req.query.captureExecutiveSnapshot');
+    expect(outcome).toContain("Executive Summary snapshot was not written");
+    expect(outcome).toContain("isInternalAutoRefreshRequest(req) && !executiveSummarySnapshotCaptured");
     expect(outcome).toContain("buildExecutiveSummaryDailySnapshotInput");
     expect(outcome).toContain("hasRefreshedGA4RowsForExecutiveSummarySnapshot");
     expect(outcome).toContain("if (!executiveGA4SnapshotRefreshReady)");

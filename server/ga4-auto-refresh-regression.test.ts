@@ -106,6 +106,10 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(content).toContain("Next scheduled run at");
     expect(content).toContain("expectedCompleteDay=${getLatestCompleteReportingDate(config.reportingTimeZone, nextRun)}");
     expect(content).toContain("__autoRefreshSchedulerTimer");
+    expect(content).toContain('GA4_DAILY_PIPELINE_OWNS_REFRESH || "true"');
+    expect(content).toContain("Daily financial cycle is owned by the ordered GA4 daily pipeline");
+    expect(content).toContain("if (config.runOnStartup && !ga4DailyPipelineOwnsRefresh)");
+    expect(content).toContain("if (ga4DailyPipelineOwnsRefresh)");
     expect(content).not.toContain("server local time");
     expect(content).not.toContain("setHours(hour, minute, 0, 0)");
     expect(content).not.toContain("setInterval(() =>");
@@ -453,15 +457,17 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(content).toContain("Google Sheets spend reprocess failed");
   });
 
-  it("recomputes GA4 KPI/Benchmark state after upstream source changes and checks alerts once per cycle", () => {
+  it("defers active GA4 downstream recompute and alerts to the ordered GA4 daily pipeline", () => {
     const content = schedulerFile();
 
-    expect(content).toContain("if (anyUpdated) {");
+    expect(content).toContain("const activeGA4Connections = await storage.getGA4Connections(campaignId)");
+    expect(content).toContain("if (anyUpdated && !deferCampaignDownstream) {");
     expect(content).toContain("anyCampaignUpdated = true;");
     expect(content).toContain("await runGA4DailyKPIAndBenchmarkJobs({ campaignId }).catch");
-    expect(content).toContain("if (anyCampaignUpdated && !anyCampaignRecomputeFailed) {");
+    expect(content).toContain("if (!opts.deferDownstream && anyCampaignUpdated && !anyCampaignRecomputeFailed) {");
     expect(content).toContain("await checkPerformanceAlerts().catch");
     expect(content).toContain("await checkBenchmarkPerformanceAlerts().catch");
+    expect(content).toContain("if (!deferCampaignDownstream) {");
   });
 
   it("uses bounded internal timeouts and prevents overlapping runs", () => {

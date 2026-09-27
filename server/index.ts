@@ -1104,7 +1104,7 @@ process.on('uncaughtException', (error: Error) => {
 
         // Start GA4 daily refresh scheduler (persisted daily facts)
         try {
-          startGA4DailyScheduler();
+          startGA4DailyScheduler(port);
         } catch (error) {
           console.error('Failed to start GA4 daily scheduler:', error);
         }

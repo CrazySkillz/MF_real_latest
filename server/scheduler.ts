@@ -744,8 +744,27 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
 /**
  * Record current metrics for a single campaign after a platform sync (LinkedIn refresh, CI upload, etc.)
  */
-export async function recordCampaignMetrics(campaignId: string): Promise<void> {
+async function hasActiveScheduledGA4Campaign(campaignId: string): Promise<boolean | null> {
   try {
+    const connections = await storage.getGA4Connections(campaignId);
+    return (connections || []).some((connection: any) => {
+      const propertyId = String(connection?.propertyId || "").trim();
+      return connection?.isActive !== false && propertyId && propertyId.toLowerCase() !== "yesop";
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function recordCampaignMetrics(campaignId: string, opts: { allowScheduledGA4?: boolean } = {}): Promise<boolean> {
+  try {
+    if (!opts.allowScheduledGA4) {
+      const activeGA4 = await hasActiveScheduledGA4Campaign(campaignId);
+      if (activeGA4 !== false) {
+        console.log(`[Metrics] Deferred snapshot for campaign ${campaignId} to the ordered GA4 daily pipeline`);
+        return false;
+      }
+    }
     const metrics = await aggregateCampaignMetrics(campaignId);
     if (hasSnapshotMetricValue(metrics)) {
       await storage.createMetricSnapshot({
@@ -760,10 +779,12 @@ export async function recordCampaignMetrics(campaignId: string): Promise<void> {
         snapshotType: 'platform_sync'
       });
       console.log(`[Metrics] Recorded data point for campaign ${campaignId} after platform sync`);
+      return true;
     }
   } catch (error: any) {
     console.error(`[Metrics] Failed to record data point for campaign ${campaignId}:`, error?.message || error);
   }
+  return false;
 }
 
 async function createSnapshotsForAllCampaigns() {
@@ -776,6 +797,11 @@ async function createSnapshotsForAllCampaigns() {
     
     for (const campaign of campaigns) {
       try {
+        const activeGA4 = await hasActiveScheduledGA4Campaign(campaign.id);
+        if (activeGA4 !== false) {
+          console.log(`Skipped campaign "${campaign.name}" (${campaign.id}) - snapshot is owned by the ordered GA4 daily pipeline`);
+          continue;
+        }
         const metrics = await aggregateCampaignMetrics(campaign.id);
         
         // Only create snapshot if there's actual aggregate data

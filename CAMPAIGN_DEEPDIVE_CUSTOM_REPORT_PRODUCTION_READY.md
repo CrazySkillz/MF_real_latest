@@ -29,6 +29,8 @@ Campaign DeepDive preserves campaign context with `/reports?campaignId=<campaign
 
 The prior deployed evidence remains historical proof for the lifecycle and artifact paths tested at commit `41ec6015b4aae0090e834294a5355c06fbccaa34`. Later defects and superseded evidence are retained below as history. Current code has targeted local direct/snapshot/scheduled parity coverage for the Budget report correction, but a deployed current-revision Budget artifact and delivery comparison is still required before Campaign DeepDive Reports can return to a certified status.
 
+Current scheduling alignment (2026-09-27): a due Campaign DeepDive report for an active real GA4 campaign now waits for the ordered daily pipeline's exact campaign/reporting-date completion marker before `report_send_events` insertion, PDF generation, or email delivery. The pipeline releases that marker only after mapped financial refresh, atomic GA4 Overview publication, KPI/Benchmark recompute, financial and compatible aggregate snapshots, confirmed Executive Summary snapshot capture, and campaign alert checks. A missing or unverifiable marker defers the report so the every-minute scheduler can retry after the cycle completes. This is current implementation behavior and requires deployed revalidation.
+
 ## Historical Implementation And Certification Evidence - 2026-08-28
 
 ### Implemented path

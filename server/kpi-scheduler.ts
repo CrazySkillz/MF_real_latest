@@ -445,9 +445,10 @@ export async function runDailyKPIJobs(): Promise<void> {
   console.log('[KPI Scheduler] Running simplified KPI jobs (Option C: Performance alerts only)...');
 
   try {
-    const ga4DailyPipelineOwnsRecompute = String(process.env.GA4_DAILY_PIPELINE_OWNS_RECOMPUTE || "false").toLowerCase() === "true";
+    const ga4DailyPipelineOwnsRecompute = String(process.env.GA4_DAILY_PIPELINE_OWNS_RECOMPUTE || "true").toLowerCase() === "true";
     if (ga4DailyPipelineOwnsRecompute) {
-      console.log("[KPI Scheduler] Skipping GA4 KPI/Benchmark recompute because GA4 daily pipeline owns it");
+      console.log("[KPI Scheduler] Skipping duplicate KPI/Benchmark recompute and alert sweeps because the GA4 daily pipeline owns them");
+      return;
     } else {
       // Ensure GA4 KPIs/Benchmarks have daily progress/history so Insights can show trends/streaks.
       // Best-effort: never fail the whole scheduler if GA4 refresh has issues.

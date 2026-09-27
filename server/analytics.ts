@@ -416,12 +416,13 @@ export class GoogleAnalytics4Service {
     limit: number = 50,
     campaignFilter?: CampaignFilter,
     endDate = 'yesterday',
-    validationReadOnly = false
+    validationReadOnly = false,
+    expectedDailyConversions?: Record<string, number>,
   ): Promise<{
     propertyId: string;
     revenueMetric: 'totalRevenue' | 'purchaseRevenue';
-    rows: Array<{ eventName: string; conversions: number; eventCount: number | null; users: number; revenue: number }>;
-    totals: { conversions: number; eventCount: number | null; users: number; revenue: number };
+    rows: Array<{ eventName: string; conversions: number; eventCount: number | null; users: number | null; revenue: number }>;
+    totals: { conversions: number; eventCount: number | null; users: number | null; revenue: number };
   }> {
     const requestedPropertyId = this.normalizeGA4PropertyId(propertyId || '');
     if (!requestedPropertyId) throw new Error('GA4_PROPERTY_SCOPE_REQUIRED');
@@ -574,6 +575,155 @@ export class GoogleAnalytics4Service {
         throw e;
       }
     };
+    const fetchDailyRows = async (accessToken: string, scopeFilter: any) => {
+      const fetchMetric = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
+        const runPage = async (offset: number) => {
+          const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              dateRanges: [{ startDate: dateRange, endDate }],
+              dimensions: [{ name: 'date' }, { name: 'eventName' }],
+              ...(scopeFilter || {}),
+              metrics: [{ name: 'conversions' }, { name: revenueMetric }],
+              orderBys: [
+                { dimension: { dimensionName: 'date' } },
+                { metric: { metricName: 'conversions' }, desc: true },
+                { dimension: { dimensionName: 'eventName' } },
+              ],
+              limit: 10000,
+              offset,
+            }),
+          });
+          if (!response.ok) throw new Error(await response.text());
+          return response.json();
+        };
+        const firstPage = await runPage(0);
+        const rows = Array.isArray(firstPage?.rows) ? [...firstPage.rows] : [];
+        const canonicalEmptyResponse = rows.length === 0
+          && JSON.stringify((firstPage?.dimensionHeaders || []).map((header: any) => String(header?.name || '')))
+            === JSON.stringify(['date', 'eventName'])
+          && JSON.stringify((firstPage?.metricHeaders || []).map((header: any) => String(header?.name || '')))
+            === JSON.stringify(['conversions', revenueMetric]);
+        const expectedRows = firstPage?.rowCount != null
+          ? Number(firstPage.rowCount)
+          : canonicalEmptyResponse ? 0 : Number.NaN;
+        if (!Number.isInteger(expectedRows) || expectedRows < 0 || expectedRows > 100000) {
+          throw incompletePaginationError('daily provider rowCount is unavailable or unsafe');
+        }
+        while (rows.length < expectedRows) {
+          const page = await runPage(rows.length);
+          if (Number(page?.rowCount) !== expectedRows) throw incompletePaginationError('daily rowCount changed during pagination');
+          const pageRows = Array.isArray(page?.rows) ? page.rows : [];
+          if (pageRows.length === 0) throw incompletePaginationError(`daily provider returned an empty page at offset ${rows.length}`);
+          rows.push(...pageRows);
+          if (rows.length > expectedRows) throw incompletePaginationError('daily provider returned more rows than rowCount');
+        }
+        const strictMetric = (raw: unknown, metric: string, integer = false, allowNegative = false) => {
+          const text = String(raw ?? '').trim();
+          const value = Number(text);
+          if (!text || !Number.isFinite(value) || (!allowNegative && value < 0) || (integer && !Number.isInteger(value))) {
+            throw new Error(`GA4_CONVERSION_EVENT_PROVIDER_VALUE_UNSAFE: ${metric}`);
+          }
+          return value;
+        };
+        const parsed = rows.map((row: any) => {
+          const rawDate = String(row?.dimensionValues?.[0]?.value || '').trim();
+          const date = /^\d{8}$/.test(rawDate)
+            ? `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6, 8)}`
+            : rawDate;
+          const eventName = String(row?.dimensionValues?.[1]?.value || '').trim();
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !eventName) {
+            throw new Error('GA4_CONVERSION_EVENT_PROVIDER_VALUE_UNSAFE: daily dimensions');
+          }
+          return {
+            date,
+            eventName,
+            conversions: strictMetric(row?.metricValues?.[0]?.value, 'conversions'),
+            revenue: strictMetric(row?.metricValues?.[1]?.value, revenueMetric, false, true),
+          };
+        });
+        if (new Set(parsed.map((row) => `${row.date}\u0000${row.eventName}`)).size !== parsed.length) {
+          throw new Error('GA4_CONVERSION_EVENT_DUPLICATE_ROWS');
+        }
+        return { revenueMetric, rows: parsed };
+      };
+      try {
+        return await fetchMetric('totalRevenue');
+      } catch (error: any) {
+        const message = String(error?.message || error || '');
+        if (isAuthErrorText(message)) throw error;
+        if (message.toLowerCase().includes('totalrevenue')) return fetchMetric('purchaseRevenue');
+        throw error;
+      }
+    };
+    const schedulerAlignedRows = async (accessToken: string) => {
+      const expectedEntries = Object.entries(expectedDailyConversions || {}).map(([date, conversions]) => ({
+        date,
+        conversions: Number(conversions),
+      }));
+      if (expectedEntries.some(({ date, conversions }) =>
+        !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(conversions) || conversions < 0
+      )) throw new Error('GA4_CONVERSION_EVENT_EXPECTED_DAILY_VALUES_UNSAFE');
+      const emptyDaily = { revenueMetric: 'totalRevenue' as const, rows: [] as any[] };
+      const sessionDaily = await fetchDailyRows(accessToken, campaignDimensionFilter).catch((error: any) => {
+        if (isInvalidArgumentText(error?.message || error)) return emptyDaily;
+        throw error;
+      });
+      const campaignDaily = await fetchDailyRows(
+        accessToken,
+        this.buildCampaignDimensionFilter(campaignFilter, 'campaignName'),
+      );
+      const byDate = (rows: any[]) => {
+        const grouped = new Map<string, any[]>();
+        for (const row of rows) grouped.set(row.date, [...(grouped.get(row.date) || []), row]);
+        return grouped;
+      };
+      const sessionByDate = byDate(sessionDaily.rows);
+      const campaignByDate = byDate(campaignDaily.rows);
+      const selectedRows: any[] = [];
+      const selectedRevenueMetrics = new Set<string>();
+      for (const expected of expectedEntries) {
+        if (expected.conversions === 0) continue;
+        const sessionRows = sessionByDate.get(expected.date) || [];
+        const campaignRows = campaignByDate.get(expected.date) || [];
+        const sessionTotal = sessionRows.reduce((sum, row) => sum + row.conversions, 0);
+        const campaignTotal = campaignRows.reduce((sum, row) => sum + row.conversions, 0);
+        if (sessionTotal === expected.conversions) {
+          selectedRows.push(...sessionRows);
+          selectedRevenueMetrics.add(sessionDaily.revenueMetric);
+        } else if (campaignTotal === expected.conversions) {
+          selectedRows.push(...campaignRows);
+          selectedRevenueMetrics.add(campaignDaily.revenueMetric);
+        } else {
+          throw new Error('GA4_CONVERSION_EVENT_DAILY_RECONCILIATION_FAILED');
+        }
+      }
+      if (selectedRevenueMetrics.size > 1) throw new Error('GA4_CONVERSION_EVENT_REVENUE_METRIC_MISMATCH');
+      const byEvent = new Map<string, { eventName: string; conversions: number; eventCount: null; users: null; revenue: number }>();
+      for (const row of selectedRows) {
+        const current = byEvent.get(row.eventName) || {
+          eventName: row.eventName, conversions: 0, eventCount: null, users: null, revenue: 0,
+        };
+        current.conversions += row.conversions;
+        current.revenue += row.revenue;
+        byEvent.set(row.eventName, current);
+      }
+      const rows = Array.from(byEvent.values())
+        .map((row) => ({ ...row, revenue: Number(row.revenue.toFixed(2)) }))
+        .sort((a, b) => b.conversions - a.conversions || a.eventName.localeCompare(b.eventName));
+      if (rows.length > limit) throw new Error('GA4_CONVERSION_EVENT_LIMIT_EXCEEDED');
+      return {
+        revenueMetric: (selectedRevenueMetrics.values().next().value || campaignDaily.revenueMetric) as 'totalRevenue' | 'purchaseRevenue',
+        rows,
+        totals: {
+          conversions: rows.reduce((sum, row) => sum + row.conversions, 0),
+          eventCount: null,
+          users: null,
+          revenue: Number(rows.reduce((sum, row) => sum + row.revenue, 0).toFixed(2)),
+        },
+      };
+    };
     const hasConversionRows = (res: any) =>
       Array.isArray(res?.rows) && res.rows.some((row: any) => Number(row?.conversions || 0) > 0);
     const conversionRowsOnly = (res: any) => {
@@ -670,9 +820,21 @@ export class GoogleAnalytics4Service {
       }
       return selectConversionRows(res || { revenueMetric: 'totalRevenue', rows: [], totals: {} }, 'none');
     };
+    const resolveRows = async (accessToken: string) => {
+      const result = await tryFetch(accessToken);
+      if (expectedDailyConversions) {
+        const expectedTotal = Object.values(expectedDailyConversions)
+          .reduce((sum, value) => sum + Number(value || 0), 0);
+        if (Number(result?.totals?.conversions || 0) !== expectedTotal) {
+          reconciliationSource = 'scheduler_daily_aligned';
+          return schedulerAlignedRows(accessToken);
+        }
+      }
+      return result;
+    };
 
     try {
-      const res = await tryFetch(String(connection.accessToken));
+      const res = await resolveRows(String(connection.accessToken));
       return withReconciliationSource(res);
     } catch (e: any) {
       const msg = String(e?.message || '');
@@ -692,7 +854,7 @@ export class GoogleAnalytics4Service {
           refreshToken: String(connection.refreshToken),
           expiresAt: new Date(Date.now() + (refresh.expires_in * 1000)),
         });
-        const res = await tryFetch(refresh.access_token);
+        const res = await resolveRows(refresh.access_token);
         return withReconciliationSource(res);
       }
       throw e;

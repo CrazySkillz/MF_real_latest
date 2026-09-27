@@ -1234,7 +1234,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
           String(row?.eventName || "(not set)"),
           Number(row?.conversions || 0).toLocaleString("en-US", { maximumFractionDigits: 20 }),
           row?.eventCount == null ? "Unavailable" : formatNumber(row.eventCount),
-          formatNumber(row?.users || 0),
+          row?.users == null ? "Unavailable" : formatNumber(row.users),
         ]),
         [76, 36, 36, 28],
         COLORS.overview

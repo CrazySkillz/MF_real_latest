@@ -310,15 +310,12 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
           : GA4_OVERVIEW_LEGACY_IMPORT_START_DATE;
         let overviewSnapshot: any = undefined;
         if (hasCampaignFilter) {
-          const [campaignBreakdown, landingPages, conversionEvents, existingOverviewRows] = await Promise.all([
+          const [campaignBreakdown, landingPages, existingOverviewRows] = await Promise.all([
             withGA4DailyStage("overview_campaign_breakdown", ga4Service.getAcquisitionBreakdown(
               currentCampaignId, storage, overviewStartDate, propertyId, 10000, campaignFilter,
               reportingWindow.endDate, false, false, String((c as any)?.currency || "").trim().toUpperCase(), true,
             )),
             withGA4DailyStage("overview_landing_pages", ga4Service.getLandingPagesReport(
-              currentCampaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, reportingWindow.endDate,
-            )),
-            withGA4DailyStage("overview_conversion_events", ga4Service.getConversionEventsReport(
               currentCampaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, reportingWindow.endDate,
             )),
             withGA4DailyStage("overview_daily_storage", storage.getGA4DailyMetrics(currentCampaignId, propertyId, overviewStartDate, reportingWindow.endDate)),
@@ -335,6 +332,13 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
             conversions: totals.conversions + Number(row?.conversions || 0),
             revenue: totals.revenue + Number(row?.revenue || 0),
           }), { sessions: 0, conversions: 0, revenue: 0 });
+          const expectedDailyConversions = Object.fromEntries(overviewRows.map((row: any) => [
+            String(row.date), Number(row?.conversions || 0),
+          ]));
+          const conversionEvents = await withGA4DailyStage("overview_conversion_events", ga4Service.getConversionEventsReport(
+            currentCampaignId, storage, overviewStartDate, propertyId, 50, campaignFilter,
+            reportingWindow.endDate, false, expectedDailyConversions,
+          ));
           // Daily revenue is stored at cent precision while GA4's aggregate can retain
           // more source precision. Permit only the maximum per-day quantization delta.
           const revenueRoundingTolerance = overviewRows.length * 0.005 + 1e-9;

@@ -289,7 +289,7 @@ describe("GA4 daily scheduler timing", () => {
       meta: {},
     } as any);
     vi.spyOn(ga4Service, "getLandingPagesReport").mockResolvedValue({ rows: [], totals: {} } as any);
-    vi.spyOn(ga4Service, "getConversionEventsReport").mockResolvedValue({
+    const conversionEvents = vi.spyOn(ga4Service, "getConversionEventsReport").mockResolvedValue({
       rows: [{ eventName: "purchase", conversions: 2 }], totals: { conversions: 2 },
     } as any);
     const replace = vi.spyOn(storage, "replaceGA4DailyMetricsWindow").mockResolvedValue({ replaced: 4 } as any);
@@ -297,6 +297,10 @@ describe("GA4 daily scheduler timing", () => {
     const result = await refreshAllGA4DailyMetrics({}, new Date("2026-08-06T12:00:00.000Z"));
 
     expect(result.campaignIdsProcessed).toEqual(["campaign-1"]);
+    expect(conversionEvents).toHaveBeenCalledWith(
+      "campaign-1", storage, "2026-08-02", "properties/active", 50, "saved-filter", "2026-08-05", false,
+      { "2026-08-02": 0, "2026-08-03": 1, "2026-08-04": 1, "2026-08-05": 0 },
+    );
     expect(replace).toHaveBeenCalledTimes(1);
     expect(replace.mock.calls[0][5]).toMatchObject({
       windowStart: "2026-08-02",

@@ -45,6 +45,9 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     expect(ui).toContain('eventCount == null ? "Unavailable"');
     expect(browserPdf).toContain('eventCount == null ? "Unavailable"');
     expect(scheduledPdf).toContain('eventCount == null ? "Unavailable"');
+    expect(ui).toContain('users == null ? "Unavailable"');
+    expect(browserPdf).toContain('users == null ? "Unavailable"');
+    expect(scheduledPdf).toContain('users == null ? "Unavailable"');
   });
 
   it("keeps the route on campaign access, exact property, fixed import window, and the scheduler snapshot", () => {
@@ -221,6 +224,40 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     expect(bodies).toHaveLength(8);
     expect(bodies.at(-1)?.metrics?.[0]?.name).toBe("keyEvents");
     expect(bodies.at(-1)?.metrics.every((metric: any) => metric.name !== "eventCount")).toBe(true);
+  });
+
+  it("aligns event conversions to the scheduler-selected attribution on each date", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const dimensions = (body.dimensions || []).map((dimension: any) => dimension.name);
+      const filter = JSON.stringify(body.dimensionFilter || {});
+      const campaignScope = filter.includes('"fieldName":"campaignName"');
+      if (dimensions.includes("date")) {
+        const rows = campaignScope ? [
+          { dimensionValues: [{ value: "20260911" }, { value: "purchase" }], metricValues: [{ value: "2" }, { value: "2" }] },
+          { dimensionValues: [{ value: "20260912" }, { value: "purchase" }], metricValues: [{ value: "3" }, { value: "10" }] },
+        ] : [];
+        return { ok: true, json: async () => ({ rowCount: rows.length, rows }) } as any;
+      }
+      const rows = campaignScope
+        ? [{ dimensionValues: [{ value: "purchase" }], metricValues: [{ value: "5" }, { value: "7" }, { value: "4" }, { value: "12" }] }]
+        : [{ dimensionValues: [{ value: "page_view" }], metricValues: [{ value: "0" }, { value: "8" }, { value: "5" }, { value: "0" }] }];
+      return { ok: true, json: async () => ({ rowCount: rows.length, rows }) } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await ga4Service.getConversionEventsReport(
+      "campaign-1", { getGA4Connection: vi.fn(async () => connection) },
+      "2026-08-01", "987654", 50, "saved-a", "2026-09-14", true,
+      { "2026-09-11": 0, "2026-09-12": 3 },
+    );
+
+    expect(result.rows).toEqual([{ eventName: "purchase", conversions: 3, eventCount: null, users: null, revenue: 10 }]);
+    expect(result.totals).toEqual({ conversions: 3, eventCount: null, users: null, revenue: 10 });
+    expect((result as any)._reconciliationSource).toBe("scheduler_daily_aligned");
+    const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
+    expect(bodies).toHaveLength(4);
+    expect(bodies.slice(-2).every((body) => body.dimensions.map((dimension: any) => dimension.name).join(",") === "date,eventName")).toBe(true);
   });
 
   it("does not broaden attribution beyond the scheduler's campaign-name fallback", async () => {

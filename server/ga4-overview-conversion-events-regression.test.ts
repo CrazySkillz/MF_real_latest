@@ -247,7 +247,7 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
 
     expect(result.rows).toEqual([{ eventName: "purchase", conversions: 145, eventCount: 151, users: 133, revenue: 37518.74 }]);
     expect(result.totals).toEqual({ conversions: 145, eventCount: 151, users: 133, revenue: 37518.74 });
-    expect(result.version).toBe("ga4_conversion_events_exact_scope_v1");
+    expect(result.version).toBe("ga4_conversion_events_daily_scope_v2");
     expect((result as any)._reconciliationSource).toBe("scheduler_page_location_conversions_with_event_count");
     const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
     expect(bodies).toHaveLength(3);
@@ -255,15 +255,18 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     expect(bodies.at(-1)?.metrics.map((metric: any) => metric.name)).toEqual(["conversions", "eventCount", "totalUsers", "totalRevenue"]);
   });
 
-  it("aligns event conversions to the scheduler-selected attribution on each date", async () => {
+  it("returns Event Count and distinct Users across the scheduler-selected attribution for each date", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
       const dimensions = (body.dimensions || []).map((dimension: any) => dimension.name);
       const filter = JSON.stringify(body.dimensionFilter || {});
       const campaignScope = filter.includes('"fieldName":"campaignName"');
+      const sessionScope = filter.includes('"fieldName":"sessionCampaignName"');
       const pageLocationScope = filter.includes('"fieldName":"pageLocation"');
       if (dimensions.includes("date")) {
-        const rows = pageLocationScope
+        const rows = sessionScope
+          ? [{ dimensionValues: [{ value: "20260911" }, { value: "purchase" }], metricValues: [{ value: "2" }, { value: "2" }] }]
+          : pageLocationScope
           ? [{ dimensionValues: [{ value: "20260912" }, { value: "purchase" }], metricValues: [{ value: "3" }, { value: "10" }] }]
           : campaignScope ? [
               { dimensionValues: [{ value: "20260911" }, { value: "purchase" }], metricValues: [{ value: "2" }, { value: "2" }] },
@@ -271,9 +274,16 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
             ] : [];
         return { ok: true, json: async () => ({ rowCount: rows.length, rows }) } as any;
       }
-      const rows = campaignScope
+      const schedulerScope = filter.includes('"fieldName":"date"');
+      const rows = schedulerScope
+        ? [{ dimensionValues: [{ value: "purchase" }], metricValues: [{ value: "5" }, { value: "8" }, { value: "4" }, { value: "12" }] }]
+        : campaignScope
         ? [{ dimensionValues: [{ value: "purchase" }], metricValues: [{ value: "5" }, { value: "7" }, { value: "4" }, { value: "12" }] }]
-        : [{ dimensionValues: [{ value: "page_view" }], metricValues: [{ value: "0" }, { value: "8" }, { value: "5" }, { value: "0" }] }];
+        : sessionScope
+          ? [{ dimensionValues: [{ value: "purchase" }], metricValues: [{ value: "2" }, { value: "3" }, { value: "2" }, { value: "2" }] }]
+          : pageLocationScope
+            ? [{ dimensionValues: [{ value: "purchase" }], metricValues: [{ value: "3" }, { value: "5" }, { value: "3" }, { value: "10" }] }]
+            : [];
       return { ok: true, json: async () => ({ rowCount: rows.length, rows }) } as any;
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -281,15 +291,18 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     const result = await ga4Service.getConversionEventsReport(
       "campaign-1", { getGA4Connection: vi.fn(async () => connection) },
       "2026-08-01", "987654", 50, "saved-a", "2026-09-14", true,
-      { "2026-09-11": 0, "2026-09-12": 3 },
+      { "2026-09-11": 2, "2026-09-12": 3 },
     );
 
-    expect(result.rows).toEqual([{ eventName: "purchase", conversions: 3, eventCount: null, users: null, revenue: 10 }]);
-    expect(result.totals).toEqual({ conversions: 3, eventCount: null, users: null, revenue: 10 });
-    expect((result as any)._reconciliationSource).toBe("scheduler_daily_aligned");
+    expect(result.rows).toEqual([{ eventName: "purchase", conversions: 5, eventCount: 8, users: 4, revenue: 12 }]);
+    expect(result.totals).toEqual({ conversions: 5, eventCount: 8, users: 4, revenue: 12 });
+    expect((result as any)._reconciliationSource).toBe("scheduler_daily_scope_conversions_with_event_count");
     const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
     expect(bodies).toHaveLength(6);
-    expect(bodies.slice(-3).every((body) => body.dimensions.map((dimension: any) => dimension.name).join(",") === "date,eventName")).toBe(true);
+    expect(bodies.slice(-4, -1).every((body) => body.dimensions.map((dimension: any) => dimension.name).join(",") === "date,eventName")).toBe(true);
+    expect(JSON.stringify(bodies.at(-1)?.dimensionFilter)).toContain('"fieldName":"date"');
+    expect(JSON.stringify(bodies.at(-1)?.dimensionFilter)).toContain('"fieldName":"sessionCampaignName"');
+    expect(JSON.stringify(bodies.at(-1)?.dimensionFilter)).toContain('"fieldName":"pageLocation"');
   });
 
   it("does not broaden attribution beyond the scheduler's campaign-name fallback", async () => {

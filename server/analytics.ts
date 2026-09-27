@@ -30,7 +30,7 @@ interface GA4Metrics {
 
 import { JWT } from "google-auth-library";
 
-export const GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION = "ga4_conversion_events_exact_scope_v1";
+export const GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION = "ga4_conversion_events_daily_scope_v2";
 
 export class GoogleAnalytics4Service {
   /**
@@ -680,10 +680,8 @@ export class GoogleAnalytics4Service {
             throw error;
           })
         : emptyDaily;
-      const campaignDaily = await fetchDailyRows(
-        accessToken,
-        this.buildCampaignDimensionFilter(campaignFilter, 'campaignName'),
-      );
+      const campaignFallbackFilter = this.buildCampaignDimensionFilter(campaignFilter, 'campaignName');
+      const campaignDaily = await fetchDailyRows(accessToken, campaignFallbackFilter);
       const byDate = (rows: any[]) => {
         const grouped = new Map<string, any[]>();
         for (const row of rows) grouped.set(row.date, [...(grouped.get(row.date) || []), row]);
@@ -694,6 +692,7 @@ export class GoogleAnalytics4Service {
       const campaignByDate = byDate(campaignDaily.rows);
       const selectedRows: any[] = [];
       const selectedRevenueMetrics = new Set<string>();
+      const selectedDates = { session: [] as string[], pageLocation: [] as string[], campaign: [] as string[] };
       for (const expected of expectedEntries) {
         if (expected.conversions === 0) continue;
         const sessionRows = sessionByDate.get(expected.date) || [];
@@ -705,17 +704,50 @@ export class GoogleAnalytics4Service {
         if (sessionTotal === expected.conversions) {
           selectedRows.push(...sessionRows);
           selectedRevenueMetrics.add(sessionDaily.revenueMetric);
+          selectedDates.session.push(expected.date);
         } else if (pageLocationTotal === expected.conversions) {
           selectedRows.push(...pageLocationRows);
           selectedRevenueMetrics.add(pageLocationDaily.revenueMetric);
+          selectedDates.pageLocation.push(expected.date);
         } else if (campaignTotal === expected.conversions) {
           selectedRows.push(...campaignRows);
           selectedRevenueMetrics.add(campaignDaily.revenueMetric);
+          selectedDates.campaign.push(expected.date);
         } else {
           throw new Error('GA4_CONVERSION_EVENT_DAILY_RECONCILIATION_FAILED');
         }
       }
       if (selectedRevenueMetrics.size > 1) throw new Error('GA4_CONVERSION_EVENT_REVENUE_METRIC_MISMATCH');
+      const selectedScopeExpressions = [
+        { dates: selectedDates.session, scope: campaignDimensionFilter?.dimensionFilter },
+        { dates: selectedDates.pageLocation, scope: pageLocationFilter?.dimensionFilter },
+        { dates: selectedDates.campaign, scope: campaignFallbackFilter?.dimensionFilter },
+      ].filter(({ dates, scope }) => dates.length > 0 && scope).map(({ dates, scope }) => ({
+        andGroup: {
+          expressions: [
+            scope,
+            { filter: { fieldName: 'date', inListFilter: { values: dates.map((date) => date.replace(/-/g, '')), caseSensitive: false } } },
+          ],
+        },
+      }));
+      if (selectedScopeExpressions.length > 0) {
+        const selectedScopeFilter = {
+          dimensionFilter: selectedScopeExpressions.length === 1
+            ? selectedScopeExpressions[0]
+            : { orGroup: { expressions: selectedScopeExpressions } },
+        };
+        try {
+          const exactResult = conversionRowsOnly(await fetchRows(accessToken, selectedScopeFilter));
+          assertUniqueEventRows(exactResult);
+          const expectedTotal = expectedEntries.reduce((sum, row) => sum + row.conversions, 0);
+          if (Number(exactResult?.totals?.conversions || 0) === expectedTotal) {
+            reconciliationSource = 'scheduler_daily_scope_conversions_with_event_count';
+            return exactResult;
+          }
+        } catch (error: any) {
+          if (!isInvalidArgumentText(error?.message || error)) throw error;
+        }
+      }
       const byEvent = new Map<string, { eventName: string; conversions: number; eventCount: null; users: null; revenue: number }>();
       for (const row of selectedRows) {
         const current = byEvent.get(row.eventName) || {

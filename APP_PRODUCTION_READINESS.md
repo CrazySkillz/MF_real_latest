@@ -251,18 +251,19 @@ the exact `ga4_mock` boundary at certified implementation commit
 `2d9625437683ccef081e60831f2a59c76246d438`. Certificate commit
 `1d646c0cfef12e45035ae0770f2ebcebb19a33b2` and documentation-alignment commit
 `686abb2e316292a4118a91a7c83c8f704f6d6e31` changed documentation only; the
-certified application implementation remained unchanged. The later Marketing Funnel
-presentation change removes the duplicate five-card row and adds Spend to Bottom of
-Funnel. That changed packet and the current combined page require deployed revalidation;
-the other implementation paths were not changed.
+certified application implementation remained unchanged. Later presentation changes
+remove the duplicate five-card row, add Spend to Bottom of Funnel, correct Benchmark
+status grammar, and remove the Recommended Actions scope note/category subtitle. The
+changed Marketing Funnel and Recommended Actions packets, plus the current combined
+page, require deployed revalidation; data and decision logic were not changed.
 
 | Order | Executive Summary review | Work state | Fresh certification status | Boundary |
 | ---: | --- | --- | --- | --- |
-| - | Combined Executive Summary | `REVALIDATION_REQUIRED` | `UNVERIFIED` | The 2026-09-21 `ga4_mock` certificate remains historical. The current layout-only Marketing Funnel change has local regression evidence, but the changed combined page requires exact-revision deployed revalidation. |
+| - | Combined Executive Summary | `REVALIDATION_REQUIRED` | `UNVERIFIED` | The 2026-09-21 `ga4_mock` certificate remains historical. Current Marketing Funnel and Recommended Actions presentation changes have local regression evidence, but the changed combined page requires exact-revision deployed revalidation. |
 | 1 | 7-Day Snapshot Trajectory and Risk Level | `COMPLETE` | `CERTIFIED` | PASS for the exact snapshot identity, current live `incompatible_history` state, compatible/missing/unavailable deterministic branches, Risk Level, and the factual four-bullet narrative within the certified boundary. A naturally observed compatible seven-day production trajectory remains a standing future evidence opportunity, not a required gate. |
 | 2 | Marketing Funnel Performance | `REVALIDATION_REQUIRED` | `UNVERIFIED` | Current Bottom of Funnel shows Conversions, Revenue, Spend, ROAS, and ROI once, with the duplicate five-card row removed. Data, formulas, provenance, currency, valid-zero/unavailable behavior, and paid-media guards are unchanged; deployed layout revalidation is pending. |
 | 3 | KPIs & Benchmarks | `COMPLETE` | `CERTIFIED` | PASS for exception, no-exception, unavailable, target-direction, verified-current classification, and downstream risk/action behavior. User-configured target commercial reasonableness and disabled standalone campaign-level KPI/Benchmark tabs remain outside this packet. |
-| 4 | Recommended Actions | `COMPLETE` | `CERTIFIED` | PASS for eligibility, evidence and target context, freshness handling, ordering/deduplication, non-causal wording, paid-media guardrails, and the fail-closed no-evidence state. |
+| 4 | Recommended Actions | `REVALIDATION_REQUIRED` | `UNVERIFIED` | Eligibility, evidence, target context, freshness handling, ordering/deduplication, paid-media guardrails, and the fail-closed state are unchanged. Current Benchmark grammar and removal of the scope note/category subtitle have local regression evidence; deployed presentation revalidation is pending. |
 
 This certificate does not extend to Campaign2, other campaigns, properties,
 tenants, currencies, timezones, source configurations, paid-media variants,
@@ -374,7 +375,7 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 | Budget & Financial Analysis | `RECERTIFY` | `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md`; historical certificate `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_CERTIFICATE_2026-09-19.md` | Current implementation `162e9b6b` uses the separate `budget_pacing_v1` Spend derivative introduced at `4298cfda`. Campaign3 browser behavior is manually confirmed; current combined-page and Budget report delivery parity require recertification. |
 | Platform Comparison | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_PLATFORM_COMPARISON_PRODUCTION_READY.md` | Current aggregate-backed implementation and Render-validated GA4-only scenario. |
 | Trend Analysis | `RECERTIFY` | Current contract: `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`; historical certificate: `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_CERTIFICATION_2026-09-20.md` | The historical certificate remains valid only for its exact `Campaign2` runtime. Current scheduler-only daily history, financial snapshot gating, fixed layout, CPA color, no-activity copy, anomaly warning styling, and their combined-page effects have local/read-only evidence but require exact-revision deployed recertification. Positive conditional panels, non-GA4/future source mixes, and global scheduler health remain excluded. |
-| Executive Summary | `RECERTIFY` | Current contract: `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md`; historical certificate: `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_CERTIFICATE_2026-09-21.md` | The historical certificate remains valid only for its exact `ga4_mock` runtime and earlier five-card layout. Current Bottom of Funnel Spend presentation and duplicate-card removal have local evidence but require exact-revision deployed recertification of the Marketing Funnel packet and combined page. Other data, formula, risk, trajectory, target, persistence, recommendation, and report paths were not changed. |
+| Executive Summary | `RECERTIFY` | Current contract: `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md`; historical certificate: `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_CERTIFICATE_2026-09-21.md` | The historical certificate remains valid only for its exact `ga4_mock` runtime and earlier presentation. Current Bottom of Funnel and Recommended Actions presentation changes have local evidence but require exact-revision deployed recertification of those packets and the combined page. Data, formula, risk, trajectory, target classification, eligibility, persistence, and report paths were not changed. |
 | Reports | `RECERTIFY` | `CAMPAIGN_DEEPDIVE_REPORTS_CERTIFICATION_2026-09-21.md`; supporting `CAMPAIGN_DEEPDIVE_REPORTS_AUDIT_2026-09-21.md` | The prior report certificate remains historical. The Budget & Financial report renderer now consumes `budget_pacing_v1`; local direct/snapshot/scheduled parity tests passed, but current deployed Budget report artifact and delivery parity are not recertified. Unaffected report lifecycle evidence is not broadened or revoked by this row. |
 | Whole Campaign DeepDive | `RECONCILE` | `CAMPAIGN_DEEPDIVE_PRODUCTION_READY_STATUS.md` plus subsection authorities | The top-level file explicitly says it is not a whole-section certificate and now records the current Budget/Reports recertification gates. |
 

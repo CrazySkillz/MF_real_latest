@@ -1,6 +1,6 @@
 # Campaign DeepDive Executive Summary Certificate - 2026-09-21
 
-> **Historical record notice - 2026-09-26:** This certificate applies to the exact runtime and five-card Marketing Funnel layout recorded below. The current implementation removes that duplicate card row and places Spend in the Bottom of Funnel row. The data, formula, risk, trajectory, target, persistence, and report paths were not changed, but the current Marketing Funnel packet and combined page require deployed revalidation. Use `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md` for current behavior and status.
+> **Historical record notice - 2026-09-26:** This certificate applies to the exact runtime and presentation recorded below. The current implementation removes the duplicate five-card row, places Spend in the Bottom of Funnel row, corrects Benchmark status grammar, and removes the Recommended Actions scope note/category subtitle. Data, formulas, target classification, action eligibility, risk, trajectory, persistence, and report paths were not changed, but the current Marketing Funnel and Recommended Actions packets plus the combined page require deployed revalidation. Use `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md` for current behavior and status.
 
 ## Decision
 

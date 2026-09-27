@@ -8,13 +8,13 @@ Before using this document to answer an audit, review, or production-readiness q
 
 This section is the current source of truth for Campaign DeepDive `Executive Summary`. The 2026-08-27 certification snapshot and implementation-plan material later in this file are retained as historical context and are non-normative where they conflict with this section.
 
-The detailed current evidence is recorded in `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_CERTIFICATE_2026-09-21.md`. The earlier `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_CERTIFICATE_2026-09-20.md` remains an immutable historical certificate for its own revision and production state.
+The exact deployed evidence for the historical certified revision is recorded in `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_CERTIFICATE_2026-09-21.md`. Current behavior and recertification status are defined in this section. The earlier `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_CERTIFICATE_2026-09-20.md` remains an immutable historical certificate for its own revision and production state.
 
-### Current Revision And Certified Boundary
+### Current Revision And Historical Certified Boundary
 
-- last deployed revision observed during this alignment: `1d646c0cfef12e45035ae0770f2ebcebb19a33b2`
-- certified application implementation revision: `2d9625437683ccef081e60831f2a59c76246d438`
-- revision relationship: `1d646c0c` adds only the 2026-09-21 certificate; application code is identical to `2d962543`. Any commit containing only this documentation alignment also leaves that application implementation unchanged.
+- current application revision reviewed for this contract: `339a0f90`
+- historical certified application implementation revision: `2d9625437683ccef081e60831f2a59c76246d438`
+- revision relationship: the historical 2026-09-21 certificate covers `2d962543`; the current revision contains later presentation-only Marketing Funnel and Recommended Actions changes that require exact-revision deployed revalidation.
 - campaign: `ga4_mock` (`8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`)
 - GA4 property: `542352127`
 - campaign currency: `USD`
@@ -27,11 +27,11 @@ The detailed current evidence is recorded in `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMAR
 
 Certification is limited to this campaign, property, currency, timezone, source mix, and page. It does not cover Campaign2, other campaigns, future configuration changes, paid-media variants, other Campaign DeepDive sections, Custom Reports, PDFs, scheduled reports, email delivery, or inbox receipt.
 
-### Post-Certification Funnel Simplification - 2026-09-26
+### Post-Certification UI Simplifications - 2026-09-26
 
-The current local implementation removes the five duplicate metric cards below `Marketing Funnel Performance` and adds `Spend` to the Bottom of Funnel row. The row now presents Conversions, Revenue, Spend, ROAS, and Return on Investment once. This is a presentation-only change: queries, aggregate values, formulas, risk, trajectory, KPI/Benchmark logic, recommendations, snapshot persistence, and report rendering are unchanged.
+The current implementation removes the five duplicate metric cards below `Marketing Funnel Performance` and adds `Spend` to the Bottom of Funnel row. The row now presents Conversions, Revenue, Spend, ROAS, and Return on Investment once. Recommended Actions also uses grammatically complete Benchmark status text and no longer renders the connected-web-analytics scope note or the internal `Website Outcomes` category subtitle. The category remains an internal discriminator for evidence construction.
 
-The 2026-09-21 certificate remains historical evidence for its exact runtime and earlier five-card layout. The changed current Marketing Funnel layout and combined page require proportionate deployed revalidation before they are described as current production-certified behavior.
+These are presentation-only changes: queries, aggregate values, formulas, target classification, action eligibility, risk, trajectory, snapshot persistence, and report rendering are unchanged. The 2026-09-21 certificate remains historical evidence for its exact runtime and earlier presentation. The changed current Marketing Funnel and Recommended Actions packets, plus the combined page, require proportionate deployed revalidation before they are described as current production-certified behavior.
 
 ### Current UI Contract
 
@@ -40,7 +40,7 @@ Executive Summary is one continuous page containing:
 1. `7-Day Snapshot Trajectory`, `Risk Level`, and a concise four-bullet Executive Summary.
 2. `Marketing Funnel Performance`, including all funnel stages and the five Bottom of Funnel metrics without a duplicate card row.
 3. `KPIs & Benchmarks`, containing the applicable KPI and Benchmark exception, no-exception, or unavailable cards.
-4. `Recommended Actions`, including the connected-source scope notice, evidence, target context, freshness warning when applicable, and fail-closed no-action state.
+4. `Recommended Actions`, including evidence, target context, a freshness warning when applicable, and the fail-closed no-action state.
 
 Current presentation details:
 
@@ -51,6 +51,7 @@ Current presentation details:
 - The former duplicate Total Revenue, Return on Ad Spend, Total Conversions, Sessions, and Users cards are not rendered.
 - KPI and Benchmark cards are grouped under the visible `KPIs & Benchmarks` heading.
 - The current evidence-backed action is named from eligible exception metrics; it is not the former generic `Investigate below-target website outcomes` title.
+- Recommended Actions does not render the former connected-web-analytics scope note or the internal `Website Outcomes` category subtitle.
 
 The former tabs, full Risk Assessment card, Campaign Grade, Health Score, Campaign Story, duplicate alert cards, and duplicate Platform Performance presentation are not part of the current visible contract. Backend compatibility fields do not make removed UI elements current product behavior.
 
@@ -62,7 +63,7 @@ The page has one campaign identity query plus three analytics queries:
 | --- | --- | --- |
 | Campaign identity/currency | `GET /api/campaigns/:id` | campaign access and persisted campaign configuration |
 | KPI, Benchmark, and freshness inputs | `GET /api/campaigns/:id/executive-summary` | campaign access; GA4 platform KPI/Benchmark selection; verified-current resolver; shared target classification |
-| Narrative, funnel, conditional metrics, formulas, cards, and source capabilities | `GET /api/campaigns/:id/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date` | `performance_summary_aggregate_v3`; completed-day GA4 window; saved-import native financials plus all mapped imported records; gated daily snapshot |
+| Narrative, funnel, conditional metrics, formulas, and source capabilities | `GET /api/campaigns/:id/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date` | `performance_summary_aggregate_v3`; completed-day GA4 window; saved-import native financials plus all mapped imported records; gated daily snapshot |
 | Seven-day trajectory | `GET /api/campaigns/:id/executive-summary/trajectory?reportingDate=YYYY-MM-DD` | exact current and seven-day-prior `executive_summary_daily` rows through `evaluateExecutiveSummaryTrajectory` |
 
 The current-value queries refetch on mount, window focus, and every 60 seconds while active. The trajectory query refetches on mount/focus after the authoritative reporting date is available. Campaign, Executive Summary, outcome totals, and the applicable trajectory request are required before the completed page renders. A required request failure renders `Unable to Load Executive Summary` rather than cached-looking zeros.
@@ -93,9 +94,11 @@ Trajectory requires current and exact seven-day-prior snapshots with compatible 
 
 Risk starts at Low. High requires negative ROI or a high-severity applicable freshness warning. Medium requires at least one configured risk factor, including ROAS below 1x, paid concentration when applicable, compatible decline greater than 15%, an eligible KPI below target, an eligible Benchmark behind, or an applicable freshness warning. Benchmark `needs_attention` is monitor-only by itself.
 
-KPI and Benchmark eligibility requires a finite verified current value, a positive target, supported metric identity, and applicable reporting window. Target direction uses the shared policy, including lower-is-better cost metrics. Invalid, stale, unsupported, refresh-failed, or targetless rows do not affect exception, risk, or action state.
+For a GA4-connected campaign, KPI and Benchmark rows come from `google_analytics` platform records. `resolveAlertCurrentValueForDecision` recomputes an in-memory current value from the configured GA4 traffic/financial reporting contract and fails closed on stale or unavailable required inputs; the page consumes the resulting endpoint `kpiProgress` and `benchmarkComparison` rows rather than substituting page-level funnel totals.
 
-Website-outcome actions require connected web/outcome evidence plus an eligible exception in Conversion Rate, Conversions, or Revenue. Engagement Rate can contribute to Risk Level but is intentionally outside the action-name metric set. Evidence, target lines, and freshness warnings are deduplicated and deterministically ordered. Wording is investigative and non-causal. With no eligible evidence or exception, the page shows `No Evidence-Backed Actions Available`.
+KPI and Benchmark eligibility requires a finite verified current value, a positive target, supported metric identity, and applicable reporting window. Target direction uses the shared policy, including lower-is-better cost metrics. KPI status is `On Track` within the shared near-target tolerance (normally +/-5%), `Above Target` above it, and `Below Target` below it. Benchmark status is `On Track` within the shared tolerance, `Needs Attention` when outside tolerance but at or above 70% effective attainment, and `Behind` below 70%; count metrics can also receive the shared absolute tolerance. Invalid, stale, unsupported, refresh-failed, or targetless rows do not affect exception, risk, or action state.
+
+Website-outcome actions require connected web/outcome evidence plus an eligible exception in Conversion Rate, Conversions, or Revenue. Engagement Rate can contribute to Risk Level but is intentionally outside the action-name metric set. The action title contains only eligible exception metrics; the target-check bullet includes both exception and on-track eligible outcome targets for context. Evidence, target lines, and freshness warnings are deduplicated and deterministically ordered. Wording is investigative and non-causal, including `Benchmark needs attention`, `Benchmark is on track`, and `Benchmark is behind benchmark`. The internal `Website Outcomes` category is not visible. With no eligible evidence or exception, the page shows `No Evidence-Backed Actions Available`.
 
 ### Historical Exact Production Evidence For The Certified Runtime
 
@@ -150,7 +153,7 @@ An excluded Performance Summary scheduled-PDF suite has a stale mock that lacks 
 
 ### Current Classification
 
-The exact `ga4_mock` Executive Summary boundary above remains historically clean-certified. The current duplicate-card removal and Bottom of Funnel Spend presentation have local regression evidence only; the changed Marketing Funnel packet and combined page are pending deployed revalidation. Unchanged trajectory/risk, KPI/Benchmark, recommendation, data, formula, persistence, and report paths retain their documented historical evidence without being promoted to a new current-runtime certificate. Reports, delivery surfaces, other campaigns, other source mixes, and target commercial reasonableness remain excluded.
+The exact `ga4_mock` Executive Summary boundary above remains historically clean-certified. The current duplicate-card removal, Bottom of Funnel Spend presentation, Benchmark status wording, and Recommended Actions note/category removal have local regression evidence only; the changed Marketing Funnel packet, Recommended Actions packet, and combined page are pending deployed revalidation. Unchanged trajectory/risk, KPI/Benchmark classification, data, formula, persistence, and report paths retain their documented historical evidence without being promoted to a new current-runtime certificate. Reports, delivery surfaces, other campaigns, other source mixes, and target commercial reasonableness remain excluded.
 
 ## Historical Certification Snapshot - 2026-08-27
 
@@ -301,6 +304,8 @@ The same natural timer mechanism was proven at `18:45 UTC`; the first post-resto
 | Paid-media and future connected-source variants | Unverified/out of scope | not enabled/configured in the certified GA4-first boundary |
 
 Subject to those explicit classifications and exclusions, the current GA4-first Executive Summary boundary is production-ready without extending the claim to unobserved or out-of-scope paths.
+
+> **Historical boundary:** Everything below this notice is retained implementation history, superseded planning, or dated evidence. It may describe removed tabs, cards, copy, source rules, or thresholds and is non-normative. Use `Current Authoritative Implementation And Historical Certification` above for the current contract.
 
 ## Purpose
 

@@ -8,6 +8,17 @@ import { classifyKpiBandWithPolicy, computeEffectiveDeltaPct, isLowerIsBetterKpi
 import { resolveGA4InsightTargetPeriodCompatibility } from "../shared/ga4-kpi-consumer-state";
 
 describe("campaign Performance Summary consolidated view regression guard", () => {
+  it("does not expose a Demo Data control", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
+
+    expect(page).toContain("const [demoMode] = useState(false);");
+    expect(page).not.toContain("setDemoMode");
+    expect(page).not.toContain("FlaskConical");
+    expect(page).not.toContain("Demo Data");
+    expect(page).not.toContain("Demo On");
+    expect(page).not.toContain("Showing demo data");
+  });
+
   it("selects comparison days using the campaign reporting timezone", () => {
     const now = new Date("2026-08-19T12:00:00.000Z");
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
@@ -178,7 +189,7 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     ]);
   });
 
-  it("formats Top Priority Action currency values with thousands separators and two decimals", () => {
+  it("formats Top Priority Action financial values in the campaign currency", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
 
     expect(page).toContain("parseNum(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })");
@@ -187,6 +198,10 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).not.toContain("const rounded = Math.round(parseNum(value) * 10) / 10;");
     expect(page).toContain("if (!unit || normalizedUnit === 'count') return parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 0 });");
     expect(page).toContain("if (normalizedUnit === 'ratio') return parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 2 });");
+    expect(page).toContain('topKPIIdentity === "revenue" || topKPIIdentity === "cpa"');
+    expect(page).toContain("currentValue: formatTopPriorityValue(topLaggingKPI.score.current)");
+    expect(page).toContain("targetValue: formatTopPriorityValue(topLaggingKPI.score.target)");
+    expect(new Intl.NumberFormat("en-US", { style: "currency", currency: "EUR", currencyDisplay: "narrowSymbol", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(16.23)).toBe("€16.23");
     expect(page).not.toContain("parseNum(value).toFixed(2)");
     expect(page).not.toContain("return `${value}${unit}`;");
   });

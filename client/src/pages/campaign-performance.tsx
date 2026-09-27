@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Activity, Users, Target, DollarSign, Clock, FlaskConical } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Activity, Users, Target, DollarSign, Clock } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
@@ -66,7 +66,7 @@ export default function CampaignPerformanceSummary() {
   const campaignId = params?.id;
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('24h');
   const [selectedTimeRange, setSelectedTimeRange] = useState<'24h' | '7d' | '30d'>('24h');
-  const [demoMode, setDemoMode] = useState(false);
+  const [demoMode] = useState(false);
   const settledRecentMovementDataRef = useRef<any>(null);
   const { toast } = useToast();
 
@@ -1046,13 +1046,17 @@ export default function CampaignPerformanceSummary() {
 
     if (topLaggingKPI) {
       const topKPI = topLaggingKPI.item;
+      const topKPIIdentity = resolveGA4KpiMetricIdentity(topKPI?.metric, topKPI?.metricName, topKPI?.name);
+      const formatTopPriorityValue = (value: number) => topKPIIdentity === "revenue" || topKPIIdentity === "cpa"
+        ? formatRecentMovementCurrencyValue(value)
+        : formatMetricValue(value, topKPI.unit);
       
       return {
         type: 'kpi',
         name: topKPI.name,
         metric: topKPI.metric || topKPI.name,
-        currentValue: formatMetricValue(topLaggingKPI.score.current, topKPI.unit),
-        targetValue: formatMetricValue(topLaggingKPI.score.target, topKPI.unit),
+        currentValue: formatTopPriorityValue(topLaggingKPI.score.current),
+        targetValue: formatTopPriorityValue(topLaggingKPI.score.target),
         action: 'Improve'
       };
     }
@@ -1443,26 +1447,8 @@ export default function CampaignPerformanceSummary() {
                 </div>
               </div>
               
-              <div className="flex items-center space-x-3">
-                <Button
-                  variant={demoMode ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setDemoMode(!demoMode)}
-                  className="shrink-0"
-                >
-                  <FlaskConical className="w-4 h-4 mr-1" />
-                  {demoMode ? "Demo On" : "Demo Data"}
-                </Button>
-
-              </div>
             </div>
           </div>
-
-          {demoMode && (
-            <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-4 py-2 text-sm text-amber-800 dark:text-amber-300">
-              Showing demo data for testing. Toggle off to see real platform data.
-            </div>
-          )}
 
           <div className="space-y-6">
             {!performanceSummaryPending && (

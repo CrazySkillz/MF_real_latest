@@ -177,8 +177,10 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain("snapshotType=financial_daily&comparisonDate=${trendComparisonDate}&persistedOnly=1");
     expect(page).toContain("snapshot: trendFinancialComparison?.current");
     expect(page).toContain("expectedInputs: performanceSummary?.totals");
-    expect(page).toContain('const currentRevenue = financialSnapshotValue(compatibleCurrentFinancialDaily, "revenue");');
-    expect(page).toContain('const currentSpend = financialSnapshotValue(compatibleCurrentFinancialDaily, "spend");');
+    expect(page).toContain('const currentRevenue = financialSnapshotValue(compatibleCurrentFinancialDaily, "revenue")');
+    expect(page).toContain('?? aggregateMetricValue("revenue");');
+    expect(page).toContain('const currentSpend = financialSnapshotValue(compatibleCurrentFinancialDaily, "spend")');
+    expect(page).toContain('?? aggregateMetricValue("spend");');
     expect(page).toContain('revenue: usesCumulativeGA4Consumer ? authoritativeTrendCurrent?.revenue ?? null : aggregateMetricValue("revenue")');
     expect(page).toContain('spend: usesCumulativeGA4Consumer ? authoritativeTrendCurrent?.spend ?? null : aggregateMetricValue("spend")');
     expect(outcomeRoute).toContain('const persistedOnly = String(req.query.persistedOnly || "").trim() === "1";');

@@ -547,8 +547,10 @@ export default function TrendAnalysis() {
     return input?.available === true && Array.isArray(input?.sources) && input.sources.length > 0
       && Number.isFinite(value) && value >= 0 ? value : null;
   };
-  const currentRevenue = financialSnapshotValue(compatibleCurrentFinancialDaily, "revenue");
-  const currentSpend = financialSnapshotValue(compatibleCurrentFinancialDaily, "spend");
+  const currentRevenue = financialSnapshotValue(compatibleCurrentFinancialDaily, "revenue")
+    ?? aggregateMetricValue("revenue");
+  const currentSpend = financialSnapshotValue(compatibleCurrentFinancialDaily, "spend")
+    ?? aggregateMetricValue("spend");
   const currentFinancialRatios = deriveTrendFinancialRatios({
     spend: currentSpend,
     revenue: currentRevenue,

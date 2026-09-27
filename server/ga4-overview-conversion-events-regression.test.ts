@@ -145,7 +145,7 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
       const filter = JSON.stringify(body.dimensionFilter || {});
-      if (filter.includes('"fieldName":"sessionCampaignName"')) {
+      if (filter.includes('"fieldName":"sessionCampaignName"') && body.metrics?.[0]?.name === "conversions") {
         return { ok: false, text: async () => '{"error":{"code":400,"status":"INVALID_ARGUMENT"}}' } as any;
       }
       if (body.metrics?.[0]?.name === "conversions") {
@@ -169,7 +169,7 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     expect(result.rows).toEqual([{ eventName: "purchase", conversions: 3, eventCount: 4, users: 2, revenue: 10 }]);
     const filters = fetchMock.mock.calls.map(([, init]) => JSON.stringify(JSON.parse(String((init as any)?.body || "{}")).dimensionFilter));
     expect(filters[0]).toContain("sessionCampaignName");
-    expect(filters.at(-1)).toContain('"fieldName":"campaignName"');
+    expect(filters.at(-1)).toContain('"fieldName":"sessionCampaignName"');
     const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
     expect(bodies.at(-1)?.metrics?.[0]?.name).toBe("keyEvents");
   });

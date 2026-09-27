@@ -599,6 +599,14 @@ export class GoogleAnalytics4Service {
         if (hasConversionRows(res)) return conversionRowsOnly(res);
       } catch (error: any) {
         if (!isInvalidArgumentText(error?.message || error)) throw error;
+        try {
+          res = await fetchRows(accessToken, campaignDimensionFilter, limit, 'keyEvents');
+          assertUniqueEventRows(res);
+          if (hasConversionRows(res)) return conversionRowsOnly(res);
+        } catch (keyEventError: any) {
+          if (!isInvalidArgumentText(keyEventError?.message || keyEventError)) throw keyEventError;
+          res = null;
+        }
       }
       // Match the daily scheduler's conversion fallback. First-user attribution
       // is intentionally excluded because it can assign conversions outside the

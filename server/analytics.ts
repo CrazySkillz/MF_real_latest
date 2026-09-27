@@ -601,30 +601,40 @@ export class GoogleAnalytics4Service {
         names.add(name);
       }
     };
+    let reconciliationSource = 'none';
+    const selectConversionRows = (res: any, source: string) => {
+      reconciliationSource = source;
+      return conversionRowsOnly(res);
+    };
+    const withReconciliationSource = (res: any) => {
+      const output = { propertyId: normalizedPropertyId, ...res };
+      Object.defineProperty(output, '_reconciliationSource', { value: reconciliationSource, enumerable: false });
+      return output;
+    };
 
     const tryFetch = async (accessToken: string) => {
       let res: any = null;
       try {
         res = await fetchRows(accessToken, campaignDimensionFilter);
         assertUniqueEventRows(res);
-        if (hasConversionRows(res)) return conversionRowsOnly(res);
+        if (hasConversionRows(res)) return selectConversionRows(res, 'session_conversions_with_event_count');
       } catch (error: any) {
         if (!isInvalidArgumentText(error?.message || error)) throw error;
         try {
           res = await fetchRows(accessToken, campaignDimensionFilter, limit, 'conversions', false);
           assertUniqueEventRows(res);
-          if (hasConversionRows(res)) return conversionRowsOnly(res);
+          if (hasConversionRows(res)) return selectConversionRows(res, 'session_conversions');
         } catch (conversionError: any) {
           if (!isInvalidArgumentText(conversionError?.message || conversionError)) throw conversionError;
           try {
             res = await fetchRows(accessToken, campaignDimensionFilter, limit, 'keyEvents');
             assertUniqueEventRows(res);
-            if (hasConversionRows(res)) return conversionRowsOnly(res);
+            if (hasConversionRows(res)) return selectConversionRows(res, 'session_key_events_with_event_count');
           } catch (keyEventError: any) {
             if (!isInvalidArgumentText(keyEventError?.message || keyEventError)) throw keyEventError;
             res = await fetchRows(accessToken, campaignDimensionFilter, limit, 'keyEvents', false);
             assertUniqueEventRows(res);
-            if (hasConversionRows(res)) return conversionRowsOnly(res);
+            if (hasConversionRows(res)) return selectConversionRows(res, 'session_key_events');
           }
         }
       }
@@ -634,6 +644,7 @@ export class GoogleAnalytics4Service {
       for (const dimension of ['campaignName']) {
         const fallbackFilter = this.buildCampaignDimensionFilter(campaignFilter, dimension);
         let fallback: any;
+        let fallbackMetric = 'conversions';
         try {
           fallback = await fetchRows(accessToken, fallbackFilter);
         } catch (error: any) {
@@ -642,6 +653,7 @@ export class GoogleAnalytics4Service {
             fallback = await fetchRows(accessToken, fallbackFilter, limit, 'conversions', false);
           } catch (conversionError: any) {
             if (!isInvalidArgumentText(conversionError?.message || conversionError)) throw conversionError;
+            fallbackMetric = 'key_events';
             try {
               fallback = await fetchRows(accessToken, fallbackFilter, limit, 'keyEvents');
             } catch (keyEventError: any) {
@@ -651,14 +663,17 @@ export class GoogleAnalytics4Service {
           }
         }
         assertUniqueEventRows(fallback);
-        if (hasConversionRows(fallback)) return conversionRowsOnly(fallback);
+        if (hasConversionRows(fallback)) {
+          const eventCount = fallback?.totals?.eventCount == null ? 'without_event_count' : 'with_event_count';
+          return selectConversionRows(fallback, `campaign_${fallbackMetric}_${eventCount}`);
+        }
       }
-      return conversionRowsOnly(res || { revenueMetric: 'totalRevenue', rows: [], totals: {} });
+      return selectConversionRows(res || { revenueMetric: 'totalRevenue', rows: [], totals: {} }, 'none');
     };
 
     try {
       const res = await tryFetch(String(connection.accessToken));
-      return { propertyId: normalizedPropertyId, ...res };
+      return withReconciliationSource(res);
     } catch (e: any) {
       const msg = String(e?.message || '');
       if (isAuthErrorText(msg) && validationReadOnly) {
@@ -678,7 +693,7 @@ export class GoogleAnalytics4Service {
           expiresAt: new Date(Date.now() + (refresh.expires_in * 1000)),
         });
         const res = await tryFetch(refresh.access_token);
-        return { propertyId: normalizedPropertyId, ...res };
+        return withReconciliationSource(res);
       }
       throw e;
     }

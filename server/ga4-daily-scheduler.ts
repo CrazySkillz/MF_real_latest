@@ -340,11 +340,16 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
           const revenueRoundingTolerance = overviewRows.length * 0.005 + 1e-9;
           const breakdownTotals = campaignBreakdown?.totals || {};
           const eventTotals = conversionEvents?.totals || {};
+          const eventConversionTotal = Number(eventTotals.conversions || 0);
+          const eventConversionSource = String((conversionEvents as any)?._reconciliationSource || "unknown")
+            .replace(/[^a-z0-9_]/gi, "_");
           const reconciliationMismatches = [
             Number(breakdownTotals.sessions || 0) !== expected.sessions ? "breakdown_sessions" : "",
             Number(breakdownTotals.conversions || 0) !== expected.conversions ? "breakdown_conversions" : "",
             Math.abs(Number(breakdownTotals.revenue || 0) - expected.revenue) > revenueRoundingTolerance ? "breakdown_revenue" : "",
-            Number(eventTotals.conversions || 0) !== expected.conversions ? "event_conversions" : "",
+            eventConversionTotal !== expected.conversions
+              ? `event_conversions_${eventConversionSource}_${eventConversionTotal < expected.conversions ? "low" : "high"}`
+              : "",
           ].filter(Boolean);
           if (reconciliationMismatches.length > 0) throw Object.assign(
             new Error(`GA4 Overview detail totals do not reconcile with scheduler daily facts: ${reconciliationMismatches.join("+")}`),

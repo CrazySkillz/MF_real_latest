@@ -178,6 +178,8 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     );
 
     expect(result.rows).toEqual([{ eventName: "purchase", conversions: 3, eventCount: null, users: 2, revenue: 10 }]);
+    expect((result as any)._reconciliationSource).toBe("campaign_conversions_without_event_count");
+    expect(JSON.stringify(result)).not.toContain("_reconciliationSource");
     expect(result.totals.eventCount).toBeNull();
     const filters = fetchMock.mock.calls.map(([, init]) => JSON.stringify(JSON.parse(String((init as any)?.body || "{}")).dimensionFilter));
     expect(filters[0]).toContain("sessionCampaignName");

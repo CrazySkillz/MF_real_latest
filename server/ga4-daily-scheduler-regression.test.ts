@@ -169,9 +169,11 @@ describe("GA4 daily scheduler timing", () => {
       propertyIdsProcessed: ["properties/1"],
       propertyIdsFailed: ["properties/2"],
       rowsUpserted: 1,
+      reportingDatesByCampaign: {},
+      failureReasonsByCampaign: { "campaign-failed": ["overview_reconciliation:GA4_OVERVIEW_RECONCILIATION_FAILED"] },
     };
     expect(getGA4DailyRefreshFailure(result, "campaign-ok")).toBeNull();
-    expect(getGA4DailyRefreshFailure(result, "campaign-failed")).toContain("failed");
+    expect(getGA4DailyRefreshFailure(result, "campaign-failed")).toContain("overview_reconciliation:GA4_OVERVIEW_RECONCILIATION_FAILED");
     expect(getGA4DailyRefreshFailure(result, "campaign-skipped")).toContain("skipped");
     expect(getGA4DailyRefreshFailure(result, "")).toContain("1 campaign");
     expect(getGA4DailyRefreshFailure({ ...result, campaignIdsFailed: [] }, "")).toBeNull();
@@ -325,6 +327,9 @@ describe("GA4 daily scheduler timing", () => {
     const result = await refreshAllGA4DailyMetrics({}, new Date("2026-08-06T12:00:00.000Z"));
 
     expect(result.campaignIdsFailed).toEqual(["campaign-1"]);
+    expect(result.failureReasonsByCampaign).toEqual({
+      "campaign-1": ["overview_reconciliation:GA4_OVERVIEW_RECONCILIATION_FAILED"],
+    });
     expect(replace).not.toHaveBeenCalled();
   });
 });

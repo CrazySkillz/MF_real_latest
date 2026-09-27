@@ -30,6 +30,7 @@ export type GA4DailyRefreshResult = {
   propertyIdsFailed: string[];
   rowsUpserted: number;
   reportingDatesByCampaign: Record<string, string>;
+  failureReasonsByCampaign?: Record<string, string[]>;
 };
 
 const ga4DailySchedulerStatus = {
@@ -53,6 +54,7 @@ const ga4DailySchedulerStatus = {
   totalSkippedRuns: 0,
   lastRecomputeRecordedAt: null as Date | null,
   lastRecomputeEvidence: null as null | Record<string, string[]>,
+  lastSnapshotBootstrapFailures: [] as Array<{ campaignIdHash: string; reason: string }>,
 };
 
 const toIsoOrNull = (value: Date | null) => value ? value.toISOString() : null;
@@ -82,7 +84,10 @@ export function getGA4DailyRefreshFailure(result: GA4DailyRefreshResult, campaig
       ? `GA4 daily refresh failed for ${result.campaignIdsFailed.length} campaign(s)`
       : null;
   }
-  if (result.campaignIdsFailed.includes(campaignId)) return "GA4 daily refresh failed for the target campaign";
+  if (result.campaignIdsFailed.includes(campaignId)) {
+    const reason = result.failureReasonsByCampaign?.[campaignId]?.join(", ");
+    return reason ? `GA4 daily refresh failed for the target campaign (${reason})` : "GA4 daily refresh failed for the target campaign";
+  }
   if (!result.campaignIdsProcessed.includes(campaignId)) return "GA4 daily refresh skipped the target campaign";
   return null;
 }
@@ -209,6 +214,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
   const propertyIdsProcessed: string[] = [];
   const propertyIdsFailed: string[] = [];
   const reportingDatesByCampaign: Record<string, string> = {};
+  const failureReasonsByCampaign: Record<string, string[]> = {};
 
   for (const c of campaigns) {
     const currentCampaignId = String((c as any)?.id || "");
@@ -229,7 +235,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
           : reportingWindow.startDate;
         if (storageStartDate > reportingWindow.endDate) throw new Error("GA4 daily import starts after the completed-day window");
         const propertyId = String(connection.propertyId);
-        const initialSeries = await ga4Service.getTimeSeriesData(
+        const initialSeries = await withGA4DailyStage("daily_series", ga4Service.getTimeSeriesData(
           currentCampaignId,
           storage,
           storageStartDate,
@@ -237,7 +243,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
           campaignFilter,
           reportingWindow.endDate,
           String((c as any)?.currency || "").trim().toUpperCase(),
-        );
+        ));
         const hasCampaignFilter = Array.isArray(campaignFilter)
           ? campaignFilter.length > 0
           : Boolean(String(campaignFilter || "").trim());
@@ -245,14 +251,14 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
           ? await (async () => {
               const refreshedConnection = await storage.getGA4Connection(currentCampaignId, propertyId);
               if (!refreshedConnection?.accessToken) throw new Error("GA4 access token is unavailable for daily presence verification");
-              return ga4Service.getTrendsDailyPresenceWithToken(
+              return withGA4DailyStage("daily_presence", ga4Service.getTrendsDailyPresenceWithToken(
                 propertyId,
                 String(refreshedConnection.accessToken),
                 storageStartDate,
                 reportingWindow.endDate,
                 campaignFilter,
                 String((c as any)?.currency || "").trim().toUpperCase(),
-              );
+              ));
             })()
           : { dailyRows: initialSeries, presentDates: (Array.isArray(initialSeries) ? initialSeries : []).map((row: any) => String(row?.date || "")) };
         const rows = Array.isArray(providerResult.dailyRows) ? providerResult.dailyRows : [];
@@ -305,17 +311,17 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
         let overviewSnapshot: any = undefined;
         if (hasCampaignFilter) {
           const [campaignBreakdown, landingPages, conversionEvents, existingOverviewRows] = await Promise.all([
-            ga4Service.getAcquisitionBreakdown(
+            withGA4DailyStage("overview_campaign_breakdown", ga4Service.getAcquisitionBreakdown(
               currentCampaignId, storage, overviewStartDate, propertyId, 10000, campaignFilter,
               reportingWindow.endDate, false, false, String((c as any)?.currency || "").trim().toUpperCase(), true,
-            ),
-            ga4Service.getLandingPagesReport(
+            )),
+            withGA4DailyStage("overview_landing_pages", ga4Service.getLandingPagesReport(
               currentCampaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, reportingWindow.endDate,
-            ),
-            ga4Service.getConversionEventsReport(
+            )),
+            withGA4DailyStage("overview_conversion_events", ga4Service.getConversionEventsReport(
               currentCampaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, reportingWindow.endDate,
-            ),
-            storage.getGA4DailyMetrics(currentCampaignId, propertyId, overviewStartDate, reportingWindow.endDate),
+            )),
+            withGA4DailyStage("overview_daily_storage", storage.getGA4DailyMetrics(currentCampaignId, propertyId, overviewStartDate, reportingWindow.endDate)),
           ]);
           const overviewRowsByDate = new Map(
             (Array.isArray(existingOverviewRows) ? existingOverviewRows : []).map((row: any) => [String(row.date), row]),
@@ -339,7 +345,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
             Number(breakdownTotals.conversions || 0) !== expected.conversions ||
             Math.abs(Number(breakdownTotals.revenue || 0) - expected.revenue) > revenueRoundingTolerance ||
             Number(eventTotals.conversions || 0) !== expected.conversions
-          ) throw new Error("GA4 Overview detail totals do not reconcile with scheduler daily facts");
+          ) throw Object.assign(new Error("GA4 Overview detail totals do not reconcile with scheduler daily facts"), { ga4DailyStage: "overview_reconciliation" });
           overviewSnapshot = {
             windowStart: overviewStartDate,
             windowEnd: reportingWindow.endDate,
@@ -362,6 +368,8 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
       } catch (e: any) {
         failed = true;
         propertyIdsFailed.push(String(connection.propertyId));
+        const reason = getGA4DailyFailureReason(e);
+        failureReasonsByCampaign[currentCampaignId] = Array.from(new Set([...(failureReasonsByCampaign[currentCampaignId] || []), reason]));
         console.warn(`[GA4 Daily] Refresh failed for campaign ${currentCampaignId}, property ${String(connection.propertyId)}:`, e?.message || e);
       }
     }
@@ -370,7 +378,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
   }
 
   console.log(`[GA4 Daily] Refresh done (campaignsProcessed=${campaignIdsProcessed.length}, campaignsFailed=${campaignIdsFailed.length}, rowsUpserted=${upserted})`);
-  return { campaignIdsProcessed, campaignIdsSkipped, campaignIdsFailed, propertyIdsProcessed, propertyIdsFailed, rowsUpserted: upserted, reportingDatesByCampaign };
+  return { campaignIdsProcessed, campaignIdsSkipped, campaignIdsFailed, propertyIdsProcessed, propertyIdsFailed, rowsUpserted: upserted, reportingDatesByCampaign, failureReasonsByCampaign };
 }
 
 async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4DailyRefreshPipelineOptions = {}): Promise<void> {
@@ -495,11 +503,35 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
   }
 }
 
+const getGA4DailyFailureReason = (error: any) => {
+  const stage = String(error?.ga4DailyStage || "unknown").replace(/[^a-z0-9_-]/gi, "_");
+  const message = String(error?.message || error || "");
+  const knownCode = [
+    "TOKEN_EXPIRED", "NO_GA4_CONNECTION", "GA4_CURRENCY_UNVERIFIED",
+    "GA4_API_PAGINATION_INCOMPLETE", "GA4_CONVERSION_EVENT_PROVIDER_VALUE_UNSAFE",
+  ].find((code) => message.includes(code));
+  if (knownCode) return `${stage}:${knownCode}`;
+  if (message.includes("do not reconcile")) return `${stage}:GA4_OVERVIEW_RECONCILIATION_FAILED`;
+  const providerStatus = message.match(/\"status\"\s*:\s*\"([A-Z_]+)\"/i)?.[1];
+  if (providerStatus) return `${stage}:GA4_PROVIDER_${providerStatus.toUpperCase()}`;
+  return `${stage}:GA4_PROVIDER_REQUEST_FAILED`;
+};
+
+const withGA4DailyStage = async <T>(stage: string, operation: Promise<T>): Promise<T> => {
+  try {
+    return await operation;
+  } catch (error: any) {
+    error.ga4DailyStage = stage;
+    throw error;
+  }
+};
+
 type GA4DailyPipelineRunner = (trigger: string, opts?: GA4DailyRefreshPipelineOptions) => Promise<void>;
 
 export async function backfillMissingGA4OverviewSnapshots(
   runPipeline: GA4DailyPipelineRunner = runGA4DailyRefreshPipelineForTrigger,
 ): Promise<string[]> {
+  ga4DailySchedulerStatus.lastSnapshotBootstrapFailures = [];
   const campaigns = await storage.getCampaigns();
   const campaignIds: string[] = [];
   for (const campaign of campaigns) {
@@ -536,6 +568,10 @@ export async function backfillMissingGA4OverviewSnapshots(
     try {
       await runPipeline("snapshot_bootstrap", { campaignId, suppressAlerts: true });
     } catch (error: any) {
+      ga4DailySchedulerStatus.lastSnapshotBootstrapFailures.push({
+        campaignIdHash: hashEvidenceIds([campaignId])[0],
+        reason: String(error?.message || error || "GA4 snapshot bootstrap failed").slice(0, 300),
+      });
       console.warn(`[GA4 Daily] Overview snapshot bootstrap failed for campaign ${campaignId}:`, error?.message || error);
     }
   }
@@ -568,6 +604,7 @@ export function getGA4DailySchedulerStatus() {
     totalSkippedRuns: ga4DailySchedulerStatus.totalSkippedRuns,
     lastRecomputeRecordedAt: toIsoOrNull(ga4DailySchedulerStatus.lastRecomputeRecordedAt),
     lastRecomputeEvidence: ga4DailySchedulerStatus.lastRecomputeEvidence,
+    lastSnapshotBootstrapFailures: ga4DailySchedulerStatus.lastSnapshotBootstrapFailures,
   };
 }
 

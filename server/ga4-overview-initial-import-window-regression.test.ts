@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from '../shared/ga4-traffic-window';
-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getGA4HistoricalImportStartDate } from './utils/reporting-timezone';
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getGA4HistoricalImportStartDate, resolveGA4ImportToDateWindow } from './utils/reporting-timezone';
 
 const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), 'utf8');
@@ -59,6 +59,13 @@ describe('GA4 Overview initial historical import boundary', () => {
     expect(((correctedTotals.conversions / correctedTotals.sessions) * 100).toFixed(1)).toBe('12.7');
   });
 
+  it('preserves configured starts and uses the supported legacy boundary when one is absent', () => {
+    expect(resolveGA4ImportToDateWindow('2026-08-23', 'UTC', new Date('2026-09-27T12:00:00.000Z'))?.startDate)
+      .toBe('2026-08-23');
+    expect(resolveGA4ImportToDateWindow(null, 'UTC', new Date('2026-09-27T12:00:00.000Z'))?.startDate)
+      .toBe(GA4_OVERVIEW_LEGACY_IMPORT_START_DATE);
+  });
+
   it('routes all Overview tables through the fixed initial-import boundary', () => {
     const route = read('server/routes-oauth.ts');
     const page = read('client/src/pages/ga4-metrics.tsx');
@@ -79,7 +86,8 @@ describe('GA4 Overview initial historical import boundary', () => {
     expect(route.match(/if \(windowMode === 'import-to-date'\)/g)).toHaveLength(3);
     expect(route.match(/resolveGA4ImportToDateWindow\(/g)?.length).toBeGreaterThanOrEqual(5);
     expect(route).toContain('revenueWindow: nativeRevenueWindow');
-    expect(route).toContain("const revenueStartDate = (savedImportStartDate ? importToDateWindow?.startDate : null)");
+    expect(route).toContain("const revenueStartDate = importToDateWindow?.startDate || providerStartDate;");
+    expect(route).not.toContain("(savedImportStartDate ? importToDateWindow?.startDate : null)");
     expect(route).toContain("throw new Error('GA4_OVERVIEW_CAMPAIGN_REVENUE_UNVERIFIED')");
     expect(page).toContain('campaignBreakdownRevenueVerified');
     expect(page).toContain('Math.abs(campaignBreakdownNativeRowRevenue - Number((ga4Breakdown as any)?.totals?.revenue || 0)) < 0.01');

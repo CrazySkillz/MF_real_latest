@@ -13201,7 +13201,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
       let importToDateWindow: ReturnType<typeof resolveGA4ImportToDateWindow> = null;
-      let savedImportStartDate = '';
       let resolvedPropertyId = propertyId;
       const completedDayWindow = windowMode === 'import-to-date'
         ? null
@@ -13212,7 +13211,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!connection) {
           return res.status(404).json({ success: false, error: 'NO_GA4_CONNECTION' });
         }
-        savedImportStartDate = String((connection as any)?.importStartDate || '').trim();
         importToDateWindow = resolveGA4ImportToDateWindow(
           (connection as any)?.importStartDate,
           (campaign as any)?.reportingTimeZone,
@@ -13294,8 +13292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
       let nativeRevenueWindow: { source: 'ga4'; startDate: string; endDate: string; revenueMetric: string } | undefined;
       if (overviewCampaignBreakdown && providerEndDate) {
-        const revenueStartDate = (savedImportStartDate ? importToDateWindow?.startDate : null)
-          || '2000-01-01';
+        const revenueStartDate = importToDateWindow?.startDate || providerStartDate;
         const revenueResult = revenueStartDate <= providerEndDate
           ? await ga4Service.getAcquisitionBreakdown(
               campaignId, storage, revenueStartDate, resolvedPropertyId, limit, campaignFilter,

@@ -30,6 +30,8 @@ interface GA4Metrics {
 
 import { JWT } from "google-auth-library";
 
+export const GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION = "ga4_conversion_events_exact_scope_v1";
+
 export class GoogleAnalytics4Service {
   /**
    * GA4 Data API expects a numeric property id in URLs:
@@ -419,6 +421,7 @@ export class GoogleAnalytics4Service {
     validationReadOnly = false,
     expectedDailyConversions?: Record<string, number>,
   ): Promise<{
+    version: string;
     propertyId: string;
     revenueMetric: 'totalRevenue' | 'purchaseRevenue';
     rows: Array<{ eventName: string; conversions: number; eventCount: number | null; users: number | null; revenue: number }>;
@@ -770,7 +773,7 @@ export class GoogleAnalytics4Service {
       return conversionRowsOnly(res);
     };
     const withReconciliationSource = (res: any) => {
-      const output = { propertyId: normalizedPropertyId, ...res };
+      const output = { version: GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION, propertyId: normalizedPropertyId, ...res };
       Object.defineProperty(output, '_reconciliationSource', { value: reconciliationSource, enumerable: false });
       return output;
     };

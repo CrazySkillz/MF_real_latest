@@ -1,5 +1,5 @@
 import { storage } from "./storage";
-import { ga4Service } from "./analytics";
+import { GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION, ga4Service } from "./analytics";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./kpi-scheduler";
 import { checkGA4BenchmarkPerformanceAlertsForCampaign, checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
@@ -587,7 +587,8 @@ export async function backfillMissingGA4OverviewSnapshots(
         storage.getLatestGA4DailyMetric(campaignId, propertyId),
       ]);
       if (!snapshot || !latestDaily || String(snapshot.windowStart) !== expectedStartDate ||
-          String(snapshot.windowEnd) !== String(latestDaily.date)) {
+          String(snapshot.windowEnd) !== String(latestDaily.date) ||
+          String((snapshot as any)?.conversionEvents?.version || "") !== GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION) {
         needsBootstrap = true;
         break;
       }

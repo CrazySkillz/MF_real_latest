@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { afterEach, vi } from "vitest";
-import { ga4Service } from "./analytics";
+import { GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION, ga4Service } from "./analytics";
 import { backfillMissingGA4OverviewSnapshots, getGA4DailyRecomputeFailure, getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getNextGA4DailyRunAt, refreshAllGA4DailyMetrics } from "./ga4-daily-scheduler";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { storage } from "./storage";
@@ -85,6 +85,7 @@ describe("GA4 daily scheduler timing", () => {
     vi.spyOn(storage, "getCampaigns").mockResolvedValue([
       { id: "campaign-missing", ga4CampaignFilter: "saved-filter" },
       { id: "campaign-mismatched", ga4CampaignFilter: "saved-filter" },
+      { id: "campaign-outdated", ga4CampaignFilter: "saved-filter" },
       { id: "campaign-current", ga4CampaignFilter: "saved-filter" },
       { id: "campaign-unscoped", ga4CampaignFilter: null },
     ] as any);
@@ -98,6 +99,12 @@ describe("GA4 daily scheduler timing", () => {
       if (campaignId === "campaign-current") return {
         windowStart: "2026-08-01",
         windowEnd: "2026-08-05",
+        conversionEvents: { version: GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION },
+      } as any;
+      if (campaignId === "campaign-outdated") return {
+        windowStart: "2026-08-01",
+        windowEnd: "2026-08-05",
+        conversionEvents: { rows: [{ eventName: "purchase", conversions: 145, eventCount: null, users: null }] },
       } as any;
       if (campaignId === "campaign-mismatched") return {
         windowStart: "2026-08-01",
@@ -108,14 +115,18 @@ describe("GA4 daily scheduler timing", () => {
     vi.spyOn(storage, "getLatestGA4DailyMetric").mockResolvedValue({ date: "2026-08-05" } as any);
     const runPipeline = vi.fn(async () => undefined);
 
-    await expect(backfillMissingGA4OverviewSnapshots(runPipeline)).resolves.toEqual(["campaign-missing", "campaign-mismatched"]);
-    expect(runPipeline).toHaveBeenCalledTimes(2);
+    await expect(backfillMissingGA4OverviewSnapshots(runPipeline)).resolves.toEqual(["campaign-missing", "campaign-mismatched", "campaign-outdated"]);
+    expect(runPipeline).toHaveBeenCalledTimes(3);
     expect(runPipeline).toHaveBeenCalledWith("snapshot_bootstrap", {
       campaignId: "campaign-missing",
       suppressAlerts: true,
     });
     expect(runPipeline).toHaveBeenCalledWith("snapshot_bootstrap", {
       campaignId: "campaign-mismatched",
+      suppressAlerts: true,
+    });
+    expect(runPipeline).toHaveBeenCalledWith("snapshot_bootstrap", {
+      campaignId: "campaign-outdated",
       suppressAlerts: true,
     });
   });

@@ -62,6 +62,12 @@ describe("GA4 Overview scheduler snapshot contract", () => {
     expect(client).toContain('previousKey?.[5] === ga4OverviewExpectedEndDate');
   });
 
+  it("bootstraps snapshots written before exact-scope Conversion Events were versioned", () => {
+    const scheduler = read("server", "ga4-daily-scheduler.ts");
+    expect(scheduler).toContain("GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION");
+    expect(scheduler).toContain("conversionEvents?.version");
+  });
+
   it("invalidates the snapshot when campaign scope or its GA4 connection is changed or deleted", () => {
     const storage = read("server", "storage.ts");
     expect(storage).toContain("await tx.delete(ga4OverviewSnapshots).where(eq(ga4OverviewSnapshots.campaignId, id))");

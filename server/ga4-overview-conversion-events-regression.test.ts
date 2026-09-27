@@ -247,6 +247,7 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
 
     expect(result.rows).toEqual([{ eventName: "purchase", conversions: 145, eventCount: 151, users: 133, revenue: 37518.74 }]);
     expect(result.totals).toEqual({ conversions: 145, eventCount: 151, users: 133, revenue: 37518.74 });
+    expect(result.version).toBe("ga4_conversion_events_exact_scope_v1");
     expect((result as any)._reconciliationSource).toBe("scheduler_page_location_conversions_with_event_count");
     const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
     expect(bodies).toHaveLength(3);

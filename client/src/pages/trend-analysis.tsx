@@ -1599,7 +1599,7 @@ export default function TrendAnalysis() {
                       {[
                         { label: 'Revenue', value: authoritativeHeadlineCurrent.revenue === null ? null : fmtHeadlineCurrency(authoritativeHeadlineCurrent.revenue), change: headlineComparison.revenue, comparisonPending: !trendFinancialComparisonFetched },
                         { label: 'Spend', value: authoritativeHeadlineCurrent.spend === null ? null : fmtHeadlineCurrency(authoritativeHeadlineCurrent.spend), change: headlineComparison.spend, invertColor: true, comparisonPending: !trendFinancialComparisonFetched },
-                        { label: 'ROAS', value: authoritativeHeadlineCurrent.roas === null ? null : `${authoritativeHeadlineCurrent.roas.toFixed(1)}x`, change: headlineComparison.roas, comparisonPending: !trendFinancialComparisonFetched },
+                        { label: 'ROAS', value: authoritativeHeadlineCurrent.roas === null ? null : `${authoritativeHeadlineCurrent.roas.toFixed(2)}x`, change: headlineComparison.roas, comparisonPending: !trendFinancialComparisonFetched },
                         { ...(authoritativeHeadlineEfficiencyCards.find((card) => card.key === "roi") || { label: 'ROI', value: null, change: null }), comparisonPending: !trendFinancialComparisonFetched },
                         { label: 'Conversions', value: authoritativeHeadlineCurrent.conversions === null ? null : formatExactTrendCount(authoritativeHeadlineCurrent.conversions), change: headlineComparison.conversions },
                         { label: 'CPA', value: authoritativeHeadlineCurrent.cpa === null ? null : fmtHeadlineCurrency(authoritativeHeadlineCurrent.cpa), change: headlineComparison.cpa, invertColor: true, comparisonPending: !trendFinancialComparisonFetched },

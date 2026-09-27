@@ -12,9 +12,9 @@ The exact deployed evidence for the historical certified revision is recorded in
 
 ### Current Revision And Historical Certified Boundary
 
-- current application revision reviewed for this contract: `339a0f90`
+- current application revision reviewed for this contract: `1018abba948ff5bf203f4b1a93d42bbf639ec9b8`
 - historical certified application implementation revision: `2d9625437683ccef081e60831f2a59c76246d438`
-- revision relationship: the historical 2026-09-21 certificate covers `2d962543`; the current revision contains later presentation-only Marketing Funnel and Recommended Actions changes that require exact-revision deployed revalidation.
+- revision relationship: the historical 2026-09-21 certificate covers `2d962543`; the current revision contains later Marketing Funnel and Recommended Actions presentation changes, exact native-GA4 KPI/Benchmark financial fallback selection, and guarded trajectory-history alignment that require exact-revision deployed revalidation.
 - campaign: `ga4_mock` (`8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`)
 - GA4 property: `542352127`
 - campaign currency: `USD`
@@ -27,11 +27,11 @@ The exact deployed evidence for the historical certified revision is recorded in
 
 Certification is limited to this campaign, property, currency, timezone, source mix, and page. It does not cover Campaign2, other campaigns, future configuration changes, paid-media variants, other Campaign DeepDive sections, Custom Reports, PDFs, scheduled reports, email delivery, or inbox receipt.
 
-### Post-Certification UI Simplifications - 2026-09-26
+### Post-Certification Current Changes - 2026-09-27
 
 The current implementation removes the five duplicate metric cards below `Marketing Funnel Performance` and adds `Spend` to the Bottom of Funnel row. The row now presents Conversions, Revenue, Spend, ROAS, and Return on Investment once. Recommended Actions also uses grammatically complete Benchmark status text and no longer renders the connected-web-analytics scope note or the internal `Website Outcomes` category subtitle. The category remains an internal discriminator for evidence construction.
 
-These are presentation-only changes: queries, aggregate values, formulas, target classification, action eligibility, risk, trajectory, snapshot persistence, and report rendering are unchanged. The 2026-09-21 certificate remains historical evidence for its exact runtime and earlier presentation. The changed current Marketing Funnel and Recommended Actions packets, plus the combined page, require proportionate deployed revalidation before they are described as current production-certified behavior.
+Two later data-path corrections are also current. First, the verified-current GA4 KPI/Benchmark resolver accepts the synchronized Overview native financial total before the cent-rounded persisted-daily candidate only when import window, campaign currency, and latest daily coverage match. Second, the trajectory endpoint can use an exact-date read-only financial baseline when the prior Executive Summary snapshot is missing, but only for GA4-only Revenue with no active imported Revenue source and exact contract compatibility. The 2026-09-21 certificate remains historical evidence for its exact runtime and earlier behavior. The current combined page and these changed paths require proportionate exact-revision deployed revalidation before they are described as production-certified for the current revision.
 
 ### Current UI Contract
 
@@ -47,6 +47,7 @@ Current presentation details:
 - `7-Day Snapshot Trajectory` and `Marketing Funnel Performance` use the same title size.
 - The concise summary bullets show ROI, ROAS, Risk, and trajectory; the prior visible `Through YYYY-MM-DD` bullet is not rendered.
 - Incompatible history renders `History not comparable yet`, not the generic missing-history label.
+- An available exact-date financial fallback renders `Revenue compared with aligned financial history from seven days earlier.`; an available Executive Summary snapshot pair renders `Revenue compared with the matching Executive Summary reading from seven days earlier.`.
 - Bottom of Funnel places Conversions, Revenue, Spend, ROAS, and Return on Investment on one responsive row.
 - The former duplicate Total Revenue, Return on Ad Spend, Total Conversions, Sessions, and Users cards are not rendered.
 - KPI and Benchmark cards are grouped under the visible `KPIs & Benchmarks` heading.
@@ -64,7 +65,7 @@ The page has one campaign identity query plus three analytics queries:
 | Campaign identity/currency | `GET /api/campaigns/:id` | campaign access and persisted campaign configuration |
 | KPI, Benchmark, and freshness inputs | `GET /api/campaigns/:id/executive-summary` | campaign access; GA4 platform KPI/Benchmark selection; verified-current resolver; shared target classification |
 | Narrative, funnel, conditional metrics, formulas, and source capabilities | `GET /api/campaigns/:id/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date` | `performance_summary_aggregate_v3`; completed-day GA4 window; saved-import native financials plus all mapped imported records; gated daily snapshot |
-| Seven-day trajectory | `GET /api/campaigns/:id/executive-summary/trajectory?reportingDate=YYYY-MM-DD` | exact current and seven-day-prior `executive_summary_daily` rows through `evaluateExecutiveSummaryTrajectory` |
+| Seven-day trajectory | `GET /api/campaigns/:id/executive-summary/trajectory?reportingDate=YYYY-MM-DD` | exact current and seven-day-prior `executive_summary_daily` rows through `evaluateExecutiveSummaryTrajectory`; when only the prior row is absent, guarded GA4-only read-only exact-date financial derivation through `resolveFinancialDailyComparisonPrevious` and `evaluateExecutiveSummaryTrajectoryFromFinancialDaily` |
 
 The current-value queries refetch on mount, window focus, and every 60 seconds while active. The trajectory query refetches on mount/focus after the authoritative reporting date is available. Campaign, Executive Summary, outcome totals, and the applicable trajectory request are required before the completed page renders. A required request failure renders `Unable to Load Executive Summary` rather than cached-looking zeros.
 
@@ -81,16 +82,34 @@ The current-value queries refetch on mount, window focus, and every 60 seconds w
 - Valid zero remains available when source capability proves the metric exists. Missing, non-finite, unsupported, stale/unverified, and denominator-blocked inputs remain unavailable.
 - Counts are truncated before locale formatting. Currency, percentages, and ratios display two decimals while calculations use aggregate values.
 - GA4 supports Users, Sessions, Conversions, and Revenue for the certified aggregate. It does not invent paid Clicks, Impressions, CTR, CPC, CPM, or paid-media recommendations.
+- GA4 KPI/Benchmark native financial current-value selection prefers a valid provider candidate when permitted, then a synchronized Overview snapshot whose import window, currency, and latest persisted daily coverage exactly match, then the compatible persisted-daily candidate. Mismatched Overview metadata is ignored, and stale or unavailable required inputs remain ineligible.
 
 ### Current Trajectory, Risk, KPI, Benchmark, And Action Rules
 
 Trajectory snapshot identity is `executive_summary_daily_snapshot_v2` and includes campaign, currency, GA4 property, campaign filter, aggregate version, initial-import start, timezone, main-source capabilities, and configuration-fingerprinted financial source IDs. The writer fails closed before completed-day GA4 refresh evidence exists.
 
-Trajectory requires current and exact seven-day-prior snapshots with compatible identities and available revenue. More than +10% is `accelerating`, less than -10% is `declining`, and the remainder is `stable`. Unavailable reasons are distinct:
+Trajectory first evaluates the current and exact seven-day-prior Executive Summary snapshots with compatible identities and available Revenue. If both exist, no fallback can replace them. If the current snapshot exists and only the prior snapshot is absent, the route checks that active GA4-context imported Revenue sources are exactly empty and derives a read-only exact-date financial candidate without writing history. The fallback is accepted only when current and prior Revenue are GA4-only, the current snapshot has no `revenue_source:<id>` identity, campaign and currency match, current-value mode, initial-import start, and reporting timezone match, and the dates are exactly seven days apart. Source-list read failure, any imported Revenue identity, mismatched currency/window/timezone, missing current snapshot, or invalid/zero prior Revenue remains fail-closed. More than +10% is `accelerating`, less than -10% is `declining`, and the remainder is `stable`. The fallback response adds `source: "financial_daily_fallback"`; the normal snapshot-pair response does not. Unavailable reasons are distinct:
 
 - `not_enough_history`: no exact usable pair
 - `incompatible_history`: property, window, source, or reporting configuration differs
 - `revenue_history_unavailable`: revenue is unavailable or the comparison denominator is invalid
+
+### Current Campaign3 Validation - 2026-09-27
+
+Campaign3 provides bounded evidence for the new GA4-only fallback, not a replacement whole-section certificate:
+
+- root cause: Trend Analysis could derive the exact `2026-09-19` GA4 financial reading, but Executive Summary consulted only `executive_summary_daily` history, so the missing prior Executive Summary row incorrectly produced `Not enough history`
+- latest completed reporting date: `2026-09-26`; exact comparison date: `2026-09-19`
+- current Executive Summary snapshot exists; the exact prior Executive Summary snapshot is absent
+- active GA4-context imported Revenue sources: none
+- current Revenue: `EUR 37,518.74`; exact-date GA4 financial baseline: `EUR 31,162.22`
+- calculated change: approximately `+20.4%`, classified as `accelerating`
+- user-provided UI evidence after the fix shows `Accelerating`, ROI `1494.51%`, ROAS `15.95x`, Risk `MEDIUM`, and `3 KPIs are below target`
+- the visible detail correctly states that Revenue was compared with aligned financial history from seven days earlier
+
+Local validation for revision `1018abba` passed the focused Executive Summary/financial comparison packet (4 files, 35 tests), the broader Executive Summary packet (18 files, 162 tests), TypeScript checking, the production build, and `git diff --check`. The UI screenshot proves the visible Campaign3 result supplied by the user; this documentation update does not independently prove the deployed runtime SHA, a natural scheduler cycle, imported-Revenue trajectory fallback, paid-source variants, or other campaigns.
+
+The current trajectory correction is localized to `server/routes-oauth.ts`, `server/utils/executive-summary-daily-snapshot.ts`, and `client/src/pages/executive-summary.tsx`, with focused guards in `server/executive-summary-daily-snapshot.test.ts`, `server/executive-summary-daily-snapshot-regression.test.ts`, `server/financial-daily-comparison.test.ts`, and `server/executive-summary-regression.test.ts`. The exact native-GA4 KPI/Benchmark financial fallback correction is localized to `server/utils/ga4-alert-current-value.ts`, with guards in `server/ga4-kpi-alert-contract-regression.test.ts` and `server/executive-summary-regression.test.ts`.
 
 Risk starts at Low. High requires negative ROI or a high-severity applicable freshness warning. Medium requires at least one configured risk factor, including ROAS below 1x, paid concentration when applicable, compatible decline greater than 15%, an eligible KPI below target, an eligible Benchmark behind, or an applicable freshness warning. Benchmark `needs_attention` is monitor-only by itself.
 
@@ -153,7 +172,7 @@ An excluded Performance Summary scheduled-PDF suite has a stale mock that lacks 
 
 ### Current Classification
 
-The exact `ga4_mock` Executive Summary boundary above remains historically clean-certified. The current duplicate-card removal, Bottom of Funnel Spend presentation, Benchmark status wording, and Recommended Actions note/category removal have local regression evidence only; the changed Marketing Funnel packet, Recommended Actions packet, and combined page are pending deployed revalidation. Unchanged trajectory/risk, KPI/Benchmark classification, data, formula, persistence, and report paths retain their documented historical evidence without being promoted to a new current-runtime certificate. Reports, delivery surfaces, other campaigns, other source mixes, and target commercial reasonableness remain excluded.
+The exact `ga4_mock` Executive Summary boundary above remains historically clean-certified. The current duplicate-card removal, Bottom of Funnel Spend presentation, Benchmark status wording, Recommended Actions note/category removal, synchronized Overview native financial fallback, and guarded GA4-only trajectory fallback have local regression evidence; the trajectory also has the bounded Campaign3 UI evidence recorded above. These changes are not promoted to a whole-section current-runtime certificate without exact-revision deployed identity and proportionate deployed revalidation. Reports, delivery surfaces, imported-Revenue and paid-source trajectory variants, other campaigns, other source mixes, natural scheduler evidence for this revision, and target commercial reasonableness remain excluded.
 
 ## Historical Certification Snapshot - 2026-08-27
 

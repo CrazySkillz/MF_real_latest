@@ -7,6 +7,7 @@ const storageMock = vi.hoisted(() => ({
   getGA4Connections: vi.fn(),
   getGA4Connection: vi.fn(),
   getGA4DailyMetrics: vi.fn(),
+  getGA4OverviewSnapshot: vi.fn(),
   getRevenueTotalForRange: vi.fn(),
   getSpendTotalForRange: vi.fn(),
   updateGA4ConnectionTokens: vi.fn(),
@@ -71,6 +72,7 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     storageMock.getGA4Connections.mockResolvedValue([connection]);
     storageMock.getGA4Connection.mockResolvedValue(connection);
     storageMock.getGA4DailyMetrics.mockResolvedValue([sourceRow]);
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(null);
     storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0, sourceIds: [] });
     storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 100, sourceIds: ["spend-source"] });
     ga4ServiceMock.getAcquisitionBreakdown.mockRejectedValue(new Error("unavailable"));
@@ -144,6 +146,7 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     await pending;
     expect(storageMock.getRevenueTotalForRange).not.toHaveBeenCalled();
     expect(storageMock.getGA4Connection).not.toHaveBeenCalled();
+    expect(storageMock.getGA4OverviewSnapshot).not.toHaveBeenCalled();
     expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 
@@ -258,6 +261,14 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
 
   it("shares stored inputs across KPI/Benchmark metrics and aliases without sharing decisions", async () => {
     enableProvider();
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue({
+      windowStart: "2026-07-01",
+      windowEnd: "2026-07-31",
+      campaignBreakdown: {
+        totals: { conversions: 20, revenue: 200 },
+        meta: { currencyCode: "USD" },
+      },
+    });
     const metrics = ["revenue", "Total Revenue", "roas", "roi", "cpa", "sessions"];
     const uncached = [];
     for (const metric of metrics) uncached.push(await resolveAlertCurrentValueForDecision(row(metric)));
@@ -267,6 +278,7 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     for (const metric of metrics) cached.push(await resolveAlertCurrentValueForDecision(row(metric), cache));
     expect(cached).toEqual(uncached);
     expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledTimes(1);
+    expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledTimes(1);
     expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledTimes(1);
     expect(storageMock.getSpendTotalForRange).toHaveBeenCalledTimes(1);
     expect(storageMock.getCampaign).toHaveBeenCalledTimes(metrics.length);
@@ -434,6 +446,14 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
 
   it("does not evaluate imported revenue with an unverified native fallback", async () => {
     storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0, sourceIds: ["shopify-zero"] });
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue({
+      windowStart: "2026-07-01",
+      windowEnd: "2026-07-31",
+      campaignBreakdown: {
+        totals: { conversions: 10, revenue: 100 },
+        meta: { currencyCode: "USD" },
+      },
+    });
 
     const revenue = await resolveAlertCurrentValueForDecision(row("revenue"));
 
@@ -549,6 +569,71 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     expect(readOnly).toMatchObject({ currentValue: "0", __alertDecisionEligible: true });
     expect(ga4ServiceMock.refreshAccessToken).not.toHaveBeenCalled();
     expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
+  });
+
+  it("uses the synchronized exact-currency Overview total before cent-rounded daily revenue when provider refresh is forbidden", async () => {
+    storageMock.getCampaign.mockResolvedValue({ ...campaign, currency: "EUR" });
+    const oauthConnection = {
+      ...connection,
+      method: "access_token",
+      accessToken: "expired-access-token",
+      refreshToken: "refresh-token",
+    };
+    storageMock.getGA4Connections.mockResolvedValue([oauthConnection]);
+    storageMock.getGA4Connection.mockResolvedValue(oauthConnection);
+    storageMock.getGA4DailyMetrics.mockResolvedValue([{
+      ...sourceRow,
+      users: 2256,
+      sessions: 2256,
+      conversions: 145,
+      revenue: "37518.72",
+    }]);
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue({
+      windowStart: "2026-07-01",
+      windowEnd: "2026-07-31",
+      campaignBreakdown: {
+        totals: { users: 2256, sessions: 2256, conversions: 145, revenue: 37518.74 },
+        meta: { currencyCode: "EUR" },
+      },
+    });
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0, sourceIds: [] });
+    ga4ServiceMock.getTotalsWithRevenue.mockRejectedValue(new Error("401 unauthenticated"));
+
+    const revenue = await resolveAlertCurrentValueForDecision(
+      row("revenue"),
+      undefined,
+      { allowCredentialRefresh: false },
+    );
+
+    expect(revenue).toMatchObject({ currentValue: "37518.74", __alertDecisionEligible: true });
+    expect(ga4ServiceMock.refreshAccessToken).not.toHaveBeenCalled();
+    expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["different window", { windowStart: "2026-07-02", windowEnd: "2026-07-31", currencyCode: "EUR", dailyDate: "2026-07-31" }],
+    ["different currency", { windowStart: "2026-07-01", windowEnd: "2026-07-31", currencyCode: "USD", dailyDate: "2026-07-31" }],
+    ["stale daily coverage", { windowStart: "2026-07-01", windowEnd: "2026-07-31", currencyCode: "EUR", dailyDate: "2026-07-30" }],
+  ])("rejects a synchronized Overview fallback with %s", async (_label, snapshot) => {
+    storageMock.getCampaign.mockResolvedValue({ ...campaign, currency: "EUR" });
+    storageMock.getGA4DailyMetrics.mockResolvedValue([{
+      ...sourceRow,
+      date: snapshot.dailyDate,
+      conversions: 145,
+      revenue: "37518.72",
+    }]);
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue({
+      windowStart: snapshot.windowStart,
+      windowEnd: snapshot.windowEnd,
+      campaignBreakdown: {
+        totals: { conversions: 145, revenue: 37518.74 },
+        meta: { currencyCode: snapshot.currencyCode },
+      },
+    });
+
+    const revenue = await resolveAlertCurrentValueForDecision(row("revenue"));
+
+    expect(revenue).toMatchObject({ currentValue: "37518.72", __alertDecisionEligible: true });
   });
 
   it("fails closed instead of using a rolling financial fallback", async () => {

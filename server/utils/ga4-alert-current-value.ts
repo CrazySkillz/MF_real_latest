@@ -140,6 +140,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
     const startDate = reportingWindow.startDate;
     const endDate = reportingWindow.endDate;
     const financialStartDate = reportingWindow.startDate;
+    const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
     const sourceStartDate = financialStartDate < startDate ? financialStartDate : startDate;
     const usesFinancialSource = isGA4FinancialKpiMetricIdentity(metric);
     // Share successful stored-source reads only within this alert check. Keep scope and credentials fresh.
@@ -171,12 +172,17 @@ export async function resolveAlertCurrentValueForDecision<T extends {
         () => storage.getSpendTotalForRange(campaignId, spendSourceStartDate, financialWindow.endDate, "ga4"),
         (value) => parseGA4FinancialNumber(value?.totalSpend) !== null && Array.isArray(value?.sourceIds)),
     ]);
-    const [rows, connection] = await Promise.all([
+    const [rows, connection, overviewSnapshot] = await Promise.all([
       readSource("daily", [sourceStartDate, endDate],
         () => storage.getGA4DailyMetrics(campaignId, propertyId, sourceStartDate, endDate),
         (value) => Array.isArray(value) && value.length > 0).catch(() => null as any),
       !usesFinancialSource || isYesopMockProperty(propertyId) ? Promise.resolve(null)
         : storage.getGA4Connection(campaignId, propertyId).catch(() => null as any).then((value) => value || primary),
+      usesFinancialSource
+        ? readSource("overview-snapshot", [financialStartDate, endDate],
+          () => storage.getGA4OverviewSnapshot(campaignId, propertyId),
+          (value) => !!value).catch(() => null as any)
+        : Promise.resolve(null),
     ]);
     const sourceRows = Array.isArray(rows) ? rows : [];
     const trafficRows = sourceRows.filter((sourceRow: any) => {
@@ -201,6 +207,17 @@ export async function resolveAlertCurrentValueForDecision<T extends {
       ...toInputs(financialTotals),
       revenue: Number((financialTotals.revenue || 0).toFixed(2)),
     } : null;
+    const latestStoredDate = sourceRows.reduce((latest: string, sourceRow: any) =>
+      String(sourceRow?.date || "") > latest ? String(sourceRow.date) : latest, "");
+    const overviewTotals = (overviewSnapshot as any)?.campaignBreakdown?.totals;
+    const overviewFinancialCandidate = overviewSnapshot
+      && String((overviewSnapshot as any)?.windowStart || "") === financialStartDate
+      && String((overviewSnapshot as any)?.windowEnd || "") === endDate
+      && latestStoredDate === endDate
+      && String((overviewSnapshot as any)?.campaignBreakdown?.meta?.currencyCode || "").trim().toUpperCase() === campaignCurrency
+      && isGA4FinancialTotalsCandidate(overviewTotals)
+        ? { ...overviewTotals, source: "ga4_overview_snapshot" }
+        : null;
     let providerFinancialCandidate: any = null;
     let mockFinancialCandidate: any = null;
 
@@ -238,7 +255,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
             fromDate,
             endDate,
             parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter),
-            String((campaign as any)?.currency || "USD").trim().toUpperCase(),
+            campaignCurrency,
           ];
           // Reuse only identical native reads within this caller's alert check, never across saves.
           const key = JSON.stringify(["ga4-alert-native-totals", campaignId, ...args]);
@@ -287,7 +304,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
     }
 
     const selectedFinancialCandidate = selectGA4FinancialTotalsSource(
-      [mockFinancialCandidate, providerFinancialCandidate, storedFinancialCandidate],
+      [mockFinancialCandidate, providerFinancialCandidate, overviewFinancialCandidate, storedFinancialCandidate],
       {} as any,
     );
     const financialCandidateAvailable = isGA4FinancialTotalsCandidate(selectedFinancialCandidate);

@@ -15133,6 +15133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           try {
           let persistedFinancialCandidate: any = null;
+          let overviewFinancialCandidate: any = null;
           let toDateFinancialCandidate: any = null;
           let propertyWindowTrafficCandidate: any = null;
           const primaryGA4 = persistedPrimaryGA4;
@@ -15152,6 +15153,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               users: totals.users + parseNum(row?.users),
               source: "ga4_daily",
             }), { revenue: 0, conversions: 0, sessions: 0, users: 0, source: "ga4_daily" });
+          }
+          const overviewSnapshot = await getSynchronizedGA4OverviewSnapshot(
+            campaignId,
+            persistedPropertyId,
+            financialStartDateUsed,
+            endDateUsed,
+          ).catch(() => null);
+          const overviewTotals = (overviewSnapshot as any)?.campaignBreakdown?.totals;
+          if (isGA4FinancialTotalsCandidate(overviewTotals)) {
+            overviewFinancialCandidate = { ...overviewTotals, source: "ga4_overview_snapshot" };
           }
           const propertyWindowRows = await storage.getGA4DailyMetrics(campaignId, persistedPropertyId, currentValueWindow.startDate, endDateUsed).catch(() => [] as any[]);
           if (useExecutiveCampaignToDateFinancials) {
@@ -15194,6 +15205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } else {
             const exactFinancialCandidate = selectGA4FinancialTotalsSource([
               toDateFinancialCandidate,
+              overviewFinancialCandidate,
               persistedFinancialCandidate,
             ], null as any);
             const exactFinancialCandidateAvailable = isGA4FinancialTotalsCandidate(exactFinancialCandidate);

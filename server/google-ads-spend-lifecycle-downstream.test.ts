@@ -86,11 +86,13 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
 
   it("preserves campaign/source identity when a Google Ads spend source is added or edited through the manual spend route", () => {
     const routes = read("server", "routes-oauth.ts");
+    const modal = read("client", "src", "components", "AddSpendWizardModal.tsx");
     const manualRoute = sliceBetween(
       routes,
       'app.post("/api/campaigns/:id/spend/process/manual"',
       "const processConnectorDerivedSpend"
     );
+    const importFlow = sliceBetween(modal, "const importAdPlatformSpend = async () =>", "// Check Meta / Google Ads connection when entering ad_platform step");
 
     expect(manualRoute).toContain("const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);");
     expect(manualRoute).toContain("const effectiveSourceType = spendSourceTypeForPlatformContext(platformContext, overrideSourceType);");
@@ -114,6 +116,11 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     expect(manualRoute.indexOf("await storage.deleteSpendRecordsBySource(existingSourceId)")).toBeLessThan(manualRoute.indexOf("await storage.createSpendRecords"));
     expect(manualRoute).toContain("spendSourceId: String(source.id)");
     expect(manualRoute.indexOf("await recalcCampaignSpend(campaignId);")).toBeLessThan(manualRoute.indexOf("await recomputeGA4SpendBeforeResponse(campaignId);"));
+    expect(manualRoute).toContain("if (!isGA4GoogleAdsSpend) throw error;");
+    expect(manualRoute).toContain("derivedValuesUpdated = false;");
+    expect(manualRoute).toContain("platformContext, derivedValuesUpdated");
+    expect(importFlow).toContain("json?.derivedValuesUpdated === false");
+    expect(importFlow).toContain("Total Spend is updated, but some KPI/Benchmark values could not be refreshed.");
     expect(manualRoute).toContain("platformContext: platformContext || null");
   });
 

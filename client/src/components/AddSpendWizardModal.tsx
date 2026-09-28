@@ -1381,7 +1381,9 @@ export function AddSpendWizardModal(props: {
         : "the verified server total";
       toast({
         title: "Spend imported",
-        description: `Imported ${importedSpendLabel} from ${selectedCampaigns.length} ${platformLabel} campaign(s).`,
+        description: json?.derivedValuesUpdated === false
+          ? `Imported ${importedSpendLabel}. Total Spend is updated, but some KPI/Benchmark values could not be refreshed.`
+          : `Imported ${importedSpendLabel} from ${selectedCampaigns.length} ${platformLabel} campaign(s).`,
       });
       props.onProcessed?.();
       props.onOpenChange(false);

@@ -6044,8 +6044,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           campaignId, sourceType: effectiveSourceType, platformContext: 'ga4', displayName: resolvedDisplayName, currency: cur, mappingConfig: finalMappingConfig, isActive: true,
         } as any, records);
         await recalcCampaignSpend(campaignId);
-        await recomputeGA4SpendBeforeResponse(campaignId);
-        return res.json({ success: true, sourceId: source.id, spendToDate: Number(amount.toFixed(2)), currency: cur, platformContext });
+        let derivedValuesUpdated = true;
+        try {
+          await recomputeGA4SpendBeforeResponse(campaignId);
+        } catch (error) {
+          if (!isGA4GoogleAdsSpend) throw error;
+          derivedValuesUpdated = false;
+        }
+        return res.json({ success: true, sourceId: source.id, spendToDate: Number(amount.toFixed(2)), currency: cur, platformContext, derivedValuesUpdated });
       }
 
       let source: any;

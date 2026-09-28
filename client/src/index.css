@@ -83,6 +83,10 @@
     margin-right: 0 !important;
   }
 
+  body[data-scroll-locked]:has([data-pipeline-proxy-sources-dialog]) {
+    margin-right: 0 !important;
+  }
+
   body[data-scroll-locked]:has([data-add-spend-dialog]) {
     margin-right: 0 !important;
   }

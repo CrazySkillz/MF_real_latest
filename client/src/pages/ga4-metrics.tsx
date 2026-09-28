@@ -7280,7 +7280,7 @@ export default function GA4Metrics() {
                     </DialogContent>
                   </Dialog>
                   <Dialog open={showPipelineProxySourcesDialog} onOpenChange={setShowPipelineProxySourcesDialog}>
-                    <DialogContent className="bg-card border-border max-w-lg">
+                    <DialogContent data-pipeline-proxy-sources-dialog className="bg-card border-border max-w-lg">
                       <DialogHeader>
                         <DialogTitle className="text-foreground">Pipeline Proxy Sources</DialogTitle>
                         <DialogDescription className="text-muted-foreground/70">

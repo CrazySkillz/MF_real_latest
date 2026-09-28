@@ -58,6 +58,14 @@ describe("GA4 UI regression guard", () => {
     expect(styles).toMatch(/body\[data-scroll-locked\]:has\(\[data-add-revenue-dialog\]\)\s*\{\s*margin-right:\s*0\s*!important;\s*\}/);
   });
 
+  it("prevents the Pipeline Proxy Sources modal transition from shifting the page", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const styles = readClient("index.css");
+
+    expect(ga4Metrics).toContain("<DialogContent data-pipeline-proxy-sources-dialog");
+    expect(styles).toMatch(/body\[data-scroll-locked\]:has\(\[data-pipeline-proxy-sources-dialog\]\)\s*\{\s*margin-right:\s*0\s*!important;\s*\}/);
+  });
+
   it("prevents GA4 Create and Edit Report modal transitions from shifting the page", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
     const styles = readClient("index.css");

@@ -3,7 +3,7 @@
  * Extracted component for comparing campaign performance metrics.
  * Follows the same pattern as other platform comparison views.
  */
-import { Fragment, useMemo } from "react";
+import { useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trophy, Zap, AlertTriangle, Info } from "lucide-react";
@@ -79,23 +79,14 @@ export default function GA4AdComparison({
 }: GA4AdComparisonProps) {
   const ga4Revenue = useMemo(() => campaignBreakdownAgg.reduce((s, c) => s + c.revenue, 0), [campaignBreakdownAgg]);
   const ga4RevenueForBreakdown = Number(ga4Revenue.toFixed(2));
-  const sourceRevenueBreakdowns = useMemo(() => {
-    return new Map(
-      revenueDisplaySources.map((source) => {
-        const rawCfg = (source as any)?.mappingConfig;
-        const cfg = typeof rawCfg === "string"
-          ? (() => { try { return JSON.parse(rawCfg); } catch { return null; } })()
-          : rawCfg;
-        const totals = Array.isArray(cfg?.campaignValueRevenueTotals)
-          ? cfg.campaignValueRevenueTotals.filter(
-              (item: any) => item?.revenue != null && Number.isFinite(Number(item.revenue)),
-            )
-          : [];
-        return [source.sourceId, totals] as const;
-      }),
-    );
-  }, [revenueDisplaySources]);
-
+  const visibleRevenueDisplaySources = useMemo(
+    () => revenueDisplaySources.filter((source) => (
+      source.materializedRevenueStatus === 'unavailable'
+      || source.revenue == null
+      || Number(source.revenue) !== 0
+    )),
+    [revenueDisplaySources],
+  );
   const chartSummaryRows = useMemo(() => {
     const byName = new Map<string, CampaignAgg>();
     for (const row of chartCampaignRows) {
@@ -372,7 +363,7 @@ export default function GA4AdComparison({
         <CardHeader className="pb-2">
           <CardTitle className="text-lg">Revenue Breakdown</CardTitle>
           <CardDescription>
-            GA4 revenue uses the initial-import-to-latest-completed-day comparison window. Imported sources are source-to-date provenance.
+            GA4 revenue uses the initial-import-to-latest-completed-day comparison window. Imported sources show confirmed values through the latest completed day.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -389,8 +380,7 @@ export default function GA4AdComparison({
                   <td className="px-3 py-2 text-foreground">GA4 Revenue (imported to date)</td>
                   <td className="px-3 py-2 text-right tabular-nums">{formatMoney(ga4RevenueForBreakdown)}</td>
                 </tr>
-                {(revenueState === 'ready' || revenueState === 'stale') && revenueDisplaySources.map((s) => (
-                  <Fragment key={s.sourceId}>
+                {(revenueState === 'ready' || revenueState === 'stale') && visibleRevenueDisplaySources.map((s) => (
                     <tr key={s.sourceId} className="border-b">
                       <td className="px-3 py-2 text-foreground">{s.displayName || s.sourceType}</td>
                       <td className="px-3 py-2 text-right tabular-nums">
@@ -399,13 +389,6 @@ export default function GA4AdComparison({
                           : formatMoney(Number(s.revenue))}
                       </td>
                     </tr>
-                    {s.revenue != null && s.materializedRevenueStatus !== 'unavailable' && (sourceRevenueBreakdowns.get(s.sourceId) || []).map((item: any) => (
-                      <tr key={`${s.sourceId}-${String(item?.campaignValue || "")}`} className="border-b bg-muted/20">
-                        <td className="px-3 py-2 pl-8 text-muted-foreground">{String(item?.campaignValue || "")}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{formatMoney(Number(item?.revenue || 0))}</td>
-                      </tr>
-                    ))}
-                  </Fragment>
                 ))}
                 {revenueState === 'unavailable' && (
                   <tr>
@@ -417,7 +400,7 @@ export default function GA4AdComparison({
                     <td colSpan={2} className="px-3 py-2 text-center text-muted-foreground text-xs">Imported revenue provenance is loading.</td>
                   </tr>
                 )}
-                {revenueState === 'ready' && revenueDisplaySources.length === 0 && (
+                {revenueState === 'ready' && visibleRevenueDisplaySources.length === 0 && (
                   <tr>
                     <td colSpan={2} className="px-3 py-2 text-center text-muted-foreground text-xs italic">No additional revenue sources</td>
                   </tr>

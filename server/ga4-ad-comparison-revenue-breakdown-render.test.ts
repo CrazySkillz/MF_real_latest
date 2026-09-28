@@ -65,19 +65,21 @@ describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
     expect(html).not.toContain("All Campaigns");
   });
 
-  it("preserves a materialized zero source amount", () => {
+  it("omits a completed-day zero and undated saved-config details", () => {
     const html = renderRevenueBreakdown("ready", [{
       sourceId: "zero-source", displayName: "Exact zero source", sourceType: "csv",
       revenue: 0, materializedRevenueStatus: "available",
-      mappingConfig: { campaignValueRevenueTotals: [{ campaignValue: "native_campaign", revenue: 0 }] },
+      mappingConfig: { campaignValueRevenueTotals: [{ campaignValue: "latest_value_not_in_cutoff", revenue: 999 }] },
     }]);
 
     expect(html).toContain("Revenue Breakdown");
     expect(html).toContain("Top Campaigns by Sessions");
     expect(html).not.toContain("All Campaigns");
     expect(html).toMatch(/GA4 Revenue \(imported to date\)<\/td>\s*<td[^>]*>\$0\.00<\/td>/);
-    expect(html).toMatch(/Exact zero source<\/td>\s*<td[^>]*>\$0\.00<\/td>/);
-    expect(html).toMatch(/native_campaign<\/td>\s*<td[^>]*>\$0\.00<\/td>/);
+    expect(html).not.toContain("Exact zero source");
+    expect(html).toContain("No additional revenue sources");
+    expect(html).not.toContain("latest_value_not_in_cutoff");
+    expect(html).not.toContain("$999.00");
   });
 
   it("marks an unmaterialized source unavailable without using its saved config total", () => {

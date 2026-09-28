@@ -672,13 +672,13 @@ describe("GA4 UI regression guard", () => {
     const adComparison = readClient("pages/ga4-ad-comparison.tsx");
 
     expect(adComparison).toContain("materializedRevenueStatus?: 'available' | 'unavailable'");
-    expect(adComparison).toContain("revenueDisplaySources.map((s) => (");
+    expect(adComparison).toContain("visibleRevenueDisplaySources.map((s) => (");
+    expect(adComparison).toContain("Number(source.revenue) !== 0");
     expect(adComparison).toContain("s.materializedRevenueStatus === 'unavailable' || s.revenue == null");
     expect(adComparison).toContain(">Unavailable</span>");
-    expect(adComparison).toContain(
-      "s.revenue != null && s.materializedRevenueStatus !== 'unavailable' && (sourceRevenueBreakdowns.get(s.sourceId) || []).map",
-    );
-    expect(adComparison).toContain("revenueState === 'ready' && revenueDisplaySources.length === 0");
+    expect(adComparison).not.toContain("sourceRevenueBreakdowns");
+    expect(adComparison).not.toContain("campaignValueRevenueTotals");
+    expect(adComparison).toContain("revenueState === 'ready' && visibleRevenueDisplaySources.length === 0");
     expect(adComparison).not.toContain("revenueDisplaySources.filter(s => s.revenue != null).map");
   });
 

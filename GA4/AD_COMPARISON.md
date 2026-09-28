@@ -284,16 +284,16 @@ Rules:
   selected GA4 property and saved campaign values, using the saved initial-import
   boundary through the latest completed reporting day. It is not the Overview
   native Revenue & Financials amount when that section uses a different window.
-- active imported sources use the same campaign-scoped source definitions and
-  materialized revenue records as Overview Revenue & Financials. The
-  `revenue-breakdown` API reads records from `1900-01-01` through the current
-  UTC date. These all-mapped-record amounts remain separate from native All
-  Campaigns rows; uniquely mapped amounts can appear in the Overview-based
-  chart and leader cards.
-- source rows can include indented per-campaign subsections from saved exact `campaignValueRevenueTotals`.
-- subsection rows must use stored exact source values only.
-- do not invent or proportionally allocate subsection values.
-- preserve valid source zero values.
+- active imported sources use the same campaign-scoped materialized revenue
+  records as Overview Revenue & Financials. The `revenue-breakdown` API reads
+  records from `1900-01-01` through the latest completed reporting day in the
+  campaign timezone.
+- the live table renders only confirmed nonzero source-level amounts. A source
+  with a confirmed zero contribution through the cutoff is omitted. It does not
+  render undated `campaignValueRevenueTotals` from saved source configuration,
+  because those values cannot prove the completed-day cutoff.
+- uniquely mapped, completed-day-eligible amounts can still appear in the
+  Overview-based chart and leader cards through their separate exact mapping path.
 - never fall back to stale source-definition/configuration totals when
   materialized values are unavailable.
 - do not render a combined `Total Revenue`; its inputs do not share a proven
@@ -302,13 +302,13 @@ Rules:
   no-campaign-data state instead of the Revenue Breakdown table.
 - if source definitions load but a source has no materialized amount, its row
   displays `Unavailable`; a failed refresh with cached data displays a last-good
-  warning. A verified materialized zero stays zero.
+  warning. A verified materialized zero is omitted from the table.
 
 ## State Contract
 
 - `loading`: no verified current-property rows are rendered.
-- `ready`: provider/source reads completed; valid zero and empty results remain
-  distinct from failure.
+- `ready`: provider/source reads completed; verified zero and empty results stay
+  distinct from failure even though zero imported-source rows are omitted.
 - `stale`: last-good values may remain visible only with an explicit warning.
 - `unavailable`: no plausible zero or ranking is rendered.
 - previous-property placeholder rows are not rendered.

@@ -158,7 +158,7 @@ leader-card, and summary sources are specified in `GA4/AD_COMPARISON.md`.
 | Selected-metric summary | Normalized comparison rows | Sum the selected metric; conversion rate is weighted by sessions across campaign rows |
 | Campaigns Compared | Normalized comparison rows | Exact normalized row count |
 | All Campaigns | Sessions-descending normalized rows | Same native row values regardless of dropdown selection |
-| Revenue Breakdown | Import-to-latest-completed native row sum plus separate materialized all-mapped-record rows | Exact source ID/value; no same-type/config fallback or combined total |
+| Revenue Breakdown | Import-to-latest-completed native row sum plus confirmed nonzero imported source totals through the latest completed reporting day | Exact source ID/value; omit confirmed zero rows; no undated saved-config detail rows, same-type/config fallback, or combined total |
 | Loading/empty/stale/unavailable | Query state plus current-property verification | Previous-property rows are blocked; verified empty differs from failure; last-good data requires an explicit stale warning |
 
 ### Route, storage, lifecycle, and consumer inventory

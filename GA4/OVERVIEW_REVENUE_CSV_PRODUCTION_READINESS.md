@@ -60,7 +60,7 @@ Therefore source-refresh scheduler behavior is inapplicable. Scheduled KPI/Bench
 - The browser preview/import flow supports at most 5,000 non-empty logical data rows and displays that bound.
 - The process endpoint independently caps GA4 CSV parsing at 50,000 non-empty logical data rows as a defensive API bound.
 - The strict GA4 parser counts logical records, so embedded newlines inside quoted fields do not create false row-limit failures.
-- The parser accepts UTF-8 with an optional BOM, CRLF/LF/CR line endings, comma/semicolon/tab/pipe delimiters, escaped quotes, delimiters in quoted fields, and newlines in quoted fields.
+- The parser accepts UTF-8 with an optional BOM, CRLF/LF/CR line endings, comma/semicolon/tab/pipe delimiters, escaped quotes, delimiters in quoted fields, newlines in quoted fields, and consistent exports that wrap each complete delimited row in quotes.
 - It rejects non-UTF-8 replacement/binary characters, ambiguous header delimiters, unclosed/illegal quotes, blank or duplicate headers, header-only files, and rows whose column count differs from the header.
 - Over-limit files fail; they are not partially parsed or silently truncated.
 
@@ -183,6 +183,7 @@ Boundaries: the in-memory duplicate guard is intentionally limited to one server
 13. The Revenue Sources modal rendered CSV through its generic one-row layout, placing the filename in the heading and the type below it. CSV now opts into the existing Shopify/Google Sheets single-source breakdown layout: `CSV` and its edit action remain in the heading, while the persisted filename, same-sized source total, and existing delete action share the detail row.
 14. The Add Revenue picker showed `Uploaded` for an active CSV source but exposed no removal action. It now shows a confirmed trash action beside that status when exactly one active campaign/platform-scoped CSV source exists. The handler re-reads current sources before deletion and requires the same exact ID; multiple-source state fails closed and directs the user to Revenue Sources instead of guessing or deleting a group.
 15. The picker allowed another CSV through the clickable card but did not explain that this creates a separate additive source rather than replacing the uploaded file. In add mode it now shows `Add another file` beside `Uploaded` and explicitly warns that each additional file contributes to Total Revenue; it directs replacements to the existing Revenue Sources pencil. The additive action is suppressed in edit mode so it cannot be mislabeled while a source ID is retained.
+16. Some CSV generators wrap every complete delimited row in quotes. The shared parser already had a narrow consistent-row recovery for that shape, but strict GA4 revenue parsing skipped it and exposed the full header as one field. Recovery now runs before the unchanged strict header, row-width, size, amount, date, and pre-mutation validation.
 
 Files changed for these fixes/evidence:
 

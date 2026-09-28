@@ -36,6 +36,22 @@ describe("GA4 CSV Revenue current-main certification guards", () => {
     ]);
   });
 
+  it("recovers exports that wrap each complete CSV row in quotes", () => {
+    const parsed = parseCsvText([
+      '"Date,Campaign,Revenue,Notes"',
+      '"2026-07-01,CSV_REVENUE_ALPHA,200.25,first"',
+      '"2026-07-02,CSV_REVENUE_ALPHA,49.75,second"',
+      '"2026-07-03,CSV_REVENUE_BETA,25.00,excluded"',
+    ].join("\r\n"), 5_000, { strict: true });
+
+    expect(parsed.headers).toEqual(["Date", "Campaign", "Revenue", "Notes"]);
+    expect(parsed.rows).toEqual([
+      { Date: "2026-07-01", Campaign: "CSV_REVENUE_ALPHA", Revenue: "200.25", Notes: "first" },
+      { Date: "2026-07-02", Campaign: "CSV_REVENUE_ALPHA", Revenue: "49.75", Notes: "second" },
+      { Date: "2026-07-03", Campaign: "CSV_REVENUE_BETA", Revenue: "25.00", Notes: "excluded" },
+    ]);
+  });
+
   it("accepts exactly the configured data-row cap and rejects the next logical row without truncation", () => {
     const atLimit = `Revenue\n${Array.from({ length: 5_000 }, () => "1").join("\n")}`;
     expect(parseCsvText(atLimit, 5_000, { strict: true }).rows).toHaveLength(5_000);
@@ -55,6 +71,8 @@ describe("GA4 CSV Revenue current-main certification guards", () => {
       'Revenue,Campaign\n"100,Alpha',
       "Revenue,Revenue\n100,200",
       "Revenue,Campaign\n100,Alpha,extra",
+      '"Revenue,Campaign,Date"\n"100,Alpha"',
+      '"Revenue,Campaign;Date,Notes;Extra"\n"100,Alpha;2026-09-01,first;note"',
       "Revenue,,Date\n100,Alpha,2026-09-01",
       "Revenue,Campaign;Date\n100,Alpha;2026-09-01",
       "Revenue\n100\u0000",

@@ -363,14 +363,7 @@ export function parseCsvText(csvText: string, maxRows?: number, options?: CsvPar
   const headerRow = rows[0] || [];
   // Fallback: if we parsed only one column, try to recover by splitting on a common delimiter present in the header.
   let headers = headerRow.map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
-  if (strict) {
-    if (rows.length < 2) throw csvParseError("CSV must include a header and at least one data row.");
-    if (headerRow.some((header) => !String(header ?? "").trim())) throw csvParseError("CSV headers cannot be blank.");
-    headers = headerRow.map((header) => String(header).trim());
-    if (new Set(headers).size !== headers.length) throw csvParseError("CSV headers must be unique.");
-    const invalidWidth = rows.slice(1).findIndex((row) => row.length !== headers.length);
-    if (invalidWidth >= 0) throw csvParseError(`CSV row ${invalidWidth + 2} has a different number of columns than the header.`);
-  } else if (headers.length === 1) {
+  if (headers.length === 1) {
     const firstLine = (text.split("\n")[0] || "");
     const candidates = [",", ";", "\t", "|"];
     const headerCell = String(headerRow[0] ?? "");
@@ -383,6 +376,7 @@ export function parseCsvText(csvText: string, maxRows?: number, options?: CsvPar
       if (sample.length < 2) return null;
       if (!sample.every((r) => Array.isArray(r) && r.length === 1)) return null;
 
+      const matches: string[] = [];
       for (const d of candidates) {
         const lens = sample
           .map((r) => String(r?.[0] ?? ""))
@@ -392,9 +386,10 @@ export function parseCsvText(csvText: string, maxRows?: number, options?: CsvPar
         const firstLen = lens[0];
         if (firstLen < 3) continue; // need at least 3 columns to be confident
         const consistent = lens.every((n) => n === firstLen);
-        if (consistent) return d;
+        if (consistent) matches.push(d);
       }
-      return null;
+      if (strict && matches.length > 1) throw csvParseError("CSV header uses ambiguous delimiters.");
+      return matches[0] || null;
     };
 
     const embeddedDelim = chooseEmbeddedDelimiter();
@@ -419,6 +414,16 @@ export function parseCsvText(csvText: string, maxRows?: number, options?: CsvPar
       const newHeaderRow = rows[0] || [];
       headers = newHeaderRow.map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
     }
+  }
+
+  if (strict) {
+    const strictHeaderRow = rows[0] || [];
+    if (rows.length < 2) throw csvParseError("CSV must include a header and at least one data row.");
+    if (strictHeaderRow.some((header) => !String(header ?? "").trim())) throw csvParseError("CSV headers cannot be blank.");
+    headers = strictHeaderRow.map((header) => String(header).trim());
+    if (new Set(headers).size !== headers.length) throw csvParseError("CSV headers must be unique.");
+    const invalidWidth = rows.slice(1).findIndex((row) => row.length !== headers.length);
+    if (invalidWidth >= 0) throw csvParseError(`CSV row ${invalidWidth + 2} has a different number of columns than the header.`);
   }
 
   const outRows: Array<Record<string, string>> = [];

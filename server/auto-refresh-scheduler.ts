@@ -1143,6 +1143,7 @@ export async function runDailyAutoRefreshOnce(
         // Ad Platform Spend (Google Ads / Meta) — pull from daily metrics tables
         try {
           const spendSrcs = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
+          let ga4GoogleAdsRefreshAttempted = false;
           for (const src of (Array.isArray(spendSrcs) ? spendSrcs : [])) {
             if ((src as any).isActive === false) continue;
             if (String((src as any).sourceType || "") !== "ad_platforms") continue;
@@ -1155,8 +1156,35 @@ export async function runDailyAutoRefreshOnce(
             const cfg = safeJsonParse((src as any).mappingConfig);
             const platformContext = String((src as any).platformContext || cfg?.platformContext || "ga4") as any;
             if (platformContext === "ga4") {
-              // The dedicated Google Ads scheduler is the sole updater for live GA4 ad-platform spend.
-              skipped++;
+              const mappedPlatform = String(cfg?.platform || "").trim().toLowerCase();
+              const namedGoogleAdsSource = displayName.trim().toLowerCase() === "google ads";
+              if (mappedPlatform !== "google_ads") {
+                if (namedGoogleAdsSource) attempted++;
+                else skipped++;
+                continue;
+              }
+              if (ga4GoogleAdsRefreshAttempted) {
+                skipped++;
+                continue;
+              }
+              ga4GoogleAdsRefreshAttempted = true;
+              attempted++;
+              try {
+                const dedicatedConnection = await storage.getGA4GoogleAdsSpendConnection(campaignId).catch(() => null);
+                const legacyConnection = dedicatedConnection ? null : await storage.getGoogleAdsConnection(campaignId).catch(() => null);
+                const connection = dedicatedConnection || (legacyConnection?.spendOnly ? legacyConnection : null);
+                if (!connection || String(connection.method || "") !== "oauth") throw new Error("live spend connection is unavailable");
+                const { refreshGoogleAdsForCampaign } = await import("./google-ads-scheduler");
+                const refresh = await refreshGoogleAdsForCampaign(campaignId, connection, {
+                  ga4SpendConnection: Boolean(dedicatedConnection),
+                  deferDownstream: true,
+                });
+                if (!refresh.providerRefreshed || refresh.spendMaterialization?.updated !== true) throw new Error("spend materialization was incomplete");
+                succeeded++;
+                anyUpdated = true;
+              } catch (error: any) {
+                console.error(`[Auto Refresh] Google Ads spend alignment failed for campaign ${campaignId}:`, error?.message || error);
+              }
               continue;
             }
             const selectedIds = Array.isArray(cfg?.selectedCampaignIds)

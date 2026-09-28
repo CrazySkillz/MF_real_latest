@@ -28,6 +28,10 @@ describe("GA4 Insights Google Ads spend production pipeline", () => {
     expect(provider).not.toContain("startDate.setDate(startDate.getDate() - 60)");
     expect(auto).toContain("campaignStart");
     expect(auto).toContain("providerFresh");
+    expect(auto).toContain('const { refreshGoogleAdsForCampaign } = await import("./google-ads-scheduler")');
+    expect(auto).toContain("ga4SpendConnection: Boolean(dedicatedConnection)");
+    expect(auto).toContain("deferDownstream: true");
+    expect(auto).toContain("refresh.spendMaterialization?.updated !== true");
     expect(auto).toContain('currency: String((src as any)?.currency || (campaign as any)?.currency || "USD")');
     expect(auto).not.toContain("new Date(Date.now() - 90 * 86400000)");
     const replacement = slice(storage, "async replaceGoogleAdsDailyMetricsForWindow", "async updateGoogleAdsDailyMetricsGA4Revenue");

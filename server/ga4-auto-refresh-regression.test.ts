@@ -285,7 +285,7 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(content).not.toContain('String((s as any).sourceType || "") === "csv"');
     expect(content).not.toContain("reprocessCsv");
   });
-  it("leaves live GA4 Google Ads spend to the dedicated provider scheduler", () => {
+  it("aligns live GA4 Google Ads spend through the dedicated provider refresh path", () => {
     const content = schedulerFile();
     const adPlatformStart = content.indexOf("// Ad Platform Spend");
     const adPlatformEnd = content.indexOf("// Google Sheets (Revenue)", adPlatformStart);
@@ -293,7 +293,9 @@ describe("GA4 external value auto-refresh regression guard", () => {
 
     expect(adPlatformStart).toBeGreaterThan(-1);
     expect(adPlatformBlock).toContain('if (platformContext === "ga4")');
-    expect(adPlatformBlock).toContain("dedicated Google Ads scheduler is the sole updater");
+    expect(adPlatformBlock).toContain('const { refreshGoogleAdsForCampaign } = await import("./google-ads-scheduler")');
+    expect(adPlatformBlock).toContain("ga4SpendConnection: Boolean(dedicatedConnection)");
+    expect(adPlatformBlock).toContain("deferDownstream: true");
     expect(adPlatformBlock).not.toContain("buildGA4GoogleAdsSpendMaterialization");
   });
   it("persists fresh Google Sheets spend preview metadata after reprocess", () => {

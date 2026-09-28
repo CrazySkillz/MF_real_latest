@@ -230,6 +230,7 @@ export async function materializeGA4GoogleAdsSpendForCampaign(
   campaign?: any,
   connection?: any,
   dedicatedSpend = false,
+  deferDownstream = false,
 ): Promise<{ updated: boolean; sourceId: string | null; records: number; totalSpend: number | null }> {
   campaign = campaign || await storage.getCampaign(campaignId).catch(() => null);
   connection = connection || await (dedicatedSpend ? storage.getGA4GoogleAdsSpendConnection(campaignId) : storage.getGoogleAdsConnection(campaignId)).catch(() => null);
@@ -280,9 +281,11 @@ export async function materializeGA4GoogleAdsSpendForCampaign(
   await storage.replaceSpendRecordsForSource(campaignId, String(source.id), "ad_platforms", "ga4", materialized.records as any);
   const totals = await storage.getSpendTotalForRange(campaignId, "1900-01-01", endDate, "ga4");
   await storage.updateCampaign(campaignId, { spend: totals.totalSpend.toFixed(2) } as any);
-  const recompute = await runGA4DailyKPIAndBenchmarkJobs({ campaignId });
-  if (Number(recompute.campaignsProcessed || 0) <= 0 || recompute.campaignIdsSkipped.length > 0 || recompute.campaignIdsFailed.length > 0 || recompute.kpiIdsSkipped.length > 0 || recompute.kpiIdsFailed.length > 0 || recompute.benchmarkIdsSkipped.length > 0 || recompute.benchmarkIdsFailed.length > 0 || recompute.alertReconciliationFailures.length > 0) {
-    throw new Error(`GA4 Google Ads downstream recompute was incomplete for campaign ${campaignId}`);
+  if (!deferDownstream) {
+    const recompute = await runGA4DailyKPIAndBenchmarkJobs({ campaignId });
+    if (Number(recompute.campaignsProcessed || 0) <= 0 || recompute.campaignIdsSkipped.length > 0 || recompute.campaignIdsFailed.length > 0 || recompute.kpiIdsSkipped.length > 0 || recompute.kpiIdsFailed.length > 0 || recompute.benchmarkIdsSkipped.length > 0 || recompute.benchmarkIdsFailed.length > 0 || recompute.alertReconciliationFailures.length > 0) {
+      throw new Error(`GA4 Google Ads downstream recompute was incomplete for campaign ${campaignId}`);
+    }
   }
   return { updated: true, sourceId: String(source.id), records: materialized.records.length, totalSpend: totals.totalSpend };
 }
@@ -332,7 +335,7 @@ export async function enrichGoogleAdsWithGA4Revenue(
 export async function refreshGoogleAdsForCampaign(
   campaignId: string,
   connection?: any,
-  opts?: { advanceTestDay?: boolean; ga4SpendConnection?: boolean }
+  opts?: { advanceTestDay?: boolean; ga4SpendConnection?: boolean; deferDownstream?: boolean }
 ): Promise<{ providerRefreshed: boolean; spendMaterialization: { updated: boolean; sourceId: string | null; records: number; totalSpend: number | null } | null }> {
   if (!connection) {
     connection = opts?.ga4SpendConnection
@@ -357,7 +360,7 @@ export async function refreshGoogleAdsForCampaign(
       const refreshedConnection = opts?.ga4SpendConnection
         ? await storage.getGA4GoogleAdsSpendConnection(campaignId)
         : await storage.getGoogleAdsConnection(campaignId);
-      const spendMaterialization = await materializeGA4GoogleAdsSpendForCampaign(campaignId, campaign, refreshedConnection, !!opts?.ga4SpendConnection);
+      const spendMaterialization = await materializeGA4GoogleAdsSpendForCampaign(campaignId, campaign, refreshedConnection, !!opts?.ga4SpendConnection, !!opts?.deferDownstream);
       return { providerRefreshed: true, spendMaterialization };
     }
     return { providerRefreshed: true, spendMaterialization: null };

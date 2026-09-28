@@ -21,6 +21,11 @@ const mocks = vi.hoisted(() => {
     getCustomerAccount,
     refreshAccessToken,
     MockGoogleAdsClient,
+    runGA4DailyKPIAndBenchmarkJobs: vi.fn(async () => ({
+      campaignsProcessed: 1,
+      campaignIdsSkipped: [], campaignIdsFailed: [], kpiIdsSkipped: [], kpiIdsFailed: [],
+      benchmarkIdsSkipped: [], benchmarkIdsFailed: [], alertReconciliationFailures: [],
+    })),
     storage: {
       getGoogleAdsConnection: vi.fn(),
       getGA4GoogleAdsSpendConnection: vi.fn(),
@@ -50,11 +55,7 @@ vi.mock("./googleAdsClient", async (importOriginal) => ({
   GoogleAdsClient: mocks.MockGoogleAdsClient,
 }));
 vi.mock("./ga4-kpi-benchmark-jobs", () => ({
-  runGA4DailyKPIAndBenchmarkJobs: vi.fn(async () => ({
-    campaignsProcessed: 1,
-    campaignIdsSkipped: [], campaignIdsFailed: [], kpiIdsSkipped: [], kpiIdsFailed: [],
-    benchmarkIdsSkipped: [], benchmarkIdsFailed: [], alertReconciliationFailures: [],
-  })),
+  runGA4DailyKPIAndBenchmarkJobs: mocks.runGA4DailyKPIAndBenchmarkJobs,
 }));
 
 import { refreshAllGoogleAdsMetrics, refreshGoogleAdsForCampaign } from "./google-ads-scheduler";
@@ -241,6 +242,23 @@ describe("Google Ads GA4 Overview spend production path", () => {
     expect(mocks.storage.updateGA4GoogleAdsSpendConnection).toHaveBeenCalledWith("campaign-1", expect.objectContaining({ accessToken: "fresh-token" }));
     expect(mocks.storage.replaceGA4GoogleAdsSpendDailyMetricsForWindow).toHaveBeenCalledOnce();
     expect(mocks.storage.replaceSpendRecordsForSource).toHaveBeenCalledOnce();
+    expect(mocks.runGA4DailyKPIAndBenchmarkJobs).toHaveBeenCalledOnce();
+  });
+
+  it("defers downstream recompute while the ordered GA4 daily pipeline aligns Google Ads Spend", async () => {
+    mocks.storage.getGA4GoogleAdsSpendConnection.mockResolvedValue({
+      method: "oauth", spendOnly: true, accessToken: "spend-token", refreshToken: "refresh-token",
+      clientId: "client-id", clientSecret: "client-secret", customerId: "123-456-7890",
+      customerName: "Spend Account", lastRefreshAt: new Date(),
+    });
+    const result = await refreshGoogleAdsForCampaign("campaign-1", undefined, {
+      ga4SpendConnection: true,
+      deferDownstream: true,
+    });
+    expect(result.spendMaterialization?.updated).toBe(true);
+    expect(mocks.storage.replaceGA4GoogleAdsSpendDailyMetricsForWindow).toHaveBeenCalledOnce();
+    expect(mocks.storage.replaceSpendRecordsForSource).toHaveBeenCalledOnce();
+    expect(mocks.runGA4DailyKPIAndBenchmarkJobs).not.toHaveBeenCalled();
   });
 
   it("schedules the main platform and dedicated Spend connection separately for one campaign", async () => {

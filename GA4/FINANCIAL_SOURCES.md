@@ -460,7 +460,7 @@ Important meaning:
 - in Salesforce edit mode, the first `Source` step must state that the existing source is being edited and that continuing allows users to add/remove opportunities, change mappings, or configure Pipeline Proxy
 - HubSpot edit mode provides the same first-step guidance for adding/removing opportunities, changing mappings, or configuring Pipeline Proxy
 - Salesforce and HubSpot edit mode do not navigate from the first `Source` step into the unrelated Add Revenue source picker: the first step uses the modal close action to cancel, while later steps retain footer `Back` navigation to the immediately preceding wizard step
-- the Pipeline Proxy Sources modal exposes provider-level edit and remove actions for both Salesforce and HubSpot; removing a provider uses the exact campaign-scoped revenue-source lifecycle so Pipeline Proxy and affected financial totals are recalculated
+- the Pipeline Proxy Sources modal exposes provider-level edit and remove actions for both Salesforce and HubSpot; removing a provider there disables only that exact source's Pipeline Proxy fields and preserves the active CRM revenue source, its selected mappings, confirmed revenue records, and Total Revenue
 - choosing `Total Revenue only (no Pipeline card)` disables only Pipeline Proxy for this source; confirmed Salesforce revenue must continue to refresh automatically through the five-minute source loop
 - the Pipeline stage list must contain only active open Opportunity stages; closed, inactive, missing, or changed-to-closed stages must fail save validation
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue

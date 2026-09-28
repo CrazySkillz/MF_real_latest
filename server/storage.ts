@@ -254,6 +254,14 @@ export interface IStorage {
     records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>,
     expectedSourceMappingConfig?: string,
   ): Promise<RevenueSource>;
+  disableGa4CrmPipelineProxy(
+    campaignId: string,
+    sourceId: string,
+    sourceType: "salesforce" | "hubspot",
+    nextSourceMappingConfig: string,
+    expectedSourceMappingConfig: string,
+    connectionState?: { connectionId: string; nextMappingConfig: string; expectedMappingConfig: string | null } | null,
+  ): Promise<RevenueSource>;
   replaceGa4ShopifyRevenueSourceWithRecords(
     campaignId: string,
     existingSourceId: string | null,
@@ -2334,6 +2342,59 @@ export class DatabaseStorage implements IStorage {
         ))
         .returning({ id: hubspotConnections.id });
       if (!savedConnection) throw new Error('HubSpot connection not found');
+
+      return savedSource;
+    });
+  }
+
+  async disableGa4CrmPipelineProxy(
+    campaignId: string,
+    sourceId: string,
+    sourceType: "salesforce" | "hubspot",
+    nextSourceMappingConfig: string,
+    expectedSourceMappingConfig: string,
+    connectionState?: { connectionId: string; nextMappingConfig: string; expectedMappingConfig: string | null } | null,
+  ): Promise<RevenueSource> {
+    return await db.transaction(async (tx: any) => {
+      const [savedSource] = await tx
+        .update(revenueSources)
+        .set({ mappingConfig: nextSourceMappingConfig } as any)
+        .where(and(
+          sql`${revenueSources.id}::text = ${sourceId}`,
+          eq(revenueSources.campaignId, campaignId),
+          eq(revenueSources.sourceType, sourceType),
+          eq(revenueSources.isActive, true),
+          or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext)),
+          eq(revenueSources.mappingConfig, expectedSourceMappingConfig),
+        ))
+        .returning();
+      if (!savedSource) {
+        const error: any = new Error(`${sourceType === "salesforce" ? "Salesforce" : "HubSpot"} revenue source changed. Refresh and try again.`);
+        error.code = "CRM_PIPELINE_PROXY_SOURCE_CHANGED";
+        throw error;
+      }
+
+      if (connectionState) {
+        const connectionTable = sourceType === "salesforce" ? salesforceConnections : hubspotConnections;
+        const expectedConnectionCondition = connectionState.expectedMappingConfig === null
+          ? isNull(connectionTable.mappingConfig)
+          : eq(connectionTable.mappingConfig, connectionState.expectedMappingConfig);
+        const [savedConnection] = await tx
+          .update(connectionTable)
+          .set({ mappingConfig: connectionState.nextMappingConfig } as any)
+          .where(and(
+            sql`${connectionTable.id}::text = ${connectionState.connectionId}`,
+            eq(connectionTable.campaignId, campaignId),
+            eq(connectionTable.isActive, true),
+            expectedConnectionCondition,
+          ))
+          .returning({ id: connectionTable.id });
+        if (!savedConnection) {
+          const error: any = new Error(`${sourceType === "salesforce" ? "Salesforce" : "HubSpot"} connection changed. Refresh and try again.`);
+          error.code = "CRM_PIPELINE_PROXY_CONNECTION_CHANGED";
+          throw error;
+        }
+      }
 
       return savedSource;
     });

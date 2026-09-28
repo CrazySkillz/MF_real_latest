@@ -76,6 +76,8 @@ The Revenue Sources modal keeps the provider as the top-level source and itemize
 
 HubSpot uses the same exact-item removal pattern: the provider pencil edits the shared source configuration, each item row removes only that saved HubSpot value, and removing the final value deletes that exact source. The source list does not repeat a provider subtitle or saved GA4 campaign mapping names beneath `HubSpot (Deals)`, and itemized rows do not add a redundant confirmed-deal count heading.
 
+The trash action in `Pipeline Proxy -> Sources` has a narrower meaning than deleting from `Total Revenue -> Sources`: it disables only Pipeline Proxy on that exact Salesforce or HubSpot source and clears its proxy stage/totals. The stable CRM source, selected mappings, confirmed revenue metadata, and materialized revenue records must remain unchanged. Full CRM revenue-source deletion remains available only from the Revenue Sources lifecycle.
+
 Deleting or deactivating the last eligible CRM source removes that provider's contribution and configuration. The Overview Pipeline Proxy card itself remains visible and shows `Not configured` when no other eligible CRM source exists.
 
 ## Save And Refresh Contract

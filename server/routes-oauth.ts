@@ -3909,6 +3909,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Disable only Pipeline Proxy for an exact GA4 CRM source. Confirmed revenue and
+  // its materialized records remain intact.
+  app.delete("/api/campaigns/:id/revenue-sources/:sourceId/pipeline-proxy", async (req, res) => {
+    try {
+      const campaignId = String(req.params.id || "");
+      const sourceId = String(req.params.sourceId || "");
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+      const platformContext = parsePlatformContext((req.query as any)?.platformContext, "ga4", res);
+      if (!platformContext) return;
+      if (platformContext !== "ga4") {
+        return res.status(400).json({ success: false, error: "Pipeline Proxy removal is only supported for GA4 CRM revenue sources." });
+      }
+
+      const source: any = await storage.getRevenueSource(campaignId, sourceId);
+      if (!source || String(source?.platformContext || "ga4").trim().toLowerCase() !== "ga4") {
+        return res.status(404).json({ success: false, error: "Revenue source not found" });
+      }
+      const sourceType = String(source?.sourceType || "").trim().toLowerCase();
+      if (sourceType !== "salesforce" && sourceType !== "hubspot") {
+        return res.status(400).json({ success: false, error: "Pipeline Proxy can only be removed from a Salesforce or HubSpot source." });
+      }
+      const expectedSourceMappingConfig = String(source?.mappingConfig || "");
+      let sourceCfg: any;
+      try {
+        sourceCfg = JSON.parse(expectedSourceMappingConfig);
+      } catch {
+        return res.status(422).json({ success: false, error: "CRM revenue source mapping is invalid. Edit and re-save the source." });
+      }
+      if (sourceCfg?.pipelineEnabled !== true) {
+        return res.json({ success: true, sourceId, sourceType, pipelineEnabled: false, alreadyDisabled: true, confirmedRevenuePreserved: true });
+      }
+
+      const clearPipelineFields = (cfg: any) => ({
+        ...cfg,
+        pipelineEnabled: false,
+        ...(sourceType === "salesforce" ? { pipelineStageName: null } : { pipelineStageId: null }),
+        pipelineStageLabel: null,
+        pipelineTotalToDate: 0,
+        pipelineCurrency: null,
+        pipelineLastUpdatedAt: null,
+        pipelineProxyMode: null,
+        pipelineWarning: null,
+        pipelineValueRevenueTotals: [],
+      });
+      const nextSourceMappingConfig = JSON.stringify(clearPipelineFields(sourceCfg));
+
+      const connection: any = sourceType === "salesforce"
+        ? await storage.getSalesforceConnection(campaignId).catch(() => null)
+        : await storage.getHubspotConnection(campaignId).catch(() => null);
+      let connectionState: { connectionId: string; nextMappingConfig: string; expectedMappingConfig: string | null } | null = null;
+      if (connection?.id) {
+        const expectedConnectionMappingConfig = connection.mappingConfig == null ? null : String(connection.mappingConfig);
+        try {
+          const connectionCfg = expectedConnectionMappingConfig ? JSON.parse(expectedConnectionMappingConfig) : {};
+          const connectionContext = String(connectionCfg?.platformContext || connectionCfg?.platform || "").trim().toLowerCase();
+          if (connectionContext === "ga4" || expectedConnectionMappingConfig === expectedSourceMappingConfig) {
+            connectionState = {
+              connectionId: String(connection.id),
+              expectedMappingConfig: expectedConnectionMappingConfig,
+              nextMappingConfig: JSON.stringify(clearPipelineFields(connectionCfg)),
+            };
+          }
+        } catch {
+          // Preserve an unrelated or malformed connection mapping; the exact source remains authoritative.
+        }
+      }
+
+      await storage.disableGa4CrmPipelineProxy(
+        campaignId,
+        sourceId,
+        sourceType,
+        nextSourceMappingConfig,
+        expectedSourceMappingConfig,
+        connectionState,
+      );
+      return res.json({ success: true, sourceId, sourceType, pipelineEnabled: false, confirmedRevenuePreserved: true });
+    } catch (error: any) {
+      const conflict = error?.code === "CRM_PIPELINE_PROXY_SOURCE_CHANGED" || error?.code === "CRM_PIPELINE_PROXY_CONNECTION_CHANGED";
+      res.status(conflict ? 409 : 500).json({ success: false, error: error?.message || "Failed to remove Pipeline Proxy" });
+    }
+  });
+
   // Individual revenue source delete
   app.delete("/api/campaigns/:id/revenue-sources/:sourceId", async (req, res) => {
     try {

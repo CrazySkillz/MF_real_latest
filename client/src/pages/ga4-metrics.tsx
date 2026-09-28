@@ -350,6 +350,8 @@ export default function GA4Metrics() {
   const [showRevenueDialog, setShowRevenueDialog] = useState(false);
   const [editingRevenueSource, setEditingRevenueSource] = useState<any>(null);
   const [deletingRevenueSourceId, setDeletingRevenueSourceId] = useState<string | null>(null);
+  const [deletingPipelineProxySource, setDeletingPipelineProxySource] = useState<{ sourceId: string; sourceType: "salesforce" | "hubspot"; providerLabel: string } | null>(null);
+  const [deletingPipelineProxySourcePending, setDeletingPipelineProxySourcePending] = useState(false);
   const [deletingHubSpotRevenueItem, setDeletingHubSpotRevenueItem] = useState<{ source: any; campaignValue: string; isLastSelectedValue: boolean } | null>(null);
   const [deletingHubSpotRevenueItemPending, setDeletingHubSpotRevenueItemPending] = useState(false);
   const [deletingSalesforceRevenueItem, setDeletingSalesforceRevenueItem] = useState<{ source: any; campaignValue: string; isLastSelectedValue: boolean } | null>(null);
@@ -7321,12 +7323,18 @@ export default function GA4Metrics() {
                                 {["hubspot", "salesforce"].includes(String(entry?.sourceType || "").trim().toLowerCase()) && entry?.sourceId && (
                                   <button
                                     onClick={() => {
+                                      const sourceType = String(entry.sourceType).trim().toLowerCase();
+                                      if (sourceType !== "salesforce" && sourceType !== "hubspot") return;
                                       setShowPipelineProxySourcesDialog(false);
-                                      setDeletingRevenueSourceId(String(entry.sourceId));
+                                      setDeletingPipelineProxySource({
+                                        sourceId: String(entry.sourceId),
+                                        sourceType,
+                                        providerLabel: sourceType === "salesforce" ? "Salesforce" : "HubSpot",
+                                      });
                                     }}
                                     className="rounded p-1 text-muted-foreground/70 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                                    title={`Remove ${String(entry.sourceType).trim().toLowerCase() === "salesforce" ? "Salesforce" : "HubSpot"} revenue source`}
-                                    aria-label={`Remove ${String(entry.sourceType).trim().toLowerCase() === "salesforce" ? "Salesforce" : "HubSpot"} revenue source`}
+                                    title={`Remove ${String(entry.sourceType).trim().toLowerCase() === "salesforce" ? "Salesforce" : "HubSpot"} Pipeline Proxy`}
+                                    aria-label={`Remove ${String(entry.sourceType).trim().toLowerCase() === "salesforce" ? "Salesforce" : "HubSpot"} Pipeline Proxy`}
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </button>
@@ -7350,6 +7358,57 @@ export default function GA4Metrics() {
                       </div>
                     </DialogContent>
                   </Dialog>
+                  <AlertDialog
+                    open={!!deletingPipelineProxySource}
+                    onOpenChange={(open) => {
+                      if (!open && !deletingPipelineProxySourcePending) setDeletingPipelineProxySource(null);
+                    }}
+                  >
+                    <AlertDialogContent data-pipeline-proxy-sources-dialog className="bg-card border-border">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-foreground">
+                          Remove {deletingPipelineProxySource?.providerLabel} Pipeline Proxy?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-muted-foreground/70">
+                          This removes only this provider's Pipeline Proxy. Confirmed revenue and selected CRM mappings will remain unchanged.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deletingPipelineProxySourcePending}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                          disabled={deletingPipelineProxySourcePending}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            const target = deletingPipelineProxySource;
+                            if (!target) return;
+                            setDeletingPipelineProxySourcePending(true);
+                            void (async () => {
+                              try {
+                                const resp = await fetch(`/api/campaigns/${campaignId}/revenue-sources/${encodeURIComponent(target.sourceId)}/pipeline-proxy?platformContext=ga4`, { method: "DELETE", credentials: "include" });
+                                const json = await resp.json().catch(() => null);
+                                if (!resp.ok || json?.success === false) {
+                                  throw new Error(json?.error || "Failed to remove Pipeline Proxy");
+                                }
+                                await queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
+                                queryClient.invalidateQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false });
+                                queryClient.invalidateQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy", "ga4"], exact: false });
+                                toast({ title: "Pipeline Proxy removed", description: `${target.providerLabel} confirmed revenue was preserved.` });
+                              } catch (e: any) {
+                                console.error(e);
+                                toast({ title: "Remove failed", description: e?.message || "Please try again.", variant: "destructive" });
+                              } finally {
+                                setDeletingPipelineProxySourcePending(false);
+                                setDeletingPipelineProxySource(null);
+                              }
+                            })();
+                          }}
+                        >
+                          {deletingPipelineProxySourcePending ? "Removing…" : "Remove Pipeline Proxy"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                   <AlertDialog open={!!deletingSpendSourceId} onOpenChange={(open) => { if (!open) setDeletingSpendSourceId(null); }}>
                     <AlertDialogContent className="bg-card border-border">
                       <AlertDialogHeader>

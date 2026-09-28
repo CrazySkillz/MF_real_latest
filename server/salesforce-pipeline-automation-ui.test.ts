@@ -157,17 +157,33 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     expect(salesforceWizard).toContain('visibleUniqueValues.map((v) =>');
   });
 
-  it("edits or removes the Salesforce source from Pipeline Proxy Sources", () => {
+  it("edits the CRM source but removes only Pipeline Proxy from Pipeline Proxy Sources", () => {
     const pipelineDialog = sliceBetween(
       ga4Page,
       '<Dialog open={showPipelineProxySourcesDialog}',
       '<AlertDialog open={!!deletingSpendSourceId}',
     );
+    const disableRoute = sliceBetween(
+      routes,
+      'app.delete("/api/campaigns/:id/revenue-sources/:sourceId/pipeline-proxy"',
+      '// Individual revenue source delete',
+    );
 
     expect(pipelineDialog).toContain('["hubspot", "salesforce"].includes(String(entry?.sourceType || "").trim().toLowerCase())');
     expect(pipelineDialog).toContain('setEditingRevenueSource({ id: entry.sourceId');
-    expect(pipelineDialog).toContain('setDeletingRevenueSourceId(String(entry.sourceId))');
+    expect(pipelineDialog).toContain('setDeletingPipelineProxySource({');
+    expect(pipelineDialog).not.toContain('setDeletingRevenueSourceId(String(entry.sourceId))');
+    expect(pipelineDialog).toContain('/pipeline-proxy?platformContext=ga4');
+    expect(pipelineDialog).toContain("Confirmed revenue and selected CRM mappings will remain unchanged.");
     expect(pipelineDialog).toContain('"salesforce" ? "Salesforce" : "HubSpot"');
+    expect(disableRoute).toContain('ensureCampaignAccess');
+    expect(disableRoute).toContain('sourceType !== "salesforce" && sourceType !== "hubspot"');
+    expect(disableRoute).toContain('pipelineEnabled: false');
+    expect(disableRoute).toContain('{ pipelineStageName: null } : { pipelineStageId: null }');
+    expect(disableRoute).toContain('pipelineValueRevenueTotals: []');
+    expect(disableRoute).toContain('storage.disableGa4CrmPipelineProxy(');
+    expect(disableRoute).not.toContain('deleteRevenueSourceWithRecords');
+    expect(disableRoute).not.toContain('deleteRevenueRecords');
   });
 
   it("disables an already-added Salesforce chooser card and preserves exact-source pencil editing", () => {

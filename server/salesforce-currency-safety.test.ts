@@ -33,4 +33,16 @@ describe('Salesforce revenue currency safety', () => {
     expect(wizard).toContain('(step === "review" && (previewLoading || previewKey !== reviewPreviewKey || !previewCampaignCurrency || effectiveCurrencyUnknown || effectiveCurrencyMismatch))');
     expect(wizard).toContain('Salesforce currency could not be verified.');
   });
+
+  it('formats Salesforce review amounts with the verified detected currency', () => {
+    const wizard = readSource('client', 'src', 'components', 'SalesforceRevenueWizard.tsx');
+
+    expect(wizard).toContain('currency: normalizedCurrency,');
+    expect(wizard).toContain('formatReviewCurrency(Number(reviewRevenue), effectiveSalesforceCurrency)');
+    expect(wizard).toContain('formatReviewCurrency(Number(reviewPipelineProxyAmount), effectiveSalesforceCurrency)');
+    expect(wizard).toContain('formatReviewCurrency(Number(opportunity.amount || 0), effectiveSalesforceCurrency)');
+    expect(wizard).toContain('json?.currency || effectiveSalesforceCurrency');
+    expect(wizard).not.toContain('Total Revenue processed: $${');
+    expect(new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR', currencyDisplay: 'narrowSymbol', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(75)).toBe('€75.00');
+  });
 });

@@ -775,8 +775,23 @@ export function SalesforceRevenueWizard(props: {
     return null;
   }, [lastSaveResult, previewKey, reviewPreviewKey, previewTotalRevenue, initialMappingConfig, previewRows, previewHeaders, revenueField]);
 
-  const formatReviewCurrency = (value: number) =>
-    `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatReviewCurrency = (value: number, currencyCode?: string | null) => {
+    const amount = Number(value || 0);
+    const normalizedCurrency = String(currencyCode || "").trim().toUpperCase();
+    const formattedAmount = amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (!/^[A-Z]{3}$/.test(normalizedCurrency)) return formattedAmount;
+    try {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: normalizedCurrency,
+        currencyDisplay: "narrowSymbol",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(amount);
+    } catch {
+      return `${formattedAmount} ${normalizedCurrency}`;
+    }
+  };
 
   const reviewOpportunityBreakdown = useMemo<ReviewOpportunityBreakdownRow[]>(() => {
     if (previewKey !== reviewPreviewKey || previewHeaders.length === 0) return [];
@@ -936,7 +951,7 @@ export function SalesforceRevenueWizard(props: {
       setLastSaveResult(json);
       toast({
         title: "Revenue Metrics Processed",
-        description: `Total Revenue processed: $${Number(json?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
+        description: `Total Revenue processed: ${formatReviewCurrency(Number(json?.totalRevenue || 0), json?.currency || effectiveSalesforceCurrency)}.`,
       });
       onSuccess?.(json);
       setStep("complete");
@@ -1580,7 +1595,7 @@ export function SalesforceRevenueWizard(props: {
                     <div className="text-xs text-muted-foreground/70">Total Revenue (to date)</div>
                     <div className="font-medium text-foreground text-green-700 dark:text-green-400">
                       {reviewRevenue != null
-                        ? `$${Number(reviewRevenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        ? formatReviewCurrency(Number(reviewRevenue), effectiveSalesforceCurrency)
                         : previewLoading
                           ? "Loading..."
                           : "—"}
@@ -1595,7 +1610,7 @@ export function SalesforceRevenueWizard(props: {
                       </div>
                       <div className="mt-1 text-sm font-medium text-foreground">
                         {reviewPipelineProxyAmount != null
-                          ? `$${Number(reviewPipelineProxyAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          ? formatReviewCurrency(Number(reviewPipelineProxyAmount), effectiveSalesforceCurrency)
                           : previewLoading
                             ? "Loading..."
                             : "---"}
@@ -1651,7 +1666,7 @@ export function SalesforceRevenueWizard(props: {
                               )}
                             </div>
                             <div className="shrink-0 font-medium text-green-700 dark:text-green-400">
-                              {formatReviewCurrency(Number(opportunity.amount || 0))}
+                              {formatReviewCurrency(Number(opportunity.amount || 0), effectiveSalesforceCurrency)}
                             </div>
                           </div>
                         );

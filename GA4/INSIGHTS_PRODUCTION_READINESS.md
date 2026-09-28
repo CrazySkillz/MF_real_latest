@@ -11,6 +11,8 @@ Section status: **UNVERIFIED for the current implementation** pending current-re
 
 Current code implements scheduler-only daily-history writes, explicit zero rows for completed no-activity dates, campaign-creation-bounded zero-filled charts and findings, a one-eligible-date Daily gate with 14 recent table rows initially and up to 30 through `Show all`, `Latest imported day` plus `Chart through` labels, no stale-history warning/findings for a successful persisted response, and the corrected financial KPI/Benchmark import boundary. These changes invalidate the earlier exact-SHA certification as a current claim. Bounded authenticated deployed value parity has now passed for Campaign3; exact-revision tenant checks, provider behavior, a natural scheduler cycle, and the remaining whole-tab certification gates are still outstanding.
 
+Implementation alignment after that bounded pass: the financial Spend scope now accepts an active GA4-context `ad_platforms` source only when its saved mapping identifies `google_ads`. Bounded live UI evidence shows `EUR 4.89` flowing from one real selected Google Ads campaign into the source list and Total Spend, but no current exact-revision Insights certificate includes that source. LinkedIn, Meta/Facebook, Instagram, malformed Google Ads mappings, and foreign-context ad-platform sources still fail closed.
+
 <!-- /ga4-insights-current-status -->
 
 Bounded Campaign3 evidence on deployed `eab3231aa2910cc70ddeacfd254da1ac1017c6a2` (`2026-09-27`): the owner-authenticated, read-only UI/API trace used property `542352127`, reporting timezone `Europe/Amsterdam`, currency `EUR`, and the two saved campaign filters. Imported history ran from `2026-08-23` through `2026-09-26` and reconciled to 2,256 Sessions, 145 Conversions, EUR 37,518.74 authoritative native revenue, EUR 2,353.00 Spend, EUR 35,165.74 Profit, 15.95x ROAS, 1,494.5% ROI, and EUR 16.23 CPA. The creation-bounded Daily calendar ran from `2026-09-22` through `2026-09-26` (127 Sessions followed by four completed zero-session dates); 7d and 30d correctly remained gated by insufficient campaign age, and Monthly accepted the partial month. All five Executive Financial values, three Data Summary values, three tracker values, and seven visible findings matched their page-consumed inputs. The database transaction rolled back and campaign persistence remained unchanged.
@@ -71,7 +73,7 @@ Excluded from this certification:
 - alerts and notifications
 - simulated/test-only GA4 properties such as `yesop`
 - LinkedIn, Meta/Facebook, and Instagram platform connectors and analytics; they are not enabled as Insights inputs and explicit foreign platform contexts must not feed GA4 Insights
-- Google Ads Insights values; no live test account is available, so Google Ads cannot supply a value certified by Insights. Overview chooser availability is separately owned and unchanged by this exclusion.
+- Google Ads financial Spend is implemented as an Insights input, but it is excluded from the historical Insights certification and remains unverified for current exact-revision Insights behavior. Bounded Overview provider/import/UI evidence does not certify Insights or its downstream findings.
 
 The excluded items are outside the Insights certification definition. They are not deferred Insights validation and do not qualify or limit a future clean live-tab certification.
 
@@ -563,7 +565,7 @@ The certification remains valid only for the recorded SHA, dependencies, configu
 ## Known Limitations And Remaining Validation
 
 - Trend comparisons still require enough campaign calendar age for adjacent 7-day or 30-day windows. Completed no-activity dates count as zero; an actual failed/unavailable daily response does not.
-- Google Ads has no authorized live test account and is excluded from this certification. LinkedIn, Meta/Facebook, and Instagram are not enabled as Insights inputs in this release.
+- Google Ads has bounded live provider/import/UI evidence and is enabled as a GA4 financial Spend input in current code, but remains outside the historical certification and needs current exact-revision Insights validation. LinkedIn, Meta/Facebook, and Instagram are not enabled as Insights inputs in this release.
 - Reports, PDFs, scheduled reports, report schedulers, and email delivery are outside the Insights certification definition.
 - The historical exact-SHA packets below do not exercise the current scheduler-only writer, persisted zero-date materialization, current page/finding behavior, or corrected financial import window. Current exact-revision deployment, owner UI/API parity, tenant isolation, provider failure/last-good behavior, and a natural scheduler cycle remain unverified.
 

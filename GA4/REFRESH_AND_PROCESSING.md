@@ -232,7 +232,7 @@ Current eligible sources include:
 - Meta spend through `ad_platforms`
 - Google Ads spend through `ad_platforms`
 
-No ad-platform spend connector is enabled for the current live GA4 Insights release. Google Ads, LinkedIn, Meta/Facebook, and Instagram are later-release platforms and must not feed GA4 Insights. Existing provider schedulers remain outside this certification and do not qualify an ad-platform source for the current release.
+Google Ads is the one enabled ad-platform child Spend shape for current GA4 Insights financial inputs: an active GA4-context `ad_platforms` source whose saved mapping identifies `google_ads`. LinkedIn, Meta/Facebook, Instagram, malformed Google Ads mappings, and explicit foreign platform contexts remain outside that enabled Insights boundary. This implemented inclusion does not extend the historical Insights certificates; current exact-revision Insights recertification remains pending.
 
 LinkedIn and Meta schedulers persist their analytics in their canonical platform daily tables. They must not also append those windows to generic `spend_records` under pseudo source IDs such as `linkedin_daily_metrics` or `meta_daily_metrics`; generic financial spend must remain backed by a real campaign-scoped `spend_sources` row.
 
@@ -243,6 +243,8 @@ Runtime cadence:
 - only when `GA4_DAILY_PIPELINE_OWNS_REFRESH=false` does it schedule its legacy standalone full daily run at `AUTO_REFRESH_DAILY_HOUR:AUTO_REFRESH_DAILY_MINUTE` in `AUTO_REFRESH_TIME_ZONE`
 - active Google Sheets spend sources and active GA4 Google Sheets revenue sources use sequential isolated passes on the Google Sheets financial polling timer controlled by `GOOGLE_SHEETS_SPEND_REFRESH_INTERVAL_MINUTES`, default `1` and bounded to `1..60`; the revenue pass does not refresh CSV, CRM, ecommerce, non-GA4 revenue, LinkedIn, Meta, or Google Ads
 - one CRM polling timer is controlled by `SALESFORCE_PIPELINE_REFRESH_INTERVAL_MINUTES`, default `5` and bounded to `1..60`. Its Salesforce pass reprocesses every active exact GA4 Salesforce source with saved selected values, including revenue-only sources; its HubSpot pass currently reprocesses only Pipeline-enabled sources with a saved stage ID. Both reuse the saved mapping and stable revenue source ID
+- the separate Google Ads scheduler remains active at `GOOGLE_ADS_REFRESH_INTERVAL_HOURS`, default `4`, and refreshes both eligible main Google Ads connections and dedicated GA4 Spend connections. A dedicated Spend refresh replaces provider daily facts and the exact source's materialized Spend records, then recomputes downstream state unless its caller explicitly defers that recompute
+- the ordered GA4 daily pipeline also refreshes an active GA4 Google Ads Spend source during its financial phase. It calls the same dedicated provider/materialization path with downstream recompute deferred, then performs the shared KPI/Benchmark and snapshot stages after the financial and GA4 inputs are ready
 - the Google Sheets financial timer and full daily external-value run share overlap guards, so they do not reprocess the same source concurrently
 - the CRM Pipeline timer, Google Sheets financial timer, and full daily external-value run share overlap guards, so they do not replace the same financial state concurrently
 - if `AUTO_REFRESH_TIME_ZONE` is unset, it falls back to `GA4_DAILY_REFRESH_TIME_ZONE`, then `UTC`
@@ -316,7 +318,7 @@ Ad-platform spend auto-refresh rule:
 - edit or refresh mode must validate the stable spend source ID before updating records; a stale or wrong-platform source ID must fail closed instead of creating a new source
 - scheduler refresh must not broaden spend to all campaigns available in the connected account
 - scheduler refresh must not append duplicate rows on repeated runs
-- later-release GA4 Google Ads spend remains outside the current Insights certification; if enabled in a future revision, its dedicated scheduler and materialization path require a separate complete validation
+- GA4 Google Ads Spend is enabled in the current implementation and accepted by GA4 Insights financial scope, while the historical Insights certificates still exclude it. Its dedicated four-hour refresh plus ordered-daily refresh/materialization paths require an exact-current complete validation before a new certificate can include it
 - scheduler failures should log source-specific phrases: `LinkedIn spend reprocess failed`, `Meta spend reprocess failed`, `Google Ads spend reprocess failed`, and `Google Sheets spend reprocess failed`
 - internal scheduler self-calls should have a bounded timeout so one stalled provider refresh cannot prevent the full auto-refresh cycle from completing
 - the LinkedIn refresh phase inside the external auto-refresh scheduler should also have a bounded timeout so CRM/ecommerce revenue reprocess can still run when LinkedIn refresh stalls

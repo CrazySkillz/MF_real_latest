@@ -83,7 +83,7 @@ describe("application production-readiness ledger", () => {
     expect(kpiRow).toContain("`CERTIFIED` | `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md` |");
     expect(kpiRow).toContain("deployed runtime `f7afeb2b`; documentation commit `47180dcf`");
     expect(ledger).toContain("| GA4 Ad Comparison | `CERTIFIED`");
-    expect(ledger).toContain("| GA4 Reports | `UNVERIFIED`");
+    expect(ledger).toContain("| GA4 Reports | `CERTIFIED`");
     expect(ledger).toContain("| GA4 Benchmarks | `CERTIFIED`");
     expect(ledger).toContain("| GA4 Insights | `UNVERIFIED`");
     expect(ledger).toContain("| HubSpot Revenue and Pipeline Proxy | `CERTIFIED`");
@@ -95,12 +95,14 @@ describe("application production-readiness ledger", () => {
   it("records separate work and certification status for every Overview subsection", () => {
     expect(ledger).toContain("| - | Overview (whole tab) | `IN_PROGRESS` | `UNVERIFIED`");
     expect(ledger).toContain("| 1 | Summary | `QUEUED` | `UNVERIFIED`");
-    expect(ledger).toContain("| 2 | Revenue & Financials - Revenue | `COMPLETE` | `CERTIFIED`");
-    expect(ledger).toContain("| 3 | Revenue & Financials - Spend | `COMPLETE` | `CERTIFIED`");
+    expect(ledger).toContain("| 2 | Revenue & Financials - Revenue | `REVALIDATION_REQUIRED` | `UNVERIFIED`");
+    expect(ledger).toContain("| 3 | Revenue & Financials - Spend | `REVALIDATION_REQUIRED` | `UNVERIFIED`");
+    expect(ledger).toContain("| - | Revenue & Financials - Performance (`Profit`, `ROAS`, `ROI`, `CPA`) | `REVALIDATION_REQUIRED` | `UNVERIFIED`");
     expect(ledger).toContain("| 4 | Campaign Breakdown | `REVALIDATION_REQUIRED` | `UNVERIFIED`");
     expect(ledger).toContain("| 5 | Landing Pages | `QUEUED` | `UNVERIFIED`");
     expect(ledger).toContain("| 6 | Conversion Events | `REVALIDATION_REQUIRED` | `UNVERIFIED`");
     expect(ledger).toContain("| Google Sheets | `COMPLETE` | `CERTIFIED`");
+    expect(ledger).toContain("| Google Ads | `IN_PROGRESS` | `UNVERIFIED`");
   });
 
   it("requires impact-based carry-forward instead of blanket recertification", () => {

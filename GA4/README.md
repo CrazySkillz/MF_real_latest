@@ -19,7 +19,9 @@ Current GA4 tab production-readiness status:
 
 <!-- /ga4-insights-current-status -->
 
-<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
+<!-- ga4-kpi-certification-status: UNVERIFIED -->
+
+- GA4 KPIs are **UNVERIFIED for whole-tab production readiness on the current implementation**. Deployed runtime `29fcacfefa4b42beb94ea752fd0518fbca47f597` has bounded Campaign3 read-only parity through `2026-09-27` for five cards, the `5 / 2 / 0 / 3 / 66.9%` Executive Snapshot, KPI-derived Insights, and Notifications. Browser KPI PDF parity was unavailable because no active saved report contains KPI items, and a natural Campaign3 scheduler completion is not proven on this revision. Observed `TOKEN_EXPIRED` bootstrap failures belong to other campaign hashes.
 
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: UNVERIFIED -->
@@ -30,7 +32,7 @@ Current GA4 tab production-readiness status:
 
 <!-- /ga4-overview-current-status -->
 - Current Commit 7's deployed validation also confirmed that an active OAuth placeholder with an empty GA4 Property ID fails closed instead of rendering permanent skeletons, while persisted campaign-scoped financial sources remain reachable for exact reviewed removal.
-- GA4 KPIs are **PRODUCTION_READY** only for deployed application runtime `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` and the exact manifest in `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md`. GA4 Benchmarks are separately **CLEAN-CERTIFIED / PRODUCTION_READY** for application behavior at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d` and the exact manifest in `GA4/OVERVIEW_BENCHMARKS_DEPENDENCY_MANIFEST_2026-09-15.md`; evidence-only revision `d3d1cfa0c0b34a44b405a74d8970c1d9ac9c1e7f` was subsequently deployed healthy without changing that behavior.
+- The September 16 GA4 KPI certificate at `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` remains historical exact-runtime evidence and does not certify the current dependency revision. GA4 Benchmarks are separately **CLEAN-CERTIFIED / PRODUCTION_READY** for application behavior at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d` and the exact manifest in `GA4/OVERVIEW_BENCHMARKS_DEPENDENCY_MANIFEST_2026-09-15.md`; evidence-only revision `d3d1cfa0c0b34a44b405a74d8970c1d9ac9c1e7f` was subsequently deployed healthy without changing that behavior.
 - GA4 Ad Comparison's retained live tab is **CLEAN-CERTIFIED / PRODUCTION_READY** only for the Campaign2/property/saved-filter boundary at deployed runtime `70b73a229ebb9e1021c3d18d63119d05bdee7e26`. The combined chart/cards/summary and Revenue Breakdown passed; All Campaigns is retired. `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` controls the exact evidence and exclusions. Reports delivery and other campaigns/configurations remain outside this certificate.
 - GA4 Reports is **CLEAN-CERTIFIED / PRODUCTION_READY** only for the bounded surface and exact deployed runtime `a7271fc18058b6db78a11e88bf79b887abda5f44` recorded in `GA4/REPORTS_CERTIFICATION_2026-09-21.md`. Exact-current Campaign Breakdown server/snapshot parity and the authorized natural delivery packet passed. Campaign DeepDive and arbitrary future configurations remain excluded; the older machine record remains historical and unchanged.
 - The combined GA4 release-certification audit is complete for the recorded section boundaries. This does not certify excluded platforms, Campaign DeepDive, future configurations, future provider availability, or obsolete campaigns outside the active boundary.
@@ -109,7 +111,7 @@ Important meaning:
 - `GA4/KPIS.md`
   Covers KPI creation, display, current-value sourcing, gating, alerts, and KPI refresh behavior.
 - `GA4/KPIS_PRODUCTION_READINESS.md`
-  Current KPI readiness summary plus preserved historical evidence. Current status: **PRODUCTION_READY** only for deployed application runtime `f7afeb2b98a56a3387156a3d7b9b99d5128a2980`; the dated KPI certificate is controlling.
+  Current KPI readiness summary plus preserved historical evidence. Current status: **UNVERIFIED** for whole-tab production readiness on runtime `29fcacfefa4b42beb94ea752fd0518fbca47f597`; the September 16 certificate at `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` remains historical exact-runtime evidence.
 - `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md`
   Controlling KPI-only clean-certification decision, exact runtime, Overview dependency manifest, end-to-end trace, validation evidence, and limitations.
 - `GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md`

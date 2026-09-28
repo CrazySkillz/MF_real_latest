@@ -4,7 +4,7 @@
 
 Before using this document to answer an audit, review, or production-readiness question, apply PRODUCTION_READINESS.md and AGENTS.md. Do not repeat any production-ready or status claim from this file unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current documented evidence. A prior readiness statement is not evidence. A passing test suite is not enough unless it covers the traced value paths. If any path is incomplete, classify it as partially reviewed or not locally verifiable and update the fix queue instead of calling it production-ready.
 
-2026-09-28 current dependency finding: the browser Revenue, Revenue Sources, and Revenue Breakdown reads were including current-day imported Revenue while the persisted KPI recompute used the campaign-timezone latest completed day. The local correction aligns those reads and preserves a future-only materialized source as an exact zero for the bounded window. Financial KPI paths on the changed revision remain unverified until the change is deployed and the exact UI/API values are revalidated; the older production-ready decision below remains evidence only for its stated runtime and dependency boundary.
+2026-09-28 current dependency finding: the browser Revenue, Revenue Sources, and Revenue Breakdown reads had included current-day imported Revenue while the persisted KPI recompute used the campaign-timezone latest completed day. The deployed correction now aligns those reads and keeps newer source definitions visible while excluding their values from the prior completed-day KPI inputs.
 
 2026-09-06 revalidation: deployed runtime `bf078b0375def8146e1f51e5d2c2246c3c350018` prevents concurrent or alias-equivalent active GA4 KPI duplicates within one campaign. The exact 9-file packet passed 127/127, TypeScript and the production build passed, a final read-only inventory found 16 active canonical GA4 KPI rows and zero duplicate groups, production health returned the exact runtime SHA, and the user confirmed the deployed duplicate, alias, campaign-isolation, and UI-conflict flow. No existing KPI row was deleted or rewritten. The mistaken `yesop` scheduler change at `42c52eb2` was reverted; both scheduler files at the certified boundary are byte-identical to the previously certified implementation. An authenticated campaign-scoped run on existing `ga4_mock`, property `542352127`, then completed successfully through 2026-09-05 and updated all eight existing KPIs and both Benchmarks with zero skips or failures. No provider, formula, value, threshold, Benchmark, Notification, Report, aggregate, attribution, or source-provenance behavior changed in the duplicate-create fix.
 
@@ -24,19 +24,19 @@ This file defines whether the current implementation is production-ready, what h
 
 ## Current Status
 
-<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
+<!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-### September 16, 2026 current decision
+### September 28, 2026 current decision
 
-**Result: PRODUCTION_READY only for deployed application runtime `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` and the exact dependency boundary in `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md`.**
+**Result: UNVERIFIED for whole-tab production readiness on deployed runtime `29fcacfefa4b42beb94ea752fd0518fbca47f597`.**
 
-The exact-deployed authenticated lifecycle and consumer checks passed create/read/edit/delete, duplicate prevention, invalid-edit preservation, campaign/client/owner isolation, source-computed-value protection, manual scheduler recomputation, alert reconciliation, card/Executive Snapshot/Notifications/Insights parity, and browser-PDF parity. The post-run inventory found 16 active canonical GA4 KPI rows and zero duplicates; no cleanup was required. The 12 changed dependency files since the prior certificate were impact-reviewed; no KPI runtime mismatch was found. Overview remains a read-only upstream dependency, not a certified section.
+Bounded current-revision evidence passed for Campaign3 through `2026-09-27`. The five visible KPI values were exact: ROAS `15.95x`, CPA `EUR 16.23`, Revenue `EUR 37,518.74`, Total Users `2,256`, and Total Sessions `2,256`. The Executive Snapshot was exact at 5 total, 2 above target, 0 on track, 3 below target, and 66.9% average progress. All five card names, current values, targets, states, and alert pulses matched; KPI-derived Insights and Notifications also matched, and the validator recorded no application mutations with persistence semantics unchanged.
 
-Current local gates passed: 15 focused files / 354 tests; current-version 2,041 total / 2,000 passed / 41 declared deferred or external failures / zero blocking failures; TypeScript; production build; and the KPI certification integrity gate. The deferred failures are visible, not counted as passes, and do not certify their sections.
+The financial inputs were native GA4 Revenue `EUR 37,518.74`, eligible imported Revenue `EUR 0.00`, eligible Spend `EUR 2,353.00`, and 145 Conversions. Imported Revenue definitions and Google Ads Spend created after the `2026-09-27` cutoff remained visible as pending and correctly contributed zero. This matches the current completed-day implementation.
 
-Limits: no exact-current natural timer firing, alert/report email delivery, inbox receipt, or live server-scheduled report delivery is claimed. Those paths are not required to interpret the proven in-app KPI status. Overview is a read-only upstream dependency and is not certified as a whole by this decision.
+Whole-tab readiness remains unverified because no active saved Campaign3 browser report includes KPI items, so exact-current browser KPI PDF parity was unavailable, and no natural Campaign3 scheduler completion is proven on this deployed revision. Process-wide bootstrap `TOKEN_EXPIRED` entries were verified against campaign hashes and do not include Campaign3; they must not be attributed to this campaign.
 
-The dated certificate is controlling. The synchronized machine record is `GA4/certifications/ga4-kpis.json`; `npm run check:ga4-kpi-certification` must pass. Everything below `Historical Status And Evidence (non-authoritative)` is retained history and cannot override this section.
+The September 16 `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` certificate remains historical evidence for its exact dependency boundary. The synchronized current-status record is `GA4/certifications/ga4-kpis.json`; `npm run check:ga4-kpi-certification` must pass. Everything below `Historical Status And Evidence (non-authoritative)` is retained history and cannot override this section.
 
 ## Historical Status And Evidence (non-authoritative)
 

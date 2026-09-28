@@ -6,13 +6,13 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 ## Production Readiness Status
 
-<!-- ga4-kpi-certification-status: PRODUCTION_READY -->
+<!-- ga4-kpi-certification-status: UNVERIFIED -->
 
-The GA4 KPIs tab is **PRODUCTION_READY** only for deployed application runtime `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` and the dependency manifest recorded in `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md`.
+The current GA4 KPIs implementation is **UNVERIFIED** for whole-tab production readiness. Deployed runtime `29fcacfefa4b42beb94ea752fd0518fbca47f597` has a bounded, owner-authenticated, read-only Campaign3 validation through `2026-09-27`: all five KPI cards, the `5 / 2 / 0 / 3 / 66.9%` Executive Snapshot, KPI-derived Insights, and Notifications matched the independently reconciled completed-day inputs without application-data mutation.
 
-The exact-current blocker check, focused regressions, authenticated production value parity, duplicate inventory, scoped lifecycle, manual scheduler run, ownership isolation, KPI Executive Snapshot, alerts/Notifications, Insights, and browser PDF passed. No exact-current natural timer firing, alert/report email delivery, inbox receipt, future-provider behavior, or general save-latency SLO is claimed.
+Current browser KPI PDF parity is unavailable because no active saved Campaign3 browser report includes KPI items, and no natural Campaign3 scheduler completion is proven on this revision. The scheduler's observed `TOKEN_EXPIRED` bootstrap failures belong to other campaign hashes and are not evidence of a Campaign3 token failure.
 
-The functional contract below remains authoritative. The dated certificate is the controlling decision; `GA4/KPIS_PRODUCTION_READINESS.md` preserves the current summary and historical evidence.
+The functional contract below remains authoritative. The September 16 certificate at `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` is preserved as historical evidence for that exact dependency boundary; `GA4/KPIS_PRODUCTION_READINESS.md` contains the current decision.
 
 ## KPI Tab Structure
 
@@ -129,6 +129,8 @@ Important meaning:
 - KPI current values should stay consistent with the Overview and financial-source logic
 - GA4 traffic KPI current values accumulate from the saved initial-import boundary through the latest completed reporting day; the configured import depth does not become a rolling window after setup
 - financial KPI current values use the native saved-import-window and completed-day-bounded imported Revenue/Spend contract documented in `GA4/FINANCIAL_SOURCES.md`
+- an imported Revenue or Spend source created after the current completed-day cutoff remains visible in its source modal with its latest value, but contributes zero to KPI calculations until its source definition and mapped records are eligible for a completed reporting day
+- financial KPI cards, the Executive Snapshot, alerts, and KPI-derived Insights use the eligible completed-day Revenue and Spend totals rather than the source modal's newer pending values
 - saved timeframe or tracking-period fields are target metadata; they do not replace the authoritative cumulative current-value window
 
 Current-value hierarchy:
@@ -274,7 +276,7 @@ This includes:
 - when revenue sources are added, edited, deleted, or refreshed
 - when spend sources are added, edited, deleted, or refreshed
 - when target values change
-- when a KPI moves between `Above Target`, `On Track`, and `Below Track`
+- when a KPI moves between `Above Target`, `On Track`, and `Below Target`
 
 Important meaning:
 
@@ -284,12 +286,13 @@ Important meaning:
 - KPI alerts should evaluate after KPI recomputation, not before
 - GA4 KPI alerts must use the same current-value source as the live GA4 KPI cards
 - `/api/notifications` must not keep a stale GA4 financial KPI alert visible from a narrower imported-only or persisted-row value when the live KPI card uses selected GA4 native revenue plus imported revenue and no longer breaches
-- if the exact report-date GA4 daily row is missing, GA4 KPI recomputation should fall back to the latest available GA4 daily row for that campaign/property rather than skipping alert reconciliation entirely
+- if the exact report-date GA4 daily row is missing, an earlier value may remain as explicitly stale last-good state, but it must be excluded from target scoring, breach indicators, KPI-derived performance Insights, and target-day history
+- KPI-derived Insights use the same live KPI values and shared classification math as the cards, with the Insights-specific scheduler-synchronized traffic and conversion eligibility state; non-eligible rows are omitted from performance findings and represented by integrity findings where applicable
 - duplicate active GA4 KPIs for the same `campaign + metric` must not emit competing active alerts; the latest row should win
 - the bell / Notifications center should refetch current notification state when opened so resolved alerts do not linger from client cache
 
 ## Current-State Note
 
-The GA4 KPI tab is **PRODUCTION_READY** only for deployed application runtime `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` and the recorded dependency boundary. Earlier certified boundaries remain revision-specific supporting history.
+The current GA4 KPI tab is **UNVERIFIED** for whole-tab production readiness. The bounded deployed Campaign3 evidence and remaining current-revision gaps are documented in `GA4/KPIS_PRODUCTION_READINESS.md`.
 
-The controlling evidence, exact Overview dependency manifest, and limitations are documented in `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md`.
+The September 16 certificate remains historical exact-runtime evidence in `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md`; it does not certify the current dependency revision.

@@ -94,12 +94,12 @@ describe("application production-readiness ledger", () => {
 
   it("records separate work and certification status for every Overview subsection", () => {
     expect(ledger).toContain("| - | Overview (whole tab) | `IN_PROGRESS` | `UNVERIFIED`");
-    expect(ledger).toContain("| 1 | Summary | `QUEUED` | `UNVERIFIED`");
+    expect(ledger).toContain("| 1 | Summary | `REVALIDATION_REQUIRED` | `UNVERIFIED`");
     expect(ledger).toContain("| 2 | Revenue & Financials - Revenue | `REVALIDATION_REQUIRED` | `UNVERIFIED`");
     expect(ledger).toContain("| 3 | Revenue & Financials - Spend | `REVALIDATION_REQUIRED` | `UNVERIFIED`");
     expect(ledger).toContain("| - | Revenue & Financials - Performance (`Profit`, `ROAS`, `ROI`, `CPA`) | `REVALIDATION_REQUIRED` | `UNVERIFIED`");
     expect(ledger).toContain("| 4 | Campaign Breakdown | `REVALIDATION_REQUIRED` | `UNVERIFIED`");
-    expect(ledger).toContain("| 5 | Landing Pages | `QUEUED` | `UNVERIFIED`");
+    expect(ledger).toContain("| 5 | Landing Pages | `REVALIDATION_REQUIRED` | `UNVERIFIED`");
     expect(ledger).toContain("| 6 | Conversion Events | `REVALIDATION_REQUIRED` | `UNVERIFIED`");
     expect(ledger).toContain("| Google Sheets | `COMPLETE` | `CERTIFIED`");
     expect(ledger).toContain("| Google Ads | `IN_PROGRESS` | `UNVERIFIED`");

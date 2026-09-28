@@ -2579,13 +2579,7 @@ export default function GA4Metrics() {
       materializedRevenueStatus: d.materializedRevenueStatus,
     }));
   }, [revenueSourcesResp, revenueBreakdownResp]);
-  const totalRevenueDisplaySources = useMemo(() => revenueDisplaySources.filter((source: any) => {
-    if (String(source?.sourceType || "").trim().toLowerCase() !== "hubspot" || source?.revenue == null || Number(source.revenue) !== 0) return true;
-    const cfg = typeof source?.mappingConfig === "string"
-      ? (() => { try { return JSON.parse(source.mappingConfig); } catch { return null; } })()
-      : source?.mappingConfig;
-    return cfg?.pipelineEnabled !== true;
-  }), [revenueDisplaySources]);
+  const totalRevenueDisplaySources = revenueDisplaySources;
   const persistedFinancialSourceCleanupAvailable =
     revenueDisplaySources.length > 0 || spendDisplaySources.length > 0;
   const pipelineProxyData = useMemo(() => {

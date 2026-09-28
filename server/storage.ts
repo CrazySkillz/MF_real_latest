@@ -7,7 +7,7 @@ import { eq, and, or, isNull, desc, sql, gte, lte, inArray, ne } from "drizzle-o
 import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, type EncryptedTokens } from "./utils/tokenVault";
 import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness } from "./utils/revenue-record-total";
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
-import { getReportingComparisonBoundary } from "./utils/reporting-timezone";
+import { getReportingComparisonBoundary, getReportingDateEndAt, isCreatedThroughReportingDate } from "./utils/reporting-timezone";
 import { executiveSummaryDailySnapshotInputSchema, type ExecutiveSummaryDailySnapshotInput } from "./utils/executive-summary-daily-snapshot";
 import { createActiveCanonicalGA4KPI, isActiveGA4KPI, updateCanonicalGA4KPI as updateCanonicalGA4KPIWithGuard } from "./utils/ga4-kpi-create-guard";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
@@ -1637,6 +1637,8 @@ export class DatabaseStorage implements IStorage {
 
   async getSpendTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext?: SpendPlatformContext): Promise<{ totalSpend: number; currency?: string; sourceIds: string[] }> {
     // spend_records.date is stored as YYYY-MM-DD; lexicographic compare works.
+    const campaign = platformContext === 'ga4' ? await this.getCampaign(campaignId) : null;
+    const sourceCreatedThrough = campaign ? getReportingDateEndAt(endDate, (campaign as any)?.reportingTimeZone) : null;
     const rows = await db
       .select({
         spend: spendRecords.spend,
@@ -1652,6 +1654,7 @@ export class DatabaseStorage implements IStorage {
         eq(spendSources.campaignId, campaignId),
         eq(spendSources.isActive, true),
         spendPlatformContextPredicate(platformContext),
+        sourceCreatedThrough ? lte(spendSources.createdAt, sourceCreatedThrough) : undefined,
         sql`${spendRecords.date} >= ${startDate}`,
         sql`${spendRecords.date} <= ${endDate}`
       ));
@@ -1675,6 +1678,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSpendBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext?: SpendPlatformContext): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; spend: number; currency?: string }>> {
+    const campaign = platformContext === 'ga4' ? await this.getCampaign(campaignId) : null;
+    const sourceCreatedThrough = campaign ? getReportingDateEndAt(endDate, (campaign as any)?.reportingTimeZone) : null;
     const rows = await db
       .select({
         spendSourceId: spendRecords.spendSourceId,
@@ -1691,6 +1696,7 @@ export class DatabaseStorage implements IStorage {
         eq(spendSources.campaignId, campaignId),
         eq(spendSources.isActive, true),
         spendPlatformContextPredicate(platformContext),
+        sourceCreatedThrough ? lte(spendSources.createdAt, sourceCreatedThrough) : undefined,
         sql`${spendRecords.date} >= ${startDate}`,
         sql`${spendRecords.date} <= ${endDate}`
       ));
@@ -2459,6 +2465,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext: RevenuePlatformContext = 'ga4'): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }> {
+    const campaign = platformContext === 'ga4' ? await this.getCampaign(campaignId) : null;
+    const sourceCreatedThrough = campaign ? getReportingDateEndAt(endDate, (campaign as any)?.reportingTimeZone) : null;
     const rows = await db
       .select({
         revenue: revenueRecords.revenue,
@@ -2478,12 +2486,15 @@ export class DatabaseStorage implements IStorage {
         platformContext === 'ga4'
           ? or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext))
           : eq(revenueSources.platformContext, platformContext as any),
+        sourceCreatedThrough ? lte(revenueSources.createdAt, sourceCreatedThrough) : undefined,
         sql`${revenueRecords.date} >= ${startDate}`,
         sql`${revenueRecords.date} <= ${endDate}`
       ));
 
     if (requiresGa4RevenueMaterializationCompleteness(platformContext, startDate, endDate)) {
-      const activeSources = await this.getRevenueSources(campaignId, platformContext);
+      const activeSources = (await this.getRevenueSources(campaignId, platformContext)).filter((source: any) =>
+        !campaign || isCreatedThroughReportingDate(source?.createdAt, endDate, (campaign as any)?.reportingTimeZone)
+      );
       try {
         assertGa4RevenueMaterializationComplete(activeSources as any[], rows as any[]);
       } catch (error: any) {
@@ -2492,7 +2503,6 @@ export class DatabaseStorage implements IStorage {
         assertGa4RevenueMaterializationComplete(activeSources as any[], allMaterializedSources as any[]);
       }
     }
-    const campaign = platformContext === 'ga4' ? await this.getCampaign(campaignId) : null;
     const validatedCurrency = platformContext === 'ga4'
       ? assertGa4RevenueCurrencyIntegrity(rows as any[], (campaign as any)?.currency || 'USD')
       : undefined;
@@ -2527,6 +2537,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRevenueBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext: RevenuePlatformContext = 'ga4'): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number; currency?: string }>> {
+    const campaign = platformContext === 'ga4' ? await this.getCampaign(campaignId) : null;
+    const sourceCreatedThrough = campaign ? getReportingDateEndAt(endDate, (campaign as any)?.reportingTimeZone) : null;
     const rows = await db
       .select({
         revenueSourceId: revenueRecords.revenueSourceId,
@@ -2547,12 +2559,12 @@ export class DatabaseStorage implements IStorage {
         platformContext === 'ga4'
           ? or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext))
           : eq(revenueSources.platformContext, platformContext as any),
+        sourceCreatedThrough ? lte(revenueSources.createdAt, sourceCreatedThrough) : undefined,
         sql`${revenueRecords.date} >= ${startDate}`,
         sql`${revenueRecords.date} <= ${endDate}`
       ));
 
     if (platformContext === 'ga4') {
-      const campaign = await this.getCampaign(campaignId);
       assertGa4RevenueCurrencyIntegrity(rows as any[], (campaign as any)?.currency || 'USD');
     }
 

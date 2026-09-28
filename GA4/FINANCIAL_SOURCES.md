@@ -45,6 +45,7 @@ Production-readiness note: **GA4 Overview is currently UNVERIFIED pending the ex
 Current implementation alignment (2026-09-28):
 
 - the Revenue Sources modal keeps every active imported source definition visible, including an active HubSpot source whose confirmed contribution is currently zero; a Pipeline-enabled source with no confirmed contribution is labelled `Pipeline Proxy only` instead of being hidden
+- Revenue and Spend source modals show each source's latest imported value separately from its completed-day contribution. Sources connected after the current cutoff remain visible as pending, do not make the prior completed-day total unavailable, and become calculation-eligible after that reporting day completes
 - the Revenue `Sources` count is the number of active imported source definitions plus native GA4 Revenue only when native GA4 Revenue contributes a non-zero amount
 - Google Ads is an enabled GA4 Spend child source. Selected provider campaigns materialize dated `ad_platforms` / `ga4` Spend records that contribute to Total Spend and its downstream financial formulas
 - the Add spend source card shows `Connected` for the saved Spend-only Google Ads connection and exposes a confirmed trash action that removes the exact GA4 Google Ads Spend source, its records, dedicated provider facts, and Spend-only OAuth connection while preserving a separate Google Ads Connected Platform
@@ -69,7 +70,7 @@ Campaign DeepDive financial provenance rule:
 
 - Campaign metadata dates are not financial reporting or aggregation boundaries in V1. `pacingStartDate` and `pacingEndDate` bound only the separate Budget Pacing Spend derivative used by budget calculations and Budget report equivalents. A source connector may still have its own provider-import window; that controls which source records are materialized, not which materialized records the aggregate financial totals include.
 - Native GA4 Revenue and its matching financial Conversions use the saved initial-import date through the latest completed reporting day.
-- Imported Revenue and Spend use every mapped record materialized by the active source whose record date is on or before the campaign-timezone latest completed reporting day. Current-day records remain materialized and become eligible after that reporting day completes. Legacy route or UI names such as `revenue-to-date`, `spend-to-date`, and `source-to-date` do not mean "since app creation" or "since a campaign metadata date."
+- Imported Revenue and Spend use every mapped record materialized by an active source that was created on or before the campaign-timezone latest completed reporting day, with the record date also on or before that day. Sources and records added during the current day remain materialized and visible but become calculation-eligible only after that reporting day completes. Legacy route or UI names such as `revenue-to-date`, `spend-to-date`, and `source-to-date` do not mean "since app creation" or "since a campaign metadata date."
 - Overview, Campaign DeepDive, KPI/Benchmark evaluation, alerts, snapshots, and reports must use these same boundaries.
 - Campaign `createdAt` is app metadata and must not be shown or used as a marketing campaign start date.
 
@@ -85,7 +86,7 @@ Where:
 - native GA4 financial requests use the campaign currency and verify the response metadata before combination; missing or mismatched currency fails closed
 - every enabled imported source and each of its materialized records must match campaign currency before combination; the system does not convert currency or relabel/rewrite historical rows
 - imported aggregation is selected by materialized-record presence, not amount truthiness: an authoritative materialized `$0` remains a valid source value
-- an active imported source with no materialized record at any date is shown as `Unavailable`; a source proven to contain records only after the completed-day cutoff is an authoritative `$0` for the bounded window, while an unproven read failure remains unavailable
+- an eligible active imported source with no materialized record at any date is shown as `Unavailable`; a newly connected source or a source proven to contain records only after the completed-day cutoff is pending for the bounded window and does not invalidate the prior completed-day total, while an unproven read failure for an eligible source remains unavailable
 
 Important clarification:
 
@@ -94,7 +95,7 @@ Important clarification:
 - the GA4 revenue metric is optional to the overall campaign revenue model; external revenue import is a valid primary path
 - when GA4 native revenue exists, refresh should update the GA4-native aggregated revenue amount for the campaign's selected GA4 scope
 - imported `Total Revenue` includes mapped source records through the latest completed reporting day; no separate previous-day revenue card is rendered in the current GA4 Overview UI
-- imported `Total Revenue`, `Revenue Breakdown`, and the `Revenue Sources` modal must use the same active source-backed revenue record window so the card total and source provenance cannot drift
+- imported `Total Revenue` and `Revenue Breakdown` use the same completed-day active-source window. The `Revenue Sources` modal shows latest imported values for visibility and labels each pending source's separate completed-day contribution so the displayed source value is not mistaken for an amount already included in the card total
 - GA4 KPI financial alerts and Notifications visibility for `Revenue`, `Total Revenue`, `ROAS`, `ROI`, and `CPA` must use this same selected GA4 native revenue plus imported revenue model; `/api/notifications` must not keep an imported-only or stale persisted-row alert visible when the live KPI card no longer breaches
 - native GA4 daily backfill rows belong in `ga4_daily_metrics`; they must not be mirrored into imported `revenue_records` with a synthetic source ID such as `ga4_daily_metrics`
 - if old synthetic `revenue_records` rows with `revenue_source_id = 'ga4_daily_metrics'` are found, cleanup must target only the proven orphan row IDs and must not delete active imported CRM, ecommerce, CSV, Google Sheets, manual, or other source-backed revenue rows
@@ -155,7 +156,7 @@ Important clarification:
 
 Spend is not imported from the GA4 API by default.
 
-Imported `Total Spend`, `Spend Breakdown`, and the `Spend Sources` modal must use the same active source-backed spend record window so the card total and source provenance cannot drift.
+Imported `Total Spend` and `Spend Breakdown` use the same completed-day active-source window. The `Spend Sources` modal shows latest imported values for visibility and labels each pending source's separate completed-day contribution so the displayed source value is not mistaken for an amount already included in the card total.
 
 Budget & Financial Analysis pacing metadata, including budget-period start and end dates entered from the Budget Pacing & Burn Rate card, must not filter GA4 `Total Spend`, `Spend Breakdown`, or the `Spend Sources` modal. Those platform-level spend values are source-backed and must include all available mapped spend records. Browser and Budget report calculations consume a separate `budget_pacing_v1` derivative that sums dated Spend records inside the selected budget period through the financial data-through date. That derivative is available only when aggregate Spend uses canonical normalized records, its active Spend-source IDs exactly match the available provenance set, and currency matches the campaign; otherwise budget calculations fail closed instead of reusing GA4 Total Spend.
 

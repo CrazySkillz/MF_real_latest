@@ -181,6 +181,23 @@ describe("GA4 Overview Campaign Breakdown", () => {
     expect(result.allImportedRevenueMapped).toBe(true);
   });
 
+  it("does not allocate a newly connected source before its first completed-day cutoff", () => {
+    const result = resolveExactGA4CampaignBreakdownRevenue([{ name: "Alpha" }], [{
+      id: "pending",
+      currency: "EUR",
+      revenue: 0,
+      pendingCompletedDay: true,
+      mappingConfig: {
+        campaignMappings: [{ crmValue: "today", linkedinCampaignName: "Alpha" }],
+        campaignValueRevenueTotals: [{ campaignValue: "today", revenue: 10000 }],
+      },
+    }], "EUR");
+
+    expect(result.revenueByCampaign.size).toBe(0);
+    expect(result.mappedRevenue).toBe(0);
+    expect(result.materializationMismatch).toBe(false);
+  });
+
   it("merges duplicate provider rows by normalized selected key and rejects scope leakage", () => {
     const merged = mergeGA4OverviewCampaignRevenueRows(
       [

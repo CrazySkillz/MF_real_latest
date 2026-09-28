@@ -194,6 +194,10 @@ describe("GA4 Insights production calendar paths", () => {
       { id: "source-1", displayName: "Unused source", isActive: true },
       { id: "source-2", displayName: "Contributing source", isActive: true },
     ])).toEqual(["Contributing source"]);
+    expect(buildGA4InsightsSpendSourceLabels(0, [], [
+      { id: "source-1", displayName: "Pending source", isActive: true, pendingCompletedDay: true },
+      { id: "source-2", displayName: "Completed zero source", isActive: true },
+    ])).toEqual(["Completed zero source"]);
   });
 
   it("requires adjacent calendar dates before calling snapshots a day streak", () => {

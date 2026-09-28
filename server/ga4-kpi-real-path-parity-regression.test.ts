@@ -96,6 +96,7 @@ import { buildGA4ScheduledPdfAttachment } from "./ga4-scheduled-report-pdf";
 import { preflightGA4ReportKPIConsumers, buildPdfAttachmentForReport } from "./report-scheduler";
 import { shouldTriggerAlert } from "./kpi-notifications";
 import { registerRoutes } from "./routes-oauth";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE } from "./utils/reporting-timezone";
 
 const campaign = {
   id: "ga4-parity-campaign",
@@ -715,36 +716,37 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     );
   });
 
-  it("preserves an explicit campaign start ahead of the saved GA4 import boundary", async () => {
+  it("uses the saved GA4 import boundary when the campaign start is earlier", async () => {
     vi.useRealTimers();
 
     const response = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-to-date?propertyId=" + encodeURIComponent(connection.propertyId) + "&readOnly=1");
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.startDate).toBe("2026-07-01");
+    expect(body.startDate).toBe(connection.importStartDate);
     expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith(
       connection.propertyId,
       connection.accessToken,
-      "2026-07-01",
+      connection.importStartDate,
       body.endDate,
       campaign.ga4CampaignFilter,
       campaign.currency,
     );
   });
 
-  it("preserves the explicit campaign start for simulated GA4 without requiring a saved connection", async () => {
+  it("uses the fixed legacy import boundary for simulated GA4 without a saved connection", async () => {
+    storageMock.getGA4Connection.mockResolvedValue(null);
     vi.useRealTimers();
 
     const response = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-to-date?propertyId=yesop&mock=1");
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toMatchObject({ success: true, propertyId: "yesop", startDate: "2026-07-01" });
+    expect(body).toMatchObject({ success: true, propertyId: "yesop", startDate: GA4_OVERVIEW_LEGACY_IMPORT_START_DATE });
     expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 
-  it("preserves the creation-date fallback when a legacy connection has no saved import boundary", async () => {
+  it("uses the fixed legacy fallback when a connection has no saved import boundary", async () => {
     storageMock.getCampaign.mockResolvedValue({ ...campaign, startDate: null, createdAt: "2026-06-24T00:00:00.000Z" });
     storageMock.getGA4Connection.mockResolvedValue({ ...connection, importStartDate: null });
     vi.useRealTimers();
@@ -753,11 +755,11 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.startDate).toBe("2026-06-24");
+    expect(body.startDate).toBe(GA4_OVERVIEW_LEGACY_IMPORT_START_DATE);
     expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith(
       connection.propertyId,
       connection.accessToken,
-      "2026-06-24",
+      GA4_OVERVIEW_LEGACY_IMPORT_START_DATE,
       body.endDate,
       campaign.ga4CampaignFilter,
       campaign.currency,

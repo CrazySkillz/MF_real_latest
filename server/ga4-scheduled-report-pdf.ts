@@ -1,6 +1,6 @@
 import { ga4Service } from "./analytics";
 import { storage } from "./storage";
-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow, isCreatedThroughReportingDate, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { computeCpa, computeRoiPercent, normalizeRateToPercent, formatPct as formatMetricPct } from "../shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
 import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
@@ -575,7 +575,9 @@ async function buildGA4ReportPayload(report: any) {
   if (overviewDailyRows.length === 0 && overviewStartDate === dailyStart) {
     overviewDailyRows = dailyRows;
   }
-  const activeRevenueSources = revenueSources.filter((source: any) => source?.isActive !== false);
+  const activeRevenueSources = revenueSources.filter((source: any) =>
+    source?.isActive !== false && isCreatedThroughReportingDate(source?.createdAt, financialEndDate, (campaign as any)?.reportingTimeZone)
+  );
   const hasMaterializedRevenue = (row: any) => row?.revenue != null && Number.isFinite(Number(row.revenue));
   const revenueBreakdownSourceIds = new Set(revenueBreakdown.filter(hasMaterializedRevenue).map((row: any) => String(row?.sourceId || "")));
   const adComparisonRevenueBreakdownSourceIds = new Set(adComparisonRevenueBreakdown.filter(hasMaterializedRevenue).map((row: any) => String(row?.sourceId || "")));
@@ -605,7 +607,7 @@ async function buildGA4ReportPayload(report: any) {
   const adComparisonMaterializedRevenueUnavailable = activeRevenueSources.some(
     (source: any) => !adComparisonRevenueBreakdownSourceIds.has(String(source?.id || "")),
   );
-  const hasImportedRevenueSource = revenueSources.some((source: any) => source?.isActive !== false) || revenueBreakdown.length > 0;
+  const hasImportedRevenueSource = activeRevenueSources.length > 0 || revenueBreakdown.length > 0;
   const unavailableOverviewParts: string[] = [];
   if (overviewRequirements.revenue && overviewMaterializedRevenueUnavailable) {
     unavailableOverviewParts.push("Revenue");

@@ -33,7 +33,7 @@ export const resolveExactGA4CampaignBreakdownRevenue = (
   for (const source of Array.isArray(revenueSources) ? revenueSources : []) {
     const cfg = parseMappingConfig(source?.mappingConfig);
     const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];
-    const totals = source?.boundedRevenueZero === true
+    const totals = source?.boundedRevenueZero === true || source?.pendingCompletedDay === true
       ? []
       : Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];
     const targetByValue = new Map<string, string>();

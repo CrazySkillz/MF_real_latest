@@ -78,6 +78,22 @@ export function getLatestCompleteReportingDate(reportingTimeZone: any, now = new
   return addDaysToDateOnly(currentDateOnlyInTimeZone(now, tz), -1);
 }
 
+export function getReportingDateEndAt(reportingDate: any, reportingTimeZone: any): Date | null {
+  const dateOnly = String(reportingDate || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return null;
+  const parsed = new Date(`${dateOnly}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime()) || formatDateOnlyUTC(parsed) !== dateOnly) return null;
+  const nextDay = addCalendarDaysFromParts(parsed.getUTCFullYear(), parsed.getUTCMonth() + 1, parsed.getUTCDate(), 1);
+  const nextDayStart = zonedDateTimeToUTC(normalizeReportingTimeZone(reportingTimeZone), nextDay.year, nextDay.month, nextDay.day, 0, 0);
+  return new Date(nextDayStart.getTime() - 1);
+}
+
+export function isCreatedThroughReportingDate(createdAt: any, reportingDate: any, reportingTimeZone: any): boolean {
+  const created = createdAt instanceof Date ? createdAt : new Date(createdAt);
+  const endAt = getReportingDateEndAt(reportingDate, reportingTimeZone);
+  return !!endAt && !Number.isNaN(created.getTime()) && created.getTime() <= endAt.getTime();
+}
+
 export function getReportingDateWindow(days: number, reportingTimeZone: any, now = new Date()) {
   const boundedDays = Math.max(1, Math.floor(Number(days) || 1));
   const normalizedTimeZone = normalizeReportingTimeZone(reportingTimeZone);

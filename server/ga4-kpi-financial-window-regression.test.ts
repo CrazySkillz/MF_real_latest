@@ -45,6 +45,7 @@ import {
   getGA4KPIReportingWindow,
   runGA4DailyKPIAndBenchmarkJobs,
 } from "./ga4-kpi-benchmark-jobs";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE } from "./utils/reporting-timezone";
 
 const dailyRow = {
   date: "2026-06-27",
@@ -81,7 +82,6 @@ describe("GA4 KPI persisted financial source window", () => {
     storageMock.getGA4DailyMetrics.mockImplementation(async (_campaignId, _propertyId, startDate, endDate) => {
       if (startDate === "2026-06-27" && endDate === "2026-06-27") return [dailyRow];
       if (startDate === "2026-06-01" && endDate === "2026-06-27") return [dailyRow];
-      if (startDate === "2026-05-20" && endDate === "2026-06-27") return [dailyRow];
       return [];
     });
     storageMock.getLatestGA4DailyMetric.mockResolvedValue(dailyRow);
@@ -130,13 +130,13 @@ describe("GA4 KPI persisted financial source window", () => {
 
     expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-06-27", "2026-06-27");
     expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-06-01", "2026-06-27");
-    expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-05-20", "2026-06-27");
+    expect(storageMock.getGA4DailyMetrics).not.toHaveBeenCalledWith("campaign-1", "properties/123", "2026-05-20", "2026-06-27");
     expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-06-27", "ga4");
     expect(storageMock.getSpendTotalForRange).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-06-27", "ga4");
     expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith(
       "properties/123",
       "token",
-      "2026-05-20",
+      "2026-06-01",
       "2026-06-27",
       undefined,
       "USD",
@@ -193,7 +193,7 @@ describe("GA4 KPI persisted financial source window", () => {
     expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-roas", { currentValue: "30.01" });
   });
 
-  it("retains the creation-date fallback when no campaign or import start is available", async () => {
+  it("uses the fixed legacy import boundary when no saved import start is available", async () => {
     vi.setSystemTime(new Date("2026-08-01T12:00:00.000Z"));
     storageMock.getCampaign.mockResolvedValue({
       id: "campaign-1",
@@ -211,7 +211,7 @@ describe("GA4 KPI persisted financial source window", () => {
     expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith(
       "properties/123",
       "token",
-      "2026-06-22",
+      GA4_OVERVIEW_LEGACY_IMPORT_START_DATE,
       "2026-07-31",
       undefined,
       "USD",

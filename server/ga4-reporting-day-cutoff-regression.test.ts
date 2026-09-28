@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { getExpectedDailyRefreshAt, getLatestCompleteReportingDate, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness } from "./utils/reporting-timezone";
+import { getExpectedDailyRefreshAt, getLatestCompleteReportingDate, getReportingDateEndAt, getReportingDateWindow, isCreatedThroughReportingDate, normalizeReportingTimeZone, resolveGA4DailyFreshness } from "./utils/reporting-timezone";
 
 const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), "utf-8");
 
@@ -35,6 +35,12 @@ describe("GA4 reporting-day cutoff", () => {
 
   it("calculates the expected refresh time for a completed reporting day", () => {
     expect(getExpectedDailyRefreshAt("2026-06-20", "Europe/Amsterdam", 3, 0)?.toISOString()).toBe("2026-06-21T01:00:00.000Z");
+  });
+
+  it("uses the end of the campaign reporting day for financial-source eligibility", () => {
+    expect(getReportingDateEndAt("2026-09-27", "Europe/Amsterdam")?.toISOString()).toBe("2026-09-27T21:59:59.999Z");
+    expect(isCreatedThroughReportingDate("2026-09-27T21:59:59.999Z", "2026-09-27", "Europe/Amsterdam")).toBe(true);
+    expect(isCreatedThroughReportingDate("2026-09-27T22:00:00.000Z", "2026-09-27", "Europe/Amsterdam")).toBe(false);
   });
 
   it("treats successful provider coverage as current without inventing missing activity rows", () => {

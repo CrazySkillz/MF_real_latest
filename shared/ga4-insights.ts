@@ -86,7 +86,7 @@ export const buildGA4InsightsSpendSourceLabels = (
   const ids = Array.isArray(sourceIds) ? sourceIds.map(String) : [];
   const selected = ids.length > 0
     ? ids.map((id) => definitions.find((source: any) => String(source?.id) === id)).filter(Boolean)
-    : Number(persistedSpend || 0) === 0 ? definitions.filter((source: any) => source?.isActive !== false) : [];
+    : Number(persistedSpend || 0) === 0 ? definitions.filter((source: any) => source?.isActive !== false && source?.pendingCompletedDay !== true) : [];
   return Array.from(new Set(selected.map((source: any) =>
     String(source?.displayName || source?.sourceType || "").trim(),
   ).filter(Boolean)));

@@ -2519,7 +2519,7 @@ export default function GA4Metrics() {
     return Array.from(new Set(labels)).join(", ");
   };
 
-  // Merged spend sources for micro copy display: prefer breakdown (has amounts), fallback to source definitions
+  // Keep completed-day contribution separate from the latest imported source value.
   const spendDisplaySources = useMemo(() => {
     const defs = Array.isArray(spendSourcesResp?.sources) ? spendSourcesResp.sources : Array.isArray(spendSourcesResp) ? spendSourcesResp : [];
     const defsMap = new Map<string, any>();
@@ -2527,10 +2527,29 @@ export default function GA4Metrics() {
 
     const breakdownSources = Array.isArray(spendBreakdownResp?.sources) ? spendBreakdownResp.sources : [];
     if (breakdownSources.length > 0) {
-      return breakdownSources.map((s: any) => ({
-        ...s,
-        mappingConfig: defsMap.get(String(s.sourceId))?.mappingConfig || null,
-      }));
+      const rows = breakdownSources.map((s: any) => {
+        const definition = defsMap.get(String(s.sourceId));
+        return {
+          ...s,
+          mappingConfig: definition?.mappingConfig || null,
+          latestSpend: definition?.latestTotalSpend != null && Number.isFinite(Number(definition.latestTotalSpend)) ? Number(definition.latestTotalSpend) : Number(s.spend || 0),
+          completedDaySpend: Number(s.spend || 0),
+          pendingCompletedDay: definition?.pendingCompletedDay === true,
+          completedDayEndDate: spendSourcesResp?.completedDayEndDate || spendBreakdownResp?.endDate || null,
+        };
+      });
+      const shownIds = new Set(rows.map((s: any) => String(s.sourceId || "")));
+      for (const d of defs.filter((source: any) => source?.isActive !== false)) {
+        if (shownIds.has(String(d.id))) continue;
+        rows.push({
+          sourceId: String(d.id), displayName: String(d.displayName || d.sourceType || "Unknown"), sourceType: String(d.sourceType || "unknown"),
+          spend: d.completedDaySpend != null && Number.isFinite(Number(d.completedDaySpend)) ? Number(d.completedDaySpend) : null,
+          latestSpend: d.latestTotalSpend != null && Number.isFinite(Number(d.latestTotalSpend)) ? Number(d.latestTotalSpend) : null,
+          mappingConfig: d.mappingConfig || null, pendingCompletedDay: d.pendingCompletedDay === true,
+          completedDayEndDate: spendSourcesResp?.completedDayEndDate || spendBreakdownResp?.endDate || null,
+        });
+      }
+      return rows;
     }
     // Fallback: use spend source definitions when no spend_records exist (e.g., no date column mapped)
     return defs.filter((s: any) => s && s.isActive !== false).map((s: any) => ({
@@ -2539,6 +2558,10 @@ export default function GA4Metrics() {
       sourceType: String(s.sourceType || 'unknown'),
       spend: null, // amount unknown — will show total spend instead
       mappingConfig: s.mappingConfig || null,
+      latestSpend: s.latestTotalSpend != null && Number.isFinite(Number(s.latestTotalSpend)) ? Number(s.latestTotalSpend) : null,
+      completedDaySpend: s.completedDaySpend != null && Number.isFinite(Number(s.completedDaySpend)) ? Number(s.completedDaySpend) : 0,
+      pendingCompletedDay: s.pendingCompletedDay === true,
+      completedDayEndDate: spendSourcesResp?.completedDayEndDate || spendBreakdownResp?.endDate || null,
     }));
   }, [spendBreakdownResp, spendSourcesResp]);
   const activeRevenueSource = useMemo(() => {
@@ -2552,6 +2575,9 @@ export default function GA4Metrics() {
     const getDefinitionRevenue = (source: any) => source?.materializedRevenueStatus === "available" && Number.isFinite(Number(source?.lastTotalRevenue))
       ? Number(source.lastTotalRevenue)
       : null;
+    const getCompletedDayRevenue = (source: any) => source?.completedDayRevenue != null && Number.isFinite(Number(source.completedDayRevenue))
+      ? Number(source.completedDayRevenue)
+      : getDefinitionRevenue(source);
     const defsMap = new Map<string, any>();
     for (const d of defs) if (d) defsMap.set(String(d.id), d);
     const breakdownSources = Array.isArray((revenueBreakdownResp as any)?.sources) ? (revenueBreakdownResp as any).sources : [];
@@ -2563,12 +2589,15 @@ export default function GA4Metrics() {
           mappingConfig: definition?.mappingConfig || null,
           materializedRevenueStatus: "available",
           boundedRevenueZero: definition?.boundedRevenueZero === true,
+          latestRevenue: getDefinitionRevenue(definition),
+          pendingCompletedDay: definition?.pendingCompletedDay === true,
+          completedDayEndDate: definition?.completedDayEndDate || revenueBreakdownResp?.endDate || null,
         };
       });
       const shownIds = new Set(rows.map((s: any) => String(s.sourceId || "")));
       for (const d of defs.filter((d: any) => d?.isActive !== false)) {
         if (!shownIds.has(String(d.id))) {
-          rows.push({ sourceId: d.id, sourceType: d.sourceType, displayName: d.displayName, revenue: getDefinitionRevenue(d), mappingConfig: d.mappingConfig, materializedRevenueStatus: d.materializedRevenueStatus, boundedRevenueZero: d.boundedRevenueZero === true });
+          rows.push({ sourceId: d.id, sourceType: d.sourceType, displayName: d.displayName, revenue: getCompletedDayRevenue(d), latestRevenue: getDefinitionRevenue(d), mappingConfig: d.mappingConfig, materializedRevenueStatus: d.materializedRevenueStatus, boundedRevenueZero: d.boundedRevenueZero === true, pendingCompletedDay: d.pendingCompletedDay === true, completedDayEndDate: d.completedDayEndDate || revenueBreakdownResp?.endDate || null });
         }
       }
       return rows;
@@ -2577,10 +2606,13 @@ export default function GA4Metrics() {
       sourceId: d.id,
       sourceType: d.sourceType,
       displayName: d.displayName,
-      revenue: getDefinitionRevenue(d),
+      revenue: getCompletedDayRevenue(d),
+      latestRevenue: getDefinitionRevenue(d),
       mappingConfig: d.mappingConfig,
       materializedRevenueStatus: d.materializedRevenueStatus,
       boundedRevenueZero: d.boundedRevenueZero === true,
+      pendingCompletedDay: d.pendingCompletedDay === true,
+      completedDayEndDate: d.completedDayEndDate || revenueBreakdownResp?.endDate || null,
     }));
   }, [revenueSourcesResp, revenueBreakdownResp]);
   const totalRevenueDisplaySources = revenueDisplaySources;
@@ -2830,7 +2862,7 @@ export default function GA4Metrics() {
     );
     const importedSources = sourceIds.size > 0
       ? revenueDisplaySources.filter((source: any) => sourceIds.has(String(source?.sourceId || source?.id || "")))
-      : importedRevenueForFinancials === 0 ? revenueDisplaySources : [];
+      : importedRevenueForFinancials === 0 ? revenueDisplaySources.filter((source: any) => source?.pendingCompletedDay !== true) : [];
     for (const s of importedSources) {
       const label = String((s as any)?.displayName || revenueSourceTypeLabel(String((s as any)?.sourceType || ""))).trim();
       if (label && !labels.includes(label)) labels.push(label);
@@ -5885,7 +5917,7 @@ export default function GA4Metrics() {
         const cfg = typeof rawCfg === "string"
           ? (() => { try { return JSON.parse(rawCfg); } catch { return null; } })()
           : rawCfg;
-        const totals = source?.boundedRevenueZero === true
+        const totals = source?.boundedRevenueZero === true || source?.pendingCompletedDay === true
           ? []
           : Array.isArray(cfg?.campaignValueRevenueTotals)
           ? cfg.campaignValueRevenueTotals.filter(
@@ -6601,6 +6633,7 @@ export default function GA4Metrics() {
                             <p className="text-2xl font-bold text-foreground mt-1">
                               {renderFinancialValue(financialRevenueLoading, financialRevenueAvailable, formatMoney(Number(financialRevenue || 0)))}
                             </p>
+                            {(importedRevenueToDateResp as any)?.endDate && <p className="mt-1 text-xs text-muted-foreground/70">Data through {formatReportingDateLabel((importedRevenueToDateResp as any).endDate)}</p>}
                             {revenueSourcesUnavailable ? (
                               <p className="mt-2 text-xs text-destructive">Sources unavailable</p>
                             ) : revenueSourcesCount > 0 && (
@@ -6660,6 +6693,7 @@ export default function GA4Metrics() {
                             <p className="text-2xl font-bold text-foreground mt-1">
                               {renderFinancialValue(financialSpendLoading, financialSpendAvailable, formatMoney(Number(financialSpend || 0)))}
                             </p>
+                            {(spendToDateResp as any)?.endDate && <p className="mt-1 text-xs text-muted-foreground/70">Data through {formatReportingDateLabel((spendToDateResp as any).endDate)}</p>}
                             {spendSourcesUnavailable ? (
                               <p className="mt-2 text-xs text-destructive">Sources unavailable</p>
                             ) : spendSourcesCount > 0 && (
@@ -7043,7 +7077,7 @@ export default function GA4Metrics() {
                       <DialogHeader>
                         <DialogTitle className="text-foreground">Revenue Sources</DialogTitle>
                         <DialogDescription className="text-muted-foreground/70">
-                          Sources contributing to Total Revenue.
+                          Latest imported source values. Total Revenue uses completed data through {formatReportingDateLabel((importedRevenueToDateResp as any)?.endDate)}.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="scrollbar-hide max-h-[65vh] space-y-2 overflow-y-auto pr-1">
@@ -7068,10 +7102,13 @@ export default function GA4Metrics() {
                           const sourceDisplayText = isGoogleSheets ? "Google Sheets" : isCsv ? "CSV" : revenueSourceDisplayLabel(s);
                           const isCrm = sourceType === "hubspot" || sourceType === "salesforce";
                           const materializedRevenueUnavailable = s.materializedRevenueStatus === "unavailable";
-                          const isPipelineOnlyRevenueSource = isCrm && cfg?.pipelineEnabled === true && Number(s.revenue || 0) === 0;
+                          const latestRevenue = s.latestRevenue != null && Number.isFinite(Number(s.latestRevenue)) ? Number(s.latestRevenue) : Number(s.revenue || 0);
+                          const completedDayRevenue = Number(s.revenue || 0);
+                          const pendingCompletedDay = s.pendingCompletedDay === true;
+                          const isPipelineOnlyRevenueSource = isCrm && cfg?.pipelineEnabled === true && latestRevenue === 0;
                           const hasConfirmedRevenueItems = (sourceType === "salesforce" && Array.isArray(cfg?.campaignValueRevenueTotals))
                             || (sourceType === "hubspot" && Array.isArray(cfg?.campaignValueRevenueTotals));
-                          const confirmedRevenueItems = hasConfirmedRevenueItems && s.boundedRevenueZero !== true
+                          const confirmedRevenueItems = hasConfirmedRevenueItems
                             ? cfg.campaignValueRevenueTotals
                               .map((item: any) => ({ name: String(item?.campaignValue || "").trim(), revenue: Number(item?.revenue) }))
                               .filter((item: any) => item.name && Number.isFinite(item.revenue))
@@ -7110,9 +7147,10 @@ export default function GA4Metrics() {
                                     )}
                                   </div>
                                   {!hasSingleSourceBreakdown && sourceType !== "hubspot" && sourceType !== "salesforce" && <p className="min-w-0 truncate text-xs text-muted-foreground/70">{sourceTypeText}</p>}
+                                  {pendingCompletedDay && <p className="text-xs text-amber-700 dark:text-amber-300">Pending for totals · included through {formatReportingDateLabel(s.completedDayEndDate)}: {formatMoney(completedDayRevenue)}</p>}
                                 </div>
                                 <span className={`text-right font-medium tabular-nums text-foreground ${confirmedRevenueItems.length > 0 || hasSingleSourceBreakdown ? "col-span-2" : ""}`}>
-                                  {materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}
+                                  {materializedRevenueUnavailable ? "Unavailable" : formatMoney(latestRevenue)}
                                 </span>
                                 {confirmedRevenueItems.length === 0 && !hasSingleSourceBreakdown && (
                                   <div className="flex items-center justify-end gap-1">
@@ -7147,7 +7185,7 @@ export default function GA4Metrics() {
                                   <div className="grid grid-cols-[minmax(0,1fr)_6rem_3.5rem] items-center gap-x-2 text-xs">
                                     <span className="min-w-0 truncate text-muted-foreground" title={sourceDetailText}>{sourceDetailText}</span>
                                     <span className="text-right tabular-nums text-foreground">
-                                      {materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}
+                                      {materializedRevenueUnavailable ? "Unavailable" : formatMoney(latestRevenue)}
                                     </span>
                                     <div className="flex items-center justify-end">
                                       <button
@@ -7222,7 +7260,7 @@ export default function GA4Metrics() {
                       <DialogHeader>
                         <DialogTitle className="text-foreground">Spend Sources</DialogTitle>
                         <DialogDescription className="text-muted-foreground/70">
-                          Sources contributing to Total Spend.
+                          Latest imported source values. Total Spend uses completed data through {formatReportingDateLabel((spendToDateResp as any)?.endDate)}.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
@@ -7241,16 +7279,19 @@ export default function GA4Metrics() {
                             : sourceType === "google_sheets"
                               ? String(cfg?.sheetName || sourceTypeLabel).trim() || sourceTypeLabel
                               : sourceTypeLabel;
+                          const latestSpend = s.latestSpend != null && Number.isFinite(Number(s.latestSpend)) ? Number(s.latestSpend) : Number(s.spend || 0);
+                          const completedDaySpend = s.completedDaySpend != null && Number.isFinite(Number(s.completedDaySpend)) ? Number(s.completedDaySpend) : Number(s.spend || 0);
                           return <div key={s.sourceId} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
                             <div className="min-w-0">
                               <p className="truncate font-medium text-foreground" title={primaryLabel}>
                                 {primaryLabel}
                               </p>
                               <p className="truncate text-xs text-muted-foreground/70" title={detailLabel}>{detailLabel}</p>
+                              {s.pendingCompletedDay === true && <p className="text-xs text-amber-700 dark:text-amber-300">Pending for totals · included through {formatReportingDateLabel(s.completedDayEndDate)}: {formatMoney(completedDaySpend)}</p>}
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="font-medium tabular-nums text-foreground">
-                                {s.spend != null ? formatMoney(s.spend) : formatMoney(Number(financialSpend || 0))}
+                                {s.latestSpend != null || s.spend != null ? formatMoney(latestSpend) : "Unavailable"}
                               </span>
                               {ga4ConnectionUsable && s.sourceType !== "manual" && (
                                 <button

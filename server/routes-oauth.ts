@@ -59,7 +59,7 @@ import {
   resolveGA4KpiMetricIdentity,
 } from "../shared/ga4-kpi-metric-identity";
 import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getGA4HistoricalImportStartDate, getLatestCompleteReportingDate, getReportingDateWindow, normalizeReportingTimeZone, resolveGA4DailyFreshness, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getGA4HistoricalImportStartDate, getLatestCompleteReportingDate, getReportingDateWindow, isCreatedThroughReportingDate, normalizeReportingTimeZone, resolveGA4DailyFreshness, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
@@ -1529,11 +1529,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/campaigns/:id/spend-sources", requireCampaignAccessParamId, async (req, res) => {
     try {
+      res.setHeader("Cache-Control", "no-store");
       const campaignId = req.params.id;
       const platformContext = parseOptionalSpendPlatformContext((req.query as any)?.platformContext, res);
       if (platformContext === null) return;
       const sources = await storage.getSpendSources(campaignId, platformContext);
-      res.json({ success: true, sources });
+      if (platformContext !== "ga4") return res.json({ success: true, sources });
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) return res.status(404).json({ success: false, error: "Campaign not found" });
+      const completedDayEndDate = getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate;
+      const [completedBreakdown, latestBreakdown] = await Promise.all([
+        storage.getSpendBreakdownBySource(campaignId, "1900-01-01", completedDayEndDate, "ga4"),
+        storage.getSpendBreakdownBySource(campaignId, "1900-01-01", "2999-12-31", "ga4"),
+      ]);
+      const completedBySource = new Map(completedBreakdown.map((row: any) => [String(row?.sourceId || ""), Number(row?.spend || 0)]));
+      const latestBySource = new Map(latestBreakdown.map((row: any) => [String(row?.sourceId || ""), Number(row?.spend || 0)]));
+      res.json({
+        success: true,
+        completedDayEndDate,
+        sources: sources.map((source: any) => {
+          const sourceId = String(source?.id || "");
+          const pendingCompletedDay = !isCreatedThroughReportingDate(source?.createdAt, completedDayEndDate, (campaign as any)?.reportingTimeZone)
+            || (!completedBySource.has(sourceId) && latestBySource.has(sourceId));
+          return {
+            ...source,
+            latestTotalSpend: latestBySource.has(sourceId) ? Number((latestBySource.get(sourceId) || 0).toFixed(2)) : null,
+            completedDaySpend: completedBySource.has(sourceId) ? Number((completedBySource.get(sourceId) || 0).toFixed(2)) : 0,
+            pendingCompletedDay,
+          };
+        }),
+      });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch spend sources" });
     }
@@ -3658,40 +3683,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const breakdownEndDate = platformContext === "ga4"
         ? getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate
         : "2999-12-31";
-      const futureStartDate = platformContext === "ga4"
-        ? new Date(new Date(`${breakdownEndDate}T00:00:00.000Z`).getTime() + 86_400_000).toISOString().slice(0, 10)
-        : "2999-12-31";
-      const [boundedBreakdownResult, futureBreakdown] = await Promise.all([
+      const [boundedBreakdownResult, latestBreakdownResult] = await Promise.all([
         storage.getRevenueBreakdownBySource(campaignId, "1900-01-01", breakdownEndDate, platformContext)
           .then((rows: any[]) => ({ rows, succeeded: true }))
           .catch(() => ({ rows: [] as any[], succeeded: false })),
-        platformContext === "ga4"
-          ? storage.getRevenueBreakdownBySource(campaignId, futureStartDate, "2999-12-31", platformContext).catch(() => [] as any[])
-          : Promise.resolve([] as any[]),
+        storage.getRevenueBreakdownBySource(campaignId, "1900-01-01", "2999-12-31", platformContext)
+          .then((rows: any[]) => ({ rows, succeeded: true }))
+          .catch(() => ({ rows: [] as any[], succeeded: false })),
       ]);
       const breakdown = boundedBreakdownResult.rows;
       const totalsBySource = new Map((Array.isArray(breakdown) ? breakdown : []).map((row: any) => [String(row?.sourceId || ""), Number(row?.revenue || 0)]));
-      const futureSourceIds = new Set((Array.isArray(futureBreakdown) ? futureBreakdown : []).map((row: any) => String(row?.sourceId || "")));
+      const latestTotalsBySource = new Map((Array.isArray(latestBreakdownResult.rows) ? latestBreakdownResult.rows : []).map((row: any) => [String(row?.sourceId || ""), Number(row?.revenue || 0)]));
       const sourcesWithTotals = (Array.isArray(sources) ? sources : []).map((source: any) => {
-        let cfgTotal = 0;
+        let cfgTotal: number | null = null;
         try {
           const cfg = source?.mappingConfig ? JSON.parse(String(source.mappingConfig)) : null;
-          cfgTotal = Number(cfg?.lastTotalRevenue || 0);
+          if (cfg?.lastTotalRevenue != null && Number.isFinite(Number(cfg.lastTotalRevenue))) cfgTotal = Number(cfg.lastTotalRevenue);
         } catch {}
         const sourceId = String(source?.id || "");
-        const hasMaterializedRevenue = totalsBySource.has(sourceId);
-        const boundedRevenueZero = platformContext === "ga4" && boundedBreakdownResult.succeeded && !hasMaterializedRevenue && futureSourceIds.has(sourceId);
-        const materializedRevenueAvailable = hasMaterializedRevenue || boundedRevenueZero;
-        const recordTotal = totalsBySource.get(sourceId) || 0;
+        const hasCompletedDayRevenue = totalsBySource.has(sourceId);
+        const hasLatestRevenue = latestTotalsBySource.has(sourceId);
         const isGa4RevenueSource = platformContext === "ga4";
+        const pendingCompletedDay = isGa4RevenueSource && boundedBreakdownResult.succeeded && (
+          !isCreatedThroughReportingDate(source?.createdAt, breakdownEndDate, (campaign as any)?.reportingTimeZone)
+          || (!hasCompletedDayRevenue && hasLatestRevenue)
+        );
+        const materializedRevenueAvailable = hasLatestRevenue || (pendingCompletedDay && cfgTotal !== null);
+        const latestRevenue = hasLatestRevenue ? Number(latestTotalsBySource.get(sourceId) || 0) : cfgTotal;
+        const completedDayRevenue = hasCompletedDayRevenue ? Number(totalsBySource.get(sourceId) || 0) : 0;
         return {
           ...source,
           lastTotalRevenue: isGa4RevenueSource
-            ? materializedRevenueAvailable ? Number(recordTotal.toFixed(2)) : null
-            : Number((recordTotal || cfgTotal || 0).toFixed(2)),
+            ? materializedRevenueAvailable ? Number(Number(latestRevenue || 0).toFixed(2)) : null
+            : Number(Number(latestRevenue || 0).toFixed(2)),
           ...(isGa4RevenueSource ? {
             materializedRevenueStatus: materializedRevenueAvailable ? "available" : "unavailable",
-            boundedRevenueZero,
+            completedDayRevenue: Number(completedDayRevenue.toFixed(2)),
+            completedDayEndDate: breakdownEndDate,
+            pendingCompletedDay,
+            boundedRevenueZero: pendingCompletedDay && completedDayRevenue === 0,
           } : {}),
           ...(getShopifyRevenueSourceFreshness(source) ? { freshness: getShopifyRevenueSourceFreshness(source) } : {}),
         };

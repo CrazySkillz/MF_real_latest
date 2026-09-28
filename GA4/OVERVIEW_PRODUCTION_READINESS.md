@@ -41,6 +41,8 @@ The immediately prior certification at `dc20c1e1c0a78c03a8f9c8d53af30b94c1a70cc1
 
 <!-- /ga4-overview-current-status -->
 
+2026-09-28 scheduler-orchestration update: active real GA4 campaigns now publish through one ordered daily cycle. The cycle invokes mapped financial refresh before the atomic GA4 daily/Overview write, then performs campaign-scoped KPI/Benchmark recompute, financial/aggregate/Executive Summary snapshots, and campaign alert checks before persisting exact-date report readiness. A failure in an obsolete or unrelated campaign no longer prevents a successfully refreshed campaign such as Campaign3 from completing those downstream stages; the process-wide run still records the failure and suppresses the unsafe global alert sweep. The readiness marker is stored on the exact Executive Summary daily snapshot and can be restored after server restart. This is current implementation behavior and does not recertify the Overview section.
+
 ## Revision, Configuration, And Dependency Boundary
 
 - Historical reviewed runtime implementation boundary, user-confirmed before later certification: `c6487555c55726427afed8342312b8393498303b`

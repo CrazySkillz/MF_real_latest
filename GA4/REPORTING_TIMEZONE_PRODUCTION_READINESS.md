@@ -19,7 +19,7 @@ Original findings from code:
 - GA4 daily facts are stored as `YYYY-MM-DD` UTC-oriented date strings in `ga4_daily_metrics`.
 - before Commit 3, `/api/campaigns/:id/ga4-daily` computed the visible Trends window through yesterday UTC.
 - before Commit 4, the GA4 daily scheduler ran on startup and then every `GA4_DAILY_REFRESH_INTERVAL_HOURS`.
-- the external revenue/spend scheduler uses server-local `AUTO_REFRESH_DAILY_HOUR` and `AUTO_REFRESH_DAILY_MINUTE`.
+- before Commit 5, the external revenue/spend scheduler used server-local `AUTO_REFRESH_DAILY_HOUR` and `AUTO_REFRESH_DAILY_MINUTE`.
 - the GA4 UI detects browser timezone for report scheduling helpers, but Insights Trends does not use that as a reporting cutoff.
 
 Impact:
@@ -168,9 +168,11 @@ Implementation note:
 
 - GA4 daily refresh now schedules one daily run at `GA4_DAILY_REFRESH_HOUR:GA4_DAILY_REFRESH_MINUTE` in `GA4_DAILY_REFRESH_TIME_ZONE`
 - defaults are `03:00` and `UTC`
-- `GA4_DAILY_REFRESH_RUN_ON_STARTUP` controls the best-effort startup run and defaults to `true` to preserve current test behavior
+- at Commit 4, `GA4_DAILY_REFRESH_RUN_ON_STARTUP` controlled a best-effort startup run and defaulted to `true`; current code supersedes that historical behavior as noted below
 - scheduler logs include the next run UTC time, local reporting-time label, timezone, and expected `dataThroughDate`
 - an in-process overlap guard skips a second GA4 daily pipeline if one is already running
+
+Current implementation override (2026-09-28): general GA4 startup execution is disabled in code, regardless of `GA4_DAILY_REFRESH_RUN_ON_STARTUP`. Startup discovery may invoke the same campaign-scoped pipeline only to initialize a missing or incompatible synchronized Overview snapshot. `GA4_DAILY_PIPELINE_OWNS_REFRESH` defaults to `true`, so the standalone full daily external-value timer and its startup run are not armed; the ordered GA4 daily pipeline invokes the financial-only refresh before GA4 publication. Google Sheets and CRM short-interval polling remain separate.
 
 Local validation:
 
@@ -199,7 +201,7 @@ Scope:
 
 Implementation note:
 
-- external value auto-refresh now schedules one daily run at `AUTO_REFRESH_DAILY_HOUR:AUTO_REFRESH_DAILY_MINUTE` in `AUTO_REFRESH_TIME_ZONE`
+- Commit 5 introduced a standalone daily run at `AUTO_REFRESH_DAILY_HOUR:AUTO_REFRESH_DAILY_MINUTE` in `AUTO_REFRESH_TIME_ZONE`; current default ownership supersedes that timer as described above
 - if `AUTO_REFRESH_TIME_ZONE` is unset, it falls back to `GA4_DAILY_REFRESH_TIME_ZONE`, then `UTC`
 - `AUTO_REFRESH_RUN_ON_STARTUP` remains optional and defaults to `false`
 - scheduler logs include the next run UTC time, local reporting-time label, timezone, and expected complete day

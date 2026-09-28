@@ -263,6 +263,8 @@ After GA4 Overview-driving values refresh, the required KPI order is:
 
 The executive snapshot tracker should also recompute whenever related inputs change.
 
+For active real GA4 campaigns, the ordered GA4 daily pipeline owns the scheduled recompute by default and runs the campaign alert check only after synchronized financial and GA4 inputs plus dependent snapshots succeed. The generic KPI scheduler skips its duplicate GA4 recompute and alert sweep unless `GA4_DAILY_PIPELINE_OWNS_RECOMPUTE=false` is explicitly configured. A failed unrelated campaign does not block a successfully refreshed campaign's KPI recompute or campaign-scoped alert check.
+
 This includes:
 
 - immediately after a new KPI is persisted through its awaited or background scheduled recompute

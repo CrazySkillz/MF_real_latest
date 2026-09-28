@@ -1208,12 +1208,10 @@ Required reconciliation checks:
 - [ ] Connect the sheet as a spend source and map `Spend = Spend`, `Date column = Date`, `Campaign identifier = Campaign Name`, `Campaign value(s) = yesop_brand_search`
 - [ ] Import spend and verify `Total Spend = $240`
 - [ ] Add a new matching row to the same sheet, for example `2026-01-04, yesop_brand_search, 300`
-- [ ] Temporarily set `AUTO_REFRESH_RUN_ON_STARTUP=true` in Render and redeploy/restart
-- [ ] Wait for the Auto Refresh run to complete, then refresh the GA4 Overview page
+- [ ] Leave the app running and wait for `GOOGLE_SHEETS_SPEND_REFRESH_INTERVAL_MINUTES` (default 1 minute), then allow the open GA4 Overview page's financial-query refetch interval to complete
 - [ ] Verify `Total Spend = $540`
 - [ ] Verify the source was updated/replaced, not duplicated
-- [ ] Remove `AUTO_REFRESH_RUN_ON_STARTUP=true` after validation
-- [ ] Do not use `GA4_DAILY_REFRESH_INTERVAL_HOURS=0.05` for this test; that flag controls the GA4 daily metrics scheduler, not Google Sheets spend auto-refresh
+- [ ] Do not change the GA4 daily schedule for this test; the daily schedule drives the synchronized publication cycle, not the short-interval Google Sheets polling path
 
 ### Google Sheets — Revenue (real connection)
 - [ ] Create a Google Sheet with columns: Date, Revenue, Campaign

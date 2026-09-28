@@ -67,8 +67,8 @@ For active real GA4 campaigns, one ordered daily pipeline owns the publication c
 5. write the compatible campaign aggregate snapshot used by Performance Summary and Budget & Financial Analysis history
 6. capture the Executive Summary daily trajectory snapshot
 7. run campaign KPI and Benchmark alert checks; recommendations then read the same refreshed inputs
-8. release Ad Comparison, Insights, all four Campaign DeepDive sections, and scheduled-report readiness from that completed state
-9. permit due scheduled GA4 or Campaign DeepDive reports to send only after the campaign has completed the cycle for the expected reporting date
+8. make the refreshed persisted state available to Ad Comparison, Insights, and Campaign DeepDive consumers, which reread it through their normal query refetches
+9. persist exact-date scheduled-report readiness and permit due GA4 or Campaign DeepDive reports to send only after the campaign has completed the cycle for the expected reporting date
 
 Important meaning:
 
@@ -239,13 +239,14 @@ LinkedIn and Meta schedulers persist their analytics in their canonical platform
 Runtime cadence:
 
 - the scheduler timer is registered from the server startup background-scheduler block, about 5 seconds after the server begins listening; registration does not run the refresh pipeline
-- it schedules one daily run at `AUTO_REFRESH_DAILY_HOUR:AUTO_REFRESH_DAILY_MINUTE` in `AUTO_REFRESH_TIME_ZONE`
+- with the default `GA4_DAILY_PIPELINE_OWNS_REFRESH=true`, it does not arm a separate full daily timer; the ordered GA4 daily pipeline invokes the same external-value refresh in financial-only/deferred-downstream mode before GA4 publication
+- only when `GA4_DAILY_PIPELINE_OWNS_REFRESH=false` does it schedule its legacy standalone full daily run at `AUTO_REFRESH_DAILY_HOUR:AUTO_REFRESH_DAILY_MINUTE` in `AUTO_REFRESH_TIME_ZONE`
 - active Google Sheets spend sources and active GA4 Google Sheets revenue sources use sequential isolated passes on the Google Sheets financial polling timer controlled by `GOOGLE_SHEETS_SPEND_REFRESH_INTERVAL_MINUTES`, default `1` and bounded to `1..60`; the revenue pass does not refresh CSV, CRM, ecommerce, non-GA4 revenue, LinkedIn, Meta, or Google Ads
 - one CRM polling timer is controlled by `SALESFORCE_PIPELINE_REFRESH_INTERVAL_MINUTES`, default `5` and bounded to `1..60`. Its Salesforce pass reprocesses every active exact GA4 Salesforce source with saved selected values, including revenue-only sources; its HubSpot pass currently reprocesses only Pipeline-enabled sources with a saved stage ID. Both reuse the saved mapping and stable revenue source ID
 - the Google Sheets financial timer and full daily external-value run share overlap guards, so they do not reprocess the same source concurrently
 - the CRM Pipeline timer, Google Sheets financial timer, and full daily external-value run share overlap guards, so they do not replace the same financial state concurrently
 - if `AUTO_REFRESH_TIME_ZONE` is unset, it falls back to `GA4_DAILY_REFRESH_TIME_ZONE`, then `UTC`
-- `AUTO_REFRESH_RUN_ON_STARTUP` remains a test-only override and defaults to `false`
+- `AUTO_REFRESH_RUN_ON_STARTUP` remains a test-only override, defaults to `false`, and is honored only when `GA4_DAILY_PIPELINE_OWNS_REFRESH=false`
 - scheduler logs include the next UTC run time, local reporting-time label, timezone, and expected complete day
 - the existing in-process overlap guard skips a second run if one is already in progress
 
@@ -279,16 +280,23 @@ GA4 daily startup-refresh validation is not applicable: startup execution is dis
 
 External revenue/spend scheduled-refresh validation:
 
-1. Set `AUTO_REFRESH_TIME_ZONE`, `AUTO_REFRESH_DAILY_HOUR`, and `AUTO_REFRESH_DAILY_MINUTE` to the intended schedule.
-2. Set `AUTO_REFRESH_RUN_ON_STARTUP=false` when validating the scheduled path.
-3. Redeploy or restart and confirm `[Auto Refresh] Next scheduled run at ... timezone=... expectedCompleteDay=...`.
-4. After the scheduled time, confirm:
+With the default `GA4_DAILY_PIPELINE_OWNS_REFRESH=true`, validate the synchronized financial phase through the GA4 daily scheduled-refresh procedure above. A separate `[Auto Refresh] Next scheduled run ...` line is not expected; the external scheduler logs that the ordered GA4 daily pipeline owns the daily financial cycle. The Google Sheets and CRM short-interval timers remain active.
+
+To validate the legacy standalone full daily path intentionally:
+
+1. Set `GA4_DAILY_PIPELINE_OWNS_REFRESH=false`.
+2. Set `AUTO_REFRESH_TIME_ZONE`, `AUTO_REFRESH_DAILY_HOUR`, and `AUTO_REFRESH_DAILY_MINUTE` to the intended schedule.
+3. Set `AUTO_REFRESH_RUN_ON_STARTUP=false` when validating the scheduled path.
+4. Redeploy or restart and confirm `[Auto Refresh] Next scheduled run at ... timezone=... expectedCompleteDay=...`.
+5. After the scheduled time, confirm:
    - `=== DAILY AUTO-REFRESH + AUTO-PROCESS RUNNING ===`
    - provider-specific success or failure logs for the sources under test
    - `=== AUTO-REFRESH COMPLETE (...s) ===`
+6. Restore `GA4_DAILY_PIPELINE_OWNS_REFRESH=true` after this isolated legacy-path test.
 
 External revenue/spend startup-refresh validation:
 
+- this test applies only when `GA4_DAILY_PIPELINE_OWNS_REFRESH=false`; the default ordered-pipeline ownership deliberately suppresses the standalone startup run
 - set `AUTO_REFRESH_RUN_ON_STARTUP=true`
 - restart the server
 - confirm `[Auto Refresh] Running once on startup (AUTO_REFRESH_RUN_ON_STARTUP=true)...` and `=== AUTO-REFRESH COMPLETE (...s) ===`
@@ -317,13 +325,13 @@ Ad-platform spend auto-refresh rule:
 Google Sheets spend auto-refresh rule:
 
 - creating a new Google Sheets spend source is additive and must not reuse an existing source just because the same Google Sheets connection or tab is selected
-- Google Sheets spend is refreshed by the external value auto-refresh scheduler, not by the GA4 daily refresh scheduler
+- Google Sheets spend is refreshed by the external scheduler's isolated short-interval pass; the ordered GA4 daily pipeline also invokes the same financial refresh logic before synchronized daily publication, while the GA4 provider-fact refresh itself does not query Google Sheets
 - after setup, a mapped Google Sheets spend-value edit must update the same active source automatically without a wizard resave; the default near-real-time target is a provider pull within 1 minute and an open GA4 Overview refetch within 15 additional seconds, approximately 75 seconds under normal provider/runtime conditions
 - this is near-real-time polling, not a literal zero-latency guarantee; provider/runtime failures can delay convergence and must be logged without replacing the last successful stored value. Google Drive webhook/channel registration and renewal are not implemented or certified in this path
 - the frequent Google Sheets spend timer must remain isolated from Upload CSV and all other provider families
-- GA4 daily refresh env vars such as `GA4_DAILY_REFRESH_HOUR`, `GA4_DAILY_REFRESH_MINUTE`, and `GA4_DAILY_REFRESH_RUN_ON_STARTUP` are not valid fast tests for Google Sheets spend
-- to validate the normal Google Sheets spend update contract, change a known mapped value and wait for `GOOGLE_SHEETS_SPEND_REFRESH_INTERVAL_MINUTES` plus the Overview display-refetch interval; `AUTO_REFRESH_RUN_ON_STARTUP=true` exercises the full scheduler and is not proof that the source-family timer fired
-- production should not keep `AUTO_REFRESH_RUN_ON_STARTUP=true`; the full scheduler remains daily while Google Sheets spend uses its separate bounded interval
+- `GA4_DAILY_REFRESH_HOUR` and `GA4_DAILY_REFRESH_MINUTE` control the synchronized daily cycle, not the one-minute Google Sheets polling test; `GA4_DAILY_REFRESH_RUN_ON_STARTUP` is disabled in code
+- to validate the normal Google Sheets spend update contract, change a known mapped value and wait for `GOOGLE_SHEETS_SPEND_REFRESH_INTERVAL_MINUTES` plus the Overview display-refetch interval; when legacy standalone ownership is intentionally enabled, `AUTO_REFRESH_RUN_ON_STARTUP=true` exercises the full scheduler and is still not proof that the source-family timer fired
+- production should not keep `AUTO_REFRESH_RUN_ON_STARTUP=true`; the ordered GA4 pipeline owns the full daily cycle by default while Google Sheets spend uses its separate bounded interval
 - on refresh, the saved Google Sheets spend source is reprocessed from the current sheet rows and replaces the previous stored amount for that source
 - refresh must update by stable spend `sourceId`; it must not create a duplicate source, update another source that shares the same connection, or append duplicate rows on repeated scheduler runs
 - if a `Date` column is mapped, daily spend records are materialized from the dated rows; adding a new matching dated row should increase `Total Spend` by that row's spend amount after refresh
@@ -352,7 +360,7 @@ Google Sheets revenue refresh rule:
 
 CRM auto-reprocess rule:
 
-- saved HubSpot and Salesforce mappings should be reprocessed by the daily auto-refresh scheduler without requiring a user to manually reopen and save the wizard
+- saved HubSpot and Salesforce mappings should be reprocessed by the ordered daily financial phase without requiring a user to manually reopen and save the wizard; supported CRM mappings also retain their separate five-minute polling path
 - every active exact GA4 Salesforce mapping with saved selected values is reprocessed every five minutes by default without a wizard resave; Pipeline enablement controls only whether the proxy is recalculated
 - every active exact GA4 HubSpot mapping with saved selected values is reprocessed every five minutes by default; a saved stage ID is required only when Pipeline Proxy is enabled, so revenue-only mappings refresh confirmed revenue without a Pipeline card
 - HubSpot auto-reprocess should use active HubSpot revenue source mappings as the source of truth and pass the stable revenue `sourceId`
@@ -378,7 +386,7 @@ CRM auto-reprocess rule:
 
 Shopify auto-reprocess rule:
 
-- saved Shopify revenue mappings should be reprocessed by the daily auto-refresh scheduler without requiring a user to manually reopen and save the wizard
+- saved Shopify revenue mappings should be reprocessed by the ordered daily financial phase without requiring a user to manually reopen and save the wizard
 - Shopify auto-reprocess should use active Shopify revenue source mappings as the source of truth and pass the stable revenue `sourceId`
 - GA4 Shopify has a non-UI, campaign-access-guarded validation route that resolves one exact active GA4 Shopify revenue `sourceId` and invokes the same scheduler reprocess function immediately; it does not run the global daily cycle or prove the natural timer
 - refreshed Shopify revenue should update the existing source's materialized order-date revenue records and recomputed campaign financial state
@@ -485,7 +493,7 @@ Instead:
 
 - ad hoc GA4 reports use live refreshed page state at generation time
 - scheduled/server-generated reports use saved config plus shared report-generation infrastructure
-- due scheduled GA4 and Campaign DeepDive reports for active real GA4 campaigns wait for the ordered daily pipeline's exact campaign/reporting-date completion marker before send-event insertion, PDF generation, or email delivery
+- due scheduled GA4 and Campaign DeepDive reports for active real GA4 campaigns wait for the ordered daily pipeline's exact campaign/reporting-date completion marker before send-event insertion, PDF generation, or email delivery; the marker is persisted on the exact Executive Summary daily snapshot and restored after server restart
 - GA4 scheduled/server report generation resolves the saved initial-import boundary through the latest completed campaign reporting day and fails closed when that cumulative boundary cannot be proven
 - scheduled/server-generated GA4 reports and direct GA4 snapshot PDF downloads fail closed unless the campaign KPI/Benchmark recompute runs for the target campaign before PDF generation; direct GA4 snapshot PDF deployed validation passed after commit `4d3a3838`
 - platform report test-send uses the same email-provider compatibility rule as scheduled delivery, including Mailgun HTTP API when `MAILGUN_API_KEY` and `MAILGUN_DOMAIN` are configured
@@ -510,7 +518,7 @@ The current implementation has one ordered daily publication cycle for active re
 
 What is true today:
 
-- the GA4 daily pipeline invokes mapped financial refresh first, atomically refreshes GA4 facts and Overview detail, recomputes KPI/Benchmark state, writes financial and campaign aggregate snapshots, captures Executive Summary history, runs campaign alerts, and then records report readiness
+- the GA4 daily pipeline invokes mapped financial refresh first, atomically refreshes GA4 facts and Overview detail, recomputes KPI/Benchmark state, writes financial and campaign aggregate snapshots, captures Executive Summary history, runs campaign alerts, and then persists the exact campaign/reporting-date report-readiness marker on that Executive Summary daily snapshot
 - the generic KPI scheduler defaults to skipping its duplicate KPI/Benchmark recompute and alert sweeps; the ordered GA4 pipeline performs both after the synchronized inputs and snapshots are ready. An explicit `GA4_DAILY_PIPELINE_OWNS_RECOMPUTE=false` override restores the legacy behavior
 - manual/on-demand GA4 daily-history writes are disabled; the configured daily scheduler owns daily refresh and its dependent KPI/Benchmark recompute
 - active real GA4 campaigns defer external-source downstream recompute/snapshot publication to the ordered GA4 cycle; non-GA4 campaigns retain the prior external-source behavior
@@ -522,7 +530,7 @@ What is true today:
 - Campaign DeepDive Trend Analysis rereads its inputs every 30 seconds while visible and on window focus. Its current GA4-first outcome request is persisted-only: current Revenue and Spend prefer a compatible `financial_daily_snapshot_v1` row and otherwise use the authoritative persisted `performance_summary_aggregate_v3` totals. Its exact-date financial comparison prefers the matching snapshot and can invoke the existing scoped read-only GA4/source derivation when that snapshot is absent; this derivation writes no history and never substitutes the current value as the baseline. Missing current inputs show unavailable/scheduler-waiting, while a missing exact baseline leaves current values visible with `Comparison unavailable`. Campaign Performance Trend and GA4 efficiency charts use only complete scheduler-stored `/ga4-daily` rows; the mounted page makes no separate provider-coverage request. The scheduler stores the verified GA4 report currency in the atomic Overview snapshot, fails closed on a missing/mismatched code, and bootstraps legacy snapshots that lack that proof.
 - Campaign DeepDive Performance Summary and Budget & Financial Analysis history use the compatible aggregate snapshot written inside the ordered cycle; their current cards still refetch authoritative aggregate values while visible and on window focus
 - Campaign DeepDive Executive Summary history uses the confirmed guarded snapshot from that same cycle
-- report outputs are generated from already-refreshed inputs; scheduled GA4/Campaign DeepDive delivery is deferred until the exact expected reporting date is marked aligned and can still perform its existing preflight checks
+- report outputs are generated from already-refreshed inputs; scheduled GA4/Campaign DeepDive delivery is deferred until the exact expected reporting date is marked aligned, restores that persisted marker after a server restart, and can still perform its existing preflight checks
 - scheduled/server-generated GA4 reports now have dedicated server-side rendering for `Overview`, `Ad Comparison`, `Insights`, and `Custom`, using saved report config plus existing refreshed GA4 inputs
 - scheduled report processing fails closed for missing campaign ownership, deduplicates report rows before due checks, and retries a due report after the aligned refresh completes without prematurely creating its idempotency row
 - scheduled/test-send report emails now use a simple `MimoSaaS report attached` transactional payload with the generated PDF attachment, and test-send checks Mailgun delivery events when available

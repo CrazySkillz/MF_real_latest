@@ -154,6 +154,19 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     expect(salesforceWizard).toContain('visibleUniqueValues.map((v) =>');
   });
 
+  it("edits or removes the Salesforce source from Pipeline Proxy Sources", () => {
+    const pipelineDialog = sliceBetween(
+      ga4Page,
+      '<Dialog open={showPipelineProxySourcesDialog}',
+      '<AlertDialog open={!!deletingSpendSourceId}',
+    );
+
+    expect(pipelineDialog).toContain('["hubspot", "salesforce"].includes(String(entry?.sourceType || "").trim().toLowerCase())');
+    expect(pipelineDialog).toContain('setEditingRevenueSource({ id: entry.sourceId');
+    expect(pipelineDialog).toContain('setDeletingRevenueSourceId(String(entry.sourceId))');
+    expect(pipelineDialog).toContain('"salesforce" ? "Salesforce" : "HubSpot"');
+  });
+
   it("disables an already-added Salesforce chooser card and preserves exact-source pencil editing", () => {
     const sourceClick = sliceBetween(
       addRevenueWizard,

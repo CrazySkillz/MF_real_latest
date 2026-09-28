@@ -7304,7 +7304,7 @@ export default function GA4Metrics() {
                               <p className="font-medium text-foreground">{entry?.providerLabel || "Provider"}</p>
                               <div className="flex items-center gap-2">
                                 <p className="font-medium tabular-nums text-foreground">{formatMoney(Number(entry?.totalToDate || 0))}</p>
-                                {String(entry?.sourceType || "").trim().toLowerCase() === "hubspot" && entry?.sourceId && ga4ConnectionUsable && (
+                                {["hubspot", "salesforce"].includes(String(entry?.sourceType || "").trim().toLowerCase()) && entry?.sourceId && ga4ConnectionUsable && (
                                   <button
                                     onClick={() => {
                                       setShowPipelineProxySourcesDialog(false);
@@ -7312,21 +7312,21 @@ export default function GA4Metrics() {
                                       setShowRevenueDialog(true);
                                     }}
                                     className="rounded p-1 text-muted-foreground/70 hover:bg-muted hover:text-foreground"
-                                    title="Edit HubSpot revenue source"
-                                    aria-label="Edit HubSpot revenue source"
+                                    title={`Edit ${String(entry.sourceType).trim().toLowerCase() === "salesforce" ? "Salesforce" : "HubSpot"} revenue source`}
+                                    aria-label={`Edit ${String(entry.sourceType).trim().toLowerCase() === "salesforce" ? "Salesforce" : "HubSpot"} revenue source`}
                                   >
                                     <Edit className="h-3.5 w-3.5" />
                                   </button>
                                 )}
-                                {String(entry?.sourceType || "").trim().toLowerCase() === "hubspot" && entry?.sourceId && (
+                                {["hubspot", "salesforce"].includes(String(entry?.sourceType || "").trim().toLowerCase()) && entry?.sourceId && (
                                   <button
                                     onClick={() => {
                                       setShowPipelineProxySourcesDialog(false);
                                       setDeletingRevenueSourceId(String(entry.sourceId));
                                     }}
                                     className="rounded p-1 text-muted-foreground/70 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                                    title="Remove HubSpot revenue source"
-                                    aria-label="Remove HubSpot revenue source"
+                                    title={`Remove ${String(entry.sourceType).trim().toLowerCase() === "salesforce" ? "Salesforce" : "HubSpot"} revenue source`}
+                                    aria-label={`Remove ${String(entry.sourceType).trim().toLowerCase() === "salesforce" ? "Salesforce" : "HubSpot"} revenue source`}
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </button>

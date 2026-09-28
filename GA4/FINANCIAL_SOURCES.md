@@ -458,6 +458,7 @@ Important meaning:
 - an open GA4 Overview checks saved CRM Pipeline timestamps every minute and refetches Total Revenue and source breakdowns when a provider refresh timestamp changes; normal revenue queries also retain periodic and focus/reconnect refresh behavior, including revenue-only Salesforce updates
 - the first Salesforce `Source` step should show `Total Revenue + Pipeline (Proxy)` above `Total Revenue only (no Pipeline card)` and default to the pipeline option in new connect mode
 - in Salesforce edit mode, the first `Source` step must state that the existing source is being edited and that continuing allows users to add/remove opportunities, change mappings, or configure Pipeline Proxy
+- the Pipeline Proxy Sources modal exposes provider-level edit and remove actions for both Salesforce and HubSpot; removing a provider uses the exact campaign-scoped revenue-source lifecycle so Pipeline Proxy and affected financial totals are recalculated
 - choosing `Total Revenue only (no Pipeline card)` disables only Pipeline Proxy for this source; confirmed Salesforce revenue must continue to refresh automatically through the five-minute source loop
 - the Pipeline stage list must contain only active open Opportunity stages; closed, inactive, missing, or changed-to-closed stages must fail save validation
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue

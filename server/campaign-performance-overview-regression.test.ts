@@ -263,7 +263,13 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(getChanges).toContain("revenueResponseTotal(displayedHistoricalRevenueResponse)");
     expect(getChanges).toContain("displayedHistoricalSpendResponse?.spendToDate");
     expect(page).toContain('<Select value={selectedTimeRange} disabled={recentMovementSelectionPending}');
-    expect(page).toContain('<SelectItem value="7d">Compare with 7 days ago</SelectItem>');
+    expect(page).toContain('data-testid="performance-data-through"');
+    expect(page).toContain('`Data through ${performanceDataThroughLabel} (${performanceReportingTimeZone}), the latest completed day`');
+    expect(page).toContain('performanceSummary?.currentValueWindow?.dataThroughDate === performanceGA4FinancialEndDate');
+    expect(page).toContain('performanceSummary?.currentValueWindow?.reportingTimeZone === performanceReportingTimeZone');
+    expect(page).toContain('<SelectItem value="24h">Compare with previous completed day');
+    expect(page).toContain('<SelectItem value="7d">Compare with 7 completed days earlier');
+    expect(page).toContain('<SelectItem value="30d">Compare with previous month cutoff');
     expect(page).toContain("item.pctChange === null ? ''");
     expect(page).toContain('performanceGA4SpendSourcesResponse?.success === true');
     expect(page).toContain('&& !performanceGA4SpendSourcesError');

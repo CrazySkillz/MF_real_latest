@@ -61,6 +61,18 @@ const resolveSpendComparisonEndDate = (dataThroughDate: string, timeRange: '24h'
   return completedDate.toISOString().slice(0, 10);
 };
 
+const formatCompletedReportingDate = (date: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "";
+  const parsed = new Date(`${date}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) return "";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(parsed);
+};
+
 export default function CampaignPerformanceSummary() {
   const [, params] = useRoute("/campaigns/:id/performance");
   const campaignId = params?.id;
@@ -429,6 +441,13 @@ export default function CampaignPerformanceSummary() {
   const performanceSummary = outcomeTotals?.performanceSummary;
   const performanceSummaryPending = !!campaignId && !performanceSummary && outcomeTotalsLoading;
   const performanceSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];
+  const performanceReportingTimeZone = String(performanceGA4SummaryResponse?.reportingTimeZone || "");
+  const performanceDataThroughDate = !demoMode
+    && performanceSummary?.currentValueWindow?.dataThroughDate === performanceGA4FinancialEndDate
+    && performanceSummary?.currentValueWindow?.reportingTimeZone === performanceReportingTimeZone
+      ? performanceGA4FinancialEndDate
+      : "";
+  const performanceDataThroughLabel = formatCompletedReportingDate(performanceDataThroughDate);
 
   // Helper function to safely parse numbers
   const parseNum = (val: any): number => {
@@ -507,11 +526,11 @@ export default function CampaignPerformanceSummary() {
   const benchmarkListState: GA4KpiListState = demoMode ? "ready" : benchmarksLoading ? "loading" : benchmarksError ? (benchmarks.length > 0 ? "stale" : "failed") : "ready";
   const trafficInputState: GA4KpiInputState = demoMode
     ? "ready"
-    : performanceGA4ConnectionsLoading || (!!performanceGA4PropertyId && (performanceGA4SummaryLoading || performanceGA4SummaryPlaceholder))
+    : performanceGA4ConnectionsLoading || performanceSummaryPending || (!!performanceGA4PropertyId && (performanceGA4SummaryLoading || performanceGA4SummaryPlaceholder))
       ? "loading"
       : (performanceGA4SummaryError && performanceGA4SummaryResponse) || performanceGA4SummaryResponse?.refreshIsStale
         ? "stale"
-        : performanceGA4ConnectionsError || performanceGA4SummaryError || !performanceGA4PropertyId || !performanceGA4SummaryResponse || performanceGA4SummaryResponse?.providerRefreshWarning
+        : performanceGA4ConnectionsError || performanceGA4SummaryError || outcomeTotalsError || !performanceGA4PropertyId || !performanceGA4SummaryResponse || !performanceDataThroughDate || performanceGA4SummaryResponse?.providerRefreshWarning
         ? "unavailable"
         : "ready";
   const nativeFinancialConversions = Number(performanceGA4RevenueResponse?.native?.totals?.conversions);
@@ -521,31 +540,31 @@ export default function CampaignPerformanceSummary() {
   const hasImportedRevenue = Array.isArray(performanceGA4RevenueResponse?.imported?.sourceIds) && performanceGA4RevenueResponse.imported.sourceIds.length > 0;
   const revenueInputState: GA4KpiInputState = demoMode
     ? "ready"
-    : performanceGA4ConnectionsLoading || performanceGA4SummaryLoading || performanceGA4SummaryPlaceholder || (!!performanceGA4PropertyId && (performanceGA4RevenueLoading || performanceGA4RevenuePlaceholder))
+    : performanceGA4ConnectionsLoading || performanceSummaryPending || performanceGA4SummaryLoading || performanceGA4SummaryPlaceholder || (!!performanceGA4PropertyId && (performanceGA4RevenueLoading || performanceGA4RevenuePlaceholder))
       ? "loading"
       : performanceGA4RevenueError && performanceGA4RevenueResponse
         ? "stale"
-      : performanceGA4ConnectionsError || performanceGA4SummaryError || performanceGA4RevenueError || !performanceGA4PropertyId || !performanceGA4RevenueResponse || performanceGA4RevenueResponse?.native?.endDate !== performanceGA4FinancialEndDate || performanceGA4RevenueResponse?.imported?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(nativeRevenue) || !Number.isFinite(importedRevenue) || (!hasNativeRevenue && !hasImportedRevenue)
+      : performanceGA4ConnectionsError || performanceGA4SummaryError || performanceGA4RevenueError || !performanceGA4PropertyId || !performanceDataThroughDate || !performanceGA4RevenueResponse || performanceGA4RevenueResponse?.native?.endDate !== performanceGA4FinancialEndDate || performanceGA4RevenueResponse?.imported?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(nativeRevenue) || !Number.isFinite(importedRevenue) || (!hasNativeRevenue && !hasImportedRevenue)
         ? "unavailable"
         : "ready";
   const financialConversionsInputState: GA4KpiInputState = demoMode
     ? "ready"
-    : performanceGA4ConnectionsLoading || performanceGA4SummaryLoading || performanceGA4SummaryPlaceholder || (!!performanceGA4PropertyId && (performanceGA4RevenueLoading || performanceGA4RevenuePlaceholder))
+    : performanceGA4ConnectionsLoading || performanceSummaryPending || performanceGA4SummaryLoading || performanceGA4SummaryPlaceholder || (!!performanceGA4PropertyId && (performanceGA4RevenueLoading || performanceGA4RevenuePlaceholder))
       ? "loading"
       : (performanceGA4SummaryError && performanceGA4SummaryResponse) || (performanceGA4RevenueError && performanceGA4RevenueResponse)
         ? "stale"
-        : performanceGA4ConnectionsError || performanceGA4SummaryError || performanceGA4RevenueError || !performanceGA4PropertyId || !performanceGA4RevenueResponse || performanceGA4RevenueResponse?.native?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(nativeFinancialConversions)
+        : performanceGA4ConnectionsError || performanceGA4SummaryError || performanceGA4RevenueError || !performanceGA4PropertyId || !performanceDataThroughDate || !performanceGA4RevenueResponse || performanceGA4RevenueResponse?.native?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(nativeFinancialConversions)
           ? "unavailable"
           : "ready";
   const spendSummaryMetric = performanceSummary?.totals?.spend;
   const scoringSpendToDate = Number(performanceGA4SpendResponse?.spendToDate);
   const spendInputState: GA4KpiInputState = demoMode
     ? "ready"
-    : performanceGA4ConnectionsLoading || performanceGA4SummaryLoading || performanceGA4SummaryPlaceholder || performanceGA4SpendLoading || performanceGA4SpendPlaceholder
+    : performanceGA4ConnectionsLoading || performanceSummaryPending || performanceGA4SummaryLoading || performanceGA4SummaryPlaceholder || performanceGA4SpendLoading || performanceGA4SpendPlaceholder
       ? "loading"
       : performanceGA4SpendError && performanceGA4SpendResponse
         ? "stale"
-        : performanceGA4ConnectionsError || performanceGA4SummaryError || performanceGA4SpendError || !performanceGA4PropertyId || !performanceGA4SpendResponse || performanceGA4SpendResponse?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(scoringSpendToDate) || !Array.isArray(performanceGA4SpendResponse?.sourceIds) || performanceGA4SpendResponse.sourceIds.length === 0
+        : performanceGA4ConnectionsError || performanceGA4SummaryError || performanceGA4SpendError || !performanceGA4PropertyId || !performanceDataThroughDate || !performanceGA4SpendResponse || performanceGA4SpendResponse?.endDate !== performanceGA4FinancialEndDate || !Number.isFinite(scoringSpendToDate) || !Array.isArray(performanceGA4SpendResponse?.sourceIds) || performanceGA4SpendResponse.sourceIds.length === 0
         ? "unavailable"
         : "ready";
   const liveScoringTrafficTotals = performanceGA4SummaryResponse?.overviewTotals || {};
@@ -1457,6 +1476,13 @@ export default function CampaignPerformanceSummary() {
                 <div>
                   <h2 className="text-xl font-semibold text-foreground">Key Outcomes</h2>
                   <p className="text-sm text-muted-foreground mt-1">Current outcomes from the campaign's connected sources</p>
+                  {!demoMode && (
+                    <p className="text-sm text-muted-foreground mt-1" data-testid="performance-data-through">
+                      {performanceDataThroughLabel
+                        ? `Data through ${performanceDataThroughLabel} (${performanceReportingTimeZone}), the latest completed day`
+                        : "Completed-day data cutoff unavailable"}
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -1668,13 +1694,13 @@ export default function CampaignPerformanceSummary() {
                         </Button>
                       </Link>
                       <Select value={selectedTimeRange} disabled={recentMovementSelectionPending} onValueChange={(value: '24h' | '7d' | '30d') => setSelectedTimeRange(value)}>
-                      <SelectTrigger className="w-[230px]">
+                      <SelectTrigger className="w-[320px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent data-performance-movement-select>
-                        <SelectItem value="24h">Compare with yesterday</SelectItem>
-                        <SelectItem value="7d">Compare with 7 days ago</SelectItem>
-                        <SelectItem value="30d">Compare with one month ago</SelectItem>
+                        <SelectItem value="24h">Compare with previous completed day{performanceDataThroughDate ? ` (${formatCompletedReportingDate(resolveSpendComparisonEndDate(performanceDataThroughDate, '24h'))})` : ""}</SelectItem>
+                        <SelectItem value="7d">Compare with 7 completed days earlier{performanceDataThroughDate ? ` (${formatCompletedReportingDate(resolveSpendComparisonEndDate(performanceDataThroughDate, '7d'))})` : ""}</SelectItem>
+                        <SelectItem value="30d">Compare with previous month cutoff{performanceDataThroughDate ? ` (${formatCompletedReportingDate(resolveSpendComparisonEndDate(performanceDataThroughDate, '30d'))})` : ""}</SelectItem>
                       </SelectContent>
                       </Select>
                     </div>

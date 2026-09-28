@@ -485,6 +485,7 @@ export interface IStorage {
   createMetricSnapshot(snapshot: InsertMetricSnapshot): Promise<MetricSnapshot>;
   upsertFinancialDailySnapshot(snapshot: FinancialDailySnapshotInput): Promise<MetricSnapshot>;
   upsertExecutiveSummaryDailySnapshot(snapshot: ExecutiveSummaryDailySnapshotInput): Promise<MetricSnapshot>;
+  markExecutiveSummaryDailySnapshotAligned(campaignId: string, reportingDate: string, completedAt: string): Promise<boolean>;
   getExecutiveSummaryDailyComparisonData(campaignId: string, currentReportingDate: string, comparisonDate: string): Promise<{
     current: MetricSnapshot | null;
     previous: MetricSnapshot | null;
@@ -5339,11 +5340,25 @@ export class DatabaseStorage implements IStorage {
           totalConversions: sql`EXCLUDED.total_conversions`,
           totalSpend: sql`EXCLUDED.total_spend`,
           metrics: sql`EXCLUDED.metrics`,
+          notes: null,
           recordedAt: sql`CURRENT_TIMESTAMP`,
         },
       })
       .returning();
     return snapshot;
+  }
+
+  async markExecutiveSummaryDailySnapshotAligned(campaignId: string, reportingDate: string, completedAt: string): Promise<boolean> {
+    const marker = `ga4_aligned_refresh_v1:${reportingDate}:${completedAt}`;
+    const [updated] = await db.update(metricSnapshots)
+      .set({ notes: marker })
+      .where(and(
+        eq(metricSnapshots.campaignId, campaignId),
+        eq(metricSnapshots.snapshotType, 'executive_summary_daily'),
+        eq(metricSnapshots.reportingDate, reportingDate),
+      ))
+      .returning({ id: metricSnapshots.id });
+    return Boolean(updated);
   }
 
   async getExecutiveSummaryDailyComparisonData(

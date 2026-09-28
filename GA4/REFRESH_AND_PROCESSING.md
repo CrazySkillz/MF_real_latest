@@ -141,7 +141,7 @@ Important meaning:
 - a saved campaign-filter or reporting-timezone change invalidates only that campaign's prior daily facts before scoped refresh, so old-scope rows cannot remain visible
 - this is only one part of `Overview` freshness; `Overview` also depends on refreshed external revenue and spend source state where applicable
 - it owns the daily financial refresh invocation for active real GA4 campaigns by default, while the existing short-interval financial-source polling remains available
-- the report delivery scheduler remains separate, but due GA4 and Campaign DeepDive reports wait for this pipeline's exact reporting-date completion marker before creating send bookkeeping or sending
+- the report delivery scheduler remains separate, but due GA4 and Campaign DeepDive reports wait for this pipeline's exact reporting-date completion marker before creating send bookkeeping or sending; the marker is persisted on the exact Executive Summary daily snapshot and restored after a server restart
 
 Runtime cadence:
 

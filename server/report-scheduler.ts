@@ -1022,7 +1022,7 @@ export async function getScheduledReportAlignedRefreshGate(report: any, now = ne
     });
     if (!campaign || !hasActiveGA4) return { ready: true };
     const reportingDate = getLatestCompleteReportingDate((campaign as any)?.reportingTimeZone, now);
-    return isGA4AlignedRefreshReady(getGA4AlignedRefreshState(campaignId), reportingDate)
+    return isGA4AlignedRefreshReady(await getGA4AlignedRefreshState(campaignId, reportingDate), reportingDate)
       ? { ready: true }
       : { ready: false, reason: `waiting for aligned campaign refresh through ${reportingDate}` };
   } catch {

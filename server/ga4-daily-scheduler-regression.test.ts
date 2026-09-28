@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { afterEach, vi } from "vitest";
 import { GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION, ga4Service } from "./analytics";
-import { backfillMissingGA4OverviewSnapshots, getGA4DailyRecomputeFailure, getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getNextGA4DailyRunAt, isGA4AlignedRefreshReady, refreshAllGA4DailyMetrics } from "./ga4-daily-scheduler";
+import { backfillMissingGA4OverviewSnapshots, getGA4AlignedRefreshState, getGA4DailyRecomputeFailure, getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getNextGA4DailyRunAt, isGA4AlignedRefreshReady, parseGA4AlignedRefreshMarker, refreshAllGA4DailyMetrics } from "./ga4-daily-scheduler";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { storage } from "./storage";
 
@@ -92,6 +92,20 @@ describe("GA4 daily scheduler timing", () => {
     expect(isGA4AlignedRefreshReady(null, "2026-09-26")).toBe(false);
   });
 
+  it("restores exact-date report readiness from the persisted Executive Summary snapshot", async () => {
+    const completedAt = "2026-09-27T03:05:00.000Z";
+    vi.spyOn(storage, "getExecutiveSummaryDailyComparisonData").mockResolvedValue({
+      current: { notes: `ga4_aligned_refresh_v1:2026-09-26:${completedAt}` },
+      previous: null,
+    } as any);
+
+    expect(parseGA4AlignedRefreshMarker(`ga4_aligned_refresh_v1:2026-09-26:${completedAt}`, "2026-09-26"))
+      .toEqual({ reportingDate: "2026-09-26", completedAt });
+    expect(parseGA4AlignedRefreshMarker(`ga4_aligned_refresh_v1:2026-09-25:${completedAt}`, "2026-09-26")).toBeNull();
+    expect(await getGA4AlignedRefreshState("restart-campaign", "2026-09-26"))
+      .toEqual({ reportingDate: "2026-09-26", completedAt });
+  });
+
   it("publishes GA4 campaign snapshots only inside the ordered daily pipeline", () => {
     const source = schedulerSource();
     const aggregateSource = aggregateSnapshotSchedulerSource();
@@ -99,7 +113,8 @@ describe("GA4 daily scheduler timing", () => {
     expect(source.indexOf("await writeFinancialDailySnapshotIfReady")).toBeLessThan(source.indexOf("await recordCampaignMetrics(processedCampaignId"));
     expect(source.indexOf("await recordCampaignMetrics(processedCampaignId")).toBeLessThan(source.indexOf("await captureExecutiveSummarySnapshot(executiveSummarySnapshotBaseUrl"));
     expect(source.indexOf("await captureExecutiveSummarySnapshot(executiveSummarySnapshotBaseUrl")).toBeLessThan(source.indexOf("await checkGA4PerformanceAlertsForCampaign"));
-    expect(source.indexOf("await checkGA4PerformanceAlertsForCampaign")).toBeLessThan(source.indexOf("alignedRefreshByCampaign.set"));
+    expect(source.indexOf("await checkGA4PerformanceAlertsForCampaign")).toBeLessThan(source.indexOf("await storage.markExecutiveSummaryDailySnapshotAligned"));
+    expect(source.indexOf("await storage.markExecutiveSummaryDailySnapshotAligned")).toBeLessThan(source.indexOf("alignedRefreshByCampaign.set(processedCampaignId"));
     expect(aggregateSource).toContain("if (!opts.allowScheduledGA4)");
     expect(aggregateSource).toContain("snapshot is owned by the ordered GA4 daily pipeline");
     expect(kpiSchedulerSource()).toContain('GA4_DAILY_PIPELINE_OWNS_RECOMPUTE || "true"');

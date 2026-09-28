@@ -65,9 +65,25 @@ const ga4DailySchedulerStatus = {
 
 let executiveSummarySnapshotBaseUrl: string | null = null;
 const alignedRefreshByCampaign = new Map<string, { reportingDate: string; completedAt: string }>();
+const GA4_ALIGNED_REFRESH_MARKER_PREFIX = "ga4_aligned_refresh_v1:";
 
-export function getGA4AlignedRefreshState(campaignId: string): { reportingDate: string; completedAt: string } | null {
-  return alignedRefreshByCampaign.get(String(campaignId || "").trim()) || null;
+export function parseGA4AlignedRefreshMarker(notes: unknown, reportingDate: string): { reportingDate: string; completedAt: string } | null {
+  const expectedPrefix = `${GA4_ALIGNED_REFRESH_MARKER_PREFIX}${reportingDate}:`;
+  const value = String(notes || "");
+  if (!value.startsWith(expectedPrefix)) return null;
+  const completedAt = value.slice(expectedPrefix.length);
+  return Number.isNaN(Date.parse(completedAt)) ? null : { reportingDate, completedAt };
+}
+
+export async function getGA4AlignedRefreshState(campaignId: string, reportingDate?: string): Promise<{ reportingDate: string; completedAt: string } | null> {
+  const normalizedCampaignId = String(campaignId || "").trim();
+  const normalizedReportingDate = String(reportingDate || "").trim();
+  const cached = alignedRefreshByCampaign.get(normalizedCampaignId) || null;
+  if (!normalizedReportingDate || cached?.reportingDate === normalizedReportingDate) return cached;
+  const snapshots = await storage.getExecutiveSummaryDailyComparisonData(normalizedCampaignId, normalizedReportingDate, normalizedReportingDate);
+  const persisted = parseGA4AlignedRefreshMarker(snapshots.current?.notes, normalizedReportingDate);
+  if (persisted) alignedRefreshByCampaign.set(normalizedCampaignId, persisted);
+  return persisted;
 }
 
 export function isGA4AlignedRefreshReady(
@@ -572,10 +588,15 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
       }
       const alignedCompletedAt = new Date().toISOString();
       for (const processedCampaignId of alignedAlertCampaignIds) {
-        alignedRefreshByCampaign.set(processedCampaignId, {
-          reportingDate: refreshResult.reportingDatesByCampaign[processedCampaignId],
-          completedAt: alignedCompletedAt,
-        });
+        const reportingDate = refreshResult.reportingDatesByCampaign[processedCampaignId];
+        try {
+          const persisted = await storage.markExecutiveSummaryDailySnapshotAligned(processedCampaignId, reportingDate, alignedCompletedAt);
+          if (!persisted) throw new Error("Executive Summary daily snapshot was not found");
+          alignedRefreshByCampaign.set(processedCampaignId, { reportingDate, completedAt: alignedCompletedAt });
+        } catch (e: any) {
+          alignedRefreshFailures.push({ campaignId: processedCampaignId, stage: "report_readiness_persist_failed" });
+          console.warn(`[GA4 Daily] Report-readiness persistence failed for campaign ${processedCampaignId}:`, e?.message || e);
+        }
       }
     }
     if (refreshFailure || alignedRefreshFailures.length > 0) {

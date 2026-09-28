@@ -10,6 +10,8 @@ describe("Executive Summary daily snapshot wiring", () => {
     expect(schema).toContain("metric_snapshots_executive_summary_day_unique");
     expect(migration).toContain("WHERE snapshot_type = 'executive_summary_daily' AND reporting_date IS NOT NULL");
     expect(storage).toContain("upsertExecutiveSummaryDailySnapshot");
+    expect(storage).toContain("markExecutiveSummaryDailySnapshotAligned");
+    expect(storage).toContain("notes: null");
     expect(storage).toContain("getExecutiveSummaryDailyComparisonData");
     expect(storage.match(/ne\(metricSnapshots\.snapshotType, 'executive_summary_daily'\)/g)).toHaveLength(5);
   });

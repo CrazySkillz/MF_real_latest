@@ -25,6 +25,7 @@ describe("scheduled report email regression guard", () => {
     const sendEvent = source.indexOf(".insert(reportSendEvents)", gate);
 
     expect(source).toContain('platformType !== "google_analytics" && platformType !== "campaign_deepdive"');
+    expect(source).toContain("await getGA4AlignedRefreshState(campaignId, reportingDate)");
     expect(source).toContain("waiting for aligned campaign refresh through ${reportingDate}");
     expect(source).toContain("schedulerMetrics.lastRefreshDeferredReports++");
     expect(gate).toBeGreaterThan(-1);

@@ -159,7 +159,8 @@ the GA4 analytics experience.
   CVR stay on the fixed initial-import-to-latest-completed-day window. Budget Conversion
   Efficiency reuses that same GA4 CVR input. Native GA4 Revenue and CPA Conversions use
   GA4 Overview's ordered initial-import-to-latest-completed-day financial source, while
-  imported Revenue and Spend include all available mapped records. These contracts are carried
+  imported Revenue and Spend include mapped materialized records through the campaign-timezone
+  latest completed reporting day. These contracts are carried
   separately through the shared aggregate and must not overwrite one another.
 - Source refresh and page refetch keep the consumers synchronized; synchronization is
   through authoritative backend state, never through tab-to-tab value copying.
@@ -203,15 +204,16 @@ parity.
 
 ### 2026-08-28 Current-Value Correction
 
-The V1 boundary was standardized on `2026-09-26`: campaign metadata dates are
-pacing-only, native GA4 financial values use the saved initial-import boundary, and
-imported financial sources use all available mapped records.
+At the recorded `2026-09-26` revision, campaign metadata dates were pacing-only,
+native GA4 financial values used the saved initial-import boundary, and imported
+financial sources used all available mapped records. The current contract supersedes
+that imported-source boundary with the campaign-timezone latest completed reporting day.
 
 Root cause: ordinary `/outcome-totals` requests used an inconsistent native financial
 request start and also reused traffic Conversions as the CPA denominator. The corrected
 shared path keeps property traffic, native Revenue, and matching financial Conversions
-on the saved initial-import-to-latest-completed-day window. Imported Revenue and Spend
-use all available mapped records.
+on the saved initial-import-to-latest-completed-day window. At that historical revision,
+Imported Revenue and Spend used all available mapped records.
 
 Read-only reconciliation for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458` proved
 native GA4 Revenue `$55,966.70`, imported Revenue `$16,799.99`, Spend `$2,699.75`,

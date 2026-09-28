@@ -292,7 +292,7 @@ export default defineConfig({
 
 Use this when verifying GA4 data accuracy against the real Google Analytics console.
 
-Current window contract: the selected 30/60/90-day setup window establishes the fixed initial-import boundary. Current GA4 traffic and native financial values accumulate from that boundary through the latest completed reporting day; they are not rolling-window totals. Imported Revenue and Spend use all available mapped records. Campaign metadata and app creation time are not financial boundaries.
+Current window contract: the selected 30/60/90-day setup window establishes the fixed initial-import boundary. Current GA4 traffic and native financial values accumulate from that boundary through the latest completed reporting day; they are not rolling-window totals. Imported Revenue and Spend include mapped materialized records dated on or before that same campaign-timezone cutoff. Campaign metadata and app creation time are not financial boundaries.
 
 ### Overview Tab
 | MimoSaaS Metric | GA4 Console Location | Expected Match? |

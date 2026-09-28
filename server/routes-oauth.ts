@@ -2653,7 +2653,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Spend across all available mapped records — single source of truth for exec financials (ROI/ROAS/etc).
+  // Spend through the GA4 campaign's latest completed reporting day — single source of truth for exec financials (ROI/ROAS/etc).
   // This avoids forcing users to map dates for spend imports.
   app.get("/api/campaigns/:id/spend-to-date", requireCampaignAccessParamId, async (req, res) => {
     try {
@@ -3478,7 +3478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // NOTE: GA4 to-date totals route is defined later in this file (single authoritative handler).
 
-  // Imported revenue across all available mapped records. Used as fallback when GA4 has no revenue metric configured.
+  // Imported revenue through the GA4 campaign's latest completed reporting day. Used as fallback when GA4 has no revenue metric configured.
   app.get("/api/campaigns/:id/revenue-to-date", async (req, res) => {
     try {
       res.setHeader("Cache-Control", "no-store");
@@ -3501,7 +3501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         || requestedEndDate < startDate || requestedEndDate > latestCompletedEndDate)) {
         return res.status(400).json({ success: false, error: "endDate must be a completed reporting date in YYYY-MM-DD format" });
       }
-      const resolvedEndDate = requestedEndDate || currentUtcDate;
+      const resolvedEndDate = requestedEndDate || latestCompletedEndDate;
 
       const [totals, sources] = await Promise.all([
         storage.getRevenueTotalForRange(campaignId, startDate, resolvedEndDate, platformContext),
@@ -3526,7 +3526,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Budget pacing dates are campaign metadata and must not narrow platform revenue provenance.
       const startDate = "1900-01-01";
-      const endDate = new Date().toISOString().slice(0, 10);
+      const currentUtcDate = new Date().toISOString().slice(0, 10);
+      const endDate = platformContext === "ga4"
+        ? getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate
+        : currentUtcDate;
 
       const [sources, sourceDefinitions] = await Promise.all([
         storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, platformContext as any),
@@ -3649,12 +3652,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const platformContext = parseRevenueReadPlatformContext((req.query as any)?.platformContext, "ga4", res);
       if (!platformContext) return;
-      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
-      if (!ok) return;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const sources = await storage.getRevenueSources(campaignId, platformContext);
-      const breakdownEndDate = platformContext === "ga4" ? new Date().toISOString().slice(0, 10) : "2999-12-31";
-      const breakdown = await storage.getRevenueBreakdownBySource(campaignId, "1900-01-01", breakdownEndDate, platformContext).catch(() => [] as any[]);
+      const breakdownEndDate = platformContext === "ga4"
+        ? getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate
+        : "2999-12-31";
+      const futureStartDate = platformContext === "ga4"
+        ? new Date(new Date(`${breakdownEndDate}T00:00:00.000Z`).getTime() + 86_400_000).toISOString().slice(0, 10)
+        : "2999-12-31";
+      const [boundedBreakdownResult, futureBreakdown] = await Promise.all([
+        storage.getRevenueBreakdownBySource(campaignId, "1900-01-01", breakdownEndDate, platformContext)
+          .then((rows: any[]) => ({ rows, succeeded: true }))
+          .catch(() => ({ rows: [] as any[], succeeded: false })),
+        platformContext === "ga4"
+          ? storage.getRevenueBreakdownBySource(campaignId, futureStartDate, "2999-12-31", platformContext).catch(() => [] as any[])
+          : Promise.resolve([] as any[]),
+      ]);
+      const breakdown = boundedBreakdownResult.rows;
       const totalsBySource = new Map((Array.isArray(breakdown) ? breakdown : []).map((row: any) => [String(row?.sourceId || ""), Number(row?.revenue || 0)]));
+      const futureSourceIds = new Set((Array.isArray(futureBreakdown) ? futureBreakdown : []).map((row: any) => String(row?.sourceId || "")));
       const sourcesWithTotals = (Array.isArray(sources) ? sources : []).map((source: any) => {
         let cfgTotal = 0;
         try {
@@ -3663,14 +3680,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch {}
         const sourceId = String(source?.id || "");
         const hasMaterializedRevenue = totalsBySource.has(sourceId);
+        const boundedRevenueZero = platformContext === "ga4" && boundedBreakdownResult.succeeded && !hasMaterializedRevenue && futureSourceIds.has(sourceId);
+        const materializedRevenueAvailable = hasMaterializedRevenue || boundedRevenueZero;
         const recordTotal = totalsBySource.get(sourceId) || 0;
         const isGa4RevenueSource = platformContext === "ga4";
         return {
           ...source,
           lastTotalRevenue: isGa4RevenueSource
-            ? hasMaterializedRevenue ? Number(recordTotal.toFixed(2)) : null
+            ? materializedRevenueAvailable ? Number(recordTotal.toFixed(2)) : null
             : Number((recordTotal || cfgTotal || 0).toFixed(2)),
-          ...(isGa4RevenueSource ? { materializedRevenueStatus: hasMaterializedRevenue ? "available" : "unavailable" } : {}),
+          ...(isGa4RevenueSource ? {
+            materializedRevenueStatus: materializedRevenueAvailable ? "available" : "unavailable",
+            boundedRevenueZero,
+          } : {}),
           ...(getShopifyRevenueSourceFreshness(source) ? { freshness: getShopifyRevenueSourceFreshness(source) } : {}),
         };
       });
@@ -4233,7 +4255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // NOTE: /api/campaigns/:id/revenue-to-date is defined above (all available mapped records).
+  // NOTE: /api/campaigns/:id/revenue-to-date is defined above (GA4 reads stop at the latest completed reporting day).
 
   const deactivateRevenueSourcesForCampaign = async (
     campaignId: string,

@@ -485,7 +485,7 @@ These are campaign-age/calendar requirements, not activity-row or event-count re
 
 KPI/Benchmark snapshot history used by live Insights is eligible only when its versioned marker matches the selected GA4 property, saved campaign filter, campaign reporting timezone, and campaign currency. Legacy or mismatched history is retained but withheld from the live tab.
 
-For native financial KPI/Benchmark recompute, the start boundary is always the saved GA4 `importStartDate`. The end boundary is the latest completed reporting day. Campaign metadata dates and app creation time are never substituted. Imported Revenue and Spend use all available mapped records, capped at the selected comparison date only for historical comparisons.
+For native financial KPI/Benchmark recompute, the start boundary is always the saved GA4 `importStartDate`. The end boundary is the latest completed reporting day. Campaign metadata dates and app creation time are never substituted. Imported Revenue and Spend include mapped materialized records dated on or before that same campaign-timezone completed-day cutoff, or the selected earlier comparison date for historical comparisons.
 
 ## Reports Refresh
 

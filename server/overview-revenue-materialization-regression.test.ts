@@ -36,11 +36,11 @@ describe("GA4 Overview revenue materialization integrity", () => {
     )).not.toThrow();
   });
 
-  it("limits completeness enforcement to current GA4 campaign-to-date totals", () => {
+  it("enforces completeness for GA4 all-history totals regardless of the completed-day cutoff", () => {
     const today = "2026-08-08";
     expect(requiresGa4RevenueMaterializationCompleteness("ga4", "1900-01-01", today, today)).toBe(true);
     expect(requiresGa4RevenueMaterializationCompleteness("ga4", "2026-07-10", today, today)).toBe(false);
-    expect(requiresGa4RevenueMaterializationCompleteness("ga4", "1900-01-01", "2026-08-07", today)).toBe(false);
+    expect(requiresGa4RevenueMaterializationCompleteness("ga4", "1900-01-01", "2026-08-07", today)).toBe(true);
     expect(requiresGa4RevenueMaterializationCompleteness("linkedin", "1900-01-01", today, today)).toBe(false);
   });
 
@@ -51,8 +51,10 @@ describe("GA4 Overview revenue materialization integrity", () => {
 
     expect(storage).toContain("requiresGa4RevenueMaterializationCompleteness(platformContext, startDate, endDate)");
     expect(storage).toContain("assertGa4RevenueMaterializationComplete(activeSources as any[], rows as any[])");
+    expect(storage).toContain("const allMaterializedSources = await this.getRevenueBreakdownBySource(campaignId, '1900-01-01', '2999-12-31', platformContext)");
+    expect(storage).toContain("assertGa4RevenueMaterializationComplete(activeSources as any[], allMaterializedSources as any[])");
     expect(routes).toContain('const isGa4RevenueSource = platformContext === "ga4"');
-    expect(routes).toContain('materializedRevenueStatus: hasMaterializedRevenue ? "available" : "unavailable"');
+    expect(routes).toContain('materializedRevenueStatus: materializedRevenueAvailable ? "available" : "unavailable"');
     expect(page).toContain('const materializedRevenueUnavailable = s.materializedRevenueStatus === "unavailable";');
   });
 });

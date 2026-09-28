@@ -159,7 +159,7 @@ Current meaning:
 - stale freshness metadata on an otherwise successful scheduler-backed response does not create a setup finding or withhold current target/trend evaluation; an actual daily-history request failure with no response still withholds affected trend conclusions
 - channel details in KPI/Benchmark recommendations require a reconciled breakdown and can remain when daily history is stale or mismatched; missing or wrong-property snapshots withhold streak/history context, not verified current target evaluations
 - invalid KPI or Benchmark targets are shown as configuration issues before performance conclusions
-- standard KPI and Benchmark targets are absolute goals evaluated against their authoritative current values: GA4 traffic and native financial metrics use the initial-import-through-latest-completed-day cumulative window, while imported Revenue and Spend use all available mapped records
+- standard KPI and Benchmark targets are absolute goals evaluated against their authoritative current values: GA4 traffic and native financial metrics use the initial-import-through-latest-completed-day cumulative window, while imported Revenue and Spend include mapped materialized records through that same campaign-timezone cutoff
 - below-target KPI findings use factual `Below Saved Target` wording and the priority saved on that KPI; attainment percentage does not invent severity
 - every verified, period-compatible KPI below its saved target is shown; arbitrary attainment bands do not hide a miss
 - legacy timeframe or period metadata must not replace the authoritative cumulative current-value window; unsupported custom metrics remain unscorable rather than being forced into a standard window

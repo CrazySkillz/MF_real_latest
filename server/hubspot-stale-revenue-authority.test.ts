@@ -22,8 +22,8 @@ describe("GA4 materialized revenue authority", () => {
     );
     expect(route).toContain('const hasMaterializedRevenue = totalsBySource.has(sourceId)');
     expect(route).toContain('const isGa4RevenueSource = platformContext === "ga4"');
-    expect(route).toContain('? hasMaterializedRevenue ? Number(recordTotal.toFixed(2)) : null');
-    expect(route).toContain('materializedRevenueStatus: hasMaterializedRevenue ? "available" : "unavailable"');
+    expect(route).toContain('? materializedRevenueAvailable ? Number(recordTotal.toFixed(2)) : null');
+    expect(route).toContain('materializedRevenueStatus: materializedRevenueAvailable ? "available" : "unavailable"');
     expect(route).toContain('Number((recordTotal || cfgTotal || 0).toFixed(2))');
   });
 
@@ -42,7 +42,7 @@ describe("GA4 materialized revenue authority", () => {
   });
 
   it("keeps provenance visible but renders the missing value as unavailable", () => {
-    expect(ga4Page).toContain('const getDefinitionRevenue = (_source: any) => null;');
+    expect(ga4Page).toContain('source?.materializedRevenueStatus === "available" && Number.isFinite(Number(source?.lastTotalRevenue))');
     expect(ga4Page).toContain('materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))');
     expect(ga4Page).toContain('const materializedRevenueUnavailable = s.materializedRevenueStatus === "unavailable";');
     expect(ga4Page).toContain('materializedRevenueStatus: s.materializedRevenueStatus');

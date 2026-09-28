@@ -1839,7 +1839,7 @@ export function AddRevenueWizardModal(props: {
 
   const description = step === "select"
     ? (platformContext === 'linkedin' ? "Choose the source that attributes revenue back to LinkedIn ad activity." : platformContext === 'google_ads' ? "Choose the source that attributes revenue back to Google Ads activity." : platformContext === 'instagram' ? "Choose the source that attributes revenue back to Instagram ad activity." : platformContext === 'tiktok' ? "Choose the source that attributes revenue back to TikTok ad activity." : platformContext === 'google_sheets' ? "Choose the confirmed revenue source for Google Sheets analytics." : platformContext === 'custom_integration' ? "Choose the confirmed revenue source for Custom Integration analytics." : "Choose where your revenue data comes from.")
-    : `Currency: ${currency} • Revenue uses all available mapped records`;
+    : `Currency: ${currency} • Revenue ${platformContext === "ga4" ? "is reported through the latest completed day" : "uses all available mapped records"}`;
 
   const shouldShowGoogleSheetsCreatePicker = !isEditing && (platformContext === "google_sheets" || platformContext === "custom_integration") && !sheetsConnectionId;
   const isEmbeddedWizardStep = step === "hubspot" || step === "salesforce" || step === "shopify";

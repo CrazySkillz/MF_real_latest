@@ -96,7 +96,9 @@ describe("GA4 Upload CSV revenue downstream propagation", () => {
     expect(endpoints).toContain('const startDate = "1900-01-01";');
     expect(endpoints).toContain("storage.getRevenueTotalForRange(campaignId, startDate, resolvedEndDate, platformContext)");
     expect(endpoints).toContain("storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, platformContext as any)");
-    expect(endpoints).toContain('const breakdownEndDate = platformContext === "ga4" ? new Date().toISOString().slice(0, 10) : "2999-12-31";');
+    expect(endpoints).toContain('const breakdownEndDate = platformContext === "ga4"');
+    expect(endpoints).toContain('getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate');
+    expect(endpoints).toContain(': "2999-12-31";');
     expect(endpoints).toContain('storage.getRevenueBreakdownBySource(campaignId, "1900-01-01", breakdownEndDate, platformContext)');
     expect(endpoints).toContain('const sourceId = String(source?.id || "");');
     expect(endpoints).toContain("const hasMaterializedRevenue = totalsBySource.has(sourceId);");

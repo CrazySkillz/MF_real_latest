@@ -163,6 +163,24 @@ describe("GA4 Overview Campaign Breakdown", () => {
     expect(stale.materializationMismatch).toBe(true);
   });
 
+  it("treats a source with records only after the completed-day cutoff as exact zero", () => {
+    const result = resolveExactGA4CampaignBreakdownRevenue([{ name: "Alpha" }], [{
+      id: "future-only",
+      currency: "EUR",
+      revenue: 0,
+      boundedRevenueZero: true,
+      mappingConfig: {
+        campaignMappings: [{ crmValue: "today", linkedinCampaignName: "Alpha" }],
+        campaignValueRevenueTotals: [{ campaignValue: "today", revenue: 785.95 }],
+      },
+    }], "EUR");
+
+    expect(result.revenueByCampaign.size).toBe(0);
+    expect(result.mappedRevenue).toBe(0);
+    expect(result.materializationMismatch).toBe(false);
+    expect(result.allImportedRevenueMapped).toBe(true);
+  });
+
   it("merges duplicate provider rows by normalized selected key and rejects scope leakage", () => {
     const merged = mergeGA4OverviewCampaignRevenueRows(
       [

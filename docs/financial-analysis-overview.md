@@ -39,7 +39,7 @@ The visible sections, in order, are:
   initial-import-to-latest-completed-day traffic window. Budget Conversion Efficiency
   reuses that same aggregate CVR input. Native GA4 Revenue and the conversion input used
   by CPA use GA4 Overview's ordered saved-initial-import-to-latest-completed-day
-  financial-source contract. Imported Revenue and Spend use all available mapped records.
+  financial-source contract. Imported Revenue and Spend include mapped materialized records through the campaign-timezone latest completed reporting day.
 - Financial Position uses aggregate Spend, Revenue, ROI, and ROAS. Budget & Pacing and
   budget guidance use `budgetPacing.spend`; return and allocation guidance retain the
   aggregate financial metrics. Paid Media Efficiency uses only the

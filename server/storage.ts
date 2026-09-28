@@ -2484,7 +2484,13 @@ export class DatabaseStorage implements IStorage {
 
     if (requiresGa4RevenueMaterializationCompleteness(platformContext, startDate, endDate)) {
       const activeSources = await this.getRevenueSources(campaignId, platformContext);
-      assertGa4RevenueMaterializationComplete(activeSources as any[], rows as any[]);
+      try {
+        assertGa4RevenueMaterializationComplete(activeSources as any[], rows as any[]);
+      } catch (error: any) {
+        if (error?.code !== 'GA4_REVENUE_MATERIALIZATION_INCOMPLETE') throw error;
+        const allMaterializedSources = await this.getRevenueBreakdownBySource(campaignId, '1900-01-01', '2999-12-31', platformContext);
+        assertGa4RevenueMaterializationComplete(activeSources as any[], allMaterializedSources as any[]);
+      }
     }
     const campaign = platformContext === 'ga4' ? await this.getCampaign(campaignId) : null;
     const validatedCurrency = platformContext === 'ga4'

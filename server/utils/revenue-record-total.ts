@@ -12,9 +12,9 @@ const currencyCode = (value: unknown) => String(value || '').trim().toUpperCase(
 export const requiresGa4RevenueMaterializationCompleteness = (
   platformContext: unknown,
   startDate: string,
-  endDate: string,
-  today: string = new Date().toISOString().slice(0, 10),
-): boolean => platformContext === 'ga4' && startDate === '1900-01-01' && endDate >= today;
+  _endDate: string,
+  _today: string = new Date().toISOString().slice(0, 10),
+): boolean => platformContext === 'ga4' && startDate === '1900-01-01';
 
 export const assertGa4RevenueMaterializationComplete = (activeSources: any[], rows: any[]): void => {
   const representedSourceIds = new Set(

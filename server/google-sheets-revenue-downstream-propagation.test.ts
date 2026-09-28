@@ -98,7 +98,7 @@ describe("GA4 Google Sheets revenue downstream propagation", () => {
     expect(endpoints).toContain("storage.getRevenueTotalForRange(campaignId, startDate, resolvedEndDate, platformContext)");
     expect(endpoints).toContain("storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, platformContext as any)");
     expect(endpoints).toContain("const hasMaterializedRevenue = totalsBySource.has(sourceId);");
-    expect(endpoints).toContain("? hasMaterializedRevenue ? Number(recordTotal.toFixed(2)) : null");
+    expect(endpoints).toContain("? materializedRevenueAvailable ? Number(recordTotal.toFixed(2)) : null");
   });
 
   it("feeds Total Revenue, Profit, ROAS, and ROI but never changes CPA inputs", () => {

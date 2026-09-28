@@ -2549,7 +2549,9 @@ export default function GA4Metrics() {
   // Revenue display sources — merges breakdown (per-source amounts) with source definitions (fallback)
   const revenueDisplaySources = useMemo(() => {
     const defs = Array.isArray(revenueSourcesResp?.sources) ? revenueSourcesResp.sources : Array.isArray(revenueSourcesResp) ? revenueSourcesResp : [];
-    const getDefinitionRevenue = (_source: any) => null;
+    const getDefinitionRevenue = (source: any) => source?.materializedRevenueStatus === "available" && Number.isFinite(Number(source?.lastTotalRevenue))
+      ? Number(source.lastTotalRevenue)
+      : null;
     const defsMap = new Map<string, any>();
     for (const d of defs) if (d) defsMap.set(String(d.id), d);
     const breakdownSources = Array.isArray((revenueBreakdownResp as any)?.sources) ? (revenueBreakdownResp as any).sources : [];
@@ -2560,12 +2562,13 @@ export default function GA4Metrics() {
           ...s,
           mappingConfig: definition?.mappingConfig || null,
           materializedRevenueStatus: "available",
+          boundedRevenueZero: definition?.boundedRevenueZero === true,
         };
       });
       const shownIds = new Set(rows.map((s: any) => String(s.sourceId || "")));
       for (const d of defs.filter((d: any) => d?.isActive !== false)) {
         if (!shownIds.has(String(d.id))) {
-          rows.push({ sourceId: d.id, sourceType: d.sourceType, displayName: d.displayName, revenue: getDefinitionRevenue(d), mappingConfig: d.mappingConfig, materializedRevenueStatus: d.materializedRevenueStatus });
+          rows.push({ sourceId: d.id, sourceType: d.sourceType, displayName: d.displayName, revenue: getDefinitionRevenue(d), mappingConfig: d.mappingConfig, materializedRevenueStatus: d.materializedRevenueStatus, boundedRevenueZero: d.boundedRevenueZero === true });
         }
       }
       return rows;
@@ -2577,6 +2580,7 @@ export default function GA4Metrics() {
       revenue: getDefinitionRevenue(d),
       mappingConfig: d.mappingConfig,
       materializedRevenueStatus: d.materializedRevenueStatus,
+      boundedRevenueZero: d.boundedRevenueZero === true,
     }));
   }, [revenueSourcesResp, revenueBreakdownResp]);
   const totalRevenueDisplaySources = revenueDisplaySources;
@@ -5881,7 +5885,9 @@ export default function GA4Metrics() {
         const cfg = typeof rawCfg === "string"
           ? (() => { try { return JSON.parse(rawCfg); } catch { return null; } })()
           : rawCfg;
-        const totals = Array.isArray(cfg?.campaignValueRevenueTotals)
+        const totals = source?.boundedRevenueZero === true
+          ? []
+          : Array.isArray(cfg?.campaignValueRevenueTotals)
           ? cfg.campaignValueRevenueTotals.filter(
               (item: any) => item?.revenue != null && Number.isFinite(Number(item.revenue)),
             )
@@ -7065,7 +7071,7 @@ export default function GA4Metrics() {
                           const isPipelineOnlyRevenueSource = isCrm && cfg?.pipelineEnabled === true && Number(s.revenue || 0) === 0;
                           const hasConfirmedRevenueItems = (sourceType === "salesforce" && Array.isArray(cfg?.campaignValueRevenueTotals))
                             || (sourceType === "hubspot" && Array.isArray(cfg?.campaignValueRevenueTotals));
-                          const confirmedRevenueItems = hasConfirmedRevenueItems
+                          const confirmedRevenueItems = hasConfirmedRevenueItems && s.boundedRevenueZero !== true
                             ? cfg.campaignValueRevenueTotals
                               .map((item: any) => ({ name: String(item?.campaignValue || "").trim(), revenue: Number(item?.revenue) }))
                               .filter((item: any) => item.name && Number.isFinite(item.revenue))

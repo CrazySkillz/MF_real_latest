@@ -43,7 +43,7 @@ saved source configuration.
 | ---: | --- | --- |
 | 1 | Overview | `IN_PROGRESS` |
 | 2 | KPIs | `COMPLETE` |
-| 3 | Benchmarks | `COMPLETE` |
+| 3 | Benchmarks | `REVALIDATION_REQUIRED` |
 | 4 | Ad Comparison | `COMPLETE` |
 | 5 | Insights | `REVALIDATION_REQUIRED` |
 | 6 | Reports | `COMPLETE` |
@@ -344,7 +344,7 @@ known broken. They mean the app-wide production-ready claim is not yet proven.
 | --- | --- | --- | --- |
 | GA4 Overview | `UNVERIFIED` | `GA4/certifications/ga4-overview.json`; `GA4/OVERVIEW_PRODUCTION_READINESS.md` | Current machine record is fail-closed; separately certified source components do not certify the whole tab. |
 | GA4 KPIs | `CERTIFIED` | `GA4/OVERVIEW_KPIs_CERTIFICATION_2026-09-15.md` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact documented KPI boundary at deployed runtime `f7afeb2b`; documentation commit `47180dcf`; required steps remaining: 0. GA4 Overview remains a read-only upstream dependency and is not recertified by this entry. |
-| GA4 Benchmarks | `CERTIFIED` | `GA4/OVERVIEW_BENCHMARKs_CERTIFICATION_2026-09-15.md`; `GA4/OVERVIEW_BENCHMARKS_DEPENDENCY_MANIFEST_2026-09-15.md`; `GA4/BENCHMARKS_PRODUCTION_READINESS.md` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact documented Benchmark boundary at application runtime `47180dcf96586fa4fff9a83e7a097e33e42c0721`; deployed evidence commit `bdecb67142bdbe505084d397f195e252db40a4f8` changed Benchmark documentation only. The earlier `236afff9` runtime and `a96ba06e` machine record remain historical. GA4 Overview and KPIs are not recertified by this entry. |
+| GA4 Benchmarks | `UNVERIFIED` | `GA4/BENCHMARKS_PRODUCTION_READINESS.md`; historical `GA4/OVERVIEW_BENCHMARKs_CERTIFICATION_2026-09-15.md` and dependency manifest | Runtime `4136990ef04bc9555679ca5a9c8888ad7d38b4a2` has bounded mutation-blocked parity across 3 campaigns and 6 active rows, including exact Campaign3 cards, Tracker, provider, persisted, scheduler-candidate, Insights, and Notifications values through `2026-09-27`. Exact-current lifecycle/ownership, a natural Campaign3 scheduler completion, and Campaign3 report/PDF parity remain unproven. The September certificate and older machine record remain historical exact-runtime evidence. |
 | GA4 Ad Comparison | `CERTIFIED` | `GA4/certifications/ga4-ad-comparison.json`; `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`; `GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md`; `GA4/AD_COMPARISON_REVENUE_BREAKDOWN_CERTIFICATION_2026-09-16.md` | `CLEAN-CERTIFIED / PRODUCTION_READY` for the exact Campaign2/property/saved-filter/USD retained live-tab boundary at deployed runtime `70b73a229ebb9e1021c3d18d63119d05bdee7e26`; chart/cards/summary and Revenue Breakdown passed together, All Campaigns absent. Reports delivery and other configurations excluded; required steps remaining: 0. |
 | GA4 Insights | `UNVERIFIED` | `GA4/certifications/ga4-insights.json`; `GA4/INSIGHTS_PRODUCTION_READINESS.md`; historical dated Insights certificates | Current scheduler-only, zero-filled implementation through `4372efadc96523c9df2abe2dd7915f9e1a0443a7` requires exact-revision deployed recertification. The `f7416759` combined-page and `4be16c54` machine certificates remain historical evidence only and do not cover current behavior. |
 | GA4 Reports | `CERTIFIED` | `GA4/REPORTS_CERTIFICATION_2026-09-21.md`; `GA4/REPORTS_PRODUCTION_READINESS.md`; historical `GA4/certifications/ga4-reports.json` | `CLEAN-CERTIFIED / PRODUCTION_READY` for all five bounded GA4 Reports areas at application-behavior revision `a7271fc18058b6db78a11e88bf79b887abda5f44`, recorded by documentation commit `5a49100711ea07b6b7ff851b353d5532950a31ae`; required gates remaining: 0. Campaign DeepDive Reports, arbitrary future configurations, future provider/mailbox behavior, and the certificate's other exclusions remain outside this claim. |
@@ -452,12 +452,13 @@ The app-wide gate stays `UNVERIFIED` until the active production job inventory i
 ## Known Status Conflicts Superseded By The Fresh Program
 
 1. Historical broad GA4 tracker conclusions do not establish current whole-section
-   readiness. Current Overview, Insights, and Reports records are `UNVERIFIED`,
-   while KPI, Benchmark, and Ad Comparison decisions have narrower boundaries.
+   readiness. Current Overview, Benchmarks, Insights, and Reports records are
+   `UNVERIFIED`, while KPI and Ad Comparison decisions have narrower boundaries.
 2. Historical whole-Overview conclusions in revenue, spend, and outstanding
    trackers conflict with the current Overview machine record.
-3. The GA4 alert/notification tracker repeats an older KPI whole-tab certificate,
-   while the current KPI machine record is fail-closed as `UNVERIFIED`.
+3. The GA4 KPI ledger row preserves an older whole-tab certificate while the
+   current KPI source of truth is fail-closed as `UNVERIFIED`; that conflict remains
+   a separate KPI reconciliation task.
 4. The broad GA4 tracker preserves an older Shopify clean certificate, while the
    current Shopify source document is only release-candidate ready.
 5. The Google Sheets Connected Platform tracker contains extensive later

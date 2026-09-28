@@ -6,11 +6,11 @@ Before using this document to answer an audit, review, or production-readiness q
 
 A previous production-ready statement is not evidence. A passing test suite is not enough unless it covers the traced Benchmark paths. KPI readiness evidence is not Benchmark readiness evidence unless the test or trace explicitly covers the Benchmark path being claimed. If any Benchmark path is incomplete, classify it as partially reviewed, not locally verifiable, or deferred, and update the Current Commit queue instead of calling that path production-ready.
 
-2026-09-28 current dependency finding: the browser imported-Revenue reads and the persisted completed-day financial recompute used different cutoff dates. The local correction aligns the browser reads to the campaign-timezone latest completed day. Revenue, ROAS, and ROI Benchmark paths on the changed revision remain unverified until deployed value parity is revalidated; the certification below remains bounded to its exact recorded runtime and dependency manifest.
+2026-09-28 current dependency finding: the browser imported-Revenue reads and the persisted completed-day financial recompute had used different cutoff dates. The deployed correction aligns those reads to the campaign-timezone latest completed day and keeps newer source definitions visible while excluding their values from the prior completed-day Benchmark inputs.
 
 ## Purpose
 
-This file is the canonical production-readiness narrative and historical evidence source for the GA4 `Benchmarks` tab. The controlling current decision is `GA4/OVERVIEW_BENCHMARKs_CERTIFICATION_2026-09-15.md`, with the consumed upstream boundary in `GA4/OVERVIEW_BENCHMARKS_DEPENDENCY_MANIFEST_2026-09-15.md`.
+This file is the canonical production-readiness narrative and historical evidence source for the GA4 `Benchmarks` tab. Its `Current Status` section is the controlling current decision. `GA4/OVERVIEW_BENCHMARKs_CERTIFICATION_2026-09-15.md` and `GA4/OVERVIEW_BENCHMARKS_DEPENDENCY_MANIFEST_2026-09-15.md` remain historical exact-revision evidence.
 
 Use this file when asked whether GA4 Benchmarks are robust, accurate, logical, production-ready, or reusable as a template for Meta, Google Ads, LinkedIn, Google Sheets, Custom Integration, or another source.
 
@@ -18,18 +18,18 @@ Use this file when asked whether GA4 Benchmarks are robust, accurate, logical, p
 
 ## Current Status
 
-September 16, 2026 controlling assessment: GA4 Benchmarks is **CLEAN-CERTIFIED / PRODUCTION_READY** for application behavior at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d` and the exact dependency manifest. Evidence-only revision `d3d1cfa0c0b34a44b405a74d8970c1d9ac9c1e7f` was subsequently deployed and returned a healthy production response without changing application behavior.
+September 28, 2026 controlling assessment: GA4 Benchmarks is **UNVERIFIED** for whole-tab production readiness on deployed runtime `4136990ef04bc9555679ca5a9c8888ad7d38b4a2`.
 
-Current evidence: the widened focused packet passed `18` files / `130` tests; TypeScript and the production build passed; concurrent automatic-history writes produced one logical row; the two previously proven redundant history rows were removed within their exact boundary; the authenticated post-cleanup active-row lifecycle, ownership, alert, manual scheduler, provider reconciliation, Executive Summary, and bounded report-consumer checks passed. The final current-version suite executed `2,029` tests: `1,985` passed, `42` declared future-platform deferrals remained visible, and `2` additional KPI/readiness-only failures remained visible outside the explicit Benchmark dependency manifest. Zero Benchmark-relevant or unexplained blocking failures remained.
+Current deployed evidence: the authenticated mutation-blocked validator passed across 3 campaigns and 6 active Benchmark rows with zero failures and zero application mutation attempts. Campaign3 used fresh daily data through `2026-09-27` with no due missing date. Its Conversions Benchmark reconciled at `145` current / `160` reference, `90.6%` progress, `-9.4%`, and `Needs Attention`; Revenue reconciled at `EUR 37,518.74` current / `EUR 30,000.00` reference, bounded `100.0%` progress, `+25.1%`, and `On Track`. The Tracker was exact at 2 total, 1 On Track, 1 Needs Attention, 0 Behind, and 95.3% average progress. Provider, persisted, scheduler-candidate, UI card, Insights, and Notifications comparisons were exact with zero value mismatch.
 
-No natural timer firing, current report email send, current inbox receipt, global all-campaign scheduler-health, or general save-latency SLO is claimed by this recertification. The historical machine record `GA4/certifications/ga4-benchmarks.json` remains bounded to `a96ba06e21c9344c1767c960e702ac4a647dc5f1`; it is retained as history and is not the controlling current certificate.
+Whole-tab readiness remains unverified because the exact current revision has no natural Campaign3 scheduler completion, did not rerun create/edit/delete or ownership isolation, and cannot prove Campaign3 Benchmark report/PDF parity because Campaign3 has no active Benchmark report. The process-wide bootstrap `TOKEN_EXPIRED` entries were verified by campaign hash and do not include Campaign3. The historical machine record `GA4/certifications/ga4-benchmarks.json` remains bounded to `a96ba06e21c9344c1767c960e702ac4a647dc5f1` and is unchanged.
 
 Implementation-alignment notes:
 
 - the list route returns rows for the exact accessible campaign and platform but does not independently filter persisted `status`; the current GA4 UI writes `active` and hard-deletes, while archived/draft direct-API rows were not exercised
 - identical user-created Benchmark definitions are not rejected by an API/database uniqueness rule; the deployed active inventory had zero exact-duplicate groups, so current-state cleanliness is proven but duplicate-definition prevention is not claimed
 - reserved automatic history is different: `auto:ga4_daily:` writes are serialized per Benchmark and deduplicated by the exact note; manual history remains append-only
-- browser financial values use the documented to-date -> persisted daily -> bounded breakdown selection, subject to currency rules; live-property background recompute deliberately requires its provider financial candidate and fails closed instead of silently substituting the browser breakdown fallback
+- browser financial values use the documented saved native import window plus completed-day-eligible imported Revenue and Spend records, subject to currency rules; live-property background recompute deliberately requires its provider financial candidate and fails closed instead of silently substituting an incompatible browser fallback
 - Executive Summary consumes GA4 platform Benchmark rows when GA4 is connected; this narrow current-value/target/unit/status consumer is inside the Benchmark propagation boundary, while whole-Executive-Summary and whole-Reports readiness remain separately controlled
 
 Historical September 6 assessment: GA4 Benchmarks was **PRODUCTION_READY** for exact deployed runtime boundary `a96ba06e21c9344c1767c960e702ac4a647dc5f1` and the recorded `ga4_mock` campaign/property/source boundary. That packet had `1,718` passes, `48` visible deferred future-platform failures, a focused `28` files / `310` tests, TypeScript/build passes, authenticated provider/value parity, scoped create/update/delete, manual scheduler recomputation, and historical alert delivery evidence.
@@ -42,7 +42,7 @@ Bounded scheduler evidence is reused from exact deployed SHA `85f5233ebfc298afc3
 
 Historical deployed release-candidate evidence: the corrected authenticated read-only validator passed against `d6656e11d603283f89542876465db4dba8e54814` with `2` campaign inventories, `4` active Benchmarks, zero failures, and zero application mutation attempts. Live provider, persisted, scheduler-candidate, and UI values reconciled exactly. The Revenue Benchmark was current and scored; the Conversions Benchmark was correctly treated as stale because the authoritative daily response reported `refreshIsStale = true`, `dataThroughDate = 2026-08-14`, `latestStoredDailyDate = 2026-08-10`, and `oldestDueMissingDailyDate = 2026-08-11`. Cards/Tracker, notifications, and bounded browser-PDF Benchmark rows all failed that stale value closed. Browser-PDF evidence certifies only Benchmark row propagation; it does not certify Reports. Production deployment of validation-only wrapper SHA `c6487555c55726427afed8342312b8393498303b` was user-confirmed after this evidence was recorded.
 
-<!-- ga4-benchmark-production-certification-status: PRODUCTION_READY -->
+<!-- ga4-benchmark-production-certification-status: UNVERIFIED -->
 <!-- ga4-benchmark-beta-readiness-status: BETA_READY -->
 
 This assessment is revision-specific. The Benchmark certification boundary covers Benchmark cards, Tracker, in-app alerts/notifications, Benchmark alert attempt/audit safety, CRUD, refresh/recompute, deterministic and natural GA4 daily execution, persistence, destructive rollback, authentication, campaign/property/owner/timezone/window scope, and multi-tenant isolation. Read-only propagation evidence into Insights and Reports is supporting cross-consumer evidence only; full Insights/Reports behavior, report generation, scheduling, delivery, attachments, and inbox receipt belong to their separate section audits and do not gate Benchmark certification. Any Benchmark dependency-boundary change invalidates the assessment.
@@ -335,7 +335,7 @@ Certification rule:
 
 ## Current Future-Chat Answer
 
-Answer that GA4 Benchmarks is **CLEAN-CERTIFIED / PRODUCTION_READY** for application behavior at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d` and the exact dependency manifest, carried unchanged through deployed evidence-only revision `d3d1cfa0c0b34a44b405a74d8970c1d9ac9c1e7f`. State that the authenticated post-cleanup lifecycle, provider reconciliation, manual scheduler, alerts, Executive Summary, and bounded report-consumer checks passed with zero Benchmark-relevant failures. Do not claim duplicate-definition rejection, a natural timer firing, current inbox receipt, global scheduler health, or whole-Reports readiness.
+Answer from `Current Status`: GA4 Benchmarks is **UNVERIFIED** for whole-tab production readiness on runtime `4136990ef04bc9555679ca5a9c8888ad7d38b4a2`. State the bounded Campaign3 value/card/Tracker/Insights/Notifications parity and the 3-campaign, 6-row mutation-blocked pass. Preserve the September 16 certificate as historical evidence and do not claim exact-current lifecycle, ownership isolation, natural scheduler completion, Campaign3 report/PDF parity, current inbox receipt, or global scheduler health.
 
 Do not reopen closed current-scope GA4 Benchmark blockers solely because time has passed. Reopen only when a changed implementation, new value path, failed validation, or new bug affects the certified Benchmark scope.
 
@@ -359,7 +359,7 @@ Read in this order:
 10. `Not Locally Verifiable / External Caveats`
 11. `Future Platform Template`
 
-Answer from `Current Status`: GA4 Benchmarks is **CLEAN-CERTIFIED / PRODUCTION_READY** for application behavior at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d` and the explicit dependency manifest. Treat `a96ba06e21c9344c1767c960e702ac4a647dc5f1` and earlier boundaries as historical revision-specific evidence only. KPI and whole-Reports evidence is supporting context only where the exact-current Benchmark trace explicitly covers the shared path.
+Answer from `Current Status`: GA4 Benchmarks is **UNVERIFIED** for whole-tab production readiness on the current dependency revision. Treat `236afff993e60c5f9eaf75c42bca8b31b52f601d`, `a96ba06e21c9344c1767c960e702ac4a647dc5f1`, and earlier boundaries as historical revision-specific evidence only. KPI and whole-Reports evidence is supporting context only where the exact-current Benchmark trace explicitly covers the shared path.
 
 ## Future Source Reading Order
 
@@ -643,22 +643,22 @@ Coverage rule:
 | `AGENTS.md` | This file separates proven, partially reviewed, external, and deferred paths; does not use past claims as evidence | Aligned |
 | `ARCHITECTURE_USER_JOURNEY.md` | GA4 Benchmarks remain inside the campaign-level platform analytics journey: client -> campaign -> connect GA4/source data -> analyze -> act | Aligned |
 | `PRODUCTION_READINESS.md` | Includes value inventory, lifecycle matrix, downstream matrix, negative cases, test evidence, cleanup boundary, current commits, and external caveats | Aligned |
-| `GA4/README.md` | Points to the dated Benchmark certificate and explicit dependency manifest while preserving the platform/user journey | Aligned on 2026-09-16 |
+| `GA4/README.md` | States the current unverified whole-tab decision and preserves the dated certificate and dependency manifest as historical exact-runtime evidence | Aligned on 2026-09-28 |
 | `GA4_DEVELOPMENT_WORKFLOW.md` | Preserves source checklist discipline for revenue, spend, scheduler, provenance, and downstream propagation | Aligned |
-| `GA4/BENCHMARKS.md` | Current runtime, active-row/list behavior, duplicate-definition limitation, history idempotency, report boundary, and metric semantics match implementation | Aligned on 2026-09-16 |
+| `GA4/BENCHMARKS.md` | Current runtime, completed-day financial eligibility, stale-value exclusion, active-row/list behavior, duplicate-definition limitation, history idempotency, report boundary, and metric semantics match implementation | Aligned on 2026-09-28 |
 | `GA4/KPIS_PRODUCTION_READINESS.md` | Uses KPI readiness only as structure/process template; not as Benchmark proof | Aligned |
 | `GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md` | Uses threshold/scoring history only where Benchmark math/status path is directly shared and tested | Aligned |
-| `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md` | Uses alert/notification lifecycle rules for Benchmark-specific alert paths, points to the current Benchmark certificate, and does not reuse KPI provider delivery as Benchmark delivery proof | Aligned on 2026-09-16 |
+| `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md` | Uses alert/notification lifecycle rules for Benchmark-specific alert paths, defers current whole-tab status to this file, and does not reuse KPI provider delivery as Benchmark delivery proof | Aligned on 2026-09-28 |
 | `GA4/FINANCIAL_SOURCES.md` | Revenue/spend inputs, Pipeline Proxy exclusion, UTC source windows, active source behavior, and additive imported revenue are treated as upstream dependencies | Aligned |
 | `GA4/REFRESH_AND_PROCESSING.md` | Scheduler/reprocess paths are treated as required Benchmark current-value propagation paths | Aligned |
 
 Known doc caveat:
 
-- Historical passages below record earlier closed-beta checkpoints. They do not override the controlling current status: GA4 Benchmarks is **CLEAN-CERTIFIED / PRODUCTION_READY** for application behavior at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d` and the dated dependency manifest. The `a96ba06e21c9344c1767c960e702ac4a647dc5f1` machine record and earlier boundaries remain historical revision-specific evidence, and future-platform readiness remains unverified.
+- Historical passages below record earlier closed-beta checkpoints. They do not override the controlling current status: GA4 Benchmarks is **UNVERIFIED** for whole-tab production readiness on runtime `4136990ef04bc9555679ca5a9c8888ad7d38b4a2`. The September 16 certificate, the `a96ba06e21c9344c1767c960e702ac4a647dc5f1` machine record, and earlier boundaries remain historical revision-specific evidence, and future-platform readiness remains unverified.
 
 ## Historical Current Commit Queue (Commits 0-7)
 
-The queue below is historical evidence for the July certification packet. The later Benchmark Current Commits 11-14 are complete in the controlling status above; former Commit 15 is retained only as Reports/shared-infrastructure history. No Benchmark certification commit remains open.
+The queue below is historical evidence for the July certification packet. Commits 11-14 were complete for that historical boundary; former Commit 15 is retained only as Reports/shared-infrastructure history. This queue does not close the current-revision gaps listed in `Current Status`.
 
 - Current Commit 0 is implemented by this file rewrite and is required for clean future certification answers.
 - Current Commit 1 is implemented: the non-current create alias now awaits in-app Benchmark alert reconciliation before responding.

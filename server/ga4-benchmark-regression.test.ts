@@ -355,7 +355,7 @@ describe("GA4 Benchmark regression guard", () => {
     expect(ga4MetricsFile).toContain('chips: ["Targets", "Historical", "Goals"],');
   });
 
-  it("keeps the historical certification bounded and locks the current production certification", () => {
+  it("keeps the historical machine certification bounded and the current status unverified", () => {
     const record = JSON.parse(readFileSync(
       join(process.cwd(), "GA4", "certifications", "ga4-benchmarks.json"),
       "utf-8",
@@ -385,7 +385,8 @@ describe("GA4 Benchmark regression guard", () => {
         certifiedGitSha: "12789c1ebb92dd6a905a9f2f0f877f0bc6a90627",
       },
     });
-    expect(readiness).toContain("<!-- ga4-benchmark-production-certification-status: PRODUCTION_READY -->");
+    expect(readiness).toContain("<!-- ga4-benchmark-production-certification-status: UNVERIFIED -->");
+    expect(readiness).toContain("4136990ef04bc9555679ca5a9c8888ad7d38b4a2");
     expect(readiness).toContain("<!-- ga4-benchmark-beta-readiness-status: BETA_READY -->");
     expect(record.productionOnlyEvidenceOutstanding).toEqual([]);
     expect(record.dependencyBoundary).toEqual(expect.arrayContaining([

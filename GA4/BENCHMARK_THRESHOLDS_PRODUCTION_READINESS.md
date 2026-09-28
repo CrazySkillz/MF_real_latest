@@ -6,7 +6,7 @@ Before using this document to answer an audit, review, or production-readiness q
 > HISTORICAL THRESHOLD-SLICE RECORD ONLY.
 > Do not use this file to answer whether the GA4 `Benchmarks` tab is production-ready.
 > Use `GA4/BENCHMARKS_PRODUCTION_READINESS.md` for the durable whole-tab production-readiness answer.
-> Current durable whole-tab answer: GA4 Benchmarks are **CLEAN-CERTIFIED / PRODUCTION_READY** for application behavior at runtime `236afff993e60c5f9eaf75c42bca8b31b52f601d` and the exact dependency manifest in `GA4/OVERVIEW_BENCHMARKS_DEPENDENCY_MANIFEST_2026-09-15.md`. The controlling decision is `GA4/OVERVIEW_BENCHMARKs_CERTIFICATION_2026-09-15.md`; earlier certifications remain historical supporting evidence. Reports behavior is separately controlled and is not proved by this threshold document.
+> Current durable whole-tab answer: GA4 Benchmarks are **UNVERIFIED** for whole-tab production readiness on deployed runtime `4136990ef04bc9555679ca5a9c8888ad7d38b4a2`; use `GA4/BENCHMARKS_PRODUCTION_READINESS.md` for the current evidence and limitations. The September 16 certificate at `236afff993e60c5f9eaf75c42bca8b31b52f601d` remains historical exact-runtime evidence. Reports behavior is separately controlled and is not proved by this threshold document.
 
 ## Purpose
 

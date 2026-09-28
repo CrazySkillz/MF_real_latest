@@ -84,7 +84,7 @@ describe("application production-readiness ledger", () => {
     expect(kpiRow).toContain("deployed runtime `f7afeb2b`; documentation commit `47180dcf`");
     expect(ledger).toContain("| GA4 Ad Comparison | `CERTIFIED`");
     expect(ledger).toContain("| GA4 Reports | `CERTIFIED`");
-    expect(ledger).toContain("| GA4 Benchmarks | `CERTIFIED`");
+    expect(ledger).toContain("| GA4 Benchmarks | `UNVERIFIED`");
     expect(ledger).toContain("| GA4 Insights | `UNVERIFIED`");
     expect(ledger).toContain("| HubSpot Revenue and Pipeline Proxy | `CERTIFIED`");
     expect(ledger).toContain("490c8ae685821389d1f433a5943f856478f52e5c");

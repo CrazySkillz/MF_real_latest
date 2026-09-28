@@ -7370,7 +7370,7 @@ export default function GA4Metrics() {
                           Remove {deletingPipelineProxySource?.providerLabel} Pipeline Proxy?
                         </AlertDialogTitle>
                         <AlertDialogDescription className="text-muted-foreground/70">
-                          This removes only this provider's Pipeline Proxy. Confirmed revenue and selected CRM mappings will remain unchanged.
+                          This removes only this provider's Pipeline Proxy and its proxy-only selections. Confirmed revenue opportunities or deals and their GA4 mappings will remain.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>

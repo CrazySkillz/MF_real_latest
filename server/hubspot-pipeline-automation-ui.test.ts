@@ -7,6 +7,7 @@ const scheduler = readFileSync("server/auto-refresh-scheduler.ts", "utf8");
 const routes = readFileSync("server/routes-oauth.ts", "utf8");
 const storageSource = readFileSync("server/storage.ts", "utf8");
 const ga4Page = readFileSync("client/src/pages/ga4-metrics.tsx", "utf8");
+const addRevenueWizard = readFileSync("client/src/components/AddRevenueWizardModal.tsx", "utf8");
 const hubspotWizard = readFileSync("client/src/components/HubSpotRevenueWizard.tsx", "utf8");
 
 const sliceBetween = (source: string, start: string, end: string) => {
@@ -30,6 +31,18 @@ describe("HubSpot Pipeline Proxy automatic stage transition", () => {
     expect(hubspotWizard).toContain('Editing existing HubSpot source. Continue to add/remove opportunities, change mappings, or configure Pipeline Proxy.');
     expect(hubspotWizard).toContain('const showFooterBack = !(mode === "edit" && step === "value-source");');
     expect(hubspotWizard).toContain('{showFooterBack && (');
+  });
+
+  it("reopens a disabled HubSpot Pipeline Proxy with confirmed selections only", () => {
+    const hubspotPrefill = sliceBetween(
+      addRevenueWizard,
+      'if (type === "hubspot")',
+      'if (type === "shopify")',
+    );
+
+    expect(addRevenueWizard).toContain('const shouldRemoveDeletedPipelineSelections =');
+    expect(hubspotPrefill).toContain('selectedValues: retainedCrmSelectedValues');
+    expect(hubspotPrefill).toContain('campaignMappings: retainedCrmCampaignMappings');
   });
 
   it("recognizes HubSpot's documented 1.0 probability for custom Closed Won stages", () => {

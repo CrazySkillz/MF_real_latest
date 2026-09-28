@@ -842,6 +842,22 @@ export function AddRevenueWizardModal(props: {
     }
 
     const type = String(sourceToEdit?.sourceType || "").toLowerCase();
+    const savedCrmSelectedValues = Array.isArray(config?.selectedValues) ? config.selectedValues.map(String) : [];
+    const shouldRemoveDeletedPipelineSelections =
+      String(config?.platformContext || sourceToEdit?.platformContext || platformContext || "").trim().toLowerCase() === "ga4"
+      && config?.pipelineEnabled === false
+      && Array.isArray(config?.campaignValueRevenueTotals);
+    const confirmedCrmValueSet = new Set(shouldRemoveDeletedPipelineSelections
+      ? config.campaignValueRevenueTotals.map((item: any) => String(item?.campaignValue || "").trim()).filter(Boolean)
+      : savedCrmSelectedValues);
+    const retainedCrmSelectedValues = shouldRemoveDeletedPipelineSelections
+      ? savedCrmSelectedValues.filter((value: string) => confirmedCrmValueSet.has(value.trim()))
+      : savedCrmSelectedValues;
+    const retainedCrmCampaignMappings = Array.isArray(config?.campaignMappings)
+      ? (shouldRemoveDeletedPipelineSelections
+        ? config.campaignMappings.filter((mapping: any) => confirmedCrmValueSet.has(String(mapping?.crmValue || "").trim()))
+        : config.campaignMappings)
+      : undefined;
     if (type === "manual") {
       const amt = config?.amount;
       const cv = config?.conversionValue;
@@ -933,7 +949,7 @@ export function AddRevenueWizardModal(props: {
     if (type === "salesforce") {
       const next = {
         campaignField: config?.campaignField ? String(config.campaignField) : undefined,
-        selectedValues: Array.isArray(config?.selectedValues) ? config.selectedValues.map(String) : undefined,
+        selectedValues: retainedCrmSelectedValues,
         revenueField: config?.revenueField ? String(config.revenueField) : undefined,
         conversionValueField: config?.conversionValueField ? String(config.conversionValueField) : undefined,
         valueSource: config?.valueSource ? String(config.valueSource) : undefined,
@@ -945,7 +961,7 @@ export function AddRevenueWizardModal(props: {
         lastTotalRevenue: sourceToEdit?.revenue != null && Number.isFinite(Number(sourceToEdit.revenue)) ? Number(sourceToEdit.revenue)
           : Number.isFinite(Number(config?.lastTotalRevenue)) ? Number(config.lastTotalRevenue) : undefined,
         dateField: config?.dateField ? String(config.dateField) : undefined,
-        campaignMappings: Array.isArray(config?.campaignMappings) ? config.campaignMappings : undefined,
+        campaignMappings: retainedCrmCampaignMappings,
         campaignDisplayName: config?.campaignDisplayName ? String(config.campaignDisplayName) : undefined,
       };
       setSalesforceInitialMappingConfig(next);
@@ -956,7 +972,7 @@ export function AddRevenueWizardModal(props: {
     if (type === "hubspot") {
       const next = {
         campaignProperty: config?.campaignProperty ? String(config.campaignProperty) : undefined,
-        selectedValues: Array.isArray(config?.selectedValues) ? config.selectedValues.map(String) : undefined,
+        selectedValues: retainedCrmSelectedValues,
         revenueProperty: config?.revenueProperty ? String(config.revenueProperty) : undefined,
         conversionValueProperty: config?.conversionValueProperty ? String(config.conversionValueProperty) : undefined,
         valueSource: config?.valueSource ? String(config.valueSource) : undefined,
@@ -971,7 +987,7 @@ export function AddRevenueWizardModal(props: {
           : Number.isFinite(Number(config?.lastTotalRevenue)) ? Number(config.lastTotalRevenue)
             : Number.isFinite(Number(sourceToEdit?.revenue)) ? Number(sourceToEdit.revenue) : undefined,
         dateField: config?.dateField ? String(config.dateField) : undefined,
-        campaignMappings: Array.isArray(config?.campaignMappings) ? config.campaignMappings : undefined,
+        campaignMappings: retainedCrmCampaignMappings,
         campaignDisplayName: config?.campaignDisplayName ? String(config.campaignDisplayName) : undefined,
       };
       setHubspotInitialMappingConfig(next);

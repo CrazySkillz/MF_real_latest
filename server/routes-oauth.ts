@@ -206,6 +206,44 @@ export function isValidReportScheduleRecipient(value: unknown): boolean {
   return z.string().trim().email().safeParse(value).success;
 }
 
+export function clearGa4CrmPipelineProxyMapping(
+  rawConfig: unknown,
+  sourceType: "salesforce" | "hubspot",
+  retainedSelectedValues?: string[],
+): Record<string, any> {
+  const config = rawConfig && typeof rawConfig === "object" && !Array.isArray(rawConfig) ? rawConfig as Record<string, any> : {};
+  const selectedValues = Array.isArray(config.selectedValues)
+    ? config.selectedValues.map((value: unknown) => String(value || "").trim()).filter(Boolean)
+    : [];
+  const confirmedValues = Array.isArray(config.campaignValueRevenueTotals)
+    ? config.campaignValueRevenueTotals.map((item: any) => String(item?.campaignValue || "").trim()).filter(Boolean)
+    : null;
+  const pipelineValues = new Set(Array.isArray(config.pipelineValueRevenueTotals)
+    ? config.pipelineValueRevenueTotals.map((item: any) => String(item?.campaignValue || "").trim()).filter(Boolean)
+    : []);
+  const retainedSet = new Set(retainedSelectedValues || (confirmedValues === null
+    ? selectedValues.filter((value: string) => !pipelineValues.has(value))
+    : confirmedValues));
+  const nextSelectedValues = selectedValues.filter((value: string) => retainedSet.has(value));
+
+  return {
+    ...config,
+    ...(Array.isArray(config.selectedValues) ? { selectedValues: nextSelectedValues } : {}),
+    ...(Array.isArray(config.campaignMappings) ? {
+      campaignMappings: config.campaignMappings.filter((mapping: any) => retainedSet.has(String(mapping?.crmValue || "").trim())),
+    } : {}),
+    pipelineEnabled: false,
+    ...(sourceType === "salesforce" ? { pipelineStageName: null } : { pipelineStageId: null }),
+    pipelineStageLabel: null,
+    pipelineTotalToDate: 0,
+    pipelineCurrency: null,
+    pipelineLastUpdatedAt: null,
+    pipelineProxyMode: null,
+    pipelineWarning: null,
+    pipelineValueRevenueTotals: [],
+  };
+}
+
 function withReportingTimeZone<T extends Record<string, any>>(campaign: T): T {
   return {
     ...campaign,
@@ -3942,19 +3980,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ success: true, sourceId, sourceType, pipelineEnabled: false, alreadyDisabled: true, confirmedRevenuePreserved: true });
       }
 
-      const clearPipelineFields = (cfg: any) => ({
-        ...cfg,
-        pipelineEnabled: false,
-        ...(sourceType === "salesforce" ? { pipelineStageName: null } : { pipelineStageId: null }),
-        pipelineStageLabel: null,
-        pipelineTotalToDate: 0,
-        pipelineCurrency: null,
-        pipelineLastUpdatedAt: null,
-        pipelineProxyMode: null,
-        pipelineWarning: null,
-        pipelineValueRevenueTotals: [],
-      });
-      const nextSourceMappingConfig = JSON.stringify(clearPipelineFields(sourceCfg));
+      const nextSourceCfg = clearGa4CrmPipelineProxyMapping(sourceCfg, sourceType);
+      const nextSourceMappingConfig = JSON.stringify(nextSourceCfg);
+      const retainedSelectedValues = Array.isArray(nextSourceCfg.selectedValues) ? nextSourceCfg.selectedValues : undefined;
 
       const connection: any = sourceType === "salesforce"
         ? await storage.getSalesforceConnection(campaignId).catch(() => null)
@@ -3969,7 +3997,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             connectionState = {
               connectionId: String(connection.id),
               expectedMappingConfig: expectedConnectionMappingConfig,
-              nextMappingConfig: JSON.stringify(clearPipelineFields(connectionCfg)),
+              nextMappingConfig: JSON.stringify(clearGa4CrmPipelineProxyMapping(connectionCfg, sourceType, retainedSelectedValues)),
             };
           }
         } catch {

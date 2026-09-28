@@ -174,16 +174,23 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     expect(pipelineDialog).toContain('setDeletingPipelineProxySource({');
     expect(pipelineDialog).not.toContain('setDeletingRevenueSourceId(String(entry.sourceId))');
     expect(pipelineDialog).toContain('/pipeline-proxy?platformContext=ga4');
-    expect(pipelineDialog).toContain("Confirmed revenue and selected CRM mappings will remain unchanged.");
+    expect(pipelineDialog).toContain("Confirmed revenue opportunities or deals and their GA4 mappings will remain.");
     expect(pipelineDialog).toContain('"salesforce" ? "Salesforce" : "HubSpot"');
     expect(disableRoute).toContain('ensureCampaignAccess');
     expect(disableRoute).toContain('sourceType !== "salesforce" && sourceType !== "hubspot"');
-    expect(disableRoute).toContain('pipelineEnabled: false');
-    expect(disableRoute).toContain('{ pipelineStageName: null } : { pipelineStageId: null }');
-    expect(disableRoute).toContain('pipelineValueRevenueTotals: []');
+    expect(disableRoute).toContain('clearGa4CrmPipelineProxyMapping(sourceCfg, sourceType)');
+    expect(disableRoute).toContain('clearGa4CrmPipelineProxyMapping(connectionCfg, sourceType, retainedSelectedValues)');
     expect(disableRoute).toContain('storage.disableGa4CrmPipelineProxy(');
     expect(disableRoute).not.toContain('deleteRevenueSourceWithRecords');
     expect(disableRoute).not.toContain('deleteRevenueRecords');
+  });
+
+  it("does not preselect removed proxy-only CRM values when an existing disabled source is reopened", () => {
+    expect(addRevenueWizard).toContain('const shouldRemoveDeletedPipelineSelections =');
+    expect(addRevenueWizard).toContain('config?.pipelineEnabled === false');
+    expect(addRevenueWizard).toContain('Array.isArray(config?.campaignValueRevenueTotals)');
+    expect(addRevenueWizard).toContain('selectedValues: retainedCrmSelectedValues');
+    expect(addRevenueWizard).toContain('campaignMappings: retainedCrmCampaignMappings');
   });
 
   it("disables an already-added Salesforce chooser card and preserves exact-source pencil editing", () => {

@@ -40,7 +40,9 @@ Visible Overview layout:
 
 This layout is presentation-only. It must not change financial source-of-truth, source modal provenance, edit/delete behavior, or calculations.
 
-Production-readiness note: **GA4 Overview is currently UNVERIFIED pending the exact-current natural daily-timer observation.** At deployed runtime `340da6d5`, authenticated storage/API/UI/modal/PDF parity passed at native GA4 revenue `$65,362.20 USD`, five imported sources totaling `$16,799.99 USD`, Total Revenue `$82,162.19 USD`, and four Spend sources totaling `$2,699.75 USD`. Source-level aggregate-versus-attributed grain selection reconciled without double counting; currency, ownership, orphan, and duplicate-key checks passed. This is configuration-bounded evidence, not a production-ready claim. No cleanup was performed.
+Production-readiness note: **GA4 Overview is currently UNVERIFIED.** The exact-current natural daily-timer observation is one remaining gate alongside source lifecycle, failure, report-parity, populated Landing Pages, and other-configuration validation. At deployed runtime `340da6d5`, authenticated storage/API/UI/modal/PDF parity passed at native GA4 revenue `$65,362.20 USD`, five imported sources totaling `$16,799.99 USD`, Total Revenue `$82,162.19 USD`, and four Spend sources totaling `$2,699.75 USD`. Source-level aggregate-versus-attributed grain selection reconciled without double counting; currency, ownership, orphan, and duplicate-key checks passed. This is historical configuration-bounded evidence, not a production-ready claim. No cleanup was performed.
+
+Current bounded Campaign3 evidence at deployed runtime `b6457a08c5c4bab2c06fa09ac420e881fcb8e1bc` confirms the current cutoff contract through `2026-09-27`: five imported Revenue definitions created on `2026-09-28` remain visible with their latest values but contribute `EUR 0.00`; Google Ads Spend `EUR 4.89`, also created on `2026-09-28`, remains visible and pending; eligible Google Sheets `EUR 1,103.00` plus CSV `EUR 1,250.00` produce Total Spend `EUR 2,353.00`. Total Revenue therefore remains native GA4 `EUR 37,518.74`, and the displayed performance values reconcile from that Revenue, eligible Spend, and 145 Conversions. Pipeline Proxy is separately current-stage and totals `EUR 450.00` from HubSpot `EUR 250.00` plus Salesforce `EUR 200.00`; it does not enter confirmed Revenue or downstream formulas. This is read-only exact-fixture evidence, not whole-source-family or whole-Overview certification.
 
 Current implementation alignment (2026-09-28):
 
@@ -50,7 +52,7 @@ Current implementation alignment (2026-09-28):
 - Google Ads is an enabled GA4 Spend child source. Selected provider campaigns materialize dated `ad_platforms` / `ga4` Spend records that contribute to Total Spend and its downstream financial formulas
 - the Add spend source card shows `Connected` for the saved Spend-only Google Ads connection and exposes a confirmed trash action that removes the exact GA4 Google Ads Spend source, its records, dedicated provider facts, and Spend-only OAuth connection while preserving a separate Google Ads Connected Platform
 - a duplicate Google Ads import does not create another active source; the user must edit the existing source
-- the user's bounded live UI observation showed one selected Google Ads campaign at `EUR 4.89`, 43 impressions, and 1 click, followed by a Google Ads `EUR 4.89` Spend Sources row and the same amount inside Total Spend. This proves the visible provider/import/total path for that observation only; it does not certify edit, disconnect, failure recovery, reports/email, or a natural scheduler cycle
+- an earlier bounded live UI observation showed one selected Google Ads campaign at `EUR 4.89`, 43 impressions, and 1 click, followed by a Google Ads `EUR 4.89` Spend Sources row and the same amount inside Total Spend when that source was eligible for the observed total. For the current `2026-09-27` Campaign3 cutoff, the source was created on `2026-09-28`, remains visible and pending, and contributes zero. These observations do not certify edit, disconnect, failure recovery, reports/email, or a natural scheduler cycle
 
 Campaign DeepDive financial provenance rule:
 
@@ -158,7 +160,7 @@ Spend is not imported from the GA4 API by default.
 
 Imported `Total Spend` and `Spend Breakdown` use the same completed-day active-source window. The `Spend Sources` modal shows latest imported values for visibility and labels each pending source's separate completed-day contribution so the displayed source value is not mistaken for an amount already included in the card total.
 
-Budget & Financial Analysis pacing metadata, including budget-period start and end dates entered from the Budget Pacing & Burn Rate card, must not filter GA4 `Total Spend`, `Spend Breakdown`, or the `Spend Sources` modal. Those platform-level spend values are source-backed and must include all available mapped spend records. Browser and Budget report calculations consume a separate `budget_pacing_v1` derivative that sums dated Spend records inside the selected budget period through the financial data-through date. That derivative is available only when aggregate Spend uses canonical normalized records, its active Spend-source IDs exactly match the available provenance set, and currency matches the campaign; otherwise budget calculations fail closed instead of reusing GA4 Total Spend.
+Budget & Financial Analysis pacing metadata, including budget-period start and end dates entered from the Budget Pacing & Burn Rate card, must not filter GA4 `Total Spend`, `Spend Breakdown`, or the `Spend Sources` modal. Those platform-level spend values are source-backed and include mapped records only from source definitions eligible at the completed-day cutoff, with record dates through that cutoff. Browser and Budget report calculations consume a separate `budget_pacing_v1` derivative that sums dated Spend records inside the selected budget period through the financial data-through date. That derivative is available only when aggregate Spend uses canonical normalized records, its active Spend-source IDs exactly match the available provenance set, and currency matches the campaign; otherwise budget calculations fail closed instead of reusing GA4 Total Spend.
 
 Current Campaign3 evidence at deployed `39fe902a...`: aggregate Total Spend reconciled
 to `EUR 2,353.00` from Google Sheets `EUR 1,103.00` plus CSV `EUR 1,250.00`.
@@ -168,7 +170,7 @@ records dated January through May without changing aggregate Total Spend or prov
 
 Google Sheets spend add mode is additive. Creating a new Google Sheets spend source must not reuse or overwrite an existing source just because the same Google Sheets connection or tab is selected. Edit/refresh mode may update an existing source only when the stable spend `sourceId` is explicitly passed.
 
-Current release boundary: Current Commit 21 restores new GA4 Google Sheets Spend setup in the chooser and API through the existing campaign-scoped atomic source/record path. Deployment and chooser visibility validation remain pending.
+Current release boundary: Current Commit 21 restored new GA4 Google Sheets Spend setup in the chooser and API through the existing campaign-scoped atomic source/record path. The chooser is deployed and visible; this does not independently certify the complete Google Sheets lifecycle or source family.
 
 After setup, edits to mapped Google Sheets spend values must automatically reprocess the same active spend source without requiring the user to reopen or resave the wizard. The default near-real-time target is a provider pull within 1 minute and an open GA4 Overview spend-query refetch within 15 additional seconds, approximately 75 seconds under normal provider/runtime conditions. This is not an instantaneous Google Sheets push guarantee. A failed provider read must preserve the last successful source records and total, report the source-specific failure, and retry on a later interval; it must not create a replacement source or write a guessed zero.
 
@@ -613,7 +615,7 @@ Spend source options:
 Current certification focus:
 
 - Google Ads is implemented and has bounded live provider/import/UI value evidence, but it is not clean-certified. Do not extend the historical Google Sheets/CSV Spend certificate until the remaining Google Ads edit, disconnect, failure, natural-scheduler, production-inventory, and downstream report/email gates have their own exact-revision evidence.
-- Current Commit 21 supersedes whole-Overview Commit 5's temporary Google Sheets block and restores it to both choosers through the existing scoped APIs. This is locally proven and awaiting deployed visibility validation; it does not independently certify Google Sheets Revenue or the complete provider lifecycle.
+- Current Commit 21 supersedes whole-Overview Commit 5's temporary Google Sheets block and restores it to both choosers through the existing scoped APIs. The deployed chooser visibility is confirmed; this does not independently certify Google Sheets Revenue or the complete provider lifecycle.
 
 When the user clicks `+` on the `Total Spend` card:
 

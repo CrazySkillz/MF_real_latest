@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This ledger preserves the chronological Current Commit 0-22 queue and its UI-validation record.
+This ledger preserves the chronological Current Commit 0-24 queue and its UI-validation record.
 
 Use [`OVERVIEW_PRODUCTION_READINESS.md`](./OVERVIEW_PRODUCTION_READINESS.md) for the current decision and exact revision/configuration boundary. Use [`OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md`](./OVERVIEW_PRODUCTION_READINESS_EVIDENCE.md) for detailed inventories, traces, blockers, and validation evidence.
 

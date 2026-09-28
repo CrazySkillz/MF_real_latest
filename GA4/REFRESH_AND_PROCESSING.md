@@ -76,7 +76,7 @@ Important meaning:
 - `KPIs`, `Benchmarks`, `Ad Comparison`, and `Insights` are downstream analytics layers
 - `Campaign DeepDive`, alerts, recommendations, and `Reports` are downstream consumers; scheduled reports are the final output layer
 - because GA4 campaign scope feeds the entire chain, post-setup campaign-scope edits are not currently exposed in the GA4 analytics page
-- GA4 Overview is **UNVERIFIED** overall. The earlier production-ready decision remains historical evidence for its exact recorded runtime and campaign/property/source boundary only. The current scheduler-owned snapshot and attribution/reconciliation implementation is governed by `GA4/OVERVIEW_PRODUCTION_READINESS.md`; runtime `3e738697` has a bounded Campaign3 Conversion Events pass, not whole-Overview recertification.
+- GA4 Overview is **UNVERIFIED** overall. The earlier production-ready decision remains historical evidence for its exact recorded runtime and campaign/property/source boundary only. The current scheduler-owned snapshot, attribution/reconciliation, and completed-day financial implementation is governed by `GA4/OVERVIEW_PRODUCTION_READINESS.md`; runtime `b6457a08` has a bounded Campaign3 UI/API reconciliation across the visible Overview, not whole-Overview recertification.
 
 Historical Commit 16 record: authenticated connection responses added sanitized saved-window metadata, and runner `2026-07-31.13` detected mismatches. The existing `GA4 single` / `ga4_mock` response returned `lookbackDays: 30`, closing that bounded correction. Commit 19 later narrowed the supported production contract to 30 days only; retained non-30 rows now fail closed. No scheduler cadence, provider query, formula, storage/schema, campaign scope, or production data changed. Timer-fired and durability evidence were unproven at that date; the `2026-08-10` exact target run and provider-usable connection evidence closed those gates for the certified boundary.
 
@@ -485,7 +485,7 @@ These are campaign-age/calendar requirements, not activity-row or event-count re
 
 KPI/Benchmark snapshot history used by live Insights is eligible only when its versioned marker matches the selected GA4 property, saved campaign filter, campaign reporting timezone, and campaign currency. Legacy or mismatched history is retained but withheld from the live tab.
 
-For native financial KPI/Benchmark recompute, the start boundary is always the saved GA4 `importStartDate`. The end boundary is the latest completed reporting day. Campaign metadata dates and app creation time are never substituted. Imported Revenue and Spend include mapped materialized records dated on or before that same campaign-timezone completed-day cutoff, or the selected earlier comparison date for historical comparisons.
+For native financial KPI/Benchmark recompute, the start boundary is always the saved GA4 `importStartDate`. The end boundary is the latest completed reporting day. Campaign metadata dates and app creation time are never substituted. Imported Revenue and Spend include a source only when its definition was created on or before that same campaign-timezone completed-day cutoff, and include only its mapped materialized records dated on or before the cutoff or selected earlier comparison date. Newer source definitions and records remain visible as pending and do not enter recomputation until their reporting day completes.
 
 ## Reports Refresh
 

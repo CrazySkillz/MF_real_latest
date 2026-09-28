@@ -917,6 +917,11 @@ export function HubSpotRevenueWizard(props: {
 		            {step === "value-source" && (
 			              <div className="space-y-3">
 			                <div className="rounded-lg border bg-card p-4 space-y-2">
+		                  {mode === "edit" && (
+		                    <div className="rounded-md border bg-muted/40 p-3 text-sm text-foreground">
+		                      Editing existing HubSpot source. Continue to add/remove opportunities, change mappings, or configure Pipeline Proxy.
+		                    </div>
+		                  )}
 		                  <div className="text-sm font-medium">What do you want MimoSaaS to pull from HubSpot?</div>
 		                  <div className="text-xs text-muted-foreground/70 mb-2">
 		                    <strong>Note:</strong> For long sales cycles, Pipeline Proxy provides an early indicator before deals close.

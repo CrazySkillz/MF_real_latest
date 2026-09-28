@@ -7,6 +7,7 @@ const scheduler = readFileSync("server/auto-refresh-scheduler.ts", "utf8");
 const routes = readFileSync("server/routes-oauth.ts", "utf8");
 const storageSource = readFileSync("server/storage.ts", "utf8");
 const ga4Page = readFileSync("client/src/pages/ga4-metrics.tsx", "utf8");
+const hubspotWizard = readFileSync("client/src/components/HubSpotRevenueWizard.tsx", "utf8");
 
 const sliceBetween = (source: string, start: string, end: string) => {
   const startIndex = source.indexOf(start);
@@ -22,6 +23,11 @@ describe("HubSpot Pipeline Proxy automatic stage transition", () => {
     delete (global as any).__autoRefreshInProgress;
     delete (global as any).__googleSheetsSpendRefreshInProgress;
     delete (global as any).__salesforcePipelineRefreshInProgress;
+  });
+
+  it("explains the available changes when editing an existing HubSpot source", () => {
+    expect(hubspotWizard).toContain('mode === "edit"');
+    expect(hubspotWizard).toContain('Editing existing HubSpot source. Continue to add/remove opportunities, change mappings, or configure Pipeline Proxy.');
   });
 
   it("recognizes HubSpot's documented 1.0 probability for custom Closed Won stages", () => {

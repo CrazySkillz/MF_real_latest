@@ -89,7 +89,7 @@ describe("GA4 KPI Commit 7 UI/browser state contract", () => {
     expect(page).toContain("This is not being presented as a verified empty state.");
     expect(tracker).toContain("const consumerState = getKpiConsumerState(kpi);");
     expect(tracker).toContain("if (!consumerState.eligible) continue;");
-    expect(insights).toContain("if (!getKpiConsumerState(k).eligible) continue;");
+    expect(insights).toContain("if (!getFindingKpiConsumerState(k).eligible) continue;");
     expect(insights).toContain("No KPI or Benchmark performance conclusion is generated from these values.");
     expect(insights).toContain("if (!getKpiInsightPeriodCompatibility(k).comparable) continue;");
     expect(insights).toContain("if (!getBenchmarkInsightPeriodCompatibility(b).comparable) continue;");

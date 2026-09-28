@@ -77,14 +77,17 @@ describe("GA4 Insights production calendar paths", () => {
     expect(() => assertGA4InsightsFinancialCurrencyScope({ currency: "USD" }, [], "EUR", "GA4 native revenue", true)).toThrow("GA4 native revenue currency EUR does not match campaign currency USD");
   });
 
-  it("fails closed when a disabled-release connector is stored in GA4 Insights scope", () => {
+  it("allows the enabled Google Ads spend shape while failing closed for other connectors", () => {
     expect(() => assertGA4InsightsFinancialCurrencyScope({ currency: "EUR" }, [
       { sourceType: "ad_platforms", currency: "EUR", mappingConfig: JSON.stringify({ platform: "google_ads" }) },
       { sourceType: "csv", currency: "EUR" },
       { sourceType: "google_sheets", currency: "EUR" },
-    ], "EUR", "Spend")).toThrow("outside the current GA4 Insights release scope");
+    ], "EUR", "Spend")).not.toThrow();
     expect(() => assertGA4InsightsFinancialCurrencyScope({ currency: "EUR" }, [
       { sourceType: "ad_platforms", currency: "EUR", mappingConfig: JSON.stringify({ platform: "meta" }) },
+    ], "EUR", "Spend")).toThrow("outside the current GA4 Insights release scope");
+    expect(() => assertGA4InsightsFinancialCurrencyScope({ currency: "EUR" }, [
+      { sourceType: "ad_platforms", currency: "EUR", mappingConfig: "{" },
     ], "EUR", "Spend")).toThrow("outside the current GA4 Insights release scope");
     expect(() => assertGA4InsightsFinancialCurrencyScope({ currency: "EUR" }, [
       { sourceType: "instagram_api", currency: "EUR" },

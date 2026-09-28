@@ -209,6 +209,7 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
 
   it("feeds GA4 Overview financial values from source-backed spend totals into Profit, ROAS, ROI, and CPA", () => {
     const ga4Page = read("client", "src", "pages", "ga4-metrics.tsx");
+    const insights = read("shared", "ga4-insights.ts");
     const spendQueries = sliceBetween(
       ga4Page,
       "// Spend/Revenue to-date for executive financial metrics",
@@ -234,6 +235,7 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     expect(financials).toContain("const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;");
     expect(financials).toContain("const financialROI = computeRoiPercent(financialRevenue, financialSpend);");
     expect(financials).toContain("const financialCPA = computeCpa(financialSpend, financialConversions);");
+    expect(insights).toContain('sourceType === "ad_platforms" && adPlatform === "google_ads"');
     expect(cards).toContain("formatMoney(financialRevenue - financialSpend)");
     expect(cards).toContain("`${financialROAS.toFixed(2)}x`");
     expect(cards).toContain("formatPercentage(financialROI)");

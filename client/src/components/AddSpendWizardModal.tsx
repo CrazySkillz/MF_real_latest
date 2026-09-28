@@ -1632,6 +1632,7 @@ export function AddSpendWizardModal(props: {
   const formatAdPlatformSpend = (amount: number) => selectedPlatform === "google_ads"
     ? new Intl.NumberFormat(undefined, { style: "currency", currency: props.currency || "USD" }).format(amount)
     : `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+  const canOpenGoogleAdsSpend = activeGoogleAdsSpendSources.length === 0;
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -1660,18 +1661,26 @@ export function AddSpendWizardModal(props: {
             {step === "select" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card
-                  className="cursor-not-allowed opacity-50"
-                  aria-disabled="true"
+                  className={activeGoogleAdsSpendSources.length > 0
+                    ? "cursor-default"
+                    : "cursor-pointer hover:border-blue-500 transition-colors"}
+                  aria-disabled={!canOpenGoogleAdsSpend}
+                  onClick={() => {
+                    if (!canOpenGoogleAdsSpend) return;
+                    setSelectedPlatform("google_ads");
+                    setStep("ad_platform");
+                  }}
                 >
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Zap className="w-4 h-4" />
                       Google Ads
-                      <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                        Coming Soon
-                      </span>
                     </CardTitle>
-                    <CardDescription>Google Ads spend import will be available soon.</CardDescription>
+                    <CardDescription>
+                      {activeGoogleAdsSpendSources.length > 0
+                        ? "Already added. Edit campaigns from Spend Sources."
+                        : "Pull spend via Google Ads API."}
+                    </CardDescription>
                   </CardHeader>
                 </Card>
 

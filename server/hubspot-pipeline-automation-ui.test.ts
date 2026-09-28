@@ -28,6 +28,8 @@ describe("HubSpot Pipeline Proxy automatic stage transition", () => {
   it("explains the available changes when editing an existing HubSpot source", () => {
     expect(hubspotWizard).toContain('mode === "edit"');
     expect(hubspotWizard).toContain('Editing existing HubSpot source. Continue to add/remove opportunities, change mappings, or configure Pipeline Proxy.');
+    expect(hubspotWizard).toContain('const showFooterBack = !(mode === "edit" && step === "value-source");');
+    expect(hubspotWizard).toContain('{showFooterBack && (');
   });
 
   it("recognizes HubSpot's documented 1.0 probability for custom Closed Won stages", () => {

@@ -1080,6 +1080,8 @@ export function SalesforceRevenueWizard(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [externalBackNonce]);
 
+  const showFooterBack = !(mode === "edit" && step === "value-source");
+
   return (
     <div className="space-y-6">
       {/* Step indicator */}
@@ -1713,10 +1715,12 @@ export function SalesforceRevenueWizard(props: {
           )}
 
           {step !== "connect" && step !== "complete" && (
-            <div className="flex items-center justify-between pt-2">
-              <Button variant="outline" onClick={handleBackStep} disabled={valuesLoading || isSaving}>
-                Back
-              </Button>
+            <div className={`flex items-center pt-2 ${showFooterBack ? "justify-between" : "justify-end"}`}>
+              {showFooterBack && (
+                <Button variant="outline" onClick={handleBackStep} disabled={valuesLoading || isSaving}>
+                  Back
+                </Button>
+              )}
               <Button
                 onClick={() => void handleNext()}
                 disabled={

@@ -775,6 +775,8 @@ export function HubSpotRevenueWizard(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [externalBackNonce]);
 
+  const showFooterBack = !(mode === "edit" && step === "value-source");
+
   return (
     <div className="h-full flex flex-col min-h-0">
       {/* Step Indicator (similar to GuidedColumnMapping) */}
@@ -1413,10 +1415,12 @@ export function HubSpotRevenueWizard(props: {
 
           {/* Footer nav (hide on complete) */}
           {step !== "complete" && (
-            <div className="flex items-center justify-between pt-3 mt-3 border-t border-border shrink-0">
-              <Button variant="outline" onClick={handleBackStep} disabled={valuesLoading || isSaving}>
-                Back
-              </Button>
+            <div className={`flex items-center pt-3 mt-3 border-t border-border shrink-0 ${showFooterBack ? "justify-between" : "justify-end"}`}>
+              {showFooterBack && (
+                <Button variant="outline" onClick={handleBackStep} disabled={valuesLoading || isSaving}>
+                  Back
+                </Button>
+              )}
               <Button
                 onClick={() => void handleNext()}
                 disabled={

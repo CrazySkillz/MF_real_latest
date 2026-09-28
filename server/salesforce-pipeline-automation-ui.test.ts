@@ -150,6 +150,9 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     expect(addRevenueWizard).toContain('initialFocusValue={isSalesforceEditing');
     expect(salesforceWizard).toContain('setStep("value-source")');
     expect(salesforceWizard).toContain('Editing existing Salesforce source. Continue to add/remove opportunities, change mappings, or configure Pipeline Proxy.');
+    expect(salesforceWizard).toContain('const showFooterBack = !(mode === "edit" && step === "value-source");');
+    expect(salesforceWizard).toContain('{showFooterBack && (');
+    expect(addRevenueWizard).toContain('step === "hubspot" || step === "salesforce"');
     expect(salesforceWizard).toContain('Editing selection: <strong>{initialFocusValue}</strong>');
     expect(salesforceWizard).toContain('visibleUniqueValues.map((v) =>');
   });

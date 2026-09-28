@@ -1839,7 +1839,7 @@ export function AddRevenueWizardModal(props: {
                 <DialogTitle className="truncate">{title}</DialogTitle>
                 <DialogDescription className="mt-1">{description}</DialogDescription>
               </div>
-              {step !== "select" && !initialStep && !(isEditing && (step === "sheets_choose" || step === "csv")) && (
+              {step !== "select" && !initialStep && !(isEditing && (step === "sheets_choose" || step === "csv" || step === "hubspot" || step === "salesforce")) && (
                 <Button variant="ghost" onClick={handleBack}>
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back

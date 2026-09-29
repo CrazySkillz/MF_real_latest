@@ -236,7 +236,6 @@ export default function Campaigns() {
   const [isGA4CampaignLoading, setIsGA4CampaignLoading] = useState(false);
   const [ga4ConfigSubStep, setGa4ConfigSubStep] = useState<'property' | 'campaigns'>('property');
   const [wizardLookbackDays, setWizardLookbackDays] = useState<number>(30);
-  const [wizardGA4TestMode, setWizardGA4TestMode] = useState(false);
   const [instagramAdAccountId, setInstagramAdAccountId] = useState("act_instagram_test");
   const [instagramAdAccountName, setInstagramAdAccountName] = useState("Test Instagram Ad Account");
   const [instagramSelectedCampaignIds, setInstagramSelectedCampaignIds] = useState("ig_test_1, ig_test_2, ig_test_3");
@@ -443,31 +442,6 @@ export default function Campaigns() {
         description: error.message || "Failed to delete campaign. Please try again.",
         variant: "destructive",
       });
-    },
-  });
-
-  const seedDemoMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch("/api/seed-yesop-campaigns", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId: selectedClientId || null }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error(err.error || "Failed to seed demo campaigns");
-      }
-      return res.json();
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
-      toast({
-        title: "Demo campaigns seeded",
-        description: data?.message || `Created ${data?.created?.length || 0} campaign(s).`,
-      });
-    },
-    onError: (error: any) => {
-      toast({ title: "Seeding failed", description: error.message, variant: "destructive" });
     },
   });
 
@@ -814,7 +788,6 @@ export default function Campaigns() {
     setSelectedGA4CampaignValues([]);
     setGa4ConfigSubStep('property');
     setWizardLookbackDays(30);
-    setWizardGA4TestMode(false);
     setInstagramAdAccountId("act_instagram_test");
     setInstagramAdAccountName("Test Instagram Ad Account");
     setInstagramSelectedCampaignIds("ig_test_1, ig_test_2, ig_test_3");
@@ -1384,54 +1357,15 @@ export default function Campaigns() {
                       <div className="border rounded-lg p-4 bg-muted/30">
                         {selectedWizardPlatform === 'google-analytics' && (
                           <div className="space-y-4">
-                            {!wizardGA4TestMode ? (
-                              <>
-                                <IntegratedGA4Auth
-                                  campaignId={draftCampaignId || ""}
-                                  onSuccess={() => {
-                                    void loadWizardGA4Properties();
-                                  }}
-                                  onError={(error) => {
-                                    toast({ title: "Connection Failed", description: error || "Unable to complete Google Analytics connection.", variant: "destructive" });
-                                  }}
-                                />
-                                <div className="border-t pt-3">
-                                  <button
-                                    type="button"
-                                    className="text-xs text-muted-foreground hover:text-foreground underline"
-                                    onClick={() => setWizardGA4TestMode(true)}
-                                  >
-                                    Use test data instead
-                                  </button>
-                                </div>
-                              </>
-                            ) : (
-                              <div className="space-y-3">
-                                <p className="text-sm font-medium">Test Mode</p>
-                                <p className="text-sm text-muted-foreground">Connect a mock GA4 property with simulated data for testing.</p>
-                                <Button
-                                  type="button"
-                                  onClick={() => {
-                                    setGA4Properties([
-                                      { id: 'yesop', name: 'Yesop Mock Property', account: 'Mock Account' },
-                                    ]);
-                                    setSelectedGA4Property('yesop');
-                                    setGa4ConfigSubStep('property');
-                                    setWizardStep(4);
-                                    toast({ title: "Test Mode", description: "Select a mock property to continue." });
-                                  }}
-                                >
-                                  Connect Test Property
-                                </Button>
-                                <button
-                                  type="button"
-                                  className="block text-xs text-muted-foreground hover:text-foreground underline"
-                                  onClick={() => setWizardGA4TestMode(false)}
-                                >
-                                  Use real Google account instead
-                                </button>
-                              </div>
-                            )}
+                            <IntegratedGA4Auth
+                              campaignId={draftCampaignId || ""}
+                              onSuccess={() => {
+                                void loadWizardGA4Properties();
+                              }}
+                              onError={(error) => {
+                                toast({ title: "Connection Failed", description: error || "Unable to complete Google Analytics connection.", variant: "destructive" });
+                              }}
+                            />
                           </div>
                         )}
                         {selectedWizardPlatform === 'google-sheets' && (
@@ -1741,26 +1675,9 @@ export default function Campaigns() {
                                 <Button type="button" variant="outline" size="sm" onClick={() => setSelectedGA4CampaignValues(ga4CampaignValues.map(c => c.name))}>Select All</Button>
                                 <Button type="button" variant="outline" size="sm" onClick={() => setSelectedGA4CampaignValues([])}>Clear</Button>
                                 <span className="text-xs text-muted-foreground ml-auto">
-                                  {wizardGA4TestMode && selectedGA4CampaignValues.includes('no_revenue_test')
-                                    ? 'No revenue test selected'
-                                    : `${selectedGA4CampaignValues.length} of ${ga4CampaignValues.length} selected`}
+                                  {selectedGA4CampaignValues.length} of {ga4CampaignValues.length} selected
                                 </span>
                               </div>
-                              {wizardGA4TestMode && (
-                                <div className="rounded-md border border-dashed p-3 space-y-2 bg-muted/20">
-                                  <p className="text-xs text-muted-foreground">
-                                    Test mode only: use a no-GA4-revenue scenario while keeping sessions, users, and conversions populated.
-                                  </p>
-                                  <Button
-                                    type="button"
-                                    variant={selectedGA4CampaignValues.includes('no_revenue_test') ? "default" : "outline"}
-                                    size="sm"
-                                    onClick={() => setSelectedGA4CampaignValues(['no_revenue_test'])}
-                                  >
-                                    Use no revenue test scenario
-                                  </Button>
-                                </div>
-                              )}
                               <div className="max-h-60 overflow-y-auto border rounded-md p-2 space-y-1">
                                 {ga4CampaignValues.map((c) => {
                                   const checked = selectedGA4CampaignValues.includes(c.name);
@@ -1901,25 +1818,9 @@ export default function Campaigns() {
 
           {/* Campaigns Cards */}
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">All Campaigns</h2>
-                <p className="text-muted-foreground/70">Manage and monitor your marketing campaigns</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => seedDemoMutation.mutate()}
-                disabled={seedDemoMutation.isPending}
-                title="Create 5 pre-seeded Yesop demo campaigns with GA4 connections and known data values"
-              >
-                {seedDemoMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Plus className="w-4 h-4 mr-2" />
-                )}
-                Seed Demo Campaigns
-              </Button>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">All Campaigns</h2>
+              <p className="text-muted-foreground/70">Manage and monitor your marketing campaigns</p>
             </div>
 
             {isLoading ? (

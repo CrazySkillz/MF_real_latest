@@ -5,9 +5,13 @@
 
 Before using this document to answer an audit, review, or production-readiness question, apply PRODUCTION_READINESS.md and AGENTS.md. Do not repeat any production-ready or status claim from this file unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current documented evidence. A prior readiness statement is not evidence. A passing test suite is not enough unless it covers the traced value paths. If any path is incomplete, classify it as partially reviewed or not locally verifiable and update the fix queue instead of calling it production-ready.
 
-2026-09-21 current dated decision: the bounded GA4 Reports surface is **CLEAN-CERTIFIED / PRODUCTION_READY** at exact deployed runtime `a7271fc18058b6db78a11e88bf79b887abda5f44`. The exact runtime, configuration, dependency impact, evidence, exclusions, and zero remaining in-boundary gates are recorded in `GA4/REPORTS_CERTIFICATION_2026-09-21.md`. Older narrative SHA references below are revision-specific history where they differ.
+2026-09-21 historical dated decision: the bounded GA4 Reports surface was **CLEAN-CERTIFIED / PRODUCTION_READY** at exact deployed runtime `a7271fc18058b6db78a11e88bf79b887abda5f44`. The exact runtime, configuration, dependency impact, evidence, exclusions, and zero remaining in-boundary gates are recorded in `GA4/REPORTS_CERTIFICATION_2026-09-21.md`. Older narrative SHA references below are revision-specific history where they differ.
 
-Post-certificate implementation change (updated 2026-09-28): due scheduled GA4 reports for active real GA4 campaigns are deferred until the ordered daily pipeline records an exact campaign/reporting-date completion marker. The check occurs before `report_send_events` insertion, allowing the scheduler to retry without consuming the due slot. Readiness requires the refreshed financial/GA4 inputs, KPI/Benchmark recompute, financial and aggregate snapshots, confirmed Executive Summary snapshot, and campaign alert checks. The marker is persisted on the exact Executive Summary daily snapshot and restored after a server restart. Missing or unverifiable readiness fails closed, while a failed unrelated campaign does not block readiness for a successfully completed campaign. This change is locally testable implementation behavior but is not covered by the 2026-09-21 deployed certificate; the current revision therefore requires proportionate deployed recertification before receiving the same production-ready claim.
+2026-09-29 current decision: **UNVERIFIED** as a whole at exact deployed runtime `3d4c792f2670d4f313349b2849bf8bab54a43637`. The attached browser Insights PDF supplies bounded current evidence for Campaign3, but the post-certificate scheduler and Insights changes have not received a complete Reports recertification. Current Ad Comparison browser and scheduled PDFs also remain out of parity with the live Revenue Breakdown because they emit source parent/child rows and no `TOTAL` row. The historical September 21 certificate does not carry forward to this revision.
+
+Post-certificate implementation changes (updated 2026-09-29): due scheduled GA4 reports for active real GA4 campaigns are deferred until the ordered daily pipeline records an exact campaign/reporting-date completion marker. The check occurs before `report_send_events` insertion, allowing the scheduler to retry without consuming the due slot. Readiness requires the refreshed financial/GA4 inputs, KPI/Benchmark recompute, financial and aggregate snapshots, confirmed Executive Summary snapshot, and campaign alert checks. The marker is persisted on the exact Executive Summary daily snapshot and restored after a server restart. Missing or unverifiable readiness fails closed, while a failed unrelated campaign does not block readiness for a successfully completed campaign.
+
+Browser Insights reports now load the dedicated completed-day history while the Reports tab is active, fail closed until cutoff and timezone metadata are ready, and render campaign-start-to-cutoff Trends rows and rollups. Browser source provenance wraps rather than truncates. Browser and scheduled finding-category headings reserve the measured height of their first card. These changes passed TypeScript, the production build, and 96 focused PDF checks; the deployed Campaign3 browser attachment was visually and textually validated. No current scheduled/test-send attachment was inspected, so that runtime layout path remains locally proven only.
 
 ## Purpose
 
@@ -42,7 +46,7 @@ GA4 Reports was historically certified for the 2026-06-27 Reports readiness fix 
 - `33426ae0` Resolve GA4 Unscheduled Report Library Product Contract
 - `d83b0245` Disable Unchanged GA4 Report Updates
 
-The 2026-06-27 audit queue is historical and complete for its defect set. It does not close Reports Current Commits 7-9.
+The 2026-06-27 audit queue is historical and complete for its defect set. It does not close the current queue recorded below.
 
 What this means:
 
@@ -79,7 +83,7 @@ This historical instruction is superseded by the 2026-09-21 dated certificate an
 
 Read in this order:
 
-1. the 2026-09-21 current dated decision and `GA4/REPORTS_CERTIFICATION_2026-09-21.md`
+1. the 2026-09-29 current decision, then the historical `GA4/REPORTS_CERTIFICATION_2026-09-21.md`
 2. `Current Scope`
 3. `Current dependent queue`, then `Historical Completed Fix Queue`
 4. `Section Production-Readiness Map`
@@ -109,7 +113,7 @@ Excluded:
 - guarantees about future provider availability or future recipient inbox behavior
 - production-data cleanup outside a separately authorized exact damaged-row boundary
 
-Campaign DeepDive references in historical sections below are retained only as history or future-platform context. They do not gate, support, or expand the current GA4 Reports certification.
+Campaign DeepDive references in historical sections below are retained only as history or future-platform context. They do not gate, support, or expand the current GA4 Reports evidence.
 ## Root Cause Of Prior Confusion
 
 Earlier Reports reviews used "production-ready" too broadly for what had actually been proven.
@@ -187,7 +191,9 @@ This inventory is complete for the current Reports surfaces, but completion of t
 | Report composition | Saved report type, selected sections, selected KPI IDs, selected Benchmark IDs, and Campaign DeepDive selected metrics | Empty Custom KPI/Benchmark selection stays empty and cannot expand to every row | Proven through the actual scheduled GA4 PDF path and focused negative regression |
 | Schedule metadata | Frequency, recurrence day, local time, IANA timezone, recipients, paused/active state | Unsupported frequency/timezone/time/day/quarter values fail before persistence | Proven by create/update guards, direct validator cases, deployed CRUD, and natural scheduler execution |
 | Browser GA4 Overview PDF values | Current page-consumed Overview totals, financial values, cumulative tables, and source rows | A required selected input failure blocks generation instead of printing plausible zeros | The recorded browser Campaign Breakdown packet was dependency-reviewed and reused at `a7271fc1`; the changed exact-current server artifact independently matched the same scoped values. Other Overview subsections retain their separate upstream-tab status. |
-| Browser GA4 KPI, Benchmark, Ad Comparison, Insights, and Custom PDF values | Current page-consumed rows and selected-section renderers | Unselected sections are omitted; selected unavailable inputs fail or stay explicitly unavailable according to the section contract | Proven on the exact deployed SHA across all five standard types and one selected Custom composition |
+| Browser GA4 KPI, Benchmark, and Custom PDF values | Current page-consumed rows and selected-section renderers | Unselected sections are omitted; selected unavailable inputs fail or stay explicitly unavailable according to the section contract | The September 21 exact-runtime packet is historical; no whole-family carry-forward claim is made for `3d4c792f` |
+| Browser GA4 Insights PDF values and layout | Dedicated completed-day history, campaign-start-to-cutoff Trends rows/rollups, current connected-source financials, KPI/Benchmark findings, wrapped provenance, and grouped-card pagination | Missing history/cutoff/timezone blocks generation instead of emitting UTC, zero-day, or unavailable-cutoff output | Bounded Campaign3 attachment passed at deployed `3d4c792f`: property `542352127`, filters `yesop_brand_search` and `yesop_paid_social`, `Europe/Amsterdam`, cutoff `2026-09-28`, complete source list, correct values, and category/card pagination |
+| Browser/server GA4 Ad Comparison PDF Revenue Breakdown | Current report renderers emit native revenue plus imported source parent/child rows | Required-input failures block output, but the renderer omits the live table's combined `TOTAL` and duplicates provenance detail as child rows | **UNVERIFIED / open parity defect** at `3d4c792f`; the live table is correct, but current report artifacts are not aligned with it |
 | Server GA4 scheduled, test-send, manual-snapshot, and direct-snapshot PDFs | Campaign/property/filter-scoped server payload, exact report preflight, shared GA4 PDF builder, and stored immutable snapshot artifact | Selected KPI/Benchmark read/recompute failure blocks output; generic GA4 fallback is refused; a legacy/missing immutable GA4 artifact returns `422` instead of regenerating | Exact-current deployed Campaign Breakdown artifact parity, manual stored-artifact parity, and natural scheduled Benchmark attachment parity passed at `a7271fc1`. |
 | Campaign DeepDive browser and scheduled PDFs | Campaign context, performanceSummary, optional Executive Summary, KPI rows, Benchmark rows, and Trend Analysis aggregate | Only selected sections are loaded/rendered; unavailable metrics are not invented | Excluded from the GA4 Reports certification boundary |
 | Test-send result | Email provider audit plus Mailgun delivery events when available | Non-Mailgun acceptance is reported as accepted/unconfirmed; Mailgun is called delivered only after a delivered event | Proven by regression guards, provider-confirmed delivery, inbox receipt, and attachment parity |
@@ -221,8 +227,8 @@ This inventory is complete for the current Reports surfaces, but completion of t
 | GA4 Overview traffic and financial inputs | Browser Overview/Custom PDF; server scheduled/test/manual/direct Overview/Custom PDF | Required-input failures are fail-closed and the server financial selector preserves valid zero/negative precedence | Closed for the exact recorded Campaign Breakdown fixture at `a7271fc1`; other upstream Overview-tab certification remains separate |
 | GA4 KPI rows and daily recompute | Browser KPI/Custom PDF; scheduled/test/manual/direct KPI/Custom/Insights PDF | Exact selected IDs, skipped/failed IDs, and no empty-selection expansion are regression-covered | Closed for the bounded report-consumer packet; full KPI tab certification remains separate |
 | GA4 Benchmark rows and recompute | Browser Benchmark/Custom PDF; scheduled/test/manual/direct Benchmark/Custom/Insights PDF | The actual path blocks missing/failed selected rows and carries current/target/status values | Closed for the bounded report-consumer packet and exact-current natural Benchmark attachment; full Benchmark tab certification remains separate |
-| GA4 Ad Comparison rows and provenance | Browser and server Ad Comparison/Custom PDFs | Source/provenance, selected-composition, valid-zero, and required-input guards pass | Closed for the bounded Reports consumer packet; the live-tab certificate remains separate |
-| Live GA4 Insights inputs | Browser and server Insights/Custom PDFs | Live wording/provenance is guarded separately from report wording; actual report-owned KPI/Benchmark conclusions are covered | Closed for the bounded Reports consumer packet; live Insights behavior remains outside Reports |
+| GA4 Ad Comparison rows and provenance | Browser and server Ad Comparison/Custom PDFs | Source/provenance, selected-composition, valid-zero, and required-input guards remain, but Revenue Breakdown output differs from the live one-row-per-source plus `TOTAL` contract | **Open** for current report parity; the historical packet and separate live-tab certificate do not close the `3d4c792f` PDF mismatch |
+| Live GA4 Insights inputs | Browser and server Insights/Custom PDFs | Browser Reports loads the dedicated completed-day history and fails closed before generation; scheduled output uses server-built history and its supported sessions trend | Browser Campaign3 values/layout are bounded and deployed-proven at `3d4c792f`; current scheduled layout is locally regression-covered but lacks a current inspected attachment |
 | Campaign DeepDive performanceSummary and optional contexts | Browser latest download and server scheduled Custom Report | Selected-section renderer coverage and conditional context loading pass | Exact connected-source-mix deployed visibility and numeric packet |
 | Schedule configuration | Scheduler due calculation, send-event key, recipient list | Strict create/update validation plus scheduler-side legacy recipient validation prevent unsafe processing | Exact-current quarterly regression, existing rows, and natural deployed execution |
 | Provider/audit result | User-facing test-send result, report_send_events, snapshots, lastSentAt | Acceptance remains distinct from delivery; sent artifacts require the configured success rule | Exact-current provider event plus user-confirmed resend receipt; the first provider-delivered but unobserved attempt is excluded from inbox evidence |
@@ -231,7 +237,7 @@ This inventory is complete for the current Reports surfaces, but completion of t
 ## Protected Overview And Insights Boundary
 
 - The current runtime keeps Overview detail-table traffic/conversion metrics and native Revenue on the fixed saved-import boundary before exact mapped imports are added. The unchanged recorded browser packet and exact-current server/manual immutable artifact matched the scoped Campaign Breakdown values at `a7271fc1`; the scheduled/server blocker is closed for this boundary.
-- The separate rolling Insights breakdown request, Insights renderer, formulas, storage, and scheduler behavior remain unchanged and are covered by the adjacent regression packet.
+- The browser Reports renderer now explicitly loads the dedicated completed-day Insights history, fails closed before history/cutoff/timezone readiness, and uses campaign-start-to-cutoff rows and rollups. This is covered by focused regression and the inspected Campaign3 browser attachment at `3d4c792f`; it is not covered by the historical September 21 certificate.
 - server/routes-oauth.ts is a shared certification dependency. The localized Reports schedule-route changes do not alter Overview/Insights behavior, but dependency-hash rules still require the affected certification gates to be rerun before any prior certification is carried forward to a new revision.
 
 ## Historical Section Evidence Map
@@ -293,7 +299,7 @@ Future-platform template rule:
 
 ### 2. GA4 Ad Hoc Downloads
 
-Status: Production-ready locally for the chosen download-only GA4 platform product contract.
+Status: The download-only product contract remains proven; current whole-surface output parity is **UNVERIFIED** because the Ad Comparison PDF Revenue Breakdown is not aligned with its live table.
 
 User-facing role:
 
@@ -319,6 +325,8 @@ Proven locally:
 - client-side Overview Campaign Breakdown label uses `REVENUE`
 - client-side Landing Pages and Conversion Events omit revenue
 - custom report generation checks that at least one custom section is selected
+- browser Insights generation fails closed until dedicated completed-day history, cutoff, and reporting timezone are ready
+- the deployed Campaign3 Insights attachment at `3d4c792f` preserved the `2026-09-28` cutoff, Amsterdam reporting timezone, current financial/traffic/finding values, full wrapped source provenance, and category/card pagination
 
 Not locally verifiable:
 
@@ -332,7 +340,7 @@ Future-platform template rule:
 
 ### 3. GA4 Scheduled And Test-Send PDF Generation
 
-Status: Production-ready for the bounded exact-runtime GA4 scheduled/test-send/manual-snapshot/direct-snapshot PDF scope in the dated certificate.
+Status: Production-ready only for the bounded historical exact-runtime scope in the dated certificate. Current scheduled Insights pagination is locally proven, while current Ad Comparison Revenue Breakdown parity is open.
 
 User-facing role:
 
@@ -373,6 +381,8 @@ Partially reviewed:
   contract; exact deployed browser/direct/email parity and natural scheduled-send
   evidence passed for the Reports boundary.
 - scheduled Insights output uses the supported server sessions trend rather than a persisted live dropdown choice
+- scheduled Insights finding-category headings reserve the measured first-card height; this passed focused local regression but has no current inspected deployed attachment
+- current scheduled Ad Comparison Revenue Breakdown still emits source parent/child rows and no combined `TOTAL`
 
 Not locally verifiable:
 
@@ -544,9 +554,14 @@ Future-platform template rule:
 - do not remove legacy routes unless caller reachability, scheduler dependency, storage dependency, schema support, and production-data dependency have all been checked and documented
 - retained legacy routes that expose or mutate campaign data must stay campaign-access guarded and regression-covered
 
+## Current Dependent Queue
+
+1. Align browser and scheduled Ad Comparison PDF Revenue Breakdown with the live table: one row per contributing source, no repeated mapping child rows, and one combined `TOTAL`.
+2. After that correction, rerun focused PDF checks and inspect a deployed Ad Comparison artifact. A current scheduled Insights attachment is also required before claiming deployed scheduled-layout parity.
+
 ## Historical Completed Fix Queue
 
-The 2026-06-27 Reports blocker queue is historical and complete for that defect set. The active queue is Reports Current Commits 7-9 in the controlling override.
+The 2026-06-27 Reports blocker queue is historical and complete for that defect set. The current queue is recorded immediately above.
 
 ### Commit 1: Correct GA4 Scheduled Overview Revenue Label
 
@@ -646,7 +661,7 @@ Validation:
 
 ## Product-Contract Decision Queue
 
-No unresolved GA4 Reports product-contract decision remains from the 2026-06-27 blocker queue.
+No unresolved product-contract decision remains from the historical 2026-06-27 blocker queue. The current Ad Comparison PDF parity defect remains open.
 
 ### Decision 1: GA4 Unscheduled Report Library Behavior
 
@@ -701,10 +716,11 @@ Deferred deployed validation:
 These areas are not current local blockers, but future work should not assume they are fully certified beyond the stated evidence:
 
 - manual snapshot POST has no current GA4 frontend caller, but its authenticated route is regression- and exact-runtime-validated; creation fails closed before insertion when preflight or source-backed PDF generation is unavailable, and later direct download reads only the stored immutable artifact
-- GA4 Ad Comparison passed exact deployed browser/direct/email parity for this
-  Reports certification; its separate tab-specific document controls any broader
-  Ad Comparison claim outside generated Reports artifacts
+- GA4 Ad Comparison passed exact deployed browser/direct/email parity for the
+  historical Reports certification; current `3d4c792f` PDF Revenue Breakdown
+  parity is open, and the separate tab-specific document controls the live tab
 - scheduled Insights PDF uses the supported server sessions trend rather than persisting the live selected trend metric/mode
+- scheduled Insights category/card pagination is locally regression-covered but lacks a current inspected deployed attachment
 - the Drizzle schema does not express the report-send unique index even though startup DDL creates it
 - legacy routes without a current GA4 Reports caller are outside this certification boundary
 - existing production Campaign DeepDive scheduled rows may need a separate cleanup audit if they were orphaned from old localStorage-only visibility before Commit 3
@@ -723,7 +739,17 @@ The following cannot be proven from local code alone:
 
 ## Validation Evidence
 
-Current exact-SHA validation completed September 21, 2026 at deployed runtime `a7271fc18058b6db78a11e88bf79b887abda5f44`:
+Current bounded validation on September 29, 2026:
+
+- production `/api/health` reported exact deployed runtime `3d4c792f2670d4f313349b2849bf8bab54a43637`
+- the user-provided Campaign3 browser Insights PDF showed property `542352127`, filters `yesop_brand_search` and `yesop_paid_social`, completed-day cutoff `2026-09-28`, and Amsterdam reporting time
+- the attachment reconciled to 2,256 Sessions, 145 Conversions, EUR 78,969.69 Revenue, EUR 2,357.89 Spend, EUR 76,611.80 Profit, 33.49x ROAS, 3,249.2% ROI, and EUR 16.26 CPA
+- its Daily series showed 127 Sessions on `2026-09-22` followed by six completed zero-session dates through `2026-09-28`; six findings and their target/benchmark calculations matched the page-consumed values
+- the full Spend and Revenue source lists were visible, and `Informational context` appeared on the same page as its first card
+- TypeScript, the production build, and 6 focused PDF files / 96 tests passed for the current implementation changes
+- this packet proves the attached browser Insights artifact only; it does not prove a current scheduled Insights attachment, Ad Comparison PDF parity, all configurations, or whole Reports recertification
+
+Historical exact-SHA validation completed September 21, 2026 at deployed runtime `a7271fc18058b6db78a11e88bf79b887abda5f44`:
 
 - consolidated focused packet: 18 files / 217 tests passed; two non-overlapping repaired suites brought the unique focused boundary to 20 files / 236 tests
 - TypeScript and the production build passed once after the production changes
@@ -950,7 +976,7 @@ Before calling another platform's Reports section production-ready, confirm:
 
 ## Stable Response For Future Chats
 
-Answer from `GA4/REPORTS_CERTIFICATION_2026-09-21.md`: **CLEAN-CERTIFIED / PRODUCTION_READY** for the five bounded GA4 Reports areas at exact deployed runtime `a7271fc18058b6db78a11e88bf79b887abda5f44`, with zero remaining gates inside that boundary. State the exact configuration and exclusions; do not broaden the result to Campaign DeepDive, arbitrary campaigns/configurations, future provider behavior, or full re-certification of the upstream GA4 tabs. The protected JSON machine record is historical and unchanged.
+Current answer: **UNVERIFIED** as a whole at deployed runtime `3d4c792f2670d4f313349b2849bf8bab54a43637`. The Campaign3 browser Insights PDF is bounded and validated through `2026-09-28`; current scheduled Insights attachment parity is not inspected, and current browser/scheduled Ad Comparison Revenue Breakdown parity is open. `GA4/REPORTS_CERTIFICATION_2026-09-21.md` remains historical exact-runtime evidence only. The protected JSON machine record is also historical and unchanged.
 
 ## 2026-07-30 Current Commit 10 Boundary — Bounded Packet Closed
 

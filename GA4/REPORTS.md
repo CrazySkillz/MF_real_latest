@@ -4,11 +4,15 @@
 
 This file defines the GA4 `Reports` tab and the current report-creation, download, scheduling, and report-output model.
 
-Current status (2026-09-21): **CLEAN-CERTIFIED / PRODUCTION_READY** for the bounded GA4 Reports surface at exact deployed runtime `a7271fc18058b6db78a11e88bf79b887abda5f44`. Exact scope, evidence, exclusions, and invalidation rules are recorded in `GA4/REPORTS_CERTIFICATION_2026-09-21.md`; Campaign DeepDive Reports remain excluded. The older machine record in `GA4/certifications/ga4-reports.json` is retained as historical fail-closed evidence and is not the current dated certificate.
+Historical status (2026-09-21): **CLEAN-CERTIFIED / PRODUCTION_READY** for the bounded GA4 Reports surface at exact deployed runtime `a7271fc18058b6db78a11e88bf79b887abda5f44`. Exact scope, evidence, exclusions, and invalidation rules are recorded in `GA4/REPORTS_CERTIFICATION_2026-09-21.md`; Campaign DeepDive Reports remain excluded. The older machine record in `GA4/certifications/ga4-reports.json` is retained as historical fail-closed evidence.
+
+Current implementation status (2026-09-29): **UNVERIFIED** as a whole at deployed runtime `3d4c792f2670d4f313349b2849bf8bab54a43637`. The browser Insights PDF has current bounded Campaign3 evidence, but post-certificate scheduler and Insights changes have not received a complete Reports recertification, and the Ad Comparison PDF Revenue Breakdown still differs from the live table. The September 21 certificate remains exact-revision history and does not carry forward to this runtime.
 
 Current implementation note (updated 2026-09-28): for an active real GA4 campaign, a due scheduled GA4 report waits for the ordered daily pipeline's exact campaign/reporting-date completion marker. The gate runs before send-event/idempotency insertion, so the every-minute report scheduler can retry after mapped financial refresh, GA4 Overview publication, KPI/Benchmark recompute, financial and aggregate snapshots, Executive Summary capture, and campaign alerts complete. The final marker is persisted with the exact Executive Summary daily snapshot and restored after a server restart; a missing or unverifiable marker defers delivery. A failed unrelated campaign does not block readiness for a successfully completed campaign. This post-certificate change requires proportionate deployed revalidation and is not covered by the historical runtime certificate above.
 
-Ad Comparison report-output note: the Reports-owned browser/server consumer boundary passed in the dated Reports packet. That does not broaden or replace the separate live-tab boundary in `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`.
+Insights report-output note (updated 2026-09-29): the Reports tab loads the dedicated completed-day Insights history before browser generation. An unavailable cutoff/history/timezone blocks generation instead of producing a UTC, zero-day, or `Not available yet` artifact. Browser Trends use the same campaign-start-to-cutoff rows and rollups as the live Insights view. Browser financial source lists wrap instead of truncating, and browser plus scheduled finding-category headings reserve space for their first card.
+
+Ad Comparison report-output note: the Reports-owned browser/server consumer boundary passed in the historical dated packet, but current PDF output no longer has live-table parity. The live table shows one row per contributing source and a `TOTAL`; current browser and scheduled PDFs still show imported source parent/child provenance rows and no combined total. This is an open Reports defect. It does not change the separate live-tab boundary in `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`.
 
 ## Reports Tab Structure
 
@@ -94,12 +98,19 @@ Current standard-template output rule:
 - `Ad Comparison` report leader cards, charts, selected-metric totals, and
   `All Campaigns` use the same native import-to-date rows as live; imported
   external revenue cannot create or adjust ranked rows
-- `Ad Comparison` report Revenue Breakdown shows the same native import-to-date
-  row sum plus separate exact all-mapped-record imported rows, with no combined
-  total; browser and scheduled paths fail closed when selected required inputs
-  are unavailable
+- the live `Ad Comparison` Revenue Breakdown shows one row per contributing
+  source plus a combined `TOTAL`
+- current browser and scheduled `Ad Comparison` PDFs still show the native
+  import-to-date row plus imported source parent/child provenance rows and omit
+  the combined `TOTAL`; this is an unresolved report-parity defect, not the
+  intended final contract
+- browser and scheduled `Ad Comparison` paths fail closed when selected required
+  inputs are unavailable
 - `Insights` should follow the live Insights order
 - `Insights` report output should include the report-supported Trends freshness context: `Completed-day cutoff`, reporting timezone, and last refreshed timestamp. The live Trends UI additionally shows `Latest imported day`; report output should not be documented as showing that label unless the report renderer is explicitly extended.
+- browser `Insights` report generation loads the dedicated completed-day history on both the Insights and Reports tabs and fails closed until a valid cutoff and reporting timezone are available
+- browser `Insights` Trends use the campaign-start-to-cutoff daily rows and their matching 7-day/30-day rollups rather than the shorter Overview daily series
+- browser `Insights` source provenance wraps to show every Spend and Revenue source; browser and scheduled category headings stay with their first finding card
 - `Insights` report Trends charts should use the same visual chart contract as the live UI for the data rendered: zero-based y-axis, light gridlines, muted axes, blue line/bar styling, and readable date labels such as `MM-DD` for daily/rolling charts. Scheduled/server output currently renders its supported sessions trend rather than a persisted live dropdown selection.
 - downloaded and scheduled `Insights` report output should keep `What to investigate next` aligned with the live section by printing the history-aware intro, grouped findings, data basis, confidence, and `Recommended check:` wording
 

@@ -10,24 +10,24 @@ This section is the current source of truth for Campaign DeepDive `Executive Sum
 
 The exact deployed evidence for the historical certified revision is recorded in `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_CERTIFICATE_2026-09-21.md`. Current behavior and recertification status are defined in this section. The earlier `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_CERTIFICATE_2026-09-20.md` remains an immutable historical certificate for its own revision and production state.
 
-### Current Revision And Historical Certified Boundary
+### Current Revision And Evidence Boundary
 
-- current application revision reviewed for this contract: `1018abba948ff5bf203f4b1a93d42bbf639ec9b8`
+- deployed application revision validated: `a4a1e97e6ace7ebf675dee10b25cedfeb1bdc62d`
 - historical certified application implementation revision: `2d9625437683ccef081e60831f2a59c76246d438`
-- revision relationship: the historical 2026-09-21 certificate covers `2d962543`; the current revision contains later Marketing Funnel and Recommended Actions presentation changes, exact native-GA4 KPI/Benchmark financial fallback selection, and guarded trajectory-history alignment that require exact-revision deployed revalidation.
-- campaign: `ga4_mock` (`8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`)
+- revision relationship: the 2026-09-21 certificate covers `2d962543`; the current revision has bounded Campaign3 evidence for the later UI, financial-source, verified-current KPI/Benchmark, and trajectory behavior described below. This bounded result is not a replacement whole-section certificate.
+- campaign: `Campaign3` (`e5edd8dc-fe84-49ce-b564-67203de18aea`)
 - GA4 property: `542352127`
-- campaign currency: `USD`
+- campaign currency: `EUR`
 - campaign reporting timezone: `Europe/Amsterdam`
-- current reporting window: `2026-07-02` through completed day `2026-09-20`
+- current reporting window: `2026-08-23` through completed day `2026-09-28`
 - aggregate contract: `performance_summary_aggregate_v3`
 - main source: GA4 web analytics
-- child financial configuration: five active revenue sources and four active spend sources selected by the GA4 context contract, including its legacy-null compatibility rule
+- child financial configuration admitted at the completed-day boundary: five active Revenue sources and three active Spend sources
 - connected paid-media main sources: none
 
-Certification is limited to this campaign, property, currency, timezone, source mix, and page. It does not cover Campaign2, other campaigns, future configuration changes, paid-media variants, other Campaign DeepDive sections, Custom Reports, PDFs, scheduled reports, email delivery, or inbox receipt.
+The current evidence proves the authenticated Campaign3 persisted inputs, production API responses, calculations, source composition, current UI contract, and focused regressions at the stated deployed revision. It does not certify the Executive Summary PDF or scheduled report, natural scheduler firing on this exact revision, other campaigns, other source mixes, paid-media variants, financial-source mutation lifecycles, or the complete Campaign DeepDive product. Those paths remain unverified unless a separate current evidence record covers them.
 
-### Post-Certification Current Changes - updated 2026-09-28
+### Post-Certification Current Changes - updated 2026-09-29
 
 The current implementation removes the five duplicate metric cards below `Marketing Funnel Performance` and adds `Spend` to the Bottom of Funnel row. The row now presents Conversions, Revenue, Spend, ROAS, and Return on Investment once. Recommended Actions also uses grammatically complete Benchmark status text and no longer renders the connected-web-analytics scope note or the internal `Website Outcomes` category subtitle. The category remains an internal discriminator for evidence construction.
 
@@ -64,17 +64,17 @@ The page has one campaign identity query plus three analytics queries:
 | --- | --- | --- |
 | Campaign identity/currency | `GET /api/campaigns/:id` | campaign access and persisted campaign configuration |
 | KPI, Benchmark, and freshness inputs | `GET /api/campaigns/:id/executive-summary` | campaign access; GA4 platform KPI/Benchmark selection; verified-current resolver; shared target classification |
-| Narrative, funnel, conditional metrics, formulas, and source capabilities | `GET /api/campaigns/:id/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date` | `performance_summary_aggregate_v3`; completed-day GA4 window; saved-import native financials plus all mapped imported records; gated daily snapshot |
+| Narrative, funnel, conditional metrics, formulas, and source capabilities | `GET /api/campaigns/:id/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date` | `performance_summary_aggregate_v3`; completed-day GA4 window; authoritative native GA4 financials plus mapped imported records admitted through the same cutoff; gated daily snapshot |
 | Seven-day trajectory | `GET /api/campaigns/:id/executive-summary/trajectory?reportingDate=YYYY-MM-DD` | exact current and seven-day-prior `executive_summary_daily` rows through `evaluateExecutiveSummaryTrajectory`; when only the prior row is absent, guarded GA4-only read-only exact-date financial derivation through `resolveFinancialDailyComparisonPrevious` and `evaluateExecutiveSummaryTrajectoryFromFinancialDaily` |
 
 The current-value queries refetch on mount, window focus, and every 60 seconds while active. The trajectory query refetches on mount/focus after the authoritative reporting date is available. Campaign, Executive Summary, outcome totals, and the applicable trajectory request are required before the completed page renders. A required request failure renders `Unable to Load Executive Summary` rather than cached-looking zeros.
 
-`executiveFinancialScope=campaign_to_date` is a retained backward-compatible request value. Its name does not define the V1 financial boundary: native GA4 values use the saved initial-import date, and imported Revenue/Spend use every available mapped record.
+`executiveFinancialScope=campaign_to_date` is a retained backward-compatible request value. Its name does not bypass the completed-day boundary: native GA4 values use the saved initial-import date through the latest completed day, and imported Revenue/Spend admit only source definitions and effective-dated records eligible through that same campaign-timezone cutoff. Later definitions and records remain visible in source management but do not enter the completed-day Executive Summary total early. Eligible undated snapshot-style imports use their source snapshot semantics rather than being expanded into invented daily values.
 
 ### Current Metric And Source Rules
 
 - GA4 traffic, conversions, native revenue, and Engagement Rate use the connected property and configured campaign scope from the saved initial-import date through the latest completed day in the campaign timezone.
-- Imported Revenue and Spend use every available mapped active GA4-context record; historical comparisons cap those records at the selected comparison date.
+- Imported Revenue and Spend use mapped active GA4-context source definitions created on or before the completed-day cutoff and records eligible on or before that cutoff. Historical comparisons apply the selected comparison date through the same source rules.
 - `Total Revenue = GA4-native revenue + imported connected revenue`.
 - `CVR = conversions / sessions * 100` when both inputs are available and sessions are positive.
 - `ROAS = revenue / spend` and `ROI = (revenue - spend) / spend * 100` when revenue and spend are available and spend is positive.
@@ -94,22 +94,54 @@ Trajectory first evaluates the current and exact seven-day-prior Executive Summa
 - `incompatible_history`: property, window, source, or reporting configuration differs
 - `revenue_history_unavailable`: revenue is unavailable or the comparison denominator is invalid
 
-### Current Campaign3 Validation - 2026-09-27
+### Current Campaign3 Validation - 2026-09-29, cutoff 2026-09-28
 
-Campaign3 provides bounded evidence for the new GA4-only fallback, not a replacement whole-section certificate:
+Campaign3 provides bounded current evidence for the connected-source Executive Summary path, not a replacement whole-section certificate.
 
-- root cause: Trend Analysis could derive the exact `2026-09-19` GA4 financial reading, but Executive Summary consulted only `executive_summary_daily` history, so the missing prior Executive Summary row incorrectly produced `Not enough history`
-- latest completed reporting date: `2026-09-26`; exact comparison date: `2026-09-19`
-- current Executive Summary snapshot exists; the exact prior Executive Summary snapshot is absent
-- active GA4-context imported Revenue sources: none
-- current Revenue: `EUR 37,518.74`; exact-date GA4 financial baseline: `EUR 31,162.22`
-- calculated change: approximately `+20.4%`, classified as `accelerating`
-- user-provided UI evidence after the fix shows `Accelerating`, ROI `1494.51%`, ROAS `15.95x`, Risk `MEDIUM`, and `3 KPIs are below target`
-- the visible detail correctly states that Revenue was compared with aligned financial history from seven days earlier
+Authoritative current values:
 
-Local validation for revision `1018abba` passed the focused Executive Summary/financial comparison packet (4 files, 35 tests), the broader Executive Summary packet (18 files, 162 tests), TypeScript checking, the production build, and `git diff --check`. The UI screenshot proves the visible Campaign3 result supplied by the user; this documentation update does not independently prove the deployed runtime SHA, a natural scheduler cycle, imported-Revenue trajectory fallback, paid-source variants, or other campaigns.
+| Metric | Validated value |
+| --- | ---: |
+| Users | 2,256 |
+| Sessions | 2,256 |
+| Engaged sessions | 1,535 |
+| Engagement Rate | 68.04% |
+| Conversions | 145 |
+| Conversion Rate | 6.43% |
+| Total Revenue | EUR 78,969.69 |
+| Total Spend | EUR 2,357.89 |
+| ROAS | 33.49x |
+| ROI | 3,249.17% |
+| CPA | EUR 16.26 |
 
-The current trajectory correction is localized to `server/routes-oauth.ts`, `server/utils/executive-summary-daily-snapshot.ts`, and `client/src/pages/executive-summary.tsx`, with focused guards in `server/executive-summary-daily-snapshot.test.ts`, `server/executive-summary-daily-snapshot-regression.test.ts`, `server/financial-daily-comparison.test.ts`, and `server/executive-summary-regression.test.ts`. The exact native-GA4 KPI/Benchmark financial fallback correction is localized to `server/utils/ga4-alert-current-value.ts`, with guards in `server/ga4-kpi-alert-contract-regression.test.ts` and `server/executive-summary-regression.test.ts`.
+The authoritative native GA4 Revenue is `EUR 37,518.74`. The admitted imported Revenue total is `EUR 41,450.95`: Google Sheets `EUR 30,340.00`, HubSpot `EUR 10,000.00`, Shopify `EUR 785.95`, CSV `EUR 250.00`, and Salesforce `EUR 75.00`. The admitted Spend total is `EUR 2,357.89`: CSV `EUR 1,250.00`, Google Sheets `EUR 1,103.00`, and Google Ads `EUR 4.89`. Revenue storage can contain aggregate and attributed rows for the same source; the current materialized-source selector uses the aggregate row when present and does not add both grains. This is why the validated imported totals do not double count CSV, HubSpot, or Salesforce.
+
+The derived values reconcile from the accepted totals: `78,969.69 / 2,357.89 = 33.49x` ROAS, `(78,969.69 - 2,357.89) / 2,357.89 * 100 = 3,249.17%` ROI, `2,357.89 / 145 = EUR 16.26` CPA, `145 / 2,256 * 100 = 6.43%` Conversion Rate, and `1,535 / 2,256 * 100 = 68.04%` Engagement Rate.
+
+Current decision state:
+
+- five eligible KPIs: ROAS and CPA are below target; Revenue is within tolerance; Users and Sessions are above target
+- the UI correctly renders only the ROAS and CPA KPI exception rows
+- two eligible Benchmarks: Total Conversions is `145 / 160`, `-9.4%`, `Needs Attention`; Revenue is `EUR 78,969.69 / EUR 30,000.00`, `+163.2%`, `On Track`
+- the UI correctly renders only the Total Conversions Benchmark exception row
+- freshness warnings: none; current state is current through `2026-09-28`
+- Risk Level: `MEDIUM`, with the visible reason `2 KPIs are below target.`
+- Recommended Action: `Investigate Conversions`, with current evidence, configured target context, and an investigative next step
+- source presentation: Google Analytics is the main web-analytics source; its admitted Revenue and Spend children remain financial provenance and are not presented as separate main Connected Platforms
+
+Trajectory behavior is correctly unavailable for this cutoff:
+
+- current Executive Summary snapshot date: `2026-09-28`
+- required exact comparison date: `2026-09-21`
+- no compatible `2026-09-21` Executive Summary snapshot exists
+- active imported Revenue sources are present, so the GA4-only exact-date fallback is intentionally ineligible; using it would compare the current connected-source Revenue total with a native-GA4-only historical total
+- endpoint result: unavailable with `reason: "not_enough_history"`
+- visible result: `Not enough history` and `No matching Executive Summary reading exists for seven days earlier yet.`
+- Risk Level and current values remain available because they use current eligible inputs and do not depend on a historical trajectory pair
+
+Validation at deployed revision `a4a1e97e6ace7ebf675dee10b25cedfeb1bdc62d` covered authenticated Campaign3 production facts and endpoints, source-grain selection, formulas, required UI states and copy, snapshot behavior, KPI/Benchmark exception filtering, freshness, Risk, and recommendation presentation. The focused Executive Summary packet passed `56/56` tests. This evidence does not cover a real browser interaction recording, Executive Summary PDF or scheduled delivery, a natural scheduler firing on this exact revision, mutation/delete/reconnect lifecycles, tenant isolation beyond the exercised authenticated campaign boundary, other campaigns, or paid-media main-source combinations.
+
+The guarded trajectory behavior remains localized to `server/routes-oauth.ts`, `server/utils/executive-summary-daily-snapshot.ts`, and `client/src/pages/executive-summary.tsx`, with focused guards in `server/executive-summary-daily-snapshot.test.ts`, `server/executive-summary-daily-snapshot-regression.test.ts`, `server/financial-daily-comparison.test.ts`, and `server/executive-summary-regression.test.ts`. The exact native-GA4 KPI/Benchmark financial fallback remains localized to `server/utils/ga4-alert-current-value.ts`, with guards in `server/ga4-kpi-alert-contract-regression.test.ts` and `server/executive-summary-regression.test.ts`.
 
 Risk starts at Low. High requires negative ROI or a high-severity applicable freshness warning. Medium requires at least one configured risk factor, including ROAS below 1x, paid concentration when applicable, compatible decline greater than 15%, an eligible KPI below target, an eligible Benchmark behind, or an applicable freshness warning. Benchmark `needs_attention` is monitor-only by itself.
 

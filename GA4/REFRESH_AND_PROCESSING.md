@@ -460,9 +460,12 @@ Readiness note: the chart, leader cards, and summary cards consume the
 scheduler-published Overview Campaign Breakdown snapshot for the saved
 initial-import boundary through the campaign-timezone latest completed day.
 Revenue Breakdown uses a separate native provider query over that same named
-boundary. The tab is `PRODUCTION_READY` only for certified runtime boundary
-`12789c1e` and its recorded configuration. It has no independent scheduler;
-Reports-owned generation and delivery remain outside the tab boundary.
+boundary. Its imported source rows refresh from the campaign-scoped
+completed-day revenue breakdown, and `TOTAL` adds native GA4 revenue plus every
+confirmed imported amount. The current implementation is `UNVERIFIED` after
+the `TOTAL` change in `5d6d9f79`; the older certified runtime is historical.
+The tab has no independent scheduler, and Reports-owned generation and delivery
+remain outside the tab boundary.
 
 ## Insights Refresh
 

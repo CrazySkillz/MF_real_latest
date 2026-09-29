@@ -18,10 +18,11 @@ Important:
 
 Ad Comparison status for future reference:
 
-- GA4 Ad Comparison's retained live tab is `PRODUCTION_READY` only for the
-  Campaign2/property/saved-filter boundary at deployed runtime
-  `70b73a229ebb9e1021c3d18d63119d05bdee7e26`. The combined chart/cards/
-  summary and Revenue Breakdown passed; the retired All Campaigns table is absent
+- GA4 Ad Comparison is `UNVERIFIED` on the current implementation after the
+  Revenue Breakdown `TOTAL` change in `5d6d9f79`; exact-revision deployed
+  validation remains pending. The Campaign2 result at `70b73a22` is historical
+- the chart, leader cards, summary cards, and Revenue Breakdown remain the live
+  surfaces; the retired All Campaigns table is absent
 - Reports-owned PDF, delivery, scheduling, snapshot, and library behavior is a
   separate section and is not a deferred Ad Comparison validation item
 - use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` as the source of truth
@@ -321,7 +322,8 @@ Status note: GA4 Insights production-readiness validation passed for the current
 
 ### Step 12: Verify Ad Comparison tab
 - [ ] Click the **Ad Comparison** tab
-- [ ] Campaign breakdown table visible with data from simulation
+- [ ] Leader cards, selected-metric chart, two summary cards, and Revenue
+  Breakdown render from the selected GA4 campaign scope; no All Campaigns table appears
 
 ---
 
@@ -968,27 +970,29 @@ Checkpoint after Journey 8:
 - [ ] Needs Attention does not choose a tiny trivial campaign when a larger weak performer exists, and close CR decisions display two decimal places on the cards
 - [ ] Users: tooltip explains that the same person can appear in more than one campaign row, so row totals may be higher than the true number of unique users
 - [ ] If imported revenue exists, `Revenue Breakdown` lists every active
-  GA4-context source separately; chart/card revenue uses only exact mapped
-  imported amounts alongside its native GA4 campaign rows
-- [ ] An available imported source shows its exact total across every mapped materialized record
-  amount as separate Revenue Breakdown provenance; only uniquely mapped amounts
-  may adjust Overview-based chart revenue, and no imported source creates a row
+  confirmed nonzero GA4-context source separately and keeps active unavailable
+  sources visible; confirmed-zero source rows are omitted
+- [ ] An available imported source shows its exact completed-day-bounded
+  materialized amount as separate Revenue Breakdown provenance; only uniquely
+  mapped amounts may adjust Overview-based chart revenue, and no imported source
+  creates a campaign row
 - [ ] An unavailable imported source remains listed as `Unavailable`, does not
   show a stale amount, and does not show configuration-backed subsection values
-- [ ] `No additional revenue sources connected` appears only when no active
-  imported source exists
+- [ ] `No additional revenue sources` appears in the ready state when there are
+  no visible nonzero or unavailable imported source rows
 - [x] Exact deployed revision `7374e824` passed focused regression, build,
   provider, source-inventory, and rendered UI validation
 - [ ] For each active CSV, Google Sheets, HubSpot, Salesforce, Shopify, or
-  retained Manual source, verify its top-level Revenue Breakdown state is exact
-- [ ] For each available source with saved `campaignValueRevenueTotals`, verify
-  the indented subsection uses only those stored exact values
-- [ ] Revenue Breakdown preserves valid source zero and never falls back to a
-  source-definition or configuration total
-- [ ] Ad Comparison does not render imported, unallocated, or combined
-  all-source financial rows in Revenue Breakdown
-- [ ] Ad Comparison does not render a combined `Total Revenue`, because native
-  and imported source values do not share a proven identical window
+  retained Manual source, verify its Revenue Breakdown state: confirmed nonzero
+  renders, confirmed zero is omitted, and unavailable remains visibly unavailable
+- [ ] Revenue Breakdown never renders saved `campaignValueRevenueTotals` as
+  detail rows or as a value fallback
+- [ ] Revenue Breakdown `TOTAL` equals native GA4 revenue plus every confirmed
+  imported source amount; confirmed zero contributes zero
+- [ ] Revenue Breakdown `TOTAL` shows `Unavailable` while imported provenance is
+  loading/unavailable or any active imported source amount is unknown
+- [ ] Imported source amounts remain provenance only and never create or
+  proportionally alter GA4 campaign rows
 
 ### Journey 11 Revenue Propagation Standard
 
@@ -1020,14 +1024,14 @@ For each add/edit/delete action above, validate all related revenue surfaces:
 - [ ] Benchmarks tab: Revenue/ROAS/ROI blocked or enabled states update when revenue availability changes
 - [ ] Ad Comparison native comparison rows use the saved initial-import boundary
   through the latest completed day; imported source revenue does not alter them
-- [ ] Ad Comparison `Revenue Breakdown`: every active source has one top-level
-  row; available amounts match exact materialized source values
+- [ ] Ad Comparison `Revenue Breakdown`: confirmed nonzero source rows match
+  exact materialized source values; confirmed-zero source rows are omitted
 - [ ] Ad Comparison `Revenue Breakdown`: unavailable sources show
-  `Unavailable` without a stale amount or subsection
-- [ ] Ad Comparison `Revenue Breakdown`: available sources with saved
-  `campaignValueRevenueTotals` show exact indented subsection values only
-- [ ] Ad Comparison `Revenue Breakdown`: no inferred, proportional,
-  unallocated, or combined all-source value is rendered
+  `Unavailable` without a stale amount or configuration-backed subsection
+- [ ] Ad Comparison `Revenue Breakdown`: `TOTAL` equals native GA4 plus all
+  confirmed imported amounts, and fails closed as unavailable for an unknown source
+- [ ] Ad Comparison `Revenue Breakdown`: no inferred, proportional, or
+  unallocated campaign-row revenue is rendered
 - [ ] Ad Comparison native GA4 revenue equals the sum of the saved-scope native
   comparison rows for the displayed comparison window
 - [ ] Insights Executive Financials revenue matches Overview `Total Revenue`
@@ -1050,8 +1054,8 @@ Required reconciliation checks:
 - [ ] `Overview Total Revenue = GA4 Revenue + sum(active imported revenue source amounts)`
 - [ ] `Ad Comparison native GA4 Revenue = sum(saved-scope native comparison row revenue)`
 - [ ] Each Ad Comparison imported source row equals its exact materialized
-  source-breakdown value or shows `Unavailable`; do not combine it with native
-  revenue because the windows are not proven identical
+  source-breakdown value, is omitted for confirmed zero, or shows `Unavailable`
+- [ ] `Ad Comparison Revenue Breakdown TOTAL = native GA4 Revenue + sum(all confirmed imported source amounts)`; if any active imported source amount is unknown, `TOTAL` is `Unavailable`
 - [ ] Editing a source replaces the old source amount; it must not create a duplicate source row or duplicate microcopy
 - [ ] Deleting a source removes only that source's contribution; unrelated source amounts and allocations remain intact
 

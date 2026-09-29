@@ -107,24 +107,31 @@ Important clarification:
 - `ga4_daily_metrics.revenue` is currently stored at two decimal places, so summing individually quantized daily values can differ from an aggregate that retains more underlying precision. A current-revision `2026-09-27` read-only Campaign3 check observed `EUR 37,518.74` from the authoritative aggregate and `EUR 37,518.72` from 35 stored daily rows covering `2026-08-23` through `2026-09-26`; this evidence confirms the application source choice but does not inspect GA4's internal aggregation implementation
 - this bounded few-cent difference is a known precision limitation, not permission to add a synthetic adjustment row, assign the residual to an arbitrary date, or report the daily sum as the authoritative native GA4 imported-window amount
 - exact cent-for-cent daily-to-aggregate Revenue reconciliation is excluded from the current readiness claim until a next-version migration preserves higher provider precision, re-fetches/backfills exact-source daily values, and revalidates all affected browser, report, snapshot, and downstream consumers
-- GA4 `Ad Comparison` campaign rows, rankings, chart, and totals use only
-  GA4-native revenue from the fixed initial-import-to-latest-completed-day window;
-  completed-day-bounded imported revenue is separate provenance and is excluded from
-  ranking
+- GA4 `Ad Comparison` native rows used by Revenue Breakdown contain only native
+  GA4 revenue from the fixed initial-import-to-latest-completed-day window
+- the Ad Comparison chart, leader-card detail, and selected-metric summary use
+  the synchronized Overview Campaign Breakdown rows, where Revenue may include
+  only uniquely mapped completed-day imported revenue; imported revenue cannot
+  create a campaign row
 - for GA4 `Overview -> Campaign Breakdown`, the same exact campaign-matched rule applies, so that table's column label should be `Revenue`, not `GA4 Revenue`
 - in that table, Sessions, Users, Conversions, and native Revenue use the fixed initial-import-to-latest-completed-day GA4 window; native Revenue must reconcile to the GA4 Revenue card, and exact campaign-matched imported revenue is then added only when its saved allocation reconciles to the same completed-day source amount
 - `Overview -> Landing Pages` and `Overview -> Conversion Events` remain GA4-native row views and intentionally omit revenue; imported revenue is not allocated into either table
 - any external revenue that cannot be matched safely must remain visible as `Unallocated External Revenue`, not proportionally distributed
-- in the GA4 `Ad Comparison` Revenue Breakdown table, a source may show an indented per-campaign subsection from its saved exact `campaignValueRevenueTotals`
+- the GA4 `Ad Comparison` Revenue Breakdown table does not render saved
+  `campaignValueRevenueTotals` as detail rows or use them as a value fallback
 - in the GA4 `Ad Comparison` Revenue Breakdown table, `GA4 Revenue (imported to date)` is the sum of the same native rows used by the comparison
-- exact materialized imported source amounts use completed-day-bounded provenance and no
-  combined `Total Revenue` or unallocated ranking row is rendered
+- exact materialized imported source amounts use completed-day-bounded provenance;
+  confirmed nonzero sources render, confirmed-zero rows are omitted, and unknown
+  amounts render as unavailable
+- the `TOTAL` row adds native GA4 revenue and every confirmed imported amount;
+  it is unavailable when any active imported source amount is unknown
 - saved configuration/definition totals are not an Ad Comparison value fallback
 
-Production-readiness note: GA4 Ad Comparison is `PRODUCTION_READY` for certified
-runtime boundary `12789c1e` and the recorded boundary. Its native rows
-resolve from the saved initial-import boundary through the latest completed day.
-Reports-owned output remains outside the tab-only boundary.
+Production-readiness note: GA4 Ad Comparison is `UNVERIFIED` on the current
+implementation after the `TOTAL` change in `5d6d9f79`. Its native rows resolve
+from the saved initial-import boundary through the latest completed day. The
+older certified runtimes remain historical evidence, and Reports-owned output
+remains outside the tab-only boundary.
 
 ### Previous-Day Revenue Records
 

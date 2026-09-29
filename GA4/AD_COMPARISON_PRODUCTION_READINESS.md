@@ -126,7 +126,7 @@ Included:
   initial-import start through the latest completed reporting day
 - sessions, users, conversions, conversion rate, native GA4 revenue, imported
   revenue provenance, Revenue Breakdown, summary totals, leader cards, chart,
-  and All Campaigns table
+  and the absence of the retired All Campaigns table
 - the live Ad Comparison tab only
 - every active materialized revenue source returned for the same campaign and
   GA4-or-legacy-null platform context, including the reviewed HubSpot, Shopify,
@@ -147,8 +147,8 @@ Excluded:
 
 ### Complete value and calculation inventory
 
-The inventory below records the historical native-row boundary; current chart,
-leader-card, and summary sources are specified in `GA4/AD_COMPARISON.md`.
+The inventory below records the current implementation contract. Historical
+certification evidence remains revision-specific.
 
 | Value | Production path | Required invariant |
 |---|---|---|
@@ -158,13 +158,13 @@ leader-card, and summary sources are specified in `GA4/AD_COMPARISON.md`.
 | Conversion rate | GA4 sessionKeyEventRate * 100 | Zero only for a proven zero denominator; unavailable when the native rate is missing or invalid |
 | Native row revenue | GA4 totalRevenue, with purchaseRevenue compatibility fallback | Same import-to-latest-completed row scope; valid zero/negative retained |
 | Imported source revenue | Exact materialized source breakdown | All-mapped-record provenance only; excluded from native ranking |
-| Row revenue | Native GA4 row revenue | No imported merge, stale fallback, invented row, or proportional allocation |
-| Revenue/session | Native row revenue / sessions | Numerator and denominator share the same property/filter/window |
-| Leader cards | `selectGA4AdComparisonLeaderCards` | Historical selected-metric ranking; current conversion-based rule is in `GA4/AD_COMPARISON.md` |
-| Chart | Selected-metric sort of normalized rows | Show at most the top 10; never change underlying table order |
+| Native comparison row revenue | Native GA4 row revenue | Used by Revenue Breakdown; no imported merge, stale fallback, invented row, or proportional allocation |
+| Overview-based chart row revenue | Native GA4 row plus uniquely mapped confirmed imported revenue | Imported revenue cannot create a campaign row; ambiguous/unavailable mapping fails closed |
+| Leader cards | `selectGA4AdComparisonLeaderCards` | Conversion-based rules are independent of the selected dropdown metric; Revenue detail uses the Overview-based row |
+| Chart | Selected-metric sort of normalized Overview-based rows | Show at most the top 10; selected Revenue may include uniquely mapped imported revenue |
 | Selected-metric summary | Normalized comparison rows | Sum the selected metric; conversion rate is weighted by sessions across campaign rows |
 | Campaigns Compared | Normalized comparison rows | Exact normalized row count |
-| All Campaigns | Sessions-descending normalized rows | Same native row values regardless of dropdown selection |
+| Retired All Campaigns | No live-tab render path | Must remain absent from the live tab and new standard reports; explicit legacy report behavior is Reports-owned |
 | Revenue Breakdown | Import-to-latest-completed native row sum plus confirmed nonzero imported source totals through the latest completed reporting day | Exact source ID/value; omit confirmed zero rows; no undated saved-config detail rows or same-type/config fallback; `TOTAL` equals native GA4 plus every confirmed imported amount and is unavailable when any active imported amount is unknown |
 | Loading/empty/stale/unavailable | Query state plus current-property verification | Previous-property rows are blocked; verified empty differs from failure; last-good data requires an explicit stale warning |
 
@@ -362,7 +362,7 @@ Broader repository run:
 These gates certify only historical revision `83d12427`; they do not certify the
 current candidate.
 
-### Current exact-SHA gates for certified runtime `b8c73621`
+### Historical exact-SHA gates for certified runtime `b8c73621`
 
 - certified runtime deployment: passed; `/api/health` returned exact SHA
   `b8c7362121593502955d41e522d32396a963fdcc`; relative to `12789c1e`, the
@@ -392,8 +392,8 @@ current candidate.
 - persistence safety: passed; read-only transaction rolled back; temporary
   authentication-session cleanup was requested in the validator's `finally`
 
-All required local and exact-SHA production gates pass for the defined live-tab
-boundary. The machine record is `PRODUCTION_READY` for certified runtime
+All required local and exact-SHA production gates passed for that historical
+live-tab boundary. The machine record was `PRODUCTION_READY` for certified runtime
 boundary `b8c7362121593502955d41e522d32396a963fdcc` and the recorded normalized
 dependency hashes. This section result is included in the final combined GA4
 certification.

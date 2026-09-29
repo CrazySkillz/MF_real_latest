@@ -34,7 +34,7 @@ Current GA4 tab production-readiness status:
 - Current Commit 7's deployed validation also confirmed that an active OAuth placeholder with an empty GA4 Property ID fails closed instead of rendering permanent skeletons, while persisted campaign-scoped financial sources remain reachable for exact reviewed removal.
 - The September 16 GA4 KPI certificate at `f7afeb2b98a56a3387156a3d7b9b99d5128a2980` remains historical exact-runtime evidence and does not certify the current dependency revision.
 - GA4 Benchmarks are **UNVERIFIED for whole-tab production readiness on the current implementation**. Deployed runtime `4136990ef04bc9555679ca5a9c8888ad7d38b4a2` passed mutation-blocked validation across 3 campaigns and 6 active Benchmark rows; Campaign3 card, Tracker, provider, persisted, scheduler-candidate, Insights, and Notifications values were exact through `2026-09-27`. Current lifecycle/ownership, a natural Campaign3 scheduler completion, and Campaign3 report/PDF parity remain unproven. The September 16 certificate at `236afff993e60c5f9eaf75c42bca8b31b52f601d` remains historical exact-runtime evidence.
-- GA4 Ad Comparison's retained live tab is **CLEAN-CERTIFIED / PRODUCTION_READY** only for the Campaign2/property/saved-filter boundary at deployed runtime `70b73a229ebb9e1021c3d18d63119d05bdee7e26`. The combined chart/cards/summary and Revenue Breakdown passed; All Campaigns is retired. `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` controls the exact evidence and exclusions. Reports delivery and other campaigns/configurations remain outside this certificate.
+- GA4 Ad Comparison is **UNVERIFIED on the current implementation** after the Revenue Breakdown `TOTAL` row was added in `5d6d9f79`; exact-revision deployed validation remains pending. The Campaign2 result at deployed runtime `70b73a229ebb9e1021c3d18d63119d05bdee7e26` remains historical evidence from before that row. All Campaigns is retired. `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` controls the exact status, evidence, and exclusions.
 - GA4 Reports is **CLEAN-CERTIFIED / PRODUCTION_READY** only for the bounded surface and exact deployed runtime `a7271fc18058b6db78a11e88bf79b887abda5f44` recorded in `GA4/REPORTS_CERTIFICATION_2026-09-21.md`. Exact-current Campaign Breakdown server/snapshot parity and the authorized natural delivery packet passed. Campaign DeepDive and arbitrary future configurations remain excluded; the older machine record remains historical and unchanged.
 - The combined GA4 release-certification audit is complete for the recorded section boundaries. This does not certify excluded platforms, Campaign DeepDive, future configurations, future provider availability, or obsolete campaigns outside the active boundary.
 - Absent later code changes, failed validation, contradictory deployed evidence, or changed requirements, future readiness reviews should use the tab-specific readiness doc for each GA4 section and must not infer KPI production readiness from Overview or Benchmark readiness.
@@ -129,10 +129,10 @@ Important meaning:
   Explicit Overview-facing Benchmark dependency contract. Changes outside the manifested fields, windows, freshness/currency rules, formulas, lifecycle paths, and consumers do not automatically invalidate Benchmark certification.
 - `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`
   Canonical whole-tab Ad Comparison production-readiness source of truth.
-  Current status: `PRODUCTION_READY` only for the retained Campaign2 live-tab
-  boundary at deployed runtime `70b73a229ebb9e1021c3d18d63119d05bdee7e26`.
-  Combined chart/cards/summary and Revenue Breakdown passed; Reports delivery
-  and other configurations remain separate.
+  Current status: `UNVERIFIED` after the Revenue Breakdown `TOTAL` change in
+  `5d6d9f79`; exact-revision deployed validation is pending. The retained
+  Campaign2 live-tab result at `70b73a229ebb9e1021c3d18d63119d05bdee7e26`
+  is historical. Reports delivery and other configurations remain separate.
 - `GA4/INSIGHTS.md`
   Short functional overview of the live GA4 Insights tab, including sections, scope contract, and refresh pattern.
 - `GA4/INSIGHTS_PRODUCTION_READINESS.md`
@@ -227,7 +227,9 @@ These are now part of the GA4 template contract:
   that stored snapshot rather than querying GA4 or rewriting scheduler-owned data.
   Separate native Ad Comparison rows use the saved initial-import boundary
   through the latest completed day for Revenue Breakdown; imported sources
-  remain distinct completed-day-bounded provenance and cannot create campaign rows
+  remain distinct completed-day-bounded provenance and cannot create campaign
+  rows. The table `TOTAL` adds native GA4 revenue and every confirmed imported
+  source amount, and is unavailable when any active imported amount is unknown
 - HubSpot-specific report value propagation is guarded in Current Commit 4.12 by `GA4OverviewValidation.hubspotReportValuePack(...)` and static scheduled/server PDF formula checks; deployed evidence passed for the configured `GA4 Overview Report` packet and remains limited to that report/campaign/property
 - the `Add revenue source` chooser shows saved-source status for implemented revenue source families: Shopify and HubSpot show connection/import status where applicable, Google Sheets shows `Connected` when an active Google Sheets revenue source exists for the current platform context, CSV shows `Uploaded` when an active CSV revenue source exists, and Salesforce is visible for initial setup but becomes non-actionable after an active same-context Salesforce source exists; subsequent opportunity changes use the provider pencil in `Revenue Sources`
 - CRM/ecommerce Crosswalk screens should not render a redundant `Selected Campaigns label` field; selected counts and selected value rows are the visible selection summary
@@ -240,9 +242,10 @@ These are now part of the GA4 template contract:
 - GA4 Benchmark whole-tab status is **UNVERIFIED** on current runtime `4136990ef04bc9555679ca5a9c8888ad7d38b4a2`; the bounded current evidence and remaining lifecycle, natural-scheduler, and Campaign3 report/PDF gaps are recorded in `GA4/BENCHMARKS_PRODUCTION_READINESS.md`. The September 16 production-ready result remains historical exact-runtime evidence.
 - GA4 `Ad Comparison` leader cards, chart, and summary use the synchronized, daily-scheduler-published Overview Campaign Breakdown rows; only uniquely mapped imported revenue may adjust their revenue values, while Revenue Breakdown shows separate native comparison-window and completed-day-bounded imported provenance. The retired All Campaigns table is not part of the live tab
 - GA4 `Ad Comparison` uses explicit loading/ready/stale/unavailable states,
-  blocks previous-property placeholders, and retains valid source zero. Its
-  current machine status is `PRODUCTION_READY` for certified runtime boundary
-  `70b73a229ebb9e1021c3d18d63119d05bdee7e26` and the recorded dependency/configuration boundary. All PDF,
+  blocks previous-property placeholders, distinguishes confirmed zero from
+  unavailable, and omits confirmed-zero imported source rows. Its current
+  machine status is `UNVERIFIED`; the prior Campaign2 result at
+  `70b73a229ebb9e1021c3d18d63119d05bdee7e26` is historical. All PDF,
   saved-report, snapshot, scheduler, delivery, and report-library behavior
   belongs to the Reports certification
 - GA4 daily time-series/backfill uses the same selected-campaign import rule as Overview: query campaign attribution dimensions first, use `pageLocation` `utm_campaign` only when the primary daily result has no rows, and supplement missing conversion/revenue fields from a compatible selected-campaign `campaignName` query when GA4 splits traffic and purchase attribution across dimensions. Visible Trends rows remain completed-day rows and exclude today's intraday data.

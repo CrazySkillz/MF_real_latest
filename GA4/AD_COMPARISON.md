@@ -8,18 +8,21 @@ Use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` for the durable production-readi
 
 Current status:
 
-The retained live tab is `CLEAN-CERTIFIED / PRODUCTION_READY` only for the
-Campaign2/property/saved-filter/USD boundary at deployed runtime
-`70b73a229ebb9e1021c3d18d63119d05bdee7e26`. The metric dropdown,
-chart, three leader cards, two summary cards, and Revenue Breakdown passed
-together at that runtime. `All Campaigns` is absent from the live tab and new
-standard reports; explicitly saved legacy custom reports retain it. The exact
-combined evidence and exclusions are in
-`GA4/AD_COMPARISON_PRODUCTION_READINESS.md`. The separate chart and Revenue
-Breakdown certificates remain valid for their narrower recorded runtimes.
-Reports saving, scheduling, and delivery are not certified here.
+The current implementation and machine record are `UNVERIFIED`. The Revenue
+Breakdown `TOTAL` row added in `5d6d9f79` has focused local regression,
+TypeScript, build, and fail-closed certification-gate evidence, but that exact
+revision has not yet been validated after deployment.
 
-Historical whole-tab status (superseded by the narrow current status above):
+The retained live tab was historically `CLEAN-CERTIFIED / PRODUCTION_READY`
+only for the Campaign2/property/saved-filter/USD boundary at deployed runtime
+`70b73a229ebb9e1021c3d18d63119d05bdee7e26`. That evidence predates the
+`TOTAL` row. `All Campaigns` remains absent from the live tab and new standard
+reports; explicitly saved legacy custom reports retain it. The exact current
+status, historical evidence, and exclusions are in
+`GA4/AD_COMPARISON_PRODUCTION_READINESS.md`. Reports saving, scheduling, and
+delivery are not certified here.
+
+Older historical whole-tab status:
 
 `PRODUCTION_READY` for certified runtime boundary
 `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627` and the recorded dependency and

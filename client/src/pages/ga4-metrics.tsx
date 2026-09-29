@@ -4024,15 +4024,16 @@ export default function GA4Metrics() {
         y += 2;
         const spendSourcesText = spendSourceLabels.length > 0 ? spendSourceLabels.join(", ") : "Not connected";
         const revenueSourcesText = revenueSourceLabels.length > 0 ? revenueSourceLabels.join(", ") : "Not connected";
-        checkPage(18);
+        const spendSourceLines = wrapPdfText(`Spend: ${spendSourcesText}`, CW - 8);
+        const revenueSourceLines = wrapPdfText(`Revenue: ${revenueSourcesText}`, CW - 8);
+        checkPage(12 + (spendSourceLines.length + revenueSourceLines.length) * 4.5);
         doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.textTert);
         doc.text("SOURCES USED", MX + 2, y + 4);
         y += 8;
         doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
-        doc.text(`Spend: ${trunc(spendSourcesText, 70)}`, MX + 4, y + 3.5);
-        y += 6;
-        doc.text(`Revenue: ${trunc(revenueSourcesText, 70)}`, MX + 4, y + 3.5);
-        y += 6;
+        for (const line of spendSourceLines) { doc.text(line, MX + 4, y + 3.5); y += 4.5; }
+        for (const line of revenueSourceLines) { doc.text(line, MX + 4, y + 3.5); y += 4.5; }
+        y += 3;
       }
 
       if (includeInsightsTrends && trendSorted.length >= 2) {
@@ -4335,7 +4336,14 @@ export default function GA4Metrics() {
           y += ch + 4;
         };
         for (const group of groupedTop) {
-          checkPage(10);
+          const firstItem = group.items[0];
+          const firstMeta = [firstItem?.dataBasis ? `Basis: ${String(firstItem.dataBasis).trim()}` : "", firstItem?.confidence ? `Confidence: ${String(firstItem.confidence).trim()}` : ""].filter(Boolean).join(" | ");
+          const firstMetaLines = firstMeta ? wrapPdfText(firstMeta, insightCardTextWidth) : [];
+          const firstDescLines = wrapPdfText(trunc(String(firstItem?.description || "").replace(/[^\x20-\x7E]/g, " ").trim(), 500), insightCardTextWidth);
+          const firstRec = trunc(String(firstItem?.recommendation || "").replace(/[^\x20-\x7E]/g, " ").trim(), 500);
+          const firstRecLines = firstRec ? wrapPdfText(`Recommended check: ${firstRec}`, insightCardTextWidth) : [];
+          const firstCardHeight = 16 + firstMetaLines.length * 4 + (firstMetaLines.length > 0 ? 2 : 0) + firstDescLines.length * 4.5 + (firstRecLines.length > 0 ? firstRecLines.length * 4.5 + 4 : 0) + 4;
+          checkPage(10 + firstCardHeight + 4);
           doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
           doc.text(group.label, MX + 4, y);
           y += 6;

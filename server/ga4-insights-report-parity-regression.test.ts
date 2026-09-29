@@ -118,4 +118,15 @@ describe("GA4 Insights report parity", () => {
     expect(reportSection).toContain("trendsRollups.prior7");
     expect(reportSection).not.toContain("const trendDailyRows = Array.isArray(ga4TimeSeries)");
   });
+
+  it("wraps source provenance and keeps finding headings with their first card", () => {
+    const page = readClient();
+    const pdf = readScheduledPdf();
+
+    expect(page).toContain("const spendSourceLines = wrapPdfText(`Spend: ${spendSourcesText}`, CW - 8);");
+    expect(page).toContain("const revenueSourceLines = wrapPdfText(`Revenue: ${revenueSourcesText}`, CW - 8);");
+    expect(page).not.toContain("trunc(revenueSourcesText, 70)");
+    expect(page).toContain("checkPage(10 + firstCardHeight + 4);");
+    expect(pdf).toContain("checkPage(10 + firstCardHeight + 4);");
+  });
 });

@@ -1527,7 +1527,13 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         items: topInsights.filter((item: any) => item.category === group.key),
       })).filter((group) => group.items.length > 0);
       for (const group of groupedInsights) {
-        checkPage(10);
+        const firstItem = group.items[0];
+        const firstMeta = [firstItem?.dataBasis ? `Basis: ${String(firstItem.dataBasis)}` : "", firstItem?.confidence ? `Confidence: ${String(firstItem.confidence)}` : ""].filter(Boolean).join(" | ");
+        const firstMetaLines = firstMeta ? doc.splitTextToSize(firstMeta, CW - 20) as string[] : [];
+        const firstDescriptionLines = doc.splitTextToSize(String(firstItem?.description || ""), CW - 20) as string[];
+        const firstRecommendationLines = firstItem?.recommendation ? doc.splitTextToSize(`Recommended check: ${String(firstItem.recommendation || "")}`, CW - 20) as string[] : [];
+        const firstCardHeight = 18 + firstMetaLines.length * 4 + (firstMetaLines.length > 0 ? 2 : 0) + firstDescriptionLines.length * 4.5 + (firstRecommendationLines.length > 0 ? firstRecommendationLines.length * 4.5 + 4 : 0);
+        checkPage(10 + firstCardHeight + 4);
         doc.setFontSize(8);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(...COLORS.text);

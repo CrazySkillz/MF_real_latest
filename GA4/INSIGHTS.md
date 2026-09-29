@@ -11,7 +11,7 @@ Use `GA4/INSIGHTS_PRODUCTION_READINESS.md` for the tab-level production-readines
 
 Current controlling answer:
 
-GA4 Insights is **UNVERIFIED for the current implementation** pending exact-revision deployed recertification. Current deployed runtime `eab3231aa2910cc70ddeacfd254da1ac1017c6a2` has a bounded, owner-authenticated Campaign3 read-only parity pass from `2026-09-27`: the page-consumed APIs matched the current Executive Financials, imported-history Data Summary, campaign-creation-bounded Trends behavior, tracker cards, and seven visible findings through the latest completed reporting day (`2026-09-26`). Tenant isolation, a natural scheduler cycle, and a reusable current-revision validation harness were not established by that run, so it is supporting evidence rather than a whole-tab recertification. Historical Insights certificates remain valid only for their recorded revisions and behavior; they do not certify the current scheduler-only, zero-filled implementation. Reports-owned behavior remains covered separately.
+GA4 Insights is **UNVERIFIED for the current implementation** pending exact-revision deployed recertification. Current deployed runtime `4bada059c6610293a3475932bd6fafa1e35bf57d` contains the direction-aware saved-target title correction. The latest bounded live parity pass was on exact deployed revision `31ca1b08293dac4e49058e5b57dfdb492ba108b4` on `2026-09-29`: Campaign3 matched its page-consumed APIs through the latest completed reporting day (`2026-09-28`) across Executive Financials, imported-history Data Summary, all four Trends modes, tracker cards, and six visible findings. That run also proved tenant isolation failed closed and campaign persistence remained unchanged. The current title-only revision has not received a new exact-revision live pass, and a natural scheduler cycle, provider write/failure behavior, and a reusable current-revision validation harness remain outstanding. Historical Insights certificates remain valid only for their recorded revisions and behavior. Reports-owned behavior remains covered separately.
 
 <!-- /ga4-insights-current-status -->
 
@@ -24,7 +24,7 @@ The Insights documentation has separate scopes:
 - `GA4/INSIGHTS.md`
   Functional overview of the current GA4 Insights tab.
 - `GA4/INSIGHTS_PRODUCTION_READINESS.md`
-  Canonical source of truth for production readiness, root-cause history, validation evidence, and the reusable template for later Meta, LinkedIn, Instagram, Google Ads, and other platform releases. Google Ads is outside the current Insights certification boundary because no authorized live test account is available.
+  Canonical source of truth for production readiness, root-cause history, validation evidence, and the reusable template for later Meta, LinkedIn, Instagram, Google Ads, and other platform releases. The enabled GA4 Google Ads Spend shape has bounded live read-parity evidence, while its provider refresh/write behavior remains outside the current whole-tab certification.
 - `GA4/INSIGHTS_FINDINGS_CERTIFICATION_2026-09-18.md`
   Subsection-only evidence for the on-screen findings and Total/High/Medium cards on deployed revision `6673a976f98d853b9eb37ddc99a2afc195f302d9`.
 
@@ -61,7 +61,8 @@ Insights must not silently broaden to unrelated GA4 properties, campaigns, clien
 Current-release source boundary:
 
 - Insights has no add-source chooser; the `Total Revenue` and `Total Spend` `+` controls belong to Overview and are not changed or certified by the Insights audit
-- Google Ads is outside the current Insights certification because no authorized live test account is available; its separate Overview availability is unchanged by this boundary
+- Spend admits active campaign-owned GA4-context CSV and Google Sheets sources plus any `ad_platforms` source only when its saved mapping identifies `google_ads`; all admitted sources must satisfy the campaign-currency guard
+- the enabled Google Ads source was included in bounded live UI/API parity on deployed `31ca1b08293dac4e49058e5b57dfdb492ba108b4`, but its provider refresh/write and natural scheduler behavior remain uncertified for the current whole-tab boundary
 - LinkedIn, Meta/Facebook, and Instagram connectors and analytics are not enabled as Insights inputs for this release
 - explicit LinkedIn, Meta, or Instagram platform-context records must not contribute to GA4 Insights financial totals
 - Insights may consume only financial totals already produced by documented campaign-owned source paths; it must not mutate Overview source selection, source lifecycle, calculations, availability gates, or rendering
@@ -122,7 +123,7 @@ History gates:
 
 ### Data Summary
 
-Shows GA4 Sessions and Conversions for the selected campaign/property's imported history.
+Shows GA4 Sessions, Conversions, and the resulting conversion rate for the selected campaign/property's imported history.
 
 Current meaning:
 

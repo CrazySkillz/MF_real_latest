@@ -15,7 +15,7 @@ Current GA4 tab production-readiness status:
 <!-- ga4-insights-current-status -->
 <!-- ga4-insights-certification-status: UNVERIFIED -->
 
-- GA4 Insights is **UNVERIFIED for the current implementation** pending exact-revision deployed recertification. Current deployed runtime `eab3231aa2910cc70ddeacfd254da1ac1017c6a2` has a bounded Campaign3 owner-authenticated read-only parity pass for Executive Financials, imported-history Data Summary, campaign-creation-bounded Trends, tracker cards, and findings through `2026-09-26`. Tenant isolation, a natural scheduler cycle, and a reusable current-revision validator remain outstanding, so older Insights certificates remain historical evidence for their exact revisions only.
+- GA4 Insights is **UNVERIFIED for the current implementation** pending exact-revision deployed recertification. Current deployed runtime `4bada059c6610293a3475932bd6fafa1e35bf57d` contains the direction-aware saved-target title correction. The latest bounded Campaign3 owner-authenticated read-only parity pass is on deployed `31ca1b08293dac4e49058e5b57dfdb492ba108b4` through `2026-09-28`; Executive Financials, imported-history Data Summary, all four Trends modes, tracker cards, findings, the enabled Google Ads read scope, tenant isolation, and persistence non-mutation passed. The current title-only runtime, provider write/failure behavior, a natural scheduler cycle, and a reusable current-revision validator remain outstanding, so older certificates remain historical evidence for their exact revisions only.
 
 <!-- /ga4-insights-current-status -->
 
@@ -136,7 +136,7 @@ Important meaning:
 - `GA4/INSIGHTS.md`
   Short functional overview of the live GA4 Insights tab, including sections, scope contract, and refresh pattern.
 - `GA4/INSIGHTS_PRODUCTION_READINESS.md`
-  Canonical live-tab Insights production-readiness source of truth. Current implementation status: **UNVERIFIED** pending exact-revision deployed recertification. Runtime `eab3231a` has bounded Campaign3 read-only parity evidence, while tenant isolation, natural scheduler, reusable-validator, and whole-tab certification gates remain outstanding. Reports-owned behavior remains separately controlled by the Reports record.
+  Canonical live-tab Insights production-readiness source of truth. Current implementation status: **UNVERIFIED** pending exact-revision deployed recertification. Runtime `31ca1b08` has bounded Campaign3 whole-surface read parity plus tenant-isolation evidence through `2026-09-28`; current runtime `4bada059`, provider write/failure behavior, natural scheduler, reusable-validator, and whole-tab certification gates remain outstanding. Reports-owned behavior remains separately controlled by the Reports record.
 - `GA4/REPORTS.md`
   Covers GA4 report creation, scheduling, downloads, report-library behavior, and current-state caveats. Current bounded status: **CLEAN-CERTIFIED / PRODUCTION_READY** at exact deployed runtime `a7271fc18058b6db78a11e88bf79b887abda5f44`. Campaign DeepDive is excluded.
 - `GA4/REPORTS_PRODUCTION_READINESS.md`

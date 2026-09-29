@@ -157,8 +157,8 @@ export default function PrivacyPolicy() {
             <h2 className={headingClassName}>11. Contact us</h2>
             <p className={paragraphClassName}>
               For privacy questions, rights requests, or deletion requests, email{" "}
-              <a href="mailto:privacy@mimosaas.app" className="font-medium text-primary hover:underline">
-                privacy@mimosaas.app
+              <a href="mailto:alerts@mimosaas.app" className="font-medium text-primary hover:underline">
+                alerts@mimosaas.app
               </a>.
             </p>
           </section>

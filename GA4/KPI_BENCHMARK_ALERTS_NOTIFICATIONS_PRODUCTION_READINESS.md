@@ -26,6 +26,30 @@ This file is the authoritative tracker for GA4 KPI/Benchmark alert and notificat
 - This file is the implementation and validation template for applying the same alert/notification lifecycle to other connected-platform sources, including Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, and Custom Integration.
 - Other connected-platform sources are not production-ready from GA4 evidence alone. Each source must copy the proven GA4 lifecycle and pass the same lifecycle matrix with source-specific evidence before its KPI/Benchmark alert and notification behavior can be marked production-ready.
 
+### Campaign3 Current-State Validation — September 29, 2026; Data Through September 28, 2026
+
+This is bounded current-state evidence for Campaign3. It does not replace the lifecycle acceptance criteria below or certify the whole Notifications section.
+
+Owner-authenticated, read-only production validation at deployed runtime `f1aeab8b49eb11bb1bd38c0fc3a9c2087e9c0707` confirmed that Campaign3 (`e5edd8dc-fe84-49ce-b564-67203de18aea`) used the `Europe/Amsterdam` campaign timezone and the completed GA4 reporting date `2026-09-28`. The persisted Campaign3 alert inputs were:
+
+| Definition | Current value | Target or benchmark | Alert threshold | Alerts enabled |
+| --- | ---: | ---: | ---: | --- |
+| KPI: ROAS | `33.49x` | `50.00x` | unset | No |
+| KPI: CPA | `EUR 16.26` | `EUR 9.00` | unset | No |
+| KPI: Revenue | `EUR 78,969.69` | `EUR 80,000.00` | unset | No |
+| KPI: Total Users | `2,256` | `2,000` | unset | No |
+| KPI: Total Sessions | `2,256` | `1,500` | unset | No |
+| Benchmark: Total Conversions | `145` | `160` | unset | No |
+| Benchmark: Revenue | `EUR 78,969.69` | `EUR 30,000.00` | unset | No |
+
+Campaign3 had zero persisted notification rows, zero owner-visible rows from `GET /api/notifications?readOnly=1`, and zero rendered notification cards. That result is correct for the recorded configuration: KPI targets and Benchmark reference values drive progress/status presentation, while a notification requires its separate alert control to be enabled with a valid alert threshold. None of the seven Campaign3 definitions met that notification configuration gate.
+
+The global Notifications page displayed three active alerts belonging to other owned campaigns, so the global bell red dot was valid and was not evidence of a Campaign3 alert. Campaign choices are derived from the returned active notification rows; Campaign3 was therefore correctly absent from the Campaign filter while it had no visible notification row.
+
+The production validation covered persisted Campaign3 state, the owner-visible read-only API response, global Notifications rendering, filter behavior, and the Campaign3 zero-row result without changing production application records. It did not enable an alert or exercise Campaign3 create, breach, resolve, dismiss, recreation, deep-link, email-provider, reconciliation-write, or natural scheduler paths. Those lifecycle paths remain governed by the acceptance criteria and revision-specific evidence elsewhere in this document.
+
+Follow-up commit `bf6426a729b71dbfda53b7e225c83fe370f1232e` changed only a stale regression assertion so it matches the existing ordered GA4 financial candidate list; it did not change runtime or UI behavior. The focused Notifications packet passed `8` files and `136` tests, TypeScript passed, and `git diff --check` passed. This local/test evidence does not expand the deployed `f1aeab8b` production boundary.
+
 ## New Source Template Reading Order
 
 For a new chat or a new source such as Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, or Custom Integration, use this file in this order:

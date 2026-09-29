@@ -342,7 +342,7 @@ describe("Latest Day Revenue regression guard", () => {
     expect(schedulerFile).toContain("dateField: mappingConfig.dateField,");
     expect(schedulerFile).toContain("...(sourceId ? { sourceId } : {}),");
     expect(schedulerFile).toContain('String(s.sourceType || "").toLowerCase() === "salesforce"');
-    expect(schedulerFile).toContain("reprocessSalesforce(campaignId, sfCfg, String(salesforceSource.id))");
+    expect(schedulerFile).toContain("reprocessSalesforceWithDetails(campaignId, sfCfg, String(salesforceSource.id))");
     expect(rateLimiterFile).toContain("isInternalAutoRefreshRequest(req)");
   });
 

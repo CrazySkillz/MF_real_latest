@@ -7,6 +7,8 @@ import {
   getAutoRefreshSchedulerConfig,
   getAutoRefreshSchedulerStatus,
   getNextAutoRefreshRunAt,
+  hasCompletedDaySalesforceEvidence,
+  isRetryableSalesforceRefreshFailure,
   runGoogleSheetsRevenueAutoRefreshOnce,
 } from "./auto-refresh-scheduler";
 import { storage } from "./storage";
@@ -52,6 +54,14 @@ describe("GA4 external value auto-refresh regression guard", () => {
       recomputeFailed: false,
       linkedInRefreshFailed: false,
     })).toBeNull();
+    expect(getAutoRefreshRunFailure({
+      providerJobsAttempted: 6,
+      providerJobsSucceeded: 5,
+      providerJobsRetained: 1,
+      campaignErrors: 0,
+      recomputeFailed: false,
+      linkedInRefreshFailed: false,
+    })).toBeNull();
     expect(getAutoRefreshSchedulerStatus()).toMatchObject({
       lastRunStatus: "idle",
       totalRuns: 0,
@@ -86,6 +96,47 @@ describe("GA4 external value auto-refresh regression guard", () => {
       linkedInLastRefreshAt: "2026-08-22T13:19:59.000Z",
       runStartedAt,
     })).toEqual(["1_provider_jobs_failed", "linkedin_refresh_incomplete"]);
+    expect(getCampaignAutoRefreshFailures({
+      providerJobsAttempted: 2,
+      providerJobsSucceeded: 1,
+      providerJobsRetained: 1,
+      campaignError: false,
+      recomputeFailed: false,
+      linkedInRequired: false,
+      linkedInLastRefreshAt: null,
+      runStartedAt,
+    })).toEqual([]);
+  });
+
+  it("retains only persisted post-cutoff Salesforce evidence for retryable provider failures", async () => {
+    const campaign = { id: "campaign-3", currency: "EUR", reportingTimeZone: "Europe/Amsterdam" };
+    const source = {
+      id: "salesforce-source",
+      currency: "EUR",
+      mappingConfig: JSON.stringify({
+        lastSyncedAt: "2026-09-29T09:28:30.090Z",
+        lastTotalRevenue: 75,
+        dailyMaterialization: "selected_date_field_v1",
+      }),
+    };
+    const now = new Date("2026-09-29T09:50:17.216Z");
+
+    expect(isRetryableSalesforceRefreshFailure({ success: false, status: 500 })).toBe(true);
+    expect(isRetryableSalesforceRefreshFailure({ success: false, status: 429 })).toBe(true);
+    expect(isRetryableSalesforceRefreshFailure({ success: false, status: 422 })).toBe(false);
+    const persistedBreakdown = async () => [{ sourceId: "salesforce-source", displayName: "Salesforce", sourceType: "salesforce", revenue: 75, currency: "EUR" }];
+    expect(await hasCompletedDaySalesforceEvidence(source, campaign, now, persistedBreakdown)).toBe(true);
+    expect(await hasCompletedDaySalesforceEvidence(source, campaign, now, async () => [])).toBe(false);
+    expect(await hasCompletedDaySalesforceEvidence(source, campaign, now, async () => [{ sourceId: "salesforce-source", displayName: "Salesforce", sourceType: "salesforce", revenue: 74, currency: "EUR" }])).toBe(false);
+    expect(await hasCompletedDaySalesforceEvidence({
+      ...source,
+      mappingConfig: JSON.stringify({
+        lastSyncedAt: "2026-09-28T21:59:59.998Z",
+        lastTotalRevenue: 75,
+        dailyMaterialization: "selected_date_field_v1",
+      }),
+    }, campaign, now, persistedBreakdown)).toBe(false);
+    expect(await hasCompletedDaySalesforceEvidence({ ...source, currency: "USD" }, campaign, now, persistedBreakdown)).toBe(false);
   });
 
   it("schedules external refresh by configured reporting timezone instead of server local time", () => {
@@ -132,7 +183,8 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(content).toContain('String(s.sourceType || "").toLowerCase() === "salesforce"');
     expect(content).toContain('String(s.sourceType || "").toLowerCase() === "shopify"');
     expect(content).toContain("reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id))");
-    expect(content).toContain("reprocessSalesforce(campaignId, sfCfg, String(salesforceSource.id))");
+    expect(content).toContain("reprocessSalesforceWithDetails(campaignId, sfCfg, String(salesforceSource.id))");
+    expect(content).toContain("hasCompletedDaySalesforceEvidence(salesforceSource, campaign, startedAtDate)");
     expect(content).toContain("reprocessShopify(campaignId, shopCfg, String(shopifySource.id))");
     expect(content).toContain("Skipping stale Salesforce revenue source");
   });

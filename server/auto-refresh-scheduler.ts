@@ -19,7 +19,7 @@ import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
 import { getInternalAutoRefreshToken } from "./internal-request-auth";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
-import { getLatestCompleteReportingDate, getNextDailyRunAt, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { getLatestCompleteReportingDate, getNextDailyRunAt, getReportingDateEndAt, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { aggregateCsvRevenueRows, normalizeFinancialSourceDateKey } from "./utils/csv";
 import { buildGoogleSheetsRevenueRowRanges, resolveGoogleSheetsRevenueGrid } from "./utils/google-sheets-revenue-ranges";
 import { findInvalidGoogleSheetsRevenueAmountRows } from "./utils/google-sheets-revenue-amount";
@@ -49,6 +49,7 @@ export type AutoRefreshRunSummary = {
   campaignsScanned: number;
   providerJobsAttempted: number;
   providerJobsSucceeded: number;
+  providerJobsRetained?: number;
   providerJobsSkipped: number;
   campaignErrors: number;
   recomputeFailed: boolean;
@@ -101,10 +102,10 @@ const toIsoOrNull = (value: Date | null) => value ? value.toISOString() : null;
 
 export function getAutoRefreshRunFailure(summary: Pick<
   AutoRefreshRunSummary,
-  "providerJobsAttempted" | "providerJobsSucceeded" | "campaignErrors" | "recomputeFailed" | "linkedInRefreshFailed"
+  "providerJobsAttempted" | "providerJobsSucceeded" | "providerJobsRetained" | "campaignErrors" | "recomputeFailed" | "linkedInRefreshFailed"
 >): string | null {
   const failures: string[] = [];
-  const providerFailures = Math.max(0, summary.providerJobsAttempted - summary.providerJobsSucceeded);
+  const providerFailures = Math.max(0, summary.providerJobsAttempted - summary.providerJobsSucceeded - Number(summary.providerJobsRetained || 0));
   if (providerFailures > 0) failures.push(`${providerFailures} provider job${providerFailures === 1 ? "" : "s"} failed`);
   if (summary.campaignErrors > 0) failures.push(`${summary.campaignErrors} campaign error${summary.campaignErrors === 1 ? "" : "s"}`);
   if (summary.recomputeFailed) failures.push("KPI/Benchmark recompute failed");
@@ -115,6 +116,7 @@ export function getAutoRefreshRunFailure(summary: Pick<
 export function getCampaignAutoRefreshFailures(input: {
   providerJobsAttempted: number;
   providerJobsSucceeded: number;
+  providerJobsRetained?: number;
   campaignError: boolean;
   recomputeFailed: boolean;
   linkedInRequired: boolean;
@@ -122,7 +124,7 @@ export function getCampaignAutoRefreshFailures(input: {
   runStartedAt: Date;
 }): string[] {
   const failures: string[] = [];
-  const providerFailures = Math.max(0, input.providerJobsAttempted - input.providerJobsSucceeded);
+  const providerFailures = Math.max(0, input.providerJobsAttempted - input.providerJobsSucceeded - Number(input.providerJobsRetained || 0));
   if (providerFailures > 0) failures.push(`${providerFailures}_provider_jobs_failed`);
   if (input.campaignError) failures.push("campaign_refresh_failed");
   if (input.recomputeFailed) failures.push("campaign_recompute_failed");
@@ -262,6 +264,10 @@ async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord, so
 }
 
 async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean> {
+  return (await reprocessSalesforceWithDetails(campaignId, mappingConfig, sourceId)).success;
+}
+
+async function reprocessSalesforceWithDetails(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<ReprocessResult> {
   const body: AnyRecord = {
     campaignField: mappingConfig.campaignField,
     selectedValues: mappingConfig.selectedValues,
@@ -280,14 +286,20 @@ async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord,
       ? { campaignMappings: mappingConfig.campaignMappings }
       : {}),
   };
-  const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/salesforce/save-mappings`, body);
+  let result: Awaited<ReturnType<typeof postJson>>;
+  try {
+    result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/salesforce/save-mappings`, body);
+  } catch (error: any) {
+    console.error(`[Auto Refresh] Salesforce reprocess failed for campaign ${campaignId}:`, error?.message || error);
+    return { success: false, error: String(error?.message || error || "Salesforce request failed") };
+  }
   if (!result.ok) {
     if (isStaleRevenueSourceReprocess(result)) {
       console.warn(`[Auto Refresh] Skipping stale Salesforce revenue source for campaign ${campaignId}`);
-      return false;
+      return { success: false, status: result.status, error: "stale_revenue_source" };
     }
     console.error(`[Auto Refresh] Salesforce reprocess failed for campaign ${campaignId}:`, result.status, result.json?.error || result.text);
-    return false;
+    return { success: false, status: result.status, error: String(result.json?.code || result.json?.error || result.text || "Salesforce request failed") };
   }
   const totalRevenue = Number(result.json?.totalRevenue || 0);
   const materializedRecordCount = Number(result.json?.materializedRecordCount || 0);
@@ -297,13 +309,48 @@ async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord,
   const isGa4RevenueSource = String(mappingConfig.platformContext || 'ga4').trim().toLowerCase() === 'ga4';
   if (isGa4RevenueSource && materializedRecordCount <= 0) {
     console.error(`[Auto Refresh] Salesforce reprocess produced no materialized revenue records for campaign ${campaignId}`);
-    return false;
+    return { success: false, status: 422, error: "missing_materialized_revenue" };
   }
   console.log(`[Auto Refresh] Salesforce reprocess complete for campaign ${campaignId}: source=${sourceId || "new"}, totalRevenue=${totalRevenue}, materializedRecordCount=${materializedRecordCount}, dateField=${String(mappingConfig.dateField || "CloseDate")}, dates=${materializedDates.join(",") || "none"}, unmatchedSelectedValues=${unmatchedSelectedValues.join(",") || "none"}`);
   if (unmatchedSelectedValues.length > 0) {
     console.log(`[Auto Refresh] Salesforce unmatched diagnostics for campaign ${campaignId}: ${JSON.stringify(unmatchedSelectedDiagnostics)}`);
   }
-  return true;
+  return { success: true, status: result.status };
+}
+
+export function isRetryableSalesforceRefreshFailure(result: ReprocessResult): boolean {
+  const status = Number(result.status || 0);
+  return !result.success && (status === 0 || status === 408 || status === 429 || status >= 500);
+}
+
+export async function hasCompletedDaySalesforceEvidence(
+  source: any,
+  campaign: any,
+  now: Date,
+  loadBreakdown = (campaignId: string, endDate: string) => storage.getRevenueBreakdownBySource(campaignId, "1900-01-01", endDate, "ga4"),
+): Promise<boolean> {
+  const mapping = safeJsonParse(source?.mappingConfig);
+  const reportingDate = getLatestCompleteReportingDate(campaign?.reportingTimeZone, now);
+  const completedDayEnd = getReportingDateEndAt(reportingDate, campaign?.reportingTimeZone);
+  const lastSyncedAt = new Date(mapping?.lastSyncedAt || "");
+  const currency = String(source?.currency || "").trim().toUpperCase();
+  const campaignCurrency = String(campaign?.currency || "USD").trim().toUpperCase();
+  const lastTotalRevenue = Number(mapping?.lastTotalRevenue);
+  if (!source?.id || !campaign?.id || !completedDayEnd
+    || Number.isNaN(lastSyncedAt.getTime())
+    || lastSyncedAt.getTime() <= completedDayEnd.getTime()
+    || mapping?.dailyMaterialization !== "selected_date_field_v1"
+    || !Number.isFinite(lastTotalRevenue)
+    || currency !== campaignCurrency) return false;
+  try {
+    const breakdown = await loadBreakdown(String(campaign.id), reportingDate);
+    const persistedSource = breakdown.find((item) => String(item.sourceId) === String(source.id));
+    return Boolean(persistedSource)
+      && String(persistedSource?.currency || currency).trim().toUpperCase() === campaignCurrency
+      && Math.abs(Number(persistedSource?.revenue) - lastTotalRevenue) < 0.005;
+  } catch {
+    return false;
+  }
 }
 
 async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean> {
@@ -1004,6 +1051,7 @@ export async function runDailyAutoRefreshOnce(
   let campaignsScanned = 0;
   let attempted = 0;
   let succeeded = 0;
+  let retained = 0;
   let skipped = 0;
   let campaignErrors = 0;
   let anyCampaignRecomputeFailed = false;
@@ -1043,6 +1091,7 @@ export async function runDailyAutoRefreshOnce(
       const campaignId = String(campaign.id);
       const campaignAttemptedAtStart = attempted;
       const campaignSucceededAtStart = succeeded;
+      const campaignRetainedAtStart = retained;
       let campaignError = false;
       let campaignRecomputeFailed = false;
       let deferCampaignDownstream = Boolean(opts.deferDownstream);
@@ -1078,7 +1127,12 @@ export async function runDailyAutoRefreshOnce(
             const sfCfg = sfCfgRaw ? { ...sfCfgRaw, platformContext: sfCfgRaw.platformContext || salesforceSource.platformContext || ctx, expectedSourceMappingConfig: String(salesforceSource.mappingConfig) } : null;
             if (sfCfg?.selectedValues?.length) {
               attempted++;
-              if (await reprocessSalesforce(campaignId, sfCfg, String(salesforceSource.id))) { succeeded++; anyUpdated = true; }
+              const salesforceResult = await reprocessSalesforceWithDetails(campaignId, sfCfg, String(salesforceSource.id));
+              if (salesforceResult.success) { succeeded++; anyUpdated = true; }
+              else if (isRetryableSalesforceRefreshFailure(salesforceResult) && await hasCompletedDaySalesforceEvidence(salesforceSource, campaign, startedAtDate)) {
+                retained++;
+                console.warn(`[Auto Refresh] Retaining completed-day Salesforce evidence for campaign ${campaignId} after a retryable provider failure`);
+              }
             } else {
               skipped++;
             }
@@ -1325,6 +1379,7 @@ export async function runDailyAutoRefreshOnce(
         const failures = getCampaignAutoRefreshFailures({
           providerJobsAttempted: attempted - campaignAttemptedAtStart,
           providerJobsSucceeded: succeeded - campaignSucceededAtStart,
+          providerJobsRetained: retained - campaignRetainedAtStart,
           campaignError,
           recomputeFailed: campaignRecomputeFailed,
           linkedInRequired: !opts.financialSourcesOnly && Boolean(linkedInConnection),
@@ -1366,12 +1421,14 @@ export async function runDailyAutoRefreshOnce(
     console.log(`   Campaigns scanned: ${campaigns.length}`);
     console.log(`   Provider jobs attempted: ${attempted}`);
     console.log(`   Provider jobs succeeded: ${succeeded}`);
+    console.log(`   Provider jobs retained from completed-day evidence: ${retained}`);
     console.log(`   Provider jobs skipped (no mapping/disabled): ${skipped}`);
     console.log(`   Run ID: ${refreshRunId}`);
     const summary: AutoRefreshRunSummary = {
       campaignsScanned,
       providerJobsAttempted: attempted,
       providerJobsSucceeded: succeeded,
+      providerJobsRetained: retained,
       providerJobsSkipped: skipped,
       campaignErrors,
       recomputeFailed: anyCampaignRecomputeFailed,

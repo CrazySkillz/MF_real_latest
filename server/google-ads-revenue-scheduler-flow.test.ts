@@ -19,7 +19,7 @@ describe("Google Ads revenue scheduler flow", () => {
     const scheduler = readSource("server", "auto-refresh-scheduler.ts");
 
     expect(scheduler).toContain("reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id))");
-    expect(scheduler).toContain("reprocessSalesforce(campaignId, sfCfg, String(salesforceSource.id))");
+    expect(scheduler).toContain("reprocessSalesforceWithDetails(campaignId, sfCfg, String(salesforceSource.id))");
     expect(scheduler).toContain("reprocessShopify(campaignId, shopCfg, String(shopifySource.id))");
     expect(scheduler).toContain("reprocessGoogleSheetsRevenue(campaignId, sheetRevenue, revCfg)");
     expect(scheduler).toContain("platformContext: hubCfgRaw.platformContext || hubspotSource.platformContext || ctx");

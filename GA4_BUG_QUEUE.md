@@ -451,17 +451,16 @@ Status: `Done`
   - Dashboard routing
   - Campaigns entry path
 
-### 13. Freestyle Chat is still in progress
+### 13. Freestyle Chat deferred to Version 2
 
 Status: `Done`
 
 - Resolution:
-  - no code change was made
-  - current behavior was reviewed and confirmed to be an in-progress product surface rather than a stabilization bug
+  - removed the Freestyle Chat tab and component from the Version 1 UI
+  - removed the campaign chat API endpoint so Version 1 cannot send campaign data to an AI provider
 - Current decision:
-  - keep the current implementation for now
-  - preserve the intended campaign-scoped chat architecture documented in `ARCHITECTURE_USER_JOURNEY.md`
-  - treat Freestyle Chat completion as later feature work, not part of the current GA4 stabilization pass
+  - exclude Freestyle Chat from Version 1
+  - defer the feature to Version 2 with explicit privacy controls and disclosure
 
 - Severity: `P3`
 - Area: `Campaign-level analytics / future GA4-adjacent work`
@@ -870,7 +869,7 @@ Status: `Done`
 - `P3`
   - 11. custom report subsection selection gap
   - 12. Dashboard refinement
-  - 13. Freestyle Chat still in progress
+  - 13. Freestyle Chat deferred to Version 2
   - 25. Google Sheets spend date column auto-detect
 
 ## Per-Fix Rule

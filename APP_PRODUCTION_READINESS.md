@@ -410,7 +410,7 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 | Global Dashboard | `UNVERIFIED` | Architecture says the Dashboard still needs refinement | Complete value inventory, scope, formulas, lifecycle, and downstream trace. |
 | Global Reports route/library | `UNVERIFIED` | GA4 Reports and Campaign DeepDive Reports have separate records | Certify the visible route as a composition of only its supported report families. |
 | Audiences | `NO_CERTIFICATE` | Visible application route; no readiness document found | Decide supported release scope, then certify or explicitly exclude. |
-| Freestyle Chat | `UNVERIFIED` | Architecture describes it as still in progress | Complete and certify, or hide and mark `EXCLUDED` for this release. |
+| Freestyle Chat | `EXCLUDED` | Hidden from the Version 1 UI and its server endpoint is removed | Reassess privacy, provider controls, and certification before enabling it in Version 2. |
 | Global scheduler health | `UNVERIFIED` | Several exact target jobs are certified; current evidence repeatedly excludes obsolete/test failures | Define active production job inventory and pass one global healthy-cycle gate without treating excluded jobs as success. |
 | App-wide destructive/visibility behavior | `RECONCILE` | `TARGETED_DESTRUCTIVE_VISIBILITY_AUDIT.md` contains broad targeted evidence | Convert completed evidence into an explicit exact-runtime certificate and preserve unresolved rows. |
 

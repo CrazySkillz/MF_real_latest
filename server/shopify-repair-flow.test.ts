@@ -57,7 +57,7 @@ describe('controlled Shopify repair', () => {
   it('keeps preview confirmation before the existing transactional replacement', () => {
     const routes = readFileSync(join(__dirname, 'routes-oauth.ts'), 'utf8');
     const start = routes.indexOf('app.post("/api/campaigns/:id/shopify/save-mappings"');
-    const end = routes.indexOf('app.post("/api/campaigns/:id/chat"', start);
+    const end = routes.indexOf('const server = createServer(app);', start);
     const route = routes.slice(start, end);
     expect(route.indexOf('shopifyRepairConfirmationMatches')).toBeGreaterThan(-1);
     expect(route.indexOf('shopifyRepairConfirmationMatches')).toBeLessThan(route.indexOf('await storage.replaceGa4ShopifyRevenueSourceWithRecords('));

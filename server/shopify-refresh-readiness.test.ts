@@ -122,7 +122,7 @@ describe("Shopify refresh lifecycle wiring", () => {
   it("audits before provider fetch, records rollback-safe failure, and does not relabel post-commit failures", () => {
     const routes = read("routes-oauth.ts");
     const start = routes.indexOf('app.post("/api/campaigns/:id/shopify/save-mappings"');
-    const end = routes.indexOf('app.post("/api/campaigns/:id/chat"', start);
+    const end = routes.indexOf('const server = createServer(app);', start);
     const saveRoute = routes.slice(start, end);
 
     expect(saveRoute.indexOf("markShopifyRevenueRefreshAttempt")).toBeLessThan(saveRoute.indexOf("shopifyFetchAllOrders"));

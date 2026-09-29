@@ -32,7 +32,6 @@ import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
 import { GoogleAdsConnectionFlow } from "@/components/GoogleAdsConnectionFlow";
 import { SimpleMetaAuth } from "@/components/SimpleMetaAuth";
-import { CampaignChat } from "@/components/CampaignChat";
 import { WebhookTester } from "@/components/WebhookTester";
 import { formatPct } from "@shared/metric-math";
 interface Campaign {
@@ -5561,10 +5560,9 @@ export default function CampaignDetail() {
           </div>
 
           {/* Tabs Navigation */}
-          <Tabs defaultValue={(() => { try { const h = window.location.hash.replace('#', ''); return ['overview','kpis','benchmarks','insights','webhooks'].includes(h) ? h : 'overview'; } catch { return 'overview'; } })()} className="space-y-6 fade-in">
-            <TabsList className="grid w-full grid-cols-3">
+          <Tabs defaultValue={(() => { try { const h = window.location.hash.replace('#', ''); return ['overview','kpis','benchmarks','webhooks'].includes(h) ? h : 'overview'; } catch { return 'overview'; } })()} className="space-y-6 fade-in">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="overview">Campaign Overview</TabsTrigger>
-              <TabsTrigger value="insights">Freestyle Chat</TabsTrigger>
               <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
             </TabsList>
 
@@ -6629,12 +6627,6 @@ export default function CampaignDetail() {
             <TabsContent value="benchmarks" className="space-y-6 fade-in">
               <CampaignBenchmarks campaign={campaign} />
             </TabsContent>
-
-            <TabsContent value="insights" className="space-y-6 fade-in">
-              <CampaignChat campaign={campaign} />
-            </TabsContent>
-
-
 
             <TabsContent value="webhooks" className="space-y-6 fade-in">
               {campaign && (

@@ -43,10 +43,13 @@ export default function PrivacyPolicy() {
           <section className={sectionClassName}>
             <h2 className={headingClassName}>3. Google user data</h2>
             <p className={paragraphClassName}>
-              When you connect a Google account, MimoSaaS requests read-only access needed for the feature you select.
-              For Google Analytics, this includes accessible Analytics accounts and properties and GA4 reporting data,
-              such as sessions, users, conversions, engagement, campaign attribution, and revenue metrics. For Google
-              Sheets, this may include spreadsheet and file metadata and the contents of sheets you select.
+              When you connect a Google account, MimoSaaS requests the access needed for the feature you select.
+              Google Analytics and Google Sheets use read-only access. For Google Analytics, this includes your Google
+              account email address, accessible Analytics accounts and properties, and GA4 reporting data such as
+              sessions, users, conversions, engagement, campaign attribution, and revenue metrics. For Google Sheets,
+              this may include spreadsheet and file metadata and the contents of sheets you select. Google Ads uses
+              Google&apos;s advertising API scope to list accessible accounts and retrieve reporting data for the accounts
+              and campaigns you select.
             </p>
             <p className={paragraphClassName}>
               We use Google user data to connect the source you requested, import and refresh campaign metrics, calculate
@@ -56,10 +59,8 @@ export default function PrivacyPolicy() {
             </p>
             <p className={paragraphClassName}>
               Google user data is visible only to authorised users of the relevant MimoSaaS workspace and to service
-              providers that process data for us as necessary to operate the service. If you explicitly use Campaign AI
-              Chat, relevant campaign totals and your message may be sent to our AI service provider to generate the
-              requested response. MimoSaaS does not sell Google user data, use it for advertising, or use it to train
-              general-purpose AI or machine-learning models.
+              providers that process data for us as necessary to operate the service. MimoSaaS does not sell Google user
+              data or use it for advertising.
             </p>
             <p className={paragraphClassName}>
               MimoSaaS&apos;s use and transfer of information received from Google APIs adheres to the{" "}
@@ -80,7 +81,7 @@ export default function PrivacyPolicy() {
               <li>Provide, maintain, secure, and troubleshoot MimoSaaS.</li>
               <li>Authenticate users and enforce workspace and campaign access.</li>
               <li>Import, organise, analyse, and present connected campaign data.</li>
-              <li>Generate dashboards, reports, notifications, and requested AI-assisted responses.</li>
+              <li>Generate dashboards, reports, and notifications.</li>
               <li>Send service messages, scheduled reports, and alerts configured by users.</li>
               <li>Prevent misuse, comply with legal obligations, and protect our users and service.</li>
             </ul>
@@ -91,7 +92,7 @@ export default function PrivacyPolicy() {
             <p className={paragraphClassName}>We may share information only in these circumstances:</p>
             <ul className="list-disc space-y-2 pl-5 text-sm leading-7 text-muted-foreground">
               <li>With authorised members of your organisation or workspace.</li>
-              <li>With vendors that provide authentication, hosting, database, email delivery, security, support, and AI processing services on our behalf.</li>
+              <li>With vendors that provide authentication, hosting, database, email delivery, security, and support services on our behalf.</li>
               <li>With connected platforms when you direct MimoSaaS to authenticate, retrieve, refresh, or send data.</li>
               <li>When required by law or necessary to protect rights, safety, and service integrity.</li>
               <li>As part of a merger, acquisition, financing, or sale, subject to appropriate confidentiality and notice requirements.</li>

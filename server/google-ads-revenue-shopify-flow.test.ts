@@ -18,7 +18,7 @@ describe("Google Ads revenue Shopify flow", () => {
     const route = sliceBetween(
       routes,
       'app.post("/api/campaigns/:id/shopify/save-mappings"',
-      'app.post("/api/campaigns/:id/chat"'
+      'const server = createServer(app);'
     );
 
     expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
@@ -32,7 +32,7 @@ describe("Google Ads revenue Shopify flow", () => {
     const route = sliceBetween(
       routes,
       'app.post("/api/campaigns/:id/shopify/save-mappings"',
-      'app.post("/api/campaigns/:id/chat"'
+      'const server = createServer(app);'
     );
 
     expect(route).toContain('const platformCtx = body.data.platformContext || "ga4";');
@@ -49,7 +49,7 @@ describe("Google Ads revenue Shopify flow", () => {
     const route = sliceBetween(
       routes,
       'app.post("/api/campaigns/:id/shopify/save-mappings"',
-      'app.post("/api/campaigns/:id/chat"'
+      'const server = createServer(app);'
     );
 
     expect(route).toContain('const activeGoogleAdsCampaignIds = platformCtx === "google_ads"');
@@ -65,7 +65,7 @@ describe("Google Ads revenue Shopify flow", () => {
     const route = sliceBetween(
       routes,
       'app.post("/api/campaigns/:id/shopify/save-mappings"',
-      'app.post("/api/campaigns/:id/chat"'
+      'const server = createServer(app);'
     );
 
     expect(route).toContain("storage.getRevenueSource(campaignId, requestedSourceId)");
@@ -80,7 +80,7 @@ describe("Google Ads revenue Shopify flow", () => {
     const route = sliceBetween(
       routes,
       'app.post("/api/campaigns/:id/shopify/save-mappings"',
-      'app.post("/api/campaigns/:id/chat"'
+      'const server = createServer(app);'
     );
 
     expect(route).toContain("// Dry-run preview: return computed totals without persisting anything.");

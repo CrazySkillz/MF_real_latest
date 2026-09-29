@@ -345,7 +345,6 @@ These are campaign-level, not platform-specific:
 
 - Campaign KPIs
 - Campaign Benchmarks
-- Freestyle Chat
 - Campaign Overview
 
 ### Campaign KPIs Tab
@@ -405,9 +404,12 @@ Production-readiness tracking for campaign-level KPI and Benchmark correctness l
 
 ### Freestyle Chat
 
-Freestyle Chat is campaign-level.
+Freestyle Chat is excluded from Version 1 and deferred to Version 2.
 
-It is intended for questions, prompts, and exploratory analysis about overall campaign performance.
+The Version 1 UI does not render the chat tab, and the Version 1 server does not expose its campaign chat endpoint.
+No campaign data is sent to an AI provider by this deferred feature.
+
+When reintroduced, Freestyle Chat should remain campaign-level and support questions, prompts, and exploratory analysis about overall campaign performance.
 
 It should continue to use campaign context such as:
 
@@ -419,11 +421,7 @@ It should continue to use campaign context such as:
 
 It should not be repurposed into a single-platform diagnostic tool unless explicitly designed that way.
 
-Current-state note:
-
-- Freestyle Chat is still in progress
-- the intended behavior is that users can enter prompts and run queries against their campaign data to get insights
-- future work should preserve this as a campaign-context analytics surface rather than a generic chatbot
+Version 2 work must include an explicit data-sharing disclosure and provider privacy controls before the feature is enabled.
 
 ### Campaign Overview And Campaign DeepDive
 

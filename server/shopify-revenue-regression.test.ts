@@ -33,7 +33,7 @@ describe("Shopify revenue regression guard", () => {
     const saveRoute = routeSection(
       routes,
       'app.post("/api/campaigns/:id/shopify/save-mappings"',
-      'app.post("/api/campaigns/:id/chat"',
+      'const server = createServer(app);',
     );
     const parity = saveRoute.indexOf("resolveShopifyGa4RevenueCurrency(matchedAmounts, (camp as any)?.currency)");
     const preview = saveRoute.indexOf('if (isDryRun) {');
@@ -51,7 +51,7 @@ describe("Shopify revenue regression guard", () => {
     const saveRoute = routeSection(
       routes,
       'app.post("/api/campaigns/:id/shopify/save-mappings"',
-      'app.post("/api/campaigns/:id/chat"',
+      'const server = createServer(app);',
     );
 
     expect(routes).toContain('order=created_at%20asc&created_at_min=');
@@ -70,7 +70,7 @@ describe("Shopify revenue regression guard", () => {
     const saveRoute = routeSection(
       routes,
       'app.post("/api/campaigns/:id/shopify/save-mappings"',
-      'app.post("/api/campaigns/:id/chat"',
+      'const server = createServer(app);',
     );
     const valuesRoute = routeSection(
       routes,
@@ -94,7 +94,7 @@ describe("Shopify revenue regression guard", () => {
     const saveRoute = routeSection(
       routes,
       'app.post("/api/campaigns/:id/shopify/save-mappings"',
-      'app.post("/api/campaigns/:id/chat"',
+      'const server = createServer(app);',
     );
 
     expect(saveRoute).toContain("if (platformCtx === 'ga4') {");
@@ -121,7 +121,7 @@ describe("Shopify revenue regression guard", () => {
     const saveRoute = routeSection(
       routes,
       'app.post("/api/campaigns/:id/shopify/save-mappings"',
-      'app.post("/api/campaigns/:id/chat"',
+      'const server = createServer(app);',
     );
     expect(saveRoute.indexOf("const existingSources = await storage.getRevenueSources(campaignId, platformCtx as any)")).toBeLessThan(
       saveRoute.indexOf("await storage.updateShopifyConnection")
@@ -240,7 +240,7 @@ describe("Shopify revenue regression guard", () => {
     const saveRoute = routeSection(
       routes,
       'app.post("/api/campaigns/:id/shopify/save-mappings"',
-      'app.post("/api/campaigns/:id/chat"',
+      'const server = createServer(app);',
     );
 
     expect(saveRoute).toContain("const orderBatch = await shopifyFetchAllOrders({");
@@ -273,7 +273,7 @@ describe("Shopify revenue regression guard", () => {
     const saveRoute = routeSection(
       routes,
       'app.post("/api/campaigns/:id/shopify/save-mappings"',
-      'app.post("/api/campaigns/:id/chat"',
+      'const server = createServer(app);',
     );
 
     for (const block of [autoRecalc, previewRoute, uniqueValuesRoute, saveRoute]) {
@@ -298,7 +298,7 @@ describe("Shopify revenue regression guard", () => {
     const saveRoute = routeSection(
       routes,
       'app.post("/api/campaigns/:id/shopify/save-mappings"',
-      'app.post("/api/campaigns/:id/chat"',
+      'const server = createServer(app);',
     );
 
     expect(routes).toContain('const journeys = await fetchShopifyOrderCustomerJourneyUtms({ shopDomain, accessToken, apiVersion, orderIds: ids });');
@@ -330,7 +330,7 @@ describe("Shopify revenue regression guard", () => {
     const saveRoute = routeSection(
       routes,
       'app.post("/api/campaigns/:id/shopify/save-mappings"',
-      'app.post("/api/campaigns/:id/chat"',
+      'const server = createServer(app);',
     );
 
     expect(saveRoute).toContain("const campaignId = req.params.id;");
@@ -368,7 +368,7 @@ describe("Shopify revenue regression guard", () => {
     const saveRoute = routeSection(
       routes,
       'app.post("/api/campaigns/:id/shopify/save-mappings"',
-      'app.post("/api/campaigns/:id/chat"',
+      'const server = createServer(app);',
     );
     const catchStart = saveRoute.indexOf('console.warn("[Shopify Save Mappings] Failed to materialize revenue records:", e);');
     expect(catchStart).toBeGreaterThan(-1);
@@ -462,7 +462,7 @@ describe("Shopify revenue regression guard", () => {
     const saveRoute = routeSection(
       routes,
       'app.post("/api/campaigns/:id/shopify/save-mappings"',
-      'app.post("/api/campaigns/:id/chat"',
+      'const server = createServer(app);',
     );
 
     expect(statusRoute).toContain('mode: orderWindow.limited ? \'recent\' : \'full\'');

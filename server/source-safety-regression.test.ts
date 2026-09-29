@@ -188,7 +188,7 @@ describe("source safety regression guards", () => {
   it("Shopify revenue save refuses stale or wrong source IDs", () => {
     const source = readRoutesSource();
     const routeStart = source.indexOf('app.post("/api/campaigns/:id/shopify/save-mappings"');
-    const routeEnd = source.indexOf('app.post("/api/campaigns/:id/chat"', routeStart);
+    const routeEnd = source.indexOf('const server = createServer(app);', routeStart);
     const route = source.slice(routeStart, routeEnd);
 
     expect(route).toContain('storage.getRevenueSource(campaignId, requestedSourceId)');

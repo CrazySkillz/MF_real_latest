@@ -1,6 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const pdfTextCalls = vi.hoisted((): string[] => []);
+const pdfTextPageCalls = vi.hoisted((): Array<{ text: string; page: number }> => []);
+const pdfPageHeight = vi.hoisted(() => ({ value: 297 }));
 const aggregateCampaignMetricsMock = vi.hoisted(() => vi.fn());
 const storageMock = vi.hoisted(() => ({
   getCampaign: vi.fn(),
@@ -22,13 +24,17 @@ vi.mock("./utils/mailgun-delivery", () => ({
 }));
 vi.mock("jspdf", () => ({
   jsPDF: class {
-    internal = { pageSize: { getWidth: () => 210, getHeight: () => 297 } };
+    page = 1;
+    internal = { pageSize: { getWidth: () => 210, getHeight: () => pdfPageHeight.value } };
     setFontSize() {}
     setFont() {}
-    addPage() {}
+    addPage() { this.page += 1; }
     splitTextToSize(value: any) { return [String(value)]; }
     text(value: any) {
-      (Array.isArray(value) ? value : [value]).forEach((item) => pdfTextCalls.push(String(item)));
+      (Array.isArray(value) ? value : [value]).forEach((item) => {
+        pdfTextCalls.push(String(item));
+        pdfTextPageCalls.push({ text: String(item), page: this.page });
+      });
     }
     output(kind: string) {
       return kind === "nodebuffer" ? Buffer.from("x".repeat(256)) : new ArrayBuffer(256);
@@ -75,8 +81,10 @@ const executiveReport = (selectedSections: string[]) => ({
 describe("scheduled Executive Summary PDF", () => {
   beforeEach(() => {
     pdfTextCalls.length = 0;
+    pdfTextPageCalls.length = 0;
+    pdfPageHeight.value = 297;
     vi.clearAllMocks();
-    storageMock.getCampaign.mockResolvedValue({ id: "campaign-1", name: "Campaign", currency: "EUR" });
+    storageMock.getCampaign.mockResolvedValue({ id: "campaign-1", name: "Campaign", currency: "EUR", reportingTimeZone: "Europe/Amsterdam" });
     storageMock.getCampaignKPIs.mockResolvedValue([
       { id: "kpi-revenue", name: "Revenue target", metric: "revenue", unit: "USD", currentValue: "999999", targetValue: "10000" },
       { id: "kpi-conversions", name: "Conversion target", metric: "conversions", unit: "count", currentValue: "0", targetValue: "8" },
@@ -91,6 +99,8 @@ describe("scheduled Executive Summary PDF", () => {
     storageMock.getPrimaryGA4Connection.mockResolvedValue(null);
     aggregateCampaignMetricsMock.mockResolvedValue({ detailedMetrics: { performanceSummary } });
   });
+
+  afterEach(() => vi.useRealTimers());
 
   it("deduplicates legacy keys and renders aggregate-backed exceptions in campaign currency", async () => {
     const buffer = await buildPdfAttachmentForReport({
@@ -118,6 +128,30 @@ describe("scheduled Executive Summary PDF", () => {
     expect(storageMock.getCampaignBenchmarks).toHaveBeenCalledWith("campaign-1");
     expect(storageMock.getPlatformKPIs).not.toHaveBeenCalled();
     expect(storageMock.getPlatformBenchmarks).not.toHaveBeenCalled();
+  });
+
+  it("keeps the recommendation block together and labels the campaign timezone", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-29T13:20:01.000Z"));
+    pdfPageHeight.value = 262;
+
+    await buildPdfAttachmentForReport({
+      report: executiveReport(["executive-summary:overview"]),
+      windowStart: "2026-07-01",
+      windowEnd: "2026-07-30",
+      campaignName: "Campaign",
+      isTest: true,
+    });
+
+    const heading = pdfTextPageCalls.find((call) => call.text === "Recommended Actions");
+    expect(heading).toBeDefined();
+    [
+      "- Investigate Revenue",
+      "- Current evidence: 100 users, 200 sessions, 10 conversions, \u20ac5,000.00 total connected revenue, 5.00% conversion rate.",
+      "- Target check: Conversions Benchmark is on track; Conversions KPI is on track; Revenue Benchmark needs attention; Revenue KPI is below target.",
+      "- Next action: investigate Revenue, then inspect the relevant measurement and reporting inputs.",
+    ].forEach((text) => expect(pdfTextPageCalls.find((call) => call.text === text)?.page).toBe(heading?.page));
+    expect(pdfTextCalls).toContain("Generated: 9/29/2026, 3:20:01 PM (Europe/Amsterdam)");
   });
 
   it("rejects mixed preset sections before loading report data", async () => {

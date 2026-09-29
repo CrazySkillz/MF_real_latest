@@ -1507,6 +1507,18 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       y += opts.size && opts.size >= 14 ? 8 : 6;
     });
   };
+  const addTextBlock = (items: Array<{ value: string; opts?: { size?: number; bold?: boolean; indent?: number } }>) => {
+    const blockHeight = items.reduce((height, item) => {
+      const indent = item.opts?.indent || 0;
+      const lines = doc.splitTextToSize(String(item.value || ""), pageWidth - margin * 2 - indent);
+      return height + lines.length * (item.opts?.size && item.opts.size >= 14 ? 8 : 6);
+    }, 0);
+    if (blockHeight <= pageHeight - margin * 2 && y + blockHeight > pageHeight - margin) {
+      doc.addPage();
+      y = margin;
+    }
+    items.forEach((item) => addText(item.value, item.opts));
+  };
 
   const metric = (key: string) => performanceSummary?.totals?.[key];
   const metricAvailable = (key: string) => metric(key)?.available === true;
@@ -2365,7 +2377,6 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         addText("Data Accuracy Notice", { bold: true, indent: 4 });
         addText("Note: No connected paid-media source is available, so paid-media recommendations are unavailable. Available web analytics and outcome metrics can still feed website recommendations and risk inputs.", { indent: 8 });
       }
-      addText("Recommended Actions", { bold: true, indent: 4 });
       if (paidSources.length === 0 && hasWebsiteEvidence && hasWebsiteOutcomeTargetException) {
         const formatMetricLabelList = (labels: string[]) => labels.length <= 1 ? labels[0] : labels.length === 2 ? `${labels[0]} and ${labels[1]}` : `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
         const exceptionLabels = websiteOutcomeExceptionMetricKeys.map((key) => websiteOutcomeMetricLabels[key]);
@@ -2380,12 +2391,18 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
           ...executiveKpiRows.map((row: any) => ({ row, key: reportRecordMetric(row) })).filter(({ key }: any) => websiteOutcomeMetricLabels[key]).map(({ row, key }: any) => `${websiteOutcomeMetricLabels[key]} KPI is ${executiveKpiBand(row) === "below" ? "below target" : "on track"}`),
           ...executiveBenchmarkRows.map((row: any) => ({ row, key: reportRecordMetric(row) })).filter(({ key }: any) => websiteOutcomeMetricLabels[key]).map(({ row, key }: any) => `${websiteOutcomeMetricLabels[key]} Benchmark ${benchmarkThresholdResult(row).status === "behind" ? "is behind benchmark" : benchmarkThresholdResult(row).status === "needs_attention" ? "needs attention" : "is on track"}`),
         ].sort((left, right) => left.localeCompare(right));
-        addText(`- Investigate ${formatMetricLabelList(exceptionLabels)}`, { bold: true, indent: 8 });
-        addText(`- Current evidence: ${evidence.join(", ")}.`, { indent: 12 });
-        addText(`- Target check: ${Array.from(new Set(targetComparisons)).join("; ")}.`, { indent: 12 });
-        addText(`- Next action: investigate ${formatMetricLabelList(exceptionLabels)}, then inspect the relevant measurement and reporting inputs.`, { indent: 12 });
+        addTextBlock([
+          { value: "Recommended Actions", opts: { bold: true, indent: 4 } },
+          { value: `- Investigate ${formatMetricLabelList(exceptionLabels)}`, opts: { bold: true, indent: 8 } },
+          { value: `- Current evidence: ${evidence.join(", ")}.`, opts: { indent: 12 } },
+          { value: `- Target check: ${Array.from(new Set(targetComparisons)).join("; ")}.`, opts: { indent: 12 } },
+          { value: `- Next action: investigate ${formatMetricLabelList(exceptionLabels)}, then inspect the relevant measurement and reporting inputs.`, opts: { indent: 12 } },
+        ]);
       } else {
-        addText("- No Evidence-Backed Actions Available: Available campaign data and configured targets do not support a reliable recommendation yet.", { indent: 8 });
+        addTextBlock([
+          { value: "Recommended Actions", opts: { bold: true, indent: 4 } },
+          { value: "- No Evidence-Backed Actions Available: Available campaign data and configured targets do not support a reliable recommendation yet.", opts: { indent: 8 } },
+        ]);
       }
     } else if (section === "metrics") {
       addMetricRows(selectedMetrics, 8, validExecutiveCurrency || "USD");
@@ -2408,7 +2425,11 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       : isCampaignDeepDiveCustomReportComposition
         ? customReportWindowLabel
         : `Window: ${windowStart} to ${windowEnd}`);
-  addText(`Generated: ${new Date().toLocaleString()}`);
+  const generatedAt = new Date();
+  const configuredTimeZone = String((campaign as any)?.reportingTimeZone || "UTC").trim() || "UTC";
+  const zonedGeneratedAt = DateTime.fromJSDate(generatedAt, { zone: configuredTimeZone });
+  const displayGeneratedAt = zonedGeneratedAt.isValid ? zonedGeneratedAt : DateTime.fromJSDate(generatedAt, { zone: "UTC" });
+  addText(`Generated: ${displayGeneratedAt.setLocale("en-US").toFormat("M/d/yyyy, h:mm:ss a")} (${displayGeneratedAt.zoneName || "UTC"})`);
   y += 4;
   addText("Included sections", { size: 14, bold: true });
   if (selectedSections.length === 0) {

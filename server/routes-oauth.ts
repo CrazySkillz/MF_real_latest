@@ -15374,7 +15374,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Keep the other complete GA4 candidates when to-date provider totals are unavailable.
             }
           }
-          if (hasImportedRevenueSource && !isGA4FinancialTotalsCandidate(toDateFinancialCandidate)) {
+          if (hasImportedRevenueSource
+            && !isGA4FinancialTotalsCandidate(toDateFinancialCandidate)
+            && !isGA4FinancialTotalsCandidate(overviewFinancialCandidate)) {
             financialGa4Totals = { ...financialGa4Totals, available: false };
             financialWebAnalytics.available = false;
             financialWebAnalytics.revenue = 0;

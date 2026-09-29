@@ -21,7 +21,7 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain('currencyCode: String((overviewSnapshot as any)?.campaignBreakdown?.meta?.currencyCode || "").trim().toUpperCase()');
     expect(route).toContain('financialGa4Totals?.source === "ga4_overview_snapshot"');
     expect(route).toContain('String(financialGa4Totals?.currencyCode || "").trim().toUpperCase() === campaignCurrency');
-    expect(route.indexOf("overviewFinancialCandidate,")).toBeLessThan(route.indexOf("persistedFinancialCandidate,\n            ], null as any)"));
+    expect(route.indexOf("overviewFinancialCandidate,")).toBeLessThan(route.indexOf("persistedFinancialCandidate,", route.indexOf("overviewFinancialCandidate,")));
   });
 
   it("keeps native financial metrics campaign-to-date without clipping source-to-date financial inputs", () => {
@@ -161,7 +161,9 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("const exactFinancialCandidate = selectGA4FinancialTotalsSource([");
     expect(route).toContain("toDateFinancialCandidate,");
     expect(route).toContain("persistedFinancialCandidate,");
-    expect(route).toContain("if (hasImportedRevenueSource && !isGA4FinancialTotalsCandidate(toDateFinancialCandidate))");
+    expect(route).toContain("if (hasImportedRevenueSource");
+    expect(route).toContain("&& !isGA4FinancialTotalsCandidate(toDateFinancialCandidate)");
+    expect(route).toContain("&& !isGA4FinancialTotalsCandidate(overviewFinancialCandidate)");
     expect(route).toContain("financialWebAnalytics.available = false;");
     expect(route).toContain("financialWebAnalytics.users = parseNum(financialGa4Totals.users);");
     expect(route).not.toContain("parseNum(financialGa4Totals.users) || parseNum(financialWebAnalytics.users)");

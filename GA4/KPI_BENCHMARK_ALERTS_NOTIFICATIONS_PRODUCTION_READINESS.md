@@ -46,9 +46,21 @@ Campaign3 had zero persisted notification rows, zero owner-visible rows from `GE
 
 The global Notifications page displayed three active alerts belonging to other owned campaigns, so the global bell red dot was valid and was not evidence of a Campaign3 alert. Campaign choices are derived from the returned active notification rows; Campaign3 was therefore correctly absent from the Campaign filter while it had no visible notification row.
 
-The production validation covered persisted Campaign3 state, the owner-visible read-only API response, global Notifications rendering, filter behavior, and the Campaign3 zero-row result without changing production application records. It did not enable an alert or exercise Campaign3 create, breach, resolve, dismiss, recreation, deep-link, email-provider, reconciliation-write, or natural scheduler paths. Those lifecycle paths remain governed by the acceptance criteria and revision-specific evidence elsewhere in this document.
+The initial production validation covered persisted Campaign3 state, the owner-visible read-only API response, global Notifications rendering, filter behavior, and the Campaign3 zero-row result without changing production application records.
+
+User-confirmed UI lifecycle follow-up on September 29, 2026 completed the Campaign3 Benchmark creation, deep-link, and resolution checks. The existing Total Conversions Benchmark remained at current value `145` and reference value `160`; alerts were temporarily enabled with condition `below`, threshold `146`, and email notifications off. One Campaign3 notification appeared, its `View Benchmark` action opened the correct Benchmark, and disabling the alert removed the notification from the active UI. The Benchmark alert configuration was restored to disabled. The exact deployed runtime SHA was not independently captured for this manual follow-up.
+
+Resolution intentionally preserves the notification row as hidden audit history by marking it resolved. The row no longer appears in the bell or Notifications page, cannot act as an active alert, and does not affect KPI, Benchmark, Revenue, Spend, or other analytical values. Campaign3 KPI alert lifecycle, notification dismissal/recreation, email-provider behavior, and natural scheduler behavior remain unexercised in this follow-up.
 
 Follow-up commit `bf6426a729b71dbfda53b7e225c83fe370f1232e` changed only a stale regression assertion so it matches the existing ordered GA4 financial candidate list; it did not change runtime or UI behavior. The focused Notifications packet passed `8` files and `136` tests, TypeScript passed, and `git diff --check` passed. This local/test evidence does not expand the deployed `f1aeab8b` production boundary.
+
+### Version 1 Notification Retention Decision
+
+Version 1 keeps resolved and legacy-dismissed notification rows as hidden records. Retained legacy API delete/clear routes, alert resolution, KPI/Benchmark deletion, and campaign-scoped visibility cleanup mark matching rows resolved or dismissed instead of hard-deleting them. The current UI exposes no delete, clear, dismiss, or read-state controls. `GET /api/notifications` excludes hidden rows before returning the active list, so they do not appear in the bell or Notifications page and do not contribute to KPI, Benchmark, Revenue, Spend, or other analytical calculations.
+
+The current implementation has no general age-based retention or archive job for resolved notification rows. The exact Shopify refresh-failure migration is a narrowly scoped cleanup and is not a general notification-retention mechanism. Long-term notification-table growth is accepted as bounded version 1 operational debt; the small Campaign3 validation row does not create a material current storage issue, but this statement is not long-term scale proof.
+
+Version 2 should define a retention period, preserve any alert/email episode state required for send idempotency outside disposable notification-card history, and delete or archive expired resolved/dismissed rows in bounded batches with ownership, active-alert, and email-audit safety checks. The retention duration and archive requirement remain product decisions; version 1 runtime behavior is unchanged.
 
 ## New Source Template Reading Order
 
@@ -126,7 +138,10 @@ GA4 KPI and Benchmark alerts and notifications are production-ready only when al
 - `Email addresses *` and `Alert Frequency` are hidden unless `Send email notifications` is selected
 - alert frequency helper text says it controls how often reminder emails are sent while the KPI or Benchmark is still breaching
 - scheduler/source-refresh reconciliation does not rely on opening the bell, loading Notifications, or manually refreshing the page
-- alert email reminders are checked by a scheduler cadence that can honor the saved frequency windows: immediate means at most once per hour while still breaching, daily means at most once per day, and weekly means at most once per week
+- alert email reminders are checked by a dedicated scheduler every 15 minutes by default, configurable from one minute through 24 hours; this scheduler is separate from the GA4 daily refresh scheduler
+- Immediate means once per continuous breach episode and becomes eligible again only after the breach clears; background Daily and Weekly reminders are throttled for 24 hours and seven days after a successful send while the rule remains breached
+- GA4 KPI Daily and Weekly selections also use the saved local hour and, for Weekly, local day
+- the current GA4 Benchmark form has no day/hour selector; a breached Benchmark create/update runs an email eligibility check immediately for any selected frequency, while later background Daily/Weekly reminders use the 24-hour/seven-day throttle and atomic frequency-window dedupe
 - alert email send attempts are atomically deduplicated per KPI/Benchmark and frequency window so overlapping scheduler runs or multiple server instances cannot send duplicate executive emails for the same due window
 - alert email audit state distinguishes at least `pending`, `sending`, `accepted`, `delivered`, `failed`, `skipped`, and `retry_scheduled`; provider/API acceptance must not be labeled as inbox delivery
 - provider delivery confirmation is required before the product or validation notes say an executive alert email was delivered; when delivery events are unavailable, the status must remain `accepted` or `pending_delivery`
@@ -761,7 +776,7 @@ Fix scope:
 
 - add or extend a scheduler so alert email reminder checks run often enough to honor all saved frequencies
 - default to a small interval such as 15 minutes, while dedupe still enforces:
-  - immediate: at most once per hour while still breaching
+  - immediate: once per continuous breach episode
   - daily: at most once per day while still breaching
   - weekly: at most once per week while still breaching
 - start the scheduler from the existing server startup scheduler block
@@ -918,7 +933,7 @@ Required deployed validation:
 - confirm provider acceptance is recorded
 - confirm delivery status is recorded as delivered only when provider events or inbox receipt prove delivery
 - confirm no duplicate email is sent when the scheduler runs twice in the same frequency window
-- confirm a still-breached immediate-frequency alert can send again only after the hourly window is due
+- confirm a still-breached immediate-frequency alert does not send again, then confirm a cleared and newly breached episode can send once
 - confirm a cleared breach suppresses future retry/reminder sends
 - repeat the same evidence path for a GA4 Benchmark
 

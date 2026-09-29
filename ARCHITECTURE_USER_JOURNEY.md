@@ -119,6 +119,8 @@ Important meaning:
 - if a breached KPI or Benchmark still exists, the next valid alert check may create a new active alert row; this must be scoped to the exact campaign and item that breached
 - campaign deletion should hide/remove only notifications for that deleted campaign and must not remove notifications for other campaigns
 - the top-bar bell opens `/notifications`; KPI and Benchmark alert links on that page should deep-link to the correct campaign, analytics tab, and exact item card
+- version 1 retains resolved and legacy-dismissed notification rows as hidden records; active-list APIs exclude them, and they have no analytical effect
+- version 1 has no general age-based notification-retention job; retention/archive and any required separation of email breach-episode state are deferred to version 2
 
 ### Current-State Note: Dashboard
 
@@ -371,6 +373,7 @@ Campaign-level KPI current values must use the same connected-platform inputs sh
 Connected-platform metrics are the standard upstream source of truth for campaign-level KPI current values. If GA4 Total Revenue, Total Conversions, Total Users, Total Sessions, or another connected-platform metric updates, the corresponding campaign-level KPI current value must update from that connected-platform metric rather than requiring a separate source selection.
 Campaign-level KPI create/edit forms must follow the same unit-display conventions as platform KPI forms. Percent targets should display as clean percentages without forced trailing decimals, count targets as whole numbers, currency targets with currency formatting, and ROAS/ratio targets with ratio-style display.
 Campaign-level and platform-level KPI alert behavior must be consistent: creating or updating a KPI with enabled alerts must immediately run the in-app alert check and refresh the Notifications query so breached thresholds appear in the Notifications bell without waiting for a later scheduler run or manual page refresh.
+Alert email checks use a separate scheduler that runs every 15 minutes by default. Immediate sends once per continuous breach episode. Background Daily and Weekly reminders are throttled for 24 hours and seven days after a successful send. GA4 KPI Daily/Weekly settings additionally use the selected local hour/day. The current GA4 Benchmark form exposes frequency but no day/hour selector; breached Benchmark create/update runs email eligibility immediately for any selected frequency, while later background reminders use the throttle and atomic frequency-window dedupe.
 
 ### Campaign Benchmarks Tab
 

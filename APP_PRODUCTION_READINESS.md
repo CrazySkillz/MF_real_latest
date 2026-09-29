@@ -424,6 +424,10 @@ commits are not a new application runtime. GA4 KPI/Benchmark and connected-sourc
 certifications remain read-only dependencies; the current UI has no read-state
 or dismiss controls. The certificate's exclusions remain controlling.
 
+September 29, 2026 Campaign3 follow-up: the initial read-only state through `2026-09-28` correctly returned zero Campaign3 alerts because all five KPI and two Benchmark rules were disabled with unset thresholds. The user then enabled the existing Total Conversions Benchmark at current `145`, condition `below`, threshold `146`, with email off; exactly one active alert appeared, `View Benchmark` opened the correct Benchmark, and disabling the rule removed the active notification and restored the alert configuration. This completes the Campaign3 Benchmark create/breach, deep-link, and resolution UI checks. The exact deployed SHA for this manual follow-up was not independently captured, so it does not replace the exact-runtime certificate or certify the remaining KPI, dismissal/recreation, email-provider, or scheduler paths.
+
+Version 1 intentionally retains resolved/dismissed rows as hidden history and has no general age-based purge. Active-list APIs exclude those rows and they do not affect analytical values. The resulting long-term table-growth concern is deferred to version 2, which must define retention/archive and preserve email breach-episode idempotency independently before deleting expired history. The current small validation footprint is not a material storage issue and is not long-term scale proof.
+
 | Order | Notifications review | Work state | Certification status | Required validation boundary |
 | ---: | --- | --- | --- | --- |
 | - | Combined Notifications surface | `COMPLETE` | `CERTIFIED` | All four reviews passed together for the exact GA4-first scope at application runtime `e6a9d7cb17e9389bfa12c80f9f9563da44f33bb1`; required in-scope gates remaining: 0. No whole-app, unconfigured-platform, or global scheduler-health claim. |

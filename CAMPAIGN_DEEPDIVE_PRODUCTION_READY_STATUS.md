@@ -19,6 +19,8 @@ It summarizes the current implementation status across:
 
 Use this file first for the Campaign DeepDive readiness picture, then follow the linked subsection trackers for detail.
 
+Notifications is not a Campaign DeepDive subsection or launcher. It is a global, owner-scoped main-navigation surface that aggregates active alerts across campaigns. Campaign-scoped KPI and Benchmark alerts can appear there and deep-link back to their campaign analytics cards, but their readiness, lifecycle, email, and retention contracts are controlled by `NOTIFICATIONS_CERTIFICATION_2026-09-21.md`, `APP_PRODUCTION_READINESS.md`, and `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md` rather than by a Campaign DeepDive subsection certificate.
+
 ## Current Conclusion
 
 The Campaign DeepDive architecture is mostly correct.

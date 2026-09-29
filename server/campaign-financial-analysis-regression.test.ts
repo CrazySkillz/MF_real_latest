@@ -130,7 +130,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
 
     expect(buildFinancialBudgetAction({ ...base, pacingStatus: "behind" })).toEqual(expect.objectContaining({
       title: "Budget is pacing below target",
-      body: expect.stringContaining("92.2% below target after 21 elapsed budget-period days"),
+      body: "Daily spend is 92.2% below target. 1.3% of the configured budget has been used. Review delivery before changing allocation.",
       tone: "warning",
     }));
     expect(buildFinancialBudgetAction({ ...base, pacingStatus: "on-track" })).toEqual(expect.objectContaining({
@@ -526,8 +526,8 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain('replace(/[^\\d.]/g, "")');
     expect(page).toContain("setPacingBudgetInput(formatBudgetInputValue(campaign.budget, true));");
     expect(overview).toContain("Requires budget-period Spend and budget period start");
-    expect(overview).toContain('Based on {campaignElapsedDays} elapsed budget-period {campaignElapsedDays === 1 ? "day" : "days"}');
-    expect(page.split("budgetPeriodSpendMetric.available && campaignElapsedDays > 0 ? (")).toHaveLength(3);
+    expect(page).not.toContain("elapsed budget-period");
+    expect(page.split("(!budgetPeriodSpendMetric.available || campaignElapsedDays === 0) && (")).toHaveLength(3);
     expect(overview).toContain("Requires campaign budget and budget period dates");
     expect(overview).toContain('`Based on ${campaignTotalDays} total budget-period ${campaignTotalDays === 1 ? "day" : "days"}`');
     expect(page.split("Based on ${campaignTotalDays} total budget-period")).toHaveLength(3);

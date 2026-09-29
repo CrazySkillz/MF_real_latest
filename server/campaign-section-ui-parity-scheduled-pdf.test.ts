@@ -604,8 +604,8 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfTextCalls).toContain("- ROAS: 26.95x");
     expect(pdfTextCalls).toContain("- Conversion rate: 12.8%");
     expect(pdfTextCalls).toContain("- Daily Burn Rate: $47.36");
-    expect(pdfTextCalls).toContain("- Daily Burn Rate Basis: Based on 57 elapsed budget-period days");
     expect(pdfTextCalls).toContain("- Pacing Status: 56.9% Under");
+    expect(pdfTextCalls.some((text) => text.includes("elapsed budget-period"))).toBe(false);
     expect(pdfTextCalls).toContain("- Imported Revenue: $16,799.99");
     expect(pdfTextCalls).toContain("- Imported Spend: $2,699.75");
     expect(pdfTextCalls).not.toContain("ROI & ROAS");
@@ -643,9 +643,8 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
       campaignName: "Campaign",
     });
 
-    expect(pdfTextCalls).toContain("- Daily Burn Rate Basis: Based on 1 elapsed budget-period day");
     expect(pdfTextCalls).toContain("- Pacing Status: On Track");
-    expect(pdfTextCalls).not.toContain("- Daily Burn Rate Basis: Based on 2 elapsed budget-period days");
+    expect(pdfTextCalls.some((text) => text.includes("elapsed budget-period"))).toBe(false);
   });
 
   it("keeps available zero-valued GA4, revenue, and spend provenance visible", async () => {

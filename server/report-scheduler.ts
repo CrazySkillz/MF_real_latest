@@ -1947,7 +1947,6 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       addText(`- Budget Utilization: ${budgetUtilization === null ? "Unavailable" : `${budgetUtilization.toFixed(1)}%`}`, { indent: 12 });
       addText("Budget Pacing & Burn Rate", { bold: true, indent: 8 });
       addText(`- Daily Burn Rate: ${money(dailyBurnRate)}`, { indent: 12 });
-      addText(`- Daily Burn Rate Basis: ${budgetPeriodSpend !== null && elapsedDays > 0 ? `Based on ${elapsedDays} elapsed budget-period ${elapsedDays === 1 ? "day" : "days"}` : budgetPeriodSpendMetric.unavailableReasons[0] || "Requires budget-period Spend and budget period start"}`, { indent: 12 });
       addText(`- Target Daily Spend: ${money(targetDailySpend)}`, { indent: 12 });
       addText(`- Pacing Status: ${pacingStatus}`, { indent: 12 });
       addText(`- Budget Period Start: ${pacingDate(pacingStartDate)}`, { indent: 12 });

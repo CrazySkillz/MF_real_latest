@@ -988,11 +988,7 @@ export default function FinancialAnalysis() {
                             <div className="flex items-start justify-between gap-4">
                               <div>
                                 <p className="text-sm font-medium">Daily Burn Rate</p>
-                                {budgetPeriodSpendMetric.available && campaignElapsedDays > 0 ? (
-                                  <p className="text-xs text-muted-foreground">
-                                    Based on {campaignElapsedDays} elapsed budget-period {campaignElapsedDays === 1 ? "day" : "days"}
-                                  </p>
-                                ) : (
+                                {(!budgetPeriodSpendMetric.available || campaignElapsedDays === 0) && (
                                   <p className="text-xs text-muted-foreground">Requires budget-period Spend and budget period start</p>
                                 )}
                               </div>
@@ -1546,11 +1542,7 @@ export default function FinancialAnalysis() {
                             <div className="flex items-start justify-between gap-4">
                               <div>
                                 <span className="text-sm font-medium">Daily Burn Rate</span>
-                                {budgetPeriodSpendMetric.available && campaignElapsedDays > 0 ? (
-                                  <p className="text-xs text-muted-foreground">
-                                    Based on {campaignElapsedDays} elapsed budget-period {campaignElapsedDays === 1 ? "day" : "days"}
-                                  </p>
-                                ) : (
+                                {(!budgetPeriodSpendMetric.available || campaignElapsedDays === 0) && (
                                   <p className="text-xs text-muted-foreground">Requires budget-period Spend and budget period start</p>
                                 )}
                               </div>

@@ -1412,7 +1412,6 @@ export default function Reports() {
         addRow("Remaining", campaignBudget > 0 && remainingBudget !== null ? formatCustomReportMetricValue("spend", remainingBudget) : "Unavailable");
         addText("Budget Pacing & Burn Rate", { bold: true, indent: 4 });
         addRow("Daily Burn Rate", dailyBurnRate === null ? "Unavailable" : formatCustomReportMetricValue("spend", dailyBurnRate));
-        addRow("Daily Burn Rate Basis", budgetPeriodSpend !== null && campaignElapsedDays > 0 ? `Based on ${campaignElapsedDays} elapsed budget-period ${campaignElapsedDays === 1 ? "day" : "days"}` : budgetPeriodSpendMetric.unavailableReasons[0] || "Requires budget-period Spend and budget period start");
         addRow("Target Daily Spend", targetDailySpend === null ? "Unavailable" : formatCustomReportMetricValue("spend", targetDailySpend));
         addRow("Pacing Status", pacingStatus);
         addRow("Campaign Budget", campaignBudget > 0 ? formatCustomReportMetricValue("spend", campaignBudget) : "Unavailable");

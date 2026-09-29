@@ -835,7 +835,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("Remaining");
     expect(reports).toContain("Budget Pacing & Burn Rate");
     expect(reports).toContain("Daily Burn Rate");
-    expect(reports).toContain("Daily Burn Rate Basis");
+    expect(reports).not.toContain("Daily Burn Rate Basis");
     expect(reports).toContain("Target Daily Spend");
     expect(reports).toContain("Campaign Budget");
     expect(reports).toContain("Budget Period Start");

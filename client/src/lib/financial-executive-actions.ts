@@ -192,20 +192,20 @@ export function buildFinancialBudgetAction(input: {
   if (input.pacingStatus === "behind") {
     return {
       title: "Budget is pacing below target",
-      body: `Daily spend is ${input.pacingVarianceText} below target after ${input.elapsedDays} elapsed budget-period ${input.elapsedDays === 1 ? "day" : "days"}. ${input.budgetUtilizationText} of the configured budget has been used. Review delivery before changing allocation.`,
+      body: `Daily spend is ${input.pacingVarianceText} below target. ${input.budgetUtilizationText} of the configured budget has been used. Review delivery before changing allocation.`,
       tone: "warning",
     };
   }
   if (input.pacingStatus === "ahead") {
     return {
       title: "Budget is pacing above target",
-      body: `Daily spend is ${input.pacingVarianceText} above target after ${input.elapsedDays} elapsed budget-period ${input.elapsedDays === 1 ? "day" : "days"}. Review remaining budget and commitments before adding spend.`,
+      body: `Daily spend is ${input.pacingVarianceText} above target. Review remaining budget and commitments before adding spend.`,
       tone: "warning",
     };
   }
   return {
     title: "Budget pacing is on track",
-    body: `Daily spend is within the configured pacing range after ${input.elapsedDays} elapsed budget-period ${input.elapsedDays === 1 ? "day" : "days"}. ${input.remainingBudgetText} remains available.`,
+    body: `Daily spend is within the configured pacing range. ${input.remainingBudgetText} remains available.`,
     tone: "success",
   };
 }

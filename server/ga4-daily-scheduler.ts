@@ -24,6 +24,7 @@ type GA4DailyRunStatus = "idle" | "running" | "success" | "failed" | "skipped";
 type GA4DailyRefreshPipelineOptions = {
   campaignId?: string;
   suppressAlerts?: boolean;
+  refreshFinancialSources?: boolean;
 };
 export type GA4DailyRefreshResult = {
   campaignIdsProcessed: string[];
@@ -465,10 +466,13 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
   ga4DailySchedulerStatus.lastRunStatus = "running";
   console.log(`[GA4 Daily] Pipeline starting (trigger=${trigger}${campaignId ? `, campaignId=${campaignId}` : ""})`);
   try {
-    if (trigger === "scheduled" && !campaignId) {
-      const financialRefresh = await runDailyAutoRefreshOnce("scheduled", {
+    const refreshFinancialSources = (trigger === "scheduled" && !campaignId)
+      || (trigger === "snapshot_bootstrap" && Boolean(campaignId) && opts.refreshFinancialSources === true);
+    if (refreshFinancialSources) {
+      const financialRefresh = await runDailyAutoRefreshOnce(trigger === "scheduled" ? "scheduled" : "manual", {
         financialSourcesOnly: true,
         deferDownstream: true,
+        ...(campaignId ? { campaignId } : {}),
       });
       if (!financialRefresh) throw new Error("Financial source refresh did not start");
       const financialRefreshFailure = getAutoRefreshRunFailure(financialRefresh);
@@ -671,6 +675,7 @@ export async function backfillMissingGA4OverviewSnapshots(
   ga4DailySchedulerStatus.lastSnapshotBootstrapFailures = [];
   const campaigns = await storage.getCampaigns();
   const campaignIds: string[] = [];
+  const financialBootstrapCampaignIds = new Set<string>();
   for (const campaign of campaigns) {
     const campaignId = String((campaign as any)?.id || "").trim();
     const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
@@ -682,6 +687,7 @@ export async function backfillMissingGA4OverviewSnapshots(
     const activeConnections = connections.filter((connection: any) =>
       connection?.isActive !== false && String(connection?.propertyId || "").trim()
     );
+    const primaryConnection = activeConnections.find((connection: any) => connection?.isPrimary) || activeConnections[0];
     let needsBootstrap = false;
     for (const connection of activeConnections) {
       const propertyId = String(connection.propertyId);
@@ -699,7 +705,19 @@ export async function backfillMissingGA4OverviewSnapshots(
           String((snapshot as any)?.conversionEvents?.version || "") !== GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION ||
           (/^[A-Z]{3}$/.test(expectedCurrency) && snapshotCurrency !== expectedCurrency)) {
         needsBootstrap = true;
-        break;
+      }
+      if (connection !== primaryConnection || !latestDaily) continue;
+      const spendTotals = await storage.getSpendTotalForRange(campaignId, "1900-01-01", String(latestDaily.date), "ga4");
+      if (spendTotals.sourceIds.length > 0) {
+        const financial = await storage.getFinancialDailyComparisonData(campaignId, String(latestDaily.date), String(latestDaily.date));
+        const financialDaily = (financial.current?.metrics as any)?.financialDaily;
+        const inputsReady = ["spend", "revenue", "conversions"].every((key) => financialDaily?.inputs?.[key]?.available === true);
+        if (!financialDaily || financialDaily.currency !== (expectedCurrency || "USD") ||
+            financialDaily.currentValueWindow?.startDate !== expectedStartDate ||
+            financialDaily.currentValueWindow?.reportingTimeZone !== normalizeReportingTimeZone((campaign as any)?.reportingTimeZone) || !inputsReady) {
+          needsBootstrap = true;
+          financialBootstrapCampaignIds.add(campaignId);
+        }
       }
     }
     if (needsBootstrap) campaignIds.push(campaignId);
@@ -707,13 +725,17 @@ export async function backfillMissingGA4OverviewSnapshots(
 
   for (const campaignId of campaignIds) {
     try {
-      await runPipeline("snapshot_bootstrap", { campaignId, suppressAlerts: true });
+      await runPipeline("snapshot_bootstrap", {
+        campaignId,
+        suppressAlerts: true,
+        ...(financialBootstrapCampaignIds.has(campaignId) ? { refreshFinancialSources: true } : {}),
+      });
     } catch (error: any) {
       ga4DailySchedulerStatus.lastSnapshotBootstrapFailures.push({
         campaignIdHash: hashEvidenceIds([campaignId])[0],
         reason: String(error?.message || error || "GA4 snapshot bootstrap failed").slice(0, 300),
       });
-      console.warn(`[GA4 Daily] Overview snapshot bootstrap failed for campaign ${campaignId}:`, error?.message || error);
+      console.warn(`[GA4 Daily] Daily publication bootstrap failed for campaign ${campaignId}:`, error?.message || error);
     }
   }
   return campaignIds;
@@ -793,10 +815,10 @@ export function startGA4DailyScheduler(port?: number): void {
   scheduleNextRun();
   void backfillMissingGA4OverviewSnapshots().then((campaignIds) => {
     if (campaignIds.length > 0) {
-      console.log(`[GA4 Daily] Overview snapshot bootstrap attempted for ${campaignIds.length} campaign(s)`);
+      console.log(`[GA4 Daily] Daily publication bootstrap attempted for ${campaignIds.length} campaign(s)`);
     }
   }).catch((error: any) => {
-    console.warn("[GA4 Daily] Overview snapshot bootstrap discovery failed:", error?.message || error);
+    console.warn("[GA4 Daily] Daily publication bootstrap discovery failed:", error?.message || error);
   });
 }
 

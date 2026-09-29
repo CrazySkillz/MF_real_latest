@@ -42,6 +42,7 @@ type AutoRefreshRunTrigger = "startup" | "scheduled" | "manual";
 export type AutoRefreshRunOptions = {
   financialSourcesOnly?: boolean;
   deferDownstream?: boolean;
+  campaignId?: string;
 };
 type AutoRefreshRunStatus = "idle" | "running" | "success" | "failed" | "skipped";
 export type AutoRefreshRunSummary = {
@@ -1029,7 +1030,11 @@ export async function runDailyAutoRefreshOnce(
 
     // 2) Re-process revenue for providers that have a saved mappingConfig.
     console.log("[Auto Refresh] Step 2/2: Re-processing revenue mappings (HubSpot/Salesforce/Shopify)...");
-    const campaigns = await storage.getCampaigns();
+    const requestedCampaignId = String(opts.campaignId || "").trim();
+    const requestedCampaign = requestedCampaignId ? await storage.getCampaign(requestedCampaignId) : undefined;
+    const campaigns = requestedCampaignId
+      ? (requestedCampaign ? [requestedCampaign] : [])
+      : await storage.getCampaigns();
     campaignsScanned = campaigns.length;
 
     let anyCampaignUpdated = false;

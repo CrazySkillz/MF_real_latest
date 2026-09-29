@@ -62,6 +62,11 @@ describe("GA4 external value auto-refresh regression guard", () => {
   });
 
   it("isolates financial refresh evidence to each campaign", () => {
+    const scheduler = schedulerFile();
+    expect(scheduler).toContain("campaignId?: string;");
+    expect(scheduler).toContain('const requestedCampaignId = String(opts.campaignId || "").trim();');
+    expect(scheduler).toContain("requestedCampaignId ? await storage.getCampaign(requestedCampaignId) : undefined");
+    expect(scheduler).toContain("requestedCampaign ? [requestedCampaign] : []");
     const runStartedAt = new Date("2026-08-22T13:20:00.000Z");
     expect(getCampaignAutoRefreshFailures({
       providerJobsAttempted: 2,

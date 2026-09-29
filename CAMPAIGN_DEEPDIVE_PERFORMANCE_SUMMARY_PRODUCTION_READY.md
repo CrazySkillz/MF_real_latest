@@ -14,7 +14,7 @@ For active real GA4 campaigns, the generic interval/startup aggregate snapshot p
 
 ## Current Implementation And Evidence Status (2026-09-29)
 
-**Deployed application runtime `bde5e22c8a81a20d76aca41c2718b282a587586c` — BOUNDED CAMPAIGN3 PASS FOR THE `2026-09-28` CUTOFF; FULL DEPLOYED RECERTIFICATION PENDING.**
+**Deployed runtime `1e066496567f6a81535473373d63da9910be153f` — BOUNDED CAMPAIGN3 PASS FOR THE `2026-09-28` CUTOFF AND ALL THREE RECENT MOVEMENT OPTIONS; FULL DEPLOYED RECERTIFICATION PENDING.** The application behavior is unchanged from `bde5e22c`; `1e066496` changed documentation only.
 
 The latest preserved clean certificate is `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md` for exact deployed runtime `ee6e11ebf8cb0a13dd182dde54af790a3757ef2f`, its two recorded campaigns, property, USD currency, Europe/Amsterdam timezone, source inventory, and `2026-09-18` data-through boundary. That historical certificate remains valid only for its exact scope. It does not certify the current runtime.
 
@@ -32,17 +32,19 @@ Post-certificate implementation changes now include:
 
 Current exact-runtime evidence:
 
-- `/api/health` returned exact deployed commit `bde5e22c8a81a20d76aca41c2718b282a587586c` during the authenticated, GET-only Campaign3 reconciliation.
+- `/api/health` returned exact deployed commit `1e066496567f6a81535473373d63da9910be153f` during the latest authenticated, read-only Campaign3 reconciliation.
 - Campaign3 used EUR, `Europe/Amsterdam`, GA4 property `542352127`, and the aligned `2026-09-28` completed-day cutoff. Instagram and TikTok were not configured as Campaign3 Connected Platforms and contributed no values to this evidence.
 - Key Outcomes reconciled to 2,256 Users, 2,256 Sessions, 145 Conversions, EUR 78,969.69 Total Revenue, and EUR 2,357.89 Total Spend. Revenue reconciled as EUR 37,518.74 GA4 native + EUR 30,340.00 Google Sheets + EUR 10,000.00 HubSpot + EUR 785.95 Shopify + EUR 250.00 CSV + EUR 75.00 Salesforce. Spend reconciled as EUR 1,103.00 Google Sheets + EUR 1,250.00 CSV + EUR 4.89 Google Ads.
 - Campaign Health reconciled to 57% with 4 of 7 configured metrics on track: 3 of 5 KPIs and 1 of 2 Benchmarks. CPA was the Top Priority at EUR 16.26 against EUR 9.00. Recommended Actions were CPA, ROAS at 33.49x against 50x, and Conversions at 145 against 160.
-- The default Recent Movement comparison resolved to `2026-09-27`: Sessions and Conversions were unchanged; Total Revenue increased by EUR 41,450.95 from EUR 37,518.74 to EUR 78,969.69; Spend correctly failed closed because the active Google Ads spend source is not a date-mapped historical import.
-- The rendered page showed `Data through 28 Sept 2026 (Europe/Amsterdam), the latest completed day`, did not show `Demo Data` or `Compare with yesterday`, produced no browser errors, and attempted no application writes.
+- All three Recent Movement options were selected and reconciled in the deployed UI. Previous completed day (`2026-09-27`): Sessions 2,256 from 2,256 and Conversions 145 from 145 were unchanged; Total Revenue increased by EUR 41,450.95 from EUR 37,518.74 to EUR 78,969.69. Seven completed days earlier (`2026-09-21`): Sessions increased by 127 from 2,129 to 2,256 (+6.0%), Conversions increased by 8 from 137 to 145 (+5.8%), and Total Revenue increased by EUR 43,435.86 from EUR 35,533.83 to EUR 78,969.69 (+122.2%). Previous month cutoff (`2026-08-28`): Sessions increased from 0 to 2,256, Conversions from 0 to 145, and Total Revenue from EUR 0.00 to EUR 78,969.69; percentage change was correctly omitted for each zero baseline.
+- Spend showed EUR 2,357.89 with `Comparison unavailable — verified Spend baseline unavailable` for all three options because the active Google Ads spend source is not a date-mapped historical import. The UI did not expose an unverified previous Spend value.
+- Every exact-date GA4 Revenue, imported Revenue, Spend, and snapshot-comparison request used the resolved option date and returned HTTP 200. The selection control waited for its requested inputs, then displayed the matching option and values.
+- The rendered page showed `Data through 28 Sept 2026 (Europe/Amsterdam), the latest completed day`, did not show `Demo Data` or `Compare with yesterday`, produced no JavaScript page errors, attempted no application mutations, and left the relevant persistence fingerprint unchanged. Three expected 404 resource messages came from unconfigured Custom Integration and Meta endpoints; they did not affect Recent Movement.
 - The focused aggregate, Overview, financial-source-date, and GA4 readiness packet passed 47 of 47 tests. The documentation-alignment verification then passed 52 of 52 focused tests, including the production-readiness ledger, and `npm run check` passed. The earlier completed-day alignment packet remains historical evidence for its 88 tests.
 
-This is a bounded current-runtime reconciliation, not a replacement whole-section certificate. It proves the configured Campaign3 current cards and default previous-completed-day comparison. Live switching to the seven-day and previous-month comparisons, failure and stale states, other campaigns and source mixes, lifecycle mutations, tenant isolation, and current scheduled-PDF parity remain outside this exact-runtime evidence. The earlier deployed `1f86a46e` Campaign3 reconciliation remains historical evidence for its recorded three comparison selections.
+This is a bounded current-runtime reconciliation, not a replacement whole-section certificate. It proves the configured Campaign3 current cards and live switching among the previous-completed-day, seven-completed-days-earlier, and previous-month-cutoff comparisons. Failure and stale states, other campaigns and source mixes, lifecycle mutations, tenant isolation, and current scheduled-PDF parity remain outside this exact-runtime evidence. The earlier deployed `1f86a46e` Campaign3 reconciliation remains historical evidence.
 
-## Current Controlling Implementation Contract (Observed At `bde5e22c`)
+## Current Controlling Implementation Contract (Observed At `bde5e22c`, Revalidated Unchanged At `1e066496`)
 
 This section supersedes older implementation descriptions in the chronological commit history below. It describes current code behavior, not a new production-readiness certificate.
 
@@ -63,7 +65,7 @@ This section supersedes older implementation descriptions in the chronological c
 - The disabled legacy Metric Trends render path is not a visible Performance Summary feature; users are directed to the separate Trend Analysis section.
 - The page does not expose a `Demo Data` control or demo banner; visible production use remains on the live-data path.
 
-Documentation/certification boundary: this update documents application behavior observed at deployed runtime `bde5e22c` and records a bounded Campaign3 pass; it does not issue a replacement whole-section certificate. The latest preserved clean certificate remains limited to exact runtime `ee6e11eb` and the scope in `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md`. This documentation update changes no production code, tests, validators, protected GA4 machine certification records, Trend Analysis boundary, or Budget & Financial Analysis boundary.
+Documentation/certification boundary: this update documents application behavior observed at deployed runtime `1e066496` and records a bounded Campaign3 pass; it does not issue a replacement whole-section certificate. The latest preserved clean certificate remains limited to exact runtime `ee6e11eb` and the scope in `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md`. This documentation update changes no production code, tests, validators, protected GA4 machine certification records, Trend Analysis boundary, or Budget & Financial Analysis boundary.
 
 The intended product behavior is:
 
@@ -778,7 +780,7 @@ not an outstanding Performance Summary certification gate.
 
 ### Commit 6: Docs And Final Validation
 
-Historical status: completed for exact certified runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`; evidence-only commit `e175ac5c1764d06c199b375be45ace718b2fc785` was deployed and user-confirmed without changing production runtime code. This historical statement does not certify current deployed runtime `bde5e22c`.
+Historical status: completed for exact certified runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`; evidence-only commit `e175ac5c1764d06c199b375be45ace718b2fc785` was deployed and user-confirmed without changing production runtime code. This historical statement does not certify current deployed runtime `1e066496`.
 
 Goal:
 
@@ -796,7 +798,7 @@ Why this is last:
 
 ## Comprehensive Source Readiness Review
 
-Last reviewed against deployed application runtime `bde5e22c` on 2026-09-29.
+Last reviewed against deployed runtime `1e066496` on 2026-09-29.
 
 Root cause:
 
@@ -825,7 +827,7 @@ Implementation conclusion:
 - Implemented in the aggregate route for the registered main Connected Platform paths listed above, with campaign financial totals able to include parent-platform child revenue/spend inputs when configured inside the relevant platform flow. Regression and production-readiness evidence remains source-specific and must not be inferred merely from registration.
 - The aggregate layer can accept future standalone platforms that supply valid `platformSources`, but that capability is not source-specific production-readiness proof.
 - Platform-specific production readiness for Google Ads, TikTok, Instagram, Google Sheets, and future sources still depends on each platform's own connection, storage, refresh, campaign scoping, resolver, and negative-case validation.
-- Historical production-readiness evidence remains bounded to the exact runtimes and scopes in their certificate records. Deployed runtime `bde5e22c` has the bounded Campaign3 evidence recorded above and remains `RECERTIFICATION_PENDING` for the whole Performance Summary section.
+- Historical production-readiness evidence remains bounded to the exact runtimes and scopes in their certificate records. Deployed runtime `1e066496` has the bounded Campaign3 evidence recorded above and remains `RECERTIFICATION_PENDING` for the whole Performance Summary section.
 
 ## Production Readiness Definition
 
@@ -846,16 +848,16 @@ Performance Summary is production ready only when:
 
 ## Current Status
 
-**Deployed runtime `bde5e22c`: `BOUNDED CAMPAIGN3 PASS / RECERTIFICATION_PENDING`. The configured Campaign3 `2026-09-28` current view and default previous-completed-day comparison are reconciled; the whole section is not recertified.**
+**Deployed runtime `1e066496`: `BOUNDED CAMPAIGN3 PASS / RECERTIFICATION_PENDING`. The configured Campaign3 `2026-09-28` current view and all three Recent Movement options are reconciled; the whole section is not recertified.**
 
 The latest preserved clean certificate remains `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md` for exact deployed runtime `ee6e11ebf8cb0a13dd182dde54af790a3757ef2f` and its recorded boundary. Earlier exact-runtime evidence, including `12789c1e`, remains historical only.
 
 Implemented and locally regression-covered in the current revision:
 
 - the consolidated visible Performance Summary sections use the cumulative current-value and exact-date Recent Movement contracts in `Current Controlling Implementation Contract`
-- Key Outcomes, Campaign Health, Top Priority Action, Recommended Actions, and the four Recent Movement cards are covered by the focused current regression packet; exact deployed `bde5e22c` has bounded Campaign3 UI/API evidence for the current view and default previous-completed-day comparison
+- Key Outcomes, Campaign Health, Top Priority Action, Recommended Actions, and the four Recent Movement cards are covered by the focused current regression packet; exact deployed `1e066496` has bounded Campaign3 UI/API evidence for the current view and all three Recent Movement selections
 - Campaign Health fails closed rather than scoring only a verified subset; Top Priority uses configured KPI priority before gap severity; Recommended Actions use verified target gaps and do not claim causality
-- current exact-date logic for Sessions, Conversions, Spend, and Total Revenue is regression-covered for the previous completed day, seven completed days earlier, and the previous-month cutoff; exact deployed Campaign3 reconciliation currently covers the default previous-completed-day selection only
+- current exact-date logic for Sessions, Conversions, Spend, and Total Revenue is regression-covered and deployed Campaign3 UI/API reconciled for the previous completed day, seven completed days earlier, and the previous-month cutoff
 - GA4 child revenue/spend inputs remain financial provenance under the parent campaign/platform path and do not become separate main Connected Platforms
 
 Supporting aggregate behavior proven locally, but not a broader deployed source-mix certification:

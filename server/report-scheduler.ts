@@ -14,7 +14,7 @@ import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, computeEffe
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { resolveGA4InsightTargetPeriodCompatibility } from "../shared/ga4-kpi-consumer-state";
 import { buildPerformanceRecommendedActions, resolvePerformanceAggregateMetricValue, resolvePerformanceConfiguredMetricValue, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, resolvePerformancePriorityRank } from "../client/src/lib/performance-recommended-actions";
-import { buildFinancialAllocationAction, buildFinancialBudgetAction, resolveFinancialBudgetPeriodSpend } from "../client/src/lib/financial-executive-actions";
+import { buildFinancialAllocationAction, buildFinancialBudgetAction, resolveFinancialBudgetPeriodSpend, resolveFinancialPacingCalendar } from "../client/src/lib/financial-executive-actions";
 import { deriveTrendFinancialRatios, formatTrendComparison, resolveCompatibleTrendFinancialDaily } from "../client/src/lib/trend-analysis-cumulative";
 import { mapMailgunDeliveryToAlertEmailStatus, waitForMailgunDelivery } from "./utils/mailgun-delivery";
 import { getCampaignMetricTotals } from "./utils/campaign-current-values";
@@ -1896,16 +1896,15 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       };
       const pacingStartDate = parsePacingDate((campaign as any)?.pacingStartDate);
       const pacingEndDate = parsePacingDate((campaign as any)?.pacingEndDate);
-      const pacingToday = getZonedParts(new Date(), String((campaign as any)?.reportingTimeZone || "UTC"));
-      const today = new Date(Date.UTC(pacingToday.year, pacingToday.month - 1, pacingToday.day));
-      const effectiveElapsedEnd = pacingEndDate && pacingEndDate.getTime() < today.getTime() ? pacingEndDate : today;
-      const elapsedDays = pacingStartDate && effectiveElapsedEnd.getTime() >= pacingStartDate.getTime()
-        ? Math.max(1, Math.floor((effectiveElapsedEnd.getTime() - pacingStartDate.getTime()) / (24 * 60 * 60 * 1000)) + 1)
-        : 0;
-      const hasPacingRange = Boolean(pacingStartDate && pacingEndDate && pacingEndDate.getTime() >= pacingStartDate.getTime());
-      const totalDays = hasPacingRange
-        ? Math.max(1, Math.floor((pacingEndDate!.getTime() - pacingStartDate!.getTime()) / (24 * 60 * 60 * 1000)) + 1)
-        : 0;
+      const pacingCalendar = resolveFinancialPacingCalendar({
+        startDate: (campaign as any)?.pacingStartDate,
+        endDate: (campaign as any)?.pacingEndDate,
+        reportingTimeZone: (campaign as any)?.reportingTimeZone,
+        dataThroughDate: budgetPacing?.dataThroughDate,
+      });
+      const elapsedDays = pacingCalendar.elapsedDays;
+      const hasPacingRange = pacingCalendar.hasDateRange;
+      const totalDays = pacingCalendar.totalDays;
       const spend = metricAvailable("spend") ? metricNumber("spend") : null;
       const revenue = metricAvailable("revenue") ? metricNumber("revenue") : null;
       const budgetPeriodSpendMetric = resolveFinancialBudgetPeriodSpend({

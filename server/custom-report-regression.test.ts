@@ -470,14 +470,15 @@ describe("campaign Custom Report regression guard", () => {
 
     expect(builder).toContain('(campaign as any)?.pacingStartDate');
     expect(builder).toContain('(campaign as any)?.pacingEndDate');
-    expect(builder).toContain('getZonedParts(new Date(), String((campaign as any)?.reportingTimeZone || "UTC"))');
+    expect(builder).toContain('const pacingCalendar = resolveFinancialPacingCalendar({');
+    expect(builder).toContain('dataThroughDate: budgetPacing?.dataThroughDate');
     expect(builder).not.toContain('(report as any)?.scheduleTimeZone || (campaign as any)?.reportingTimeZone');
     expect(builder).not.toContain('(campaign as any)?.startDate');
     expect(builder).not.toContain('(campaign as any)?.endDate');
     expect(builder).toContain('const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase() || "USD";');
     expect(builder).toContain('rawBudget === null || rawBudget === undefined || String(rawBudget).trim() === ""');
-    expect(builder).toContain('const effectiveElapsedEnd = pacingEndDate && pacingEndDate.getTime() < today.getTime() ? pacingEndDate : today;');
-    expect(builder).toContain('Math.floor((effectiveElapsedEnd.getTime() - pacingStartDate.getTime()) / (24 * 60 * 60 * 1000)) + 1');
+    expect(builder).toContain('const elapsedDays = pacingCalendar.elapsedDays;');
+    expect(builder).toContain('const totalDays = pacingCalendar.totalDays;');
     expect(builder).toContain('const budgetPeriodSpendMetric = resolveFinancialBudgetPeriodSpend({');
     expect(builder).toContain('const remainingBudget = campaignBudget !== null && budgetPeriodSpend !== null ? campaignBudget - budgetPeriodSpend : null;');
     expect(builder).toContain('const dailyBurnRate = budgetPeriodSpend !== null && elapsedDays > 0 ? budgetPeriodSpend / elapsedDays : null;');

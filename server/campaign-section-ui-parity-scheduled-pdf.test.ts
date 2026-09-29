@@ -603,13 +603,16 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfTextCalls).toContain("- Spend: $2,699.75");
     expect(pdfTextCalls).toContain("- ROAS: 26.95x");
     expect(pdfTextCalls).toContain("- Conversion rate: 12.8%");
+    expect(pdfTextCalls).toContain("- Daily Burn Rate: $47.36");
+    expect(pdfTextCalls).toContain("- Daily Burn Rate Basis: Based on 57 elapsed budget-period days");
+    expect(pdfTextCalls).toContain("- Pacing Status: 56.9% Under");
     expect(pdfTextCalls).toContain("- Imported Revenue: $16,799.99");
     expect(pdfTextCalls).toContain("- Imported Spend: $2,699.75");
     expect(pdfTextCalls).not.toContain("ROI & ROAS");
     expect(getCampaignMetricTotalsMock).not.toHaveBeenCalled();
   });
 
-  it("uses the campaign reporting timezone for financial pacing instead of the delivery timezone", async () => {
+  it("uses the certified financial data-through date for financial pacing", async () => {
     vi.setSystemTime(new Date("2026-08-28T23:30:00.000Z"));
     storageMock.getCampaign.mockResolvedValue({
       id: "campaign-1",
@@ -617,16 +620,16 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
       currency: "USD",
       reportingTimeZone: "Pacific/Honolulu",
       budget: "10799",
-      pacingStartDate: "2026-08-28",
-      pacingEndDate: "2026-08-31",
+      pacingStartDate: "2026-08-27",
+      pacingEndDate: "2026-08-30",
     });
     aggregateCampaignMetricsMock.mockResolvedValueOnce({
       detailedMetrics: {
         performanceSummary,
         budgetPacing: {
           ...budgetPacing,
-          periodStartDate: "2026-08-28",
-          periodEndDate: "2026-08-31",
+          periodStartDate: "2026-08-27",
+          periodEndDate: "2026-08-30",
         },
         financialDecisionContext,
         financialInputs,

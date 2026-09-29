@@ -403,6 +403,7 @@ export default function FinancialAnalysis() {
     startDate: campaign.pacingStartDate,
     endDate: campaign.pacingEndDate,
     reportingTimeZone: campaign.reportingTimeZone,
+    dataThroughDate: outcomeTotals?.budgetPacing?.dataThroughDate,
   });
   const hasCampaignStartDate = pacingCalendar.hasStartDate;
   const hasCampaignEndDate = pacingCalendar.hasEndDate;

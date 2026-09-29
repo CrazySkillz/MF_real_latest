@@ -74,6 +74,20 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     }).elapsedDays).toBe(10);
   });
 
+  it("uses the certified financial data-through date for pacing", () => {
+    expect(resolveFinancialPacingCalendar({
+      startDate: "2026-07-01",
+      endDate: "2026-11-30",
+      reportingTimeZone: "Europe/Amsterdam",
+      dataThroughDate: "2026-09-28",
+      now: new Date("2026-09-29T12:00:00.000Z"),
+    })).toEqual(expect.objectContaining({
+      todayDateOrdinal: Date.UTC(2026, 8, 28),
+      elapsedDays: 90,
+      totalDays: 153,
+    }));
+  });
+
   it("accepts only a matching verified budget-period Spend contract", () => {
     const contract = {
       version: "budget_pacing_v1",
@@ -469,6 +483,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const hasCampaignBudget = campaignBudget > 0;");
     expect(page).toContain("const pacingCalendar = resolveFinancialPacingCalendar({");
     expect(page).toContain("reportingTimeZone: campaign.reportingTimeZone,");
+    expect(page).toContain("dataThroughDate: outcomeTotals?.budgetPacing?.dataThroughDate,");
     expect(page).toContain("const hasCampaignStartDate = pacingCalendar.hasStartDate;");
     expect(page).toContain("const hasCampaignEndDate = pacingCalendar.hasEndDate;");
     expect(page).toContain("const hasCampaignDateRange = pacingCalendar.hasDateRange;");

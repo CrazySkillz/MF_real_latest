@@ -50,11 +50,14 @@ export function resolveFinancialPacingCalendar(input: {
   startDate?: string | null;
   endDate?: string | null;
   reportingTimeZone?: string | null;
+  dataThroughDate?: string | null;
   now?: Date;
 }) {
   const startDateOrdinal = parseFinancialPacingDateOrdinal(input.startDate);
   const endDateOrdinal = parseFinancialPacingDateOrdinal(input.endDate);
-  const todayDateOrdinal = getFinancialReportingDateOrdinal(input.now || new Date(), input.reportingTimeZone);
+  const dataThroughDateOrdinal = parseFinancialPacingDateOrdinal(input.dataThroughDate);
+  const todayDateOrdinal = dataThroughDateOrdinal
+    ?? getFinancialReportingDateOrdinal(input.now || new Date(), input.reportingTimeZone);
   const hasDateRange = startDateOrdinal !== null && endDateOrdinal !== null && endDateOrdinal >= startDateOrdinal;
   const elapsedEndDateOrdinal = endDateOrdinal !== null && todayDateOrdinal > endDateOrdinal
     ? endDateOrdinal

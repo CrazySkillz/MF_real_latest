@@ -13,6 +13,7 @@ import { summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 import { getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { assertGA4InsightsFinancialCurrencyScope, buildGA4InsightsHistoryScopeMarker, filterGA4InsightsHistoryByScope } from "../shared/ga4-insights";
+import { isSupportedGA4ConnectionMethod } from "./utils/ga4-service-account";
 
 const isoDateUTC = (d: Date) => d.toISOString().slice(0, 10);
 const GA4_KPI_FINANCIAL_SOURCE_START_DATE = "1900-01-01";
@@ -383,7 +384,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       } else {
         try {
           const conn = await storage.getGA4Connection(campaignId, propertyId).catch(() => null as any);
-          if (conn && conn.method === "access_token" && conn.accessToken) {
+          if (conn && isSupportedGA4ConnectionMethod(conn.method) && conn.accessToken) {
             const attempt = async (token: string) => {
               return await ga4Service.getTotalsWithRevenue(propertyId, token, financialStartDate, reportingWindow.endDate, campaignFilter, String((campaign as any)?.currency || "USD").trim().toUpperCase());
             };

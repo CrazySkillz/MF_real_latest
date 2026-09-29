@@ -5,6 +5,7 @@ import { randomUUID } from "crypto";
 import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql, gte, lte, inArray, ne } from "drizzle-orm";
 import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, type EncryptedTokens } from "./utils/tokenVault";
+import { assertGA4ServiceAccountPropertyAllowed, GA4_SERVICE_ACCOUNT_METHOD, hydrateGA4ServiceAccountConnection } from "./utils/ga4-service-account";
 import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness } from "./utils/revenue-record-total";
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 import { getReportingComparisonBoundary, getReportingDateEndAt, isCreatedThroughReportingDate } from "./utils/reporting-timezone";
@@ -176,7 +177,7 @@ export interface IStorage {
   createPerformanceData(data: InsertPerformanceData): Promise<PerformanceData>;
 
   // GA4 Connections
-  getGA4Connections(campaignId: string, options?: { migrateLegacyTokens?: boolean }): Promise<GA4Connection[]>;
+  getGA4Connections(campaignId: string, options?: { migrateLegacyTokens?: boolean; resolveRuntimeCredentials?: boolean }): Promise<GA4Connection[]>;
   getGA4Connection(campaignId: string, propertyId?: string): Promise<GA4Connection | undefined>;
   getPrimaryGA4Connection(campaignId: string): Promise<GA4Connection | undefined>;
   createGA4Connection(connection: InsertGA4Connection): Promise<GA4Connection>;
@@ -845,7 +846,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // GA4 Connection methods
-  async getGA4Connections(campaignId: string, options?: { migrateLegacyTokens?: boolean }): Promise<GA4Connection[]> {
+  async getGA4Connections(campaignId: string, options?: { migrateLegacyTokens?: boolean; resolveRuntimeCredentials?: boolean }): Promise<GA4Connection[]> {
     const rows = await db
       .select()
       .from(ga4Connections)
@@ -873,7 +874,10 @@ export class DatabaseStorage implements IStorage {
       })
     );
 
-    return rows.map((r: any) => hydrateDecryptedTokens(r)) as any;
+    const hydrated = rows.map((r: any) => hydrateDecryptedTokens(r)) as any[];
+    return (options?.resolveRuntimeCredentials === false
+      ? hydrated
+      : await Promise.all(hydrated.map((connection) => hydrateGA4ServiceAccountConnection(connection)))) as any;
   }
 
   async getGA4Connection(campaignId: string, propertyId?: string): Promise<GA4Connection | undefined> {
@@ -884,7 +888,7 @@ export class DatabaseStorage implements IStorage {
           eq(ga4Connections.propertyId, propertyId),
           eq(ga4Connections.isActive, true)
         ));
-      return connection ? (hydrateDecryptedTokens(connection) as any) : undefined;
+      return connection ? (await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(connection) as any) as any) : undefined;
     }
 
     // Return the primary connection if no propertyId specified
@@ -895,7 +899,7 @@ export class DatabaseStorage implements IStorage {
         eq(ga4Connections.isActive, true)
       ));
 
-    if (primary) return hydrateDecryptedTokens(primary) as any;
+    if (primary) return await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(primary) as any) as any;
 
     // If no primary, return the first active connection
     const [first] = await db.select().from(ga4Connections)
@@ -905,7 +909,7 @@ export class DatabaseStorage implements IStorage {
       ))
       .orderBy(ga4Connections.connectedAt)
       .limit(1);
-    return first ? (hydrateDecryptedTokens(first) as any) : undefined;
+    return first ? (await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(first) as any) as any) : undefined;
   }
 
   async getPrimaryGA4Connection(campaignId: string): Promise<GA4Connection | undefined> {
@@ -916,7 +920,7 @@ export class DatabaseStorage implements IStorage {
         eq(ga4Connections.isActive, true)
       ));
 
-    if (primary) return hydrateDecryptedTokens(primary) as any;
+    if (primary) return await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(primary) as any) as any;
 
     // If no primary, return the first active connection
     const [first] = await db.select().from(ga4Connections)
@@ -926,12 +930,15 @@ export class DatabaseStorage implements IStorage {
       ))
       .orderBy(ga4Connections.connectedAt)
       .limit(1);
-    return first ? (hydrateDecryptedTokens(first) as any) : undefined;
+    return first ? (await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(first) as any) as any) : undefined;
   }
 
   async createGA4Connection(connection: InsertGA4Connection): Promise<GA4Connection> {
+    if (String(connection.method || "").trim().toLowerCase() === GA4_SERVICE_ACCOUNT_METHOD) {
+      assertGA4ServiceAccountPropertyAllowed(connection.propertyId);
+    }
     // Check if this is the first connection for this campaign
-    const existingConnections = await this.getGA4Connections(connection.campaignId);
+    const existingConnections = await this.getGA4Connections(connection.campaignId, { resolveRuntimeCredentials: false });
     const isFirstConnection = existingConnections.length === 0;
 
     const enc = buildEncryptedTokens({
@@ -956,12 +963,16 @@ export class DatabaseStorage implements IStorage {
       .insert(ga4Connections)
       .values(connectionData)
       .returning();
-    return hydrateDecryptedTokens(ga4Connection) as any;
+    return await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(ga4Connection) as any) as any;
   }
 
   async updateGA4Connection(connectionId: string, connection: Partial<InsertGA4Connection>): Promise<GA4Connection | undefined> {
     const [existing] = await db.select().from(ga4Connections).where(eq(ga4Connections.id, connectionId));
     if (!existing) return undefined;
+    const nextMethod = String(connection.method ?? existing.method ?? "").trim().toLowerCase();
+    if (nextMethod === GA4_SERVICE_ACCOUNT_METHOD) {
+      assertGA4ServiceAccountPropertyAllowed(connection.propertyId ?? existing.propertyId);
+    }
 
     const tokenFieldsProvided =
       Object.prototype.hasOwnProperty.call(connection, "accessToken") ||
@@ -997,7 +1008,7 @@ export class DatabaseStorage implements IStorage {
         eq(ga4OverviewSnapshots.propertyId, String((existing as any).propertyId)),
       ));
     }
-    return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
+    return updated ? (await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(updated) as any) as any) : undefined;
   }
 
   async updateGA4ConnectionTokens(connectionId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }): Promise<GA4Connection | undefined> {
@@ -1023,7 +1034,7 @@ export class DatabaseStorage implements IStorage {
       } as any)
       .where(eq(ga4Connections.id, connectionId))
       .returning();
-    return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
+    return updated ? (await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(updated) as any) as any) : undefined;
   }
 
   async setPrimaryGA4Connection(campaignId: string, connectionId: string): Promise<boolean> {

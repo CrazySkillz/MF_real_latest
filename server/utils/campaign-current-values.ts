@@ -3,6 +3,7 @@ import { ga4Service } from "../analytics";
 import { isGA4FinancialTotalsCandidate, selectGA4FinancialTotalsSource } from "../../shared/ga4-financial-source";
 import { applyAlertDataSufficiency, blockAlertDecision } from "./alert-decision";
 import { resolveGA4ImportToDateWindow } from "./reporting-timezone";
+import { isSupportedGA4ConnectionMethod } from "./ga4-service-account";
 
 type CalcConfig = {
   metric?: string;
@@ -229,7 +230,7 @@ async function getCampaignMetricTotalsForEndDate(
       if (isBeforeFinancialStart) {
         toDateCandidate = { revenue: 0, conversions: 0 };
         verifiedToDateFinancialCandidateAvailable = true;
-      } else if ((primary as any)?.method === "access_token" && (primary as any)?.accessToken && financialStartDate <= financialEndDate) {
+      } else if (isSupportedGA4ConnectionMethod((primary as any)?.method) && (primary as any)?.accessToken && financialStartDate <= financialEndDate) {
         try {
           const fetchToDate = (accessToken: string) => ga4Service.getTotalsWithRevenue(
             propertyId, accessToken, financialStartDate, financialEndDate, campaignFilter,

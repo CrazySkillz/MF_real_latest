@@ -12,6 +12,7 @@ import { assertValidGA4KPIUpdate, GA4_KPI_ACTIVE_METRIC_CONFLICT, GA4_KPI_INVALI
 import { buildShopifyRepairConfirmation, deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, getShopifyOrderUtm, resolveShopifyGa4RevenueCurrency, shopifyRepairConfirmationMatches, shouldPreserveShopifyDevelopmentStoreLastGood } from './utils/shopify-revenue';
 import { fetchShopifyOrderCustomerJourneyUtms, getShopifyApiVersion, hasShopifyAllOrdersScope, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain, parseShopifyExpiringOfflineToken, refreshShopifyOfflineAccessToken, requireShopifyCampaignOrderWindow, requireShopifyOrderScope, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, resolveShopifyCampaignOrderWindow, SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE, SHOPIFY_RECENT_ORDER_WINDOW_DAYS, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
 import { assertProductionTokenEncryptionConfigured, resolveOAuthStateSigningSecret } from './utils/tokenVault';
+import { assertGA4ServiceAccountPropertyAllowed, GA4_SERVICE_ACCOUNT_METHOD, getGA4ServiceAccountAccessToken, getGA4ServiceAccountPublicStatus, isSupportedGA4ConnectionMethod, normalizeGA4ServiceAccountPropertyId } from './utils/ga4-service-account';
 import { parseExecutiveSummaryStoredMetricValue } from './utils/executive-summary-target-eligibility';
 import { buildGoogleAdsOAuthAuthorization, resolveGoogleAdsOAuthAuthorization } from './google-ads-oauth-authorization';
 import { buildGA4GoogleAdsSpendMaterialization } from './ga4-google-ads-spend';
@@ -9380,7 +9381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const primaryConnection = connections.find((c: any) => c?.isPrimary) || connections[0];
       const selectedConnection = propertyId ? connections[0] : primaryConnection;
 
-      if (!selectedConnection || selectedConnection.method !== "access_token") {
+      if (!selectedConnection || !isSupportedGA4ConnectionMethod(selectedConnection.method)) {
         return res.status(400).json({
           success: false,
           error: "GA4_CONNECTION_METHOD_UNSUPPORTED",
@@ -9491,7 +9492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!connection || String(connection.propertyId).replace(/^properties\//i, "") !== requestedPropertyId.replace(/^properties\//i, "") || connection.isActive === false) {
       return res.status(404).json({ success: false, error: "NO_GA4_CONNECTION" });
     }
-    if (connection.method !== "access_token" || !connection.accessToken) {
+    if (!isSupportedGA4ConnectionMethod(connection.method) || !connection.accessToken) {
       return res.status(400).json({ success: false, error: "GA4_CONNECTION_UNAVAILABLE" });
     }
     const requestedDays = Number.parseInt(String(req.query.days || "60"), 10);
@@ -9737,8 +9738,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         connection = await storage.getGA4Connection(campaignId, pid).catch(() => null as any);
         if (connection) break;
       }
-      if (!connection || connection.method !== "access_token" || !connection.accessToken) {
-        return res.status(404).json({ success: false, error: "No GA4 OAuth connection found for this property/campaign." });
+      if (!connection || !isSupportedGA4ConnectionMethod(connection.method) || !connection.accessToken) {
+        return res.status(404).json({ success: false, error: "No usable GA4 connection found for this property/campaign." });
       }
       const savedImportWindow = resolveGA4ImportToDateWindow(
         (connection as any)?.importStartDate,
@@ -9954,7 +9955,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         providerError = "Simulated GA4 token refresh failure for validation; no token refresh was attempted and no token metadata was changed.";
       } else if (isYesopMockProperty(propertyId)) {
         providerStatus = "simulated_property_not_live_provider";
-      } else if (selectedConnection?.method === "access_token" && selectedConnection?.accessToken) {
+      } else if (isSupportedGA4ConnectionMethod(selectedConnection?.method) && selectedConnection?.accessToken) {
         try {
           providerAccessToken = String(selectedConnection.accessToken);
           providerResult = await fetchProviderTotals(providerAccessToken);
@@ -10471,7 +10472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "No GA4 connection found for this campaign." });
       }
 
-      if (selectedConnection.method !== 'access_token') {
+      if (!isSupportedGA4ConnectionMethod(selectedConnection.method)) {
         return res.status(400).json({
           success: false,
           error: "GA4 connection method not supported for metrics fetch",
@@ -12745,9 +12746,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (dbConnections.length > 0) {
         const dbConn = dbConnections[0] as any;
         // Try to fetch properties from Google using stored access token
-        let dbProperties: Array<{ id: string; name: string; account?: string }> = [];
+        let dbProperties: Array<{ id: string; name: string; account?: string }> = dbConn.method === GA4_SERVICE_ACCOUNT_METHOD
+          ? [{
+              id: normalizeGA4ServiceAccountPropertyId(dbConn.propertyId),
+              name: dbConn.propertyName || `Property ${normalizeGA4ServiceAccountPropertyId(dbConn.propertyId)}`,
+            }]
+          : [];
         const token = dbConn.accessToken;
-        if (token) {
+        if (token && dbConn.method !== GA4_SERVICE_ACCOUNT_METHOD) {
           try {
             const acctResp = await fetch('https://analyticsadmin.googleapis.com/v1beta/accounts', {
               headers: { 'Authorization': `Bearer ${token}` },
@@ -12799,8 +12805,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           connected: true,
           propertyId: dbConn.propertyId || '',
           properties: dbProperties,
-          isRealOAuth: true,
-          dataSource: 'Database Connection'
+          isRealOAuth: dbConn.method !== GA4_SERVICE_ACCOUNT_METHOD,
+          dataSource: dbConn.method === GA4_SERVICE_ACCOUNT_METHOD ? 'Temporary Service Account' : 'Database Connection'
         });
       }
 
@@ -12974,7 +12980,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const primaryConnection = connections.find((c: any) => c?.isPrimary) || connections[0];
       const selectedConnection = propertyId ? connections[0] : primaryConnection;
 
-      if (!selectedConnection || selectedConnection.method !== 'access_token') {
+      if (!selectedConnection || !isSupportedGA4ConnectionMethod(selectedConnection.method)) {
         return res.status(404).json({
           success: false,
           error: "No GA4 access-token connection found for this campaign."
@@ -15358,7 +15364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ? Number((propertyWindowTrafficCandidate.engagementRate * 100).toFixed(2))
               : null;
           }
-          if (!persistedOnly && primaryGA4?.method === "access_token" && primaryGA4?.accessToken) {
+          if (!persistedOnly && isSupportedGA4ConnectionMethod(primaryGA4?.method) && primaryGA4?.accessToken) {
             try {
               const toDate = await ga4Service.getTotalsWithRevenue(
                 String(primaryGA4.propertyId),
@@ -15876,6 +15882,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting connection:', error);
       res.status(500).json({ error: 'Failed to delete connection' });
+    }
+  });
+
+  app.get("/api/campaigns/:id/ga4-service-account/status", async (req, res) => {
+    const campaign = await ensureCampaignAccess(req as any, res as any, req.params.id);
+    if (!campaign) return;
+    try {
+      res.json({ success: true, ...getGA4ServiceAccountPublicStatus() });
+    } catch (error: any) {
+      res.status(503).json({ success: false, enabled: false, email: null, error: error?.message || "Temporary GA4 access is not configured" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/ga4-service-account/connect", oauthRateLimiter, async (req, res) => {
+    try {
+      const campaignId = String(req.params.id || "").trim();
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
+      if (Number(req.body?.lookbackDays) !== 30) {
+        return res.status(400).json({ success: false, error: "UNSUPPORTED_GA4_LOOKBACK", message: "This release supports only a 30-day GA4 lookback." });
+      }
+
+      const propertyId = assertGA4ServiceAccountPropertyAllowed(req.body?.propertyId);
+      const credentials = await getGA4ServiceAccountAccessToken();
+      const validationResponse = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(propertyId)}:runReport`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${credentials.accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dateRanges: [{ startDate: "yesterday", endDate: "yesterday" }],
+          metrics: [{ name: "sessions" }],
+          limit: 1,
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!validationResponse.ok) {
+        const message = validationResponse.status === 403
+          ? "The MimoSaaS service account does not have Viewer access to this GA4 property"
+          : "Google Analytics could not validate this property";
+        return res.status(validationResponse.status === 403 ? 403 : 502).json({ success: false, error: "GA4_SERVICE_ACCOUNT_VALIDATION_FAILED", message });
+      }
+
+      const existingConnections = await storage.getGA4Connections(campaignId, { resolveRuntimeCredentials: false });
+      if (existingConnections.some((connection: any) => connection.method !== GA4_SERVICE_ACCOUNT_METHOD)) {
+        return res.status(409).json({ success: false, error: "GA4_OAUTH_CONNECTION_EXISTS", message: "This campaign already has a Google OAuth connection. Use a new test campaign for temporary service-account access." });
+      }
+
+      const propertyName = `Property ${propertyId}`;
+      const importStartDate = getGA4HistoricalImportStartDate(new Date(), 30, (campaign as any)?.reportingTimeZone);
+      const existing = existingConnections[0] as any;
+      const saved = existing
+        ? await storage.updateGA4Connection(existing.id, {
+            propertyId,
+            propertyName,
+            method: GA4_SERVICE_ACCOUNT_METHOD,
+            lookbackDays: 30,
+            importStartDate,
+            isPrimary: true,
+            isActive: true,
+          } as any)
+        : await storage.createGA4Connection({
+            campaignId,
+            propertyId,
+            propertyName,
+            method: GA4_SERVICE_ACCOUNT_METHOD,
+            lookbackDays: 30,
+            importStartDate,
+            isPrimary: true,
+            isActive: true,
+          } as any);
+      if (!saved) throw new Error("Failed to save temporary GA4 connection");
+      await storage.setPrimaryGA4Connection(campaignId, saved.id);
+      res.json({ success: true, property: { id: propertyId, name: propertyName }, method: GA4_SERVICE_ACCOUNT_METHOD });
+    } catch (error: any) {
+      const code = String(error?.code || "");
+      const status = code === "GA4_PROPERTY_ID_INVALID" ? 400
+        : code === "GA4_SERVICE_ACCOUNT_PROPERTY_NOT_ALLOWED" ? 403
+          : code === "GA4_SERVICE_ACCOUNT_NOT_CONFIGURED" || code === "GA4_SERVICE_ACCOUNT_CONFIG_INVALID" ? 503
+            : 500;
+      res.status(status).json({ success: false, error: code || "GA4_SERVICE_ACCOUNT_CONNECT_FAILED", message: error?.message || "Temporary GA4 connection failed" });
     }
   });
 

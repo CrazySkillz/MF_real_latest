@@ -29,6 +29,7 @@ interface GA4Metrics {
 }
 
 import { JWT } from "google-auth-library";
+import { isSupportedGA4ConnectionMethod } from "./utils/ga4-service-account";
 
 export const GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION = "ga4_conversion_events_validation_v3";
 
@@ -2774,7 +2775,7 @@ export class GoogleAnalytics4Service {
     currencyCode?: string,
   ): Promise<any[]> {
     const connection = await storage.getGA4Connection(campaignId, propertyId);
-    if (!connection || connection.method !== 'access_token') {
+    if (!connection || !isSupportedGA4ConnectionMethod(connection.method)) {
       throw new Error('No valid access token connection found');
     }
 
@@ -3259,7 +3260,7 @@ export class GoogleAnalytics4Service {
     campaignFilter?: CampaignFilter
   ): Promise<GA4Metrics> {
     const connection = await storage.getGA4Connection(campaignId, propertyId);
-    if (!connection || connection.method !== 'access_token') {
+    if (!connection || !isSupportedGA4ConnectionMethod(connection.method)) {
       throw new Error('No valid access token connection found');
     }
 
@@ -3274,8 +3275,7 @@ export class GoogleAnalytics4Service {
     console.log('Using access token for GA4 API call:', {
       campaignId,
       propertyId: connection.propertyId,
-      tokenLength: connection.accessToken.length,
-      tokenStart: connection.accessToken.substring(0, 20)
+      tokenLength: connection.accessToken.length
     });
     
     // Try with current token

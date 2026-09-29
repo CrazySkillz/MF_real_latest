@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { SiGoogle } from "react-icons/si";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
@@ -14,7 +16,10 @@ interface IntegratedGA4AuthProps {
 
 export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: IntegratedGA4AuthProps) {
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isServiceAccountConnecting, setIsServiceAccountConnecting] = useState(false);
   const [authCompleted, setAuthCompleted] = useState(false);
+  const [serviceAccountStatus, setServiceAccountStatus] = useState<{ enabled: boolean; email: string | null }>({ enabled: false, email: null });
+  const [serviceAccountPropertyId, setServiceAccountPropertyId] = useState("");
   const popupRef = useRef<Window | null>(null);
 
   const cleanupPopup = useCallback(() => {
@@ -42,6 +47,14 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
       setIsConnecting(false);
     }
   }, [campaignId, onSuccess]);
+
+  useEffect(() => {
+    if (!campaignId) return;
+    fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/ga4-service-account/status`, { credentials: "include" })
+      .then(async (response) => response.ok ? response.json() : null)
+      .then((data) => setServiceAccountStatus({ enabled: data?.enabled === true, email: data?.email || null }))
+      .catch(() => setServiceAccountStatus({ enabled: false, email: null }));
+  }, [campaignId]);
 
   useEffect(() => {
     const handlePopupMessage = (event: MessageEvent) => {
@@ -118,6 +131,28 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
     }
   }, [campaignId, checkConnectionStatus, cleanupPopup, onError]);
 
+  const connectWithServiceAccount = useCallback(async () => {
+    const propertyId = serviceAccountPropertyId.trim().replace(/^properties\//i, "");
+    if (!/^\d+$/.test(propertyId)) {
+      onError("Enter the numeric GA4 Property ID.");
+      return;
+    }
+    setIsServiceAccountConnecting(true);
+    try {
+      const response = await apiRequest("POST", `/api/campaigns/${campaignId}/ga4-service-account/connect`, {
+        propertyId,
+        lookbackDays: 30,
+      });
+      const data = await response.json();
+      if (!response.ok || data?.success !== true) throw new Error(data?.message || "Temporary GA4 connection failed");
+      onSuccess();
+    } catch (error: any) {
+      onError(error?.message || "Temporary GA4 connection failed");
+    } finally {
+      setIsServiceAccountConnecting(false);
+    }
+  }, [campaignId, onError, onSuccess, serviceAccountPropertyId]);
+
   return (
     <Card className="w-full border border-border">
       <CardHeader className="text-center">
@@ -174,6 +209,38 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
                 Authentication successful. Please choose your GA4 property to finish connecting.
               </AlertDescription>
             </Alert>
+          )}
+
+          {serviceAccountStatus.enabled && (
+            <div className="space-y-3 border-t pt-4">
+              <div>
+                <p className="text-sm font-medium">Temporary test connection</p>
+                <p className="text-xs text-muted-foreground">
+                  Enter a property that has granted Viewer access to {serviceAccountStatus.email}.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ga4-service-account-property">GA4 Property ID</Label>
+                <Input
+                  id="ga4-service-account-property"
+                  inputMode="numeric"
+                  placeholder="123456789"
+                  value={serviceAccountPropertyId}
+                  onChange={(event) => setServiceAccountPropertyId(event.target.value)}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={connectWithServiceAccount}
+                disabled={isServiceAccountConnecting || !serviceAccountPropertyId.trim()}
+              >
+                {isServiceAccountConnecting ? (
+                  <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Validating property...</>
+                ) : "Connect test property"}
+              </Button>
+            </div>
           )}
         </div>
       </CardContent>

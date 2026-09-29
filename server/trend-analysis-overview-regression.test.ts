@@ -186,7 +186,7 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain('spend: usesCumulativeGA4Consumer ? authoritativeTrendCurrent?.spend ?? null : aggregateMetricValue("spend")');
     expect(outcomeRoute).toContain('const persistedOnly = String(req.query.persistedOnly || "").trim() === "1";');
     expect(outcomeRoute).toContain("} else if (!persistedOnly) {");
-    expect(outcomeRoute).toContain('if (!persistedOnly && primaryGA4?.method === "access_token" && primaryGA4?.accessToken)');
+    expect(outcomeRoute).toContain('if (!persistedOnly && isSupportedGA4ConnectionMethod(primaryGA4?.method) && primaryGA4?.accessToken)');
     expect(page).toContain('performanceSummary?.version === "performance_summary_aggregate_v3"');
     expect(page).toContain("performanceSummary?.campaignId === campaignId");
     expect(page).toContain('const usesCumulativeGA4Consumer = trendConsumerMode === "cumulative_ga4";');

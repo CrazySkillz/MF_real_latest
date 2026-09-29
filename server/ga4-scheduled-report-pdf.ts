@@ -8,6 +8,7 @@ import { mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "..
 import { resolveExactGA4CampaignBreakdownRevenue } from "../shared/ga4-campaign-breakdown";
 import { computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "../shared/kpi-math";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
+import { isSupportedGA4ConnectionMethod } from "./utils/ga4-service-account";
 
 type CampaignFilter = string | string[] | undefined;
 type C3 = [number, number, number];
@@ -220,7 +221,7 @@ const choosePrimaryConnection = async (campaignId: string) => {
   const connections = await storage.getGA4Connections(campaignId);
   const selected = (connections || []).find((c: any) => c?.isPrimary) || (connections || [])[0];
   if (!selected) throw new Error("NO_GA4_CONNECTION");
-  if (selected.method !== "access_token") throw new Error("GA4_CONNECTION_METHOD_UNSUPPORTED");
+  if (!isSupportedGA4ConnectionMethod(selected.method)) throw new Error("GA4_CONNECTION_METHOD_UNSUPPORTED");
   return selected;
 };
 

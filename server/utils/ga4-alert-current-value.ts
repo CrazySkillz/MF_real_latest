@@ -22,6 +22,7 @@ import { summarizeGA4TrafficRows } from "../../shared/ga4-traffic-window";
 import { applyAlertDataSufficiency, blockAlertDecision } from "./alert-decision";
 import { resolveCampaignCurrentValueForAlert } from "./campaign-current-values";
 import { getExpectedDailyRefreshAt, resolveGA4DailyFreshness } from "./reporting-timezone";
+import { isSupportedGA4ConnectionMethod } from "./ga4-service-account";
 
 const isGA4Platform = (value: unknown) => {
   const platform = String(value || "").trim().toLowerCase();
@@ -247,7 +248,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
       hasGA4SourceInput = true;
       hasAuthoritativeEngagementInput = true;
     } else {
-      if (usesFinancialSource && connection?.method === "access_token" && connection?.accessToken) {
+      if (usesFinancialSource && isSupportedGA4ConnectionMethod(connection?.method) && connection?.accessToken) {
         const attempt = (token: string, fromDate: string) => {
           const args: Parameters<typeof ga4Service.getTotalsWithRevenue> = [
             String(connection.propertyId || propertyId),

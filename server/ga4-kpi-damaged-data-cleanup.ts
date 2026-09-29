@@ -14,6 +14,7 @@ import {
   isLatestGA4KPIForDuplicateKey,
 } from "./utils/ga4-kpi-alert-dedupe";
 import { resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
+import { isSupportedGA4ConnectionMethod } from "./utils/ga4-service-account";
 
 type CleanupMode = "dry-run" | "apply" | "apply-orphan-kpi-parents";
 type CandidateKind = "financial_source_window_drift" | "duplicate_notification_state" | "orphan_kpi_parent";
@@ -206,7 +207,7 @@ async function inspectFinancialSourceWindowDrift(result: CleanupResult, options:
       continue;
     }
 
-    if (String(primary?.method || "").trim().toLowerCase() === "access_token") {
+    if (isSupportedGA4ConnectionMethod(primary?.method)) {
       for (const row of rows) {
         result.skipped.push({
           kind: "financial_source_window_drift",

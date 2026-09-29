@@ -41,6 +41,7 @@ import WelcomePage from "@/pages/welcome";
 import ClientsPage from "@/pages/clients";
 import HomePage from "@/pages/home";
 import NotFound from "@/pages/not-found";
+import PrivacyPolicy from "@/pages/privacy";
 import { dismissGA4AlertHighlightOnOutsideClick } from "@/lib/ga4-alert-highlight";
 
 function PageLoading() {
@@ -65,7 +66,7 @@ function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center gap-6 bg-gray-50 px-4 py-8">
       {isSignUp ? (
         <SignUp
           signInUrl="/sign-up"
@@ -77,6 +78,9 @@ function AuthPage() {
           fallbackRedirectUrl="/"
         />
       )}
+      <a href="/privacy" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+        Privacy Policy
+      </a>
     </div>
   );
 }
@@ -185,6 +189,7 @@ function App() {
             {/* Public auth routes */}
             <SignedOut>
               <Switch>
+                <Route path="/privacy" component={PrivacyPolicy} />
                 <Route path="/sign-in" component={AuthPage} />
                 <Route path="/sign-up" component={AuthPage} />
                 {/* Redirect everything else to sign-in */}
@@ -196,7 +201,12 @@ function App() {
 
             {/* Protected app routes */}
             <SignedIn>
-              <ProtectedRouter />
+              <Switch>
+                <Route path="/privacy" component={PrivacyPolicy} />
+                <Route>
+                  <ProtectedRouter />
+                </Route>
+              </Switch>
             </SignedIn>
           </ClerkLoaded>
         </TooltipProvider>

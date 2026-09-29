@@ -110,7 +110,10 @@ describe("scheduled Executive Summary PDF", () => {
     expect(pdfTextCalls.some((text) => text.includes("Conversion benchmark"))).toBe(false);
     expect(pdfTextCalls.some((text) => text.includes("999999"))).toBe(false);
     expect(pdfTextCalls).toContain("Recommended Actions");
-    expect(pdfTextCalls).toContain("- Review website conversion path before making paid-media budget decisions.");
+    expect(pdfTextCalls).toContain("- Investigate Revenue");
+    expect(pdfTextCalls).toContain("- Current evidence: 100 users, 200 sessions, 10 conversions, \u20ac5,000.00 total connected revenue, 5.00% conversion rate.");
+    expect(pdfTextCalls).toContain("- Target check: Conversions Benchmark is on track; Conversions KPI is on track; Revenue Benchmark needs attention; Revenue KPI is below target.");
+    expect(pdfTextCalls).toContain("- Next action: investigate Revenue, then inspect the relevant measurement and reporting inputs.");
     expect(storageMock.getCampaignKPIs).toHaveBeenCalledWith("campaign-1");
     expect(storageMock.getCampaignBenchmarks).toHaveBeenCalledWith("campaign-1");
     expect(storageMock.getPlatformKPIs).not.toHaveBeenCalled();
@@ -173,6 +176,7 @@ describe("scheduled Executive Summary PDF", () => {
     expect(pdfTextCalls).toContain("Data Accuracy Notice");
     expect(pdfTextCalls).toContain("Note: No connected paid-media source is available, so paid-media recommendations are unavailable. Available web analytics and outcome metrics can still feed website recommendations and risk inputs.");
     expect(pdfTextCalls).toContain("Metric basis: GA4-native outcomes cover 2026-07-02 to 2026-08-25; connected revenue and spend inputs are source-to-date through 2026-08-25.");
+    expect(pdfTextCalls).toContain("- Spend: \u20ac500.00");
     expect(pdfTextCalls).not.toContain("Metric basis: 90-day connected-source aggregate through scheduler generation time.");
   });
 

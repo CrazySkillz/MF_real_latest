@@ -2322,7 +2322,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       if (!executiveSummary?.performanceSummary) {
         addText("- Executive Summary source context unavailable.", { indent: 8 });
       }
-      addExecutiveMetricRows(["users", "sessions", "conversions", "revenue", "cvr", "roas", "roi"]);
+      addExecutiveMetricRows(["users", "sessions", "conversions", "revenue", "spend", "cvr", "roas", "roi"]);
       addText("KPI Exceptions", { bold: true, indent: 4 });
       if (executiveKpiRows.length === 0) {
         addText(`- KPI Status Unavailable: No campaign KPI has both an available metric and a positive target for ${executiveWindowDescription}.`, { indent: 8 });
@@ -2355,18 +2355,35 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       riskInputRows.forEach((row) => addText(`- ${row.label}: ${row.status} - ${row.detail}`, { indent: 8 }));
       const hasWebAnalytics = aggregateSources.some((source: any) => source?.category === "web_analytics");
       const hasWebsiteEvidence = hasWebAnalytics && (executiveMetricAvailable("users") || executiveMetricAvailable("sessions")) && (executiveMetricAvailable("conversions") || executiveMetricAvailable("revenue"));
-      const hasWebsiteOutcomeTargetException = [...executiveKpiExceptions, ...executiveBenchmarkExceptions].some((row: any) => ["cvr", "conversions", "revenue"].includes(reportRecordMetric(row)));
+      const websiteOutcomeMetricLabels: Record<string, string> = { cvr: "Conversion Rate", revenue: "Revenue", conversions: "Conversions" };
+      const websiteOutcomeExceptionMetricKeys = Array.from(new Set([...executiveKpiExceptions, ...executiveBenchmarkExceptions]
+        .map((row: any) => reportRecordMetric(row))
+        .filter((key: string) => Object.prototype.hasOwnProperty.call(websiteOutcomeMetricLabels, key))))
+        .sort((left, right) => websiteOutcomeMetricLabels[left].localeCompare(websiteOutcomeMetricLabels[right]));
+      const hasWebsiteOutcomeTargetException = websiteOutcomeExceptionMetricKeys.length > 0;
       if (paidSources.length === 0 && hasWebsiteEvidence) {
         addText("Data Accuracy Notice", { bold: true, indent: 4 });
         addText("Note: No connected paid-media source is available, so paid-media recommendations are unavailable. Available web analytics and outcome metrics can still feed website recommendations and risk inputs.", { indent: 8 });
       }
       addText("Recommended Actions", { bold: true, indent: 4 });
       if (paidSources.length === 0 && hasWebsiteEvidence && hasWebsiteOutcomeTargetException) {
-        const evidence = ["users", "sessions", "conversions", "revenue", "cvr"].filter(executiveMetricAvailable).map((key) => `${campaignDeepDiveMetricLabels[key] || key}: ${executiveMetricValue(key)}`);
-        const targetMetrics = new Set([...executiveKpiRows, ...executiveBenchmarkRows].map((row: any) => reportRecordMetric(row)).filter((key: string) => ["cvr", "revenue", "conversions"].includes(key)));
-        addText("- Review website conversion path before making paid-media budget decisions.", { indent: 8 });
-        addText(`- Current evidence: ${evidence.join(", ")}.`, { indent: 8 });
-        addText(targetMetrics.size > 0 ? `- KPI or Benchmark targets exist for ${Array.from(targetMetrics).map((key) => campaignDeepDiveMetricLabels[key] || key).join(", ")}; compare against those targets before judging quality.` : "- No KPI or Benchmark target is available for conversion rate, revenue, or conversions, so quality cannot be judged yet.", { indent: 8 });
+        const formatMetricLabelList = (labels: string[]) => labels.length <= 1 ? labels[0] : labels.length === 2 ? `${labels[0]} and ${labels[1]}` : `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
+        const exceptionLabels = websiteOutcomeExceptionMetricKeys.map((key) => websiteOutcomeMetricLabels[key]);
+        const evidence = [
+          executiveMetricAvailable("users") ? `${executiveMetricNumber("users").toLocaleString()} users` : "",
+          executiveMetricAvailable("sessions") ? `${executiveMetricNumber("sessions").toLocaleString()} sessions` : "",
+          executiveMetricAvailable("conversions") ? `${executiveMetricNumber("conversions").toLocaleString()} conversions` : "",
+          executiveMetricAvailable("revenue") ? `${executiveMetricValue("revenue")} total connected revenue` : "",
+          executiveMetricAvailable("cvr") ? `${executiveMetricNumber("cvr").toFixed(2)}% conversion rate` : "",
+        ].filter(Boolean);
+        const targetComparisons = [
+          ...executiveKpiRows.map((row: any) => ({ row, key: reportRecordMetric(row) })).filter(({ key }: any) => websiteOutcomeMetricLabels[key]).map(({ row, key }: any) => `${websiteOutcomeMetricLabels[key]} KPI is ${executiveKpiBand(row) === "below" ? "below target" : "on track"}`),
+          ...executiveBenchmarkRows.map((row: any) => ({ row, key: reportRecordMetric(row) })).filter(({ key }: any) => websiteOutcomeMetricLabels[key]).map(({ row, key }: any) => `${websiteOutcomeMetricLabels[key]} Benchmark ${benchmarkThresholdResult(row).status === "behind" ? "is behind benchmark" : benchmarkThresholdResult(row).status === "needs_attention" ? "needs attention" : "is on track"}`),
+        ].sort((left, right) => left.localeCompare(right));
+        addText(`- Investigate ${formatMetricLabelList(exceptionLabels)}`, { bold: true, indent: 8 });
+        addText(`- Current evidence: ${evidence.join(", ")}.`, { indent: 12 });
+        addText(`- Target check: ${Array.from(new Set(targetComparisons)).join("; ")}.`, { indent: 12 });
+        addText(`- Next action: investigate ${formatMetricLabelList(exceptionLabels)}, then inspect the relevant measurement and reporting inputs.`, { indent: 12 });
       } else {
         addText("- No Evidence-Backed Actions Available: Available campaign data and configured targets do not support a reliable recommendation yet.", { indent: 8 });
       }

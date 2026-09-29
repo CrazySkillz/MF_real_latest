@@ -430,12 +430,14 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduler).toContain('addText("Selected section content", { size: 14, bold: true });');
     expect(scheduler).toContain("selectedSections.forEach(addSelectedSectionBody);");
     expect(scheduler).toContain("Marketing Funnel Performance");
+    expect(scheduler).toContain('addExecutiveMetricRows(["users", "sessions", "conversions", "revenue", "spend", "cvr", "roas", "roi"])');
     expect(scheduler).toContain("KPI Exceptions");
     expect(scheduler).toContain("Benchmark Exceptions");
     expect(scheduler).toContain("Risk Level");
     expect(scheduler).toContain("Platform Performance Summary Cards");
     expect(scheduler).toContain("Current Decision Metrics");
     expect(scheduler).toContain("Recommended Actions");
+    expect(scheduler).toContain("Next action: investigate");
   });
 
   it("stores and serves the exact Campaign DeepDive PDF artifact without regeneration", () => {

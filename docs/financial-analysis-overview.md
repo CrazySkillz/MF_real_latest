@@ -1,9 +1,11 @@
 # Budget & Financial Analysis - Current Single-Page Contract
 
-Last reconciled with the current implementation and deployed application on 2026-09-27
-at `39fe902a6b94c461ff26fe2181806b35d7f4100e`. The budget-period Spend contract was
-introduced in `4298cfda`; the current Executive Action copy was finalized in
-`162e9b6b`.
+Last reconciled with the current implementation and deployed health revision on
+2026-09-29 at `5f441126514ae9ea3b8321d16129e6aae92fcb62`. The latest authenticated
+read-only Campaign3 browser reconciliation was performed at `f2ea6ce2`; the two
+subsequent deployed changes are `c3d91489`, which anchors pacing to the certified
+financial data-through date, and `5f441126`, which removes elapsed-day counts from
+user-visible pacing copy without changing the calculation.
 
 ## Current Visible Contract
 
@@ -57,18 +59,31 @@ import boundary through the latest completed reporting day.
 
 ### Current Campaign3 Evidence
 
-An authenticated read-only validation on deployed revision `39fe902a...` reconciled
+An authenticated read-only validation on deployed revision `f2ea6ce2...` reconciled
 Campaign3's persisted financial records, page-consumed API contract, formulas, and
-rendered UI. The visible page showed `EUR 2,353.00` Total Spend, `EUR 37,518.74` Total
-Revenue, `EUR 35,165.74` Profit, `15.95x` ROAS, `1,494.5%` ROI, `EUR 16.23` CPA, and
-`6.4%` CVR. The configured `EUR 250,000.00` budget ran from `2026-07-01` through
-`2026-11-30`; only `EUR 1,250.00` of the two Spend inputs fell inside that period, so
-Budget Position showed `EUR 248,750.00` remaining and `0.5%` used. The browser showed
-`EUR 14.04` daily burn, `EUR 1,633.99` target daily spend, and `99.1% Under` pacing.
+rendered UI for the completed-day cutoff `2026-09-28`. Financial Position showed
+`EUR 2,357.89` Total Spend, `EUR 78,969.69` Total Revenue, `EUR 76,611.80` Profit,
+`33.49x` ROAS, `3,249.2%` ROI, `EUR 16.26` CPA, and `6.4%` CVR.
 
-This evidence proves the current visible Campaign3 path only. Other source families,
-metadata mutation lifecycles, tenant isolation, and deployed Budget report artifacts
-remain separate validation gates.
+The configured `EUR 250,000.00` budget runs from `2026-07-01` through `2026-11-30`.
+The compatible `budget_pacing_v1` derivative contained `EUR 1,254.89`: CSV
+`EUR 1,250.00` plus Google Ads `EUR 4.89`. It excluded the `EUR 1,103.00` Google
+Sheets records dated January through May. Budget Position therefore resolves to
+`EUR 248,745.11` remaining and `0.5%` used.
+
+That audit found the browser was dividing the completed-day Spend by 91 wall-clock
+days. Deployed `c3d91489` corrected the denominator to the 90 inclusive days through
+the certified `2026-09-28` data-through date. The current expected pacing values are
+`EUR 13.94` Daily Burn Rate, `EUR 1,633.99` Target Daily Spend, and `99.1% Under`.
+Deployed `5f441126` leaves that calculation intact while omitting the elapsed-day count
+from the live helper, Executive Action copy, and Budget PDF bodies. The deployed health
+endpoint reports the exact `5f441126...` revision. The five focused suites passed
+110/110 tests; TypeScript passed, and the calculation revision also passed the
+production build.
+
+This evidence is bounded to Campaign3's configured source set. A new authenticated
+browser pass on `5f441126`, other source families, metadata mutation lifecycles, tenant
+isolation, and deployed Budget report artifact/delivery parity remain separate gates.
 
 ### Financial Position
 
@@ -102,8 +117,10 @@ remain separate validation gates.
 - `Target Daily Spend = Campaign Budget / inclusive total budget-period days`.
 - `Pacing % = Daily Burn Rate / Target Daily Spend * 100`.
 - `On Track` is 85%-115%, `Under` is below 85%, and `Over` is above 115%.
-- A period that has not started has zero elapsed days and does not receive a pacing
-  judgment. A completed period stops elapsed days at `pacingEndDate`.
+- Inclusive elapsed days end at the earlier of the certified financial
+  `budgetPacing.dataThroughDate` or `pacingEndDate`; the browser/server wall-clock day
+  is not used when the certified cutoff exists. A period that has not started by that
+  cutoff has zero elapsed days and does not receive a pacing judgment.
 - The inline editor writes only `budget`, `pacingStartDate`, and `pacingEndDate` through
   the existing campaign update route. Budget accepts numeric input and displays two
   decimals after blur. Draft edits do not affect calculations until `Save` succeeds.
@@ -118,7 +135,9 @@ remain separate validation gates.
   contract whose dates no longer match is rejected; aggregate Financial Position values
   remain independent of the pacing edit.
 - Browser, one-off, snapshot, and scheduled Budget report calculations consume the same
-  compatible `budget_pacing_v1` derivative and fail closed when it is unavailable.
+  compatible `budget_pacing_v1` derivative and data-through cutoff and fail closed when
+  it is unavailable. User-visible outputs show the resulting Daily Burn Rate and pacing
+  status without exposing the internal elapsed-day count.
 
 ### Efficiency And Provenance
 
@@ -145,7 +164,8 @@ guidance from verified connected-source values.`
 - Budget: uses actual pacing progress. Over-budget takes precedence; otherwise missing
   dates, a future period, below-target pace, above-target pace, and on-track pace produce
   distinct actions. Low total-budget utilization alone is not treated as proof of
-  underdelivery.
+  underdelivery. Action copy reports the variance and utilization without the internal
+  elapsed-day count.
 - Source mix: when positive financial spend-input rows reconcile to authoritative Total
   Spend within one cent, the action names the largest spend source and its share. A
   mismatch withholds guidance. If no detailed spend inputs exist, the action falls back
@@ -272,14 +292,14 @@ Budget-period dates do not filter aggregate Total Revenue or Total Spend. Those 
 
 | Metric | Formula |
 |---|---|
-| Days Elapsed | Inclusive days from `pacingStartDate` to today for an active budget period; if today is after `pacingEndDate`, elapsed days stop at `pacingEndDate` |
+| Days Elapsed | Internal inclusive days from `pacingStartDate` through the earlier of certified `budgetPacing.dataThroughDate` or `pacingEndDate`; this count is used in the formula but is not displayed |
 | Daily Burn Rate | `budgetPeriodSpend / daysElapsed` |
 | Target Daily Spend | `campaignBudget / inclusive total budget-period days` |
 | Pacing % | `(dailyBurnRate / targetDailySpend) * 100` |
 
 Daily Burn Rate requires verified budget-period Spend and a valid `pacingStartDate`. Target Daily Spend requires campaign budget plus a valid `pacingStartDate` and `pacingEndDate`. Pacing Status requires all of those inputs. If the authoritative Spend sources cannot be safely date-bounded and reconciled, budget calculations fail closed as unavailable instead of using aggregate Total Spend.
 
-If the budget period has only one elapsed day, Daily Burn Rate equals budget-period Spend because the formula is `budget-period spend / 1 elapsed day`. The card shows the elapsed-day count under Daily Burn Rate so this is visible to users.
+If the certified cutoff leaves only one elapsed budget-period day, Daily Burn Rate equals budget-period Spend because the formula is `budget-period spend / 1`. The elapsed-day count remains an internal calculation input and is not rendered in the card or pacing action copy.
 
 When budget, budget-period start date, or budget-period end date are missing or invalid, the Budget Pacing & Burn Rate card shows inline campaign metadata inputs. When those values are already present, the card exposes an edit action. Saving those inputs updates the existing campaign `budget`, `pacingStartDate`, and `pacingEndDate` fields through `PATCH /api/campaigns/:id`, then the card refetches the dated budget-period Spend contract and recalculates the budget values. Users can cancel edit mode with the `x` control, which restores the draft fields from the saved campaign values without calling the API. Users may clear one or both date fields and save while retaining the budget; dependent values then fail closed when the date range is incomplete. `Delete inputs` has no confirmation step and clears the budget plus both dates, returning dependent pacing values to `Unavailable`. The card does not ask users to enter calculated values directly.
 
@@ -300,13 +320,13 @@ budget-specific outputs:
 These inputs do not change aggregate Total Spend, revenue, conversions, ROI, ROAS, CPC, CPA, CPM, CTR, CVR, source breakdowns, Allocation source rows, or historical snapshot values. They select which dated Spend records feed the separate budget-period Spend derivative. GA4 platform `Total Revenue`, `Revenue Breakdown`, `Total Spend`, and `Spend Breakdown` remain source-backed all-mapped values and ignore Budget Pacing dates.
 
 The visible row helper text reflects availability:
-- Daily Burn Rate shows the elapsed budget-period day count when available; otherwise it lists the required spend and budget-period start.
+- Daily Burn Rate shows no secondary helper when available; when unavailable it lists the required spend and budget-period start.
 - Target Daily Spend shows the total budget-period day count when available; otherwise it lists the required budget and budget-period dates.
 - Pacing Status states that daily burn is compared with target daily spend when available; otherwise it lists the required spend, budget, and budget-period dates.
 
-Daily Burn Rate can be tested with a controlled campaign after dated Spend is available: confirm `/api/campaigns/{campaignId}/outcome-totals?dateRange=90days` returns the expected `budgetPacing.spend.value`, confirm `pacingStartDate` and `pacingEndDate`, then verify the UI value equals budget-period Spend divided by inclusive elapsed budget-period days. For an active period, elapsed days stop at the current date. For a completed period, elapsed days stop at `pacingEndDate`.
+Daily Burn Rate can be tested with a controlled campaign after dated Spend is available: confirm `/api/campaigns/{campaignId}/outcome-totals?dateRange=90days` returns the expected `budgetPacing.spend.value` and `budgetPacing.dataThroughDate`, confirm `pacingStartDate` and `pacingEndDate`, then verify the UI value equals budget-period Spend divided by inclusive days from the start through the earlier of the certified data-through date or period end. The wall-clock date must not advance the denominator beyond the completed-day cutoff.
 
-The 2026-09-26 correction has targeted regression coverage for browser and report consumers. Campaign3 browser screenshots supplied after deployment confirmed the expected period filtering, date-cleared unavailable state, unchanged aggregate Financial Position, unchanged provenance, and Executive Action copy. A current deployed report-parity recertification remains outstanding.
+The current cutoff correction has targeted regression coverage for browser and report consumers. Campaign3's authenticated pre-fix audit confirmed period filtering, unchanged aggregate Financial Position, and provenance; regression coverage proves the corrected denominator and removal of elapsed-day copy. A new authenticated browser and deployed report-artifact parity pass at `5f441126` remains outstanding.
 
 Historical Render validation passed after the earlier Commit 7 refresh/history deploy. That evidence predates the separate `budget_pacing_v1` derivative and does not certify the current pacing path.
 

@@ -63,11 +63,13 @@ Executive use case:
 
 ## Current Implemented Consumer Contract
 
-Reconciled with the code and deployed application at
-`39fe902a6b94c461ff26fe2181806b35d7f4100e` on 2026-09-27. The current deployed
-Campaign3 path has an authenticated read-only persisted-fact, API, and rendered-UI
-reconciliation. That bounded evidence does not recertify every source family or the
-one-off, snapshot, and scheduled Budget report delivery paths.
+Reconciled with the current code and deployed health revision at
+`5f441126514ae9ea3b8321d16129e6aae92fcb62` on 2026-09-29. The latest authenticated
+read-only Campaign3 persisted-fact, API, and rendered-UI reconciliation was performed
+at `f2ea6ce2`. The two subsequent deployed revisions are covered by focused regression
+evidence but have not received a new authenticated browser/report-artifact pass. This
+bounded evidence does not recertify every source family or the mutation, isolation,
+snapshot, and scheduled Budget delivery paths.
 
 The visible Budget & Financial Analysis experience is now one executive page, not five
 tabs. It renders `Financial Position`, `Budget & Pacing`, conditional `Paid Media
@@ -101,6 +103,12 @@ Current consumer-only refinements after the `e5195f9a` GA4 certification-record 
   aggregate Financial Position and provenance remain unchanged.
 - `162e9b6b`: Executive Action copy explicitly distinguishes financial return,
   budget-period pacing, and spend-source guidance.
+- `c3d91489`: live and shared server report pacing use the certified
+  `budgetPacing.dataThroughDate` instead of advancing the denominator with the
+  browser/server wall-clock date.
+- `5f441126`: the internal elapsed-day denominator remains part of the formula, while
+  the live helper, Executive Action text, and Budget PDF bodies no longer display the
+  elapsed-day count.
 
 The three Executive Action cards are fixed categories: return, budget pacing, and
 source mix/allocation. The source-mix card may use positive detailed spend input rows
@@ -121,6 +129,13 @@ active Spend-source IDs exactly match the available provenance set. It is capped
 date. Missing dates, incompatible contracts, incomplete source reconciliation, or
 currency mismatch make the budget calculations unavailable; they do not trigger an
 aggregate-Total-Spend fallback.
+
+Daily Burn Rate divides compatible budget-period Spend by inclusive calendar days from
+`pacingStartDate` through the earlier of `budgetPacing.dataThroughDate` or
+`pacingEndDate`. Target Daily Spend divides the configured budget by inclusive total
+budget-period days. The completed-day cutoff controls the denominator even after the
+local calendar advances. The elapsed-day count is internal and is omitted from the
+current live and Budget-report copy.
 
 The inline editor saves only `budget`, `pacingStartDate`, and `pacingEndDate` through
 the existing campaign PATCH route. Draft edits have no effect until Save succeeds.
@@ -165,42 +180,48 @@ the GA4 analytics experience.
 - Source refresh and page refetch keep the consumers synchronized; synchronization is
   through authoritative backend state, never through tab-to-tab value copying.
 
-### 2026-09-27 Campaign3 Bounded Production Reconciliation
+### 2026-09-29 Campaign3 Bounded Reconciliation And Pacing Follow-up
 
-The exact deployed revision
-`39fe902a6b94c461ff26fe2181806b35d7f4100e` was validated read-only for Campaign3,
+The authenticated read-only audit was run on deployed `f2ea6ce2` for Campaign3,
 campaign `e5edd8dc-fe84-49ce-b564-67203de18aea`, GA4 property `542352127`, currency
-`EUR`, and reporting timezone `Europe/Amsterdam`.
+`EUR`, and reporting timezone `Europe/Amsterdam`. The current deployed health revision
+is `5f441126514ae9ea3b8321d16129e6aae92fcb62`.
 
-- The cumulative current-value window was `2026-08-23` through `2026-09-26`.
+- The cumulative current-value window was `2026-08-23` through `2026-09-28`.
 - Persisted GA4 traffic reconciled to 2,256 Users, 2,256 Sessions, and 145
   Conversions.
-- Financial Position rendered Total Spend `EUR 2,353.00`, Total Revenue
-  `EUR 37,518.74`, Profit `EUR 35,165.74`, ROAS `15.95x`, ROI `1,494.5%`, CPA
-  `EUR 16.23`, and CVR `6.4%`.
-- Total Spend reconciled exactly to two active campaign-scoped inputs: Google Sheets
-  `EUR 1,103.00` and CSV `EUR 1,250.00`.
-- The campaign budget was `EUR 250,000.00` for `2026-07-01` through `2026-11-30`.
-  `budget_pacing_v1` correctly returned only the dated in-period CSV Spend,
-  `EUR 1,250.00`; it excluded the Google Sheets records dated January through May.
-- Budget Position rendered `EUR 248,750.00` remaining and `0.5%` used. Pacing rendered
-  `EUR 14.04` daily burn over 89 elapsed calendar days, `EUR 1,633.99` target daily
-  spend over 153 total days, and `99.1% Under`.
-- Allocation & Sources rendered GA4 Revenue plus both exact Spend inputs. Executive
-  Action rendered positive return, below-target pacing, and the reconciled largest
-  spend source (`Test_spend_alpha.csv`, `53.1%`).
-- Paid Media Efficiency was correctly omitted because no compatible connected source
-  supplied paid-media clicks or impressions.
-- The authoritative cumulative GA4 Revenue was `EUR 37,518.74`. The two-decimal daily
-  fact rows summed to `EUR 37,518.72`; the page correctly retained the provider-backed
-  cumulative value rather than replacing it with the quantized daily sum.
-- The browser trace observed no application write request. The focused five-file
-  financial suite passed 61/61 tests and `npm run check` passed.
+- Financial Position reconciled to Total Spend `EUR 2,357.89`, Total Revenue
+  `EUR 78,969.69`, Profit `EUR 76,611.80`, ROAS `33.49x`, ROI `3,249.2%`, CPA
+  `EUR 16.26`, and CVR `6.4%`.
+- Total Revenue reconciled to GA4 `EUR 37,518.74`, Google Sheets `EUR 30,340.00`,
+  HubSpot `EUR 10,000.00`, Shopify `EUR 785.95`, CSV `EUR 250.00`, and Salesforce
+  `EUR 75.00`.
+- Total Spend reconciled to Google Ads `EUR 4.89`, Google Sheets `EUR 1,103.00`, and
+  CSV `EUR 1,250.00`.
+- The campaign budget is `EUR 250,000.00` for `2026-07-01` through `2026-11-30`.
+  `budget_pacing_v1` returned `EUR 1,254.89`: the dated in-period CSV and Google Ads
+  Spend. It excluded the Google Sheets records dated January through May.
+- Budget Position resolves to `EUR 248,745.11` remaining and `0.5%` used.
+- The audit exposed one denominator error: the page used 91 wall-clock days while
+  Spend stopped on September 28. Deployed `c3d91489` now uses 90 inclusive days through
+  `budgetPacing.dataThroughDate`, giving `EUR 13.94` Daily Burn Rate,
+  `EUR 1,633.99` Target Daily Spend, and `99.1% Under`.
+- Deployed `5f441126` removes the elapsed-day count from the live helper, Executive
+  Action copy, and Budget PDF bodies. The 90-day denominator remains internal.
+- Allocation & Sources retains all six Revenue and three Spend provenance rows.
+  Executive Action retains positive return, below-target pacing, and the reconciled
+  largest spend source (`Test_spend_alpha.csv`, `53.0%`).
+- Paid Media Efficiency remains correctly omitted because no compatible main connected
+  paid-media source supplies clicks or impressions.
+- The browser trace at `f2ea6ce2` observed no application write request and no
+  Campaign3 persistence change. After the follow-ups, the focused five-file suite
+  passed 110/110 tests, TypeScript passed, and the cutoff revision passed the production
+  build.
 
-This is a bounded current-revision pass for Campaign3's visible page and configured
-GA4 financial inputs. It is not evidence for other source families, tenant isolation,
-Budget metadata mutation lifecycles, or deployed Budget report artifact/delivery
-parity.
+This is bounded evidence for Campaign3's configured source set. A new authenticated
+browser pass on `5f441126`, other source families, tenant isolation, Budget metadata
+mutation lifecycles, and deployed Budget report artifact/delivery parity remain
+unverified.
 
 ### 2026-08-28 Current-Value Correction
 
@@ -573,11 +594,11 @@ Evidence:
 - Render validation passed after the Commit 7 refresh/history deploy: Overview and Budget & Financial Analysis values remained correct after deployment.
 - Follow-up UX fix: Budget Pacing & Burn Rate provides inline campaign metadata inputs when budget, budget-period start date, or budget-period end date are missing or invalid. The inputs update only the existing campaign `budget`, `pacingStartDate`, and `pacingEndDate` fields, then the card refetches the matching dated Spend and recalculates its budget values.
 - Follow-up copy fix: the old card-level missing-start-date warning was removed. Row-level helper text now states the exact inputs required for Daily Burn Rate, Target Daily Spend, and Pacing Status.
-- Follow-up accuracy fix: Budget Pacing & Burn Rate now uses inclusive budget-period days. Active budget periods calculate elapsed days through the current reporting date; completed periods stop elapsed days at the budget-period end date, so Daily Burn Rate is not diluted by later days.
+- Historical follow-up: Budget Pacing & Burn Rate moved to inclusive budget-period days. Current `c3d91489` behavior supersedes its wall-clock boundary: elapsed days now stop at the earlier of the certified financial data-through date or budget-period end.
 - Follow-up UX fix: users can edit or delete Budget Pacing metadata inputs from the card. Deleting clears the same campaign `budget`, `pacingStartDate`, and `pacingEndDate` fields and dependent pacing values return to unavailable.
 - Follow-up correctness fix: Budget & Financial Overview aggregate metrics now keep prior aggregate data during outcome-totals refetch and fail closed when `performanceSummary` is unavailable, instead of falling back to stale legacy local spend totals.
 - Follow-up correctness fix: Budget pacing metadata does not filter aggregate imported Spend provenance in `/outcome-totals`; Total Spend remains sourced from the full active spend-source aggregate. A separate `budgetPacing.spend` value filters dated Spend records for Budget Position and pacing calculations only.
-- Follow-up clarity fix: Budget Pacing & Burn Rate displays the elapsed budget-period day count under Daily Burn Rate, making it clear when Daily Burn Rate equals budget-period Spend because only one pacing day has elapsed.
+- Historical follow-up: an elapsed-day helper was once displayed under Daily Burn Rate. Current `5f441126` behavior removes that count from live and report copy while retaining it internally in the formula.
 - Follow-up formatting fix: the inline Campaign Budget input accepts numeric input only and auto-formats with thousands separators as values are typed while saving the numeric budget value without commas.
 - Follow-up synchronization fix: Budget Pacing & Burn Rate refetches campaign budget and budget-period metadata while visible and on window focus, uses the returned campaign row immediately after save/delete, and invalidates outcome totals so recalculations use matching dated Spend plus current pacing metadata.
 - Follow-up over-budget guard fix: the Budget Pacing warning now requires a positive campaign budget, so deleting pacing inputs does not show `Budget exceeded by ...` against a missing budget.
@@ -617,11 +638,14 @@ Before marking this subsection production ready:
 
 ## Current Status
 
-**PARTIALLY REVIEWED - the current deployed Campaign3 visible-page path passed an
-authenticated read-only persisted-fact, API, formula, and UI reconciliation at
-`39fe902a6b94c461ff26fe2181806b35d7f4100e`; 61/61 focused tests and TypeScript also
-passed. Other source families, mutation lifecycles, tenant isolation, and deployed
-one-off, snapshot, and scheduled Budget report delivery remain incomplete.**
+**PARTIALLY REVIEWED - Campaign3's persisted facts, page-consumed API, formulas, and
+rendered UI received an authenticated read-only reconciliation at deployed
+`f2ea6ce2`. The resulting completed-day pacing correction and copy refinement are
+deployed at `5f441126514ae9ea3b8321d16129e6aae92fcb62`; 110/110 focused tests and
+TypeScript passed, and the cutoff revision passed the production build. A new
+authenticated browser pass on that exact revision, other source families, mutation
+lifecycles, tenant isolation, and deployed one-off/snapshot/scheduled Budget report
+delivery remain incomplete.**
 
 The earlier `19f055372abe8aee789dd4205eba5decef5f39a5` readiness statement is historical
 evidence only. It does not certify the corrected Budget Position and pacing path,
@@ -689,10 +713,13 @@ Proven:
 - Current server aggregation feeds registered Connected Platforms and financial inputs into `performanceSummary`; Google Ads is now included as a first-class normalized paid-media source when connected and populated with campaign-scoped daily metrics.
 - GA4 `yesop` test-data refresh uses the deterministic simulator and does not require a live OAuth token, so Render validation can trigger a GA4 refresh for system-generated test data without failing on `TOKEN_EXPIRED`.
 - Render validation passed for the GA4 `yesop` source-refresh path: manual refresh returned `success: true` with refreshed metrics, and the Budget & Financial current-value validation passed after refresh.
-- Current deployed Campaign3 proof reconciles the two active Spend inputs to aggregate
-  Total Spend, the period-bounded derivative to dated source records, all visible
-  Financial Position formulas, Budget Position and pacing outputs, provenance rows,
-  and the three Executive Action categories without mutating application data.
+- The latest authenticated Campaign3 proof reconciles the three active Spend inputs to
+  aggregate Total Spend, the period-bounded derivative to dated source records, all
+  visible Financial Position formulas, Budget Position, provenance rows, and the three
+  Executive Action categories without mutating application data. That pass exposed the
+  old wall-clock pacing denominator; focused regression coverage proves the subsequent
+  completed-day correction and elapsed-day-copy removal, while a new authenticated
+  browser/report-artifact pass remains outstanding.
 
 Remaining validation outside the current local and bounded Campaign3 production proof:
 

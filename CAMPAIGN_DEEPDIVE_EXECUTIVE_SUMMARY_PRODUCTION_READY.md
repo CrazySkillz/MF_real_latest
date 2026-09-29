@@ -12,9 +12,9 @@ The exact deployed evidence for the historical certified revision is recorded in
 
 ### Current Revision And Evidence Boundary
 
-- deployed application revision validated: `a4a1e97e6ace7ebf675dee10b25cedfeb1bdc62d`
+- deployed application revision validated: `0b92df048f1f9960e02588de6d3e932808cf97c9`
 - historical certified application implementation revision: `2d9625437683ccef081e60831f2a59c76246d438`
-- revision relationship: the 2026-09-21 certificate covers `2d962543`; the current revision has bounded Campaign3 evidence for the later UI, financial-source, verified-current KPI/Benchmark, and trajectory behavior described below. This bounded result is not a replacement whole-section certificate.
+- revision relationship: the 2026-09-21 certificate covers `2d962543`; the current revision has bounded Campaign3 evidence for the later UI, financial-source, verified-current KPI/Benchmark, trajectory, and direct Executive Summary PDF behavior described below. This bounded result is not a replacement whole-section certificate.
 - campaign: `Campaign3` (`e5edd8dc-fe84-49ce-b564-67203de18aea`)
 - GA4 property: `542352127`
 - campaign currency: `EUR`
@@ -25,13 +25,15 @@ The exact deployed evidence for the historical certified revision is recorded in
 - child financial configuration admitted at the completed-day boundary: five active Revenue sources and three active Spend sources
 - connected paid-media main sources: none
 
-The current evidence proves the authenticated Campaign3 persisted inputs, production API responses, calculations, source composition, current UI contract, and focused regressions at the stated deployed revision. It does not certify the Executive Summary PDF or scheduled report, natural scheduler firing on this exact revision, other campaigns, other source mixes, paid-media variants, financial-source mutation lifecycles, or the complete Campaign DeepDive product. Those paths remain unverified unless a separate current evidence record covers them.
+The current evidence proves the authenticated Campaign3 persisted inputs, production API responses, calculations, source composition, current UI contract, focused regressions, and one authenticated direct nonpersisting Executive Summary PDF at the stated deployed revision. It does not certify saved-report snapshot lifecycle, scheduled generation or delivery, inbox receipt, natural scheduler firing on this exact revision, other campaigns, other source mixes, paid-media variants, financial-source mutation lifecycles, or the complete Campaign DeepDive product. Those paths remain unverified unless a separate current evidence record covers them.
 
 ### Post-Certification Current Changes - updated 2026-09-29
 
 The current implementation removes the five duplicate metric cards below `Marketing Funnel Performance` and adds `Spend` to the Bottom of Funnel row. The row now presents Conversions, Revenue, Spend, ROAS, and Return on Investment once. Recommended Actions also uses grammatically complete Benchmark status text and no longer renders the connected-web-analytics scope note or the internal `Website Outcomes` category subtitle. The category remains an internal discriminator for evidence construction.
 
-Two later data-path corrections are also current. First, the verified-current GA4 KPI/Benchmark resolver accepts the synchronized Overview native financial total before the cent-rounded persisted-daily candidate only when import window, campaign currency, and latest daily coverage match. Second, the trajectory endpoint can use an exact-date read-only financial baseline when the prior Executive Summary snapshot is missing, but only for GA4-only Revenue with no active imported Revenue source and exact contract compatibility. For active real GA4 campaigns, the ordered GA4 daily pipeline now refreshes mapped financial sources and GA4 facts, recomputes KPI/Benchmark state, writes financial and compatible campaign aggregate snapshots, confirms the guarded Executive Summary snapshot write, and runs campaign alerts before persisting scheduled-report readiness on the exact reporting-date snapshot. That marker is restored after server restart. A failed unrelated campaign does not block a successful campaign's downstream publication, while the overall run remains failed and skips the unsafe global alert sweep. Independent Executive Summary and generic aggregate snapshot schedulers skip those campaigns and remain for campaigns outside this pipeline. The 2026-09-21 certificate remains historical evidence for its exact runtime and earlier behavior. The current combined page and these changed paths require proportionate exact-revision deployed revalidation before they are described as production-certified for the current revision.
+Two later data-path corrections are also current. First, the verified-current GA4 KPI/Benchmark resolver accepts the synchronized Overview native financial total before the cent-rounded persisted-daily candidate only when import window, campaign currency, and latest daily coverage match. Second, the trajectory endpoint can use an exact-date read-only financial baseline when the prior Executive Summary snapshot is missing, but only for GA4-only Revenue with no active imported Revenue source and exact contract compatibility. For active real GA4 campaigns, the ordered GA4 daily pipeline now refreshes mapped financial sources and GA4 facts, recomputes KPI/Benchmark state, writes financial and compatible campaign aggregate snapshots, confirms the guarded Executive Summary snapshot write, and runs campaign alerts before persisting scheduled-report readiness on the exact reporting-date snapshot. That marker is restored after server restart. A failed unrelated campaign does not block a successful campaign's downstream publication, while the overall run remains failed and skips the unsafe global alert sweep. Independent Executive Summary and generic aggregate snapshot schedulers skip those campaigns and remain for campaigns outside this pipeline. The 2026-09-21 certificate remains historical evidence for its exact runtime and earlier behavior. The bounded exact-revision evidence recorded below does not by itself renew whole-section production certification.
+
+The current shared Executive Summary PDF renderer adds Spend to the financial metric rows. In its no-paid-media web-evidence branch, it uses the same eligible website-outcome exception selection and ordering as the page to derive the recommendation title, evidence, target context, and next action; otherwise it renders the no-evidence action state. The report retains an explicit report-specific Risk Assessment and conditionally shows the Data Accuracy Notice when website evidence exists without a connected paid-media source. It keeps the complete Recommended Actions block together on a page when the block fits on a fresh page, and formats the generated timestamp in the campaign reporting timezone with the IANA zone name; invalid or missing timezone configuration falls back to UTC.
 
 ### Current UI Contract
 
@@ -55,6 +57,23 @@ Current presentation details:
 - Recommended Actions does not render the former connected-web-analytics scope note or the internal `Website Outcomes` category subtitle.
 
 The former tabs, full Risk Assessment card, Campaign Grade, Health Score, Campaign Story, duplicate alert cards, and duplicate Platform Performance presentation are not part of the current visible contract. Backend compatibility fields do not make removed UI elements current product behavior.
+
+### Current Executive Summary PDF Contract
+
+Campaign-context direct downloads use `POST /api/campaigns/:id/custom-report-pdf` and the shared server renderer in `server/report-scheduler.ts`. The direct route is campaign-access guarded and generates the artifact in memory without creating a saved report, report snapshot, send event, or schedule.
+
+For the `executive-summary:overview` composition, the PDF contains:
+
+- the completed-day metric basis and connected-source reporting window
+- 7-day trajectory and Risk Level
+- the Executive Summary narrative
+- Marketing Funnel Performance with Users, Sessions, Conversions, Revenue, Spend, Conversion Rate, ROAS, and ROI
+- eligible KPI and Benchmark exception rows, or the corresponding no-exception or unavailable state
+- an explicit report-specific Risk Assessment
+- a Data Accuracy Notice when website evidence exists without a connected paid-media source
+- Recommended Actions; the no-paid-media web-evidence branch derives the evidence, configured target context, and investigative next action from eligible website-outcome exceptions, while other states fail closed to `No Evidence-Backed Actions Available`
+
+Before rendering, the shared text-block helper measures the wrapped Recommended Actions content. When the whole block fits on a fresh page but not in the remaining space, the renderer moves the block to the next page so its heading and content stay together. The generated timestamp uses the campaign `reportingTimeZone`, includes the selected IANA zone name, and falls back to `UTC` when that setting is missing or invalid. The report-specific Risk Assessment does not restore the removed Risk Assessment card on the live Executive Summary page.
 
 ### Current Query, Calculation, And Persistence Trace
 
@@ -139,7 +158,11 @@ Trajectory behavior is correctly unavailable for this cutoff:
 - visible result: `Not enough history` and `No matching Executive Summary reading exists for seven days earlier yet.`
 - Risk Level and current values remain available because they use current eligible inputs and do not depend on a historical trajectory pair
 
-Validation at deployed revision `a4a1e97e6ace7ebf675dee10b25cedfeb1bdc62d` covered authenticated Campaign3 production facts and endpoints, source-grain selection, formulas, required UI states and copy, snapshot behavior, KPI/Benchmark exception filtering, freshness, Risk, and recommendation presentation. The focused Executive Summary packet passed `56/56` tests. This evidence does not cover a real browser interaction recording, Executive Summary PDF or scheduled delivery, a natural scheduler firing on this exact revision, mutation/delete/reconnect lifecycles, tenant isolation beyond the exercised authenticated campaign boundary, other campaigns, or paid-media main-source combinations.
+The direct Executive Summary PDF generated from this state shows the same current metric window and values, includes `Investigate Conversions` with the Total Conversions Benchmark and Revenue KPI target context, and labels its generated timestamp with `Europe/Amsterdam`.
+
+Validation at deployed revision `0b92df048f1f9960e02588de6d3e932808cf97c9` covered authenticated Campaign3 production facts and endpoints, source-grain selection, formulas, required UI states and copy, snapshot behavior, KPI/Benchmark exception filtering, freshness, Risk, and recommendation presentation. The earlier focused Executive Summary packet passed `56/56` tests. The current Reports regression packet passed `132/132` tests and the TypeScript check passed.
+
+At that exact deployed revision, an authenticated direct `executive-summary:overview` PDF was generated for Campaign3 without persistence. It contained the `2026-08-23` through `2026-09-28` GA4-native outcome window, Revenue `EUR 78,969.69`, Spend `EUR 2,357.89`, `Investigate Conversions`, the expected target context and next action, and the `Europe/Amsterdam` timestamp label. Report, snapshot, and send-event counts remained `0` before and after generation. Both rendered pages were visually inspected: the core report content was unclipped on page 1, and the complete Recommended Actions block stayed together on page 2. This evidence does not cover a saved-report snapshot lifecycle, scheduled generation or delivery, inbox receipt, a natural scheduler firing on this exact revision, mutation/delete/reconnect lifecycles, tenant isolation beyond the exercised authenticated campaign boundary, other campaigns, or paid-media main-source combinations.
 
 The guarded trajectory behavior remains localized to `server/routes-oauth.ts`, `server/utils/executive-summary-daily-snapshot.ts`, and `client/src/pages/executive-summary.tsx`, with focused guards in `server/executive-summary-daily-snapshot.test.ts`, `server/executive-summary-daily-snapshot-regression.test.ts`, `server/financial-daily-comparison.test.ts`, and `server/executive-summary-regression.test.ts`. The exact native-GA4 KPI/Benchmark financial fallback remains localized to `server/utils/ga4-alert-current-value.ts`, with guards in `server/ga4-kpi-alert-contract-regression.test.ts` and `server/executive-summary-regression.test.ts`.
 

@@ -34,9 +34,10 @@ function renderRevenueBreakdown(
     mappingConfig?: unknown; materializedRevenueStatus?: "available" | "unavailable";
   }>,
   chartCampaignRows = nativeRows,
+  campaignBreakdownAgg = nativeRows,
 ) {
   return renderToStaticMarkup(React.createElement(GA4AdComparison, {
-    campaignBreakdownAgg: nativeRows,
+    campaignBreakdownAgg,
     chartCampaignRows,
     breakdownLoading: false,
     chartBreakdownLoading: false,
@@ -78,6 +79,7 @@ describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
     expect(html).toMatch(/GA4 Revenue \(imported to date\)<\/td>\s*<td[^>]*>\$0\.00<\/td>/);
     expect(html).not.toContain("Exact zero source");
     expect(html).toContain("No additional revenue sources");
+    expect(html).toMatch(/TOTAL<\/td>\s*<td[^>]*>\$0\.00<\/td>/);
     expect(html).not.toContain("latest_value_not_in_cutoff");
     expect(html).not.toContain("$999.00");
   });
@@ -90,6 +92,7 @@ describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
     }]);
 
     expect(html).toMatch(/Missing source<\/td>\s*<td[^>]*>.*Unavailable/);
+    expect(html).toMatch(/TOTAL<\/td>\s*<td[^>]*>.*Unavailable/);
     expect(html).not.toContain("$999.00");
     expect(html).not.toContain(">old<");
   });
@@ -102,6 +105,19 @@ describe("GA4 Ad Comparison Revenue Breakdown display states", () => {
 
     expect(html).toMatch(/Last-good source<\/td>\s*<td[^>]*>\$12\.00<\/td>/);
     expect(html).toContain("Imported source amounts are last-good values; the latest refresh failed.");
+    expect(html).toMatch(/TOTAL<\/td>\s*<td[^>]*>\$12\.00<\/td>/);
+  });
+
+  it("totals native GA4 revenue and every confirmed imported source amount", () => {
+    const html = renderRevenueBreakdown("ready", [
+      { sourceId: "sheet", displayName: "Google Sheets", sourceType: "google_sheets", revenue: 30340, materializedRevenueStatus: "available" },
+      { sourceId: "hubspot", displayName: "HubSpot", sourceType: "hubspot", revenue: 10000, materializedRevenueStatus: "available" },
+      { sourceId: "csv", displayName: "CSV", sourceType: "csv", revenue: 250, materializedRevenueStatus: "available" },
+      { sourceId: "salesforce", displayName: "Salesforce", sourceType: "salesforce", revenue: 75, materializedRevenueStatus: "available" },
+      { sourceId: "shopify", displayName: "Shopify", sourceType: "shopify", revenue: 785.95, materializedRevenueStatus: "available" },
+    ], nativeRows, [{ ...nativeRows[0], revenue: 37518.74 }]);
+
+    expect(html).toMatch(/TOTAL<\/td>\s*<td[^>]*>\$78969\.69<\/td>/);
   });
 
   it("distinguishes loading and unavailable provenance from zero", () => {

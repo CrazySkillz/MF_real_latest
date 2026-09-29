@@ -87,6 +87,17 @@ export default function GA4AdComparison({
     )),
     [revenueDisplaySources],
   );
+  const revenueBreakdownTotalAvailable = (
+    revenueState === 'ready' || revenueState === 'stale'
+  ) && revenueDisplaySources.every((source) => (
+    source.materializedRevenueStatus !== 'unavailable'
+    && source.revenue != null
+    && Number.isFinite(Number(source.revenue))
+  ));
+  const revenueBreakdownTotal = Number((ga4RevenueForBreakdown + revenueDisplaySources.reduce(
+    (sum, source) => sum + (Number.isFinite(Number(source.revenue)) ? Number(source.revenue) : 0),
+    0,
+  )).toFixed(2));
   const chartSummaryRows = useMemo(() => {
     const byName = new Map<string, CampaignAgg>();
     for (const row of chartCampaignRows) {
@@ -410,6 +421,14 @@ export default function GA4AdComparison({
                     <td colSpan={2} className="px-3 py-2 text-center text-amber-700 dark:text-amber-300 text-xs">Imported source amounts are last-good values; the latest refresh failed.</td>
                   </tr>
                 )}
+                <tr className="border-t-2 bg-muted/40 font-semibold">
+                  <td className="px-3 py-2 text-foreground">TOTAL</td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {revenueBreakdownTotalAvailable
+                      ? formatMoney(revenueBreakdownTotal)
+                      : <span className="text-destructive text-xs">Unavailable</span>}
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>

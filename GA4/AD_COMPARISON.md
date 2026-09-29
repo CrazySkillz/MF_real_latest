@@ -296,8 +296,14 @@ Rules:
   Overview-based chart and leader cards through their separate exact mapping path.
 - never fall back to stale source-definition/configuration totals when
   materialized values are unavailable.
-- do not render a combined `Total Revenue`; its inputs do not share a proven
-  window.
+- `TOTAL` sums the native GA4 row and every confirmed imported source amount
+  through the latest completed reporting day. Confirmed zero sources contribute
+  zero even though their individual rows are omitted. This provenance total
+  does not allocate imported revenue to GA4 campaign rows.
+- `TOTAL` displays `Unavailable` while imported provenance is loading or
+  unavailable, or when any active imported source lacks a confirmed amount.
+  In the `stale` state it sums the visible last-good amounts and remains subject
+  to the table's explicit stale warning.
 - when both native comparison and chart rows are empty, the page renders its
   no-campaign-data state instead of the Revenue Breakdown table.
 - if source definitions load but a source has no materialized amount, its row

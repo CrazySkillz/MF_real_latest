@@ -1,10 +1,14 @@
 # GA4 Ad Comparison Production Readiness
 
-<!-- ga4-ad-comparison-certification-status: PRODUCTION_READY -->
+<!-- ga4-ad-comparison-certification-status: UNVERIFIED -->
 
 ## Controlling Current Status
 
-**Full live-tab status: CLEAN-CERTIFIED / PRODUCTION_READY** for Client2 /
+**Status: UNVERIFIED. Ad Comparison is not currently certified production-ready.**
+The new Revenue Breakdown `TOTAL` row has passed focused local tests, but its
+exact revision has not yet been deployed and validated at runtime.
+
+**Historical full live-tab status: CLEAN-CERTIFIED / PRODUCTION_READY** for Client2 /
 Campaign2 `eee3e654-b736-4e8e-86ec-1050e4d905c0`, active GA4 property
 `542352127`, saved values `yesop_retargeti` and `yesop_email_nurture`, USD,
 `Europe/Amsterdam`, and deployed application commit
@@ -16,6 +20,8 @@ omit that table, while explicitly saved legacy custom reports retain it.
 The independently certified subsection boundaries remain documented in
 `GA4/AD_COMPARISON_CHART_CERTIFICATION_2026-09-16.md` and
 `GA4/AD_COMPARISON_REVENUE_BREAKDOWN_CERTIFICATION_2026-09-16.md`.
+The later `TOTAL` row is outside that historical deployed certification until
+its working revision is deployed and validated at runtime.
 
 Exact deployed evidence: `/api/health` returned the commit above. One
 owner-authenticated, read-only validation captured the deployed Overview
@@ -66,7 +72,8 @@ The earlier `b8c7362121593502955d41e522d32396a963fdcc`,
 `83d124278647f3d2ccbe74b20f39c853dc0c8b44` whole-tab conclusions, and
 their saved campaign/date boundaries below, are historical only.
 
-This is the only reusable current-status answer in this document. The June 27,
+The `UNVERIFIED` statement above is the only reusable current-status answer in
+this document. The June 27,
 2026 conclusion below is historical and revoked. It had no exact certified Git
 SHA, complete dependency boundary, machine-readable invalidation gate, or
 complete current value/negative-state inventory.
@@ -158,7 +165,7 @@ leader-card, and summary sources are specified in `GA4/AD_COMPARISON.md`.
 | Selected-metric summary | Normalized comparison rows | Sum the selected metric; conversion rate is weighted by sessions across campaign rows |
 | Campaigns Compared | Normalized comparison rows | Exact normalized row count |
 | All Campaigns | Sessions-descending normalized rows | Same native row values regardless of dropdown selection |
-| Revenue Breakdown | Import-to-latest-completed native row sum plus confirmed nonzero imported source totals through the latest completed reporting day | Exact source ID/value; omit confirmed zero rows; no undated saved-config detail rows, same-type/config fallback, or combined total |
+| Revenue Breakdown | Import-to-latest-completed native row sum plus confirmed nonzero imported source totals through the latest completed reporting day | Exact source ID/value; omit confirmed zero rows; no undated saved-config detail rows or same-type/config fallback; `TOTAL` equals native GA4 plus every confirmed imported amount and is unavailable when any active imported amount is unknown |
 | Loading/empty/stale/unavailable | Query state plus current-property verification | Previous-property rows are blocked; verified empty differs from failure; last-good data requires an explicit stale warning |
 
 ### Route, storage, lifecycle, and consumer inventory

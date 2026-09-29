@@ -2386,6 +2386,12 @@ export function AddRevenueWizardModal(props: {
                           <p className="text-xs text-muted-foreground/70">
                             Select a date column for daily revenue tracking. If you leave this blank, the source will behave like a revenue-to-date snapshot rather than daily history.
                           </p>
+                          {platformContext === "ga4" && (
+                            <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
+                              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                              <p><strong>Use individual dated amounts.</strong> Each row must contain revenue for that day or transaction. Do not use repeated running or cumulative totals because all eligible dated rows are added together.</p>
+                            </div>
+                          )}
                         </div>
 
                         <div className="pt-2 border-t space-y-3">
@@ -2752,6 +2758,12 @@ export function AddRevenueWizardModal(props: {
                             <p className="text-xs text-muted-foreground/70 mt-1">
                               Select a date column for daily revenue tracking. If you leave this blank, the source will behave like a revenue-to-date snapshot rather than daily history.
                             </p>
+                            {platformContext === "ga4" && (
+                              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
+                                <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                                <p><strong>Use individual dated amounts.</strong> Each row must contain revenue for that day or transaction. Do not use repeated running or cumulative totals because all eligible dated rows are added together.</p>
+                              </div>
+                            )}
                           </div>
 
                         </div>

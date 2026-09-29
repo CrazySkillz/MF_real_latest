@@ -1879,7 +1879,7 @@ export default function GA4Metrics() {
     error: ga4InsightsDailyError,
   } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId],
-    enabled: activeTab === "insights" && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
+    enabled: (activeTab === "insights" || activeTab === "reports") && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
@@ -3338,6 +3338,15 @@ export default function GA4Metrics() {
         );
       }
     }
+    if (sections.insights) {
+      const historyReady = ga4InsightsDailyResp !== undefined
+        && !ga4InsightsDailyError
+        && /^\d{4}-\d{2}-\d{2}$/.test(trendsDataThroughDate)
+        && Boolean(String((ga4InsightsDailyResp as any)?.reportingTimeZone || "").trim());
+      if (!historyReady) {
+        throw new Error("Cannot generate the Insights report until its completed-day history is available. Wait for Reports data to finish loading, then try again.");
+      }
+    }
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
 
@@ -3970,8 +3979,7 @@ export default function GA4Metrics() {
         return formatNumber(n);
       };
       const trendDeltaPct = (curVal: number, prevVal: number) => prevVal > 0 ? ((curVal - prevVal) / prevVal) * 100 : curVal > 0 ? 100 : 0;
-      const trendDailyRows = Array.isArray(ga4TimeSeries) ? (ga4TimeSeries as any[]).filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(r?.date || ""))) : [];
-      const trendSorted = [...trendDailyRows].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
+      const trendSorted = [...trendsDailyRows].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
       const renderInsightsFreshness = () => {
         checkPage(14);
         doc.setFontSize(7);
@@ -4143,8 +4151,8 @@ export default function GA4Metrics() {
                   return [row.date, trendFmtValue(row.value), prev ? `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%` : "—"];
                 })
               : (() => {
-                  const cur = insightsTrendMode === "7d" ? insightsRollups.last7 : insightsRollups.last30;
-                  const prior = insightsTrendMode === "7d" ? insightsRollups.prior7 : insightsRollups.prior30;
+                  const cur = insightsTrendMode === "7d" ? trendsRollups.last7 : trendsRollups.last30;
+                  const prior = insightsTrendMode === "7d" ? trendsRollups.prior7 : trendsRollups.prior30;
                   const getVal = (rollup: any) => trendMetric === "engagementRate" ? rollup.engagementRate : Number(rollup?.[trendMetric] || 0);
                   const curVal = getVal(cur), priorVal = getVal(prior);
                   const delta = trendDeltaPct(curVal, priorVal);
@@ -4796,8 +4804,8 @@ export default function GA4Metrics() {
     spendKpiInputState,
   ]);
 
-  const insightsRollupRows = activeTab === "insights" ? ga4InsightsTimeSeries : ga4TimeSeries;
-  const insightsRollupCutoff = activeTab === "insights" ? trendsDataThroughDate : ga4DailyDataThroughDate;
+  const insightsRollupRows = activeTab === "insights" || activeTab === "reports" ? ga4InsightsTimeSeries : ga4TimeSeries;
+  const insightsRollupCutoff = activeTab === "insights" || activeTab === "reports" ? trendsDataThroughDate : ga4DailyDataThroughDate;
   const insightsRollups = useMemo(
     () => buildGA4InsightsRollups(insightsRollupRows, insightsRollupCutoff),
     [insightsRollupRows, insightsRollupCutoff],

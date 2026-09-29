@@ -102,4 +102,20 @@ describe("GA4 Insights report parity", () => {
     expect(scheduledSection).toContain("Confidence: ${String(item.confidence)}");
     expect(scheduledSection).toContain("Recommended check: ${String(item.recommendation || \"\")}");
   });
+
+  it("loads completed-day Insights history on Reports and fails closed before it is ready", () => {
+    const page = readClient();
+    const reportStart = page.indexOf("const renderInsightsSection = () => {");
+    const reportEnd = page.indexOf("// ========== KPIs ==========", reportStart);
+    const reportSection = page.slice(reportStart, reportEnd);
+
+    expect(page).toContain('enabled: (activeTab === "insights" || activeTab === "reports")');
+    expect(page).toContain("if (sections.insights) {");
+    expect(page).toContain("const historyReady = ga4InsightsDailyResp !== undefined");
+    expect(page).toContain("Cannot generate the Insights report until its completed-day history is available.");
+    expect(reportSection).toContain("const trendSorted = [...trendsDailyRows]");
+    expect(reportSection).toContain("trendsRollups.last7");
+    expect(reportSection).toContain("trendsRollups.prior7");
+    expect(reportSection).not.toContain("const trendDailyRows = Array.isArray(ga4TimeSeries)");
+  });
 });

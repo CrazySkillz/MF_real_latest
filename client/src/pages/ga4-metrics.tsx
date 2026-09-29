@@ -5343,6 +5343,7 @@ export default function GA4Metrics() {
       const p = computeKpiProgress(k);
       const attPct = p?.attainmentPct ?? 100;
       if (attPct >= 100) continue;
+      const targetMissDirection = p?.lowerIsBetter ? "Above" : "Below";
 
       const configuredPriority = String((k as any)?.priority || "medium").trim().toLowerCase();
       const sev: InsightItem["severity"] =
@@ -5386,7 +5387,7 @@ export default function GA4Metrics() {
       out.push({
         id: `kpi:${String((k as any)?.id || metric)}`,
         severity: sev,
-        title: `${String((k as any)?.name || metric)} Below Saved Target`,
+        title: `${String((k as any)?.name || metric)} ${targetMissDirection} Saved Target`,
         description: (() => {
           const unit = String((k as any)?.unit || "%");
           const suffix = unit === "%" ? "%" : unit === "$" ? "" : "";

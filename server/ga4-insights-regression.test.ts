@@ -169,7 +169,8 @@ describe("GA4 Insights regression guard", () => {
     const insightsEnd = content.indexOf("// Collect GA4 campaign names", insightsStart);
     const section = content.slice(insightsStart, insightsEnd);
 
-    expect(section).toContain('title: `${String((k as any)?.name || metric)} Below Saved Target`');
+    expect(section).toContain('const targetMissDirection = p?.lowerIsBetter ? "Above" : "Below";');
+    expect(section).toContain('title: `${String((k as any)?.name || metric)} ${targetMissDirection} Saved Target`');
     expect(section).toContain('const configuredPriority = String((k as any)?.priority || "medium")');
     expect(section).toContain('if (attPct >= 100) continue;');
     expect(section).toContain("const periodMismatchLabels = [");

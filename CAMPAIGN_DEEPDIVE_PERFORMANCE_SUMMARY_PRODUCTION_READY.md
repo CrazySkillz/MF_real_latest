@@ -8,13 +8,13 @@ Before using this document to answer an audit, review, or production-readiness q
 
 Record the implemented Campaign DeepDive `Performance Summary` contract, its validation boundary, and the historical work that led to the current implementation.
 
-## Ordered Daily Publication Alignment (updated 2026-09-28)
+## Ordered Daily Publication Alignment (reviewed 2026-09-29)
 
-For active real GA4 campaigns, the generic interval/startup aggregate snapshot path defers to the GA4 daily pipeline. After mapped financial sources, GA4 Overview facts, and KPI/Benchmark recompute complete, that pipeline writes the compatible `platform_sync` aggregate snapshot used by Recent Movement and other snapshot-backed Performance Summary history. Current cards continue to read/refetch the authoritative aggregate. Campaign-scoped publication continues when unrelated campaigns fail; only the affected campaign is withheld from later stages. Exact-date report readiness is persisted after the Executive Summary snapshot and campaign alerts complete and can be restored after a server restart. This implementation change is locally validated below but is not new deployed scheduler evidence or a production recertification.
+For active real GA4 campaigns, the generic interval/startup aggregate snapshot path defers to the GA4 daily pipeline. After mapped financial sources, GA4 Overview facts, and KPI/Benchmark recompute complete, that pipeline writes the compatible `platform_sync` aggregate snapshot retained for compatible aggregate consumers and generic non-GA4 history. The visible GA4 Recent Movement cards use the exact-date traffic and financial reads described below. Current cards continue to read/refetch their authoritative inputs. Campaign-scoped publication continues when unrelated campaigns fail; only the affected campaign is withheld from later stages. Exact-date report readiness is persisted after the Executive Summary snapshot and campaign alerts complete and can be restored after a server restart. The deployed runtime contains this ordering, but the bounded Campaign3 UI/API evidence below is not a full scheduler-lifecycle recertification.
 
-## Current Implementation And Certification Status (2026-09-28)
+## Current Implementation And Evidence Status (2026-09-29)
 
-**Current implementation through `5e1bd899` — IMPLEMENTED AND LOCALLY VALIDATED; DEPLOYED RECERTIFICATION PENDING.**
+**Deployed application runtime `bde5e22c8a81a20d76aca41c2718b282a587586c` — BOUNDED CAMPAIGN3 PASS FOR THE `2026-09-28` CUTOFF; FULL DEPLOYED RECERTIFICATION PENDING.**
 
 The latest preserved clean certificate is `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md` for exact deployed runtime `ee6e11ebf8cb0a13dd182dde54af790a3757ef2f`, its two recorded campaigns, property, USD currency, Europe/Amsterdam timezone, source inventory, and `2026-09-18` data-through boundary. That historical certificate remains valid only for its exact scope. It does not certify the current runtime.
 
@@ -30,16 +30,19 @@ Post-certificate implementation changes now include:
 - Top Priority Action formats Revenue and CPA current/target values with the campaign currency formatter instead of appending a saved ISO unit as text.
 - The live Performance Summary header no longer exposes the `Demo Data` control or demo banner. The retained internal demo branches are fixed off and the visible page stays on the live-data path.
 
-Current local validation evidence:
+Current exact-runtime evidence:
 
-- the completed-day alignment follow-up passed the focused Performance Summary Overview packet: 88 tests
-- `npm run check` passed
-- exact deployed predecessor `1f86a46ebb94eab079896d8de08059aec088c793` received a bounded Campaign3 authenticated, GET-only UI/API reconciliation through `2026-09-26`; later revisions through `5e1bd899` add the completed-day alignment gate, cutoff label, and resolved comparison-date labels described below
-- no authenticated deployed exact-revision UI/API recertification has been recorded for `5e1bd899`; do not call the current runtime production-ready until that gate is completed
+- `/api/health` returned exact deployed commit `bde5e22c8a81a20d76aca41c2718b282a587586c` during the authenticated, GET-only Campaign3 reconciliation.
+- Campaign3 used EUR, `Europe/Amsterdam`, GA4 property `542352127`, and the aligned `2026-09-28` completed-day cutoff. Instagram and TikTok were not configured as Campaign3 Connected Platforms and contributed no values to this evidence.
+- Key Outcomes reconciled to 2,256 Users, 2,256 Sessions, 145 Conversions, EUR 78,969.69 Total Revenue, and EUR 2,357.89 Total Spend. Revenue reconciled as EUR 37,518.74 GA4 native + EUR 30,340.00 Google Sheets + EUR 10,000.00 HubSpot + EUR 785.95 Shopify + EUR 250.00 CSV + EUR 75.00 Salesforce. Spend reconciled as EUR 1,103.00 Google Sheets + EUR 1,250.00 CSV + EUR 4.89 Google Ads.
+- Campaign Health reconciled to 57% with 4 of 7 configured metrics on track: 3 of 5 KPIs and 1 of 2 Benchmarks. CPA was the Top Priority at EUR 16.26 against EUR 9.00. Recommended Actions were CPA, ROAS at 33.49x against 50x, and Conversions at 145 against 160.
+- The default Recent Movement comparison resolved to `2026-09-27`: Sessions and Conversions were unchanged; Total Revenue increased by EUR 41,450.95 from EUR 37,518.74 to EUR 78,969.69; Spend correctly failed closed because the active Google Ads spend source is not a date-mapped historical import.
+- The rendered page showed `Data through 28 Sept 2026 (Europe/Amsterdam), the latest completed day`, did not show `Demo Data` or `Compare with yesterday`, produced no browser errors, and attempted no application writes.
+- The focused aggregate, Overview, financial-source-date, and GA4 readiness packet passed 47 of 47 tests. The documentation-alignment verification then passed 52 of 52 focused tests, including the production-readiness ledger, and `npm run check` passed. The earlier completed-day alignment packet remains historical evidence for its 88 tests.
 
-Bounded Campaign3 predecessor evidence: Key Outcomes reconciled at 2,256 Users, 2,256 Sessions, 145 Conversions, EUR 37,518.74 Total Revenue, and EUR 2,353.00 Total Spend. Campaign Health reconciled at 43% with 3 of 7 configured metrics on track; CPA was the Top Priority at EUR 16.23 against EUR 9.00. Recommended Actions were CPA, ROAS, and Revenue. Recent Movement reconciled all four visible cards for yesterday, seven days earlier, and one month earlier, including exact historical Revenue and compatible two-source Spend totals. Google Analytics was the only main Connected Platform; the two Spend inputs remained financial child provenance rather than separate main sources.
+This is a bounded current-runtime reconciliation, not a replacement whole-section certificate. It proves the configured Campaign3 current cards and default previous-completed-day comparison. Live switching to the seven-day and previous-month comparisons, failure and stale states, other campaigns and source mixes, lifecycle mutations, tenant isolation, and current scheduled-PDF parity remain outside this exact-runtime evidence. The earlier deployed `1f86a46e` Campaign3 reconciliation remains historical evidence for its recorded three comparison selections.
 
-## Current Controlling Implementation Contract (As Of `5e1bd899`)
+## Current Controlling Implementation Contract (Observed At `bde5e22c`)
 
 This section supersedes older implementation descriptions in the chronological commit history below. It describes current code behavior, not a new production-readiness certificate.
 
@@ -48,19 +51,19 @@ This section supersedes older implementation descriptions in the chronological c
 - GA4 KPI and Benchmark persisted `currentValue` fields are recomputed from those cumulative traffic inputs. Native Revenue and matching financial Conversions use the saved initial-import boundary; imported Revenue and Spend include mapped materialized records dated on or before the campaign-timezone latest completed reporting day. ROAS, ROI, and CPA derive from those same inputs.
 - The visible current-value contract requires `outcome-totals.performanceSummary.currentValueWindow.dataThroughDate` to equal the GA4 daily response's financial end date and its `reportingTimeZone` to equal the GA4 response timezone. Traffic, Revenue, financial Conversions, and Spend fail closed when this shared boundary is absent or mismatched.
 - The page renders the aligned completed-day date and reporting timezone above Key Outcomes. It never labels an intraday or unaligned current state as complete.
-- Key Outcomes renders `Total Users`, `Total Sessions`, `Total Conversions`, `Total Spend`, and `Total Revenue` from the authoritative current inputs. Revenue and Spend use the campaign currency. It does not derive a separate rolling Performance Summary total.
+- For a live GA4 campaign, Key Outcomes renders Users, Sessions, and Conversions from the aligned GA4 daily Summary totals; Total Revenue from exact-cutoff native GA4 Revenue plus exact-cutoff imported Revenue; and Total Spend only when the shared aggregate Spend equals the exact-cutoff `spend-to-date` result. Revenue and Spend use the campaign currency. It does not derive a separate rolling Performance Summary total.
 - Campaign Health scores the complete configured GA4 KPI/Benchmark inventory only when every row is scorable from a verified current value and valid target. If any configured row is excluded, the section shows `Verification Needed` and does not calculate a partial health percentage.
 - Top Priority Action evaluates below-target KPIs first, orders them by configured KPI priority and then target-gap severity, and falls back to the worst eligible Benchmark only when no eligible KPI is below target. Revenue and CPA current/target values use the campaign currency. It fails closed for unavailable lists, unscorable inputs, incomplete coverage, invalid targets, and missing source metrics.
 - Recommended Actions evaluates the refreshed KPI and Benchmark current values with the shared metric-aware direction, sufficiency, and threshold policies. It returns at most three target-backed cards, deduplicates repeated action categories, and identifies target gaps only. Revenue and CPA values and targets use the campaign currency in both the live section and scheduled Performance Summary PDF. The UI states that the underlying causes must be investigated before changing spend.
 - Recent Movement renders `Sessions`, `Conversions`, `Spend`, and `Total Revenue`. The one-day and seven-day selections use the exact prior completed reporting dates relative to the aligned current cutoff. One month uses the same calendar day in the previous month, clamped to that month's last valid day.
 - Comparison labels name the completed-day relationship and resolved date; the generic `Compare with yesterday` label is no longer part of the current UI.
-- Sessions and Conversions derive the cumulative value at the exact prior date by subtracting covered intervening daily facts from the current cumulative Summary total. Spend reads the dated active-source total through the exact prior date and requires the current and historical source IDs and currencies to match the active campaign source set; the current Spend must also match the shared aggregate. Total Revenue requires same-source native/imported totals through the exact date. Missing, incompatible, ambiguous, stale, or failed inputs produce the final `Comparison unavailable` state; the current total is never presented as verified history.
+- Sessions and Conversions derive the cumulative value at the exact prior date by subtracting covered intervening daily facts from the current cumulative Summary total. Spend and imported Revenue comparisons require every active source to have supported dated materialization, the current source IDs to equal the active dated-source set, and historical source IDs to be a subset of that same active set. This permits a currently active dated source to have no eligible row at the earlier cutoff, while rejecting removed, unrelated, undated, duplicate, or currency-incompatible history. Current Spend must also match the shared aggregate. Native Revenue requires the same GA4 property and currency at both cutoffs. The prior revenue metric must match the current metric, except that an absent prior metric is accepted when prior revenue is exactly zero. Missing, incompatible, ambiguous, stale, or failed inputs produce the final `Comparison unavailable` state; the current total is never presented as verified history. An active undated connector snapshot such as the current GA4-scoped Google Ads spend source therefore leaves current Spend available but withholds its historical movement comparison.
 - The dropdown separates the requested comparison from the committed display period. During a selection change, the previous settled cards remain visible and the control is disabled until all exact-date requests have settled and match the requested boundary; the cards then update together without rendering mixed-period placeholder data.
 - The removed `Available comparisons use data from ...` microcopy must remain absent.
 - The disabled legacy Metric Trends render path is not a visible Performance Summary feature; users are directed to the separate Trend Analysis section.
 - The page does not expose a `Demo Data` control or demo banner; visible production use remains on the live-data path.
 
-Documentation/certification boundary: this update documents current implementation through `5e1bd899` but does not certify it. The latest preserved clean certificate remains limited to exact runtime `ee6e11eb` and the scope in `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md`. This documentation update changes no production code, tests, validators, protected GA4 machine certification records, Trend Analysis boundary, or Budget & Financial Analysis boundary.
+Documentation/certification boundary: this update documents application behavior observed at deployed runtime `bde5e22c` and records a bounded Campaign3 pass; it does not issue a replacement whole-section certificate. The latest preserved clean certificate remains limited to exact runtime `ee6e11eb` and the scope in `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md`. This documentation update changes no production code, tests, validators, protected GA4 machine certification records, Trend Analysis boundary, or Budget & Financial Analysis boundary.
 
 The intended product behavior is:
 
@@ -68,8 +71,8 @@ The intended product behavior is:
 - `Performance Summary` aggregates only the metrics currently available from those connected sources.
 - If only GA4 is connected, Performance Summary uses only GA4-capable metrics.
 - Revenue and spend sources connected inside a platform, such as Salesforce, HubSpot, Shopify, CSV, or Google Sheets imports inside GA4, are platform child inputs. Users do not connect these as separate main `Connected Platforms`; they can only feed financial totals through the parent platform/campaign financial path.
-- As main Connected Platforms such as GA4, LinkedIn, Meta, Google Ads, Google Sheets, Custom Integration, and future integrations are connected, their available metrics must be automatically included in the campaign-level aggregate without double-counting.
-- Automatic inclusion means every main Connected Platform must provide its campaign-scoped source identity, capabilities, included metrics, excluded metric reasons, freshness, current totals, and snapshot inputs through the shared Performance Summary aggregate contract. The aggregate contract accepts generic main-platform source breakdowns so future sources such as Google Ads, TikTok, Instagram, and other standalone platforms can be aggregated without tab-specific rewiring.
+- Current registered main Connected Platform code paths cover GA4, LinkedIn, Meta, Custom Integration, Google Ads, Instagram, TikTok, and Google Sheets when their source-specific connection and availability gates pass. Registration describes conditional implementation support; it does not mean a source is configured for a campaign. Instagram and TikTok were not configured for Campaign3 in the current evidence.
+- Automatic inclusion means every main Connected Platform must provide its campaign-scoped source identity, capabilities, included metrics, excluded metric reasons, freshness, current totals, and snapshot inputs through the shared Performance Summary aggregate contract. Google Ads, Instagram, TikTok, and Google Sheets use the generic `platformSources` path; future standalone sources can use the same contract without Performance Summary section rewiring.
 - Campaign DeepDive subsections should fetch and aggregate main metrics from all main sources shown in the campaign `Connected Platforms` section. They should not require users to create duplicate revenue/spend inputs inside Campaign DeepDive for child systems already configured within a parent platform.
 - The section should provide a marketing-executive-ready campaign-wide view, not a platform-specific drilldown.
 
@@ -103,7 +106,7 @@ The issue is an aggregation contract problem, not a single-card display bug.
 ## Existing Relevant Paths
 
 - `client/src/pages/campaign-performance.tsx`
-  - Current Performance Summary page and tab UI.
+  - Current single-page Performance Summary UI and its visible sections.
   - Consumes the shared aggregate and focused GA4 current/exact-date inputs for the visible consumer logic.
 
 - `client/src/pages/campaign-detail.tsx`
@@ -207,16 +210,26 @@ Not available:
 
 ### Google Ads
 
-Deferred until the Google Ads platform is refined.
-
-Expected available metrics when connected and synced:
+Implemented aggregate registration behavior:
 
 - impressions
 - clicks
-- spend
 - conversions
+- attributed revenue only when a Google Ads-scoped imported revenue source is present
 
-Google Ads does not block the current GA4-focused Performance Summary work. When Google Ads is refined, its definition of done must include automatic participation in the Performance Summary aggregate contract, scheduler snapshots, source capabilities, and regression coverage. Do not claim full all-platform Performance Summary readiness until that path is traced and implemented.
+A full, non-spend-only Google Ads connection is eligible as a main paid-media source. For the aligned current-value window, persisted rows must cover every selected Google Ads campaign at the exact cutoff before impressions, clicks, and conversions are available. Exact current Spend continues through the canonical campaign spend contract rather than an unchecked platform fallback. A GA4-scoped Google Ads spend-only connection is a financial child input and does not appear as a separate main Connected Platform source. Registration is not source-specific certification; use `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md` for that boundary.
+
+### Instagram
+
+Instagram was not configured for Campaign3 and supplied no Performance Summary values in the current evidence. If an eligible, non-spend-only Instagram connection is configured, the implemented resolver participates through `platformSources` with impressions, clicks, conversions, and source metadata when exact persisted rows cover every selected Instagram campaign at the cutoff. The resolver filters rows to the Instagram publisher platform. Exact current Spend does not use an unchecked platform fallback. Instagram source readiness remains bounded by `INSTAGRAM_CONNECTED_PLATFORM_PRODUCTION_READY.md`.
+
+### TikTok
+
+TikTok was not configured for Campaign3 and supplied no Performance Summary values in the current evidence. If an eligible, non-spend-only TikTok connection is configured, the implemented resolver participates through `platformSources` with impressions, clicks, conversions, and Spend when exact persisted-row coverage and campaign-currency checks pass. TikTok attributed Revenue requires a TikTok-scoped imported revenue source and is not inferred from conversion value. Source readiness remains bounded by `TIKTOK_CONNECTED_PLATFORM_PRODUCTION_READY.md`.
+
+### Google Sheets Main Platform
+
+A campaign configured with Google Sheets as a main platform participates through `platformSources`. Cached mapped impressions, clicks, conversions, leads, sessions, and users are available only on paths that permit refreshed cached rows. In the aligned current-value window, confirmed Revenue and Spend require active `google_sheets`-scoped financial sources in the campaign currency; ROAS and ROI require both confirmed values and positive Spend. This main-platform path is distinct from GA4-scoped Google Sheets financial child imports.
 
 ### Google Sheets Spend Sources
 
@@ -310,13 +323,13 @@ Historical work items — resolved or superseded:
 
 - Keep KPI and Benchmark health from campaign-level KPI/Benchmark records.
 - Replace hard-coded Data Sources block with connected source list from the aggregate contract.
-- Data Sources must list only main Connected Platforms from the implemented aggregate source registry. Today that includes Google Analytics, LinkedIn, Meta, and Custom Integration when connected. Future standalone platforms such as Google Ads or Google Sheets should be added only after their campaign-scoped aggregate paths are traced and implemented. GA4 revenue/spend child imports such as Salesforce, HubSpot, Shopify, CSV, and Google Sheets financial imports can feed financial totals through their parent platform/campaign financial path but must not appear as separate main platforms in this block.
+- At this historical stage, the implemented aggregate registry contained Google Analytics, LinkedIn, Meta, and Custom Integration. The current registry is documented in `Comprehensive Source Readiness Review`. GA4 revenue/spend child imports such as Salesforce, HubSpot, Shopify, CSV, and Google Sheets financial imports can feed financial totals through their parent platform/campaign financial path but must not appear as separate main platforms.
 - Show source freshness and unavailable-metric reasons where relevant.
 - Ensure KPI/Benchmark current values remain sourced from their existing campaign-level source-aware paths and do not regress.
 
 Required regression coverage:
 
-- Data Sources lists GA4, LinkedIn, Meta, and Custom Integration when they are connected as main Connected Platforms in the current aggregate contract.
+- Historical regression coverage listed GA4, LinkedIn, Meta, and Custom Integration as the main Connected Platforms implemented at that stage.
 - Data Sources does not list GA4 financial child imports such as Salesforce, HubSpot, Shopify, CSV, or Google Sheets revenue/spend imports as separate main platforms.
 - GA4-only campaign does not show LinkedIn or Custom Integration as data sources.
 - KPI/Benchmark status still renders when no platform ad metrics are available.
@@ -384,9 +397,9 @@ Required regression coverage:
 - Include source capabilities and included/excluded reasons in the response.
 - Include source freshness metadata.
 - Include canonical spend and revenue source provenance.
-- Completed for current registered main platforms: replace direct aggregate source construction with a source-adapter registry for GA4, LinkedIn, Meta, and Custom Integration.
-- Completed: The aggregate contract now accepts generic `platformSources` for future main Connected Platforms such as Google Ads, TikTok, Instagram, and other standalone platforms after their campaign-scoped resolvers provide source identity, capabilities, metric totals, freshness, and included/excluded metric reasons.
-- Add each future platform resolver, including Google Ads when refinement begins, after tracing connection, storage, refresh, and campaign scoping paths end to end.
+- Completed in the first adapter stage: replaced direct aggregate source construction with a source-adapter registry for GA4, LinkedIn, Meta, and Custom Integration.
+- Completed in that stage: the aggregate contract accepted generic `platformSources` for then-future main Connected Platforms after their campaign-scoped resolvers provided source identity, capabilities, metric totals, freshness, and included/excluded metric reasons.
+- Superseded by the current route registrations for Google Ads, Instagram, TikTok, and Google Sheets recorded in `Comprehensive Source Readiness Review`.
 
 ## Scheduler And Snapshot Tasks
 
@@ -447,11 +460,11 @@ Scope:
 - Completed: Added additive `performanceSummary` response data to `outcome-totals` without removing or renaming existing fields.
 - Completed: Included connected source status, capabilities, included metrics, excluded metrics, unavailable reasons, and freshness where available.
 - Completed follow-up: Main Connected Platform source construction now goes through a registered adapter list in `server/utils/performance-summary-aggregate.ts` for GA4, LinkedIn, Meta, and Custom Integration. This preserves the current response shape while making the aggregate contract the single place where implemented main platforms register their source identity, capabilities, included metrics, excluded metric reasons, freshness, and current totals.
-- Completed follow-up: Added generic `platformSources` support so future standalone Connected Platforms such as Google Ads, TikTok, Instagram, and other sources can contribute aggregate metrics through the same contract without changing Performance Summary tabs.
+- Completed follow-up: Added generic `platformSources` support so then-future standalone Connected Platforms could contribute aggregate metrics through the same contract without changing Performance Summary sections. Current registered resolvers are listed above.
 - Completed: Preserved unavailable values as unavailable instead of converting them to available zero values.
 - Completed: Included canonical spend-source precedence and revenue-derived ROAS/ROI/CPC/CPA/CTR/CVR availability rules.
 - Completed: Added GA4-only, LinkedIn-plus-Meta, and canonical spend/revenue regression tests in `server/performance-summary-aggregate.test.ts`.
-- Completed follow-up: Added regression coverage proving current main Connected Platform aggregate sources are defined through the adapter registry.
+- Completed follow-up: Added regression coverage proving the main Connected Platform aggregate sources implemented at that stage were defined through the adapter registry.
 - Completed follow-up: Added regression coverage proving future generic main Connected Platform sources aggregate impressions, clicks, conversions, and spend through the shared contract.
 - Completed follow-up: Performance Summary now uses the same URL-style `outcome-totals` query key prefix used by source-update invalidations, so source mutations can refetch the open Performance Summary page instead of requiring a manual page refresh.
 - Completed follow-up: Performance Summary now refetches the aggregate and compatible snapshot queries every 30 seconds while the page is visible, and on window focus, so source updates from user actions or server-side refresh jobs are pulled into the open section without requiring a manual refresh.
@@ -765,7 +778,7 @@ not an outstanding Performance Summary certification gate.
 
 ### Commit 6: Docs And Final Validation
 
-Historical status: completed for exact certified runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`; evidence-only commit `e175ac5c1764d06c199b375be45ace718b2fc785` was deployed and user-confirmed without changing production runtime code. This historical statement does not certify current implementation through `5e1bd899`.
+Historical status: completed for exact certified runtime `12789c1ebb92dd6a905a9f2f0f877f0bc6a90627`; evidence-only commit `e175ac5c1764d06c199b375be45ace718b2fc785` was deployed and user-confirmed without changing production runtime code. This historical statement does not certify current deployed runtime `bde5e22c`.
 
 Goal:
 
@@ -783,36 +796,36 @@ Why this is last:
 
 ## Comprehensive Source Readiness Review
 
-Last reviewed after the main-source adapter registry follow-up.
+Last reviewed against deployed application runtime `bde5e22c` on 2026-09-29.
 
 Root cause:
 
 - The original Performance Summary implementation mixed tab-local calculations with source-specific queries. That made some UI values correct only for the sources each tab happened to know about.
 - The current source of truth is now `/api/campaigns/:id/outcome-totals`, which returns `performanceSummary`.
 - `performanceSummary` is built by `server/utils/performance-summary-aggregate.ts`.
-- Current main Connected Platform aggregate sources are registered through the adapter list for GA4, LinkedIn, Meta, and Custom Integration.
+- Native aggregate adapters cover GA4, LinkedIn, Meta, and Custom Integration. The current route also registers eligible Google Ads, Instagram, TikTok, and Google Sheets main-platform source objects through the generic `platformSources` contract. These are conditional code paths; Instagram and TikTok were not configured for Campaign3 and are outside the deployed Campaign3 value reconciliation.
 - GA4 child revenue/spend inputs such as Salesforce, HubSpot, Shopify, CSV, and Google Sheets imports can feed campaign financial totals through the parent platform or campaign financial-source path. They are not main Connected Platforms, users do not connect them from the campaign `Connected Platforms` section, and they must not appear as main source rows.
+- A GA4-scoped Google Ads spend-only connection is likewise a financial child input; it does not become the separate main Google Ads Connected Platform source.
 
 Tab-by-tab source status:
 
-- Overview: uses `performanceSummary.totals` for impressions, sessions, conversions, and spend. Source labels come from `performanceSummary.sources`. Unavailable impressions use executive-facing copy while detailed unavailable reasons remain in the aggregate contract. `Top Priority Action` requires connected-source metrics and at least one campaign KPI or Benchmark target before it can say all metrics are on track. This is aligned for current registered sources.
-- Campaign Health: uses campaign-level KPIs and Benchmarks, and resolves current metric values from `performanceSummary.totals` when the KPI/Benchmark metric exists in the aggregate. It preserves KPI/Benchmark behavior for targets, thresholds, health score, and top-priority action. Data Sources filters out financial child inputs and lists only main Connected Platform sources from `performanceSummary.sources`.
-- Recent Movement: renders Sessions, Conversions, Spend, and Total Revenue for yesterday, seven days ago, or the same calendar date one month earlier. Sessions and Conversions use the exact GA4 daily boundary; Spend uses compatible dated active-source totals; Revenue uses compatible native/imported exact-date totals. The last settled cards stay visible while a new comparison loads. The legacy Metric Trends render path remains disabled.
-- Insights: builds recommendations from `performanceSummary.totals` and `performanceSummary.sources`, including source capabilities and source breakdowns. It avoids paid-media recommendations for analytics-only sources such as GA4.
+- Key Outcomes: for a live GA4 campaign, Users, Sessions, and Conversions use aligned GA4 Summary totals; Revenue uses exact-cutoff native plus imported Revenue; Spend must reconcile the exact-cutoff `spend-to-date` response with `performanceSummary.totals.spend`. The page withholds affected values when the shared cutoff or timezone is incompatible.
+- Campaign Health and Top Priority Action: use the full configured campaign KPI/Benchmark inventory, resolve supported current values from the aligned live inputs, and fail closed when any configured metric cannot be scored. Financial child sources contribute to aggregate values without becoming main source rows.
+- Recent Movement: renders Sessions, Conversions, Spend, and Total Revenue for the previous completed day, seven completed days earlier, or the previous-month cutoff. Sessions and Conversions use the exact GA4 daily boundary. Spend and imported Revenue require supported dated active sources and compatible source identity; native Revenue requires compatible GA4 property, metric, and currency. The last settled cards stay visible while a new comparison loads. The legacy Metric Trends render path remains disabled.
+- Recommended Actions: reuses the verified scoring inputs and target policies, emits at most three deduplicated target-gap actions, uses campaign currency for Revenue and CPA, and avoids causal claims.
 
 Automatic aggregation status:
 
-- Implemented for current registered main sources: GA4, LinkedIn, Meta, and Custom Integration.
+- Implemented aggregate registration paths: native adapters for GA4, LinkedIn, Meta, and Custom Integration; generic `platformSources` registration for eligible Google Ads, Instagram, TikTok, and Google Sheets main connections.
 - Implemented child-source behavior: GA4/platform child revenue and spend inputs can feed financial totals only through the parent platform/campaign financial path, without appearing as main Connected Platforms and without requiring duplicate Campaign DeepDive inputs.
-- Future main Connected Platforms are supported by the generic `platformSources` contract. Each platform still needs its own campaign-scoped resolver, but once that resolver supplies a valid source breakdown, Performance Summary tabs consume the new source automatically through the existing aggregate contract.
-- Google Ads, TikTok, Instagram, and other future standalone platforms do not require tab rewiring. Their remaining work is platform-specific connection, storage, refresh, campaign scoping, and resolver implementation.
+- Future main Connected Platforms are supported by the generic `platformSources` contract. Each platform still needs its own campaign-scoped resolver; once that resolver supplies a valid source breakdown, the visible Performance Summary sections consume it through the existing aggregate contract.
 
 Implementation conclusion:
 
-- Implemented and regression-covered for the registered main Connected Platform aggregate path covering GA4, LinkedIn, Meta, and Custom Integration, with campaign financial totals able to include parent-platform child revenue/spend inputs when those inputs are configured inside the relevant platform flow.
+- Implemented in the aggregate route for the registered main Connected Platform paths listed above, with campaign financial totals able to include parent-platform child revenue/spend inputs when configured inside the relevant platform flow. Regression and production-readiness evidence remains source-specific and must not be inferred merely from registration.
 - The aggregate layer can accept future standalone platforms that supply valid `platformSources`, but that capability is not source-specific production-readiness proof.
-- Platform-specific production readiness for Google Ads, TikTok, Instagram, and other future sources still depends on each platform's own connection, storage, refresh, campaign scoping, and resolver validation.
-- Historical production-readiness evidence remains bounded to the exact runtimes and scopes in their certificate records. Current implementation through `5e1bd899` remains `RECERTIFICATION_PENDING`; generic future-platform support remains an implementation contract, not source-specific certification evidence.
+- Platform-specific production readiness for Google Ads, TikTok, Instagram, Google Sheets, and future sources still depends on each platform's own connection, storage, refresh, campaign scoping, resolver, and negative-case validation.
+- Historical production-readiness evidence remains bounded to the exact runtimes and scopes in their certificate records. Deployed runtime `bde5e22c` has the bounded Campaign3 evidence recorded above and remains `RECERTIFICATION_PENDING` for the whole Performance Summary section.
 
 ## Production Readiness Definition
 
@@ -833,16 +846,16 @@ Performance Summary is production ready only when:
 
 ## Current Status
 
-**Current implementation through `5e1bd899`: `RECERTIFICATION_PENDING`. Implemented and locally validated, but not yet certified against the deployed exact revision.**
+**Deployed runtime `bde5e22c`: `BOUNDED CAMPAIGN3 PASS / RECERTIFICATION_PENDING`. The configured Campaign3 `2026-09-28` current view and default previous-completed-day comparison are reconciled; the whole section is not recertified.**
 
 The latest preserved clean certificate remains `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md` for exact deployed runtime `ee6e11ebf8cb0a13dd182dde54af790a3757ef2f` and its recorded boundary. Earlier exact-runtime evidence, including `12789c1e`, remains historical only.
 
 Implemented and locally regression-covered in the current revision:
 
 - the consolidated visible Performance Summary sections use the cumulative current-value and exact-date Recent Movement contracts in `Current Controlling Implementation Contract`
-- Key Outcomes, Campaign Health, Top Priority Action, Recommended Actions, and the four Recent Movement cards are covered by the focused current regression packet; bounded Campaign3 UI/API evidence exists for deployed predecessor `1f86a46e`, while exact deployed `5e1bd899` evidence remains pending
+- Key Outcomes, Campaign Health, Top Priority Action, Recommended Actions, and the four Recent Movement cards are covered by the focused current regression packet; exact deployed `bde5e22c` has bounded Campaign3 UI/API evidence for the current view and default previous-completed-day comparison
 - Campaign Health fails closed rather than scoring only a verified subset; Top Priority uses configured KPI priority before gap severity; Recommended Actions use verified target gaps and do not claim causality
-- current exact-date logic for Sessions, Conversions, Spend, and Total Revenue is regression-covered for the previous completed day, seven completed days earlier, and the previous-month cutoff; bounded Campaign3 reconciliation passed on deployed predecessor `1f86a46e`, while exact deployed `5e1bd899` reconciliation remains pending
+- current exact-date logic for Sessions, Conversions, Spend, and Total Revenue is regression-covered for the previous completed day, seven completed days earlier, and the previous-month cutoff; exact deployed Campaign3 reconciliation currently covers the default previous-completed-day selection only
 - GA4 child revenue/spend inputs remain financial provenance under the parent campaign/platform path and do not become separate main Connected Platforms
 
 Supporting aggregate behavior proven locally, but not a broader deployed source-mix certification:
@@ -853,6 +866,7 @@ Supporting aggregate behavior proven locally, but not a broader deployed source-
 Not certified by this boundary:
 
 - any source mix other than the recorded deployed GA4-only configuration unless that exact mix has its own source-specific readiness evidence
+- Instagram and TikTok values, because neither source was configured for Campaign3 in the current deployed evidence
 - future or differently configured Google Ads, TikTok, Instagram, LinkedIn, Meta, Custom Integration, Google Sheets, or other main-platform resolver/provider behavior
 - the retained manual/legacy snapshot route as a visible UI feature; no current frontend caller was found and the route remains campaign-access guarded
 - the disabled legacy Metric Trends render path

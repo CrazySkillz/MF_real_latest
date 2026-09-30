@@ -1612,7 +1612,7 @@ export function SalesforceRevenueWizard(props: {
                   {pipelineEnabled && (
                     <div>
                       <div className="text-sm text-muted-foreground/70">
-                        Pipeline proxy - Open-stage early signal. Not included in Total Revenue
+                        Pipeline proxy - early signal
                       </div>
                       <div className="text-xs font-semibold text-foreground">
                         {pipelineStageLabel || pipelineStageName || "---"}: {reviewPipelineProxyAmount != null

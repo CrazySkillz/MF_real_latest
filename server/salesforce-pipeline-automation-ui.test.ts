@@ -267,7 +267,7 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
 
     expect(reviewBlock).toContain('className="text-sm text-muted-foreground/70">Salesforce account</div>');
     expect(reviewBlock).toContain('className="text-xs font-medium text-foreground">');
-    expect(reviewBlock).toContain("Pipeline proxy - Open-stage early signal. Not included in Total Revenue");
+    expect(reviewBlock).toContain("Pipeline proxy - early signal");
     expect(reviewBlock).toContain('className="text-xs font-semibold text-foreground"');
   });
 

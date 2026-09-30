@@ -166,7 +166,7 @@
   }
 
   .nav-link-active {
-    @apply bg-primary text-primary-foreground shadow-sm;
+    @apply bg-accent text-accent-foreground shadow-sm;
   }
 
   .nav-link-inactive {

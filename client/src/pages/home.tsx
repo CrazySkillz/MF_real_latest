@@ -55,7 +55,10 @@ export default function HomePage() {
             <div>
               <p className="text-muted-foreground">Select a client to view its campaigns</p>
             </div>
-            <Button onClick={() => setIsModalOpen(true)}>
+            <Button
+              className="bg-accent text-accent-foreground hover:bg-accent/80"
+              onClick={() => setIsModalOpen(true)}
+            >
               <Plus className="w-4 h-4 mr-2" />
               Add client
             </Button>
@@ -85,11 +88,8 @@ export default function HomePage() {
                   >
                     <div className="flex items-start justify-between gap-4 pr-10">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div
-                          className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
-                          style={{ background: "var(--gradient-primary)" }}
-                        >
-                          <Building2 className="w-6 h-6 text-white" />
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-accent">
+                          <Building2 className="w-6 h-6 text-accent-foreground" />
                         </div>
                         <div className="min-w-0">
                           <p className="font-semibold text-foreground truncate">{client.name}</p>

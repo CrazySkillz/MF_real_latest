@@ -72,6 +72,7 @@ import { HUBSPOT_PAGINATION_ERROR_CODE, MAX_HUBSPOT_PAGES, hubspotPaginationErro
 import { resolveHubspotRevenueCurrency } from "./utils/hubspot-currency";
 import { getShopifyRevenueRefreshFreshness, markShopifyRevenueRefreshAttempt, markShopifyRevenueRefreshFailure, markShopifyRevenueRefreshSuccess, type ShopifyRevenueRefreshEvent } from "./utils/shopify-refresh-state";
 import { fetchCompleteSalesforceQuery, SALESFORCE_PAGINATION_ERROR_CODE, SALESFORCE_RESULT_LIMIT_ERROR_CODE } from "./utils/salesforce-pagination";
+import { createSalesforceAuthorizedFetch } from "./utils/salesforce-authorized-fetch";
 import { escapeSalesforceSoqlLikePrefix, escapeSalesforceSoqlStringLiteral, isSafeSalesforceFieldPath, MAX_SALESFORCE_VALUE_SEARCH_LENGTH } from "./utils/salesforce-query";
 import { detectSalesforceCurrency, validateSalesforceRevenueCurrency } from "./utils/salesforceCurrency";
 import { assertGA4InsightsFinancialCurrencyScope, buildGA4InsightsHistoryScopeMarker, filterGA4InsightsHistoryByScope, normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
@@ -17623,7 +17624,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if ((attribField && !isSafeSalesforceFieldPath(attribField)) || !isSafeSalesforceFieldPath(revenueField)) {
             return res.status(400).json({ error: 'Salesforce mapping contains an invalid field' });
           }
-          const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
+          const { accessToken, instanceUrl, fetchImpl: salesforceFetch } = await getSalesforceAccessTokenForCampaign(campaignId);
 
           const whereParts: string[] = [
             // Use IsWon instead of a hard-coded StageName label. Stage names are org-customizable.
@@ -17649,7 +17650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const headers = includeCurrency ? [...propsToFetch, 'CurrencyIsoCode'] : propsToFetch;
             const soql = `SELECT ${headers.join(', ')} FROM Opportunity WHERE ${whereParts.join(' AND ')} LIMIT ${Math.min(limit, 200)}`;
             const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-            const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+            const resp = await salesforceFetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
             const json: any = await resp.json().catch(() => ({}));
             return { resp, json, headers };
           };
@@ -18085,10 +18086,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = String(req.params.campaignId || "");
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
-      const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
+      const { accessToken, instanceUrl, fetchImpl: salesforceFetch } = await getSalesforceAccessTokenForCampaign(campaignId);
       const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
 
-      const resp = await fetch(`${instanceUrl}/services/data/${version}/sobjects/Opportunity/describe`, {
+      const resp = await salesforceFetch(`${instanceUrl}/services/data/${version}/sobjects/Opportunity/describe`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const json: any = await resp.json().catch(() => ({}));
@@ -18118,13 +18119,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const fetchOpenSalesforceOpportunityStages = async (accessToken: string, instanceUrl: string, version: string) => {
+  const fetchOpenSalesforceOpportunityStages = async (accessToken: string, instanceUrl: string, version: string, fetchImpl: typeof fetch) => {
     const soql = "SELECT MasterLabel FROM OpportunityStage WHERE IsActive = true AND IsClosed = false ORDER BY SortOrder ASC";
     const records = await fetchCompleteSalesforceQuery({
       initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`,
       instanceUrl,
       accessToken,
-      fetchImpl: ((nextUrl, options) => fetchWithTimeout(String(nextUrl), options)) as typeof fetch,
+      fetchImpl,
     });
     return records
       .map((record: any) => String(record?.MasterLabel || "").trim())
@@ -18137,10 +18138,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = String(req.params.campaignId || "");
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
-      const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
+      const { accessToken, instanceUrl, fetchImpl: salesforceFetch } = await getSalesforceAccessTokenForCampaign(campaignId);
       const version = process.env.SALESFORCE_API_VERSION || "v59.0";
 
-      const openStageNames = await fetchOpenSalesforceOpportunityStages(accessToken, instanceUrl, version);
+      const openStageNames = await fetchOpenSalesforceOpportunityStages(accessToken, instanceUrl, version, salesforceFetch);
       const stages = openStageNames.map((stageName) => ({ value: stageName, label: stageName }));
 
       res.json({ success: true, stages });
@@ -18168,7 +18169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: `Search must be 2-${MAX_SALESFORCE_VALUE_SEARCH_LENGTH} printable characters` });
       }
 
-      const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
+      const { accessToken, instanceUrl, fetchImpl: salesforceFetch } = await getSalesforceAccessTokenForCampaign(campaignId);
       const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
       const searchClause = search ? ` AND ${field} LIKE '${escapeSalesforceSoqlLikePrefix(search)}%'` : '';
 
@@ -18201,7 +18202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `LIMIT ${Math.min(limit, 500)}`;
 
       const queryUrl = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soqlAgg)}`;
-      const aggResp = await fetch(queryUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+      const aggResp = await salesforceFetch(queryUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
       const aggJson: any = await aggResp.json().catch(() => ({}));
       if (aggResp.ok && Array.isArray(aggJson?.records)) {
         for (const r of aggJson.records) {
@@ -18222,7 +18223,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`,
           instanceUrl,
           accessToken,
-          fetchImpl: ((nextUrl, options) => fetchWithTimeout(String(nextUrl), options)) as typeof fetch,
+          fetchImpl: salesforceFetch,
         });
         for (const rec of recs) {
           const raw = readField(rec, field);
@@ -18241,7 +18242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           `GROUP BY ${field} ` +
           `ORDER BY COUNT(Id) DESC ` +
           `LIMIT ${Math.min(limit, 500)}`;
-        const pipelineResp = await fetch(`${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soqlPipeline)}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+        const pipelineResp = await salesforceFetch(`${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soqlPipeline)}`, { headers: { Authorization: `Bearer ${accessToken}` } });
         const pipelineJson: any = await pipelineResp.json().catch(() => ({}));
         if (pipelineResp.ok && Array.isArray(pipelineJson?.records)) {
           for (const r of pipelineJson.records) {
@@ -18260,7 +18261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soqlPipelineScan)}`,
             instanceUrl,
             accessToken,
-            fetchImpl: ((nextUrl, options) => fetchWithTimeout(String(nextUrl), options)) as typeof fetch,
+            fetchImpl: salesforceFetch,
           });
           for (const rec of recs) {
             const raw = readField(rec, field);
@@ -18315,7 +18316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Invalid Salesforce field' });
       }
 
-      const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
+      const { accessToken, instanceUrl, fetchImpl: salesforceFetch } = await getSalesforceAccessTokenForCampaign(campaignId);
       const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
 
       // Helper: read a dynamic (possibly dotted) field from a record.
@@ -18375,7 +18376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             initialUrl: url,
             instanceUrl,
             accessToken,
-            fetchImpl: ((nextUrl, options) => fetchWithTimeout(String(nextUrl), options)) as typeof fetch,
+            fetchImpl: salesforceFetch,
           });
           return { ok: true, headers, records };
         } catch (error: any) {
@@ -18421,7 +18422,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               initialUrl: url,
               instanceUrl,
               accessToken,
-              fetchImpl: ((nextUrl, options) => fetchWithTimeout(String(nextUrl), options)) as typeof fetch,
+              fetchImpl: salesforceFetch,
             });
             return { ok: true, headers, records };
           } catch (error: any) {
@@ -18469,6 +18470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         authBase,
         currenciesFromRecords: currencies,
         debug: true,
+        fetchImpl: salesforceFetch,
       });
       const detectedCurrency = curResult.detectedCurrency;
       const currencyMismatch = !!(detectedCurrency && campaignCurrency && detectedCurrency !== campaignCurrency);
@@ -18568,11 +18570,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
+      const { accessToken, instanceUrl, fetchImpl: salesforceFetch } = await getSalesforceAccessTokenForCampaign(campaignId);
       const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
       if (pipelineEnabled) {
         if (!pipelineStageName) return res.status(400).json({ error: "Select an active open Salesforce stage for Pipeline Proxy." });
-        const openStageNames = new Set(await fetchOpenSalesforceOpportunityStages(accessToken, instanceUrl, version));
+        const openStageNames = new Set(await fetchOpenSalesforceOpportunityStages(accessToken, instanceUrl, version, salesforceFetch));
         if (!openStageNames.has(pipelineStageName)) {
           return res.status(400).json({ error: "Pipeline Proxy requires an active open Salesforce stage." });
         }
@@ -18621,7 +18623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`,
             instanceUrl,
             accessToken,
-            fetchImpl: ((nextUrl, options) => fetchWithTimeout(String(nextUrl), options)) as typeof fetch,
+            fetchImpl: salesforceFetch,
           });
           return { records, includeCurrency };
         } catch (error: any) {
@@ -18716,7 +18718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         apiVersion: version,
         authBase,
         currenciesFromRecords: currencies,
-        fetchImpl: ((url, options) => fetchWithTimeout(String(url), options)) as typeof fetch,
+        fetchImpl: salesforceFetch,
       });
       const currencyValidation = validateSalesforceRevenueCurrency({
         currencies: currencyDetection.detectedCurrencies,
@@ -18910,7 +18912,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`,
                 instanceUrl,
                 accessToken,
-                fetchImpl: ((nextUrl, options) => fetchWithTimeout(String(nextUrl), options)) as typeof fetch,
+                fetchImpl: salesforceFetch,
               });
               for (const rec of recs) {
                 const rRaw = readField(rec, revenue);
@@ -19109,7 +19111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             `WHERE ${attribField} IN (${unmatchedQuoted}) ` +
             `LIMIT 25`;
           const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
-          const diagResp = await fetchWithTimeout(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const diagResp = await salesforceFetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
           const diagJson: any = await diagResp.json().catch(() => ({}));
           const diagRecords = Array.isArray(diagJson?.records) ? diagJson.records : [];
           for (const rec of diagRecords) {
@@ -19245,7 +19247,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!isSafeSalesforceFieldPath(attribField) || !isSafeSalesforceFieldPath(revenueField)) {
         return res.status(422).json({ success: false, error: "Salesforce mapping contains an invalid field. Re-save the Salesforce mappings." });
       }
-      const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
+      const { accessToken, instanceUrl, fetchImpl: salesforceFetch } = await getSalesforceAccessTokenForCampaign(campaignId);
       const version = process.env.SALESFORCE_API_VERSION || "v59.0";
       console.log("[Salesforce Pipeline Proxy][Trace] start", {
         campaignId,
@@ -19322,7 +19324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`,
           instanceUrl,
           accessToken,
-          fetchImpl: ((nextUrl, options) => fetchWithTimeout(String(nextUrl), options)) as typeof fetch,
+          fetchImpl: salesforceFetch,
         });
         directRecordCount += recs.length;
         for (const rec of recs) {
@@ -19404,7 +19406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`,
                 instanceUrl,
                 accessToken,
-                fetchImpl: ((nextUrl, options) => fetchWithTimeout(String(nextUrl), options)) as typeof fetch,
+                fetchImpl: salesforceFetch,
               });
               for (const rec of recs) {
                 const campaignValue = String(readField(rec, attribField) || "").trim();
@@ -20776,7 +20778,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   const salesforceTokenRefreshes = new Map<string, Promise<string>>();
-  async function refreshSalesforceToken(connection: any) {
+  async function refreshSalesforceToken(connection: any, force = false) {
     const connectionId = String(connection?.id || '');
     const campaignId = String(connection?.campaignId || '');
     if (!connectionId || !campaignId) throw new Error('Salesforce connection identity is missing');
@@ -20789,7 +20791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error('Salesforce connection changed during token refresh');
       }
       const latestExpiresAt = latest.expiresAt ? new Date(latest.expiresAt).getTime() : NaN;
-      if (latest.accessToken && (!Number.isFinite(latestExpiresAt) || latestExpiresAt >= Date.now() + 5 * 60 * 1000)) {
+      if (!force && latest.accessToken && (!Number.isFinite(latestExpiresAt) || latestExpiresAt >= Date.now() + 5 * 60 * 1000)) {
         return String(latest.accessToken);
       }
       if (!latest.refreshToken || !latest.clientId || !latest.clientSecret) {
@@ -20840,7 +20842,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
-  async function getSalesforceAccessTokenForCampaign(campaignId: string): Promise<{ accessToken: string; instanceUrl: string; connectionId: string }> {
+  async function getSalesforceAccessTokenForCampaign(campaignId: string): Promise<{ accessToken: string; instanceUrl: string; connectionId: string; fetchImpl: typeof fetch }> {
     const conn: any = await storage.getSalesforceConnection(campaignId);
     if (!conn || !conn.instanceUrl) throw new Error('No Salesforce connection found');
     let accessToken = conn.accessToken;
@@ -20859,7 +20861,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error('Salesforce access token expired and no refresh token available. Please reconnect Salesforce.');
       }
     }
-    return { accessToken, instanceUrl: String(conn.instanceUrl), connectionId: String(conn.id) };
+    const fetchImpl = createSalesforceAuthorizedFetch({
+      accessToken,
+      fetchImpl: ((url, options) => fetchWithTimeout(String(url), options)) as typeof fetch,
+      refreshAccessToken: async (rejectedAccessToken) => {
+        const latest: any = await storage.getSalesforceConnection(campaignId);
+        if (!latest || String(latest.id || "") !== String(conn.id) || latest.isActive === false) {
+          throw new Error("Salesforce connection changed during invalid-session recovery");
+        }
+        if (latest.accessToken && String(latest.accessToken) !== rejectedAccessToken) {
+          return String(latest.accessToken);
+        }
+        return await refreshSalesforceToken(latest, true);
+      },
+    });
+    return { accessToken, instanceUrl: String(conn.instanceUrl), connectionId: String(conn.id), fetchImpl };
   }
 
   async function getHubspotAccessTokenForCampaign(campaignId: string): Promise<{ accessToken: string; connectionId: string }> {

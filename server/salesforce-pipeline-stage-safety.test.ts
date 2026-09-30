@@ -19,7 +19,7 @@ describe("Salesforce Pipeline Proxy stage safety", () => {
     );
 
     expect(stageRoute).toContain("FROM OpportunityStage WHERE IsActive = true AND IsClosed = false");
-    expect(stageRoute).toContain("fetchOpenSalesforceOpportunityStages(accessToken, instanceUrl, version)");
+    expect(stageRoute).toContain("fetchOpenSalesforceOpportunityStages(accessToken, instanceUrl, version, salesforceFetch)");
     expect(stageRoute).not.toContain("picklistValues");
   });
 

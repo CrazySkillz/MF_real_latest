@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SiGoogle } from "react-icons/si";
+import { SiGoogleanalytics } from "react-icons/si";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -12,13 +12,16 @@ interface IntegratedGA4AuthProps {
   campaignId: string;
   onSuccess: () => void;
   onError: (error: string) => void;
+  connectionMode?: "oauth" | "service-account";
 }
 
-export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: IntegratedGA4AuthProps) {
+export function IntegratedGA4Auth({ campaignId, onSuccess, onError, connectionMode = "service-account" }: IntegratedGA4AuthProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isServiceAccountConnecting, setIsServiceAccountConnecting] = useState(false);
   const [authCompleted, setAuthCompleted] = useState(false);
   const [serviceAccountStatus, setServiceAccountStatus] = useState<{ enabled: boolean; email: string | null }>({ enabled: false, email: null });
+  const [serviceAccountStatusLoaded, setServiceAccountStatusLoaded] = useState(false);
+  const [showServiceAccountFlow, setShowServiceAccountFlow] = useState(false);
   const [serviceAccountPropertyId, setServiceAccountPropertyId] = useState("");
   const popupRef = useRef<Window | null>(null);
 
@@ -50,10 +53,13 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
 
   useEffect(() => {
     if (!campaignId) return;
+    setServiceAccountStatusLoaded(false);
+    setShowServiceAccountFlow(false);
     fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/ga4-service-account/status`, { credentials: "include" })
       .then(async (response) => response.ok ? response.json() : null)
       .then((data) => setServiceAccountStatus({ enabled: data?.enabled === true, email: data?.email || null }))
-      .catch(() => setServiceAccountStatus({ enabled: false, email: null }));
+      .catch(() => setServiceAccountStatus({ enabled: false, email: null }))
+      .finally(() => setServiceAccountStatusLoaded(true));
   }, [campaignId]);
 
   useEffect(() => {
@@ -144,10 +150,10 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
         lookbackDays: 30,
       });
       const data = await response.json();
-      if (!response.ok || data?.success !== true) throw new Error(data?.message || "Temporary GA4 connection failed");
+      if (!response.ok || data?.success !== true) throw new Error(data?.message || "Google Analytics connection failed");
       onSuccess();
     } catch (error: any) {
-      onError(error?.message || "Temporary GA4 connection failed");
+      onError(error?.message || "Google Analytics connection failed");
     } finally {
       setIsServiceAccountConnecting(false);
     }
@@ -157,15 +163,16 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
     <Card className="w-full border border-border">
       <CardHeader className="text-center">
         <CardTitle className="flex items-center gap-2">
-          <SiGoogle className="w-5 h-5 text-blue-600" />
-          Connect Google Analytics 4
+          <SiGoogleanalytics className="w-5 h-5 text-orange-500" />
+          Connect Google Analytics
         </CardTitle>
-        <CardDescription>
-          Sign in with Google to enable real-time GA4 metrics for this campaign.
-        </CardDescription>
+        {connectionMode === "oauth" && (
+          <CardDescription>Sign in with Google to connect your GA4 property.</CardDescription>
+        )}
       </CardHeader>
       
       <CardContent className="space-y-4">
+        {connectionMode === "oauth" && (<>
         <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/40">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -190,7 +197,7 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
               </>
             ) : (
               <>
-                <SiGoogle className="w-4 h-4 mr-2" />
+                <SiGoogleanalytics className="w-4 h-4 mr-2" />
                 Connect Google Analytics
               </>
             )}
@@ -211,38 +218,53 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError }: Integrated
             </Alert>
           )}
 
-          {serviceAccountStatus.enabled && (
-            <div className="space-y-3 border-t pt-4">
-              <div>
-                <p className="text-sm font-medium">Temporary test connection</p>
-                <p className="text-xs text-muted-foreground">
-                  Enter a property that has granted Viewer access to {serviceAccountStatus.email}.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ga4-service-account-property">GA4 Property ID</Label>
-                <Input
-                  id="ga4-service-account-property"
-                  inputMode="numeric"
-                  placeholder="123456789"
-                  value={serviceAccountPropertyId}
-                  onChange={(event) => setServiceAccountPropertyId(event.target.value)}
-                />
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={connectWithServiceAccount}
-                disabled={isServiceAccountConnecting || !serviceAccountPropertyId.trim()}
-              >
-                {isServiceAccountConnecting ? (
-                  <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Validating property...</>
-                ) : "Connect test property"}
-              </Button>
-            </div>
-          )}
         </div>
+        </>)}
+
+        {connectionMode === "service-account" && (!showServiceAccountFlow ? (
+          <Button
+            type="button"
+            className="w-full"
+            size="lg"
+            disabled={!serviceAccountStatusLoaded}
+            onClick={() => {
+              if (!serviceAccountStatus.enabled) {
+                onError("Google Analytics service connection is not available.");
+                return;
+              }
+              setShowServiceAccountFlow(true);
+            }}
+          >
+            <SiGoogleanalytics className="w-4 h-4 mr-2" />
+            Connect Google Analytics
+          </Button>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Add {serviceAccountStatus.email} as a Viewer in Google Analytics, then enter the numeric GA4 Property ID.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="ga4-service-account-property">GA4 Property ID</Label>
+              <Input
+                id="ga4-service-account-property"
+                inputMode="numeric"
+                placeholder="123456789"
+                value={serviceAccountPropertyId}
+                onChange={(event) => setServiceAccountPropertyId(event.target.value)}
+              />
+            </div>
+            <Button
+              type="button"
+              className="w-full"
+              onClick={connectWithServiceAccount}
+              disabled={isServiceAccountConnecting || !serviceAccountPropertyId.trim()}
+            >
+              {isServiceAccountConnecting ? (
+                <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Validating property...</>
+              ) : "Connect Google Analytics"}
+            </Button>
+          </div>
+        ))}
       </CardContent>
     </Card>
   );

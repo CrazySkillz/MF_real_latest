@@ -20,13 +20,17 @@ afterEach(() => {
 });
 
 describe("temporary GA4 service-account boundary", () => {
-  it("keeps OAuth supported while adding the temporary method", () => {
+  it("keeps OAuth supported while using the service account by default", () => {
     const authSource = readFileSync(resolve(process.cwd(), "client/src/components/IntegratedGA4Auth.tsx"), "utf8");
     expect(isSupportedGA4ConnectionMethod("access_token")).toBe(true);
     expect(isSupportedGA4ConnectionMethod("service_account")).toBe(true);
     expect(isSupportedGA4ConnectionMethod("password")).toBe(false);
     expect(authSource).toContain("/api/auth/ga4/connect");
-    expect(authSource.indexOf("Connect Google Analytics")).toBeLessThan(authSource.indexOf("Temporary test connection"));
+    expect(authSource).toContain('connectionMode = "service-account"');
+    expect(authSource).toContain('connectionMode === "oauth"');
+    expect(authSource).toContain("/ga4-service-account/connect");
+    expect(authSource).not.toContain("Temporary test connection");
+    expect(authSource).not.toContain("Connect test property");
   });
 
   it("normalizes and permits only explicitly allowlisted properties", () => {

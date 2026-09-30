@@ -21,4 +21,13 @@ describe("GA4-first Create Campaign wizard", () => {
     expect(campaignsPage).toContain('platform: selectedPlatforms.join(", "),');
     expect(campaignsPage).toContain("handleConnectorsComplete(createCampaignConnectedPlatforms)");
   });
+
+  it("locks final creation while the initial GA4 import is running", () => {
+    expect(campaignsPage).toContain("const finalizingCampaignRef = useRef(false);");
+    expect(campaignsPage).toContain("if (finalizingCampaignRef.current) return;");
+    expect(campaignsPage).toContain("finalizingCampaignRef.current = true;");
+    expect(campaignsPage).toContain("disabled={isFinalizingCampaign || createCampaignConnectedPlatforms.length === 0}");
+    expect(campaignsPage).toContain("{isFinalizingCampaign ? (");
+    expect(campaignsPage).toContain("finalizingCampaignRef.current = false;");
+  });
 });

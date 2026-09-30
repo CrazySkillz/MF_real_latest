@@ -1,4 +1,4 @@
-import { useState, useEffect, type FocusEvent } from "react";
+import { useState, useEffect, useRef, type FocusEvent } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { queryClient } from "@/lib/queryClient";
@@ -219,6 +219,8 @@ export default function Campaigns() {
   const [campaignData, setCampaignData] = useState<CampaignFormData | null>(null);
   const [draftCampaignId, setDraftCampaignId] = useState<string | null>(null);
   const [draftFinalized, setDraftFinalized] = useState(false);
+  const [isFinalizingCampaign, setIsFinalizingCampaign] = useState(false);
+  const finalizingCampaignRef = useRef(false);
   const [highlightCampaignId, setHighlightCampaignId] = useState<string | null>(null);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
@@ -568,6 +570,9 @@ export default function Campaigns() {
     }
 
     // Finalize: update the already-created campaign with the chosen platform list.
+    if (finalizingCampaignRef.current) return;
+    finalizingCampaignRef.current = true;
+    setIsFinalizingCampaign(true);
     try {
       console.log('🔧 Finalizing campaign:', draftCampaignId, 'with platforms:', selectedPlatforms);
       const response = await apiRequest("PATCH", `/api/campaigns/${draftCampaignId}`, {
@@ -623,6 +628,9 @@ export default function Campaigns() {
         variant: "destructive",
       });
       // Don't close the dialog or navigate away - let the user try again
+    } finally {
+      finalizingCampaignRef.current = false;
+      setIsFinalizingCampaign(false);
     }
   };
 
@@ -809,6 +817,7 @@ export default function Campaigns() {
   };
 
   const handleCreateModalChange = (open: boolean) => {
+    if (!open && finalizingCampaignRef.current) return;
     setIsCreateModalOpen(open);
     // If the user closes the modal mid-setup, clean up the draft campaign (best-effort).
     if (!open && draftCampaignId && !draftFinalized) {
@@ -1101,7 +1110,7 @@ export default function Campaigns() {
                     <DialogDescription>
                       {wizardStep === 1 ? "Set up a new marketing campaign with your preferred settings." :
                        wizardStep === 2 ? "Connect to Google Analytics" :
-                       wizardStep === 3 ? "Authenticate with your platform account." :
+                       wizardStep === 3 ? "Connect your platform account" :
                        wizardStep === 4 ? "Configure your platform connection settings." :
                        "Review your campaign details and create."}
                     </DialogDescription>
@@ -1779,16 +1788,16 @@ export default function Campaigns() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3 pt-4 border-t">
-                        <Button type="button" variant="outline" className="flex-1" onClick={handleBackFromConfirm}>
+                        <Button type="button" variant="outline" className="flex-1" onClick={handleBackFromConfirm} disabled={isFinalizingCampaign}>
                           <ArrowLeft className="w-4 h-4 mr-2" /> Back
                         </Button>
                         <Button
                           type="button"
                           className="flex-1"
                           onClick={() => handleConnectorsComplete(createCampaignConnectedPlatforms)}
-                          disabled={createCampaignMutation.isPending || createCampaignConnectedPlatforms.length === 0}
+                          disabled={isFinalizingCampaign || createCampaignConnectedPlatforms.length === 0}
                         >
-                          {createCampaignMutation.isPending ? (
+                          {isFinalizingCampaign ? (
                             <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...</>
                           ) : (
                             <>Create Campaign <CheckCircle className="w-4 h-4 ml-2" /></>

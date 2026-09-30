@@ -11,7 +11,7 @@ import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ColumnMappingInterface } from "@/components/ColumnMappingInterface";
 import { GuidedColumnMapping } from "@/components/GuidedColumnMapping";
@@ -32,7 +32,6 @@ import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
 import { GoogleAdsConnectionFlow } from "@/components/GoogleAdsConnectionFlow";
 import { SimpleMetaAuth } from "@/components/SimpleMetaAuth";
-import { WebhookTester } from "@/components/WebhookTester";
 import { formatPct } from "@shared/metric-math";
 interface Campaign {
   id: string;
@@ -5543,12 +5542,6 @@ export default function CampaignDetail() {
           <div className="mb-6">
             <div className="mb-6">
               <div className="space-y-3">
-                <Link href="/campaigns">
-                  <Button variant="ghost" size="sm">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back to All Campaigns
-                  </Button>
-                </Link>
                 <Card>
                   <CardContent className="p-4 text-sm text-muted-foreground/80 space-y-1">
                     <div><span className="font-medium text-foreground">Client:</span> {clientName}</div>
@@ -5559,21 +5552,17 @@ export default function CampaignDetail() {
             </div>
           </div>
 
-          {/* Tabs Navigation */}
-          <Tabs defaultValue={(() => { try { const h = window.location.hash.replace('#', ''); return ['overview','kpis','benchmarks','webhooks'].includes(h) ? h : 'overview'; } catch { return 'overview'; } })()} className="space-y-6 fade-in">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="overview">Campaign Overview</TabsTrigger>
-              <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
-            </TabsList>
+          <Tabs defaultValue={(() => { try { const h = window.location.hash.replace('#', ''); return ['overview','kpis','benchmarks'].includes(h) ? h : 'overview'; } catch { return 'overview'; } })()} className="space-y-6 fade-in">
+            <h2 className="text-xl font-semibold text-foreground">Campaign Overview</h2>
 
             <TabsContent value="overview" className="space-y-6 fade-in">
 
-              {/* Campaign DeepDive */}
+              {/* Campaign Diagnostics */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <FileText className="w-5 h-5" />
-                    <span>Campaign DeepDive</span>
+                    <span>Campaign Diagnostics</span>
                   </CardTitle>
                   <CardDescription>
                     Unlock in-depth marketing analyses for key insights and tailored recommendations
@@ -6628,11 +6617,6 @@ export default function CampaignDetail() {
               <CampaignBenchmarks campaign={campaign} />
             </TabsContent>
 
-            <TabsContent value="webhooks" className="space-y-6 fade-in">
-              {campaign && (
-                <WebhookTester campaignId={campaign.id} campaignName={campaign.name} />
-              )}
-            </TabsContent>
           </Tabs>
         </main>
       </div>

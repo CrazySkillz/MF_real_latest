@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
+  ArrowLeft,
   Bell,
   Home,
 } from "lucide-react";
@@ -42,7 +43,17 @@ export default function Sidebar() {
             <div className="px-3 py-3 rounded-xl bg-muted/50 border border-border/60" aria-label="Current client">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Client</p>
               {currentClient ? (
-                <p className="mt-1 font-semibold text-foreground truncate" title={currentClient.name}>{currentClient.name}</p>
+                <>
+                  <p className="mt-1 font-semibold text-foreground truncate" title={currentClient.name}>{currentClient.name}</p>
+                  {campaignId && (
+                    <Link href="/campaigns">
+                      <div className="mt-3 flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                        <ArrowLeft className="h-4 w-4" />
+                        <span>Back to All Campaigns</span>
+                      </div>
+                    </Link>
+                  )}
+                </>
               ) : (
                 <div className="mt-2 h-5 w-3/4 rounded bg-muted animate-pulse" aria-hidden="true" />
               )}

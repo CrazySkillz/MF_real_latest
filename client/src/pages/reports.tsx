@@ -2161,7 +2161,7 @@ export default function Reports() {
                           <div>
                             <Label>Tabs to include</Label>
                             <div className="text-sm text-muted-foreground">
-                              Select the tabs from this Campaign DeepDive subsection to include in the report.
+                              Select the tabs from this Campaign Diagnostics subsection to include in the report.
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
                               {campaignReportTabs.map((tab) => (

@@ -238,7 +238,7 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).not.toContain("`${benchmark.currentValue}${benchmark.unit}`");
   });
 
-  it("keeps Recent Movement comparisons source-compatible and labels snapshot timing accurately", () => {
+  it("keeps Recent Movement comparisons source-compatible and window-aligned", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
     const start = page.indexOf("const getChanges = () => {");
     const end = page.indexOf("const changeData = getChanges();", start);
@@ -263,8 +263,8 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(getChanges).toContain("revenueResponseTotal(displayedHistoricalRevenueResponse)");
     expect(getChanges).toContain("displayedHistoricalSpendResponse?.spendToDate");
     expect(page).toContain('<Select value={selectedTimeRange} disabled={recentMovementSelectionPending}');
-    expect(page).toContain('data-testid="performance-data-through"');
-    expect(page).toContain('`Data through ${performanceDataThroughLabel} (${performanceReportingTimeZone}), the latest completed day`');
+    expect(page).not.toContain('data-testid="performance-data-through"');
+    expect(page).not.toContain("Current outcomes from the campaign's connected sources");
     expect(page).toContain('performanceSummary?.currentValueWindow?.dataThroughDate === performanceGA4FinancialEndDate');
     expect(page).toContain('performanceSummary?.currentValueWindow?.reportingTimeZone === performanceReportingTimeZone');
     expect(page).toContain('<SelectItem value="24h">Compare with previous completed day');
@@ -405,6 +405,9 @@ describe("campaign Performance Summary consolidated view regression guard", () =
     expect(page).not.toContain("TabsTrigger");
     expect(page).not.toContain("<Tabs");
     expect(page).toContain('data-testid="performance-key-outcomes"');
+    expect(page).toContain('<h2 className="text-xl font-semibold text-foreground">Performance Summary</h2>');
+    expect(page).toContain("Comprehensive overview & insights");
+    expect(page).not.toContain("{campaign.name} - Comprehensive overview & insights");
     expect(page).toContain('data-testid="performance-campaign-health"');
     expect(page).toContain('data-testid="performance-top-priority"');
     expect(page).toContain('data-testid="performance-recent-movement"');

@@ -13,7 +13,7 @@ export default function Sidebar() {
   const { clients, selectedClientId } = useClient();
   const isCampaignContext = /^\/campaigns(?:[/?#]|$)/.test(location);
   const campaignId = location.match(/^\/campaigns\/([^/?#]+)/)?.[1] || null;
-  const isGa4Analytics = /^\/campaigns\/[^/?#]+\/ga4-metrics(?:[/?#]|$)/.test(location);
+  const isCampaignAnalyticsView = /^\/campaigns\/[^/?#]+\/(?:ga4-metrics|performance)(?:[/?#]|$)/.test(location);
   const { data: campaign } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
     enabled: !!campaignId,
@@ -46,17 +46,17 @@ export default function Sidebar() {
               {currentClient ? (
                 <>
                   <p className="mt-1 font-semibold text-foreground truncate" title={currentClient.name}>{currentClient.name}</p>
-                  {isGa4Analytics && campaign && (
+                  {isCampaignAnalyticsView && campaign && (
                     <div data-sidebar-campaign-context className="ml-3 mt-2 border-l border-border pl-3">
                       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Campaign</p>
                       <p className="mt-1 truncate text-sm font-semibold text-foreground" title={campaign.name}>{campaign.name}</p>
                     </div>
                   )}
                   {campaignId && (
-                    <Link href={isGa4Analytics ? `/campaigns/${campaignId}` : "/campaigns"}>
-                      <div className={`mt-3 flex items-start gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground ${isGa4Analytics ? "ml-3" : ""}`}>
+                    <Link href={isCampaignAnalyticsView ? `/campaigns/${campaignId}` : "/campaigns"}>
+                      <div className={`mt-3 flex items-start gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground ${isCampaignAnalyticsView ? "ml-3" : ""}`}>
                         <ArrowLeft className="mt-0.5 h-4 w-4 shrink-0" />
-                        <span>{isGa4Analytics ? "Back to Campaign Overview" : "Back to All Campaigns"}</span>
+                        <span>{isCampaignAnalyticsView ? "Back to Campaign Overview" : "Back to All Campaigns"}</span>
                       </div>
                     </Link>
                   )}

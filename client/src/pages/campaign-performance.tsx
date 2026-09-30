@@ -447,7 +447,6 @@ export default function CampaignPerformanceSummary() {
     && performanceSummary?.currentValueWindow?.reportingTimeZone === performanceReportingTimeZone
       ? performanceGA4FinancialEndDate
       : "";
-  const performanceDataThroughLabel = formatCompletedReportingDate(performanceDataThroughDate);
 
   // Helper function to safely parse numbers
   const parseNum = (val: any): number => {
@@ -1448,25 +1447,12 @@ export default function CampaignPerformanceSummary() {
         <main className="flex-1 p-8">
           {/* Header */}
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-4">
-                <Link href={`/campaigns/${campaign.id}`}>
-                  <Button variant="ghost" size="sm" data-testid="button-back">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back to Campaign
-                  </Button>
-                </Link>
-                <div>
-                  <h1 className="text-3xl font-bold text-foreground">
-                    Performance Summary
-                  </h1>
-                  <p className="text-muted-foreground/70 mt-1">
-                    {campaign.name} - Comprehensive overview & insights
-                  </p>
-                </div>
-              </div>
-              
-            </div>
+            <h1 className="text-3xl font-bold text-foreground">
+              Performance Summary
+            </h1>
+            <p className="text-muted-foreground/70 mt-1">
+              Comprehensive overview & insights
+            </p>
           </div>
 
           <div className="space-y-6">
@@ -1474,15 +1460,7 @@ export default function CampaignPerformanceSummary() {
               <>
               <section className="space-y-4" data-testid="performance-key-outcomes">
                 <div>
-                  <h2 className="text-xl font-semibold text-foreground">Key Outcomes</h2>
-                  <p className="text-sm text-muted-foreground mt-1">Current outcomes from the campaign's connected sources</p>
-                  {!demoMode && (
-                    <p className="text-sm text-muted-foreground mt-1" data-testid="performance-data-through">
-                      {performanceDataThroughLabel
-                        ? `Data through ${performanceDataThroughLabel} (${performanceReportingTimeZone}), the latest completed day`
-                        : "Completed-day data cutoff unavailable"}
-                    </p>
-                  )}
+                  <h2 className="text-xl font-semibold text-foreground">Performance Summary</h2>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">

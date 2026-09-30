@@ -1582,25 +1582,25 @@ export function SalesforceRevenueWizard(props: {
               <div className="rounded-lg border border-border bg-muted/40 p-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                   <div>
-                    <div className="text-xs text-muted-foreground/70">Salesforce account</div>
-                    <div className="font-medium text-foreground">
+                    <div className="text-sm text-muted-foreground/70">Salesforce account</div>
+                    <div className="text-xs font-medium text-foreground">
                       {connectedLabel || orgName || "—"}
                     </div>
                   </div>
 
                   <div>
-                    <div className="text-xs text-muted-foreground/70">Revenue field</div>
-                    <div className="font-medium text-foreground">{revenueFieldLabel}</div>
+                    <div className="text-sm text-muted-foreground/70">Revenue field</div>
+                    <div className="text-xs font-medium text-foreground">{revenueFieldLabel}</div>
                   </div>
 
                   <div>
-                    <div className="text-xs text-muted-foreground/70">Campaign identifier field</div>
-                    <div className="font-medium text-foreground">{campaignFieldDisplay}</div>
+                    <div className="text-sm text-muted-foreground/70">Campaign identifier field</div>
+                    <div className="text-xs font-medium text-foreground">{campaignFieldDisplay}</div>
                   </div>
 
                   <div>
-                    <div className="text-xs text-muted-foreground/70">Total Revenue (to date)</div>
-                    <div className="font-medium text-foreground text-green-700 dark:text-green-400">
+                    <div className="text-sm text-muted-foreground/70">Total Revenue (to date)</div>
+                    <div className="text-xs font-medium text-foreground text-green-700 dark:text-green-400">
                       {reviewRevenue != null
                         ? formatReviewCurrency(Number(reviewRevenue), effectiveSalesforceCurrency)
                         : previewLoading
@@ -1611,44 +1611,41 @@ export function SalesforceRevenueWizard(props: {
 
                   {pipelineEnabled && (
                     <div>
-                      <div className="text-xs text-muted-foreground/70">Pipeline proxy</div>
-                      <div className="font-medium text-foreground">
-                        {pipelineStageLabel || pipelineStageName || "---"}
+                      <div className="text-sm text-muted-foreground/70">
+                        Pipeline proxy - Open-stage early signal. Not included in Total Revenue
                       </div>
-                      <div className="mt-1 text-sm font-medium text-foreground">
-                        {reviewPipelineProxyAmount != null
+                      <div className="text-xs font-semibold text-foreground">
+                        {pipelineStageLabel || pipelineStageName || "---"}: {reviewPipelineProxyAmount != null
                           ? formatReviewCurrency(Number(reviewPipelineProxyAmount), effectiveSalesforceCurrency)
                           : previewLoading
                             ? "Loading..."
                             : "---"}
                       </div>
-                      <div className="mt-1 text-xs text-muted-foreground/70">
-                        Open-stage early signal. Not included in Total Revenue.
-                      </div>
                     </div>
                   )}
 
                   <div>
-                    <div className="text-xs text-muted-foreground/70">Date field</div>
-                    <div className="font-medium text-foreground">
+                    <div className="text-sm text-muted-foreground/70">Date field</div>
+                    <div className="text-xs font-medium text-foreground">
                       {dateField === "CloseDate" ? "Close Date" : dateField === "LastModifiedDate" ? "Last Modified Date" : dateField === "CreatedDate" ? "Created Date" : dateField}
                     </div>
                   </div>
 
                   <div className={reviewShowsCampaignMappings ? "md:col-span-2" : undefined}>
-                    <div className={reviewShowsCampaignMappings ? "grid grid-cols-[minmax(0,1fr)_6rem_minmax(0,2fr)] gap-x-3" : undefined}>
-                      <div className="text-xs text-muted-foreground/70">Selected opportunity(ies)</div>
-                      {reviewShowsCampaignMappings && <span aria-hidden="true" />}
-                      {reviewShowsCampaignMappings && <div className="text-xs text-muted-foreground/70">{reviewPlatformLabel} campaign mapping</div>}
+                    <div className={reviewShowsCampaignMappings ? "grid grid-cols-2 gap-x-3" : undefined}>
+                      <div className="text-sm text-muted-foreground/70">Selected opportunity(ies)</div>
+                      {reviewShowsCampaignMappings && <div className="text-sm text-muted-foreground/70">{reviewPlatformLabel} campaign mapping</div>}
                     </div>
-                    <div className="space-y-0.5 font-medium text-foreground">
+                    <div className="space-y-0.5 text-xs font-medium text-foreground">
                       {selectedValues.length > 0
                         ? selectedValues.slice(0, 6).map((value) => {
                             const mapping = selectedCampaignMappings.find((item) => String(item.crmValue || "").trim() === value);
                             return reviewShowsCampaignMappings ? (
-                              <div key={value} className="grid grid-cols-[minmax(0,1fr)_6rem_minmax(0,2fr)] items-center gap-x-3">
-                                <span className="min-w-0 break-words">{value}</span>
-                                <span aria-hidden="true" className="text-center text-muted-foreground/70">→</span>
+                              <div key={value} className="grid grid-cols-2 items-center gap-x-3">
+                                <span className="flex min-w-0 items-center justify-between gap-3">
+                                  <span className="min-w-0 break-words">{value}</span>
+                                  <span aria-hidden="true" className="shrink-0 text-muted-foreground/70">→</span>
+                                </span>
                                 <span className="min-w-0 break-words text-muted-foreground">{mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn || "Not mapped"}</span>
                               </div>
                             ) : <div key={value}>{value}</div>;
@@ -1660,19 +1657,19 @@ export function SalesforceRevenueWizard(props: {
 
                 {reviewOpportunityBreakdown.length > 0 && (
                   <div className="mt-4 border-t border-border pt-4">
-                    <div className="text-xs text-muted-foreground/70">Opportunity amount breakdown</div>
+                    <div className="text-sm text-muted-foreground/70">Opportunity amount breakdown</div>
                     <div className="mt-2 max-h-48 overflow-y-auto rounded-md border border-border bg-card">
                       {reviewOpportunityBreakdown.map((opportunity, index) => {
                         const campaignValue = String(opportunity.campaignValue || "");
                         return (
                           <div key={`${opportunity.id || opportunity.name}-${index}`} className="flex items-start justify-between gap-3 border-b border-border px-3 py-2 last:border-b-0">
                             <div className="min-w-0">
-                              <div className="truncate font-medium text-foreground">{opportunity.name}</div>
+                              <div className="truncate text-xs font-medium text-foreground">{opportunity.name}</div>
                               {campaignValue && campaignValue !== opportunity.name && (
                                 <div className="truncate text-xs text-muted-foreground/70">{campaignValue}</div>
                               )}
                             </div>
-                            <div className="shrink-0 font-medium text-green-700 dark:text-green-400">
+                            <div className="shrink-0 text-xs font-medium text-green-700 dark:text-green-400">
                               {formatReviewCurrency(Number(opportunity.amount || 0), effectiveSalesforceCurrency)}
                             </div>
                           </div>

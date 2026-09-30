@@ -22,12 +22,12 @@ export default function Sidebar() {
   return (
     <aside className="w-64 shrink-0 bg-card border-r border-border/40 flex flex-col min-h-screen">
       <div className="p-6">
-        {/* Home link — always visible */}
+        {/* Clients link — always visible */}
         <nav className="space-y-1">
           <Link href="/">
             <div className={`nav-link ${location === "/" ? "nav-link-active" : "nav-link-inactive"}`}>
               <Home className="w-5 h-5" />
-              <span>Home</span>
+              <span>Clients</span>
             </div>
           </Link>
           <Link href="/notifications">

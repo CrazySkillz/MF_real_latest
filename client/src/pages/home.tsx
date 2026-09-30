@@ -53,7 +53,8 @@ export default function HomePage() {
         <main className="flex-1 p-8 fade-in">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <p className="text-muted-foreground">Select a client to view its campaigns</p>
+              <h1 className="text-2xl font-bold text-foreground">Clients</h1>
+              <p className="text-muted-foreground mt-1">Select a client to view its campaigns</p>
             </div>
             <Button
               className="bg-accent text-accent-foreground hover:bg-accent/80"

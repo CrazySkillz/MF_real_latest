@@ -1088,7 +1088,7 @@ export default function Campaigns() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-3xl font-bold text-foreground">All Campaigns</h1>
+                <h1 className="text-2xl font-bold text-foreground">All Campaigns</h1>
                 <p className="text-muted-foreground/70 mt-1">Create, manage, and optimize your marketing campaigns</p>
               </div>
 

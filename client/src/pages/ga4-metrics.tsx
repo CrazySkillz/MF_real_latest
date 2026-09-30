@@ -6686,11 +6686,12 @@ export default function GA4Metrics() {
                           </CardContent>
                         </Card>
                         </div>
-                        <div className="lg:pt-7">
+                        <div>
+                          <h4 className="text-sm font-semibold text-foreground mb-2">Pipeline Proxy</h4>
                           <Card>
                             <CardContent className="p-5">
                               <div className="flex items-start justify-between">
-                                <p className="text-sm font-medium text-muted-foreground/70">Pipeline Proxy</p>
+                                <p className="text-sm font-medium text-muted-foreground/70">Expected Revenue</p>
                                 <Target className="h-4 w-4 text-muted-foreground/70" />
                               </div>
                               <p className="text-2xl font-bold text-foreground mt-1">

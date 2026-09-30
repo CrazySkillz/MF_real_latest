@@ -53,8 +53,7 @@ export default function HomePage() {
         <main className="flex-1 p-8 fade-in">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Home</h1>
-              <p className="text-muted-foreground mt-1">Select a client to view its campaigns</p>
+              <p className="text-muted-foreground">Select a client to view its campaigns</p>
             </div>
             <Button onClick={() => setIsModalOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />

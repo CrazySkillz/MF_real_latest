@@ -1088,7 +1088,7 @@ export default function Campaigns() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-3xl font-bold text-foreground">Campaign Management</h1>
+                <h1 className="text-3xl font-bold text-foreground">All Campaigns</h1>
                 <p className="text-muted-foreground/70 mt-1">Create, manage, and optimize your marketing campaigns</p>
               </div>
 
@@ -1816,11 +1816,6 @@ export default function Campaigns() {
 
           {/* Campaigns Cards */}
           <div className="space-y-6">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">All Campaigns</h2>
-              <p className="text-muted-foreground/70">Manage and monitor your marketing campaigns</p>
-            </div>
-
             {isLoading ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {[...Array(6)].map((_, i) => (

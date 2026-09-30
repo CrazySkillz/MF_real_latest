@@ -37,19 +37,19 @@ export default function Sidebar() {
             </div>
           </Link>
         </nav>
-      </div>
-      {isCampaignContext && (currentClient || campaignId) && (
-        <div className="mt-auto p-6">
-          <div className="px-3 py-3 rounded-xl bg-muted/50 border border-border/60" aria-label="Current client">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Client</p>
-            {currentClient ? (
-              <p className="mt-1 font-semibold text-foreground truncate" title={currentClient.name}>{currentClient.name}</p>
-            ) : (
-              <div className="mt-2 h-5 w-3/4 rounded bg-muted animate-pulse" aria-hidden="true" />
-            )}
+        {isCampaignContext && (currentClient || campaignId) && (
+          <div className="mt-6">
+            <div className="px-3 py-3 rounded-xl bg-muted/50 border border-border/60" aria-label="Current client">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Client</p>
+              {currentClient ? (
+                <p className="mt-1 font-semibold text-foreground truncate" title={currentClient.name}>{currentClient.name}</p>
+              ) : (
+                <div className="mt-2 h-5 w-3/4 rounded bg-muted animate-pulse" aria-hidden="true" />
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </aside>
   );
 }

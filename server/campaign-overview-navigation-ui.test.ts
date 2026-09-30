@@ -48,4 +48,15 @@ describe("Campaign Overview navigation UI", () => {
     expect(campaigns).toContain("icon: SiGoogleanalytics");
     expect(page).toContain('return <SiGoogleanalytics className="w-5 h-5 text-orange-500" />;');
   });
+
+  it("moves GA4 detailed-view campaign context and return navigation into the sidebar", () => {
+    const sidebar = read("client/src/components/layout/sidebar.tsx");
+    const ga4 = read("client/src/pages/ga4-metrics.tsx");
+
+    expect(sidebar).toContain("data-sidebar-campaign-context");
+    expect(sidebar).toContain("{campaign.name}");
+    expect(sidebar).toContain("Back to Campaign Overview");
+    expect(ga4).not.toContain("Back to main Campaign Overview");
+    expect(ga4).toContain('<SiGoogleanalytics className="w-8 h-8 text-orange-500" />');
+  });
 });

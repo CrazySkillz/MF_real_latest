@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } fr
 import { useLocation, useRoute, useSearch } from "wouter";
 import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, Pencil, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, AlertCircle, CheckCircle2, Download, FileText, Settings, Activity, Info, Trophy } from "lucide-react";
 import { Link } from "wouter";
-import { SiGoogle } from "react-icons/si";
+import { SiGoogleanalytics } from "react-icons/si";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -6282,12 +6282,6 @@ export default function GA4Metrics() {
           <main className="flex-1 p-8">
             <div className="mb-8">
               <div className="flex items-center space-x-4 mb-6">
-                <Link href={`/campaigns/${campaignId}`}>
-                  <Button variant="ghost" size="sm">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back to Campaign
-                  </Button>
-                </Link>
                 <div>
                   <h1 className="text-3xl font-bold text-foreground">Google Analytics Metrics</h1>
                   <p className="text-muted-foreground/70 mt-1">for {campaign.name}</p>
@@ -6298,7 +6292,7 @@ export default function GA4Metrics() {
             <div className="flex items-center justify-center min-h-[400px]">
               <div className="text-center">
                 <div className="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-6">
-                  <SiGoogle className="w-8 h-8 text-orange-500" />
+                  <SiGoogleanalytics className="w-8 h-8 text-orange-500" />
                 </div>
                 <h2 className="text-2xl font-bold text-foreground mb-4">Connect Google Analytics</h2>
                 <p className="text-muted-foreground/70 mb-8 max-w-md">
@@ -6333,17 +6327,11 @@ export default function GA4Metrics() {
             </div>
           )}
           <div className="mb-8">
-            <Link href={`/campaigns/${campaignId}`}>
-              <Button variant="ghost" size="sm" className="mb-3">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to main Campaign Overview
-              </Button>
-            </Link>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-4">
                 <div>
                   <div className="flex items-center space-x-3 mb-2">
-                    <SiGoogle className="w-8 h-8 text-orange-500" />
+                    <SiGoogleanalytics className="w-8 h-8 text-orange-500" />
                     <h1 className="text-3xl font-bold text-foreground">Google Analytics</h1>
                   </div>
                 </div>

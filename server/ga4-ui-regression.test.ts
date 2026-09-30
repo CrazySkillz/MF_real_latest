@@ -10,7 +10,7 @@ const readServer = (relativePath: string) =>
 describe("GA4 UI regression guard", () => {
   it("keeps the GA4 analytics header provenance compact and explicit", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
-    const headerStart = ga4Metrics.indexOf("Back to main Campaign Overview");
+    const headerStart = ga4Metrics.indexOf('<h1 className="text-3xl font-bold text-foreground">Google Analytics</h1>');
     const headerEnd = ga4Metrics.indexOf("Connected Properties Management", headerStart);
     const headerSection = ga4Metrics.slice(headerStart, headerEnd);
 
@@ -22,6 +22,7 @@ describe("GA4 UI regression guard", () => {
     expect(headerSection).toContain("GA4 Property ID:");
     expect(headerSection).toContain("Property Campaigns:");
     expect(headerSection).not.toContain("Last updated:");
+    expect(ga4Metrics).not.toContain("Back to main Campaign Overview");
   });
 
   it("keeps revenue and spend source modals scrollable for many entries", () => {

@@ -212,6 +212,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
       setAvailableSheets(data.sheets);
       selectedSheetNamesRef.current = [];
       setSelectedSheetNames([]);
+      setShowServiceAccountInput(false);
       setAuthCompleted(true);
     } catch (error: any) {
       onError(error?.message || "Failed to connect the shared spreadsheet");
@@ -392,6 +393,29 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
               </SelectContent>
             </Select>
           </div>
+
+          {serviceAccountStatus.enabled && (
+            <div className="space-y-3 border-t border-border pt-4">
+              {!showServiceAccountInput ? (
+                <Button type="button" variant="outline" className="w-full" onClick={() => setShowServiceAccountInput(true)}>
+                  Connect shared spreadsheet
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Share the spreadsheet with <span className="font-medium text-foreground">{serviceAccountStatus.email}</span> as Viewer, then paste its URL.
+                  </p>
+                  <Input value={serviceSpreadsheetUrl} onChange={(event) => setServiceSpreadsheetUrl(event.target.value)} placeholder="Paste Google Sheets URL" autoComplete="off" />
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" className="flex-1" onClick={() => setShowServiceAccountInput(false)}>Cancel</Button>
+                    <Button type="button" variant="outline" className="flex-1" onClick={connectSharedSpreadsheet} disabled={isServiceConnecting || !serviceSpreadsheetUrl.trim()}>
+                      {isServiceConnecting ? "Connecting..." : "Connect shared spreadsheet"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {selectedSpreadsheet && (
             <div className="space-y-2">

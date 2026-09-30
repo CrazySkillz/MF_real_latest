@@ -37,6 +37,17 @@ describe("temporary Google Sheets service-account boundary", () => {
     expect(authSource.indexOf("Connect Google Sheets")).toBeLessThan(authSource.indexOf("Temporary test connection"));
   });
 
+  it("lets an existing source connect a different shared spreadsheet", () => {
+    const authSource = readFileSync(resolve(process.cwd(), "client/src/components/SimpleGoogleSheetsAuth.tsx"), "utf8");
+    const selectionStart = authSource.indexOf("// Show spreadsheet selection after auth");
+    const selectionEnd = authSource.indexOf("// Keep the auth check silent", selectionStart);
+    const selection = authSource.slice(selectionStart, selectionEnd);
+
+    expect(selection).toContain("Connect shared spreadsheet");
+    expect(selection).toContain("connectSharedSpreadsheet");
+    expect(selection).toContain("serviceAccountStatus.enabled");
+  });
+
   it("accepts a spreadsheet ID or canonical Google Sheets URL", () => {
     const id = "1AbCdEfGhIjKlMnOpQrStUvWxYz_12345";
     expect(normalizeGoogleSheetsSpreadsheetId(id)).toBe(id);

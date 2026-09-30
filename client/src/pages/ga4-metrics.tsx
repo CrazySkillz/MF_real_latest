@@ -9258,8 +9258,7 @@ export default function GA4Metrics() {
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div className="flex flex-wrap gap-x-2 gap-y-1 text-sm text-muted-foreground/80">
-                          <span className="whitespace-nowrap">Latest imported day <span className="font-medium text-foreground">{trendsLatestImportedDateLabel}</span> <span aria-hidden="true">|</span></span>
-                          <span className="whitespace-nowrap">Chart through <span className="font-medium text-foreground">{trendsDataThroughLabel}</span></span>
+                          <span className="whitespace-nowrap">Latest imported day <span className="font-medium text-foreground">{trendsLatestImportedDateLabel}</span></span>
                         </div>
                         {ga4InsightsDailyError && ga4InsightsDailyResp === undefined && (
                           <div className="rounded-md border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-900">
@@ -9322,8 +9321,6 @@ export default function GA4Metrics() {
 
                           // Build chart data depending on mode
                           let chartData: { date: string; value: number | null; idx: number; partial?: boolean }[] = [];
-                          let dailyChartStartDate = "";
-                          let dailyChartEndDate = "";
                           let rollingChartStartDate = "";
                           let rollingChartEndDate = "";
                           if (insightsTrendMode === "daily") {
@@ -9337,8 +9334,6 @@ export default function GA4Metrics() {
                             });
                             let cursor = String(firstImportedDate?.date || initialDate);
                             if (trendsCampaignStartDate >= initialDate && trendsCampaignStartDate < cursor) cursor = trendsCampaignStartDate;
-                            dailyChartStartDate = cursor;
-                            dailyChartEndDate = finalDate;
                             while (cursor && cursor <= finalDate) {
                               const row: any = dailyRowsByDate.get(cursor);
                               chartData.push({
@@ -9450,7 +9445,7 @@ export default function GA4Metrics() {
                               </div>
                               {insightsTrendMode === "daily" && (
                                 <div className="mt-2 text-xs text-muted-foreground/70" data-testid="insights-daily-chart-coverage">
-                                  Daily chart {dailyChartStartDate} {"\u2192"} {dailyChartEndDate}: {chartData.length}/{chartData.length} completed days. Missing stored dates are shown as 0.
+                                  Missing stored dates are shown as 0.
                                 </div>
                               )}
                               {insightsTrendMode === "7d" && (
@@ -9630,11 +9625,6 @@ export default function GA4Metrics() {
                           )}
                           {ga4InsightsDailyResp !== undefined && !dataSummaryHistoryAvailable && (
                             <div className="mb-4 text-sm text-muted-foreground">GA4 summary values are unavailable: no usable imported history was returned for this property.</div>
-                          )}
-                          {dataSummaryHistoryAvailable && (
-                            <p className="mb-4 text-xs text-muted-foreground/70" data-testid="insights-data-summary-scope-note">
-                              GA4 imported history: {dataSummaryHistoryStartDate} to {dataSummaryHistoryEndDate} ({trendsReportingTimeZoneLabel}); no-activity days count as 0.
-                            </p>
                           )}
                           {timeSeriesLoading && ga4InsightsDailyResp === undefined && (
                             <div className="mb-4 h-8 rounded bg-muted animate-pulse" aria-label="Loading GA4 Insights summary" />

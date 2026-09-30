@@ -6617,11 +6617,10 @@ export default function GA4Metrics() {
                         <h3 className="text-base font-semibold text-foreground">Revenue & Financial</h3>
                         <p className="text-sm text-muted-foreground/70">Connected-source financial performance and return on investment</p>
                       </div>
-                      {/* Revenue & Spend cards — always show when any financial data exists */}
-                      <div className="grid gap-5 lg:grid-cols-2">
+                      {/* Revenue, Spend, and Pipeline Proxy cards — always show when any financial data exists */}
+                      <div className="grid gap-5 lg:grid-cols-3">
                         <div>
                           <h4 className="text-sm font-semibold text-foreground mb-2">Revenue</h4>
-                          <div className="grid gap-4">
                         {/* Total Revenue */}
                         <Card>
                           <CardContent className="p-5">
@@ -6652,35 +6651,9 @@ export default function GA4Metrics() {
                             )}
                           </CardContent>
                         </Card>
-                          <Card>
-                            <CardContent className="p-5">
-                              <div className="flex items-start justify-between">
-                                <p className="text-sm font-medium text-muted-foreground/70">Pipeline Proxy</p>
-                                <Target className="h-4 w-4 text-muted-foreground/70" />
-                              </div>
-                              <p className="text-2xl font-bold text-foreground mt-1">
-                                {renderFinancialValue(
-                                  pipelineProxyLoading,
-                                  !pipelineProxyUnavailable,
-                                  hasPipelineProxy ? formatMoney(Number(pipelineProxyData.totalToDate || 0)) : "Not configured"
-                                )}
-                              </p>
-                              {pipelineProxySourcesCount > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={() => setShowPipelineProxySourcesDialog(true)}
-                                  className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
-                                >
-                                  Sources ({pipelineProxySourcesCount})
-                                </button>
-                              )}
-                            </CardContent>
-                          </Card>
-                          </div>
                         </div>
                         <div>
                           <h4 className="text-sm font-semibold text-foreground mb-2">Spend</h4>
-                          <div className="grid gap-4">
                         {/* Total Spend */}
                         <Card>
                           <CardContent className="p-5">
@@ -6712,7 +6685,32 @@ export default function GA4Metrics() {
                             )}
                           </CardContent>
                         </Card>
-                          </div>
+                        </div>
+                        <div className="lg:pt-7">
+                          <Card>
+                            <CardContent className="p-5">
+                              <div className="flex items-start justify-between">
+                                <p className="text-sm font-medium text-muted-foreground/70">Pipeline Proxy</p>
+                                <Target className="h-4 w-4 text-muted-foreground/70" />
+                              </div>
+                              <p className="text-2xl font-bold text-foreground mt-1">
+                                {renderFinancialValue(
+                                  pipelineProxyLoading,
+                                  !pipelineProxyUnavailable,
+                                  hasPipelineProxy ? formatMoney(Number(pipelineProxyData.totalToDate || 0)) : "Not configured"
+                                )}
+                              </p>
+                              {pipelineProxySourcesCount > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setShowPipelineProxySourcesDialog(true)}
+                                  className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
+                                >
+                                  Sources ({pipelineProxySourcesCount})
+                                </button>
+                              )}
+                            </CardContent>
+                          </Card>
                         </div>
                       </div>
                       <div className="mt-5">
@@ -7005,13 +7003,6 @@ export default function GA4Metrics() {
                                     <p>
                                       Campaign scope: {(ga4ConversionEvents.validation.campaignScope || []).join(", ")}
                                     </p>
-                                    <p>
-                                      GA4 returned {formatNumber(Number(ga4ConversionEvents.validation.returnedTotals?.conversions || 0))} conversions, {formatNumber(Number(ga4ConversionEvents.validation.returnedTotals?.eventCount || 0))} events, and {formatNumber(Number(ga4ConversionEvents.validation.returnedTotals?.users || 0))} users; conversions matched the scheduler total.
-                                    </p>
-                                    <details>
-                                      <summary className="cursor-pointer underline">View exact GA4 Data API request</summary>
-                                      <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded bg-white/80 p-2 text-xs text-foreground">{JSON.stringify(ga4ConversionEvents.validation.request, null, 2)}</pre>
-                                    </details>
                                   </div>
                                 </details>
                               )}

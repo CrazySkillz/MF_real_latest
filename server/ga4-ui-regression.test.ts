@@ -365,6 +365,19 @@ describe("GA4 UI regression guard", () => {
     expect(summarySection).not.toContain("renderSummaryValue(formatNumber(financialConversions || 0))");
   });
 
+  it("keeps the three primary financial cards in one desktop row", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const financialStart = ga4Metrics.indexOf("{/* Revenue & Financial */}");
+    const performanceStart = ga4Metrics.indexOf('>Performance</h4>', financialStart);
+    const financialCards = ga4Metrics.slice(financialStart, performanceStart);
+
+    expect(financialStart).toBeGreaterThan(-1);
+    expect(performanceStart).toBeGreaterThan(financialStart);
+    expect(financialCards).toContain('className="grid gap-5 lg:grid-cols-3"');
+    expect(financialCards.indexOf("Total Revenue")).toBeLessThan(financialCards.indexOf("Total Spend"));
+    expect(financialCards.indexOf("Total Spend")).toBeLessThan(financialCards.indexOf("Pipeline Proxy"));
+  });
+
   it("distinguishes failed Overview requests from valid zero and empty responses", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
     const scheduledPdf = readServer("ga4-scheduled-report-pdf.ts");

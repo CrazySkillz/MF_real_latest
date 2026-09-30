@@ -17,7 +17,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, Edit, Trash2, ArrowLeft, CheckCircle, Loader2, FileText, Copy, Send } from "lucide-react";
-import { SiFacebook, SiGoogle, SiInstagram, SiLinkedin, SiTiktok, SiX } from "react-icons/si";
+import { SiFacebook, SiGoogle, SiGoogleanalytics, SiInstagram, SiLinkedin, SiTiktok, SiX } from "react-icons/si";
 import { Campaign, insertCampaignSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -109,7 +109,7 @@ const platforms = [
   {
     id: "google-analytics",
     name: "Google Analytics",
-    icon: SiGoogle,
+    icon: SiGoogleanalytics,
     color: "text-orange-500",
     description: "Connect your Google Analytics account",
     type: "credentials",
@@ -1100,7 +1100,7 @@ export default function Campaigns() {
                     </DialogTitle>
                     <DialogDescription>
                       {wizardStep === 1 ? "Set up a new marketing campaign with your preferred settings." :
-                       wizardStep === 2 ? "Choose a platform to connect. You can add more later." :
+                       wizardStep === 2 ? "Connect to Google Analytics" :
                        wizardStep === 3 ? "Authenticate with your platform account." :
                        wizardStep === 4 ? "Configure your platform connection settings." :
                        "Review your campaign details and create."}
@@ -1257,17 +1257,6 @@ export default function Campaigns() {
                               <SelectItem value="USD">USD - US Dollar</SelectItem>
                               <SelectItem value="EUR">EUR - Euro</SelectItem>
                               <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                              <SelectItem value="JPY">JPY - Japanese Yen</SelectItem>
-                              <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
-                              <SelectItem value="INR">INR - Indian Rupee</SelectItem>
-                              <SelectItem value="CNY">CNY - Chinese Yuan</SelectItem>
-                              <SelectItem value="BRL">BRL - Brazilian Real</SelectItem>
-                              <SelectItem value="MXN">MXN - Mexican Peso</SelectItem>
-                              <SelectItem value="CHF">CHF - Swiss Franc</SelectItem>
-                              <SelectItem value="SEK">SEK - Swedish Krona</SelectItem>
-                              <SelectItem value="NZD">NZD - New Zealand Dollar</SelectItem>
-                              <SelectItem value="SGD">SGD - Singapore Dollar</SelectItem>
-                              <SelectItem value="HKD">HKD - Hong Kong Dollar</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>

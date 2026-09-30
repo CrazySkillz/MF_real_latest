@@ -1279,17 +1279,17 @@ export function HubSpotRevenueWizard(props: {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                     <div className="space-y-3">
                       <div>
-                        <div className="text-xs text-muted-foreground/70">
+                        <div className="text-sm text-muted-foreground/70">
                           Revenue field
                         </div>
-                        <div className="font-medium text-foreground">
+                        <div className="text-xs font-medium text-foreground">
                           {revenuePropertyLabel}
                         </div>
                       </div>
 
                       <div>
-                        <div className="text-xs text-muted-foreground/70">Total Revenue (to date)</div>
-                        <div className="font-medium text-foreground text-green-700 dark:text-green-400">
+                        <div className="text-sm text-muted-foreground/70">Total Revenue (to date)</div>
+                        <div className="text-xs font-medium text-foreground text-green-700 dark:text-green-400">
                           {reviewRevenue != null
                             ? `$${Number(reviewRevenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                             : "—"}
@@ -1297,42 +1297,29 @@ export function HubSpotRevenueWizard(props: {
                       </div>
 
                       <div>
-                        <div className="text-xs text-muted-foreground/70">Selected deal(s)</div>
-                        <div className="space-y-0.5 font-medium text-foreground">
+                        <div className="text-sm text-muted-foreground/70">Selected deal(s)</div>
+                        <div className="space-y-0.5 text-xs font-medium text-foreground">
                           {selectedValues.length > 0
                             ? selectedValues.slice(0, 6).map((value) => <div key={value}>{value}</div>)
                             : "—"}
                         </div>
                       </div>
 
-                      {selectedCampaignMappings.length > 0 && (
-                        <div>
-                          <div className="text-xs text-muted-foreground/70">{reviewPlatformLabel} campaign mapping</div>
-                          <div className="space-y-1 font-medium text-foreground">
-                            {selectedCampaignMappings.slice(0, 6).map((mapping) => (
-                              <div key={`${mapping.crmValue}-${mapping.linkedinCampaignUrn}`} className="grid gap-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                                <span className="truncate">{mapping.crmValue}</span>
-                                <span className="truncate text-muted-foreground">{mapping.linkedinCampaignName || mapping.linkedinCampaignUrn}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
 
                     <div className="space-y-3">
                       <div>
-                        <div className="text-xs text-muted-foreground/70">Campaign identifier field</div>
-                        <div className="font-medium text-foreground">{campaignPropertyLabel}</div>
+                        <div className="text-sm text-muted-foreground/70">Campaign identifier field</div>
+                        <div className="text-xs font-medium text-foreground">{campaignPropertyLabel}</div>
                       </div>
 
                       {showReviewPipelineProxy && (
                         <div>
-                          <div className="text-xs text-muted-foreground/70">Pipeline proxy</div>
-                          <div className="font-medium text-foreground">
+                          <div className="text-sm text-muted-foreground/70">Pipeline proxy</div>
+                          <div className="text-xs font-medium text-foreground">
                             {pipelineStageLabel || pipelineStageId || "—"}
                           </div>
-                          <div className="mt-1 text-sm font-medium text-foreground">
+                          <div className="mt-1 text-xs font-medium text-foreground">
                             {reviewPipelineProxyDisplayAmount != null
                               ? `$${Number(reviewPipelineProxyDisplayAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                               : "—"}
@@ -1344,8 +1331,8 @@ export function HubSpotRevenueWizard(props: {
                       )}
 
                       <div>
-                        <div className="text-xs text-muted-foreground/70">Date field</div>
-                        <div className="font-medium text-foreground">
+                        <div className="text-sm text-muted-foreground/70">Date field</div>
+                        <div className="text-xs font-medium text-foreground">
                           {dateField === "hs_lastmodifieddate"
                             ? "Last Modified Date"
                             : dateField === "createdate"
@@ -1356,9 +1343,23 @@ export function HubSpotRevenueWizard(props: {
                     </div>
                   </div>
 
+                  {selectedCampaignMappings.length > 0 && (
+                    <div className="mt-3">
+                      <div className="text-sm text-muted-foreground/70">{reviewPlatformLabel} campaign mapping</div>
+                      <div className="space-y-1 text-xs font-medium text-foreground">
+                        {selectedCampaignMappings.slice(0, 6).map((mapping) => (
+                          <div key={`${mapping.crmValue}-${mapping.linkedinCampaignUrn}`} className="grid grid-cols-2 gap-x-3">
+                            <span className="truncate">{mapping.crmValue}</span>
+                            <span className="truncate text-muted-foreground">{mapping.linkedinCampaignName || mapping.linkedinCampaignUrn}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {reviewDealBreakdown.length > 0 && (
                     <div className="mt-4 border-t border-border pt-4">
-                      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground/70">
+                      <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground/70">
                         <span>Deal amount breakdown</span>
                         {reviewDealBreakdownTotal != null && reviewDealBreakdownTotal > reviewDealBreakdown.length && (
                           <span>{reviewDealBreakdown.length} of {reviewDealBreakdownTotal}</span>
@@ -1371,12 +1372,12 @@ export function HubSpotRevenueWizard(props: {
                           return (
                             <div key={`${deal.id || name}-${index}`} className="flex items-start justify-between gap-3 border-b border-border px-3 py-2 last:border-b-0">
                               <div className="min-w-0">
-                                <div className="truncate font-medium text-foreground">{name}</div>
+                                <div className="truncate text-xs font-medium text-foreground">{name}</div>
                                 {campaignValue && campaignValue !== name && (
                                   <div className="truncate text-xs text-muted-foreground/70">{campaignValue}</div>
                                 )}
                               </div>
-                              <div className="shrink-0 font-medium text-green-700 dark:text-green-400">
+                              <div className="shrink-0 text-xs font-medium text-green-700 dark:text-green-400">
                                 {formatReviewCurrency(Number(deal.amount || 0))}
                               </div>
                             </div>

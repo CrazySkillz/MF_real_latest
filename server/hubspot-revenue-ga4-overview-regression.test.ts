@@ -129,6 +129,10 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(reviewBlock).toContain("mapping.crmValue");
     expect(reviewBlock).toContain("mapping.linkedinCampaignName || mapping.linkedinCampaignUrn");
     expect(reviewBlock).toContain("selectedCampaignMappings.slice(0, 6).map");
+    expect(reviewBlock).toContain('className="grid grid-cols-2 gap-x-3"');
+    expect(reviewBlock).toContain('className="text-sm text-muted-foreground/70">Date field</div>');
+    expect(reviewBlock).toContain('className="text-sm text-muted-foreground/70">{reviewPlatformLabel} campaign mapping</div>');
+    expect(reviewBlock).toContain('className="space-y-1 text-xs font-medium text-foreground"');
   });
 
   it("starts HubSpot edit mode at Source with saved settings prefilled", () => {
@@ -155,8 +159,8 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     );
     const reviewSummaryBlock = sliceBetween(
       wizard,
-      '<div className="text-xs text-muted-foreground/70">Campaign identifier field</div>',
-      '<div className="text-xs text-muted-foreground/70">Date field</div>'
+      '<div className="text-sm text-muted-foreground/70">Campaign identifier field</div>',
+      '<div className="text-sm text-muted-foreground/70">Date field</div>'
     );
 
     expect(visibilityBlock).toContain('if (!pipelineEnabled) return false;');

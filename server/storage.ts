@@ -6,6 +6,7 @@ import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql, gte, lte, inArray, ne } from "drizzle-orm";
 import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, type EncryptedTokens } from "./utils/tokenVault";
 import { assertGA4ServiceAccountPropertyAllowed, GA4_SERVICE_ACCOUNT_METHOD, hydrateGA4ServiceAccountConnection } from "./utils/ga4-service-account";
+import { GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, hydrateGoogleSheetsServiceAccountConnection } from "./utils/google-sheets-service-account";
 import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness } from "./utils/revenue-record-total";
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 import { getReportingComparisonBoundary, getReportingDateEndAt, isCreatedThroughReportingDate } from "./utils/reporting-timezone";
@@ -58,6 +59,17 @@ export const selectStableExactDateSpendSnapshot = <T extends { totalSpend?: any;
   const stableKey = Array.from(counts).find(([, count]) => count > keyed.length / 2)?.[0];
   return stableKey ? keyed.find(({ key }) => key === stableKey)?.snapshot : undefined;
 };
+
+async function hydrateGoogleSheetsConnectionForRead<T extends Record<string, any>>(connection: T): Promise<T> {
+  try {
+    return await hydrateGoogleSheetsServiceAccountConnection(connection);
+  } catch {
+    if (String(connection?.method || "") !== GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD) {
+      throw new Error("Failed to read Google Sheets connection");
+    }
+    return { ...connection, accessToken: null, refreshToken: null, clientId: null, clientSecret: null };
+  }
+}
 
 const spendPlatformContextPredicate = (platformContext?: SpendPlatformContext) => {
   if (!platformContext) return undefined;
@@ -2626,6 +2638,7 @@ export class DatabaseStorage implements IStorage {
         spreadsheetName: googleSheetsConnections.spreadsheetName,
         sheetName: googleSheetsConnections.sheetName,
         purpose: (googleSheetsConnections as any).purpose,
+        method: (googleSheetsConnections as any).method,
         accessToken: googleSheetsConnections.accessToken,
         refreshToken: googleSheetsConnections.refreshToken,
         clientId: googleSheetsConnections.clientId,
@@ -2668,7 +2681,9 @@ export class DatabaseStorage implements IStorage {
         })
       );
 
-      return rows.map((r: any) => hydrateDecryptedTokens(r)) as any;
+      return await Promise.all(rows.map(async (r: any) => (
+        hydrateGoogleSheetsConnectionForRead(hydrateDecryptedTokens(r) as any)
+      ))) as any;
     } catch (error: any) {
       // If sheet_name/purpose column doesn't exist yet, use raw SQL query
       if (error.message?.includes('sheet_name') || error.message?.includes('purpose') || error.message?.includes('column') || error.code === '42703') {
@@ -2689,6 +2704,7 @@ export class DatabaseStorage implements IStorage {
           spreadsheetName: row.spreadsheet_name,
           sheetName: null, // Column doesn't exist yet
           purpose: null,
+          method: "access_token",
           accessToken: row.access_token,
           refreshToken: row.refresh_token,
           clientId: row.client_id,
@@ -2721,7 +2737,9 @@ export class DatabaseStorage implements IStorage {
             eq(googleSheetsConnections.spreadsheetId, spreadsheetId),
             eq(googleSheetsConnections.isActive, true)
           ));
-        return connection ? (hydrateDecryptedTokens(connection) as any) : undefined;
+        return connection
+          ? await hydrateGoogleSheetsConnectionForRead(hydrateDecryptedTokens(connection) as any) as any
+          : undefined;
       }
 
       // Return the primary connection if no spreadsheetId specified
@@ -2732,7 +2750,7 @@ export class DatabaseStorage implements IStorage {
           eq(googleSheetsConnections.isActive, true)
         ));
 
-      if (primary) return hydrateDecryptedTokens(primary) as any;
+      if (primary) return await hydrateGoogleSheetsConnectionForRead(hydrateDecryptedTokens(primary) as any) as any;
 
       // Fallback to first active connection if no primary
       const [first] = await db.select().from(googleSheetsConnections)
@@ -2742,7 +2760,9 @@ export class DatabaseStorage implements IStorage {
         ))
         .limit(1);
 
-      return first ? (hydrateDecryptedTokens(first) as any) : undefined;
+      return first
+        ? await hydrateGoogleSheetsConnectionForRead(hydrateDecryptedTokens(first) as any) as any
+        : undefined;
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL query
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
@@ -2833,7 +2853,9 @@ export class DatabaseStorage implements IStorage {
           eq(googleSheetsConnections.isPrimary, true),
           eq(googleSheetsConnections.isActive, true)
         ));
-      return primary || undefined;
+      return primary
+        ? await hydrateGoogleSheetsConnectionForRead(primary as any) as any
+        : undefined;
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL query
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
@@ -2875,30 +2897,36 @@ export class DatabaseStorage implements IStorage {
     const existingConnections = await this.getGoogleSheetsConnections(connection.campaignId);
     const isPrimary = existingConnections.length === 0;
 
+    const method = String((connection as any).method || "access_token").trim().toLowerCase();
+    const isServiceAccount = method === GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD;
+
     try {
       // Try to insert - Drizzle will include all fields from schema, which may fail if sheet_name doesn't exist
       const enc = buildEncryptedTokens({
-        accessToken: (connection as any).accessToken,
-        refreshToken: (connection as any).refreshToken,
-        clientSecret: (connection as any).clientSecret,
+        accessToken: isServiceAccount ? null : (connection as any).accessToken,
+        refreshToken: isServiceAccount ? null : (connection as any).refreshToken,
+        clientSecret: isServiceAccount ? null : (connection as any).clientSecret,
       });
 
       const [sheetsConnection] = await db
         .insert(googleSheetsConnections)
         .values({
           ...connection,
+          method,
           accessToken: null,
           refreshToken: null,
+          clientId: isServiceAccount ? null : (connection as any).clientId,
           clientSecret: null,
           encryptedTokens: enc,
           isPrimary: isPrimary,
           isActive: true
         })
         .returning();
-      return hydrateDecryptedTokens(sheetsConnection) as any;
+      return await hydrateGoogleSheetsConnectionForRead(hydrateDecryptedTokens(sheetsConnection) as any) as any;
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL insert
       if (error.message?.includes('sheet_name') || error.message?.includes('purpose') || error.message?.includes('column') || error.code === '42703') {
+        if (isServiceAccount) throw new Error('Google Sheets service-account storage migration is required');
         devLog('[Storage] sheet_name/purpose column not found, using fallback insert for createGoogleSheetsConnection');
         const enc = buildEncryptedTokens({
           accessToken: (connection as any).accessToken,
@@ -2932,6 +2960,7 @@ export class DatabaseStorage implements IStorage {
           spreadsheetName: row.spreadsheet_name,
           sheetName: null, // Column doesn't exist yet
           purpose: null,
+          method: "access_token",
           accessToken: row.access_token,
           refreshToken: row.refresh_token,
           clientId: row.client_id,
@@ -2953,6 +2982,8 @@ export class DatabaseStorage implements IStorage {
     try {
       const [existing] = await db.select().from(googleSheetsConnections).where(eq(googleSheetsConnections.id, connectionId));
       if (!existing) return undefined;
+      const method = String((connection as any).method || (existing as any).method || "access_token").trim().toLowerCase();
+      const isServiceAccount = method === GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD;
 
       // Build the set object with explicit field mapping for columnMappings
       const setData: any = {};
@@ -2960,12 +2991,19 @@ export class DatabaseStorage implements IStorage {
       if (connection.spreadsheetName !== undefined) setData.spreadsheetName = connection.spreadsheetName;
       if ((connection as any).sheetName !== undefined) setData.sheetName = (connection as any).sheetName;
       if ((connection as any).purpose !== undefined) setData.purpose = (connection as any).purpose;
+      if ((connection as any).method !== undefined) setData.method = method;
       const tokenFieldsProvided =
         Object.prototype.hasOwnProperty.call(connection, "accessToken") ||
         Object.prototype.hasOwnProperty.call(connection, "refreshToken") ||
         Object.prototype.hasOwnProperty.call(connection, "clientSecret");
 
-      if (tokenFieldsProvided || (existing as any).encryptedTokens) {
+      if (isServiceAccount) {
+        setData.encryptedTokens = buildEncryptedTokens({ accessToken: null, refreshToken: null, clientSecret: null });
+        setData.accessToken = null;
+        setData.refreshToken = null;
+        setData.clientId = null;
+        setData.clientSecret = null;
+      } else if (tokenFieldsProvided || (existing as any).encryptedTokens) {
         setData.encryptedTokens = buildEncryptedTokens({
           accessToken: (connection as any).accessToken,
           refreshToken: (connection as any).refreshToken,
@@ -2976,7 +3014,7 @@ export class DatabaseStorage implements IStorage {
         setData.refreshToken = null;
         setData.clientSecret = null;
       }
-      if (connection.clientId !== undefined) setData.clientId = connection.clientId;
+      if (!isServiceAccount && connection.clientId !== undefined) setData.clientId = connection.clientId;
       if (connection.expiresAt !== undefined) setData.expiresAt = connection.expiresAt;
       if (connection.isPrimary !== undefined) setData.isPrimary = connection.isPrimary;
       if (connection.isActive !== undefined) setData.isActive = connection.isActive;
@@ -3002,6 +3040,7 @@ export class DatabaseStorage implements IStorage {
           spreadsheetName: googleSheetsConnections.spreadsheetName,
           sheetName: googleSheetsConnections.sheetName,
           purpose: (googleSheetsConnections as any).purpose,
+          method: (googleSheetsConnections as any).method,
           accessToken: googleSheetsConnections.accessToken,
           refreshToken: googleSheetsConnections.refreshToken,
           clientId: googleSheetsConnections.clientId,
@@ -3016,7 +3055,9 @@ export class DatabaseStorage implements IStorage {
           connectedAt: googleSheetsConnections.connectedAt,
           createdAt: googleSheetsConnections.createdAt,
         });
-      return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
+      return updated
+        ? await hydrateGoogleSheetsConnectionForRead(hydrateDecryptedTokens(updated) as any) as any
+        : undefined;
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL update
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {

@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { getAuth } from "@clerk/express";
 import { storage } from "./storage";
-import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertKPIProgressSchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertLinkedInReportSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, ga4Connections, spendSources as spendSourcesTable, spendRecords as spendRecordsTable, revenueSources as revenueSourcesTable, revenueRecords as revenueRecordsTable, hubspotConnections as hubspotConnectionsTable, shopifyConnections as shopifyConnectionsTable } from "@shared/schema";
+import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertKPIProgressSchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertLinkedInReportSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, campaigns as campaignsTable, ga4Connections, googleSheetsConnections as googleSheetsConnectionsTable, spendSources as spendSourcesTable, spendRecords as spendRecordsTable, revenueSources as revenueSourcesTable, revenueRecords as revenueRecordsTable, hubspotConnections as hubspotConnectionsTable, shopifyConnections as shopifyConnectionsTable } from "@shared/schema";
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
@@ -13,6 +13,7 @@ import { buildShopifyRepairConfirmation, deduplicateShopifyOrders, getShopifyCon
 import { fetchShopifyOrderCustomerJourneyUtms, getShopifyApiVersion, hasShopifyAllOrdersScope, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain, parseShopifyExpiringOfflineToken, refreshShopifyOfflineAccessToken, requireShopifyCampaignOrderWindow, requireShopifyOrderScope, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, resolveShopifyCampaignOrderWindow, SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE, SHOPIFY_RECENT_ORDER_WINDOW_DAYS, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
 import { assertProductionTokenEncryptionConfigured, resolveOAuthStateSigningSecret } from './utils/tokenVault';
 import { assertGA4ServiceAccountPropertyAllowed, GA4_SERVICE_ACCOUNT_METHOD, getGA4ServiceAccountAccessToken, getGA4ServiceAccountPublicStatus, isSupportedGA4ConnectionMethod, normalizeGA4ServiceAccountPropertyId } from './utils/ga4-service-account';
+import { getGoogleSheetsServiceAccountAccessToken, getGoogleSheetsServiceAccountPublicStatus, GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, normalizeGoogleSheetsSpreadsheetId } from './utils/google-sheets-service-account';
 import { parseExecutiveSummaryStoredMetricValue } from './utils/executive-summary-target-eligibility';
 import { buildGoogleAdsOAuthAuthorization, resolveGoogleAdsOAuthAuthorization } from './google-ads-oauth-authorization';
 import { buildGA4GoogleAdsSpendMaterialization } from './ga4-google-ads-spend';
@@ -40,7 +41,7 @@ import { buildGoogleSheetsRevenueRowRanges, resolveGoogleSheetsRevenueGrid } fro
 import { selectGoogleSheetsRevenuePreviewRows } from "./utils/google-sheets-revenue-preview";
 import { findInvalidGoogleSheetsRevenueAmountRows } from "./utils/google-sheets-revenue-amount";
 import { db } from "./db";
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign, refreshTikTokBenchmarksForCampaign, refreshTikTokKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./kpi-scheduler";
 import { refreshGoogleSheetsDataForCampaign, runGoogleSheetsRevenueSourceRefreshForValidation, runGoogleSheetsSpendSourceRefreshForValidation, runHubSpotRevenueSourceRefreshForValidation, runShopifyRevenueSourceRefreshForValidation } from "./auto-refresh-scheduler";
@@ -11959,6 +11960,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'No Google Sheets connection found' });
       }
 
+      if (String(connection.method || "") === GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD) {
+        const uniqueSpreadsheets = new Map<string, { id: string; name: string }>();
+        for (const conn of conns) {
+          const spreadsheetId = String(conn?.spreadsheetId || "");
+          if (!spreadsheetId || spreadsheetId === "pending") continue;
+          if (!uniqueSpreadsheets.has(spreadsheetId)) {
+            uniqueSpreadsheets.set(spreadsheetId, {
+              id: spreadsheetId,
+              name: String(conn?.spreadsheetName || "Shared spreadsheet"),
+            });
+          }
+        }
+        return res.json({
+          success: true,
+          connectionMethod: GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD,
+          spreadsheets: Array.from(uniqueSpreadsheets.values()),
+        });
+      }
+
       // Check if clientId and clientSecret are stored (needed for token refresh)
       if (!connection.clientId || !connection.clientSecret) {
         console.warn(`[Google Sheets] Connection missing OAuth credentials, attempting to add them...`);
@@ -16383,6 +16403,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Google Sheets OAuth endpoints
 
+  app.get("/api/campaigns/:id/google-sheets-service-account/status", requireCampaignAccessParamId, async (_req, res) => {
+    try {
+      res.json(getGoogleSheetsServiceAccountPublicStatus());
+    } catch (error: any) {
+      res.status(500).json({ enabled: false, email: null, error: error?.message || "Google Sheets service-account status is unavailable" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/google-sheets-service-account/connect", googleSheetsRateLimiter, requireCampaignAccessParamId, async (req, res) => {
+    try {
+      const campaignId = String(req.params.id || "");
+      const spreadsheetId = normalizeGoogleSheetsSpreadsheetId(req.body?.spreadsheetUrl || req.body?.spreadsheetId);
+      const purpose = String(req.body?.purpose || "general");
+      const sheetsPurpose =
+        (purpose === "spend" || purpose === "revenue" || purpose === "general" || purpose === "linkedin_revenue" || purpose === "meta_revenue" || purpose === "google_ads_revenue" || purpose === "instagram_revenue" || purpose === "tiktok_revenue" || purpose === "google_sheets_revenue" || purpose === "custom_integration_revenue")
+          ? purpose
+          : "general";
+      const publicStatus = getGoogleSheetsServiceAccountPublicStatus();
+      if (!publicStatus.enabled || !publicStatus.email) {
+        return res.status(503).json({ error: "Temporary Google Sheets service-account access is not configured" });
+      }
+
+      const actorId = getActorId(req as any);
+      const campaign = await storage.getCampaign(campaignId);
+      if (!actorId || !campaign || String((campaign as any).ownerId || "").trim() !== actorId) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+
+      const existingClaims = await db
+        .select({ campaignId: googleSheetsConnectionsTable.campaignId, ownerId: campaignsTable.ownerId })
+        .from(googleSheetsConnectionsTable)
+        .innerJoin(campaignsTable, eq(campaignsTable.id, googleSheetsConnectionsTable.campaignId))
+        .where(and(
+          eq(googleSheetsConnectionsTable.spreadsheetId, spreadsheetId),
+          eq(googleSheetsConnectionsTable.isActive, true),
+        ));
+      if (existingClaims.some((claim: { campaignId: string; ownerId: string | null }) => String(claim.ownerId || "").trim() !== actorId)) {
+        return res.status(409).json({ error: "This shared spreadsheet is already connected to another account" });
+      }
+
+      const existingConnections = await storage.getGoogleSheetsConnections(campaignId);
+      if (existingConnections.some((connection: any) => String(connection?.method || "access_token") !== GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD)) {
+        return res.status(409).json({ error: "This campaign already has a Google OAuth Sheets connection. Use a new test campaign for temporary service-account access." });
+      }
+
+      const credentials = await getGoogleSheetsServiceAccountAccessToken();
+      const metadataResponse = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}?fields=spreadsheetId,properties.title,sheets.properties(sheetId,title,index,sheetType,gridProperties)`,
+        { headers: { Authorization: `Bearer ${credentials.accessToken}` }, signal: AbortSignal.timeout(30000) },
+      );
+      if (!metadataResponse.ok) {
+        if (metadataResponse.status === 403) {
+          return res.status(403).json({ error: `Share this spreadsheet with ${publicStatus.email} as Viewer, then try again.` });
+        }
+        if (metadataResponse.status === 404) {
+          return res.status(404).json({ error: "Spreadsheet not found. Check the Google Sheets URL and try again." });
+        }
+        return res.status(502).json({ error: "Google Sheets could not verify this spreadsheet" });
+      }
+
+      const metadata: any = await metadataResponse.json();
+      const sheets = Array.isArray(metadata?.sheets)
+        ? metadata.sheets.map((sheet: any) => ({
+            sheetId: sheet?.properties?.sheetId,
+            title: sheet?.properties?.title,
+            index: sheet?.properties?.index,
+            sheetType: sheet?.properties?.sheetType,
+            gridProperties: sheet?.properties?.gridProperties,
+          })).filter((sheet: any) => Number.isFinite(Number(sheet.sheetId)) && sheet.title)
+        : [];
+      if (sheets.length === 0) {
+        return res.status(400).json({ error: "This spreadsheet has no available tabs" });
+      }
+
+      const pending = existingConnections.find((connection: any) => (
+        connection?.spreadsheetId === "pending"
+        && String(connection?.method || "") === GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD
+        && String(connection?.purpose || "general") === sheetsPurpose
+      ));
+      if (!pending) {
+        await storage.createGoogleSheetsConnection({
+          campaignId,
+          spreadsheetId: "pending",
+          purpose: sheetsPurpose,
+          method: GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD,
+          expiresAt: credentials.expiresAt,
+        });
+      }
+
+      res.json({
+        success: true,
+        spreadsheet: { id: spreadsheetId, name: String(metadata?.properties?.title || "Shared spreadsheet") },
+        sheets,
+      });
+    } catch (error: any) {
+      const status = error?.code === "GOOGLE_SHEETS_ID_INVALID" ? 400 : 500;
+      res.status(status).json({ error: error?.message || "Failed to connect the shared spreadsheet" });
+    }
+  });
+
   // OAuth code exchange for Google Sheets
   app.post("/api/google-sheets/oauth-exchange", requireCampaignAccessBodyCampaignId, async (req, res) => {
     try {
@@ -16575,7 +16695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'No Google Sheets connection found for this campaign' });
       }
 
-      if ((!connection.clientId || !connection.clientSecret) && process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+      if (String(connection.method || "access_token") !== GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD && (!connection.clientId || !connection.clientSecret) && process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
         await storage.updateGoogleSheetsConnection(connection.id, {
           clientId: process.env.GOOGLE_CLIENT_ID,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET
@@ -16745,7 +16865,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { campaignId, spreadsheetId, sheetNames, selectionMode, purpose } = req.body;
       const mode: 'replace' | 'append' = (selectionMode === 'append' || selectionMode === 'replace') ? selectionMode : 'replace';
       const sheetsPurpose =
-        (purpose === 'spend' || purpose === 'revenue' || purpose === 'general' || purpose === 'linkedin_revenue' || purpose === 'google_ads_revenue' || purpose === 'instagram_revenue' || purpose === 'tiktok_revenue' || purpose === 'google_sheets_revenue' || purpose === 'custom_integration_revenue')
+        (purpose === 'spend' || purpose === 'revenue' || purpose === 'general' || purpose === 'linkedin_revenue' || purpose === 'meta_revenue' || purpose === 'google_ads_revenue' || purpose === 'instagram_revenue' || purpose === 'tiktok_revenue' || purpose === 'google_sheets_revenue' || purpose === 'custom_integration_revenue')
           ? purpose
           : undefined;
 
@@ -16765,7 +16885,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Enterprise-grade guardrail: revenue connectors must be single-tab to avoid ambiguity/double-counting.
-      if ((sheetsPurpose === 'revenue' || sheetsPurpose === 'linkedin_revenue' || sheetsPurpose === 'google_ads_revenue' || sheetsPurpose === 'instagram_revenue' || sheetsPurpose === 'tiktok_revenue' || sheetsPurpose === 'google_sheets_revenue' || sheetsPurpose === 'custom_integration_revenue') && Array.isArray(sheetNames) && sheetNames.length > 1) {
+      if ((sheetsPurpose === 'revenue' || sheetsPurpose === 'linkedin_revenue' || sheetsPurpose === 'meta_revenue' || sheetsPurpose === 'google_ads_revenue' || sheetsPurpose === 'instagram_revenue' || sheetsPurpose === 'tiktok_revenue' || sheetsPurpose === 'google_sheets_revenue' || sheetsPurpose === 'custom_integration_revenue') && Array.isArray(sheetNames) && sheetNames.length > 1) {
         return res.status(400).json({ error: 'Revenue connections support 1 tab only. Please select a single tab.' });
       }
 
@@ -16926,6 +17046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               spreadsheetId,
               spreadsheetName,
               sheetName,
+              method: dbConnection.method || existing.method || "access_token",
               accessToken: dbConnection.accessToken,
               refreshToken: dbConnection.refreshToken || existing.refreshToken || null,
               clientId: dbConnection.clientId || existing.clientId,
@@ -16969,6 +17090,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             spreadsheetName,
             sheetName: sheetName || null,
             purpose: sheetsPurpose || null,
+            method: dbConnection.method || "access_token",
             accessToken: dbConnection.accessToken,
             refreshToken: dbConnection.refreshToken || null,
             clientId: dbConnection.clientId,

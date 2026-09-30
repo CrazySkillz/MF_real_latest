@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SiGoogle } from "react-icons/si";
@@ -35,11 +36,16 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
   const [isConnecting, setIsConnecting] = useState(false);
   const [authCompleted, setAuthCompleted] = useState(false);
   const [isCheckingExistingAuth, setIsCheckingExistingAuth] = useState(true);
+  const [isCheckingServiceAccount, setIsCheckingServiceAccount] = useState(true);
+  const [serviceAccountStatus, setServiceAccountStatus] = useState<{ enabled: boolean; email: string | null }>({ enabled: false, email: null });
+  const [showServiceAccountInput, setShowServiceAccountInput] = useState(false);
+  const [serviceSpreadsheetUrl, setServiceSpreadsheetUrl] = useState("");
+  const [isServiceConnecting, setIsServiceConnecting] = useState(false);
   const [spreadsheets, setSpreadsheets] = useState<Spreadsheet[]>([]);
   const [selectedSpreadsheet, setSelectedSpreadsheet] = useState<string>("");
   const [availableSheets, setAvailableSheets] = useState<Sheet[]>([]);
   const [selectedSheetNames, setSelectedSheetNames] = useState<string[]>([]);
-  const isRevenueConnector = purpose === 'revenue' || purpose === 'linkedin_revenue' || purpose === 'google_ads_revenue' || purpose === 'instagram_revenue' || purpose === 'tiktok_revenue' || purpose === 'google_sheets_revenue' || purpose === 'custom_integration_revenue';
+  const isRevenueConnector = purpose === 'revenue' || purpose === 'linkedin_revenue' || purpose === 'meta_revenue' || purpose === 'google_ads_revenue' || purpose === 'instagram_revenue' || purpose === 'tiktok_revenue' || purpose === 'google_sheets_revenue' || purpose === 'custom_integration_revenue';
   // Keep a ref in sync to avoid any edge-case where the latest checkbox selection
   // isn't reflected yet when the user immediately clicks "Connect".
   const selectedSheetNamesRef = useRef<string[]>([]);
@@ -80,6 +86,26 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
       mounted = false;
     };
   }, [campaignId, purpose, authCompleted]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const response = await apiRequest("GET", `/api/campaigns/${campaignId}/google-sheets-service-account/status`);
+        const data = await response.json().catch(() => ({}));
+        if (mounted) {
+          setServiceAccountStatus({ enabled: data?.enabled === true, email: data?.email || null });
+        }
+      } catch {
+        if (mounted) setServiceAccountStatus({ enabled: false, email: null });
+      } finally {
+        if (mounted) setIsCheckingServiceAccount(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [campaignId]);
 
   useEffect(() => {
     const handlePopupMessage = (event: MessageEvent) => {
@@ -163,6 +189,36 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
       onError(error?.message || "Failed to connect to Google Sheets");
     }
   }, [campaignId, cleanupPopup, onError]);
+
+  const connectSharedSpreadsheet = useCallback(async () => {
+    if (!serviceSpreadsheetUrl.trim()) {
+      onError("Paste the Google Sheets URL to continue");
+      return;
+    }
+
+    setIsServiceConnecting(true);
+    try {
+      const response = await apiRequest("POST", `/api/campaigns/${campaignId}/google-sheets-service-account/connect`, {
+        spreadsheetUrl: serviceSpreadsheetUrl.trim(),
+        purpose,
+      });
+      const data = await response.json();
+      if (!data?.spreadsheet?.id || !Array.isArray(data?.sheets)) {
+        throw new Error(data?.error || "Failed to connect the shared spreadsheet");
+      }
+
+      setSpreadsheets([data.spreadsheet]);
+      setSelectedSpreadsheet(data.spreadsheet.id);
+      setAvailableSheets(data.sheets);
+      selectedSheetNamesRef.current = [];
+      setSelectedSheetNames([]);
+      setAuthCompleted(true);
+    } catch (error: any) {
+      onError(error?.message || "Failed to connect the shared spreadsheet");
+    } finally {
+      setIsServiceConnecting(false);
+    }
+  }, [campaignId, onError, purpose, serviceSpreadsheetUrl]);
 
   const fetchAvailableSheets = useCallback(async (spreadsheetId: string) => {
     setIsLoadingSheets(true);
@@ -436,7 +492,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
   }
 
   // Keep the auth check silent so parent source modals do not visibly jump.
-  if (isCheckingExistingAuth) {
+  if (isCheckingExistingAuth || isCheckingServiceAccount) {
     return (
       <div className="min-h-[96px]" aria-busy="true" />
     );
@@ -503,6 +559,52 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
             <p className="text-xs text-muted-foreground text-center">
               We opened a Google sign-in window. Complete the login to continue.
             </p>
+          )}
+
+          {serviceAccountStatus.enabled && (
+            <div className="space-y-3 border-t border-border pt-4">
+              {!showServiceAccountInput ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setShowServiceAccountInput(true)}
+                >
+                  Temporary test connection
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Share the spreadsheet with <span className="font-medium text-foreground">{serviceAccountStatus.email}</span> as Viewer, then paste its URL.
+                  </p>
+                  <Input
+                    value={serviceSpreadsheetUrl}
+                    onChange={(event) => setServiceSpreadsheetUrl(event.target.value)}
+                    placeholder="Paste Google Sheets URL"
+                    autoComplete="off"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={connectSharedSpreadsheet}
+                    disabled={isServiceConnecting || !serviceSpreadsheetUrl.trim()}
+                  >
+                    {isServiceConnecting ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Connecting...
+                      </>
+                    ) : (
+                      <>
+                        <FileSpreadsheet className="w-4 h-4 mr-2" />
+                        Connect shared spreadsheet
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </CardContent>

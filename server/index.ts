@@ -677,6 +677,12 @@ process.on('uncaughtException', (error: Error) => {
             ADD COLUMN IF NOT EXISTS purpose TEXT;
           `);
 
+          // Migration 6d: Distinguish OAuth from temporary service-account connections.
+          await db.execute(sql`
+            ALTER TABLE google_sheets_connections
+            ADD COLUMN IF NOT EXISTS method TEXT NOT NULL DEFAULT 'access_token';
+          `);
+
           // Set existing connections as primary and active (backward compatibility)
           await db.execute(sql`
             UPDATE google_sheets_connections
@@ -684,7 +690,7 @@ process.on('uncaughtException', (error: Error) => {
             WHERE is_primary IS NULL OR is_active IS NULL;
           `);
 
-          // Migration 6d: Add cached data columns for daily refresh
+          // Migration 6e: Add cached data columns for daily refresh
           await db.execute(sql`
             ALTER TABLE google_sheets_connections
             ADD COLUMN IF NOT EXISTS cached_data JSONB,

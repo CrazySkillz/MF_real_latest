@@ -561,6 +561,13 @@ describe("GA4 UI regression guard", () => {
     expect(scheduledPdf).toContain('${formatMetricValue("conversions", bestPerforming.conversions)} Key Events');
     expect(scheduledPdf).toContain('title: "MOST KEY EVENTS"');
     expect(adComparison).toContain("Highest Conversion Rate");
+    expect(adComparison).toContain('bestPerforming?.name || "No key event leader"');
+    expect(adComparison).toContain('mostEfficient?.name || "No rate leader"');
+    expect(adComparison).toContain('needsAttention?.name || "No attention candidate"');
+    expect(adComparison).toContain("No positive conversion rate recorded");
+    expect(adComparison).not.toContain("{bestPerforming && (");
+    expect(adComparison).not.toContain("{mostEfficient && (");
+    expect(adComparison).not.toContain("{needsAttention && (");
     expect(ga4Metrics).toContain("formatGA4AdComparisonCardPct(mostEfficient.conversionRate)");
     expect(ga4Metrics).toContain("formatGA4AdComparisonCardPct(Number(needsAttention?.conversionRate || 0))");
     expect(scheduledPdf).toContain("formatGA4AdComparisonCardPct(mostEfficient.conversionRate)");

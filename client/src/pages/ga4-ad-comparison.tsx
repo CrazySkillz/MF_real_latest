@@ -242,54 +242,54 @@ export default function GA4AdComparison({
       {/* Performance Rankings */}
       {!chartBreakdownUnavailable && chartSummaryRows.length >= 2 && (
         <div className="grid gap-4 md:grid-cols-3">
-          {bestPerforming && (
-            <Card className="border-emerald-200 dark:border-emerald-800">
-              <CardContent className="p-5">
-                <div className="flex items-center gap-2 mb-2">
-                  <Trophy className="w-5 h-5 text-emerald-600" />
-                  <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Most Key Events</span>
-                </div>
-                <div className="font-semibold text-foreground truncate" title={bestPerforming.name}>
-                  {bestPerforming.name}
-                </div>
-                <div className="text-sm text-muted-foreground/70 mt-1">
-                  {fmtCardMetricValue("conversions", bestPerforming.conversions)} Key Events &middot; {formatGA4AdComparisonCardPct(bestPerforming.conversionRate)} CR
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          {mostEfficient && (
-            <Card className="border-blue-200 dark:border-blue-800">
-              <CardContent className="p-5">
-                <div className="flex items-center gap-2 mb-2">
-                  <Zap className="w-5 h-5 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Highest Conversion Rate</span>
-                </div>
-                <div className="font-semibold text-foreground truncate" title={mostEfficient.name}>
-                  {mostEfficient.name}
-                </div>
-                <div className="text-sm text-muted-foreground/70 mt-1">
-                  {formatGA4AdComparisonCardPct(mostEfficient.conversionRate)} CR &middot; {formatMoney(mostEfficient.revenue)} revenue
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          {needsAttention && (
-            <Card className="border-amber-200 dark:border-amber-800">
-              <CardContent className="p-5">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertTriangle className="w-5 h-5 text-amber-600" />
-                  <span className="text-sm font-medium text-amber-700 dark:text-amber-300">Needs Attention</span>
-                </div>
-                <div className="font-semibold text-foreground truncate" title={needsAttention.name}>
-                  {needsAttention.name}
-                </div>
-                <div className="text-sm text-muted-foreground/70 mt-1">
-                  {formatGA4AdComparisonCardPct(needsAttention.conversionRate)} CR &middot; {formatNumber(needsAttention.sessions)} sessions
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <Card className="border-emerald-200 dark:border-emerald-800">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Trophy className="w-5 h-5 text-emerald-600" />
+                <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Most Key Events</span>
+              </div>
+              <div className="font-semibold text-foreground truncate" title={bestPerforming?.name || "No key event leader"}>
+                {bestPerforming?.name || "No key event leader"}
+              </div>
+              <div className="text-sm text-muted-foreground/70 mt-1">
+                {bestPerforming
+                  ? <>{fmtCardMetricValue("conversions", bestPerforming.conversions)} Key Events &middot; {formatGA4AdComparisonCardPct(bestPerforming.conversionRate)} CR</>
+                  : "No key events recorded"}
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-blue-200 dark:border-blue-800">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Zap className="w-5 h-5 text-blue-600" />
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Highest Conversion Rate</span>
+              </div>
+              <div className="font-semibold text-foreground truncate" title={mostEfficient?.name || "No rate leader"}>
+                {mostEfficient?.name || "No rate leader"}
+              </div>
+              <div className="text-sm text-muted-foreground/70 mt-1">
+                {mostEfficient
+                  ? <>{formatGA4AdComparisonCardPct(mostEfficient.conversionRate)} CR &middot; {formatMoney(mostEfficient.revenue)} revenue</>
+                  : "No positive conversion rate recorded"}
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-amber-200 dark:border-amber-800">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
+                <span className="text-sm font-medium text-amber-700 dark:text-amber-300">Needs Attention</span>
+              </div>
+              <div className="font-semibold text-foreground truncate" title={needsAttention?.name || "No attention candidate"}>
+                {needsAttention?.name || "No attention candidate"}
+              </div>
+              <div className="text-sm text-muted-foreground/70 mt-1">
+                {needsAttention
+                  ? <>{formatGA4AdComparisonCardPct(needsAttention.conversionRate)} CR &middot; {formatNumber(needsAttention.sessions)} sessions</>
+                  : "No session data recorded"}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 

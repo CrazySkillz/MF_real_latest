@@ -889,6 +889,13 @@ describe("GA4 UI regression guard", () => {
     expect(kpiSection).toContain('className="whitespace-nowrap">Email addresses *</Label>');
     expect(benchmarkSection).toContain("disabled={!newBenchmark.emailNotifications}");
     expect(benchmarkSection).toContain("This setting controls how often reminder emails are sent while the Benchmark is still breaching");
+    expect(benchmarkSection).toContain('newBenchmark.alertFrequency === "daily"');
+    expect(benchmarkSection).toContain('htmlFor="benchmark-alert-schedule-hour"');
+    expect(benchmarkSection).toContain('newBenchmark.alertFrequency === "weekly"');
+    expect(benchmarkSection).toContain('htmlFor="benchmark-alert-schedule-day"');
+    expect(benchmarkSection).toContain('htmlFor="benchmark-alert-schedule-weekly-hour"');
+    expect(benchmarkSection).toContain("Daily reminders are checked during the selected local hour while the Benchmark is still breaching");
+    expect(benchmarkSection).toContain("Weekly reminders are checked on the selected local day and hour while the Benchmark is still breaching");
     expect(kpiSection).toContain('disabled={!kpiForm.watch("emailNotifications")}');
     expect(kpiSection).toContain('kpiForm.watch("alertFrequency") === "daily"');
     expect(kpiSection).toContain('htmlFor="kpi-alert-schedule-hour"');
@@ -897,7 +904,7 @@ describe("GA4 UI regression guard", () => {
     expect(kpiSection).toContain('htmlFor="kpi-alert-schedule-weekly-hour"');
     expect(kpiSection).toContain('<Label htmlFor="kpi-alert-schedule-hour">{kpiAlertScheduleTimeZoneLabel}</Label>');
     expect(kpiSection).toContain('<Label htmlFor="kpi-alert-schedule-weekly-hour">{kpiAlertScheduleTimeZoneLabel}</Label>');
-    expect(kpiSection).toContain("kpiAlertHourOptions.map((option) => (");
+    expect(kpiSection).toContain("GA4_SCHEDULE_HOUR_OPTIONS.map((option) => (");
     expect(kpiSection).not.toContain("Send Hour");
     expect(kpiSection).not.toContain("${value}:00 ${timeZoneLabel}");
     expect(kpiSection).not.toContain("selected UTC hour");
@@ -905,6 +912,11 @@ describe("GA4 UI regression guard", () => {
     expect(kpiSection).toContain("Daily reminders are checked during the selected local hour while the KPI is still breaching");
     expect(kpiSection).toContain("Weekly reminders are checked on the selected local day and hour while the KPI is still breaching");
     expect(kpiSection).toContain("This setting controls how often reminder emails are sent while the KPI is still breaching");
+    expect(ga4Metrics).toContain("const GA4_SCHEDULE_HOUR_OPTIONS = Array.from({ length: 13 }, (_, index) => {");
+    expect(ga4Metrics).toContain('const value = String(index + 6).padStart(2, "0");');
+    expect(ga4Metrics.match(/GA4_SCHEDULE_HOUR_OPTIONS\.map/g) || []).toHaveLength(6);
+    expect(ga4Metrics).not.toContain("Array.from({ length: 24 }");
+    expect(ga4Metrics).toContain("const calculationConfig = buildAlertScheduleCalculationConfig((editingBenchmark as any)?.calculationConfig, newBenchmark);");
   });
 
   it("visibly highlights GA4 KPI and Benchmark cards opened from alert deep links", () => {

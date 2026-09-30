@@ -275,6 +275,7 @@ class AlertMonitoringService {
 
     const frequency = (benchmark.alertFrequency || 'daily') as any;
     if (!retryClaim && frequency === 'immediate' && benchmark.lastAlertSent) return false;
+    if (!retryClaim && !isAlertEmailScheduleDue((benchmark as any).calculationConfig, frequency)) return false;
 
     const currentValue = this.parseAlertNumber(benchmark.currentValue);
     const thresholdValue = this.parseAlertNumber(benchmark.alertThreshold);
@@ -597,6 +598,7 @@ class AlertMonitoringService {
           console.log(`Throttling alert for Benchmark ${benchmark.name} (last sent: ${benchmark.lastAlertSent})`);
           continue;
         }
+        if (!isAlertEmailScheduleDue((benchmark as any).calculationConfig, frequency)) continue;
 
         const currentValue = this.parseAlertNumber(benchmark.currentValue);
         const thresholdValue = this.parseAlertNumber(benchmark.alertThreshold);

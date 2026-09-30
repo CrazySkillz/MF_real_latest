@@ -78,9 +78,8 @@ const VALID_GA4_TABS = ["overview", "kpis", "benchmarks", "campaigns", "insights
 const DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE = "UTC";
 const DEFAULT_KPI_ALERT_SCHEDULE_HOUR = "09";
 const DEFAULT_KPI_ALERT_SCHEDULE_DAY = "monday";
-
-const getKpiAlertHourOptions = () => Array.from({ length: 24 }, (_, hour) => {
-  const value = String(hour).padStart(2, "0");
+const GA4_SCHEDULE_HOUR_OPTIONS = Array.from({ length: 13 }, (_, index) => {
+  const value = String(index + 6).padStart(2, "0");
   return { value, label: `${value}:00` };
 });
 const KPI_ALERT_DAY_OPTIONS = [
@@ -227,7 +226,7 @@ const areKpiFormValuesEqual = (current: Partial<KPIFormData>, initial: Partial<K
 
 const BENCHMARK_FORM_COMPARE_FIELDS = [
   "name", "category", "benchmarkType", "unit", "benchmarkValue", "currentValue", "metric", "industry", "geoLocation",
-  "description", "source", "alertsEnabled", "alertThreshold", "alertCondition", "alertFrequency", "emailNotifications", "emailRecipients",
+  "description", "source", "alertsEnabled", "alertThreshold", "alertCondition", "alertFrequency", "alertScheduleHour", "alertScheduleDayOfWeek", "emailNotifications", "emailRecipients",
 ] as const;
 
 const areBenchmarkFormValuesEqual = (current: Record<string, unknown>, initial: Record<string, unknown>) =>
@@ -423,7 +422,6 @@ export default function GA4Metrics() {
   };
   const kpiAlertScheduleTimeZone = normalizeClientReportingTimeZone(userTimeZone || DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE);
   const kpiAlertScheduleTimeZoneLabel = kpiAlertScheduleTimeZone || DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE;
-  const kpiAlertHourOptions = useMemo(() => getKpiAlertHourOptions(), []);
   const getOrdinalSuffix = (day: number) => {
     if (day > 3 && day < 21) return 'th';
     switch (day % 10) { case 1: return 'st'; case 2: return 'nd'; case 3: return 'rd'; default: return 'th'; }
@@ -504,6 +502,8 @@ export default function GA4Metrics() {
     alertThreshold: "",
     alertCondition: "below",
     alertFrequency: "immediate",
+    alertScheduleHour: DEFAULT_KPI_ALERT_SCHEDULE_HOUR,
+    alertScheduleDayOfWeek: DEFAULT_KPI_ALERT_SCHEDULE_DAY,
     emailNotifications: false,
     emailRecipients: "",
   });
@@ -575,10 +575,10 @@ export default function GA4Metrics() {
     emailNotifications: false,
     emailRecipients: "",
   });
-  const getKpiAlertScheduleFormValues = (kpi: any): Pick<KPIFormData, "alertScheduleHour" | "alertScheduleDayOfWeek"> => {
-    const schedule = kpi?.calculationConfig?.alertEmailSchedule;
+  const getAlertScheduleFormValues = (row: any): Pick<KPIFormData, "alertScheduleHour" | "alertScheduleDayOfWeek"> => {
+    const schedule = row?.calculationConfig?.alertEmailSchedule;
     const hour = Number(schedule?.hour);
-    const hourValue = Number.isInteger(hour) && hour >= 0 && hour <= 23
+    const hourValue = Number.isInteger(hour) && GA4_SCHEDULE_HOUR_OPTIONS.some((option) => option.value === String(hour).padStart(2, "0"))
       ? String(hour).padStart(2, "0")
       : DEFAULT_KPI_ALERT_SCHEDULE_HOUR;
     const rawDay = String(schedule?.dayOfWeek || "").toLowerCase();
@@ -588,14 +588,19 @@ export default function GA4Metrics() {
     return { alertScheduleHour: hourValue, alertScheduleDayOfWeek: dayValue };
   };
 
-  const buildKpiAlertScheduleCalculationConfig = (baseConfig: any, values: KPIFormData) => {
+  const buildAlertScheduleCalculationConfig = (baseConfig: any, values: {
+    alertFrequency?: string;
+    alertScheduleHour?: string;
+    alertScheduleDayOfWeek?: string;
+    emailNotifications?: boolean;
+  }) => {
     const base = baseConfig && typeof baseConfig === "object" && !Array.isArray(baseConfig) ? { ...baseConfig } : {};
     const hadSchedule = Object.prototype.hasOwnProperty.call(base, "alertEmailSchedule");
     delete (base as any).alertEmailSchedule;
 
     if (values.emailNotifications && (values.alertFrequency === "daily" || values.alertFrequency === "weekly")) {
-      const parsedHour = Number.parseInt(String(values.alertScheduleHour || DEFAULT_KPI_ALERT_SCHEDULE_HOUR), 10);
-      const hour = Number.isInteger(parsedHour) && parsedHour >= 0 && parsedHour <= 23 ? parsedHour : Number(DEFAULT_KPI_ALERT_SCHEDULE_HOUR);
+      const selectedHour = String(values.alertScheduleHour || DEFAULT_KPI_ALERT_SCHEDULE_HOUR).padStart(2, "0");
+      const hour = Number(GA4_SCHEDULE_HOUR_OPTIONS.some((option) => option.value === selectedHour) ? selectedHour : DEFAULT_KPI_ALERT_SCHEDULE_HOUR);
       const schedule: Record<string, unknown> = { frequency: values.alertFrequency, hour, timeZone: kpiAlertScheduleTimeZone };
       if (values.alertFrequency === "weekly") {
         const day = KPI_ALERT_DAY_OPTIONS.some((option) => option.value === values.alertScheduleDayOfWeek)
@@ -612,7 +617,7 @@ export default function GA4Metrics() {
 
   const buildKpiRequestPayload = (values: KPIFormData, baseConfig?: any) => {
     const { alertScheduleHour, alertScheduleDayOfWeek, ...apiValues } = values;
-    const calculationConfig = buildKpiAlertScheduleCalculationConfig(baseConfig, values);
+    const calculationConfig = buildAlertScheduleCalculationConfig(baseConfig, values);
     return typeof calculationConfig === "undefined"
       ? apiValues
       : { ...apiValues, calculationConfig };
@@ -1117,6 +1122,8 @@ export default function GA4Metrics() {
         alertThreshold: "",
         alertCondition: "below",
         alertFrequency: "immediate",
+        alertScheduleHour: DEFAULT_KPI_ALERT_SCHEDULE_HOUR,
+        alertScheduleDayOfWeek: DEFAULT_KPI_ALERT_SCHEDULE_DAY,
         emailNotifications: false,
         emailRecipients: "",
       });
@@ -1174,6 +1181,8 @@ export default function GA4Metrics() {
         alertThreshold: "",
         alertCondition: "below",
         alertFrequency: "immediate",
+        alertScheduleHour: DEFAULT_KPI_ALERT_SCHEDULE_HOUR,
+        alertScheduleDayOfWeek: DEFAULT_KPI_ALERT_SCHEDULE_DAY,
         emailNotifications: false,
         emailRecipients: "",
       });
@@ -1215,8 +1224,11 @@ export default function GA4Metrics() {
       toast({ title: "Please select a benchmark metric", variant: "destructive" });
       return;
     }
+    const { alertScheduleHour, alertScheduleDayOfWeek, ...benchmarkValues } = newBenchmark;
+    const calculationConfig = buildAlertScheduleCalculationConfig((editingBenchmark as any)?.calculationConfig, newBenchmark);
     const cleanedBenchmark = {
-      ...newBenchmark,
+      ...benchmarkValues,
+      ...(typeof calculationConfig === "undefined" ? {} : { calculationConfig }),
       currentValue: stripNumberFormatting(String(newBenchmark.currentValue || "")),
       benchmarkValue: stripNumberFormatting(String(newBenchmark.benchmarkValue || "")),
       // Backward-compatible storage: use 'goal' for custom benchmarks in the DB.
@@ -1308,6 +1320,7 @@ export default function GA4Metrics() {
         : "",
       alertCondition: (benchmark as any).alertCondition || "below",
       alertFrequency: String((benchmark as any).alertFrequency || "immediate").toLowerCase(),
+      ...getAlertScheduleFormValues(benchmark),
       emailNotifications: (benchmark as any).emailNotifications || false,
       emailRecipients: (benchmark as any).emailRecipients || "",
     };
@@ -1431,6 +1444,7 @@ export default function GA4Metrics() {
           : "",
         alertCondition: (editingBenchmark as any).alertCondition || "below",
         alertFrequency: String((editingBenchmark as any).alertFrequency || "immediate").toLowerCase(),
+        ...getAlertScheduleFormValues(editingBenchmark),
         emailNotifications: (editingBenchmark as any).emailNotifications || false,
         emailRecipients: (editingBenchmark as any).emailRecipients || "",
       });
@@ -1454,6 +1468,8 @@ export default function GA4Metrics() {
       alertThreshold: "",
       alertCondition: "below",
       alertFrequency: "immediate",
+      alertScheduleHour: DEFAULT_KPI_ALERT_SCHEDULE_HOUR,
+      alertScheduleDayOfWeek: DEFAULT_KPI_ALERT_SCHEDULE_DAY,
       emailNotifications: false,
       emailRecipients: "",
     });
@@ -7879,7 +7895,7 @@ export default function GA4Metrics() {
                                                   alertThreshold: kpi?.alertThreshold ? formatNumberByUnit(String(kpi.alertThreshold), String(kpi?.unit || "%")) : "",
                                                   alertCondition: (kpi?.alertCondition || "below") as any,
                                                   alertFrequency: (kpi?.alertFrequency || "daily") as any,
-                                                  ...getKpiAlertScheduleFormValues(kpi),
+                                                  ...getAlertScheduleFormValues(kpi),
                                                   emailNotifications: Boolean(kpi?.emailNotifications ?? false),
                                                   emailRecipients: String(kpi?.emailRecipients || ""),
                                                 };
@@ -8046,6 +8062,8 @@ export default function GA4Metrics() {
                               alertThreshold: "",
                               alertCondition: "below",
                               alertFrequency: "immediate",
+                              alertScheduleHour: DEFAULT_KPI_ALERT_SCHEDULE_HOUR,
+                              alertScheduleDayOfWeek: DEFAULT_KPI_ALERT_SCHEDULE_DAY,
                               emailNotifications: false,
                               emailRecipients: "",
                             });
@@ -8391,6 +8409,63 @@ export default function GA4Metrics() {
                                             This setting controls how often reminder emails are sent while the Benchmark is still breaching
                                           </p>
                                         </div>
+                                        {newBenchmark.alertFrequency === "daily" && (
+                                          <div className="space-y-2">
+                                            <Label htmlFor="benchmark-alert-schedule-hour">{kpiAlertScheduleTimeZoneLabel}</Label>
+                                            <Select
+                                              value={newBenchmark.alertScheduleHour || DEFAULT_KPI_ALERT_SCHEDULE_HOUR}
+                                              onValueChange={(value) => setNewBenchmark({ ...newBenchmark, alertScheduleHour: value })}
+                                              disabled={!newBenchmark.emailNotifications}
+                                            >
+                                              <SelectTrigger id="benchmark-alert-schedule-hour"><SelectValue /></SelectTrigger>
+                                              <SelectContent className="z-[10000]">
+                                                {GA4_SCHEDULE_HOUR_OPTIONS.map((option) => (
+                                                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                                ))}
+                                              </SelectContent>
+                                            </Select>
+                                            <p className="text-xs text-muted-foreground/70">
+                                              Daily reminders are checked during the selected local hour while the Benchmark is still breaching
+                                            </p>
+                                          </div>
+                                        )}
+                                        {newBenchmark.alertFrequency === "weekly" && (
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                              <Label htmlFor="benchmark-alert-schedule-day">Send Day</Label>
+                                              <Select
+                                                value={newBenchmark.alertScheduleDayOfWeek || DEFAULT_KPI_ALERT_SCHEDULE_DAY}
+                                                onValueChange={(value) => setNewBenchmark({ ...newBenchmark, alertScheduleDayOfWeek: value })}
+                                                disabled={!newBenchmark.emailNotifications}
+                                              >
+                                                <SelectTrigger id="benchmark-alert-schedule-day"><SelectValue /></SelectTrigger>
+                                                <SelectContent className="z-[10000]">
+                                                  {KPI_ALERT_DAY_OPTIONS.map((option) => (
+                                                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                                  ))}
+                                                </SelectContent>
+                                              </Select>
+                                            </div>
+                                            <div className="space-y-2">
+                                              <Label htmlFor="benchmark-alert-schedule-weekly-hour">{kpiAlertScheduleTimeZoneLabel}</Label>
+                                              <Select
+                                                value={newBenchmark.alertScheduleHour || DEFAULT_KPI_ALERT_SCHEDULE_HOUR}
+                                                onValueChange={(value) => setNewBenchmark({ ...newBenchmark, alertScheduleHour: value })}
+                                                disabled={!newBenchmark.emailNotifications}
+                                              >
+                                                <SelectTrigger id="benchmark-alert-schedule-weekly-hour"><SelectValue /></SelectTrigger>
+                                                <SelectContent className="z-[10000]">
+                                                  {GA4_SCHEDULE_HOUR_OPTIONS.map((option) => (
+                                                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                                  ))}
+                                                </SelectContent>
+                                              </Select>
+                                            </div>
+                                            <p className="sm:col-span-2 text-xs text-muted-foreground/70">
+                                              Weekly reminders are checked on the selected local day and hour while the Benchmark is still breaching
+                                            </p>
+                                          </div>
+                                        )}
                                       </>
                                     )}
                                   </div>
@@ -10216,7 +10291,7 @@ export default function GA4Metrics() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {kpiAlertHourOptions.map((option) => (
+                                  {GA4_SCHEDULE_HOUR_OPTIONS.map((option) => (
                                     <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                                   ))}
                                 </SelectContent>
@@ -10256,7 +10331,7 @@ export default function GA4Metrics() {
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {kpiAlertHourOptions.map((option) => (
+                                    {GA4_SCHEDULE_HOUR_OPTIONS.map((option) => (
                                       <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                                     ))}
                                   </SelectContent>
@@ -10599,19 +10674,10 @@ export default function GA4Metrics() {
                             <Select value={ga4ReportForm.scheduleTime} onValueChange={(value) => setGa4ReportForm((p) => ({ ...p, scheduleTime: value }))}>
                               <SelectTrigger id="ga4-schedule-time"><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="6:00 AM">6:00 AM</SelectItem>
-                                <SelectItem value="7:00 AM">7:00 AM</SelectItem>
-                                <SelectItem value="8:00 AM">8:00 AM</SelectItem>
-                                <SelectItem value="9:00 AM">9:00 AM</SelectItem>
-                                <SelectItem value="10:00 AM">10:00 AM</SelectItem>
-                                <SelectItem value="11:00 AM">11:00 AM</SelectItem>
-                                <SelectItem value="12:00 PM">12:00 PM</SelectItem>
-                                <SelectItem value="1:00 PM">1:00 PM</SelectItem>
-                                <SelectItem value="2:00 PM">2:00 PM</SelectItem>
-                                <SelectItem value="3:00 PM">3:00 PM</SelectItem>
-                                <SelectItem value="4:00 PM">4:00 PM</SelectItem>
-                                <SelectItem value="5:00 PM">5:00 PM</SelectItem>
-                                <SelectItem value="6:00 PM">6:00 PM</SelectItem>
+                                {GA4_SCHEDULE_HOUR_OPTIONS.map((option) => {
+                                  const value = from24HourTo12Hour(option.label);
+                                  return <SelectItem key={option.value} value={value}>{value}</SelectItem>;
+                                })}
                               </SelectContent>
                             </Select>
                             {userTimeZone && (
@@ -10943,19 +11009,10 @@ export default function GA4Metrics() {
                           <Select value={ga4ReportForm.scheduleTime} onValueChange={(value) => setGa4ReportForm((p) => ({ ...p, scheduleTime: value }))}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="6:00 AM">6:00 AM</SelectItem>
-                              <SelectItem value="7:00 AM">7:00 AM</SelectItem>
-                              <SelectItem value="8:00 AM">8:00 AM</SelectItem>
-                              <SelectItem value="9:00 AM">9:00 AM</SelectItem>
-                              <SelectItem value="10:00 AM">10:00 AM</SelectItem>
-                              <SelectItem value="11:00 AM">11:00 AM</SelectItem>
-                              <SelectItem value="12:00 PM">12:00 PM</SelectItem>
-                              <SelectItem value="1:00 PM">1:00 PM</SelectItem>
-                              <SelectItem value="2:00 PM">2:00 PM</SelectItem>
-                              <SelectItem value="3:00 PM">3:00 PM</SelectItem>
-                              <SelectItem value="4:00 PM">4:00 PM</SelectItem>
-                              <SelectItem value="5:00 PM">5:00 PM</SelectItem>
-                              <SelectItem value="6:00 PM">6:00 PM</SelectItem>
+                              {GA4_SCHEDULE_HOUR_OPTIONS.map((option) => {
+                                const value = from24HourTo12Hour(option.label);
+                                return <SelectItem key={option.value} value={value}>{value}</SelectItem>;
+                              })}
                             </SelectContent>
                           </Select>
                           {userTimeZone && (

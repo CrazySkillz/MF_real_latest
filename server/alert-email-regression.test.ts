@@ -144,11 +144,12 @@ describe("alert email regression guard", () => {
     expect(routes.match(/return res\.status\(400\)\.json\(\{ message: emailRecipientsError \}\);/g) || []).toHaveLength(4);
   });
 
-  it("honors scheduled KPI alert email delivery metadata before sending", () => {
+  it("honors scheduled KPI and Benchmark alert email delivery metadata before sending", () => {
     const source = readAlertMonitoring();
 
     expect(source).toContain("isAlertEmailScheduleDue");
     expect(source.match(/isAlertEmailScheduleDue\(\(kpi as any\)\.calculationConfig, frequency\)/g) || []).toHaveLength(2);
+    expect(source.match(/isAlertEmailScheduleDue\(\(benchmark as any\)\.calculationConfig, frequency\)/g) || []).toHaveLength(2);
   });
 
   it("awaits immediate email checks after KPI and Benchmark create/update routes", () => {

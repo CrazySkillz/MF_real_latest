@@ -369,7 +369,7 @@ function GA4AdComparison({
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Revenue Breakdown</CardTitle>
             <CardDescription>
-              GA4 revenue uses the initial-import-to-latest-completed-day comparison window. Imported sources show confirmed values through the latest completed day.
+              GA4 revenue uses the initial-import-to-latest-completed-day. Imported sources show confirmed values through the latest completed day.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -384,7 +384,7 @@ function GA4AdComparison({
         <CardHeader className="pb-2">
           <CardTitle className="text-lg">Revenue Breakdown</CardTitle>
           <CardDescription>
-            GA4 revenue uses the initial-import-to-latest-completed-day comparison window. Imported sources show confirmed values through the latest completed day.
+            GA4 revenue uses the initial-import-to-latest-completed-day. Imported sources show confirmed values through the latest completed day.
           </CardDescription>
         </CardHeader>
         <CardContent>

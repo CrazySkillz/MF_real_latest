@@ -1349,7 +1349,10 @@ export function HubSpotRevenueWizard(props: {
                       <div className="space-y-1 text-xs font-medium text-foreground">
                         {selectedCampaignMappings.slice(0, 6).map((mapping) => (
                           <div key={`${mapping.crmValue}-${mapping.linkedinCampaignUrn}`} className="grid grid-cols-2 gap-x-3">
-                            <span className="truncate">{mapping.crmValue}</span>
+                            <span className="flex min-w-0 items-center justify-between gap-3">
+                              <span className="truncate">{mapping.crmValue}</span>
+                              <span aria-hidden="true" className="shrink-0 text-muted-foreground/70">→</span>
+                            </span>
                             <span className="truncate text-muted-foreground">{mapping.linkedinCampaignName || mapping.linkedinCampaignUrn}</span>
                           </div>
                         ))}

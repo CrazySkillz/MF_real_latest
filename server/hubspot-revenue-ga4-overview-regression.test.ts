@@ -130,6 +130,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(reviewBlock).toContain("mapping.linkedinCampaignName || mapping.linkedinCampaignUrn");
     expect(reviewBlock).toContain("selectedCampaignMappings.slice(0, 6).map");
     expect(reviewBlock).toContain('className="grid grid-cols-2 gap-x-3"');
+    expect(reviewBlock).toContain('aria-hidden="true" className="shrink-0 text-muted-foreground/70">→</span>');
     expect(reviewBlock).toContain('className="text-sm text-muted-foreground/70">Date field</div>');
     expect(reviewBlock).toContain('className="text-sm text-muted-foreground/70">{reviewPlatformLabel} campaign mapping</div>');
     expect(reviewBlock).toContain('className="space-y-1 text-xs font-medium text-foreground"');

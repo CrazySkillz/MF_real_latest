@@ -46,7 +46,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign, refreshTikTokBenchmarksForCampaign, refreshTikTokKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./kpi-scheduler";
 import { refreshGoogleSheetsDataForCampaign, runGoogleSheetsRevenueSourceRefreshForValidation, runGoogleSheetsSpendSourceRefreshForValidation, runHubSpotRevenueSourceRefreshForValidation, runShopifyRevenueSourceRefreshForValidation } from "./auto-refresh-scheduler";
-import { getGA4DailySchedulerConfig, getGA4DailySchedulerStatus } from "./ga4-daily-scheduler";
+import { getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getGA4DailySchedulerStatus, refreshAllGA4DailyMetrics } from "./ga4-daily-scheduler";
 import { isInternalAutoRefreshRequest } from "./internal-request-auth";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { createReportPdfArtifact, readReportPdfArtifact } from "./utils/report-pdf-artifact";
@@ -9129,6 +9129,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           JSON.stringify(getGA4CampaignFilterValues((existingCampaign as any).ga4CampaignFilter).sort())) ||
         (Object.prototype.hasOwnProperty.call(validatedData, "reportingTimeZone") &&
           normalizeReportingTimeZone((validatedData as any).reportingTimeZone) !== normalizeReportingTimeZone((existingCampaign as any).reportingTimeZone));
+      const activationGA4Filter = getGA4CampaignFilterValues(
+        (validatedData as any)?.ga4CampaignFilter ?? (existingCampaign as any)?.ga4CampaignFilter,
+      );
+      const activationGA4Connections = isDraftActivation && activationGA4Filter.length > 0
+        ? await storage.getGA4Connections(campaignId, { resolveRuntimeCredentials: false })
+        : [];
+      const shouldRunInitialGA4Import =
+        isDraftActivation &&
+        activationGA4Filter.length > 0 &&
+        activationGA4Connections.some((connection: any) => connection?.isActive !== false && String(connection?.propertyId || "").trim());
 
       if (isDraftActivation) {
         const hasDataPath = await hasActivatableCampaignDataPath(campaignId, (validatedData as any)?.platform, existingCampaign);
@@ -9139,11 +9149,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const campaign = ga4DailyScopeChanged
-        ? await storage.updateCampaignWithGA4DailyInvalidation(campaignId, validatedData)
-        : await storage.updateCampaign(campaignId, validatedData);
+      const preparedData = shouldRunInitialGA4Import ? { ...validatedData, status: "draft" } : validatedData;
+      let campaign = ga4DailyScopeChanged
+        ? await storage.updateCampaignWithGA4DailyInvalidation(campaignId, preparedData)
+        : await storage.updateCampaign(campaignId, preparedData);
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
+      }
+      if (shouldRunInitialGA4Import) {
+        const initialImport = await refreshAllGA4DailyMetrics({ campaignId });
+        const initialImportFailure = getGA4DailyRefreshFailure(initialImport, campaignId);
+        if (initialImportFailure) {
+          return res.status(502).json({
+            success: false,
+            error: "GA4_INITIAL_IMPORT_FAILED",
+            message: "The campaign is still a draft because its initial GA4 metrics could not be imported. Try creating it again.",
+          });
+        }
+        campaign = await storage.updateCampaign(campaignId, { status: "active" } as any);
+        if (!campaign) return res.status(404).json({ message: "Campaign not found" });
       }
       res.json(withReportingTimeZone(campaign as any));
     } catch (error) {

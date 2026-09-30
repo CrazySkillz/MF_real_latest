@@ -96,14 +96,25 @@ describe("GA4 Insights authentication and tenant scope", () => {
     expect(update.indexOf("await storage.getClients(actorId)")).toBeLessThan(update.indexOf("storage.updateCampaign"));
   });
 
-  it("invalidates changed GA4 scope and waits for the daily scheduler to repopulate it", () => {
+  it("imports the initial scoped GA4 metrics before activating a new campaign", () => {
     const source = routes();
     const start = source.indexOf('app.patch("/api/campaigns/:id"');
     const end = source.indexOf('// Get a single campaign by ID', start);
     const route = source.slice(start, end);
 
     expect(route).toContain("const ga4DailyScopeChanged =");
-    expect(route).toContain("await storage.updateCampaignWithGA4DailyInvalidation(campaignId, validatedData)");
+    expect(route).toContain("const shouldRunInitialGA4Import =");
+    expect(route).toContain("await storage.getGA4Connections(campaignId, { resolveRuntimeCredentials: false })");
+    expect(route).toContain("activationGA4Connections.some");
+    expect(route).toContain('const preparedData = shouldRunInitialGA4Import ? { ...validatedData, status: "draft" } : validatedData;');
+    expect(route).toContain("await storage.updateCampaignWithGA4DailyInvalidation(campaignId, preparedData)");
+    expect(route).toContain("await refreshAllGA4DailyMetrics({ campaignId })");
+    expect(route).toContain("getGA4DailyRefreshFailure(initialImport, campaignId)");
+    expect(route).toContain('error: "GA4_INITIAL_IMPORT_FAILED"');
+    expect(route).toContain('await storage.updateCampaign(campaignId, { status: "active" } as any)');
+    expect(route.indexOf("await refreshAllGA4DailyMetrics({ campaignId })")).toBeLessThan(
+      route.indexOf('await storage.updateCampaign(campaignId, { status: "active" } as any)'),
+    );
     expect(route).not.toContain("runGA4DailyRefreshPipeline");
     const storageSource = readFileSync(join(process.cwd(), "server", "storage.ts"), "utf8");
     const methodStart = storageSource.indexOf("async updateCampaignWithGA4DailyInvalidation");

@@ -3,7 +3,7 @@
  * Extracted component for comparing campaign performance metrics.
  * Follows the same pattern as other platform comparison views.
  */
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trophy, Zap, AlertTriangle, Info } from "lucide-react";
@@ -59,7 +59,7 @@ const METRIC_LABELS: Record<string, string> = {
   conversionRate: "Conversion Rate",
 };
 
-export default function GA4AdComparison({
+function GA4AdComparison({
   campaignBreakdownAgg,
   chartCampaignRows,
   breakdownLoading,
@@ -365,7 +365,17 @@ export default function GA4AdComparison({
       {breakdownUnavailable ? (
         <Card><CardContent className="p-8 text-center text-destructive">Native Ad Comparison detail is unavailable.</CardContent></Card>
       ) : breakdownLoading && campaignBreakdownAgg.length === 0 ? (
-        <div className="h-32 bg-muted rounded animate-pulse" />
+        <Card aria-busy="true">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Revenue Breakdown</CardTitle>
+            <CardDescription>
+              GA4 revenue uses the initial-import-to-latest-completed-day comparison window. Imported sources show confirmed values through the latest completed day.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-24 border rounded-md bg-muted/40 animate-pulse" />
+          </CardContent>
+        </Card>
       ) : campaignBreakdownAgg.length === 0 ? (
         <Card><CardContent className="p-8 text-center text-muted-foreground">No native Ad Comparison detail available.</CardContent></Card>
       ) : <>
@@ -439,3 +449,5 @@ export default function GA4AdComparison({
     </TooltipProvider>
   );
 }
+
+export default memo(GA4AdComparison);

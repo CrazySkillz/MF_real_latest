@@ -1466,7 +1466,7 @@ export default function GA4Metrics() {
 
   // Helper functions for KPI display
   const campaignCurrency = String((campaign as any)?.currency || "USD");
-  const formatMoney = (n: number) => {
+  const formatMoney = useCallback((n: number) => {
     const num = Number(n || 0);
     try {
       return new Intl.NumberFormat("en-US", {
@@ -1478,7 +1478,7 @@ export default function GA4Metrics() {
     } catch {
       return `$${num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
-  };
+  }, [campaignCurrency]);
   const getKpiUnitOptions = (selectedUnit?: string) => {
     const baseOptions = [
       { value: "%", label: "Percentage (%)" },
@@ -4698,9 +4698,9 @@ export default function GA4Metrics() {
 
   const timeSeriesData = ga4TimeSeries || [];
 
-  const formatNumber = (value: number) => {
+  const formatNumber = useCallback((value: number) => {
     return new Intl.NumberFormat('en-US').format(value);
-  };
+  }, []);
 
   const formatDuration = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);

@@ -29,4 +29,23 @@ describe("Campaign Overview navigation UI", () => {
     expect(page).toContain("<span>Campaign Diagnostics</span>");
     expect(reports).toContain("Campaign Diagnostics subsection");
   });
+
+  it("shows Talk to Your Data as a disabled Campaign Diagnostics option", () => {
+    const page = read("client/src/pages/campaign-detail.tsx");
+    const optionStart = page.indexOf("data-talk-to-your-data");
+    const option = page.slice(optionStart, page.indexOf("</Button>", optionStart));
+
+    expect(optionStart).toBeGreaterThan(-1);
+    expect(option).toContain("disabled");
+    expect(option).toContain("Talk to Your Data");
+    expect(option).toContain("Ask questions using prompts · Coming soon");
+  });
+
+  it("uses the campaign wizard Google Analytics icon for the connected platform", () => {
+    const page = read("client/src/pages/campaign-detail.tsx");
+    const campaigns = read("client/src/pages/campaigns.tsx");
+
+    expect(campaigns).toContain("icon: SiGoogleanalytics");
+    expect(page).toContain('return <SiGoogleanalytics className="w-5 h-5 text-orange-500" />;');
+  });
 });

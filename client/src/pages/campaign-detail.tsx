@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { SiGoogle, SiFacebook, SiInstagram, SiLinkedin, SiTiktok, SiX, SiHubspot, SiSalesforce, SiShopify } from "react-icons/si";
+import { SiGoogle, SiGoogleanalytics, SiFacebook, SiInstagram, SiLinkedin, SiTiktok, SiX, SiHubspot, SiSalesforce, SiShopify } from "react-icons/si";
 import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
@@ -4979,7 +4979,7 @@ export default function CampaignDetail() {
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
       case "Google Analytics":
-        return <SiGoogle className="w-5 h-5 text-orange-500" />;
+        return <SiGoogleanalytics className="w-5 h-5 text-orange-500" />;
       case "Google Sheets":
         return <SiGoogle className="w-5 h-5 text-green-500" />;
       case "Facebook Ads":
@@ -5634,6 +5634,18 @@ export default function CampaignDetail() {
                         </div>
                       </Button>
                     </Link>
+                    <Button
+                      data-talk-to-your-data
+                      variant="outline"
+                      className="flex items-center justify-start space-x-3 h-auto p-4 w-full"
+                      disabled
+                    >
+                      <MessageCircle className="w-5 h-5" />
+                      <div className="text-left">
+                        <div className="font-medium">Talk to Your Data</div>
+                        <div className="text-xs text-muted-foreground">Ask questions using prompts · Coming soon</div>
+                      </div>
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

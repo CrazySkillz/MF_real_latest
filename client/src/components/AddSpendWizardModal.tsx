@@ -186,6 +186,9 @@ export function AddSpendWizardModal(props: {
   const [googleAdsSpendCustomers, setGoogleAdsSpendCustomers] = useState<GoogleAdsSpendCustomer[]>([]);
   const [selectedGoogleAdsCustomerId, setSelectedGoogleAdsCustomerId] = useState<string>("");
   const [googleAdsPendingAuthorization, setGoogleAdsPendingAuthorization] = useState<unknown | null>(null);
+  const [googleAdsServiceAccountStatus, setGoogleAdsServiceAccountStatus] = useState<{ enabled: boolean; email: string | null } | null>(null);
+  const [googleAdsServiceAccountCustomerId, setGoogleAdsServiceAccountCustomerId] = useState("");
+  const [isGoogleAdsServiceAccountConnecting, setIsGoogleAdsServiceAccountConnecting] = useState(false);
 
   // LinkedIn OAuth in-modal flow
   const [linkedInAuthStep, setLinkedInAuthStep] = useState<"idle" | "connecting" | "select_account">("idle");
@@ -257,6 +260,9 @@ export function AddSpendWizardModal(props: {
       setGoogleAdsSpendCustomers([]);
       setSelectedGoogleAdsCustomerId("");
       setGoogleAdsPendingAuthorization(null);
+      setGoogleAdsServiceAccountStatus(null);
+      setGoogleAdsServiceAccountCustomerId("");
+      setIsGoogleAdsServiceAccountConnecting(false);
       setGoogleAdsSpendConnected(false);
       setActiveGoogleAdsSpendSources([]);
   }, [props.open, props.initialSource]);
@@ -1395,8 +1401,19 @@ export function AddSpendWizardModal(props: {
   };
 
   // Check Meta / Google Ads connection when entering ad_platform step
+  const checkGoogleAdsServiceAccountStatus = async () => {
+    try {
+      const resp = await fetch(`/api/campaigns/${props.campaignId}/google-ads-service-account/status`, { credentials: "include" });
+      const json = await resp.json().catch(() => null);
+      setGoogleAdsServiceAccountStatus({ enabled: resp.ok && json?.enabled === true, email: json?.email || null });
+    } catch {
+      setGoogleAdsServiceAccountStatus({ enabled: false, email: null });
+    }
+  };
+
   const checkAdPlatformConnection = async (platform: AdPlatform) => {
     if (platform === "linkedin") return; // LinkedIn has its own flow
+    if (platform === "google_ads") void checkGoogleAdsServiceAccountStatus();
     try {
       const endpoint = platform === "google_ads"
         ? `/api/google-ads/${props.campaignId}/connection?spendPreview=1`
@@ -1425,6 +1442,34 @@ export function AddSpendWizardModal(props: {
         await fetchAdPlatformPreview(platform);
       }
     } catch { /* ignore */ }
+  };
+
+  const connectGoogleAdsServiceAccount = async () => {
+    const customerId = googleAdsServiceAccountCustomerId.trim().replace(/-/g, "");
+    if (!/^\d{10}$/.test(customerId)) {
+      toast({ title: "Google Ads account required", description: "Enter the 10-digit Google Ads Customer ID.", variant: "destructive" });
+      return;
+    }
+    setIsGoogleAdsServiceAccountConnecting(true);
+    try {
+      const resp = await fetch(`/api/campaigns/${props.campaignId}/google-ads-service-account/connect`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerId }),
+      });
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok || json?.success !== true) throw new Error(json?.message || json?.error || "Temporary Google Ads connection failed");
+      setAdPlatformConnected(true);
+      setAdPlatformConnectionName(json?.customer?.name || `Account ${customerId}`);
+      setGoogleAdsServiceAccountCustomerId("");
+      await fetchAdPlatformPreview("google_ads");
+      toast({ title: "Connected to Google Ads", description: "Temporary Google Ads spend data is ready to preview and import." });
+    } catch (error: any) {
+      toast({ title: "Connection failed", description: error?.message || "Temporary Google Ads connection failed", variant: "destructive" });
+    } finally {
+      setIsGoogleAdsServiceAccountConnecting(false);
+    }
   };
   const connectGoogleAdsSpendCustomer = async () => {
     if (selectedPlatform !== "google_ads") return;
@@ -1691,7 +1736,7 @@ export function AddSpendWizardModal(props: {
                             <AlertDialogContent onClick={(event) => event.stopPropagation()}>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Disconnect Google Ads Spend?</AlertDialogTitle>
-                                <AlertDialogDescription>This removes the Google Ads Spend source, its imported rows, and its Spend-only OAuth connection. The separate Google Ads Connected Platform is preserved.</AlertDialogDescription>
+                                <AlertDialogDescription>This removes the Google Ads Spend source, its imported rows, and its Spend-only connection. The separate Google Ads Connected Platform is preserved.</AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -2231,6 +2276,37 @@ export function AddSpendWizardModal(props: {
                                   ? "Use test mode"
                                   : `Connect ${selectedPlatform === "meta" ? "Meta Ads" : "Google Ads"}`}
                               </Button>
+                            )}
+                            {selectedPlatform === "google_ads" && googleAdsServiceAccountStatus?.enabled && !googleAdsPendingAuthorization && (
+                              <div className="space-y-3 border-t pt-4">
+                                <div>
+                                  <p className="text-sm font-medium">Temporary test connection</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Add {googleAdsServiceAccountStatus.email} to the Google Ads account with Read only access, then enter its Customer ID.
+                                  </p>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="google-ads-service-account-customer">Google Ads Customer ID</Label>
+                                  <Input
+                                    id="google-ads-service-account-customer"
+                                    inputMode="numeric"
+                                    placeholder="123-456-7890"
+                                    value={googleAdsServiceAccountCustomerId}
+                                    onChange={(event) => setGoogleAdsServiceAccountCustomerId(event.target.value)}
+                                  />
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={isGoogleAdsServiceAccountConnecting || isAdPlatformConnecting || !googleAdsServiceAccountCustomerId.trim()}
+                                  onClick={() => void connectGoogleAdsServiceAccount()}
+                                >
+                                  {isGoogleAdsServiceAccountConnecting
+                                    ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" />Validating account...</>
+                                    : "Connect test account"}
+                                </Button>
+                              </div>
                             )}
                           </>
                         ) : (

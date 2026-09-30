@@ -158,6 +158,30 @@ describe("Google Ads GA4 Overview spend production path", () => {
     );
   });
 
+  it("refreshes a hydrated temporary service-account Spend connection through dedicated storage", async () => {
+    mocks.storage.getGA4GoogleAdsSpendConnection.mockResolvedValue({
+      method: "service_account",
+      spendOnly: true,
+      accessToken: "temporary-service-account-token",
+      customerId: "123-456-7890",
+      customerName: "Spend Account",
+      lastRefreshAt: new Date(),
+    });
+    await refreshGoogleAdsForCampaign("campaign-1", {
+      method: "service_account",
+      spendOnly: true,
+      accessToken: "temporary-service-account-token",
+      customerId: "123-456-7890",
+      customerName: "Spend Account",
+    }, { ga4SpendConnection: true });
+
+    expect(mocks.refreshAccessToken).not.toHaveBeenCalled();
+    expect(mocks.getDailyMetrics).toHaveBeenCalledWith(expect.any(String), expect.any(String), ["google-campaign-1"]);
+    expect(mocks.storage.replaceGA4GoogleAdsSpendDailyMetricsForWindow).toHaveBeenCalledOnce();
+    expect(mocks.storage.replaceGoogleAdsDailyMetricsForWindow).not.toHaveBeenCalled();
+    expect(mocks.storage.replaceSpendRecordsForSource).toHaveBeenCalledOnce();
+  });
+
   it("does not use Google Ads test mode as the spend-only production proof path", async () => {
     await refreshGoogleAdsForCampaign("campaign-1", {
       method: "test_mode",

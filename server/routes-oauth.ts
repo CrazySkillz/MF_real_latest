@@ -14,6 +14,7 @@ import { fetchShopifyOrderCustomerJourneyUtms, getShopifyApiVersion, hasShopifyA
 import { assertProductionTokenEncryptionConfigured, resolveOAuthStateSigningSecret } from './utils/tokenVault';
 import { assertGA4ServiceAccountPropertyAllowed, GA4_SERVICE_ACCOUNT_METHOD, getGA4ServiceAccountAccessToken, getGA4ServiceAccountPublicStatus, isSupportedGA4ConnectionMethod, normalizeGA4ServiceAccountPropertyId } from './utils/ga4-service-account';
 import { getGoogleSheetsServiceAccountAccessToken, getGoogleSheetsServiceAccountPublicStatus, GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, normalizeGoogleSheetsSpreadsheetId } from './utils/google-sheets-service-account';
+import { assertGoogleAdsServiceAccountCustomerAllowed, getGoogleAdsServiceAccountAccessToken, getGoogleAdsServiceAccountLoginCustomerId, getGoogleAdsServiceAccountPublicStatus, GOOGLE_ADS_SERVICE_ACCOUNT_METHOD, isSupportedGoogleAdsSpendConnectionMethod, normalizeGoogleAdsCustomerId } from './utils/google-ads-service-account';
 import { parseExecutiveSummaryStoredMetricValue } from './utils/executive-summary-target-eligibility';
 import { buildGoogleAdsOAuthAuthorization, resolveGoogleAdsOAuthAuthorization } from './google-ads-oauth-authorization';
 import { buildGA4GoogleAdsSpendMaterialization } from './ga4-google-ads-spend';
@@ -6044,7 +6045,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!connection || !connection.spendOnly) {
           return res.status(400).json({ success: false, error: "Google Ads spend connection is unavailable" });
         }
-        if (String(connection.method || "") !== "oauth") {
+        if (!isSupportedGoogleAdsSpendConnectionMethod(connection.method)) {
           return res.status(400).json({ success: false, error: "Simulated Google Ads data is not supported by GA4 Insights" });
         }
         const campaignStart = new Date((campaign as any)?.startDate || "1900-01-01");
@@ -26453,6 +26454,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return { ok: true, campaignId: payload.c, spendOnly: !!payload.s };
   };
 
+  app.get("/api/campaigns/:id/google-ads-service-account/status", async (req, res) => {
+    const campaign = await ensureCampaignAccess(req as any, res as any, req.params.id);
+    if (!campaign) return;
+    try {
+      res.json({ success: true, ...getGoogleAdsServiceAccountPublicStatus() });
+    } catch (error: any) {
+      res.status(503).json({ success: false, enabled: false, email: null, error: error?.message || "Temporary Google Ads access is not configured" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/google-ads-service-account/connect", oauthRateLimiter, async (req, res) => {
+    try {
+      const campaignId = String(req.params.id || "").trim();
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
+      const customerId = assertGoogleAdsServiceAccountCustomerAllowed(req.body?.customerId);
+
+      const existingConnection: any = await storage.getGA4GoogleAdsSpendConnection(campaignId);
+      if (existingConnection && String(existingConnection.method || "").trim().toLowerCase() !== GOOGLE_ADS_SERVICE_ACCOUNT_METHOD) {
+        return res.status(409).json({ success: false, error: "GOOGLE_ADS_OAUTH_CONNECTION_EXISTS", message: "This campaign already has a Google Ads OAuth Spend connection. Use a new test campaign for temporary service-account access." });
+      }
+
+      const sources = await storage.getSpendSources(campaignId, "ga4");
+      const hasGoogleAdsSpendSource = sources.some((source: any) => {
+        if (source?.isActive === false || source?.sourceType !== "ad_platforms") return false;
+        if (String(source?.displayName || "").trim() === "Google Ads") return true;
+        try {
+          const mapping = typeof source?.mappingConfig === "string" ? JSON.parse(source.mappingConfig) : source?.mappingConfig || {};
+          return String(mapping?.platform || "").trim().toLowerCase() === "google_ads";
+        } catch { return false; }
+      });
+      if (hasGoogleAdsSpendSource && (!existingConnection || normalizeGoogleAdsCustomerId(existingConnection.customerId) !== customerId)) {
+        return res.status(409).json({ success: false, error: "GOOGLE_ADS_SPEND_SOURCE_EXISTS", message: "Delete the existing Google Ads Spend source before changing its account." });
+      }
+
+      const credentials = await getGoogleAdsServiceAccountAccessToken();
+      const managerAccountId = getGoogleAdsServiceAccountLoginCustomerId();
+      const { GoogleAdsClient, mapGoogleAdsDailyInsights } = await import('./googleAdsClient');
+      const provider = new GoogleAdsClient({
+        accessToken: credentials.accessToken,
+        developerToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN || "",
+        customerId,
+        managerAccountId: managerAccountId || undefined,
+      });
+      const account = await provider.getCustomerAccount();
+      if (account.manager === true) {
+        return res.status(400).json({ success: false, error: "GOOGLE_ADS_MANAGER_ACCOUNT_UNSUPPORTED", message: "Enter a Google Ads client account Customer ID, not a manager account ID." });
+      }
+      if (normalizeGoogleAdsCustomerId(account.id) !== customerId) {
+        return res.status(502).json({ success: false, error: "GOOGLE_ADS_CUSTOMER_VALIDATION_FAILED", message: "Google Ads returned a different customer account." });
+      }
+      const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
+      if (!account.currencyCode || account.currencyCode !== campaignCurrency) {
+        return res.status(400).json({ success: false, error: "GOOGLE_ADS_CURRENCY_MISMATCH", message: `Google Ads account currency ${account.currencyCode || "is unavailable"}; select an account using ${campaignCurrency}` });
+      }
+      const campaignTimeZone = normalizeReportingTimeZone((campaign as any)?.reportingTimeZone);
+      if (!account.timeZone || normalizeReportingTimeZone(account.timeZone) !== campaignTimeZone) {
+        return res.status(400).json({ success: false, error: "GOOGLE_ADS_TIME_ZONE_MISMATCH", message: `Google Ads account timezone ${account.timeZone || "is unavailable"}; select an account using ${campaignTimeZone}` });
+      }
+
+      const campaignStart = new Date((campaign as any)?.startDate || "2000-01-01");
+      const startDate = Number.isNaN(campaignStart.getTime()) ? "2000-01-01" : campaignStart.toISOString().slice(0, 10);
+      const endDate = getReportingDateWindow(1, campaignTimeZone).endDate;
+      const initialDailyMetrics = startDate <= endDate
+        ? mapGoogleAdsDailyInsights(campaignId, await provider.getDailyMetrics(startDate, endDate))
+        : [];
+      await storage.replaceGA4GoogleAdsSpendConnection({
+        campaignId,
+        customerId,
+        customerName: account.descriptiveName || `Account ${customerId}`,
+        managerAccountId,
+        accessToken: null,
+        refreshToken: null,
+        clientId: null,
+        clientSecret: null,
+        developerToken: null,
+        method: GOOGLE_ADS_SERVICE_ACCOUNT_METHOD,
+        expiresAt: null,
+        spendOnly: true,
+      } as any, initialDailyMetrics as any);
+
+      res.json({ success: true, customer: { id: customerId, name: account.descriptiveName }, method: GOOGLE_ADS_SERVICE_ACCOUNT_METHOD });
+    } catch (error: any) {
+      const code = String(error?.code || "");
+      const providerStatus = Number(error?.response?.status || 0);
+      const status = code === "GOOGLE_ADS_CUSTOMER_ID_INVALID" ? 400
+        : code === "GOOGLE_ADS_SERVICE_ACCOUNT_CUSTOMER_NOT_ALLOWED" ? 403
+          : code === "GOOGLE_ADS_SERVICE_ACCOUNT_NOT_CONFIGURED" || code === "GOOGLE_ADS_SERVICE_ACCOUNT_CONFIG_INVALID" ? 503
+            : providerStatus === 401 || providerStatus === 403 ? 403
+              : 502;
+      const message = providerStatus === 401 || providerStatus === 403
+        ? "The MimoSaaS service account does not have access to this Google Ads customer"
+        : error?.message || "Temporary Google Ads connection failed";
+      res.status(status).json({ success: false, error: code || "GOOGLE_ADS_SERVICE_ACCOUNT_CONNECT_FAILED", message });
+    }
+  });
+
   /**
    * Initiate Google Ads OAuth flow
    */
@@ -26752,7 +26850,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dedicatedConnection = spendPreview ? await storage.getGA4GoogleAdsSpendConnection(campaignId) : null;
       const legacyConnection = dedicatedConnection ? null : await storage.getGoogleAdsConnection(campaignId);
       const connection = spendPreview ? dedicatedConnection || (legacyConnection?.spendOnly ? legacyConnection : null) : legacyConnection;
-      if (!connection || (spendPreview && connection.method !== "oauth")) return res.json({ connected: false });
+      if (!connection || (spendPreview && !isSupportedGoogleAdsSpendConnectionMethod(connection.method))) return res.json({ connected: false });
       res.json({
         connected: true,
         customerId: connection.customerId,

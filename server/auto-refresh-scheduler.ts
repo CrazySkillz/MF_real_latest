@@ -26,6 +26,7 @@ import { findInvalidGoogleSheetsRevenueAmountRows } from "./utils/google-sheets-
 import { beginFinancialDailySnapshotRefreshObservation, recordFinancialDailySnapshotRefreshEvidence } from "./utils/financial-daily-snapshot-observation";
 import { writeFinancialDailySnapshotIfReady } from "./utils/financial-daily-snapshot-writer";
 import { randomUUID } from "crypto";
+import { isSupportedGoogleAdsSpendConnectionMethod } from "./utils/google-ads-service-account";
 
 type AnyRecord = Record<string, any>;
 type ReprocessResult = { success: boolean; status?: number; error?: string };
@@ -1232,7 +1233,7 @@ export async function runDailyAutoRefreshOnce(
                 const dedicatedConnection = await storage.getGA4GoogleAdsSpendConnection(campaignId).catch(() => null);
                 const legacyConnection = dedicatedConnection ? null : await storage.getGoogleAdsConnection(campaignId).catch(() => null);
                 const connection = dedicatedConnection || (legacyConnection?.spendOnly ? legacyConnection : null);
-                if (!connection || String(connection.method || "") !== "oauth") throw new Error("live spend connection is unavailable");
+                if (!connection || !isSupportedGoogleAdsSpendConnectionMethod(connection.method)) throw new Error("live spend connection is unavailable");
                 const { refreshGoogleAdsForCampaign } = await import("./google-ads-scheduler");
                 const refresh = await refreshGoogleAdsForCampaign(campaignId, connection, {
                   ga4SpendConnection: Boolean(dedicatedConnection),
@@ -1262,7 +1263,7 @@ export async function runDailyAutoRefreshOnce(
                 continue;
               }
               const connection: any = await storage.getGoogleAdsConnection(campaignId).catch(() => null);
-              if (!connection || !connection.spendOnly || String(connection.method || "") !== "oauth") {
+              if (!connection || !connection.spendOnly || !isSupportedGoogleAdsSpendConnectionMethod(connection.method)) {
                 console.error(`[Auto Refresh] Refusing unsupported Google Ads spend connection for campaign ${campaignId}`);
                 skipped++;
                 continue;

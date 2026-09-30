@@ -44,13 +44,14 @@ Production-readiness note: **GA4 Overview is currently UNVERIFIED.** The exact-c
 
 Current bounded Campaign3 evidence through `2026-09-28` reconciles Total Revenue `EUR 78,969.69` from native GA4 `EUR 37,518.74`, Google Sheets `EUR 30,340.00`, HubSpot `EUR 10,000.00`, Shopify `EUR 785.95`, CSV `EUR 250.00`, and Salesforce `EUR 75.00`. Total Spend `EUR 2,357.89` reconciles from Google Ads `EUR 4.89`, Google Sheets `EUR 1,103.00`, and CSV `EUR 1,250.00`. The displayed Profit `EUR 76,611.80`, ROAS `33.49x`, ROI `3,249.2%`, and CPA `EUR 16.26` reconcile from those totals and 145 Conversions. Pipeline Proxy is separately current-stage and totals `EUR 450.00` from HubSpot `EUR 250.00` plus Salesforce `EUR 200.00`; it does not enter confirmed Revenue or downstream formulas. The authenticated browser/API audit occurred at deployed `f2ea6ce2`; the pacing cutoff and visible-copy follow-ups are deployed at `5f441126...` with focused regression evidence but without a new authenticated browser/report-artifact pass. This is exact-fixture evidence, not whole-source-family or whole-Overview certification.
 
-Current implementation alignment (2026-09-29):
+Current implementation alignment (2026-09-30):
 
 - the Revenue Sources modal keeps every active imported source definition visible, including an active HubSpot source whose confirmed contribution is currently zero; a Pipeline-enabled source with no confirmed contribution is labelled `Pipeline Proxy only` instead of being hidden
 - Revenue and Spend source modals show each source's latest imported value separately from its completed-day contribution. Sources connected after the current cutoff remain visible as pending, do not make the prior completed-day total unavailable, and become calculation-eligible after that reporting day completes
 - the Revenue `Sources` count is the number of active imported source definitions plus native GA4 Revenue only when native GA4 Revenue contributes a non-zero amount
 - Google Ads is an enabled GA4 Spend child source. Selected provider campaigns materialize dated `ad_platforms` / `ga4` Spend records that contribute to Total Spend and its downstream financial formulas
-- the Add spend source card shows `Connected` for the saved Spend-only Google Ads connection and exposes a confirmed trash action that removes the exact GA4 Google Ads Spend source, its records, dedicated provider facts, and Spend-only OAuth connection while preserving a separate Google Ads Connected Platform
+- Google Ads Spend keeps Google OAuth as the long-term connection and also supports a temporary service-account test connection. The temporary path is available only for explicitly allowlisted Customer IDs, requires the service-account email to have Google Ads account access, stores no service-account key or access token in campaign rows, and uses the same customer currency/timezone validation, campaign selection, dated materialization, refresh, and disconnect paths as OAuth
+- the Add spend source card shows `Connected` for the saved Spend-only Google Ads connection and exposes a confirmed trash action that removes the exact GA4 Google Ads Spend source, its records, dedicated provider facts, and Spend-only connection while preserving a separate Google Ads Connected Platform
 - a duplicate Google Ads import does not create another active source; the user must edit the existing source
 - an earlier bounded live UI observation showed one selected Google Ads campaign at `EUR 4.89`, 43 impressions, and 1 click. At the `2026-09-28` Campaign3 cutoff, its dated Spend records contribute the same `EUR 4.89` to Total Spend and the budget-period Spend derivative. These observations do not certify edit, disconnect, failure recovery, reports/email, or a natural scheduler cycle
 
@@ -724,8 +725,12 @@ The intended production user journey is:
 
 Important current-state note:
 
+- the permanent user journey remains Google OAuth; the temporary test path uses a server-managed service account and does not remove or replace OAuth
+- the temporary path is enabled only when `GOOGLE_ADS_SERVICE_ACCOUNT_ALLOWED_CUSTOMER_IDS` contains at least one 10-digit Customer ID and a valid `GOOGLE_ADS_SERVICE_ACCOUNT_JSON` is configured; when the Google Ads-specific JSON is absent, the existing `GA4_SERVICE_ACCOUNT_JSON` is reused
+- `GOOGLE_ADS_SERVICE_ACCOUNT_LOGIN_CUSTOMER_ID` is optional and is used only when the allowlisted client account is accessed through a Google Ads manager account
+- before using the temporary path, enable the Google Ads API in the service account's Cloud project and grant its email Read only access to the allowlisted Google Ads account; the saved campaign connection stores the method and account identity, not the service-account key or generated access token
 - Google Ads test mode is not a production-readiness validation path and must not be used as evidence that Google Ads spend is ready for GA4 Overview
-- Google Ads spend validation must use the real OAuth/customer-selection/provider daily-metrics path
+- production certification still requires the real OAuth/customer-selection/provider daily-metrics path; temporary service-account evidence is configuration-bounded test evidence
 - the selected total is persisted as source-backed `ad_platforms` records in GA4 context using the saved Google Ads campaign IDs
 - the card is enabled in the production chooser; it is not faded and does not show `Coming Soon`
 - when connected, the card shows `Connected`; its confirmed trash action disconnects only the GA4 Spend connection and preserves a separate Google Ads Connected Platform
@@ -956,7 +961,7 @@ Whole-Overview Current Commit 7 aligns frontend cache freshness after GA4 spend 
 - saved `HubSpot` and `Salesforce` revenue mappings are eligible for full daily auto-reprocess through the internal path, while public save-mapping routes must remain protected by normal user/campaign access checks. The additional five-minute loop covers every active exact GA4 Salesforce or HubSpot mapping with selected values; a saved stage is required only when Pipeline Proxy is enabled
 - `Google Sheets` spend is a refreshable source after setup
 - `LinkedIn Ads` spend is connector-based and refreshable through the platform refresh pipeline
-- `Meta / Facebook` remains on the generic connected-platform selection/materialization path; Google Ads uses its dedicated Spend-only OAuth connection and daily-fact storage, then materializes selected provider campaigns as dated GA4 spend records
+- `Meta / Facebook` remains on the generic connected-platform selection/materialization path; Google Ads uses its dedicated Spend-only connection and daily-fact storage, then materializes selected provider campaigns as dated GA4 spend records
 - scheduled Meta / Facebook and Google Ads spend refresh must reuse the saved selected campaign IDs and replace the source's prior materialized spend records rather than append duplicates
 - `Upload CSV` revenue is manual for import cadence and requires re-upload for source-file updates; when a date column is mapped, it can still materialize daily revenue rows
 - `Upload CSV` spend is manual for import cadence; new GA4 CSV sources require a Date column and materialize daily spend rows, while already-undated saved sources remain continuity-only snapshot sources; spend-source edit can recalculate from the stored imported dataset when only campaign-value selection changes

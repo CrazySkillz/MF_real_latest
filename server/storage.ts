@@ -7,6 +7,7 @@ import { eq, and, or, isNull, desc, sql, gte, lte, inArray, ne } from "drizzle-o
 import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, type EncryptedTokens } from "./utils/tokenVault";
 import { assertGA4ServiceAccountPropertyAllowed, GA4_SERVICE_ACCOUNT_METHOD, hydrateGA4ServiceAccountConnection } from "./utils/ga4-service-account";
 import { GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, hydrateGoogleSheetsServiceAccountConnection } from "./utils/google-sheets-service-account";
+import { GOOGLE_ADS_SERVICE_ACCOUNT_METHOD, hydrateGoogleAdsServiceAccountConnection } from "./utils/google-ads-service-account";
 import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness } from "./utils/revenue-record-total";
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 import { getReportingComparisonBoundary, getReportingDateEndAt, isCreatedThroughReportingDate } from "./utils/reporting-timezone";
@@ -4177,21 +4178,26 @@ export class DatabaseStorage implements IStorage {
   async getGA4GoogleAdsSpendConnection(campaignId: string): Promise<GA4GoogleAdsSpendConnection | undefined> {
     const [connection] = await db.select().from(ga4GoogleAdsSpendConnections)
       .where(eq(ga4GoogleAdsSpendConnections.campaignId, campaignId));
-    return connection ? hydrateDecryptedTokens(connection) as any : undefined;
+    return connection
+      ? await hydrateGoogleAdsServiceAccountConnection(hydrateDecryptedTokens(connection) as any) as any
+      : undefined;
   }
 
   async replaceGA4GoogleAdsSpendConnection(connection: InsertGA4GoogleAdsSpendConnection, dailyMetrics: InsertGA4GoogleAdsSpendDailyMetric[]): Promise<GA4GoogleAdsSpendConnection> {
     assertProductionTokenEncryptionConfigured();
+    const isServiceAccount = String((connection as any).method || "").trim().toLowerCase() === GOOGLE_ADS_SERVICE_ACCOUNT_METHOD;
     const encryptedTokens = buildEncryptedTokens({
-      accessToken: (connection as any).accessToken,
-      refreshToken: (connection as any).refreshToken,
-      clientSecret: (connection as any).clientSecret,
+      accessToken: isServiceAccount ? null : (connection as any).accessToken,
+      refreshToken: isServiceAccount ? null : (connection as any).refreshToken,
+      clientSecret: isServiceAccount ? null : (connection as any).clientSecret,
     });
     return await db.transaction(async (tx: any) => {
       await tx.delete(ga4GoogleAdsSpendConnections).where(eq(ga4GoogleAdsSpendConnections.campaignId, connection.campaignId));
       await tx.delete(ga4GoogleAdsSpendDailyMetrics).where(eq(ga4GoogleAdsSpendDailyMetrics.campaignId, connection.campaignId));
       const [saved] = await tx.insert(ga4GoogleAdsSpendConnections).values({
         ...connection, accessToken: null, refreshToken: null, clientSecret: null,
+        clientId: isServiceAccount ? null : (connection as any).clientId,
+        developerToken: isServiceAccount ? null : (connection as any).developerToken,
         encryptedTokens, spendOnly: true, lastRefreshAt: new Date(),
       } as any).returning();
       if (dailyMetrics.length) await tx.insert(ga4GoogleAdsSpendDailyMetrics).values(dailyMetrics.map((row) => ({

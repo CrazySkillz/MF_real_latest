@@ -1011,7 +1011,7 @@ export const ga4GoogleAdsSpendConnections = pgTable("ga4_google_ads_spend_connec
   clientSecret: text("client_secret"),
   developerToken: text("developer_token"),
   encryptedTokens: jsonb("encrypted_tokens"),
-  method: text("method").notNull(),
+  method: text("method").notNull(), // 'oauth' | 'service_account'
   spendOnly: boolean("spend_only").notNull().default(true),
   lastRefreshAt: timestamp("last_refresh_at"),
   expiresAt: timestamp("expires_at"),

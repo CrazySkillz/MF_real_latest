@@ -11,6 +11,7 @@ import { enrichPlatformWithGA4Revenue } from "./utils/ga4RevenueEnrichment";
 import { getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { buildGA4GoogleAdsSpendMaterialization } from "./ga4-google-ads-spend";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
+import { isSupportedGoogleAdsSpendConnectionMethod } from "./utils/google-ads-service-account";
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -234,7 +235,7 @@ export async function materializeGA4GoogleAdsSpendForCampaign(
 ): Promise<{ updated: boolean; sourceId: string | null; records: number; totalSpend: number | null }> {
   campaign = campaign || await storage.getCampaign(campaignId).catch(() => null);
   connection = connection || await (dedicatedSpend ? storage.getGA4GoogleAdsSpendConnection(campaignId) : storage.getGoogleAdsConnection(campaignId)).catch(() => null);
-  if (!campaign || !connection || !connection.spendOnly || String(connection.method || "") !== "oauth") {
+  if (!campaign || !connection || !connection.spendOnly || !isSupportedGoogleAdsSpendConnectionMethod(connection.method)) {
     throw new Error(`GA4 Google Ads spend scope is unavailable for campaign ${campaignId}`);
   }
   const sources = await storage.getSpendSources(campaignId, "ga4");

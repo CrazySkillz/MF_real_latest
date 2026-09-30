@@ -11,10 +11,11 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import type { Client } from "@shared/schema";
 
 export default function HomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [clientToDelete, setClientToDelete] = useState<any | null>(null);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const { clients, selectedClientId, setSelectedClientId } = useClient();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -25,14 +26,18 @@ export default function HomePage() {
       if (!data.success) throw new Error(data.message || "Failed to delete client");
       return data;
     },
-    onSuccess: async (_data, clientId) => {
+    onSuccess: (_data, clientId) => {
       if (selectedClientId === clientId) setSelectedClientId(null);
-      await queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
-      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
-      await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });
+      queryClient.setQueryData<Client[]>(["/api/clients"], (current = []) =>
+        current.filter((client) => client.id !== clientId),
+      );
       setClientToDelete(null);
       toast({ title: "Client deleted", description: "Client and related campaigns were deleted." });
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/clients"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/notifications"] }),
+      ]);
     },
     onError: (error: any) => {
       toast({ title: "Delete failed", description: error?.message || "Failed to delete client.", variant: "destructive" });
@@ -121,7 +126,7 @@ export default function HomePage() {
 
       <CreateClientModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
       <Dialog open={!!clientToDelete} onOpenChange={() => setClientToDelete(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent data-delete-client-dialog className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Trash2 className="w-5 h-5 text-red-500" />

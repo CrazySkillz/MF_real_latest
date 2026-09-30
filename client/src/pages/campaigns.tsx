@@ -1092,7 +1092,10 @@ export default function Campaigns() {
                 <p className="text-muted-foreground/70 mt-1">Create, manage, and optimize your marketing campaigns</p>
               </div>
 
-              <Button onClick={() => setIsCreateModalOpen(true)}>
+              <Button
+                className="bg-accent text-accent-foreground hover:bg-accent/80"
+                onClick={() => setIsCreateModalOpen(true)}
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 New Campaign
               </Button>
@@ -1875,7 +1878,7 @@ export default function Campaigns() {
                               }}
                               disabled={deleteCampaignMutation.isPending}
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-4 h-4 text-red-500" />
                             </Button>
                           </div>
                         </div>
@@ -1923,7 +1926,7 @@ export default function Campaigns() {
 
       {/* Edit Campaign Dialog */}
       <Dialog open={!!editingCampaign} onOpenChange={() => setEditingCampaign(null)}>
-        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent data-edit-campaign-dialog className="sm:max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader className="pb-4 shrink-0">
             <DialogTitle>Edit Campaign</DialogTitle>
             <DialogDescription>

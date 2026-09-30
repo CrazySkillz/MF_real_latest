@@ -21,4 +21,17 @@ describe("Create Campaign modal layout stability", () => {
       /body\[data-scroll-locked\]\s*\{[^}]*margin-right:\s*0\s*!important/,
     );
   });
+
+  it("prevents the Edit Campaign dialog from shifting the page", () => {
+    const page = read("client/src/pages/campaigns.tsx");
+    const styles = read("client/src/index.css");
+    const marker = "data-edit-campaign-dialog";
+
+    expect(page).toContain(`<DialogContent ${marker} className="sm:max-w-xl max-h-[90vh] overflow-hidden flex flex-col">`);
+    expect(styles).toMatch(
+      new RegExp(
+        `body\\[data-scroll-locked\\]:has\\(\\[${marker}\\]\\)\\s*\\{\\s*margin-right:\\s*0\\s*!important;\\s*\\}`,
+      ),
+    );
+  });
 });

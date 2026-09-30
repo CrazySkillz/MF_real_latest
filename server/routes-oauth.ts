@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { getAuth } from "@clerk/express";
 import { storage } from "./storage";
-import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertKPIProgressSchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertLinkedInReportSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, campaigns as campaignsTable, ga4Connections, googleSheetsConnections as googleSheetsConnectionsTable, spendSources as spendSourcesTable, spendRecords as spendRecordsTable, revenueSources as revenueSourcesTable, revenueRecords as revenueRecordsTable, hubspotConnections as hubspotConnectionsTable, shopifyConnections as shopifyConnectionsTable } from "@shared/schema";
+import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertKPIProgressSchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertLinkedInReportSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, ga4Connections, spendSources as spendSourcesTable, spendRecords as spendRecordsTable, revenueSources as revenueSourcesTable, revenueRecords as revenueRecordsTable, hubspotConnections as hubspotConnectionsTable, shopifyConnections as shopifyConnectionsTable } from "@shared/schema";
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
@@ -16429,18 +16429,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.getCampaign(campaignId);
       if (!actorId || !campaign || String((campaign as any).ownerId || "").trim() !== actorId) {
         return res.status(404).json({ error: "Campaign not found" });
-      }
-
-      const existingClaims = await db
-        .select({ campaignId: googleSheetsConnectionsTable.campaignId, ownerId: campaignsTable.ownerId })
-        .from(googleSheetsConnectionsTable)
-        .innerJoin(campaignsTable, eq(campaignsTable.id, googleSheetsConnectionsTable.campaignId))
-        .where(and(
-          eq(googleSheetsConnectionsTable.spreadsheetId, spreadsheetId),
-          eq(googleSheetsConnectionsTable.isActive, true),
-        ));
-      if (existingClaims.some((claim: { campaignId: string; ownerId: string | null }) => String(claim.ownerId || "").trim() !== actorId)) {
-        return res.status(409).json({ error: "This shared spreadsheet is already connected to another account" });
       }
 
       const existingConnections = await storage.getGoogleSheetsConnections(campaignId);

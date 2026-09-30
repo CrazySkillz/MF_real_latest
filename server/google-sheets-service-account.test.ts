@@ -92,7 +92,7 @@ describe("temporary Google Sheets service-account boundary", () => {
     expect(createMethod).toContain("clientSecret: isServiceAccount ? null");
   });
 
-  it("keeps the temporary route campaign-scoped and the token read-only", () => {
+  it("allows shared spreadsheet reuse while keeping each temporary connection campaign-scoped and read-only", () => {
     const routesSource = readFileSync(resolve(process.cwd(), "server/routes-oauth.ts"), "utf8");
     const helperSource = readFileSync(resolve(process.cwd(), "server/utils/google-sheets-service-account.ts"), "utf8");
     const routeStart = routesSource.indexOf('app.post("/api/campaigns/:id/google-sheets-service-account/connect"');
@@ -100,7 +100,9 @@ describe("temporary Google Sheets service-account boundary", () => {
     const route = routesSource.slice(routeStart, routeEnd);
 
     expect(route).toContain("requireCampaignAccessParamId");
-    expect(route).toContain("This shared spreadsheet is already connected to another account");
+    expect(route).toContain("storage.getGoogleSheetsConnections(campaignId)");
+    expect(route).not.toContain("already connected to another account");
+    expect(route).not.toContain("existingClaims");
     expect(helperSource).toContain("https://www.googleapis.com/auth/spreadsheets.readonly");
     expect(helperSource).not.toContain("https://www.googleapis.com/auth/drive");
   });

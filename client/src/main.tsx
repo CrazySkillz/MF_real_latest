@@ -27,7 +27,17 @@ try {
 
   const root = createRoot(rootElement);
   root.render(
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+    <ClerkProvider
+      publishableKey={CLERK_PUBLISHABLE_KEY}
+      localization={{
+        signIn: {
+          start: {
+            title: "Sign in to mimosaas",
+            titleCombined: "Sign in to mimosaas",
+          },
+        },
+      }}
+    >
       <App />
     </ClerkProvider>
   );

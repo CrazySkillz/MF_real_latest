@@ -211,9 +211,9 @@ Alert frequency meaning:
 - `Immediate`
   Bell + Notifications keep one active in-app alert record while the breach remains unresolved. If the benchmark is already breached on create/update, the first email sends immediately. Email sends once for that breach and re-arms only after the Benchmark recovers and breaches again.
 - `Daily`
-  Bell + Notifications keep one active in-app alert record while the breach remains unresolved. If the benchmark is already breached on create/update, the first email sends immediately. Later reminder emails can repeat at most once per day.
+  Bell + Notifications keep one active in-app alert record while the breach remains unresolved. If the benchmark is already breached on create/update, the first email sends immediately. Later reminder emails can repeat at most once per day. When email delivery is enabled, the user selects a local reminder hour from `06:00` through `18:00`, the same range used by GA4 Reports.
 - `Weekly`
-  Bell + Notifications keep one active in-app alert record while the breach remains unresolved. If the benchmark is already breached on create/update, the first email sends immediately. Later reminder emails can repeat at most once per week.
+  Bell + Notifications keep one active in-app alert record while the breach remains unresolved. If the benchmark is already breached on create/update, the first email sends immediately. Later reminder emails can repeat at most once per week. When email delivery is enabled, the user selects a weekday and a local reminder hour from `06:00` through `18:00`, the same range used by GA4 Reports.
 
 Expected behavior:
 

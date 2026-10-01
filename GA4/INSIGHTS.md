@@ -104,19 +104,19 @@ Shows completed daily-history views:
 Current meaning:
 
 - Trends uses persisted GA4 daily facts for the selected campaign/property/scope and shows only reporting dates on or after the campaign creation calendar date in the campaign reporting timezone; this display filter does not delete pre-creation stored rows or change other sections
-- Insights requests an isolated 60-calendar-day stored-history window so two exact 30-day windows can be evaluated without changing Overview or KPI windows; legacy storage may be sparse, so the visible campaign calendar is materialized separately through `Chart through`
+- Insights requests an isolated 60-calendar-day stored-history window so two exact 30-day windows can be evaluated without changing Overview or KPI windows; legacy storage may be sparse, so the campaign calendar is materialized separately through the scheduler-derived completed-history boundary
 - all normal browser daily-history requests are read-only; Insights Trends renders scheduler-produced stored facts and does not run a live GA4 coverage request when the page loads
 - today's intraday data is excluded until it becomes a completed reporting day
-- `Latest imported day` is the latest persisted row eligible for Trends after the creation-date filter; `Chart through` is the scheduler-derived completed-history boundary used to materialize the visible calendar series
+- `Latest imported day` remains visible and is the latest persisted row eligible for Trends after the creation-date filter; the scheduler-derived completed-history boundary still materializes the series but is no longer shown as `Chart through`
 - `7d` and `30d` show rolling totals for non-rate metrics and weighted averages for rates
-- from campaign creation through `Chart through`, a date without a stored activity row is displayed and evaluated as zero; dates before campaign creation remain hidden
+- from campaign creation through the completed-history boundary, a date without a stored activity row is displayed and evaluated as zero; dates before campaign creation remain hidden
 - the daily scheduler also persists explicit zero rows for completed no-activity dates after it verifies the provider response; an incomplete or failed provider response preserves the last-good stored window instead of writing false zeros
 - explicit zero engaged sessions remain zero; only a genuinely absent legacy value is derived from that row's sessions and engagement rate
 - the metric selector uses a native select; Users is available only in Daily because daily distinct-user counts cannot be summed across days
 
 History gates:
 
-- `Daily`: at least 1 eligible completed campaign date; the chart considers up to 30 calendar days through `Chart through`, excludes pre-creation dates, fills later no-activity dates with zero, and shows a delta against the prior calendar day when present; the table shows 14 recent rows initially and up to 30 with `Show all`
+- `Daily`: at least 1 eligible completed campaign date; the chart considers up to 30 calendar days through the completed-history boundary, excludes pre-creation dates, fills later no-activity dates with zero, and shows a delta against the prior calendar day when present; its visible coverage note is only `Missing stored dates are shown as 0`; the table shows 14 recent rows initially and up to 30 with `Show all`
 - `7d`: the chart shows every complete historical 7-calendar-day rolling window in the campaign calendar; zero/no-activity dates count as complete, and the latest comparison requires two adjacent 7-day windows
 - `30d`: the chart shows every complete historical 30-calendar-day rolling window in the campaign calendar; zero/no-activity dates count as complete, and the latest comparison requires two adjacent 30-day windows
 - `Monthly`: one calendar month can be shown and is marked partial when incomplete; only two adjacent complete calendar months are compared
@@ -128,6 +128,7 @@ Shows GA4 Sessions, Conversions, and the resulting conversion rate for the selec
 Current meaning:
 
 - on-screen traffic values use the saved historical-import start through the scheduler-backed history boundary; completed no-activity days count as zero, while a failed request with no response remains unavailable and is never inferred as zero
+- the former `GA4 imported history: <start> to <end> (<time zone>); no-activity days count as 0` sentence is no longer displayed
 - this app version does not show Top Channel, a source/medium channel table, or channel-availability warnings in Data Summary or its browser-generated PDF; those values are excluded from Data Summary certification
 - the existing GA4 acquisition response remains available to other Insights features under their own evidence and certification boundaries
 - connected-source financial values remain in Executive Financials and are not duplicated in Data Summary

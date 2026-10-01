@@ -13,6 +13,8 @@ This file is a strict operating contract for any agent working in this repositor
 Required companion reference:
 
 - `ARCHITECTURE_USER_JOURNEY.md`
+- `docs/CURRENT_APP_SECTIONS.md` for current page names, routes, navigation,
+  user-visible actions, and onboarding scope
 - `PRODUCTION_READINESS.md` for production-readiness audits, analytics-sensitive feature refinement, and section/source certification work
 - `GA4/README.md` for GA4-related work
 - `GA4_DEVELOPMENT_WORKFLOW.md` for GA4 fix/test workflow guidance
@@ -29,10 +31,12 @@ Required reference order:
 
 1. `AGENTS.md`
 2. `ARCHITECTURE_USER_JOURNEY.md`
-3. `PRODUCTION_READINESS.md` for production-readiness audits, analytics-sensitive feature refinement, and section/source certification work
-4. `GA4/README.md` for GA4-related work
-5. `GA4_DEVELOPMENT_WORKFLOW.md` for GA4 stabilization, bug-fix, and test workflow
-6. the relevant platform-specific doc(s)
+3. `docs/CURRENT_APP_SECTIONS.md` for user-facing journey, navigation, or
+   onboarding work
+4. `PRODUCTION_READINESS.md` for production-readiness audits, analytics-sensitive feature refinement, and section/source certification work
+5. `GA4/README.md` for GA4-related work
+6. `GA4_DEVELOPMENT_WORKFLOW.md` for GA4 stabilization, bug-fix, and test workflow
+7. the relevant platform-specific doc(s)
 
 ## What This App Does
 

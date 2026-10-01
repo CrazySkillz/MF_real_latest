@@ -7,6 +7,16 @@
 <!-- ga4-insights-current-status -->
 <!-- ga4-insights-certification-status: UNVERIFIED -->
 
+2026-10-01 exact-revision result: an authenticated read-only validation against
+deployed application `48bf6116384b64af0200640bb945c2b07c4c2f30` passed the
+Campaign3 60-day stored-history boundary through completed day `2026-09-30`
+with 59 rows, exact property/timezone scope, no stale/provider-failure flag, and
+no application data write. The manual scheduler endpoint correctly returned
+`409 GA4_DAILY_HISTORY_SCHEDULER_MANAGED`. This is bounded current-history
+evidence; it does not override the failed process-wide aligned publication,
+the missing KPI-derived Insights item, or the outstanding natural scheduler and
+whole-tab gates. Status remains `UNVERIFIED`.
+
 Section status: **UNVERIFIED for the current implementation** pending current-revision deployed recertification.
 
 Current code implements scheduler-only daily-history writes, explicit zero rows for completed no-activity dates, campaign-creation-bounded zero-filled charts and findings, a one-eligible-date Daily gate with 14 recent table rows initially and up to 30 through `Show all`, `Latest imported day` plus `Chart through` labels, no stale-history warning/findings for a successful persisted response, the corrected financial KPI/Benchmark import boundary, and direction-aware missed-target titles (`Below` for higher-is-better metrics and `Above` for lower-is-better metrics such as CPA). These changes invalidate the earlier exact-SHA certification as a current claim. Bounded authenticated deployed value parity and tenant isolation passed for Campaign3 on `31ca1b08`; provider write/failure behavior, a natural scheduler cycle, the reusable checked-in validator, the current `4bada059` runtime, and the remaining whole-tab certification gates are still outstanding.

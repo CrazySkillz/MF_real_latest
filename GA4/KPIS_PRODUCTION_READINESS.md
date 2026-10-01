@@ -26,6 +26,20 @@ This file defines whether the current implementation is production-ready, what h
 
 <!-- ga4-kpi-certification-status: UNVERIFIED -->
 
+### October 1, 2026 exact-revision result
+
+On deployed application `48bf6116384b64af0200640bb945c2b07c4c2f30`, the bounded
+Campaign3 lifecycle packet passed duplicate create/edit rejection, create/read/
+partial-edit/full-edit/delete, invalid-value preservation, standard-value
+sentinel handling, client isolation, cross-owner denial, child-row cleanup, and
+disposable report cleanup. All eight configured KPI cards, the Tracker,
+Notifications, Insights findings including the intentional 12-item visible
+limit, and the browser KPI PDF matched exact current values. The read-only
+consumer validation changed no campaign persistence. Manual GA4 daily execution
+correctly returned `409 GA4_DAILY_HISTORY_SCHEDULER_MANAGED`; the current
+process-wide scheduler health is failed, so a successful natural aligned cycle
+remains required. Status stays `UNVERIFIED`.
+
 ### September 28, 2026 current decision
 
 **Result: UNVERIFIED for whole-tab production readiness on deployed runtime `29fcacfefa4b42beb94ea752fd0518fbca47f597`.**

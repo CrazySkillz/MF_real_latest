@@ -7,7 +7,7 @@ Before using this document to answer an audit, review, or production-readiness q
 
 2026-09-21 historical dated decision: the bounded GA4 Reports surface was **CLEAN-CERTIFIED / PRODUCTION_READY** at exact deployed runtime `a7271fc18058b6db78a11e88bf79b887abda5f44`. The exact runtime, configuration, dependency impact, evidence, exclusions, and zero remaining in-boundary gates are recorded in `GA4/REPORTS_CERTIFICATION_2026-09-21.md`. Older narrative SHA references below are revision-specific history where they differ.
 
-2026-09-29 current decision: **UNVERIFIED** as a whole at exact deployed runtime `3d4c792f2670d4f313349b2849bf8bab54a43637`. The attached browser Insights PDF supplies bounded current evidence for Campaign3, but the post-certificate scheduler and Insights changes have not received a complete Reports recertification. Current Ad Comparison browser and scheduled PDFs also remain out of parity with the live Revenue Breakdown because they emit source parent/child rows and no `TOTAL` row. The historical September 21 certificate does not carry forward to this revision.
+2026-10-01 current decision: **UNVERIFIED** as a whole. The latest recorded deployed evidence in this document is runtime `3d4c792f2670d4f313349b2849bf8bab54a43637`. The attached browser Insights PDF supplies bounded Campaign3 evidence, but the post-certificate scheduler and Insights changes have not received a complete Reports recertification. Current Ad Comparison browser and scheduled PDFs also remain out of parity with the live Revenue Breakdown because they emit source parent/child rows and no `TOTAL` row. Later shared branded-PDF changes, including the cream/pastel-orange shell, top-right logo, removal of vertical section bars, and revised chart styling, also require proportionate current-artifact validation. The historical September 21 certificate does not carry forward to the current implementation.
 
 Post-certificate implementation changes (updated 2026-09-29): due scheduled GA4 reports for active real GA4 campaigns are deferred until the ordered daily pipeline records an exact campaign/reporting-date completion marker. The check occurs before `report_send_events` insertion, allowing the scheduler to retry without consuming the due slot. Readiness requires the refreshed financial/GA4 inputs, KPI/Benchmark recompute, financial and aggregate snapshots, confirmed Executive Summary snapshot, and campaign alert checks. The marker is persisted on the exact Executive Summary daily snapshot and restored after a server restart. Missing or unverifiable readiness fails closed, while a failed unrelated campaign does not block readiness for a successfully completed campaign.
 
@@ -15,7 +15,7 @@ Browser Insights reports now load the dedicated completed-day history while the 
 
 ## Purpose
 
-This file is the GA4 `Reports` readiness narrative and historical evidence source. The dated certificate above controls the exact current boundary. Campaign DeepDive is explicitly outside this certification.
+This file is the GA4 `Reports` readiness narrative and historical evidence source. `GA4/REPORTS.md` and the current decision above control the present status; the dated certificate controls only its exact historical boundary. Campaign Diagnostics reports (`campaign_deepdive` internally) are outside the GA4 certificate.
 
 Use this file when asked whether GA4 Reports is robust, accurate, logical, production-ready, or suitable as a template for another platform source such as Meta, Google Ads, LinkedIn, or a custom integration.
 

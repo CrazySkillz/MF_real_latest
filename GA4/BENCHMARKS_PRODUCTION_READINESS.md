@@ -8,6 +8,16 @@ A previous production-ready statement is not evidence. A passing test suite is n
 
 2026-09-28 current dependency finding: the browser imported-Revenue reads and the persisted completed-day financial recompute had used different cutoff dates. The deployed correction aligns those reads to the campaign-timezone latest completed day and keeps newer source definitions visible while excluding their values from the prior completed-day Benchmark inputs.
 
+2026-10-01 exact-revision result: deployed application
+`48bf6116384b64af0200640bb945c2b07c4c2f30` failed provider/persisted/scheduler
+parity before the disposable Benchmark mutation phase. Campaign3's Conversions
+Benchmark stored and displayed `406`, while the live provider scheduler
+candidate was `426` (`+20`). Manual daily execution correctly failed closed with
+the scheduler-managed `409` contract. No temporary Benchmark was created in this
+run, the temporary authenticated session was revoked, and status remains
+`UNVERIFIED` until a successful aligned publication writes and propagates the
+same value.
+
 ## Purpose
 
 This file is the canonical production-readiness narrative and historical evidence source for the GA4 `Benchmarks` tab. Its `Current Status` section is the controlling current decision. `GA4/OVERVIEW_BENCHMARKs_CERTIFICATION_2026-09-15.md` and `GA4/OVERVIEW_BENCHMARKS_DEPENDENCY_MANIFEST_2026-09-15.md` remain historical exact-revision evidence.

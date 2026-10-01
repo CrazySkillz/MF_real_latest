@@ -12,7 +12,7 @@ The `+` buttons on `Total Revenue` and `Total Spend` are source-management entry
 
 They are not inline edit controls.
 
-GA4 platform-level `Total Revenue` and `Total Spend` are source-of-truth financial values for downstream campaign financial analysis. Campaign DeepDive Budget & Financial Analysis consumes those source-backed totals through the aggregate contract and must not override or filter them with budget pacing metadata.
+GA4 platform-level `Total Revenue` and `Total Spend` are source-of-truth financial values for downstream campaign financial analysis. Campaign Diagnostics Budget & Financial Analysis consumes those source-backed totals through the aggregate contract and must not override or filter them with budget pacing metadata.
 
 Required pattern:
 
@@ -29,14 +29,17 @@ Visible Overview layout:
 
 - `Revenue` subsection:
   - `Total Revenue`
-  - `Pipeline Proxy`, showing `Not configured` when no eligible CRM source is configured
 - `Spend` subsection:
   - `Total Spend`
+- `Pipeline Proxy` subsection:
+  - `Expected Revenue`, showing `Not configured` when no eligible CRM source is configured
 - `Performance` subsection:
   - `Profit`
   - `ROAS`
   - `ROI`
   - `CPA`
+
+`Revenue`, `Spend`, and `Pipeline Proxy` form one three-column row on desktop and stack responsively on narrower screens.
 
 This layout is presentation-only. It must not change financial source-of-truth, source modal provenance, edit/delete behavior, or calculations.
 
@@ -55,14 +58,14 @@ Current implementation alignment (2026-09-30):
 - a duplicate Google Ads import does not create another active source; the user must edit the existing source
 - an earlier bounded live UI observation showed one selected Google Ads campaign at `EUR 4.89`, 43 impressions, and 1 click. At the `2026-09-28` Campaign3 cutoff, its dated Spend records contribute the same `EUR 4.89` to Total Spend and the budget-period Spend derivative. These observations do not certify edit, disconnect, failure recovery, reports/email, or a natural scheduler cycle
 
-Campaign DeepDive financial provenance rule:
+Campaign Diagnostics financial provenance rule:
 
 - Budget & Financial Analysis may use the shared campaign aggregate for totals such as revenue, spend, ROAS, ROI, CPA, and CVR
 - detailed financial input rows must come from explicit GA4 financial provenance, not from the high-level `performanceSummary.sources` list
 - `/api/campaigns/:id/outcome-totals.financialInputs.revenue` should include native GA4 revenue plus active GA4-context revenue breakdown rows
 - `/api/campaigns/:id/outcome-totals.financialInputs.spend` should include active GA4-context and supported legacy null-context spend breakdown rows, never explicit foreign-platform spend
 - current `/api/campaigns/:id/outcome-totals.performanceSummary` financial values should use the same selected GA4 native financial revenue/conversion source as the GA4 Overview financial cards, while the top-level `/outcome-totals.ga4` response may still represent the requested date-range GA4 view
-- this keeps Campaign DeepDive aligned with the GA4 `Total Revenue -> Sources` and `Total Spend -> Sources` modal provenance while still avoiding duplicate setup or showing child inputs as main Connected Platforms
+- this keeps Campaign Diagnostics aligned with the GA4 `Total Revenue -> Sources` and `Total Spend -> Sources` modal provenance while still avoiding duplicate setup or showing child inputs as main Connected Platforms
 - imported spend labels inside GA4, such as Google Sheets or LinkedIn spend imports, are not connected ad platforms; they can feed total spend, ROI, and ROAS, but Budget Allocation should only show allocation sources after a spend-capable ad platform is connected in `Connected Platforms`
 - Budget & Financial Insights should use aggregate financial metrics for ROAS, ROI, CPA, spend, budget utilization, CTR, CVR, CPC, and CPM; source-performance and reallocation insights should use only spend-capable main connected sources, not GA4 child spend labels
 - Budget & Financial trend indicators should compare current aggregate values only against compatible snapshot `metrics.performanceSummary` data with the same aggregate version; legacy top-level snapshot totals must not be mixed into current aggregate comparisons
@@ -74,7 +77,7 @@ Campaign DeepDive financial provenance rule:
 - Campaign metadata dates are not financial reporting or aggregation boundaries in V1. `pacingStartDate` and `pacingEndDate` bound only the separate Budget Pacing Spend derivative used by budget calculations and Budget report equivalents. A source connector may still have its own provider-import window; that controls which source records are materialized, not which materialized records the aggregate financial totals include.
 - Native GA4 Revenue and its matching financial Conversions use the saved initial-import date through the latest completed reporting day.
 - Imported Revenue and Spend use every mapped record materialized by an active source that was created on or before the campaign-timezone latest completed reporting day, with the record date also on or before that day. Sources and records added during the current day remain materialized and visible but become calculation-eligible only after that reporting day completes. Legacy route or UI names such as `revenue-to-date`, `spend-to-date`, and `source-to-date` do not mean "since app creation" or "since a campaign metadata date."
-- Overview, Campaign DeepDive, KPI/Benchmark evaluation, alerts, snapshots, and reports must use these same boundaries.
+- Overview, Campaign Diagnostics, KPI/Benchmark evaluation, alerts, snapshots, and reports must use these same boundaries.
 - Campaign `createdAt` is app metadata and must not be shown or used as a marketing campaign start date.
 
 ### Total Revenue
@@ -104,7 +107,7 @@ Important clarification:
 - if old synthetic `revenue_records` rows with `revenue_source_id = 'ga4_daily_metrics'` are found, cleanup must target only the proven orphan row IDs and must not delete active imported CRM, ecommerce, CSV, Google Sheets, manual, or other source-backed revenue rows
 - Budget & Financial Analysis pacing metadata, including budget-period start and end dates entered from the Budget Pacing & Burn Rate card, must not filter GA4 `Total Revenue`, `Revenue Breakdown`, or the `Revenue Sources` modal. Those platform-level revenue values are source-backed and use the campaign-timezone latest-completed-day cutoff.
 - the `GA4 Revenue` source entry in the `Total Revenue` source modal should show that full aggregated GA4 amount, not a partial or single-day figure
-- native GA4 headline and exact-date Revenue comparisons use the authoritative scoped aggregate. Campaign DeepDive Trend Analysis current Revenue prefers a compatible `financial_daily_snapshot_v1` and otherwise uses the authoritative persisted `performance_summary_aggregate_v3` total; it never substitutes the sum of daily Revenue rows. For the persisted-only outcome request, the live to-date provider candidate is intentionally absent, so an imported-Revenue campaign may retain native GA4 authority only from a synchronized, compatible Overview snapshot; it fails closed when that snapshot is also invalid. Exact-date comparison prefers the matching snapshot and may invoke the existing scoped read-only GA4/source derivation when the snapshot is absent; that derivation writes no history and never reuses the current value as the baseline
+- native GA4 headline and exact-date Revenue comparisons use the authoritative scoped aggregate. Campaign Diagnostics Trend Analysis current Revenue prefers a compatible `financial_daily_snapshot_v1` and otherwise uses the authoritative persisted `performance_summary_aggregate_v3` total; it never substitutes the sum of daily Revenue rows. For the persisted-only outcome request, the live to-date provider candidate is intentionally absent, so an imported-Revenue campaign may retain native GA4 authority only from a synchronized, compatible Overview snapshot; it fails closed when that snapshot is also invalid. Exact-date comparison prefers the matching snapshot and may invoke the existing scoped read-only GA4/source derivation when the snapshot is absent; that derivation writes no history and never reuses the current value as the baseline
 - `ga4_daily_metrics.revenue` is currently stored at two decimal places, so summing individually quantized daily values can differ from an aggregate that retains more underlying precision. A current-revision `2026-09-27` read-only Campaign3 check observed `EUR 37,518.74` from the authoritative aggregate and `EUR 37,518.72` from 35 stored daily rows covering `2026-08-23` through `2026-09-26`; this evidence confirms the application source choice but does not inspect GA4's internal aggregation implementation
 - this bounded few-cent difference is a known precision limitation, not permission to add a synthetic adjustment row, assign the residual to an arbitrary date, or report the daily sum as the authoritative native GA4 imported-window amount
 - exact cent-for-cent daily-to-aggregate Revenue reconciliation is excluded from the current readiness claim until a next-version migration preserves higher provider precision, re-fetches/backfills exact-source daily values, and revalidates all affected browser, report, snapshot, and downstream consumers

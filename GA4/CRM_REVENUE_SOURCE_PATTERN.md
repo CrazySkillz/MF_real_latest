@@ -22,7 +22,7 @@ Read this with:
 - The selected CRM attribution field supplies the values used to associate CRM records with the MimoSaaS campaign. When the selected field is Opportunity Name or Deal Name, each selected value normally identifies one opportunity or deal; another field can group multiple records under one selected value.
 - `campaignMappings` map each selected CRM value to a selected GA4 campaign value. They do not change the CRM record's stage or amount.
 - Confirmed revenue and Pipeline Proxy are different measures. Confirmed Closed Won records feed Total Revenue. Records in the chosen open stage feed Pipeline Proxy only.
-- Pipeline Proxy never feeds Total Revenue, Profit, ROI, ROAS, CPA, revenue-dependent KPIs or Benchmarks, Ad Comparison, Insights, Reports, or Campaign DeepDive confirmed financial totals.
+- Pipeline Proxy never feeds Total Revenue, Profit, ROI, ROAS, CPA, revenue-dependent KPIs or Benchmarks, Ad Comparison, Insights, Reports, or Campaign Diagnostics confirmed financial totals.
 
 ## Canonical Wizard Flow
 
@@ -53,6 +53,13 @@ Review Settings must show:
 - selected CRM values and their confirmed amounts
 - a two-column CRM-to-GA4 mapping, with the selected opportunity/deal on the left, a directional arrow, and its GA4 campaign on the right
 - `Not mapped` when a selected value has no GA4 campaign mapping
+
+Current review presentation:
+
+- field labels use the larger review text and their selected values use the smaller value text in both Salesforce and HubSpot
+- Salesforce labels its proxy summary `Pipeline proxy - early signal` and renders `<selected stage>: <amount>` directly underneath
+- Salesforce opportunity mappings and HubSpot deal mappings use directional arrows; mapped GA4 campaign values occupy the right-hand column aligned with the review screen's right-side detail column
+- HubSpot retains its `Pipeline proxy` label and the explanatory `Open-stage early signal. Not included in Total Revenue.` copy when a nonzero or newly configured proxy summary is shown
 
 ## Add, Edit, And Delete Contract
 

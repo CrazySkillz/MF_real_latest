@@ -23,6 +23,16 @@ Only evidence from the same deployed commit, production-data state, and document
 <!-- ga4-overview-current-status -->
 <!-- ga4-overview-certification-status: UNVERIFIED -->
 
+2026-10-01 exact-revision result: the complete authenticated audit ran against
+deployed application `48bf6116384b64af0200640bb945c2b07c4c2f30` and failed the
+completed-day parity gate. The required reporting boundary was `2026-09-30`,
+but Campaign Breakdown ended `2026-09-29`. Production scheduler health recorded
+the same Campaign3 failure as
+`GA4_OVERVIEW_RECONCILIATION_FAILED:breakdown_conversions+breakdown_revenue`.
+The audit transaction rolled back and its temporary Clerk session was revoked.
+Overview remains `UNVERIFIED`; this is a confirmed current blocker rather than
+an unrun gate.
+
 **Current section status: UNVERIFIED.** The multi-campaign daily UTM aggregation, scheduler-owned Overview snapshot, Conversion Events attribution/reconciliation, and completed-day financial source paths have changed since the recorded certificates. Those certificates are historical for their exact revisions. Current deployed Campaign3 evidence passes a bounded UI/API reconciliation for Summary, Revenue, Spend, Performance, Campaign Breakdown, the Landing Pages unavailable state, and Conversion Events through `2026-09-27`, but it is one exact campaign/property/window/source fixture and does not recertify the section. Populated Landing Pages, source lifecycle and failure behavior, report parity, other configurations, and the natural scheduler gate retain their separate validation status.
 
 2026-09-27 current Conversion Events evidence: deployed runtime `3e73869762401bcbcf35669c1d1b9a680d441752` ran the snapshot bootstrap for Campaign3 hash `6caf32c94dbe` successfully. The persisted synchronized snapshot covered property `542352127`, saved scope `yesop_brand_search` plus `yesop_paid_social`, and `2026-08-23` through `2026-09-26`. Its only row was `purchase` with 145 Conversions, 145 Event Count, 145 Users, and EUR 37,518.74 native revenue. Stored validation status was `passed`; returned Conversions matched the scheduler-expected 145, and the snapshot retained the exact accepted Data API request. The user independently reproduced 145 Total users, 145 Key events, and 145 Event count in GA4 Exploration using the same date, event, and exact page-location UTM scope. A property-wide Exploration without the Campaign3 filter returned 453 and is intentionally not comparable. Focused scheduler/snapshot tests passed 38/38; TypeScript and the production build passed. This is bounded deployed/provider evidence, not whole-Overview certification.

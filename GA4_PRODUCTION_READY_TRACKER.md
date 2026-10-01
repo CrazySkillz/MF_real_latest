@@ -159,6 +159,7 @@ Mock-live GA4 seed-data support note:
 - conversions in the app are GA4-native conversions from the GA4 Data API and therefore depend on the GA4 property's key-event configuration
 - root cause of confusing metric increases without rerunning the script: GA4 Measurement Protocol events can be processed asynchronously, and the app can refetch updated GA4 Data API values after Google finishes processing already-sent events
 - seed-script hygiene fix: the local mock-live script should send engagement parameters on `page_view` events, but should not send an additional standalone `user_engagement` event because some GA4 test properties mark that event as a key event and inflate native GA4 conversions
+- mock-live landing-page attribution requires a `campaign_details` event before each session's first `page_view`, with a timestamp-derived session ID matching the event date and ordered event timestamps; the seed now fails before collection when Google's strict debug endpoint reports payload validation errors
 - validation completed locally: `python -m py_compile scripts/seed_ga4_mock_campaigns.py`
 - production app boundary: this is validation tooling only; it does not change app response shapes, GA4 architecture, or stored production campaign data
 

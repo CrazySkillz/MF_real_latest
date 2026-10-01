@@ -1,4 +1,4 @@
-# Campaign DeepDive Trend Analysis Production Readiness
+# Campaign Diagnostics Trend Analysis Production Readiness
 
 ## Mandatory Anti-Overclaim Rule
 
@@ -6,7 +6,38 @@ Before using this document to answer an audit, review, or production-readiness q
 
 ## Purpose
 
-Track the outstanding work required to make the Campaign DeepDive `Trend Analysis` section production ready.
+Track the outstanding work required to make the Campaign Diagnostics `Trend Analysis` section production ready. The filename and internal `campaign_deepdive` identifiers retain the former product name for compatibility.
+
+## Current Presentation Reconciliation - 2026-10-01
+
+The current page uses one `Trend Analysis` heading at the same section-title
+scale and top spacing as Performance Summary. The former duplicate page-top
+title, campaign name, source label, and `Back to Campaign` link are removed;
+client, campaign, and `Back to Campaign Overview` now appear in the sidebar.
+The section previously described in dated evidence as `Connected-Source
+Performance Summary` is now labelled `Trend Analysis`. Its cumulative headline
+values and 7/14/30/90-day selector behavior are unchanged by this naming and
+layout update.
+
+The current Trend Analysis PDF uses the shared cream, pastel-orange,
+top-right-logo report shell. Chart containers have no purple border and the
+Daily Traffic and Conversion Quality series use thin strokes. Section headings
+do not have vertical orange accent bars. These presentation changes are outside
+the historical certificate and require proportionate report-parity
+revalidation.
+
+### Exact-revision verification result - 2026-10-01
+
+Deployed application revision `48bf6116384b64af0200640bb945c2b07c4c2f30`
+failed the current page/report parity gate. Campaign3 displayed Spend
+`USD 2,888.75`, Conversions `406`, Sessions `3,131`, and Users `3,132`, but
+withheld Revenue, ROAS, and ROI as `Waiting for daily scheduler`. It also
+withheld Campaign Performance Trend daily values because complete
+scheduler-stored history was unavailable. The direct Trend Analysis PDF rendered
+the aggregate Revenue, Spend, ROAS, ROI, Conversions, Sessions, and Users values,
+so the page and report do not currently present the same availability state.
+Trend Analysis remains `UNVERIFIED` until aligned scheduler publication succeeds
+and exact page/API/PDF parity is rerun.
 
 ## Ordered Daily Publication Alignment (updated 2026-09-28)
 
@@ -19,7 +50,7 @@ The intended product behavior is:
 - If only GA4 is connected, Trend Analysis uses only GA4-capable trend metrics.
 - Revenue and spend sources connected inside a platform, such as Salesforce, HubSpot, Shopify, CSV, or Google Sheets imports inside GA4, are platform child inputs. Users do not connect these as separate main `Connected Platforms`; they can only feed financial totals through the parent platform/campaign financial path.
 - As main Connected Platforms such as GA4, LinkedIn, Meta, Google Ads, Google Sheets, Custom Integration, TikTok, Instagram, and future integrations are connected, their available time-series metrics must be automatically included in Trend Analysis without double-counting.
-- Campaign DeepDive subsections should fetch and aggregate main metrics from all main sources shown in the campaign `Connected Platforms` section. They should not require users to create duplicate revenue/spend inputs inside Campaign DeepDive for child systems already configured within a parent platform.
+- Campaign Diagnostics subsections should fetch and aggregate main metrics from all main sources shown in the campaign `Connected Platforms` section. They should not require users to create duplicate revenue/spend inputs inside Campaign Diagnostics for child systems already configured within a parent platform.
 - The section should provide a marketing-executive-ready view of how campaign metrics change over time, not another platform-specific drilldown.
 
 ## Historical Certified Boundary — 2026-09-20
@@ -85,7 +116,7 @@ Deployed revision `9393d9de11abf07a7376e25f05a85e6af56caedf` returned healthy, a
 
 Deployed revision `88dfd3714d6b2b5c91c935021ccabc6de3f70063` fixes the persisted-only imported-Revenue authority guard described above. Before the fix, `persistedOnly=1` correctly skipped the live to-date provider query, but the imported-Revenue guard then rejected native GA4 totals even when the synchronized Overview snapshot was valid. This made current Revenue, ROAS, and ROI unavailable in Trend Analysis. The fix accepts that exact synchronized Overview candidate without changing response fields, source windows, daily-row behavior, or historical-comparison rules.
 
-User-provided Campaign3 UI evidence and authenticated API/persisted-fact reconciliation on this revision cover the `Connected-Source Performance Summary` through `2026-09-28`:
+User-provided Campaign3 UI evidence and authenticated API/persisted-fact reconciliation on this revision cover the headline summary, now labelled `Trend Analysis`, through `2026-09-28`:
 
 | Value | Verified current result |
 | --- | ---: |
@@ -139,7 +170,7 @@ The page-level selector defaults to `Last 7 days`; `Last 14 days`, `Last 30 days
 
 ### GA4 Dependency And One-Way Data-Flow Contract
 
-Trend Analysis does not copy displayed values or calculations from GA4 UI tabs. It follows the Campaign DeepDive dependency rule in `ARCHITECTURE_USER_JOURNEY.md` by consuming the same authoritative persisted source records and shared campaign aggregate used by those tabs.
+Trend Analysis does not copy displayed values or calculations from GA4 UI tabs. It follows the Campaign Diagnostics dependency rule in `ARCHITECTURE_USER_JOURNEY.md` by consuming the same authoritative persisted source records and shared campaign aggregate used by those tabs.
 
 | GA4 area | Relationship to Trend Analysis |
 | --- | --- |
@@ -150,7 +181,7 @@ Trend Analysis does not copy displayed values or calculations from GA4 UI tabs. 
 | Insights | Not an input to Trend Analysis. Trend recommendations are derived independently from the current Trend view's available signals. |
 | Reports | A downstream output consumer of Trend Analysis. Reports never supply Trend calculations or current values. |
 
-This one-way pattern applies to every Campaign DeepDive subsection: persisted connected-source records feed documented calculations and the shared campaign aggregate, which feed Campaign DeepDive consumers. Derived platform tabs and report outputs must not become upstream sources for Campaign DeepDive base metrics.
+This one-way pattern applies to every Campaign Diagnostics subsection: persisted connected-source records feed documented calculations and the shared campaign aggregate, which feed Campaign Diagnostics consumers. Derived platform tabs and report outputs must not become upstream sources for Campaign Diagnostics base metrics.
 
 ### Current Value And Formula Contract
 
@@ -266,7 +297,7 @@ Preserve the documented split in `ARCHITECTURE_USER_JOURNEY.md`:
 
 - `Connected Platforms` = source-level campaign inputs.
 - `View Detailed Analytics` = platform-specific drilldown.
-- `Campaign DeepDive` = campaign-wide cross-platform analysis.
+- `Campaign Diagnostics` = campaign-wide cross-platform analysis.
 - `Trend Analysis` = campaign-level time-series analysis based on connected-source data.
 
 Do not turn Trend Analysis into another platform-specific page.
@@ -303,7 +334,7 @@ The former daily-financial query-parameter mismatch is fixed: the retained compa
   - Derives daily efficiency metrics only when the required explicit source inputs exist.
 
 - `client/src/pages/campaign-detail.tsx`
-  - Campaign DeepDive launcher.
+  - Campaign Diagnostics launcher.
   - Links to the Trend Analysis subsection.
 
 - `client/src/pages/campaign-performance.tsx`
@@ -327,7 +358,7 @@ The former daily-financial query-parameter mismatch is fixed: the retained compa
   - Should be reused or extended only where it fits the existing architecture.
 
 - `server/scheduler.ts`
-  - Scheduler snapshots must align with the same aggregate model used by Campaign DeepDive sections.
+  - Scheduler snapshots must align with the same aggregate model used by Campaign Diagnostics sections.
 
 - `server/report-scheduler.ts`
   - Builds the one-section Trend PDF body shared by direct downloads, snapshots, and scheduled attachments.
@@ -643,7 +674,7 @@ Manual validation guidance:
 
 - Rename the final tab to `Insights`.
 - Replace external keyword trend widgets with executive recommendations based on the aggregate-backed Trend sections.
-- Use the same Campaign DeepDive pattern as Performance Summary, Budget & Financial Analysis, and Platform Comparison: connected-source data in earlier tabs feeds a final recommendation/insights tab.
+- Use the same Campaign Diagnostics pattern as Performance Summary, Budget & Financial Analysis, and Platform Comparison: connected-source data in earlier tabs feeds a final recommendation/insights tab.
 - Recommendations must be based only on available connected-source trend data and should explain unavailable history or missing source inputs instead of inventing metrics.
 
 Status: completed.
@@ -651,7 +682,7 @@ Status: completed.
 Root cause fixed:
 
 - The final Trend Analysis tab was still `Market Trends`, which rendered optional Google Trends keyword widgets instead of campaign performance recommendations.
-- That did not match the current Campaign DeepDive subsection pattern, where the final tab provides executive-ready insights based on data already shown in the subsection.
+- That did not match the Campaign Diagnostics subsection pattern recorded for that historical tabbed implementation, where the final tab provided executive-ready insights based on data already shown in the subsection.
 - Commit 6 originally renamed the tab to `Insights` and added `trendInsights`. The current consumer mounts those recommendations directly in the comprehensive Executive View.
 - Insights now identify connected-source coverage, historical comparison readiness, performance trend movement, efficiency input availability, web funnel opportunities, and single-source limitations.
 - The tab does not create new metrics and does not use external Google Trends widgets for campaign performance recommendations.

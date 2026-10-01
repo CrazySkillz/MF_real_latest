@@ -1,4 +1,4 @@
-# Campaign DeepDive Executive Summary Production Readiness
+# Campaign Diagnostics Executive Summary Production Readiness
 
 ## Mandatory Anti-Overclaim Rule
 
@@ -6,7 +6,7 @@ Before using this document to answer an audit, review, or production-readiness q
 
 ## Current Authoritative Implementation And Historical Certification
 
-This section is the current source of truth for Campaign DeepDive `Executive Summary`. The 2026-08-27 certification snapshot and implementation-plan material later in this file are retained as historical context and are non-normative where they conflict with this section.
+This section is the current source of truth for Campaign Diagnostics `Executive Summary`. The filename and internal `campaign_deepdive` identifiers retain the former product name for compatibility. The 2026-08-27 certification snapshot and implementation-plan material later in this file are retained as historical context and are non-normative where they conflict with this section.
 
 The exact deployed evidence for the historical certified revision is recorded in `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_CERTIFICATE_2026-09-21.md`. Current behavior and recertification status are defined in this section. The earlier `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_CERTIFICATE_2026-09-20.md` remains an immutable historical certificate for its own revision and production state.
 
@@ -25,9 +25,9 @@ The exact deployed evidence for the historical certified revision is recorded in
 - child financial configuration admitted at the completed-day boundary: five active Revenue sources and three active Spend sources
 - connected paid-media main sources: none
 
-The current evidence proves the authenticated Campaign3 persisted inputs, production API responses, calculations, source composition, current UI contract, focused regressions, and one authenticated direct nonpersisting Executive Summary PDF at the stated deployed revision. It does not certify saved-report snapshot lifecycle, scheduled generation or delivery, inbox receipt, natural scheduler firing on this exact revision, other campaigns, other source mixes, paid-media variants, financial-source mutation lifecycles, or the complete Campaign DeepDive product. Those paths remain unverified unless a separate current evidence record covers them.
+The current evidence proves the authenticated Campaign3 persisted inputs, production API responses, calculations, source composition, current UI contract, focused regressions, and one authenticated direct nonpersisting Executive Summary PDF at the stated deployed revision. It does not certify saved-report snapshot lifecycle, scheduled generation or delivery, inbox receipt, natural scheduler firing on this exact revision, other campaigns, other source mixes, paid-media variants, financial-source mutation lifecycles, or the complete Campaign Diagnostics product. Those paths remain unverified unless a separate current evidence record covers them.
 
-### Post-Certification Current Changes - updated 2026-09-29
+### Post-Certification Current Changes - updated 2026-10-01
 
 The current implementation removes the five duplicate metric cards below `Marketing Funnel Performance` and adds `Spend` to the Bottom of Funnel row. The row now presents Conversions, Revenue, Spend, ROAS, and Return on Investment once. Recommended Actions also uses grammatically complete Benchmark status text and no longer renders the connected-web-analytics scope note or the internal `Website Outcomes` category subtitle. The category remains an internal discriminator for evidence construction.
 
@@ -35,20 +35,52 @@ Two later data-path corrections are also current. First, the verified-current GA
 
 The current shared Executive Summary PDF renderer adds Spend to the financial metric rows. In its no-paid-media web-evidence branch, it uses the same eligible website-outcome exception selection and ordering as the page to derive the recommendation title, evidence, target context, and next action; otherwise it renders the no-evidence action state. The report retains an explicit report-specific Risk Assessment and conditionally shows the Data Accuracy Notice when website evidence exists without a connected paid-media source. It keeps the complete Recommended Actions block together on a page when the block fits on a fresh page, and formats the generated timestamp in the campaign reporting timezone with the IANA zone name; invalid or missing timezone configuration falls back to UTC.
 
+The current page presentation also removes the separate campaign name and
+page-top back link; client, campaign, and `Back to Campaign Overview` now live
+in the sidebar. The visible `7-Day Snapshot Trajectory` and `History not
+comparable yet` headings are removed. The trajectory or incompatibility detail
+remains in the top card on the same row as `Risk Level`, using the same small
+text scale. `Executive Summary`, `Marketing Funnel Performance`, `KPIs &
+Benchmarks`, and `Recommended Actions` use the same section-title scale, while
+exception/no-exception card titles use the smaller card-title scale. The
+branded PDF uses the shared cream, pastel-orange, top-right-logo shell without
+vertical orange section bars. These presentation changes are not covered by
+the dated deployed certificate.
+
+### Exact-revision verification checkpoint - 2026-10-01
+
+Deployed application revision `48bf6116384b64af0200640bb945c2b07c4c2f30`
+passed an authenticated, non-persisting Campaign3 page/API render check for the
+current `performance_summary_aggregate_v3` window `2026-07-02` through
+`2026-09-30`. Executive Summary, Risk Level, Marketing Funnel Performance,
+KPIs & Benchmarks, and Recommended Actions rendered, and the visible current
+Conversions and Revenue matched the aggregate. The direct Executive Summary PDF
+matched seven exact current metrics. Snapshot capture was deliberately rewritten
+to a non-persisting read for this render audit. This is a bounded current-page
+and direct-PDF pass; upstream KPI/Benchmark discrepancies, alternative source
+mixes, snapshot lifecycle, and a successful aligned scheduler cycle remain
+unverified.
+
 ### Current UI Contract
 
 Executive Summary is one continuous page containing:
 
-1. `7-Day Snapshot Trajectory`, `Risk Level`, and a concise four-bullet Executive Summary.
+1. Trajectory or history-compatibility detail, `Risk Level`, and a concise four-bullet Executive Summary. The former `7-Day Snapshot Trajectory` title is not visible.
 2. `Marketing Funnel Performance`, including all funnel stages and the five Bottom of Funnel metrics without a duplicate card row.
 3. `KPIs & Benchmarks`, containing the applicable KPI and Benchmark exception, no-exception, or unavailable cards.
 4. `Recommended Actions`, including evidence, target context, a freshness warning when applicable, and the fail-closed no-action state.
 
 Current presentation details:
 
-- `7-Day Snapshot Trajectory` and `Marketing Funnel Performance` use the same title size.
+- `Executive Summary`, `Marketing Funnel Performance`, `KPIs & Benchmarks`,
+  and `Recommended Actions` use the same section-title size.
+- `KPIs Needing Attention`, `Benchmarks Needing Attention`, and the
+  no-exception card titles use the smaller card-title size.
+- The trajectory/history detail and `Risk Level` share the top row; the former
+  `7-Day Snapshot Trajectory` and `History not comparable yet` headings are not
+  rendered.
 - The concise summary bullets show ROI, ROAS, Risk, and trajectory; the prior visible `Through YYYY-MM-DD` bullet is not rendered.
-- Incompatible history renders `History not comparable yet`, not the generic missing-history label.
+- Incompatible history renders the explanatory sentence `Earlier readings used different sources or reporting settings, so they cannot be compared safely.` without the former `History not comparable yet` heading.
 - An available exact-date financial fallback renders `Revenue compared with aligned financial history from seven days earlier.`; an available Executive Summary snapshot pair renders `Revenue compared with the matching Executive Summary reading from seven days earlier.`.
 - Bottom of Funnel places Conversions, Revenue, Spend, ROAS, and Return on Investment on one responsive row.
 - The former duplicate Total Revenue, Return on Ad Spend, Total Conversions, Sessions, and Users cards are not rendered.
@@ -374,7 +406,7 @@ The same natural timer mechanism was proven at `18:45 UTC`; the first post-resto
 | Available 7-day trajectory calculation | Partially verified | deterministic tests cover exact contract and thresholds; a two-point production history was not yet available |
 | Target-campaign daily scheduler propagation | Proven | natural timer run plus pre/post read-only persistence and UI snapshot comparison |
 | Exact post-restoration `22:00 UTC` firing | Unverified | permanent configuration and next run were verified, but that clock event had not occurred |
-| PDFs, Custom Reports, scheduled reports, and other downstream report consumers | Unverified/out of scope | reserved for the Campaign DeepDive Custom Reports audit |
+| PDFs, Custom Reports, scheduled reports, and other downstream report consumers | Unverified/out of scope | reserved for the Campaign Diagnostics Reports audit |
 | Paid-media and future connected-source variants | Unverified/out of scope | not enabled/configured in the certified GA4-first boundary |
 
 Subject to those explicit classifications and exclusions, the current GA4-first Executive Summary boundary is production-ready without extending the claim to unobserved or out-of-scope paths.
@@ -383,7 +415,7 @@ Subject to those explicit classifications and exclusions, the current GA4-first 
 
 ## Purpose
 
-Record the current Campaign DeepDive `Executive Summary` contract, evidence, classifications, and historical implementation work.
+Record the current Campaign Diagnostics `Executive Summary` contract, evidence, classifications, and historical implementation work.
 
 The intended product behavior is:
 
@@ -392,7 +424,7 @@ The intended product behavior is:
 - If only GA4 is connected, Executive Summary uses only GA4-capable metrics such as sessions, users, conversions, revenue, engagement, and valid campaign financial totals where available.
 - Revenue and spend sources connected inside a platform, such as Salesforce, HubSpot, Shopify, CSV, or Google Sheets imports inside GA4, are platform child inputs. Users do not connect these as separate main `Connected Platforms`; they can only feed financial totals through the parent platform/campaign financial path.
 - As main Connected Platforms such as GA4, LinkedIn, Meta, Google Ads, Google Sheets, Custom Integration, TikTok, Instagram, and future integrations are connected, their available metrics must be automatically included in the executive narrative without double-counting.
-- Campaign DeepDive subsections should fetch and aggregate main metrics from all main sources shown in the campaign `Connected Platforms` section. They should not require users to create duplicate revenue/spend inputs inside Campaign DeepDive for child systems already configured within a parent platform.
+- Campaign Diagnostics subsections should fetch and aggregate main metrics from all main sources shown in the campaign `Connected Platforms` section. They should not require users to create duplicate revenue/spend inputs inside Campaign Diagnostics for child systems already configured within a parent platform.
 - The section should provide a marketing-executive-ready campaign-wide narrative and recommendation layer, not another platform-specific drilldown.
 
 ## Required Architecture
@@ -401,7 +433,7 @@ Preserve the documented split in `ARCHITECTURE_USER_JOURNEY.md`:
 
 - `Connected Platforms` = source-level campaign inputs.
 - `View Detailed Analytics` = platform-specific drilldown.
-- `Campaign DeepDive` = campaign-wide cross-platform analysis.
+- `Campaign Diagnostics` = campaign-wide cross-platform analysis.
 - `Executive Summary` = executive narrative, risk, trajectory, funnel, and strategic recommendation layer based on connected-source data.
 
 Do not turn Executive Summary into another platform-specific page.
@@ -414,7 +446,7 @@ Do not produce paid-media recommendations when no connected main paid-media sour
 
 The following root-cause record describes the legacy implementation before the current certified boundary. `client/src/pages/executive-summary.tsx` still fetches `/api/campaigns/:id/executive-summary`, but current values also require the authoritative `/outcome-totals` aggregate and the dedicated trajectory route documented above.
 
-`server/routes-oauth.ts` builds that endpoint through a separate legacy aggregation path instead of consuming the shared connected-source aggregate used by the other Campaign DeepDive subsections.
+`server/routes-oauth.ts` builds that endpoint through a separate legacy aggregation path instead of consuming the shared connected-source aggregate used by the other Campaign Diagnostics subsections.
 
 Historical implementation issues:
 
@@ -704,7 +736,7 @@ Required regression coverage:
 - Do not render the separate Campaign Story paragraph below the funnel.
 - Update Executive Overview funnel wording for GA4-only and analytics-only cases.
 - Update Strategic Recommendations empty states and explanatory copy.
-- Remove visible demo controls from the production page if final production-readiness scope includes UI consistency with the other DeepDive subsections.
+- Remove visible demo controls from the production page if final production-readiness scope includes UI consistency with the other Campaign Diagnostics subsections.
 - Refetch current values while visible and on window focus, matching Performance Summary, Budget & Financial Analysis, and Platform Comparison.
 
 ## Historical Testing Plan
@@ -739,7 +771,7 @@ Status: Completed locally.
 
 Goal:
 
-- Make the Executive Summary endpoint consume the same connected-source aggregate contract used by the other Campaign DeepDive sections.
+- Make the Executive Summary endpoint consume the same connected-source aggregate contract used by the other Campaign Diagnostics sections.
 
 Scope:
 
@@ -802,10 +834,10 @@ Completed:
 - GA4-only campaigns now prefer web analytics metrics such as users or sessions when paid-media impressions or clicks are unavailable.
 - Left KPI Progress, Benchmark Comparison, health, risk, and Strategic Recommendations unchanged in the initial Overview commit; KPI Progress and Benchmark Comparison were later corrected after stale saved current values were traced.
 - Added regression coverage that proves the Overview tab uses `performanceSummary.totals` availability and no longer renders the legacy hard-coded impressions, clicks, or revenue expressions.
-- Follow-up root cause: the Overview tab was reading the aggregate correctly, but `/api/campaigns/:id/executive-summary` still prepared GA4 and financial aggregate inputs with a simpler path than `/api/campaigns/:id/outcome-totals`. That caused users, sessions, conversions, revenue, ROAS, and ROI to diverge from the shared DeepDive aggregate source truth.
+- Follow-up root cause: the Overview tab was reading the aggregate correctly, but `/api/campaigns/:id/executive-summary` still prepared GA4 and financial aggregate inputs with a simpler path than `/api/campaigns/:id/outcome-totals`. That caused users, sessions, conversions, revenue, ROAS, and ROI to diverge from the shared Campaign Diagnostics aggregate source truth.
 - Follow-up completed: Executive Summary now resolves GA4 current values through the same GA4 source-truth path, keeps persisted GA4 daily rows as fallback, and uses to-date spend/revenue financial provenance when building the aggregate.
 - Follow-up correction: the user-facing Connected Platforms GA4 card uses `/api/campaigns/:id/ga4-metrics` and `ga4Service.getMetricsWithAutoRefresh`; Executive Summary now uses that same connected-platform metric source for GA4 users, sessions, and conversions instead of the separate acquisition/simulation path.
-- Source-of-truth correction: the Executive Summary page now fetches `/api/campaigns/:id/outcome-totals` directly and uses `outcomeTotals.performanceSummary` for visible Executive Overview metrics, matching the proven connected-source aggregate consumed by the other Campaign DeepDive subsections.
+- Source-of-truth correction: the Executive Summary page now fetches `/api/campaigns/:id/outcome-totals` directly and uses `outcomeTotals.performanceSummary` for visible Executive Overview metrics, matching the proven connected-source aggregate consumed by the other Campaign Diagnostics subsections.
 - Executive-facing wording correction: unavailable clicks and impressions now render `Unavailable from connected sources` in the compact cards while raw aggregate unavailable reasons remain available for diagnostics.
 - Removed the Executive Summary period dropdown and fixed the page's aggregate request to the daily connected-source `90days` window so visible records are no longer changed by a local subsection date selector.
 - Funnel clarity correction: Marketing Funnel Performance now labels the active connected-source path and asks the business question each stage answers: whether enough people reached the campaign/site, whether they engaged through clicks or sessions, and whether visits became conversions and revenue.
@@ -998,7 +1030,7 @@ Scope:
 - Refetch aggregate-backed Executive Summary values while visible and on window focus.
 - Keep prior aggregate data during refetch where safe.
 - Avoid flashing legacy or empty fallback content before aggregate-backed content is ready.
-- Align tab presentation and production controls with the other DeepDive sections.
+- Align tab presentation and production controls with the other Campaign Diagnostics sections.
 - Add regression coverage for query key, refetch behavior, and no paid-media fallback flash.
 
 Implemented behavior:
@@ -1063,7 +1095,7 @@ Executive Summary is production ready only when:
 
 ## Historical Status Before The 2026-08-27 Certification
 
-Production-ready by local code path review, regression coverage, build validation, and user validation for the implemented connected-source aggregate pattern. Executive Summary now follows the same future-proofing pattern as the other Campaign DeepDive subsections: current sections consume the shared connected-source aggregate, and future or refined main Connected Platforms must enter through the documented aggregate contract before being marked production-ready for that source. Google Ads has separate local Connected Platforms evidence through Commit 29 in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Live OAuth deployed or production-like evidence remains separate. Executive Summary is ready to consume Google Ads through the same aggregate pattern for the validated local source path.
+Production-ready by local code path review, regression coverage, build validation, and user validation for the implemented connected-source aggregate pattern. Executive Summary now follows the same future-proofing pattern as the other Campaign Diagnostics subsections: current sections consume the shared connected-source aggregate, and future or refined main Connected Platforms must enter through the documented aggregate contract before being marked production-ready for that source. Google Ads has separate local Connected Platforms evidence through Commit 29 in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Live OAuth deployed or production-like evidence remains separate. Executive Summary is ready to consume Google Ads through the same aggregate pattern for the validated local source path.
 
 ### Executive Summary Status Map
 
@@ -1071,7 +1103,7 @@ Use this section first when resuming Executive Summary work.
 
 | Category | Status | Meaning |
 | --- | --- | --- |
-| Executive Summary implementation | Complete | The subsection follows the shared connected-source aggregate pattern used by the other Campaign DeepDive subsections. |
+| Executive Summary implementation | Complete | The subsection follows the shared connected-source aggregate pattern used by the other Campaign Diagnostics subsections. |
 | Connected-source aggregate future-proofing | Complete | `/executive-summary`, `/outcome-totals`, scheduler snapshots, KPI/Benchmark mapping, Risk inputs, and Strategic Recommendations are guarded for normalized main Connected Platform sources. |
 | Deployed validation evidence log | Evidence tracking only | This records QA evidence for real deployed source mixes. It is not an open implementation blocker. |
 | Future Connected Platform acceptance gate | Standing rule | Every new or refined main source must pass this checklist before that source is called production-ready in Executive Summary. |
@@ -1131,7 +1163,7 @@ Separate source work: Google Ads Connected Platforms refinement
 
 - [x] Google Ads-specific local metrics, attribution, source UI, and metric correctness have source-level proof recorded in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md` through Commit 29.
 - [ ] Google Ads live OAuth connect/select/refresh still needs deployed or production-like evidence before the live OAuth path is treated as production-ready; Commit 25 fixes the local campaign-selection-before-refresh blocker.
-- [x] The Executive Summary work above future-proofs aggregate consumption so the validated Google Ads source path can plug into Executive Summary using the same pattern as Budget & Financial Analysis and the other aggregate-backed DeepDive subsections.
+- [x] The Executive Summary work above future-proofs aggregate consumption so the validated Google Ads source path can plug into Executive Summary using the same pattern as Budget & Financial Analysis and the other aggregate-backed Campaign Diagnostics subsections.
 
 Completed generic future-source regression fix:
 
@@ -1179,8 +1211,8 @@ Evidence log:
 
 Proven:
 
-- Documentation requires Campaign DeepDive subsections to aggregate main Connected Platform metrics at the campaign level.
-- The other completed DeepDive subsections use the shared `/api/campaigns/:id/outcome-totals` and `performanceSummary` aggregate pattern.
+- Documentation requires Campaign Diagnostics subsections to aggregate main Connected Platform metrics at the campaign level.
+- The other completed Campaign Diagnostics subsections use the shared `/api/campaigns/:id/outcome-totals` and `performanceSummary` aggregate pattern.
 - Executive Summary still uses its existing endpoint, but Commit 1 now composes current metrics and source rows from the shared `performanceSummary` aggregate.
 - Commit 2 now makes the Executive Overview tab choose visible current metrics from `performanceSummary.totals` availability.
 - Commit 3 now makes health, risk, and trajectory use aggregate availability and compatible `performanceSummary` snapshots.

@@ -37,6 +37,68 @@ user may own multiple clients, and each client may contain multiple campaigns.
 Every section must isolate owners, clients, campaigns, connected accounts, and
 saved source configuration.
 
+### Current verification checkpoint - 2026-10-01
+
+This checkpoint records the latest verification pass against application
+revision `48bf6116384b64af0200640bb945c2b07c4c2f30`. Production `/api/health`
+returned that exact revision with HTTP 200.
+
+The seven current recertification packets passed their focused local regression
+guards after 13 stale assertions in eight test files were aligned with the
+already-implemented completed-day, scheduler-owned history, and current UI-copy
+contracts. These were test-only changes; application logic was not changed.
+
+| Review packet | Focused result | Exact-revision production result | Current status |
+| --- | ---: | --- | --- |
+| Checkpoint: GA4 Overview | 342 / 342 passed | **FAILED:** Campaign Breakdown ended `2026-09-29`; the required completed-day boundary was `2026-09-30`. | `UNVERIFIED` |
+| Checkpoint: GA4 KPIs | covered by the Overview/current packet | Exact-revision CRUD, validation, duplicate guards, tenant isolation, cleanup, eight cards, Tracker, Notifications, Insights, and browser-PDF parity passed. A successful natural scheduler cycle remains open. | `UNVERIFIED` |
+| Checkpoint: GA4 Benchmarks | 73 / 73 passed | **FAILED:** Conversions stored/UI value `406` differed from the provider scheduler candidate `426`. | `UNVERIFIED` |
+| Checkpoint: GA4 Insights | 128 / 128 passed | The authenticated read-only 60-day history passed through `2026-09-30` with 59 stored rows and scheduler-only enforcement. A successful natural publication cycle remains open. | `UNVERIFIED` |
+| Checkpoint: GA4 Reports | 110 / 110 passed | No exact-current GA4 Reports deployed lifecycle/artifact/delivery packet was run in this checkpoint. | `UNVERIFIED` |
+| Checkpoint: Performance Summary | current render and direct PDF checked | Configured Campaign3 page/API values and five direct-PDF metrics matched. Other source mixes and successful upstream publication remain open. | `UNVERIFIED` |
+| Checkpoint: Budget & Financial Analysis | 55 / 55 passed | Configured Campaign3 page/API values and five direct-PDF metrics matched. Other source mixes, source lifecycle/isolation, and successful upstream publication remain open. | `UNVERIFIED` |
+| Checkpoint: Trend Analysis | 28 / 28 passed | **FAILED:** the page withheld Revenue, ROAS, and ROI as `Waiting for daily scheduler` and withheld Campaign Performance Trend history, while the direct PDF rendered current aggregate values. | `UNVERIFIED` |
+| Checkpoint: Executive Summary | 61 / 61 passed | Configured Campaign3 page/API rendering and seven direct-PDF metrics matched. Upstream KPI/Benchmark, source-mix, snapshot, and scheduler gates remain open. | `UNVERIFIED` |
+| Checkpoint: Campaign Diagnostics Reports | targeted Reports packets passed | Authenticated GET-only behavior, six direct PDF compositions, CRUD/snapshot lifecycle, cross-owner denial, repeat-delete behavior, and cleanup passed. No email or scheduler action was triggered. | `BOUNDED_PASS` |
+
+Additional local gates passed: `npm run check`, `npm run build`, and the GA4
+Overview, KPI, Insights, and Reports certification-status consistency commands.
+The consistency commands prove that the machine records and fail-closed status
+rules agree; they do not promote an `UNVERIFIED` section.
+
+The full repository suite is not clean: 2,260 assertions passed, 65 failed, and
+2 were skipped across 28 files with failed assertions. The remaining failures
+include retained hidden-platform tests and current GA4 source/scope guards. They
+must be classified and either fixed or updated from an exact code trace before
+an app-wide certificate can be issued.
+
+Production scheduler evidence blocks promotion. `/health/scheduler` returned
+HTTP 200, but the most recent auto-refresh and GA4 daily publication runs failed.
+Multiple campaigns reported `TOKEN_EXPIRED`; Campaign3 failed Overview
+reconciliation for Breakdown Conversions and Revenue; and the final financial
+daily health check had two blocked campaigns with zero ready or written. The
+read-only Insights history is current, but that does not prove the failed
+aligned Overview/financial publication stages.
+
+The user explicitly authorized the bounded production lifecycle audits. The
+Campaign Diagnostics Reports audit created and deleted one disposable report
+and snapshot; final cleanup found no audit reports or orphan snapshots. The KPI
+lifecycle audit passed and cleaned up its disposable KPI, report, child rows,
+temporary isolation identity, and authenticated sessions after running normal
+campaign alert reconciliation. No report email was sent and no scheduler endpoint was triggered;
+manual GA4 scheduler execution correctly returned the scheduler-managed `409`
+contract.
+
+Safe next order:
+
+1. reconnect or refresh the affected production GA4 credentials;
+2. resolve the Campaign3 Breakdown reconciliation mismatch;
+3. observe one successful GA4 daily and financial snapshot cycle;
+4. rerun Overview, Benchmark, Trend page/report, and GA4 Reports parity, then
+   confirm the KPI packet against that successful natural cycle;
+5. update the section machine records and certificates only after every required
+   gate passes.
+
 ### Phase 1 - GA4 platform section
 
 | Order | Section | Program state |
@@ -144,7 +206,7 @@ runtime behavior.
 The certificate reuses only unchanged historical owner isolation, empty/error UI,
 browser Campaign Breakdown values, and combined-tab presentation evidence; all
 changed scheduler, recipient, server PDF, snapshot, provider, and inbox paths
-were rerun on `a7271fc1`. Campaign DeepDive Reports, other platforms, arbitrary
+were rerun on `a7271fc1`. Campaign Diagnostics Reports (then named Campaign DeepDive Reports), other platforms, arbitrary
 clients/owners/campaigns/properties/filters/currencies/timezones, future provider
 or mailbox behavior, legacy snapshots without immutable artifacts, production
 failure injection, and full upstream-tab recertification remain excluded.
@@ -169,11 +231,11 @@ After all six sections pass, create one GA4 roll-up certificate from those six
 current certificates. There is no separate up-front status-reconciliation task;
 the fresh section certificates supersede stale summaries as the program advances.
 
-### Phase 2 - Campaign DeepDive
+### Phase 2 - Campaign Diagnostics (`campaign_deepdive` internally)
 
 Standalone campaign-level KPI and Benchmark tabs are disabled in normal
 navigation and are not a certification phase in this program. This does not
-exclude GA4 KPI/Benchmark inputs still consumed by visible DeepDive content.
+exclude GA4 KPI/Benchmark inputs still consumed by visible Campaign Diagnostics content.
 The legacy `#kpis` and `#benchmarks` entry points remain an app-exit visibility
 check; do not call those tabs fully `EXCLUDED` while they remain reachable.
 
@@ -181,45 +243,52 @@ The latest preserved Performance Summary certificate is separate from the older 
 
 | Order | Performance Summary review | Work state | Preserved certification status | Boundary |
 | ---: | --- | --- | --- | --- |
-| - | Combined Performance Summary | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY / NO-OVERCLAIMING` for the exact two-campaign, property `542352127`, USD, Europe/Amsterdam, data-through `2026-09-18` boundary at deployed runtime `ee6e11ebf8cb0a13dd182dde54af790a3757ef2f`; controlling certificate: `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md`; required steps remaining within that scope: 0. Timer-fired financial/GA4 evidence is carried only from immediate parent `2ee07fa6` because the certified diff changed no scheduler/provider/storage/configuration path and the exact runtime had both next timers armed. Unrelated campaign/provider failures, global scheduler health, future restatements/configurations, other DeepDive sections, Reports/delivery, and provider behavior after the evidence boundary remain excluded. |
-| 1 | Key Outcomes | `COMPLETE` | `CERTIFIED` | PASS for Users, Sessions, Conversions, Spend, Revenue, source labels, currency, completed-day boundary, and valid-zero/unavailable distinction within the exact certificate boundary. |
+| - | Combined Performance Summary | `COMPLETE` | `CERTIFIED` | `CLEAN-CERTIFIED / PRODUCTION_READY / NO-OVERCLAIMING` for the exact two-campaign, property `542352127`, USD, Europe/Amsterdam, data-through `2026-09-18` boundary at deployed runtime `ee6e11ebf8cb0a13dd182dde54af790a3757ef2f`; controlling certificate: `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md`; required steps remaining within that scope: 0. Timer-fired financial/GA4 evidence is carried only from immediate parent `2ee07fa6` because the certified diff changed no scheduler/provider/storage/configuration path and the exact runtime had both next timers armed. Unrelated campaign/provider failures, global scheduler health, future restatements/configurations, other Campaign Diagnostics sections, Reports/delivery, and provider behavior after the evidence boundary remain excluded. |
+| 1 | Performance Summary outcome cards (labelled `Key Outcomes` in the historical certificate) | `COMPLETE` | `CERTIFIED` | PASS for Users, Sessions, Conversions, Spend, Revenue, source labels, currency, completed-day boundary, and valid-zero/unavailable distinction within the exact certificate boundary. |
 | 2 | Campaign Health | `COMPLETE` | `CERTIFIED` | PASS for target-free setup and the recorded complete 8-KPI/2-Benchmark configured-target state; incomplete inputs fail closed. |
 | 3 | Top Priority Action | `COMPLETE` | `CERTIFIED` | PASS for target-free and configured-target states using verified source-derived current values rather than stale persisted values. |
 | 4 | Recent Movement | `COMPLETE` | `CERTIFIED` | PASS for yesterday, seven-day, and one-month exact-date comparisons with source/property/currency compatibility and fail-closed invalid states. |
 | 5 | Recommended Actions | `COMPLETE` | `CERTIFIED` | PASS for target-free and configured-target states, metric direction, eligibility, ordering, deduplication, and fail-closed unavailable inputs. |
 
-Google Sheets Revenue is incorporated only as a certified read-only Key Outcomes
+Exact-current bounded evidence at deployed revision `48bf6116` supplements but
+does not replace the preserved certificate: Campaign3's page/API cards matched
+Users `3,132`, Sessions `3,131`, Conversions `406`, Revenue `USD 27,052.00`, and
+Spend `USD 2,888.75`, and its direct PDF matched five current metrics. Failed
+aligned GA4 publication and untested source mixes keep the current revision
+outside the preserved whole-section certificate.
+
+Google Sheets Revenue is incorporated only as a certified read-only Performance Summary outcome-card
 dependency. Its lifecycle authority remains
 `GA4/OVERVIEW_REVENUE_PRODUCTION_READINESS.md` at documentation commit
 `f4a648a8` and deployed runtime `f8061d13`; the Performance Summary certificate
 does not recertify or broaden that source boundary.
 
-Remaining DeepDive certification order after the earlier bounded Budget, Trend, and
+Remaining Campaign Diagnostics certification order after the earlier bounded Budget, Trend, and
 Executive Summary reviews:
 
 1. Reports
-2. Platform Comparison if it remains visible; otherwise hide it and mark it
-   `EXCLUDED` before app certification
+2. Keep the retained Platform Comparison route `EXCLUDED` while it remains hidden
+   from Campaign Overview; recertify it only if the product restores that entry point
 
 Budget & Financial Analysis was certified at deployed application runtime
 `b36047bbce419df9d606239c340398e69a409211`. That certificate is now historical:
 `4298cfda` replaced aggregate-Spend pacing with the separate period-bounded
 `budget_pacing_v1` contract, and `162e9b6b` changed the visible Executive Action copy.
-Deployed revision `39fe902a...` now has a bounded authenticated Campaign3
-persisted-fact/API/UI pass for the combined visible page. Other source families,
-metadata mutation and tenant-isolation gates, and Budget report paths still require
-current-revision recertification.
+Deployed revision `48bf6116...` now has a bounded authenticated Campaign3
+page/API/direct-PDF pass for the combined visible page. Other source families,
+metadata mutation and tenant-isolation gates, and successful aligned scheduler
+publication still require current-revision recertification.
 
 | Order | Budget & Financial Analysis review | Work state | Fresh certification status | Boundary |
 | ---: | --- | --- | --- | --- |
-| - | Combined Budget & Financial Analysis | `BOUNDED_PASS` | `UNVERIFIED` | Deployed `39fe902a...` passed a read-only Campaign3 persisted-fact/API/UI reconciliation. The prior `b36047bb...` certificate remains historical; other source families, mutations, isolation, and Budget reports are not recertified. |
-| 1 | Financial Position | `BOUNDED_PASS` | `UNVERIFIED` | Campaign3's Spend, Revenue, Profit, ROAS, ROI, CPA, CVR, exact inputs, and rendered values reconciled on deployed `39fe902a...`; broader source-family proof remains open. |
+| - | Combined Budget & Financial Analysis | `BOUNDED_PASS` | `UNVERIFIED` | Deployed `48bf6116...` passed a non-persisting Campaign3 page/API check and a direct-PDF parity check. The prior `b36047bb...` certificate remains historical; other source families, mutations, isolation, and successful aligned publication are not recertified. |
+| 1 | Budget & Financial Analysis headline (`Financial Position` in historical evidence) | `BOUNDED_PASS` | `UNVERIFIED` | Campaign3 rendered exact Spend `USD 2,888.75`, Revenue `USD 27,052.00`, Profit `USD 24,163.25`, ROAS `9.36x`, ROI `836.5%`, and CPA `USD 7.12`; the direct PDF matched five current metrics. Broader source-family proof remains open. |
 | 2 | Budget & Pacing | `BOUNDED_PASS` | `UNVERIFIED` | Campaign3's `EUR 1,250.00` period Spend reconciled to dated source records and correctly excluded `EUR 1,103.00` of pre-period Spend; budget, burn, target, and pacing UI values matched. Mutation and report gates remain open. |
 | 3 | Allocation & Sources | `BOUNDED_PASS` | `UNVERIFIED` | Campaign3 rendered the exact GA4 Revenue input and two Spend provenance inputs, reconciling to authoritative totals; other source mixes remain open. |
 | 4 | Executive Action | `BOUNDED_PASS` | `UNVERIFIED` | Campaign3 rendered the expected return, actual-pacing, and reconciled source-mix actions on deployed `39fe902a...`; broader configurations remain open. |
 
 `Paid Media Efficiency` has its own conditional UI heading. It is included in
-the Financial Position packet and combined-page gate, not omitted or declared
+the headline financial packet and combined-page gate, not omitted or declared
 certified when no compatible paid-media source is configured.
 
 Trend Analysis completed a historical six-packet and combined-page review for the
@@ -234,9 +303,9 @@ remains evidence only for its exact runtime.
 
 | Order | Trend Analysis review | Work state | Fresh certification status | Boundary |
 | ---: | --- | --- | --- | --- |
-| - | Combined Trend Analysis | `REVALIDATION_REQUIRED` | `UNVERIFIED` | The 2026-09-20 `Campaign2` certificate is historical. Current code has focused tests, a dated read-only `Campaign3` check, and bounded Campaign3 UI evidence at deployed `9393d9de`; the changed combined page still requires whole-page certification. Controlling current contract: `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`. |
-| 1 | Connected-Source Performance Summary | `REVALIDATION_REQUIRED` | `UNVERIFIED` | Current financial values prefer compatible scheduler snapshots and otherwise use authoritative persisted performance-summary totals; exact comparison uses a compatible snapshot or scoped read-only derivation. Five financial positions remain stable, CPA uses business-semantic color, and deployed Campaign3 rendered `EUR 37,518.74`, `EUR 2,353.00`, `15.95x`, `1494.5%`, and `EUR 16.23`. Whole-path certification remains pending. |
-| 2 | Campaign Performance Trend | `REVALIDATION_REQUIRED` | `UNVERIFIED` | Current charts accept only complete scheduler-stored daily windows, use scheduler-written zeros, make no live coverage request, and withhold incomplete windows such as the observed `34 of 90` Campaign3 case. Current deployed certification is pending. |
+| - | Combined Trend Analysis | `REVALIDATION_REQUIRED` | `UNVERIFIED` | At deployed `48bf6116...`, the Campaign3 page and direct PDF failed availability parity. The page withheld financial metrics and daily history while the direct PDF rendered current aggregate values. Controlling current contract: `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`. |
+| 1 | Trend Analysis headline summary (`Connected-Source Performance Summary` in historical evidence) | `REVALIDATION_REQUIRED` | `UNVERIFIED` | Campaign3 rendered Spend `USD 2,888.75`, Conversions `406`, Sessions `3,131`, and Users `3,132`, but Revenue, ROAS, and ROI showed `Waiting for daily scheduler`. The direct PDF included those aggregate financial values, so parity failed. |
+| 2 | Campaign Performance Trend | `REVALIDATION_REQUIRED` | `UNVERIFIED` | The exact-current page withheld Campaign Performance Trend daily values because complete scheduler-stored GA4 history was unavailable. A successful aligned publication and full-history rerun are required. |
 | 3 | Efficiency Trends | `REVALIDATION_REQUIRED` | `UNVERIFIED` | Current Conversion Quality uses the same complete scheduler history, leaves rates unavailable on no-activity dates, and shows amber markers. Formula and local/read-only evidence exists; current deployed certification is pending. |
 | 4 | Website Engagement & Conversion Summary | `REVALIDATION_REQUIRED` | `UNVERIFIED` | Current cumulative formulas are unchanged, and Campaign3 read-only values reconcile, but the changed verified daily input path requires current deployed certification. |
 | 5 | Anomaly Detection | `REVALIDATION_REQUIRED` | `UNVERIFIED` | The deterministic seven-value rule remains regression-covered; current scheduler-only input and orange warning treatment have local evidence. Current deployed certification is pending, and the panel remains browser-only. |
@@ -263,15 +332,15 @@ page, require deployed revalidation; data and decision logic were not changed.
 
 | Order | Executive Summary review | Work state | Fresh certification status | Boundary |
 | ---: | --- | --- | --- | --- |
-| - | Combined Executive Summary | `REVALIDATION_REQUIRED` | `UNVERIFIED` | The 2026-09-21 `ga4_mock` certificate remains historical. Current Marketing Funnel and Recommended Actions presentation changes have local regression evidence, but the changed combined page requires exact-revision deployed revalidation. |
-| 1 | 7-Day Snapshot Trajectory and Risk Level | `COMPLETE` | `CERTIFIED` | PASS for the exact snapshot identity, current live `incompatible_history` state, compatible/missing/unavailable deterministic branches, Risk Level, and the factual four-bullet narrative within the certified boundary. A naturally observed compatible seven-day production trajectory remains a standing future evidence opportunity, not a required gate. |
-| 2 | Marketing Funnel Performance | `REVALIDATION_REQUIRED` | `UNVERIFIED` | Current Bottom of Funnel shows Conversions, Revenue, Spend, ROAS, and ROI once, with the duplicate five-card row removed. Data, formulas, provenance, currency, valid-zero/unavailable behavior, and paid-media guards are unchanged; deployed layout revalidation is pending. |
+| - | Combined Executive Summary | `BOUNDED_PASS` | `UNVERIFIED` | At deployed `48bf6116...`, Campaign3 passed a non-persisting page/API render check and a seven-metric direct-PDF check. The 2026-09-21 certificate remains historical; upstream KPI/Benchmark discrepancies, alternative source mixes, snapshots, and aligned scheduler publication remain open. |
+| 1 | Trajectory/history detail and Risk Level (`7-Day Snapshot Trajectory` in historical evidence) | `COMPLETE` | `CERTIFIED` | PASS for the exact snapshot identity, current live `incompatible_history` state, compatible/missing/unavailable deterministic branches, Risk Level, and the factual four-bullet narrative within the certified boundary. The former trajectory heading is no longer rendered. A naturally observed compatible seven-day production trajectory remains a standing future evidence opportunity, not a required gate. |
+| 2 | Marketing Funnel Performance | `BOUNDED_PASS` | `UNVERIFIED` | The current Campaign3 funnel rendered and its visible Conversions and Revenue matched the aggregate; the direct PDF matched the broader seven-metric packet. Other source mixes and unavailable/paid-media variants remain open. |
 | 3 | KPIs & Benchmarks | `COMPLETE` | `CERTIFIED` | PASS for exception, no-exception, unavailable, target-direction, verified-current classification, and downstream risk/action behavior. User-configured target commercial reasonableness and disabled standalone campaign-level KPI/Benchmark tabs remain outside this packet. |
-| 4 | Recommended Actions | `REVALIDATION_REQUIRED` | `UNVERIFIED` | Eligibility, evidence, target context, freshness handling, ordering/deduplication, paid-media guardrails, and the fail-closed state are unchanged. Current Benchmark grammar and removal of the scope note/category subtitle have local regression evidence; deployed presentation revalidation is pending. |
+| 4 | Recommended Actions | `BOUNDED_PASS` | `UNVERIFIED` | The current Campaign3 section rendered in the authenticated page and direct PDF. Upstream KPI/Benchmark discrepancies and unexercised eligibility/source variants prevent whole-packet promotion. |
 
 This certificate does not extend to Campaign2, other campaigns, properties,
 tenants, currencies, timezones, source configurations, paid-media variants,
-other Campaign DeepDive sections, source lifecycle recertification, PDFs,
+other Campaign Diagnostics sections, source lifecycle recertification, PDFs,
 reports, schedules/delivery surfaces, inbox receipt, or target commercial
 reasonableness. Source-configuration changes require the certificate's stated
 identity, capability, aggregation, snapshot, KPI/Benchmark, risk/action, and
@@ -292,6 +361,14 @@ exact enabled GA4-first boundary at deployed runtime
 | 3 | Scheduled Report Library & Lifecycle | `COMPLETE` | `CERTIFIED` | PASS for create and invalid-create, scoped list, edit, reschedule, pause, resume, latest-value snapshot/download, cross-owner denial, delete/repeated-delete, concurrency, deduplication, and exact cleanup. Lifecycle evidence from `243a3be1` is reused under unchanged route, storage, and contract dependencies. |
 | 4 | Delivery, Artifacts & Failure Safety | `COMPLETE` | `CERTIFIED` | PASS for access and campaign/platform consistency, immutable artifacts, scheduler deduplication, fail-closed missing campaign/artifact/send states, provider-acceptance versus confirmed-delivery terminology, and send bookkeeping. Prior Mailgun delivery evidence is reused under unchanged dependencies; no email was sent and no scheduler was triggered during final certification. |
 
+At deployed revision `48bf6116...`, a new bounded Campaign Diagnostics Reports
+audit passed authenticated GET-only behavior, six direct PDF compositions,
+disposable create/edit/reschedule/pause/resume/snapshot/download/delete lifecycle,
+cross-owner snapshot denial, and repeated-delete accuracy. Cleanup confirmed no
+audit reports or orphan snapshots remained. No email or scheduler action was
+triggered. This supports current mechanics and direct artifacts, but upstream
+GA4/Trend availability defects prevent a new whole-product certificate.
+
 The standalone Combined Reports surface is certified only as fail-closed: it
 shows a real empty state and ignores legacy unscoped browser-local rows without
 deleting them; no combined authoring, aggregation, scheduling, or local
@@ -300,9 +377,9 @@ and remains deterministic regression evidence. Google Ads, Meta, Instagram,
 TikTok, other main-source mixes, and future Combined Reports authoring remain
 outside this exact certificate.
 
-Each DeepDive certificate must consume certified GA4 and enabled connected-platform
+Each Campaign Diagnostics certificate must consume certified GA4 and enabled connected-platform
 inputs without independently changing or reinterpreting upstream values. An
-unverified upstream input keeps its dependent DeepDive claim unverified; it does
+unverified upstream input keeps its dependent Campaign Diagnostics claim unverified; it does
 not require reopening an unrelated certified section.
 
 ## Authority Order
@@ -311,7 +388,7 @@ When documents disagree, use this order:
 
 1. A section/source-specific machine record and its matching current-status block.
 2. The section/source-specific production-readiness document.
-3. A platform or Campaign DeepDive status tracker.
+3. A platform or Campaign Diagnostics status tracker.
 4. Broad roll-ups, historical evidence, implementation plans, and old completion notes.
 
 Conflicting status is recorded as `RECONCILE`; it must not be guessed upward to
@@ -372,17 +449,17 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 | GA4 Overview Performance subsection | `UNVERIFIED` | `GA4/OVERVIEW_PERFORMANCE_CERTIFICATION_2026-09-14.md` | The prior certificate remains historical for its exact Google-Ads-excluded boundary. Current formulas are unchanged and Campaign3 UI arithmetic reconciles, but current Google Ads inclusion and complete current-revision failure/scheduler/downstream behavior are not certified. |
 | Whole GA4 financial model | `UNVERIFIED` | `GA4/OVERVIEW_PRODUCTION_READINESS.md` | Component certificates remain preserved, but whole-Overview status controls the combined visible financial surface. |
 
-## Campaign DeepDive Ledger
+## Campaign Diagnostics Ledger (`campaign_deepdive` internally)
 
 | Subsection | Durable status | Controlling authority | Exact boundary or open gate |
 | --- | --- | --- | --- |
-| Performance Summary | `RECERTIFY` | `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_PRODUCTION_READY.md`; preserved exact-boundary certificate `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md` | Current implementation `ca1fc5a8` is locally validated but not deployed-recertified. The preserved certificate remains valid only for exact deployed runtime `ee6e11ebf8cb0a13dd182dde54af790a3757ef2f`, its two recorded campaigns, property `542352127`, USD, Europe/Amsterdam, and `2026-09-18` data-through boundary. Current campaign-currency Key Outcomes/Recent Movement/Recommended Actions, stable comparison transitions, and scheduled-PDF recommendation currency require exact-revision deployed reconciliation. |
+| Performance Summary | `RECERTIFY` | `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_PRODUCTION_READY.md`; preserved exact-boundary certificate `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_CERTIFICATE_2026-09-19.md` | Current implementation `ca1fc5a8` is locally validated but not deployed-recertified. The preserved certificate remains valid only for exact deployed runtime `ee6e11ebf8cb0a13dd182dde54af790a3757ef2f`, its two recorded campaigns, property `542352127`, USD, Europe/Amsterdam, and `2026-09-18` data-through boundary. Current campaign-currency outcome cards/Recent Movement/Recommended Actions, stable comparison transitions, and scheduled-PDF recommendation currency require exact-revision deployed reconciliation. |
 | Budget & Financial Analysis | `RECERTIFY` | `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md`; historical certificate `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_CERTIFICATE_2026-09-19.md` | Deployed `39fe902a...` has a bounded authenticated Campaign3 persisted-fact/API/UI pass for the current `budget_pacing_v1` implementation. Other source families, metadata mutation, tenant isolation, and deployed Budget report delivery parity require recertification. |
-| Platform Comparison | `CERTIFIED` | `CAMPAIGN_DEEPDIVE_PLATFORM_COMPARISON_PRODUCTION_READY.md` | Current aggregate-backed implementation and Render-validated GA4-only scenario. |
+| Platform Comparison | `CERTIFIED` for its recorded implementation boundary; hidden from the current journey | `CAMPAIGN_DEEPDIVE_PLATFORM_COMPARISON_PRODUCTION_READY.md` | The route remains registered, but Campaign Overview and new campaign report creation do not expose it. Do not include it in onboarding from this ledger. |
 | Trend Analysis | `RECERTIFY` | Current contract: `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`; historical certificate: `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_CERTIFICATION_2026-09-20.md` | The historical certificate remains valid only for its exact `Campaign2` runtime. Current scheduler-only daily history, current-value fallback, exact-date financial derivation, fixed layout, CPA color, no-activity copy, anomaly warning styling, and saved currency proof have regression/read-only evidence plus bounded deployed Campaign3 UI evidence at `9393d9de`; whole-page certification remains open. Positive conditional panels, non-GA4/future source mixes, and global scheduler health remain excluded. |
 | Executive Summary | `RECERTIFY` | Current contract: `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md`; historical certificate: `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_CERTIFICATE_2026-09-21.md` | The historical certificate remains valid only for its exact `ga4_mock` runtime and earlier presentation. Current Bottom of Funnel and Recommended Actions presentation changes have local evidence but require exact-revision deployed recertification of those packets and the combined page. Data, formula, risk, trajectory, target classification, eligibility, persistence, and report paths were not changed. |
-| Reports | `RECERTIFY` | `CAMPAIGN_DEEPDIVE_REPORTS_CERTIFICATION_2026-09-21.md`; supporting `CAMPAIGN_DEEPDIVE_REPORTS_AUDIT_2026-09-21.md` | The prior report certificate remains historical. The Budget & Financial report renderer now consumes `budget_pacing_v1`; local direct/snapshot/scheduled parity tests passed, but current deployed Budget report artifact and delivery parity are not recertified. Unaffected report lifecycle evidence is not broadened or revoked by this row. |
-| Whole Campaign DeepDive | `RECONCILE` | `CAMPAIGN_DEEPDIVE_PRODUCTION_READY_STATUS.md` plus subsection authorities | The top-level file explicitly says it is not a whole-section certificate and now records the current Budget/Reports recertification gates. |
+| Reports | `RECERTIFY` | `CAMPAIGN_DEEPDIVE_REPORTS_CERTIFICATION_2026-09-21.md`; supporting `CAMPAIGN_DEEPDIVE_REPORTS_AUDIT_2026-09-21.md` | The prior report certificate remains historical. The Budget renderer consumes `budget_pacing_v1`, and the shared branded-PDF presentation changed later; current deployed report artifact and delivery parity are not recertified. |
+| Whole Campaign Diagnostics | `RECONCILE` | `CAMPAIGN_DEEPDIVE_PRODUCTION_READY_STATUS.md` plus subsection authorities | The top-level file explicitly says it is not a whole-section certificate and records current subsection recertification gates. Internal filenames retain `CAMPAIGN_DEEPDIVE` for compatibility. |
 
 ## Connected Platform Ledger
 
@@ -404,13 +481,13 @@ Threshold documents are supporting evidence, not whole-tab authorities:
 | Authentication and owner isolation | `NO_CERTIFICATE` | Architecture contract, route guards, source-specific ownership tests | One app-wide authentication/owner/client/campaign access certificate. |
 | Home and client lifecycle | `NO_CERTIFICATE` | `ARCHITECTURE_USER_JOURNEY.md`; targeted destructive audit | Certify create/select/delete, owner isolation, transactional cascade, and empty/error states. |
 | Campaign create/manage lifecycle | `NO_CERTIFICATE` | Architecture contract and platform-specific flow tests | Certify create/edit/delete, draft/finalization, source attachment, owner/client scope, and damaged-data boundary. |
-| Campaign Overview and Connected Platforms | `NO_CERTIFICATE` | Platform-specific trackers and Campaign DeepDive launchers | One whole-surface inventory covering source cards, statuses, navigation, refresh, and unavailable states. |
+| Campaign Overview and Connected Platform | `NO_CERTIFICATE` | `docs/CURRENT_APP_SECTIONS.md`; platform-specific trackers and Campaign Diagnostics launchers | Current hub is GA4-first. Certify its visible GA4 card, statuses, navigation, refresh, unavailable states, and Campaign Diagnostics launchers as one surface. |
 | Campaign-level KPIs and Benchmarks | `RECONCILE` | `CAMPAIGN_LEVEL_KPI_BENCHMARK_PRODUCTION_READY.md` preserves historical evidence; standalone tabs are absent from normal navigation | Outside the fresh certification queue. Legacy `#kpis`/`#benchmarks` still render content, so verify release visibility before marking `EXCLUDED`; audit any visible GA4 KPI/Benchmark consumers within their own sections. |
 | Notifications page and bell | `CERTIFIED` | `NOTIFICATIONS_CERTIFICATION_2026-09-21.md`; targeted visibility and alert/notification regression evidence | `CLEAN-CERTIFIED / PRODUCTION_READY` only for the certificate's GA4-first global Notifications, bell, active KPI/Benchmark alert, and email boundary at validated application runtime `e6a9d7cb17e9389bfa12c80f9f9563da44f33bb1`; required in-scope gates remaining: 0. Scheduled email reached provider-confirmed delivery, not independently confirmed inbox receipt. Unconfigured platforms and global scheduler health remain excluded. |
-| Global Dashboard | `UNVERIFIED` | Architecture says the Dashboard still needs refinement | Complete value inventory, scope, formulas, lifecycle, and downstream trace. |
-| Global Reports route/library | `UNVERIFIED` | GA4 Reports and Campaign DeepDive Reports have separate records | Certify the visible route as a composition of only its supported report families. |
-| Audiences | `NO_CERTIFICATE` | Visible application route; no readiness document found | Decide supported release scope, then certify or explicitly exclude. |
-| Freestyle Chat | `EXCLUDED` | Hidden from the Version 1 UI and its server endpoint is removed | Reassess privacy, provider controls, and certification before enabling it in Version 2. |
+| Global Dashboard | `UNVERIFIED` | Registered direct route; absent from current sidebar; architecture says it still needs refinement | Decide whether to restore it to navigation, then complete value inventory, scope, formulas, lifecycle, and downstream trace. |
+| Global Reports route/library | `UNVERIFIED` | Standalone fail-closed shell; GA4 Reports and Campaign Diagnostics Reports have separate records | Keep onboarding on campaign-scoped Reports. Certify the standalone route only if it becomes a supported navigable library. |
+| Audiences | `NO_CERTIFICATE` | Registered application route with no current navigation caller; no readiness document found | Decide supported release scope, then restore navigation and certify or explicitly exclude. |
+| Talk to Your Data | `NOT_IMPLEMENTED` | Visible Campaign Diagnostics launcher opens a `Chat feature coming soon!` placeholder; no prompt input or campaign chat endpoint | Add data-sharing disclosure and provider privacy controls, implement the campaign-scoped prompt path, and certify it before describing chat as available. |
 | Global scheduler health | `UNVERIFIED` | Several exact target jobs are certified; current evidence repeatedly excludes obsolete/test failures | Define active production job inventory and pass one global healthy-cycle gate without treating excluded jobs as success. |
 | App-wide destructive/visibility behavior | `RECONCILE` | `TARGETED_DESTRUCTIVE_VISIBILITY_AUDIT.md` contains broad targeted evidence | Convert completed evidence into an explicit exact-runtime certificate and preserve unresolved rows. |
 
@@ -508,8 +585,9 @@ consumers. Do not revoke unrelated sections.
 2. **Recertify the changed Trend Analysis paths:** preserve the historical
    `Campaign2` certificate, then validate the current combined GA4-first page on
    its exact deployed revision without promoting local/read-only evidence.
-3. **Continue Campaign DeepDive:** freshly review Reports, then visible Platform
-   Comparison if it remains in the supported release. Preserve historical
+3. **Continue Campaign Diagnostics:** freshly review Reports. Keep Platform
+   Comparison excluded while it remains hidden; if the product restores it, require
+   a fresh review before adding it to the supported release. Preserve historical
    bounded certificates; do not promote unverified input paths.
 4. **Complete pending GA4 work and its roll-up:** finish the remaining Overview
    and Reports gates independently; create the GA4 roll-up only after all six

@@ -1,4 +1,4 @@
-# Campaign DeepDive Budget & Financial Analysis Production Readiness
+# Campaign Diagnostics Budget & Financial Analysis Production Readiness
 
 ## Mandatory Anti-Overclaim Rule
 
@@ -6,7 +6,7 @@ Before using this document to answer an audit, review, or production-readiness q
 
 ## Purpose
 
-Track the outstanding work required to make the Campaign DeepDive `Budget & Financial Analysis` section production ready.
+Track the outstanding work required to make the Campaign Diagnostics `Budget & Financial Analysis` section production ready. The filename and internal `campaign_deepdive` identifiers retain the former product name for compatibility.
 
 ## Ordered Daily Publication Alignment (updated 2026-09-28)
 
@@ -14,12 +14,12 @@ For active real GA4 campaigns, the GA4 daily pipeline now owns the compatible `p
 
 The intended product behavior is:
 
-- `Connected Platforms` shows which campaign-scoped main data sources are attached.
+- `Connected Platform` shows the current campaign-scoped main data connection; the present Campaign Overview exposes Google Analytics only.
 - `Budget & Financial Analysis` aggregates only financial and cost metrics currently available from those connected sources.
 - If only GA4 is connected, Budget & Financial Analysis uses only GA4-capable metrics plus valid campaign financial totals from the GA4/campaign financial path.
 - Revenue and spend sources connected inside a platform, such as Salesforce, HubSpot, Shopify, CSV, or Google Sheets imports inside GA4, are platform child inputs. Users do not connect these as separate main `Connected Platforms`; they can only feed financial totals through the parent platform/campaign financial path.
-- As main Connected Platforms such as GA4, LinkedIn, Meta, Google Ads, Google Sheets, Custom Integration, TikTok, Instagram, and future integrations are connected, their available metrics must be automatically included in the campaign-level financial aggregate without double-counting.
-- Campaign DeepDive subsections should fetch and aggregate main metrics from all main sources shown in the campaign `Connected Platforms` section. They should not require users to create duplicate revenue/spend inputs inside Campaign DeepDive for child systems already configured within a parent platform.
+- As additional main Connected Platforms are intentionally enabled in Campaign Overview, their available metrics must be automatically included in the campaign-level financial aggregate without double-counting.
+- Campaign Diagnostics subsections should fetch and aggregate main metrics from every enabled main source shown in the campaign `Connected Platform` section. They should not require users to create duplicate revenue/spend inputs inside Campaign Diagnostics for child systems already configured within a parent platform.
 - The section should provide a marketing-executive-ready campaign-wide financial view, not a platform-specific drilldown.
 
 ## Required Architecture
@@ -28,7 +28,7 @@ Preserve the documented split in `ARCHITECTURE_USER_JOURNEY.md`:
 
 - `Connected Platforms` = source-level campaign inputs.
 - `View Detailed Analytics` = platform-specific drilldown.
-- `Campaign DeepDive` = campaign-wide cross-platform analysis.
+- `Campaign Diagnostics` = campaign-wide cross-platform analysis.
 - `Budget & Financial Analysis` = aggregated campaign-level financial analysis based on connected-source data.
 
 Do not turn Budget & Financial Analysis into another platform-specific page.
@@ -61,9 +61,23 @@ Executive use case:
 - The same executive uses Platform Comparison to answer "which connected source is contributing what?" For a GA4-only campaign, Platform Comparison should show GA4's available analytics metrics. When LinkedIn, Meta, Google Ads, or another main paid-media source is connected, Platform Comparison should compare the supported source-level metrics side by side.
 - Budget & Financial Analysis may use source breakdowns as evidence, but its primary job is campaign-wide financial decision support, not source ranking.
 
+## Exact-revision verification checkpoint - 2026-10-01
+
+Deployed application revision `48bf6116384b64af0200640bb945c2b07c4c2f30`
+passed an authenticated, non-persisting Campaign3 page/API render check for the
+current `performance_summary_aggregate_v3` window `2026-07-02` through
+`2026-09-30`. The headline values reconciled exactly: Spend `USD 2,888.75`,
+Revenue `USD 27,052.00`, Profit `USD 24,163.25`, ROAS `9.36x`, ROI `836.5%`,
+and CPA `USD 7.12`. Budget & Pacing, Allocation & Sources, and Executive Action
+rendered, and the direct Budget & Financial Analysis PDF matched its five exact
+current metrics. This is a bounded pass for the configured Campaign3 page and
+direct PDF. Other source mixes, source lifecycle and isolation, and a successful
+aligned GA4/financial scheduler cycle remain unverified.
+
 ## Current Implemented Consumer Contract
 
-Reconciled with the current code and deployed health revision at
+User-visible structure and labels were reconciled with the current code on
+2026-10-01. The latest recorded deployed health revision in this evidence is
 `5f441126514ae9ea3b8321d16129e6aae92fcb62` on 2026-09-29. The latest authenticated
 read-only Campaign3 persisted-fact, API, and rendered-UI reconciliation was performed
 at `f2ea6ce2`. The two subsequent deployed revisions are covered by focused regression
@@ -72,17 +86,26 @@ bounded evidence does not recertify every source family or the mutation, isolati
 snapshot, and scheduled Budget delivery paths.
 
 The visible Budget & Financial Analysis experience is now one executive page, not five
-tabs. It renders `Financial Position`, `Budget & Pacing`, conditional `Paid Media
+tabs. It renders `Budget & Financial Analysis`, `Budget & Pacing`, conditional `Paid Media
 Efficiency`, `Allocation & Sources`, and `Executive Action`. Financial totals,
 efficiency, and provenance come from the shared campaign aggregate; budget calculations
 additionally require the separate compatible `budgetPacing` contract.
+
+The former duplicate page-top title, campaign-prefixed subtitle, and `Back to
+Campaign` link are removed. The page begins with `Budget & Financial Analysis`
+and `Campaign-wide budget, pacing, ROI, ROAS, and financial decisioning`;
+client, campaign, and `Back to Campaign Overview` appear in the sidebar. The
+current PDF uses the shared cream, pastel-orange, top-right-logo report shell
+without vertical orange section bars. These presentation changes do not expand
+the dated analytics evidence below and require proportionate report-parity
+revalidation.
 
 Current consumer-only refinements after the `e5195f9a` GA4 certification-record commit:
 
 - `148cc6d0`: unavailable CPC/CPM/CTR cards no longer consume space; the paid-media
   efficiency section appears only when compatible inputs exist.
 - `f43cf7cd`: available CVR moved into a compact `Conversion Efficiency` subsection
-  inside `Financial Position`.
+  inside the headline `Budget & Financial Analysis` section.
 - `eef9f809`: the redundant visible `Budget Allocation` card was removed; `Sources Used`
   spans the `Allocation & Sources` section.
 - `c879b041`: revenue and spend amounts use aligned fixed-width tabular-number columns.
@@ -162,7 +185,7 @@ the GA4 analytics experience.
 - GA4 Overview and Budget & Financial Analysis align because both consume the same
   underlying GA4 and financial source truth; neither UI tab feeds the other.
 - GA4 KPI and Benchmark rows are separate evaluative consumers. Their targets or
-  classifications may inform another Campaign DeepDive section only where explicitly
+  classifications may inform another Campaign Diagnostics section only where explicitly
   documented, but they do not replace Budget's Spend, Revenue, Conversions, or derived
   financial inputs.
 - GA4 Ad Comparison and Insights are derived analysis consumers, and Reports is an
@@ -671,7 +694,7 @@ they should not need one-off platform-specific rewiring.
 
 Proven:
 
-- Documentation requires Campaign DeepDive subsections to aggregate main Connected Platform metrics at the campaign level.
+- Documentation requires Campaign Diagnostics subsections to aggregate main Connected Platform metrics at the campaign level.
 - Performance Summary already has a source-aware aggregate contract through `/api/campaigns/:id/outcome-totals`.
 - The visible page has no tab navigation, Campaign Health Score, duplicate Budget
   Allocation card, or visible historical trend indicators.

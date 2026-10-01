@@ -1,7 +1,8 @@
 # Budget & Financial Analysis - Current Single-Page Contract
 
-Last reconciled with the current implementation and deployed health revision on
-2026-09-29 at `5f441126514ae9ea3b8321d16129e6aae92fcb62`. The latest authenticated
+User-visible structure and labels were reconciled with the implementation on
+2026-10-01. The latest recorded deployed health revision in this evidence is
+`5f441126514ae9ea3b8321d16129e6aae92fcb62`. The latest authenticated
 read-only Campaign3 browser reconciliation was performed at `f2ea6ce2`; the two
 subsequent deployed changes are `c3d91489`, which anchors pacing to the certified
 financial data-through date, and `5f441126`, which removes elapsed-day counts from
@@ -16,7 +17,7 @@ the product contract.
 
 The visible sections, in order, are:
 
-1. `Financial Position`
+1. `Budget & Financial Analysis`
 2. `Budget & Pacing`
 3. `Paid Media Efficiency`, only when at least one compatible paid-media metric exists
 4. `Allocation & Sources`
@@ -42,7 +43,7 @@ The visible sections, in order, are:
   reuses that same aggregate CVR input. Native GA4 Revenue and the conversion input used
   by CPA use GA4 Overview's ordered saved-initial-import-to-latest-completed-day
   financial-source contract. Imported Revenue and Spend include mapped materialized records through the campaign-timezone latest completed reporting day.
-- Financial Position uses aggregate Spend, Revenue, ROI, and ROAS. Budget & Pacing and
+- The `Budget & Financial Analysis` headline uses aggregate Spend, Revenue, ROI, and ROAS. Budget & Pacing and
   budget guidance use `budgetPacing.spend`; return and allocation guidance retain the
   aggregate financial metrics. Paid Media Efficiency uses only the
   compatible aggregate CPC/CPM/CTR inputs, Conversion Efficiency uses aggregate GA4
@@ -61,7 +62,7 @@ import boundary through the latest completed reporting day.
 
 An authenticated read-only validation on deployed revision `f2ea6ce2...` reconciled
 Campaign3's persisted financial records, page-consumed API contract, formulas, and
-rendered UI for the completed-day cutoff `2026-09-28`. Financial Position showed
+rendered UI for the completed-day cutoff `2026-09-28`. The headline cards showed
 `EUR 2,357.89` Total Spend, `EUR 78,969.69` Total Revenue, `EUR 76,611.80` Profit,
 `33.49x` ROAS, `3,249.2%` ROI, `EUR 16.26` CPA, and `6.4%` CVR.
 
@@ -85,11 +86,11 @@ This evidence is bounded to Campaign3's configured source set. A new authenticat
 browser pass on `5f441126`, other source families, metadata mutation lifecycles, tenant
 isolation, and deployed Budget report artifact/delivery parity remain separate gates.
 
-### Financial Position
+### Budget & Financial Analysis
 
 - `Total Spend`, `Total Revenue`, `ROAS`, `ROI`, and `CPA` render from
   `performanceSummary.totals` only when marked available.
-- `ROAS` renders with two decimals in both the live Financial Position card and the
+- `ROAS` renders with two decimals in both the live headline card and the
   shared one-off/snapshot/scheduled Budget PDF body.
 - `Profit = Total Revenue - Total Spend`; it is unavailable unless both inputs are
   compatible and available.
@@ -132,7 +133,7 @@ isolation, and deployed Budget report artifact/delivery parity remain separate g
   source records.
 - After Save/Delete, the returned campaign row replaces the campaign cache and the
   outcome-totals query is invalidated. During that refetch, an older `budgetPacing`
-  contract whose dates no longer match is rejected; aggregate Financial Position values
+  contract whose dates no longer match is rejected; aggregate headline financial values
   remain independent of the pacing edit.
 - Browser, one-off, snapshot, and scheduled Budget report calculations consume the same
   compatible `budget_pacing_v1` derivative and data-through cutoff and fail closed when

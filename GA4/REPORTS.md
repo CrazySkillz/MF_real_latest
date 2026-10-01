@@ -6,7 +6,17 @@ This file defines the GA4 `Reports` tab and the current report-creation, downloa
 
 Historical status (2026-09-21): **CLEAN-CERTIFIED / PRODUCTION_READY** for the bounded GA4 Reports surface at exact deployed runtime `a7271fc18058b6db78a11e88bf79b887abda5f44`. Exact scope, evidence, exclusions, and invalidation rules are recorded in `GA4/REPORTS_CERTIFICATION_2026-09-21.md`; Campaign DeepDive Reports remain excluded. The older machine record in `GA4/certifications/ga4-reports.json` is retained as historical fail-closed evidence.
 
-Current implementation status (2026-09-29): **UNVERIFIED** as a whole at deployed runtime `3d4c792f2670d4f313349b2849bf8bab54a43637`. The browser Insights PDF has current bounded Campaign3 evidence, but post-certificate scheduler and Insights changes have not received a complete Reports recertification, and the Ad Comparison PDF Revenue Breakdown still differs from the live table. The September 21 certificate remains exact-revision history and does not carry forward to this runtime.
+User-facing terminology note: the campaign-wide launcher section is now
+`Campaign Diagnostics`. Historical certificate names, the internal
+`campaign_deepdive` platform identifier, and older exact-runtime evidence retain
+their original names.
+
+Current implementation status (2026-10-01): **UNVERIFIED** as a whole. The
+browser Insights PDF has bounded Campaign3 evidence, but post-certificate
+scheduler, Insights, Ad Comparison parity, and branded PDF presentation changes
+have not received a complete Reports recertification. The September 21
+certificate remains exact-revision history and does not carry forward to the
+current implementation.
 
 Current implementation note (updated 2026-09-28): for an active real GA4 campaign, a due scheduled GA4 report waits for the ordered daily pipeline's exact campaign/reporting-date completion marker. The gate runs before send-event/idempotency insertion, so the every-minute report scheduler can retry after mapped financial refresh, GA4 Overview publication, KPI/Benchmark recompute, financial and aggregate snapshots, Executive Summary capture, and campaign alerts complete. The final marker is persisted with the exact Executive Summary daily snapshot and restored after a server restart; a missing or unverifiable marker defers delivery. A failed unrelated campaign does not block readiness for a successfully completed campaign. This post-certificate change requires proportionate deployed revalidation and is not covered by the historical runtime certificate above.
 
@@ -74,6 +84,23 @@ Current standard template types:
 - `Insights`
 
 These are single-focus report presets.
+
+## Current PDF Presentation
+
+Browser-generated and scheduled/server-generated GA4 PDFs use the same branded
+report shell as Campaign Diagnostics reports:
+
+- cream page background matching the MimoSaaS logo background
+- pastel orange top rule and accents
+- MimoSaaS logo at the top right below the rule
+- white metric and content cards
+- section headings without a vertical orange accent bar
+- light chart frames and thin chart series
+- page footers and continuation-page spacing
+
+The browser download action supplies a PDF filename. The browser controls the
+actual operating-system download directory according to the user's browser
+settings.
 
 Expected meaning:
 
@@ -152,13 +179,15 @@ Important meaning:
 - custom reports are section-composition reports
 - custom reports store report configuration, not frozen analytics values
 - actual report values should come from refreshed GA4 tab inputs when the report is generated or sent
-- Campaign DeepDive Custom Report opens the Reports builder with campaign context and uses the same fixed inputs as the selected Campaign DeepDive subsection
+- Campaign Diagnostics opens the Reports builder with campaign context and uses the same fixed inputs as the selected Campaign Diagnostics subsection
 - Budget & Financial Analysis uses `/outcome-totals.performanceSummary` for aggregate financial values and the compatible `/outcome-totals.budgetPacing` derivative for Budget Position, burn, pacing, and budget guidance; Trend Analysis uses current financial values from `performanceSummary`; GA4-first Performance Summary and Executive Summary use persisted cumulative GA4 traffic plus the shared connected-source financial reader
-- campaign-scoped Reports pages should show `Back to main Campaign Overview` and link to `/campaigns/<campaignId>`
+- campaign-scoped Reports pages show the active client and campaign in the
+  sidebar, followed by `Back to Campaign Overview`, which links to
+  `/campaigns/<campaignId>`
 - campaign-scoped Reports pages should show the active campaign's backend scheduled report cards directly, without Standard Reports, Scheduled Reports, or All Reports tabs, report type filters, result counts, or global/demo reports
-- for GA4-first Campaign DeepDive Custom Reports, the metric picker exposes available Users, Sessions, Conversions, Revenue, and CVR; paid-media picker keys remain hidden without a connected main paid-media source. The certified aggregate/report bodies also contained source-backed Spend, ROAS, ROI, and CPA financial outcomes, while Impressions, Clicks, Leads, CPC, CPM, and CTR remained unavailable
-- for new Campaign DeepDive Custom Reports, choosing a report type automatically saves that type's full mapped single-page composition; the create screen does not show `Tabs to include`
-- for the GA4-first version, Campaign DeepDive KPI and Benchmark report sections use the campaign-scoped GA4 platform records for row identity, current values, and targets; campaign-level aggregation remains inactive until additional Connected Platforms are enabled
+- for GA4-first Campaign Diagnostics reports, the metric picker exposes available Users, Sessions, Conversions, Revenue, and CVR; paid-media picker keys remain hidden without a connected main paid-media source. The certified aggregate/report bodies also contained source-backed Spend, ROAS, ROI, and CPA financial outcomes, while Impressions, Clicks, Leads, CPC, CPM, and CTR remained unavailable
+- for new Campaign Diagnostics reports, choosing a report type automatically saves that type's full mapped single-page composition; the create screen does not show `Tabs to include`
+- for the GA4-first version, Campaign Diagnostics KPI and Benchmark report sections use the campaign-scoped GA4 platform records for row identity, current values, and targets; campaign-level aggregation remains inactive until additional Connected Platforms are enabled
 - campaign-scoped scheduled report cards should stay summary-only and should not show connected-source values, KPI/Benchmark row details, generated status pills, or `Includes` configuration details inline
 - campaign-scoped scheduled report cards should show edit, `Download latest report`, Pause/Resume, and delete actions
 - campaign-scoped Reports pages should not render report-library filters
@@ -177,23 +206,23 @@ Important meaning:
 - existing saved report compositions are not migrated; the composition picker remains available during edit for backward compatibility
 - Campaign connected-source data in the create dialog should list connected source names, not internal selectable metric keys
 - unscheduled create mode should show `Download Report`, download the selected report sections as a PDF, and create no browser or backend report-library row
-- downloaded Campaign DeepDive subsection PDFs should include content for each selected tab from that subsection's fixed upstream contract, not just the selected tab names
-- the current Campaign DeepDive Executive Summary report composition exposes one `Executive Summary` selection; legacy Executive Summary selection keys normalize to that one composition so retired keys cannot duplicate output
+- downloaded Campaign Diagnostics subsection PDFs should include content for each selected tab from that subsection's fixed upstream contract, not just the selected tab names
+- the current Campaign Diagnostics Executive Summary report composition exposes one `Executive Summary` selection; legacy Executive Summary selection keys normalize to that one composition so retired keys cannot duplicate output
 - downloaded Performance Summary PDFs expose one consolidated `performance-summary:overview` composition with Key Outcomes, Campaign Health, Top Priority Action, the default seven-day Recent Movement, and Recommended Actions; legacy Performance Summary keys normalize to this one body, and GA4-first values use the existing UI-aligned Summary/current-financial reader rather than substituting differing `/outcome-totals.performanceSummary` values
 - downloaded Budget & Financial Analysis PDFs expose one `financial-analysis:overview` composition matching the current single UI page: Financial Position, Budget & Pacing, conditional Paid Media Efficiency, Allocation & Sources, and Executive Action; legacy Financial selection keys normalize to this one body; one-off, snapshot, and scheduled renders use the same compatible `budget_pacing_v1` Spend derivative as the browser for all budget-specific values and fail closed when it is unavailable
 - downloaded Platform Comparison PDFs should include the selected web-tab section structure: Overview, Performance Metrics, Financial Comparison, and Insights exports should each include their major live-tab subsections instead of a generic metric list
-- Campaign DeepDive Trend Analysis reports expose one selectable section: `Executive View` (`trend-analysis:overview`)
+- Campaign Diagnostics Trend Analysis reports expose one selectable section: `Executive View` (`trend-analysis:overview`)
 - browser and scheduled Trend PDFs use cumulative persisted GA4 traffic for current headline values, `/outcome-totals.performanceSummary` for current financial values, and the source-aware `/trend-analysis` daily rows for the default 30-day chart window; comparisons use the exact date 30 days before data-through and fail closed when compatible history is unavailable
 - legacy saved Trend section keys normalize to the single Executive View, preventing duplicate retired-tab content while preserving saved report compatibility
-- one-off generated/downloaded Campaign DeepDive reports should not create a report card, while scheduled reports should appear directly on the campaign-scoped Reports page
-- the standalone `/reports` route retains its separate tab shell but fails closed: it does not read or render legacy `marketpulse_reports` browser records and does not expose `Create Report`; Campaign DeepDive creation and lifecycle actions require campaign context
+- one-off generated/downloaded Campaign Diagnostics reports should not create a report card, while scheduled reports should appear directly on the campaign-scoped Reports page
+- the standalone `/reports` route retains its separate tab shell but fails closed: it does not read or render legacy `marketpulse_reports` browser records and does not expose `Create Report`; Campaign Diagnostics creation and lifecycle actions require campaign context
 - the scheduled report card download action should say `Download latest report`, create one immutable server snapshot from the latest required campaign inputs, and download the exact stored PDF artifact
-- scheduled Campaign DeepDive PDFs should build the same latest-value server context before rendering: campaign context, `performanceSummary`, Executive Summary context when an Executive Summary tab is selected, KPI rows when selected tabs need KPI context, Benchmark rows when selected tabs need Benchmark context, and Trend Analysis aggregate only when a Trend Analysis tab is selected
+- scheduled Campaign Diagnostics PDFs should build the same latest-value server context before rendering: campaign context, `performanceSummary`, Executive Summary context when an Executive Summary tab is selected, KPI rows when selected tabs need KPI context, Benchmark rows when selected tabs need Benchmark context, and Trend Analysis aggregate only when a Trend Analysis tab is selected
 - scheduled create mode should use `Schedule Automated Report`, default to `Daily`, and show `Schedule Report` in the same filled primary button style as `Download Report`
-- the Custom Report schedule form should create a backend scheduled report record with recipients, schedule time, browser time zone, and saved Campaign DeepDive report composition
+- the report schedule form should create a backend scheduled report record with recipients, schedule time, browser time zone, and saved Campaign Diagnostics report composition
 - future work should preserve section-based composition
 - top-level custom sections are parent headers, not checkboxes
-- `custom` is not offered for new Campaign DeepDive report creation; legacy saved `custom` reports retain their section and metric picker during edit so stored configurations remain recoverable
+- `custom` is not offered for new Campaign Diagnostics report creation; legacy saved `custom` reports retain their section and metric picker during edit so stored configurations remain recoverable
 - legacy Custom KPI and Benchmark selection remains item-based
 - when a legacy Custom edit has no GA4 KPI or Benchmark rows, the picker should show `No KPIs created yet` or `No Benchmarks created yet` instead of leaving a blank list
 - legacy picker layout is presentation only; saved report meaning comes from the stored section keys and selected KPI/Benchmark ids
@@ -240,11 +269,11 @@ Important meaning:
 
 Important current behavior:
 
-- Campaign DeepDive Custom Report scheduling in `client/src/pages/reports.tsx` now writes backend scheduled report records through `/api/platforms/campaign_deepdive/reports`
+- Campaign Diagnostics report scheduling in `client/src/pages/reports.tsx` writes backend scheduled report records through the internal `/api/platforms/campaign_deepdive/reports` compatibility endpoint
 - scheduled records persist `scheduleTimeZone`, `scheduleTime`, `scheduleRecipients`, report type, selected tabs, and selected metrics in the saved configuration
-- `server/report-scheduler.ts` processes those records alongside platform-level scheduled reports and attaches a generated Campaign DeepDive PDF
-- scheduled Campaign DeepDive PDF attachments render selected tab body content from latest server-side campaign aggregate inputs, KPI rows, Benchmark rows, campaign context, and trend snapshot inputs; they should not be metadata-only lists of selected tab names
-- regression coverage should keep every current Campaign DeepDive report type and selected tab wired to scheduled PDF body rendering, so new report tabs cannot silently send metadata-only scheduled attachments
+- `server/report-scheduler.ts` processes those records alongside platform-level scheduled reports and attaches a generated Campaign Diagnostics PDF
+- scheduled Campaign Diagnostics PDF attachments render selected tab body content from latest server-side campaign aggregate inputs, KPI rows, Benchmark rows, campaign context, and trend snapshot inputs; they should not be metadata-only lists of selected tab names
+- regression coverage should keep every current Campaign Diagnostics report type and selected tab wired to scheduled PDF body rendering, so new report tabs cannot silently send metadata-only scheduled attachments
 - a Custom Report scheduled for `15:00` is interpreted in the saved browser time zone, then processed by the backend scheduler when that time is due
 
 When scheduling is enabled, users can configure:
@@ -271,7 +300,7 @@ Important meaning:
 - if the campaign is proven missing, the scheduler should disable only that orphaned report's schedule so it does not keep retrying on future ticks, including when a previous skipped send event already exists
 - report test-send must also fail closed when the resolved report has no valid campaign so stale helper-level callers cannot send orphaned reports
 - direct report snapshot JSON/PDF routes must verify report access and snapshot/report campaign-platform consistency; PDF reads additionally verify report-type consistency
-- GA4 and Campaign DeepDive snapshot PDF routes return the immutable PDF artifact stored at snapshot creation/send time; a legacy, missing, or invalid artifact fails closed instead of regenerating different bytes from current data
+- GA4 and Campaign Diagnostics snapshot PDF routes return the immutable PDF artifact stored at snapshot creation/send time; a legacy, missing, or invalid artifact fails closed instead of regenerating different bytes from current data
 - scheduler report selection must deduplicate report rows by report ID before due checks because the shared report table can be reached through legacy and platform-specific storage paths
 - scheduled send events remain the audit/idempotency layer for each `reportId + scheduledKey`
 - on the configured production Mailgun path, scheduled report snapshots and `lastSentAt` represent delivery-confirmed artifacts; failed or unconfirmed sends update `report_send_events` only and do not create a misleading sent/downloadable snapshot
@@ -362,7 +391,7 @@ Important caveats:
 - saved report configurations do not have their own recompute job
 - the current `Ad Comparison` report output reflects the current GA4 comparison implementation, which is campaign-row comparison rather than true ad/creative-level reporting
 - the shared scheduler and report-link helper still contain legacy LinkedIn-oriented infrastructure details
-- Campaign DeepDive scheduled report visibility, campaign scoping, lifecycle actions, immutable artifacts, and the standalone fail-closed surface are certified in `CAMPAIGN_DEEPDIVE_REPORTS_CERTIFICATION_2026-09-21.md`; this does not broaden the separate GA4 Reports certificate
+- Campaign Diagnostics scheduled report visibility, campaign scoping, lifecycle actions, immutable artifacts, and the standalone fail-closed surface were certified for their exact historical runtime in `CAMPAIGN_DEEPDIVE_REPORTS_CERTIFICATION_2026-09-21.md`; this does not carry forward to current report presentation or broaden the separate GA4 Reports certificate
 - The exact-current natural Benchmark send/resend packet is user-confirmed for its recorded recipient and attachment. The first provider-marked-delivered attempt was not observed in the inbox and is not counted as inbox evidence. Future recipients, scheduled slots, provider behavior, and report variants require their own runtime evidence
 - provider acceptance alone must not be shown to users as successful delivery when the provider subsequently reports a failed delivery event
 

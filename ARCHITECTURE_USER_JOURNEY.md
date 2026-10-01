@@ -9,6 +9,10 @@ It exists to preserve the current design model for future development.
 This is not optional guidance.
 It is the template future work must follow.
 
+For the current code-traced page, route, navigation, and feature inventory,
+use `docs/CURRENT_APP_SECTIONS.md`. This file defines the required architecture;
+the current-app inventory records which parts are presently exposed to users.
+
 ## Product Summary
 
 This app is a marketing analytics platform that pulls performance data from multiple sources, including:
@@ -102,16 +106,24 @@ Any new direct campaign-scoped table must be covered by the schema-derived campa
 
 ### Left Sidebar Pattern
 
-Current intended pattern:
+Current implemented pattern:
 
-- `Home`, `Notifications`, and `Dashboard` are global main-nav items
-- `Connected Platforms` is not a global sidebar item; it belongs in client/campaign-scoped surfaces such as campaign detail and campaign overview
+- `Clients` and `Notifications` are the global sidebar items
+- campaign routes show the current client directly under `Clients`
+- supported campaign analytics routes also show the current campaign indented
+  below the client and a `Back to Campaign Overview` link
+- the campaign hub shows `Back to All Campaigns`
+- the current client is highlighted while the user is viewing that client's
+  campaign
+- `Connected Platform` is not a global sidebar item; it belongs in the
+  campaign-scoped Campaign Overview
 
 Important meaning:
 
-- the left sidebar no longer lists client names or a `Clients` section
+- the sidebar displays only the active client and campaign context; it is not a
+  list of every client
 - `Notifications` is global navigation
-- `Dashboard` is global navigation
+- `Dashboard` is registered but is not current sidebar navigation
 - the `Notifications` page is a global surface that aggregates notifications across campaigns
 - users can filter that page by client after opening it
 - the current page and top-bar bell do not expose read, clear, or dismiss controls; retained legacy API dismiss/clear actions hide the current alert record only and do not resolve the underlying KPI or Benchmark breach
@@ -124,14 +136,16 @@ Important meaning:
 
 ### Current-State Note: Dashboard
 
-The `Dashboard` should be treated as a global snapshot layer for quick executive-style client-performance review.
+The registered `Dashboard` route is a global snapshot layer for quick
+executive-style client-performance review.
 
 The Dashboard still needs refinement.
 
-For now, preserve the current routing and hierarchy:
+For now, preserve the primary routing and hierarchy:
 
 - `Welcome / Home` -> select/create client -> client `Campaigns` -> campaign-specific analytics
-- `Dashboard` remains a separate global quick-view page users can open from the left nav for cross-client snapshot review
+- `Dashboard` remains a retained direct route and is excluded from current
+  onboarding until it is intentionally restored to navigation and refined
 
 Do not redesign around the Dashboard until that layer is intentionally updated.
 
@@ -327,7 +341,7 @@ These are not interchangeable.
 
 To avoid ambiguity:
 
-- `Connected Platforms` belongs inside the campaign-level `Campaign Overview` tab
+- `Connected Platform` belongs inside the campaign-level `Campaign Overview` page
 - this is correct because it answers a campaign question: which platforms are connected to this campaign?
 - however, the analytics launched from that section are still platform-specific, not campaign-wide
 
@@ -337,19 +351,19 @@ So the placement is campaign-level, while the detail view it launches is platfor
 
 The campaign detail page acts as the hub for a single campaign.
 
-This hub is where the top tabs matter and define the meaning of the campaign-centered experience.
+This hub defines the campaign-centered experience.
 
-### Campaign-Level Hub Tabs
+### Campaign-Level Hub Surface
 
-These are campaign-level, not platform-specific:
+The current hub exposes `Campaign Overview` as its visible page. The file still
+contains retained KPI and Benchmark tab bodies, but it renders no tab controls
+for them. Current onboarding should direct users to the GA4 `KPIs` and
+`Benchmarks` tabs reached through `Connected Platform`.
 
-- Campaign KPIs
-- Campaign Benchmarks
-- Campaign Overview
+### Campaign KPI Model
 
-### Campaign KPIs Tab
-
-The Campaign KPIs tab is campaign-level.
+Campaign KPI definitions remain campaign-scoped even though the current hub
+does not expose a visible Campaign KPIs tab.
 
 It defines what good looks like for the campaign overall.
 
@@ -372,11 +386,12 @@ Campaign-level KPI current values must use the same connected-platform inputs sh
 Connected-platform metrics are the standard upstream source of truth for campaign-level KPI current values. If GA4 Total Revenue, Total Conversions, Total Users, Total Sessions, or another connected-platform metric updates, the corresponding campaign-level KPI current value must update from that connected-platform metric rather than requiring a separate source selection.
 Campaign-level KPI create/edit forms must follow the same unit-display conventions as platform KPI forms. Percent targets should display as clean percentages without forced trailing decimals, count targets as whole numbers, currency targets with currency formatting, and ROAS/ratio targets with ratio-style display.
 Campaign-level and platform-level KPI alert behavior must be consistent: creating or updating a KPI with enabled alerts must immediately run the in-app alert check and refresh the Notifications query so breached thresholds appear in the Notifications bell without waiting for a later scheduler run or manual page refresh.
-Alert email checks use a separate scheduler that runs every 15 minutes by default. Immediate sends once per continuous breach episode. Background Daily and Weekly reminders are throttled for 24 hours and seven days after a successful send. GA4 KPI Daily/Weekly settings additionally use the selected local hour/day. The current GA4 Benchmark form exposes frequency but no day/hour selector; breached Benchmark create/update runs email eligibility immediately for any selected frequency, while later background reminders use the throttle and atomic frequency-window dedupe.
+Alert email checks use a separate scheduler that runs every 15 minutes by default. Immediate sends once per continuous breach episode. Background Daily and Weekly reminders are throttled for 24 hours and seven days after a successful send. GA4 KPI and Benchmark Daily/Weekly settings additionally use the selected local hour/day. Both forms use the same `06:00` through `18:00` local-hour range as GA4 Reports; Weekly also exposes the weekday selector. Breached Benchmark create/update runs email eligibility immediately for any selected frequency, while later background reminders use the throttle, selected schedule, and atomic frequency-window dedupe.
 
-### Campaign Benchmarks Tab
+### Campaign Benchmark Model
 
-The Campaign Benchmarks tab is campaign-level.
+Campaign Benchmark definitions remain campaign-scoped even though the current
+hub does not expose a visible Campaign Benchmarks tab.
 
 It answers:
 
@@ -395,21 +410,23 @@ Both belong at the campaign layer and should continue to be interpreted together
 
 Implementation note:
 
-The current codebase keeps Benchmarks aligned with the same normalized campaign totals used for campaign KPIs so those two tabs do not drift conceptually.
+The current codebase keeps Benchmarks aligned with the same normalized campaign totals used for campaign KPIs so those two metric families do not drift conceptually.
 Campaign-level Benchmark current values must follow the same connected-platform input rule as KPIs so benchmark status does not drift from the visible campaign/platform cards.
 Campaign-level Benchmark current values MUST be fed by the connected-platform metrics for the campaign. Do not add a separate selectable source model or fallback calculation that can drift from the connected platform values.
 Campaign-level Benchmark create/edit forms must follow the same unit-display conventions as platform Benchmark forms. Count values display as whole numbers without decimal suffixes, currency values display with thousands separators, percent values display as clean percentages, and ROAS uses the `ratio` unit while displaying with ratio-style `x` formatting.
 
 Production-readiness tracking for campaign-level KPI and Benchmark correctness lives in `CAMPAIGN_LEVEL_KPI_BENCHMARK_PRODUCTION_READY.md`.
 
-### Freestyle Chat
+### Talk to Your Data
 
-Freestyle Chat is excluded from Version 1 and deferred to Version 2.
+The Campaign Diagnostics launcher is enabled and opens
+`/campaigns/:id/talk-to-your-data`. The page currently shows `Chat feature
+coming soon!`; it has no prompt input and no campaign chat endpoint. No campaign
+data is sent to an AI provider by this placeholder.
 
-The Version 1 UI does not render the chat tab, and the Version 1 server does not expose its campaign chat endpoint.
-No campaign data is sent to an AI provider by this deferred feature.
-
-When reintroduced, Freestyle Chat should remain campaign-level and support questions, prompts, and exploratory analysis about overall campaign performance.
+When implemented, Talk to Your Data should remain campaign-level and support
+questions, prompts, and exploratory analysis about overall campaign
+performance.
 
 It should continue to use campaign context such as:
 
@@ -421,11 +438,12 @@ It should continue to use campaign context such as:
 
 It should not be repurposed into a single-platform diagnostic tool unless explicitly designed that way.
 
-Version 2 work must include an explicit data-sharing disclosure and provider privacy controls before the feature is enabled.
+Implementation work must include an explicit data-sharing disclosure and
+provider privacy controls before prompts or provider data sharing are enabled.
 
-### Campaign Overview And Campaign DeepDive
+### Campaign Overview And Campaign Diagnostics
 
-The Campaign Overview tab is the campaign hub landing area.
+The Campaign Overview page is the campaign hub landing area.
 
 It is allowed, and expected, to contain a mix of:
 
@@ -433,20 +451,24 @@ It is allowed, and expected, to contain a mix of:
 - campaign-scoped launcher sections
 - platform-connection sections related to that campaign
 
-Inside Campaign Overview, the Campaign DeepDive section acts as a set of analysis launchers.
+Inside Campaign Overview, the `Campaign Diagnostics` section acts as a set of
+analysis launchers. Older code identifiers and readiness files may still use
+`campaign_deepdive` or `CAMPAIGN_DEEPDIVE`; those are internal compatibility
+names, not the current user-facing label.
 
 These launchers are campaign-wide and cross-platform in intent.
 
-Current DeepDive launchers include:
+Current Campaign Diagnostics launchers include:
 
 - Performance Summary
 - Budget & Financial Analysis
-- Platform Comparison
 - Trend Analysis
 - Executive Summary
-- Custom Report
+- Reports
+- Talk to Your Data
 
-These are campaign-level deep dives.
+The first five are campaign-level analysis and reporting surfaces. Talk to Your
+Data is currently a coming-soon placeholder.
 They are not individual-source analytics pages.
 
 Performance Summary production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_PRODUCTION_READY.md`.
@@ -458,9 +480,9 @@ GA4 current-value window contract:
 - the configured historical lookback establishes the fixed initial-import boundary; it is not a permanent rolling display window
 - after the initial import, GA4 Summary traffic values accumulate from that fixed boundary through the latest completed reporting day
 - corresponding GA4 KPI and Benchmark `currentValue` fields are recomputed from those cumulative traffic inputs and the connected-source financial contract: native GA4 financial values use the same fixed initial-import boundary, while imported Revenue and Spend include every mapped materialized record dated on or before the campaign-timezone latest completed reporting day
-- Performance Summary Key Outcomes consume the same authoritative cumulative traffic and connected-source financial values; Campaign Health, Top Priority Action, and Recommended Actions consume the refreshed KPI and Benchmark current values. None may independently substitute a rolling 30/60/90-day total or use campaign metadata dates as a financial boundary
+- Performance Summary outcome cards consume the same authoritative cumulative traffic and connected-source financial values; Campaign Health, Top Priority Action, and Recommended Actions consume the refreshed KPI and Benchmark current values. None may independently substitute a rolling 30/60/90-day total or use campaign metadata dates as a financial boundary
 - Recent Movement is intentionally different: it compares the current cumulative value with the cumulative value at the exact prior date selected by the user
-- Performance Summary currency values must use the campaign currency. This includes Key Outcomes Revenue/Spend, Recent Movement financial values, and Top Priority Action and Recommended Actions Revenue/CPA current and target values; the scheduled Performance Summary PDF receives the same campaign currency.
+- Performance Summary currency values must use the campaign currency. This includes the outcome-row Revenue/Spend cards, Recent Movement financial values, and Top Priority Action and Recommended Actions Revenue/CPA current and target values; the scheduled Performance Summary PDF receives the same campaign currency.
 - The live Performance Summary page does not expose a `Demo Data` control or demo banner; its visible campaign path uses live connected-source data.
 - Recent Movement comparison changes are atomic at the presentation layer: keep the last settled cards visible while the requested exact-date inputs load, then commit the new period and cards together. Do not render a transient `Comparison unavailable` state from mixed old/new query data; genuine unavailable/error results remain fail-closed after the selection settles.
 
@@ -472,7 +494,7 @@ Trend Analysis production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_TREND_
 
 Executive Summary production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md`.
 
-Trend Analysis renders one comprehensive executive view instead of separate tabs. The view combines the Connected-Source Performance Summary, Campaign Performance Trend, Efficiency Trends, conditional Anomaly Detection, Website Engagement & Conversion Summary, conditional paid/source detail, and evidence-gated Executive Recommendations without duplicating the same values across panels. Its browser selector defaults to `7 days`; the `7/14/30/90-day` options control the chart window and exact cumulative comparison date, but do not replace authoritative cumulative current totals with rolling-window totals. For the GA4-first consumer, current Revenue and Spend prefer a compatible scheduler-written `financial_daily_snapshot_v1` row and otherwise use the authoritative persisted `performance_summary_aggregate_v3` totals. Exact historical financial comparison prefers its compatible snapshot and may use the existing scoped read-only GA4/source derivation when that snapshot is absent; it never reuses the current value or writes history. The Campaign Performance Trend chart reads only complete scheduler-stored `/ga4-daily` rows, including explicit scheduler-written zero rows for completed no-activity dates; opening the page does not run a live GA4 coverage request. The five financial card positions remain visible; missing current inputs show unavailable/scheduler-waiting, while a missing exact baseline leaves the current values visible with `Comparison unavailable`. The scheduler saves the GA4 report currency verified against the campaign currency, and reconciled ROAS guidance requires that saved proof. The shared Trend PDF uses its separate fixed 30-day calendar contract.
+Trend Analysis renders one comprehensive executive view instead of separate tabs. The view combines its `Trend Analysis` headline summary, Campaign Performance Trend, Efficiency Trends, conditional Anomaly Detection, Website Engagement & Conversion Summary, conditional paid/source detail, and evidence-gated Executive Recommendations without duplicating the same values across panels. The headline summary was formerly labelled `Connected-Source Performance Summary`. Its browser selector defaults to `7 days`; the `7/14/30/90-day` options control the chart window and exact cumulative comparison date, but do not replace authoritative cumulative current totals with rolling-window totals. For the GA4-first consumer, current Revenue and Spend prefer a compatible scheduler-written `financial_daily_snapshot_v1` row and otherwise use the authoritative persisted `performance_summary_aggregate_v3` totals. Exact historical financial comparison prefers its compatible snapshot and may use the existing scoped read-only GA4/source derivation when that snapshot is absent; it never reuses the current value or writes history. The Campaign Performance Trend chart reads only complete scheduler-stored `/ga4-daily` rows, including explicit scheduler-written zero rows for completed no-activity dates; opening the page does not run a live GA4 coverage request. The five financial card positions remain visible; missing current inputs show unavailable/scheduler-waiting, while a missing exact baseline leaves the current values visible with `Comparison unavailable`. The scheduler saves the GA4 report currency verified against the campaign currency, and reconciled ROAS guidance requires that saved proof. The shared Trend PDF uses its separate fixed 30-day calendar contract.
 
 Budget & Financial Analysis lets users fill or edit the shared campaign `budget`, `pacingStartDate`, and `pacingEndDate` fields through the normal campaign update route; it must not create parallel pacing-only values. Saving cleared date fields may retain the budget while making date-dependent pacing unavailable. `Delete inputs` clears all three fields without deleting connected financial-source records. Because the budget is shared campaign metadata, changing it also updates the Budget value shown in Campaign Management after campaign data refreshes.
 
@@ -491,7 +513,7 @@ Executive use case:
 - The same executive opens Executive Summary to get one campaign-wide page containing factual narrative, 7-day trajectory, Risk Level, funnel values, KPI/Benchmark exceptions, and Recommended Actions. The former Executive Overview and Strategic Recommendations tabs no longer exist.
 - Executive Summary shows GA4-only campaigns as web analytics/outcome campaigns. The funnel uses Users -> Sessions -> Conversions -> Revenue when paid-media reach/click inputs are unavailable; unavailable metrics remain unavailable rather than becoming zero. Bottom of Funnel presents Conversions, Revenue, Spend, ROAS, and ROI once; a separate duplicate metric-card row is not part of the current layout.
 - Funnel values read `performance_summary_aggregate_v3` from `/outcome-totals`. For the GA4-first boundary, Users, Sessions, Conversions, and Engagement Rate are property-level GA4 campaign-filtered values; Total Revenue combines GA4-native campaign revenue with active imported connected revenue; Spend uses active GA4-context spend records.
-- Executive Summary no longer displays Campaign Grade, Health Score, Campaign Story, duplicate Platform Performance, or the former full Risk Assessment page card. Compatible 7-day trajectory and the top Risk Level badge remain visible; retained backend response fields preserve API compatibility only. The Campaign DeepDive Executive report PDF has a separate report-specific Risk Assessment breakdown derived from those same risk inputs; that export section does not restore the removed page card.
+- Executive Summary no longer displays Campaign Grade, Health Score, Campaign Story, duplicate Platform Performance, or the former full Risk Assessment page card. Compatible 7-day trajectory and the top Risk Level badge remain visible; retained backend response fields preserve API compatibility only. The Campaign Diagnostics Executive report PDF has a separate report-specific Risk Assessment breakdown derived from those same risk inputs; that export section does not restore the removed page card.
 - The factual narrative uses the same `performanceSummary` ROI/ROAS values as the visible funnel, plus the current Risk Level and trajectory state. It must not use hidden score/grade wording.
 - Risk Level uses available ROI/ROAS, applicable source concentration, compatible decline, GA4 platform KPI classifications, GA4 platform Benchmark classifications, and applicable freshness warnings. Budget pacing remains in Budget & Financial Analysis.
 - For GA4-connected campaigns, KPI and Benchmark rows/current values come from `google_analytics` platform records recomputed through the verified-current resolver and configured GA4 reporting contracts. When a provider refresh is unavailable, a native GA4 financial current value may use the synchronized Overview snapshot only when its import window, currency, and persisted daily coverage exactly match; otherwise the resolver continues through its documented fail-closed source order. These configured rows may use a different documented reporting window from the current funnel aggregate and must not be silently substituted for one another. KPI status uses the shared near-target tolerance; Benchmark status uses the shared tolerance plus the 70% effective-attainment boundary between `Needs Attention` and `Behind`.
@@ -504,20 +526,26 @@ Executive use case:
 - Executive Summary should not duplicate Platform Comparison; platform-level side-by-side detail remains in Platform Comparison.
 - If only GA4 is connected, Budget & Financial Analysis can still evaluate the campaign's financial position from GA4/campaign financial totals, while Platform Comparison should show GA4's available analytics metrics and clearly explain that paid-media comparison requires a main paid-media platform connection.
 
-## Connected Platforms Pattern
+## Connected Platform Pattern
 
-Connected Platforms is where the data comes from.
+`Connected Platform` is where the current campaign's main data connection is
+shown.
 
 It shows platform connection state plus platform-specific entry points.
 
 The correct interpretation is:
 
-- Connected Platforms = platform-specific detail for a campaign
+- Connected Platform = platform-specific detail for a campaign
 - View Detailed Analytics = drill into one platform only
 
 Important clarification:
 
-`Connected Platforms` is still part of the campaign-level `Campaign Overview` experience.
+`Connected Platform` is still part of the campaign-level `Campaign Overview`
+experience.
+
+Current implementation note: the campaign hub is GA4-first and filters the
+visible platform card list to Google Analytics. Other platform analytics pages
+remain registered but are not current Campaign Overview entry points.
 
 Why:
 
@@ -528,37 +556,33 @@ Why:
 What it is not:
 
 - it is not the same thing as campaign-wide rollup analysis
-- it is not the same thing as DeepDive
+- it is not the same thing as Campaign Diagnostics
 - it is not a cross-platform narrative layer by itself
 
 ### View Detailed Analytics
 
 The `View Detailed Analytics` action is a platform-specific deep-detail launcher.
 
-Examples:
-
-- GA4-only detail
-- LinkedIn-only detail
-- Meta-only detail
-- Google Ads-only detail
-- Google Sheets-only detail
-- Custom Integration-only detail
+The current Campaign Overview action opens GA4-only detail. LinkedIn, Meta,
+Google Ads, Google Sheets, Instagram, TikTok, and Custom Integration detail
+pages remain implementation surfaces that can follow the same pattern when
+their campaign entry points are enabled.
 
 These pages are still campaign-scoped in routing and tenancy, but analytically they are platform-specific views.
 
-## DeepDive vs Connected Platforms
+## Campaign Diagnostics vs Connected Platform
 
 This distinction is one of the most important architectural rules in the product.
 
 There are two levels of detail:
 
-- DeepDive = cross-platform, campaign-wide analysis
-- Connected Platforms = individual platform analytics
+- Campaign Diagnostics = campaign-wide analysis
+- Connected Platform = individual platform analytics
 
 More specifically:
 
-- DeepDive tells the story of the campaign as a whole
-- Connected Platforms shows the underlying source-specific lenses feeding that campaign
+- Campaign Diagnostics tells the story of the campaign as a whole
+- Connected Platform shows the underlying source-specific lens feeding that campaign
 
 Future development must preserve this split.
 
@@ -569,7 +593,7 @@ The correct relationship is:
 1. Connected Platforms provide source-level inputs.
 2. Campaign-level analytics aggregate, interpret, and evaluate those inputs at the campaign level.
 3. KPIs and Benchmarks sit at the campaign layer.
-4. DeepDive pages tell a broader story using the campaign's combined knowledge.
+4. Campaign Diagnostics pages tell a broader story using the campaign's combined knowledge.
 5. Platform-specific detailed analytics remain available when a user needs to inspect one source directly.
 
 This means:
@@ -577,26 +601,26 @@ This means:
 - campaign-level analysis is downstream of connected-platform data
 - connected-platform pages are supporting detail views
 - the campaign remains the primary object
-- Campaign DeepDive sections, including Performance Summary, Budget & Financial Analysis, Platform Comparison, Trend Analysis, and Executive Summary, must automatically aggregate all implemented main Connected Platforms through a shared source-capability contract instead of relying on one-off tab-specific platform lists
+- Campaign Diagnostics sections, including Performance Summary, Budget & Financial Analysis, Trend Analysis, and Executive Summary, must automatically aggregate all enabled main Connected Platforms through a shared source-capability contract instead of relying on one-off tab-specific platform lists
 - any future main Connected Platform is not complete until it supplies campaign-scoped source identity, available metrics, unavailable metric reasons, source labels, freshness, scheduler snapshot inputs, and tests for campaign-level aggregation through the shared generic source contract
-- future standalone platforms such as Google Ads, TikTok, Instagram, and other sources should plug into Campaign DeepDive by supplying generic source breakdowns, not by adding tab-specific aggregation logic
-- implemented main Connected Platforms are the source of truth for Campaign DeepDive subsections; downstream subsections consume the shared aggregate and must not push values back into platform-level analytics
-- platform child sources can contribute to the parent platform or campaign financial totals, but should not be displayed as separate main Connected Platforms in campaign-level source lists and should not require duplicate Campaign DeepDive setup
+- future standalone platforms such as Google Ads, TikTok, Instagram, and other sources should plug into Campaign Diagnostics by supplying generic source breakdowns, not by adding tab-specific aggregation logic
+- implemented main Connected Platforms are the source of truth for Campaign Diagnostics subsections; downstream subsections consume the shared aggregate and must not push values back into platform-level analytics
+- platform child sources can contribute to the parent platform or campaign financial totals, but should not be displayed as separate main Connected Platforms in campaign-level source lists and should not require duplicate Campaign Diagnostics setup
 - ad-platform spend imported inside another platform, such as LinkedIn or Meta spend imported inside GA4, remains a child financial input for that parent platform/campaign financial path; it does not make LinkedIn Ads or Meta Ads a separate Platform Comparison source unless the ad platform is connected as its own main Connected Platform
 - Platform Comparison Overview can display single-source aggregate financial totals for the only connected main platform, but this does not make analytics-only sources eligible for Financial Comparison paid-media rows or budget recommendation logic
 - Performance Summary, Budget & Financial Analysis, Platform Comparison, Trend Analysis, and Executive Summary stay synchronized with underlying source updates by refetching authoritative state while visible and on window focus. For active real GA4 campaigns, their historical financial, aggregate, and Executive Summary snapshots are published by the same ordered daily cycle after the refreshed GA4/financial inputs and KPI/Benchmark state are ready. Performance Summary exposes the shared latest-completed-day date and campaign reporting timezone only when its current aggregate, GA4 traffic, Revenue, and Spend boundaries match; a missing or different cutoff fails closed instead of mixing dates. Recent Movement comparisons are anchored to that completed-day date and name the resolved comparison date rather than using an intraday `yesterday` label.
 
-### Campaign DeepDive Data Dependency Rule
+### Campaign Diagnostics Data Dependency Rule
 
-All Campaign DeepDive sections must preserve this one-way data flow:
+All Campaign Diagnostics sections must preserve this one-way data flow:
 
-`persisted connected-source records -> documented source calculations -> shared campaign aggregate -> Campaign DeepDive consumers`
+`persisted connected-source records -> documented source calculations -> shared campaign aggregate -> Campaign Diagnostics consumers`
 
-- A Campaign DeepDive section must consume authoritative metrics through the shared aggregate/source-capability contract. It must not copy displayed values, cached state, or calculations from another UI tab.
-- GA4 Overview is a platform-detail consumer of the underlying GA4 and financial source records. Campaign DeepDive values align with it by consuming the same authoritative records, not by treating the Overview UI as an input.
+- A Campaign Diagnostics section must consume authoritative metrics through the shared aggregate/source-capability contract. It must not copy displayed values, cached state, or calculations from another UI tab.
+- GA4 Overview is a platform-detail consumer of the underlying GA4 and financial source records. Campaign Diagnostics values align with it by consuming the same authoritative records, not by treating the Overview UI as an input.
 - KPI and Benchmark current values must follow their documented connected-source reporting contracts. Their definitions, targets, or classifications may inform target, health, risk, or action logic only where that dependency is explicitly documented; they must never replace authoritative Spend, Revenue, Conversions, or other base metrics.
-- Ad Comparison and Insights are derived analysis consumers. Reports are output consumers. None of them may become an upstream source for Campaign DeepDive base calculations.
-- When source values change, refresh and recomputation update the shared aggregate and any dependent KPI or Benchmark current values; visible Campaign DeepDive sections converge by refetching that authoritative state. Active real GA4 campaigns publish scheduled historical snapshots and durable exact-date report readiness only through the ordered daily cycle. Successful campaigns complete independently of failures in unrelated campaigns, and scheduled report delivery restores readiness from persistence after a process restart. No tab-to-tab copying or real-time push dependency is required.
+- Ad Comparison and Insights are derived analysis consumers. Reports are output consumers. None of them may become an upstream source for Campaign Diagnostics base calculations.
+- When source values change, refresh and recomputation update the shared aggregate and any dependent KPI or Benchmark current values; visible Campaign Diagnostics sections converge by refetching that authoritative state. Active real GA4 campaigns publish scheduled historical snapshots and durable exact-date report readiness only through the ordered daily cycle. Successful campaigns complete independently of failures in unrelated campaigns, and scheduled report delivery restores readiness from persistence after a process restart. No tab-to-tab copying or real-time push dependency is required.
 
 ## Consistency Review Of The Current Codebase
 
@@ -605,23 +629,30 @@ Based on the current implementation, the codebase is broadly consistent with thi
 
 ### Important Clarification
 
-The Connected Platforms section appears inside the campaign Overview page, and that placement is correct.
+The `Connected Platform` section appears inside the Campaign Overview page,
+and that placement is correct.
 
 It should remain there because it is part of understanding the campaign's connected setup.
 
-However, it should not be interpreted as the same kind of analytics as campaign-wide DeepDive or campaign-level KPI/Benchmark analysis.
+However, it should not be interpreted as the same kind of analytics as
+campaign-wide Campaign Diagnostics or campaign-level KPI/Benchmark analysis.
 
 It is a platform-specific layer inside the campaign experience.
 
 ### Custom Report Implementation Note
 
-Custom Report behaves as a campaign-level reporting launcher, but in implementation it is opened from the hub as a report-building action rather than a dedicated deep-dive page. From Campaign DeepDive, it preserves campaign context through `/reports?campaignId=<campaignId>` while the global `/reports` entry remains available separately.
+Reports is a campaign-level launcher opened from Campaign Diagnostics rather
+than a dedicated analysis page. It preserves campaign context through
+`/reports?campaignId=<campaignId>`. The standalone `/reports` route remains a
+separate fail-closed, non-authoring shell.
 
-Campaign-scoped Custom Report must consume the same upstream contracts used by the corresponding Campaign DeepDive sections. Metric selection should expose only metrics marked available by connected main sources; GA4-only campaigns should show web analytics and outcome metrics only, and paid-media metrics should remain hidden until a connected main paid-media source supplies them. In the GA4-first version, KPI and Benchmark sections use campaign-scoped GA4 platform records for rows, current values, and targets; campaign-level aggregation remains inactive until additional Connected Platforms are enabled. Campaign-scoped Reports pages should display the active campaign's backend scheduled report cards directly without Standard Reports, Scheduled Reports, or All Reports tabs, report type filters, result counts, or global/demo reports. Scheduled report cards should remain summary-only and should not show connected-source values, KPI/Benchmark row details, generated status pills, or `Includes` configuration details inline. The card edit action should reopen the report dialog with saved values prefilled, show `Update Report`, and keep update disabled until the user changes a value. The top-level `Create Report` action should always open a blank create form instead of reusing values from the last edited report; unscheduled create mode should show `Download Report`, download the PDF immediately, and create no browser or backend report-library row, while scheduled create mode should use `Schedule Automated Report`, show `Schedule Report`, and save a backend scheduled record that appears directly on the Reports page. New campaign-scoped reports do not show a `Tabs to include` picker because each available subsection is one report page; choosing the report type automatically saves that type's single-page composition in `selectedSections`. Existing saved report composition is not migrated, and its picker remains available during edit for backward compatibility. Legacy Performance Summary section keys normalize at read/render time to one consolidated `performance-summary:overview` body containing Key Outcomes, Campaign Health, Top Priority Action, Recent Movement, and Recommended Actions; retired keys must not duplicate content. In the GA4-first Performance Summary PDF, Users, Sessions, and Conversions must use the persisted GA4 Summary totals, Revenue must use native GA4 revenue from the saved import window plus all mapped imported revenue records, Spend retains the shared aggregate source contract, Recommended Actions currency values use the campaign currency, and unavailable UI-aligned inputs fail closed instead of falling back to different aggregate values. Scheduled report cards should show the stored composition labels in `Data Included`. Downloaded Campaign DeepDive subsection PDFs should render body content for the stored composition from the corresponding fixed upstream contract, not only section names. Scheduled Campaign DeepDive Custom Reports must write backend scheduled report records through `/api/platforms/campaign_deepdive/reports`, persist recipients, schedule time, browser time zone, and saved composition, and be processed by `server/report-scheduler.ts` like platform-level scheduled reports. Completed deployed scheduled-email evidence applies to the GA4-first source mix tested; each added main Connected Platform still needs its own source-readiness validation before its values are trusted in Custom Report. The standalone `/reports` route retains its tab shell but is a fail-closed, non-authoring surface: it does not read or render legacy `marketpulse_reports` browser records and does not expose `Create Report`. Campaign report creation and lifecycle actions require `/reports?campaignId=<campaignId>`.
+Campaign-scoped reports must consume the same upstream contracts used by the corresponding Campaign Diagnostics sections. Metric selection should expose only metrics marked available by connected main sources; GA4-only campaigns should show web analytics and outcome metrics only, and paid-media metrics should remain hidden until a connected main paid-media source supplies them. In the GA4-first version, KPI and Benchmark sections use campaign-scoped GA4 platform records for rows, current values, and targets; campaign-level aggregation remains inactive until additional Connected Platforms are enabled. Campaign-scoped Reports pages should display the active campaign's backend scheduled report cards directly without Standard Reports, Scheduled Reports, or All Reports tabs, report type filters, result counts, or global/demo reports. Scheduled report cards should remain summary-only and should not show connected-source values, KPI/Benchmark row details, generated status pills, or `Includes` configuration details inline. The card edit action should reopen the report dialog with saved values prefilled, show `Update Report`, and keep update disabled until the user changes a value. The top-level `Create Report` action should always open a blank create form instead of reusing values from the last edited report; unscheduled create mode should show `Download Report`, download the PDF immediately, and create no browser or backend report-library row, while scheduled create mode should use `Schedule Automated Report`, show `Schedule Report`, and save a backend scheduled record that appears directly on the Reports page. New campaign-scoped reports do not show a `Tabs to include` picker because each available subsection is one report page; choosing the report type automatically saves that type's single-page composition in `selectedSections`. Existing saved report composition is not migrated, and its picker remains available during edit for backward compatibility. Legacy Performance Summary section keys normalize at read/render time to one consolidated `performance-summary:overview` body containing Performance Summary, Campaign Health, Top Priority Action, Recent Movement, and Recommended Actions; retired keys must not duplicate content. In the GA4-first Performance Summary PDF, Users, Sessions, and Conversions must use the persisted GA4 Summary totals, Revenue must use native GA4 revenue from the saved import window plus all mapped imported revenue records, Spend retains the shared aggregate source contract, Recommended Actions currency values use the campaign currency, and unavailable UI-aligned inputs fail closed instead of falling back to different aggregate values. Scheduled report cards should show the stored composition labels in `Data Included`. Downloaded Campaign Diagnostics subsection PDFs should render body content for the stored composition from the corresponding fixed upstream contract, not only section names. Scheduled Campaign Diagnostics reports use the internal `/api/platforms/campaign_deepdive/reports` compatibility endpoint, persist recipients, schedule time, browser time zone, and saved composition, and are processed by `server/report-scheduler.ts` like platform-level scheduled reports. Completed deployed scheduled-email evidence applies to the GA4-first source mix tested; each added main Connected Platform still needs its own source-readiness validation before its values are trusted in reports. The standalone `/reports` route retains its tab shell but is a fail-closed, non-authoring surface: it does not read or render legacy `marketpulse_reports` browser records and does not expose `Create Report`. Campaign report creation and lifecycle actions require `/reports?campaignId=<campaignId>`.
 
-The shared Campaign DeepDive PDF renderer must mirror the current subsection contracts: Budget & Financial Analysis is one page and legacy Financial tab keys collapse to it; Trend Analysis uses cumulative GA4 headline values plus the default 30-day daily window and exact-date comparison; Executive Summary uses cumulative GA4 traffic, connected-source financials, GA4 platform KPI/Benchmark rows, and compatible seven-day trajectory data. Direct downloads, immutable snapshots, and scheduled attachments use this same renderer.
+The shared Campaign Diagnostics PDF renderer must mirror the current subsection contracts: Budget & Financial Analysis is one page and legacy Financial tab keys collapse to it; Trend Analysis uses cumulative GA4 headline values plus the default 30-day daily window and exact-date comparison; Executive Summary uses cumulative GA4 traffic, connected-source financials, GA4 platform KPI/Benchmark rows, and compatible seven-day trajectory data. Direct downloads, immutable snapshots, and scheduled attachments use this same renderer.
 
-That is still consistent with the campaign-wide DeepDive concept and should be treated as part of the campaign-level analysis/reporting layer, not the platform-specific layer.
+That is consistent with the campaign-wide Campaign Diagnostics concept and
+should be treated as part of the campaign-level analysis/reporting layer, not
+the platform-specific layer.
 
 ## Campaign Creation As The Product Anchor
 
@@ -700,25 +731,34 @@ Required behavior:
 
 ### Campaign Creation Wizard Pattern
 
-The intended campaign creation pattern is:
+The current campaign creation pattern is:
 
 1. User clicks `Create Campaign`
 2. User enters campaign metadata
    Campaign name is required; website, label, and budget are optional.
    Budget should auto-format as the user types.
 3. User clicks `Next`
-4. User lands on the connectors flow
+4. User lands on the five-step `Details -> Platform -> Auth -> Configure ->
+   Confirm` flow
    If the user goes back to Step 1 and returns, already-connected wizard state should remain navigable instead of trapping the user on a connected platform tile.
    If the user returns from Confirm to Select Platform, `Continue` should resume the next correct step in that platform flow instead of skipping straight back to Confirm.
    Every `Back` button must return to the immediately previous screen/step for that specific wizard path.
-5. User connects one or more sources
+5. User connects Google Analytics, the only platform currently exposed by the
+   create-campaign selector, and configures its property and campaign scope
 6. User clicks the final `Create Campaign` action
    The confirm step should focus on review/finalization only and should not offer a separate `+ Add another platform` shortcut.
    Before this final action completes, source setup should be labeled `Ready` or `Selected`, not `Connected`.
 7. The system finalizes the campaign and marks it active
 8. The user returns to Campaign Management and sees the new campaign in the list
 9. The user clicks the campaign and lands on the campaign-level Overview
-10. Under "Connected Platforms" in the Overview all connected platforms should show a blue Connected badge and a View Detailed Analytics link which should link to the specific platform's analytics section
+10. Under `Connected Platform` in Campaign Overview, Google Analytics shows its
+    connection status and `View Detailed Analytics` opens the campaign-scoped
+    GA4 page
+
+Other connector implementations remain in the codebase but are outside the
+current creation journey. Re-enabling one requires restoring both its wizard
+entry and its Campaign Overview platform card, then validating that complete
+path before adding it to onboarding.
 
 ### Draft vs Finalized Campaigns
 
@@ -742,7 +782,7 @@ After the campaign exists, clicking it from Campaign Management should take the 
 
 That Campaign Overview should function as the campaign hub.
 
-Inside that hub, the `Connected Platforms` section should:
+Inside that hub, the `Connected Platform` section should:
 
 - be campaign-specific
 - show connection status for sources attached to that campaign
@@ -750,7 +790,7 @@ Inside that hub, the `Connected Platforms` section should:
 - provide `View Detailed Analytics` entry points for connected sources
 - have each `View Detailed Analytics` link route to that specific platform's analytics section for the current campaign
 - list main campaign platforms, not platform child revenue/spend imports that are configured inside a platform-specific analytics flow
-- Campaign DeepDive subsections should aggregate metrics from the main platforms listed here; child revenue/spend systems configured inside a platform only affect the relevant financial totals through that parent platform/campaign financial path
+- Campaign Diagnostics subsections should aggregate metrics from the enabled main platforms listed here; child revenue/spend systems configured inside a platform only affect the relevant financial totals through that parent platform/campaign financial path
 
 This is the correct bridge from campaign setup into analytics.
 
@@ -758,7 +798,7 @@ This is a super-important design pattern.
 
 Required interpretation for future development:
 
-- `Connected Platforms` belongs inside the campaign-level `Campaign Overview` because it answers which sources are attached to the campaign
+- `Connected Platform` belongs inside the campaign-level `Campaign Overview` because it answers which source is attached to the campaign in the current GA4-first release
 - the blue `Connected` badge communicates that the source is live for that campaign
 - `View Detailed Analytics` is the handoff from the campaign hub to the platform-specific analytics layer
 - the user should not be sent to a generic or wrong destination; the link must open the correct analytics section for that exact connected platform

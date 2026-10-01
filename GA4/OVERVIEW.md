@@ -29,7 +29,7 @@ Historical Commit 8 read-only evidence on `2026-07-30`: the validated account ha
 
 Current Commit 9 read-only inventory on `2026-07-30` covered all 10 owner campaigns with active GA4 connections, 73 revenue sources, and 93 spend sources. It found zero revenue orphans, zero campaign/source mismatches, zero exact duplicate candidates, zero active sources without records, and zero unexpected active platform contexts. It found four orphan spend groups containing 325,478 rows: LinkedIn and Meta scheduler rows for `myGA4` and `Summer splash`. Root cause: those schedulers already saved canonical platform daily metrics, then redundantly appended the same windows to generic `spend_records` using pseudo source IDs with no matching `spend_sources` row. Repeated scheduler runs therefore created new orphans. Commit `57036ebc` deployed the forward-only fix, which removes those four redundant scheduler write blocks while preserving canonical LinkedIn/Meta metrics, campaign scope, provider refresh, and current visible totals. The immediate post-deploy read-only inventory at `2026-07-30T16:35:49.623Z` found the same four groups and 325,538 rows as the final pre-deploy density check, proving no immediate growth. The first four-hour scheduled-cycle result remains unproven. No production rows, sources, connections, or cached campaign values were changed.
 
-Current Commit 10 closed status on `2026-07-30`: commit `ec265895` deployed the downstream scheduled/manual Campaign DeepDive aggregate change that reuses the shared ordered GA4 connected-source financial selection, scopes persisted revenue/spend and Trend financial rows to GA4, preserves valid zero/negative revenue for ROAS/ROI, and writes `performance_summary_aggregate_v2` compatibility snapshots. On existing campaign `GA4 single` / `ga4_mock`, Performance Summary Total Spend matched GA4 Overview Total Spend and Budget & Financial Analysis → ROI & ROAS Total Revenue matched GA4 Overview Total Revenue. The statement from that packet that Performance Summary had no Total Revenue card is historical; the current Performance Summary renders Total Revenue in Key Outcomes and Recent Movement. This closes the bounded Commit 10 code/browser packet only; scheduled artifacts, historical Trend, live multi-source, and valid-zero/negative production fixtures remain unproven.
+Current Commit 10 closed status on `2026-07-30`: commit `ec265895` deployed the downstream scheduled/manual Campaign DeepDive aggregate change that reuses the shared ordered GA4 connected-source financial selection, scopes persisted revenue/spend and Trend financial rows to GA4, preserves valid zero/negative revenue for ROAS/ROI, and writes `performance_summary_aggregate_v2` compatibility snapshots. On existing campaign `GA4 single` / `ga4_mock`, Performance Summary Total Spend matched GA4 Overview Total Spend and Budget & Financial Analysis → ROI & ROAS Total Revenue matched GA4 Overview Total Revenue. The statement from that packet that Performance Summary had no Total Revenue card is historical; the current Performance Summary renders Total Revenue in its outcome-card row and Recent Movement. This closes the bounded Commit 10 code/browser packet only; scheduled artifacts, historical Trend, live multi-source, and valid-zero/negative production fixtures remain unproven.
 
 Historical queue status on `2026-08-01`: Commit 16's bounded deployed 30-day saved-window correction was closed while OAuth durability was still unproven. Commit 17 deployed as `36676deb`, and the user confirmed existing Total Revenue, Total Spend, and source lists were unchanged; its bounded forward implementation and retained-source disposition were closed, with rollback behavior regression-covered and no unsafe production failure injection required. Commit 18's fail-closed downstream implementation and deterministic downstream packet were closed. Its corrective scheduler-backed Summary deployed as `e857c15d`; on existing campaign `GA4 single` / `ga4_mock`, the rendered 30-day Summary and exact `/ga4-daily` response both returned 866 Sessions, 867 daily-summed Users, 110 Conversions, 68.4% Engagement Rate, and 12.7% Conversion Rate with `refreshIsStale: false`. Timer-fired and durability evidence were pending at that date and were later closed for the exact certified boundary.
 
@@ -52,9 +52,10 @@ The platform-level GA4 `Overview` tab contains:
 - Revenue & Financial section
   - `Revenue`
     - `Total Revenue`
-    - `Pipeline Proxy` (shows `Not configured` when no eligible CRM source is configured)
   - `Spend`
     - `Total Spend`
+  - `Pipeline Proxy`
+    - `Expected Revenue` (shows `Not configured` when no eligible CRM source is configured)
   - `Performance`
     - `Profit`
     - `ROAS`
@@ -180,11 +181,11 @@ Financial-card detail lives in `GA4/FINANCIAL_SOURCES.md`.
 
 Visible layout:
 
-- `Revenue` contains `Total Revenue` and `Pipeline Proxy`
-- `Spend` contains `Total Spend`
+- the first desktop row has three columns: `Revenue`, `Spend`, and `Pipeline Proxy`
+- the cards inside those columns are labelled `Total Revenue`, `Total Spend`, and `Expected Revenue`
 - `Performance` contains `ROAS`, `ROI`, and `CPA` cards; `Profit` appears when both revenue and spend are available
 - unavailable performance values render as `—` instead of hiding the card
-- `Revenue` and `Spend` render side by side on desktop-width Overview screens and stack on narrower screens
+- the three financial columns render in one row on desktop-width Overview screens and stack responsively on narrower screens
 
 High-level rule:
 

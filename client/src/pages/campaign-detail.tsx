@@ -6681,7 +6681,7 @@ export default function CampaignDetail() {
 
       {/* Platform Disconnect Confirmation */}
       <AlertDialog open={!!disconnectConfirm} onOpenChange={(open) => !open && setDisconnectConfirm(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent data-platform-disconnect-dialog>
           <AlertDialogHeader>
             <AlertDialogTitle>Disconnect {disconnectConfirm?.platformLabel}?</AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">

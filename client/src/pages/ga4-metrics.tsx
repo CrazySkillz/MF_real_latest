@@ -6901,83 +6901,6 @@ export default function GA4Metrics() {
                       </Card>
                     </div>
 
-                    {/* Landing Pages */}
-                    <div>
-                      <div className="mb-3">
-                        <h3 className="text-base font-semibold text-foreground">Landing Pages</h3>
-                        <p className="text-sm text-muted-foreground/70">Cumulative from the initial GA4 import through the latest completed day for this property and campaign scope</p>
-                      </div>
-                      <Card>
-                        <CardContent className="p-6">
-                          {landingPagesLoading && ga4LandingPages === undefined ? (
-                            <div className="h-32 bg-muted rounded animate-pulse" />
-                          ) : landingPagesUnavailable ? (
-                            <div className="text-sm text-destructive">
-                              Landing page data is unavailable. Refresh the page to try again.
-                            </div>
-                          ) : Array.isArray(ga4LandingPages?.rows) && ga4LandingPages.rows.length > 0 ? (
-                            <div className="overflow-hidden border rounded-md">
-                              <table className="w-full text-sm table-fixed">
-                                <thead className="bg-muted border-b">
-                                  <tr>
-                                    <th className="text-left p-3 w-[34%]">Landing page</th>
-                                    <th className="text-left p-3 w-[22%]">Source/Medium</th>
-                                    <th className="text-right p-3 w-[12%]">Sessions</th>
-                                    <th className="text-right p-3 w-[10%]">
-                                      <div className="flex items-center justify-end gap-1">
-                                        Users
-                                        <UITooltip>
-                                          <TooltipTrigger asChild>
-                                            <button type="button" className="inline-flex">
-                                              <AlertCircle className="w-3.5 h-3.5 text-muted-foreground/70" />
-                                            </button>
-                                          </TooltipTrigger>
-                                          <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
-                                            Users are directional and may overlap across landing pages, so row totals are not expected to equal Summary Users.
-                                          </TooltipContent>
-                                        </UITooltip>
-                                      </div>
-                                    </th>
-                                    <th className="text-right p-3 w-[12%]">Conversions</th>
-                                    <th className="text-right p-3 w-[10%] whitespace-nowrap">Conv. rate</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {ga4LandingPages.rows.slice(0, 20).map((r: any, idx: number) => {
-                                    const sessions = Number(r?.sessions || 0);
-                                    const conversions = Number(r?.conversions || 0);
-                                    const cr = sessions > 0 ? (conversions / sessions) * 100 : 0;
-                                    return (
-                                      <tr key={`${r?.landingPage || idx}:${idx}`} className="border-b">
-                                        <td className="p-3">
-                                          <div className="font-medium text-foreground truncate" title={String(r?.landingPage || "(not set)")}>
-                                            {String(r?.landingPage || "(not set)")}
-                                          </div>
-                                        </td>
-                                        <td className="p-3 text-muted-foreground/70">
-                                          <span className="truncate" title={`${String(r?.source || "(not set)")}/${String(r?.medium || "(not set)")}`}>
-                                            {String(r?.source || "(not set)")}/{String(r?.medium || "(not set)")}
-                                          </span>
-                                        </td>
-                                        <td className="p-3 text-right">{formatNumber(Number(r?.sessions || 0))}</td>
-                                        <td className="p-3 text-right">{formatNumber(Number(r?.users || 0))}</td>
-                                        <td className="p-3 text-right">{formatNumber(Number(r?.conversions || 0))}</td>
-                                        <td className="p-3 text-right">{formatPercentage(cr)}</td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
-                            </div>
-                          ) : (
-                            <div className="text-sm text-muted-foreground/70">
-                              GA4 did not provide session-scoped landing-page attribution for this campaign selection.
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </div>
-
                     {/* Conversion Events */}
                     <div>
                       <div className="mb-3">
@@ -7051,6 +6974,83 @@ export default function GA4Metrics() {
                           ) : (
                             <div className="text-sm text-muted-foreground/70">
                               No conversion event breakdown available yet for this property/campaign selection.
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Landing Pages */}
+                    <div>
+                      <div className="mb-3">
+                        <h3 className="text-base font-semibold text-foreground">Landing Pages</h3>
+                        <p className="text-sm text-muted-foreground/70">Cumulative from the initial GA4 import through the latest completed day for this property and campaign scope</p>
+                      </div>
+                      <Card>
+                        <CardContent className="p-6">
+                          {landingPagesLoading && ga4LandingPages === undefined ? (
+                            <div className="h-32 bg-muted rounded animate-pulse" />
+                          ) : landingPagesUnavailable ? (
+                            <div className="text-sm text-destructive">
+                              Landing page data is unavailable. Refresh the page to try again.
+                            </div>
+                          ) : Array.isArray(ga4LandingPages?.rows) && ga4LandingPages.rows.length > 0 ? (
+                            <div className="overflow-hidden border rounded-md">
+                              <table className="w-full text-sm table-fixed">
+                                <thead className="bg-muted border-b">
+                                  <tr>
+                                    <th className="text-left p-3 w-[34%]">Landing page</th>
+                                    <th className="text-left p-3 w-[22%]">Source/Medium</th>
+                                    <th className="text-right p-3 w-[12%]">Sessions</th>
+                                    <th className="text-right p-3 w-[10%]">
+                                      <div className="flex items-center justify-end gap-1">
+                                        Users
+                                        <UITooltip>
+                                          <TooltipTrigger asChild>
+                                            <button type="button" className="inline-flex">
+                                              <AlertCircle className="w-3.5 h-3.5 text-muted-foreground/70" />
+                                            </button>
+                                          </TooltipTrigger>
+                                          <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
+                                            Users are directional and may overlap across landing pages, so row totals are not expected to equal Summary Users.
+                                          </TooltipContent>
+                                        </UITooltip>
+                                      </div>
+                                    </th>
+                                    <th className="text-right p-3 w-[12%]">Conversions</th>
+                                    <th className="text-right p-3 w-[10%] whitespace-nowrap">Conv. rate</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {ga4LandingPages.rows.slice(0, 20).map((r: any, idx: number) => {
+                                    const sessions = Number(r?.sessions || 0);
+                                    const conversions = Number(r?.conversions || 0);
+                                    const cr = sessions > 0 ? (conversions / sessions) * 100 : 0;
+                                    return (
+                                      <tr key={`${r?.landingPage || idx}:${idx}`} className="border-b">
+                                        <td className="p-3">
+                                          <div className="font-medium text-foreground truncate" title={String(r?.landingPage || "(not set)")}>
+                                            {String(r?.landingPage || "(not set)")}
+                                          </div>
+                                        </td>
+                                        <td className="p-3 text-muted-foreground/70">
+                                          <span className="truncate" title={`${String(r?.source || "(not set)")}/${String(r?.medium || "(not set)")}`}>
+                                            {String(r?.source || "(not set)")}/{String(r?.medium || "(not set)")}
+                                          </span>
+                                        </td>
+                                        <td className="p-3 text-right">{formatNumber(Number(r?.sessions || 0))}</td>
+                                        <td className="p-3 text-right">{formatNumber(Number(r?.users || 0))}</td>
+                                        <td className="p-3 text-right">{formatNumber(Number(r?.conversions || 0))}</td>
+                                        <td className="p-3 text-right">{formatPercentage(cr)}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-muted-foreground/70">
+                              Data coming soon
                             </div>
                           )}
                         </CardContent>

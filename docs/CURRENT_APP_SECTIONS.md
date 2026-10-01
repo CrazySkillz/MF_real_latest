@@ -300,7 +300,7 @@ hour range; Weekly KPI and Benchmark reminders also require a weekday.
 
 - **Overview:** Sessions, Users, Conversions, Engagement Rate, and Conversion
   Rate summary cards; a three-column Revenue, Spend, and Pipeline Proxy row;
-  Performance cards; Campaign Breakdown, Landing Pages, and Conversion Events.
+  Performance cards; Campaign Breakdown, Conversion Events, and Landing Pages.
   The cards inside the first financial row are `Total Revenue`, `Total Spend`,
   and `Expected Revenue`.
 - **KPIs:** executive status counts, campaign/platform KPI cards, create/edit/

@@ -127,6 +127,10 @@
     margin-right: 0 !important;
   }
 
+  body[data-scroll-locked]:has([data-platform-disconnect-dialog]) {
+    margin-right: 0 !important;
+  }
+
   * {
     @apply border-border;
   }

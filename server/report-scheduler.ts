@@ -2443,7 +2443,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   const zonedGeneratedAt = DateTime.fromJSDate(generatedAt, { zone: configuredTimeZone });
   const displayGeneratedAt = zonedGeneratedAt.isValid ? zonedGeneratedAt : DateTime.fromJSDate(generatedAt, { zone: "UTC" });
 
-  if (isCampaignDeepDiveCustomReportComposition && ["performance-summary", "financial-analysis", "trend-analysis"].includes(reportType)) {
+  if (isCampaignDeepDiveCustomReportComposition && ["performance-summary", "financial-analysis", "trend-analysis", "executive-summary"].includes(reportType)) {
     type PdfColor = [number, number, number];
     const colors = {
       accent: [244, 174, 126] as PdfColor,
@@ -2515,21 +2515,24 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       ? "Budget & Financial Analysis"
       : reportType === "trend-analysis"
         ? "Trend Analysis"
+        : reportType === "executive-summary"
+          ? "Executive Summary"
         : "Performance Summary";
     const reportTitle = String(report?.name || designedReportLabel);
     drawText(reportTitle.length > 42 ? `${reportTitle.slice(0, 41)}…` : reportTitle, margin, 22, { size: 22, bold: true, maxWidth: contentWidth - 50 });
-    drawText(reportType === "financial-analysis" ? "Campaign Financial Report" : reportType === "trend-analysis" ? "Campaign Trend Report" : "Campaign Performance Report", margin, 30, { size: 10, color: colors.secondary });
+    drawText(reportType === "financial-analysis" ? "Campaign Financial Report" : reportType === "trend-analysis" ? "Campaign Trend Report" : reportType === "executive-summary" ? "Campaign Executive Report" : "Campaign Performance Report", margin, 30, { size: 10, color: colors.secondary });
     y = 38;
     pdf.setFillColor?.(...colors.surface);
-    pdf.roundedRect?.(margin, y, contentWidth, 27, 3, 3, "F");
+    const metaCardHeight = reportType === "executive-summary" ? 33 : 27;
+    pdf.roundedRect?.(margin, y, contentWidth, metaCardHeight, 3, 3, "F");
     const metaRight = margin + contentWidth / 2;
     drawText("CAMPAIGN", margin + 6, y + 7, { size: 7, bold: true, color: colors.muted });
     drawText(campaignName || "Campaign", margin + 6, y + 13, { size: 9, bold: true });
     drawText("REPORT TYPE", metaRight, y + 7, { size: 7, bold: true, color: colors.muted });
     drawText(designedReportLabel, metaRight, y + 13, { size: 9, bold: true });
-    drawText(customReportWindowLabel, margin + 6, y + 21, { size: 7, color: colors.secondary, maxWidth: contentWidth / 2 - 10 });
+    drawText(reportType === "executive-summary" ? executiveMetricBasis : customReportWindowLabel, margin + 6, y + 21, { size: 7, color: colors.secondary, maxWidth: contentWidth / 2 - 10 });
     drawText(`Generated ${displayGeneratedAt.setLocale("en-US").toFormat("MMM d, yyyy 'at' h:mm a")} (${displayGeneratedAt.zoneName || "UTC"})`, metaRight, y + 21, { size: 7, color: colors.secondary, maxWidth: contentWidth / 2 - 6 });
-    y += 35;
+    y += metaCardHeight + 8;
 
     if (reportType === "financial-analysis") {
       const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase() || "USD";
@@ -3118,6 +3121,195 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
           drawText(recommendation.message, margin + 12, y + 17, { size: 8, color: colors.secondary, maxWidth: contentWidth - 18 });
           y += actionHeight + 4;
         });
+      }
+      drawFooter();
+      return coercePdfBufferFromDoc(doc);
+    }
+
+    if (reportType === "executive-summary") {
+      const currentValueWindow = executiveSummary?.performanceSummary?.currentValueWindow;
+      const executiveWindowDescription = currentValueWindow?.mode === "initial_import_to_latest_completed_day"
+        && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.startDate || ""))
+        && /^\d{4}-\d{2}-\d{2}$/.test(String(currentValueWindow?.endDate || ""))
+        && currentValueWindow.startDate <= currentValueWindow.endDate
+        ? `the ${currentValueWindow.startDate} to ${currentValueWindow.endDate} reporting window`
+        : "this 90-day view";
+      const trajectoryName = executiveTrajectory?.available === true && "trajectory" in executiveTrajectory ? String(executiveTrajectory.trajectory || "") : "";
+      const trajectoryPct = executiveTrajectory?.available === true && "trendPercentage" in executiveTrajectory ? Number(executiveTrajectory.trendPercentage) || 0 : 0;
+      const paidSources = aggregateSources.filter((source: any) => source?.category !== "web_analytics" && Array.isArray(source?.includedMetrics) && ["spend", "revenue", "conversions"].some((metricName) => source.includedMetrics.includes(metricName)));
+      const paidSpendTotal = paidSources.reduce((sum: number, source: any) => sum + (Number(source?.metrics?.spend) || 0), 0);
+      const paidTopSpendShare = paidSpendTotal > 0 ? Math.max(...paidSources.map((source: any) => ((Number(source?.metrics?.spend) || 0) / paidSpendTotal) * 100)) : 0;
+      const paidConcentrationRisk = paidSources.length === 1 || paidTopSpendShare > 70;
+      const roiRoasRisk = (executiveMetricAvailable("roi") && executiveMetricNumber("roi") < 0) || (executiveMetricAvailable("roas") && executiveMetricNumber("roas") < 1);
+      const trendRisk = trajectoryName === "declining" && trajectoryPct < -15;
+      const kpiRiskCount = executiveKpiRows.filter((row: any) => executiveKpiProgressPct(row) < 70).length;
+      const kpiMonitorCount = executiveKpiExceptions.filter((row: any) => executiveKpiProgressPct(row) >= 70).length;
+      const benchmarkRiskCount = executiveBenchmarkRows.filter((row: any) => benchmarkThresholdResult(row).status === "behind").length;
+      const benchmarkMonitorCount = executiveBenchmarkRows.filter((row: any) => benchmarkThresholdResult(row).status === "needs_attention").length;
+      const executiveRiskLevel = executiveMetricAvailable("roi") && executiveMetricNumber("roi") < 0
+        ? "high"
+        : roiRoasRisk || trendRisk || paidConcentrationRisk || kpiRiskCount > 0 || benchmarkRiskCount > 0 || !executiveHasAuthoritativeGA4Window ? "medium" : "low";
+      const metricSummary = [
+        executiveMetricAvailable("roi") ? `ROI is ${executiveMetricValue("roi")}` : "",
+        executiveMetricAvailable("roas") ? `ROAS is ${executiveMetricValue("roas")}` : "",
+      ].filter(Boolean).join(" and ");
+      const executiveNarrative = `${campaignName || (campaign as any)?.name || "Campaign"}: ${metricSummary ? `For ${executiveWindowDescription}, connected-source metrics show ${metricSummary}.` : `For ${executiveWindowDescription}, connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS.`} Risk level is ${executiveRiskLevel}. ${trajectoryName ? `7-day snapshot trajectory is ${trajectoryName}.` : "7-day snapshot trajectory does not have enough compatible history yet."}`;
+      const riskInputRows = [
+        { label: "KPI Risk", status: kpiRiskCount > 0 ? "Risk" : kpiMonitorCount > 0 ? "Monitor" : executiveKpiRows.length > 0 ? "No Risk" : "Not Applicable", detail: kpiRiskCount > 0 ? `${kpiRiskCount} KPI${kpiRiskCount === 1 ? " is" : "s are"} below 70% of target${kpiMonitorCount > 0 ? `; ${kpiMonitorCount} additional KPI${kpiMonitorCount === 1 ? " is" : "s are"} below the target policy but at or above the 70% risk cutoff` : ""}` : kpiMonitorCount > 0 ? `${kpiMonitorCount} KPI${kpiMonitorCount === 1 ? " is" : "s are"} below the target policy but at or above the 70% risk cutoff` : executiveKpiRows.length > 0 ? "Mapped KPIs meet the configured target policy" : "No evaluable campaign KPIs available" },
+        { label: "Benchmark Risk", status: benchmarkRiskCount > 0 ? "Risk" : benchmarkMonitorCount > 0 ? "Monitor" : executiveBenchmarkRows.length > 0 ? "No Risk" : "Not Applicable", detail: benchmarkRiskCount > 0 ? `${benchmarkRiskCount} benchmark${benchmarkRiskCount === 1 ? " is" : "s are"} classified behind${benchmarkMonitorCount > 0 ? `; ${benchmarkMonitorCount} additional benchmark${benchmarkMonitorCount === 1 ? " is" : "s are"} classified needs attention` : ""}` : benchmarkMonitorCount > 0 ? `${benchmarkMonitorCount} benchmark${benchmarkMonitorCount === 1 ? " is" : "s are"} classified needs attention; none is classified behind` : executiveBenchmarkRows.length > 0 ? "Mapped benchmarks are on track" : "No evaluable campaign benchmarks available" },
+        { label: "Data Freshness", status: executiveHasAuthoritativeGA4Window ? "No Risk" : "Not Verified", detail: executiveHasAuthoritativeGA4Window ? `GA4 outcome metrics cover through ${executiveCurrentValueWindow.endDate}` : "Connected-source freshness is unavailable in this report context" },
+        { label: "ROI / ROAS Risk", status: roiRoasRisk ? "Risk" : executiveMetricAvailable("roi") || executiveMetricAvailable("roas") ? "No Risk" : "Not Applicable", detail: executiveMetricAvailable("roi") || executiveMetricAvailable("roas") ? [executiveMetricAvailable("roi") ? `ROI ${executiveMetricValue("roi")}` : "", executiveMetricAvailable("roas") ? `ROAS ${executiveMetricValue("roas")}` : ""].filter(Boolean).join(", ") : "ROI and ROAS unavailable from connected sources" },
+        { label: "7-Day Trend Risk", status: trendRisk ? "Risk" : trajectoryName ? "No Risk" : "Not Enough History", detail: trajectoryName ? `${trajectoryName}${trajectoryPct ? ` (${trajectoryPct.toFixed(1)}%)` : ""}` : "Not enough compatible aggregate snapshot history" },
+        { label: "Paid Platform Concentration Risk", status: paidSources.length === 0 ? "Not Applicable" : paidConcentrationRisk ? "Risk" : "No Risk", detail: paidSources.length === 0 ? "No connected paid-media source" : paidConcentrationRisk ? (paidSources.length === 1 ? "Only one paid platform connected" : `${paidTopSpendShare.toFixed(0)}% of paid spend is concentrated`) : "Paid source mix is not concentrated" },
+      ];
+      const hasWebAnalytics = aggregateSources.some((source: any) => source?.category === "web_analytics");
+      const hasWebsiteEvidence = hasWebAnalytics && (executiveMetricAvailable("users") || executiveMetricAvailable("sessions")) && (executiveMetricAvailable("conversions") || executiveMetricAvailable("revenue"));
+      const websiteOutcomeMetricLabels: Record<string, string> = { cvr: "Conversion Rate", revenue: "Revenue", conversions: "Conversions" };
+      const websiteOutcomeExceptionMetricKeys = Array.from(new Set([...executiveKpiExceptions, ...executiveBenchmarkExceptions]
+        .map((row: any) => reportRecordMetric(row))
+        .filter((key: string) => Object.prototype.hasOwnProperty.call(websiteOutcomeMetricLabels, key))))
+        .sort((left, right) => websiteOutcomeMetricLabels[left].localeCompare(websiteOutcomeMetricLabels[right]));
+      const hasWebsiteOutcomeTargetException = websiteOutcomeExceptionMetricKeys.length > 0;
+      const formatMetricLabelList = (labels: string[]) => labels.length <= 1 ? labels[0] : labels.length === 2 ? `${labels[0]} and ${labels[1]}` : `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
+
+      sectionHeading("Executive Summary", 52);
+      const overviewWidth = (contentWidth - 4) / 2;
+      card(margin, y, overviewWidth, 28);
+      card(margin + overviewWidth + 4, y, overviewWidth, 28);
+      drawText("7-DAY SNAPSHOT TRAJECTORY", margin + 6, y + 8, { size: 7, bold: true, color: colors.muted });
+      drawText(trajectoryName ? `${trajectoryName}${trajectoryPct ? ` (${trajectoryPct.toFixed(1)}%)` : ""}` : "Not enough history", margin + 6, y + 19, { size: 11, bold: true, color: colors.accentText, maxWidth: overviewWidth - 12 });
+      drawText("RISK LEVEL", margin + overviewWidth + 10, y + 8, { size: 7, bold: true, color: colors.muted });
+      drawText(executiveRiskLevel.toUpperCase(), margin + overviewWidth + 10, y + 19, { size: 11, bold: true, color: colors.accentText });
+      y += 34;
+      const narrativeLines = doc.splitTextToSize(executiveNarrative, contentWidth - 20);
+      const narrativeHeight = Math.max(26, 16 + narrativeLines.length * 4.5);
+      card(margin, y, contentWidth, narrativeHeight);
+      pdf.setFillColor?.(...colors.accentBg);
+      pdf.roundedRect?.(margin + 4, y + 4, 4, narrativeHeight - 8, 1, 1, "F");
+      drawText("Executive Brief", margin + 12, y + 9, { size: 9, bold: true });
+      drawText(executiveNarrative, margin + 12, y + 17, { size: 8, color: colors.secondary, maxWidth: contentWidth - 20 });
+      y += narrativeHeight + 8;
+
+      sectionHeading("Marketing Funnel Performance", 32);
+      if (!executiveSummary?.performanceSummary) {
+        card(margin, y, contentWidth, 22);
+        drawText("Executive Summary source context unavailable.", margin + 6, y + 13, { size: 9, color: colors.secondary });
+        y += 28;
+      } else {
+        const funnelMetrics = ["users", "sessions", "conversions", "revenue", "spend", "cvr", "roas", "roi"];
+        const funnelWidth = (contentWidth - 8) / 3;
+        funnelMetrics.forEach((key, index) => {
+          const column = index % 3;
+          if (column === 0) {
+            if (index > 0) y += 28;
+            if (ensureDesignedSpace(28) && index > 0) {
+              drawText("Marketing Funnel Performance (continued)", margin, y + 5, { size: 10, bold: true });
+              y += 10;
+            }
+          }
+          const x = margin + column * (funnelWidth + 4);
+          card(x, y, funnelWidth, 24);
+          drawText((campaignDeepDiveMetricLabels[key] || key).toUpperCase(), x + 6, y + 8, { size: 7, color: colors.muted, maxWidth: funnelWidth - 12 });
+          drawText(executiveMetricValue(key), x + 6, y + 18, { size: 11, bold: true, maxWidth: funnelWidth - 12 });
+        });
+        y += 32;
+      }
+
+      const drawExceptionRows = (title: string, rows: any[], emptyMessage: string, benchmark = false) => {
+        sectionHeading(title, 24);
+        if (rows.length === 0) {
+          const lines = doc.splitTextToSize(emptyMessage, contentWidth - 12);
+          const height = Math.max(22, 12 + lines.length * 4.5);
+          card(margin, y, contentWidth, height);
+          drawText(emptyMessage, margin + 6, y + 10, { size: 8, color: colors.secondary, maxWidth: contentWidth - 12 });
+          y += height + 6;
+          return;
+        }
+        rows.forEach((row: any) => {
+          const threshold = benchmark ? benchmarkThresholdResult(row) : null;
+          const status = benchmark ? threshold?.status === "needs_attention" ? "Needs Attention" : "Behind" : "Below Target";
+          const detail = benchmark
+            ? `Yours ${formatExecutiveRecordValue(row, reportRecordCurrentValue(row))}; Benchmark ${formatExecutiveRecordValue(row, row?.benchmarkValue)}; ${threshold?.labelPct}%`
+            : `Current ${formatExecutiveRecordValue(row, reportRecordCurrentValue(row))}; Target ${formatExecutiveRecordValue(row, row?.targetValue)}; ${executiveKpiProgressPct(row).toFixed(1)}%`;
+          const detailLines = doc.splitTextToSize(detail, contentWidth - 24);
+          const height = Math.max(25, 17 + detailLines.length * 4.5);
+          ensureDesignedSpace(height + 4);
+          card(margin, y, contentWidth, height);
+          pdf.setFillColor?.(...colors.accentBg);
+          pdf.roundedRect?.(margin + 4, y + 4, 4, height - 8, 1, 1, "F");
+          drawText(String(row?.name || row?.metric || (benchmark ? "Benchmark" : "KPI")), margin + 12, y + 9, { size: 9, bold: true, maxWidth: contentWidth - 52 });
+          drawText(status, margin + contentWidth - 42, y + 9, { size: 7, bold: true, color: colors.accentText, maxWidth: 36 });
+          drawText(detail, margin + 12, y + 17, { size: 8, color: colors.secondary, maxWidth: contentWidth - 20 });
+          y += height + 4;
+        });
+        y += 2;
+      };
+      drawExceptionRows("KPI Exceptions", executiveKpiExceptions, executiveKpiRows.length === 0
+        ? `KPI Status Unavailable: No campaign KPI has both an available metric and a positive target for ${executiveWindowDescription}.`
+        : `No KPI Exceptions: No below-target KPI was found among campaign KPIs with available data and positive targets for ${executiveWindowDescription}.`);
+      drawExceptionRows("Benchmark Exceptions", executiveBenchmarkExceptions, executiveBenchmarkRows.length === 0
+        ? `Benchmark Status Unavailable: No campaign benchmark has both an available metric and a positive target for ${executiveWindowDescription}.`
+        : `No Benchmark Exceptions: No benchmark requiring attention was found among campaign benchmarks with available data and positive targets for ${executiveWindowDescription}.`, true);
+
+      sectionHeading("Risk Assessment", 32);
+      const riskWidth = (contentWidth - 4) / 2;
+      for (let index = 0; index < riskInputRows.length; index += 2) {
+        const pair = riskInputRows.slice(index, index + 2);
+        const heights = pair.map((row) => Math.max(26, 17 + doc.splitTextToSize(row.detail, riskWidth - 12).length * 4.5));
+        const rowHeight = Math.max(...heights);
+        if (ensureDesignedSpace(rowHeight + 4) && index > 0) {
+          drawText("Risk Assessment (continued)", margin, y + 5, { size: 10, bold: true });
+          y += 10;
+        }
+        pair.forEach((row, column) => {
+          const x = margin + column * (riskWidth + 4);
+          card(x, y, riskWidth, rowHeight);
+          drawText(row.label, x + 6, y + 8, { size: 8, bold: true, maxWidth: riskWidth - 12 });
+          drawText(row.status, x + 6, y + 16, { size: 8, bold: true, color: colors.accentText, maxWidth: riskWidth - 12 });
+          drawText(row.detail, x + 6, y + 23, { size: 7, color: colors.secondary, maxWidth: riskWidth - 12 });
+        });
+        y += rowHeight + 4;
+      }
+
+      if (paidSources.length === 0 && hasWebsiteEvidence) {
+        sectionHeading("Data Accuracy Notice", 24);
+        const notice = "No connected paid-media source is available, so paid-media recommendations are unavailable. Available web analytics and outcome metrics can still feed website recommendations and risk inputs.";
+        const noticeLines = doc.splitTextToSize(notice, contentWidth - 20);
+        const noticeHeight = Math.max(24, 14 + noticeLines.length * 4.5);
+        card(margin, y, contentWidth, noticeHeight);
+        pdf.setFillColor?.(...colors.accentBg);
+        pdf.roundedRect?.(margin + 4, y + 4, 4, noticeHeight - 8, 1, 1, "F");
+        drawText(notice, margin + 12, y + 10, { size: 8, color: colors.secondary, maxWidth: contentWidth - 20 });
+        y += noticeHeight + 6;
+      }
+
+      sectionHeading("Recommended Actions", 28);
+      if (paidSources.length === 0 && hasWebsiteEvidence && hasWebsiteOutcomeTargetException) {
+        const exceptionLabels = websiteOutcomeExceptionMetricKeys.map((key) => websiteOutcomeMetricLabels[key]);
+        const evidence = [
+          executiveMetricAvailable("users") ? `${executiveMetricNumber("users").toLocaleString()} users` : "",
+          executiveMetricAvailable("sessions") ? `${executiveMetricNumber("sessions").toLocaleString()} sessions` : "",
+          executiveMetricAvailable("conversions") ? `${executiveMetricNumber("conversions").toLocaleString()} conversions` : "",
+          executiveMetricAvailable("revenue") ? `${executiveMetricValue("revenue")} total connected revenue` : "",
+          executiveMetricAvailable("cvr") ? `${executiveMetricNumber("cvr").toFixed(2)}% conversion rate` : "",
+        ].filter(Boolean);
+        const targetComparisons = [
+          ...executiveKpiRows.map((row: any) => ({ row, key: reportRecordMetric(row) })).filter(({ key }: any) => websiteOutcomeMetricLabels[key]).map(({ row, key }: any) => `${websiteOutcomeMetricLabels[key]} KPI is ${executiveKpiBand(row) === "below" ? "below target" : "on track"}`),
+          ...executiveBenchmarkRows.map((row: any) => ({ row, key: reportRecordMetric(row) })).filter(({ key }: any) => websiteOutcomeMetricLabels[key]).map(({ row, key }: any) => `${websiteOutcomeMetricLabels[key]} Benchmark ${benchmarkThresholdResult(row).status === "behind" ? "is behind benchmark" : benchmarkThresholdResult(row).status === "needs_attention" ? "needs attention" : "is on track"}`),
+        ].sort((left, right) => left.localeCompare(right));
+        const actionTitle = `Investigate ${formatMetricLabelList(exceptionLabels)}`;
+        const actionBody = `Current evidence: ${evidence.join(", ")}. Target check: ${Array.from(new Set(targetComparisons)).join("; ")}. Next action: investigate ${formatMetricLabelList(exceptionLabels)}, then inspect the relevant measurement and reporting inputs.`;
+        const actionLines = doc.splitTextToSize(actionBody, contentWidth - 20);
+        const actionHeight = Math.max(28, 17 + actionLines.length * 4.5);
+        card(margin, y, contentWidth, actionHeight);
+        pdf.setFillColor?.(...colors.accentBg);
+        pdf.roundedRect?.(margin + 4, y + 4, 4, actionHeight - 8, 1, 1, "F");
+        drawText(actionTitle, margin + 12, y + 9, { size: 9, bold: true, maxWidth: contentWidth - 20 });
+        drawText(actionBody, margin + 12, y + 17, { size: 8, color: colors.secondary, maxWidth: contentWidth - 20 });
+      } else {
+        card(margin, y, contentWidth, 24);
+        drawText("No Evidence-Backed Actions Available", margin + 6, y + 9, { size: 9, bold: true });
+        drawText("Available campaign data and configured targets do not support a reliable recommendation yet.", margin + 6, y + 17, { size: 8, color: colors.secondary, maxWidth: contentWidth - 12 });
       }
       drawFooter();
       return coercePdfBufferFromDoc(doc);

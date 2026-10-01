@@ -721,17 +721,26 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
       campaignName: "Campaign",
     });
 
-    expect(pdfTextCalls).toContain("7-Day Snapshot Trajectory: accelerating (12.5%)");
-    expect(pdfTextCalls).toContain("- Sessions: 1,183");
-    expect(pdfTextCalls).toContain("- Revenue: $72,766.69");
-    expect(pdfTextCalls).not.toContain("- Sessions: 1,179");
-    expect(pdfTextCalls).not.toContain("- Revenue: $51,072.99");
+    expect(pdfTextCalls).toContain("7-DAY SNAPSHOT TRAJECTORY");
+    expect(pdfTextCalls).toContain("accelerating (12.5%)");
+    expect(pdfTextCalls).toContain("SESSIONS");
+    expect(pdfTextCalls).toContain("1,183");
+    expect(pdfTextCalls).toContain("REVENUE");
+    expect(pdfTextCalls).toContain("$72,766.69");
+    expect(pdfTextCalls).not.toContain("1,179");
+    expect(pdfTextCalls).not.toContain("$51,072.99");
     expect(pdfTextCalls.some((text) => text.includes("Sessions target"))).toBe(true);
     expect(pdfTextCalls.some((text) => text.includes("Wrong campaign KPI"))).toBe(false);
     expect(pdfTextCalls).toContain("Risk Assessment");
-    expect(pdfTextCalls).toContain("- KPI Risk: Risk - 1 KPI is below 70% of target");
-    expect(pdfTextCalls).toContain("- Benchmark Risk: Not Applicable - No evaluable campaign benchmarks available");
-    expect(pdfTextCalls).toContain("- Data Freshness: No Risk - GA4 outcome metrics cover through 2026-08-27");
+    expect(pdfTextCalls).toContain("KPI Risk");
+    expect(pdfTextCalls).toContain("1 KPI is below 70% of target");
+    expect(pdfTextCalls).toContain("Benchmark Risk");
+    expect(pdfTextCalls).toContain("No evaluable campaign benchmarks available");
+    expect(pdfTextCalls).toContain("Data Freshness");
+    expect(pdfTextCalls).toContain("GA4 outcome metrics cover through 2026-08-27");
+    expect(pdfDrawCalls.images).toBe(1);
+    expect(pdfDrawCalls.fillColors).toContain("254,249,243");
+    expect(pdfDrawCalls.fillColors).toContain("244,174,126");
     expect(storageMock.getExecutiveSummaryDailyComparisonData).toHaveBeenCalledWith("campaign-1", "2026-08-27", "2026-08-20");
     expect(getCampaignMetricTotalsMock).toHaveBeenCalledWith("campaign-1", true);
   });
@@ -748,6 +757,8 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
       campaignName: "Campaign",
     });
 
-    expect(pdfTextCalls).toContain("- Data Freshness: Not Verified - Connected-source freshness is unavailable in this report context");
+    expect(pdfTextCalls).toContain("Data Freshness");
+    expect(pdfTextCalls).toContain("Not Verified");
+    expect(pdfTextCalls).toContain("Connected-source freshness is unavailable in this report context");
   });
 });

@@ -54,7 +54,7 @@ describe("Campaign Overview navigation UI", () => {
     const ga4 = read("client/src/pages/ga4-metrics.tsx");
     const performance = read("client/src/pages/campaign-performance.tsx");
 
-    expect(sidebar).toContain('(?:ga4-metrics|performance|financial-analysis|trend-analysis)');
+    expect(sidebar).toContain('(?:ga4-metrics|performance|financial-analysis|trend-analysis|executive-summary)');
     expect(sidebar).toContain("data-sidebar-campaign-context");
     expect(sidebar).toContain("{campaign.name}");
     expect(sidebar).toContain("Back to Campaign Overview");

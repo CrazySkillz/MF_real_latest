@@ -750,9 +750,9 @@ describe("campaign Executive Summary regression guard", () => {
     expect(overview).not.toContain("Weighted from available ROI, ROAS, CTR, and CVR inputs.");
     expect(overview).not.toContain("health.grade");
     expect(overview).not.toContain("health.score");
-    expect(overview).toContain("7-Day Snapshot Trajectory");
-    expect(overview).toContain("{executiveTrajectoryUnavailableLabel}");
-    expect(page).toContain('? "History not comparable yet"');
+    expect(overview).not.toContain("7-Day Snapshot Trajectory");
+    expect(overview).toContain("executiveTrajectoryUnavailableLabel ? (");
+    expect(page).not.toContain('"History not comparable yet"');
     expect(page).toContain('? "Revenue history unavailable"');
     expect(page).toContain(': "Not enough history";');
     expect(page).toContain("No matching Executive Summary reading exists for seven days earlier yet.");

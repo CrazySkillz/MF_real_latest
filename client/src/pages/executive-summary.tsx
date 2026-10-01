@@ -1,10 +1,8 @@
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, TrendingUp, TrendingDown, Target, Users, DollarSign, Award, AlertTriangle, CheckCircle, Zap, Eye, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Brain, Activity, ChevronDown, Percent } from "lucide-react";
-import { Link } from "wouter";
+import { Briefcase, TrendingUp, TrendingDown, Target, Users, DollarSign, Award, AlertTriangle, CheckCircle, Zap, Eye, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Brain, Activity, ChevronDown, Percent } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -283,10 +281,10 @@ export default function ExecutiveSummary() {
   const executiveTrajectoryUnavailableReason = hasAuthoritativeGA4Window
     ? String((executiveTrajectoryData as any)?.reason || "")
     : "";
-  const executiveTrajectoryUnavailableLabel = executiveTrajectoryUnavailableReason === "incompatible_history"
-    ? "History not comparable yet"
-    : executiveTrajectoryUnavailableReason === "revenue_history_unavailable"
-      ? "Revenue history unavailable"
+  const executiveTrajectoryUnavailableLabel = executiveTrajectoryUnavailableReason === "revenue_history_unavailable"
+    ? "Revenue history unavailable"
+    : executiveTrajectoryUnavailableReason === "incompatible_history"
+      ? ""
       : "Not enough history";
   const executiveTrajectoryUnavailableDetail = hasAuthoritativeGA4Window
     ? executiveTrajectoryUnavailableReason === "incompatible_history"
@@ -518,33 +516,15 @@ export default function ExecutiveSummary() {
         <Sidebar />
         
         <main className="flex-1 p-8">
-          {/* Header */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-4">
-                <Link href={`/campaigns/${(campaign as any)?.id}`}>
-                  <Button variant="ghost" size="sm">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back to Campaign
-                  </Button>
-                </Link>
-                <div>
-                  <h1 className="text-3xl font-bold text-foreground">Executive Summary</h1>
-                  <p className="text-muted-foreground/70 mt-1">{(campaign as any)?.name}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Executive Summary */}
           <div className="space-y-6">
+              <h2 className="text-xl font-semibold text-foreground">Executive Summary</h2>
               {/* Campaign Trajectory & Risk */}
               <Card className="mb-6">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-6">
                       <div>
-                        <CardTitle className="mb-1">7-Day Snapshot Trajectory</CardTitle>
                         {executiveTrajectory ? (
                           <div className="flex items-center space-x-2">
                             {executiveTrajectory === 'accelerating' && <TrendingUp className="w-5 h-5 text-green-600" />}
@@ -554,9 +534,9 @@ export default function ExecutiveSummary() {
                               {executiveTrajectory}
                             </span>
                           </div>
-                        ) : (
+                        ) : executiveTrajectoryUnavailableLabel ? (
                           <div className="text-lg font-medium text-muted-foreground">{executiveTrajectoryUnavailableLabel}</div>
-                        )}
+                        ) : null}
                         <p className="text-xs text-muted-foreground/70 mt-1">{executiveTrajectoryDetail}</p>
                       </div>
                       <div className="border-l border-border pl-6">

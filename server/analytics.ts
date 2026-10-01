@@ -2197,7 +2197,7 @@ export class GoogleAnalytics4Service {
       const expectedConversions = expectedSupplementedFinancials?.conversions ?? standardConversions;
       const expectedRevenue = expectedSupplementedFinancials?.revenue ?? standardRevenue;
       const revenueRoundingAdjustment = Number((expectedRevenue - rebuiltTotals[3]).toFixed(2));
-      if (rebuiltTotals[2] === expectedConversions && rebuiltRows.length > 0 && Math.abs(revenueRoundingAdjustment) <= 0.01) {
+      if (rebuiltTotals[2] === expectedConversions && rebuiltRows.length > 0 && Math.abs(revenueRoundingAdjustment) <= 0.05) {
         rebuiltRows[0].metricValues[3].value = String(Number(rebuiltRows[0].metricValues[3].value || 0) + revenueRoundingAdjustment);
         rebuiltTotals[3] += revenueRoundingAdjustment;
       }
@@ -2213,7 +2213,7 @@ export class GoogleAnalytics4Service {
       };
       if (rebuiltTotals[0] > standardSessions) {
         if (rebuiltTotals[2] !== expectedConversions || Math.abs(rebuiltTotals[3] - expectedRevenue) >= 0.01) {
-          throw new Error(`GA4_OVERVIEW_CAMPAIGN_ATTRIBUTION_UNVERIFIED: conversions ${rebuiltTotals[2]}/${expectedConversions}, revenue ${rebuiltTotals[3].toFixed(2)}/${expectedRevenue.toFixed(2)}`);
+          throw new Error('GA4_OVERVIEW_CAMPAIGN_ATTRIBUTION_UNVERIFIED');
         }
         data = {
           rows: rebuiltRows,

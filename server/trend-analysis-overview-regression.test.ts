@@ -370,7 +370,7 @@ describe("Trend Analysis Overview regression guard", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
     expect(page).toContain("formatExactTrendCount(authoritativeHeadlineCurrent.sessions)");
     expect(page).toContain("formatExactTrendCount(authoritativeHeadlineCurrent.users)");
-    expect(page).toContain('<h2 className="text-2xl font-semibold text-foreground">Trend Analysis</h2>');
+    expect(page).toContain('<h2 className="text-xl font-semibold text-foreground">Trend Analysis</h2>');
     expect(page).not.toContain("Connected-Source Performance Summary");
     expect(page).toContain('className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5"');
     expect(page).toContain('const schedulerFinancialCardLabels = new Set(["Revenue", "Spend", "ROAS", "ROI", "CPA"]);');

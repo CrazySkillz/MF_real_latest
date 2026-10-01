@@ -95,7 +95,7 @@ describe("Trend Analysis window regression guard", () => {
     expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).toContain("ArrowUpRight");
     expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).toContain("ArrowDownRight");
     expect(page.slice(cumulativeRenderStart, cumulativeRenderEnd)).toContain("comparisonColorClass");
-    expect(page).toContain('<h2 className="text-2xl font-semibold text-foreground">Trend Analysis</h2>');
+    expect(page).toContain('<h2 className="text-xl font-semibold text-foreground">Trend Analysis</h2>');
     expect(page).not.toContain("Connected-Source Performance Summary");
   });
 });

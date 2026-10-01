@@ -1487,7 +1487,15 @@ export default function TrendAnalysis() {
       <div className="flex">
         <Sidebar />
         <main className="flex-1 p-8">
-          <div className="mb-6 flex justify-end">
+          <div className="mb-6 flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <h2 className="text-xl font-semibold text-foreground">Trend Analysis</h2>
+              {cumulativeDataThroughLabel && (
+                <p className="text-sm text-muted-foreground">
+                  Current totals are cumulative through {cumulativeDataThroughLabel}; the selector controls charts and the exact comparison date.
+                </p>
+              )}
+            </div>
             <Select value={perfPeriod} onValueChange={setPerfPeriod}>
               <SelectTrigger className="w-[140px] h-9">
                 <Calendar className="w-3.5 h-3.5 mr-1.5" />
@@ -1568,14 +1576,6 @@ export default function TrendAnalysis() {
                 <>
                   {/* Executive KPI scorecard: one card per decision metric. */}
                   {authoritativeHeadlineCurrent ? <>
-                  <div className="space-y-1">
-                    <h2 className="text-2xl font-semibold text-foreground">Trend Analysis</h2>
-                    {cumulativeDataThroughLabel && (
-                      <p className="text-sm text-muted-foreground">
-                        Current totals are cumulative through {cumulativeDataThroughLabel}; the selector controls charts and the exact comparison date.
-                      </p>
-                    )}
-                  </div>
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                       {[
                         { label: 'Revenue', value: authoritativeHeadlineCurrent.revenue === null ? null : fmtHeadlineCurrency(authoritativeHeadlineCurrent.revenue), change: headlineComparison.revenue, comparisonPending: !trendFinancialComparisonFetched },

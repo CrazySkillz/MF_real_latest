@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const pdfTextCalls = vi.hoisted((): string[] => []);
-const pdfDrawCalls = vi.hoisted(() => ({ rects: 0, roundedRects: 0 }));
+const pdfDrawCalls = vi.hoisted(() => ({ rects: 0, roundedRects: 0, images: 0, fillColors: [] as string[] }));
 const aggregateCampaignMetricsMock = vi.hoisted(() => vi.fn());
 const getCampaignMetricTotalsMock = vi.hoisted(() => vi.fn());
 const getCampaignMetricTotalsAtDateMock = vi.hoisted(() => vi.fn());
@@ -35,12 +35,13 @@ vi.mock("jspdf", () => ({
     setFontSize() {}
     setFont() {}
     setTextColor() {}
-    setFillColor() {}
+    setFillColor(...values: number[]) { pdfDrawCalls.fillColors.push(values.join(",")); }
     setDrawColor() {}
     setLineWidth() {}
     line() {}
     rect() { pdfDrawCalls.rects += 1; }
     roundedRect() { pdfDrawCalls.roundedRects += 1; }
+    addImage() { pdfDrawCalls.images += 1; }
     addPage() {}
     splitTextToSize(value: any) { return [String(value)]; }
     text(value: any) {
@@ -91,6 +92,8 @@ describe("scheduled Performance Summary PDF", () => {
     pdfTextCalls.length = 0;
     pdfDrawCalls.rects = 0;
     pdfDrawCalls.roundedRects = 0;
+    pdfDrawCalls.images = 0;
+    pdfDrawCalls.fillColors.length = 0;
     vi.clearAllMocks();
     storageMock.getCampaign.mockResolvedValue({ id: "campaign-1", name: "Campaign", currency: "USD", reportingTimeZone: "Europe/Amsterdam" });
     storageMock.getCampaignKPIs.mockResolvedValue([]);
@@ -170,6 +173,9 @@ describe("scheduled Performance Summary PDF", () => {
     }
     expect(pdfDrawCalls.rects).toBeGreaterThan(0);
     expect(pdfDrawCalls.roundedRects).toBeGreaterThan(8);
+    expect(pdfDrawCalls.images).toBe(1);
+    expect(pdfDrawCalls.fillColors).toContain("254,249,243");
+    expect(pdfDrawCalls.fillColors).toContain("244,174,126");
     expect(pdfTextCalls).toContain("TOTAL USERS");
     expect(pdfTextCalls).toContain("1,184");
     expect(pdfTextCalls).toContain("TOTAL SESSIONS");

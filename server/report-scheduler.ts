@@ -23,6 +23,8 @@ import { evaluateExecutiveSummaryTrajectory } from "./utils/executive-summary-da
 import { getLatestCompleteReportingDate, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { createReportPdfArtifact } from "./utils/report-pdf-artifact";
 import { getGA4AlignedRefreshState, isGA4AlignedRefreshReady } from "./ga4-daily-scheduler";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 /**
  * Report Scheduler - Automated Email Reports
@@ -254,6 +256,27 @@ function platformRequiresSourceBackedReportOutput(platformType: any): boolean {
   const normalized = String(platformType || "").trim().toLowerCase();
   if (normalized === "campaign_deepdive") return true;
   return normalized === "google_analytics" || normalized === "instagram" || normalized === "tiktok" || normalized === "google_sheets" || normalized === "custom-integration" || normalized === "custom_integration";
+}
+
+let cachedMimoSaaSReportLogo: string | null | undefined;
+function getMimoSaaSReportLogo(): string | null {
+  if (cachedMimoSaaSReportLogo !== undefined) return cachedMimoSaaSReportLogo;
+  const fileName = "logo_fff8f3_bg_orange_fill.jpg";
+  const candidates = [
+    resolve(process.cwd(), "dist", "public", fileName),
+    resolve(process.cwd(), "client", "public", fileName),
+    resolve(import.meta.dirname, "public", fileName),
+    resolve(import.meta.dirname, "..", "client", "public", fileName),
+  ];
+  const logoPath = candidates.find((candidate) => existsSync(candidate));
+  try {
+    cachedMimoSaaSReportLogo = logoPath
+      ? `data:image/jpeg;base64,${readFileSync(logoPath).toString("base64")}`
+      : null;
+  } catch {
+    cachedMimoSaaSReportLogo = null;
+  }
+  return cachedMimoSaaSReportLogo;
 }
 
 function sourceBackedReportOutputUnavailableMessage(platformType: any): string {
@@ -2423,8 +2446,10 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   if (isCampaignDeepDiveCustomReportComposition && reportType === "performance-summary") {
     type PdfColor = [number, number, number];
     const colors = {
-      accent: [120, 80, 220] as PdfColor,
-      accentBg: [245, 241, 255] as PdfColor,
+      accent: [244, 174, 126] as PdfColor,
+      accentText: [183, 82, 24] as PdfColor,
+      accentBg: [255, 239, 226] as PdfColor,
+      background: [254, 249, 243] as PdfColor,
       text: [24, 24, 27] as PdfColor,
       secondary: [113, 113, 122] as PdfColor,
       muted: [161, 161, 170] as PdfColor,
@@ -2448,6 +2473,8 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     const addDesignedPage = () => {
       drawFooter();
       doc.addPage();
+      pdf.setFillColor?.(...colors.background);
+      pdf.rect?.(0, 0, pageWidth, pageHeight, "F");
       pdf.setFillColor?.(...colors.accent);
       pdf.rect?.(0, 0, pageWidth, 4, "F");
       y = 18;
@@ -2478,10 +2505,14 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       pdf.roundedRect?.(x, cardY, width, height, 3, 3, "FD");
     };
 
+    pdf.setFillColor?.(...colors.background);
+    pdf.rect?.(0, 0, pageWidth, pageHeight, "F");
     pdf.setFillColor?.(...colors.accent);
     pdf.rect?.(0, 0, pageWidth, 4, "F");
+    const reportLogo = getMimoSaaSReportLogo();
+    if (reportLogo) pdf.addImage?.(reportLogo, "JPEG", pageWidth - margin - 42, 7, 42, 26.5);
     const reportTitle = String(report?.name || "Performance Summary");
-    drawText(reportTitle.length > 54 ? `${reportTitle.slice(0, 53)}…` : reportTitle, margin, 22, { size: 22, bold: true, maxWidth: contentWidth });
+    drawText(reportTitle.length > 42 ? `${reportTitle.slice(0, 41)}…` : reportTitle, margin, 22, { size: 22, bold: true, maxWidth: contentWidth - 50 });
     drawText("Campaign Performance Report", margin, 30, { size: 10, color: colors.secondary });
     y = 38;
     pdf.setFillColor?.(...colors.surface);
@@ -2559,7 +2590,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         }
         card(margin, y, contentWidth, rowHeight);
         drawText(label, margin + 6, y + 9, { size: 9, bold: true, maxWidth: 54 });
-        drawText(current, margin + 6, y + 17, { size: 10, bold: true, color: colors.accent, maxWidth: 54 });
+        drawText(current, margin + 6, y + 17, { size: 10, bold: true, color: colors.accentText, maxWidth: 54 });
         drawText(comparison, margin + 70, y + 9, { size: 8, maxWidth: contentWidth - 78 });
         drawText(`Sources: ${item.sourceLabel}`, margin + 70, y + 9 + comparisonLines.length * 4.5, { size: 7, color: colors.secondary, maxWidth: contentWidth - 78 });
         y += rowHeight + 4;

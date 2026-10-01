@@ -202,6 +202,8 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("`/api/report-snapshots/${encodeURIComponent(snapshotId)}/pdf`");
     expect(reports).toContain("`/api/campaigns/${encodeURIComponent(reportCampaignId)}/custom-report-pdf`");
     expect(reports).toContain('if (!signature.startsWith("%PDF-")) throw new Error("Generated report PDF is invalid");');
+    expect(reports).toContain("link.download = `${safeName}_${new Date().toISOString().split(\"T\")[0]}.pdf`;");
+    expect(reports).not.toContain("showSaveFilePicker");
     expect(reports).toContain("const isCampaignDeepDiveDownloadReport = (report: StoredReport) =>");
     expect(reports).toContain("if ((report.campaignId || campaignContextId) && isCampaignDeepDiveDownloadReport(report)) await downloadCampaignReportPdf(report);");
     expect(reports).toContain("else await downloadReportPdf(report);");

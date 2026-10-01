@@ -53,13 +53,17 @@ describe("Campaign Overview navigation UI", () => {
     const sidebar = read("client/src/components/layout/sidebar.tsx");
     const ga4 = read("client/src/pages/ga4-metrics.tsx");
     const performance = read("client/src/pages/campaign-performance.tsx");
+    const reports = read("client/src/pages/reports.tsx");
 
     expect(sidebar).toContain('(?:ga4-metrics|performance|financial-analysis|trend-analysis|executive-summary)');
+    expect(sidebar).toContain('new URLSearchParams(window.location.search).get("campaignId")');
     expect(sidebar).toContain("data-sidebar-campaign-context");
     expect(sidebar).toContain("{campaign.name}");
     expect(sidebar).toContain("Back to Campaign Overview");
     expect(ga4).not.toContain("Back to main Campaign Overview");
     expect(ga4).toContain('<SiGoogleanalytics className="w-8 h-8 text-orange-500" />');
     expect(performance).not.toContain('data-testid="button-back"');
+    expect(reports).not.toContain("Back to main Campaign Overview");
+    expect(reports).toContain('<h1 className="text-xl font-semibold text-foreground">Reports</h1>');
   });
 });

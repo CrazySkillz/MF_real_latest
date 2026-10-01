@@ -11,9 +11,12 @@ import type { Campaign } from "@shared/schema";
 export default function Sidebar() {
   const [location] = useLocation();
   const { clients, selectedClientId } = useClient();
-  const isCampaignContext = /^\/campaigns(?:[/?#]|$)/.test(location);
-  const campaignId = location.match(/^\/campaigns\/([^/?#]+)/)?.[1] || null;
-  const isCampaignAnalyticsView = /^\/campaigns\/[^/?#]+\/(?:ga4-metrics|performance|financial-analysis|trend-analysis|executive-summary)(?:[/?#]|$)/.test(location);
+  const reportCampaignId = /^\/reports(?:[?#]|$)/.test(location)
+    ? new URLSearchParams(window.location.search).get("campaignId")
+    : null;
+  const isCampaignContext = /^\/campaigns(?:[/?#]|$)/.test(location) || !!reportCampaignId;
+  const campaignId = location.match(/^\/campaigns\/([^/?#]+)/)?.[1] || reportCampaignId;
+  const isCampaignAnalyticsView = /^\/campaigns\/[^/?#]+\/(?:ga4-metrics|performance|financial-analysis|trend-analysis|executive-summary)(?:[/?#]|$)/.test(location) || !!reportCampaignId;
   const { data: campaign } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
     enabled: !!campaignId,

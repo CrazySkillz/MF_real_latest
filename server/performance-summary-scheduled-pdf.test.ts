@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const pdfTextCalls = vi.hoisted((): string[] => []);
+const pdfDrawCalls = vi.hoisted(() => ({ rects: 0, roundedRects: 0 }));
 const aggregateCampaignMetricsMock = vi.hoisted(() => vi.fn());
 const getCampaignMetricTotalsMock = vi.hoisted(() => vi.fn());
 const getCampaignMetricTotalsAtDateMock = vi.hoisted(() => vi.fn());
@@ -33,6 +34,13 @@ vi.mock("jspdf", () => ({
     internal = { pageSize: { getWidth: () => 210, getHeight: () => 297 } };
     setFontSize() {}
     setFont() {}
+    setTextColor() {}
+    setFillColor() {}
+    setDrawColor() {}
+    setLineWidth() {}
+    line() {}
+    rect() { pdfDrawCalls.rects += 1; }
+    roundedRect() { pdfDrawCalls.roundedRects += 1; }
     addPage() {}
     splitTextToSize(value: any) { return [String(value)]; }
     text(value: any) {
@@ -81,6 +89,8 @@ describe("scheduled Performance Summary PDF", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-28T12:00:00.000Z"));
     pdfTextCalls.length = 0;
+    pdfDrawCalls.rects = 0;
+    pdfDrawCalls.roundedRects = 0;
     vi.clearAllMocks();
     storageMock.getCampaign.mockResolvedValue({ id: "campaign-1", name: "Campaign", currency: "USD", reportingTimeZone: "Europe/Amsterdam" });
     storageMock.getCampaignKPIs.mockResolvedValue([]);
@@ -158,15 +168,23 @@ describe("scheduled Performance Summary PDF", () => {
     for (const heading of ["Key Outcomes", "Campaign Health", "Top Priority Action", "Recent Movement", "Recommended Actions"]) {
       expect(pdfTextCalls.filter((text) => text === heading)).toHaveLength(1);
     }
-    expect(pdfTextCalls).toContain("- Total Users: 1,184");
-    expect(pdfTextCalls).toContain("- Total Sessions: 1,183");
-    expect(pdfTextCalls).toContain("- Total Conversions: 152");
-    expect(pdfTextCalls).toContain("- Total Revenue: $72,766.69");
-    expect(pdfTextCalls).toContain("- Total Spend: $2,699.75");
+    expect(pdfDrawCalls.rects).toBeGreaterThan(0);
+    expect(pdfDrawCalls.roundedRects).toBeGreaterThan(8);
+    expect(pdfTextCalls).toContain("TOTAL USERS");
+    expect(pdfTextCalls).toContain("1,184");
+    expect(pdfTextCalls).toContain("TOTAL SESSIONS");
+    expect(pdfTextCalls).toContain("1,183");
+    expect(pdfTextCalls).toContain("TOTAL CONVERSIONS");
+    expect(pdfTextCalls).toContain("152");
+    expect(pdfTextCalls).toContain("TOTAL REVENUE");
+    expect(pdfTextCalls).toContain("$72,766.69");
+    expect(pdfTextCalls).toContain("TOTAL SPEND");
+    expect(pdfTextCalls).toContain("$2,699.75");
     expect(pdfTextCalls.some((text) => text.includes("KPI below target: CPA"))).toBe(true);
-    expect(pdfTextCalls.some((text) => text.includes("Sessions: 1,183") && text.includes("Previous 1,153"))).toBe(true);
-    expect(pdfTextCalls.some((text) => text.includes("Spend: $2,699.75") && text.includes("Previous $2,500.00"))).toBe(true);
-    expect(pdfTextCalls.some((text) => text.includes("Total Revenue: $72,766.69") && text.includes("exact-date Revenue unavailable") && text.includes("GA4 native revenue, Imported revenue"))).toBe(true);
+    expect(pdfTextCalls.some((text) => text.includes("Previous 1,153"))).toBe(true);
+    expect(pdfTextCalls.some((text) => text.includes("Previous $2,500.00"))).toBe(true);
+    expect(pdfTextCalls.some((text) => text.includes("exact-date Revenue unavailable"))).toBe(true);
+    expect(pdfTextCalls).toContain("Sources: GA4 native revenue, Imported revenue");
     expect(pdfTextCalls).not.toContain("Overview");
     expect(pdfTextCalls).not.toContain("What's Changed");
     expect(pdfTextCalls).not.toContain("Insights");
@@ -232,8 +250,8 @@ describe("scheduled Performance Summary PDF", () => {
     });
 
     expect(buffer?.length).toBeGreaterThan(100);
-    expect(pdfTextCalls).toContain("- Total Revenue: Unavailable - Performance Summary UI value unavailable");
-    expect(pdfTextCalls).not.toContain("- Total Revenue: $51,072.99");
+    expect(pdfTextCalls).toContain("Unavailable - Performance Summary UI value unavailable");
+    expect(pdfTextCalls).not.toContain("$51,072.99");
   });
 
   it("scores CPA from paired financial conversions instead of Summary traffic conversions", async () => {
@@ -259,7 +277,8 @@ describe("scheduled Performance Summary PDF", () => {
 
     expect(2699.75 / 251).toBeLessThan(15);
     expect(2699.75 / 152).toBeGreaterThan(15);
-    expect(pdfTextCalls.some((text) => text.includes("Cost Per Acquisition on target") && text.includes("$10.76"))).toBe(true);
+    expect(pdfTextCalls).toContain("Cost Per Acquisition on target");
+    expect(pdfTextCalls.some((text) => text.includes("$10.76"))).toBe(true);
     expect(pdfTextCalls.some((text) => text.includes("$17.76"))).toBe(false);
     expect(pdfTextCalls.some((text) => text.includes("KPI below target: CPA"))).toBe(false);
   });

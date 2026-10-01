@@ -241,8 +241,8 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduledTab).not.toContain("Settings");
     expect(reports).toContain("const getReportSelectedTabSummary = (report: StoredReport) => {");
     expect(scheduledTab).toContain("{getReportSelectedTabSummary(report)}");
-    expect(reports).toContain("Back to main Campaign Overview");
-    expect(reports).toContain("`/campaigns/${encodeURIComponent(campaignContextId)}`");
+    expect(reports).not.toContain("Back to main Campaign Overview");
+    expect(reports).toContain('<h1 className="text-xl font-semibold text-foreground">Reports</h1>');
     const allTab = reports.slice(reports.indexOf('<TabsContent value="all">'), reports.indexOf('<TabsContent value="standard">'));
     expect(allTab).toContain("Download latest report");
     expect(allTab).not.toContain("Download last sent report");

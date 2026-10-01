@@ -2415,6 +2415,180 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     }
   };
 
+  const generatedAt = new Date();
+  const configuredTimeZone = String((campaign as any)?.reportingTimeZone || "UTC").trim() || "UTC";
+  const zonedGeneratedAt = DateTime.fromJSDate(generatedAt, { zone: configuredTimeZone });
+  const displayGeneratedAt = zonedGeneratedAt.isValid ? zonedGeneratedAt : DateTime.fromJSDate(generatedAt, { zone: "UTC" });
+
+  if (isCampaignDeepDiveCustomReportComposition && reportType === "performance-summary") {
+    type PdfColor = [number, number, number];
+    const colors = {
+      accent: [120, 80, 220] as PdfColor,
+      accentBg: [245, 241, 255] as PdfColor,
+      text: [24, 24, 27] as PdfColor,
+      secondary: [113, 113, 122] as PdfColor,
+      muted: [161, 161, 170] as PdfColor,
+      border: [228, 228, 231] as PdfColor,
+      surface: [250, 250, 252] as PdfColor,
+      white: [255, 255, 255] as PdfColor,
+    };
+    const pdf = doc as any;
+    const contentWidth = pageWidth - margin * 2;
+    const setColor = (color: PdfColor) => pdf.setTextColor?.(...color);
+    const drawFooter = () => {
+      pdf.setDrawColor?.(...colors.border);
+      pdf.setLineWidth?.(0.3);
+      pdf.line?.(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      setColor(colors.muted);
+      doc.text("MimoSaaS Analytics", margin, pageHeight - 10);
+      doc.text(displayGeneratedAt.setLocale("en-US").toFormat("MMM d, yyyy"), pageWidth - margin, pageHeight - 10, { align: "right" });
+    };
+    const addDesignedPage = () => {
+      drawFooter();
+      doc.addPage();
+      pdf.setFillColor?.(...colors.accent);
+      pdf.rect?.(0, 0, pageWidth, 4, "F");
+      y = 18;
+    };
+    const ensureDesignedSpace = (needed: number) => {
+      if (y + needed <= pageHeight - 22) return false;
+      addDesignedPage();
+      return true;
+    };
+    const drawText = (value: string, x: number, textY: number, options: { size?: number; bold?: boolean; color?: PdfColor; maxWidth?: number } = {}) => {
+      doc.setFontSize(options.size || 9);
+      doc.setFont("helvetica", options.bold ? "bold" : "normal");
+      setColor(options.color || colors.text);
+      const lines = options.maxWidth ? doc.splitTextToSize(String(value || ""), options.maxWidth) : [String(value || "")];
+      doc.text(lines, x, textY);
+      return lines.length * ((options.size || 9) >= 12 ? 5.5 : 4.5);
+    };
+    const sectionHeading = (title: string, keepWithNext = 0) => {
+      ensureDesignedSpace(18 + keepWithNext);
+      pdf.setFillColor?.(...colors.accent);
+      pdf.roundedRect?.(margin, y, 3, 12, 1, 1, "F");
+      drawText(title, margin + 8, y + 9, { size: 14, bold: true });
+      y += 18;
+    };
+    const card = (x: number, cardY: number, width: number, height: number) => {
+      pdf.setFillColor?.(...colors.white);
+      pdf.setDrawColor?.(...colors.border);
+      pdf.roundedRect?.(x, cardY, width, height, 3, 3, "FD");
+    };
+
+    pdf.setFillColor?.(...colors.accent);
+    pdf.rect?.(0, 0, pageWidth, 4, "F");
+    const reportTitle = String(report?.name || "Performance Summary");
+    drawText(reportTitle.length > 54 ? `${reportTitle.slice(0, 53)}…` : reportTitle, margin, 22, { size: 22, bold: true, maxWidth: contentWidth });
+    drawText("Campaign Performance Report", margin, 30, { size: 10, color: colors.secondary });
+    y = 38;
+    pdf.setFillColor?.(...colors.surface);
+    pdf.roundedRect?.(margin, y, contentWidth, 27, 3, 3, "F");
+    const metaRight = margin + contentWidth / 2;
+    drawText("CAMPAIGN", margin + 6, y + 7, { size: 7, bold: true, color: colors.muted });
+    drawText(campaignName || "Campaign", margin + 6, y + 13, { size: 9, bold: true });
+    drawText("REPORT TYPE", metaRight, y + 7, { size: 7, bold: true, color: colors.muted });
+    drawText("Performance Summary", metaRight, y + 13, { size: 9, bold: true });
+    drawText(customReportWindowLabel, margin + 6, y + 21, { size: 7, color: colors.secondary, maxWidth: contentWidth / 2 - 10 });
+    drawText(`Generated ${displayGeneratedAt.setLocale("en-US").toFormat("MMM d, yyyy 'at' h:mm a")} (${displayGeneratedAt.zoneName || "UTC"})`, metaRight, y + 21, { size: 7, color: colors.secondary, maxWidth: contentWidth / 2 - 6 });
+    y += 35;
+
+    sectionHeading("Performance Summary", 28);
+    drawText("Key Outcomes", margin, y + 5, { size: 10, bold: true });
+    y += 10;
+    const performanceCurrency = validExecutiveCurrency || "USD";
+    const outcomeCards = [
+      ["Total Users", performanceMetricValue("users", performanceCurrency)],
+      ["Total Sessions", performanceMetricValue("sessions", performanceCurrency)],
+      ["Total Conversions", performanceMetricValue("conversions", performanceCurrency)],
+      ["Total Revenue", performanceMetricValue("revenue", performanceCurrency)],
+      ["Total Spend", performanceMetricValue("spend", performanceCurrency)],
+    ];
+    const outcomeWidth = (contentWidth - 8) / 3;
+    outcomeCards.forEach(([label, value], index) => {
+      const column = index % 3;
+      if (index > 0 && column === 0) y += 28;
+      const x = margin + column * (outcomeWidth + 4);
+      card(x, y, outcomeWidth, 24);
+      drawText(label.toUpperCase(), x + 6, y + 8, { size: 7, color: colors.muted });
+      drawText(value, x + 6, y + 18, { size: 12, bold: true, maxWidth: outcomeWidth - 12 });
+    });
+    y += 32;
+
+    const healthText = performanceHealth.configuredMetricCount === 0
+      ? "No GA4 KPI or Benchmark targets configured."
+      : performanceHealth.excludedMetricCount > 0
+        ? `Verification Needed - ${performanceHealth.verifiedMetricCount} of ${performanceHealth.configuredMetricCount} configured metrics verified; ${performanceHealth.excludedMetricCount} awaiting verification.`
+        : `${performanceHealth.healthScore || 0}% - ${(performanceHealth.healthScore || 0) >= 80 ? "Excellent" : (performanceHealth.healthScore || 0) >= 60 ? "Good" : (performanceHealth.healthScore || 0) >= 40 ? "Needs Attention" : "Critical"}; ${performanceHealth.totalOnTrackMetrics} of ${performanceHealth.configuredMetricCount} configured metrics on track.`;
+    const priorityText = performancePriorityAction();
+    const panelWidth = (contentWidth - 4) / 2;
+    const healthLines = doc.splitTextToSize(healthText, panelWidth - 12);
+    const priorityLines = doc.splitTextToSize(priorityText, panelWidth - 12);
+    const panelHeight = Math.max(32, 18 + Math.max(healthLines.length, priorityLines.length) * 4.5);
+    ensureDesignedSpace(panelHeight + 8);
+    card(margin, y, panelWidth, panelHeight);
+    card(margin + panelWidth + 4, y, panelWidth, panelHeight);
+    drawText("Campaign Health", margin + 6, y + 9, { size: 10, bold: true });
+    drawText(healthText, margin + 6, y + 17, { size: 8, color: colors.secondary, maxWidth: panelWidth - 12 });
+    drawText("Top Priority Action", margin + panelWidth + 10, y + 9, { size: 10, bold: true });
+    drawText(priorityText, margin + panelWidth + 10, y + 17, { size: 8, color: colors.secondary, maxWidth: panelWidth - 12 });
+    y += panelHeight + 8;
+
+    sectionHeading("Recent Movement", 28);
+    drawText("Compare with 7 days ago", margin, y + 4, { size: 8, color: colors.secondary });
+    y += 10;
+    if (performanceRecentMovement.length === 0) {
+      card(margin, y, contentWidth, 20);
+      drawText("No compatible historical data yet.", margin + 6, y + 12, { size: 9, color: colors.secondary });
+      y += 26;
+    } else {
+      performanceRecentMovement.forEach((item) => {
+        const label = item.key === "revenue" ? "Total Revenue" : campaignDeepDiveMetricLabels[item.key] || item.key;
+        const current = formatCampaignDeepDiveMetricValue(item.key, item.current, performanceCurrency);
+        const comparison = item.previous === null
+          ? item.unavailableLabel || "Comparison unavailable - incomplete source history"
+          : `${item.current - item.previous >= 0 ? "+" : ""}${formatCampaignDeepDiveMetricValue(item.key, item.current - item.previous, performanceCurrency)}${item.previous > 0 ? ` (${((item.current - item.previous) / item.previous * 100) >= 0 ? "+" : ""}${((item.current - item.previous) / item.previous * 100).toFixed(1)}%)` : ""}; Previous ${formatCampaignDeepDiveMetricValue(item.key, item.previous, performanceCurrency)}`;
+        const comparisonLines = doc.splitTextToSize(comparison, contentWidth - 80);
+        const sourceLines = doc.splitTextToSize(`Sources: ${item.sourceLabel}`, contentWidth - 80);
+        const rowHeight = Math.max(24, 12 + (comparisonLines.length + sourceLines.length) * 4);
+        if (ensureDesignedSpace(rowHeight + 14)) {
+          drawText("Recent Movement (continued)", margin, y + 5, { size: 10, bold: true });
+          y += 12;
+        }
+        card(margin, y, contentWidth, rowHeight);
+        drawText(label, margin + 6, y + 9, { size: 9, bold: true, maxWidth: 54 });
+        drawText(current, margin + 6, y + 17, { size: 10, bold: true, color: colors.accent, maxWidth: 54 });
+        drawText(comparison, margin + 70, y + 9, { size: 8, maxWidth: contentWidth - 78 });
+        drawText(`Sources: ${item.sourceLabel}`, margin + 70, y + 9 + comparisonLines.length * 4.5, { size: 7, color: colors.secondary, maxWidth: contentWidth - 78 });
+        y += rowHeight + 4;
+      });
+    }
+
+    sectionHeading("Recommended Actions", 24);
+    if (performanceRecommendedActions.length === 0) {
+      card(margin, y, contentWidth, 24);
+      drawText("No Evidence-Backed Actions Available", margin + 6, y + 9, { size: 9, bold: true });
+      drawText("Available campaign data and configured targets do not support a reliable recommendation yet.", margin + 6, y + 17, { size: 8, color: colors.secondary, maxWidth: contentWidth - 12 });
+      y += 30;
+    } else {
+      performanceRecommendedActions.forEach((action) => {
+        const messageLines = doc.splitTextToSize(String(action.message || ""), contentWidth - 16);
+        const actionHeight = Math.max(24, 16 + messageLines.length * 4.5);
+        ensureDesignedSpace(actionHeight + 4);
+        card(margin, y, contentWidth, actionHeight);
+        pdf.setFillColor?.(...colors.accentBg);
+        pdf.roundedRect?.(margin + 4, y + 4, 4, actionHeight - 8, 1, 1, "F");
+        drawText(String(action.title || "Recommended Action"), margin + 12, y + 9, { size: 9, bold: true, maxWidth: contentWidth - 18 });
+        drawText(String(action.message || ""), margin + 12, y + 17, { size: 8, color: colors.secondary, maxWidth: contentWidth - 18 });
+        y += actionHeight + 4;
+      });
+    }
+    drawFooter();
+    return coercePdfBufferFromDoc(doc);
+  }
+
   addText(String(report?.name || "Campaign Report"), { size: 18, bold: true });
   addText(`Campaign: ${campaignName || "Campaign"}`);
   addText(`Report Type: ${campaignDeepDiveReportTypeLabels[reportType] || reportType || "Custom Report"}`);
@@ -2425,10 +2599,6 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       : isCampaignDeepDiveCustomReportComposition
         ? customReportWindowLabel
         : `Window: ${windowStart} to ${windowEnd}`);
-  const generatedAt = new Date();
-  const configuredTimeZone = String((campaign as any)?.reportingTimeZone || "UTC").trim() || "UTC";
-  const zonedGeneratedAt = DateTime.fromJSDate(generatedAt, { zone: configuredTimeZone });
-  const displayGeneratedAt = zonedGeneratedAt.isValid ? zonedGeneratedAt : DateTime.fromJSDate(generatedAt, { zone: "UTC" });
   addText(`Generated: ${displayGeneratedAt.setLocale("en-US").toFormat("M/d/yyyy, h:mm:ss a")} (${displayGeneratedAt.zoneName || "UTC"})`);
   y += 4;
   addText("Included sections", { size: 14, bold: true });

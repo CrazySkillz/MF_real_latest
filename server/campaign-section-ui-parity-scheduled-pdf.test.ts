@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const pdfTextCalls = vi.hoisted((): string[] => []);
-const pdfDrawCalls = vi.hoisted(() => ({ lines: 0, circles: 0, roundedRects: 0, images: 0, fillColors: [] as string[], drawColors: [] as string[], lineWidths: [] as number[] }));
+const pdfDrawCalls = vi.hoisted(() => ({ lines: 0, circles: 0, roundedRects: 0, roundedRectArgs: [] as number[][], images: 0, fillColors: [] as string[], drawColors: [] as string[], lineWidths: [] as number[] }));
 const aggregateCampaignMetricsMock = vi.hoisted(() => vi.fn());
 const getCampaignMetricTotalsMock = vi.hoisted(() => vi.fn());
 const resolveFinancialDailyComparisonPreviousMock = vi.hoisted(() => vi.fn());
@@ -48,7 +48,7 @@ vi.mock("jspdf", () => ({
     line() { pdfDrawCalls.lines += 1; }
     circle() { pdfDrawCalls.circles += 1; }
     rect() {}
-    roundedRect() { pdfDrawCalls.roundedRects += 1; }
+    roundedRect(...values: number[]) { pdfDrawCalls.roundedRects += 1; pdfDrawCalls.roundedRectArgs.push(values.slice(0, 4)); }
     addImage() { pdfDrawCalls.images += 1; }
     addPage() {}
     splitTextToSize(value: any) { return [String(value)]; }
@@ -167,6 +167,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     pdfDrawCalls.lines = 0;
     pdfDrawCalls.circles = 0;
     pdfDrawCalls.roundedRects = 0;
+    pdfDrawCalls.roundedRectArgs.length = 0;
     pdfDrawCalls.images = 0;
     pdfDrawCalls.fillColors.length = 0;
     pdfDrawCalls.drawColors.length = 0;
@@ -411,6 +412,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfDrawCalls.lines).toBeGreaterThan(8);
     expect(pdfDrawCalls.circles).toBeGreaterThanOrEqual(5);
     expect(pdfDrawCalls.roundedRects).toBeGreaterThan(10);
+    expect(pdfDrawCalls.roundedRectArgs.some(([, , width, height]) => width === 3 && height === 12)).toBe(false);
     expect(pdfDrawCalls.images).toBe(1);
     expect(pdfDrawCalls.fillColors).toContain("254,249,243");
     expect(pdfDrawCalls.fillColors).toContain("244,174,126");

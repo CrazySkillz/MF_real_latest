@@ -2494,9 +2494,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     };
     const sectionHeading = (title: string, keepWithNext = 0) => {
       ensureDesignedSpace(18 + keepWithNext);
-      pdf.setFillColor?.(...colors.accent);
-      pdf.roundedRect?.(margin, y, 3, 12, 1, 1, "F");
-      drawText(title, margin + 8, y + 9, { size: 14, bold: true });
+      drawText(title, margin, y + 9, { size: 14, bold: true });
       y += 18;
     };
     const card = (x: number, cardY: number, width: number, height: number) => {

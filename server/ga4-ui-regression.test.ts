@@ -8,6 +8,32 @@ const readServer = (relativePath: string) =>
   readFileSync(join(process.cwd(), "server", ...relativePath.split("/")), "utf-8");
 
 describe("GA4 UI regression guard", () => {
+  it("keeps browser and scheduled GA4 PDFs on the shared branded report shell", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const scheduledPdf = readServer("ga4-scheduled-report-pdf.ts");
+    const browserSectionTitle = ga4Metrics.slice(
+      ga4Metrics.indexOf("const sectionTitle ="),
+      ga4Metrics.indexOf("const trunc =", ga4Metrics.indexOf("const sectionTitle =")),
+    );
+    const scheduledSectionTitle = scheduledPdf.slice(
+      scheduledPdf.indexOf("const sectionTitle ="),
+      scheduledPdf.indexOf("const subheading =", scheduledPdf.indexOf("const sectionTitle =")),
+    );
+
+    for (const source of [ga4Metrics, scheduledPdf]) {
+      expect(source).toContain("accent: [244, 174, 126] as C3");
+      expect(source).toContain("background: [254, 249, 243] as C3");
+      expect(source).toContain('logo_fff8f3_bg_orange_fill.jpg');
+      expect(source).toContain("const paintPage = () => {");
+      expect(source).toContain("paintPage();");
+      expect(source).toContain("addImage");
+    }
+    for (const sectionTitle of [browserSectionTitle, scheduledSectionTitle]) {
+      expect(sectionTitle).toContain("doc.text(title, MX, y + 9);");
+      expect(sectionTitle).not.toContain("roundedRect");
+    }
+  });
+
   it("keeps the GA4 analytics header provenance compact and explicit", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
     const headerStart = ga4Metrics.indexOf('<h1 className="text-3xl font-bold text-foreground">Google Analytics</h1>');

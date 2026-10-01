@@ -9,6 +9,8 @@ import { resolveExactGA4CampaignBreakdownRevenue } from "../shared/ga4-campaign-
 import { computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "../shared/kpi-math";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { isSupportedGA4ConnectionMethod } from "./utils/ga4-service-account";
+import { existsSync, readFileSync } from "fs";
+import { resolve } from "path";
 
 type CampaignFilter = string | string[] | undefined;
 type C3 = [number, number, number];
@@ -30,11 +32,15 @@ const defaultCustomReportSubsections = {
 };
 
 const COLORS = {
-  overview: [120, 80, 220] as C3,
-  ads: [80, 130, 230] as C3,
-  insights: [16, 175, 140] as C3,
-  kpis: [120, 80, 220] as C3,
-  benchmarks: [80, 130, 230] as C3,
+  accent: [244, 174, 126] as C3,
+  accentText: [183, 82, 24] as C3,
+  accentBg: [255, 239, 226] as C3,
+  background: [254, 249, 243] as C3,
+  overview: [244, 174, 126] as C3,
+  ads: [244, 174, 126] as C3,
+  insights: [244, 174, 126] as C3,
+  kpis: [244, 174, 126] as C3,
+  benchmarks: [244, 174, 126] as C3,
   success: [34, 197, 94] as C3,
   warning: [245, 158, 11] as C3,
   danger: [239, 68, 68] as C3,
@@ -47,6 +53,27 @@ const COLORS = {
   cardBg: [250, 250, 252] as C3,
   divider: [240, 240, 243] as C3,
   barBg: [240, 240, 243] as C3,
+};
+
+let cachedMimoSaaSReportLogo: string | null | undefined;
+const getMimoSaaSReportLogo = (): string | null => {
+  if (cachedMimoSaaSReportLogo !== undefined) return cachedMimoSaaSReportLogo;
+  const fileName = "logo_fff8f3_bg_orange_fill.jpg";
+  const candidates = [
+    resolve(process.cwd(), "dist", "public", fileName),
+    resolve(process.cwd(), "client", "public", fileName),
+    resolve(import.meta.dirname, "public", fileName),
+    resolve(import.meta.dirname, "..", "client", "public", fileName),
+  ];
+  const logoPath = candidates.find((candidate) => existsSync(candidate));
+  try {
+    cachedMimoSaaSReportLogo = logoPath
+      ? `data:image/jpeg;base64,${readFileSync(logoPath).toString("base64")}`
+      : null;
+  } catch {
+    cachedMimoSaaSReportLogo = null;
+  }
+  return cachedMimoSaaSReportLogo;
 };
 
 const INSIGHT_CATEGORY_GROUPS = [
@@ -958,10 +985,17 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
   const PW = 210, MX = 16, CW = PW - MX * 2;
   let y = 18;
 
+  const paintPage = () => {
+    doc.setFillColor(...COLORS.background);
+    doc.rect(0, 0, PW, 297, "F");
+    doc.setFillColor(...COLORS.accent);
+    doc.rect(0, 0, PW, 4, "F");
+  };
   const checkPage = (need: number) => {
     if (y + need > 274) {
       addFooter();
       doc.addPage();
+      paintPage();
       y = 18;
     }
   };
@@ -974,14 +1008,12 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     doc.text("MimoSaaS Analytics", MX, 287);
     doc.text(new Date().toLocaleDateString(), PW - MX, 287, { align: "right" });
   };
-  const sectionTitle = (title: string, color: C3, keepWithNext = 0) => {
+  const sectionTitle = (title: string, _color: C3, keepWithNext = 0) => {
     checkPage(18 + keepWithNext);
-    doc.setFillColor(...color);
-    doc.roundedRect(MX, y, 3, 12, 1, 1, "F");
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...COLORS.text);
-    doc.text(title, MX + 8, y + 9);
+    doc.text(title, MX, y + 9);
     y += 18;
   };
   const subheading = (title: string, keepWithNext = 18) => {
@@ -1020,6 +1052,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     if (fullHeight <= 250 && y + fullHeight > 274) {
       addFooter();
       doc.addPage();
+      paintPage();
       y = 18;
     }
     sectionTitle(title, color);
@@ -1112,12 +1145,13 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
   const formatMoney = payload.formatMoney;
   const formatNumber = payload.formatNumber;
 
-  doc.setFillColor(...COLORS.overview);
-  doc.rect(0, 0, PW, 4, "F");
+  paintPage();
+  const reportLogo = getMimoSaaSReportLogo();
+  if (reportLogo) (doc as any).addImage?.(reportLogo, "JPEG", PW - MX - 42, 7, 42, 26.5);
   doc.setFontSize(24);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.text);
-  doc.text(String(reportName || report?.name || "GA4 Report").slice(0, 45), MX, 22);
+  doc.text(String(reportName || report?.name || "GA4 Report").slice(0, 45), MX, 22, { maxWidth: CW - 50 });
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...COLORS.textSec);
@@ -1412,7 +1446,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
           ]),
       ];
       const fullSectionHeight = 18 + 10 + revenueBreakdownRows.length * 8 + 4;
-      if (fullSectionHeight <= 250 && y + fullSectionHeight > 274) { addFooter(); doc.addPage(); y = 18; }
+      if (fullSectionHeight <= 250 && y + fullSectionHeight > 274) { addFooter(); doc.addPage(); paintPage(); y = 18; }
       sectionTitle("Revenue Breakdown", COLORS.ads);
       checkPage(10);
       doc.setFillColor(...COLORS.cardBg); doc.roundedRect(MX, y, CW, 8, 2, 2, "F");

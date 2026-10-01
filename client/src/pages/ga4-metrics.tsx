@@ -82,6 +82,24 @@ const GA4_SCHEDULE_HOUR_OPTIONS = Array.from({ length: 13 }, (_, index) => {
   const value = String(index + 6).padStart(2, "0");
   return { value, label: `${value}:00` };
 });
+let cachedMimoSaaSReportLogo: Promise<string | null> | null = null;
+const loadMimoSaaSReportLogo = () => {
+  if (!cachedMimoSaaSReportLogo) {
+    cachedMimoSaaSReportLogo = fetch("/logo_fff8f3_bg_orange_fill.jpg")
+      .then(async (response) => {
+        if (!response.ok) return null;
+        const blob = await response.blob();
+        return await new Promise<string | null>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(blob);
+        });
+      })
+      .catch(() => null);
+  }
+  return cachedMimoSaaSReportLogo;
+};
 const KPI_ALERT_DAY_OPTIONS = [
   { value: "monday", label: "Monday" },
   { value: "tuesday", label: "Tuesday" },
@@ -3365,20 +3383,21 @@ export default function GA4Metrics() {
     }
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
+    const reportLogo = await loadMimoSaaSReportLogo();
 
-    // --- Clean modern design system (purple accent, white cards, generous spacing) ---
+    // --- MimoSaaS branded report design system ---
     type C3 = [number, number, number];
     const C = {
-      // Primary purple gradient feel
-      accent: [120, 80, 220] as C3,        // Primary purple
-      accentLight: [147, 112, 237] as C3,   // Lighter purple
-      accentBg: [245, 241, 255] as C3,      // Very light purple bg
+      accent: [244, 174, 126] as C3,
+      accentLight: [248, 194, 154] as C3,
+      accentBg: [255, 239, 226] as C3,
+      background: [254, 249, 243] as C3,
       // Section accents
-      overview: [120, 80, 220] as C3,
-      ads: [80, 130, 230] as C3,
-      insights: [16, 175, 140] as C3,
-      kpis: [120, 80, 220] as C3,
-      benchmarks: [80, 130, 230] as C3,
+      overview: [244, 174, 126] as C3,
+      ads: [244, 174, 126] as C3,
+      insights: [244, 174, 126] as C3,
+      kpis: [244, 174, 126] as C3,
+      benchmarks: [244, 174, 126] as C3,
       // Status
       success: [34, 197, 94] as C3,
       warning: [245, 158, 11] as C3,
@@ -3400,7 +3419,13 @@ export default function GA4Metrics() {
     const MX = 16;  // margin x
     const CW = PW - MX * 2; // content width
 
-    const checkPage = (need: number) => { if (y + need > 274) { addPageFooter(); doc.addPage(); y = 18; } };
+    const paintPage = () => {
+      doc.setFillColor(...C.background);
+      doc.rect(0, 0, PW, 297, "F");
+      doc.setFillColor(...C.accent);
+      doc.rect(0, 0, PW, 4, "F");
+    };
+    const checkPage = (need: number) => { if (y + need > 274) { addPageFooter(); doc.addPage(); paintPage(); y = 18; } };
 
     const addPageFooter = () => {
       // Thin accent line
@@ -3413,15 +3438,12 @@ export default function GA4Metrics() {
       doc.text(new Date().toLocaleDateString(), PW - MX, 287, { align: "right" });
     };
 
-    const sectionTitle = (title: string, color: C3, keepWithNext = 0) => {
+    const sectionTitle = (title: string, _color: C3, keepWithNext = 0) => {
       checkPage(18 + keepWithNext);
-      // Left accent bar + title
-      doc.setFillColor(...color);
-      doc.roundedRect(MX, y, 3, 12, 1, 1, "F");
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(...C.text);
-      doc.text(title, MX + 8, y + 9);
+      doc.text(title, MX, y + 9);
       y += 18;
     };
 
@@ -3438,6 +3460,7 @@ export default function GA4Metrics() {
       if (fullSectionHeight <= 250 && y + fullSectionHeight > 274) {
         addPageFooter();
         doc.addPage();
+        paintPage();
         y = 18;
       }
       checkPage(36);
@@ -3509,15 +3532,14 @@ export default function GA4Metrics() {
     const ga4m = ga4Metrics as any;
 
     // ========== HEADER ==========
-    // Clean white header with purple accent strip at top
-    doc.setFillColor(...C.accent);
-    doc.rect(0, 0, PW, 4, "F"); // thin accent strip
+    paintPage();
+    if (reportLogo) doc.addImage(reportLogo, "JPEG", PW - MX - 42, 7, 42, 26.5);
 
     // Report title
     doc.setFontSize(24);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...C.text);
-    doc.text(trunc(reportName, 45), MX, 22);
+    doc.text(trunc(reportName, 45), MX, 22, { maxWidth: CW - 50 });
 
     // Subtitle
     doc.setFontSize(10);
@@ -3944,6 +3966,7 @@ export default function GA4Metrics() {
           if (fullSectionHeight <= 250 && y + fullSectionHeight > 274) {
             addPageFooter();
             doc.addPage();
+            paintPage();
             y = 18;
           }
           sectionTitle("Revenue Breakdown", C.ads);
@@ -4183,6 +4206,7 @@ export default function GA4Metrics() {
             if (fullSectionHeight <= 250 && y + fullSectionHeight > 274) {
               addPageFooter();
               doc.addPage();
+              paintPage();
               y = 18;
             }
             checkPage(10);

@@ -23,6 +23,7 @@ import ComingSoon from "@/pages/coming-soon";
 const TrendAnalysis = lazy(() => import("@/pages/trend-analysis"));
 const ExecutiveSummary = lazy(() => import("@/pages/executive-summary"));
 const FinancialAnalysis = lazy(() => import("@/pages/financial-analysis"));
+const TalkToYourData = lazy(() => import("@/pages/talk-to-your-data"));
 const GA4Metrics = lazy(() => import("@/pages/ga4-metrics"));
 const GoogleSheetsData = lazy(() => import("@/pages/google-sheets-data"));
 const LinkedInAnalytics = lazy(() => import("@/pages/linkedin-analytics"));
@@ -144,6 +145,7 @@ function ProtectedRouter() {
             <Route path="/campaigns/:id/trend-analysis" component={TrendAnalysis} />
             <Route path="/campaigns/:id/executive-summary" component={ExecutiveSummary} />
             <Route path="/campaigns/:id/financial-analysis" component={FinancialAnalysis} />
+            <Route path="/campaigns/:id/talk-to-your-data" component={TalkToYourData} />
             <Route path="/campaigns/:id/ga4-metrics" component={GA4Metrics} />
             <Route path="/campaigns/:id/google-sheets-data" component={GoogleSheetsData} />
             <Route path="/campaigns/:id/linkedin-analytics" component={LinkedInAnalytics} />

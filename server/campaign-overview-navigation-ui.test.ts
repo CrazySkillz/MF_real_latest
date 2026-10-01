@@ -16,7 +16,10 @@ describe("Campaign Overview navigation UI", () => {
   it("renders Campaign Overview as a static heading without Webhooks", () => {
     const page = read("client/src/pages/campaign-detail.tsx");
 
-    expect(page).toContain('<h2 className="text-xl font-semibold text-foreground">Campaign Overview</h2>');
+    expect(page).toContain('<h2 className="text-2xl font-semibold text-foreground">Campaign Overview</h2>');
+    expect(page).toContain('<CardTitle className="flex items-center space-x-2 text-xl">');
+    expect(page).not.toContain('<span className="font-medium text-foreground">Client:</span>');
+    expect(page).not.toContain('<span className="font-medium text-foreground">Campaign:</span>');
     expect(page).not.toContain("TabsTrigger");
     expect(page).not.toContain("WebhookTester");
     expect(page).not.toContain('value="webhooks"');
@@ -30,15 +33,22 @@ describe("Campaign Overview navigation UI", () => {
     expect(reports).toContain("Campaign Diagnostics subsection");
   });
 
-  it("shows Talk to Your Data as a disabled Campaign Diagnostics option", () => {
+  it("links Talk to Your Data to its campaign-scoped coming-soon page", () => {
     const page = read("client/src/pages/campaign-detail.tsx");
+    const app = read("client/src/App.tsx");
+    const sidebar = read("client/src/components/layout/sidebar.tsx");
+    const talkToYourData = read("client/src/pages/talk-to-your-data.tsx");
     const optionStart = page.indexOf("data-talk-to-your-data");
     const option = page.slice(optionStart, page.indexOf("</Button>", optionStart));
 
     expect(optionStart).toBeGreaterThan(-1);
-    expect(option).toContain("disabled");
+    expect(page).toContain('<Link href={`/campaigns/${campaign.id}/talk-to-your-data`}>');
+    expect(option).not.toContain("disabled");
     expect(option).toContain("Talk to Your Data");
     expect(option).toContain("Ask questions using prompts · Coming soon");
+    expect(app).toContain('<Route path="/campaigns/:id/talk-to-your-data" component={TalkToYourData} />');
+    expect(sidebar).toContain("talk-to-your-data");
+    expect(talkToYourData).toContain("Chat feature coming soon!");
   });
 
   it("uses the campaign wizard Google Analytics icon for the connected platform", () => {
@@ -55,7 +65,7 @@ describe("Campaign Overview navigation UI", () => {
     const performance = read("client/src/pages/campaign-performance.tsx");
     const reports = read("client/src/pages/reports.tsx");
 
-    expect(sidebar).toContain('(?:ga4-metrics|performance|financial-analysis|trend-analysis|executive-summary)');
+    expect(sidebar).toContain('(?:ga4-metrics|performance|financial-analysis|trend-analysis|executive-summary|talk-to-your-data)');
     expect(sidebar).toContain('new URLSearchParams(window.location.search).get("campaignId")');
     expect(sidebar).toContain("data-sidebar-campaign-context");
     expect(sidebar).toContain("{campaign.name}");

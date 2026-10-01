@@ -3,7 +3,6 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useRoute, useSearch } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useClient } from "@/lib/clientContext";
 import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings, Target, FileText, PieChart, TrendingUp, TrendingDown, Copy, Share2, Filter, CheckCircle2, Clock, AlertCircle, Briefcase, Send, MessageCircle, Bot, User, Award, Plus, Edit2, Trash2, Pencil, Star, X, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
@@ -4261,7 +4260,6 @@ export default function CampaignDetail() {
   const [, params] = useRoute("/campaigns/:id");
   const campaignId = params?.id;
   const { toast: toastHook } = useToast();
-  const { clients } = useClient();
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
@@ -5219,8 +5217,6 @@ export default function CampaignDetail() {
       </div>
     );
   }
-  const clientName = clients.find((client) => client.id === campaign.clientId)?.name || "—";
-
   const connectedPlatforms = platformMetrics.filter(p => p.connected);
   
   // Use campaign data directly for Performance Summary calculations
@@ -5538,29 +5534,15 @@ export default function CampaignDetail() {
         <Sidebar />
         
         <main className="flex-1 p-8">
-          {/* Header */}
-          <div className="mb-6">
-            <div className="mb-6">
-              <div className="space-y-3">
-                <Card>
-                  <CardContent className="p-4 text-sm text-muted-foreground/80 space-y-1">
-                    <div><span className="font-medium text-foreground">Client:</span> {clientName}</div>
-                    <div><span className="font-medium text-foreground">Campaign:</span> {campaign.name}</div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </div>
-
           <Tabs defaultValue={(() => { try { const h = window.location.hash.replace('#', ''); return ['overview','kpis','benchmarks'].includes(h) ? h : 'overview'; } catch { return 'overview'; } })()} className="space-y-6 fade-in">
-            <h2 className="text-xl font-semibold text-foreground">Campaign Overview</h2>
+            <h2 className="text-2xl font-semibold text-foreground">Campaign Overview</h2>
 
             <TabsContent value="overview" className="space-y-6 fade-in">
 
               {/* Campaign Diagnostics */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
+                  <CardTitle className="flex items-center space-x-2 text-xl">
                     <FileText className="w-5 h-5" />
                     <span>Campaign Diagnostics</span>
                   </CardTitle>
@@ -5634,18 +5616,19 @@ export default function CampaignDetail() {
                         </div>
                       </Button>
                     </Link>
-                    <Button
-                      data-talk-to-your-data
-                      variant="outline"
-                      className="flex items-center justify-start space-x-3 h-auto p-4 w-full"
-                      disabled
-                    >
-                      <MessageCircle className="w-5 h-5" />
-                      <div className="text-left">
-                        <div className="font-medium">Talk to Your Data</div>
-                        <div className="text-xs text-muted-foreground">Ask questions using prompts · Coming soon</div>
-                      </div>
-                    </Button>
+                    <Link href={`/campaigns/${campaign.id}/talk-to-your-data`}>
+                      <Button
+                        data-talk-to-your-data
+                        variant="outline"
+                        className="flex items-center justify-start space-x-3 h-auto p-4 w-full"
+                      >
+                        <MessageCircle className="w-5 h-5" />
+                        <div className="text-left">
+                          <div className="font-medium">Talk to Your Data</div>
+                          <div className="text-xs text-muted-foreground">Ask questions using prompts · Coming soon</div>
+                        </div>
+                      </Button>
+                    </Link>
                   </div>
                 </CardContent>
               </Card>

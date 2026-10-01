@@ -16,7 +16,7 @@ export default function Sidebar() {
     : null;
   const isCampaignContext = /^\/campaigns(?:[/?#]|$)/.test(location) || !!reportCampaignId;
   const campaignId = location.match(/^\/campaigns\/([^/?#]+)/)?.[1] || reportCampaignId;
-  const isCampaignAnalyticsView = /^\/campaigns\/[^/?#]+\/(?:ga4-metrics|performance|financial-analysis|trend-analysis|executive-summary)(?:[/?#]|$)/.test(location) || !!reportCampaignId;
+  const isCampaignAnalyticsView = /^\/campaigns\/[^/?#]+\/(?:ga4-metrics|performance|financial-analysis|trend-analysis|executive-summary|talk-to-your-data)(?:[/?#]|$)/.test(location) || !!reportCampaignId;
   const { data: campaign } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
     enabled: !!campaignId,

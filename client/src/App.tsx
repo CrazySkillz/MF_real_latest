@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -204,6 +204,8 @@ function App() {
             {/* Protected app routes */}
             <SignedIn>
               <Switch>
+                <Route path="/sign-in"><Redirect to="/" /></Route>
+                <Route path="/sign-up"><Redirect to="/" /></Route>
                 <Route path="/privacy" component={PrivacyPolicy} />
                 <Route>
                   <ProtectedRouter />

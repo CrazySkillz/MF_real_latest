@@ -2134,9 +2134,13 @@ export class GoogleAnalytics4Service {
         throw new Error('GA4_OVERVIEW_REVENUE_METRIC_MISMATCH');
       }
       const selectedCampaignNames = this.normalizeCampaignFilter(campaignFilter);
-      const expectedSupplementedFinancials = combinedCampaignFinancial && selectedCampaignNames.length === 1
+      const expectedSupplementedFinancials = combinedCampaignFinancial
         ? this.mergeDailyConversionRevenueTotals(exactPageLocationScope.data, combinedCampaignFinancial.data, 2, 3, 2, 3)
         : null;
+      const combinedPageLocationByDate = new Map(
+        (Array.isArray(exactPageLocationScope.data?.rows) ? exactPageLocationScope.data.rows : [])
+          .map((row: any) => [String(row?.dimensionValues?.[0]?.value || ''), row] as const),
+      );
       const rebuiltRows: any[] = [];
       let rebuiltRevenueMetric = chosenRevenueMetric;
       for (const campaignName of selectedCampaignNames) {
@@ -2156,7 +2160,20 @@ export class GoogleAnalytics4Service {
           throw new Error('GA4_OVERVIEW_REVENUE_METRIC_MISMATCH');
         }
         const supplementedFinancials = exactPageLocation
-          ? this.mergeDailyConversionRevenueTotals(exactPageLocation.data, financial.data, 2, 3, 2, 3)
+          ? (Array.isArray(financial.data?.rows) ? financial.data.rows : []).reduce((totals: { conversions: number; revenue: number }, row: any) => {
+              const combinedRow: any = combinedPageLocationByDate.get(String(row?.dimensionValues?.[0]?.value || ''));
+              if (!combinedRow) return totals;
+              if (!(parseInt(String(combinedRow?.metricValues?.[2]?.value || '0'), 10) || 0)) {
+                totals.conversions += parseInt(String(row?.metricValues?.[2]?.value || '0'), 10) || 0;
+              }
+              if (!(Number.parseFloat(String(combinedRow?.metricValues?.[3]?.value || '0')) || 0)) {
+                totals.revenue += Number.parseFloat(String(row?.metricValues?.[3]?.value || '0')) || 0;
+              }
+              return totals;
+            }, {
+              conversions: reportMetricRowSum(exactPageLocation.data, 2),
+              revenue: reportMetricRowSum(exactPageLocation.data, 3),
+            })
           : null;
         rebuiltRevenueMetric = financial.revenueMetric;
         rebuiltRows.push({
@@ -2190,7 +2207,7 @@ export class GoogleAnalytics4Service {
       if (rebuiltTotals[0] > standardSessions) {
         const expectedConversions = expectedSupplementedFinancials?.conversions ?? standardConversions;
         const expectedRevenue = expectedSupplementedFinancials?.revenue ?? standardRevenue;
-        if (expectedSupplementedFinancials && (rebuiltTotals[2] !== expectedConversions || Math.abs(rebuiltTotals[3] - expectedRevenue) >= 0.01)) {
+        if (rebuiltTotals[2] !== expectedConversions || Math.abs(rebuiltTotals[3] - expectedRevenue) >= 0.01) {
           throw new Error('GA4_OVERVIEW_CAMPAIGN_ATTRIBUTION_UNVERIFIED');
         }
         data = {

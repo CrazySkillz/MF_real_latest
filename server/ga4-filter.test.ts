@@ -1023,13 +1023,19 @@ describe("GA4 campaign value picker", () => {
         : dimensions.length === 1 && dimensions[0] === 'campaignName'
           ? ['23', '23', '23', '4631.1', '23']
           : ['23', '23', '23', '4631.1', '23'];
-      const dailyMetrics = isPageLocation
-        ? hasBothCampaigns ? ['380', '383', '2', '20', '283']
-          : filterText.includes('yesop_retargeti') ? ['200', '202', '2', '20', '145'] : ['180', '181', '0', '0', '138']
+      const dailyRows = isPageLocation
+        ? hasBothCampaigns
+          ? [['20260618', '300', '302', '2', '20', '215'], ['20260619', '80', '81', '0', '0', '68']]
+          : filterText.includes('yesop_retargeti')
+            ? [['20260618', '200', '202', '2', '20', '145']]
+            : [['20260618', '100', '100', '0', '0', '70'], ['20260619', '80', '81', '0', '0', '68']]
         : isCampaignName
-          ? hasBothCampaigns ? ['23', '23', '12', '120', '23']
-            : filterText.includes('yesop_retargeti') ? ['23', '23', '5', '50', '23'] : ['23', '23', '7', '70', '23']
-          : ['23', '23', '23', '4631.1', '23'];
+          ? hasBothCampaigns
+            ? [['20260618', '23', '23', '12', '120', '23'], ['20260619', '1', '1', '7', '70', '1']]
+            : filterText.includes('yesop_retargeti')
+              ? [['20260618', '23', '23', '5', '50', '23'], ['20260619', '1', '1', '0', '0', '1']]
+              : [['20260618', '23', '23', '7', '70', '23'], ['20260619', '1', '1', '7', '70', '1']]
+          : [['20260618', '23', '23', '23', '4631.1', '23']];
       return {
         ok: true,
         json: async () => ({
@@ -1040,10 +1046,10 @@ describe("GA4 campaign value picker", () => {
                 .map((value) => ({ value })),
               metricValues: [...['23', '23', '23', '4631.1', '23'], ...(hasSessionRate ? ['0'] : [])].map((value) => ({ value })),
             }]
-            : dimensions[0] === 'date' ? [{
-                dimensionValues: [{ value: '20260618' }],
-                metricValues: [...dailyMetrics, ...(hasSessionRate ? [sessionRate] : [])].map((value) => ({ value })),
-              }]
+            : dimensions[0] === 'date' ? dailyRows.map(([date, ...metrics]) => ({
+                dimensionValues: [{ value: date }],
+                metricValues: [...metrics, ...(hasSessionRate ? [sessionRate] : [])].map((value) => ({ value })),
+              }))
               : [],
           totals: [{ metricValues: [...totals, ...(hasSessionRate ? [sessionRate] : [])].map((value) => ({ value })) }],
         }),

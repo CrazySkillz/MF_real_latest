@@ -2443,7 +2443,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   const zonedGeneratedAt = DateTime.fromJSDate(generatedAt, { zone: configuredTimeZone });
   const displayGeneratedAt = zonedGeneratedAt.isValid ? zonedGeneratedAt : DateTime.fromJSDate(generatedAt, { zone: "UTC" });
 
-  if (isCampaignDeepDiveCustomReportComposition && reportType === "performance-summary") {
+  if (isCampaignDeepDiveCustomReportComposition && (reportType === "performance-summary" || reportType === "financial-analysis")) {
     type PdfColor = [number, number, number];
     const colors = {
       accent: [244, 174, 126] as PdfColor,
@@ -2511,9 +2511,9 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     pdf.rect?.(0, 0, pageWidth, 4, "F");
     const reportLogo = getMimoSaaSReportLogo();
     if (reportLogo) pdf.addImage?.(reportLogo, "JPEG", pageWidth - margin - 42, 7, 42, 26.5);
-    const reportTitle = String(report?.name || "Performance Summary");
+    const reportTitle = String(report?.name || (reportType === "financial-analysis" ? "Budget & Financial Analysis" : "Performance Summary"));
     drawText(reportTitle.length > 42 ? `${reportTitle.slice(0, 41)}…` : reportTitle, margin, 22, { size: 22, bold: true, maxWidth: contentWidth - 50 });
-    drawText("Campaign Performance Report", margin, 30, { size: 10, color: colors.secondary });
+    drawText(reportType === "financial-analysis" ? "Campaign Financial Report" : "Campaign Performance Report", margin, 30, { size: 10, color: colors.secondary });
     y = 38;
     pdf.setFillColor?.(...colors.surface);
     pdf.roundedRect?.(margin, y, contentWidth, 27, 3, 3, "F");
@@ -2521,10 +2521,181 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     drawText("CAMPAIGN", margin + 6, y + 7, { size: 7, bold: true, color: colors.muted });
     drawText(campaignName || "Campaign", margin + 6, y + 13, { size: 9, bold: true });
     drawText("REPORT TYPE", metaRight, y + 7, { size: 7, bold: true, color: colors.muted });
-    drawText("Performance Summary", metaRight, y + 13, { size: 9, bold: true });
+    drawText(reportType === "financial-analysis" ? "Budget & Financial Analysis" : "Performance Summary", metaRight, y + 13, { size: 9, bold: true });
     drawText(customReportWindowLabel, margin + 6, y + 21, { size: 7, color: colors.secondary, maxWidth: contentWidth / 2 - 10 });
     drawText(`Generated ${displayGeneratedAt.setLocale("en-US").toFormat("MMM d, yyyy 'at' h:mm a")} (${displayGeneratedAt.zoneName || "UTC"})`, metaRight, y + 21, { size: 7, color: colors.secondary, maxWidth: contentWidth / 2 - 6 });
     y += 35;
+
+    if (reportType === "financial-analysis") {
+      const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase() || "USD";
+      const rawBudget = (campaign as any)?.budget;
+      const parsedBudget = rawBudget === null || rawBudget === undefined || String(rawBudget).trim() === ""
+        ? null
+        : Number(String(rawBudget).replace(/,/g, ""));
+      const campaignBudget = parsedBudget !== null && Number.isFinite(parsedBudget) && parsedBudget > 0 ? parsedBudget : null;
+      const parsePacingDate = (value: unknown) => {
+        const raw = String(value || "");
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+        const [year, month, day] = raw.split("-").map(Number);
+        const date = new Date(Date.UTC(year, month - 1, day));
+        return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day ? date : null;
+      };
+      const pacingStartDate = parsePacingDate((campaign as any)?.pacingStartDate);
+      const pacingEndDate = parsePacingDate((campaign as any)?.pacingEndDate);
+      const pacingCalendar = resolveFinancialPacingCalendar({
+        startDate: (campaign as any)?.pacingStartDate,
+        endDate: (campaign as any)?.pacingEndDate,
+        reportingTimeZone: (campaign as any)?.reportingTimeZone,
+        dataThroughDate: budgetPacing?.dataThroughDate,
+      });
+      const spend = metricAvailable("spend") ? metricNumber("spend") : null;
+      const revenue = metricAvailable("revenue") ? metricNumber("revenue") : null;
+      const budgetPeriodSpendMetric = resolveFinancialBudgetPeriodSpend({
+        contract: budgetPacing,
+        campaignId: (campaign as any)?.id,
+        startDate: (campaign as any)?.pacingStartDate,
+        endDate: (campaign as any)?.pacingEndDate,
+        currency: campaignCurrency,
+      });
+      const budgetPeriodSpend = budgetPeriodSpendMetric.available ? budgetPeriodSpendMetric.value : null;
+      const remainingBudget = campaignBudget !== null && budgetPeriodSpend !== null ? campaignBudget - budgetPeriodSpend : null;
+      const budgetUtilization = campaignBudget !== null && budgetPeriodSpend !== null ? (budgetPeriodSpend / campaignBudget) * 100 : null;
+      const dailyBurnRate = budgetPeriodSpend !== null && pacingCalendar.elapsedDays > 0 ? budgetPeriodSpend / pacingCalendar.elapsedDays : null;
+      const targetDailySpend = campaignBudget !== null && pacingCalendar.totalDays > 0 ? campaignBudget / pacingCalendar.totalDays : null;
+      const pacingPercentage = dailyBurnRate !== null && targetDailySpend !== null && targetDailySpend > 0
+        ? (dailyBurnRate / targetDailySpend) * 100
+        : null;
+      const pacingStatus = pacingPercentage === null
+        ? "Unavailable"
+        : pacingPercentage > 115
+          ? `${(pacingPercentage - 100).toFixed(1)}% Over`
+          : pacingPercentage < 85
+            ? `${(100 - pacingPercentage).toFixed(1)}% Under`
+            : "On Track";
+      const pacingStatusKey = pacingPercentage === null ? "unavailable" : pacingPercentage > 115 ? "ahead" : pacingPercentage < 85 ? "behind" : "on-track";
+      const money = (value: number | null) => value === null
+        ? "Unavailable"
+        : formatCampaignDeepDiveMetricValue("spend", value, campaignCurrency);
+      const pacingDate = (date: Date | null) => date ? date.toISOString().slice(0, 10) : "Unavailable";
+      const metricCard = (label: string, value: string, x: number, cardY: number, width: number) => {
+        card(x, cardY, width, 24);
+        drawText(label.toUpperCase(), x + 6, cardY + 8, { size: 7, color: colors.muted, maxWidth: width - 12 });
+        drawText(value, x + 6, cardY + 18, { size: 12, bold: true, maxWidth: width - 12 });
+      };
+
+      sectionHeading("Budget & Financial Analysis", 28);
+      drawText("Financial Position", margin, y + 5, { size: 10, bold: true });
+      y += 10;
+      const positionWidth = (contentWidth - 8) / 3;
+      [
+        ["Total Spend", money(spend)],
+        ["Total Revenue", money(revenue)],
+        ["Profit", revenue !== null && spend !== null ? money(revenue - spend) : "Unavailable"],
+        ["ROAS", metricAvailable("roas") ? `${metricNumber("roas").toFixed(2)}x` : metricValue("roas", campaignCurrency)],
+        ["ROI", metricValue("roi", campaignCurrency)],
+        ["Cost per Acquisition", metricValue("cpa", campaignCurrency)],
+        ["Conversion Rate", metricValue("cvr", campaignCurrency)],
+      ].forEach(([label, value], index) => {
+        const column = index % 3;
+        if (index > 0 && column === 0) y += 28;
+        metricCard(label, value, margin + column * (positionWidth + 4), y, positionWidth);
+      });
+      y += 32;
+
+      sectionHeading("Budget & Pacing", 88);
+      const budgetWidth = (contentWidth - 8) / 3;
+      [
+        ["Campaign Budget", money(campaignBudget)],
+        ["Budget Used", money(budgetPeriodSpend)],
+        ["Remaining Budget", money(remainingBudget)],
+        ["Budget Utilization", budgetUtilization === null ? "Unavailable" : `${budgetUtilization.toFixed(1)}%`],
+        ["Daily Burn Rate", money(dailyBurnRate)],
+        ["Target Daily Spend", money(targetDailySpend)],
+        ["Pacing Status", pacingStatus],
+        ["Budget Period Start", pacingDate(pacingStartDate)],
+        ["Budget Period End", pacingDate(pacingEndDate)],
+      ].forEach(([label, value], index) => {
+        const column = index % 3;
+        if (index > 0 && column === 0) y += 28;
+        metricCard(label, value, margin + column * (budgetWidth + 4), y, budgetWidth);
+      });
+      y += 32;
+
+      sectionHeading("Allocation & Sources", 32);
+      const importedRevenue = (financialRevenueInputRows as any[]).reduce((sum, row) => sum + (Number(row?.revenue) || 0), 0);
+      const ga4RevenueAvailable = aggregateSources.some((source: any) => source?.id === "ga4" && Array.isArray(source?.includedMetrics) && source.includedMetrics.includes("revenue"));
+      const ga4NativeRevenue = ga4RevenueAvailable && revenue !== null ? Math.max(0, revenue - importedRevenue) : null;
+      const revenueRows = [
+        ...(ga4NativeRevenue !== null ? [["GA4 Revenue", money(ga4NativeRevenue)]] : []),
+        ...(financialRevenueInputRows as any[]).map((row) => [String(row?.displayName || row?.sourceType || "Revenue input"), money(Number(row?.revenue) || 0)]),
+      ];
+      const spendRows = (financialSpendInputRows as any[]).map((row) => [String(row?.displayName || row?.sourceType || "Spend input"), money(Number(row?.spend) || 0)]);
+      const drawSourceCard = (title: string, rows: string[][], emptyText: string) => {
+        const displayRows = rows.length > 0 ? rows : [[emptyText, ""]];
+        const rowLines = displayRows.map(([label, value]) => ({
+          label,
+          value,
+          lines: Math.max(doc.splitTextToSize(label, contentWidth - 80).length, value ? doc.splitTextToSize(value, 50).length : 1),
+        }));
+        const height = 16 + rowLines.reduce((sum, row) => sum + Math.max(7, row.lines * 4), 0);
+        ensureDesignedSpace(height + 5);
+        card(margin, y, contentWidth, height);
+        drawText(title, margin + 6, y + 9, { size: 10, bold: true });
+        let rowY = y + 18;
+        rowLines.forEach((row) => {
+          drawText(row.label, margin + 6, rowY, { size: 8, color: colors.secondary, maxWidth: contentWidth - 80 });
+          if (row.value) drawText(row.value, margin + contentWidth - 50, rowY, { size: 8, bold: true, maxWidth: 50 });
+          rowY += Math.max(7, row.lines * 4);
+        });
+        y += height + 5;
+      };
+      drawSourceCard("Revenue Sources", revenueRows, "No detailed revenue inputs are available.");
+      drawSourceCard("Spend Sources", spendRows, "No detailed spend inputs are available.");
+
+      const returnAction = metricAvailable("roas") && metricAvailable("roi")
+        ? metricNumber("roas") < 1 || metricNumber("roi") < 0
+          ? { title: "Return below break-even", body: `ROAS is ${metricNumber("roas").toFixed(2)}x and ROI is ${metricNumber("roi").toFixed(2)}%. Review revenue attribution, conversion efficiency, and spend before adding budget.` }
+          : { title: "Positive financial return", body: `ROAS is ${metricNumber("roas").toFixed(2)}x and ROI is ${metricNumber("roi").toFixed(2)}%. Protect current returns while monitoring pacing and source capacity.` }
+        : { title: "Return cannot be assessed", body: "Compatible revenue and spend are required to assess return." };
+      const budgetAction = buildFinancialBudgetAction({
+        hasCampaignBudget: campaignBudget !== null,
+        spendAvailable: budgetPeriodSpend !== null,
+        spendUnavailableText: budgetPeriodSpendMetric.unavailableReasons[0] || "Compatible dated spend is required to assess budget pacing.",
+        isOverBudget: remainingBudget !== null && remainingBudget < 0,
+        overBudgetAmountText: money(Math.abs(remainingBudget || 0)),
+        hasValidDateRange: pacingCalendar.hasDateRange,
+        elapsedDays: pacingCalendar.elapsedDays,
+        pacingStatus: pacingStatusKey,
+        pacingVarianceText: `${Math.abs((pacingPercentage || 100) - 100).toFixed(1)}%`,
+        budgetUtilizationText: `${(budgetUtilization || 0).toFixed(1)}%`,
+        remainingBudgetText: money(remainingBudget),
+      });
+      const allocationAction = buildFinancialAllocationAction({
+        hasCampaignToDateWindow: hasCertifiedCustomReportMetricWindow,
+        sources: aggregateSources.filter((source: any) => Array.isArray(source?.includedMetrics) && source.includedMetrics.includes("spend")).map((source: any) => ({
+          label: String(source?.label || source?.id || "Connected Source"),
+          roas: Number.isFinite(Number(source?.metrics?.roas)) ? Number(source.metrics.roas) : null,
+        })),
+        spendInputs: (financialSpendInputRows as any[]).map((row) => ({ label: String(row?.displayName || row?.sourceType || "Spend input"), spend: Number(row?.spend) || 0 })),
+        authoritativeSpend: spend,
+        formatCurrency: (value) => money(value),
+        formatPercentage: (value) => `${value.toFixed(1)}%`,
+      });
+      sectionHeading("Executive Action", 24);
+      [returnAction, budgetAction, allocationAction].forEach((action) => {
+        const bodyLines = doc.splitTextToSize(action.body, contentWidth - 24);
+        const actionHeight = Math.max(24, 16 + bodyLines.length * 4.5);
+        ensureDesignedSpace(actionHeight + 4);
+        card(margin, y, contentWidth, actionHeight);
+        pdf.setFillColor?.(...colors.accentBg);
+        pdf.roundedRect?.(margin + 4, y + 4, 4, actionHeight - 8, 1, 1, "F");
+        drawText(action.title, margin + 12, y + 9, { size: 9, bold: true, maxWidth: contentWidth - 18 });
+        drawText(action.body, margin + 12, y + 17, { size: 8, color: colors.secondary, maxWidth: contentWidth - 18 });
+        y += actionHeight + 4;
+      });
+      drawFooter();
+      return coercePdfBufferFromDoc(doc);
+    }
 
     sectionHeading("Performance Summary", 28);
     drawText("Key Outcomes", margin, y + 5, { size: 10, bold: true });

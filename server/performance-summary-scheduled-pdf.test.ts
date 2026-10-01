@@ -14,6 +14,8 @@ const storageMock = vi.hoisted(() => ({
   getPrimaryGA4Connection: vi.fn(),
   getGA4DailyMetrics: vi.fn(),
   getComparisonData: vi.fn(),
+  getRevenueBreakdownBySource: vi.fn(),
+  getSpendBreakdownBySource: vi.fn(),
 }));
 
 vi.mock("./storage", () => ({ storage: storageMock }));
@@ -95,7 +97,15 @@ describe("scheduled Performance Summary PDF", () => {
     pdfDrawCalls.images = 0;
     pdfDrawCalls.fillColors.length = 0;
     vi.clearAllMocks();
-    storageMock.getCampaign.mockResolvedValue({ id: "campaign-1", name: "Campaign", currency: "USD", reportingTimeZone: "Europe/Amsterdam" });
+    storageMock.getCampaign.mockResolvedValue({
+      id: "campaign-1",
+      name: "Campaign",
+      currency: "USD",
+      budget: "100000",
+      pacingStartDate: "2026-07-01",
+      pacingEndDate: "2026-12-31",
+      reportingTimeZone: "Europe/Amsterdam",
+    });
     storageMock.getCampaignKPIs.mockResolvedValue([]);
     storageMock.getCampaignBenchmarks.mockResolvedValue([]);
     storageMock.getPlatformKPIs.mockResolvedValue([
@@ -122,6 +132,12 @@ describe("scheduled Performance Summary PDF", () => {
         },
       },
     });
+    storageMock.getRevenueBreakdownBySource.mockResolvedValue([
+      { sourceId: "revenue-1", displayName: "Salesforce", sourceType: "salesforce", revenue: 16799.99, currency: "USD" },
+    ]);
+    storageMock.getSpendBreakdownBySource.mockResolvedValue([
+      { sourceId: "spend-1", displayName: "Google Ads", sourceType: "google_ads", spend: 2699.75, currency: "USD" },
+    ]);
     getCampaignMetricTotalsMock.mockResolvedValue({
       users: 1184,
       sessions: 1183,
@@ -138,7 +154,20 @@ describe("scheduled Performance Summary PDF", () => {
       ga4RevenueAvailable: true,
       financialConversionsAvailable: true,
     });
-    aggregateCampaignMetricsMock.mockResolvedValue({ detailedMetrics: { performanceSummary } });
+    aggregateCampaignMetricsMock.mockResolvedValue({
+      detailedMetrics: {
+        performanceSummary,
+        budgetPacing: {
+          version: "budget_pacing_v1",
+          campaignId: "campaign-1",
+          periodStartDate: "2026-07-01",
+          periodEndDate: "2026-12-31",
+          dataThroughDate: "2026-08-27",
+          currency: "USD",
+          spend: metric(2400, ["canonical_spend_sources"]),
+        },
+      },
+    });
   });
 
   afterEach(() => vi.useRealTimers());
@@ -201,6 +230,43 @@ describe("scheduled Performance Summary PDF", () => {
     expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-07-02", "2026-08-27");
     expect(storageMock.getComparisonData).toHaveBeenCalledWith("campaign-1", "last_week", "Europe/Amsterdam", "2026-08-20");
     expect(getCampaignMetricTotalsMock).toHaveBeenCalledWith("campaign-1", true);
+  });
+
+  it("renders Budget & Financial Analysis with the same branded report system", async () => {
+    const buffer = await buildPdfAttachmentForReport({
+      report: {
+        id: "report-financial",
+        name: "Budget & financials",
+        platformType: "campaign_deepdive",
+        campaignId: "campaign-1",
+        reportType: "custom",
+        configuration: { reportType: "financial-analysis", selectedSections: ["financial-analysis:overview"] },
+      },
+      windowStart: "2026-07-29",
+      windowEnd: "2026-08-27",
+      campaignName: "Campaign",
+      isTest: true,
+    });
+
+    expect(buffer?.length).toBeGreaterThan(100);
+    expect(pdfDrawCalls.images).toBe(1);
+    expect(pdfDrawCalls.fillColors).toContain("254,249,243");
+    expect(pdfDrawCalls.fillColors).toContain("244,174,126");
+    for (const heading of ["Budget & Financial Analysis", "Financial Position", "Budget & Pacing", "Allocation & Sources", "Executive Action"]) {
+      expect(pdfTextCalls).toContain(heading);
+    }
+    expect(pdfTextCalls).toContain("Campaign Financial Report");
+    expect(pdfTextCalls).toContain("TOTAL REVENUE");
+    expect(pdfTextCalls).toContain("$51,072.99");
+    expect(pdfTextCalls).toContain("BUDGET USED");
+    expect(pdfTextCalls).toContain("$2,400.00");
+    expect(pdfTextCalls).toContain("Revenue Sources");
+    expect(pdfTextCalls).toContain("Spend Sources");
+    expect(pdfTextCalls).toContain("Positive financial return");
+    expect(pdfTextCalls).not.toContain("Included sections");
+    expect(pdfTextCalls).not.toContain("Selected section content");
+    expect(storageMock.getRevenueBreakdownBySource).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-27", "ga4");
+    expect(storageMock.getSpendBreakdownBySource).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-27", "ga4");
   });
 
   it("fails closed when the UI-aligned Performance Summary values are unavailable", async () => {

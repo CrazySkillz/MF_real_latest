@@ -811,28 +811,6 @@ export default function FinancialAnalysis() {
         <Sidebar />
         
         <main className="flex-1 p-8">
-          {/* Header */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-4">
-                <Link href={`/campaigns/${campaign.id}`}>
-                  <Button variant="ghost" size="sm">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back to Campaign
-                  </Button>
-                </Link>
-                <div>
-                  <h1 className="text-3xl font-bold text-foreground">
-                    Budget & Financial Analysis
-                  </h1>
-                  <p className="text-muted-foreground/70 mt-1">
-                    {campaign.name} - Campaign-wide budget, pacing, ROI, ROAS, and financial decisioning
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {dataLoading ? (
             <div className="space-y-6" data-testid="executive-financial-analysis-loading">
               <div className="h-36 rounded-lg bg-muted animate-pulse" />
@@ -852,9 +830,9 @@ export default function FinancialAnalysis() {
               )}
               <section aria-labelledby="financial-position-heading" className="space-y-4">
                 <div>
-                  <h2 id="financial-position-heading" className="text-xl font-semibold">Financial Position</h2>
+                  <h2 id="financial-position-heading" className="text-xl font-semibold">Budget & Financial Analysis</h2>
                   <p className="text-sm text-muted-foreground">
-                    Campaign-wide financial totals from the connected-source aggregate.
+                    Campaign-wide budget, pacing, ROI, ROAS, and financial decisioning
                   </p>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

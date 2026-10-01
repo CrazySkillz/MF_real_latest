@@ -370,7 +370,8 @@ describe("Trend Analysis Overview regression guard", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
     expect(page).toContain("formatExactTrendCount(authoritativeHeadlineCurrent.sessions)");
     expect(page).toContain("formatExactTrendCount(authoritativeHeadlineCurrent.users)");
-    expect(page).toContain("Connected-Source Performance Summary");
+    expect(page).toContain('<h2 className="text-2xl font-semibold text-foreground">Trend Analysis</h2>');
+    expect(page).not.toContain("Connected-Source Performance Summary");
     expect(page).toContain('className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5"');
     expect(page).toContain('const schedulerFinancialCardLabels = new Set(["Revenue", "Spend", "ROAS", "ROI", "CPA"]);');
     expect(page).toContain("card.value !== null || (usesCumulativeGA4Consumer && schedulerFinancialCardLabels.has(card.label))");
@@ -495,7 +496,7 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(page).toContain("efficiencyTrendData?.cards?.length");
     expect(page).toContain("conversionFunnelData?.webAvailable");
     expect(page).toContain("platformBreakdownData?.sources?.length === 1");
-    expect(page).toContain('Source: {overviewTrendData.connectedSources.join(", ")}');
+    expect(page).not.toContain('Source: {overviewTrendData.connectedSources.join(", ")}');
     expect(executiveView).not.toContain("Connected source coverage");
     expect(executiveView).not.toContain("Available decision signals");
     expect(executiveView).not.toContain("Unavailable as a comparable daily series");

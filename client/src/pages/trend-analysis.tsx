@@ -1,10 +1,8 @@
 import { useParams } from "wouter";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Activity, Calendar, Target, DollarSign, AlertTriangle, ArrowUpRight, ArrowDownRight, Layers, GitCompare } from "lucide-react";
-import { Link } from "wouter";
+import { TrendingUp, TrendingDown, BarChart3, Activity, Calendar, Target, DollarSign, AlertTriangle, ArrowUpRight, ArrowDownRight, Layers, GitCompare } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -1489,38 +1487,19 @@ export default function TrendAnalysis() {
       <div className="flex">
         <Sidebar />
         <main className="flex-1 p-8">
-          {/* Header */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-4">
-                <Link href={`/campaigns/${(campaign as any)?.id}`}>
-                  <Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4 mr-2" />Back to Campaign</Button>
-                </Link>
-                <div>
-                  <h1 className="text-3xl font-bold text-foreground">Trend Analysis</h1>
-                  <div className="flex flex-wrap items-center gap-x-2 mt-1">
-                    <p className="text-muted-foreground/70">{(campaign as any)?.name}</p>
-                    {overviewTrendData?.connectedSources?.length > 0 && (
-                      <span className="text-xs text-muted-foreground">Source: {overviewTrendData.connectedSources.join(", ")}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Select value={perfPeriod} onValueChange={setPerfPeriod}>
-                  <SelectTrigger className="w-[140px] h-9">
-                    <Calendar className="w-3.5 h-3.5 mr-1.5" />
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent data-trend-window-select>
-                    <SelectItem value="7d">Last 7 Days</SelectItem>
-                    <SelectItem value="14d">Last 14 Days</SelectItem>
-                    <SelectItem value="30d">Last 30 Days</SelectItem>
-                    <SelectItem value="90d">Last 90 Days</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+          <div className="mb-6 flex justify-end">
+            <Select value={perfPeriod} onValueChange={setPerfPeriod}>
+              <SelectTrigger className="w-[140px] h-9">
+                <Calendar className="w-3.5 h-3.5 mr-1.5" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent data-trend-window-select>
+                <SelectItem value="7d">Last 7 Days</SelectItem>
+                <SelectItem value="14d">Last 14 Days</SelectItem>
+                <SelectItem value="30d">Last 30 Days</SelectItem>
+                <SelectItem value="90d">Last 90 Days</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* One executive Trend Analysis view. Legacy tab panels remain unmounted below for contract-safe cleanup. */}
@@ -1590,7 +1569,7 @@ export default function TrendAnalysis() {
                   {/* Executive KPI scorecard: one card per decision metric. */}
                   {authoritativeHeadlineCurrent ? <>
                   <div className="space-y-1">
-                    <h2 className="text-2xl font-semibold text-foreground">Connected-Source Performance Summary</h2>
+                    <h2 className="text-2xl font-semibold text-foreground">Trend Analysis</h2>
                     {cumulativeDataThroughLabel && (
                       <p className="text-sm text-muted-foreground">
                         Current totals are cumulative through {cumulativeDataThroughLabel}; the selector controls charts and the exact comparison date.

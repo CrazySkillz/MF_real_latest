@@ -1445,22 +1445,13 @@ export default function CampaignPerformanceSummary() {
         <Sidebar />
         
         <main className="flex-1 p-8">
-          {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-foreground">
-              Performance Summary
-            </h1>
-            <p className="text-muted-foreground/70 mt-1">
-              Comprehensive overview & insights
-            </p>
-          </div>
-
           <div className="space-y-6">
             {!performanceSummaryPending && (
               <>
               <section className="space-y-4" data-testid="performance-key-outcomes">
                 <div>
                   <h2 className="text-xl font-semibold text-foreground">Performance Summary</h2>
+                  <p className="text-muted-foreground/70 mt-1">Comprehensive overview & insights</p>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">

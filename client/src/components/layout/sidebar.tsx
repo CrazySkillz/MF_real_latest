@@ -13,7 +13,7 @@ export default function Sidebar() {
   const { clients, selectedClientId } = useClient();
   const isCampaignContext = /^\/campaigns(?:[/?#]|$)/.test(location);
   const campaignId = location.match(/^\/campaigns\/([^/?#]+)/)?.[1] || null;
-  const isCampaignAnalyticsView = /^\/campaigns\/[^/?#]+\/(?:ga4-metrics|performance)(?:[/?#]|$)/.test(location);
+  const isCampaignAnalyticsView = /^\/campaigns\/[^/?#]+\/(?:ga4-metrics|performance|financial-analysis|trend-analysis)(?:[/?#]|$)/.test(location);
   const { data: campaign } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
     enabled: !!campaignId,

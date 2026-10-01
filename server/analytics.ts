@@ -2194,6 +2194,13 @@ export class GoogleAnalytics4Service {
           rebuiltTotals[index] += Number(metric?.value) || 0;
         });
       }
+      const expectedConversions = expectedSupplementedFinancials?.conversions ?? standardConversions;
+      const expectedRevenue = expectedSupplementedFinancials?.revenue ?? standardRevenue;
+      const revenueRoundingAdjustment = Number((expectedRevenue - rebuiltTotals[3]).toFixed(2));
+      if (rebuiltTotals[2] === expectedConversions && rebuiltRows.length > 0 && Math.abs(revenueRoundingAdjustment) <= 0.01) {
+        rebuiltRows[0].metricValues[3].value = String(Number(rebuiltRows[0].metricValues[3].value || 0) + revenueRoundingAdjustment);
+        rebuiltTotals[3] += revenueRoundingAdjustment;
+      }
       overviewCampaignAttribution = {
         attempted: true,
         selected: false,
@@ -2205,8 +2212,6 @@ export class GoogleAnalytics4Service {
         rebuiltRevenue: Number(rebuiltTotals[3].toFixed(2)),
       };
       if (rebuiltTotals[0] > standardSessions) {
-        const expectedConversions = expectedSupplementedFinancials?.conversions ?? standardConversions;
-        const expectedRevenue = expectedSupplementedFinancials?.revenue ?? standardRevenue;
         if (rebuiltTotals[2] !== expectedConversions || Math.abs(rebuiltTotals[3] - expectedRevenue) >= 0.01) {
           throw new Error('GA4_OVERVIEW_CAMPAIGN_ATTRIBUTION_UNVERIFIED');
         }

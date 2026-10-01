@@ -28,6 +28,36 @@ app.set("env", process.env.NODE_ENV || "development");
 // This prevents OAuth redirect_uri mismatches (http vs https).
 app.set("trust proxy", 1);
 
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self' https://*.clerk.accounts.dev https://*.clerk.com",
+  "script-src 'self' 'unsafe-inline' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https:",
+  "connect-src 'self' https://accounts.google.com https://analyticsdata.googleapis.com https://cdn.jsdelivr.net https://clerk-telemetry.com https://*.clerk-telemetry.com https://img.clerk.com https://*.clerk.accounts.dev https://*.clerk.com https://*.protect.clerk.com:*",
+  "frame-src 'self' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+].join("; ");
+
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  if (app.get("env") === "production") {
+    res.setHeader("Content-Security-Policy", contentSecurityPolicy);
+    if (req.secure) {
+      res.setHeader("Strict-Transport-Security", "max-age=31536000");
+    }
+  }
+  next();
+});
+
 // ----------------------------------------------------------------------------
 // Clerk authentication middleware
 // ----------------------------------------------------------------------------

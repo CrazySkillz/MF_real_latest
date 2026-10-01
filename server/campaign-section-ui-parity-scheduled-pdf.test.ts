@@ -415,7 +415,8 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfDrawCalls.fillColors).toContain("254,249,243");
     expect(pdfDrawCalls.fillColors).toContain("244,174,126");
     expect(pdfDrawCalls.drawColors).not.toContain("145,134,255");
-    expect(pdfDrawCalls.lineWidths).toContain(0.45);
+    expect(pdfDrawCalls.lineWidths).toContain(0.2);
+    expect(pdfDrawCalls.lineWidths).not.toContain(0.45);
     expect(pdfDrawCalls.lineWidths).not.toContain(0.65);
     expect(pdfTextCalls).toContain("Website Engagement & Conversion Summary");
     expect(pdfTextCalls).toContain("ENGAGED SESSIONS");

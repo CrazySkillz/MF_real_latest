@@ -2858,12 +2858,12 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
           { label: "Users", color: chartColors.orange, values: trendWindowRows.map((row: any) => trendDailyMetric(row, "users")) },
           { label: "Sessions", color: chartColors.green, values: trendWindowRows.map((row: any) => trendDailyMetric(row, "sessions")) },
           { label: "Conversions", color: chartColors.blue, values: trendWindowRows.map((row: any) => trendDailyMetric(row, "conversions")) },
-        ], false, 0.45);
+        ], false, 0.2);
         const qualitySeries = [
           { label: "Conversion Rate", color: chartColors.orange, values: trendWindowRows.map((row: any) => trendDailyRate(row, "cvr")) },
           { label: "Engagement Rate", color: chartColors.green, values: trendWindowRows.map((row: any) => trendDailyRate(row, "engagementRate")) },
         ].filter((item) => item.values.some((value: number | null) => value !== null));
-        if (qualitySeries.length > 0) drawTrendChart("Conversion Quality Trend", trendWindowRows, qualitySeries, true, 0.45);
+        if (qualitySeries.length > 0) drawTrendChart("Conversion Quality Trend", trendWindowRows, qualitySeries, true, 0.2);
       } else {
         card(margin, y, contentWidth, 22);
         drawText("Daily trend chart unavailable for the selected window.", margin + 6, y + 13, { size: 9, color: colors.secondary });

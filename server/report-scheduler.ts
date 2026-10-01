@@ -2443,7 +2443,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   const zonedGeneratedAt = DateTime.fromJSDate(generatedAt, { zone: configuredTimeZone });
   const displayGeneratedAt = zonedGeneratedAt.isValid ? zonedGeneratedAt : DateTime.fromJSDate(generatedAt, { zone: "UTC" });
 
-  if (isCampaignDeepDiveCustomReportComposition && (reportType === "performance-summary" || reportType === "financial-analysis")) {
+  if (isCampaignDeepDiveCustomReportComposition && ["performance-summary", "financial-analysis", "trend-analysis"].includes(reportType)) {
     type PdfColor = [number, number, number];
     const colors = {
       accent: [244, 174, 126] as PdfColor,
@@ -2511,9 +2511,14 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     pdf.rect?.(0, 0, pageWidth, 4, "F");
     const reportLogo = getMimoSaaSReportLogo();
     if (reportLogo) pdf.addImage?.(reportLogo, "JPEG", pageWidth - margin - 42, 7, 42, 26.5);
-    const reportTitle = String(report?.name || (reportType === "financial-analysis" ? "Budget & Financial Analysis" : "Performance Summary"));
+    const designedReportLabel = reportType === "financial-analysis"
+      ? "Budget & Financial Analysis"
+      : reportType === "trend-analysis"
+        ? "Trend Analysis"
+        : "Performance Summary";
+    const reportTitle = String(report?.name || designedReportLabel);
     drawText(reportTitle.length > 42 ? `${reportTitle.slice(0, 41)}…` : reportTitle, margin, 22, { size: 22, bold: true, maxWidth: contentWidth - 50 });
-    drawText(reportType === "financial-analysis" ? "Campaign Financial Report" : "Campaign Performance Report", margin, 30, { size: 10, color: colors.secondary });
+    drawText(reportType === "financial-analysis" ? "Campaign Financial Report" : reportType === "trend-analysis" ? "Campaign Trend Report" : "Campaign Performance Report", margin, 30, { size: 10, color: colors.secondary });
     y = 38;
     pdf.setFillColor?.(...colors.surface);
     pdf.roundedRect?.(margin, y, contentWidth, 27, 3, 3, "F");
@@ -2521,7 +2526,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     drawText("CAMPAIGN", margin + 6, y + 7, { size: 7, bold: true, color: colors.muted });
     drawText(campaignName || "Campaign", margin + 6, y + 13, { size: 9, bold: true });
     drawText("REPORT TYPE", metaRight, y + 7, { size: 7, bold: true, color: colors.muted });
-    drawText(reportType === "financial-analysis" ? "Budget & Financial Analysis" : "Performance Summary", metaRight, y + 13, { size: 9, bold: true });
+    drawText(designedReportLabel, metaRight, y + 13, { size: 9, bold: true });
     drawText(customReportWindowLabel, margin + 6, y + 21, { size: 7, color: colors.secondary, maxWidth: contentWidth / 2 - 10 });
     drawText(`Generated ${displayGeneratedAt.setLocale("en-US").toFormat("MMM d, yyyy 'at' h:mm a")} (${displayGeneratedAt.zoneName || "UTC"})`, metaRight, y + 21, { size: 7, color: colors.secondary, maxWidth: contentWidth / 2 - 6 });
     y += 35;
@@ -2693,6 +2698,432 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         drawText(action.body, margin + 12, y + 17, { size: 8, color: colors.secondary, maxWidth: contentWidth - 18 });
         y += actionHeight + 4;
       });
+      drawFooter();
+      return coercePdfBufferFromDoc(doc);
+    }
+
+    if (reportType === "trend-analysis") {
+      type TrendChartSeries = { label: string; color: PdfColor; values: Array<number | null> };
+      const chartColors = {
+        orange: [244, 91, 16] as PdfColor,
+        green: [16, 185, 129] as PdfColor,
+        blue: [14, 165, 233] as PdfColor,
+        frame: [145, 134, 255] as PdfColor,
+        grid: [203, 213, 225] as PdfColor,
+      };
+      const trendCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase() || "USD";
+      const trendDailyMetric = (row: any, key: string): number | null => {
+        const raw = row?.metrics?.[key];
+        if (raw === null || typeof raw === "undefined") return null;
+        const value = Number(raw);
+        return Number.isFinite(value) ? value : null;
+      };
+      const trendDailyRate = (row: any, key: string): number | null => {
+        const value = trendDailyMetric(row, key);
+        return value === null ? null : key === "engagementRate" && Math.abs(value) <= 1 ? value * 100 : value;
+      };
+      const compactChartValue = (value: number, rate = false) => {
+        if (rate) return `${value.toFixed(value >= 10 ? 0 : 1)}%`;
+        if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}m`;
+        if (value >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
+        return value >= 10 ? value.toFixed(0) : value.toFixed(1);
+      };
+      const drawTrendChart = (title: string, rows: any[], series: TrendChartSeries[], rate = false) => {
+        ensureDesignedSpace(92);
+        drawText(title, margin, y + 5, { size: 10, bold: true });
+        y += 10;
+        const chartHeight = 76;
+        card(margin, y, contentWidth, chartHeight);
+        const plotX = margin + 24;
+        const plotY = y + 10;
+        const plotWidth = contentWidth - 34;
+        const plotHeight = 38;
+        const finiteValues = series.flatMap((item) => item.values.filter((value): value is number => value !== null && Number.isFinite(value)));
+        const rawMaximum = finiteValues.length > 0 ? Math.max(...finiteValues) : 0;
+        const maximum = rawMaximum > 0 ? rawMaximum * 1.08 : 1;
+        doc.setFontSize(6.5);
+        doc.setFont("helvetica", "normal");
+        setColor(colors.secondary);
+        for (let index = 0; index <= 3; index += 1) {
+          const gridY = plotY + (plotHeight / 3) * index;
+          pdf.setDrawColor?.(...chartColors.grid);
+          pdf.setLineWidth?.(0.25);
+          pdf.line?.(plotX, gridY, plotX + plotWidth, gridY);
+          const axisValue = maximum * (1 - index / 3);
+          doc.text(compactChartValue(axisValue, rate), plotX - 3, gridY + 1.5, { align: "right" });
+        }
+        pdf.setDrawColor?.(...chartColors.frame);
+        pdf.setLineWidth?.(0.45);
+        pdf.roundedRect?.(plotX, plotY, plotWidth, plotHeight, 3, 3, "S");
+        series.forEach((item) => {
+          pdf.setDrawColor?.(...item.color);
+          pdf.setLineWidth?.(0.65);
+          let previous: { x: number; y: number } | null = null;
+          item.values.forEach((value, index) => {
+            if (value === null || !Number.isFinite(value)) {
+              previous = null;
+              return;
+            }
+            const pointX = plotX + (item.values.length <= 1 ? 0 : (index / (item.values.length - 1)) * plotWidth);
+            const pointY = plotY + plotHeight - (Math.max(0, value) / maximum) * plotHeight;
+            if (previous) pdf.line?.(previous.x, previous.y, pointX, pointY);
+            previous = { x: pointX, y: pointY };
+          });
+        });
+        const labelIndexes = rows.length <= 1
+          ? [0]
+          : Array.from(new Set([0, Math.round((rows.length - 1) / 3), Math.round(((rows.length - 1) * 2) / 3), rows.length - 1]));
+        labelIndexes.forEach((index, labelIndex) => {
+          const date = String(rows[index]?.date || "").slice(0, 10);
+          const label = /^\d{4}-\d{2}-\d{2}$/.test(date) ? DateTime.fromISO(date).setLocale("en-US").toFormat("MMM d") : date;
+          const labelX = plotX + (rows.length <= 1 ? 0 : (index / (rows.length - 1)) * plotWidth);
+          setColor(colors.secondary);
+          doc.text(label, labelX, plotY + plotHeight + 6, { align: labelIndex === 0 ? "left" : labelIndex === labelIndexes.length - 1 ? "right" : "center" });
+        });
+        let legendX = plotX;
+        const legendY = y + chartHeight - 8;
+        series.forEach((item) => {
+          const legendWidth = Math.max(25, Math.min(48, 12 + item.label.length * 2.2));
+          pdf.setFillColor?.(...colors.white);
+          pdf.setDrawColor?.(...chartColors.frame);
+          pdf.roundedRect?.(legendX, legendY - 4.5, legendWidth, 8, 4, 4, "FD");
+          pdf.setFillColor?.(...item.color);
+          pdf.circle?.(legendX + 4, legendY - 0.5, 1.3, "F");
+          drawText(item.label, legendX + 8, legendY + 1, { size: 7, maxWidth: legendWidth - 10 });
+          legendX += legendWidth + 3;
+        });
+        y += chartHeight + 7;
+      };
+      const metricCard = (label: string, value: string, comparison: string, x: number, cardY: number, width: number) => {
+        card(x, cardY, width, 30);
+        drawText(label.toUpperCase(), x + 6, cardY + 7, { size: 7, color: colors.muted, maxWidth: width - 12 });
+        drawText(value, x + 6, cardY + 17, { size: 11, bold: true, maxWidth: width - 12 });
+        drawText(comparison, x + 6, cardY + 25, { size: 6.5, color: colors.secondary, maxWidth: width - 12 });
+      };
+      const trendComparison = (key: string, current: number) => {
+        const previous = trendPreviousMetric(key);
+        if (previous === null || previous <= 0) return `Comparison unavailable vs ${trendComparisonDate || "unknown date"}`;
+        if (["users", "sessions", "conversions", "cvr", "engagementRate"].includes(key)) {
+          const exact = formatTrendComparison({
+            current,
+            previous,
+            comparisonDate: trendComparisonDate,
+            kind: ["cvr", "engagementRate"].includes(key) ? "rate" : "count",
+          });
+          return exact ? `${exact.value} ${exact.context}` : `Comparison unavailable vs ${trendComparisonDate}`;
+        }
+        const change = ((current - previous) / Math.abs(previous)) * 100;
+        return `${change >= 0 ? "+" : ""}${change.toFixed(1)}% vs ${trendComparisonDate}`;
+      };
+
+      sectionHeading("Trend Analysis", 34);
+      const trendSourceLabels = (Array.isArray(trendAnalysis?.sources) ? trendAnalysis.sources : [])
+        .map((source: any) => String(source?.label || source?.id || "").trim())
+        .filter(Boolean);
+      if (trendSourceLabels.length > 0) {
+        drawText(`Source: ${trendSourceLabels.join(", ")}`, margin, y + 4, { size: 8, color: colors.secondary });
+        y += 10;
+      }
+      drawText("Current Decision Metrics", margin, y + 5, { size: 10, bold: true });
+      y += 10;
+      drawText(`Current GA4 traffic values are cumulative through ${trendWindowEnd || "the latest completed reporting day"}; the selector comparison date is ${trendComparisonDate || "Unavailable"}.`, margin, y + 4, { size: 7, color: colors.secondary, maxWidth: contentWidth });
+      y += 8;
+      const decisionMetrics = ["revenue", "spend", "roas", "roi", "conversions", "cpa", "cpc", "cpm", "sessions", "users", "cvr", "engagementRate", "ctr"]
+        .map((key) => ({ key, value: trendCurrentMetric(key) }))
+        .filter((item): item is { key: string; value: number } => item.value !== null && Number.isFinite(item.value));
+      const metricWidth = (contentWidth - 8) / 3;
+      decisionMetrics.forEach((item, index) => {
+        const column = index % 3;
+        if (column === 0) {
+          if (index > 0) y += 34;
+          if (ensureDesignedSpace(32) && index > 0) {
+            drawText("Current Decision Metrics (continued)", margin, y + 5, { size: 10, bold: true });
+            y += 10;
+          }
+        }
+        metricCard(
+          campaignDeepDiveMetricLabels[item.key] || item.key,
+          formatCampaignDeepDiveMetricValue(item.key, item.value, trendCurrency),
+          trendComparison(item.key, item.value),
+          margin + column * (metricWidth + 4),
+          y,
+          metricWidth,
+        );
+      });
+      y += 38;
+
+      sectionHeading("Campaign Performance Trend", 92);
+      drawText(`${trendWindowStart || "Unavailable"} to ${trendWindowEnd || "Unavailable"} · Daily records: ${trendWindowRows.length} of ${trendReportDays} calendar dates`, margin, y + 4, { size: 8, color: colors.secondary });
+      y += 9;
+      if (trendWindowRows.length > 0) {
+        drawTrendChart("Daily Traffic", trendWindowRows, [
+          { label: "Users", color: chartColors.orange, values: trendWindowRows.map((row: any) => trendDailyMetric(row, "users")) },
+          { label: "Sessions", color: chartColors.green, values: trendWindowRows.map((row: any) => trendDailyMetric(row, "sessions")) },
+          { label: "Conversions", color: chartColors.blue, values: trendWindowRows.map((row: any) => trendDailyMetric(row, "conversions")) },
+        ]);
+        const qualitySeries = [
+          { label: "Conversion Rate", color: chartColors.orange, values: trendWindowRows.map((row: any) => trendDailyRate(row, "cvr")) },
+          { label: "Engagement Rate", color: chartColors.green, values: trendWindowRows.map((row: any) => trendDailyRate(row, "engagementRate")) },
+        ].filter((item) => item.values.some((value: number | null) => value !== null));
+        if (qualitySeries.length > 0) drawTrendChart("Conversion Quality Trend", trendWindowRows, qualitySeries, true);
+      } else {
+        card(margin, y, contentWidth, 22);
+        drawText("Daily trend chart unavailable for the selected window.", margin + 6, y + 13, { size: 9, color: colors.secondary });
+        y += 28;
+      }
+
+      sectionHeading("Efficiency Trends", 24);
+      card(margin, y, contentWidth, 24);
+      drawText("Daily return and cost trends are unavailable", margin + 6, y + 9, { size: 9, bold: true });
+      drawText("Compatible daily financial history is required. Current connected-source financial totals remain in Decision Metrics.", margin + 6, y + 17, { size: 8, color: colors.secondary, maxWidth: contentWidth - 12 });
+      y += 30;
+
+      const trendSourceWindowRows = (source: any) => (Array.isArray(source?.dailyRows) ? source.dailyRows : []).filter((row: any) => {
+        const date = String(row?.date || "").slice(0, 10);
+        return trendWindowStart && date >= trendWindowStart && date <= trendWindowEnd;
+      });
+      const allTrendSources = Array.isArray(trendAnalysis?.sources) ? trendAnalysis.sources : [];
+      const webSources = allTrendSources.filter((source: any) => Array.isArray(source?.includedMetrics) && source.includedMetrics.includes("sessions"));
+      const webMetricTotal = (key: string): number | null => {
+        const compatibleSources = webSources.filter((source: any) => source.includedMetrics.includes(key));
+        if (compatibleSources.length === 0) return null;
+        return compatibleSources.reduce((total: number, source: any) => total + trendSourceWindowRows(source)
+          .reduce((sourceTotal: number, row: any) => sourceTotal + (Number(row?.metrics?.[key]) || 0), 0), 0);
+      };
+      let websiteSummary: Array<[string, string]> = [];
+      let websiteSummaryBasis = "";
+      if (performancePageTrafficTotals) {
+        const sessions = Number(performancePageTrafficTotals.sessions);
+        const engagedSessions = Number(performancePageTrafficTotals.engagedSessions);
+        const conversions = Number(performancePageTrafficTotals.conversions);
+        websiteSummaryBasis = `Cumulative from initial import through ${trendWindowEnd || "the latest completed reporting day"}.`;
+        websiteSummary = [
+          ["Sessions", formatCampaignDeepDiveMetricValue("sessions", sessions)],
+          ["Engaged Sessions", formatCampaignDeepDiveMetricValue("sessions", engagedSessions)],
+          ["Conversions", formatCampaignDeepDiveMetricValue("conversions", conversions)],
+          ["Engagement Rate", formatCampaignDeepDiveMetricValue("engagementRate", sessions > 0 ? (engagedSessions / sessions) * 100 : 0)],
+          ["Conversions per 100 Sessions", sessions > 0 ? ((conversions / sessions) * 100).toFixed(1) : "0.0"],
+        ];
+      } else if (webSources.length > 0) {
+        const sessions = webMetricTotal("sessions");
+        const users = webMetricTotal("users");
+        const conversions = webMetricTotal("conversions");
+        const engagementRates = webSources
+          .filter((source: any) => source.includedMetrics.includes("engagementRate"))
+          .flatMap((source: any) => trendSourceWindowRows(source).map((row: any) => trendDailyRate(row, "engagementRate")))
+          .filter((value: number | null): value is number => value !== null);
+        const engagementRate = engagementRates.length > 0 ? engagementRates.reduce((total: number, value: number) => total + value, 0) / engagementRates.length : null;
+        websiteSummaryBasis = `Selected ${trendReportDays}-day window from ${trendWindowStart || "Unavailable"} through ${trendWindowEnd || "Unavailable"}.`;
+        websiteSummary = [
+          ...(sessions !== null ? [["Sessions", formatCampaignDeepDiveMetricValue("sessions", sessions)] as [string, string]] : []),
+          ...(users !== null ? [["Users", formatCampaignDeepDiveMetricValue("users", users)] as [string, string]] : []),
+          ...(conversions !== null ? [["Conversions", formatCampaignDeepDiveMetricValue("conversions", conversions)] as [string, string]] : []),
+          ...(engagementRate !== null ? [["Engagement Rate", formatCampaignDeepDiveMetricValue("engagementRate", engagementRate)] as [string, string]] : []),
+          ...(sessions !== null && sessions > 0 && conversions !== null ? [["Conversions per 100 Sessions", ((conversions / sessions) * 100).toFixed(1)] as [string, string]] : []),
+        ];
+      }
+      if (websiteSummary.length > 0) {
+        sectionHeading("Website Engagement & Conversion Summary", 40);
+        drawText(websiteSummaryBasis, margin, y + 4, { size: 8, color: colors.secondary });
+        y += 10;
+        const summaryWidth = (contentWidth - 8) / 3;
+        websiteSummary.forEach(([label, value], index) => {
+          const column = index % 3;
+          if (index > 0 && column === 0) y += 28;
+          card(margin + column * (summaryWidth + 4), y, summaryWidth, 24);
+          drawText(label.toUpperCase(), margin + column * (summaryWidth + 4) + 6, y + 8, { size: 7, color: colors.muted, maxWidth: summaryWidth - 12 });
+          drawText(value, margin + column * (summaryWidth + 4) + 6, y + 18, { size: 11, bold: true, maxWidth: summaryWidth - 12 });
+        });
+        y += 32;
+      }
+
+      const paidSources = allTrendSources.filter((source: any) => source?.category === "paid_media");
+      const paidMetricTotal = (key: string): number | null => {
+        const compatibleSources = paidSources.filter((source: any) => Array.isArray(source?.includedMetrics) && source.includedMetrics.includes(key));
+        if (compatibleSources.length === 0) return null;
+        return compatibleSources.reduce((total: number, source: any) => total + trendSourceWindowRows(source)
+          .reduce((sourceTotal: number, row: any) => sourceTotal + (Number(row?.metrics?.[key]) || 0), 0), 0);
+      };
+      const paidAvailable = paidSources.some((source: any) => Array.isArray(source?.includedMetrics)
+        && (source.includedMetrics.includes("impressions") || source.includedMetrics.includes("clicks")));
+      if (paidAvailable) {
+        const impressions = paidMetricTotal("impressions");
+        const clicks = paidMetricTotal("clicks");
+        const paidConversions = paidMetricTotal("conversions");
+        const paidCards: Array<[string, string]> = [
+          ...(impressions !== null ? [["Impressions", formatCampaignDeepDiveMetricValue("impressions", impressions)] as [string, string]] : []),
+          ...(clicks !== null ? [["Clicks", formatCampaignDeepDiveMetricValue("clicks", clicks)] as [string, string]] : []),
+          ...(paidConversions !== null ? [["Conversions", formatCampaignDeepDiveMetricValue("conversions", paidConversions)] as [string, string]] : []),
+          ...(impressions !== null && impressions > 0 && clicks !== null ? [["CTR", formatCampaignDeepDiveMetricValue("ctr", (clicks / impressions) * 100)] as [string, string]] : []),
+          ...(clicks !== null && clicks > 0 && paidConversions !== null ? [["Paid CVR", formatCampaignDeepDiveMetricValue("cvr", (paidConversions / clicks) * 100)] as [string, string]] : []),
+        ];
+        sectionHeading("Paid Acquisition Funnel", 32);
+        const paidWidth = (contentWidth - 8) / 3;
+        paidCards.forEach(([label, value], index) => {
+          const column = index % 3;
+          if (index > 0 && column === 0) y += 28;
+          card(margin + column * (paidWidth + 4), y, paidWidth, 24);
+          drawText(label.toUpperCase(), margin + column * (paidWidth + 4) + 6, y + 8, { size: 7, color: colors.muted });
+          drawText(value, margin + column * (paidWidth + 4) + 6, y + 18, { size: 11, bold: true });
+        });
+        y += 32;
+      }
+
+      const contributionSources = allTrendSources.map((source: any, index: number) => {
+        const includedMetrics = Array.isArray(source?.includedMetrics) ? source.includedMetrics.map(String) : [];
+        const sum = (key: string): number | null => includedMetrics.includes(key)
+          ? trendSourceWindowRows(source).reduce((total: number, row: any) => total + (Number(row?.metrics?.[key]) || 0), 0)
+          : null;
+        const sessions = sum("sessions");
+        const clicks = sum("clicks");
+        const impressions = sum("impressions");
+        const spend = sum("spend");
+        const conversions = sum("conversions");
+        const revenue = sum("revenue");
+        return {
+          source,
+          id: String(source?.id || `source_${index}`),
+          label: String(source?.label || source?.id || "Connected Source"),
+          users: sum("users"), sessions, clicks, impressions, spend, conversions, revenue,
+          ctr: impressions && impressions > 0 && clicks !== null ? (clicks / impressions) * 100 : null,
+          cpc: spend && spend > 0 && clicks ? spend / clicks : null,
+          cpa: spend && spend > 0 && conversions ? spend / conversions : null,
+          roas: spend && spend > 0 && revenue !== null ? revenue / spend : null,
+          coverage: (Array.isArray(source?.excludedMetrics) ? source.excludedMetrics : []).map((item: any) => `${item?.metric}: ${item?.reason}`).slice(0, 3),
+        };
+      });
+      if (contributionSources.length > 1) {
+        sectionHeading("Source Contribution", 30);
+        const contributionValue = (key: string, value: number | null) => value === null
+          ? "Unavailable"
+          : key === "roas" ? `${value.toFixed(2)}x` : formatCampaignDeepDiveMetricValue(key, value, trendCurrency);
+        contributionSources.forEach((source: any) => {
+          const traffic = source.sessions !== null
+            ? `${formatCampaignDeepDiveMetricValue("sessions", source.sessions)} sessions`
+            : source.clicks !== null ? `${formatCampaignDeepDiveMetricValue("clicks", source.clicks)} clicks` : "Unavailable";
+          const sourceSummary = `Spend ${contributionValue("spend", source.spend)} · Traffic ${traffic} · Conversions ${contributionValue("conversions", source.conversions)} · Revenue ${contributionValue("revenue", source.revenue)} · ROAS ${contributionValue("roas", source.roas)} · CPA ${contributionValue("cpa", source.cpa)} · CTR ${contributionValue("ctr", source.ctr)} · CPC ${contributionValue("cpc", source.cpc)} · Coverage notes: ${source.coverage.length > 0 ? source.coverage.join("; ") : "None"}`;
+          const summaryLines = doc.splitTextToSize(sourceSummary, contentWidth - 18);
+          const sourceHeight = 18 + summaryLines.length * 4.5;
+          ensureDesignedSpace(sourceHeight + 4);
+          card(margin, y, contentWidth, sourceHeight);
+          drawText(source.label, margin + 6, y + 9, { size: 9, bold: true });
+          drawText(sourceSummary, margin + 6, y + 17, { size: 7.5, color: colors.secondary, maxWidth: contentWidth - 12 });
+          y += sourceHeight + 4;
+        });
+        const contributionMetricOptions = ["spend", "clicks", "conversions", "impressions", "sessions", "users", "revenue"]
+          .filter((key) => contributionSources.some((source: any) => source[key] !== null));
+        const contributionMetric = contributionMetricOptions.includes("spend") ? "spend" : contributionMetricOptions[0];
+        if (contributionMetric) {
+          const contributionDates = Array.from(new Set(contributionSources.flatMap((source: any) => trendSourceWindowRows(source.source)
+            .map((row: any) => String(row?.date || "").slice(0, 10)).filter(Boolean)))).sort();
+          if (contributionDates.length > 0) {
+            const contributionPalette = [chartColors.orange, chartColors.green, chartColors.blue];
+            for (let start = 0; start < contributionSources.length; start += 3) {
+              const sourceGroup = contributionSources.slice(start, start + 3);
+              const groupLabel = contributionSources.length > 3 ? ` · Sources ${start + 1}-${start + sourceGroup.length}` : "";
+              drawTrendChart(`Contribution Over Time - ${contributionMetric.charAt(0).toUpperCase()}${contributionMetric.slice(1)}${groupLabel}`, contributionDates.map((date) => ({ date })), sourceGroup.map((source: any, index: number) => {
+                const values = new Map(trendSourceWindowRows(source.source).map((row: any) => [String(row?.date || "").slice(0, 10), Number(row?.metrics?.[contributionMetric]) || 0]));
+                return { label: source.label, color: contributionPalette[index], values: contributionDates.map((date) => values.has(date) ? Number(values.get(date)) : null) };
+              }));
+            }
+          }
+        }
+      }
+
+      const trendRecommendations: Array<{ title: string; message: string }> = [];
+      const completeDailyWindow = (rows: any[], startDate: string, endDate: string) => {
+        if (rows.length !== trendReportDays || !/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) return false;
+        const dates = new Set(rows.map((row: any) => String(row?.date || "").slice(0, 10)));
+        const expectedDates = new Set<string>();
+        for (const date = new Date(`${startDate}T00:00:00.000Z`); date <= new Date(`${endDate}T00:00:00.000Z`); date.setUTCDate(date.getUTCDate() + 1)) expectedDates.add(date.toISOString().slice(0, 10));
+        return dates.size === trendReportDays && expectedDates.size === trendReportDays
+          && Array.from(expectedDates).every((date) => dates.has(date))
+          && rows.every((row: any) => [trendDailyMetric(row, "sessions"), trendDailyMetric(row, "conversions")].every((value) => value !== null && Number(value) >= 0));
+      };
+      if (completeDailyWindow(trendWindowRows, trendWindowStart, trendWindowEnd)
+        && completeDailyWindow(trendPreviousWindowRows, trendPreviousWindowStart, trendComparisonDate)) {
+        const total = (rows: any[], key: string) => rows.reduce((sum: number, row: any) => sum + Number(trendDailyMetric(row, key) || 0), 0);
+        const currentSessions = total(trendWindowRows, "sessions");
+        const previousSessions = total(trendPreviousWindowRows, "sessions");
+        const currentConversions = total(trendWindowRows, "conversions");
+        const previousConversions = total(trendPreviousWindowRows, "conversions");
+        const currentRate = currentSessions > 0 ? (currentConversions / currentSessions) * 100 : null;
+        const previousRate = previousSessions > 0 ? (previousConversions / previousSessions) * 100 : null;
+        const conversionsIncreased = currentConversions > previousConversions;
+        const conversionsDecreased = currentConversions < previousConversions;
+        const action = conversionsIncreased
+          ? "Identify the traffic sources and landing pages associated with the increase, then verify conversion-event integrity before considering budget reallocation."
+          : conversionsDecreased && currentSessions >= previousSessions
+            ? "Audit conversion-event tracking, source mix, and landing-page changes because conversions declined without a decline in sessions."
+            : conversionsDecreased
+              ? "Review source-level traffic delivery first, then inspect conversion frequency to separate acquisition loss from on-site performance."
+              : "Compare the flat conversion volume with the approved campaign target and review source mix before changing spend.";
+        trendRecommendations.push({
+          title: conversionsIncreased ? "Conversions Increased - Validate the Drivers" : conversionsDecreased ? "Conversions Decreased - Investigate the Drivers" : "Conversion Volume Flat - Review the Target Gap",
+          message: `${trendWindowStart} to ${trendWindowEnd} recorded ${formatCampaignDeepDiveMetricValue("conversions", currentConversions)} conversions from ${formatCampaignDeepDiveMetricValue("sessions", currentSessions)} sessions${currentRate === null ? "" : ` (${currentRate.toFixed(1)} per 100 sessions)`}, versus ${formatCampaignDeepDiveMetricValue("conversions", previousConversions)} conversions from ${formatCampaignDeepDiveMetricValue("sessions", previousSessions)} sessions${previousRate === null ? "" : ` (${previousRate.toFixed(1)} per 100 sessions)`} during ${trendPreviousWindowStart} to ${trendComparisonDate}. Next action: ${action}`,
+        });
+      }
+      const currentRoas = trendCurrentMetric("roas");
+      const currentRevenue = trendCurrentMetric("revenue");
+      const currentSpend = trendCurrentMetric("spend");
+      const trendFinancialWindow = performanceSummary?.currentValueWindow;
+      const trendFinancialInputsReady = (["revenue", "spend"] as const).every((metricName) => {
+        const inputs = financialInputs?.[metricName];
+        const expectedTotal = metricName === "revenue" ? currentRevenue : currentSpend;
+        return expectedTotal !== null && Array.isArray(inputs) && inputs.length > 0
+          && Math.abs(inputs.reduce((sum: number, input: any) => sum + Number(input?.value || 0), 0) - expectedTotal) < 0.005
+          && inputs.every((input: any) => input?.campaignId === campaignId
+            && input?.scopeMode === (metricName === "revenue" && input?.id === "ga4_native_revenue" ? "campaign_to_date" : "source_to_date")
+            && /^\d{4}-\d{2}-\d{2}$/.test(String(input?.startDate || ""))
+            && input.startDate <= trendFinancialWindow?.endDate
+            && input?.endDate === trendFinancialWindow?.endDate
+            && String(input?.currency || "").trim().toUpperCase() === trendCurrency
+            && input?.currencyVerified === true
+            && Number.isFinite(Number(input?.value)));
+      });
+      const trendROASDecisionReady = currentRoas !== null && currentRevenue !== null && currentSpend !== null && currentSpend > 0
+        && Math.abs(currentRoas - (currentRevenue / currentSpend)) < 0.005
+        && financialDecisionContext?.version === "financial_decision_context_v1"
+        && financialDecisionContext?.status === "ready"
+        && financialDecisionContext?.campaignId === campaignId
+        && financialDecisionContext?.currency === trendCurrency
+        && financialDecisionContext?.dataThroughDate === trendFinancialWindow?.endDate
+        && financialDecisionContext?.revenueModel === "ga4_campaign_to_date_plus_imported_source_to_date"
+        && financialDecisionContext?.spendModel === "source_to_date"
+        && Math.abs(Number(financialDecisionContext?.roas) - (currentRevenue / currentSpend)) < 0.005
+        && trendFinancialInputsReady;
+      if (trendROASDecisionReady) {
+        trendRecommendations.push({
+          title: "Connected-Source ROAS - Reconciled Sources",
+          message: `Cumulative ROAS is ${currentRoas.toFixed(2)}x using financial records dated no later than ${trendFinancialWindow.endDate}. It reconciles GA4 native revenue from the imported data window and every active stored imported revenue and spend source-to-date, all in ${trendCurrency}. Compare it with approved profit and ROAS targets before any budget change.`,
+        });
+      } else if (currentRoas !== null) {
+        trendRecommendations.push({
+          title: "ROAS Decision Context Not Verified",
+          message: `A descriptive cumulative ROAS of ${currentRoas.toFixed(2)}x is available, but its active sources, scope metadata, currency, and input totals did not all reconcile. It is withheld from executive budget guidance.`,
+        });
+      }
+      if (performancePageTrafficTotals && Number(performancePageTrafficTotals.sessions) > 0) {
+        const webCvr = (Number(performancePageTrafficTotals.conversions) / Number(performancePageTrafficTotals.sessions)) * 100;
+        trendRecommendations.push({
+          title: "Connected-Source Conversion Volume",
+          message: `Current cumulative data shows ${webCvr.toFixed(1)} conversions per 100 sessions. Review conversion-event configuration and campaign targets before judging conversion quality.`,
+        });
+      }
+      if (trendRecommendations.length > 0) {
+        sectionHeading("Executive Recommendations", 24);
+        trendRecommendations.slice(0, 3).forEach((recommendation) => {
+          const messageLines = doc.splitTextToSize(recommendation.message, contentWidth - 24);
+          const actionHeight = Math.max(24, 16 + messageLines.length * 4.5);
+          ensureDesignedSpace(actionHeight + 4);
+          card(margin, y, contentWidth, actionHeight);
+          pdf.setFillColor?.(...colors.accentBg);
+          pdf.roundedRect?.(margin + 4, y + 4, 4, actionHeight - 8, 1, 1, "F");
+          drawText(recommendation.title, margin + 12, y + 9, { size: 9, bold: true, maxWidth: contentWidth - 18 });
+          drawText(recommendation.message, margin + 12, y + 17, { size: 8, color: colors.secondary, maxWidth: contentWidth - 18 });
+          y += actionHeight + 4;
+        });
+      }
       drawFooter();
       return coercePdfBufferFromDoc(doc);
     }

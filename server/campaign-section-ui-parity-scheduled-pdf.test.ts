@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const pdfTextCalls = vi.hoisted((): string[] => []);
+const pdfDrawCalls = vi.hoisted(() => ({ lines: 0, circles: 0, roundedRects: 0, images: 0, fillColors: [] as string[] }));
 const aggregateCampaignMetricsMock = vi.hoisted(() => vi.fn());
 const getCampaignMetricTotalsMock = vi.hoisted(() => vi.fn());
 const resolveFinancialDailyComparisonPreviousMock = vi.hoisted(() => vi.fn());
@@ -40,6 +41,15 @@ vi.mock("jspdf", () => ({
     internal = { pageSize: { getWidth: () => 210, getHeight: () => 297 } };
     setFontSize() {}
     setFont() {}
+    setTextColor() {}
+    setFillColor(...values: number[]) { pdfDrawCalls.fillColors.push(values.join(",")); }
+    setDrawColor() {}
+    setLineWidth() {}
+    line() { pdfDrawCalls.lines += 1; }
+    circle() { pdfDrawCalls.circles += 1; }
+    rect() {}
+    roundedRect() { pdfDrawCalls.roundedRects += 1; }
+    addImage() { pdfDrawCalls.images += 1; }
     addPage() {}
     splitTextToSize(value: any) { return [String(value)]; }
     text(value: any) {
@@ -154,6 +164,11 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-28T12:00:00.000Z"));
     pdfTextCalls.length = 0;
+    pdfDrawCalls.lines = 0;
+    pdfDrawCalls.circles = 0;
+    pdfDrawCalls.roundedRects = 0;
+    pdfDrawCalls.images = 0;
+    pdfDrawCalls.fillColors.length = 0;
     vi.clearAllMocks();
     resolveFinancialDailyComparisonPreviousMock.mockResolvedValue(null);
     storageMock.getCampaign.mockResolvedValue({
@@ -381,27 +396,36 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     });
 
     expect(pdfTextCalls).toContain("Trend window: 2026-07-29 to 2026-08-27.");
-    expect(pdfTextCalls.some((text) => text.includes("Sessions: 1,183"))).toBe(true);
-    expect(pdfTextCalls.some((text) => text.includes("Revenue: $72,766.69"))).toBe(true);
+    expect(pdfTextCalls).toContain("SESSIONS");
+    expect(pdfTextCalls).toContain("1,183");
+    expect(pdfTextCalls).toContain("REVENUE");
+    expect(pdfTextCalls).toContain("$72,766.69");
     expect(pdfTextCalls.some((text) => text.includes("selector comparison date is 2026-07-28"))).toBe(true);
     expect(pdfTextCalls).toContain("Source: Google Analytics");
     expect(pdfTextCalls.some((text) => text.includes("Daily records: 4 of 30 calendar dates"))).toBe(true);
     expect(pdfTextCalls).toContain("Daily Traffic");
-    expect(pdfTextCalls).toContain("- 2026-08-25: Users 10; Sessions 10; Conversions 2");
     expect(pdfTextCalls).toContain("Conversion Quality Trend");
-    expect(pdfTextCalls).toContain("- 2026-08-24: CVR 0.5%; Engagement Rate 60.0%");
-    expect(pdfTextCalls).toContain("- 2026-08-25: CVR 20.0%; Engagement Rate 60.0%");
+    expect(pdfTextCalls).not.toContain("- 2026-08-25: Users 10; Sessions 10; Conversions 2");
+    expect(pdfDrawCalls.lines).toBeGreaterThan(8);
+    expect(pdfDrawCalls.circles).toBeGreaterThanOrEqual(5);
+    expect(pdfDrawCalls.roundedRects).toBeGreaterThan(10);
+    expect(pdfDrawCalls.images).toBe(1);
+    expect(pdfDrawCalls.fillColors).toContain("254,249,243");
+    expect(pdfDrawCalls.fillColors).toContain("244,174,126");
     expect(pdfTextCalls).toContain("Website Engagement & Conversion Summary");
-    expect(pdfTextCalls).toContain("- Engaged Sessions: 809");
-    expect(pdfTextCalls).toContain("- Conversions per 100 sessions: 12.8");
+    expect(pdfTextCalls).toContain("ENGAGED SESSIONS");
+    expect(pdfTextCalls).toContain("809");
+    expect(pdfTextCalls).toContain("CONVERSIONS PER 100 SESSIONS");
+    expect(pdfTextCalls).toContain("12.8");
     expect(pdfTextCalls).not.toContain("Paid Acquisition Funnel");
     expect(pdfTextCalls).not.toContain("Source Contribution");
     expect(pdfTextCalls).toContain("Executive Recommendations");
     expect(pdfTextCalls.some((text) => text.includes("Selected-Window Comparison"))).toBe(false);
-    expect(pdfTextCalls.some((text) => text.includes("Connected-Source ROAS") && text.includes("26.95x") && text.includes("Reconciled Sources"))).toBe(true);
-    expect(pdfTextCalls.some((text) => text.includes("Connected-Source Conversion Volume") && text.includes("12.8 conversions per 100 sessions"))).toBe(true);
-    expect(pdfTextCalls.some((text) => text.includes("Sessions: 1,179"))).toBe(false);
-    expect(pdfTextCalls.some((text) => text.includes("Sessions: 30"))).toBe(false);
+    expect(pdfTextCalls).toContain("Connected-Source ROAS - Reconciled Sources");
+    expect(pdfTextCalls.some((text) => text.includes("Cumulative ROAS is 26.95x"))).toBe(true);
+    expect(pdfTextCalls).toContain("Connected-Source Conversion Volume");
+    expect(pdfTextCalls.some((text) => text.includes("12.8 conversions per 100 sessions"))).toBe(true);
+    expect(pdfTextCalls).not.toContain("1,179");
     expect(pdfTextCalls.some((text) => text.includes("Cost per click: Unavailable"))).toBe(false);
     expect(pdfTextCalls.some((text) => text.includes("Click-through rate: Unavailable"))).toBe(false);
     expect(getCampaignMetricTotalsMock).not.toHaveBeenCalled();
@@ -463,8 +487,8 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
       campaignName: "Campaign",
     });
 
-    expect(pdfTextCalls.some((text) => text.includes("Conversions Increased — Validate the Drivers")
-      && text.includes("2026-07-29 to 2026-08-27 recorded 60 conversions from 300 sessions")
+    expect(pdfTextCalls).toContain("Conversions Increased - Validate the Drivers");
+    expect(pdfTextCalls.some((text) => text.includes("2026-07-29 to 2026-08-27 recorded 60 conversions from 300 sessions")
       && text.includes("versus 30 conversions from 300 sessions")
       && text.includes("Next action:"))).toBe(true);
     expect(pdfTextCalls.some((text) => text.includes("Selected-Window Comparison"))).toBe(false);
@@ -509,7 +533,9 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
       reportingDate: "2026-07-28",
       storedPrevious: null,
     });
-    expect(pdfTextCalls.some((text) => text.includes("Revenue: $72,766.69") && text.includes("+45.5%"))).toBe(true);
+    expect(pdfTextCalls).toContain("REVENUE");
+    expect(pdfTextCalls).toContain("$72,766.69");
+    expect(pdfTextCalls.some((text) => text.includes("+45.5%") && text.includes("2026-07-28"))).toBe(true);
   });
 
   it("keeps the multi-source Trend website summary scoped to session-capable source rows", async () => {
@@ -559,25 +585,19 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     });
 
     expect(pdfTextCalls).toContain("Website Engagement & Conversion Summary");
-    expect(pdfTextCalls).toContain("- Selected 30-day window from 2026-07-29 through 2026-08-27.");
-    expect(pdfTextCalls).toContain("- Sessions: 100");
-    expect(pdfTextCalls).toContain("- Users: 80");
-    expect(pdfTextCalls).toContain("- Conversions: 10");
-    expect(pdfTextCalls).toContain("- Engagement rate: 80.0%");
-    expect(pdfTextCalls).toContain("- Conversions per 100 sessions: 10.0");
-    expect(pdfTextCalls).not.toContain("- Conversions per 100 sessions: 40.0");
+    expect(pdfTextCalls).toContain("Selected 30-day window from 2026-07-29 through 2026-08-27.");
+    for (const value of ["100", "80", "10", "80.0%", "10.0"]) expect(pdfTextCalls).toContain(value);
+    expect(pdfTextCalls).not.toContain("40.0");
     expect(pdfTextCalls).toContain("Paid Acquisition Funnel");
-    expect(pdfTextCalls).toContain("- Impressions: 1,000");
-    expect(pdfTextCalls).toContain("- Clicks: 100");
-    expect(pdfTextCalls).toContain("- Conversions: 30");
-    expect(pdfTextCalls).toContain("- CTR: 10.0%");
-    expect(pdfTextCalls).toContain("- Paid CVR: 30.0%");
+    for (const label of ["IMPRESSIONS", "CLICKS", "CONVERSIONS", "CTR", "PAID CVR"]) expect(pdfTextCalls).toContain(label);
+    for (const value of ["1,000", "30", "10.0%", "30.0%"]) expect(pdfTextCalls).toContain(value);
     expect(pdfTextCalls).toContain("Source Contribution");
-    expect(pdfTextCalls).toContain("- Google Analytics: Spend Unavailable; Traffic 100 sessions; Conversions 10; Revenue $600.00; ROAS Unavailable; CPA Unavailable; CTR Unavailable; CPC Unavailable; Coverage notes: impressions: GA4 is not an ad-impression source; clicks: GA4 is not an ad-click source; spend: Spend is not a GA4 metric");
-    expect(pdfTextCalls).toContain("- LinkedIn Ads: Spend $300.00; Traffic 100 clicks; Conversions 30; Revenue Unavailable; ROAS Unavailable; CPA $10.00; CTR 10.0%; CPC $3.00; Coverage notes: sessions: Sessions are web analytics metrics; users: Users are web analytics metrics");
-    expect(pdfTextCalls).toContain("Contribution Over Time");
-    expect(pdfTextCalls).toContain("- Selected metric: Spend");
-    expect(pdfTextCalls).toContain("- 2026-08-27: Google Analytics $0.00; LinkedIn Ads $300.00");
+    expect(pdfTextCalls).toContain("Google Analytics");
+    expect(pdfTextCalls.some((text) => text.includes("Spend Unavailable") && text.includes("Traffic 100 sessions") && text.includes("Revenue $600.00") && text.includes("Coverage notes:"))).toBe(true);
+    expect(pdfTextCalls).toContain("LinkedIn Ads");
+    expect(pdfTextCalls.some((text) => text.includes("Spend $300.00") && text.includes("Traffic 100 clicks") && text.includes("CPA $10.00") && text.includes("Coverage notes:"))).toBe(true);
+    expect(pdfTextCalls).toContain("Contribution Over Time - Spend");
+    expect(pdfTextCalls).not.toContain("- 2026-08-27: Google Analytics $0.00; LinkedIn Ads $300.00");
     expect(getCampaignMetricTotalsMock).not.toHaveBeenCalled();
   });
 
@@ -598,16 +618,13 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     for (const heading of ["Financial Position", "Budget & Pacing", "Allocation & Sources", "Executive Action"]) {
       expect(pdfTextCalls.filter((text) => text === heading)).toHaveLength(1);
     }
-    expect(pdfTextCalls).toContain("Metric window: 2026-07-02 to 2026-08-27 (Europe/Amsterdam). Financial values use connected-source totals.");
-    expect(pdfTextCalls).toContain("- Revenue: $72,766.69");
-    expect(pdfTextCalls).toContain("- Spend: $2,699.75");
-    expect(pdfTextCalls).toContain("- ROAS: 26.95x");
-    expect(pdfTextCalls).toContain("- Conversion rate: 12.8%");
-    expect(pdfTextCalls).toContain("- Daily Burn Rate: $47.36");
-    expect(pdfTextCalls).toContain("- Pacing Status: 56.9% Under");
+    expect(pdfTextCalls).toContain("Metric window: 2026-07-02 to 2026-08-27 (Europe/Amsterdam).");
+    for (const label of ["TOTAL REVENUE", "TOTAL SPEND", "ROAS", "CONVERSION RATE", "DAILY BURN RATE", "PACING STATUS"]) expect(pdfTextCalls).toContain(label);
+    for (const value of ["$72,766.69", "$2,699.75", "26.95x", "12.8%", "$47.36", "56.9% Under"]) expect(pdfTextCalls).toContain(value);
     expect(pdfTextCalls.some((text) => text.includes("elapsed budget-period"))).toBe(false);
-    expect(pdfTextCalls).toContain("- Imported Revenue: $16,799.99");
-    expect(pdfTextCalls).toContain("- Imported Spend: $2,699.75");
+    expect(pdfTextCalls).toContain("Imported Revenue");
+    expect(pdfTextCalls).toContain("$16,799.99");
+    expect(pdfTextCalls).toContain("Imported Spend");
     expect(pdfTextCalls).not.toContain("ROI & ROAS");
     expect(getCampaignMetricTotalsMock).not.toHaveBeenCalled();
   });
@@ -643,7 +660,8 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
       campaignName: "Campaign",
     });
 
-    expect(pdfTextCalls).toContain("- Pacing Status: On Track");
+    expect(pdfTextCalls).toContain("PACING STATUS");
+    expect(pdfTextCalls).toContain("On Track");
     expect(pdfTextCalls.some((text) => text.includes("elapsed budget-period"))).toBe(false);
   });
 
@@ -682,11 +700,12 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
       campaignName: "Campaign",
     });
 
-    expect(pdfTextCalls).toContain("- GA4 Revenue: $0.00");
-    expect(pdfTextCalls).toContain("- Zero Revenue: $0.00");
-    expect(pdfTextCalls).toContain("- Zero Spend: $0.00");
-    expect(pdfTextCalls).not.toContain("- No detailed revenue inputs are available.");
-    expect(pdfTextCalls).not.toContain("- No detailed spend inputs are available.");
+    expect(pdfTextCalls).toContain("GA4 Revenue");
+    expect(pdfTextCalls).toContain("Zero Revenue");
+    expect(pdfTextCalls).toContain("Zero Spend");
+    expect(pdfTextCalls.filter((text) => text === "$0.00").length).toBeGreaterThanOrEqual(3);
+    expect(pdfTextCalls).not.toContain("No detailed revenue inputs are available.");
+    expect(pdfTextCalls).not.toContain("No detailed spend inputs are available.");
   });
 
   it("uses Executive Summary UI financials, cumulative traffic, GA4 target rows, and trajectory", async () => {

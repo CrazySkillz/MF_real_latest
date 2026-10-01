@@ -2708,7 +2708,6 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         orange: [244, 91, 16] as PdfColor,
         green: [16, 185, 129] as PdfColor,
         blue: [14, 165, 233] as PdfColor,
-        frame: [145, 134, 255] as PdfColor,
         grid: [203, 213, 225] as PdfColor,
       };
       const trendCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase() || "USD";
@@ -2728,7 +2727,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         if (value >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
         return value >= 10 ? value.toFixed(0) : value.toFixed(1);
       };
-      const drawTrendChart = (title: string, rows: any[], series: TrendChartSeries[], rate = false) => {
+      const drawTrendChart = (title: string, rows: any[], series: TrendChartSeries[], rate = false, seriesLineWidth = 0.65) => {
         ensureDesignedSpace(92);
         drawText(title, margin, y + 5, { size: 10, bold: true });
         y += 10;
@@ -2752,12 +2751,9 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
           const axisValue = maximum * (1 - index / 3);
           doc.text(compactChartValue(axisValue, rate), plotX - 3, gridY + 1.5, { align: "right" });
         }
-        pdf.setDrawColor?.(...chartColors.frame);
-        pdf.setLineWidth?.(0.45);
-        pdf.roundedRect?.(plotX, plotY, plotWidth, plotHeight, 3, 3, "S");
         series.forEach((item) => {
           pdf.setDrawColor?.(...item.color);
-          pdf.setLineWidth?.(0.65);
+          pdf.setLineWidth?.(seriesLineWidth);
           let previous: { x: number; y: number } | null = null;
           item.values.forEach((value, index) => {
             if (value === null || !Number.isFinite(value)) {
@@ -2785,8 +2781,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         series.forEach((item) => {
           const legendWidth = Math.max(25, Math.min(48, 12 + item.label.length * 2.2));
           pdf.setFillColor?.(...colors.white);
-          pdf.setDrawColor?.(...chartColors.frame);
-          pdf.roundedRect?.(legendX, legendY - 4.5, legendWidth, 8, 4, 4, "FD");
+          pdf.roundedRect?.(legendX, legendY - 4.5, legendWidth, 8, 4, 4, "F");
           pdf.setFillColor?.(...item.color);
           pdf.circle?.(legendX + 4, legendY - 0.5, 1.3, "F");
           drawText(item.label, legendX + 8, legendY + 1, { size: 7, maxWidth: legendWidth - 10 });
@@ -2860,12 +2855,12 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
           { label: "Users", color: chartColors.orange, values: trendWindowRows.map((row: any) => trendDailyMetric(row, "users")) },
           { label: "Sessions", color: chartColors.green, values: trendWindowRows.map((row: any) => trendDailyMetric(row, "sessions")) },
           { label: "Conversions", color: chartColors.blue, values: trendWindowRows.map((row: any) => trendDailyMetric(row, "conversions")) },
-        ]);
+        ], false, 0.45);
         const qualitySeries = [
           { label: "Conversion Rate", color: chartColors.orange, values: trendWindowRows.map((row: any) => trendDailyRate(row, "cvr")) },
           { label: "Engagement Rate", color: chartColors.green, values: trendWindowRows.map((row: any) => trendDailyRate(row, "engagementRate")) },
         ].filter((item) => item.values.some((value: number | null) => value !== null));
-        if (qualitySeries.length > 0) drawTrendChart("Conversion Quality Trend", trendWindowRows, qualitySeries, true);
+        if (qualitySeries.length > 0) drawTrendChart("Conversion Quality Trend", trendWindowRows, qualitySeries, true, 0.45);
       } else {
         card(margin, y, contentWidth, 22);
         drawText("Daily trend chart unavailable for the selected window.", margin + 6, y + 13, { size: 9, color: colors.secondary });

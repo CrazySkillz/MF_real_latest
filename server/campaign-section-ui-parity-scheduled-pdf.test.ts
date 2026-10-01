@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const pdfTextCalls = vi.hoisted((): string[] => []);
-const pdfDrawCalls = vi.hoisted(() => ({ lines: 0, circles: 0, roundedRects: 0, images: 0, fillColors: [] as string[] }));
+const pdfDrawCalls = vi.hoisted(() => ({ lines: 0, circles: 0, roundedRects: 0, images: 0, fillColors: [] as string[], drawColors: [] as string[], lineWidths: [] as number[] }));
 const aggregateCampaignMetricsMock = vi.hoisted(() => vi.fn());
 const getCampaignMetricTotalsMock = vi.hoisted(() => vi.fn());
 const resolveFinancialDailyComparisonPreviousMock = vi.hoisted(() => vi.fn());
@@ -43,8 +43,8 @@ vi.mock("jspdf", () => ({
     setFont() {}
     setTextColor() {}
     setFillColor(...values: number[]) { pdfDrawCalls.fillColors.push(values.join(",")); }
-    setDrawColor() {}
-    setLineWidth() {}
+    setDrawColor(...values: number[]) { pdfDrawCalls.drawColors.push(values.join(",")); }
+    setLineWidth(value: number) { pdfDrawCalls.lineWidths.push(value); }
     line() { pdfDrawCalls.lines += 1; }
     circle() { pdfDrawCalls.circles += 1; }
     rect() {}
@@ -169,6 +169,8 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     pdfDrawCalls.roundedRects = 0;
     pdfDrawCalls.images = 0;
     pdfDrawCalls.fillColors.length = 0;
+    pdfDrawCalls.drawColors.length = 0;
+    pdfDrawCalls.lineWidths.length = 0;
     vi.clearAllMocks();
     resolveFinancialDailyComparisonPreviousMock.mockResolvedValue(null);
     storageMock.getCampaign.mockResolvedValue({
@@ -412,6 +414,9 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfDrawCalls.images).toBe(1);
     expect(pdfDrawCalls.fillColors).toContain("254,249,243");
     expect(pdfDrawCalls.fillColors).toContain("244,174,126");
+    expect(pdfDrawCalls.drawColors).not.toContain("145,134,255");
+    expect(pdfDrawCalls.lineWidths).toContain(0.45);
+    expect(pdfDrawCalls.lineWidths).not.toContain(0.65);
     expect(pdfTextCalls).toContain("Website Engagement & Conversion Summary");
     expect(pdfTextCalls).toContain("ENGAGED SESSIONS");
     expect(pdfTextCalls).toContain("809");

@@ -23,6 +23,7 @@ export default function Sidebar() {
   });
   const currentClientId = campaignId ? campaign?.clientId : isCampaignContext ? selectedClientId : null;
   const currentClient = clients.find((client) => client.id === currentClientId);
+  const clientsNavActive = location === "/" || isCampaignContext;
 
   return (
     <aside className="w-64 shrink-0 bg-card border-r border-border/40 flex flex-col min-h-screen">
@@ -30,11 +31,45 @@ export default function Sidebar() {
         {/* Clients link — always visible */}
         <nav className="space-y-1">
           <Link href="/">
-            <div className={`nav-link ${location === "/" ? "nav-link-active" : "nav-link-inactive"}`}>
+            <div className={`nav-link ${clientsNavActive ? "nav-link-active" : "nav-link-inactive"}`}>
               <Home className="w-5 h-5" />
               <span>Clients</span>
             </div>
           </Link>
+          {isCampaignContext && (currentClient || campaignId) && (
+            <div className="py-2 pl-2">
+              <div className="px-3 py-3 rounded-xl bg-muted/50 border border-border/60" aria-label="Current client">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Client</p>
+                {currentClient ? (
+                  <>
+                    <p
+                      data-sidebar-current-client
+                      className={`mt-1 truncate rounded-lg px-2 py-1.5 font-semibold ${campaignId ? "bg-accent text-accent-foreground shadow-sm" : "text-foreground"}`}
+                      title={currentClient.name}
+                    >
+                      {currentClient.name}
+                    </p>
+                    {isCampaignAnalyticsView && campaign && (
+                      <div data-sidebar-campaign-context className="ml-3 mt-2 border-l border-border pl-3">
+                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Campaign</p>
+                        <p className="mt-1 truncate text-sm font-semibold text-foreground" title={campaign.name}>{campaign.name}</p>
+                      </div>
+                    )}
+                    {campaignId && (
+                      <Link href={isCampaignAnalyticsView ? `/campaigns/${campaignId}` : "/campaigns"}>
+                        <div className={`mt-3 flex items-start gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground ${isCampaignAnalyticsView ? "ml-3" : ""}`}>
+                          <ArrowLeft className="mt-0.5 h-4 w-4 shrink-0" />
+                          <span>{isCampaignAnalyticsView ? "Back to Campaign Overview" : "Back to All Campaigns"}</span>
+                        </div>
+                      </Link>
+                    )}
+                  </>
+                ) : (
+                  <div className="mt-2 h-5 w-3/4 rounded bg-muted animate-pulse" aria-hidden="true" />
+                )}
+              </div>
+            </div>
+          )}
           <Link href="/notifications">
             <div className={`nav-link ${location === "/notifications" ? "nav-link-active" : "nav-link-inactive"}`}>
               <Bell className="w-5 h-5" />
@@ -42,34 +77,6 @@ export default function Sidebar() {
             </div>
           </Link>
         </nav>
-        {isCampaignContext && (currentClient || campaignId) && (
-          <div className="mt-6">
-            <div className="px-3 py-3 rounded-xl bg-muted/50 border border-border/60" aria-label="Current client">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Client</p>
-              {currentClient ? (
-                <>
-                  <p className="mt-1 font-semibold text-foreground truncate" title={currentClient.name}>{currentClient.name}</p>
-                  {isCampaignAnalyticsView && campaign && (
-                    <div data-sidebar-campaign-context className="ml-3 mt-2 border-l border-border pl-3">
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Campaign</p>
-                      <p className="mt-1 truncate text-sm font-semibold text-foreground" title={campaign.name}>{campaign.name}</p>
-                    </div>
-                  )}
-                  {campaignId && (
-                    <Link href={isCampaignAnalyticsView ? `/campaigns/${campaignId}` : "/campaigns"}>
-                      <div className={`mt-3 flex items-start gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground ${isCampaignAnalyticsView ? "ml-3" : ""}`}>
-                        <ArrowLeft className="mt-0.5 h-4 w-4 shrink-0" />
-                        <span>{isCampaignAnalyticsView ? "Back to Campaign Overview" : "Back to All Campaigns"}</span>
-                      </div>
-                    </Link>
-                  )}
-                </>
-              ) : (
-                <div className="mt-2 h-5 w-3/4 rounded bg-muted animate-pulse" aria-hidden="true" />
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </aside>
   );

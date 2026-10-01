@@ -4,10 +4,20 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("Campaign Overview navigation UI", () => {
-  it("keeps the campaign return link with the client context in the sidebar", () => {
+  it("places the active client and campaign context directly below Clients", () => {
     const sidebar = read("client/src/components/layout/sidebar.tsx");
     const page = read("client/src/pages/campaign-detail.tsx");
+    const clientsIndex = sidebar.indexOf("<span>Clients</span>");
+    const contextIndex = sidebar.indexOf('aria-label="Current client"');
+    const notificationsIndex = sidebar.indexOf("<span>Notifications</span>");
 
+    expect(clientsIndex).toBeGreaterThan(-1);
+    expect(contextIndex).toBeGreaterThan(clientsIndex);
+    expect(notificationsIndex).toBeGreaterThan(contextIndex);
+    expect(sidebar).toContain('const clientsNavActive = location === "/" || isCampaignContext;');
+    expect(sidebar).toContain('clientsNavActive ? "nav-link-active" : "nav-link-inactive"');
+    expect(sidebar).toContain("data-sidebar-current-client");
+    expect(sidebar).toContain('campaignId ? "bg-accent text-accent-foreground shadow-sm" : "text-foreground"');
     expect(sidebar).toContain("Back to All Campaigns");
     expect(sidebar).toContain("{campaignId && (");
     expect(page).not.toContain("Back to All Campaigns");

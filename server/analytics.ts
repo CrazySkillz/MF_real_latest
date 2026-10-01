@@ -2213,7 +2213,7 @@ export class GoogleAnalytics4Service {
       };
       if (rebuiltTotals[0] > standardSessions) {
         if (rebuiltTotals[2] !== expectedConversions || Math.abs(rebuiltTotals[3] - expectedRevenue) >= 0.01) {
-          throw new Error('GA4_OVERVIEW_CAMPAIGN_ATTRIBUTION_UNVERIFIED');
+          throw new Error(`GA4_OVERVIEW_CAMPAIGN_ATTRIBUTION_UNVERIFIED: conversions ${rebuiltTotals[2]}/${expectedConversions}, revenue ${rebuiltTotals[3].toFixed(2)}/${expectedRevenue.toFixed(2)}`);
         }
         data = {
           rows: rebuiltRows,

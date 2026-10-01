@@ -5,7 +5,6 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import ErrorBoundary from "@/components/ErrorBoundary";
-import MimoSaaSHome from "@/mimosaas/home";
 import {
   SignedIn,
   SignedOut,
@@ -192,7 +191,6 @@ function App() {
             {/* Public auth routes */}
             <SignedOut>
               <Switch>
-                <Route path="/" component={MimoSaaSHome} />
                 <Route path="/privacy" component={PrivacyPolicy} />
                 <Route path="/sign-in" component={AuthPage} />
                 <Route path="/sign-up" component={AuthPage} />

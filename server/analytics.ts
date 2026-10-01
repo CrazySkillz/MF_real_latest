@@ -34,6 +34,33 @@ import { isSupportedGA4ConnectionMethod } from "./utils/ga4-service-account";
 export const GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION = "ga4_conversion_events_validation_v3";
 
 export class GoogleAnalytics4Service {
+  private mergeDailyConversionRevenueTotals(
+    primaryReport: any,
+    supplementalReport: any,
+    primaryConversionIndex: number,
+    primaryRevenueIndex: number,
+    supplementalConversionIndex: number,
+    supplementalRevenueIndex: number,
+  ): { conversions: number; revenue: number } | null {
+    const primaryRows = Array.isArray(primaryReport?.rows) ? primaryReport.rows : [];
+    if (primaryRows.length === 0 || primaryRows.some((row: any) => !String(row?.dimensionValues?.[0]?.value || ""))) return null;
+    const supplementalByDate = new Map(
+      (Array.isArray(supplementalReport?.rows) ? supplementalReport.rows : [])
+        .map((row: any) => [String(row?.dimensionValues?.[0]?.value || ""), row] as const),
+    );
+    const totals = primaryRows.reduce((result: { conversions: number; revenue: number }, row: any) => {
+      const supplement: any = supplementalByDate.get(String(row?.dimensionValues?.[0]?.value || ""));
+      const primaryConversions = parseInt(String(row?.metricValues?.[primaryConversionIndex]?.value || "0"), 10) || 0;
+      const primaryRevenue = Number.parseFloat(String(row?.metricValues?.[primaryRevenueIndex]?.value || "0")) || 0;
+      const supplementalConversions = parseInt(String(supplement?.metricValues?.[supplementalConversionIndex]?.value || "0"), 10) || 0;
+      const supplementalRevenue = Number.parseFloat(String(supplement?.metricValues?.[supplementalRevenueIndex]?.value || "0")) || 0;
+      result.conversions += primaryConversions !== 0 ? primaryConversions : supplementalConversions;
+      result.revenue += Number((primaryRevenue !== 0 ? primaryRevenue : supplementalRevenue).toFixed(2));
+      return result;
+    }, { conversions: 0, revenue: 0 });
+    return { conversions: totals.conversions, revenue: Number(totals.revenue.toFixed(2)) };
+  }
+
   /**
    * GA4 Data API expects a numeric property id in URLs:
    *   https://analyticsdata.googleapis.com/v1beta/properties/{propertyId}:runReport
@@ -1418,6 +1445,25 @@ export class GoogleAnalytics4Service {
       return { revenueMetric, totals: { conversions, revenue: Number(revenue.toFixed(2)) } };
     };
 
+    const runDailyConversionRevenue = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue', scopeFilter: any) => {
+      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dateRanges: [{ startDate, endDate }],
+          currencyCode: requestedCurrencyCode,
+          dimensions: [{ name: 'date' }],
+          ...(scopeFilter ? scopeFilter : {}),
+          metrics: [{ name: 'conversions' }, { name: revenueMetric }],
+          orderBys: [{ dimension: { dimensionName: 'date' } }],
+        }),
+      });
+      if (!resp.ok) throw new Error(`GA4 Daily Conversion/Revenue API Error: ${await resp.text()}`);
+      const json = await resp.json().catch(() => ({} as any));
+      verifyResponseCurrency(json);
+      return { revenueMetric, data: json };
+    };
+
     const runConversionRevenueTotalsWithFallback = async (scopeFilter: any) => {
       try {
         return await runConversionRevenueTotals('totalRevenue', scopeFilter);
@@ -1449,9 +1495,23 @@ export class GoogleAnalytics4Service {
       return Number(totals.conversions || 0) > 0 || Number(totals.revenue || 0) > 0;
     };
 
-    const supplementConversionRevenueTotals = async (result: Awaited<ReturnType<typeof run>>) => {
+    const supplementConversionRevenueTotals = async (result: Awaited<ReturnType<typeof run>>, scopeFilter: any) => {
       const campaignNameFilter = this.buildCampaignDimensionFilter(campaignFilter, 'campaignName');
-      if (!campaignNameFilter || !hasTrafficTotals(result) || hasConversionRevenueTotals(result)) return result;
+      if (!campaignNameFilter || !hasTrafficTotals(result)) return result;
+
+      if (hasConversionRevenueTotals(result)) {
+        const [primaryDaily, supplementalDaily] = await Promise.all([
+          runDailyConversionRevenue(result.revenueMetric, scopeFilter).catch(ignoreNonCurrencyFailure),
+          runDailyConversionRevenue(result.revenueMetric, campaignNameFilter).catch(ignoreNonCurrencyFailure),
+        ]);
+        const reconciledDaily = primaryDaily && supplementalDaily
+          ? this.mergeDailyConversionRevenueTotals(primaryDaily.data, supplementalDaily.data, 0, 1, 0, 1)
+          : null;
+        return reconciledDaily ? {
+          ...result,
+          totals: { ...result.totals, ...reconciledDaily },
+        } : result;
+      }
 
       const supplement = await runConversionRevenueTotalsWithFallback(campaignNameFilter).catch(ignoreNonCurrencyFailure);
       if (!supplement || (Number(supplement.totals.conversions || 0) <= 0 && Number(supplement.totals.revenue || 0) <= 0)) return result;
@@ -1469,10 +1529,10 @@ export class GoogleAnalytics4Service {
 
     try {
       const result = await runWithRevenueFallback(campaignDimensionFilter);
-      if (!isEmptyTotals(result) || !pageLocationCampaignFilter) return await supplementConversionRevenueTotals(result);
+      if (!isEmptyTotals(result) || !pageLocationCampaignFilter) return await supplementConversionRevenueTotals(result, campaignDimensionFilter);
       const utmResult = await runWithRevenueFallback(pageLocationCampaignFilter, endDate).catch(ignoreNonCurrencyFailure);
       const selectedResult = utmResult && !isEmptyTotals(utmResult) ? utmResult : result;
-      return await supplementConversionRevenueTotals(selectedResult);
+      return await supplementConversionRevenueTotals(selectedResult, selectedResult === utmResult ? pageLocationCampaignFilter : campaignDimensionFilter);
     } catch (e: any) {
       throw e;
     }
@@ -2063,10 +2123,19 @@ export class GoogleAnalytics4Service {
       const standardSessions = reportMetricTotal(data, 0);
       const standardConversions = reportMetricTotal(data, 2);
       const standardRevenue = reportMetricTotal(data, 3);
-      const exactPageLocationScope = await fetchWithRevenueFallback([], pageLocationCampaignFilter);
+      const exactPageLocationScope = await fetchWithRevenueFallback([{ name: 'date' }], pageLocationCampaignFilter);
       const exactPageLocationConversions = reportMetricTotal(exactPageLocationScope.data, 2);
       const exactPageLocationRevenue = reportMetricTotal(exactPageLocationScope.data, 3);
       const useExactPageLocationFinancials = exactPageLocationConversions !== 0 || exactPageLocationRevenue !== 0;
+      const combinedCampaignFinancial = useExactPageLocationFinancials
+        ? await fetchWithRevenueFallback([{ name: 'date' }], this.buildCampaignDimensionFilter(campaignFilter, 'campaignName'))
+        : null;
+      if (combinedCampaignFinancial && combinedCampaignFinancial.revenueMetric !== exactPageLocationScope.revenueMetric) {
+        throw new Error('GA4_OVERVIEW_REVENUE_METRIC_MISMATCH');
+      }
+      const expectedSupplementedFinancials = combinedCampaignFinancial
+        ? this.mergeDailyConversionRevenueTotals(exactPageLocationScope.data, combinedCampaignFinancial.data, 2, 3, 2, 3)
+        : null;
       const rebuiltRows: any[] = [];
       let rebuiltRevenueMetric = chosenRevenueMetric;
       for (const campaignName of this.normalizeCampaignFilter(campaignFilter)) {
@@ -2078,17 +2147,24 @@ export class GoogleAnalytics4Service {
           'totalRevenue', [{ name: 'date' }], undefined, exactPageLocationFilter, endDate || 'yesterday',
           [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'engagedSessions' }, { name: 'sessionKeyEventRate' }],
         );
-        const financial = exactPageLocation || await fetchWithRevenueFallback(
-          [{ name: 'campaignName' }], this.buildCampaignDimensionFilter(campaignName, 'campaignName'),
+        const financial = await fetchWithRevenueFallback(
+          exactPageLocation ? [{ name: 'date' }] : [{ name: 'campaignName' }],
+          this.buildCampaignDimensionFilter(campaignName, 'campaignName'),
         );
+        if (exactPageLocation && financial.revenueMetric !== exactPageLocation.revenueMetric) {
+          throw new Error('GA4_OVERVIEW_REVENUE_METRIC_MISMATCH');
+        }
+        const supplementedFinancials = exactPageLocation
+          ? this.mergeDailyConversionRevenueTotals(exactPageLocation.data, financial.data, 2, 3, 2, 3)
+          : null;
         rebuiltRevenueMetric = financial.revenueMetric;
         rebuiltRows.push({
           dimensionValues: [{ value: campaignName }],
           metricValues: [
             { value: String(reportMetricRowSum(traffic, 0)) },
             { value: String(reportMetricRowSum(traffic, 1)) },
-            { value: String(exactPageLocation ? reportMetricRowSum(financial.data, 2) : reportMetricTotal(financial.data, 2)) },
-            { value: String(exactPageLocation ? reportMetricRowSum(financial.data, 3) : reportMetricTotal(financial.data, 3)) },
+            { value: String(supplementedFinancials?.conversions ?? reportMetricTotal(financial.data, 2)) },
+            { value: String(supplementedFinancials?.revenue ?? reportMetricTotal(financial.data, 3)) },
             { value: String(reportMetricRowSum(traffic, exactPageLocation ? 4 : 2)) },
             { value: String(reportMetricWeightedRate(traffic, exactPageLocation ? 5 : 3)) },
           ],
@@ -2111,8 +2187,8 @@ export class GoogleAnalytics4Service {
         rebuiltRevenue: Number(rebuiltTotals[3].toFixed(2)),
       };
       if (rebuiltTotals[0] > standardSessions) {
-        const expectedConversions = useExactPageLocationFinancials ? exactPageLocationConversions : standardConversions;
-        const expectedRevenue = useExactPageLocationFinancials ? exactPageLocationRevenue : standardRevenue;
+        const expectedConversions = expectedSupplementedFinancials?.conversions ?? standardConversions;
+        const expectedRevenue = expectedSupplementedFinancials?.revenue ?? standardRevenue;
         if (rebuiltTotals[2] !== expectedConversions || Math.abs(rebuiltTotals[3] - expectedRevenue) >= 0.01) {
           throw new Error('GA4_OVERVIEW_CAMPAIGN_ATTRIBUTION_UNVERIFIED');
         }

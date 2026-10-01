@@ -1011,6 +1011,9 @@ describe("GA4 campaign value picker", () => {
       const filterText = JSON.stringify(body?.dimensionFilter || {});
       const hasSessionRate = body.metrics.some((item: any) => item.name === 'sessionKeyEventRate');
       const sessionRate = filterText.includes('yesop_retargeti') && !filterText.includes('yesop_email_nurture') ? '0.25' : '0';
+      const hasBothCampaigns = filterText.includes('yesop_retargeti') && filterText.includes('yesop_email_nurture');
+      const isPageLocation = filterText.includes('pageLocation');
+      const isCampaignName = filterText.includes('"fieldName":"campaignName"');
       const totals = dimensions.length === 0
         ? filterText.includes('yesop_retargeti') && filterText.includes('yesop_email_nurture')
           ? ['384', '385', '35', '6411.3', '286']
@@ -1019,6 +1022,13 @@ describe("GA4 campaign value picker", () => {
             : ['180', '181', '0', '0', '138']
         : dimensions.length === 1 && dimensions[0] === 'campaignName'
           ? ['23', '23', '23', '4631.1', '23']
+          : ['23', '23', '23', '4631.1', '23'];
+      const dailyMetrics = isPageLocation
+        ? hasBothCampaigns ? ['380', '383', '2', '20', '283']
+          : filterText.includes('yesop_retargeti') ? ['200', '202', '2', '20', '145'] : ['180', '181', '0', '0', '138']
+        : isCampaignName
+          ? hasBothCampaigns ? ['23', '23', '12', '120', '23']
+            : filterText.includes('yesop_retargeti') ? ['23', '23', '5', '50', '23'] : ['23', '23', '7', '70', '23']
           : ['23', '23', '23', '4631.1', '23'];
       return {
         ok: true,
@@ -1032,9 +1042,7 @@ describe("GA4 campaign value picker", () => {
             }]
             : dimensions[0] === 'date' ? [{
                 dimensionValues: [{ value: '20260618' }],
-                metricValues: [...(filterText.includes('yesop_retargeti')
-                  ? ['200', '202', '35', '6411.3', '145']
-                  : ['180', '181', '0', '0', '138']), ...(hasSessionRate ? [sessionRate] : [])].map((value) => ({ value })),
+                metricValues: [...dailyMetrics, ...(hasSessionRate ? [sessionRate] : [])].map((value) => ({ value })),
               }]
               : [],
           totals: [{ metricValues: [...totals, ...(hasSessionRate ? [sessionRate] : [])].map((value) => ({ value })) }],
@@ -1052,16 +1060,16 @@ describe("GA4 campaign value picker", () => {
     );
 
     expect(result.rows).toEqual([
-      expect.objectContaining({ campaign: 'yesop_retargeti', sessions: 200, users: 202, conversions: 35, revenue: 6411.3, engagedSessions: 145, sessionKeyEventRate: 0.25 }),
-      expect.objectContaining({ campaign: 'yesop_email_nurture', sessions: 180, users: 181, conversions: 0, revenue: 0, engagedSessions: 138, sessionKeyEventRate: 0 }),
+      expect.objectContaining({ campaign: 'yesop_retargeti', sessions: 200, users: 202, conversions: 2, revenue: 20, engagedSessions: 145, sessionKeyEventRate: 0.25 }),
+      expect.objectContaining({ campaign: 'yesop_email_nurture', sessions: 180, users: 181, conversions: 7, revenue: 70, engagedSessions: 138, sessionKeyEventRate: 0 }),
     ]);
-    expect(result.totals).toMatchObject({ sessions: 380, users: 383, conversions: 35, revenue: 6411.3, engagedSessions: 283 });
+    expect(result.totals).toMatchObject({ sessions: 380, users: 383, conversions: 9, revenue: 90, engagedSessions: 283 });
     expect(result.meta.overviewCampaignAttribution).toMatchObject({
       selected: true,
       standardRevenue: 4631.1,
       rebuiltSessions: 380,
-      rebuiltConversions: 35,
-      rebuiltRevenue: 6411.3,
+      rebuiltConversions: 9,
+      rebuiltRevenue: 90,
     });
     const combinedDailyBodies = fetchMock.mock.calls
       .map(([, init]) => JSON.parse(String((init as any)?.body || '{}')))

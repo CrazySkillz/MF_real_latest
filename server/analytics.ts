@@ -2133,12 +2133,13 @@ export class GoogleAnalytics4Service {
       if (combinedCampaignFinancial && combinedCampaignFinancial.revenueMetric !== exactPageLocationScope.revenueMetric) {
         throw new Error('GA4_OVERVIEW_REVENUE_METRIC_MISMATCH');
       }
-      const expectedSupplementedFinancials = combinedCampaignFinancial
+      const selectedCampaignNames = this.normalizeCampaignFilter(campaignFilter);
+      const expectedSupplementedFinancials = combinedCampaignFinancial && selectedCampaignNames.length === 1
         ? this.mergeDailyConversionRevenueTotals(exactPageLocationScope.data, combinedCampaignFinancial.data, 2, 3, 2, 3)
         : null;
       const rebuiltRows: any[] = [];
       let rebuiltRevenueMetric = chosenRevenueMetric;
-      for (const campaignName of this.normalizeCampaignFilter(campaignFilter)) {
+      for (const campaignName of selectedCampaignNames) {
         const exactPageLocationFilter = this.buildExactUtmCampaignPageLocationFilter(campaignName);
         const exactPageLocation = useExactPageLocationFinancials
           ? await fetchWithRevenueFallback([{ name: 'date' }], exactPageLocationFilter)
@@ -2189,7 +2190,7 @@ export class GoogleAnalytics4Service {
       if (rebuiltTotals[0] > standardSessions) {
         const expectedConversions = expectedSupplementedFinancials?.conversions ?? standardConversions;
         const expectedRevenue = expectedSupplementedFinancials?.revenue ?? standardRevenue;
-        if (rebuiltTotals[2] !== expectedConversions || Math.abs(rebuiltTotals[3] - expectedRevenue) >= 0.01) {
+        if (expectedSupplementedFinancials && (rebuiltTotals[2] !== expectedConversions || Math.abs(rebuiltTotals[3] - expectedRevenue) >= 0.01)) {
           throw new Error('GA4_OVERVIEW_CAMPAIGN_ATTRIBUTION_UNVERIFIED');
         }
         data = {

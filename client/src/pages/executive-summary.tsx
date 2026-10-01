@@ -523,7 +523,7 @@ export default function ExecutiveSummary() {
               <Card className="mb-6">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-6">
+                    <div className="flex items-start space-x-6">
                       <div>
                         {executiveTrajectory ? (
                           <div className="flex items-center space-x-2">
@@ -537,7 +537,10 @@ export default function ExecutiveSummary() {
                         ) : executiveTrajectoryUnavailableLabel ? (
                           <div className="text-lg font-medium text-muted-foreground">{executiveTrajectoryUnavailableLabel}</div>
                         ) : null}
-                        <p className="text-xs text-muted-foreground/70 mt-1">{executiveTrajectoryDetail}</p>
+                        <p className={executiveTrajectoryUnavailableReason === "incompatible_history"
+                          ? "text-sm text-muted-foreground/70 mb-1"
+                          : "text-xs text-muted-foreground/70 mt-1"
+                        }>{executiveTrajectoryDetail}</p>
                       </div>
                       <div className="border-l border-border pl-6">
                         <div className="text-sm text-muted-foreground/70 mb-1">Risk Level</div>
@@ -577,7 +580,7 @@ export default function ExecutiveSummary() {
               <Card className="bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-800 dark:to-blue-900/20">
                 <CardHeader>
                   <div className="space-y-1">
-                    <CardTitle className="flex items-center space-x-2">
+                    <CardTitle className="flex items-center space-x-2 text-xl">
                       <BarChart3 className="w-5 h-5" />
                       <span>Marketing Funnel Performance</span>
                     </CardTitle>
@@ -748,7 +751,7 @@ export default function ExecutiveSummary() {
 
               <section className="space-y-6" aria-labelledby="kpis-benchmarks-heading">
               <div className="pt-2">
-                <h2 id="kpis-benchmarks-heading" className="text-2xl font-semibold text-foreground">KPIs &amp; Benchmarks</h2>
+                <h2 id="kpis-benchmarks-heading" className="text-xl font-semibold text-foreground">KPIs &amp; Benchmarks</h2>
               </div>
 
               {/* KPI Exceptions */}
@@ -785,7 +788,7 @@ export default function ExecutiveSummary() {
               {executiveKpiExceptions.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
+                    <CardTitle className="flex items-center space-x-2 text-lg">
                       <Target className="w-5 h-5" />
                       <span>KPIs Needing Attention</span>
                     </CardTitle>
@@ -846,7 +849,7 @@ export default function ExecutiveSummary() {
               {executiveBenchmarkComparison.length > 0 && executiveBenchmarkExceptions.length === 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
+                    <CardTitle className="flex items-center space-x-2 text-lg">
                       <CheckCircle className="w-5 h-5 text-green-600" />
                       <span>No Benchmark Exceptions</span>
                     </CardTitle>
@@ -904,7 +907,7 @@ export default function ExecutiveSummary() {
 
               {/* Recommended Actions */}
               <div className="pt-2">
-                <h2 className="text-2xl font-semibold text-foreground">Recommended Actions</h2>
+                <h2 className="text-xl font-semibold text-foreground">Recommended Actions</h2>
               </div>
               {/* Data Freshness Warnings */}
               {riskFreshnessWarnings.length > 0 && (

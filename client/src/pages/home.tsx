@@ -56,7 +56,8 @@ export default function HomePage() {
         <Sidebar />
 
         <main className="flex-1 p-8 fade-in">
-          <div className="flex items-center justify-end mb-8">
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-2xl font-bold text-foreground">Clients</h1>
             <Button
               className="bg-accent text-accent-foreground hover:bg-accent/80"
               onClick={() => setIsModalOpen(true)}

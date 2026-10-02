@@ -10,6 +10,7 @@ import { useClient } from "@/lib/clientContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Client } from "@shared/schema";
 
@@ -57,7 +58,10 @@ export default function HomePage() {
 
         <main className="flex-1 p-8 fade-in">
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-2xl font-bold text-foreground">Clients</h1>
+            <div className="flex items-center space-x-3">
+              <Building2 className="w-6 h-6 text-muted-foreground" />
+              <h1 className="text-2xl font-bold text-foreground">Clients</h1>
+            </div>
             <Button
               className="bg-accent text-accent-foreground hover:bg-accent/80"
               onClick={() => setIsModalOpen(true)}
@@ -67,8 +71,10 @@ export default function HomePage() {
             </Button>
           </div>
 
+          <Card>
+            <CardContent className="p-6">
           {clients.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="flex flex-col items-center justify-center py-14 text-center">
               <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
                 <Building2 className="w-8 h-8 text-muted-foreground/70" />
               </div>
@@ -121,6 +127,8 @@ export default function HomePage() {
               ))}
             </div>
           )}
+            </CardContent>
+          </Card>
         </main>
       </div>
 

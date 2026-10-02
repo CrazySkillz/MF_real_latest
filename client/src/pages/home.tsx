@@ -56,11 +56,7 @@ export default function HomePage() {
         <Sidebar />
 
         <main className="flex-1 p-8 fade-in">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">Clients</h1>
-              <p className="text-muted-foreground mt-1">Select a client to view its campaigns</p>
-            </div>
+          <div className="flex items-center justify-end mb-8">
             <Button
               className="bg-accent text-accent-foreground hover:bg-accent/80"
               onClick={() => setIsModalOpen(true)}
@@ -79,7 +75,10 @@ export default function HomePage() {
               <p className="text-muted-foreground/70 mb-6 max-w-xs">
                 Create your first client to start viewing its campaigns.
               </p>
-              <Button onClick={() => setIsModalOpen(true)}>
+              <Button
+                className="bg-accent text-accent-foreground hover:bg-accent/80"
+                onClick={() => setIsModalOpen(true)}
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Create your first client
               </Button>

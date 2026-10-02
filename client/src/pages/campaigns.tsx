@@ -1830,7 +1830,7 @@ export default function Campaigns() {
                 <CardContent className="text-center py-12">
                   <div className="text-lg font-medium text-foreground mb-2">No campaigns found</div>
                   <p className="text-muted-foreground/70 mb-4">Get started by creating your first marketing campaign</p>
-                  <Button onClick={() => setIsCreateModalOpen(true)}>
+                  <Button className="bg-accent text-accent-foreground hover:bg-accent/80" onClick={() => setIsCreateModalOpen(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     Create Campaign
                   </Button>

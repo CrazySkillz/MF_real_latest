@@ -1818,7 +1818,9 @@ export default function Campaigns() {
           </div>
 
           {/* Campaigns Cards */}
-          <div className="space-y-6">
+          <Card>
+            <CardContent className="p-6">
+              <div className="space-y-6">
             {isLoading ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {[...Array(6)].map((_, i) => (
@@ -1826,16 +1828,14 @@ export default function Campaigns() {
                 ))}
               </div>
             ) : campaigns.length === 0 ? (
-              <Card>
-                <CardContent className="text-center py-12">
+              <div className="text-center py-12">
                   <div className="text-lg font-medium text-foreground mb-2">No campaigns found</div>
                   <p className="text-muted-foreground/70 mb-4">Get started by creating your first marketing campaign</p>
                   <Button className="bg-accent text-accent-foreground hover:bg-accent/80" onClick={() => setIsCreateModalOpen(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     Create Campaign
                   </Button>
-                </CardContent>
-              </Card>
+              </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {campaigns.map((campaign) => (
@@ -1888,7 +1888,9 @@ export default function Campaigns() {
                 ))}
               </div>
             )}
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         </main>
       </div>
 

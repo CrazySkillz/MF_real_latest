@@ -120,6 +120,57 @@ export type ShopifyExpiringOfflineToken = {
   refreshTokenExpiresAt: string;
 };
 
+const SHOPIFY_SHARED_OAUTH_CONFIG_KEYS = [
+  'authType',
+  'grantedScopes',
+  'grantedScopesList',
+  'requestedApiVersion',
+  'effectiveApiVersion',
+  'accessTokenExpiresAt',
+  'refreshTokenExpiresAt',
+  'tokenUpdatedAt',
+] as const;
+
+const parseShopifyConnectionConfig = (value: unknown): Record<string, any> => {
+  if (!value) return {};
+  if (typeof value === 'object') return value as Record<string, any>;
+  try { return JSON.parse(String(value)); } catch { return {}; }
+};
+
+export function resolveNewestShopifyOauthCredential<T extends Record<string, any>>(target: T, candidates: T[]): T {
+  const targetConfig = parseShopifyConnectionConfig(target?.mappingConfig);
+  if (String(targetConfig.authType || '').toLowerCase() !== 'oauth') return target;
+  const targetDomain = normalizeShopifyDomain(target?.shopDomain);
+  const eligible = candidates.filter((candidate) => {
+    const config = parseShopifyConnectionConfig(candidate?.mappingConfig);
+    return candidate?.isActive === true
+      && normalizeShopifyDomain(candidate?.shopDomain) === targetDomain
+      && String(config.authType || '').toLowerCase() === 'oauth'
+      && Boolean(candidate?.accessToken)
+      && Boolean(candidate?.refreshToken)
+      && Number.isFinite(Date.parse(String(config.tokenUpdatedAt || '')));
+  });
+  const newest = eligible.reduce<T | undefined>((current, candidate) => {
+    if (!current) return candidate;
+    const currentAt = Date.parse(String(parseShopifyConnectionConfig(current.mappingConfig).tokenUpdatedAt || ''));
+    const candidateAt = Date.parse(String(parseShopifyConnectionConfig(candidate.mappingConfig).tokenUpdatedAt || ''));
+    return candidateAt > currentAt ? candidate : current;
+  }, undefined);
+  if (!newest || String(newest.id || '') === String(target.id || '')) return target;
+
+  const newestConfig = parseShopifyConnectionConfig(newest.mappingConfig);
+  const mergedConfig = { ...targetConfig };
+  for (const key of SHOPIFY_SHARED_OAUTH_CONFIG_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(newestConfig, key)) mergedConfig[key] = newestConfig[key];
+  }
+  return {
+    ...target,
+    accessToken: newest.accessToken,
+    refreshToken: newest.refreshToken,
+    mappingConfig: JSON.stringify(mergedConfig),
+  };
+}
+
 export function parseShopifyExpiringOfflineToken(payload: any, issuedAt = Date.now()): ShopifyExpiringOfflineToken {
   const accessToken = String(payload?.access_token || '').trim();
   const refreshToken = String(payload?.refresh_token || '').trim();

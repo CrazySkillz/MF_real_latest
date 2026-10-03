@@ -2,7 +2,25 @@
 
 ## Status
 
-**Current status: CLEAN-CERTIFIED for the exact GA4 Overview Shopify Revenue
+**Current status: UNVERIFIED on the current candidate.**
+
+The earlier clean certificate below is historical. Production evidence on
+2026-10-03 exposed a cross-campaign OAuth renewal defect for campaigns using the
+same Shopify app and store. `Campaign2` last stored a renewable token on
+2026-09-27. `Campaign3`, owned by the same user and connected to the same
+`linkedin-revenue.myshopify.com` store, acquired a newer token on 2026-09-28 and
+last renewed it on 2026-10-02. Shopify maintains one current expiring offline
+token chain per app/store, so the later authorization retired `Campaign2`'s
+campaign-local refresh token; `Campaign2` then received `401` on 2026-10-03.
+
+The local fix keeps campaign mappings and revenue rows separate while resolving
+the newest OAuth credential only across same-owner campaigns for the exact same
+store. OAuth acquisition and renewal are serialized per store with a PostgreSQL
+advisory lock, including across Render instances. Focused validation passes 30
+of 30 tests and TypeScript compilation. Deployed provider renewal and Campaign2
+source/Overview reconciliation are still required before recertification.
+
+**Historical status: CLEAN-CERTIFIED for the exact GA4 Overview Shopify Revenue
 OAuth `read_orders` boundary below at deployed runtime
 `ea516f3a0d2c7636215811a0df1d95a460fd04c5`.**
 

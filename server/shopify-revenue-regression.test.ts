@@ -492,7 +492,7 @@ describe("Shopify revenue regression guard", () => {
     );
     const connectionResolver = routeSection(
       routes,
-      "const shopifyOauthTokenRefreshes = new Map<string, Promise<any>>();",
+      "const getShopifyConnectionForCampaign = async (campaignId: string) => {",
       "/**\n   * Auto-recalculate Shopify conversion value",
     );
     const adminConnect = routeSection(
@@ -504,7 +504,9 @@ describe("Shopify revenue regression guard", () => {
     expect(oauthCallback).toContain('code, expiring: "1"');
     expect(oauthCallback).toContain('parseShopifyExpiringOfflineToken(tokenJson)');
     expect(oauthCallback).toContain('refreshToken: offlineToken.refreshToken');
+    expect(oauthCallback).toContain('storage.withShopifyOauthStoreLock(shop');
     expect(connectionResolver).toContain('refreshShopifyOfflineAccessToken({');
+    expect(connectionResolver).toContain('storage.withShopifyOauthStoreLock(conn.shopDomain');
     expect(connectionResolver).toContain('must be reconnected once to enable renewable access');
     expect(connectionResolver).toContain('refreshToken: token.refreshToken');
     expect(connectionResolver).toContain('accessTokenExpiresAt: token.accessTokenExpiresAt');

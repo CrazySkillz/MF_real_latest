@@ -11710,60 +11710,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Exchange code for access token
-      const clientId = process.env.SHOPIFY_CLIENT_ID || "";
-      const tokenResp = await fetch(`https://${shop}/admin/oauth/access_token`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
-        body: new URLSearchParams({ client_id: clientId, client_secret: secret, code, expiring: "1" }),
-      });
-      const tokenJson: any = await tokenResp.json().catch(() => ({}));
-      if (!tokenResp.ok || !tokenJson?.access_token) {
-        const msg = tokenJson?.error_description || tokenJson?.error || "Failed to exchange token";
-        return sendPopup({
-          ok: false,
-          type: "shopify_auth_error",
-          payload: { error: msg },
-          title: "Authentication Error",
-          body: String(msg),
+      const { created, shopName } = await storage.withShopifyOauthStoreLock(shop, async () => {
+        // Shopify has one current expiring offline token per app/store. Keep acquisition and refresh serialized.
+        const clientId = process.env.SHOPIFY_CLIENT_ID || "";
+        const tokenResp = await fetch(`https://${shop}/admin/oauth/access_token`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
+          body: new URLSearchParams({ client_id: clientId, client_secret: secret, code, expiring: "1" }),
         });
-      }
-      const offlineToken = parseShopifyExpiringOfflineToken(tokenJson);
-      const accessToken = offlineToken.accessToken;
-      // Shopify returns the granted scopes as a comma-separated string in the token exchange response.
-      // Store this so we can debug scope issues even when /oauth/access_scopes.json is not supported.
-      const grantedScopesRaw = tokenJson?.scope ? String(tokenJson.scope) : "";
-      const grantedScopesList = grantedScopesRaw.split(',').map((scope: string) => scope.trim()).filter(Boolean);
-      requireShopifyOrderScope(grantedScopesList);
+        const tokenJson: any = await tokenResp.json().catch(() => ({}));
+        if (!tokenResp.ok || !tokenJson?.access_token) {
+          const error: any = new Error(String(tokenJson?.error_description || tokenJson?.error || "Failed to exchange token"));
+          error.code = "SHOPIFY_OAUTH_TOKEN_EXCHANGE_FAILED";
+          throw error;
+        }
+        const offlineToken = parseShopifyExpiringOfflineToken(tokenJson);
+        const accessToken = offlineToken.accessToken;
+        const grantedScopesRaw = tokenJson?.scope ? String(tokenJson.scope) : "";
+        const grantedScopesList = grantedScopesRaw.split(',').map((scope: string) => scope.trim()).filter(Boolean);
+        requireShopifyOrderScope(grantedScopesList);
 
-      // Fetch shop name
-      const apiVersion = getShopifyApiVersion();
-      const shopResp = await shopifyAdminFetch({ shopDomain: shop, accessToken, endpoint: `/admin/api/${apiVersion}/shop.json` });
-      const shopJson: any = await shopResp.json().catch(() => ({}));
-      if (!shopResp.ok) throw new Error(shopJson?.errors || `Shopify API error (HTTP ${shopResp.status})`);
-      const shopName = shopJson?.shop?.name ? String(shopJson.shop.name) : null;
-      const effectiveApiVersion = String(shopResp.headers.get('X-Shopify-API-Version'));
-
-      const mappingConfig = JSON.stringify({
-        authType: "oauth",
-        grantedScopes: grantedScopesRaw,
-        grantedScopesList,
-        requestedApiVersion: apiVersion,
-        effectiveApiVersion,
-        accessTokenExpiresAt: offlineToken.accessTokenExpiresAt,
-        refreshTokenExpiresAt: offlineToken.refreshTokenExpiresAt,
-        tokenUpdatedAt: new Date().toISOString(),
-        connectedAt: new Date().toISOString(),
+        const apiVersion = getShopifyApiVersion();
+        const shopResp = await shopifyAdminFetch({ shopDomain: shop, accessToken, endpoint: `/admin/api/${apiVersion}/shop.json` });
+        const shopJson: any = await shopResp.json().catch(() => ({}));
+        if (!shopResp.ok) throw new Error(shopJson?.errors || `Shopify API error (HTTP ${shopResp.status})`);
+        const shopName = shopJson?.shop?.name ? String(shopJson.shop.name) : null;
+        const effectiveApiVersion = String(shopResp.headers.get('X-Shopify-API-Version'));
+        const mappingConfig = JSON.stringify({
+          authType: "oauth",
+          grantedScopes: grantedScopesRaw,
+          grantedScopesList,
+          requestedApiVersion: apiVersion,
+          effectiveApiVersion,
+          accessTokenExpiresAt: offlineToken.accessTokenExpiresAt,
+          refreshTokenExpiresAt: offlineToken.refreshTokenExpiresAt,
+          tokenUpdatedAt: new Date().toISOString(),
+          connectedAt: new Date().toISOString(),
+        });
+        const created = await storage.replaceShopifyConnection({
+          campaignId,
+          shopDomain: shop,
+          shopName,
+          accessToken,
+          refreshToken: offlineToken.refreshToken,
+          isActive: true,
+          mappingConfig,
+        } as any);
+        return { created, shopName };
       });
-      const created = await storage.replaceShopifyConnection({
-        campaignId,
-        shopDomain: shop,
-        shopName,
-        accessToken,
-        refreshToken: offlineToken.refreshToken,
-        isActive: true,
-        mappingConfig,
-      } as any);
 
       return sendPopup({
         ok: true,
@@ -11774,6 +11768,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error("[Shopify OAuth] Callback error:", error);
+      if (error?.code === "SHOPIFY_OAUTH_TOKEN_EXCHANGE_FAILED") {
+        return sendPopup({
+          ok: false,
+          type: "shopify_auth_error",
+          payload: { error: error.message },
+          title: "Authentication Error",
+          body: String(error.message),
+        });
+      }
       return res.send(`
         <html><body><script>
           if (window.opener) window.opener.postMessage({ type: 'shopify_auth_error', error: ${JSON.stringify(error?.message || "Failed")} }, window.location.origin);
@@ -35366,7 +35369,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .filter(Boolean);
   };
 
-  const shopifyOauthTokenRefreshes = new Map<string, Promise<any>>();
   const getShopifyConnectionForCampaign = async (campaignId: string) => {
     const conn: any = await storage.getShopifyConnection(campaignId);
     if (!conn || !conn.isActive || !conn.accessToken || !conn.shopDomain) {
@@ -35380,10 +35382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (Number.isFinite(expiresAt) && expiresAt > Date.now() + 5 * 60 * 1000) return conn;
     const connectionId = String(conn.id || '');
     if (!connectionId) throw new Error('Shopify OAuth connection identity is missing');
-    const inFlight = shopifyOauthTokenRefreshes.get(connectionId);
-    if (inFlight) return await inFlight;
-
-    const refreshPromise = (async () => {
+    return await storage.withShopifyOauthStoreLock(conn.shopDomain, async () => {
       const latest: any = await storage.getShopifyConnection(campaignId);
       if (!latest || String(latest.id || '') !== connectionId || !latest.isActive
         || String(latest.shopDomain || '') !== String(conn.shopDomain || '')) {
@@ -35439,13 +35438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } as any);
       if (!updated?.accessToken || !updated?.refreshToken) throw new Error('Failed to persist renewed Shopify OAuth credentials');
       return updated;
-    })();
-    shopifyOauthTokenRefreshes.set(connectionId, refreshPromise);
-    try {
-      return await refreshPromise;
-    } finally {
-      if (shopifyOauthTokenRefreshes.get(connectionId) === refreshPromise) shopifyOauthTokenRefreshes.delete(connectionId);
-    }
+    });
   };
 
   const getShopifyConnectionOrderAccess = (connection: any) => {

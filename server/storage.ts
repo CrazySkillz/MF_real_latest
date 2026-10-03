@@ -14,6 +14,7 @@ import { getReportingComparisonBoundary, getReportingDateEndAt, isCreatedThrough
 import { executiveSummaryDailySnapshotInputSchema, type ExecutiveSummaryDailySnapshotInput } from "./utils/executive-summary-daily-snapshot";
 import { createActiveCanonicalGA4KPI, isActiveGA4KPI, updateCanonicalGA4KPI as updateCanonicalGA4KPIWithGuard } from "./utils/ga4-kpi-create-guard";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
+import { normalizeShopifyDomain, resolveNewestShopifyOauthCredential } from "./utils/shopify-provider";
 
 const isProd = String(process.env.NODE_ENV || "").toLowerCase() === "production";
 const devLog = (...args: any[]) => {
@@ -319,6 +320,7 @@ export interface IStorage {
   replaceShopifyConnection(connection: InsertShopifyConnection): Promise<ShopifyConnection>;
   updateShopifyConnection(connectionId: string, connection: Partial<InsertShopifyConnection>): Promise<ShopifyConnection | undefined>;
   deleteShopifyConnection(connectionId: string): Promise<boolean>;
+  withShopifyOauthStoreLock<T>(shopDomain: string, operation: () => Promise<T>): Promise<T>;
 
   // LinkedIn Connections
   getLinkedInConnection(campaignId: string): Promise<LinkedInConnection | undefined>;
@@ -3544,7 +3546,34 @@ export class DatabaseStorage implements IStorage {
         // ignore
       }
     }
-    return hydrated;
+    let targetConfig: any = {};
+    try { targetConfig = hydrated.mappingConfig ? JSON.parse(String(hydrated.mappingConfig)) : {}; } catch { targetConfig = {}; }
+    if (String(targetConfig.authType || '').toLowerCase() !== 'oauth') return hydrated;
+
+    const [targetCampaign] = await db
+      .select({ ownerId: campaigns.ownerId })
+      .from(campaigns)
+      .where(eq(campaigns.id, campaignId))
+      .limit(1);
+    if (!targetCampaign?.ownerId) return hydrated;
+    const ownerCampaigns = await db
+      .select({ id: campaigns.id })
+      .from(campaigns)
+      .where(eq(campaigns.ownerId, targetCampaign.ownerId));
+    const ownerCampaignIds = ownerCampaigns.map((campaign: any) => String(campaign.id)).filter(Boolean);
+    if (ownerCampaignIds.length === 0) return hydrated;
+    const peerRows = await db
+      .select()
+      .from(shopifyConnections)
+      .where(and(
+        inArray(shopifyConnections.campaignId, ownerCampaignIds),
+        sql`lower(${shopifyConnections.shopDomain}) = ${String(latest.shopDomain || '').trim().toLowerCase()}`,
+        eq(shopifyConnections.isActive, true),
+      ));
+    const peers = peerRows.flatMap((row: any) => {
+      try { return [hydrateDecryptedTokens(row) as any]; } catch { return []; }
+    });
+    return resolveNewestShopifyOauthCredential(hydrated, peers) as any;
   }
 
   async createShopifyConnection(connection: InsertShopifyConnection): Promise<ShopifyConnection> {
@@ -3650,6 +3679,15 @@ export class DatabaseStorage implements IStorage {
       .set({ isActive: false })
       .where(eq(shopifyConnections.id, connectionId));
     return (result.rowCount || 0) > 0;
+  }
+
+  async withShopifyOauthStoreLock<T>(shopDomain: string, operation: () => Promise<T>): Promise<T> {
+    const normalizedShop = normalizeShopifyDomain(shopDomain);
+    if (!normalizedShop) throw new Error('Shopify OAuth store lock requires a shop domain');
+    return await db.transaction(async (tx: any) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`shopify_oauth:${normalizedShop}`}, 0))`);
+      return await operation();
+    });
   }
 
   // LinkedIn Connection methods

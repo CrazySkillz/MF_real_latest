@@ -12,6 +12,7 @@ import {
   requireShopifyOrderScope,
   requireShopifyOrderWindowScopes,
   requireShopifyRevenueScopes,
+  resolveNewestShopifyOauthCredential,
   resolveShopifyCampaignOrderWindow,
   shopifyAdminFetch,
   validateShopifyOauthState,
@@ -113,6 +114,49 @@ describe('Shopify provider hardening', () => {
     const refreshBody = new URLSearchParams(String((fetchImpl.mock.calls[0][1] as any).body));
     expect(refreshBody.get('grant_type')).toBe('refresh_token');
     expect(refreshBody.get('refresh_token')).toBe('old-refresh');
+  });
+
+  it('uses the newest same-store OAuth token while preserving campaign-scoped mapping', () => {
+    const target = {
+      id: 'campaign-2-connection', campaignId: 'campaign-2', shopDomain: 'store.myshopify.com', isActive: true,
+      accessToken: 'stale-access', refreshToken: 'stale-refresh',
+      mappingConfig: JSON.stringify({
+        authType: 'oauth', campaignField: 'utm_campaign', selectedValues: ['campaign-2'],
+        tokenUpdatedAt: '2026-09-27T22:36:01.996Z', accessTokenExpiresAt: '2026-09-27T23:36:00.995Z',
+      }),
+    };
+    const peer = {
+      id: 'campaign-3-connection', campaignId: 'campaign-3', shopDomain: 'store.myshopify.com', isActive: true,
+      accessToken: 'current-access', refreshToken: 'current-refresh',
+      mappingConfig: JSON.stringify({
+        authType: 'oauth', campaignField: 'utm_source', selectedValues: ['campaign-3'],
+        grantedScopesList: ['read_orders'], tokenUpdatedAt: '2026-10-02T22:34:30.004Z',
+        accessTokenExpiresAt: '2026-10-02T23:34:29.004Z', refreshTokenExpiresAt: '2026-12-31T22:34:29.004Z',
+      }),
+    };
+
+    const resolved = resolveNewestShopifyOauthCredential(target, [target, peer]);
+    expect(resolved).toMatchObject({
+      id: target.id, campaignId: target.campaignId, accessToken: 'current-access', refreshToken: 'current-refresh',
+    });
+    expect(JSON.parse(resolved.mappingConfig)).toMatchObject({
+      campaignField: 'utm_campaign', selectedValues: ['campaign-2'], grantedScopesList: ['read_orders'],
+      tokenUpdatedAt: '2026-10-02T22:34:30.004Z', refreshTokenExpiresAt: '2026-12-31T22:34:29.004Z',
+    });
+  });
+
+  it('does not share token-auth, inactive, other-store, or undated OAuth credentials', () => {
+    const target = {
+      id: 'target', shopDomain: 'store.myshopify.com', isActive: true, accessToken: 'target-access', refreshToken: 'target-refresh',
+      mappingConfig: JSON.stringify({ authType: 'oauth', tokenUpdatedAt: '2026-10-01T00:00:00.000Z' }),
+    };
+    const candidates = [
+      { ...target, id: 'token-auth', accessToken: 'wrong-1', mappingConfig: JSON.stringify({ authType: 'token', tokenUpdatedAt: '2026-10-03T00:00:00.000Z' }) },
+      { ...target, id: 'inactive', isActive: false, accessToken: 'wrong-2', mappingConfig: JSON.stringify({ authType: 'oauth', tokenUpdatedAt: '2026-10-03T00:00:00.000Z' }) },
+      { ...target, id: 'other-store', shopDomain: 'other.myshopify.com', accessToken: 'wrong-3', mappingConfig: JSON.stringify({ authType: 'oauth', tokenUpdatedAt: '2026-10-03T00:00:00.000Z' }) },
+      { ...target, id: 'undated', accessToken: 'wrong-4', mappingConfig: JSON.stringify({ authType: 'oauth' }) },
+    ];
+    expect(resolveNewestShopifyOauthCredential(target, candidates)).toBe(target);
   });
 
   it('retries 429 twice using Retry-After and then succeeds', async () => {

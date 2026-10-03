@@ -1842,7 +1842,7 @@ export default function Campaigns() {
                   <Link key={campaign.id} href={`/campaigns/${campaign.id}`}>
                     <Card
                       data-campaign-id={campaign.id}
-                      className={`hover:shadow-md transition-shadow cursor-pointer ${highlightCampaignId && String(highlightCampaignId) === String(campaign.id)
+                      className={`bg-accent hover:shadow-md transition-shadow cursor-pointer ${highlightCampaignId && String(highlightCampaignId) === String(campaign.id)
                         ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-background"
                         : ""
                         }`}

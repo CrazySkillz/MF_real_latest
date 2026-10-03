@@ -106,7 +106,7 @@ Salesforce's five-minute path processes every active exact GA4 Salesforce source
 
 HubSpot's five-minute path now follows the same eligibility pattern: every active exact GA4 HubSpot source with saved selected values is processed, while a saved pipeline stage ID is required only when `pipelineEnabled=true`. Revenue-only sources refresh confirmed Total Revenue without configuring Pipeline Proxy.
 
-The five-minute interval is controlled by `SALESFORCE_PIPELINE_REFRESH_INTERVAL_MINUTES`, default `5`, bounded to `1..60`. The full external-source scheduler remains a separate daily run controlled by `AUTO_REFRESH_DAILY_HOUR`, `AUTO_REFRESH_DAILY_MINUTE`, and `AUTO_REFRESH_TIME_ZONE`. These paths share overlap guards.
+The five-minute interval is controlled by `SALESFORCE_PIPELINE_REFRESH_INTERVAL_MINUTES`, default `5`, bounded to `1..60`. With the default `GA4_DAILY_PIPELINE_OWNS_REFRESH=true`, the ordered GA4 daily pipeline invokes the full mapped financial-source refresh before GA4 publication and the standalone daily financial timer is not armed. `AUTO_REFRESH_DAILY_HOUR`, `AUTO_REFRESH_DAILY_MINUTE`, and `AUTO_REFRESH_TIME_ZONE` control only the legacy standalone daily path when `GA4_DAILY_PIPELINE_OWNS_REFRESH=false`. These paths share overlap guards, and every recurring pass excludes campaigns whose persisted status is not `active`.
 
 An open GA4 Overview checks saved HubSpot/Salesforce Pipeline timestamps every minute. When a provider refresh timestamp changes, it refetches Total Revenue, Revenue Sources, and Revenue Breakdown. The revenue queries also keep their normal focus/reconnect and periodic refresh behavior.
 

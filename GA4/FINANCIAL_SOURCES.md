@@ -328,7 +328,7 @@ Executive-UX note:
 
 ## Revenue Source 1: Shopify Journey
 
-Exact-source status: the enabled GA4 Shopify source is **unverified for the current candidate** pending deployed same-UTC-day Total Revenue/source parity. Its earlier `$99.99` provider and scheduler validation remains historical bounded evidence. Dormant OAuth, non-GA4 Shopify sources, and future store configurations remain excluded.
+Exact-source status: the enabled GA4 Shopify source is **unverified for the current candidate** after the 2026-10-03 cross-campaign OAuth renewal defect. The same-owner/same-store recovery fix is deployed and exact Campaign2 recovery plus source/API parity passed before that redundant campaign was deliberately deleted. Multi-instance collision testing and whole-source recertification remain open. Non-GA4 Shopify sources and future store configurations remain excluded.
 
 The user journey is:
 
@@ -349,6 +349,8 @@ Current implemented refresh behavior:
 - the user-facing edit action is `Update revenue`; the older `Refresh from Shopify` and `Repair from Shopify` wording is not current UI behavior
 - refresh atomically replaces only the exact source's records and retains the last-good records when provider validation or replacement fails
 - provider pagination/requests and the post-commit recompute wait are bounded, so the wizard cannot wait indefinitely on `Processing...`
+- Shopify maintains one current expiring offline OAuth token chain per app/store. At runtime, the app resolves the newest renewable credential only across campaigns with the same owner and exact normalized store; campaign mappings, sources, and revenue records remain separate.
+- Shopify OAuth acquisition and renewal use a PostgreSQL advisory lock keyed by normalized store so concurrent Render instances cannot rotate the same store token simultaneously. A different owner or different store is never used as a credential peer.
 - verified Partner development stores may include eligible test orders only for validation; the Review step labels that revenue as test data, while the compact Revenue Sources row omits operational test/freshness labels and refresh timestamps
 - the Revenue Sources list remains internally scrollable when needed, hides the native scrollbar, and preserves underlying page position when closed
 
@@ -559,6 +561,7 @@ Important meaning:
 - Google Sheets refreshability comes from the connected sheet source, while the date column controls date granularity
 - if a campaign column is selected and matching values are available, at least one campaign value must be selected before import
 - creating a new Google Sheets revenue source from `Total Revenue -> + -> Google Sheets` must create a new additive revenue source even if it uses the same Google Sheets connection or tab as an existing source
+- spreadsheet data-read failures, including `404`, preserve the saved Google Sheets connection and last-good source data. The user must verify that the spreadsheet exists and the connected account or service account still has access, then retry or reconnect; the read path must not delete the connection automatically
 - edit mode and scheduler refresh are the only Google Sheets revenue paths that should update an existing source, and they must do so by stable `sourceId`
 - Google Sheets revenue edit should keep `Update revenue` disabled until a meaningful edit is made
 - Google Sheets revenue edit chooser should not show the outer header `Back` button; users either continue with `Next`, use `Change sheet/tab`, cancel, or close

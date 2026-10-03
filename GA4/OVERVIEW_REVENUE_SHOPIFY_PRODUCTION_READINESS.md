@@ -30,6 +30,12 @@ authenticated imported-revenue total reconciled to USD `$54,476.90` across five
 sources. Multi-instance collision testing and whole-source recertification
 remain required before changing the current status from unverified.
 
+After this recovery evidence was recorded, the user deliberately deleted
+`Campaign2` because it was redundant. Its campaign-scoped Shopify connection,
+source, and records no longer exist in production. The successful recovery
+remains historical evidence for deployed commit `a00e199d`; it is not a current
+Campaign2 source certificate and does not expand the unverified status above.
+
 **Historical status: CLEAN-CERTIFIED for the exact GA4 Overview Shopify Revenue
 OAuth `read_orders` boundary below at deployed runtime
 `ea516f3a0d2c7636215811a0df1d95a460fd04c5`.**

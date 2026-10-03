@@ -701,6 +701,7 @@ Optional platform tables that may not exist in every deployed database must be e
 Report send-event audit rows tied to campaign-owned report snapshots must be cleaned up with the deleted campaign, but a delete cascade must not touch send events for report IDs that still belong to another campaign.
 Delete behavior must remain campaign-scoped. A campaign delete must not delete or hide notifications, reports, KPIs, Benchmarks, sources, or platform metrics belonging to a different campaign or client.
 The cascade coverage guard must remain aligned with `shared/schema.ts` so new direct `campaignId` tables are not accidentally omitted from campaign/client deletion.
+GA4 connection lifecycle events are retained audit evidence. They record connection creation, reactivation, and deletion and intentionally remain after the connection or campaign is deleted.
 
 ### Destructive And Visibility Safety Pattern
 
@@ -728,6 +729,7 @@ Required behavior:
 - direct report snapshot JSON/PDF routes must verify both report access and snapshot/report campaign-platform consistency
 - report email success must mean the provider delivered the message when delivery events are available; raw provider/API acceptance alone is not enough to tell the user the email was delivered
 - scheduled and test-send report emails should stay plain and transactional, with the generated PDF as the report artifact
+- recurring analytics schedulers that enumerate campaigns must process only campaigns whose persisted status is `active`; draft, inactive, paused, missing-status, and deleted campaigns must not refresh sources, publish GA4 data, recompute analytics, or create campaign snapshots
 
 ### Campaign Creation Wizard Pattern
 

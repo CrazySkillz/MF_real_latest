@@ -29,6 +29,13 @@ Google OAuth continuity boundary:
 - for the certified connection, post-publish OAuth durability was observed on `2026-08-10`: authenticated native totals succeeded and the timer-fired job persisted the selected property after the `2026-08-07` durability threshold. This is exact-connection evidence, not a guarantee for future credentials
 - the authoritative Google Sheets source-family evidence and broader exclusions are in `GA4/OVERVIEW_SPEND_PRODUCTION_READINESS.md`; no whole-Overview section gate remains open inside the exact release-candidate campaign/property boundary
 
+GA4 connection lifecycle boundary:
+
+- a database trigger blocks changing an existing GA4 connection directly from active to inactive; disconnect must use the campaign-scoped delete path
+- connection creation, reactivation, and deletion write retained lifecycle events with connection ID, campaign ID, property ID, database actor, reason, and timestamp
+- lifecycle events intentionally remain after the connection or campaign is deleted so production validation and maintenance scripts cannot erase the evidence with the operational row
+- validation and maintenance scripts must remain read-only unless an exact campaign-scoped connection mutation is explicitly authorized
+
 ## Campaign Reporting Timezone Configuration
 
 The campaign reporting timezone is the source of truth for completed-day GA4 history in Insights Trends.
@@ -146,6 +153,7 @@ Important meaning:
 Runtime cadence:
 
 - the scheduler starts from the server startup background-scheduler block, about 5 seconds after the server begins listening
+- every recurring GA4 refresh, startup snapshot discovery, financial-source pass, KPI/Benchmark recompute, aggregate/Executive Summary snapshot job, and Google Sheets token-refresh pass filters to campaigns whose persisted status is exactly `active`; draft, inactive, paused, missing-status, and deleted campaigns are skipped
 - it schedules one daily run at `GA4_DAILY_REFRESH_HOUR:GA4_DAILY_REFRESH_MINUTE` in `GA4_DAILY_REFRESH_TIME_ZONE`, defaulting to `03:00 UTC`
 - `GA4_DAILY_PIPELINE_OWNS_REFRESH` defaults to `true`, preventing the separate full daily financial timer from racing the GA4 pipeline at the same configured time
 - `GA4_DAILY_REFRESH_TIME_ZONE` is a deployment-level scheduler setting, not a per-campaign UI setting
@@ -156,6 +164,12 @@ Runtime cadence:
 - daily facts are persisted by date; Overview Summary and Trends use only completed daily rows through the campaign reporting timezone's latest completed day, so current-day intraday data is excluded
 - when compatible campaign attribution splits traffic from conversion/revenue, the provider query supplements only missing conversion/revenue fields on the exact affected daily rows and never overwrites populated traffic or outcome values
 - the scheduler writes explicit zero rows for completed dates that provider verification proves had no activity; the Trends UI also presents the campaign calendar from creation through its scheduler-derived history boundary, with those no-activity dates as zero
+
+Production configuration observed on `2026-10-03`:
+
+- `GA4_DAILY_REFRESH_TIME_ZONE=UTC`, `GA4_DAILY_REFRESH_HOUR=6`, and `GA4_DAILY_REFRESH_MINUTE=0`; scheduler health reported the next run at `2026-10-04T06:00:00.000Z`, which is `08:00` Amsterdam while daylight saving time is active, with completed data through `2026-10-03`
+- the configured `AUTO_REFRESH_DAILY_HOUR=23` and `AUTO_REFRESH_DAILY_MINUTE=0` do not schedule a second daily run because `GA4_DAILY_PIPELINE_OWNS_REFRESH=true`; scheduler health correctly reports `autoRefreshScheduler.timerScheduled=false`
+- this production schedule is fixed to UTC. To keep the run at `08:00` Amsterdam across daylight-saving changes, configure `GA4_DAILY_REFRESH_TIME_ZONE=Europe/Amsterdam`, `GA4_DAILY_REFRESH_HOUR=8`, and `GA4_DAILY_REFRESH_MINUTE=0`
 
 ## Live GA4 UTM And Measurement Protocol Behavior
 
@@ -225,8 +239,10 @@ For each GA4 campaign, the guarded financial snapshot combines verified native
 GA4 revenue with every active GA4-context external revenue source and checks
 every active GA4-context spend source. A verified native GA4 value of zero is a
 valid value, external revenue still contributes to the total, and any configured
-provider refresh failure blocks publication instead of publishing partial
-financial results.
+provider refresh failure blocks that campaign's publication instead of publishing
+partial financial results. It does not block another active campaign from
+completing its own ordered publication, although the overall scheduler status
+still records the failed provider job.
 
 Current eligible sources include:
 
@@ -248,8 +264,9 @@ Runtime cadence:
 - the scheduler timer is registered from the server startup background-scheduler block, about 5 seconds after the server begins listening; registration does not run the refresh pipeline
 - with the default `GA4_DAILY_PIPELINE_OWNS_REFRESH=true`, it does not arm a separate full daily timer; the ordered GA4 daily pipeline invokes the same external-value refresh in financial-only/deferred-downstream mode before GA4 publication
 - only when `GA4_DAILY_PIPELINE_OWNS_REFRESH=false` does it schedule its legacy standalone full daily run at `AUTO_REFRESH_DAILY_HOUR:AUTO_REFRESH_DAILY_MINUTE` in `AUTO_REFRESH_TIME_ZONE`
+- every full daily and short-interval financial pass processes only campaigns whose persisted status is `active`
 - active Google Sheets spend sources and active GA4 Google Sheets revenue sources use sequential isolated passes on the Google Sheets financial polling timer controlled by `GOOGLE_SHEETS_SPEND_REFRESH_INTERVAL_MINUTES`, default `1` and bounded to `1..60`; the revenue pass does not refresh CSV, CRM, ecommerce, non-GA4 revenue, LinkedIn, Meta, or Google Ads
-- one CRM polling timer is controlled by `SALESFORCE_PIPELINE_REFRESH_INTERVAL_MINUTES`, default `5` and bounded to `1..60`. Its Salesforce pass reprocesses every active exact GA4 Salesforce source with saved selected values, including revenue-only sources; its HubSpot pass currently reprocesses only Pipeline-enabled sources with a saved stage ID. Both reuse the saved mapping and stable revenue source ID
+- one CRM polling timer is controlled by `SALESFORCE_PIPELINE_REFRESH_INTERVAL_MINUTES`, default `5` and bounded to `1..60`. Its Salesforce and HubSpot passes reprocess every active exact GA4 CRM source with saved selected values, including revenue-only sources; `pipelineEnabled` controls only Pipeline Proxy calculation. Both reuse the saved mapping and stable revenue source ID
 - the separate Google Ads scheduler remains active at `GOOGLE_ADS_REFRESH_INTERVAL_HOURS`, default `4`, and refreshes both eligible main Google Ads connections and dedicated GA4 Spend connections. A dedicated Spend refresh replaces provider daily facts and the exact source's materialized Spend records, then recomputes downstream state unless its caller explicitly defers that recompute
 - the ordered GA4 daily pipeline also refreshes an active GA4 Google Ads Spend source during its financial phase. It calls the same dedicated provider/materialization path with downstream recompute deferred, then performs the shared KPI/Benchmark and snapshot stages after the financial and GA4 inputs are ready
 - the Google Sheets financial timer and full daily external-value run share overlap guards, so they do not reprocess the same source concurrently
@@ -334,6 +351,7 @@ Ad-platform spend auto-refresh rule:
 Google Sheets spend auto-refresh rule:
 
 - creating a new Google Sheets spend source is additive and must not reuse an existing source just because the same Google Sheets connection or tab is selected
+- provider data-read failures, including `404`, preserve the saved Google Sheets connection and last-good records; the user verifies spreadsheet existence/access and retries or reconnects, and the read path never silently deletes the connection
 - Google Sheets spend is refreshed by the external scheduler's isolated short-interval pass; the ordered GA4 daily pipeline also invokes the same financial refresh logic before synchronized daily publication, while the GA4 provider-fact refresh itself does not query Google Sheets
 - after setup, a mapped Google Sheets spend-value edit must update the same active source automatically without a wizard resave; the default near-real-time target is a provider pull within 1 minute and an open GA4 Overview refetch within 15 additional seconds, approximately 75 seconds under normal provider/runtime conditions
 - this is near-real-time polling, not a literal zero-latency guarantee; provider/runtime failures can delay convergence and must be logged without replacing the last successful stored value. Google Drive webhook/channel registration and renewal are not implemented or certified in this path
@@ -397,10 +415,12 @@ Shopify auto-reprocess rule:
 
 - saved Shopify revenue mappings should be reprocessed by the ordered daily financial phase without requiring a user to manually reopen and save the wizard
 - Shopify auto-reprocess should use active Shopify revenue source mappings as the source of truth and pass the stable revenue `sourceId`
+- for OAuth connections, runtime credential resolution may use only the newest renewable token pair from another active campaign with the same owner and exact normalized store; mappings, sources, and revenue records remain campaign-scoped
+- OAuth acquisition and renewal are serialized by a PostgreSQL advisory lock keyed by normalized store, including across Render instances
 - GA4 Shopify has a non-UI, campaign-access-guarded validation route that resolves one exact active GA4 Shopify revenue `sourceId` and invokes the same scheduler reprocess function immediately; it does not run the global daily cycle or prove the natural timer
 - refreshed Shopify revenue should update the existing source's materialized order-date revenue records and recomputed campaign financial state
 - Shopify `Tags` attribution should match exact individual Shopify order tags during manual edit and scheduled refresh
-- Shopify's 2026-07-15 certification boundary is historical bounded evidence. A same-UTC-day order later contradicted the Total Revenue/source-provenance window path, so current Shopify Revenue readiness is unverified pending deployed parity after the local correction. Stable refresh identity, transactional rematerialization, last-good retention, and the other historical evidence remain recorded in `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md`; dormant OAuth remains excluded.
+- Shopify's current readiness remains unverified after the 2026-10-03 cross-campaign OAuth renewal defect. The same-owner/same-store recovery fix and exact Campaign2 provider/source/API recovery passed before that redundant campaign was deliberately deleted; multi-instance collision testing and whole-source recertification remain open in `GA4/OVERVIEW_REVENUE_SHOPIFY_PRODUCTION_READINESS.md`.
 
 CRM token continuity rule:
 

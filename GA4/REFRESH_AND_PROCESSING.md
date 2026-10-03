@@ -221,6 +221,13 @@ Runtime `8ba694060411a2a05663a4915652767e4e3ba713` exposes this scheduler under 
 
 This scheduler reprocesses eligible source-backed revenue and spend values.
 
+For each GA4 campaign, the guarded financial snapshot combines verified native
+GA4 revenue with every active GA4-context external revenue source and checks
+every active GA4-context spend source. A verified native GA4 value of zero is a
+valid value, external revenue still contributes to the total, and any configured
+provider refresh failure blocks publication instead of publishing partial
+financial results.
+
 Current eligible sources include:
 
 - HubSpot revenue

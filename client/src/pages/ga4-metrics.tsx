@@ -6957,19 +6957,6 @@ export default function GA4Metrics() {
                                 </tbody>
                                 </table>
                               </div>
-                              {ga4ConversionEvents?.validation?.status === "passed" && (
-                                <details className="rounded-md border border-emerald-200 bg-emerald-50/60 p-3 text-sm">
-                                  <summary className="cursor-pointer font-medium text-emerald-800">GA4 source validation passed</summary>
-                                  <div className="mt-2 space-y-1 text-emerald-900">
-                                    <p>
-                                      Property {String(ga4ConversionEvents.validation.propertyId)} · {String(ga4ConversionEvents.validation.startDate)} to {String(ga4ConversionEvents.validation.endDate)}
-                                    </p>
-                                    <p>
-                                      Campaign scope: {(ga4ConversionEvents.validation.campaignScope || []).join(", ")}
-                                    </p>
-                                  </div>
-                                </details>
-                              )}
                             </div>
                           ) : (
                             <div className="text-sm text-muted-foreground/70">

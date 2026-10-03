@@ -48,8 +48,7 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
     expect(ui).toContain('users == null ? "Unavailable"');
     expect(browserPdf).toContain('users == null ? "Unavailable"');
     expect(scheduledPdf).toContain('users == null ? "Unavailable"');
-    expect(ui).toContain("GA4 source validation passed");
-    expect(ui).toContain("Campaign scope:");
+    expect(ui).not.toContain("GA4 source validation passed");
     expect(ui).not.toContain("GA4 returned");
     expect(ui).not.toContain("View exact GA4 Data API request");
   });

@@ -101,6 +101,82 @@ describe("gated financial daily snapshot writer", () => {
     });
   });
 
+  it("includes every external revenue source when native GA4 revenue is a verified zero", async () => {
+    successfulEvidence();
+    const deps = dependencies({
+      getCampaignMetricTotals: vi.fn().mockResolvedValue({
+        revenue: 600,
+        ga4Revenue: 0,
+        spend: 200,
+        conversions: 12,
+        financialConversions: 12,
+        users: 0,
+        sessions: 0,
+        engagementRate: 0,
+        revenueBySource: new Map(),
+        spendBySource: new Map(),
+        revenueAvailable: true,
+        spendAvailable: true,
+        ga4Available: true,
+        ga4RevenueAvailable: true,
+        financialConversionsAvailable: true,
+        ga4FinancialSource: "provider_to_date",
+      }),
+      getRevenueTotalForRange: vi.fn().mockResolvedValue({
+        totalRevenue: 600,
+        currency: "USD",
+        sourceIds: ["revenue-1", "revenue-2"],
+      }),
+      getSpendTotalForRange: vi.fn().mockResolvedValue({
+        totalSpend: 200,
+        currency: "USD",
+        sourceIds: ["spend-1", "spend-2"],
+      }),
+    });
+
+    const result = await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps);
+
+    expect(result.status).toBe("written");
+    expect(deps.upsertFinancialDailySnapshot).toHaveBeenCalledWith(expect.objectContaining({
+      inputs: {
+        spend: { value: "200.00", available: true, sources: ["canonical_spend_sources"] },
+        revenue: {
+          value: "600.00",
+          available: true,
+          sources: ["ga4", "revenue-source:revenue-1", "revenue-source:revenue-2"],
+        },
+        conversions: { value: 12, available: true, sources: ["ga4"] },
+      },
+    }));
+  });
+
+  it("blocks the snapshot when any configured financial source refresh fails", async () => {
+    recordFinancialDailySnapshotRefreshEvidence("financial_sources", {
+      campaignId,
+      reportingDate,
+      status: "failed",
+      completedAt: "2026-08-22T22:05:00.000Z",
+      failures: ["1_provider_jobs_failed"],
+    });
+    recordFinancialDailySnapshotRefreshEvidence("ga4_daily", {
+      campaignId,
+      reportingDate,
+      status: "success",
+      completedAt: "2026-08-22T22:05:00.000Z",
+      failures: [],
+    });
+    const deps = dependencies();
+
+    const result = await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps);
+
+    expect(result.status).toBe("blocked");
+    expect(result.reasons).toEqual(expect.arrayContaining([
+      "financial_sources_not_successful",
+      "financial_sources_has_failures",
+    ]));
+    expect(deps.upsertFinancialDailySnapshot).not.toHaveBeenCalled();
+  });
+
   it("does not write when same-day financial refresh evidence is missing", async () => {
     recordFinancialDailySnapshotRefreshEvidence("ga4_daily", {
       campaignId,

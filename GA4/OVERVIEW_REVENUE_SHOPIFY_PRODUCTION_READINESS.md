@@ -13,12 +13,22 @@ last renewed it on 2026-10-02. Shopify maintains one current expiring offline
 token chain per app/store, so the later authorization retired `Campaign2`'s
 campaign-local refresh token; `Campaign2` then received `401` on 2026-10-03.
 
-The local fix keeps campaign mappings and revenue rows separate while resolving
+The fix keeps campaign mappings and revenue rows separate while resolving
 the newest OAuth credential only across same-owner campaigns for the exact same
 store. OAuth acquisition and renewal are serialized per store with a PostgreSQL
 advisory lock, including across Render instances. Focused validation passes 30
-of 30 tests and TypeScript compilation. Deployed provider renewal and Campaign2
-source/Overview reconciliation are still required before recertification.
+of 30 tests and TypeScript compilation.
+
+Deployed commit `a00e199d615dbc8f139bd546e56db3fe27ef80a5`
+automatically recovered `Campaign2` during deployment startup. Its connection
+persisted a new token pair at `2026-10-03T18:52:57.858Z`, and its Shopify source
+recorded a successful refresh at `2026-10-03T18:52:59.965Z`. A second exact
+campaign/source-scoped validation returned `200` and advanced source success to
+`2026-10-03T18:54:35.037Z`. The source retained one order and USD `$5.90`, was
+visible through the authenticated source and breakdown APIs at `$5.90`, and the
+authenticated imported-revenue total reconciled to USD `$54,476.90` across five
+sources. Multi-instance collision testing and whole-source recertification
+remain required before changing the current status from unverified.
 
 **Historical status: CLEAN-CERTIFIED for the exact GA4 Overview Shopify Revenue
 OAuth `read_orders` boundary below at deployed runtime

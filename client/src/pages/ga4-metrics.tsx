@@ -6659,10 +6659,10 @@ export default function GA4Metrics() {
                       </div>
                       {/* Revenue, Spend, and Pipeline Proxy cards — always show when any financial data exists */}
                       <div className="grid gap-5 lg:grid-cols-3">
-                        <div>
+                        <div className="flex flex-col">
                           <h4 className="text-sm font-semibold text-foreground mb-2">Revenue</h4>
                         {/* Total Revenue */}
-                        <Card>
+                        <Card className="flex-1">
                           <CardContent className="p-5">
                             <div className="flex items-center justify-between">
                               <p className="text-sm font-medium text-muted-foreground/70">Total Revenue</p>
@@ -6692,10 +6692,10 @@ export default function GA4Metrics() {
                           </CardContent>
                         </Card>
                         </div>
-                        <div>
+                        <div className="flex flex-col">
                           <h4 className="text-sm font-semibold text-foreground mb-2">Spend</h4>
                         {/* Total Spend */}
-                        <Card>
+                        <Card className="flex-1">
                           <CardContent className="p-5">
                             <div className="flex items-center justify-between">
                               <p className="text-sm font-medium text-muted-foreground/70">Total Spend</p>
@@ -6726,9 +6726,9 @@ export default function GA4Metrics() {
                           </CardContent>
                         </Card>
                         </div>
-                        <div>
+                        <div className="flex flex-col">
                           <h4 className="text-sm font-semibold text-foreground mb-2">Pipeline Proxy</h4>
-                          <Card>
+                          <Card className="flex-1">
                             <CardContent className="p-5">
                               <div className="flex items-start justify-between">
                                 <p className="text-sm font-medium text-muted-foreground/70">Expected Revenue</p>

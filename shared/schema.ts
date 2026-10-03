@@ -100,6 +100,18 @@ export const ga4Connections = pgTable("ga4_connections", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Lifecycle evidence retained even after a GA4 connection or campaign is deleted.
+export const ga4ConnectionLifecycleEvents = pgTable("ga4_connection_lifecycle_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  connectionId: text("connection_id").notNull(),
+  subjectCampaignId: text("campaign_id").notNull(),
+  propertyId: text("property_id"),
+  action: text("action").notNull(),
+  actor: text("actor").notNull(),
+  reason: text("reason").notNull(),
+  changedAt: timestamp("changed_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 // GA4 Daily Metrics (persisted daily facts; used to power "daily values" UI and schedulers)
 export const ga4DailyMetrics = pgTable("ga4_daily_metrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

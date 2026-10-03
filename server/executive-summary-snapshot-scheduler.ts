@@ -1,5 +1,6 @@
 import { getInternalAutoRefreshToken } from "./internal-request-auth";
 import { storage } from "./storage";
+import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -21,7 +22,7 @@ export async function captureExecutiveSummarySnapshot(baseUrl: string, campaignI
 }
 
 export async function captureExecutiveSummarySnapshots(baseUrl: string): Promise<void> {
-  const campaigns = await storage.getCampaigns();
+  const campaigns = filterActiveSchedulerCampaigns(await storage.getCampaigns());
   const capturedCampaignIds = new Set<string>();
   for (const campaign of campaigns) {
     if (capturedCampaignIds.has(campaign.id)) continue;

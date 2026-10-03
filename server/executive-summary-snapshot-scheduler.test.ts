@@ -35,7 +35,7 @@ describe("Executive Summary snapshot scheduler", () => {
   });
 
   it("captures each campaign once through the authenticated canonical aggregate route", async () => {
-    mocks.getCampaigns.mockResolvedValue([{ id: "campaign one" }, { id: "campaign one" }, { id: "campaign-2" }]);
+    mocks.getCampaigns.mockResolvedValue([{ id: "campaign one", status: "active" }, { id: "campaign one", status: "active" }, { id: "campaign-2", status: "active" }]);
     const cancel = vi.fn().mockResolvedValue(undefined);
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, body: { cancel } });
     vi.stubGlobal("fetch", fetchMock);
@@ -55,7 +55,7 @@ describe("Executive Summary snapshot scheduler", () => {
   });
 
   it("continues safely when one campaign request fails", async () => {
-    mocks.getCampaigns.mockResolvedValue([{ id: "campaign-1" }, { id: "campaign-2" }]);
+    mocks.getCampaigns.mockResolvedValue([{ id: "campaign-1", status: "active" }, { id: "campaign-2", status: "active" }]);
     const fetchMock = vi.fn()
       .mockRejectedValueOnce(new Error("provider unavailable"))
       .mockResolvedValueOnce({ ok: true, status: 200, body: null });
@@ -66,7 +66,7 @@ describe("Executive Summary snapshot scheduler", () => {
   });
 
   it("leaves active GA4 campaigns to the aligned GA4 daily pipeline", async () => {
-    mocks.getCampaigns.mockResolvedValue([{ id: "ga4-campaign" }, { id: "non-ga4-campaign" }]);
+    mocks.getCampaigns.mockResolvedValue([{ id: "ga4-campaign", status: "active" }, { id: "non-ga4-campaign", status: "active" }]);
     mocks.getGA4Connections.mockImplementation(async (campaignId: string) => campaignId === "ga4-campaign"
       ? [{ propertyId: "properties/123", isActive: true }]
       : []);
@@ -80,7 +80,7 @@ describe("Executive Summary snapshot scheduler", () => {
   });
 
   it("preserves the prior snapshot when GA4 ownership cannot be verified", async () => {
-    mocks.getCampaigns.mockResolvedValue([{ id: "campaign-1" }]);
+    mocks.getCampaigns.mockResolvedValue([{ id: "campaign-1", status: "active" }]);
     mocks.getGA4Connections.mockRejectedValue(new Error("storage unavailable"));
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

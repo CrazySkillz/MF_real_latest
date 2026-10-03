@@ -5,6 +5,7 @@
  */
 
 import { storage } from "./storage";
+import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 
 /**
  * Refresh a Google Sheets access token using the refresh token
@@ -88,7 +89,7 @@ async function refreshAllGoogleSheetsTokens(): Promise<void> {
   
   try {
     // Get all campaigns to check for Google Sheets connections
-    const campaigns = await storage.getCampaigns();
+    const campaigns = filterActiveSchedulerCampaigns(await storage.getCampaigns());
     console.log(`[Token Scheduler] Checking ${campaigns.length} campaigns for Google Sheets connections`);
     
     let totalConnections = 0;
@@ -107,6 +108,7 @@ async function refreshAllGoogleSheetsTokens(): Promise<void> {
         
         // Process each connection for this campaign
         for (const connection of connections) {
+          if (connection.isActive === false) continue;
           if (!connection.accessToken || !connection.refreshToken) {
             continue; // Missing tokens
           }

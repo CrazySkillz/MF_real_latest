@@ -264,7 +264,7 @@ describe("GA4 external value auto-refresh regression guard", () => {
   });
 
   it("executes the bounded revenue pass only for the exact eligible campaign source", async () => {
-    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1" }] as any);
+    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1", status: "active" }] as any);
     vi.spyOn(storage, "getRevenueSources").mockResolvedValue([
       { id: "source-1", campaignId: "campaign-1", sourceType: "google_sheets", platformContext: "ga4", isActive: true, currency: "USD", mappingConfig: JSON.stringify({ connectionId: "conn-1", revenueColumn: "Revenue", currency: "USD" }) },
       { id: "inactive", campaignId: "campaign-1", sourceType: "google_sheets", platformContext: "ga4", isActive: false, mappingConfig: JSON.stringify({ connectionId: "conn-1", revenueColumn: "Revenue" }) },
@@ -294,7 +294,7 @@ describe("GA4 external value auto-refresh regression guard", () => {
   });
 
   it("preserves last-good Google Sheets revenue when a selected amount format is unsupported", async () => {
-    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1" }] as any);
+    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1", status: "active" }] as any);
     vi.spyOn(storage, "getRevenueSources").mockResolvedValue([{
       id: "source-1",
       campaignId: "campaign-1",
@@ -323,6 +323,15 @@ describe("GA4 external value auto-refresh regression guard", () => {
 
     expect(replace).not.toHaveBeenCalled();
     expect(warning).toHaveBeenCalledWith(expect.stringContaining("preserving last-good data"));
+  });
+
+  it("does not refresh sources for an inactive campaign", async () => {
+    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1", status: "inactive" }] as any);
+    const getRevenueSources = vi.spyOn(storage, "getRevenueSources").mockResolvedValue([] as any);
+
+    await runGoogleSheetsRevenueAutoRefreshOnce();
+
+    expect(getRevenueSources).not.toHaveBeenCalled();
   });
 
   it("refreshes Google Sheets revenue and spend sources, but does not auto-refresh CSV snapshots", () => {

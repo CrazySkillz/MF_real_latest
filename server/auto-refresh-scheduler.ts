@@ -27,6 +27,7 @@ import { beginFinancialDailySnapshotRefreshObservation, recordFinancialDailySnap
 import { writeFinancialDailySnapshotIfReady } from "./utils/financial-daily-snapshot-writer";
 import { randomUUID } from "crypto";
 import { isSupportedGoogleAdsSpendConnectionMethod } from "./utils/google-ads-service-account";
+import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 
 type AnyRecord = Record<string, any>;
 type ReprocessResult = { success: boolean; status?: number; error?: string };
@@ -879,7 +880,7 @@ export async function runGoogleSheetsSpendAutoRefreshOnce(): Promise<void> {
   (global as any).__googleSheetsSpendRefreshInProgress = true;
 
   try {
-    const campaigns = await storage.getCampaigns();
+    const campaigns = filterActiveSchedulerCampaigns(await storage.getCampaigns());
     for (const campaign of campaigns) {
       const campaignId = String(campaign.id);
       try {
@@ -910,7 +911,7 @@ export async function runGoogleSheetsRevenueAutoRefreshOnce(): Promise<void> {
   (global as any).__googleSheetsSpendRefreshInProgress = true;
 
   try {
-    const campaigns = await storage.getCampaigns();
+    const campaigns = filterActiveSchedulerCampaigns(await storage.getCampaigns());
     for (const campaign of campaigns) {
       const campaignId = String(campaign.id);
       try {
@@ -945,7 +946,7 @@ export async function runHubSpotPipelineAutoRefreshOnce(): Promise<void> {
   (global as any).__salesforcePipelineRefreshInProgress = true;
 
   try {
-    const campaigns = await storage.getCampaigns();
+    const campaigns = filterActiveSchedulerCampaigns(await storage.getCampaigns());
     for (const campaign of campaigns) {
       const campaignId = String(campaign.id);
       try {
@@ -985,7 +986,7 @@ export async function runSalesforcePipelineAutoRefreshOnce(): Promise<void> {
   (global as any).__salesforcePipelineRefreshInProgress = true;
 
   try {
-    const campaigns = await storage.getCampaigns();
+    const campaigns = filterActiveSchedulerCampaigns(await storage.getCampaigns());
     for (const campaign of campaigns) {
       const campaignId = String(campaign.id);
       try {
@@ -1081,9 +1082,9 @@ export async function runDailyAutoRefreshOnce(
     console.log("[Auto Refresh] Step 2/2: Re-processing revenue mappings (HubSpot/Salesforce/Shopify)...");
     const requestedCampaignId = String(opts.campaignId || "").trim();
     const requestedCampaign = requestedCampaignId ? await storage.getCampaign(requestedCampaignId) : undefined;
-    const campaigns = requestedCampaignId
+    const campaigns = filterActiveSchedulerCampaigns(requestedCampaignId
       ? (requestedCampaign ? [requestedCampaign] : [])
-      : await storage.getCampaigns();
+      : await storage.getCampaigns());
     campaignsScanned = campaigns.length;
 
     let anyCampaignUpdated = false;

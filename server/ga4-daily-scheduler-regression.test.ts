@@ -62,7 +62,7 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("type GA4DailyRefreshPipelineOptions");
     expect(source).not.toContain("export async function runGA4DailyRefreshPipeline");
     expect(source).toContain("const campaignId = String(opts.campaignId || \"\").trim();");
-    expect(source).toContain("const campaigns = campaignId");
+    expect(source).toContain("const campaigns = filterActiveSchedulerCampaigns(campaignId");
     expect(source).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true })");
     expect(source).toContain("[GA4 Daily] KPI/Benchmark recompute result");
     expect(source).toContain("recomputeEvidence[key].push(...recomputeResult[key])");
@@ -127,17 +127,17 @@ describe("GA4 daily scheduler timing", () => {
 
   it("bootstraps only campaign-scoped daily publications whose Overview or required financial snapshot is incomplete", async () => {
     vi.spyOn(storage, "getCampaigns").mockResolvedValue([
-      { id: "campaign-missing", currency: "USD", ga4CampaignFilter: "saved-filter" },
-      { id: "campaign-mismatched", currency: "USD", ga4CampaignFilter: "saved-filter" },
-      { id: "campaign-outdated", currency: "USD", ga4CampaignFilter: "saved-filter" },
-      { id: "campaign-currency-missing", currency: "USD", ga4CampaignFilter: "saved-filter" },
-      { id: "campaign-current", currency: "USD", ga4CampaignFilter: "saved-filter" },
-      { id: "campaign-financial-missing", currency: "USD", ga4CampaignFilter: "saved-filter" },
-      { id: "campaign-financial-mismatched", currency: "USD", ga4CampaignFilter: "saved-filter" },
-      { id: "campaign-financial-unavailable", currency: "USD", ga4CampaignFilter: "saved-filter" },
-      { id: "campaign-no-spend", currency: "USD", ga4CampaignFilter: "saved-filter" },
-      { id: "campaign-multi-property", currency: "USD", ga4CampaignFilter: "saved-filter" },
-      { id: "campaign-unscoped", ga4CampaignFilter: null },
+      { id: "campaign-missing", status: "active", currency: "USD", ga4CampaignFilter: "saved-filter" },
+      { id: "campaign-mismatched", status: "active", currency: "USD", ga4CampaignFilter: "saved-filter" },
+      { id: "campaign-outdated", status: "active", currency: "USD", ga4CampaignFilter: "saved-filter" },
+      { id: "campaign-currency-missing", status: "active", currency: "USD", ga4CampaignFilter: "saved-filter" },
+      { id: "campaign-current", status: "active", currency: "USD", ga4CampaignFilter: "saved-filter" },
+      { id: "campaign-financial-missing", status: "active", currency: "USD", ga4CampaignFilter: "saved-filter" },
+      { id: "campaign-financial-mismatched", status: "active", currency: "USD", ga4CampaignFilter: "saved-filter" },
+      { id: "campaign-financial-unavailable", status: "active", currency: "USD", ga4CampaignFilter: "saved-filter" },
+      { id: "campaign-no-spend", status: "active", currency: "USD", ga4CampaignFilter: "saved-filter" },
+      { id: "campaign-multi-property", status: "active", currency: "USD", ga4CampaignFilter: "saved-filter" },
+      { id: "campaign-unscoped", status: "active", ga4CampaignFilter: null },
     ] as any);
     vi.spyOn(storage, "getGA4Connections").mockImplementation(async (campaignId: string) => campaignId === "campaign-multi-property" ? [{
       campaignId,
@@ -271,8 +271,8 @@ describe("GA4 daily scheduler timing", () => {
     const source = schedulerSource();
     const finalFailureCheck = "if (refreshFailure || alignedRefreshFailures.length > 0)";
     vi.spyOn(storage, "getCampaigns").mockResolvedValue([
-      { id: "campaign-ok" },
-      { id: "campaign-failed" },
+      { id: "campaign-ok", status: "active" },
+      { id: "campaign-failed", status: "active" },
     ] as any);
 
     const result = await runGA4DailyKPIAndBenchmarkJobs({
@@ -337,8 +337,19 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toMatch(/replaceGA4DailyMetricsWindow\([\s\S]*?currentCampaignId,[\s\S]*?propertyId,[\s\S]*?storageStartDate,[\s\S]*?reportingWindow\.endDate,[\s\S]*?completeRows as any/);
   });
 
+  it("skips inactive campaigns before reading their GA4 connections", async () => {
+    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1", status: "inactive" }] as any);
+    const getGA4Connections = vi.spyOn(storage, "getGA4Connections").mockResolvedValue([] as any);
+
+    const result = await refreshAllGA4DailyMetrics({}, new Date("2026-08-06T12:00:00.000Z"));
+
+    expect(result.campaignIdsProcessed).toEqual([]);
+    expect(result.campaignIdsFailed).toEqual([]);
+    expect(getGA4Connections).not.toHaveBeenCalled();
+  });
+
   it("materializes explicit zero rows for every absent completed date and excludes inactive properties", async () => {
-    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1", reportingTimeZone: "UTC", currency: "USD" }] as any);
+    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1", status: "active", reportingTimeZone: "UTC", currency: "USD" }] as any);
     vi.spyOn(storage, "getGA4Connections").mockResolvedValue([
       { propertyId: "properties/active-1", importStartDate: "2026-08-03", isActive: true },
       { propertyId: "properties/active-2", importStartDate: "2026-08-03", isActive: true },
@@ -373,7 +384,7 @@ describe("GA4 daily scheduler timing", () => {
   });
 
   it("preserves last-good storage instead of writing a false zero for provider activity without a complete row", async () => {
-    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1", reportingTimeZone: "UTC", currency: "USD", ga4CampaignFilter: "saved-filter" }] as any);
+    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1", status: "active", reportingTimeZone: "UTC", currency: "USD", ga4CampaignFilter: "saved-filter" }] as any);
     vi.spyOn(storage, "getGA4Connections").mockResolvedValue([{ propertyId: "properties/active", importStartDate: "2026-08-03", isActive: true }] as any);
     vi.spyOn(storage, "getGA4Connection").mockResolvedValue({ propertyId: "properties/active", accessToken: "fresh-token" } as any);
     vi.spyOn(ga4Service, "getTimeSeriesData").mockResolvedValue([{ date: "2026-08-05", sessions: 1 }] as any);
@@ -391,7 +402,7 @@ describe("GA4 daily scheduler timing", () => {
   });
 
   it("preserves last-good storage when any provider daily value is invalid", async () => {
-    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1", reportingTimeZone: "UTC", currency: "USD" }] as any);
+    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1", status: "active", reportingTimeZone: "UTC", currency: "USD" }] as any);
     vi.spyOn(storage, "getGA4Connections").mockResolvedValue([{ propertyId: "properties/active", importStartDate: "2026-08-03", isActive: true }] as any);
     vi.spyOn(ga4Service, "getTimeSeriesData").mockResolvedValue([{ date: "2026-08-05", sessions: "not-a-number" }] as any);
     const replace = vi.spyOn(storage, "replaceGA4DailyMetricsWindow").mockResolvedValue({ replaced: 1 } as any);
@@ -411,7 +422,7 @@ describe("GA4 daily scheduler timing", () => {
       { date: "2026-08-05", sessions: 0, conversions: 0, revenue: 0 },
     ];
     vi.spyOn(storage, "getCampaigns").mockResolvedValue([{
-      id: "campaign-1", reportingTimeZone: "UTC", currency: "USD", ga4CampaignFilter: "saved-filter",
+      id: "campaign-1", status: "active", reportingTimeZone: "UTC", currency: "USD", ga4CampaignFilter: "saved-filter",
     }] as any);
     vi.spyOn(storage, "getGA4Connections").mockResolvedValue([{
       propertyId: "properties/active", importStartDate: "2026-08-02", isActive: true,
@@ -454,7 +465,7 @@ describe("GA4 daily scheduler timing", () => {
   it("keeps the last complete Overview snapshot when the provider report currency is not verified", async () => {
     const dailyRows = [{ date: "2026-08-05", sessions: 4, conversions: 1, revenue: 10 }];
     vi.spyOn(storage, "getCampaigns").mockResolvedValue([{
-      id: "campaign-1", reportingTimeZone: "UTC", currency: "USD", ga4CampaignFilter: "saved-filter",
+      id: "campaign-1", status: "active", reportingTimeZone: "UTC", currency: "USD", ga4CampaignFilter: "saved-filter",
     }] as any);
     vi.spyOn(storage, "getGA4Connections").mockResolvedValue([{
       propertyId: "properties/active", importStartDate: "2026-08-05", isActive: true,
@@ -481,7 +492,7 @@ describe("GA4 daily scheduler timing", () => {
 
   it("keeps the last complete Overview snapshot when detail totals do not reconcile", async () => {
     vi.spyOn(storage, "getCampaigns").mockResolvedValue([{
-      id: "campaign-1", reportingTimeZone: "UTC", currency: "USD", ga4CampaignFilter: "saved-filter",
+      id: "campaign-1", status: "active", reportingTimeZone: "UTC", currency: "USD", ga4CampaignFilter: "saved-filter",
     }] as any);
     vi.spyOn(storage, "getGA4Connections").mockResolvedValue([{
       propertyId: "properties/active", importStartDate: "2026-08-05", isActive: true,

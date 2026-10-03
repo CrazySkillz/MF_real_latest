@@ -7,6 +7,7 @@ import { sql } from 'drizzle-orm';
 import { getShopifyRevenueRefreshFreshness } from './utils/shopify-refresh-state';
 import { getCampaignMetricTotals } from './utils/campaign-current-values';
 import { getReportingDateWindow } from './utils/reporting-timezone';
+import { filterActiveSchedulerCampaigns } from './utils/campaign-scheduler-eligibility';
 
 interface SnapshotMetrics {
   totalImpressions: number;
@@ -792,7 +793,7 @@ async function createSnapshotsForAllCampaigns() {
   console.log('Timestamp:', new Date().toISOString());
   
   try {
-    const campaigns = await storage.getCampaigns();
+    const campaigns = filterActiveSchedulerCampaigns(await storage.getCampaigns());
     console.log(`Found ${campaigns.length} campaigns`);
     
     for (const campaign of campaigns) {

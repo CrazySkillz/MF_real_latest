@@ -11,6 +11,7 @@ import { writeFinancialDailySnapshotIfReady } from "./utils/financial-daily-snap
 import { captureExecutiveSummarySnapshot } from "./executive-summary-snapshot-scheduler";
 import { getAutoRefreshRunFailure, runDailyAutoRefreshOnce } from "./auto-refresh-scheduler";
 import { recordCampaignMetrics } from "./scheduler";
+import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 
 type CampaignFilter = string | string[] | undefined;
 type GA4DailySchedulerConfig = {
@@ -241,9 +242,9 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
 
   console.log(`[GA4 Daily] Refresh starting (lookbackDays=${lookbackDays}${campaignId ? `, campaignId=${campaignId}` : ""})`);
 
-  const campaigns = campaignId
+  const campaigns = filterActiveSchedulerCampaigns(campaignId
     ? [await storage.getCampaign(campaignId).catch(() => undefined)].filter(Boolean) as any[]
-    : await storage.getCampaigns().catch(() => []);
+    : await storage.getCampaigns().catch(() => []));
   let upserted = 0;
   const campaignIdsProcessed: string[] = [];
   const campaignIdsSkipped: string[] = [];
@@ -673,7 +674,7 @@ export async function backfillMissingGA4OverviewSnapshots(
   runPipeline: GA4DailyPipelineRunner = runGA4DailyRefreshPipelineForTrigger,
 ): Promise<string[]> {
   ga4DailySchedulerStatus.lastSnapshotBootstrapFailures = [];
-  const campaigns = await storage.getCampaigns();
+  const campaigns = filterActiveSchedulerCampaigns(await storage.getCampaigns());
   const campaignIds: string[] = [];
   const financialBootstrapCampaignIds = new Set<string>();
   for (const campaign of campaigns) {

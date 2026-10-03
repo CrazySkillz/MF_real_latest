@@ -14,6 +14,7 @@ import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-curren
 import { getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { assertGA4InsightsFinancialCurrencyScope, buildGA4InsightsHistoryScopeMarker, filterGA4InsightsHistoryByScope } from "../shared/ga4-insights";
 import { isSupportedGA4ConnectionMethod } from "./utils/ga4-service-account";
+import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 
 const isoDateUTC = (d: Date) => d.toISOString().slice(0, 10);
 const GA4_KPI_FINANCIAL_SOURCE_START_DATE = "1900-01-01";
@@ -223,10 +224,10 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
   const requestedCampaignIds = Array.isArray(opts?.campaignIds)
     ? new Set(opts.campaignIds.map((id) => String(id)))
     : null;
-  const campaigns = opts?.campaignId
+  const campaigns = filterActiveSchedulerCampaigns(opts?.campaignId
     ? [await storage.getCampaign(String(opts.campaignId)).catch(() => undefined)].filter(Boolean) as any[]
     : (await storage.getCampaigns().catch(() => []))
-      .filter((campaign: any) => !requestedCampaignIds || requestedCampaignIds.has(String(campaign?.id || "")));
+      .filter((campaign: any) => !requestedCampaignIds || requestedCampaignIds.has(String(campaign?.id || ""))));
 
   let reportedDate = requestedDate || getReportingDateWindow(1, "UTC").endDate;
   let processed = 0;

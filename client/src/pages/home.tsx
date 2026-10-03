@@ -96,7 +96,7 @@ export default function HomePage() {
                 <div key={client.id} className="relative">
                   <button
                     onClick={() => handleSelectClient(client.id)}
-                    className="w-full text-left p-5 bg-card rounded-2xl border border-border hover:border-blue-300 hover:shadow-sm transition-all group"
+                    className="w-full text-left p-5 bg-accent rounded-2xl border border-border hover:border-blue-300 hover:shadow-sm transition-all group"
                   >
                     <div className="flex items-start justify-between gap-4 pr-10">
                       <div className="flex items-center gap-3 min-w-0">

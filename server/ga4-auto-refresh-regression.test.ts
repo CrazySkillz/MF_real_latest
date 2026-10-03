@@ -448,6 +448,17 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(callbackRoute).toContain("const durableRefreshToken = tokens.refresh_token || null;");
     expect(callbackRoute).not.toContain("tokens.refresh_token || reusableRefreshToken");
   });
+  it("preserves Google Sheets connections on every provider data-read failure", () => {
+    const routes = routesFile();
+    const dataRouteStart = routes.indexOf('app.get("/api/campaigns/:id/google-sheets-data"');
+    const dataRouteEnd = routes.indexOf('app.post("/api/campaigns/:id/google-sheets-refresh"', dataRouteStart);
+    const dataRoute = routes.slice(dataRouteStart, dataRouteEnd);
+
+    expect(dataRouteStart).toBeGreaterThan(-1);
+    expect(dataRouteEnd).toBeGreaterThan(dataRouteStart);
+    expect(dataRoute).not.toContain("deleteGoogleSheetsConnection");
+    expect(dataRoute).toContain("preserving connection for recovery");
+  });
   it("exposes campaign/source-scoped Google Sheets revenue and spend scheduler validation triggers", () => {
     const scheduler = schedulerFile();
     const routes = routesFile();

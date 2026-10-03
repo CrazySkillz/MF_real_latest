@@ -21954,20 +21954,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Handle 404 (Not Found) - spreadsheet is deleted or ID is wrong
+        // Preserve the connection on read failures so a temporary provider response or
+        // access change cannot silently disconnect an active source.
         if (sheetResponse.status === 404) {
-          console.error('[Google Sheets Data] Spreadsheet not found — cleaning up stale connection');
-          // Delete the stale connection so it doesn't keep failing
-          try {
-            await storage.deleteGoogleSheetsConnection(connection.id);
-            devLog(`[Google Sheets Data] Deleted stale connection ${connection.id} for missing spreadsheet`);
-          } catch (deleteError) {
-            console.error('[Google Sheets Data] Failed to delete stale connection:', deleteError);
-          }
+          console.error('[Google Sheets Data] Spreadsheet not found; preserving connection for recovery');
           return res.status(404).json({
             success: false,
             error: 'SPREADSHEET_NOT_FOUND',
-            message: 'Spreadsheet not found. The spreadsheet may have been deleted. The connection has been removed — please reconnect with a valid spreadsheet.',
+            message: 'Spreadsheet not found. Verify that the spreadsheet still exists and that the connected account has access, then retry or reconnect.',
             requiresReauthorization: false,
             missingSpreadsheet: true
           });

@@ -48,6 +48,11 @@ const dependencies = (overrides: Record<string, unknown> = {}) => ({
     financialConversionsAvailable: true,
     ga4FinancialSource: "provider_to_date",
   }),
+  getSpendSources: vi.fn().mockResolvedValue([{
+    id: "spend-1",
+    isActive: true,
+    createdAt: "2026-08-01T00:00:00.000Z",
+  }]),
   getRevenueTotalForRange: vi.fn().mockResolvedValue({
     totalRevenue: 16799.99,
     currency: "USD",
@@ -148,6 +153,49 @@ describe("gated financial daily snapshot writer", () => {
         conversions: { value: 12, available: true, sources: ["ga4"] },
       },
     }));
+  });
+
+  it("writes GA4 revenue and conversions while preserving unavailable spend when no spend source is configured", async () => {
+    successfulEvidence();
+    const deps = dependencies({
+      getSpendSources: vi.fn().mockResolvedValue([]),
+      getRevenueTotalForRange: vi.fn().mockResolvedValue({ totalRevenue: 0, sourceIds: [] }),
+      getSpendTotalForRange: vi.fn().mockResolvedValue({ totalSpend: 0, sourceIds: [] }),
+      getCampaignMetricTotals: vi.fn().mockResolvedValue({
+        ...(await dependencies().getCampaignMetricTotals()),
+        revenue: 55966.70,
+        ga4Revenue: 55966.70,
+        spend: 0,
+        spendAvailable: true,
+      }),
+    });
+
+    const result = await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps);
+
+    expect(result.status).toBe("written");
+    expect(deps.upsertFinancialDailySnapshot).toHaveBeenCalledWith(expect.objectContaining({
+      inputs: expect.objectContaining({
+        spend: { value: null, available: false, sources: [] },
+        revenue: { value: "55966.70", available: true, sources: ["ga4"] },
+      }),
+    }));
+  });
+
+  it("still blocks unavailable spend when an eligible spend source is configured", async () => {
+    successfulEvidence();
+    const deps = dependencies({
+      getSpendTotalForRange: vi.fn().mockResolvedValue({ totalSpend: 0, sourceIds: [] }),
+      getCampaignMetricTotals: vi.fn().mockResolvedValue({
+        ...(await dependencies().getCampaignMetricTotals()),
+        spend: 0,
+      }),
+    });
+
+    const result = await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps);
+
+    expect(result.status).toBe("blocked");
+    expect(result.reasons).toContain("spend_unavailable");
+    expect(deps.upsertFinancialDailySnapshot).not.toHaveBeenCalled();
   });
 
   it("blocks the snapshot when any configured financial source refresh fails", async () => {

@@ -6,7 +6,7 @@ import {
   observeFinancialDailySnapshotReadiness,
   recordFinancialDailySnapshotWriteOutcome,
 } from "./financial-daily-snapshot-observation";
-import { resolveGA4ImportToDateWindow } from "./reporting-timezone";
+import { isCreatedThroughReportingDate, resolveGA4ImportToDateWindow } from "./reporting-timezone";
 
 type SourceTotal = { totalRevenue?: number; totalSpend?: number; currency?: string; sourceIds: string[] };
 
@@ -14,6 +14,7 @@ type WriterDependencies = {
   getCampaign: (campaignId: string) => Promise<any>;
   getGA4Connections: (campaignId: string) => Promise<any[]>;
   getCampaignMetricTotals: (campaignId: string, useFullFinancialCandidate: boolean) => Promise<CampaignMetricTotals | null>;
+  getSpendSources: (campaignId: string, platformContext: "ga4") => Promise<any[]>;
   getRevenueTotalForRange: (campaignId: string, startDate: string, endDate: string, platformContext: "ga4") => Promise<SourceTotal>;
   getSpendTotalForRange: (campaignId: string, startDate: string, endDate: string, platformContext: "ga4") => Promise<SourceTotal>;
   upsertFinancialDailySnapshot: (snapshot: FinancialDailySnapshotInput) => Promise<unknown>;
@@ -24,6 +25,7 @@ const defaultDependencies: WriterDependencies = {
   getCampaign: (campaignId) => storage.getCampaign(campaignId),
   getGA4Connections: (campaignId) => storage.getGA4Connections(campaignId),
   getCampaignMetricTotals,
+  getSpendSources: (campaignId, platformContext) => storage.getSpendSources(campaignId, platformContext),
   getRevenueTotalForRange: (campaignId, startDate, endDate, platformContext) =>
     storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext),
   getSpendTotalForRange: (campaignId, startDate, endDate, platformContext) =>
@@ -57,8 +59,9 @@ export async function writeFinancialDailySnapshotIfReady(
     return { status: "skipped", reasons: ["reporting_date_window_mismatch"] };
   }
 
-  const [totals, revenueSourceTotal, spendSourceTotal] = await Promise.all([
+  const [totals, spendSources, revenueSourceTotal, spendSourceTotal] = await Promise.all([
     dependencies.getCampaignMetricTotals(campaignId, true),
+    dependencies.getSpendSources(campaignId, "ga4"),
     dependencies.getRevenueTotalForRange(campaignId, "1900-01-01", reportingDate, "ga4"),
     dependencies.getSpendTotalForRange(campaignId, "1900-01-01", reportingDate, "ga4"),
   ]);
@@ -68,6 +71,9 @@ export async function writeFinancialDailySnapshotIfReady(
   }
 
   const currency = String(campaign.currency || "USD").trim().toUpperCase();
+  const spendConfigured = (spendSources || []).some((source: any) =>
+    source?.isActive !== false && isCreatedThroughReportingDate(source?.createdAt, reportingDate, campaign.reportingTimeZone)
+  );
   const spendSourceIds = Array.from(new Set((spendSourceTotal.sourceIds || []).map(String).filter(Boolean)));
   const revenueSourceIds = Array.from(new Set((revenueSourceTotal.sourceIds || []).map(String).filter(Boolean)));
   if (spendSourceIds.length > 0 && String(spendSourceTotal.currency || "").trim().toUpperCase() !== currency) {
@@ -113,7 +119,7 @@ export async function writeFinancialDailySnapshotIfReady(
     campaignId,
     reportingDate,
     currency,
-    requiredInputs: ["spend", "revenue", "conversions"],
+    requiredInputs: [...(spendConfigured ? ["spend" as const] : []), "revenue", "conversions"],
     snapshot: cumulative.snapshot,
   });
   if (!readiness.ready) return { status: "blocked", reasons: readiness.reasons, snapshot: cumulative.snapshot };

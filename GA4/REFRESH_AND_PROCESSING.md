@@ -244,6 +244,12 @@ partial financial results. It does not block another active campaign from
 completing its own ordered publication, although the overall scheduler status
 still records the failed provider job.
 
+If no Spend source is configured for the completed-day window, Spend remains
+explicitly unavailable and does not block GA4 traffic, native revenue,
+conversions, KPI/Benchmark recompute, or downstream snapshot publication. Once
+a Spend source is configured, its missing or failed materialization remains a
+blocking financial-source failure.
+
 Current eligible sources include:
 
 - HubSpot revenue

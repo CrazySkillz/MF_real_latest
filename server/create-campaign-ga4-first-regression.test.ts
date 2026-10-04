@@ -30,4 +30,15 @@ describe("GA4-first Create Campaign wizard", () => {
     expect(campaignsPage).toContain("{isFinalizingCampaign ? (");
     expect(campaignsPage).toContain("finalizingCampaignRef.current = false;");
   });
+
+  it("marks wizard cancellation as draft-only cleanup", () => {
+    const deleteMutation = campaignsPage.slice(
+      campaignsPage.indexOf("const deleteCampaignMutation"),
+      campaignsPage.indexOf("const handleSubmit"),
+    );
+    const deleteError = deleteMutation.slice(deleteMutation.indexOf("onError:"));
+
+    expect(campaignsPage).toContain('`/api/campaigns/${draftCampaignId}?draftCleanup=1`');
+    expect(deleteError).toContain('queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });');
+  });
 });

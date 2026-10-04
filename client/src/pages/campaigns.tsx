@@ -439,6 +439,7 @@ export default function Campaigns() {
     },
     onError: (error: any) => {
       console.error("Delete campaign error:", error);
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
       toast({
         title: "Error",
         description: error.message || "Failed to delete campaign. Please try again.",
@@ -821,7 +822,7 @@ export default function Campaigns() {
     setIsCreateModalOpen(open);
     // If the user closes the modal mid-setup, clean up the draft campaign (best-effort).
     if (!open && draftCampaignId && !draftFinalized) {
-      apiRequest("DELETE", `/api/campaigns/${draftCampaignId}`).catch(() => {
+      apiRequest("DELETE", `/api/campaigns/${draftCampaignId}?draftCleanup=1`).catch(() => {
         // ignore cleanup errors
       });
     }

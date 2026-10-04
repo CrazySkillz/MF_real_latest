@@ -9198,8 +9198,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/campaigns/:id", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
-      if (!ok) return;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
+      const draftCleanup = String(req.query.draftCleanup || "").trim() === "1";
+      if (draftCleanup && String((campaign as any)?.status || "").trim().toLowerCase() !== "draft") {
+        return res.status(409).json({ success: false, message: "Campaign is no longer a draft" });
+      }
       const success = await storage.deleteCampaignCascade(campaignId);
 
       if (!success) {

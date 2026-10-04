@@ -7,6 +7,7 @@ const storageMock = vi.hoisted(() => ({
   getGA4Connections: vi.fn(),
   updateCampaign: vi.fn(),
   updateCampaignWithGA4DailyInvalidation: vi.fn(),
+  deleteCampaignCascade: vi.fn(),
 }));
 const schedulerMock = vi.hoisted(() => ({
   refreshAllGA4DailyMetrics: vi.fn(),
@@ -77,6 +78,7 @@ describe("new campaign initial GA4 import", () => {
       ga4CampaignFilter: "selected_campaign",
       ...data,
     }));
+    storageMock.deleteCampaignCascade.mockResolvedValue(true);
     schedulerMock.refreshAllGA4DailyMetrics.mockResolvedValue({
       campaignIdsProcessed: [campaignId],
       campaignIdsSkipped: [],
@@ -136,5 +138,31 @@ describe("new campaign initial GA4 import", () => {
       campaignId,
       expect.objectContaining({ status: "active", platform: "google-ads" }),
     );
+  });
+
+  it("allows wizard cleanup to delete only a draft campaign", async () => {
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaignId}?draftCleanup=1`, { method: "DELETE" });
+
+    expect(response.status).toBe(200);
+    expect(storageMock.deleteCampaignCascade).toHaveBeenCalledWith(campaignId);
+  });
+
+  it("rejects stale wizard cleanup after the campaign is active", async () => {
+    storageMock.getCampaign.mockResolvedValue({ id: campaignId, ownerId: "owner-1", status: "active" });
+
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaignId}?draftCleanup=1`, { method: "DELETE" });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ success: false, message: "Campaign is no longer a draft" });
+    expect(storageMock.deleteCampaignCascade).not.toHaveBeenCalled();
+  });
+
+  it("keeps confirmed manual deletion available for an active campaign", async () => {
+    storageMock.getCampaign.mockResolvedValue({ id: campaignId, ownerId: "owner-1", status: "active" });
+
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaignId}`, { method: "DELETE" });
+
+    expect(response.status).toBe(200);
+    expect(storageMock.deleteCampaignCascade).toHaveBeenCalledWith(campaignId);
   });
 });

@@ -12,6 +12,7 @@ import urllib.request
 PROPERTY_ID = os.environ.get("GA4_SEED_PROPERTY_ID", "542352127")
 MEASUREMENT_ID = os.environ.get("GA4_SEED_MEASUREMENT_ID", "G-5N95YKGP04")
 API_SECRET = os.environ.get("GA4_SEED_API_SECRET", "sO4a9KMPSE-d2EkRe_uxqg")
+TIMESTAMP_SAFETY_OFFSET_MICROS = 60 * 1_000_000
 
 CAMPAIGNS = [
     {"name": "yesop_brand_search", "source": "google", "medium": "cpc", "sessions": 80, "engaged_sessions": 58, "purchases": 8, "revenue": 2425.00},
@@ -25,6 +26,8 @@ CAMPAIGNS = [
 def parse_args():
     parser = argparse.ArgumentParser(description="Seed GA4 Measurement Protocol test traffic with per-run metric variation.")
     parser.add_argument("--log-dir", default="logs/ga4-seed-runs", help="Directory for per-run JSON seed logs.")
+    parser.add_argument("--event-date", help="UTC event date (YYYY-MM-DD), for completed-day UI validation.")
+    parser.add_argument("--campaign", action="append", choices=[campaign["name"] for campaign in CAMPAIGNS])
     return parser.parse_args()
 
 
@@ -40,6 +43,7 @@ def build_run_campaigns(run_started):
         engaged_sessions = min(sessions, max(purchases, round(campaign["engaged_sessions"] * session_factor)))
         varied.append({
             **campaign,
+            "_seed_index": idx,
             "base_sessions": campaign["sessions"],
             "base_engaged_sessions": campaign["engaged_sessions"],
             "base_purchases": campaign["purchases"],
@@ -57,19 +61,14 @@ def build_run_campaigns(run_started):
     return varied
 
 
-def send_event(client_id, event_name, params):
+def send_events(client_id, events):
     url = (
         "https://www.google-analytics.com/mp/collect?"
         + urllib.parse.urlencode({"measurement_id": MEASUREMENT_ID, "api_secret": API_SECRET})
     )
     payload = {
         "client_id": client_id,
-        "events": [
-            {
-                "name": event_name,
-                "params": params,
-            }
-        ],
+        "events": events,
     }
     req = urllib.request.Request(
         url,
@@ -80,16 +79,144 @@ def send_event(client_id, event_name, params):
     urllib.request.urlopen(req, timeout=20).read()
 
 
+def validate_events(client_id, events):
+    url = (
+        "https://www.google-analytics.com/debug/mp/collect?"
+        + urllib.parse.urlencode({"measurement_id": MEASUREMENT_ID, "api_secret": API_SECRET})
+    )
+    payload = {
+        "client_id": client_id,
+        "validation_behavior": "ENFORCE_RECOMMENDATIONS",
+        "events": events,
+    }
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    response = json.loads(urllib.request.urlopen(req, timeout=20).read() or b"{}")
+    messages = response.get("validationMessages", [])
+    if messages:
+        raise RuntimeError(f"GA4 strict payload validation failed: {json.dumps(messages)}")
+
+
+def build_session_identity(campaign_index, session_index, event_day_start_micros=None):
+    timestamp_micros = event_day_start_micros + ((campaign_index * 1000 + session_index) * 1_000_000) \
+        if event_day_start_micros else (time.time_ns() // 1000) - TIMESTAMP_SAFETY_OFFSET_MICROS
+    session_id = timestamp_micros // 1_000_000
+    client_id = f"{555000000 + campaign_index * 10000 + session_index}.{session_id}"
+    return client_id, session_id, timestamp_micros
+
+
+def build_page_location(campaign):
+    return "https://mock.mimosaas.test/landing?" + urllib.parse.urlencode({
+        "utm_campaign": campaign["name"],
+    })
+
+
+def build_session_events(campaign, session_id, page_location, is_engaged, purchase_value=None, transaction_id=None, timestamp_micros=None):
+    timestamp_micros = timestamp_micros or (time.time_ns() // 1000) - TIMESTAMP_SAFETY_OFFSET_MICROS
+    base_params = {
+        "session_id": session_id,
+        "session_number": 1,
+        "engagement_time_msec": 22000 if is_engaged else 3000,
+        "page_location": page_location,
+        "page_title": f"Mock landing page - {campaign['name']}",
+        "source": campaign["source"],
+        "medium": campaign["medium"],
+        "campaign": campaign["name"],
+        "campaign_id": campaign["name"],
+    }
+    if is_engaged:
+        base_params["session_engaged"] = "1"
+
+    events = [
+        {
+            "name": "campaign_details",
+            "timestamp_micros": timestamp_micros,
+            "params": {
+                "session_id": session_id,
+                "session_number": 1,
+                "engagement_time_msec": 1,
+                "campaign_id": campaign["name"],
+                "campaign": campaign["name"],
+                "source": campaign["source"],
+                "medium": campaign["medium"],
+            },
+        },
+        {
+            "name": "page_view",
+            "timestamp_micros": timestamp_micros + 1000,
+            "params": base_params,
+        },
+    ]
+    if is_engaged:
+        events.append({
+            "name": "page_view",
+            "timestamp_micros": timestamp_micros + 2000,
+            "params": {
+                **base_params,
+                "page_location": page_location.replace("/landing?", "/pricing?"),
+                "page_title": f"Mock pricing page - {campaign['name']}",
+            },
+        })
+    if purchase_value is not None and transaction_id:
+        events.append({
+            "name": "purchase",
+            "timestamp_micros": timestamp_micros + 3000,
+            "params": {
+                **base_params,
+                "currency": "USD",
+                "value": purchase_value,
+                "transaction_id": transaction_id,
+                "items": [
+                    {
+                        "item_id": "mock_subscription",
+                        "item_name": "Mock SaaS Subscription",
+                        "quantity": 1,
+                        "price": purchase_value,
+                    }
+                ],
+            },
+        })
+    return events
+
+
 def main():
     args = parse_args()
     run_started = dt.datetime.now(dt.timezone.utc)
+    event_date = dt.date.fromisoformat(args.event_date) if args.event_date else None
+    if event_date and event_date > run_started.date():
+        raise ValueError("--event-date cannot be in the future")
+    event_day_start_micros = int(
+        dt.datetime.combine(event_date, dt.time(12), tzinfo=dt.timezone.utc).timestamp() * 1_000_000
+    ) if event_date else None
     run_id = run_started.strftime("%Y%m%d%H%M%S")
-    run_start = int(run_started.timestamp())
     run_campaigns = build_run_campaigns(run_started)
+    if args.campaign:
+        selected_campaigns = set(args.campaign)
+        run_campaigns = [campaign for campaign in run_campaigns if campaign["name"] in selected_campaigns]
     sent = 0
     summaries = []
 
-    for campaign_index, campaign in enumerate(run_campaigns):
+    for campaign in run_campaigns:
+        campaign_index = campaign["_seed_index"]
+        client_id, session_id, timestamp_micros = build_session_identity(
+            campaign_index, 0, event_day_start_micros
+        )
+        validate_events(client_id, build_session_events(
+            campaign,
+            session_id,
+            build_page_location(campaign),
+            True,
+            1.0,
+            f"validation-{run_id}-{campaign['name']}",
+            timestamp_micros,
+        ))
+
+    for campaign in run_campaigns:
+        campaign_index = campaign["_seed_index"]
         campaign_summary = {
             "name": campaign["name"],
             "sessions": campaign["sessions"],
@@ -99,78 +226,37 @@ def main():
             "variation": campaign["variation"],
         }
         for i in range(campaign["sessions"]):
-            session_id = run_start + (campaign_index * 10000) + i
-            client_id = f"555{campaign_index + 1}.{run_id}{i + 1:03d}"
+            client_id, session_id, timestamp_micros = build_session_identity(
+                campaign_index, i, event_day_start_micros
+            )
             will_purchase = i < campaign["purchases"]
             is_engaged = i < campaign["engaged_sessions"] or will_purchase
-            page_location = (
-                "https://mock.mimosaas.test/landing?"
-                + urllib.parse.urlencode(
-                    {
-                        "utm_source": campaign["source"],
-                        "utm_medium": campaign["medium"],
-                        "utm_campaign": campaign["name"],
-                    }
-                )
-            )
+            page_location = build_page_location(campaign)
 
-            base_params = {
-                "session_id": session_id,
-                "engagement_time_msec": 22000 if is_engaged else 3000,
-                "page_location": page_location,
-                "page_title": f"Mock landing page - {campaign['name']}",
-                "source": campaign["source"],
-                "medium": campaign["medium"],
-                "campaign": campaign["name"],
-                "campaign_id": campaign["name"],
-            }
             if is_engaged:
-                base_params["session_engaged"] = "1"
                 campaign_summary["engaged_sessions"] += 1
 
-            send_event(client_id, "page_view", base_params)
-            sent += 1
-
-            # Use a second page_view for engaged sessions. This is a standard
-            # GA4 engagement signal and avoids sending user_engagement events
-            # that some test properties may accidentally count as conversions.
-            if is_engaged:
-                send_event(
-                    client_id,
-                    "page_view",
-                    {
-                        **base_params,
-                        "page_location": page_location.replace("/landing?", "/pricing?"),
-                        "page_title": f"Mock pricing page - {campaign['name']}",
-                    },
-                )
-                sent += 1
-
+            purchase_value = None
+            transaction_id = None
             if will_purchase:
                 purchase_value = round(campaign["revenue"] / campaign["purchases"], 2)
                 if i == campaign["purchases"] - 1:
                     purchase_value = round(campaign["revenue"] - campaign_summary["revenue"], 2)
                 campaign_summary["purchases"] += 1
                 campaign_summary["revenue"] += purchase_value
-                send_event(
-                    client_id,
-                    "purchase",
-                    {
-                        **base_params,
-                        "currency": "USD",
-                        "value": purchase_value,
-                        "transaction_id": f"mock-{run_id}-{campaign['name']}-{i}",
-                        "items": [
-                            {
-                                "item_id": "mock_subscription",
-                                "item_name": "Mock SaaS Subscription",
-                                "quantity": 1,
-                                "price": purchase_value,
-                            }
-                        ],
-                    },
-                )
-                sent += 1
+                transaction_id = f"mock-{run_id}-{campaign['name']}-{i}"
+
+            events = build_session_events(
+                campaign,
+                session_id,
+                page_location,
+                is_engaged,
+                purchase_value,
+                transaction_id,
+                timestamp_micros,
+            )
+            send_events(client_id, events)
+            sent += len(events)
 
             time.sleep(0.03)
         summaries.append(campaign_summary)
@@ -179,7 +265,7 @@ def main():
     total_engaged = sum(summary["engaged_sessions"] for summary in summaries)
     total_purchases = sum(summary["purchases"] for summary in summaries)
     total_revenue = sum(summary["revenue"] for summary in summaries)
-    print(f"Sent {sent} GA4 mock events across {len(CAMPAIGNS)} campaigns.")
+    print(f"Sent {sent} GA4 mock events across {len(run_campaigns)} campaigns.")
     print(
         "Expected batch totals: "
         f"sessions={total_sessions}, "
@@ -197,11 +283,12 @@ def main():
             f"revenue=${summary['revenue']:.2f}"
         )
 
-    selected_scope = ["yesop_brand_search", "yesop_prospecting"]
+    selected_scope = [campaign["name"] for campaign in run_campaigns]
     selected_summaries = [s for s in summaries if s["name"] in selected_scope]
     output = {
         "run_id": run_id,
         "run_started_utc": run_started.isoformat(),
+        "event_date_utc": event_date.isoformat() if event_date else None,
         "property_id": PROPERTY_ID,
         "measurement_id": MEASUREMENT_ID,
         "selected_scope": {

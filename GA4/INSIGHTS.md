@@ -194,7 +194,7 @@ Financial KPI/Benchmark snapshots consumed by Insights use the same initial-impo
 
 Important meaning:
 
-- the daily scheduler is the sole writer of GA4 daily history; startup refresh and campaign `Run now`/manual GA4 daily refresh routes are disabled
+- the ordered GA4 daily pipeline is the sole writer of GA4 daily history; startup refresh and the generic manual GA4 refresh route are disabled, while the owner-guarded campaign `Run now` route may invoke that same pipeline for one campaign
 - for active real GA4 campaigns, that writer is the ordered daily publication cycle: mapped financial refresh precedes the atomic GA4 daily/Overview write, then KPI/Benchmark recompute and downstream snapshots/alerts complete for each successful campaign; failures in unrelated campaigns do not block its stored Insights inputs
 - page load, focus/reconnect, and polling may reread persisted rows, but they do not call GA4 or change history/timestamps
 - the scheduler stores every completed date in its authorized window, using explicit zero rows only for verified no-activity dates and preserving last-good storage if provider completeness cannot be proven

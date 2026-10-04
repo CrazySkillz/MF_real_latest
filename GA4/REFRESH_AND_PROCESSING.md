@@ -198,12 +198,12 @@ They should not send a separate standalone `user_engagement` event unless the te
 
 ## On-Demand GA4 Daily Refresh
 
-On-demand GA4 daily-history writes are disabled.
+On-demand GA4 daily-history writes are restricted to the same ordered pipeline used by the timer.
 
 - `POST /api/campaigns/:id/ga4/refresh` verifies campaign access and returns `409 GA4_DAILY_HISTORY_SCHEDULER_MANAGED`
-- `POST /api/campaigns/:id/ga4-daily-scheduler/run-now` verifies campaign access and returns the same scheduler-managed response
+- `POST /api/campaigns/:id/ga4-daily-scheduler/run-now` verifies campaign access and runs the ordered financial-source refresh, GA4 daily/Overview import, KPI/Benchmark recompute, and downstream snapshot path for that campaign only; it returns `409 GA4_DAILY_PIPELINE_BUSY` if another daily pipeline is already running
 - page loads, browser focus/reconnect, polling, notification reconciliation, and validation reads cannot invoke the daily provider import or rewrite `ga4_daily_metrics`
-- external revenue/spend source refresh remains handled by its documented source scheduler or user-driven snapshot flow; disabling manual GA4 daily writes does not disable those separate source lifecycles
+- the on-demand ordered pipeline checks every configured external revenue/spend source for the target campaign; a campaign with no external Revenue or Spend sources has no provider jobs to run, uses GA4 Revenue, and leaves Spend unavailable without blocking GA4 publication
 
 ## GA4 Page Query Refetch Timing
 
@@ -558,7 +558,7 @@ What is true today:
 
 - the GA4 daily pipeline invokes mapped financial refresh first, atomically refreshes GA4 facts and Overview detail, recomputes KPI/Benchmark state, writes financial and campaign aggregate snapshots, captures Executive Summary history, runs campaign alerts, and then persists the exact campaign/reporting-date report-readiness marker on that Executive Summary daily snapshot
 - the generic KPI scheduler defaults to skipping its duplicate KPI/Benchmark recompute and alert sweeps; the ordered GA4 pipeline performs both after the synchronized inputs and snapshots are ready. An explicit `GA4_DAILY_PIPELINE_OWNS_RECOMPUTE=false` override restores the legacy behavior
-- manual/on-demand GA4 daily-history writes are disabled; the configured daily scheduler owns daily refresh and its dependent KPI/Benchmark recompute
+- timer and owner-guarded on-demand runs use the same ordered GA4 pipeline; the on-demand route is campaign-scoped and suppresses cross-campaign alert sweeps
 - active real GA4 campaigns defer external-source downstream recompute/snapshot publication to the ordered GA4 cycle; non-GA4 campaigns retain the prior external-source behavior
 - the GA4 KPI/Benchmark recompute helper also reconciles campaign-level KPI and Benchmark persisted `currentValue` fields from connected-platform totals after GA4, revenue, or spend refresh changes
 - when a GA4 KPI/Benchmark recompute runs for a campaign, breached GA4 KPIs and Benchmarks should restore exactly one active in-app alert row if the row is missing

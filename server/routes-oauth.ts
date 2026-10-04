@@ -9158,7 +9158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Campaign not found" });
       }
       if (shouldRunInitialGA4Import) {
-        const initialImport = await refreshAllGA4DailyMetrics({ campaignId });
+        const initialImport = await refreshAllGA4DailyMetrics({ campaignId, includeTargetDraft: true });
         const initialImportFailure = getGA4DailyRefreshFailure(initialImport, campaignId);
         if (initialImportFailure) {
           return res.status(502).json({

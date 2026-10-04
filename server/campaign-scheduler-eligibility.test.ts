@@ -14,4 +14,15 @@ describe("campaign scheduler eligibility", () => {
     expect(filterActiveSchedulerCampaigns(campaigns).map((campaign) => campaign.id))
       .toEqual(["active", "active-normalized"]);
   });
+
+  it("includes only the explicitly targeted draft for an initial import", () => {
+    const campaigns = [
+      { id: "active", status: "active" },
+      { id: "target", status: "draft" },
+      { id: "other-draft", status: "draft" },
+    ];
+
+    expect(filterActiveSchedulerCampaigns(campaigns, "target").map((campaign) => campaign.id))
+      .toEqual(["active", "target"]);
+  });
 });

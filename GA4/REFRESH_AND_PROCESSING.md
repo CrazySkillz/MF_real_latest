@@ -153,7 +153,7 @@ Important meaning:
 Runtime cadence:
 
 - the scheduler starts from the server startup background-scheduler block, about 5 seconds after the server begins listening
-- every recurring GA4 refresh, startup snapshot discovery, financial-source pass, KPI/Benchmark recompute, aggregate/Executive Summary snapshot job, and Google Sheets token-refresh pass filters to campaigns whose persisted status is exactly `active`; draft, inactive, paused, missing-status, and deleted campaigns are skipped
+- every recurring GA4 refresh, startup snapshot discovery, financial-source pass, KPI/Benchmark recompute, aggregate/Executive Summary snapshot job, and Google Sheets token-refresh pass filters to campaigns whose persisted status is exactly `active`; draft, inactive, paused, missing-status, and deleted campaigns are skipped. Campaign creation has one bounded exception: its initial GA4 import may process only the explicitly targeted draft, which is activated only after that import succeeds
 - it schedules one daily run at `GA4_DAILY_REFRESH_HOUR:GA4_DAILY_REFRESH_MINUTE` in `GA4_DAILY_REFRESH_TIME_ZONE`, defaulting to `03:00 UTC`
 - `GA4_DAILY_PIPELINE_OWNS_REFRESH` defaults to `true`, preventing the separate full daily financial timer from racing the GA4 pipeline at the same configured time
 - `GA4_DAILY_REFRESH_TIME_ZONE` is a deployment-level scheduler setting, not a per-campaign UI setting

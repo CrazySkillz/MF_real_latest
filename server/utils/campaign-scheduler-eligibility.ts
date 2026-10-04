@@ -1,3 +1,6 @@
-export function filterActiveSchedulerCampaigns<T extends { status?: unknown }>(campaigns: T[]): T[] {
-  return campaigns.filter((campaign) => String(campaign?.status || "").trim().toLowerCase() === "active");
+export function filterActiveSchedulerCampaigns<T extends { id?: unknown; status?: unknown }>(campaigns: T[], includeDraftCampaignId = ""): T[] {
+  return campaigns.filter((campaign) => {
+    const status = String(campaign?.status || "").trim().toLowerCase();
+    return status === "active" || (status === "draft" && String(campaign?.id || "") === includeDraftCampaignId);
+  });
 }

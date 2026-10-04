@@ -62,7 +62,8 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("type GA4DailyRefreshPipelineOptions");
     expect(source).toContain("export async function runGA4DailyRefreshPipelineForCampaignNow");
     expect(source).toContain("const campaignId = String(opts.campaignId || \"\").trim();");
-    expect(source).toContain("const campaigns = filterActiveSchedulerCampaigns(campaignId");
+    expect(source).toContain("const campaigns = filterActiveSchedulerCampaigns(");
+    expect(source).toContain('opts.includeTargetDraft ? campaignId : ""');
     expect(source).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true })");
     expect(source).toContain("[GA4 Daily] KPI/Benchmark recompute result");
     expect(source).toContain("recomputeEvidence[key].push(...recomputeResult[key])");
@@ -350,6 +351,19 @@ describe("GA4 daily scheduler timing", () => {
     expect(result.campaignIdsProcessed).toEqual([]);
     expect(result.campaignIdsFailed).toEqual([]);
     expect(getGA4Connections).not.toHaveBeenCalled();
+  });
+
+  it("admits only an explicitly targeted draft for its initial GA4 import", async () => {
+    vi.spyOn(storage, "getCampaign").mockResolvedValue({ id: "campaign-1", status: "draft" } as any);
+    const getGA4Connections = vi.spyOn(storage, "getGA4Connections").mockResolvedValue([] as any);
+
+    const result = await refreshAllGA4DailyMetrics(
+      { campaignId: "campaign-1", includeTargetDraft: true },
+      new Date("2026-08-06T12:00:00.000Z"),
+    );
+
+    expect(result.campaignIdsSkipped).toEqual(["campaign-1"]);
+    expect(getGA4Connections).toHaveBeenCalledWith("campaign-1");
   });
 
   it("materializes explicit zero rows for every absent completed date and excludes inactive properties", async () => {

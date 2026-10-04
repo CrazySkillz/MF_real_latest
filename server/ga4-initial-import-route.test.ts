@@ -107,7 +107,7 @@ describe("new campaign initial GA4 import", () => {
       campaignId,
       expect.objectContaining({ status: "draft", ga4CampaignFilter: "selected_campaign" }),
     );
-    expect(schedulerMock.refreshAllGA4DailyMetrics).toHaveBeenCalledWith({ campaignId });
+    expect(schedulerMock.refreshAllGA4DailyMetrics).toHaveBeenCalledWith({ campaignId, includeTargetDraft: true });
     expect(storageMock.updateCampaign).toHaveBeenCalledWith(campaignId, { status: "active" });
     expect(storageMock.updateCampaignWithGA4DailyInvalidation.mock.invocationCallOrder[0]).toBeLessThan(
       schedulerMock.refreshAllGA4DailyMetrics.mock.invocationCallOrder[0],

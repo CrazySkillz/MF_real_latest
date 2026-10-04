@@ -24,6 +24,7 @@ type GA4DailySchedulerConfig = {
 type GA4DailyRunStatus = "idle" | "running" | "success" | "failed" | "skipped";
 type GA4DailyRefreshPipelineOptions = {
   campaignId?: string;
+  includeTargetDraft?: boolean;
   suppressAlerts?: boolean;
   refreshFinancialSources?: boolean;
 };
@@ -242,9 +243,12 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
 
   console.log(`[GA4 Daily] Refresh starting (lookbackDays=${lookbackDays}${campaignId ? `, campaignId=${campaignId}` : ""})`);
 
-  const campaigns = filterActiveSchedulerCampaigns(campaignId
-    ? [await storage.getCampaign(campaignId).catch(() => undefined)].filter(Boolean) as any[]
-    : await storage.getCampaigns().catch(() => []));
+  const campaigns = filterActiveSchedulerCampaigns(
+    campaignId
+      ? [await storage.getCampaign(campaignId).catch(() => undefined)].filter(Boolean) as any[]
+      : await storage.getCampaigns().catch(() => []),
+    opts.includeTargetDraft ? campaignId : "",
+  );
   let upserted = 0;
   const campaignIdsProcessed: string[] = [];
   const campaignIdsSkipped: string[] = [];

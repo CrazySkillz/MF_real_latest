@@ -43,7 +43,7 @@ describe("GA4 scheduler and scheduled report observability", () => {
     expectBefore(daily, "ga4DailySchedulerStatus.nextRunAt = nextRunAt;", "setTimeout(() => {");
   });
 
-  it("keeps the legacy run-now route guarded but prevents manual history writes", () => {
+  it("keeps the on-demand scheduler trigger owner-guarded and campaign-scoped", () => {
     const routes = source("server/routes-oauth.ts");
     const daily = source("server/ga4-daily-scheduler.ts");
     const route = sliceBetween(
@@ -53,14 +53,16 @@ describe("GA4 scheduler and scheduled report observability", () => {
     );
 
     expect(route).toContain("const ok = await ensureCampaignAccess(req as any, res as any, campaignId);");
-    expect(route).toContain('error: "GA4_DAILY_HISTORY_SCHEDULER_MANAGED"');
-    expect(route).not.toContain("runGA4DailyRefreshPipeline");
+    expect(route).toContain("await runGA4DailyRefreshPipelineForCampaignNow(campaignId)");
+    expect(route).toContain('error: "GA4_DAILY_PIPELINE_BUSY"');
     expect(route).not.toContain("refreshAllGA4DailyMetrics");
     expect(route).not.toContain("checkPerformanceAlerts");
     expect(route).not.toContain("checkBenchmarkPerformanceAlerts");
 
     expect(daily).toContain("type GA4DailyRefreshPipelineOptions");
-    expect(daily).not.toContain("export async function runGA4DailyRefreshPipeline");
+    expect(daily).toContain("export async function runGA4DailyRefreshPipelineForCampaignNow");
+    expect(daily).toContain('runGA4DailyRefreshPipelineForTrigger("manual", {');
+    expect(daily).toContain("refreshFinancialSources: true");
     expect(daily).toContain("const campaigns = filterActiveSchedulerCampaigns(campaignId");
     expect(daily).toContain("? [await storage.getCampaign(campaignId).catch(() => undefined)].filter(Boolean) as any[]");
     expect(daily).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true })");

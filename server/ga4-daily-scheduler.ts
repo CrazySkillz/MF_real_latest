@@ -468,7 +468,7 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
   console.log(`[GA4 Daily] Pipeline starting (trigger=${trigger}${campaignId ? `, campaignId=${campaignId}` : ""})`);
   try {
     const refreshFinancialSources = (trigger === "scheduled" && !campaignId)
-      || (trigger === "snapshot_bootstrap" && Boolean(campaignId) && opts.refreshFinancialSources === true);
+      || (["snapshot_bootstrap", "manual"].includes(trigger) && Boolean(campaignId) && opts.refreshFinancialSources === true);
     if (refreshFinancialSources) {
       const financialRefresh = await runDailyAutoRefreshOnce(trigger === "scheduled" ? "scheduled" : "manual", {
         financialSourcesOnly: true,
@@ -625,6 +625,18 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
     }
     console.log(`[GA4 Daily] Pipeline done (trigger=${trigger}, elapsedSeconds=${Math.round((Date.now() - startedAt) / 1000)})`);
   }
+}
+
+export async function runGA4DailyRefreshPipelineForCampaignNow(campaignId: string): Promise<"completed" | "skipped"> {
+  const normalizedCampaignId = String(campaignId || "").trim();
+  if (!normalizedCampaignId) throw new Error("campaignId is required");
+  if ((global as any).__ga4DailyRefreshInProgress) return "skipped";
+  await runGA4DailyRefreshPipelineForTrigger("manual", {
+    campaignId: normalizedCampaignId,
+    suppressAlerts: true,
+    refreshFinancialSources: true,
+  });
+  return "completed";
 }
 
 const getGA4DailyFailureReason = (error: any) => {

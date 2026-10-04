@@ -60,7 +60,7 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("financialBootstrapCampaignIds.has(campaignId) ? { refreshFinancialSources: true } : {}");
     expect(source).toContain("backfillMissingGA4OverviewSnapshots()");
     expect(source).toContain("type GA4DailyRefreshPipelineOptions");
-    expect(source).not.toContain("export async function runGA4DailyRefreshPipeline");
+    expect(source).toContain("export async function runGA4DailyRefreshPipelineForCampaignNow");
     expect(source).toContain("const campaignId = String(opts.campaignId || \"\").trim();");
     expect(source).toContain("const campaigns = filterActiveSchedulerCampaigns(campaignId");
     expect(source).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true })");
@@ -80,7 +80,7 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("__ga4DailyRefreshInProgress");
     expect(source).toContain("Skipping ${trigger} pipeline (already in progress)");
     expect(source).not.toContain("setInterval(() =>");
-    expect(source).toContain('trigger === "snapshot_bootstrap" && Boolean(campaignId)');
+    expect(source).toContain('["snapshot_bootstrap", "manual"].includes(trigger) && Boolean(campaignId)');
     expect(source).toContain("opts.refreshFinancialSources === true");
     expect(source).toContain('await runDailyAutoRefreshOnce(trigger === "scheduled" ? "scheduled" : "manual", {');
     expect(source).toContain('...(campaignId ? { campaignId } : {})');

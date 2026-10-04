@@ -46,7 +46,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign, refreshTikTokBenchmarksForCampaign, refreshTikTokKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./kpi-scheduler";
 import { refreshGoogleSheetsDataForCampaign, runGoogleSheetsRevenueSourceRefreshForValidation, runGoogleSheetsSpendSourceRefreshForValidation, runHubSpotRevenueSourceRefreshForValidation, runShopifyRevenueSourceRefreshForValidation } from "./auto-refresh-scheduler";
-import { getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getGA4DailySchedulerStatus, refreshAllGA4DailyMetrics } from "./ga4-daily-scheduler";
+import { getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getGA4DailySchedulerStatus, refreshAllGA4DailyMetrics, runGA4DailyRefreshPipelineForCampaignNow } from "./ga4-daily-scheduler";
 import { isInternalAutoRefreshRequest } from "./internal-request-auth";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { createReportPdfArtifact, readReportPdfArtifact } from "./utils/report-pdf-artifact";
@@ -9212,7 +9212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GA4 daily history is scheduler-managed; manual pipeline runs are intentionally disabled.
+  // Owner-guarded, campaign-scoped on-demand trigger for the ordered GA4 daily pipeline.
   app.post("/api/campaigns/:id/ga4-daily-scheduler/run-now", async (req, res) => {
     try {
       res.setHeader("Cache-Control", "no-store");
@@ -9220,10 +9220,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
 
-      return res.status(409).json({
-        success: false,
-        error: "GA4_DAILY_HISTORY_SCHEDULER_MANAGED",
-        message: "GA4 daily history is updated only by the daily scheduler.",
+      const before = getGA4DailySchedulerStatus();
+      const outcome = await runGA4DailyRefreshPipelineForCampaignNow(campaignId);
+      const after = getGA4DailySchedulerStatus();
+      if (outcome === "skipped") {
+        return res.status(409).json({ success: false, error: "GA4_DAILY_PIPELINE_BUSY", before, after });
+      }
+      return res.json({
+        success: true,
+        campaignId,
+        trigger: "manual",
+        before,
+        after,
       });
     } catch (error: any) {
       res.status(500).json({

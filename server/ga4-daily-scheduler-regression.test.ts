@@ -136,6 +136,7 @@ describe("GA4 daily scheduler timing", () => {
       { id: "campaign-financial-mismatched", status: "active", currency: "USD", ga4CampaignFilter: "saved-filter" },
       { id: "campaign-financial-unavailable", status: "active", currency: "USD", ga4CampaignFilter: "saved-filter" },
       { id: "campaign-no-spend", status: "active", currency: "USD", ga4CampaignFilter: "saved-filter" },
+      { id: "campaign-no-spend-financial-missing", status: "active", currency: "USD", ga4CampaignFilter: "saved-filter" },
       { id: "campaign-multi-property", status: "active", currency: "USD", ga4CampaignFilter: "saved-filter" },
       { id: "campaign-unscoped", status: "active", ga4CampaignFilter: null },
     ] as any);
@@ -159,7 +160,7 @@ describe("GA4 daily scheduler timing", () => {
       isPrimary: true,
     }] as any);
     vi.spyOn(storage, "getGA4OverviewSnapshot").mockImplementation(async (campaignId: string, propertyId: string) => {
-      if (["campaign-current", "campaign-financial-missing", "campaign-financial-mismatched", "campaign-financial-unavailable", "campaign-no-spend", "campaign-multi-property"].includes(campaignId)) return {
+      if (["campaign-current", "campaign-financial-missing", "campaign-financial-mismatched", "campaign-financial-unavailable", "campaign-no-spend", "campaign-no-spend-financial-missing", "campaign-multi-property"].includes(campaignId)) return {
         windowStart: propertyId.endsWith("secondary") ? "2026-07-01" : "2026-08-01",
         windowEnd: propertyId.endsWith("secondary") ? "2026-08-04" : "2026-08-05",
         campaignBreakdown: { meta: { currencyCode: "USD" } },
@@ -183,13 +184,11 @@ describe("GA4 daily scheduler timing", () => {
       return undefined;
     });
     vi.spyOn(storage, "getLatestGA4DailyMetric").mockResolvedValue({ date: "2026-08-05" } as any);
-    vi.spyOn(storage, "getSpendTotalForRange").mockImplementation(async (campaignId: string) => ({
-      totalSpend: campaignId === "campaign-no-spend" ? 0 : 10,
-      currency: "USD",
-      sourceIds: campaignId === "campaign-no-spend" ? [] : ["spend-source"],
-    }));
+    vi.spyOn(storage, "getSpendSources").mockImplementation(async (campaignId: string) =>
+      campaignId.startsWith("campaign-no-spend") ? [] : [{ isActive: true, createdAt: "2026-08-01T00:00:00.000Z" }] as any
+    );
     vi.spyOn(storage, "getFinancialDailyComparisonData").mockImplementation(async (campaignId: string) => ({
-      current: ["campaign-financial-missing", "campaign-multi-property"].includes(campaignId) ? null : {
+      current: ["campaign-financial-missing", "campaign-no-spend-financial-missing", "campaign-multi-property"].includes(campaignId) ? null : {
         metrics: {
           financialDaily: {
             currency: campaignId === "campaign-financial-mismatched" ? "EUR" : "USD",
@@ -204,8 +203,8 @@ describe("GA4 daily scheduler timing", () => {
     } as any));
     const runPipeline = vi.fn(async () => undefined);
 
-    await expect(backfillMissingGA4OverviewSnapshots(runPipeline)).resolves.toEqual(["campaign-missing", "campaign-mismatched", "campaign-outdated", "campaign-currency-missing", "campaign-financial-missing", "campaign-financial-mismatched", "campaign-financial-unavailable", "campaign-multi-property"]);
-    expect(runPipeline).toHaveBeenCalledTimes(8);
+    await expect(backfillMissingGA4OverviewSnapshots(runPipeline)).resolves.toEqual(["campaign-missing", "campaign-mismatched", "campaign-outdated", "campaign-currency-missing", "campaign-financial-missing", "campaign-financial-mismatched", "campaign-financial-unavailable", "campaign-no-spend-financial-missing", "campaign-multi-property"]);
+    expect(runPipeline).toHaveBeenCalledTimes(9);
     expect(runPipeline).toHaveBeenCalledWith("snapshot_bootstrap", {
       campaignId: "campaign-missing",
       suppressAlerts: true,
@@ -240,6 +239,11 @@ describe("GA4 daily scheduler timing", () => {
     expect(runPipeline).not.toHaveBeenCalledWith("snapshot_bootstrap", {
       campaignId: "campaign-no-spend",
       suppressAlerts: true,
+    });
+    expect(runPipeline).toHaveBeenCalledWith("snapshot_bootstrap", {
+      campaignId: "campaign-no-spend-financial-missing",
+      suppressAlerts: true,
+      refreshFinancialSources: true,
     });
     expect(runPipeline).toHaveBeenCalledWith("snapshot_bootstrap", {
       campaignId: "campaign-multi-property",

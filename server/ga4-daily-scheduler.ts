@@ -3,7 +3,7 @@ import { GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION, ga4Service } from "./analytics"
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./kpi-scheduler";
 import { checkGA4BenchmarkPerformanceAlertsForCampaign, checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getLatestCompleteReportingDate, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getLatestCompleteReportingDate, getReportingDateWindow, isCreatedThroughReportingDate, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { createHash } from "crypto";
 import { addGA4InsightsDateDays, normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 import { beginFinancialDailySnapshotRefreshObservation, recordFinancialDailySnapshotRefreshEvidence } from "./utils/financial-daily-snapshot-observation";
@@ -708,17 +708,21 @@ export async function backfillMissingGA4OverviewSnapshots(
         needsBootstrap = true;
       }
       if (connection !== primaryConnection || !latestDaily) continue;
-      const spendTotals = await storage.getSpendTotalForRange(campaignId, "1900-01-01", String(latestDaily.date), "ga4");
-      if (spendTotals.sourceIds.length > 0) {
-        const financial = await storage.getFinancialDailyComparisonData(campaignId, String(latestDaily.date), String(latestDaily.date));
-        const financialDaily = (financial.current?.metrics as any)?.financialDaily;
-        const inputsReady = ["spend", "revenue", "conversions"].every((key) => financialDaily?.inputs?.[key]?.available === true);
-        if (!financialDaily || financialDaily.currency !== (expectedCurrency || "USD") ||
-            financialDaily.currentValueWindow?.startDate !== expectedStartDate ||
-            financialDaily.currentValueWindow?.reportingTimeZone !== normalizeReportingTimeZone((campaign as any)?.reportingTimeZone) || !inputsReady) {
-          needsBootstrap = true;
-          financialBootstrapCampaignIds.add(campaignId);
-        }
+      const [spendSources, financial] = await Promise.all([
+        storage.getSpendSources(campaignId, "ga4"),
+        storage.getFinancialDailyComparisonData(campaignId, String(latestDaily.date), String(latestDaily.date)),
+      ]);
+      const spendConfigured = spendSources.some((source: any) =>
+        source?.isActive !== false && isCreatedThroughReportingDate(source?.createdAt, String(latestDaily.date), (campaign as any)?.reportingTimeZone)
+      );
+      const financialDaily = (financial.current?.metrics as any)?.financialDaily;
+      const requiredInputs = [...(spendConfigured ? ["spend"] : []), "revenue", "conversions"];
+      const inputsReady = requiredInputs.every((key) => financialDaily?.inputs?.[key]?.available === true);
+      if (!financialDaily || financialDaily.currency !== (expectedCurrency || "USD") ||
+          financialDaily.currentValueWindow?.startDate !== expectedStartDate ||
+          financialDaily.currentValueWindow?.reportingTimeZone !== normalizeReportingTimeZone((campaign as any)?.reportingTimeZone) || !inputsReady) {
+        needsBootstrap = true;
+        financialBootstrapCampaignIds.add(campaignId);
       }
     }
     if (needsBootstrap) campaignIds.push(campaignId);

@@ -7,11 +7,12 @@ from pathlib import Path
 import time
 import urllib.parse
 import urllib.request
+from zoneinfo import ZoneInfo
 
 
 PROPERTY_ID = os.environ.get("GA4_SEED_PROPERTY_ID", "542352127")
 MEASUREMENT_ID = os.environ.get("GA4_SEED_MEASUREMENT_ID", "G-5N95YKGP04")
-API_SECRET = os.environ.get("GA4_SEED_API_SECRET", "sO4a9KMPSE-d2EkRe_uxqg")
+API_SECRET = os.environ.get("GA4_SEED_API_SECRET", "").strip()
 TIMESTAMP_SAFETY_OFFSET_MICROS = 60 * 1_000_000
 
 CAMPAIGNS = [
@@ -26,7 +27,9 @@ CAMPAIGNS = [
 def parse_args():
     parser = argparse.ArgumentParser(description="Seed GA4 Measurement Protocol test traffic with per-run metric variation.")
     parser.add_argument("--log-dir", default="logs/ga4-seed-runs", help="Directory for per-run JSON seed logs.")
-    parser.add_argument("--event-date", help="UTC event date (YYYY-MM-DD), for completed-day UI validation.")
+    parser.add_argument("--event-date", required=True, help="Completed GA4 reporting date (YYYY-MM-DD).")
+    parser.add_argument("--reporting-time-zone", required=True, help="IANA timezone used by the target campaign/property.")
+    parser.add_argument("--currency", required=True, help="Three-letter campaign/property currency, for example EUR.")
     parser.add_argument("--campaign", action="append", choices=[campaign["name"] for campaign in CAMPAIGNS])
     return parser.parse_args()
 
@@ -61,7 +64,22 @@ def build_run_campaigns(run_started):
     return varied
 
 
+def resolve_seed_context(event_date_value, reporting_time_zone_value, currency_value, run_started):
+    event_date = dt.date.fromisoformat(event_date_value)
+    reporting_time_zone = ZoneInfo(reporting_time_zone_value)
+    latest_completed_date = run_started.astimezone(reporting_time_zone).date() - dt.timedelta(days=1)
+    if event_date > latest_completed_date:
+        raise ValueError(f"--event-date must be completed in {reporting_time_zone_value} (latest: {latest_completed_date})")
+    currency = currency_value.strip().upper()
+    if len(currency) != 3 or not currency.isalpha():
+        raise ValueError("--currency must be a three-letter code")
+    event_day_start = dt.datetime.combine(event_date, dt.time(12), tzinfo=reporting_time_zone).astimezone(dt.timezone.utc)
+    return event_date, reporting_time_zone, currency, event_day_start
+
+
 def send_events(client_id, events):
+    if not API_SECRET:
+        raise RuntimeError("GA4_SEED_API_SECRET is required")
     url = (
         "https://www.google-analytics.com/mp/collect?"
         + urllib.parse.urlencode({"measurement_id": MEASUREMENT_ID, "api_secret": API_SECRET})
@@ -101,11 +119,12 @@ def validate_events(client_id, events):
         raise RuntimeError(f"GA4 strict payload validation failed: {json.dumps(messages)}")
 
 
-def build_session_identity(campaign_index, session_index, event_day_start_micros=None):
+def build_session_identity(campaign_index, session_index, event_day_start_micros=None, run_nonce=0):
     timestamp_micros = event_day_start_micros + ((campaign_index * 1000 + session_index) * 1_000_000) \
         if event_day_start_micros else (time.time_ns() // 1000) - TIMESTAMP_SAFETY_OFFSET_MICROS
     session_id = timestamp_micros // 1_000_000
-    client_id = f"{555000000 + campaign_index * 10000 + session_index}.{session_id}"
+    client_numeric = (int(run_nonce) * 1_000_000) + (campaign_index * 1000) + session_index
+    client_id = f"{client_numeric}.{session_id}"
     return client_id, session_id, timestamp_micros
 
 
@@ -115,7 +134,7 @@ def build_page_location(campaign):
     })
 
 
-def build_session_events(campaign, session_id, page_location, is_engaged, purchase_value=None, transaction_id=None, timestamp_micros=None):
+def build_session_events(campaign, session_id, page_location, is_engaged, purchase_value=None, transaction_id=None, timestamp_micros=None, currency=None):
     timestamp_micros = timestamp_micros or (time.time_ns() // 1000) - TIMESTAMP_SAFETY_OFFSET_MICROS
     base_params = {
         "session_id": session_id,
@@ -162,12 +181,14 @@ def build_session_events(campaign, session_id, page_location, is_engaged, purcha
             },
         })
     if purchase_value is not None and transaction_id:
+        if not currency:
+            raise ValueError("currency is required for purchase events")
         events.append({
             "name": "purchase",
             "timestamp_micros": timestamp_micros + 3000,
             "params": {
                 **base_params,
-                "currency": "USD",
+                "currency": currency,
                 "value": purchase_value,
                 "transaction_id": transaction_id,
                 "items": [
@@ -185,14 +206,15 @@ def build_session_events(campaign, session_id, page_location, is_engaged, purcha
 
 def main():
     args = parse_args()
+    if not API_SECRET:
+        raise RuntimeError("GA4_SEED_API_SECRET is required")
     run_started = dt.datetime.now(dt.timezone.utc)
-    event_date = dt.date.fromisoformat(args.event_date) if args.event_date else None
-    if event_date and event_date > run_started.date():
-        raise ValueError("--event-date cannot be in the future")
-    event_day_start_micros = int(
-        dt.datetime.combine(event_date, dt.time(12), tzinfo=dt.timezone.utc).timestamp() * 1_000_000
-    ) if event_date else None
-    run_id = run_started.strftime("%Y%m%d%H%M%S")
+    event_date, reporting_time_zone, currency, event_day_start = resolve_seed_context(
+        args.event_date, args.reporting_time_zone, args.currency, run_started
+    )
+    event_day_start_micros = int(event_day_start.timestamp() * 1_000_000)
+    run_id = run_started.strftime("%Y%m%d%H%M%S%f")
+    run_nonce = int(run_started.timestamp() * 1_000_000)
     run_campaigns = build_run_campaigns(run_started)
     if args.campaign:
         selected_campaigns = set(args.campaign)
@@ -203,7 +225,7 @@ def main():
     for campaign in run_campaigns:
         campaign_index = campaign["_seed_index"]
         client_id, session_id, timestamp_micros = build_session_identity(
-            campaign_index, 0, event_day_start_micros
+            campaign_index, 0, event_day_start_micros, run_nonce
         )
         validate_events(client_id, build_session_events(
             campaign,
@@ -213,6 +235,7 @@ def main():
             1.0,
             f"validation-{run_id}-{campaign['name']}",
             timestamp_micros,
+            currency,
         ))
 
     for campaign in run_campaigns:
@@ -227,7 +250,7 @@ def main():
         }
         for i in range(campaign["sessions"]):
             client_id, session_id, timestamp_micros = build_session_identity(
-                campaign_index, i, event_day_start_micros
+                campaign_index, i, event_day_start_micros, run_nonce
             )
             will_purchase = i < campaign["purchases"]
             is_engaged = i < campaign["engaged_sessions"] or will_purchase
@@ -254,6 +277,7 @@ def main():
                 purchase_value,
                 transaction_id,
                 timestamp_micros,
+                currency,
             )
             send_events(client_id, events)
             sent += len(events)
@@ -271,7 +295,7 @@ def main():
         f"sessions={total_sessions}, "
         f"engaged_sessions={total_engaged}, "
         f"purchases={total_purchases}, "
-        f"revenue=${total_revenue:.2f}"
+        f"revenue={currency} {total_revenue:.2f}"
     )
     print("Campaign totals:")
     for summary in summaries:
@@ -280,7 +304,7 @@ def main():
             f"sessions={summary['sessions']}, "
             f"engaged_sessions={summary['engaged_sessions']}, "
             f"purchases={summary['purchases']}, "
-            f"revenue=${summary['revenue']:.2f}"
+            f"revenue={currency} {summary['revenue']:.2f}"
         )
 
     selected_scope = [campaign["name"] for campaign in run_campaigns]
@@ -289,6 +313,9 @@ def main():
         "run_id": run_id,
         "run_started_utc": run_started.isoformat(),
         "event_date_utc": event_date.isoformat() if event_date else None,
+        "event_timestamp_start_utc": event_day_start.isoformat(),
+        "reporting_time_zone": args.reporting_time_zone,
+        "currency": currency,
         "property_id": PROPERTY_ID,
         "measurement_id": MEASUREMENT_ID,
         "selected_scope": {

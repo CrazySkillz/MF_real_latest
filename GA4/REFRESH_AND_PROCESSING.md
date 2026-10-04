@@ -196,6 +196,8 @@ Mock-live seed scripts used for validation should send standard GA4 events:
 
 They should not send a separate standalone `user_engagement` event unless the test explicitly validates that event. Some GA4 test properties can mark `user_engagement` as a key event, which inflates native GA4 `Conversions` after delayed processing.
 
+`scripts/seed_ga4_mock_campaigns.py` requires the completed reporting date, the target campaign/property timezone, and its currency. It also requires `GA4_SEED_API_SECRET` in the environment; the secret must not be stored in source code. Each run generates unique GA4 client and transaction identities so repeated validations cannot merge with an earlier run. For KYC Promo, use `--reporting-time-zone Europe/Amsterdam --currency EUR`; do not resend a batch while an earlier accepted batch is still being processed by GA4.
+
 ## On-Demand GA4 Daily Refresh
 
 On-demand GA4 daily-history writes are restricted to the same ordered pipeline used by the timer.

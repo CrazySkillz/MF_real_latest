@@ -154,7 +154,7 @@ Runtime cadence:
 
 - the scheduler starts from the server startup background-scheduler block, about 5 seconds after the server begins listening
 - every recurring GA4 refresh, startup snapshot discovery, financial-source pass, KPI/Benchmark recompute, aggregate/Executive Summary snapshot job, and Google Sheets token-refresh pass filters to campaigns whose persisted status is exactly `active`; draft, inactive, paused, missing-status, and deleted campaigns are skipped. Campaign creation has one bounded exception: its initial GA4 import may process only the explicitly targeted draft, which is activated only after that import succeeds
-- it schedules one daily run at `GA4_DAILY_REFRESH_HOUR:GA4_DAILY_REFRESH_MINUTE` in `GA4_DAILY_REFRESH_TIME_ZONE`, defaulting to `03:00 UTC`
+- it schedules recurring runs at the comma-separated hours in `GA4_DAILY_REFRESH_HOURS`, using `GA4_DAILY_REFRESH_MINUTE` and `GA4_DAILY_REFRESH_TIME_ZONE`; when the hours list is absent or invalid, the existing `GA4_DAILY_REFRESH_HOUR` single-run schedule remains the fallback and still defaults to `03:00 UTC`
 - `GA4_DAILY_PIPELINE_OWNS_REFRESH` defaults to `true`, preventing the separate full daily financial timer from racing the GA4 pipeline at the same configured time
 - `GA4_DAILY_REFRESH_TIME_ZONE` is a deployment-level scheduler setting, not a per-campaign UI setting
 - general startup refresh is disabled in code; `GA4_DAILY_REFRESH_RUN_ON_STARTUP` does not trigger an unconditional GA4 daily-history write. The bounded exception is snapshot initialization: startup discovery invokes the same campaign-scoped daily pipeline only for configured campaigns whose synchronized Overview snapshot is missing or mismatched, and skips campaigns that already have a valid snapshot
@@ -169,7 +169,7 @@ Production configuration observed on `2026-10-03`:
 
 - `GA4_DAILY_REFRESH_TIME_ZONE=UTC`, `GA4_DAILY_REFRESH_HOUR=6`, and `GA4_DAILY_REFRESH_MINUTE=0`; scheduler health reported the next run at `2026-10-04T06:00:00.000Z`, which is `08:00` Amsterdam while daylight saving time is active, with completed data through `2026-10-03`
 - the configured `AUTO_REFRESH_DAILY_HOUR=23` and `AUTO_REFRESH_DAILY_MINUTE=0` do not schedule a second daily run because `GA4_DAILY_PIPELINE_OWNS_REFRESH=true`; scheduler health correctly reports `autoRefreshScheduler.timerScheduled=false`
-- this production schedule is fixed to UTC. To keep the run at `08:00` Amsterdam across daylight-saving changes, configure `GA4_DAILY_REFRESH_TIME_ZONE=Europe/Amsterdam`, `GA4_DAILY_REFRESH_HOUR=8`, and `GA4_DAILY_REFRESH_MINUTE=0`
+- this observed production schedule is fixed to UTC. To run primary and same-day reconciliation passes at `08:00`, `14:00`, and `20:00` Amsterdam across daylight-saving changes, configure `GA4_DAILY_REFRESH_TIME_ZONE=Europe/Amsterdam`, `GA4_DAILY_REFRESH_HOURS=8,14,20`, and `GA4_DAILY_REFRESH_MINUTE=0`
 
 ## Live GA4 UTM And Measurement Protocol Behavior
 
@@ -297,7 +297,7 @@ Local/server time checks:
 
 GA4 daily scheduled-refresh validation:
 
-1. Set `GA4_DAILY_REFRESH_TIME_ZONE`, `GA4_DAILY_REFRESH_HOUR`, and `GA4_DAILY_REFRESH_MINUTE` to the intended schedule.
+1. Set `GA4_DAILY_REFRESH_TIME_ZONE`, `GA4_DAILY_REFRESH_HOURS`, and `GA4_DAILY_REFRESH_MINUTE` to the intended recurring schedule. Retain `GA4_DAILY_REFRESH_HOUR` only as the single-run fallback.
 2. Redeploy or restart and confirm:
    - `[GA4 Daily] Scheduler started`
    - `[GA4 Daily] Next scheduled run at ... timezone=... dataThroughDate=...`
@@ -364,7 +364,7 @@ Google Sheets spend auto-refresh rule:
 - after setup, a mapped Google Sheets spend-value edit must update the same active source automatically without a wizard resave; the default near-real-time target is a provider pull within 1 minute and an open GA4 Overview refetch within 15 additional seconds, approximately 75 seconds under normal provider/runtime conditions
 - this is near-real-time polling, not a literal zero-latency guarantee; provider/runtime failures can delay convergence and must be logged without replacing the last successful stored value. Google Drive webhook/channel registration and renewal are not implemented or certified in this path
 - the frequent Google Sheets spend timer must remain isolated from Upload CSV and all other provider families
-- `GA4_DAILY_REFRESH_HOUR` and `GA4_DAILY_REFRESH_MINUTE` control the synchronized daily cycle, not the one-minute Google Sheets polling test; `GA4_DAILY_REFRESH_RUN_ON_STARTUP` is disabled in code
+- `GA4_DAILY_REFRESH_HOURS` and `GA4_DAILY_REFRESH_MINUTE` control the recurring synchronized cycles when the hours list is configured; otherwise `GA4_DAILY_REFRESH_HOUR` remains the single-run fallback. These variables do not control the one-minute Google Sheets polling test, and `GA4_DAILY_REFRESH_RUN_ON_STARTUP` is disabled in code
 - to validate the normal Google Sheets spend update contract, change a known mapped value and wait for `GOOGLE_SHEETS_SPEND_REFRESH_INTERVAL_MINUTES` plus the Overview display-refetch interval; when legacy standalone ownership is intentionally enabled, `AUTO_REFRESH_RUN_ON_STARTUP=true` exercises the full scheduler and is still not proof that the source-family timer fired
 - production should not keep `AUTO_REFRESH_RUN_ON_STARTUP=true`; the ordered GA4 pipeline owns the full daily cycle by default while Google Sheets spend uses its separate bounded interval
 - on refresh, the saved Google Sheets spend source is reprocessed from the current sheet rows and replaces the previous stored amount for that source

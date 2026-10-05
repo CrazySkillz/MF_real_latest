@@ -17,6 +17,7 @@ type CampaignFilter = string | string[] | undefined;
 type GA4DailySchedulerConfig = {
   reportingTimeZone: string;
   hour: number;
+  hours: number[];
   minute: number;
   runOnStartup: boolean;
 };
@@ -206,21 +207,33 @@ const addCalendarDays = (year: number, month: number, day: number, days: number)
 
 export function getGA4DailySchedulerConfig(env: NodeJS.ProcessEnv = process.env): GA4DailySchedulerConfig {
   const reportingTimeZone = normalizeReportingTimeZone(env.GA4_DAILY_REFRESH_TIME_ZONE || "UTC");
-  const hour = parseBoundedInt(env.GA4_DAILY_REFRESH_HOUR, 3, 0, 23);
+  const legacyHour = parseBoundedInt(env.GA4_DAILY_REFRESH_HOUR, 3, 0, 23);
+  const configuredHours = String(env.GA4_DAILY_REFRESH_HOURS || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => /^\d{1,2}$/.test(value))
+    .map(Number)
+    .filter((value) => value >= 0 && value <= 23);
+  const hours = configuredHours.length > 0
+    ? Array.from(new Set(configuredHours)).sort((a, b) => a - b)
+    : [legacyHour];
+  const hour = hours[0];
   const minute = parseBoundedInt(env.GA4_DAILY_REFRESH_MINUTE, 0, 0, 59);
   const runOnStartup = false;
-  return { reportingTimeZone, hour, minute, runOnStartup };
+  return { reportingTimeZone, hour, hours, minute, runOnStartup };
 }
 
 export function getNextGA4DailyRunAt(now = new Date(), config: GA4DailySchedulerConfig = getGA4DailySchedulerConfig()): Date {
   const tz = normalizeReportingTimeZone(config.reportingTimeZone);
   const nowParts = getZonedParts(now, tz);
-  let target = zonedDateTimeToUTC(tz, nowParts.year, nowParts.month, nowParts.day, config.hour, config.minute);
-  if (target.getTime() <= now.getTime()) {
-    const nextDay = addCalendarDays(nowParts.year, nowParts.month, nowParts.day, 1);
-    target = zonedDateTimeToUTC(tz, nextDay.year, nextDay.month, nextDay.day, config.hour, config.minute);
-  }
-  return target;
+  const hours = config.hours?.length ? config.hours : [config.hour];
+  const todayTargets = hours.map((hour) =>
+    zonedDateTimeToUTC(tz, nowParts.year, nowParts.month, nowParts.day, hour, config.minute)
+  );
+  const nextToday = todayTargets.find((target) => target.getTime() > now.getTime());
+  if (nextToday) return nextToday;
+  const nextDay = addCalendarDays(nowParts.year, nowParts.month, nowParts.day, 1);
+  return zonedDateTimeToUTC(tz, nextDay.year, nextDay.month, nextDay.day, hours[0], config.minute);
 }
 
 const formatSchedulerLocalTime = (date: Date, reportingTimeZone: string) =>
@@ -802,7 +815,7 @@ export function getGA4DailySchedulerStatus() {
 
 /**
  * Start the GA4 daily refresh scheduler
- * Runs only at the configured local reporting time.
+ * Runs only at the configured local reporting times.
  */
 export function startGA4DailyScheduler(port?: number): void {
   if (typeof port === "number" && Number.isInteger(port) && port > 0) {
@@ -831,7 +844,10 @@ export function startGA4DailyScheduler(port?: number): void {
     }, delayMs);
   };
 
-  console.log(`[GA4 Daily] Scheduler started (time=${String(config.hour).padStart(2, "0")}:${String(config.minute).padStart(2, "0")}, timezone=${config.reportingTimeZone}, startupRun=${config.runOnStartup})`);
+  const configuredTimes = config.hours
+    .map((hour) => `${String(hour).padStart(2, "0")}:${String(config.minute).padStart(2, "0")}`)
+    .join(",");
+  console.log(`[GA4 Daily] Scheduler started (times=${configuredTimes}, timezone=${config.reportingTimeZone}, startupRun=${config.runOnStartup})`);
 
   scheduleNextRun();
   void backfillMissingGA4OverviewSnapshots().then((campaignIds) => {

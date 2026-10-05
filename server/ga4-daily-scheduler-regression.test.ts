@@ -17,6 +17,7 @@ describe("GA4 daily scheduler timing", () => {
     expect(getGA4DailySchedulerConfig({} as any)).toEqual({
       reportingTimeZone: "UTC",
       hour: 3,
+      hours: [3],
       minute: 0,
       runOnStartup: false,
     });
@@ -31,6 +32,22 @@ describe("GA4 daily scheduler timing", () => {
     } as any)).toEqual({
       reportingTimeZone: "Europe/Amsterdam",
       hour: 23,
+      hours: [23],
+      minute: 0,
+      runOnStartup: false,
+    });
+  });
+
+  it("uses sorted unique configured run hours and keeps the legacy hour as the fallback", () => {
+    expect(getGA4DailySchedulerConfig({
+      GA4_DAILY_REFRESH_TIME_ZONE: "Europe/Amsterdam",
+      GA4_DAILY_REFRESH_HOUR: "6",
+      GA4_DAILY_REFRESH_HOURS: "20,8,14,14,invalid,24",
+      GA4_DAILY_REFRESH_MINUTE: "0",
+    } as any)).toEqual({
+      reportingTimeZone: "Europe/Amsterdam",
+      hour: 8,
+      hours: [8, 14, 20],
       minute: 0,
       runOnStartup: false,
     });
@@ -48,11 +65,27 @@ describe("GA4 daily scheduler timing", () => {
     expect(getNextGA4DailyRunAt(new Date("2026-06-21T02:30:00.000Z"), config).toISOString()).toBe("2026-06-22T01:00:00.000Z");
   });
 
+  it("calculates each configured Amsterdam catch-up run and then advances to the next day", () => {
+    const config = {
+      reportingTimeZone: "Europe/Amsterdam",
+      hour: 8,
+      hours: [8, 14, 20],
+      minute: 0,
+      runOnStartup: false,
+    };
+
+    expect(getNextGA4DailyRunAt(new Date("2026-06-21T05:30:00.000Z"), config).toISOString()).toBe("2026-06-21T06:00:00.000Z");
+    expect(getNextGA4DailyRunAt(new Date("2026-06-21T07:00:00.000Z"), config).toISOString()).toBe("2026-06-21T12:00:00.000Z");
+    expect(getNextGA4DailyRunAt(new Date("2026-06-21T13:00:00.000Z"), config).toISOString()).toBe("2026-06-21T18:00:00.000Z");
+    expect(getNextGA4DailyRunAt(new Date("2026-06-21T19:00:00.000Z"), config).toISOString()).toBe("2026-06-22T06:00:00.000Z");
+  });
+
   it("keeps scheduler logs, startup control, and overlap protection explicit", () => {
     const source = schedulerSource();
 
     expect(source).toContain("GA4_DAILY_REFRESH_TIME_ZONE");
     expect(source).toContain("GA4_DAILY_REFRESH_HOUR");
+    expect(source).toContain("GA4_DAILY_REFRESH_HOURS");
     expect(source).toContain("GA4_DAILY_REFRESH_MINUTE");
     expect(source).not.toContain("GA4_DAILY_REFRESH_RUN_ON_STARTUP");
     expect(source).not.toContain('runGA4DailyRefreshPipelineForTrigger("startup")');

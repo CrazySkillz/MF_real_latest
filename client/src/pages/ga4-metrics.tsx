@@ -6677,7 +6677,7 @@ export default function GA4Metrics() {
                             <p className="text-2xl font-bold text-foreground mt-1">
                               {renderFinancialValue(financialRevenueLoading, financialRevenueAvailable, formatMoney(Number(financialRevenue || 0)))}
                             </p>
-                            {(importedRevenueToDateResp as any)?.endDate && <p className="mt-1 text-xs text-muted-foreground/70">Data through {formatReportingDateLabel((importedRevenueToDateResp as any).endDate)}</p>}
+                            {(importedRevenueToDateResp as any)?.endDate && <p className="mt-1 text-xs text-muted-foreground/70">Latest imported day: {formatReportingDateLabel((importedRevenueToDateResp as any).endDate)}</p>}
                             {revenueSourcesUnavailable ? (
                               <p className="mt-2 text-xs text-destructive">Sources unavailable</p>
                             ) : revenueSourcesCount > 0 && (
@@ -6711,7 +6711,7 @@ export default function GA4Metrics() {
                             <p className="text-2xl font-bold text-foreground mt-1">
                               {renderFinancialValue(financialSpendLoading, financialSpendAvailable, formatMoney(Number(financialSpend || 0)))}
                             </p>
-                            {(spendToDateResp as any)?.endDate && <p className="mt-1 text-xs text-muted-foreground/70">Data through {formatReportingDateLabel((spendToDateResp as any).endDate)}</p>}
+                            {(spendToDateResp as any)?.endDate && <p className="mt-1 text-xs text-muted-foreground/70">Latest imported day: {formatReportingDateLabel((spendToDateResp as any).endDate)}</p>}
                             {spendSourcesUnavailable ? (
                               <p className="mt-2 text-xs text-destructive">Sources unavailable</p>
                             ) : spendSourcesCount > 0 && (

@@ -70,7 +70,7 @@ For active real GA4 campaigns, one ordered daily pipeline owns the publication c
 1. refresh mapped financial sources
 2. atomically refresh GA4 Overview facts and the Campaign Breakdown, Landing Pages, and Conversion Events snapshot
 3. recompute KPI and Benchmark values and classifications
-4. write the guarded financial daily snapshot used by Trend Analysis
+4. write the guarded financial daily snapshot used by GA4 Overview financial cards and Trend Analysis
 5. write the compatible campaign aggregate snapshot used by Performance Summary and Budget & Financial Analysis history
 6. capture the Executive Summary daily trajectory snapshot
 7. run campaign KPI and Benchmark alert checks; recommendations then read the same refreshed inputs

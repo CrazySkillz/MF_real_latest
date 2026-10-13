@@ -1975,6 +1975,22 @@ export default function GA4Metrics() {
   }, [ga4DailyRows, ga4DailyDataThroughDate]);
   const ga4OverviewExpectedEndDate = String((ga4DailyResp as any)?.latestStoredDailyDate || ga4ReportDate || "").trim();
 
+  const { data: financialDailySnapshotResp, isLoading: financialDailySnapshotLoading, isError: financialDailySnapshotError } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "financial-daily-snapshot", ga4OverviewExpectedEndDate],
+    enabled: activeTab === "overview" && !!campaignId && !!ga4OverviewExpectedEndDate,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 10 * 60 * 1000,
+    refetchIntervalInBackground: true,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/financial-daily-snapshot?throughDate=${encodeURIComponent(ga4OverviewExpectedEndDate)}`);
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok || !json || json?.success === false) throw new Error(json?.message || "Failed to fetch synchronized financial snapshot");
+      return json;
+    },
+  });
+
   const ga4Metrics = useMemo<any>(() => {
     if (!ga4ReportDate) return null;
     const row = ga4DailyRows.find((r: any) => String(r?.date) === String(ga4ReportDate));
@@ -2944,6 +2960,18 @@ export default function GA4Metrics() {
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
   const financialROI = computeRoiPercent(financialRevenue, financialSpend);
   const financialCPA = computeCpa(financialSpend, financialConversions);
+  const overviewFinancialSnapshot = (financialDailySnapshotResp as any)?.snapshot;
+  const overviewFinancialInputs = overviewFinancialSnapshot?.metrics?.financialDaily?.inputs;
+  const overviewFinancialReportingDate = String(overviewFinancialSnapshot?.reportingDate || "");
+  const overviewFinancialRevenueAvailable = overviewFinancialInputs?.revenue?.available === true;
+  const overviewFinancialSpendAvailable = overviewFinancialInputs?.spend?.available === true;
+  const overviewFinancialConversionsAvailable = overviewFinancialInputs?.conversions?.available === true;
+  const overviewFinancialRevenue = Number(overviewFinancialInputs?.revenue?.value || 0);
+  const overviewFinancialSpend = Number(overviewFinancialInputs?.spend?.value || 0);
+  const overviewFinancialConversions = Number(overviewFinancialInputs?.conversions?.value || 0);
+  const overviewFinancialROAS = overviewFinancialSpend > 0 ? overviewFinancialRevenue / overviewFinancialSpend : 0;
+  const overviewFinancialROI = computeRoiPercent(overviewFinancialRevenue, overviewFinancialSpend);
+  const overviewFinancialCPA = computeCpa(overviewFinancialSpend, overviewFinancialConversions);
   // Initial failures render at the affected card/table. Keep the page-wide warning
   // only for visible Overview values retained from a previous successful request.
   const overviewVisibleDataUsingLastGoodData = Boolean(
@@ -2960,7 +2988,8 @@ export default function GA4Metrics() {
     (spendSourcesError && spendSourcesResp !== undefined) ||
     (spendBreakdownError && spendBreakdownResp !== undefined) ||
     (hubspotPipelineProxyError && hubspotPipelineProxyData !== undefined) ||
-    (salesforcePipelineProxyError && salesforcePipelineProxyData !== undefined)
+    (salesforcePipelineProxyError && salesforcePipelineProxyData !== undefined) ||
+    (financialDailySnapshotError && financialDailySnapshotResp !== undefined)
   );
   // Campaign Breakdown is an independently scoped provider response. Validate its
   // native rows against its own provider total without changing protected cards.
@@ -6675,9 +6704,9 @@ export default function GA4Metrics() {
                               </button>}
                             </div>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {renderFinancialValue(financialRevenueLoading, financialRevenueAvailable, formatMoney(Number(financialRevenue || 0)))}
+                              {renderFinancialValue(financialDailySnapshotLoading, overviewFinancialRevenueAvailable, formatMoney(overviewFinancialRevenue))}
                             </p>
-                            {(importedRevenueToDateResp as any)?.endDate && <p className="mt-1 text-xs text-muted-foreground/70">Latest imported day: {formatReportingDateLabel((importedRevenueToDateResp as any).endDate)}</p>}
+                            {overviewFinancialReportingDate && <p className="mt-1 text-xs text-muted-foreground/70">Latest imported day: {formatReportingDateLabel(overviewFinancialReportingDate)}</p>}
                             {revenueSourcesUnavailable ? (
                               <p className="mt-2 text-xs text-destructive">Sources unavailable</p>
                             ) : revenueSourcesCount > 0 && (
@@ -6709,9 +6738,9 @@ export default function GA4Metrics() {
                               </button>}
                             </div>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {renderFinancialValue(financialSpendLoading, financialSpendAvailable, formatMoney(Number(financialSpend || 0)))}
+                              {renderFinancialValue(financialDailySnapshotLoading, overviewFinancialSpendAvailable, formatMoney(overviewFinancialSpend))}
                             </p>
-                            {(spendToDateResp as any)?.endDate && <p className="mt-1 text-xs text-muted-foreground/70">Latest imported day: {formatReportingDateLabel((spendToDateResp as any).endDate)}</p>}
+                            {overviewFinancialReportingDate && <p className="mt-1 text-xs text-muted-foreground/70">Latest imported day: {formatReportingDateLabel(overviewFinancialReportingDate)}</p>}
                             {spendSourcesUnavailable ? (
                               <p className="mt-2 text-xs text-destructive">Sources unavailable</p>
                             ) : spendSourcesCount > 0 && (
@@ -6757,12 +6786,12 @@ export default function GA4Metrics() {
                       <div className="mt-5">
                         <h4 className="text-sm font-semibold text-foreground mb-2">Performance</h4>
                       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
-                        {financialRevenueAvailable && financialSpendAvailable && revenueMetricAvailable && spendMetricAvailable && (
+                        {overviewFinancialRevenueAvailable && overviewFinancialSpendAvailable && (
                           <Card>
                             <CardContent className="p-5">
                               <p className="text-sm font-medium text-muted-foreground/70">Profit</p>
-                              <p className={`text-2xl font-bold mt-1 ${(financialRevenue - financialSpend) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                                {formatMoney(financialRevenue - financialSpend)}
+                              <p className={`text-2xl font-bold mt-1 ${(overviewFinancialRevenue - overviewFinancialSpend) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                                {formatMoney(overviewFinancialRevenue - overviewFinancialSpend)}
                               </p>
                               <p className="text-xs text-muted-foreground/70 mt-1">Revenue − Spend</p>
                             </CardContent>
@@ -6773,13 +6802,13 @@ export default function GA4Metrics() {
                             <p className="text-sm font-medium text-muted-foreground/70">ROAS</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
                               {renderFinancialValue(
-                                financialRevenueLoading || financialSpendLoading,
-                                financialRevenueAvailable && financialSpendAvailable,
-                                financialSpend > 0 ? `${financialROAS.toFixed(2)}x` : "—"
+                                financialDailySnapshotLoading,
+                                overviewFinancialRevenueAvailable && overviewFinancialSpendAvailable,
+                                overviewFinancialSpend > 0 ? `${overviewFinancialROAS.toFixed(2)}x` : "—"
                               )}
                             </p>
                             <p className="text-xs text-muted-foreground/70 mt-1">
-                              Revenue ÷ Spend{financialSpendAvailable && financialSpend <= 0 ? " (needs spend)" : ""}
+                              Revenue ÷ Spend{overviewFinancialSpendAvailable && overviewFinancialSpend <= 0 ? " (needs spend)" : ""}
                             </p>
                           </CardContent>
                         </Card>
@@ -6788,13 +6817,13 @@ export default function GA4Metrics() {
                             <p className="text-sm font-medium text-muted-foreground/70">ROI</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
                               {renderFinancialValue(
-                                financialRevenueLoading || financialSpendLoading,
-                                financialRevenueAvailable && financialSpendAvailable,
-                                financialSpend > 0 ? formatPercentage(financialROI) : "—"
+                                financialDailySnapshotLoading,
+                                overviewFinancialRevenueAvailable && overviewFinancialSpendAvailable,
+                                overviewFinancialSpend > 0 ? formatPercentage(overviewFinancialROI) : "—"
                               )}
                             </p>
                             <p className="text-xs text-muted-foreground/70 mt-1">
-                              (Revenue − Spend) ÷ Spend{financialSpendAvailable && financialSpend <= 0 ? " (needs spend)" : ""}
+                              (Revenue − Spend) ÷ Spend{overviewFinancialSpendAvailable && overviewFinancialSpend <= 0 ? " (needs spend)" : ""}
                             </p>
                           </CardContent>
                         </Card>
@@ -6803,13 +6832,13 @@ export default function GA4Metrics() {
                             <p className="text-sm font-medium text-muted-foreground/70">CPA</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
                               {renderFinancialValue(
-                                financialSpendLoading || ga4ToDateLoading || ga4Loading || breakdownLoading,
-                                financialSpendAvailable && ga4FinancialNativeAvailable,
-                                financialSpend > 0 && Number(financialConversions || 0) > 0 ? formatMoney(Number(financialCPA || 0)) : "—"
+                                financialDailySnapshotLoading,
+                                overviewFinancialSpendAvailable && overviewFinancialConversionsAvailable,
+                                overviewFinancialSpend > 0 && overviewFinancialConversions > 0 ? formatMoney(overviewFinancialCPA) : "—"
                               )}
                             </p>
                             <p className="text-xs text-muted-foreground/70 mt-1">
-                              Spend ÷ Conversions{financialSpend <= 0 ? " (needs spend)" : Number(financialConversions || 0) <= 0 ? " (needs conversions > 0)" : ""}
+                              Spend ÷ Conversions{overviewFinancialSpend <= 0 ? " (needs spend)" : overviewFinancialConversions <= 0 ? " (needs conversions > 0)" : ""}
                             </p>
                           </CardContent>
                         </Card>

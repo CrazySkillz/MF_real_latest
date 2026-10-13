@@ -435,11 +435,11 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("const campaignBreakdownImportedRevenueUnavailable =");
     expect(ga4Metrics).toContain("campaignBreakdownImportedRevenueUnavailable ||");
     expect(ga4Metrics).toContain("const renderFinancialValue = (loading: boolean, available: boolean, value: string, unavailableLabel = \"Unavailable\")");
-    expect(ga4Metrics).toContain("renderFinancialValue(financialRevenueLoading, financialRevenueAvailable, formatMoney(Number(financialRevenue || 0)))");
+    expect(ga4Metrics).toContain("renderFinancialValue(financialDailySnapshotLoading, overviewFinancialRevenueAvailable, formatMoney(overviewFinancialRevenue))");
     expect(ga4Metrics).toContain('if (needsRevenue && (!financialRevenueAvailable || importedRevenueError || revenueSourcesError || revenueBreakdownError)) unavailable.push("Revenue");');
-    expect(ga4Metrics).toContain("financialRevenueAvailable && financialSpendAvailable && revenueMetricAvailable && spendMetricAvailable");
-    expect(ga4Metrics).toContain("financialSpend > 0 ? `${financialROAS.toFixed(2)}x`");
-    expect(ga4Metrics).toContain("financialSpend > 0 ? formatPercentage(financialROI)");
+    expect(ga4Metrics).toContain("overviewFinancialRevenueAvailable && overviewFinancialSpendAvailable");
+    expect(ga4Metrics).toContain("overviewFinancialSpend > 0 ? `${overviewFinancialROAS.toFixed(2)}x`");
+    expect(ga4Metrics).toContain("overviewFinancialSpend > 0 ? formatPercentage(overviewFinancialROI)");
     expect(ga4Metrics).not.toContain('financialRevenue <= 0 ? " (needs revenue)"');
     expect(ga4Metrics).toContain("Cannot generate the Overview report while these sections are unavailable:");
     expect(ga4Metrics).toContain('overviewSubsections.summary === true');

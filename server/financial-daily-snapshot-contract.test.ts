@@ -134,7 +134,7 @@ describe("compact daily financial snapshot contract", () => {
     const scheduler = readFileSync(join(process.cwd(), "server", "report-scheduler.ts"), "utf-8");
     const fallback = readFileSync(join(process.cwd(), "server", "utils", "financial-daily-comparison.ts"), "utf-8");
     const readerStart = storage.indexOf("async getFinancialDailyComparisonData(");
-    const readerEnd = storage.indexOf("async getComparisonData(", readerStart);
+    const readerEnd = storage.indexOf("async getLatestFinancialDailySnapshot(", readerStart);
     const reader = storage.slice(readerStart, readerEnd);
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/snapshots/comparison"');
     const routeEnd = routes.indexOf("// Get campaign snapshots by time period", routeStart);
@@ -157,5 +157,36 @@ describe("compact daily financial snapshot contract", () => {
     expect(scheduler).toContain("resolveFinancialDailyComparisonPrevious({");
     expect(fallback).toContain("getCampaignMetricTotalsAtDate(campaignId, reportingDate, financialStartDate)");
     expect(fallback).not.toContain("upsertFinancialDailySnapshot");
+  });
+
+  it("serves the latest validated snapshot through the Overview financial cards", () => {
+    const storage = readFileSync(join(process.cwd(), "server", "storage.ts"), "utf-8");
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const overview = readFileSync(join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"), "utf-8");
+    const readerStart = storage.indexOf("async getLatestFinancialDailySnapshot(");
+    const readerEnd = storage.indexOf("async getComparisonData(", readerStart);
+    const reader = storage.slice(readerStart, readerEnd);
+    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/financial-daily-snapshot"');
+    const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/snapshots/comparison"', routeStart);
+    const route = routes.slice(routeStart, routeEnd);
+    const cardsStart = overview.indexOf("{/* Revenue & Financial */}");
+    const cardsEnd = overview.indexOf("{/* Campaign Breakdown */}", cardsStart);
+    const cards = overview.slice(cardsStart, cardsEnd);
+
+    expect(reader).toContain("eq(metricSnapshots.campaignId, campaignId)");
+    expect(reader).toContain("eq(metricSnapshots.snapshotType, 'financial_daily')");
+    expect(reader).toContain("lte(metricSnapshots.reportingDate, throughReportingDate)");
+    expect(reader).toContain("orderBy(desc(metricSnapshots.reportingDate)).limit(1)");
+    expect(reader).toContain("financialDailySnapshotInputSchema.safeParse({");
+    expect(route).toContain("requireCampaignAccessParamId");
+    expect(route).toContain("throughDate > latestCompletedDate");
+    expect(route).toContain("storage.getLatestFinancialDailySnapshot(campaignId, throughDate)");
+    expect(overview).toContain("financial-daily-snapshot?throughDate=${encodeURIComponent(ga4OverviewExpectedEndDate)}");
+    expect(cards).toContain("overviewFinancialRevenueAvailable");
+    expect(cards).toContain("overviewFinancialSpendAvailable");
+    expect(cards).toContain("overviewFinancialConversionsAvailable");
+    expect(cards).toContain("overviewFinancialReportingDate");
+    expect(cards).not.toContain("renderFinancialValue(financialRevenueLoading, financialRevenueAvailable");
+    expect(cards).not.toContain("renderFinancialValue(financialSpendLoading, financialSpendAvailable");
   });
 });

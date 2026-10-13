@@ -31900,6 +31900,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/campaigns/:id/financial-daily-snapshot", requireCampaignAccessParamId, async (req, res) => {
+    try {
+      const campaignId = String(req.params.id || "");
+      const throughDate = String(req.query.throughDate || "").trim();
+      const latestCompletedDate = getReportingDateWindow(1, (req as any)._campaign?.reportingTimeZone).endDate;
+      const parsedThroughDate = new Date(`${throughDate}T00:00:00.000Z`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(throughDate) || Number.isNaN(parsedThroughDate.getTime())
+        || parsedThroughDate.toISOString().slice(0, 10) !== throughDate || throughDate > latestCompletedDate) {
+        return res.status(400).json({ message: "throughDate must be a completed campaign reporting date in YYYY-MM-DD format" });
+      }
+      const snapshot = await storage.getLatestFinancialDailySnapshot(campaignId, throughDate);
+      res.json({ success: true, snapshot });
+    } catch (error) {
+      console.error("Financial daily snapshot fetch error:", error);
+      res.status(500).json({ message: "Failed to fetch financial daily snapshot" });
+    }
+  });
+
   app.get("/api/campaigns/:id/snapshots/comparison", requireCampaignAccessParamId, async (req, res) => {
     try {
       const { id } = req.params;

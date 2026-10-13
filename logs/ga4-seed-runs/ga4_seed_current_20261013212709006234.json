@@ -1,0 +1,66 @@
+{
+  "run_id": "20261013212709006234",
+  "status": "sent",
+  "mode": "current_time",
+  "run_started_utc": "2026-10-13T21:27:09.006234+00:00",
+  "completed_at_utc": "2026-10-13T21:27:20.879506+00:00",
+  "event_timestamp_first_utc": "2026-10-13T21:26:09.251013+00:00",
+  "event_timestamp_last_utc": "2026-10-13T21:26:20.761083+00:00",
+  "reporting_date_expected": "2026-10-13",
+  "reporting_time_zone": "Europe/Amsterdam",
+  "currency": "EUR",
+  "property_id": "542352127",
+  "measurement_id": "G-5N95YKGP04",
+  "selected_scope": {
+    "campaigns": [
+      "yesop_brand_search",
+      "yesop_retargeting"
+    ],
+    "sessions": 121,
+    "engaged_sessions": 88,
+    "purchases": 13,
+    "revenue": 3121.65
+  },
+  "totals": {
+    "sessions": 121,
+    "engaged_sessions": 88,
+    "purchases": 13,
+    "revenue": 3121.65,
+    "requests_sent": 121,
+    "events_sent": 343
+  },
+  "campaigns": [
+    {
+      "name": "yesop_brand_search",
+      "source": "google",
+      "medium": "cpc",
+      "sessions": 81,
+      "engaged_sessions": 59,
+      "purchases": 8,
+      "revenue": 1818.75,
+      "variation": {
+        "session_factor": 1.01,
+        "purchase_factor": 1.02,
+        "revenue_factor": 0.75
+      }
+    },
+    {
+      "name": "yesop_retargeting",
+      "source": "google",
+      "medium": "display",
+      "sessions": 40,
+      "engaged_sessions": 29,
+      "purchases": 5,
+      "revenue": 1302.9,
+      "variation": {
+        "session_factor": 1.15,
+        "purchase_factor": 0.83,
+        "revenue_factor": 1.01
+      }
+    }
+  ],
+  "verification": {
+    "ga4_app_values_verified": false,
+    "status": "pending_ga4_processing_and_october_14_scheduler_runs"
+  }
+}

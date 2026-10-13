@@ -65,9 +65,9 @@ describe("GA4 Overview Performance readiness contract", () => {
     const browserPdf = slice(overview, "if (includeOverviewPerformance)", "if (includeOverviewCampaignBreakdown)");
     const serverPdf = slice(scheduledOverviewPdf, "if (includePerformance)", "if (includeCampaignBreakdown)");
 
-    expect(cards).toContain('financialSpend > 0 ? `${financialROAS.toFixed(2)}x` : "—"');
-    expect(cards).toContain('financialSpend > 0 ? formatPercentage(financialROI) : "—"');
-    expect(cards).toContain('financialSpend > 0 && Number(financialConversions || 0) > 0 ? formatMoney(Number(financialCPA || 0)) : "—"');
+    expect(cards).toContain('overviewFinancialSpend > 0 ? `${overviewFinancialROAS.toFixed(2)}x` : "—"');
+    expect(cards).toContain('overviewFinancialSpend > 0 ? formatPercentage(overviewFinancialROI) : "—"');
+    expect(cards).toContain('overviewFinancialSpend > 0 && overviewFinancialConversions > 0 ? formatMoney(overviewFinancialCPA) : "—"');
     expect(browserPdf).toContain('["ROAS", spend > 0 ? `${Number(financialROAS || 0).toFixed(2)}x` : "—"]');
     expect(browserPdf).toContain('["ROI", spend > 0 ? fP(roi) : "—"]');
     expect(browserPdf).toContain('["CPA", spend > 0 && convTot > 0 ? fC(cpa) : "—"]');

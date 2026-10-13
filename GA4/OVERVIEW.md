@@ -189,6 +189,8 @@ Visible layout:
 
 High-level rule:
 
+- `Total Revenue`, `Total Spend`, `Profit`, `ROAS`, `ROI`, and `CPA` read the latest validated `financial_daily` snapshot at or before the latest imported GA4 day; the browser does not recombine independently refreshed financial totals for these cards
+- if the latest financial publication is blocked, the cards retain the previous validated snapshot and show that snapshot's reporting date; `Pipeline Proxy` remains a separate current open-stage signal and is excluded from the snapshot totals
 - `Total Revenue` is additive:
   `Total Revenue = selected scoped GA4-native financial revenue + active GA4-context source-backed imported campaign revenue`
 - the shared Overview/Insights native GA4 request uses the campaign currency before native revenue is added to campaign-currency imported sources

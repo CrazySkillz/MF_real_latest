@@ -183,6 +183,7 @@ export interface IStorage {
   // Mimosaas Tracking feature-flagged setup persistence
   getMimosaasWebsiteConnections(ownerId: string, clientId: string): Promise<MimosaasWebsiteConnection[]>;
   getMimosaasWebsiteConnection(ownerId: string, clientId: string, connectionId: string): Promise<MimosaasWebsiteConnection | undefined>;
+  getMimosaasWebsiteConnectionByTrackingPublicId(trackingPublicId: string): Promise<MimosaasWebsiteConnection | undefined>;
   createMimosaasWebsiteConnection(ownerId: string, clientId: string, connection: Omit<InsertMimosaasWebsiteConnection, "ownerId" | "clientId">): Promise<MimosaasWebsiteConnectionWithSecret>;
   updateMimosaasWebsiteConnection(ownerId: string, clientId: string, connectionId: string, connection: Partial<Omit<InsertMimosaasWebsiteConnection, "ownerId" | "clientId">>): Promise<MimosaasWebsiteConnection | undefined>;
   rotateMimosaasWebsiteConnectionSecret(ownerId: string, clientId: string, connectionId: string): Promise<MimosaasWebsiteConnectionWithSecret | undefined>;
@@ -192,7 +193,7 @@ export interface IStorage {
   getMimosaasTrackingCampaignMappings(ownerId: string, clientId: string, campaignId: string): Promise<MimosaasTrackingCampaignMapping[]>;
   createMimosaasTrackingCampaignMapping(ownerId: string, clientId: string, campaignId: string, mapping: Omit<InsertMimosaasTrackingCampaignMapping, "campaignId" | "trackingConfigurationId">): Promise<MimosaasTrackingCampaignMapping>;
   updateMimosaasTrackingCampaignMapping(ownerId: string, clientId: string, campaignId: string, mappingId: string, mapping: Partial<Omit<InsertMimosaasTrackingCampaignMapping, "campaignId" | "trackingConfigurationId">>): Promise<MimosaasTrackingCampaignMapping | undefined>;
-  createMimosaasTrackingEvent(websiteConnectionId: string, event: Omit<InsertMimosaasTrackingEvent, "websiteConnectionId" | "clientId">): Promise<MimosaasTrackingEventWriteResult>;
+  createMimosaasTrackingEvent(websiteConnectionId: string, event: Omit<InsertMimosaasTrackingEvent, "websiteConnectionId" | "clientId">, expectedTrackingSecretHash?: string): Promise<MimosaasTrackingEventWriteResult>;
 
   // Metrics
   getMetrics(): Promise<Metric[]>;
@@ -929,6 +930,14 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
+  async getMimosaasWebsiteConnectionByTrackingPublicId(trackingPublicId: string): Promise<MimosaasWebsiteConnection | undefined> {
+    return db.transaction(async (tx: any) => {
+      const [connection] = await tx.select().from(mimosaasWebsiteConnections)
+        .where(eq(mimosaasWebsiteConnections.trackingPublicId, trackingPublicId)).limit(1);
+      return connection || undefined;
+    });
+  }
+
   async createMimosaasWebsiteConnection(ownerId: string, clientId: string, connection: Omit<InsertMimosaasWebsiteConnection, "ownerId" | "clientId">): Promise<MimosaasWebsiteConnectionWithSecret> {
     return db.transaction(async (tx: any) => {
       await this.requireMimosaasOwnedClient(tx, ownerId, clientId, true);
@@ -1104,7 +1113,7 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async createMimosaasTrackingEvent(websiteConnectionId: string, event: Omit<InsertMimosaasTrackingEvent, "websiteConnectionId" | "clientId">): Promise<MimosaasTrackingEventWriteResult> {
+  async createMimosaasTrackingEvent(websiteConnectionId: string, event: Omit<InsertMimosaasTrackingEvent, "websiteConnectionId" | "clientId">, expectedTrackingSecretHash?: string): Promise<MimosaasTrackingEventWriteResult> {
     if (!String(event.eventId || "").trim()) throw new Error("Mimosaas Tracking event ID is required");
     return db.transaction(async (tx: any) => {
       const [unlockedConnection] = await tx.select().from(mimosaasWebsiteConnections)
@@ -1123,6 +1132,19 @@ export class DatabaseStorage implements IStorage {
         await this.requireMimosaasOwnedCampaign(tx, ownerId, clientId, resolvedCampaignId, true);
       }
       const connection = await this.requireMimosaasOwnedWebsiteConnection(tx, ownerId, clientId, websiteConnectionId, true);
+      if (expectedTrackingSecretHash !== undefined && connection.trackingSecretHash !== expectedTrackingSecretHash) {
+        throw Object.assign(new Error("Mimosaas Tracking credentials changed during event receipt"), { code: "MIMOSAAS_TRACKING_AUTH_INVALID" });
+      }
+      if (expectedTrackingSecretHash !== undefined && !["pending", "verified"].includes(String(connection.installationStatus))) {
+        throw Object.assign(new Error("Mimosaas Tracking website connection is inactive"), { code: "MIMOSAAS_TRACKING_CONNECTION_INACTIVE" });
+      }
+      try {
+        if (new URL(String(event.url)).origin !== new URL(String(connection.websiteUrl)).origin) {
+          throw new Error("origin mismatch");
+        }
+      } catch {
+        throw Object.assign(new Error("Mimosaas Tracking event URL does not match the connected website"), { code: "MIMOSAAS_TRACKING_EVENT_WEBSITE_SCOPE_MISMATCH" });
+      }
       if (resolvedCampaignId) {
         const [configuration] = await tx.select({ id: mimosaasTrackingConfigurations.id })
           .from(mimosaasTrackingConfigurations)

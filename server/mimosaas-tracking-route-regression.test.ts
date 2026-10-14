@@ -5,6 +5,7 @@ const authState = vi.hoisted(() => ({ userId: "owner-1" }));
 const storageMock = vi.hoisted(() => ({
   getCampaign: vi.fn(),
   getMimosaasWebsiteConnections: vi.fn(),
+  getMimosaasWebsiteConnectionByTrackingPublicId: vi.fn(),
   createMimosaasWebsiteConnection: vi.fn(),
   updateMimosaasWebsiteConnection: vi.fn(),
   rotateMimosaasWebsiteConnectionSecret: vi.fn(),
@@ -14,6 +15,7 @@ const storageMock = vi.hoisted(() => ({
   getMimosaasTrackingCampaignMappings: vi.fn(),
   createMimosaasTrackingCampaignMapping: vi.fn(),
   updateMimosaasTrackingCampaignMapping: vi.fn(),
+  createMimosaasTrackingEvent: vi.fn(),
 }));
 
 vi.mock("./storage", () => ({ storage: storageMock }));
@@ -21,13 +23,28 @@ vi.mock("./db", () => ({ db: null, pool: null }));
 vi.mock("@clerk/express", () => ({ getAuth: vi.fn(() => ({ userId: authState.userId })) }));
 vi.mock("./middleware/rateLimiter", () => {
   const pass = (_req: any, _res: any, next: any) => next();
-  return { oauthRateLimiter: pass, linkedInApiRateLimiter: pass, googleSheetsRateLimiter: pass, ga4RateLimiter: pass, importRateLimiter: pass };
+  return { oauthRateLimiter: pass, linkedInApiRateLimiter: pass, googleSheetsRateLimiter: pass, ga4RateLimiter: pass, importRateLimiter: pass, mimosaasTrackingRateLimiter: pass };
 });
 vi.mock("jspdf", () => ({ jsPDF: class {} }));
 
 import { registerRoutes } from "./routes-oauth";
+import { hashMimosaasTrackingSecret } from "./utils/mimosaas-tracking-auth";
 
 const campaign = { id: "campaign-1", ownerId: "owner-1", clientId: "client-1" };
+const trackingId = `mtk_${"a".repeat(32)}`;
+const trackingSecret = `mts_${"b".repeat(43)}`;
+const trackingSecretHash = hashMimosaasTrackingSecret(trackingSecret);
+const validTrackingEvent = () => ({
+  trackingId,
+  trackingSecret,
+  eventId: "event_1",
+  eventTime: new Date().toISOString(),
+  anonymousVisitorId: "visitor_1",
+  sessionId: "session_1",
+  eventName: "page_view",
+  url: "https://example.com/landing?utm_campaign=autumn",
+  utmCampaign: "autumn",
+});
 let server: any;
 let baseUrl = "";
 
@@ -43,9 +60,15 @@ describe("Mimosaas Tracking read-only setup route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.MIMOSAAS_TRACKING_ENABLED;
+    delete process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED;
     authState.userId = "owner-1";
     storageMock.getCampaign.mockResolvedValue(campaign);
     storageMock.getMimosaasWebsiteConnections.mockResolvedValue([]);
+    storageMock.getMimosaasWebsiteConnectionByTrackingPublicId.mockResolvedValue({
+      id: "website-1", ownerId: "owner-1", clientId: "client-1", websiteUrl: "https://example.com",
+      installationStatus: "verified", trackingPublicId: trackingId, trackingSecretHash,
+    });
+    storageMock.createMimosaasTrackingEvent.mockResolvedValue({ event: { id: "event-row-1" }, inserted: true });
     storageMock.createMimosaasWebsiteConnection.mockImplementation(async (_ownerId, clientId, input) => ({
       id: "website-1", ownerId: "owner-1", clientId, trackingPublicId: "mtk_public", trackingSecret: "mts_secret", trackingSecretHash: "sha256:private", installationMetadata: { private: true }, ...input,
     }));
@@ -73,6 +96,7 @@ describe("Mimosaas Tracking read-only setup route", () => {
 
   afterAll(async () => {
     delete process.env.MIMOSAAS_TRACKING_ENABLED;
+    delete process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED;
     await new Promise<void>((resolve, reject) => server.close((error: Error) => error ? reject(error) : resolve()));
   });
 
@@ -81,6 +105,147 @@ describe("Mimosaas Tracking read-only setup route", () => {
     expect(response.status).toBe(404);
     expect(storageMock.getCampaign).not.toHaveBeenCalled();
     expect(storageMock.getMimosaasTrackingConfiguration).not.toHaveBeenCalled();
+  });
+
+  it("keeps public ingestion unavailable unless its separate feature flag is enabled", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    const response = await fetch(`${baseUrl}/api/mimosaas-tracking/events`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(validTrackingEvent()),
+    });
+
+    expect(response.status).toBe(404);
+    expect(storageMock.getMimosaasWebsiteConnectionByTrackingPublicId).not.toHaveBeenCalled();
+    expect(storageMock.createMimosaasTrackingEvent).not.toHaveBeenCalled();
+  });
+
+  it("accepts an authenticated same-site event as pending attribution", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    const response = await fetch(`${baseUrl}/api/mimosaas-tracking/events`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "https://example.com" },
+      body: JSON.stringify(validTrackingEvent()),
+    });
+
+    expect(response.status).toBe(202);
+    expect(response.headers.get("access-control-allow-origin")).toBe("https://example.com");
+    expect(await response.json()).toEqual({ success: true, accepted: true, duplicate: false });
+    expect(storageMock.getMimosaasWebsiteConnectionByTrackingPublicId).toHaveBeenCalledWith(trackingId);
+    expect(storageMock.createMimosaasTrackingEvent).toHaveBeenCalledWith("website-1", expect.objectContaining({
+      eventId: "event_1",
+      eventTime: expect.any(Date),
+      resolvedCampaignId: null,
+      campaignResolutionStatus: "pending",
+    }), trackingSecretHash);
+  });
+
+  it("supports browser preflight only while ingestion is enabled", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    const response = await fetch(`${baseUrl}/api/mimosaas-tracking/events`, {
+      method: "OPTIONS", headers: { origin: "https://example.com" },
+    });
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get("access-control-allow-origin")).toBe("https://example.com");
+    expect(response.headers.get("access-control-allow-methods")).toBe("POST, OPTIONS");
+  });
+
+  it("rejects unknown or incorrect credentials without writing an event", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    const wrongSecret = await fetch(`${baseUrl}/api/mimosaas-tracking/events`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...validTrackingEvent(), trackingSecret: `mts_${"c".repeat(43)}` }),
+    });
+    storageMock.getMimosaasWebsiteConnectionByTrackingPublicId.mockResolvedValueOnce(undefined);
+    const unknownId = await fetch(`${baseUrl}/api/mimosaas-tracking/events`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(validTrackingEvent()),
+    });
+
+    expect(wrongSecret.status).toBe(401);
+    expect(unknownId.status).toBe(401);
+    expect(storageMock.createMimosaasTrackingEvent).not.toHaveBeenCalled();
+  });
+
+  it("rejects monetary, attribution, and malformed payload fields before storage", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    const response = await fetch(`${baseUrl}/api/mimosaas-tracking/events`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...validTrackingEvent(), revenue: 100, resolvedCampaignId: "campaign-1" }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(storageMock.getMimosaasWebsiteConnectionByTrackingPublicId).not.toHaveBeenCalled();
+    expect(storageMock.createMimosaasTrackingEvent).not.toHaveBeenCalled();
+  });
+
+  it("rejects events outside the 48-hour past and five-minute future window", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    const sendAt = (eventTime: string) => fetch(`${baseUrl}/api/mimosaas-tracking/events`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...validTrackingEvent(), eventTime }),
+    });
+
+    const old = await sendAt(new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString());
+    const future = await sendAt(new Date(Date.now() + 6 * 60 * 1000).toISOString());
+    expect(old.status).toBe(400);
+    expect(future.status).toBe(400);
+    expect(storageMock.createMimosaasTrackingEvent).not.toHaveBeenCalled();
+  });
+
+  it("rejects request and event origins outside the connected website", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    const wrongRequestOrigin = await fetch(`${baseUrl}/api/mimosaas-tracking/events`, {
+      method: "POST", headers: { "content-type": "application/json", origin: "https://attacker.example" },
+      body: JSON.stringify(validTrackingEvent()),
+    });
+    const wrongEventOrigin = await fetch(`${baseUrl}/api/mimosaas-tracking/events`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...validTrackingEvent(), url: "https://attacker.example/landing" }),
+    });
+
+    expect(wrongRequestOrigin.status).toBe(403);
+    expect(wrongEventOrigin.status).toBe(400);
+    expect(storageMock.createMimosaasTrackingEvent).not.toHaveBeenCalled();
+  });
+
+  it("rejects inactive connections and credentials rotated during receipt", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    storageMock.getMimosaasWebsiteConnectionByTrackingPublicId.mockResolvedValueOnce({
+      id: "website-1", websiteUrl: "https://example.com", installationStatus: "disconnected", trackingSecretHash,
+    });
+    const inactive = await fetch(`${baseUrl}/api/mimosaas-tracking/events`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(validTrackingEvent()),
+    });
+    storageMock.createMimosaasTrackingEvent.mockRejectedValueOnce(Object.assign(new Error("rotated"), { code: "MIMOSAAS_TRACKING_AUTH_INVALID" }));
+    const rotated = await fetch(`${baseUrl}/api/mimosaas-tracking/events`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(validTrackingEvent()),
+    });
+
+    expect(inactive.status).toBe(403);
+    expect(rotated.status).toBe(401);
+  });
+
+  it("acknowledges exact retries and rejects conflicting event ID reuse", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    storageMock.createMimosaasTrackingEvent.mockResolvedValueOnce({ event: { id: "event-row-1" }, inserted: false });
+    const retry = await fetch(`${baseUrl}/api/mimosaas-tracking/events`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(validTrackingEvent()),
+    });
+    storageMock.createMimosaasTrackingEvent.mockRejectedValueOnce(Object.assign(new Error("conflict"), { code: "MIMOSAAS_TRACKING_EVENT_ID_CONFLICT" }));
+    const conflict = await fetch(`${baseUrl}/api/mimosaas-tracking/events`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(validTrackingEvent()),
+    });
+
+    expect(retry.status).toBe(202);
+    expect(await retry.json()).toEqual({ success: true, accepted: true, duplicate: true });
+    expect(conflict.status).toBe(409);
   });
 
   it("returns only the signed-in owner's campaign configuration and mappings", async () => {

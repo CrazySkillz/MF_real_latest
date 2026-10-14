@@ -1,8 +1,8 @@
 # Mimosaas Tracking: Phase 1 Safety Baseline
 
-Status: Phase 1 complete; Phase 2 schema, internal persistence, and feature-flagged setup APIs implemented in main; Phase 2 schema migrated; Phase 3 credential foundation implemented locally
+Status: Phase 1 complete; Phase 2 schema, internal persistence, and feature-flagged setup APIs implemented in main; Phase 2 schema migrated; Phase 3 credential foundation deployed; authenticated ingestion foundation implemented locally and disabled
 Baseline date: 2026-10-14
-Last verified production revision: `f1d6e3424449bfefc1c3c89d6b724ff8d669df72`
+Last verified production revision: `55926c0de4cbad98269b5271fab073e1719ac88c`
 
 ## Phase 2 Foundation Status
 
@@ -32,8 +32,13 @@ New website connections receive a unique public tracking ID and a random
 once when the connection is created or its secret is rotated. Rotation keeps an
 existing public ID, invalidates the previous secret, and resets installation
 verification to pending. Setup responses never expose the stored hash. Migration
-`0021_add_mimosaas_tracking_authentication.sql` has not been applied to
-production. Public event ingestion remains absent and disabled.
+`0021_add_mimosaas_tracking_authentication.sql` was applied to production on
+2026-10-15 and verified all three credential columns and the unique partial
+tracking-ID index. The authenticated raw-event endpoint is implemented behind
+the separate `MIMOSAAS_TRACKING_INGESTION_ENABLED` flag, which remains disabled
+by default. It enforces exact credentials, website origin, strict non-financial
+payloads, event-time bounds, duplicate handling, and rate limiting. Attribution,
+aggregation, publication, scheduler, UI, and GA4 integration remain disabled.
 
 ## Purpose
 

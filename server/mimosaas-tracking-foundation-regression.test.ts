@@ -96,12 +96,24 @@ describe("Mimosaas Tracking Phase 2 foundation", () => {
     expect(cleanup).toContain("client_id = ${clientId} AND owner_id = ${ownerId}");
   });
 
-  it("keeps setup routes feature-flagged without exposing ingestion, UI, or the GA4 scheduler", () => {
+  it("keeps setup and ingestion separately feature-flagged without exposing UI or the GA4 scheduler", () => {
     const routes = read("server", "routes-oauth.ts");
     expect(routes).toContain("requireMimosaasTrackingFeature");
     expect(routes).toContain("MIMOSAAS_TRACKING_ENABLED");
-    expect(routes).not.toContain("createMimosaasTrackingEvent");
+    expect(routes).toContain("MIMOSAAS_TRACKING_INGESTION_ENABLED");
+    expect(routes).toContain('app.post("/api/mimosaas-tracking/events"');
+    expect(routes).toContain("createMimosaasTrackingEvent");
     expect(read("server", "ga4-daily-scheduler.ts")).not.toContain("mimosaasTracking");
     expect(read("client", "src", "pages", "campaigns.tsx")).not.toContain("mimosaas_tracking");
+  });
+
+  it("rate-limits public ingestion without a caller-controlled test bypass", () => {
+    const limiter = read("server", "middleware", "rateLimiter.ts");
+    const start = limiter.indexOf("export const mimosaasTrackingRateLimiter");
+    const end = limiter.indexOf("export const generalApiRateLimiter", start);
+    const trackerLimiter = limiter.slice(start, end);
+
+    expect(trackerLimiter).toContain("max: 600");
+    expect(trackerLimiter).not.toContain("isTestMode");
   });
 });

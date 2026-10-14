@@ -35,6 +35,7 @@ vi.mock("./middleware/rateLimiter", () => {
     googleSheetsRateLimiter: pass,
     ga4RateLimiter: pass,
     importRateLimiter: pass,
+    mimosaasTrackingRateLimiter: pass,
   };
 });
 

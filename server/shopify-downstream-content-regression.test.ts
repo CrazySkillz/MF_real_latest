@@ -64,6 +64,7 @@ vi.mock("./middleware/rateLimiter", () => {
     googleSheetsRateLimiter: passThrough,
     ga4RateLimiter: passThrough,
     importRateLimiter: passThrough,
+    mimosaasTrackingRateLimiter: passThrough,
   };
 });
 vi.mock("jspdf", () => ({

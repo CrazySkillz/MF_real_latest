@@ -167,6 +167,36 @@ describe("Mimosaas Tracking storage safety", () => {
     expect(mocks.state.inserts).toHaveLength(0);
   });
 
+  it("looks up public ingestion credentials only by the exact tracking ID", async () => {
+    mocks.state.selectQueue = [[{ ...website, trackingPublicId: "mtk_exact" }]];
+
+    const connection = await new DatabaseStorage().getMimosaasWebsiteConnectionByTrackingPublicId("mtk_exact");
+
+    expect(connection).toMatchObject({ id: "website-1", trackingPublicId: "mtk_exact" });
+  });
+
+  it("fails closed when credentials rotate between authentication and event insertion", async () => {
+    mocks.state.selectQueue = [
+      [{ ...website, trackingSecretHash: "sha256:old" }],
+      [{ id: "client-1" }],
+      [{ ...website, trackingSecretHash: "sha256:new", installationStatus: "verified" }],
+    ];
+
+    await expect(new DatabaseStorage().createMimosaasTrackingEvent("website-1", event as any, "sha256:old"))
+      .rejects.toMatchObject({ code: "MIMOSAAS_TRACKING_AUTH_INVALID" });
+    expect(mocks.state.inserts).toHaveLength(0);
+  });
+
+  it("fails closed when the event URL is outside the connected website", async () => {
+    mocks.state.selectQueue = [[website], [{ id: "client-1" }], [website]];
+
+    await expect(new DatabaseStorage().createMimosaasTrackingEvent("website-1", {
+      ...event,
+      url: "https://attacker.example/landing",
+    } as any)).rejects.toMatchObject({ code: "MIMOSAAS_TRACKING_EVENT_WEBSITE_SCOPE_MISMATCH" });
+    expect(mocks.state.inserts).toHaveLength(0);
+  });
+
   it("fails before configuration creation when campaign ownership is not proven", async () => {
     mocks.state.selectQueue = [[{ id: "client-1" }], []];
 

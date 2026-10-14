@@ -87,6 +87,22 @@ export const ga4RateLimiter = rateLimit({
 });
 
 /**
+ * Public Mimosaas tracker collection limiter.
+ * Credential and event-id checks provide the remaining abuse and replay guards.
+ */
+export const mimosaasTrackingRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 600,
+  message: {
+    success: false,
+    message: 'Too many tracking events. Please retry shortly.',
+    retryAfter: 60
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+/**
  * General API rate limiter
  * Protects all API endpoints from abuse
  */

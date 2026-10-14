@@ -1,16 +1,20 @@
 # Mimosaas Tracking: Phase 1 Safety Baseline
 
-Status: Phase 1 complete; Phase 2 persistence foundation implemented in main; database not migrated
+Status: Phase 1 complete; Phase 2 schema and internal persistence implemented in main; schema migrated
 Baseline date: 2026-10-14
 Production revision: `ddf71721d957f6a8fc2be943adbfb770a49aa299`
 
 ## Phase 2 Foundation Status
 
 The isolated tracker schema, migration, immutable raw-event and published-day
-contracts, and migration-safe campaign/client cleanup are implemented in main.
-No tracker route, UI, ingestion, aggregation, scheduler, or GA4 integration is
-enabled. Migration `0020_add_mimosaas_tracking_foundation.sql` has not been
-applied to a database.
+contracts, migration-safe campaign/client cleanup, and owner/client/campaign
+scoped internal storage methods are implemented in main. Raw-event writes are
+idempotent and reject an event ID reused with different immutable data. Active
+campaign mappings cannot be duplicated across campaigns on the same website. No
+tracker route, UI, public ingestion, aggregation, scheduler, or GA4 integration
+is enabled. Migration `0020_add_mimosaas_tracking_foundation.sql` was applied
+to production on 2026-10-14 and verified all 8 tables, 99 required columns, 14
+indexes, and 2 immutability triggers.
 
 ## Purpose
 

@@ -1,6 +1,7 @@
 import { type Client, type InsertClient, type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GA4DailyMetric, type InsertGA4DailyMetric, type GA4OverviewSnapshot, type LinkedInDailyMetric, type InsertLinkedInDailyMetric, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type MetaDailyMetric, type InsertMetaDailyMetric, type MetaKpi, type InsertMetaKpi, type MetaBenchmark, type InsertMetaBenchmark, type MetaReport, type InsertMetaReport, type GoogleAdsConnection, type InsertGoogleAdsConnection, type GoogleAdsDailyMetric, type InsertGoogleAdsDailyMetric, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type KPIReport, type InsertKPIReport, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type FinancialDailySnapshotInput, financialDailySnapshotInputSchema, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, clients, campaigns, metrics, integrations, performanceData, ga4Connections, ga4DailyMetrics, ga4OverviewSnapshots, linkedinDailyMetrics, spendSources, spendRecords, revenueSources, revenueRecords, notifications, emailAlertEvents, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, metaDailyMetrics, metaKpis, metaBenchmarks, metaReports, googleAdsConnections, googleAdsDailyMetrics, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, reportSnapshots, reportSendEvents, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, kpiReports, benchmarks, benchmarkHistory, metricSnapshots, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { type InstagramConnection, type InsertInstagramConnection, type InstagramDailyMetric, type InsertInstagramDailyMetric, type TikTokConnection, type InsertTikTokConnection, type TikTokDailyMetric, type InsertTikTokDailyMetric, instagramConnections, instagramDailyMetrics, tiktokConnections, tiktokDailyMetrics } from "@shared/schema";
 import { type GA4GoogleAdsSpendConnection, type InsertGA4GoogleAdsSpendConnection, type GA4GoogleAdsSpendDailyMetric, type InsertGA4GoogleAdsSpendDailyMetric, ga4GoogleAdsSpendConnections, ga4GoogleAdsSpendDailyMetrics } from "@shared/schema";
+import { type MimosaasWebsiteConnection, type InsertMimosaasWebsiteConnection, type MimosaasTrackingConfiguration, type InsertMimosaasTrackingConfiguration, type MimosaasTrackingCampaignMapping, type InsertMimosaasTrackingCampaignMapping, type MimosaasTrackingEvent, type InsertMimosaasTrackingEvent, mimosaasWebsiteConnections, mimosaasTrackingConfigurations, mimosaasTrackingCampaignMappings, mimosaasTrackingEvents } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql, gte, lte, inArray, ne } from "drizzle-orm";
@@ -26,6 +27,7 @@ const devLog = (...args: any[]) => {
 
 export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration';
 export type SpendPlatformContext = RevenuePlatformContext;
+export type MimosaasTrackingEventWriteResult = { event: MimosaasTrackingEvent; inserted: boolean };
 export type KPINotificationHide = { id: string; campaignId: string; metadata: string };
 export type CampaignDeepDiveReportLimitCode = "REPORT_LIMIT_REACHED" | "SCHEDULED_REPORT_LIMIT_REACHED";
 export type CampaignDeepDiveReportLimits = { maxActiveReports: number; maxScheduledActiveReports: number };
@@ -175,6 +177,19 @@ export interface IStorage {
   updateCampaignWithGA4DailyInvalidation(id: string, campaign: Partial<InsertCampaign>): Promise<Campaign | undefined>;
   deleteCampaign(id: string): Promise<boolean>;
   deleteCampaignCascade(id: string): Promise<boolean>;
+
+  // Mimosaas Tracking persistence (not exposed through routes yet)
+  getMimosaasWebsiteConnections(ownerId: string, clientId: string): Promise<MimosaasWebsiteConnection[]>;
+  getMimosaasWebsiteConnection(ownerId: string, clientId: string, connectionId: string): Promise<MimosaasWebsiteConnection | undefined>;
+  createMimosaasWebsiteConnection(ownerId: string, clientId: string, connection: Omit<InsertMimosaasWebsiteConnection, "ownerId" | "clientId">): Promise<MimosaasWebsiteConnection>;
+  updateMimosaasWebsiteConnection(ownerId: string, clientId: string, connectionId: string, connection: Partial<Omit<InsertMimosaasWebsiteConnection, "ownerId" | "clientId">>): Promise<MimosaasWebsiteConnection | undefined>;
+  getMimosaasTrackingConfiguration(ownerId: string, clientId: string, campaignId: string): Promise<MimosaasTrackingConfiguration | undefined>;
+  createMimosaasTrackingConfiguration(ownerId: string, clientId: string, campaignId: string, configuration: Omit<InsertMimosaasTrackingConfiguration, "campaignId">): Promise<MimosaasTrackingConfiguration>;
+  updateMimosaasTrackingConfiguration(ownerId: string, clientId: string, campaignId: string, configuration: Partial<Omit<InsertMimosaasTrackingConfiguration, "campaignId" | "websiteConnectionId">>): Promise<MimosaasTrackingConfiguration | undefined>;
+  getMimosaasTrackingCampaignMappings(ownerId: string, clientId: string, campaignId: string): Promise<MimosaasTrackingCampaignMapping[]>;
+  createMimosaasTrackingCampaignMapping(ownerId: string, clientId: string, campaignId: string, mapping: Omit<InsertMimosaasTrackingCampaignMapping, "campaignId" | "trackingConfigurationId">): Promise<MimosaasTrackingCampaignMapping>;
+  updateMimosaasTrackingCampaignMapping(ownerId: string, clientId: string, campaignId: string, mappingId: string, mapping: Partial<Omit<InsertMimosaasTrackingCampaignMapping, "campaignId" | "trackingConfigurationId">>): Promise<MimosaasTrackingCampaignMapping | undefined>;
+  createMimosaasTrackingEvent(websiteConnectionId: string, event: Omit<InsertMimosaasTrackingEvent, "websiteConnectionId" | "clientId">): Promise<MimosaasTrackingEventWriteResult>;
 
   // Metrics
   getMetrics(): Promise<Metric[]>;
@@ -808,11 +823,332 @@ export class DatabaseStorage implements IStorage {
   async deleteCampaignCascade(id: string): Promise<boolean> {
     const existing = await this.getCampaign(id);
     if (!existing) return false;
-    await db.transaction(async (tx: any) => {
+    return db.transaction(async (tx: any) => {
+      const [lockedCampaign] = await tx.select({ id: campaigns.id }).from(campaigns)
+        .where(eq(campaigns.id, id)).for("update").limit(1);
+      if (!lockedCampaign) return false;
       await this.deleteCampaignChildren(id, tx);
-      await tx.delete(campaigns).where(eq(campaigns.id, id));
+      const deleted = await tx.delete(campaigns).where(eq(campaigns.id, id));
+      return (deleted.rowCount || 0) > 0;
     });
-    return true;
+  }
+
+  private async requireMimosaasOwnedClient(tx: any, ownerId: string, clientId: string, lock = false): Promise<void> {
+    const query = tx
+      .select({ id: clients.id })
+      .from(clients)
+      .where(and(eq(clients.id, clientId), eq(clients.ownerId, ownerId)));
+    const [client] = lock ? await query.for("update").limit(1) : await query.limit(1);
+    if (!client) throw Object.assign(new Error("Mimosaas Tracking client scope not found"), { code: "MIMOSAAS_TRACKING_CLIENT_SCOPE_NOT_FOUND" });
+  }
+
+  private async requireMimosaasOwnedCampaign(tx: any, ownerId: string, clientId: string, campaignId: string, lock = false): Promise<void> {
+    const query = tx
+      .select({ id: campaigns.id })
+      .from(campaigns)
+      .where(and(eq(campaigns.id, campaignId), eq(campaigns.ownerId, ownerId), eq(campaigns.clientId, clientId)));
+    const [campaign] = lock ? await query.for("update").limit(1) : await query.limit(1);
+    if (!campaign) throw Object.assign(new Error("Mimosaas Tracking campaign scope not found"), { code: "MIMOSAAS_TRACKING_CAMPAIGN_SCOPE_NOT_FOUND" });
+  }
+
+  private async requireMimosaasOwnedWebsiteConnection(tx: any, ownerId: string, clientId: string, connectionId: string, lock = false): Promise<MimosaasWebsiteConnection> {
+    const query = tx
+      .select()
+      .from(mimosaasWebsiteConnections)
+      .where(and(
+        eq(mimosaasWebsiteConnections.id, connectionId),
+        eq(mimosaasWebsiteConnections.ownerId, ownerId),
+        eq(mimosaasWebsiteConnections.clientId, clientId),
+      ));
+    const [connection] = lock ? await query.for("update").limit(1) : await query.limit(1);
+    if (!connection) throw Object.assign(new Error("Mimosaas Tracking website connection scope not found"), { code: "MIMOSAAS_TRACKING_WEBSITE_SCOPE_NOT_FOUND" });
+    return connection;
+  }
+
+  private async getMimosaasOwnedTrackingConfiguration(tx: any, ownerId: string, clientId: string, campaignId: string, lock = false): Promise<MimosaasTrackingConfiguration | undefined> {
+    await this.requireMimosaasOwnedClient(tx, ownerId, clientId, lock);
+    await this.requireMimosaasOwnedCampaign(tx, ownerId, clientId, campaignId, lock);
+    const [configuration] = await tx
+      .select()
+      .from(mimosaasTrackingConfigurations)
+      .where(eq(mimosaasTrackingConfigurations.campaignId, campaignId))
+      .limit(1);
+    if (!configuration) return undefined;
+    await this.requireMimosaasOwnedWebsiteConnection(tx, ownerId, clientId, String(configuration.websiteConnectionId), lock);
+    return configuration;
+  }
+
+  private async assertMimosaasTrackingMappingAvailable(
+    tx: any,
+    configuration: MimosaasTrackingConfiguration,
+    mappingType: string,
+    campaignValue: string,
+    isActive: boolean,
+    excludedMappingId?: string,
+  ): Promise<void> {
+    if (!isActive) return;
+    const configurations = await tx.select({ id: mimosaasTrackingConfigurations.id })
+      .from(mimosaasTrackingConfigurations)
+      .where(eq(mimosaasTrackingConfigurations.websiteConnectionId, configuration.websiteConnectionId));
+    const configurationIds = configurations.map((row: any) => String(row.id));
+    if (configurationIds.length === 0) throw new Error("Mimosaas Tracking website has no configuration");
+    const [conflict] = await tx.select({ id: mimosaasTrackingCampaignMappings.id })
+      .from(mimosaasTrackingCampaignMappings)
+      .where(and(
+        inArray(mimosaasTrackingCampaignMappings.trackingConfigurationId, configurationIds),
+        eq(mimosaasTrackingCampaignMappings.mappingType, mappingType),
+        eq(mimosaasTrackingCampaignMappings.campaignValue, campaignValue),
+        eq(mimosaasTrackingCampaignMappings.isActive, true),
+        ...(excludedMappingId ? [ne(mimosaasTrackingCampaignMappings.id, excludedMappingId)] : []),
+      )).limit(1);
+    if (conflict) throw Object.assign(new Error("Mimosaas Tracking campaign mapping is already active for this website"), { code: "MIMOSAAS_TRACKING_MAPPING_CONFLICT" });
+  }
+
+  async getMimosaasWebsiteConnections(ownerId: string, clientId: string): Promise<MimosaasWebsiteConnection[]> {
+    return db.transaction(async (tx: any) => {
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId);
+      return tx.select().from(mimosaasWebsiteConnections).where(and(
+        eq(mimosaasWebsiteConnections.ownerId, ownerId),
+        eq(mimosaasWebsiteConnections.clientId, clientId),
+      )).orderBy(mimosaasWebsiteConnections.createdAt);
+    });
+  }
+
+  async getMimosaasWebsiteConnection(ownerId: string, clientId: string, connectionId: string): Promise<MimosaasWebsiteConnection | undefined> {
+    return db.transaction(async (tx: any) => {
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId);
+      try {
+        return await this.requireMimosaasOwnedWebsiteConnection(tx, ownerId, clientId, connectionId);
+      } catch (error: any) {
+        if (error?.code === "MIMOSAAS_TRACKING_WEBSITE_SCOPE_NOT_FOUND") return undefined;
+        throw error;
+      }
+    });
+  }
+
+  async createMimosaasWebsiteConnection(ownerId: string, clientId: string, connection: Omit<InsertMimosaasWebsiteConnection, "ownerId" | "clientId">): Promise<MimosaasWebsiteConnection> {
+    return db.transaction(async (tx: any) => {
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId, true);
+      const [created] = await tx.insert(mimosaasWebsiteConnections).values({
+        ownerId,
+        clientId,
+        websiteUrl: connection.websiteUrl,
+        installationMethod: connection.installationMethod,
+        installationStatus: connection.installationStatus,
+        installationMetadata: connection.installationMetadata,
+        verifiedAt: connection.verifiedAt,
+        lastEventAt: connection.lastEventAt,
+      }).returning();
+      if (!created) throw new Error("Failed to create Mimosaas Tracking website connection");
+      return created;
+    });
+  }
+
+  async updateMimosaasWebsiteConnection(ownerId: string, clientId: string, connectionId: string, connection: Partial<Omit<InsertMimosaasWebsiteConnection, "ownerId" | "clientId">>): Promise<MimosaasWebsiteConnection | undefined> {
+    return db.transaction(async (tx: any) => {
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId, true);
+      await this.requireMimosaasOwnedWebsiteConnection(tx, ownerId, clientId, connectionId, true);
+      const [updated] = await tx.update(mimosaasWebsiteConnections).set({
+        websiteUrl: connection.websiteUrl,
+        installationMethod: connection.installationMethod,
+        installationStatus: connection.installationStatus,
+        installationMetadata: connection.installationMetadata,
+        verifiedAt: connection.verifiedAt,
+        lastEventAt: connection.lastEventAt,
+        updatedAt: new Date(),
+      }).where(and(
+        eq(mimosaasWebsiteConnections.id, connectionId),
+        eq(mimosaasWebsiteConnections.ownerId, ownerId),
+        eq(mimosaasWebsiteConnections.clientId, clientId),
+      )).returning();
+      return updated || undefined;
+    });
+  }
+
+  async getMimosaasTrackingConfiguration(ownerId: string, clientId: string, campaignId: string): Promise<MimosaasTrackingConfiguration | undefined> {
+    return db.transaction((tx: any) => this.getMimosaasOwnedTrackingConfiguration(tx, ownerId, clientId, campaignId));
+  }
+
+  async createMimosaasTrackingConfiguration(ownerId: string, clientId: string, campaignId: string, configuration: Omit<InsertMimosaasTrackingConfiguration, "campaignId">): Promise<MimosaasTrackingConfiguration> {
+    return db.transaction(async (tx: any) => {
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId, true);
+      await this.requireMimosaasOwnedCampaign(tx, ownerId, clientId, campaignId, true);
+      await this.requireMimosaasOwnedWebsiteConnection(tx, ownerId, clientId, String(configuration.websiteConnectionId), true);
+      const [created] = await tx.insert(mimosaasTrackingConfigurations).values({
+        campaignId,
+        websiteConnectionId: configuration.websiteConnectionId,
+        status: configuration.status,
+        conversionEventNames: configuration.conversionEventNames,
+        attributionWindowDays: configuration.attributionWindowDays,
+      }).returning();
+      if (!created) throw new Error("Failed to create Mimosaas Tracking configuration");
+      return created;
+    });
+  }
+
+  async updateMimosaasTrackingConfiguration(ownerId: string, clientId: string, campaignId: string, configuration: Partial<Omit<InsertMimosaasTrackingConfiguration, "campaignId" | "websiteConnectionId">>): Promise<MimosaasTrackingConfiguration | undefined> {
+    return db.transaction(async (tx: any) => {
+      const existing = await this.getMimosaasOwnedTrackingConfiguration(tx, ownerId, clientId, campaignId, true);
+      if (!existing) return undefined;
+      const [updated] = await tx.update(mimosaasTrackingConfigurations).set({
+        status: configuration.status,
+        conversionEventNames: configuration.conversionEventNames,
+        attributionWindowDays: configuration.attributionWindowDays,
+        updatedAt: new Date(),
+      }).where(and(
+        eq(mimosaasTrackingConfigurations.id, existing.id),
+        eq(mimosaasTrackingConfigurations.campaignId, campaignId),
+        eq(mimosaasTrackingConfigurations.websiteConnectionId, existing.websiteConnectionId),
+      )).returning();
+      return updated || undefined;
+    });
+  }
+
+  async getMimosaasTrackingCampaignMappings(ownerId: string, clientId: string, campaignId: string): Promise<MimosaasTrackingCampaignMapping[]> {
+    return db.transaction(async (tx: any) => {
+      const configuration = await this.getMimosaasOwnedTrackingConfiguration(tx, ownerId, clientId, campaignId);
+      if (!configuration) return [];
+      return tx.select().from(mimosaasTrackingCampaignMappings).where(and(
+        eq(mimosaasTrackingCampaignMappings.campaignId, campaignId),
+        eq(mimosaasTrackingCampaignMappings.trackingConfigurationId, configuration.id),
+      )).orderBy(mimosaasTrackingCampaignMappings.createdAt);
+    });
+  }
+
+  async createMimosaasTrackingCampaignMapping(ownerId: string, clientId: string, campaignId: string, mapping: Omit<InsertMimosaasTrackingCampaignMapping, "campaignId" | "trackingConfigurationId">): Promise<MimosaasTrackingCampaignMapping> {
+    return db.transaction(async (tx: any) => {
+      const configuration = await this.getMimosaasOwnedTrackingConfiguration(tx, ownerId, clientId, campaignId, true);
+      if (!configuration) throw Object.assign(new Error("Mimosaas Tracking configuration not found"), { code: "MIMOSAAS_TRACKING_CONFIGURATION_NOT_FOUND" });
+      await this.assertMimosaasTrackingMappingAvailable(
+        tx,
+        configuration,
+        mapping.mappingType,
+        mapping.campaignValue,
+        mapping.isActive ?? true,
+      );
+      const [created] = await tx.insert(mimosaasTrackingCampaignMappings).values({
+        campaignId,
+        trackingConfigurationId: configuration.id,
+        mappingType: mapping.mappingType,
+        campaignValue: mapping.campaignValue,
+        isActive: mapping.isActive,
+      }).returning();
+      if (!created) throw new Error("Failed to create Mimosaas Tracking campaign mapping");
+      return created;
+    });
+  }
+
+  async updateMimosaasTrackingCampaignMapping(ownerId: string, clientId: string, campaignId: string, mappingId: string, mapping: Partial<Omit<InsertMimosaasTrackingCampaignMapping, "campaignId" | "trackingConfigurationId">>): Promise<MimosaasTrackingCampaignMapping | undefined> {
+    return db.transaction(async (tx: any) => {
+      const configuration = await this.getMimosaasOwnedTrackingConfiguration(tx, ownerId, clientId, campaignId, true);
+      if (!configuration) return undefined;
+      const [existing] = await tx.select().from(mimosaasTrackingCampaignMappings).where(and(
+        eq(mimosaasTrackingCampaignMappings.id, mappingId),
+        eq(mimosaasTrackingCampaignMappings.campaignId, campaignId),
+        eq(mimosaasTrackingCampaignMappings.trackingConfigurationId, configuration.id),
+      )).limit(1);
+      if (!existing) return undefined;
+      await this.assertMimosaasTrackingMappingAvailable(
+        tx,
+        configuration,
+        mapping.mappingType ?? existing.mappingType,
+        mapping.campaignValue ?? existing.campaignValue,
+        mapping.isActive ?? existing.isActive,
+        mappingId,
+      );
+      const [updated] = await tx.update(mimosaasTrackingCampaignMappings).set({
+        mappingType: mapping.mappingType,
+        campaignValue: mapping.campaignValue,
+        isActive: mapping.isActive,
+        updatedAt: new Date(),
+      }).where(and(
+        eq(mimosaasTrackingCampaignMappings.id, mappingId),
+        eq(mimosaasTrackingCampaignMappings.campaignId, campaignId),
+        eq(mimosaasTrackingCampaignMappings.trackingConfigurationId, configuration.id),
+      )).returning();
+      return updated || undefined;
+    });
+  }
+
+  async createMimosaasTrackingEvent(websiteConnectionId: string, event: Omit<InsertMimosaasTrackingEvent, "websiteConnectionId" | "clientId">): Promise<MimosaasTrackingEventWriteResult> {
+    if (!String(event.eventId || "").trim()) throw new Error("Mimosaas Tracking event ID is required");
+    return db.transaction(async (tx: any) => {
+      const [unlockedConnection] = await tx.select().from(mimosaasWebsiteConnections)
+        .where(eq(mimosaasWebsiteConnections.id, websiteConnectionId)).limit(1);
+      if (!unlockedConnection) throw Object.assign(new Error("Mimosaas Tracking website connection not found"), { code: "MIMOSAAS_TRACKING_WEBSITE_NOT_FOUND" });
+
+      const resolutionStatus = event.campaignResolutionStatus || "pending";
+      const resolvedCampaignId = event.resolvedCampaignId ? String(event.resolvedCampaignId) : null;
+      if ((resolutionStatus === "attributed") !== Boolean(resolvedCampaignId)) {
+        throw new Error("Mimosaas Tracking attributed events require exactly one resolved campaign");
+      }
+      const ownerId = String(unlockedConnection.ownerId);
+      const clientId = String(unlockedConnection.clientId);
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId, true);
+      if (resolvedCampaignId) {
+        await this.requireMimosaasOwnedCampaign(tx, ownerId, clientId, resolvedCampaignId, true);
+      }
+      const connection = await this.requireMimosaasOwnedWebsiteConnection(tx, ownerId, clientId, websiteConnectionId, true);
+      if (resolvedCampaignId) {
+        const [configuration] = await tx.select({ id: mimosaasTrackingConfigurations.id })
+          .from(mimosaasTrackingConfigurations)
+          .where(and(
+            eq(mimosaasTrackingConfigurations.campaignId, resolvedCampaignId),
+            eq(mimosaasTrackingConfigurations.websiteConnectionId, websiteConnectionId),
+          )).limit(1);
+        if (!configuration) throw Object.assign(new Error("Mimosaas Tracking event campaign is not configured for this website"), { code: "MIMOSAAS_TRACKING_EVENT_CAMPAIGN_SCOPE_MISMATCH" });
+      }
+
+      const values: InsertMimosaasTrackingEvent = {
+        eventId: event.eventId,
+        clientId: String(connection.clientId),
+        websiteConnectionId,
+        resolvedCampaignId,
+        campaignResolutionStatus: resolutionStatus,
+        eventTime: event.eventTime,
+        anonymousVisitorId: event.anonymousVisitorId,
+        sessionId: event.sessionId,
+        eventName: event.eventName,
+        url: event.url,
+        referrer: event.referrer,
+        utmSource: event.utmSource,
+        utmMedium: event.utmMedium,
+        utmCampaign: event.utmCampaign,
+        utmTerm: event.utmTerm,
+        utmContent: event.utmContent,
+        gclid: event.gclid,
+      };
+      const [created] = await tx.insert(mimosaasTrackingEvents).values(values).onConflictDoNothing({
+        target: mimosaasTrackingEvents.eventId,
+      }).returning();
+      if (created) {
+        const [updatedConnection] = await tx.update(mimosaasWebsiteConnections).set({
+          lastEventAt: sql`GREATEST(COALESCE(${mimosaasWebsiteConnections.lastEventAt}, ${created.receivedAt}), ${created.receivedAt})`,
+          updatedAt: new Date(),
+        }).where(and(
+          eq(mimosaasWebsiteConnections.id, websiteConnectionId),
+          eq(mimosaasWebsiteConnections.ownerId, connection.ownerId),
+          eq(mimosaasWebsiteConnections.clientId, connection.clientId),
+        )).returning({ id: mimosaasWebsiteConnections.id });
+        if (!updatedConnection) throw new Error("Mimosaas Tracking website connection changed during event receipt");
+        return { event: created, inserted: true };
+      }
+
+      const [existing] = await tx.select().from(mimosaasTrackingEvents)
+        .where(eq(mimosaasTrackingEvents.eventId, String(event.eventId))).limit(1);
+      if (!existing) throw new Error("Mimosaas Tracking event insert conflict could not be resolved");
+      const comparable = (value: unknown) => value instanceof Date ? value.toISOString() : value ?? null;
+      for (const field of [
+        "clientId", "websiteConnectionId", "resolvedCampaignId", "campaignResolutionStatus", "eventTime",
+        "anonymousVisitorId", "sessionId", "eventName", "url", "referrer", "utmSource", "utmMedium",
+        "utmCampaign", "utmTerm", "utmContent", "gclid",
+      ] as const) {
+        if (comparable(existing[field]) !== comparable((values as any)[field])) {
+          throw Object.assign(new Error("Mimosaas Tracking event ID conflicts with a different event"), { code: "MIMOSAAS_TRACKING_EVENT_ID_CONFLICT" });
+        }
+      }
+      return { event: existing, inserted: false };
+    });
   }
 
   // Metrics methods
@@ -5829,7 +6165,10 @@ export class DatabaseStorage implements IStorage {
         or(eq(campaigns.ownerId, ownerId), isNull(campaigns.ownerId)),
       ));
 
-    await db.transaction(async (tx: any) => {
+    return await db.transaction(async (tx: any) => {
+      const [lockedClient] = await tx.select({ id: clients.id }).from(clients)
+        .where(and(eq(clients.id, clientId), eq(clients.ownerId, ownerId))).for("update").limit(1);
+      if (!lockedClient) return false;
       const deleteOptionalClientTable = async (tableName: string, ownerScoped = false): Promise<void> => {
         const exists = await tx.execute(sql`SELECT to_regclass(${tableName}) AS table_name`);
         if (!exists.rows?.[0]?.table_name) return;
@@ -5846,10 +6185,9 @@ export class DatabaseStorage implements IStorage {
       await deleteOptionalClientTable("mimosaas_tracking_attributions");
       await deleteOptionalClientTable("mimosaas_tracking_events");
       await deleteOptionalClientTable("mimosaas_website_connections", true);
-      await tx.delete(clients).where(and(eq(clients.id, clientId), eq(clients.ownerId, ownerId)));
+      const deleted = await tx.delete(clients).where(and(eq(clients.id, clientId), eq(clients.ownerId, ownerId)));
+      return (deleted.rowCount || 0) > 0;
     });
-
-    return true;
   }
 
   // A/B Test methods

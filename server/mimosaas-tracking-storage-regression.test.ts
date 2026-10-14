@@ -59,6 +59,7 @@ const mocks = vi.hoisted(() => {
 vi.mock("./db", () => ({ db: mocks.db, pool: null }));
 
 import { DatabaseStorage } from "./storage";
+import { createMimosaasTrackingCredentials, verifyMimosaasTrackingSecret } from "./utils/mimosaas-tracking-auth";
 
 const website = {
   id: "website-1",
@@ -191,6 +192,35 @@ describe("Mimosaas Tracking storage safety", () => {
 
     expect(created).toMatchObject({ id: "created-row-1", ownerId: "owner-1", clientId: "client-1" });
     expect(mocks.state.inserts[0]).not.toHaveProperty("id");
+    expect(mocks.state.inserts[0]).not.toHaveProperty("trackingSecret");
+    expect(verifyMimosaasTrackingSecret(created.trackingSecret, mocks.state.inserts[0].trackingSecretHash)).toBe(true);
+  });
+
+  it("rotates only an owned website secret and resets installation verification", async () => {
+    const oldCredentials = createMimosaasTrackingCredentials();
+    mocks.state.selectQueue = [[{ id: "client-1" }], [{ ...website, trackingPublicId: "mtk_existing", trackingSecretHash: oldCredentials.trackingSecretHash }]];
+
+    const rotated = await new DatabaseStorage().rotateMimosaasWebsiteConnectionSecret("owner-1", "client-1", "website-1");
+
+    expect(rotated).toMatchObject({ trackingPublicId: "mtk_existing", installationStatus: "pending" });
+    expect(mocks.state.updates[0]).toMatchObject({
+      trackingPublicId: "mtk_existing",
+      installationStatus: "pending",
+      installationMetadata: null,
+      verifiedAt: null,
+      lastEventAt: null,
+    });
+    expect(mocks.state.updates[0]).not.toHaveProperty("trackingSecret");
+    expect(verifyMimosaasTrackingSecret(rotated!.trackingSecret, mocks.state.updates[0].trackingSecretHash)).toBe(true);
+    expect(verifyMimosaasTrackingSecret(oldCredentials.trackingSecret, mocks.state.updates[0].trackingSecretHash)).toBe(false);
+  });
+
+  it("does not rotate a secret when the website is outside the owned client", async () => {
+    mocks.state.selectQueue = [[{ id: "client-1" }], []];
+
+    await expect(new DatabaseStorage().rotateMimosaasWebsiteConnectionSecret("owner-1", "client-1", "foreign-website"))
+      .rejects.toMatchObject({ code: "MIMOSAAS_TRACKING_WEBSITE_SCOPE_NOT_FOUND" });
+    expect(mocks.state.updates).toHaveLength(0);
   });
 
   it("does not allow a website update payload to change tenant scope", async () => {

@@ -3441,7 +3441,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const mimosaasWebsiteUrlSchema = z.string().trim().max(2048).url().refine((value) => {
     try { return ["http:", "https:"].includes(new URL(value).protocol); } catch { return false; }
   }, "Website URL must use http or https").transform((value) => new URL(value).origin);
-  const mimosaasInstallationMethodSchema = z.enum(["gtm", "shopify", "woocommerce", "website_builder", "universal"]);
+  const mimosaasInstallationMethodSchema = z.enum(["google_tag_manager", "shopify", "woocommerce", "website_builder", "universal"]);
   const mimosaasWebsiteBodySchema = z.object({
     websiteUrl: mimosaasWebsiteUrlSchema,
     installationMethod: mimosaasInstallationMethodSchema,
@@ -3453,6 +3453,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     clientId: connection.clientId,
     websiteUrl: connection.websiteUrl,
     installationMethod: connection.installationMethod,
+    trackingPublicId: connection.trackingPublicId,
     installationStatus: connection.installationStatus,
     verifiedAt: connection.verifiedAt,
     lastEventAt: connection.lastEventAt,
@@ -3530,7 +3531,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...parsed.data,
         installationStatus: "pending",
       });
-      return res.status(201).json({ success: true, connection: publicMimosaasWebsiteConnection(connection) });
+      res.setHeader("Cache-Control", "no-store");
+      return res.status(201).json({
+        success: true,
+        connection: publicMimosaasWebsiteConnection(connection),
+        credentials: { trackingId: connection.trackingPublicId, secret: connection.trackingSecret },
+      });
+    } catch (error: any) {
+      return sendMimosaasWebsiteError(res, error);
+    }
+  });
+
+  app.post("/api/campaigns/:id/mimosaas-tracking/websites/:connectionId/rotate-secret", requireMimosaasTrackingFeature, requireCampaignAccessParamId, async (req, res) => {
+    try {
+      const campaign = (req as any)._campaign;
+      const connection = await storage.rotateMimosaasWebsiteConnectionSecret(getActorId(req), String(campaign.clientId), String(req.params.connectionId));
+      if (!connection) return res.status(404).json({ success: false, message: "Website connection not found" });
+      res.setHeader("Cache-Control", "no-store");
+      return res.json({
+        success: true,
+        connection: publicMimosaasWebsiteConnection(connection),
+        credentials: { trackingId: connection.trackingPublicId, secret: connection.trackingSecret },
+      });
     } catch (error: any) {
       return sendMimosaasWebsiteError(res, error);
     }

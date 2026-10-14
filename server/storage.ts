@@ -16,6 +16,7 @@ import { executiveSummaryDailySnapshotInputSchema, type ExecutiveSummaryDailySna
 import { createActiveCanonicalGA4KPI, isActiveGA4KPI, updateCanonicalGA4KPI as updateCanonicalGA4KPIWithGuard } from "./utils/ga4-kpi-create-guard";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { normalizeShopifyDomain, resolveNewestShopifyOauthCredential } from "./utils/shopify-provider";
+import { createMimosaasTrackingCredentials } from "./utils/mimosaas-tracking-auth";
 
 const isProd = String(process.env.NODE_ENV || "").toLowerCase() === "production";
 const devLog = (...args: any[]) => {
@@ -28,6 +29,7 @@ const devLog = (...args: any[]) => {
 export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration';
 export type SpendPlatformContext = RevenuePlatformContext;
 export type MimosaasTrackingEventWriteResult = { event: MimosaasTrackingEvent; inserted: boolean };
+export type MimosaasWebsiteConnectionWithSecret = MimosaasWebsiteConnection & { trackingSecret: string };
 export type KPINotificationHide = { id: string; campaignId: string; metadata: string };
 export type CampaignDeepDiveReportLimitCode = "REPORT_LIMIT_REACHED" | "SCHEDULED_REPORT_LIMIT_REACHED";
 export type CampaignDeepDiveReportLimits = { maxActiveReports: number; maxScheduledActiveReports: number };
@@ -178,11 +180,12 @@ export interface IStorage {
   deleteCampaign(id: string): Promise<boolean>;
   deleteCampaignCascade(id: string): Promise<boolean>;
 
-  // Mimosaas Tracking persistence (not exposed through routes yet)
+  // Mimosaas Tracking feature-flagged setup persistence
   getMimosaasWebsiteConnections(ownerId: string, clientId: string): Promise<MimosaasWebsiteConnection[]>;
   getMimosaasWebsiteConnection(ownerId: string, clientId: string, connectionId: string): Promise<MimosaasWebsiteConnection | undefined>;
-  createMimosaasWebsiteConnection(ownerId: string, clientId: string, connection: Omit<InsertMimosaasWebsiteConnection, "ownerId" | "clientId">): Promise<MimosaasWebsiteConnection>;
+  createMimosaasWebsiteConnection(ownerId: string, clientId: string, connection: Omit<InsertMimosaasWebsiteConnection, "ownerId" | "clientId">): Promise<MimosaasWebsiteConnectionWithSecret>;
   updateMimosaasWebsiteConnection(ownerId: string, clientId: string, connectionId: string, connection: Partial<Omit<InsertMimosaasWebsiteConnection, "ownerId" | "clientId">>): Promise<MimosaasWebsiteConnection | undefined>;
+  rotateMimosaasWebsiteConnectionSecret(ownerId: string, clientId: string, connectionId: string): Promise<MimosaasWebsiteConnectionWithSecret | undefined>;
   getMimosaasTrackingConfiguration(ownerId: string, clientId: string, campaignId: string): Promise<MimosaasTrackingConfiguration | undefined>;
   createMimosaasTrackingConfiguration(ownerId: string, clientId: string, campaignId: string, configuration: Omit<InsertMimosaasTrackingConfiguration, "campaignId">): Promise<MimosaasTrackingConfiguration>;
   updateMimosaasTrackingConfiguration(ownerId: string, clientId: string, campaignId: string, configuration: Partial<Omit<InsertMimosaasTrackingConfiguration, "campaignId" | "websiteConnectionId">>): Promise<MimosaasTrackingConfiguration | undefined>;
@@ -926,21 +929,25 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async createMimosaasWebsiteConnection(ownerId: string, clientId: string, connection: Omit<InsertMimosaasWebsiteConnection, "ownerId" | "clientId">): Promise<MimosaasWebsiteConnection> {
+  async createMimosaasWebsiteConnection(ownerId: string, clientId: string, connection: Omit<InsertMimosaasWebsiteConnection, "ownerId" | "clientId">): Promise<MimosaasWebsiteConnectionWithSecret> {
     return db.transaction(async (tx: any) => {
       await this.requireMimosaasOwnedClient(tx, ownerId, clientId, true);
+      const credentials = createMimosaasTrackingCredentials();
       const [created] = await tx.insert(mimosaasWebsiteConnections).values({
         ownerId,
         clientId,
         websiteUrl: connection.websiteUrl,
         installationMethod: connection.installationMethod,
+        trackingPublicId: credentials.trackingPublicId,
+        trackingSecretHash: credentials.trackingSecretHash,
+        trackingSecretCreatedAt: new Date(),
         installationStatus: connection.installationStatus,
         installationMetadata: connection.installationMetadata,
         verifiedAt: connection.verifiedAt,
         lastEventAt: connection.lastEventAt,
       }).returning();
       if (!created) throw new Error("Failed to create Mimosaas Tracking website connection");
-      return created;
+      return { ...created, trackingSecret: credentials.trackingSecret };
     });
   }
 
@@ -962,6 +969,29 @@ export class DatabaseStorage implements IStorage {
         eq(mimosaasWebsiteConnections.clientId, clientId),
       )).returning();
       return updated || undefined;
+    });
+  }
+
+  async rotateMimosaasWebsiteConnectionSecret(ownerId: string, clientId: string, connectionId: string): Promise<MimosaasWebsiteConnectionWithSecret | undefined> {
+    return db.transaction(async (tx: any) => {
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId, true);
+      const existing = await this.requireMimosaasOwnedWebsiteConnection(tx, ownerId, clientId, connectionId, true);
+      const credentials = createMimosaasTrackingCredentials();
+      const [updated] = await tx.update(mimosaasWebsiteConnections).set({
+        trackingPublicId: existing.trackingPublicId || credentials.trackingPublicId,
+        trackingSecretHash: credentials.trackingSecretHash,
+        trackingSecretCreatedAt: new Date(),
+        installationStatus: "pending",
+        installationMetadata: null,
+        verifiedAt: null,
+        lastEventAt: null,
+        updatedAt: new Date(),
+      }).where(and(
+        eq(mimosaasWebsiteConnections.id, connectionId),
+        eq(mimosaasWebsiteConnections.ownerId, ownerId),
+        eq(mimosaasWebsiteConnections.clientId, clientId),
+      )).returning();
+      return updated ? { ...updated, trackingSecret: credentials.trackingSecret } : undefined;
     });
   }
 

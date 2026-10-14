@@ -56,6 +56,9 @@ export const mimosaasWebsiteConnections = pgTable("mimosaas_website_connections"
   clientId: text("client_id").notNull(),
   websiteUrl: text("website_url").notNull(),
   installationMethod: text("installation_method").notNull(),
+  trackingPublicId: text("tracking_public_id"),
+  trackingSecretHash: text("tracking_secret_hash"),
+  trackingSecretCreatedAt: timestamp("tracking_secret_created_at", { withTimezone: true }),
   installationStatus: text("installation_status").notNull().default("pending"),
   installationMetadata: jsonb("installation_metadata"),
   verifiedAt: timestamp("verified_at", { withTimezone: true }),
@@ -65,6 +68,8 @@ export const mimosaasWebsiteConnections = pgTable("mimosaas_website_connections"
 }, (table) => ({
   clientWebsiteUnique: uniqueIndex("mimosaas_website_connections_client_url_unique")
     .on(table.clientId, table.websiteUrl),
+  trackingPublicIdUnique: uniqueIndex("mimosaas_website_connections_tracking_public_id_unique")
+    .on(table.trackingPublicId),
   ownerClientIndex: index("mimosaas_website_connections_owner_client_idx")
     .on(table.ownerId, table.clientId),
 }));
@@ -1506,6 +1511,9 @@ export const insertCampaignSchema = createInsertSchema(campaigns)
 
 export const insertMimosaasWebsiteConnectionSchema = createInsertSchema(mimosaasWebsiteConnections).omit({
   id: true,
+  trackingPublicId: true,
+  trackingSecretHash: true,
+  trackingSecretCreatedAt: true,
   createdAt: true,
   updatedAt: true,
 });

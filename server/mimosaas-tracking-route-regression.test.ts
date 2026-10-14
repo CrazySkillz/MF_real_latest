@@ -7,6 +7,7 @@ const storageMock = vi.hoisted(() => ({
   getMimosaasWebsiteConnections: vi.fn(),
   createMimosaasWebsiteConnection: vi.fn(),
   updateMimosaasWebsiteConnection: vi.fn(),
+  rotateMimosaasWebsiteConnectionSecret: vi.fn(),
   getMimosaasTrackingConfiguration: vi.fn(),
   createMimosaasTrackingConfiguration: vi.fn(),
   updateMimosaasTrackingConfiguration: vi.fn(),
@@ -46,10 +47,13 @@ describe("Mimosaas Tracking read-only setup route", () => {
     storageMock.getCampaign.mockResolvedValue(campaign);
     storageMock.getMimosaasWebsiteConnections.mockResolvedValue([]);
     storageMock.createMimosaasWebsiteConnection.mockImplementation(async (_ownerId, clientId, input) => ({
-      id: "website-1", ownerId: "owner-1", clientId, installationMetadata: { private: true }, ...input,
+      id: "website-1", ownerId: "owner-1", clientId, trackingPublicId: "mtk_public", trackingSecret: "mts_secret", trackingSecretHash: "sha256:private", installationMetadata: { private: true }, ...input,
     }));
     storageMock.updateMimosaasWebsiteConnection.mockImplementation(async (_ownerId, clientId, connectionId, input) => ({
       id: connectionId, ownerId: "owner-1", clientId, ...input,
+    }));
+    storageMock.rotateMimosaasWebsiteConnectionSecret.mockImplementation(async (_ownerId, clientId, connectionId) => ({
+      id: connectionId, ownerId: "owner-1", clientId, trackingPublicId: "mtk_public", trackingSecret: "mts_rotated", trackingSecretHash: "sha256:private", installationStatus: "pending",
     }));
     storageMock.getMimosaasTrackingConfiguration.mockResolvedValue({ id: "configuration-1", campaignId: campaign.id });
     storageMock.createMimosaasTrackingConfiguration.mockImplementation(async (_ownerId, _clientId, campaignId, input) => ({
@@ -208,7 +212,7 @@ describe("Mimosaas Tracking read-only setup route", () => {
     process.env.MIMOSAAS_TRACKING_ENABLED = "true";
     storageMock.getMimosaasWebsiteConnections.mockResolvedValue([{
       id: "website-1", ownerId: "owner-1", clientId: "client-1", websiteUrl: "https://example.com",
-      installationMethod: "gtm", installationStatus: "pending", installationMetadata: { private: true },
+      installationMethod: "google_tag_manager", installationStatus: "pending", trackingPublicId: "mtk_public", trackingSecretHash: "sha256:private", installationMetadata: { private: true },
     }]);
     const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/websites`);
     const body: any = await response.json();
@@ -216,18 +220,48 @@ describe("Mimosaas Tracking read-only setup route", () => {
     expect(storageMock.getMimosaasWebsiteConnections).toHaveBeenCalledWith("owner-1", "client-1");
     expect(body.connections[0]).not.toHaveProperty("ownerId");
     expect(body.connections[0]).not.toHaveProperty("installationMetadata");
+    expect(body.connections[0]).not.toHaveProperty("trackingSecretHash");
+    expect(body.connections[0].trackingPublicId).toBe("mtk_public");
   });
 
   it("creates a pending connection from a canonical website origin", async () => {
     process.env.MIMOSAAS_TRACKING_ENABLED = "true";
     const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/websites`, {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ websiteUrl: "https://Example.com/path?query=1", installationMethod: "gtm" }),
+      body: JSON.stringify({ websiteUrl: "https://Example.com/path?query=1", installationMethod: "google_tag_manager" }),
     });
     expect(response.status).toBe(201);
     expect(storageMock.createMimosaasWebsiteConnection).toHaveBeenCalledWith("owner-1", "client-1", {
-      websiteUrl: "https://example.com", installationMethod: "gtm", installationStatus: "pending",
+      websiteUrl: "https://example.com", installationMethod: "google_tag_manager", installationStatus: "pending",
     });
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toMatchObject({
+      connection: { trackingPublicId: "mtk_public" },
+      credentials: { trackingId: "mtk_public", secret: "mts_secret" },
+    });
+  });
+
+  it("rotates a scoped website secret and returns it only in the no-store response", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/websites/website-1/rotate-secret`, { method: "POST" });
+    const body: any = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(storageMock.rotateMimosaasWebsiteConnectionSecret).toHaveBeenCalledWith("owner-1", "client-1", "website-1");
+    expect(body.credentials).toEqual({ trackingId: "mtk_public", secret: "mts_rotated" });
+    expect(body.connection).not.toHaveProperty("trackingSecret");
+    expect(body.connection).not.toHaveProperty("trackingSecretHash");
+  });
+
+  it("does not rotate a website secret for another owner's campaign", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    storageMock.getCampaign.mockResolvedValue({ ...campaign, ownerId: "owner-2" });
+
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/websites/website-1/rotate-secret`, { method: "POST" });
+
+    expect(response.status).toBe(404);
+    expect(storageMock.rotateMimosaasWebsiteConnectionSecret).not.toHaveBeenCalled();
   });
 
   it("rejects invalid or caller-verified connection writes before storage", async () => {
@@ -266,7 +300,7 @@ describe("Mimosaas Tracking read-only setup route", () => {
     storageMock.getCampaign.mockResolvedValue({ ...campaign, ownerId: "owner-2" });
     const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/websites`, {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ websiteUrl: "https://example.com", installationMethod: "gtm" }),
+      body: JSON.stringify({ websiteUrl: "https://example.com", installationMethod: "google_tag_manager" }),
     });
     expect(response.status).toBe(404);
     expect(storageMock.createMimosaasWebsiteConnection).not.toHaveBeenCalled();

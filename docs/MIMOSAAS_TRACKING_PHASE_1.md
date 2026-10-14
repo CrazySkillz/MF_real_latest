@@ -1,6 +1,6 @@
 # Mimosaas Tracking: Phase 1 Safety Baseline
 
-Status: Phase 1 complete; Phase 2 schema, internal persistence, and feature-flagged setup APIs implemented in main; schema migrated
+Status: Phase 1 complete; Phase 2 schema, internal persistence, and feature-flagged setup APIs implemented in main; Phase 2 schema migrated; Phase 3 credential foundation implemented locally
 Baseline date: 2026-10-14
 Last verified production revision: `f1d6e3424449bfefc1c3c89d6b724ff8d669df72`
 
@@ -24,6 +24,16 @@ unexposed. Migration
 `0020_add_mimosaas_tracking_foundation.sql` was applied
 to production on 2026-10-14 and verified all 8 tables, 99 required columns, 14
 indexes, and 2 immutability triggers.
+
+## Phase 3 Credential Foundation Status
+
+New website connections receive a unique public tracking ID and a random
+256-bit secret. Only the secret hash is stored. The plaintext secret is returned
+once when the connection is created or its secret is rotated. Rotation keeps an
+existing public ID, invalidates the previous secret, and resets installation
+verification to pending. Setup responses never expose the stored hash. Migration
+`0021_add_mimosaas_tracking_authentication.sql` has not been applied to
+production. Public event ingestion remains absent and disabled.
 
 ## Purpose
 

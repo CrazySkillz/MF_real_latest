@@ -7,6 +7,7 @@ const read = (...parts: string[]) => fs.readFileSync(path.join(process.cwd(), ..
 describe("Mimosaas Tracking Phase 2 foundation", () => {
   const schema = read("shared", "schema.ts");
   const migration = read("migrations", "0020_add_mimosaas_tracking_foundation.sql");
+  const authenticationMigration = read("migrations", "0021_add_mimosaas_tracking_authentication.sql");
   const storage = read("server", "storage.ts");
 
   it("defines isolated website, configuration, event, attribution, aggregate, run, and snapshot records", () => {
@@ -23,6 +24,15 @@ describe("Mimosaas Tracking Phase 2 foundation", () => {
       expect(schema).toContain(`pgTable("${table}"`);
       expect(migration).toContain(`CREATE TABLE IF NOT EXISTS ${table}`);
     }
+  });
+
+  it("stores tracker credentials as a unique public ID and one-way secret hash", () => {
+    expect(schema).toContain('trackingPublicId: text("tracking_public_id")');
+    expect(schema).toContain('trackingSecretHash: text("tracking_secret_hash")');
+    expect(schema).toContain('uniqueIndex("mimosaas_website_connections_tracking_public_id_unique")');
+    expect(authenticationMigration).toContain("mimosaas_website_connections_tracking_public_id_unique");
+    expect(authenticationMigration).toContain("tracking_secret_hash TEXT");
+    expect(authenticationMigration).not.toContain("tracking_secret TEXT");
   });
 
   it("retains the required raw event evidence without accepting revenue", () => {

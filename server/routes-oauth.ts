@@ -3431,6 +3431,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return next();
   };
 
+  const requireMimosaasTrackingFeature = (_req: any, res: any, next: any) => {
+    if (String(process.env.MIMOSAAS_TRACKING_ENABLED || "").trim().toLowerCase() !== "true") {
+      return res.status(404).json({ success: false, message: "Not found" });
+    }
+    return next();
+  };
+
+  app.get("/api/campaigns/:id/mimosaas-tracking/configuration", requireMimosaasTrackingFeature, requireCampaignAccessParamId, async (req, res) => {
+    try {
+      const campaignId = String(req.params.id || "");
+      const ownerId = getActorId(req);
+      const clientId = String((req as any)._campaign?.clientId || "");
+      if (!ownerId) return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      if (!clientId) return res.status(404).json({ success: false, message: "Campaign not found" });
+
+      const configuration = await storage.getMimosaasTrackingConfiguration(ownerId, clientId, campaignId);
+      const mappings = configuration
+        ? await storage.getMimosaasTrackingCampaignMappings(ownerId, clientId, campaignId)
+        : [];
+      res.setHeader("Cache-Control", "no-store");
+      return res.json({ success: true, configuration: configuration || null, mappings });
+    } catch (error: any) {
+      if (String(error?.code || "").endsWith("_SCOPE_NOT_FOUND")) {
+        return res.status(404).json({ success: false, message: "Campaign not found" });
+      }
+      console.error("Mimosaas Tracking configuration fetch error:", error);
+      return res.status(500).json({ success: false, message: "Failed to fetch Mimosaas Tracking configuration" });
+    }
+  });
+
   const hasActivatableCampaignDataPath = async (campaignId: string, nextPlatformRaw: unknown, existingCampaign?: any) => {
     const nextPlatform = String(nextPlatformRaw ?? existingCampaign?.platform ?? "").trim();
     if (nextPlatform) return true;

@@ -1,6 +1,7 @@
 import { type Client, type InsertClient, type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GA4DailyMetric, type InsertGA4DailyMetric, type GA4OverviewSnapshot, type LinkedInDailyMetric, type InsertLinkedInDailyMetric, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type MetaDailyMetric, type InsertMetaDailyMetric, type MetaKpi, type InsertMetaKpi, type MetaBenchmark, type InsertMetaBenchmark, type MetaReport, type InsertMetaReport, type GoogleAdsConnection, type InsertGoogleAdsConnection, type GoogleAdsDailyMetric, type InsertGoogleAdsDailyMetric, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type KPIReport, type InsertKPIReport, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type FinancialDailySnapshotInput, financialDailySnapshotInputSchema, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, clients, campaigns, metrics, integrations, performanceData, ga4Connections, ga4DailyMetrics, ga4OverviewSnapshots, linkedinDailyMetrics, spendSources, spendRecords, revenueSources, revenueRecords, notifications, emailAlertEvents, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, metaDailyMetrics, metaKpis, metaBenchmarks, metaReports, googleAdsConnections, googleAdsDailyMetrics, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, reportSnapshots, reportSendEvents, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, kpiReports, benchmarks, benchmarkHistory, metricSnapshots, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { type InstagramConnection, type InsertInstagramConnection, type InstagramDailyMetric, type InsertInstagramDailyMetric, type TikTokConnection, type InsertTikTokConnection, type TikTokDailyMetric, type InsertTikTokDailyMetric, instagramConnections, instagramDailyMetrics, tiktokConnections, tiktokDailyMetrics } from "@shared/schema";
 import { type GA4GoogleAdsSpendConnection, type InsertGA4GoogleAdsSpendConnection, type GA4GoogleAdsSpendDailyMetric, type InsertGA4GoogleAdsSpendDailyMetric, ga4GoogleAdsSpendConnections, ga4GoogleAdsSpendDailyMetrics } from "@shared/schema";
+import { mimosaasWebsiteConnections, mimosaasTrackingConfigurations, mimosaasTrackingCampaignMappings, mimosaasTrackingEvents, mimosaasTrackingAttributions, mimosaasTrackingDailyMetrics, mimosaasTrackingPublicationRuns, mimosaasTrackingDailySnapshots } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql, gte, lte, inArray, ne } from "drizzle-orm";
@@ -749,6 +750,13 @@ export class DatabaseStorage implements IStorage {
       }
     };
 
+    await tx.delete(mimosaasTrackingAttributions).where(eq(mimosaasTrackingAttributions.campaignId, campaignId));
+    await tx.delete(mimosaasTrackingEvents).where(eq(mimosaasTrackingEvents.resolvedCampaignId, campaignId));
+    await tx.delete(mimosaasTrackingCampaignMappings).where(eq(mimosaasTrackingCampaignMappings.campaignId, campaignId));
+    await tx.delete(mimosaasTrackingConfigurations).where(eq(mimosaasTrackingConfigurations.campaignId, campaignId));
+    await tx.delete(mimosaasTrackingDailyMetrics).where(eq(mimosaasTrackingDailyMetrics.campaignId, campaignId));
+    await tx.delete(mimosaasTrackingPublicationRuns).where(eq(mimosaasTrackingPublicationRuns.campaignId, campaignId));
+    await tx.delete(mimosaasTrackingDailySnapshots).where(eq(mimosaasTrackingDailySnapshots.campaignId, campaignId));
     await tx.delete(spendRecords).where(eq(spendRecords.campaignId, campaignId));
     await tx.delete(revenueRecords).where(eq(revenueRecords.campaignId, campaignId));
     await tx.delete(spendSources).where(eq(spendSources.campaignId, campaignId));
@@ -5827,6 +5835,12 @@ export class DatabaseStorage implements IStorage {
         await this.deleteCampaignChildren(String(campaign.id), tx);
         await tx.delete(campaigns).where(eq(campaigns.id, String(campaign.id)));
       }
+      await tx.delete(mimosaasTrackingAttributions).where(eq(mimosaasTrackingAttributions.clientId, clientId));
+      await tx.delete(mimosaasTrackingEvents).where(eq(mimosaasTrackingEvents.clientId, clientId));
+      await tx.delete(mimosaasWebsiteConnections).where(and(
+        eq(mimosaasWebsiteConnections.clientId, clientId),
+        eq(mimosaasWebsiteConnections.ownerId, ownerId),
+      ));
       await tx.delete(clients).where(and(eq(clients.id, clientId), eq(clients.ownerId, ownerId)));
     });
 

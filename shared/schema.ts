@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, timestamp, boolean, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, timestamp, boolean, jsonb, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -48,6 +48,165 @@ export const campaigns = pgTable("campaigns", {
   pacingEndDate: text("pacing_end_date"), // Date-only budget pacing boundary; never filters source metrics
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+// Mimosaas Tracking is isolated from GA4 storage and remains feature-flagged off.
+export const mimosaasWebsiteConnections = pgTable("mimosaas_website_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: text("owner_id").notNull(),
+  clientId: text("client_id").notNull(),
+  websiteUrl: text("website_url").notNull(),
+  installationMethod: text("installation_method").notNull(),
+  installationStatus: text("installation_status").notNull().default("pending"),
+  installationMetadata: jsonb("installation_metadata"),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  lastEventAt: timestamp("last_event_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  clientWebsiteUnique: uniqueIndex("mimosaas_website_connections_client_url_unique")
+    .on(table.clientId, table.websiteUrl),
+  ownerClientIndex: index("mimosaas_website_connections_owner_client_idx")
+    .on(table.ownerId, table.clientId),
+}));
+
+export const mimosaasTrackingConfigurations = pgTable("mimosaas_tracking_configurations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  websiteConnectionId: text("website_connection_id").notNull(),
+  status: text("status").notNull().default("draft"),
+  conversionEventNames: jsonb("conversion_event_names").notNull().default(sql`'[]'::jsonb`),
+  attributionWindowDays: integer("attribution_window_days").notNull().default(30),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  campaignUnique: uniqueIndex("mimosaas_tracking_configurations_campaign_unique")
+    .on(table.campaignId),
+  websiteIndex: index("mimosaas_tracking_configurations_website_idx")
+    .on(table.websiteConnectionId),
+}));
+
+export const mimosaasTrackingCampaignMappings = pgTable("mimosaas_tracking_campaign_mappings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  trackingConfigurationId: text("tracking_configuration_id").notNull(),
+  mappingType: text("mapping_type").notNull(),
+  campaignValue: text("campaign_value").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  exactMappingUnique: uniqueIndex("mimosaas_tracking_campaign_mappings_exact_unique")
+    .on(table.campaignId, table.mappingType, table.campaignValue),
+  configurationIndex: index("mimosaas_tracking_campaign_mappings_config_idx")
+    .on(table.trackingConfigurationId),
+}));
+
+// Append-only receipt. Attribution changes are stored separately below.
+export const mimosaasTrackingEvents = pgTable("mimosaas_tracking_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: text("event_id").notNull(),
+  clientId: text("client_id").notNull(),
+  websiteConnectionId: text("website_connection_id").notNull(),
+  resolvedCampaignId: text("resolved_campaign_id"),
+  campaignResolutionStatus: text("campaign_resolution_status").notNull().default("pending"),
+  eventTime: timestamp("event_time", { withTimezone: true }).notNull(),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  anonymousVisitorId: text("anonymous_visitor_id").notNull(),
+  sessionId: text("session_id").notNull(),
+  eventName: text("event_name").notNull(),
+  url: text("url").notNull(),
+  referrer: text("referrer"),
+  utmSource: text("utm_source"),
+  utmMedium: text("utm_medium"),
+  utmCampaign: text("utm_campaign"),
+  utmTerm: text("utm_term"),
+  utmContent: text("utm_content"),
+  gclid: text("gclid"),
+}, (table) => ({
+  eventIdUnique: uniqueIndex("mimosaas_tracking_events_event_id_unique").on(table.eventId),
+  websiteEventTimeIndex: index("mimosaas_tracking_events_website_time_idx")
+    .on(table.websiteConnectionId, table.eventTime),
+  resolvedCampaignTimeIndex: index("mimosaas_tracking_events_campaign_time_idx")
+    .on(table.resolvedCampaignId, table.eventTime),
+}));
+
+export const mimosaasTrackingAttributions = pgTable("mimosaas_tracking_attributions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: text("event_id").notNull(),
+  clientId: text("client_id").notNull(),
+  websiteConnectionId: text("website_connection_id").notNull(),
+  campaignId: text("campaign_id"),
+  status: text("status").notNull(),
+  resolutionSource: text("resolution_source"),
+  externalCampaignId: text("external_campaign_id"),
+  conflictDetails: jsonb("conflict_details"),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  eventUnique: uniqueIndex("mimosaas_tracking_attributions_event_unique").on(table.eventId),
+  campaignIndex: index("mimosaas_tracking_attributions_campaign_idx").on(table.campaignId),
+}));
+
+export const mimosaasTrackingDailyMetrics = pgTable("mimosaas_tracking_daily_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  reportingDate: text("reporting_date").notNull(),
+  reportingTimeZone: text("reporting_time_zone").notNull(),
+  users: integer("users").notNull().default(0),
+  sessions: integer("sessions").notNull().default(0),
+  engagedSessions: integer("engaged_sessions").notNull().default(0),
+  pageviews: integer("pageviews").notNull().default(0),
+  conversions: integer("conversions").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  campaignDayUnique: uniqueIndex("mimosaas_tracking_daily_metrics_campaign_day_unique")
+    .on(table.campaignId, table.reportingDate),
+}));
+
+export const mimosaasTrackingPublicationRuns = pgTable("mimosaas_tracking_publication_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  reportingDate: text("reporting_date").notNull(),
+  reportingTimeZone: text("reporting_time_zone").notNull(),
+  status: text("status").notNull().default("pending"),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  sourceStates: jsonb("source_states").notNull().default(sql`'{}'::jsonb`),
+  lastError: text("last_error"),
+  lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+  finalizedAt: timestamp("finalized_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  campaignDayUnique: uniqueIndex("mimosaas_tracking_publication_runs_campaign_day_unique")
+    .on(table.campaignId, table.reportingDate),
+}));
+
+// One immutable executive result per campaign and local reporting date.
+export const mimosaasTrackingDailySnapshots = pgTable("mimosaas_tracking_daily_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  reportingDate: text("reporting_date").notNull(),
+  reportingTimeZone: text("reporting_time_zone").notNull(),
+  users: integer("users").notNull(),
+  sessions: integer("sessions").notNull(),
+  engagedSessions: integer("engaged_sessions").notNull(),
+  pageviews: integer("pageviews").notNull(),
+  conversions: integer("conversions").notNull(),
+  engagementRate: decimal("engagement_rate", { precision: 7, scale: 4 }).notNull(),
+  conversionRate: decimal("conversion_rate", { precision: 7, scale: 4 }).notNull(),
+  revenue: decimal("revenue", { precision: 15, scale: 2 }),
+  spend: decimal("spend", { precision: 15, scale: 2 }),
+  currency: text("currency").notNull(),
+  revenueStatus: text("revenue_status").notNull(),
+  spendStatus: text("spend_status").notNull(),
+  sourceStates: jsonb("source_states").notNull(),
+  financialSnapshotId: text("financial_snapshot_id"),
+  publishedAt: timestamp("published_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  campaignDayUnique: uniqueIndex("mimosaas_tracking_daily_snapshots_campaign_day_unique")
+    .on(table.campaignId, table.reportingDate),
+}));
 
 export const metrics = pgTable("metrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1345,6 +1504,51 @@ export const insertCampaignSchema = createInsertSchema(campaigns)
     pacingEndDate: campaignPacingDateSchema.nullable().optional(),
   });
 
+export const insertMimosaasWebsiteConnectionSchema = createInsertSchema(mimosaasWebsiteConnections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMimosaasTrackingConfigurationSchema = createInsertSchema(mimosaasTrackingConfigurations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMimosaasTrackingCampaignMappingSchema = createInsertSchema(mimosaasTrackingCampaignMappings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMimosaasTrackingEventSchema = createInsertSchema(mimosaasTrackingEvents).omit({
+  id: true,
+  receivedAt: true,
+});
+
+export const insertMimosaasTrackingAttributionSchema = createInsertSchema(mimosaasTrackingAttributions).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export const insertMimosaasTrackingDailyMetricSchema = createInsertSchema(mimosaasTrackingDailyMetrics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMimosaasTrackingPublicationRunSchema = createInsertSchema(mimosaasTrackingPublicationRuns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMimosaasTrackingDailySnapshotSchema = createInsertSchema(mimosaasTrackingDailySnapshots).omit({
+  id: true,
+  publishedAt: true,
+});
+
 export const insertMetricSchema = createInsertSchema(metrics).pick({
   name: true,
   value: true,
@@ -2096,6 +2300,22 @@ export const insertCustomIntegrationMetricsSchema = createInsertSchema(customInt
 
 export type Campaign = typeof campaigns.$inferSelect;
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
+export type MimosaasWebsiteConnection = typeof mimosaasWebsiteConnections.$inferSelect;
+export type InsertMimosaasWebsiteConnection = z.infer<typeof insertMimosaasWebsiteConnectionSchema>;
+export type MimosaasTrackingConfiguration = typeof mimosaasTrackingConfigurations.$inferSelect;
+export type InsertMimosaasTrackingConfiguration = z.infer<typeof insertMimosaasTrackingConfigurationSchema>;
+export type MimosaasTrackingCampaignMapping = typeof mimosaasTrackingCampaignMappings.$inferSelect;
+export type InsertMimosaasTrackingCampaignMapping = z.infer<typeof insertMimosaasTrackingCampaignMappingSchema>;
+export type MimosaasTrackingEvent = typeof mimosaasTrackingEvents.$inferSelect;
+export type InsertMimosaasTrackingEvent = z.infer<typeof insertMimosaasTrackingEventSchema>;
+export type MimosaasTrackingAttribution = typeof mimosaasTrackingAttributions.$inferSelect;
+export type InsertMimosaasTrackingAttribution = z.infer<typeof insertMimosaasTrackingAttributionSchema>;
+export type MimosaasTrackingDailyMetric = typeof mimosaasTrackingDailyMetrics.$inferSelect;
+export type InsertMimosaasTrackingDailyMetric = z.infer<typeof insertMimosaasTrackingDailyMetricSchema>;
+export type MimosaasTrackingPublicationRun = typeof mimosaasTrackingPublicationRuns.$inferSelect;
+export type InsertMimosaasTrackingPublicationRun = z.infer<typeof insertMimosaasTrackingPublicationRunSchema>;
+export type MimosaasTrackingDailySnapshot = typeof mimosaasTrackingDailySnapshots.$inferSelect;
+export type InsertMimosaasTrackingDailySnapshot = z.infer<typeof insertMimosaasTrackingDailySnapshotSchema>;
 export type Metric = typeof metrics.$inferSelect;
 export type InsertMetric = z.infer<typeof insertMetricSchema>;
 export type Integration = typeof integrations.$inferSelect;

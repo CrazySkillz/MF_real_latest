@@ -56,32 +56,34 @@ describe("Mimosaas Tracking Phase 2 foundation", () => {
     const end = storage.indexOf("async deleteCampaignCascade", start);
     const cleanup = storage.slice(start, end);
 
-    for (const symbol of [
-      "mimosaasTrackingAttributions",
-      "mimosaasTrackingCampaignMappings",
-      "mimosaasTrackingConfigurations",
-      "mimosaasTrackingDailyMetrics",
-      "mimosaasTrackingPublicationRuns",
-      "mimosaasTrackingDailySnapshots",
-    ]) expect(cleanup).toContain(`tx.delete(${symbol}).where(eq(${symbol}.campaignId, campaignId))`);
+    for (const table of [
+      "mimosaas_tracking_attributions",
+      "mimosaas_tracking_campaign_mappings",
+      "mimosaas_tracking_configurations",
+      "mimosaas_tracking_daily_metrics",
+      "mimosaas_tracking_publication_runs",
+      "mimosaas_tracking_daily_snapshots",
+    ]) expect(cleanup).toContain(`deleteOptionalCampaignTable("${table}")`);
 
-    expect(cleanup).toContain("tx.delete(mimosaasTrackingEvents).where(eq(mimosaasTrackingEvents.resolvedCampaignId, campaignId))");
+    expect(cleanup).toContain('deleteOptionalCampaignTable("mimosaas_tracking_events", "resolved_campaign_id")');
+    expect(cleanup).toContain("SELECT to_regclass(${tableName}) AS table_name");
   });
 
   it("removes remaining client-owned tracker data before deleting its client", () => {
     const start = storage.indexOf("async deleteClientCascade");
     const end = storage.indexOf("// A/B Test methods", start);
     const cleanup = storage.slice(start, end);
-    const attributionDelete = cleanup.indexOf("tx.delete(mimosaasTrackingAttributions)");
-    const eventDelete = cleanup.indexOf("tx.delete(mimosaasTrackingEvents)");
-    const websiteDelete = cleanup.indexOf("tx.delete(mimosaasWebsiteConnections)");
+    const attributionDelete = cleanup.indexOf('deleteOptionalClientTable("mimosaas_tracking_attributions")');
+    const eventDelete = cleanup.indexOf('deleteOptionalClientTable("mimosaas_tracking_events")');
+    const websiteDelete = cleanup.indexOf('deleteOptionalClientTable("mimosaas_website_connections", true)');
     const clientDelete = cleanup.indexOf("tx.delete(clients)");
 
     expect(attributionDelete).toBeGreaterThan(-1);
     expect(attributionDelete).toBeLessThan(eventDelete);
     expect(eventDelete).toBeLessThan(websiteDelete);
     expect(websiteDelete).toBeLessThan(clientDelete);
-    expect(cleanup).toContain("eq(mimosaasWebsiteConnections.ownerId, ownerId)");
+    expect(cleanup).toContain("SELECT to_regclass(${tableName}) AS table_name");
+    expect(cleanup).toContain("client_id = ${clientId} AND owner_id = ${ownerId}");
   });
 
   it("does not expose the foundation through routes, UI, or the GA4 scheduler", () => {

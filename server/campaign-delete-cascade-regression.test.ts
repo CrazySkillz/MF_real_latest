@@ -57,7 +57,11 @@ describe("campaign/client delete cascade regression guards", () => {
     for (const { symbol, tableName } of campaignScopedTables) {
       if (symbol === "notifications") {
         expect(method).toContain("tx.update(notifications)");
-      } else if (["metaKpis", "metaBenchmarks", "metaReports", "ga4GoogleAdsSpendConnections", "ga4GoogleAdsSpendDailyMetrics"].includes(symbol)) {
+      } else if ([
+        "metaKpis", "metaBenchmarks", "metaReports", "ga4GoogleAdsSpendConnections", "ga4GoogleAdsSpendDailyMetrics",
+        "mimosaasTrackingConfigurations", "mimosaasTrackingCampaignMappings", "mimosaasTrackingAttributions",
+        "mimosaasTrackingDailyMetrics", "mimosaasTrackingPublicationRuns", "mimosaasTrackingDailySnapshots",
+      ].includes(symbol)) {
         expect(method).toContain(`deleteOptionalCampaignTable("${tableName}")`);
       } else {
         expect(method).toContain(`tx.delete(${symbol}).where(eq(${symbol}.campaignId, campaignId))`);

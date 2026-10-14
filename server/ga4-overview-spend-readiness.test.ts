@@ -159,8 +159,8 @@ describe("GA4 Overview Spend readiness contract", () => {
     expect(evaluate(true, { totalSpend: 338 }, undefined, false, true)).toBe(true);
     expect(evaluate(true, { totalSpend: 338 }, { spendToDate: 338 }, false, true)).toBe(true);
     const cards = slice(overview, "{/* Total Spend */}", "{/* Campaign Breakdown */}");
-    expect(cards).toContain("renderFinancialValue(financialSpendLoading, financialSpendAvailable");
-    expect(cards).toContain("financialRevenueAvailable && financialSpendAvailable");
+    expect(cards).toContain("renderFinancialValue(financialDailySnapshotLoading, overviewFinancialSpendAvailable");
+    expect(cards).toContain("overviewFinancialRevenueAvailable && overviewFinancialSpendAvailable");
   });
 
   it("propagates GA4 Spend to KPI, aggregate, snapshot, report, and UI refresh consumers", () => {

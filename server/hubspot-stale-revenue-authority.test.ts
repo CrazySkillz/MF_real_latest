@@ -14,17 +14,18 @@ const sliceBetween = (source: string, start: string, end: string) => {
 };
 
 describe("GA4 materialized revenue authority", () => {
-  it("publishes unavailable instead of configuration revenue when any GA4 source records are missing", () => {
+  it("publishes unavailable instead of configuration revenue when an eligible GA4 source has no materialized records", () => {
     const route = sliceBetween(
       routes,
       'app.get("/api/campaigns/:id/revenue-sources"',
       "// Unified data-sources endpoint",
     );
-    expect(route).toContain('const hasMaterializedRevenue = totalsBySource.has(sourceId)');
+    expect(route).toContain('const hasLatestRevenue = latestTotalsBySource.has(sourceId)');
     expect(route).toContain('const isGa4RevenueSource = platformContext === "ga4"');
-    expect(route).toContain('? materializedRevenueAvailable ? Number(recordTotal.toFixed(2)) : null');
+    expect(route).toContain('const materializedRevenueAvailable = hasLatestRevenue || (pendingCompletedDay && cfgTotal !== null)');
+    expect(route).toContain('? materializedRevenueAvailable ? Number(Number(latestRevenue || 0).toFixed(2)) : null');
     expect(route).toContain('materializedRevenueStatus: materializedRevenueAvailable ? "available" : "unavailable"');
-    expect(route).toContain('Number((recordTotal || cfgTotal || 0).toFixed(2))');
+    expect(route).toContain('Number(Number(latestRevenue || 0).toFixed(2))');
   });
 
   it("does not add stale HubSpot connection revenue to outcome totals", () => {
@@ -43,7 +44,7 @@ describe("GA4 materialized revenue authority", () => {
 
   it("keeps provenance visible but renders the missing value as unavailable", () => {
     expect(ga4Page).toContain('source?.materializedRevenueStatus === "available" && Number.isFinite(Number(source?.lastTotalRevenue))');
-    expect(ga4Page).toContain('materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))');
+    expect(ga4Page).toContain('materializedRevenueUnavailable ? "Unavailable" : formatMoney(latestRevenue)');
     expect(ga4Page).toContain('const materializedRevenueUnavailable = s.materializedRevenueStatus === "unavailable";');
     expect(ga4Page).toContain('materializedRevenueStatus: s.materializedRevenueStatus');
   });

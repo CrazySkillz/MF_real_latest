@@ -38,6 +38,7 @@ describe.each([
       setBenchmarkEditInitialValues: vi.fn(), setEditingBenchmark: vi.fn(), setNewBenchmark: vi.fn(),
       toast: vi.fn(), queryClient: { invalidateQueries: vi.fn().mockResolvedValue(undefined) },
       refreshNotificationQueries: vi.fn().mockResolvedValue(undefined), SELECT_UNIT: "select-unit",
+      DEFAULT_KPI_ALERT_SCHEDULE_HOUR: "09", DEFAULT_KPI_ALERT_SCHEDULE_DAY: "monday",
       console: { error: vi.fn(), warn: vi.fn() },
     };
     return { bindings, options: mutationOptions(name, bindings) };

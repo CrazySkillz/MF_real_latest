@@ -63,7 +63,7 @@ describe("GA4 scheduler and scheduled report observability", () => {
     expect(daily).toContain("export async function runGA4DailyRefreshPipelineForCampaignNow");
     expect(daily).toContain('runGA4DailyRefreshPipelineForTrigger("manual", {');
     expect(daily).toContain("refreshFinancialSources: true");
-    expect(daily).toContain("const campaigns = filterActiveSchedulerCampaigns(campaignId");
+    expect(daily).toContain("const campaigns = filterActiveSchedulerCampaigns(");
     expect(daily).toContain("? [await storage.getCampaign(campaignId).catch(() => undefined)].filter(Boolean) as any[]");
     expect(daily).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true })");
     expect(daily).toContain("if (!campaignId && !opts.suppressAlerts) {");

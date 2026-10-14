@@ -21,8 +21,8 @@ describe("Google Ads revenue CSV flow", () => {
       'app.post("/api/campaigns/:id/revenue/sheets/preview"'
     );
 
-    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
-    expect(routes).toContain('const zCsvRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
+    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);');
+    expect(routes).toContain('const zCsvRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);');
     expect(csvRoute).toContain('parseCsvRevenuePlatformContext((req.body as any)?.platformContext, "ga4", res)');
     expect(csvRoute).not.toContain('parsePlatformContext((req.body as any)?.platformContext, "ga4", res)');
   });
@@ -65,10 +65,10 @@ describe("Google Ads revenue CSV flow", () => {
     const modal = readSource("client", "src", "components", "AddRevenueWizardModal.tsx");
 
     expect(modal).toContain('fd.append("platformContext", platformContext);');
-    expect(modal).toContain('toast({ title: "Select a campaign column"');
+    expect(modal).toContain('Select a campaign column only when you want to filter the file.');
     expect(modal).toContain('toast({ title: "Select at least 1 campaign value"');
-    expect(modal).toContain("campaignColumn: csvCampaignCol");
-    expect(modal).toContain("campaignValues: csvCampaignValues");
+    expect(modal).toContain("campaignColumn: hasCampaignScope ? csvCampaignCol : null");
+    expect(modal).toContain("campaignValues: hasCampaignScope ? csvCampaignValues : null");
     expect(modal).toContain("renderPlatformCampaignMapping");
     expect(modal).toContain("const campaignMappings = mappedRevenueCampaignsForValues(csvCampaignValues);");
   });

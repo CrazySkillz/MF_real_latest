@@ -29,7 +29,9 @@ describe("GA4 Insights Data Summary stale warning", () => {
     expect(section).not.toContain("trendsRefreshIsStale && dataSummaryHistoryAvailable");
     expect(section).not.toContain('data-testid="insights-data-summary-stale"');
     expect(section).not.toContain("Daily data may be out of date; verify the refresh before using these figures.");
-    expect(section).toContain("no-activity days count as 0.");
+    expect(section).not.toContain("GA4 imported history:");
+    expect(section).not.toContain("no-activity days count as 0.");
+    expect(page).toContain("Missing stored dates are shown as 0.");
   });
 
   it("accepts exact live coverage of sparse zero-activity dates without hiding real failures", () => {

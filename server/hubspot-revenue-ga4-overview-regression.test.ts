@@ -316,7 +316,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     const mappedCampaignLabelHelper = sliceBetween(
       client,
       "const revenueSourceMappedCampaignLabel = (source: any, cfg: any) => {",
-      "  // Merged spend sources"
+      "const spendDisplaySources = useMemo(() => {"
     );
 
     expect(pipelineRoute).toContain("requestedPlatformContext");
@@ -793,7 +793,7 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     );
     const operationalOverview = sliceBetween(
       client,
-      "<p className=\"text-sm font-medium text-muted-foreground/70\">Pipeline Proxy</p>",
+      "<h4 className=\"text-sm font-semibold text-foreground mb-2\">Pipeline Proxy</h4>",
       "<p className=\"text-sm font-medium text-muted-foreground/70\">Profit</p>"
     );
     const reportPayload = sliceBetween(

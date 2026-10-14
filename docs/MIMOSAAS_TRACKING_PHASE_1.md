@@ -1,0 +1,200 @@
+# Mimosaas Tracking: Phase 1 Safety Baseline
+
+Status: Phase 1 complete; implementation has not started
+Baseline date: 2026-10-14
+Production revision: `ddf71721d957f6a8fc2be943adbfb770a49aa299`
+
+## Purpose
+
+This phase freezes the safety boundary for adding direct Mimosaas website
+tracking. It does not change production code, production data, campaign
+behavior, GA4 imports, financial calculations, or scheduler behavior.
+
+## Baseline Evidence
+
+All checks below ran from an isolated clean worktree at the exact revision
+reported by the production `/api/health` endpoint.
+
+| Check | Result |
+| --- | --- |
+| TypeScript (`npm run check`) | Pass |
+| Production build (`npm run build`) | Pass |
+| Focused campaign deletion, GA4 scheduler, snapshot, and Google Ads guards | 65/65 pass |
+| Full Vitest suite | 2,236 pass; 116 fail; 2 skipped |
+| Current-version boundary | 73 blocking failures; 43 deferred failures |
+| GA4 Overview certification gate | Pass: status internally consistent |
+| GA4 KPI certification gate | Pass: status internally consistent |
+| GA4 Insights certification gate | Pass: status internally consistent |
+| GA4 Reports certification gate | Pass: status internally consistent |
+| GA4 Ad Comparison certification gate | Fail: required accumulation marker is missing |
+
+The full deployed-revision baseline is already red. Those failures predate
+Mimosaas Tracking and must not be attributed to this feature. A later phase
+must compare its results with this recorded baseline and must keep the focused
+65-test safety set green. Passing certification gates proves internal status
+consistency only; it is not a new production-readiness claim.
+
+The focused safety set is:
+
+- `server/campaign-delete-cascade-regression.test.ts`
+- `server/campaign-overview-ga4-first-regression.test.ts`
+- `server/financial-daily-snapshot-writer.test.ts`
+- `server/financial-daily-snapshot-readiness.test.ts`
+- `server/financial-daily-snapshot-observation.test.ts`
+- `server/financial-daily-snapshot-contract.test.ts`
+- `server/ga4-daily-scheduler-regression.test.ts`
+- `server/ga4-overview-scheduler-snapshot-regression.test.ts`
+- `server/ga4-google-ads-scheduler-regression.test.ts`
+
+## Locked Product Boundary
+
+1. Mimosaas Tracking is a new campaign analytics source in the existing
+   campaign creation journey.
+2. Existing GA4 campaigns continue to use the existing GA4 data path.
+3. Existing campaigns are not migrated or merged with Mimosaas Tracking.
+4. GA4 rows and Mimosaas Tracking rows are never combined into one campaign's
+   traffic totals.
+5. Revenue and Spend keep their existing confirmed financial-source paths.
+   Browser-supplied monetary values are not trusted as Revenue.
+6. A Shopify connector may continue to supply confirmed order Revenue through
+   the existing Shopify financial path. It must not also add the same order
+   value through a tracking event.
+7. The feature remains hidden and disabled by default until its own release
+   gates pass.
+
+## Locked User Journey
+
+1. The marketer creates a campaign and selects **Mimosaas Tracking**.
+2. Mimosaas detects the available installation path and shows one recommended
+   action:
+   - an existing Google Tag Manager container: **Connect with Google**;
+   - a supported commerce or website connector: **Connect [platform]**;
+   - otherwise: **Install universal tracker**.
+3. For Google Tag Manager, the signed-in Google user must already have publish
+   permission. Mimosaas creates and publishes only its own tag, then verifies
+   receipt of a test event. No Mimosaas administrator is involved.
+4. The campaign is created only after the selected tracking installation is
+   verified and its campaign mapping is valid.
+5. Revenue and Spend sources remain optional setup choices. An absent source
+   displays **Unavailable** and does not block website metrics.
+
+Connector-specific installers are separate adapters. They all send the same
+event contract into the same ingestion, attribution, aggregation, and
+publication path.
+
+## Locked Data Contract
+
+The implementation must add new schema-backed records using the existing
+`shared/schema.ts` -> `server/storage.ts` -> `server/routes-oauth.ts` flow:
+
+- client-owned website connection and installation status;
+- campaign-owned tracking configuration and exact campaign mappings;
+- append-only raw events with a unique event ID;
+- durable click-resolution and attribution status;
+- daily campaign aggregates;
+- durable scheduler run and publication state;
+- one immutable published daily snapshot per campaign and reporting date.
+
+Every raw event must retain its client, website, campaign-resolution status,
+event time, receive time, anonymous visitor ID, session ID, event name, URL,
+referrer, UTM fields, and `gclid` when present. Raw records must be idempotent:
+the same event ID cannot be counted twice.
+
+No new code may write to GA4 daily tables or change existing GA4 response
+contracts.
+
+## Locked Metric Definitions
+
+- **Users:** distinct first-party anonymous visitor IDs for the reporting day.
+- **Sessions:** distinct session IDs; inactivity starts a new session after 30
+  minutes.
+- **Conversions:** selected conversion events, deduplicated by event ID.
+- **Engaged session:** a session with at least 10 seconds of engagement, at
+  least two page views, or at least one conversion.
+- **Engagement Rate:** engaged sessions divided by Sessions.
+- **Conversion Rate:** Conversions divided by Sessions.
+- **Revenue, Spend, ROAS, ROI, and CPA:** use the existing confirmed financial
+  source rules and calculations. Tracker event payloads cannot create Revenue.
+
+The UI must label these as Mimosaas Tracking metrics. It must not describe them
+as GA4 metrics.
+
+## Locked Attribution Order
+
+Each event is counted once:
+
+1. If `gclid` is present, resolve it through the campaign-scoped connected
+   Google Ads account and selected campaign IDs.
+2. Otherwise, use an exact `utm_campaign` mapping.
+3. A returning direct visitor retains the last proven campaign for 30 days.
+4. A visitor with no proven campaign is stored as **Unattributed**. Mimosaas
+   never guesses a campaign.
+5. If `gclid` and `utm_campaign` resolve to different Mimosaas campaigns, mark
+   an attribution conflict and exclude the event from campaign totals until
+   the mapping is corrected. Do not double count it.
+
+Google Ads click resolution must be added as a new client method. Existing
+Google Ads campaign listing, daily metric, Spend, scheduler, and snapshot
+methods must not be changed to implement it.
+
+## Locked Daily Publication
+
+1. All boundaries use the campaign reporting timezone.
+2. At 08:00 local time, collect the previous local day's website aggregate and
+   every configured Revenue and Spend source through that same date.
+3. Publish only after every configured source succeeds or is explicitly absent.
+4. When a configured source fails, keep the last complete snapshot visible and
+   mark the new day pending. Never mix dates in the Overview cards.
+5. Retry a pending day at 14:00 and 20:00 local time.
+6. Once a day is finalized, later scheduled runs skip it.
+7. Store run state in the database so a restart or second application instance
+   cannot duplicate or lose the run.
+8. If Revenue or Spend has no configured source, publish website metrics and
+   display that financial value as **Unavailable** for the same reporting date.
+
+The published snapshot is the only source for Mimosaas Tracking Overview
+cards and downstream calculations. Raw or partially aggregated rows must never
+be rendered as the current executive result.
+
+## Protected Existing Paths
+
+Later phases must preserve, without widening or reinterpreting them:
+
+- GA4 campaign creation and initial import;
+- `server/ga4-daily-scheduler.ts` ordering and ownership;
+- GA4 daily storage replacement and Overview snapshot behavior;
+- `financial_daily_snapshot_v1` and its GA4 consumers;
+- current Revenue, Spend, ROAS, ROI, CPA, and currency rules;
+- current Google Ads aggregate metrics and Spend behavior;
+- campaign/client ownership checks and campaign deletion cascade;
+- GA4 Overview, KPI, Benchmark, Ad Comparison, Insights, and Reports response
+  shapes and routes.
+
+## Required Tests Before Enabling the Feature
+
+1. Tenant, client, website, and campaign ownership for every create, read,
+   update, delete, ingestion, and scheduler path.
+2. Event authentication, replay protection, duplicate event IDs, malformed
+   payloads, clock skew, and rate limits.
+3. UTM, `gclid`, returning-direct, unattributed, and conflict attribution.
+4. Session timeout, unique users, conversions, engagement, timezones, midnight,
+   daylight-saving transitions, and late events.
+5. Scheduler restart, concurrency, retry, source failure, finalized-day skip,
+   and last-complete-snapshot retention.
+6. Revenue and Spend absent, zero, unavailable, failed, and successfully
+   refreshed states, including derived financial values.
+7. Campaign and client deletion with no effect on unrelated tenants or legacy
+   GA4 campaigns.
+8. Contract guards proving that existing GA4 tables, endpoints, schedulers,
+   calculations, and UI response shapes are unchanged.
+9. A full mock path through a real test page and the installed tag, followed by
+   one live UTM visit and one genuine Google Ads click. A fabricated `gclid`
+   cannot be treated as live Google Ads proof.
+
+## Release Rule
+
+Implementation must proceed in small, feature-flagged slices. No UI route,
+scheduler, downstream calculation, or production ingestion is enabled until
+its complete lifecycle is traced and its targeted regression set passes. The
+pre-existing full-suite failures remain explicit blockers for any broad
+production-readiness claim.

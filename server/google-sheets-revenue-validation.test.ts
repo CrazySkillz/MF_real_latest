@@ -207,7 +207,8 @@ describe("GA4 Overview Google Sheets revenue deterministic validation", () => {
     expect(scheduledReport).toContain('storage.getRevenueBreakdownBySource(campaignId, importedRevenueStartDate, importedRevenueEndDate, "ga4")');
     expect(ga4Page).toContain("const financialRevenue = ga4RevenueForFinancials + importedRevenueForFinancials;");
     expect(ga4Page).toContain("resolveExactGA4CampaignBreakdownRevenue(");
-    expect(campaignBreakdown).toContain("const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];");
+    expect(campaignBreakdown).toContain("const totals = source?.boundedRevenueZero === true || source?.pendingCompletedDay === true");
+    expect(campaignBreakdown).toContain(": Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];");
     expect(campaignBreakdown).toContain("const targetKey = targetByValue.get(valueKey);");
 
     const invalidationStart = revenueModal.indexOf("const invalidateAfterRevenueChange");

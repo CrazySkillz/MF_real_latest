@@ -220,8 +220,9 @@ describe("GA4 UI regression guard", () => {
     expect(landingStart).toBeGreaterThan(-1);
     expect(conversionStart).toBeGreaterThan(landingStart);
     expect(breakdownStart).toBeGreaterThan(conversionStart);
-    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", "import-to-date", selectedGA4PropertyId]');
-    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", "import-to-date", selectedGA4PropertyId]');
+    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", "import-to-date", selectedGA4PropertyId, ga4OverviewExpectedEndDate]');
+    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", "import-to-date", selectedGA4PropertyId, ga4OverviewExpectedEndDate]');
+    expect(ga4Metrics).toContain("snapshotEndDate: ga4OverviewExpectedEndDate");
     expect(ga4Metrics).toContain("const GA4_DAILY_LOOKBACK_DAYS = 30;");
     expect(ga4Metrics).toContain("Number(property?.lookbackDays) === 30");
     expect(ga4Metrics).toContain('const dateRange = `${GA4_DAILY_LOOKBACK_DAYS}days`;');
@@ -350,7 +351,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("const ga4HasRevenueMetric = !!ga4RevenueMetricName || ga4RevenueForFinancials !== 0;");
     expect(ga4Metrics).toContain("const ga4NativeRevenueContributes = ga4HasRevenueMetric && ga4RevenueForFinancials !== 0;");
     expect(ga4Metrics).toContain("const totalRevenueDisplaySources = revenueDisplaySources;");
-    expect(ga4Metrics).toContain('const isPipelineOnlyRevenueSource = isCrm && cfg?.pipelineEnabled === true && Number(s.revenue || 0) === 0;');
+    expect(ga4Metrics).toContain('const isPipelineOnlyRevenueSource = isCrm && cfg?.pipelineEnabled === true && latestRevenue === 0;');
     expect(ga4Metrics).toContain("const revenueSourcesCount = totalRevenueDisplaySources.length + (ga4NativeRevenueContributes ? 1 : 0);");
     expect(ga4Metrics).toContain("{ga4NativeRevenueContributes && (");
     expect(ga4Metrics.indexOf("const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);")).toBeLessThan(
@@ -400,8 +401,13 @@ describe("GA4 UI regression guard", () => {
     expect(financialStart).toBeGreaterThan(-1);
     expect(performanceStart).toBeGreaterThan(financialStart);
     expect(financialCards).toContain('className="grid gap-5 lg:grid-cols-3"');
-    expect(financialCards.indexOf("Total Revenue")).toBeLessThan(financialCards.indexOf("Total Spend"));
-    expect(financialCards.indexOf("Total Spend")).toBeLessThan(financialCards.indexOf("Pipeline Proxy"));
+    const revenueHeading = financialCards.indexOf('>Revenue</h4>');
+    const spendHeading = financialCards.indexOf('>Spend</h4>');
+    const pipelineHeading = financialCards.indexOf('>Pipeline Proxy</h4>');
+    expect(revenueHeading).toBeGreaterThan(-1);
+    expect(spendHeading).toBeGreaterThan(revenueHeading);
+    expect(pipelineHeading).toBeGreaterThan(spendHeading);
+    expect(financialCards).toContain(">Expected Revenue</p>");
   });
 
   it("distinguishes failed Overview requests from valid zero and empty responses", () => {
@@ -491,16 +497,17 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).not.toContain("financialSpend / breakdownTotals.conversions");
   });
 
-  it("keeps GA4 Overview detail tables traffic-focused without revenue columns", () => {
+  it("keeps Revenue in Campaign Breakdown and out of the other Overview detail tables", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
     const scheduledPdf = readServer("ga4-scheduled-report-pdf.ts");
 
-    const liveStart = ga4Metrics.indexOf("{/* Landing Pages */}");
-    const liveEnd = ga4Metrics.indexOf("{/* Conversion Events */}", liveStart);
-    const liveSection = ga4Metrics.slice(liveStart, liveEnd);
-    const liveEventsStart = liveEnd;
-    const liveEventsEnd = ga4Metrics.indexOf("{/* Modals (rendered always) */}", liveEventsStart);
-    const liveEventsSection = ga4Metrics.slice(liveEventsStart, liveEventsEnd);
+    const liveCampaignStart = ga4Metrics.indexOf("{/* Campaign Breakdown */}");
+    const liveEventsStart = ga4Metrics.indexOf("{/* Conversion Events */}", liveCampaignStart);
+    const liveLandingStart = ga4Metrics.indexOf("{/* Landing Pages */}", liveEventsStart);
+    const liveEnd = ga4Metrics.indexOf("{/* Modals (rendered always) */}", liveLandingStart);
+    const liveCampaignSection = ga4Metrics.slice(liveCampaignStart, liveEventsStart);
+    const liveEventsSection = ga4Metrics.slice(liveEventsStart, liveLandingStart);
+    const liveLandingSection = ga4Metrics.slice(liveLandingStart, liveEnd);
 
     const browserPdfStart = ga4Metrics.indexOf("if (includeOverviewLandingPages) addSimpleTable");
     const browserPdfEnd = ga4Metrics.indexOf("if (includeOverviewConversionEvents) addSimpleTable", browserPdfStart);
@@ -516,9 +523,10 @@ describe("GA4 UI regression guard", () => {
     const scheduledPdfEventsEnd = scheduledPdf.indexOf("if (sections.ads)", scheduledPdfEventsStart);
     const scheduledPdfEventsSection = scheduledPdf.slice(scheduledPdfEventsStart, scheduledPdfEventsEnd);
 
-    expect(liveStart).toBeGreaterThan(-1);
-    expect(liveEnd).toBeGreaterThan(liveStart);
-    expect(liveEventsEnd).toBeGreaterThan(liveEventsStart);
+    expect(liveCampaignStart).toBeGreaterThan(-1);
+    expect(liveEventsStart).toBeGreaterThan(liveCampaignStart);
+    expect(liveLandingStart).toBeGreaterThan(liveEventsStart);
+    expect(liveEnd).toBeGreaterThan(liveLandingStart);
     expect(browserPdfStart).toBeGreaterThan(-1);
     expect(browserPdfEnd).toBeGreaterThan(browserPdfStart);
     expect(browserPdfEventsEnd).toBeGreaterThan(browserPdfEventsStart);
@@ -526,8 +534,10 @@ describe("GA4 UI regression guard", () => {
     expect(scheduledPdfEnd).toBeGreaterThan(scheduledPdfStart);
     expect(scheduledPdfEventsEnd).toBeGreaterThan(scheduledPdfEventsStart);
 
-    expect(liveSection).not.toContain("GA4 Revenue");
-    expect(liveSection).not.toContain("formatMoney(Number(r?.revenue || 0))");
+    expect(liveCampaignSection).toContain(">Revenue</th>");
+    expect(liveCampaignSection).toContain("formatMoney(revenue)");
+    expect(liveLandingSection).not.toContain("GA4 Revenue");
+    expect(liveLandingSection).not.toContain("formatMoney(Number(r?.revenue || 0))");
     expect(liveEventsSection).not.toContain("GA4 Revenue");
     expect(liveEventsSection).not.toContain("formatMoney(Number(r?.revenue || 0))");
     expect(browserPdfSection).not.toContain("GA4 REVENUE");
@@ -978,7 +988,7 @@ describe("GA4 UI regression guard", () => {
     expect(handler).toContain('queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`], exact: false });');
     expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-daily", GA4_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId]');
     expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics", dateRange, selectedGA4PropertyId]');
-    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", activeTab === "insights" ? dateRange : "import-to-date", selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly]');
+    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", activeTab === "insights" ? dateRange : "import-to-date", selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly, activeTab === "insights" ? "" : ga4OverviewExpectedEndDate]');
     expect(ga4Metrics).toContain('queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, "campaign-currency", insightsValidationReadOnly]');
     expect(ga4Metrics).not.toContain("ga4-to-date?propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}&dateRange=");
   });

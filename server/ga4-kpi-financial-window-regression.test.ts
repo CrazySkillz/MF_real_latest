@@ -74,6 +74,7 @@ describe("GA4 KPI persisted financial source window", () => {
     storageMock.getCampaign.mockResolvedValue({
       id: "campaign-1",
       ownerId: "owner-1",
+      status: "active",
       startDate: "2026-05-20T00:00:00.000Z",
       currency: "USD",
       reportingTimeZone: "Europe/Amsterdam",
@@ -153,6 +154,7 @@ describe("GA4 KPI persisted financial source window", () => {
     storageMock.getCampaign.mockResolvedValue({
       id: "campaign-1",
       ownerId: "owner-1",
+      status: "active",
       createdAt: "2026-06-22T15:59:49.000Z",
       startDate: null,
       currency: "USD",
@@ -198,6 +200,7 @@ describe("GA4 KPI persisted financial source window", () => {
     storageMock.getCampaign.mockResolvedValue({
       id: "campaign-1",
       ownerId: "owner-1",
+      status: "active",
       createdAt: "2026-06-22T15:59:49.000Z",
       startDate: null,
       currency: "USD",

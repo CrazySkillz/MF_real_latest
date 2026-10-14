@@ -19,7 +19,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain('["/api/ga4/check-connection", campaignId, insightsValidationReadOnly]');
     expect(page).toContain('activeTab === "insights"');
     expect(page).toContain('String(data?.propertyId || "") !== String(selectedGA4PropertyId)');
-    expect(page).toContain('const insightsRollupRows = activeTab === "insights" ? ga4InsightsTimeSeries : ga4TimeSeries');
+    expect(page).toContain('const insightsRollupRows = activeTab === "insights" || activeTab === "reports" ? ga4InsightsTimeSeries : ga4TimeSeries');
     expect(page).toContain("buildGA4InsightsRollups(insightsRollupRows, insightsRollupCutoff)");
     expect(page).not.toContain('queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_DAILY_LOOKBACK_DAYS');
   });
@@ -163,7 +163,8 @@ describe("live GA4 Insights production boundary", () => {
     expect(section).toContain("Showing last-good financial values");
     expect(page).not.toContain("Showing last-good Data Summary financial values because one or more source refreshes failed.");
     expect(page).not.toContain("Showing last-good GA4 summary values; trend recommendations are withheld until refresh succeeds.");
-    expect(page).toContain("GA4 imported history:");
+    expect(page).not.toContain("GA4 imported history:");
+    expect(page).toContain("Missing stored dates are shown as 0.");
     expect(page).toContain('const financialRevenueAvailable = activeTab === "insights"');
     expect(page).toContain("? ga4ToDateResp !== undefined && (!requiresVerifiedNativeCurrency || ga4NativeCurrencyVerified) && importedRevenueAvailable && revenueMetricAvailable");
     expect(page).toContain(": ga4FinancialNativeAvailable && importedRevenueAvailable && revenueMetricAvailable;");

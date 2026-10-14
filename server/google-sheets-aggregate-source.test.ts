@@ -182,7 +182,7 @@ describe("Google Sheets aggregate source adapter", () => {
     const spendTotalsRoute = sliceBetween(
       routes,
       'app.get("/api/campaigns/:id/spend-totals"',
-      '// Spend across all available mapped records'
+      'app.get("/api/campaigns/:id/spend-to-date"'
     );
 
     expect(spendTotalsRoute).toContain("if (platformContext) {");

@@ -414,9 +414,9 @@ describe("notification visibility regression guard", () => {
     expect(storageFile).toContain("await tx.update(notifications)");
     expect(storageFile).toContain("'dismissalReason', 'campaign_deleted'");
     expect(storageFile).toContain("await this.deleteCampaignChildren(String(campaign.id), tx);");
-    expect(homeFile).toContain("onSuccess: async (_data, clientId) => {");
-    expect(homeFile).toContain('await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });');
-    expect(homeFile).toContain('await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });');
+    expect(homeFile).toContain("onSuccess: (_data, clientId) => {");
+    expect(homeFile).toContain('queryClient.setQueryData<Client[]>(["/api/clients"]');
+    expect(homeFile).toContain('queryClient.invalidateQueries({ queryKey: ["/api/notifications"] }),');
     expect(campaignsFile).toContain("onSuccess: async () => {");
     expect(campaignsFile).toContain('await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });');
     expect(campaignsFile).toContain('await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });');

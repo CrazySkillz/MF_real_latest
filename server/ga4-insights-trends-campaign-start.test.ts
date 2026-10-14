@@ -31,12 +31,10 @@ const dailyChart = new Function("addGA4InsightsDateDays", js(`
     const metric = "sessions";
     const isRate = false;
     let chartData: any[] = [];
-    let dailyChartStartDate = "";
-    let dailyChartEndDate = "";
     ${extract("                            // Show up to 30 calendar days", "\n                          } else if (insightsTrendMode === \"monthly\")")}
-    return { chartData, dailyChartStartDate, dailyChartEndDate };
+    return { chartData };
   };
-`))(addGA4InsightsDateDays) as (rows: any[], startDate: string) => { chartData: any[]; dailyChartStartDate: string; dailyChartEndDate: string };
+`))(addGA4InsightsDateDays) as (rows: any[], startDate: string) => { chartData: any[] };
 
 const row = (date: string, sessions: number) => ({ date, sessions, users: sessions, conversions: 0, revenue: 0, pageviews: sessions, engagedSessions: 0, engagementRate: 0 });
 
@@ -84,7 +82,7 @@ describe("GA4 Insights Trends campaign creation boundary", () => {
     expect(buildRows(rows, "2026-09-16", "")).toEqual([]);
     expect(importedRows(rows, "", "2026-09-16")).toEqual([]);
     const chart = dailyChart([row("2026-09-09", 38), row("2026-09-10", 38)], "2026-09-08");
-    expect(chart.dailyChartStartDate).toBe("2026-09-08");
+    expect(chart.chartData.map((point) => point.date)).toEqual(["09-08", "09-09", "09-10"]);
     expect(chart.chartData.map((point) => point.value)).toEqual([0, 38, 38]);
   });
 

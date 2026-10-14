@@ -268,6 +268,7 @@ describe("Mimosaas Tracking storage safety", () => {
       mappingType: "utm_campaign",
       campaignValue: "autumn",
     });
+    expect(mocks.state.updates).toContainEqual(expect.objectContaining({ status: "draft" }));
   });
 
   it("rejects an active mapping already used by the same website", async () => {
@@ -313,6 +314,7 @@ describe("Mimosaas Tracking storage safety", () => {
     expect(mocks.state.updates[0]).toMatchObject({ isActive: false });
     expect(mocks.state.updates[0]).not.toHaveProperty("campaignId");
     expect(mocks.state.updates[0]).not.toHaveProperty("trackingConfigurationId");
+    expect(mocks.state.updates).toContainEqual(expect.objectContaining({ status: "draft" }));
   });
 
   it("keeps all persistence hidden and explicitly owner, client, and campaign scoped", () => {

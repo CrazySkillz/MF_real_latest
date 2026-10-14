@@ -1034,6 +1034,8 @@ export class DatabaseStorage implements IStorage {
         isActive: mapping.isActive,
       }).returning();
       if (!created) throw new Error("Failed to create Mimosaas Tracking campaign mapping");
+      await tx.update(mimosaasTrackingConfigurations).set({ status: "draft", updatedAt: new Date() })
+        .where(eq(mimosaasTrackingConfigurations.id, configuration.id));
       return created;
     });
   }
@@ -1066,6 +1068,8 @@ export class DatabaseStorage implements IStorage {
         eq(mimosaasTrackingCampaignMappings.campaignId, campaignId),
         eq(mimosaasTrackingCampaignMappings.trackingConfigurationId, configuration.id),
       )).returning();
+      await tx.update(mimosaasTrackingConfigurations).set({ status: "draft", updatedAt: new Date() })
+        .where(eq(mimosaasTrackingConfigurations.id, configuration.id));
       return updated || undefined;
     });
   }

@@ -1,6 +1,6 @@
 # Mimosaas Tracking: Phase 1 Safety Baseline
 
-Status: Phase 1 complete; Phase 2 schema, internal persistence, and feature-flagged read-only setup API implemented in main; schema migrated
+Status: Phase 1 complete; Phase 2 schema, internal persistence, and feature-flagged setup APIs implemented in main; schema migrated
 Baseline date: 2026-10-14
 Last verified production revision: `f1d6e3424449bfefc1c3c89d6b724ff8d669df72`
 
@@ -12,9 +12,16 @@ scoped internal storage methods are implemented in main. Raw-event writes are
 idempotent and reject an event ID reused with different immutable data. Active
 campaign mappings cannot be duplicated across campaigns on the same website. No
 tracker UI, public ingestion, aggregation, scheduler, or GA4 integration is
-enabled. The read-only campaign setup endpoint is ownership-scoped and returns
-404 unless `MIMOSAAS_TRACKING_ENABLED=true`; no tracker write endpoint is
-exposed. Migration `0020_add_mimosaas_tracking_foundation.sql` was applied
+enabled. Campaign configuration read/create/update and website connection
+list/create/update endpoints are ownership-scoped and return 404 unless
+`MIMOSAAS_TRACKING_ENABLED=true`. Website writes accept only the URL and
+installation method; changes reset verification to pending. Configuration
+writes accept only an owned website connection, conversion events, and the
+attribution window; changes remain draft. Campaign mapping create/update accepts
+only exact `utm_campaign` values, rejects website-wide conflicts, and resets the
+configuration to draft in the same database transaction. Activation remains
+unexposed. Migration
+`0020_add_mimosaas_tracking_foundation.sql` was applied
 to production on 2026-10-14 and verified all 8 tables, 99 required columns, 14
 indexes, and 2 immutability triggers.
 

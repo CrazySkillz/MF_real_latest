@@ -86,8 +86,11 @@ describe("Mimosaas Tracking Phase 2 foundation", () => {
     expect(cleanup).toContain("client_id = ${clientId} AND owner_id = ${ownerId}");
   });
 
-  it("does not expose the foundation through routes, UI, or the GA4 scheduler", () => {
-    expect(read("server", "routes-oauth.ts")).not.toContain("mimosaasTracking");
+  it("keeps setup routes feature-flagged without exposing ingestion, UI, or the GA4 scheduler", () => {
+    const routes = read("server", "routes-oauth.ts");
+    expect(routes).toContain("requireMimosaasTrackingFeature");
+    expect(routes).toContain("MIMOSAAS_TRACKING_ENABLED");
+    expect(routes).not.toContain("createMimosaasTrackingEvent");
     expect(read("server", "ga4-daily-scheduler.ts")).not.toContain("mimosaasTracking");
     expect(read("client", "src", "pages", "campaigns.tsx")).not.toContain("mimosaas_tracking");
   });

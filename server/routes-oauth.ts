@@ -3438,6 +3438,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return next();
   };
 
+  const mimosaasWebsiteUrlSchema = z.string().trim().max(2048).url().refine((value) => {
+    try { return ["http:", "https:"].includes(new URL(value).protocol); } catch { return false; }
+  }, "Website URL must use http or https").transform((value) => new URL(value).origin);
+  const mimosaasInstallationMethodSchema = z.enum(["gtm", "shopify", "woocommerce", "website_builder", "universal"]);
+  const mimosaasWebsiteBodySchema = z.object({
+    websiteUrl: mimosaasWebsiteUrlSchema,
+    installationMethod: mimosaasInstallationMethodSchema,
+  }).strict();
+  const mimosaasWebsiteUpdateBodySchema = mimosaasWebsiteBodySchema.partial()
+    .refine((value) => Object.keys(value).length > 0, "At least one website field is required");
+  const publicMimosaasWebsiteConnection = (connection: any) => ({
+    id: connection.id,
+    clientId: connection.clientId,
+    websiteUrl: connection.websiteUrl,
+    installationMethod: connection.installationMethod,
+    installationStatus: connection.installationStatus,
+    verifiedAt: connection.verifiedAt,
+    lastEventAt: connection.lastEventAt,
+    createdAt: connection.createdAt,
+    updatedAt: connection.updatedAt,
+  });
+  const sendMimosaasWebsiteError = (res: any, error: any) => {
+    if (String(error?.code || "").endsWith("_SCOPE_NOT_FOUND")) {
+      return res.status(404).json({ success: false, message: "Website connection not found" });
+    }
+    if (String(error?.code || "") === "23505") {
+      return res.status(409).json({ success: false, message: "This website is already connected to the client" });
+    }
+    console.error("Mimosaas Tracking website connection error:", error);
+    return res.status(500).json({ success: false, message: "Failed to save Mimosaas Tracking website connection" });
+  };
+  const mimosaasConversionEventNamesSchema = z.array(z.string().trim().min(1).max(100)).max(50)
+    .transform((names) => Array.from(new Set(names)));
+  const mimosaasTrackingConfigurationBodySchema = z.object({
+    websiteConnectionId: z.string().trim().min(1).max(255),
+    conversionEventNames: mimosaasConversionEventNamesSchema.optional().default([]),
+    attributionWindowDays: z.number().int().min(1).max(90).optional().default(30),
+  }).strict();
+  const mimosaasTrackingConfigurationUpdateBodySchema = z.object({
+    conversionEventNames: mimosaasConversionEventNamesSchema.optional(),
+    attributionWindowDays: z.number().int().min(1).max(90).optional(),
+  }).strict().refine((value) => Object.keys(value).length > 0, "At least one configuration field is required");
+  const sendMimosaasConfigurationError = (res: any, error: any) => {
+    const code = String(error?.code || "");
+    if (code.endsWith("_SCOPE_NOT_FOUND") || code === "MIMOSAAS_TRACKING_CONFIGURATION_NOT_FOUND") {
+      return res.status(404).json({ success: false, message: "Campaign tracking setup not found" });
+    }
+    if (code === "23505") {
+      return res.status(409).json({ success: false, message: "This campaign already has a tracking configuration" });
+    }
+    console.error("Mimosaas Tracking configuration error:", error);
+    return res.status(500).json({ success: false, message: "Failed to save Mimosaas Tracking configuration" });
+  };
+  const mimosaasTrackingMappingBodySchema = z.object({
+    campaignValue: z.string().trim().min(1).max(255),
+  }).strict();
+  const mimosaasTrackingMappingUpdateBodySchema = z.object({
+    campaignValue: z.string().trim().min(1).max(255).optional(),
+    isActive: z.boolean().optional(),
+  }).strict().refine((value) => Object.keys(value).length > 0, "At least one mapping field is required");
+  const sendMimosaasMappingError = (res: any, error: any) => {
+    const code = String(error?.code || "");
+    if (code.endsWith("_SCOPE_NOT_FOUND") || code === "MIMOSAAS_TRACKING_CONFIGURATION_NOT_FOUND") {
+      return res.status(404).json({ success: false, message: "Campaign mapping not found" });
+    }
+    if (code === "23505" || code === "MIMOSAAS_TRACKING_MAPPING_CONFLICT") {
+      return res.status(409).json({ success: false, message: "This website campaign value is already mapped" });
+    }
+    console.error("Mimosaas Tracking campaign mapping error:", error);
+    return res.status(500).json({ success: false, message: "Failed to save Mimosaas Tracking campaign mapping" });
+  };
+
+  app.get("/api/campaigns/:id/mimosaas-tracking/websites", requireMimosaasTrackingFeature, requireCampaignAccessParamId, async (req, res) => {
+    try {
+      const campaign = (req as any)._campaign;
+      const connections = await storage.getMimosaasWebsiteConnections(getActorId(req), String(campaign.clientId));
+      res.setHeader("Cache-Control", "no-store");
+      return res.json({ success: true, connections: connections.map(publicMimosaasWebsiteConnection) });
+    } catch (error: any) {
+      return sendMimosaasWebsiteError(res, error);
+    }
+  });
+
+  app.post("/api/campaigns/:id/mimosaas-tracking/websites", requireMimosaasTrackingFeature, requireCampaignAccessParamId, async (req, res) => {
+    const parsed = mimosaasWebsiteBodySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ success: false, message: parsed.error.errors[0]?.message || "Invalid website connection" });
+    try {
+      const campaign = (req as any)._campaign;
+      const connection = await storage.createMimosaasWebsiteConnection(getActorId(req), String(campaign.clientId), {
+        ...parsed.data,
+        installationStatus: "pending",
+      });
+      return res.status(201).json({ success: true, connection: publicMimosaasWebsiteConnection(connection) });
+    } catch (error: any) {
+      return sendMimosaasWebsiteError(res, error);
+    }
+  });
+
+  app.patch("/api/campaigns/:id/mimosaas-tracking/websites/:connectionId", requireMimosaasTrackingFeature, requireCampaignAccessParamId, async (req, res) => {
+    const parsed = mimosaasWebsiteUpdateBodySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ success: false, message: parsed.error.errors[0]?.message || "Invalid website connection" });
+    try {
+      const campaign = (req as any)._campaign;
+      const connection = await storage.updateMimosaasWebsiteConnection(getActorId(req), String(campaign.clientId), String(req.params.connectionId), {
+        ...parsed.data,
+        installationStatus: "pending",
+        installationMetadata: null,
+        verifiedAt: null,
+        lastEventAt: null,
+      });
+      if (!connection) return res.status(404).json({ success: false, message: "Website connection not found" });
+      return res.json({ success: true, connection: publicMimosaasWebsiteConnection(connection) });
+    } catch (error: any) {
+      return sendMimosaasWebsiteError(res, error);
+    }
+  });
+
   app.get("/api/campaigns/:id/mimosaas-tracking/configuration", requireMimosaasTrackingFeature, requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = String(req.params.id || "");
@@ -3458,6 +3575,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Mimosaas Tracking configuration fetch error:", error);
       return res.status(500).json({ success: false, message: "Failed to fetch Mimosaas Tracking configuration" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/mimosaas-tracking/configuration", requireMimosaasTrackingFeature, requireCampaignAccessParamId, async (req, res) => {
+    const parsed = mimosaasTrackingConfigurationBodySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ success: false, message: parsed.error.errors[0]?.message || "Invalid tracking configuration" });
+    try {
+      const campaign = (req as any)._campaign;
+      const configuration = await storage.createMimosaasTrackingConfiguration(
+        getActorId(req), String(campaign.clientId), String(campaign.id), { ...parsed.data, status: "draft" },
+      );
+      return res.status(201).json({ success: true, configuration });
+    } catch (error: any) {
+      return sendMimosaasConfigurationError(res, error);
+    }
+  });
+
+  app.patch("/api/campaigns/:id/mimosaas-tracking/configuration", requireMimosaasTrackingFeature, requireCampaignAccessParamId, async (req, res) => {
+    const parsed = mimosaasTrackingConfigurationUpdateBodySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ success: false, message: parsed.error.errors[0]?.message || "Invalid tracking configuration" });
+    try {
+      const campaign = (req as any)._campaign;
+      const configuration = await storage.updateMimosaasTrackingConfiguration(
+        getActorId(req), String(campaign.clientId), String(campaign.id), { ...parsed.data, status: "draft" },
+      );
+      if (!configuration) return res.status(404).json({ success: false, message: "Campaign tracking setup not found" });
+      return res.json({ success: true, configuration });
+    } catch (error: any) {
+      return sendMimosaasConfigurationError(res, error);
+    }
+  });
+
+  app.post("/api/campaigns/:id/mimosaas-tracking/mappings", requireMimosaasTrackingFeature, requireCampaignAccessParamId, async (req, res) => {
+    const parsed = mimosaasTrackingMappingBodySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ success: false, message: parsed.error.errors[0]?.message || "Invalid campaign mapping" });
+    try {
+      const campaign = (req as any)._campaign;
+      const mapping = await storage.createMimosaasTrackingCampaignMapping(
+        getActorId(req), String(campaign.clientId), String(campaign.id),
+        { mappingType: "utm_campaign", campaignValue: parsed.data.campaignValue, isActive: true },
+      );
+      return res.status(201).json({ success: true, mapping });
+    } catch (error: any) {
+      return sendMimosaasMappingError(res, error);
+    }
+  });
+
+  app.patch("/api/campaigns/:id/mimosaas-tracking/mappings/:mappingId", requireMimosaasTrackingFeature, requireCampaignAccessParamId, async (req, res) => {
+    const parsed = mimosaasTrackingMappingUpdateBodySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ success: false, message: parsed.error.errors[0]?.message || "Invalid campaign mapping" });
+    try {
+      const campaign = (req as any)._campaign;
+      const ownerId = getActorId(req);
+      const clientId = String(campaign.clientId);
+      const campaignId = String(campaign.id);
+      const mappingId = String(req.params.mappingId);
+      const existing = (await storage.getMimosaasTrackingCampaignMappings(ownerId, clientId, campaignId))
+        .find((mapping: any) => String(mapping.id) === mappingId && mapping.mappingType === "utm_campaign");
+      if (!existing) return res.status(404).json({ success: false, message: "Campaign mapping not found" });
+      const mapping = await storage.updateMimosaasTrackingCampaignMapping(ownerId, clientId, campaignId, mappingId, parsed.data);
+      if (!mapping) return res.status(404).json({ success: false, message: "Campaign mapping not found" });
+      return res.json({ success: true, mapping });
+    } catch (error: any) {
+      return sendMimosaasMappingError(res, error);
     }
   });
 

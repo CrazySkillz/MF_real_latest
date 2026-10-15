@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, AlertCircle, Loader2, Pencil, Plus } from "lucide-react";
+import { Activity, AlertCircle, Loader2, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,13 +26,7 @@ type MimosaasTrackingSnapshot = {
 };
 
 type SnapshotResponse = { success: true; snapshot: MimosaasTrackingSnapshot | null };
-type FinancialSource = {
-  id: string;
-  sourceType: string;
-  platformContext: string;
-  displayName?: string | null;
-  mappingConfig?: string | null;
-};
+type FinancialSource = { id: string; displayName?: string | null };
 type FinancialSourcesResponse = {
   success: true;
   revenueSources: FinancialSource[];
@@ -61,51 +55,18 @@ const formatFinancial = (value: string | null, currency: string, status: "availa
   }
 };
 
-function FinancialSourceRows({
-  sources,
-  unavailable,
-  kind,
-  onEdit,
-}: {
-  sources: FinancialSource[] | undefined;
-  unavailable: boolean;
-  kind: "Revenue" | "Spend";
-  onEdit: (source: FinancialSource) => void;
-}) {
-  if (unavailable) return <p className="min-h-7 text-xs text-muted-foreground">Source status unavailable</p>;
-  if (!sources) return <div className="min-h-7" aria-hidden="true" />;
-  if (sources.length === 0) return <p className="min-h-7 text-xs text-muted-foreground">No source configured</p>;
-
-  return (
-    <div className="space-y-1">
-      {sources.map((source) => {
-        const name = String(source.displayName || "").trim() || "Google Sheets";
-        return (
-          <div key={source.id} className="flex min-h-7 items-center justify-between gap-2 text-xs text-muted-foreground">
-            <span className="truncate">Source: {name}</span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 shrink-0 px-2"
-              aria-label={`Edit Google Sheets ${kind} source ${name}`}
-              onClick={() => onEdit(source)}
-            >
-              <Pencil className="mr-1 h-3 w-3" /> Edit
-            </Button>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+const formatSources = (sources: FinancialSource[] | undefined, unavailable: boolean) => {
+  if (unavailable) return "Source status unavailable";
+  if (!sources) return "";
+  if (sources.length === 0) return "No source configured";
+  const names = sources.map((source) => String(source.displayName || "").trim() || "Google Sheets");
+  return `${sources.length === 1 ? "Source" : "Sources"}: ${names.join(", ")}`;
+};
 
 export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId: string; currency: string }) {
   const queryClient = useQueryClient();
   const [revenueOpen, setRevenueOpen] = useState(false);
   const [spendOpen, setSpendOpen] = useState(false);
-  const [revenueSourceToEdit, setRevenueSourceToEdit] = useState<FinancialSource | null>(null);
-  const [spendSourceToEdit, setSpendSourceToEdit] = useState<FinancialSource | null>(null);
   const { data, isLoading, isError } = useQuery<SnapshotResponse>({
     queryKey: ["/api/campaigns", campaignId, "mimosaas-tracking", "daily-snapshot"],
     retry: false,
@@ -126,11 +87,9 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
     },
   });
   const snapshot = data?.snapshot ?? null;
+  const revenueSources = formatSources(sourcesData?.revenueSources, sourcesError);
+  const spendSources = formatSources(sourcesData?.spendSources, sourcesError);
   const refreshSources = () => void queryClient.invalidateQueries({ queryKey: sourceQueryKey });
-  const openRevenueAdd = () => { setRevenueSourceToEdit(null); setRevenueOpen(true); };
-  const openSpendAdd = () => { setSpendSourceToEdit(null); setSpendOpen(true); };
-  const openRevenueEdit = (source: FinancialSource) => { setRevenueSourceToEdit(source); setRevenueOpen(true); };
-  const openSpendEdit = (source: FinancialSource) => { setSpendSourceToEdit(source); setSpendOpen(true); };
 
   return (
     <>
@@ -160,21 +119,15 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
         ) : !snapshot ? (
           <div className="flex min-h-20 flex-col items-start justify-center gap-3 rounded-lg border border-border bg-muted/60 p-3 text-sm text-muted-foreground">
             <p>No finalized daily snapshot is available yet.</p>
-            <div className="w-full space-y-2">
-              <div>
-                <p className="text-xs font-medium text-foreground">Revenue</p>
-                <FinancialSourceRows sources={sourcesData?.revenueSources} unavailable={sourcesError} kind="Revenue" onEdit={openRevenueEdit} />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-foreground">Spend</p>
-                <FinancialSourceRows sources={sourcesData?.spendSources} unavailable={sourcesError} kind="Spend" onEdit={openSpendEdit} />
-              </div>
+            <div className="space-y-1 text-xs">
+              <p className="min-h-4">{revenueSources ? `Revenue — ${revenueSources}` : ""}</p>
+              <p className="min-h-4">{spendSources ? `Spend — ${spendSources}` : ""}</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={openRevenueAdd}>
+              <Button variant="outline" size="sm" onClick={() => setRevenueOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" /> Add Revenue
               </Button>
-              <Button variant="outline" size="sm" onClick={openSpendAdd}>
+              <Button variant="outline" size="sm" onClick={() => setSpendOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" /> Add Spend
               </Button>
             </div>
@@ -203,30 +156,26 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
               <div className="rounded-lg border border-border bg-card p-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs text-muted-foreground">Revenue</p>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Add Google Sheets Revenue" onClick={openRevenueAdd}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Add Google Sheets Revenue" onClick={() => setRevenueOpen(true)}>
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
                 <p className="mt-1 text-lg font-semibold text-foreground">
                   {formatFinancial(snapshot.revenue, snapshot.currency, snapshot.revenueStatus)}
                 </p>
-                <div className="mt-1">
-                  <FinancialSourceRows sources={sourcesData?.revenueSources} unavailable={sourcesError} kind="Revenue" onEdit={openRevenueEdit} />
-                </div>
+                <p className="mt-1 min-h-4 text-xs text-muted-foreground">{revenueSources}</p>
               </div>
               <div className="rounded-lg border border-border bg-card p-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs text-muted-foreground">Spend</p>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Add Google Sheets Spend" onClick={openSpendAdd}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Add Google Sheets Spend" onClick={() => setSpendOpen(true)}>
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
                 <p className="mt-1 text-lg font-semibold text-foreground">
                   {formatFinancial(snapshot.spend, snapshot.currency, snapshot.spendStatus)}
                 </p>
-                <div className="mt-1">
-                  <FinancialSourceRows sources={sourcesData?.spendSources} unavailable={sourcesError} kind="Spend" onEdit={openSpendEdit} />
-                </div>
+                <p className="mt-1 min-h-4 text-xs text-muted-foreground">{spendSources}</p>
               </div>
             </div>
           </div>
@@ -235,10 +184,7 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
     </Card>
     <AddRevenueWizardModal
       open={revenueOpen}
-      onOpenChange={(open) => {
-        setRevenueOpen(open);
-        if (!open) setRevenueSourceToEdit(null);
-      }}
+      onOpenChange={setRevenueOpen}
       campaignId={campaignId}
       currency={currency}
       dateRange="to_date"
@@ -246,29 +192,22 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
       initialStep="sheets_choose"
       lockInitialStep
       hideCrmSources
-      initialSource={revenueSourceToEdit || undefined}
       onSuccess={() => {
         setRevenueOpen(false);
-        setRevenueSourceToEdit(null);
         refreshSources();
       }}
     />
     <AddSpendWizardModal
       open={spendOpen}
-      onOpenChange={(open) => {
-        setSpendOpen(open);
-        if (!open) setSpendSourceToEdit(null);
-      }}
+      onOpenChange={setSpendOpen}
       campaignId={campaignId}
       currency={currency}
       dateRange="to_date"
       platformContext="mimosaas_tracking"
       initialStep="sheets_choose"
       lockInitialStep
-      initialSource={spendSourceToEdit || undefined}
       onProcessed={() => {
         setSpendOpen(false);
-        setSpendSourceToEdit(null);
         refreshSources();
       }}
     />

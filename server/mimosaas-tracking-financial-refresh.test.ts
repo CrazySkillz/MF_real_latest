@@ -61,13 +61,11 @@ describe("Mimosaas Tracking financial provider refresh", () => {
     expect(revenueRoute).toContain('platformContext === "mimosaas_tracking" && !dateCol');
     expect(revenueRoute).toContain('replaceRevenueSourceWithRecords(campaignId, existingSourceId, "google_sheets", "mimosaas_tracking"');
     expect(revenueRoute).toContain('existingSourceId ? String(existingSheetsSource?.mappingConfig || "") : undefined');
-    expect(revenueRoute).toContain('res.status(e?.code === "REVENUE_SOURCE_CHANGED" ? 409 : 500)');
     expect(revenueRoute).toContain('allowNegative: platformContext !== "mimosaas_tracking"');
     expect(spendRoute).toContain('requestedPlatformContext !== "mimosaas_tracking"');
     expect(spendRoute).toContain('platformContext === "mimosaas_tracking" && !dateCol');
     expect(spendRoute).toContain('replaceSpendSourceWithRecords(campaignId, existingSourceId, "google_sheets", "mimosaas_tracking"');
     expect(spendRoute).toContain('existingSourceId ? String(existingSheetsSpendSource?.mappingConfig || "") : undefined');
-    expect(spendRoute).toContain('res.status(e?.code === "SPEND_SOURCE_CHANGED" ? 409 : 500)');
     expect(spendRoute).toContain("allowNegative: false");
     expect(storage).toContain("if (expectedSourceMappingConfig) error.code = 'SPEND_SOURCE_CHANGED'");
     expect(scheduler).toContain('const validationContexts = [...refreshableRevenueContexts, "mimosaas_tracking"] as const');

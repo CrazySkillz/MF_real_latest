@@ -304,12 +304,8 @@ with a locked tracker context and require an explicit Date column.
 The separately protected tracker financial-source read route returns only
 active, tracker-scoped Google Sheets sources for the owned active tracker
 campaign. The tracker Overview and its locked Google Sheets wizards use this
-route for source names, connection status, and source-specific editing. An edit
-passes the exact source ID back through the existing tracker-scoped Google
-Sheets process route, which atomically replaces only that source and rejects a
-concurrent mapping change. Published daily snapshots remain unchanged until a
-later scheduler run finalizes a new day. Generic GA4 financial read contracts
-remain unchanged.
+route for source names and connection status. Generic GA4 financial read
+contracts remain unchanged.
 
 ## Protected Existing Paths
 

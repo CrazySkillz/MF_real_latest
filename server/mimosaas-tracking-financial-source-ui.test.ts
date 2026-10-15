@@ -18,22 +18,6 @@ describe("Mimosaas Tracking financial source UI", () => {
     expect(campaignDetail).toContain('<MimosaasTrackingOverview campaignId={campaign.id} currency={campaign.currency || "USD"} />');
   });
 
-  it("edits only the exact tracker source returned by the protected source route", () => {
-    expect(overview).toContain('aria-label={`Edit Google Sheets ${kind} source ${name}`}');
-    expect(overview).toContain("setRevenueSourceToEdit(source)");
-    expect(overview).toContain("setSpendSourceToEdit(source)");
-    expect(overview).toContain("initialSource={revenueSourceToEdit || undefined}");
-    expect(overview).toContain("initialSource={spendSourceToEdit || undefined}");
-    expect(overview).not.toContain("DELETE");
-  });
-
-  it("passes the selected source ID through the existing scoped Sheets edit requests", () => {
-    expect(revenueModal).toContain('{ sourceId: String(initialSource.id) }');
-    expect(spendModal).toContain('{ sourceId: String(props.initialSource.id) }');
-    expect(revenueModal).toContain('/revenue/sheets/process');
-    expect(spendModal).toContain('/spend/sheets/process');
-  });
-
   it("keeps executive values on the immutable snapshot route", () => {
     expect(overview).toContain("/mimosaas-tracking/daily-snapshot");
     expect(overview).toContain("/mimosaas-tracking/financial-sources");

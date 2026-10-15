@@ -1,8 +1,8 @@
 # Mimosaas Tracking: Phase 1 Safety Baseline
 
-Status: Phase 1 complete; Phase 2 schema, persistence, and setup APIs deployed; Phase 3 credentials, ingestion, installation proof, universal browser tracker, protected campaign wizard, and atomic finalization deployed but disabled; automated GTM installation, attribution, daily metric aggregation, exact-date CSV and Google Sheets financial materialization, atomic daily publication, and the campaign-local daily scheduler implemented locally behind separate disabled flags
-Baseline date: 2026-10-14
-Last verified production revision: `78523c2e0ee65daff96ca77d9b1534e8039c4433`
+Status: Phase 1 complete; Phase 2 schema, persistence, and setup APIs deployed; Phase 3 credentials, ingestion, installation proof, universal browser tracker, protected campaign wizard, and atomic finalization deployed but disabled; automated GTM installation, attribution, daily metric aggregation, exact-date CSV and Google Sheets financial materialization, tracker-scoped Google Sheets setup controls, atomic daily publication, and the campaign-local daily scheduler implemented behind separate disabled flags
+Baseline date: 2026-10-15
+Last verified production revision: `cf57d398`
 
 ## Phase 2 Foundation Status
 
@@ -298,8 +298,9 @@ be rendered as the current executive result.
 The protected `GET /api/campaigns/:id/mimosaas-tracking/daily-snapshot` route
 returns only the latest immutable published snapshot for the owned active
 Mimosaas Tracking campaign. It does not fall back to GA4, mutable daily
-metrics, or incomplete publication runs. The current UI does not consume this
-route yet.
+metrics, or incomplete publication runs. Campaign Overview consumes only this
+route. Its Revenue and Spend actions open the existing Google Sheets wizards
+with a locked tracker context and require an explicit Date column.
 
 ## Protected Existing Paths
 

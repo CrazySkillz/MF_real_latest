@@ -8,7 +8,7 @@ describe("Mimosaas Tracking Campaign Overview safety", () => {
   it("renders the tracker Overview only for an active Mimosaas Tracking campaign", () => {
     expect(campaignDetail).toContain('const isMimosaasTrackingCampaign = campaign?.platform === "mimosaas-tracking";');
     expect(campaignDetail).toContain('isMimosaasTrackingCampaign && campaign.status === "active"');
-    expect(campaignDetail).toContain('<MimosaasTrackingOverview campaignId={campaign.id} />');
+    expect(campaignDetail).toContain('<MimosaasTrackingOverview campaignId={campaign.id} currency={campaign.currency || "USD"} />');
   });
 
   it("preserves the existing GA4 card and excludes it from tracker campaigns", () => {

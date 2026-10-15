@@ -27,7 +27,7 @@ describe("Google Ads revenue Google Sheets flow", () => {
     );
 
     expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);');
-    expect(routes).toContain('const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);');
+    expect(routes).toContain('const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration", "mimosaas_tracking"]);');
     expect(previewRoute).toContain("platformContext: zSheetsRevenuePlatformContext.optional()");
     expect(processRoute).toContain("platformContext: zSheetsRevenuePlatformContext.optional()");
   });

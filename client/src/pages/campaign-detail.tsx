@@ -40,6 +40,7 @@ interface Campaign {
   clientWebsite?: string;
   label?: string;
   budget?: string;
+  currency?: string;
   type?: string;
   platform?: string;
   impressions: number;
@@ -5646,7 +5647,7 @@ export default function CampaignDetail() {
 
                 <div className="grid gap-4 items-start">
                   {isMimosaasTrackingCampaign && campaign.status === "active" && (
-                    <MimosaasTrackingOverview campaignId={campaign.id} />
+                    <MimosaasTrackingOverview campaignId={campaign.id} currency={campaign.currency || "USD"} />
                   )}
                   {[platformMetrics].map((columnPlatforms, columnIndex) => (
                     <div key={columnIndex} className="space-y-4">

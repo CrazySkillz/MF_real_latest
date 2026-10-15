@@ -8,7 +8,7 @@ describe("Google Ads revenue wizard context", () => {
   it("lets the shared revenue wizard carry a Google Ads context without changing GA4 defaults", () => {
     const modal = readSource("client", "src", "components", "AddRevenueWizardModal.tsx");
 
-    expect(modal).toContain("type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration';");
+    expect(modal).toContain("type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration' | 'mimosaas_tracking';");
     expect(modal).toContain("platformContext = 'ga4'");
     expect(modal).toContain("platformContext === 'google_ads' ? 'google_ads_revenue' : platformContext === 'instagram' ? 'instagram_revenue' : platformContext === 'tiktok' ? 'tiktok_revenue' : platformContext === 'google_sheets' ? 'google_sheets_revenue' : platformContext === 'custom_integration' ? 'custom_integration_revenue' : 'revenue'");
     expect(modal).toContain('platformContext === \'google_ads\' ? "Add Google Ads attributed revenue"');

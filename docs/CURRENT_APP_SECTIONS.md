@@ -1,6 +1,6 @@
 # Current App Sections
 
-Last reconciled with the implementation: 2026-10-01.
+Last reconciled with the implementation: 2026-10-15.
 
 ## Purpose
 
@@ -162,6 +162,10 @@ Durable database claims prevent concurrent application instances from owning
 the same attempt, pending dates survive restarts, and finalized dates cannot be
 aggregated or published again. Campaign Overview reads the latest immutable
 published tracker snapshot only for active Mimosaas Tracking campaigns.
+Tracker Revenue and Spend controls open only the Google Sheets setup flow. Both
+require a Date column and save with the isolated `mimosaas_tracking` context;
+newly imported source rows do not replace the visible immutable snapshot before
+the scheduler finalizes that reporting day.
 Date-mapped tracker CSV records can be materialized into the exact-date
 financial snapshot inside the locked publication transaction when every CSV
 source has an explicit row for that date. Before publication, the tracker

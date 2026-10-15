@@ -229,8 +229,8 @@ describe("GA4 Overview Google Sheets revenue deterministic validation", () => {
     expect(route).toContain("if (addRequestKey) inFlightGoogleSheetsRevenueAdds.delete(addRequestKey)");
   });
 
-  it("limits only GA4 Google Sheets Date choices and clears stale selections", () => {
-    expect(revenueModal).toContain('if (platformContext !== "ga4") return sheetsHeaders;');
+  it("limits exact-daily Google Sheets Date choices and clears stale selections", () => {
+    expect(revenueModal).toContain('if (platformContext !== "ga4" && platformContext !== "mimosaas_tracking") return sheetsHeaders;');
     expect(revenueModal).toContain("if (header === sheetsRevenueCol || header === sheetsCampaignCol) return false;");
     expect(revenueModal).toContain("{sheetsDateColumnHeaders.map((h) => (");
     expect(revenueModal).toContain("sheetsDateCol && !sheetsDateColumnHeaders.includes(sheetsDateCol)");

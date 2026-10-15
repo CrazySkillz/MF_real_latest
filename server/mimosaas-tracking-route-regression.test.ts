@@ -26,6 +26,10 @@ const storageMock = vi.hoisted(() => ({
   getLatestMimosaasTrackingDailySnapshot: vi.fn(),
   getRevenueSources: vi.fn(),
   getSpendSources: vi.fn(),
+  getRevenueSource: vi.fn(),
+  getSpendSource: vi.fn(),
+  deleteRevenueSourceWithRecords: vi.fn(),
+  deleteSpendSourceWithRecords: vi.fn(),
 }));
 const gtmMock = vi.hoisted(() => ({
   listMimosaasGtmContainers: vi.fn(),
@@ -98,6 +102,10 @@ describe("Mimosaas Tracking read-only setup route", () => {
     storageMock.getLatestMimosaasTrackingDailySnapshot.mockResolvedValue(undefined);
     storageMock.getRevenueSources.mockResolvedValue([]);
     storageMock.getSpendSources.mockResolvedValue([]);
+    storageMock.getRevenueSource.mockResolvedValue(undefined);
+    storageMock.getSpendSource.mockResolvedValue(undefined);
+    storageMock.deleteRevenueSourceWithRecords.mockResolvedValue(false);
+    storageMock.deleteSpendSourceWithRecords.mockResolvedValue(false);
     storageMock.verifyMimosaasWebsiteConnectionInstallation.mockResolvedValue({
       newlyVerified: true,
       connection: { id: "website-1", installationStatus: "verified", verifiedAt: new Date("2026-10-15T10:00:00.000Z"), lastEventAt: new Date("2026-10-15T10:00:00.000Z") },
@@ -271,6 +279,65 @@ describe("Mimosaas Tracking read-only setup route", () => {
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ success: false, message: "Failed to fetch Mimosaas Tracking financial sources" });
+  });
+
+  it.each([
+    ["revenue", "revenue-1", "getRevenueSource", "deleteRevenueSourceWithRecords"],
+    ["spend", "spend-1", "getSpendSource", "deleteSpendSourceWithRecords"],
+  ] as const)("deletes only the selected tracker Google Sheets %s source", async (sourceKind, sourceId, getMethod, deleteMethod) => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    storageMock.getCampaign.mockResolvedValueOnce({ ...campaign, platform: "mimosaas-tracking", status: "active" });
+    storageMock[getMethod].mockResolvedValueOnce({ id: sourceId, sourceType: "google_sheets", platformContext: "mimosaas_tracking", isActive: true });
+    storageMock[deleteMethod].mockResolvedValueOnce(true);
+
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/financial-sources/${sourceKind}/${sourceId}`, { method: "DELETE" });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ success: true, sourceKind, sourceId });
+    expect(storageMock[getMethod]).toHaveBeenCalledWith(campaign.id, sourceId, ...(sourceKind === "spend" ? ["mimosaas_tracking"] : []));
+    expect(storageMock[deleteMethod]).toHaveBeenCalledWith(campaign.id, sourceId, "mimosaas_tracking");
+    expect(storageMock[sourceKind === "revenue" ? "deleteSpendSourceWithRecords" : "deleteRevenueSourceWithRecords"]).not.toHaveBeenCalled();
+  });
+
+  it("rejects non-tracker sources without deleting records", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    storageMock.getCampaign.mockResolvedValueOnce({ ...campaign, platform: "mimosaas-tracking", status: "active" });
+    storageMock.getRevenueSource.mockResolvedValueOnce({ id: "revenue-ga4", sourceType: "google_sheets", platformContext: "ga4", isActive: true });
+
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/financial-sources/revenue/revenue-ga4`, { method: "DELETE" });
+
+    expect(response.status).toBe(404);
+    expect(storageMock.deleteRevenueSourceWithRecords).not.toHaveBeenCalled();
+    expect(storageMock.deleteSpendSourceWithRecords).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["a non-tracker campaign", { ...campaign, platform: "google_analytics", status: "active" }],
+    ["another owner's campaign", { ...campaign, ownerId: "owner-2", platform: "mimosaas-tracking", status: "active" }],
+  ])("does not delete tracker financial sources for %s", async (_case, inaccessibleCampaign) => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    storageMock.getCampaign.mockResolvedValueOnce(inaccessibleCampaign);
+
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/financial-sources/revenue/revenue-1`, { method: "DELETE" });
+
+    expect(response.status).toBe(404);
+    expect(storageMock.getRevenueSource).not.toHaveBeenCalled();
+    expect(storageMock.deleteRevenueSourceWithRecords).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when a tracker source changes before deletion", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    storageMock.getCampaign.mockResolvedValueOnce({ ...campaign, platform: "mimosaas-tracking", status: "active" });
+    storageMock.getSpendSource.mockResolvedValueOnce({ id: "spend-1", sourceType: "google_sheets", platformContext: "mimosaas_tracking", isActive: true });
+
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/financial-sources/spend/spend-1`, { method: "DELETE" });
+
+    expect(response.status).toBe(409);
+    expect(storageMock.deleteSpendSourceWithRecords).toHaveBeenCalledWith(campaign.id, "spend-1", "mimosaas_tracking");
   });
 
   it("returns null without falling back when no finalized snapshot exists", async () => {

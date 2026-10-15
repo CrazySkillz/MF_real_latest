@@ -7,6 +7,7 @@ const overview = read("client", "src", "components", "MimosaasTrackingOverview.t
 const campaignDetail = read("client", "src", "pages", "campaign-detail.tsx");
 const revenueModal = read("client", "src", "components", "AddRevenueWizardModal.tsx");
 const spendModal = read("client", "src", "components", "AddSpendWizardModal.tsx");
+const routes = read("server", "routes-oauth.ts");
 
 describe("Mimosaas Tracking financial source UI", () => {
   it("opens only the date-mapped Google Sheets Revenue and Spend flows from the tracker Overview", () => {
@@ -55,5 +56,15 @@ describe("Mimosaas Tracking financial source UI", () => {
     expect(revenueModal).toContain('platformContext === "ga4"');
     expect(spendModal).toContain('const requiresDatedGa4Csv = props.platformContext === "ga4" && !editingExistingUndatedGa4Csv;');
     expect(spendModal).toContain('"A date column is required for GA4 Overview CSV spend."');
+  });
+
+  it("keeps tracker source deletion isolated from GA4 and immutable snapshots", () => {
+    const start = routes.indexOf('app.delete("/api/campaigns/:id/mimosaas-tracking/financial-sources/:sourceKind/:sourceId"');
+    const end = routes.indexOf('app.post("/api/campaigns/:id/mimosaas-tracking/configuration"', start);
+    const deletion = routes.slice(start, end);
+    expect(start).toBeGreaterThan(-1);
+    expect(deletion).toContain('deleteRevenueSourceWithRecords(campaignId, sourceId, "mimosaas_tracking")');
+    expect(deletion).toContain('deleteSpendSourceWithRecords(campaignId, sourceId, "mimosaas_tracking")');
+    expect(deletion).not.toMatch(/recalcCampaignSpend|recomputeGA4|mimosaasTrackingDailySnapshots|deleteGoogleSheetsConnection/);
   });
 });

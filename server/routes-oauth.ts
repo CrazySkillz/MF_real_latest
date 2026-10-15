@@ -3548,6 +3548,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     connectedAt: source.connectedAt,
     createdAt: source.createdAt,
   });
+  const mimosaasTrackingFinancialSourceDeleteParamsSchema = z.object({
+    sourceKind: z.enum(["revenue", "spend"]),
+    sourceId: z.string().trim().min(1),
+  });
   const sendMimosaasWebsiteError = (res: any, error: any) => {
     if (String(error?.code || "").endsWith("_SCOPE_NOT_FOUND")) {
       return res.status(404).json({ success: false, message: "Website connection not found" });
@@ -4078,6 +4082,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Mimosaas Tracking financial source fetch error:", error);
       return res.status(500).json({ success: false, message: "Failed to fetch Mimosaas Tracking financial sources" });
+    }
+  });
+
+  app.delete("/api/campaigns/:id/mimosaas-tracking/financial-sources/:sourceKind/:sourceId", requireMimosaasTrackingIngestionFeature, requireCampaignAccessParamId, async (req, res) => {
+    const parsed = mimosaasTrackingFinancialSourceDeleteParamsSchema.safeParse(req.params);
+    if (!parsed.success) return res.status(400).json({ success: false, message: "Invalid financial source" });
+    try {
+      const campaign = (req as any)._campaign;
+      if (campaign?.platform !== "mimosaas-tracking" || campaign?.status !== "active") {
+        return res.status(404).json({ success: false, message: "Campaign not found" });
+      }
+      const campaignId = String(campaign.id);
+      const { sourceKind, sourceId } = parsed.data;
+      const source = sourceKind === "revenue"
+        ? await storage.getRevenueSource(campaignId, sourceId)
+        : await storage.getSpendSource(campaignId, sourceId, "mimosaas_tracking");
+      const isTrackerSheet = source?.isActive !== false
+        && String(source?.sourceType || "").trim().toLowerCase() === "google_sheets"
+        && String(source?.platformContext || "").trim().toLowerCase() === "mimosaas_tracking";
+      if (!isTrackerSheet) return res.status(404).json({ success: false, message: "Financial source not found" });
+
+      const deleted = sourceKind === "revenue"
+        ? await storage.deleteRevenueSourceWithRecords(campaignId, sourceId, "mimosaas_tracking")
+        : await storage.deleteSpendSourceWithRecords(campaignId, sourceId, "mimosaas_tracking");
+      if (!deleted) return res.status(409).json({ success: false, message: "Financial source changed; refresh and try again" });
+      return res.json({ success: true, sourceKind, sourceId });
+    } catch (error: any) {
+      console.error("Mimosaas Tracking financial source delete error:", error);
+      return res.status(500).json({ success: false, message: "Failed to delete Mimosaas Tracking financial source" });
     }
   });
 

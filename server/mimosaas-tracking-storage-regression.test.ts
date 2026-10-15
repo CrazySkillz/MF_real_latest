@@ -426,6 +426,38 @@ describe("Mimosaas Tracking storage safety", () => {
     expect(mocks.state.updates).toContainEqual(expect.objectContaining({ status: "draft" }));
   });
 
+  it("atomically finalizes only a verified draft with an active exact campaign mapping", async () => {
+    mocks.state.selectQueue = [
+      [{ id: "client-1" }],
+      [{ id: "campaign-1", ownerId: "owner-1", clientId: "client-1", status: "draft", platform: "manual" }],
+      [{ id: "configuration-1", campaignId: "campaign-1", websiteConnectionId: "website-1", status: "draft" }],
+      [{ ...website, installationStatus: "verified" }],
+      [{ id: "mapping-1" }],
+    ];
+
+    const result = await new DatabaseStorage().finalizeMimosaasTrackingCampaign("owner-1", "client-1", "campaign-1");
+
+    expect(result.configuration).toMatchObject({ status: "active" });
+    expect(result.campaign).toMatchObject({ platform: "mimosaas-tracking", status: "active" });
+    expect(mocks.state.updates).toHaveLength(2);
+  });
+
+  it("keeps the campaign draft when website verification or mapping proof is missing", async () => {
+    const baseRows = [
+      [{ id: "client-1" }],
+      [{ id: "campaign-1", ownerId: "owner-1", clientId: "client-1", status: "draft", platform: "manual" }],
+      [{ id: "configuration-1", campaignId: "campaign-1", websiteConnectionId: "website-1", status: "draft" }],
+    ];
+    mocks.state.selectQueue = [...baseRows, [{ ...website, installationStatus: "pending" }]];
+    await expect(new DatabaseStorage().finalizeMimosaasTrackingCampaign("owner-1", "client-1", "campaign-1"))
+      .rejects.toMatchObject({ code: "MIMOSAAS_TRACKING_INSTALLATION_NOT_VERIFIED" });
+
+    mocks.state.selectQueue = [...baseRows, [{ ...website, installationStatus: "verified" }], []];
+    await expect(new DatabaseStorage().finalizeMimosaasTrackingCampaign("owner-1", "client-1", "campaign-1"))
+      .rejects.toMatchObject({ code: "MIMOSAAS_TRACKING_MAPPING_REQUIRED" });
+    expect(mocks.state.updates).toHaveLength(0);
+  });
+
   it("keeps all persistence hidden and explicitly owner, client, and campaign scoped", () => {
     const storage = fs.readFileSync(path.join(process.cwd(), "server", "storage.ts"), "utf8");
     const start = storage.indexOf("private async requireMimosaasOwnedClient");

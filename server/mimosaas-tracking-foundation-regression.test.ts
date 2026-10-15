@@ -96,7 +96,7 @@ describe("Mimosaas Tracking Phase 2 foundation", () => {
     expect(cleanup).toContain("client_id = ${clientId} AND owner_id = ${ownerId}");
   });
 
-  it("keeps setup and ingestion separately feature-flagged without exposing UI or the GA4 scheduler", () => {
+  it("keeps setup, ingestion, and wizard availability feature-flagged without touching the GA4 scheduler", () => {
     const routes = read("server", "routes-oauth.ts");
     expect(routes).toContain("requireMimosaasTrackingFeature");
     expect(routes).toContain("MIMOSAAS_TRACKING_ENABLED");
@@ -104,10 +104,11 @@ describe("Mimosaas Tracking Phase 2 foundation", () => {
     expect(routes).toContain('app.post("/api/mimosaas-tracking/events"');
     expect(routes).toContain('app.post("/api/mimosaas-tracking/installations/verify"');
     expect(routes).toContain('app.get("/api/mimosaas-tracking/tracker.js"');
+    expect(routes).toContain('app.get("/api/mimosaas-tracking/availability", requireMimosaasTrackingIngestionFeature');
     expect(routes).toContain("createMimosaasTrackingEvent");
     expect(routes).toContain("verifyMimosaasWebsiteConnectionInstallation");
     expect(read("server", "ga4-daily-scheduler.ts")).not.toContain("mimosaasTracking");
-    expect(read("client", "src", "pages", "campaigns.tsx")).not.toContain("mimosaas_tracking");
+    expect(read("client", "src", "pages", "campaigns.tsx")).toContain("isMimosaasTrackingAvailable");
   });
 
   it("rate-limits public ingestion without a caller-controlled test bypass", () => {

@@ -126,6 +126,11 @@ step selects a property and campaign scope before final confirmation. The
 campaign remains a draft during setup and becomes active after the final
 `Create Campaign` action succeeds.
 
+The codebase also contains a Mimosaas Tracking wizard path. It remains hidden
+unless both Mimosaas Tracking setup and ingestion flags are enabled. That path
+requires a verified website installation and exact `utm_campaign` mapping, and
+uses its own scoped finalization route; it does not change the GA4 path.
+
 Closing an unfinished wizard may clean up only its persisted draft. The server
 rejects that cleanup after the campaign becomes active. A confirmed campaign
 delete remains available from the All Campaigns card.

@@ -31,6 +31,7 @@ export type SpendPlatformContext = RevenuePlatformContext;
 export type MimosaasTrackingEventWriteResult = { event: MimosaasTrackingEvent; inserted: boolean };
 export type MimosaasWebsiteConnectionWithSecret = MimosaasWebsiteConnection & { trackingSecret: string };
 export type MimosaasWebsiteInstallationVerificationResult = { connection: MimosaasWebsiteConnection; newlyVerified: boolean };
+export type MimosaasTrackingFinalizationResult = { campaign: Campaign; configuration: MimosaasTrackingConfiguration };
 export type KPINotificationHide = { id: string; campaignId: string; metadata: string };
 export type CampaignDeepDiveReportLimitCode = "REPORT_LIMIT_REACHED" | "SCHEDULED_REPORT_LIMIT_REACHED";
 export type CampaignDeepDiveReportLimits = { maxActiveReports: number; maxScheduledActiveReports: number };
@@ -195,6 +196,7 @@ export interface IStorage {
   getMimosaasTrackingCampaignMappings(ownerId: string, clientId: string, campaignId: string): Promise<MimosaasTrackingCampaignMapping[]>;
   createMimosaasTrackingCampaignMapping(ownerId: string, clientId: string, campaignId: string, mapping: Omit<InsertMimosaasTrackingCampaignMapping, "campaignId" | "trackingConfigurationId">): Promise<MimosaasTrackingCampaignMapping>;
   updateMimosaasTrackingCampaignMapping(ownerId: string, clientId: string, campaignId: string, mappingId: string, mapping: Partial<Omit<InsertMimosaasTrackingCampaignMapping, "campaignId" | "trackingConfigurationId">>): Promise<MimosaasTrackingCampaignMapping | undefined>;
+  finalizeMimosaasTrackingCampaign(ownerId: string, clientId: string, campaignId: string): Promise<MimosaasTrackingFinalizationResult>;
   createMimosaasTrackingEvent(websiteConnectionId: string, event: Omit<InsertMimosaasTrackingEvent, "websiteConnectionId" | "clientId">, expectedTrackingSecretHash?: string): Promise<MimosaasTrackingEventWriteResult>;
 
   // Metrics
@@ -1147,6 +1149,54 @@ export class DatabaseStorage implements IStorage {
       await tx.update(mimosaasTrackingConfigurations).set({ status: "draft", updatedAt: new Date() })
         .where(eq(mimosaasTrackingConfigurations.id, configuration.id));
       return updated || undefined;
+    });
+  }
+
+  async finalizeMimosaasTrackingCampaign(ownerId: string, clientId: string, campaignId: string): Promise<MimosaasTrackingFinalizationResult> {
+    return db.transaction(async (tx: any) => {
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId, true);
+      const [campaign] = await tx.select().from(campaigns).where(and(
+        eq(campaigns.id, campaignId),
+        eq(campaigns.ownerId, ownerId),
+        eq(campaigns.clientId, clientId),
+      )).for("update").limit(1);
+      if (!campaign) throw Object.assign(new Error("Mimosaas Tracking campaign scope not found"), { code: "MIMOSAAS_TRACKING_CAMPAIGN_SCOPE_NOT_FOUND" });
+      const alreadyFinalized = campaign.status === "active" && campaign.platform === "mimosaas-tracking";
+      if (campaign.status !== "draft" && !alreadyFinalized) {
+        throw Object.assign(new Error("Only a Mimosaas Tracking draft can be finalized"), { code: "MIMOSAAS_TRACKING_CAMPAIGN_NOT_DRAFT" });
+      }
+
+      const [configuration] = await tx.select().from(mimosaasTrackingConfigurations)
+        .where(eq(mimosaasTrackingConfigurations.campaignId, campaignId)).for("update").limit(1);
+      if (!configuration) throw Object.assign(new Error("Mimosaas Tracking configuration not found"), { code: "MIMOSAAS_TRACKING_CONFIGURATION_NOT_FOUND" });
+      const websiteConnection = await this.requireMimosaasOwnedWebsiteConnection(
+        tx, ownerId, clientId, String(configuration.websiteConnectionId), true,
+      );
+      if (websiteConnection.installationStatus !== "verified") {
+        throw Object.assign(new Error("Website tracking installation is not verified"), { code: "MIMOSAAS_TRACKING_INSTALLATION_NOT_VERIFIED" });
+      }
+      const [activeMapping] = await tx.select({ id: mimosaasTrackingCampaignMappings.id })
+        .from(mimosaasTrackingCampaignMappings).where(and(
+          eq(mimosaasTrackingCampaignMappings.campaignId, campaignId),
+          eq(mimosaasTrackingCampaignMappings.trackingConfigurationId, configuration.id),
+          eq(mimosaasTrackingCampaignMappings.mappingType, "utm_campaign"),
+          eq(mimosaasTrackingCampaignMappings.isActive, true),
+        )).limit(1);
+      if (!activeMapping) throw Object.assign(new Error("An active campaign mapping is required"), { code: "MIMOSAAS_TRACKING_MAPPING_REQUIRED" });
+
+      const [activeConfiguration] = await tx.update(mimosaasTrackingConfigurations)
+        .set({ status: "active", updatedAt: new Date() })
+        .where(and(
+          eq(mimosaasTrackingConfigurations.id, configuration.id),
+          eq(mimosaasTrackingConfigurations.campaignId, campaignId),
+          eq(mimosaasTrackingConfigurations.websiteConnectionId, configuration.websiteConnectionId),
+        )).returning();
+      const [activeCampaign] = await tx.update(campaigns)
+        .set({ platform: "mimosaas-tracking", status: "active" })
+        .where(and(eq(campaigns.id, campaignId), eq(campaigns.ownerId, ownerId), eq(campaigns.clientId, clientId)))
+        .returning();
+      if (!activeConfiguration || !activeCampaign) throw new Error("Failed to finalize Mimosaas Tracking campaign");
+      return { campaign: activeCampaign, configuration: activeConfiguration };
     });
   }
 

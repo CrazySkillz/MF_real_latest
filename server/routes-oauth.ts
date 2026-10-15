@@ -3560,6 +3560,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   };
 
+  app.get("/api/mimosaas-tracking/availability", requireMimosaasTrackingIngestionFeature, (req, res) => {
+    if (!getActorId(req)) return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+    res.setHeader("Cache-Control", "no-store");
+    return res.json({ enabled: true });
+  });
+
   app.options("/api/mimosaas-tracking/events", requireMimosaasTrackingIngestionFeature, (req, res) => {
     setMimosaasTrackingCors(req, res);
     return res.status(204).end();
@@ -3826,6 +3832,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json({ success: true, mapping });
     } catch (error: any) {
       return sendMimosaasMappingError(res, error);
+    }
+  });
+
+  app.post("/api/campaigns/:id/mimosaas-tracking/finalize", requireMimosaasTrackingIngestionFeature, requireCampaignAccessParamId, async (req, res) => {
+    try {
+      const campaign = (req as any)._campaign;
+      const result = await storage.finalizeMimosaasTrackingCampaign(
+        getActorId(req), String(campaign.clientId), String(campaign.id),
+      );
+      return res.json(withReportingTimeZone(result.campaign as any));
+    } catch (error: any) {
+      const code = String(error?.code || "");
+      if (code.endsWith("_SCOPE_NOT_FOUND") || code === "MIMOSAAS_TRACKING_CONFIGURATION_NOT_FOUND") {
+        return res.status(404).json({ success: false, message: "Campaign tracking setup not found" });
+      }
+      if (code === "MIMOSAAS_TRACKING_INSTALLATION_NOT_VERIFIED" || code === "MIMOSAAS_TRACKING_MAPPING_REQUIRED" || code === "MIMOSAAS_TRACKING_CAMPAIGN_NOT_DRAFT") {
+        return res.status(409).json({ success: false, message: error.message });
+      }
+      console.error("Mimosaas Tracking campaign finalization failed:", error);
+      return res.status(500).json({ success: false, message: "Failed to finalize Mimosaas Tracking campaign" });
     }
   });
 
@@ -9522,6 +9548,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isDraftActivation =
         String((existingCampaign as any)?.status || "").trim().toLowerCase() === "draft" &&
         String((validatedData as any)?.status || "").trim().toLowerCase() === "active";
+      const activationPlatforms = String((validatedData as any)?.platform || "")
+        .split(",").map((value) => value.trim()).filter(Boolean);
+      if (activationPlatforms.includes("mimosaas-tracking")) {
+        return res.status(400).json({ message: "Finalize Mimosaas Tracking through its verified setup flow." });
+      }
       const ga4DailyScopeChanged =
         (Object.prototype.hasOwnProperty.call(validatedData, "ga4CampaignFilter") &&
           JSON.stringify(getGA4CampaignFilterValues((validatedData as any).ga4CampaignFilter).sort()) !==

@@ -16,6 +16,7 @@ const storageMock = vi.hoisted(() => ({
   getMimosaasTrackingCampaignMappings: vi.fn(),
   createMimosaasTrackingCampaignMapping: vi.fn(),
   updateMimosaasTrackingCampaignMapping: vi.fn(),
+  finalizeMimosaasTrackingCampaign: vi.fn(),
   createMimosaasTrackingEvent: vi.fn(),
 }));
 
@@ -97,6 +98,10 @@ describe("Mimosaas Tracking read-only setup route", () => {
     storageMock.updateMimosaasTrackingCampaignMapping.mockImplementation(async (_ownerId, _clientId, campaignId, mappingId, input) => ({
       id: mappingId, campaignId, mappingType: "utm_campaign", ...input,
     }));
+    storageMock.finalizeMimosaasTrackingCampaign.mockResolvedValue({
+      campaign: { ...campaign, platform: "mimosaas-tracking", status: "active", reportingTimeZone: "UTC" },
+      configuration: { id: "configuration-1", campaignId: campaign.id, status: "active" },
+    });
   });
 
   afterAll(async () => {
@@ -121,6 +126,22 @@ describe("Mimosaas Tracking read-only setup route", () => {
     expect(response.status).toBe(404);
     expect(storageMock.getMimosaasWebsiteConnectionByTrackingPublicId).not.toHaveBeenCalled();
     expect(storageMock.createMimosaasTrackingEvent).not.toHaveBeenCalled();
+  });
+
+  it("exposes wizard availability only to a signed-in user while both flags are enabled", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    const ingestionDisabled = await fetch(`${baseUrl}/api/mimosaas-tracking/availability`);
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    authState.userId = "";
+    const signedOut = await fetch(`${baseUrl}/api/mimosaas-tracking/availability`);
+    authState.userId = "owner-1";
+    const enabled = await fetch(`${baseUrl}/api/mimosaas-tracking/availability`);
+
+    expect(ingestionDisabled.status).toBe(404);
+    expect(signedOut.status).toBe(401);
+    expect(enabled.status).toBe(200);
+    expect(enabled.headers.get("cache-control")).toBe("no-store");
+    expect(await enabled.json()).toEqual({ enabled: true });
   });
 
   it("serves the universal tracker only while both tracker flags are enabled", async () => {
@@ -458,6 +479,39 @@ describe("Mimosaas Tracking read-only setup route", () => {
     });
     expect(response.status).toBe(404);
     expect(storageMock.updateMimosaasTrackingCampaignMapping).not.toHaveBeenCalled();
+  });
+
+  it("finalizes only through the scoped verified Mimosaas Tracking flow", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/finalize`, { method: "POST" });
+
+    expect(response.status).toBe(200);
+    expect(storageMock.finalizeMimosaasTrackingCampaign).toHaveBeenCalledWith("owner-1", "client-1", campaign.id);
+    expect(await response.json()).toMatchObject({ id: campaign.id, platform: "mimosaas-tracking", status: "active" });
+  });
+
+  it("keeps an unverified Mimosaas Tracking campaign in draft", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    storageMock.finalizeMimosaasTrackingCampaign.mockRejectedValueOnce(Object.assign(new Error("Website tracking installation is not verified"), {
+      code: "MIMOSAAS_TRACKING_INSTALLATION_NOT_VERIFIED",
+    }));
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/finalize`, { method: "POST" });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ success: false, message: "Website tracking installation is not verified" });
+  });
+
+  it("rejects bypassing verified finalization through the generic campaign update", async () => {
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ platform: "mimosaas-tracking", status: "active" }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(storageMock.finalizeMimosaasTrackingCampaign).not.toHaveBeenCalled();
   });
 
   it("rejects duplicate website campaign mappings", async () => {

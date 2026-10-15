@@ -73,6 +73,23 @@ describe("Google Ads production readiness regression guard", () => {
     expect(selectRoute).toContain("resolveGoogleAdsOAuthAuthorization");
   });
 
+  it("keeps Mimosaas click attribution separate from Google Ads analytics imports", () => {
+    const flow = read("client", "src", "components", "GoogleAdsConnectionFlow.tsx");
+    const routes = read("server", "routes-oauth.ts");
+    const authorization = read("server", "google-ads-oauth-authorization.ts");
+    const selectRoute = sliceBetween(routes, 'app.post("/api/google-ads/:campaignId/select-customer"', 'app.post("/api/google-ads/:campaignId/connect-test"');
+    const selectedCampaignRoute = sliceBetween(routes, 'app.patch("/api/google-ads/:campaignId/selected-campaigns"', 'app.post("/api/google-ads/:campaignId/enrich-ga4-revenue"');
+
+    expect(flow).toContain("purpose?: 'analytics' | 'mimosaas_tracking'");
+    expect(flow).toContain("body: JSON.stringify({ campaignId, attributionOnly })");
+    expect(flow).toContain("{!attributionOnly && <div");
+    expect(authorization).toContain("attributionOnly: input.attributionOnly === true");
+    expect(selectRoute).toContain("if (!spendOnly && !attributionOnly)");
+    expect(selectRoute).toContain("const initialDailyMetrics = attributionOnly ? []");
+    expect(selectRoute).toContain("await storage.createGoogleAdsConnection(connectionData)");
+    expect(selectedCampaignRoute).toContain("selectionChanged && !isTrackerAttribution");
+  });
+
   it("keeps disconnect and reconnect campaign-scoped so stale Google Ads rows cannot reseed the source", () => {
     const routes = read("server", "routes-oauth.ts");
     const storage = read("server", "storage.ts");

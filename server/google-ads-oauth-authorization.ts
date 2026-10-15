@@ -18,6 +18,7 @@ export function buildGoogleAdsOAuthAuthorization(input: {
   tokenExpiresIn?: number;
   customers: GoogleAdsOAuthCustomer[];
   spendOnly: boolean;
+  attributionOnly?: boolean;
   now?: number;
 }): unknown {
   assertProductionTokenEncryptionConfigured();
@@ -30,6 +31,7 @@ export function buildGoogleAdsOAuthAuthorization(input: {
     tokenExpiresIn: input.tokenExpiresIn || 3600,
     customers: input.customers,
     spendOnly: input.spendOnly,
+    attributionOnly: input.attributionOnly === true,
   }));
 }
 
@@ -48,6 +50,7 @@ export function resolveGoogleAdsOAuthAuthorization(input: {
   customerCurrency: string;
   customerTimeZone: string;
   spendOnly: boolean;
+  attributionOnly: boolean;
 } | null {
   assertProductionTokenEncryptionConfigured();
   let pending: any;
@@ -77,5 +80,6 @@ export function resolveGoogleAdsOAuthAuthorization(input: {
     customerCurrency: String(selectedCustomer.currencyCode || "").trim().toUpperCase(),
     customerTimeZone: String(selectedCustomer.timeZone || "").trim(),
     spendOnly: pending.spendOnly === true,
+    attributionOnly: pending.attributionOnly === true,
   };
 }

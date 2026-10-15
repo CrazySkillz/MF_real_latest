@@ -293,7 +293,7 @@ describe("GA4 Insights authentication and tenant scope", () => {
     expect(selectCustomer.indexOf("provider.getDailyMetrics")).toBeLessThan(selectCustomer.indexOf("storage.replaceGoogleAdsConnection"));
     expect(selectCustomer).not.toContain("storage.deleteGoogleAdsConnection");
     expect(selectCustomer).not.toContain("storage.deleteGoogleAdsDailyMetrics");
-    expect(selectCustomer).toContain("if (!spendOnly) await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId)");
+    expect(selectCustomer).toContain("if (!spendOnly && !attributionOnly) await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId)");
     expect(replaceConnection).toContain("db.transaction");
     expect(replaceConnection).toContain("tx.delete(googleAdsConnections)");
     expect(replaceConnection).toContain("tx.delete(googleAdsDailyMetrics)");
@@ -312,6 +312,7 @@ describe("GA4 Insights authentication and tenant scope", () => {
         refreshToken: "refresh-secret",
         customers: [{ id: "123", descriptiveName: "Primary", manager: false, currencyCode: "EUR", timeZone: "Europe/Amsterdam" }],
         spendOnly: true,
+        attributionOnly: true,
         now: 1_000,
       });
       expect(JSON.stringify(authorization)).not.toContain("access-secret");
@@ -324,6 +325,7 @@ describe("GA4 Insights authentication and tenant scope", () => {
         customerCurrency: "EUR",
         customerTimeZone: "Europe/Amsterdam",
         spendOnly: true,
+        attributionOnly: true,
       });
       expect(resolveGoogleAdsOAuthAuthorization({ authorization, campaignId: "campaign-b", actorId: "owner-a", customerId: "123", now: 1_001 })).toBeNull();
       expect(resolveGoogleAdsOAuthAuthorization({ authorization, campaignId: "campaign-a", actorId: "owner-b", customerId: "123", now: 1_001 })).toBeNull();

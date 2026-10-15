@@ -23,6 +23,7 @@ interface CustomerAccount {
 
 interface GoogleAdsConnectionFlowProps {
   campaignId: string;
+  purpose?: 'analytics' | 'mimosaas_tracking';
   onConnectionSuccess?: () => void;
   onError?: (error: string) => void;
 }
@@ -34,6 +35,7 @@ const MOCK_CUSTOMERS: CustomerAccount[] = [
 
 export function GoogleAdsConnectionFlow({
   campaignId,
+  purpose = 'analytics',
   onConnectionSuccess,
   onError,
 }: GoogleAdsConnectionFlowProps) {
@@ -47,6 +49,7 @@ export function GoogleAdsConnectionFlow({
   const [savingSelection, setSavingSelection] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const attributionOnly = purpose === 'mimosaas_tracking';
 
   // Handle OAuth popup messages
   const handleMessage = useCallback((event: MessageEvent) => {
@@ -93,7 +96,7 @@ export function GoogleAdsConnectionFlow({
       const res = await fetch('/api/auth/google-ads/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ campaignId }),
+        body: JSON.stringify({ campaignId, attributionOnly }),
       });
 
       if (!res.ok) {
@@ -273,7 +276,9 @@ export function GoogleAdsConnectionFlow({
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Select Google Ads Campaigns</CardTitle>
-          <CardDescription>Choose which campaigns to include in this MimoSaaS campaign. Only selected campaigns' metrics will be imported.</CardDescription>
+          <CardDescription>{attributionOnly
+            ? "Choose the Google Ads campaigns whose clicks belong to this Mimosaas campaign."
+            : "Choose which campaigns to include in this MimoSaaS campaign. Only selected campaigns' metrics will be imported."}</CardDescription>
         </CardHeader>
         <CardContent>
           {loadingCampaigns ? (
@@ -282,10 +287,12 @@ export function GoogleAdsConnectionFlow({
             </div>
           ) : adsCampaigns.length === 0 ? (
             <div className="text-sm text-muted-foreground py-4">
-              <p>No campaigns found yet. Data will be available after the first import.</p>
-              <Button className="mt-3" onClick={() => { toast({ title: 'Google Ads Connected!' }); onConnectionSuccess?.(); }}>
-                Continue
-              </Button>
+              <p>{attributionOnly ? "No active Google Ads campaigns were found in this account." : "No campaigns found yet. Data will be available after the first import."}</p>
+              {!attributionOnly && (
+                <Button className="mt-3" onClick={() => { toast({ title: 'Google Ads Connected!' }); onConnectionSuccess?.(); }}>
+                  Continue
+                </Button>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
@@ -334,12 +341,14 @@ export function GoogleAdsConnectionFlow({
           <CardTitle className="text-base">Google Ads</CardTitle>
         </div>
         <CardDescription>
-          Connect your Google Ads account to import campaign metrics
+          {attributionOnly
+            ? "Connect Google Ads so Mimosaas can attribute tracked website visits to selected ad campaigns."
+            : "Connect your Google Ads account to import campaign metrics"}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
+          {!attributionOnly && <div className="flex items-center gap-2">
             <Switch
               checked={isTestMode}
               onCheckedChange={setIsTestMode}
@@ -348,7 +357,7 @@ export function GoogleAdsConnectionFlow({
             <Label htmlFor="google-ads-test-mode" className="text-xs text-muted-foreground">
               Test Mode (use simulated data)
             </Label>
-          </div>
+          </div>}
           <Button
             onClick={startOAuth}
             disabled={step === 'connecting'}

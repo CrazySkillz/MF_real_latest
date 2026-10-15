@@ -3452,6 +3452,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     String(process.env.MIMOSAAS_TRACKING_ENABLED || "").trim().toLowerCase() === "true" &&
     String(process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED || "").trim().toLowerCase() === "true" &&
     String(process.env.MIMOSAAS_TRACKING_GTM_ENABLED || "").trim().toLowerCase() === "true";
+  const isMimosaasGoogleAdsAttributionEnabled = () =>
+    isMimosaasTrackingIngestionEnabled() &&
+    String(process.env.MIMOSAAS_TRACKING_GOOGLE_ADS_ATTRIBUTION_ENABLED || "").trim().toLowerCase() === "true";
   const requireMimosaasGtmFeature = (_req: any, res: any, next: any) => {
     if (!isMimosaasGtmEnabled()) return res.status(404).json({ success: false, message: "Not found" });
     return next();
@@ -27346,15 +27349,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return "dev-google-ads-state-secret";
   };
 
-  const signGoogleAdsOAuthState = (campaignId: string, spendOnly?: boolean): string => {
+  const signGoogleAdsOAuthState = (campaignId: string, spendOnly?: boolean, attributionOnly?: boolean): string => {
     const secret = getGoogleAdsOAuthStateSecret();
-    const payload = { c: String(campaignId || "").trim(), t: Date.now(), n: randomBytes(12).toString("hex"), s: spendOnly ? 1 : 0 };
+    const payload = { c: String(campaignId || "").trim(), t: Date.now(), n: randomBytes(12).toString("hex"), s: spendOnly ? 1 : 0, a: attributionOnly ? 1 : 0 };
     const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
     const sig = createHmac("sha256", secret).update(payloadB64).digest();
     return `${payloadB64}.${Buffer.from(sig).toString("base64url")}`;
   };
 
-  const verifyGoogleAdsOAuthState = (stateRaw: unknown): { ok: true; campaignId: string; spendOnly: boolean } | { ok: false; error: string } => {
+  const verifyGoogleAdsOAuthState = (stateRaw: unknown): { ok: true; campaignId: string; spendOnly: boolean; attributionOnly: boolean } | { ok: false; error: string } => {
     const secret = getGoogleAdsOAuthStateSecret();
     const state = String(stateRaw || "").trim();
     const parts = state.split(".");
@@ -27370,7 +27373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try { payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8")); } catch { return { ok: false, error: "Invalid state" }; }
     if (!payload.c || !payload.t) return { ok: false, error: "Invalid state" };
     if (Date.now() - Number(payload.t) > GOOGLE_ADS_OAUTH_STATE_TTL_MS) return { ok: false, error: "State expired" };
-    return { ok: true, campaignId: payload.c, spendOnly: !!payload.s };
+    return { ok: true, campaignId: payload.c, spendOnly: !!payload.s, attributionOnly: !!payload.a };
   };
 
   app.get("/api/campaigns/:id/google-ads-service-account/status", async (req, res) => {
@@ -27479,10 +27482,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const parsedCampaignId = campaignIdSchema.safeParse(String(campaignId || "").trim());
       if (!parsedCampaignId.success) return res.status(400).json({ success: false, message: "Campaign ID is required" });
 
-      const accessOk = await ensureCampaignAccess(req as any, res as any, parsedCampaignId.data);
-      if (!accessOk) return;
+      const campaign = await ensureCampaignAccess(req as any, res as any, parsedCampaignId.data);
+      if (!campaign) return;
 
       const spendOnly = !!(req.body as any)?.spendOnly;
+      const attributionOnly = (req.body as any)?.attributionOnly === true;
+      if (spendOnly && attributionOnly) return res.status(400).json({ success: false, message: "Google Ads connection purpose is invalid" });
+      if (attributionOnly) {
+        if (!isMimosaasGoogleAdsAttributionEnabled()) return res.status(404).json({ success: false, message: "Not found" });
+        const configuration = await storage.getMimosaasTrackingConfiguration(
+          getActorId(req), String((campaign as any).clientId), parsedCampaignId.data,
+        );
+        if ((campaign as any).status !== "draft" || !configuration) {
+          return res.status(409).json({ success: false, message: "Complete website tracking setup before connecting Google Ads" });
+        }
+      }
       const { clientId, clientSecret } = getGoogleAdsOAuthClientCredentials(spendOnly);
       const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
 
@@ -27501,7 +27515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseUrl = rawBaseUrl.replace(/\/+$/, '');
       const redirectUri = `${baseUrl}/api/auth/google-ads/callback`;
 
-      const state = signGoogleAdsOAuthState(String(campaignId), spendOnly);
+      const state = signGoogleAdsOAuthState(String(campaignId), spendOnly, attributionOnly);
 
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${encodeURIComponent(clientId)}&` +
@@ -27552,6 +27566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const campaignId = verified.campaignId;
       const spendOnly = verified.spendOnly;
+      const attributionOnly = verified.attributionOnly;
 
       const accessOk = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!accessOk) return;
@@ -27594,6 +27609,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tokenExpiresIn: tokens.expires_in || 3600,
         customers,
         spendOnly,
+        attributionOnly,
       });
       const customersJson = serializeOAuthPopupJson(customers);
 
@@ -27642,7 +27658,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!pending) {
         return res.status(400).json({ error: "Google Ads authorization is invalid or expired" });
       }
-      const { accessToken, refreshToken, expiresIn, customerName, managerAccountId, customerCurrency, customerTimeZone, spendOnly } = pending;
+      const { accessToken, refreshToken, expiresIn, customerName, managerAccountId, customerCurrency, customerTimeZone, spendOnly, attributionOnly } = pending;
+      if (attributionOnly) {
+        if (!isMimosaasGoogleAdsAttributionEnabled()) return res.status(404).json({ error: "Not found" });
+        const configuration = await storage.getMimosaasTrackingConfiguration(
+          getActorId(req), String((campaign as any).clientId), String(campaignId),
+        );
+        if ((campaign as any).status !== "draft" || !configuration) {
+          return res.status(409).json({ error: "Complete website tracking setup before connecting Google Ads" });
+        }
+        if (await storage.getGoogleAdsConnection(campaignId)) {
+          return res.status(409).json({ error: "A Google Ads connection already exists for this campaign" });
+        }
+      }
       if (spendOnly) {
         const sources = await storage.getSpendSources(campaignId, "ga4");
         const hasGoogleAdsSpendSource = sources.some((source: any) => {
@@ -27663,11 +27691,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
-      if (!customerCurrency || customerCurrency !== campaignCurrency) {
+      if (!attributionOnly && (!customerCurrency || customerCurrency !== campaignCurrency)) {
         return res.status(400).json({ error: `Google Ads account currency ${customerCurrency || "is unavailable"}; select an account using ${campaignCurrency}` });
       }
       const campaignTimeZone = normalizeReportingTimeZone((campaign as any)?.reportingTimeZone);
-      if (!customerTimeZone || normalizeReportingTimeZone(customerTimeZone) !== campaignTimeZone) {
+      if (!attributionOnly && (!customerTimeZone || normalizeReportingTimeZone(customerTimeZone) !== campaignTimeZone)) {
         return res.status(400).json({ error: `Google Ads account timezone ${customerTimeZone || "is unavailable"}; select an account using ${campaignTimeZone}` });
       }
 
@@ -27681,11 +27709,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignStart = new Date((campaign as any)?.startDate || "2000-01-01");
       const startDate = Number.isNaN(campaignStart.getTime()) ? "2000-01-01" : campaignStart.toISOString().slice(0, 10);
       const endDate = getReportingDateWindow(1, campaignTimeZone).endDate;
-      const initialDailyMetrics = startDate <= endDate
+      const initialDailyMetrics = attributionOnly ? [] : startDate <= endDate
         ? mapGoogleAdsDailyInsights(campaignId, await provider.getDailyMetrics(startDate, endDate))
         : [];
 
-      if (!spendOnly) await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);
+      if (!spendOnly && !attributionOnly) await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);
 
       const connectionData = {
         campaignId,
@@ -27701,7 +27729,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expiresAt,
         spendOnly: !!spendOnly,
       } as any;
-      if (spendOnly) {
+      if (attributionOnly) {
+        await storage.createGoogleAdsConnection(connectionData);
+      } else if (spendOnly) {
         await storage.replaceGA4GoogleAdsSpendConnection(connectionData, initialDailyMetrics as any);
       } else {
         await storage.replaceGoogleAdsConnection(connectionData, initialDailyMetrics as any);
@@ -27944,8 +27974,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/google-ads/:campaignId/selected-campaigns", async (req, res) => {
     try {
       const { campaignId } = req.params;
-      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
-      if (!ok) return;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const { selectedCampaignIds } = req.body as { selectedCampaignIds: string[] };
       if (!Array.isArray(selectedCampaignIds)) return res.status(400).json({ error: 'selectedCampaignIds must be an array' });
 
@@ -27964,7 +27994,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       })();
       const selectionChanged = previousSelectedCampaignIds.join("\n") !== nextSelectedCampaignIds.join("\n");
-      if (selectionChanged) {
+      const trackerConfiguration = isMimosaasGoogleAdsAttributionEnabled()
+        ? await storage.getMimosaasTrackingConfiguration(getActorId(req), String((campaign as any).clientId), String(campaignId))
+        : undefined;
+      const isTrackerAttribution = Boolean(trackerConfiguration) && ((campaign as any).status === "draft" || (campaign as any).platform === "mimosaas-tracking");
+      if (isTrackerAttribution && (nextSelectedCampaignIds.length === 0 || nextSelectedCampaignIds.some((id) => !/^\d+$/.test(id)))) {
+        return res.status(400).json({ error: "Select at least one valid Google Ads campaign" });
+      }
+      if (selectionChanged && !isTrackerAttribution) {
         await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);
       }
 

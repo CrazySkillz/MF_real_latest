@@ -189,6 +189,9 @@ export interface IStorage {
   createMimosaasWebsiteConnection(ownerId: string, clientId: string, connection: Omit<InsertMimosaasWebsiteConnection, "ownerId" | "clientId">): Promise<MimosaasWebsiteConnectionWithSecret>;
   updateMimosaasWebsiteConnection(ownerId: string, clientId: string, connectionId: string, connection: Partial<Omit<InsertMimosaasWebsiteConnection, "ownerId" | "clientId">>): Promise<MimosaasWebsiteConnection | undefined>;
   rotateMimosaasWebsiteConnectionSecret(ownerId: string, clientId: string, connectionId: string): Promise<MimosaasWebsiteConnectionWithSecret | undefined>;
+  claimMimosaasGtmInstallation(ownerId: string, clientId: string, connectionId: string, expectedTrackingSecretHash: string, attemptId: string, containerPath: string, credentialCreatedAt: string): Promise<{ connection: MimosaasWebsiteConnection; alreadyInstalled: boolean }>;
+  recordMimosaasGtmInstallation(ownerId: string, clientId: string, connectionId: string, expectedTrackingSecretHash: string, attemptId: string, installationMetadata: Record<string, unknown>): Promise<MimosaasWebsiteConnection>;
+  releaseMimosaasGtmInstallationClaim(ownerId: string, clientId: string, connectionId: string, expectedTrackingSecretHash: string, attemptId: string): Promise<boolean>;
   verifyMimosaasWebsiteConnectionInstallation(websiteConnectionId: string, expectedTrackingSecretHash: string, evidenceUrl: string): Promise<MimosaasWebsiteInstallationVerificationResult>;
   getMimosaasTrackingConfiguration(ownerId: string, clientId: string, campaignId: string): Promise<MimosaasTrackingConfiguration | undefined>;
   createMimosaasTrackingConfiguration(ownerId: string, clientId: string, campaignId: string, configuration: Omit<InsertMimosaasTrackingConfiguration, "campaignId">): Promise<MimosaasTrackingConfiguration>;
@@ -1005,6 +1008,83 @@ export class DatabaseStorage implements IStorage {
         eq(mimosaasWebsiteConnections.clientId, clientId),
       )).returning();
       return updated ? { ...updated, trackingSecret: credentials.trackingSecret } : undefined;
+    });
+  }
+
+  async claimMimosaasGtmInstallation(ownerId: string, clientId: string, connectionId: string, expectedTrackingSecretHash: string, attemptId: string, containerPath: string, credentialCreatedAt: string): Promise<{ connection: MimosaasWebsiteConnection; alreadyInstalled: boolean }> {
+    return db.transaction(async (tx: any) => {
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId, true);
+      const connection = await this.requireMimosaasOwnedWebsiteConnection(tx, ownerId, clientId, connectionId, true);
+      if (connection.trackingSecretHash !== expectedTrackingSecretHash) {
+        throw Object.assign(new Error("Mimosaas Tracking credentials changed during GTM installation"), { code: "MIMOSAAS_TRACKING_AUTH_INVALID" });
+      }
+      if (!["pending", "verified"].includes(String(connection.installationStatus))) {
+        throw Object.assign(new Error("Mimosaas Tracking website connection is not active"), { code: "MIMOSAAS_TRACKING_CONNECTION_INACTIVE" });
+      }
+      const metadata = connection.installationMetadata as any;
+      if (metadata?.containerPath === containerPath && metadata?.credentialCreatedAt === credentialCreatedAt && (metadata?.status === "published" || metadata?.publishedAt)) {
+        return { connection, alreadyInstalled: true };
+      }
+      const claimedAt = Date.parse(String(metadata?.claimedAt || ""));
+      if (metadata?.status === "installing" && Number.isFinite(claimedAt) && Date.now() - claimedAt < 30 * 60 * 1000) {
+        throw Object.assign(new Error("Google Tag Manager installation is already in progress"), { code: "MIMOSAAS_GTM_INSTALLATION_IN_PROGRESS" });
+      }
+      const installationMetadata = { status: "installing", attemptId, claimedAt: new Date().toISOString(), containerPath, credentialCreatedAt };
+      const [updated] = await tx.update(mimosaasWebsiteConnections).set({
+        installationMetadata,
+        updatedAt: new Date(),
+      }).where(and(
+        eq(mimosaasWebsiteConnections.id, connectionId),
+        eq(mimosaasWebsiteConnections.ownerId, ownerId),
+        eq(mimosaasWebsiteConnections.clientId, clientId),
+        eq(mimosaasWebsiteConnections.trackingSecretHash, expectedTrackingSecretHash),
+        inArray(mimosaasWebsiteConnections.installationStatus, ["pending", "verified"]),
+      )).returning();
+      if (!updated) throw Object.assign(new Error("Mimosaas Tracking setup changed during GTM installation"), { code: "MIMOSAAS_TRACKING_AUTH_INVALID" });
+      return { connection: updated, alreadyInstalled: false };
+    });
+  }
+
+  async recordMimosaasGtmInstallation(ownerId: string, clientId: string, connectionId: string, expectedTrackingSecretHash: string, attemptId: string, installationMetadata: Record<string, unknown>): Promise<MimosaasWebsiteConnection> {
+    return db.transaction(async (tx: any) => {
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId, true);
+      const connection = await this.requireMimosaasOwnedWebsiteConnection(tx, ownerId, clientId, connectionId, true);
+      const currentMetadata = connection.installationMetadata as any;
+      if (connection.trackingSecretHash !== expectedTrackingSecretHash || currentMetadata?.status !== "installing" || currentMetadata?.attemptId !== attemptId) {
+        throw Object.assign(new Error("Mimosaas Tracking setup changed during GTM installation"), { code: "MIMOSAAS_TRACKING_AUTH_INVALID" });
+      }
+      if (!["pending", "verified"].includes(String(connection.installationStatus))) {
+        throw Object.assign(new Error("Mimosaas Tracking website connection is not active"), { code: "MIMOSAAS_TRACKING_CONNECTION_INACTIVE" });
+      }
+      const [updated] = await tx.update(mimosaasWebsiteConnections).set({
+        installationMethod: "google_tag_manager",
+        installationMetadata: { ...installationMetadata, status: "published" },
+        updatedAt: new Date(),
+      }).where(and(
+        eq(mimosaasWebsiteConnections.id, connectionId),
+        eq(mimosaasWebsiteConnections.ownerId, ownerId),
+        eq(mimosaasWebsiteConnections.clientId, clientId),
+        eq(mimosaasWebsiteConnections.trackingSecretHash, expectedTrackingSecretHash),
+        inArray(mimosaasWebsiteConnections.installationStatus, ["pending", "verified"]),
+      )).returning();
+      if (!updated) throw Object.assign(new Error("Mimosaas Tracking setup changed during GTM installation"), { code: "MIMOSAAS_TRACKING_AUTH_INVALID" });
+      return updated;
+    });
+  }
+
+  async releaseMimosaasGtmInstallationClaim(ownerId: string, clientId: string, connectionId: string, expectedTrackingSecretHash: string, attemptId: string): Promise<boolean> {
+    return db.transaction(async (tx: any) => {
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId, true);
+      const connection = await this.requireMimosaasOwnedWebsiteConnection(tx, ownerId, clientId, connectionId, true);
+      const metadata = connection.installationMetadata as any;
+      if (connection.trackingSecretHash !== expectedTrackingSecretHash || metadata?.status !== "installing" || metadata?.attemptId !== attemptId) return false;
+      const [updated] = await tx.update(mimosaasWebsiteConnections).set({ installationMetadata: null, updatedAt: new Date() }).where(and(
+        eq(mimosaasWebsiteConnections.id, connectionId),
+        eq(mimosaasWebsiteConnections.ownerId, ownerId),
+        eq(mimosaasWebsiteConnections.clientId, clientId),
+        eq(mimosaasWebsiteConnections.trackingSecretHash, expectedTrackingSecretHash),
+      )).returning();
+      return Boolean(updated);
     });
   }
 

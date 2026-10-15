@@ -5,10 +5,14 @@ const authState = vi.hoisted(() => ({ userId: "owner-1" }));
 const storageMock = vi.hoisted(() => ({
   getCampaign: vi.fn(),
   getMimosaasWebsiteConnections: vi.fn(),
+  getMimosaasWebsiteConnection: vi.fn(),
   getMimosaasWebsiteConnectionByTrackingPublicId: vi.fn(),
   createMimosaasWebsiteConnection: vi.fn(),
   updateMimosaasWebsiteConnection: vi.fn(),
   rotateMimosaasWebsiteConnectionSecret: vi.fn(),
+  claimMimosaasGtmInstallation: vi.fn(),
+  recordMimosaasGtmInstallation: vi.fn(),
+  releaseMimosaasGtmInstallationClaim: vi.fn(),
   verifyMimosaasWebsiteConnectionInstallation: vi.fn(),
   getMimosaasTrackingConfiguration: vi.fn(),
   createMimosaasTrackingConfiguration: vi.fn(),
@@ -19,8 +23,15 @@ const storageMock = vi.hoisted(() => ({
   finalizeMimosaasTrackingCampaign: vi.fn(),
   createMimosaasTrackingEvent: vi.fn(),
 }));
+const gtmMock = vi.hoisted(() => ({
+  listMimosaasGtmContainers: vi.fn(),
+  buildMimosaasGtmAuthorization: vi.fn(),
+  resolveMimosaasGtmAuthorization: vi.fn(),
+  installMimosaasGtmTag: vi.fn(),
+}));
 
 vi.mock("./storage", () => ({ storage: storageMock }));
+vi.mock("./mimosaas-gtm-installer", () => gtmMock);
 vi.mock("./db", () => ({ db: null, pool: null }));
 vi.mock("@clerk/express", () => ({ getAuth: vi.fn(() => ({ userId: authState.userId })) }));
 vi.mock("./middleware/rateLimiter", () => {
@@ -32,7 +43,7 @@ vi.mock("jspdf", () => ({ jsPDF: class {} }));
 import { registerRoutes } from "./routes-oauth";
 import { hashMimosaasTrackingSecret } from "./utils/mimosaas-tracking-auth";
 
-const campaign = { id: "campaign-1", ownerId: "owner-1", clientId: "client-1" };
+const campaign = { id: "campaign-1", ownerId: "owner-1", clientId: "client-1", clientWebsite: "https://example.com" };
 const trackingId = `mtk_${"a".repeat(32)}`;
 const trackingSecret = `mts_${"b".repeat(43)}`;
 const trackingSecretHash = hashMimosaasTrackingSecret(trackingSecret);
@@ -63,9 +74,17 @@ describe("Mimosaas Tracking read-only setup route", () => {
     vi.clearAllMocks();
     delete process.env.MIMOSAAS_TRACKING_ENABLED;
     delete process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED;
+    delete process.env.MIMOSAAS_TRACKING_GTM_ENABLED;
+    delete process.env.GOOGLE_CLIENT_ID;
+    delete process.env.GOOGLE_CLIENT_SECRET;
     authState.userId = "owner-1";
     storageMock.getCampaign.mockResolvedValue(campaign);
     storageMock.getMimosaasWebsiteConnections.mockResolvedValue([]);
+    storageMock.getMimosaasWebsiteConnection.mockResolvedValue({
+      id: "website-1", ownerId: "owner-1", clientId: "client-1", websiteUrl: "https://example.com",
+      installationMethod: "google_tag_manager", installationStatus: "pending", trackingPublicId: trackingId,
+      trackingSecretHash, trackingSecretCreatedAt: new Date("2026-10-15T10:00:00.000Z"), installationMetadata: null,
+    });
     storageMock.getMimosaasWebsiteConnectionByTrackingPublicId.mockResolvedValue({
       id: "website-1", ownerId: "owner-1", clientId: "client-1", websiteUrl: "https://example.com",
       installationStatus: "verified", trackingPublicId: trackingId, trackingSecretHash,
@@ -84,6 +103,15 @@ describe("Mimosaas Tracking read-only setup route", () => {
     storageMock.rotateMimosaasWebsiteConnectionSecret.mockImplementation(async (_ownerId, clientId, connectionId) => ({
       id: connectionId, ownerId: "owner-1", clientId, trackingPublicId: "mtk_public", trackingSecret: "mts_rotated", trackingSecretHash: "sha256:private", installationStatus: "pending",
     }));
+    storageMock.claimMimosaasGtmInstallation.mockImplementation(async (_ownerId, clientId, connectionId) => ({
+      alreadyInstalled: false,
+      connection: { id: connectionId, ownerId: "owner-1", clientId, websiteUrl: "https://example.com", installationStatus: "pending", trackingPublicId: trackingId },
+    }));
+    storageMock.recordMimosaasGtmInstallation.mockImplementation(async (_ownerId, clientId, connectionId, _hash, _attemptId, metadata) => ({
+      id: connectionId, ownerId: "owner-1", clientId, websiteUrl: "https://example.com", installationMethod: "google_tag_manager",
+      installationStatus: "pending", trackingPublicId: trackingId, installationMetadata: metadata,
+    }));
+    storageMock.releaseMimosaasGtmInstallationClaim.mockResolvedValue(true);
     storageMock.getMimosaasTrackingConfiguration.mockResolvedValue({ id: "configuration-1", campaignId: campaign.id });
     storageMock.createMimosaasTrackingConfiguration.mockImplementation(async (_ownerId, _clientId, campaignId, input) => ({
       id: "configuration-1", campaignId, ...input,
@@ -102,11 +130,16 @@ describe("Mimosaas Tracking read-only setup route", () => {
       campaign: { ...campaign, platform: "mimosaas-tracking", status: "active", reportingTimeZone: "UTC" },
       configuration: { id: "configuration-1", campaignId: campaign.id, status: "active" },
     });
+    gtmMock.resolveMimosaasGtmAuthorization.mockReturnValue(null);
+    gtmMock.installMimosaasGtmTag.mockResolvedValue({ containerPath: "accounts/1/containers/10", containerPublicId: "GTM-WEB" });
   });
 
   afterAll(async () => {
     delete process.env.MIMOSAAS_TRACKING_ENABLED;
     delete process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED;
+    delete process.env.MIMOSAAS_TRACKING_GTM_ENABLED;
+    delete process.env.GOOGLE_CLIENT_ID;
+    delete process.env.GOOGLE_CLIENT_SECRET;
     await new Promise<void>((resolve, reject) => server.close((error: Error) => error ? reject(error) : resolve()));
   });
 
@@ -142,6 +175,163 @@ describe("Mimosaas Tracking read-only setup route", () => {
     expect(enabled.status).toBe(200);
     expect(enabled.headers.get("cache-control")).toBe("no-store");
     expect(await enabled.json()).toEqual({ enabled: true });
+  });
+
+  it("keeps GTM setup behind its separate feature flag", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/gtm/availability`);
+
+    expect(response.status).toBe(404);
+    expect(storageMock.getCampaign).not.toHaveBeenCalled();
+    expect(storageMock.getMimosaasWebsiteConnection).not.toHaveBeenCalled();
+  });
+
+  it("starts scoped GTM OAuth without returning tracking credentials", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_GTM_ENABLED = "true";
+    process.env.GOOGLE_CLIENT_ID = "google-client";
+    process.env.GOOGLE_CLIENT_SECRET = "google-secret";
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/gtm/connect`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ connectionId: "website-1" }),
+    });
+    const body = await response.json();
+    const authUrl = new URL(body.authUrl);
+
+    expect(response.status).toBe(200);
+    expect(authUrl.origin).toBe("https://accounts.google.com");
+    expect(authUrl.searchParams.get("scope")).toContain("tagmanager.edit.containers");
+    expect(authUrl.searchParams.get("scope")).toContain("tagmanager.publish");
+    expect(JSON.stringify(body)).not.toContain(trackingSecret);
+    expect(storageMock.getMimosaasWebsiteConnection).toHaveBeenCalledWith("owner-1", "client-1", "website-1");
+  });
+
+  it("returns only an encrypted short-lived GTM authorization from the scoped callback", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_GTM_ENABLED = "true";
+    process.env.GOOGLE_CLIENT_ID = "google-client";
+    process.env.GOOGLE_CLIENT_SECRET = "google-secret";
+    const nativeFetch = globalThis.fetch;
+    const container = { path: "accounts/1/containers/10", publicId: "GTM-WEB", name: "Website", domainNames: ["example.com"], recommended: true };
+    gtmMock.listMimosaasGtmContainers.mockResolvedValue([container]);
+    gtmMock.buildMimosaasGtmAuthorization.mockReturnValue({ v: 1, iv: "iv", tag: "tag", data: "encrypted" });
+    const providerFetch = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      if (String(input) === "https://oauth2.googleapis.com/token") {
+        return new Response(JSON.stringify({ access_token: "google-access-token" }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return nativeFetch(input, init);
+    });
+    try {
+      const start = await nativeFetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/gtm/connect`, {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ connectionId: "website-1" }),
+      });
+      const authUrl = new URL((await start.json()).authUrl);
+      const callback = await nativeFetch(`${baseUrl}/api/auth/mimosaas-tracking/gtm/callback?code=google-code&state=${encodeURIComponent(String(authUrl.searchParams.get("state")))}`);
+      const html = await callback.text();
+
+      expect(callback.status).toBe(200);
+      expect(html).toContain("mimosaas_gtm_auth_success");
+      expect(html).toContain("encrypted");
+      expect(html).not.toContain("google-access-token");
+      expect(gtmMock.listMimosaasGtmContainers).toHaveBeenCalledWith("google-access-token", "https://example.com");
+    } finally {
+      providerFetch.mockRestore();
+    }
+  });
+
+  it("fails the GTM callback closed when the signed-in campaign owner changes", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_GTM_ENABLED = "true";
+    process.env.GOOGLE_CLIENT_ID = "google-client";
+    process.env.GOOGLE_CLIENT_SECRET = "google-secret";
+    const start = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/gtm/connect`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ connectionId: "website-1" }),
+    });
+    const authUrl = new URL((await start.json()).authUrl);
+    authState.userId = "other-owner";
+    const callback = await fetch(`${baseUrl}/api/auth/mimosaas-tracking/gtm/callback?code=google-code&state=${encodeURIComponent(String(authUrl.searchParams.get("state")))}`);
+    const html = await callback.text();
+
+    expect(callback.status).toBe(200);
+    expect(html).toContain("mimosaas_gtm_auth_error");
+    expect(html).toContain("Campaign not found");
+    expect(gtmMock.listMimosaasGtmContainers).not.toHaveBeenCalled();
+  });
+
+  it("installs only an authorized container and persists no plaintext tracker secret", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_GTM_ENABLED = "true";
+    const container = { path: "accounts/1/containers/10", publicId: "GTM-WEB", name: "Website", domainNames: ["example.com"], recommended: true };
+    gtmMock.resolveMimosaasGtmAuthorization.mockReturnValue({ accessToken: "access-token", container });
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/gtm/install`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        connectionId: "website-1",
+        trackingSecret,
+        containerPath: container.path,
+        authorization: { v: 1, iv: "iv", tag: "tag", data: "data" },
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(gtmMock.installMimosaasGtmTag).toHaveBeenCalledWith(expect.objectContaining({
+      accessToken: "access-token", container, trackingId, trackingSecret,
+    }));
+    expect(storageMock.claimMimosaasGtmInstallation).toHaveBeenCalledWith(
+      "owner-1", "client-1", "website-1", trackingSecretHash,
+      expect.any(String), container.path, "2026-10-15T10:00:00.000Z",
+    );
+    expect(storageMock.recordMimosaasGtmInstallation).toHaveBeenCalledWith(
+      "owner-1", "client-1", "website-1", trackingSecretHash, expect.any(String),
+      expect.not.objectContaining({ trackingSecret }),
+    );
+  });
+
+  it("does not call GTM when another installation already holds the connection claim", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_GTM_ENABLED = "true";
+    const container = { path: "accounts/1/containers/10", publicId: "GTM-WEB", name: "Website", domainNames: ["example.com"], recommended: true };
+    gtmMock.resolveMimosaasGtmAuthorization.mockReturnValue({ accessToken: "access-token", container });
+    storageMock.claimMimosaasGtmInstallation.mockRejectedValueOnce(Object.assign(new Error("Google Tag Manager installation is already in progress"), { code: "MIMOSAAS_GTM_INSTALLATION_IN_PROGRESS" }));
+
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/gtm/install`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({
+        connectionId: "website-1", trackingSecret, containerPath: container.path,
+        authorization: { v: 1, iv: "iv", tag: "tag", data: "data" },
+      }),
+    });
+
+    expect(response.status).toBe(409);
+    expect(gtmMock.installMimosaasGtmTag).not.toHaveBeenCalled();
+    expect(storageMock.recordMimosaasGtmInstallation).not.toHaveBeenCalled();
+  });
+
+  it("releases its own GTM installation claim when the provider fails", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_GTM_ENABLED = "true";
+    const container = { path: "accounts/1/containers/10", publicId: "GTM-WEB", name: "Website", domainNames: ["example.com"], recommended: true };
+    gtmMock.resolveMimosaasGtmAuthorization.mockReturnValue({ accessToken: "access-token", container });
+    gtmMock.installMimosaasGtmTag.mockRejectedValueOnce(new Error("provider failed"));
+
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/gtm/install`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({
+        connectionId: "website-1", trackingSecret, containerPath: container.path,
+        authorization: { v: 1, iv: "iv", tag: "tag", data: "data" },
+      }),
+    });
+
+    expect(response.status).toBe(502);
+    expect(storageMock.releaseMimosaasGtmInstallationClaim).toHaveBeenCalledWith(
+      "owner-1", "client-1", "website-1", trackingSecretHash, expect.any(String),
+    );
+    expect(storageMock.recordMimosaasGtmInstallation).not.toHaveBeenCalled();
   });
 
   it("serves the universal tracker only while both tracker flags are enabled", async () => {

@@ -302,6 +302,122 @@ describe("Mimosaas Tracking storage safety", () => {
     expect(mocks.state.updates).toHaveLength(0);
   });
 
+  it("claims one GTM installation attempt atomically", async () => {
+    const connection = { ...website, trackingSecretHash: "sha256:current", installationStatus: "pending", installationMetadata: null };
+    mocks.state.selectQueue = [[{ id: "client-1" }], [connection]];
+
+    const result = await new DatabaseStorage().claimMimosaasGtmInstallation(
+      "owner-1", "client-1", "website-1", "sha256:current", "attempt-1", "accounts/1/containers/10", "2026-10-15T10:00:00.000Z",
+    );
+
+    expect(result).toMatchObject({ alreadyInstalled: false, connection: { installationMetadata: { status: "installing", attemptId: "attempt-1" } } });
+    expect(mocks.state.updates[0]).not.toHaveProperty("trackingSecret");
+    expect(mocks.state.updates[0]).not.toHaveProperty("trackingSecretHash");
+  });
+
+  it("rejects a concurrent GTM installation while the first claim is current", async () => {
+    const connection = {
+      ...website,
+      trackingSecretHash: "sha256:current",
+      installationStatus: "pending",
+      installationMetadata: { status: "installing", attemptId: "attempt-1", claimedAt: new Date().toISOString() },
+    };
+    mocks.state.selectQueue = [[{ id: "client-1" }], [connection]];
+
+    await expect(new DatabaseStorage().claimMimosaasGtmInstallation(
+      "owner-1", "client-1", "website-1", "sha256:current", "attempt-2", "accounts/1/containers/10", "2026-10-15T10:00:00.000Z",
+    )).rejects.toMatchObject({ code: "MIMOSAAS_GTM_INSTALLATION_IN_PROGRESS" });
+    expect(mocks.state.updates).toHaveLength(0);
+  });
+
+  it("recovers a stale GTM installation claim", async () => {
+    const connection = {
+      ...website,
+      trackingSecretHash: "sha256:current",
+      installationStatus: "pending",
+      installationMetadata: { status: "installing", attemptId: "abandoned", claimedAt: new Date(Date.now() - 31 * 60 * 1000).toISOString() },
+    };
+    mocks.state.selectQueue = [[{ id: "client-1" }], [connection]];
+
+    await expect(new DatabaseStorage().claimMimosaasGtmInstallation(
+      "owner-1", "client-1", "website-1", "sha256:current", "attempt-2", "accounts/1/containers/10", "2026-10-15T10:00:00.000Z",
+    )).resolves.toMatchObject({ alreadyInstalled: false, connection: { installationMetadata: { attemptId: "attempt-2" } } });
+  });
+
+  it("does not republish a completed GTM installation for the same credentials and container", async () => {
+    const connection = {
+      ...website,
+      trackingSecretHash: "sha256:current",
+      installationStatus: "verified",
+      installationMetadata: {
+        status: "published",
+        containerPath: "accounts/1/containers/10",
+        credentialCreatedAt: "2026-10-15T10:00:00.000Z",
+        publishedAt: "2026-10-15T10:05:00.000Z",
+      },
+    };
+    mocks.state.selectQueue = [[{ id: "client-1" }], [connection]];
+
+    await expect(new DatabaseStorage().claimMimosaasGtmInstallation(
+      "owner-1", "client-1", "website-1", "sha256:current", "attempt-2", "accounts/1/containers/10", "2026-10-15T10:00:00.000Z",
+    )).resolves.toEqual({ connection, alreadyInstalled: true });
+    expect(mocks.state.updates).toHaveLength(0);
+  });
+
+  it("records GTM metadata only for the matching installation claim", async () => {
+    const connection = {
+      ...website,
+      trackingSecretHash: "sha256:current",
+      installationStatus: "pending",
+      installationMetadata: { status: "installing", attemptId: "attempt-1" },
+    };
+    mocks.state.selectQueue = [[{ id: "client-1" }], [connection]];
+
+    await expect(new DatabaseStorage().recordMimosaasGtmInstallation(
+      "owner-1", "client-1", "website-1", "sha256:current", "attempt-1", { containerPublicId: "GTM-WEB" },
+    )).resolves.toMatchObject({ installationMethod: "google_tag_manager", installationMetadata: { status: "published", containerPublicId: "GTM-WEB" } });
+
+    mocks.state.selectQueue = [[{ id: "client-1" }], [connection]];
+    await expect(new DatabaseStorage().recordMimosaasGtmInstallation(
+      "owner-1", "client-1", "website-1", "sha256:current", "attempt-2", { containerPublicId: "GTM-WEB" },
+    )).rejects.toMatchObject({ code: "MIMOSAAS_TRACKING_AUTH_INVALID" });
+  });
+
+  it("preserves a same-secret verification that races with GTM metadata persistence", async () => {
+    const connection = {
+      ...website,
+      trackingSecretHash: "sha256:current",
+      installationStatus: "verified",
+      installationMetadata: { status: "installing", attemptId: "attempt-1" },
+    };
+    mocks.state.selectQueue = [[{ id: "client-1" }], [connection]];
+
+    await expect(new DatabaseStorage().recordMimosaasGtmInstallation(
+      "owner-1", "client-1", "website-1", "sha256:current", "attempt-1", { containerPublicId: "GTM-WEB" },
+    )).resolves.toMatchObject({ installationMethod: "google_tag_manager" });
+    expect(mocks.state.updates[0]).not.toHaveProperty("installationStatus");
+  });
+
+  it("releases only the matching failed GTM installation claim", async () => {
+    const connection = {
+      ...website,
+      trackingSecretHash: "sha256:current",
+      installationStatus: "pending",
+      installationMetadata: { status: "installing", attemptId: "attempt-1" },
+    };
+    mocks.state.selectQueue = [[{ id: "client-1" }], [connection]];
+    await expect(new DatabaseStorage().releaseMimosaasGtmInstallationClaim(
+      "owner-1", "client-1", "website-1", "sha256:current", "attempt-2",
+    )).resolves.toBe(false);
+    expect(mocks.state.updates).toHaveLength(0);
+
+    mocks.state.selectQueue = [[{ id: "client-1" }], [connection]];
+    await expect(new DatabaseStorage().releaseMimosaasGtmInstallationClaim(
+      "owner-1", "client-1", "website-1", "sha256:current", "attempt-1",
+    )).resolves.toBe(true);
+    expect(mocks.state.updates[0]).toMatchObject({ installationMetadata: null });
+  });
+
   it("does not allow a website update payload to change tenant scope", async () => {
     mocks.state.selectQueue = [[{ id: "client-1" }], [website]];
 

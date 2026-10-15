@@ -22,10 +22,20 @@ describe("Mimosaas Tracking campaign wizard safety", () => {
 
   it("requires a campaign website and uses only the scoped installation APIs", () => {
     expect(campaigns).toContain('platform.id === "mimosaas-tracking" && !campaignData?.clientWebsite');
-    expect(installer).toContain('installationMethod: "universal"');
+    expect(installer).toContain('prepareCredentials("universal")');
     expect(installer).toContain('/mimosaas-tracking/websites/${existing.id}/rotate-secret');
     expect(installer).toContain('/api/mimosaas-tracking/tracker.js');
     expect(installer).not.toContain("localStorage");
+  });
+
+  it("keeps automatic GTM installation separately disabled and preserves the universal fallback", () => {
+    expect(routes).toContain("MIMOSAAS_TRACKING_GTM_ENABLED");
+    expect(routes).toContain('/mimosaas-tracking/gtm/availability"');
+    expect(routes).toContain('/mimosaas-tracking/gtm/connect"');
+    expect(routes).toContain('/mimosaas-tracking/gtm/install"');
+    expect(installer).toContain("Connect with Google");
+    expect(installer).toContain("Use installation code instead");
+    expect(installer).toContain('prepareCredentials("universal")');
   });
 
   it("requires verified installation and exact UTM mapping before atomic finalization", () => {

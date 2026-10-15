@@ -1,8 +1,8 @@
 # Mimosaas Tracking: Phase 1 Safety Baseline
 
-Status: Phase 1 complete; Phase 2 schema, persistence, and setup APIs deployed; Phase 3 credentials, ingestion, installation proof, and universal browser tracker deployed but disabled; protected campaign-wizard setup and atomic finalization implemented locally and disabled
+Status: Phase 1 complete; Phase 2 schema, persistence, and setup APIs deployed; Phase 3 credentials, ingestion, installation proof, universal browser tracker, protected campaign wizard, and atomic finalization deployed but disabled; automated GTM installation implemented locally behind a separate disabled flag
 Baseline date: 2026-10-14
-Last verified production revision: `3aa6cbacd7393464060521b5bcd8d9dcfff337b4`
+Last verified production revision: `bcfc894012e244894cd9054e5de1328bdc2568ab`
 
 ## Phase 2 Foundation Status
 
@@ -20,7 +20,7 @@ writes accept only an owned website connection, conversion events, and the
 attribution window; changes remain draft. Campaign mapping create/update accepts
 only exact `utm_campaign` values, rejects website-wide conflicts, and resets the
 configuration to draft in the same database transaction. A separate protected
-finalization path is implemented locally and remains unavailable while the
+finalization path is deployed and remains unavailable while the
 feature flags are disabled. Migration
 `0020_add_mimosaas_tracking_foundation.sql` was applied
 to production on 2026-10-14 and verified all 8 tables, 99 required columns, 14
@@ -45,11 +45,26 @@ creating a raw analytics event. A universal browser tracker is deployed behind
 those flags. Its first proof-only load is excluded from analytics;
 later loads send non-financial page-view and visible ten-second engagement
 events with stable visitor and 30-minute session identifiers. A protected
-campaign-wizard path is implemented locally: it appears only when both flags
+campaign-wizard path is deployed: it appears only when both flags
 are enabled, requires a verified same-origin installation and exact
 `utm_campaign` mapping, and finalizes the configuration and draft campaign in
 one scoped transaction. Event attribution processing, aggregation,
 publication, scheduler, Overview rendering, and GA4 integration remain disabled.
+
+Automated Google Tag Manager installation is implemented locally behind the
+additional `MIMOSAAS_TRACKING_GTM_ENABLED` flag. It uses short-lived, encrypted
+OAuth authorization; lists accessible web containers; recommends only an
+exact website-domain match; and creates a dedicated workspace, page-view
+trigger, Mimosaas tag, version, and publication. Ambiguous containers require
+an explicit choice, and the existing universal installation remains available.
+An owner-scoped database claim prevents concurrent requests from publishing
+the same installation twice and is released only by the attempt that owns it.
+The database stores GTM installation identifiers and publication metadata, not
+the plaintext tracking secret or Google access token. The published tag must
+still call the existing same-origin installation-proof endpoint before the
+campaign can be finalized. The GTM path has not been enabled or validated
+against a live Google account. Before enablement, the Tag Manager API and the
+dedicated OAuth callback URI must be configured in the Google Cloud project.
 
 ## Purpose
 

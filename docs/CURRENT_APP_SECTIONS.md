@@ -130,6 +130,9 @@ The codebase also contains a Mimosaas Tracking wizard path. It remains hidden
 unless both Mimosaas Tracking setup and ingestion flags are enabled. That path
 requires a verified website installation and exact `utm_campaign` mapping, and
 uses its own scoped finalization route; it does not change the GA4 path.
+An automated Google Tag Manager installer is implemented locally behind the
+additional `MIMOSAAS_TRACKING_GTM_ENABLED` flag. It is not enabled in production;
+the universal installation-code path remains the fallback.
 
 Closing an unfinished wizard may clean up only its persisted draft. The server
 rejects that cleanup after the campaign becomes active. A confirmed campaign

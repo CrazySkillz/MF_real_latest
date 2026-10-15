@@ -390,7 +390,10 @@ export function AddRevenueWizardModal(props: {
     setSalesforceSourcesResolved(false);
     let cancelled = false;
     (async () => {
-      const dataSourcesReq = fetch(`/api/campaigns/${campaignId}/all-data-sources`, { credentials: "include", cache: "no-store" }).then(r => r.json()).catch(() => ({}));
+      const dataSourcesUrl = platformContext === "mimosaas_tracking"
+        ? `/api/campaigns/${campaignId}/mimosaas-tracking/financial-sources`
+        : `/api/campaigns/${campaignId}/all-data-sources`;
+      const dataSourcesReq = fetch(dataSourcesUrl, { credentials: "include", cache: "no-store" }).then(r => r.json()).catch(() => ({}));
       const [hubspotOAuth, salesforceOAuth, shopifyOAuth, dsResp] = hideCrmSources
         ? [false, false, false, await dataSourcesReq]
         : await Promise.all([

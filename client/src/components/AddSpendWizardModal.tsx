@@ -448,7 +448,7 @@ export function AddSpendWizardModal(props: {
       try {
         const contextQuery = props.platformContext ? `?platformContext=${encodeURIComponent(props.platformContext)}` : "";
         const sourceUrl = props.platformContext === "mimosaas_tracking"
-          ? `/api/campaigns/${props.campaignId}/all-data-sources`
+          ? `/api/campaigns/${props.campaignId}/mimosaas-tracking/financial-sources`
           : `/api/campaigns/${props.campaignId}/spend-sources${contextQuery}`;
         const [resp, connectionResp] = await Promise.all([
           fetch(sourceUrl, { credentials: "include" }),

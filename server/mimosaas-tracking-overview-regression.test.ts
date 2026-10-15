@@ -17,8 +17,9 @@ describe("Mimosaas Tracking Campaign Overview safety", () => {
     expect(campaignDetail).toContain('? []');
   });
 
-  it("reads only the protected immutable snapshot endpoint", () => {
+  it("reads only the protected tracker snapshot and source endpoints", () => {
     expect(overview).toContain('/mimosaas-tracking/daily-snapshot`');
+    expect(overview).toContain('/mimosaas-tracking/financial-sources`');
     expect(overview).not.toContain("ga4-metrics");
     expect(overview).not.toContain("outcome-totals");
     expect(overview).not.toContain("financial-daily-snapshot");
@@ -38,5 +39,12 @@ describe("Mimosaas Tracking Campaign Overview safety", () => {
     expect(overview).not.toContain("ROAS");
     expect(overview).not.toContain("ROI");
     expect(overview).not.toContain("CPA");
+  });
+
+  it("shows tracker-scoped Revenue and Spend source names without replacing snapshot values", () => {
+    expect(overview).toContain("sourcesData?.revenueSources");
+    expect(overview).toContain("sourcesData?.spendSources");
+    expect(overview).toContain('String(source.displayName || "").trim() || "Google Sheets"');
+    expect(overview).toContain("Source status unavailable");
   });
 });

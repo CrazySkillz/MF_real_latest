@@ -303,7 +303,9 @@ route. Its Revenue and Spend actions open the existing Google Sheets wizards
 with a locked tracker context and require an explicit Date column.
 The separately protected tracker financial-source read route returns only
 active, tracker-scoped Google Sheets sources for the owned active tracker
-campaign. Generic GA4 financial read contracts remain unchanged.
+campaign. The tracker Overview and its locked Google Sheets wizards use this
+route for source names and connection status. Generic GA4 financial read
+contracts remain unchanged.
 
 ## Protected Existing Paths
 

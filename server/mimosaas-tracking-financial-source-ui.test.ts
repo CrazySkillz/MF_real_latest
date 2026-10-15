@@ -20,6 +20,7 @@ describe("Mimosaas Tracking financial source UI", () => {
 
   it("keeps executive values on the immutable snapshot route", () => {
     expect(overview).toContain("/mimosaas-tracking/daily-snapshot");
+    expect(overview).toContain("/mimosaas-tracking/financial-sources");
     expect(overview).not.toContain("revenue-to-date");
     expect(overview).not.toContain("spend-to-date");
     expect(overview).not.toContain("all-data-sources");
@@ -27,6 +28,8 @@ describe("Mimosaas Tracking financial source UI", () => {
 
   it("requires a tracker Revenue date before calling the scoped Sheets process route", () => {
     expect(revenueModal).toContain("'mimosaas_tracking'");
+    expect(revenueModal).toContain('platformContext === "mimosaas_tracking"');
+    expect(revenueModal).toContain('/mimosaas-tracking/financial-sources`');
     const start = revenueModal.indexOf("const handleSheetsProcess = async () =>");
     const end = revenueModal.indexOf("const title =", start);
     const process = revenueModal.slice(start, end);
@@ -38,7 +41,7 @@ describe("Mimosaas Tracking financial source UI", () => {
 
   it("requires a tracker Spend date and does not widen generic financial read routes", () => {
     expect(spendModal).toContain('props.platformContext === "mimosaas_tracking"');
-    expect(spendModal).toContain('`/api/campaigns/${props.campaignId}/all-data-sources`');
+    expect(spendModal).toContain('`/api/campaigns/${props.campaignId}/mimosaas-tracking/financial-sources`');
     expect(spendModal).toContain('source?.platformContext || "").trim().toLowerCase() === "mimosaas_tracking"');
     const start = spendModal.indexOf("const processSheets = async () =>");
     const end = spendModal.indexOf("//", start);

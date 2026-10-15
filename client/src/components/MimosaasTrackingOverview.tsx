@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Activity, AlertCircle, Loader2, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,12 @@ type MimosaasTrackingSnapshot = {
 };
 
 type SnapshotResponse = { success: true; snapshot: MimosaasTrackingSnapshot | null };
+type FinancialSource = { id: string; displayName?: string | null };
+type FinancialSourcesResponse = {
+  success: true;
+  revenueSources: FinancialSource[];
+  spendSources: FinancialSource[];
+};
 
 const formatReportingDate = (value: string) => {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T00:00:00.000Z`) : null;
@@ -49,7 +55,16 @@ const formatFinancial = (value: string | null, currency: string, status: "availa
   }
 };
 
+const formatSources = (sources: FinancialSource[] | undefined, unavailable: boolean) => {
+  if (unavailable) return "Source status unavailable";
+  if (!sources) return "";
+  if (sources.length === 0) return "No source configured";
+  const names = sources.map((source) => String(source.displayName || "").trim() || "Google Sheets");
+  return `${sources.length === 1 ? "Source" : "Sources"}: ${names.join(", ")}`;
+};
+
 export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId: string; currency: string }) {
+  const queryClient = useQueryClient();
   const [revenueOpen, setRevenueOpen] = useState(false);
   const [spendOpen, setSpendOpen] = useState(false);
   const { data, isLoading, isError } = useQuery<SnapshotResponse>({
@@ -61,7 +76,20 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
       return response.json();
     },
   });
+  const sourceQueryKey = ["/api/campaigns", campaignId, "mimosaas-tracking", "financial-sources"] as const;
+  const { data: sourcesData, isError: sourcesError } = useQuery<FinancialSourcesResponse>({
+    queryKey: sourceQueryKey,
+    retry: false,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/mimosaas-tracking/financial-sources`, { credentials: "include", cache: "no-store" });
+      if (!response.ok) throw new Error("Mimosaas Tracking financial sources are unavailable");
+      return response.json();
+    },
+  });
   const snapshot = data?.snapshot ?? null;
+  const revenueSources = formatSources(sourcesData?.revenueSources, sourcesError);
+  const spendSources = formatSources(sourcesData?.spendSources, sourcesError);
+  const refreshSources = () => void queryClient.invalidateQueries({ queryKey: sourceQueryKey });
 
   return (
     <>
@@ -91,6 +119,10 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
         ) : !snapshot ? (
           <div className="flex min-h-20 flex-col items-start justify-center gap-3 rounded-lg border border-border bg-muted/60 p-3 text-sm text-muted-foreground">
             <p>No finalized daily snapshot is available yet.</p>
+            <div className="space-y-1 text-xs">
+              <p className="min-h-4">{revenueSources ? `Revenue — ${revenueSources}` : ""}</p>
+              <p className="min-h-4">{spendSources ? `Spend — ${spendSources}` : ""}</p>
+            </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={() => setRevenueOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" /> Add Revenue
@@ -131,6 +163,7 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
                 <p className="mt-1 text-lg font-semibold text-foreground">
                   {formatFinancial(snapshot.revenue, snapshot.currency, snapshot.revenueStatus)}
                 </p>
+                <p className="mt-1 min-h-4 text-xs text-muted-foreground">{revenueSources}</p>
               </div>
               <div className="rounded-lg border border-border bg-card p-3">
                 <div className="flex items-center justify-between gap-2">
@@ -142,6 +175,7 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
                 <p className="mt-1 text-lg font-semibold text-foreground">
                   {formatFinancial(snapshot.spend, snapshot.currency, snapshot.spendStatus)}
                 </p>
+                <p className="mt-1 min-h-4 text-xs text-muted-foreground">{spendSources}</p>
               </div>
             </div>
           </div>
@@ -158,6 +192,10 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
       initialStep="sheets_choose"
       lockInitialStep
       hideCrmSources
+      onSuccess={() => {
+        setRevenueOpen(false);
+        refreshSources();
+      }}
     />
     <AddSpendWizardModal
       open={spendOpen}
@@ -168,6 +206,10 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
       platformContext="mimosaas_tracking"
       initialStep="sheets_choose"
       lockInitialStep
+      onProcessed={() => {
+        setSpendOpen(false);
+        refreshSources();
+      }}
     />
     </>
   );

@@ -30,6 +30,7 @@ export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' 
 export type SpendPlatformContext = RevenuePlatformContext;
 export type MimosaasTrackingEventWriteResult = { event: MimosaasTrackingEvent; inserted: boolean };
 export type MimosaasWebsiteConnectionWithSecret = MimosaasWebsiteConnection & { trackingSecret: string };
+export type MimosaasWebsiteInstallationVerificationResult = { connection: MimosaasWebsiteConnection; newlyVerified: boolean };
 export type KPINotificationHide = { id: string; campaignId: string; metadata: string };
 export type CampaignDeepDiveReportLimitCode = "REPORT_LIMIT_REACHED" | "SCHEDULED_REPORT_LIMIT_REACHED";
 export type CampaignDeepDiveReportLimits = { maxActiveReports: number; maxScheduledActiveReports: number };
@@ -187,7 +188,7 @@ export interface IStorage {
   createMimosaasWebsiteConnection(ownerId: string, clientId: string, connection: Omit<InsertMimosaasWebsiteConnection, "ownerId" | "clientId">): Promise<MimosaasWebsiteConnectionWithSecret>;
   updateMimosaasWebsiteConnection(ownerId: string, clientId: string, connectionId: string, connection: Partial<Omit<InsertMimosaasWebsiteConnection, "ownerId" | "clientId">>): Promise<MimosaasWebsiteConnection | undefined>;
   rotateMimosaasWebsiteConnectionSecret(ownerId: string, clientId: string, connectionId: string): Promise<MimosaasWebsiteConnectionWithSecret | undefined>;
-  verifyMimosaasWebsiteConnectionInstallation(websiteConnectionId: string, expectedTrackingSecretHash: string, evidenceUrl: string): Promise<MimosaasWebsiteConnection>;
+  verifyMimosaasWebsiteConnectionInstallation(websiteConnectionId: string, expectedTrackingSecretHash: string, evidenceUrl: string): Promise<MimosaasWebsiteInstallationVerificationResult>;
   getMimosaasTrackingConfiguration(ownerId: string, clientId: string, campaignId: string): Promise<MimosaasTrackingConfiguration | undefined>;
   createMimosaasTrackingConfiguration(ownerId: string, clientId: string, campaignId: string, configuration: Omit<InsertMimosaasTrackingConfiguration, "campaignId">): Promise<MimosaasTrackingConfiguration>;
   updateMimosaasTrackingConfiguration(ownerId: string, clientId: string, campaignId: string, configuration: Partial<Omit<InsertMimosaasTrackingConfiguration, "campaignId" | "websiteConnectionId">>): Promise<MimosaasTrackingConfiguration | undefined>;
@@ -1005,7 +1006,7 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async verifyMimosaasWebsiteConnectionInstallation(websiteConnectionId: string, expectedTrackingSecretHash: string, evidenceUrl: string): Promise<MimosaasWebsiteConnection> {
+  async verifyMimosaasWebsiteConnectionInstallation(websiteConnectionId: string, expectedTrackingSecretHash: string, evidenceUrl: string): Promise<MimosaasWebsiteInstallationVerificationResult> {
     return db.transaction(async (tx: any) => {
       const [unlockedConnection] = await tx.select().from(mimosaasWebsiteConnections)
         .where(eq(mimosaasWebsiteConnections.id, websiteConnectionId)).limit(1);
@@ -1025,7 +1026,7 @@ export class DatabaseStorage implements IStorage {
       } catch {
         throw Object.assign(new Error("Mimosaas Tracking installation URL does not match the connected website"), { code: "MIMOSAAS_TRACKING_EVENT_WEBSITE_SCOPE_MISMATCH" });
       }
-      if (connection.installationStatus === "verified") return connection;
+      if (connection.installationStatus === "verified") return { connection, newlyVerified: false };
 
       const verifiedAt = new Date();
       const [verified] = await tx.update(mimosaasWebsiteConnections).set({
@@ -1036,7 +1037,7 @@ export class DatabaseStorage implements IStorage {
         eq(mimosaasWebsiteConnections.clientId, connection.clientId),
       )).returning();
       if (!verified) throw new Error("Mimosaas Tracking website connection changed during installation verification");
-      return verified;
+      return { connection: verified, newlyVerified: true };
     });
   }
 

@@ -1,8 +1,8 @@
 # Mimosaas Tracking: Phase 1 Safety Baseline
 
-Status: Phase 1 complete; Phase 2 schema, internal persistence, and feature-flagged setup APIs implemented in main; Phase 2 schema migrated; Phase 3 credential foundation and authenticated ingestion deployed but disabled; installation-proof foundation implemented locally and disabled
+Status: Phase 1 complete; Phase 2 schema, internal persistence, and feature-flagged setup APIs implemented in main; Phase 2 schema migrated; Phase 3 credential, ingestion, and installation-proof foundations deployed but disabled; universal browser tracker implemented locally and disabled
 Baseline date: 2026-10-14
-Last verified production revision: `bca039dab7c3b64f252ea7a734f043ce77dfd22d`
+Last verified production revision: `a70d38aeba9af0b4f0fbcba301c69ba4fc9ec3fc`
 
 ## Phase 2 Foundation Status
 
@@ -38,9 +38,12 @@ tracking-ID index. The authenticated raw-event endpoint is deployed behind
 the separate `MIMOSAAS_TRACKING_INGESTION_ENABLED` flag, which remains disabled
 by default. It enforces exact credentials, website origin, strict non-financial
 payloads, event-time bounds, duplicate handling, and rate limiting. A separate
-installation-proof endpoint is implemented locally behind the same flags. It
+installation-proof endpoint is deployed behind the same flags. It
 atomically marks an authenticated same-origin website as verified without
-creating a raw analytics event. Attribution,
+creating a raw analytics event. A universal browser tracker is implemented
+locally behind those flags. Its first proof-only load is excluded from analytics;
+later loads send non-financial page-view and visible ten-second engagement
+events with stable visitor and 30-minute session identifiers. Attribution,
 aggregation, publication, scheduler, UI, and GA4 integration remain disabled.
 
 ## Purpose

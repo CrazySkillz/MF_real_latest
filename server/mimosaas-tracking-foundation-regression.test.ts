@@ -103,6 +103,7 @@ describe("Mimosaas Tracking Phase 2 foundation", () => {
     expect(routes).toContain("MIMOSAAS_TRACKING_INGESTION_ENABLED");
     expect(routes).toContain('app.post("/api/mimosaas-tracking/events"');
     expect(routes).toContain('app.post("/api/mimosaas-tracking/installations/verify"');
+    expect(routes).toContain('app.get("/api/mimosaas-tracking/tracker.js"');
     expect(routes).toContain("createMimosaasTrackingEvent");
     expect(routes).toContain("verifyMimosaasWebsiteConnectionInstallation");
     expect(read("server", "ga4-daily-scheduler.ts")).not.toContain("mimosaasTracking");

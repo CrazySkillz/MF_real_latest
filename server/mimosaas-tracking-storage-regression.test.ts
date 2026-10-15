@@ -205,7 +205,10 @@ describe("Mimosaas Tracking storage safety", () => {
       "website-1", "sha256:current", "https://example.com/landing",
     );
 
-    expect(verified).toMatchObject({ installationStatus: "verified", verifiedAt: expect.any(Date), lastEventAt: expect.any(Date) });
+    expect(verified).toMatchObject({
+      newlyVerified: true,
+      connection: { installationStatus: "verified", verifiedAt: expect.any(Date), lastEventAt: expect.any(Date) },
+    });
     expect(mocks.state.inserts).toHaveLength(0);
     expect(mocks.state.events).toHaveLength(0);
     expect(mocks.state.updates).toHaveLength(1);
@@ -219,7 +222,7 @@ describe("Mimosaas Tracking storage safety", () => {
       "website-1", "sha256:current", "https://example.com/landing",
     );
 
-    expect(verified).toBe(verifiedWebsite);
+    expect(verified).toEqual({ connection: verifiedWebsite, newlyVerified: false });
     expect(mocks.state.updates).toHaveLength(0);
   });
 

@@ -13,6 +13,7 @@ import { buildShopifyRepairConfirmation, deduplicateShopifyOrders, getShopifyCon
 import { fetchShopifyOrderCustomerJourneyUtms, getShopifyApiVersion, hasShopifyAllOrdersScope, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain, parseShopifyExpiringOfflineToken, refreshShopifyOfflineAccessToken, requireShopifyCampaignOrderWindow, requireShopifyOrderScope, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, resolveShopifyCampaignOrderWindow, SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE, SHOPIFY_RECENT_ORDER_WINDOW_DAYS, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
 import { assertProductionTokenEncryptionConfigured, resolveOAuthStateSigningSecret } from './utils/tokenVault';
 import { verifyMimosaasTrackingSecret } from './utils/mimosaas-tracking-auth';
+import { MIMOSAAS_BROWSER_TRACKER_SOURCE, MIMOSAAS_BROWSER_TRACKER_VERSION } from './mimosaas-browser-tracker';
 import { assertGA4ServiceAccountPropertyAllowed, GA4_SERVICE_ACCOUNT_METHOD, getGA4ServiceAccountAccessToken, getGA4ServiceAccountPublicStatus, isSupportedGA4ConnectionMethod, normalizeGA4ServiceAccountPropertyId } from './utils/ga4-service-account';
 import { getGoogleSheetsServiceAccountAccessToken, getGoogleSheetsServiceAccountPublicStatus, GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, normalizeGoogleSheetsSpreadsheetId } from './utils/google-sheets-service-account';
 import { assertGoogleAdsServiceAccountCustomerAllowed, getGoogleAdsServiceAccountAccessToken, getGoogleAdsServiceAccountLoginCustomerId, getGoogleAdsServiceAccountPublicStatus, GOOGLE_ADS_SERVICE_ACCOUNT_METHOD, isSupportedGoogleAdsSpendConnectionMethod, normalizeGoogleAdsCustomerId } from './utils/google-ads-service-account';
@@ -3564,6 +3565,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.status(204).end();
   });
 
+  app.get("/api/mimosaas-tracking/tracker.js", requireMimosaasTrackingIngestionFeature, (_req, res) => {
+    res.type("application/javascript");
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    res.setHeader("X-Mimosaas-Tracker-Version", MIMOSAAS_BROWSER_TRACKER_VERSION);
+    return res.send(MIMOSAAS_BROWSER_TRACKER_SOURCE);
+  });
+
   app.options("/api/mimosaas-tracking/installations/verify", requireMimosaasTrackingIngestionFeature, (req, res) => {
     setMimosaasTrackingCors(req, res);
     return res.status(204).end();
@@ -3597,13 +3606,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, message: "Installation URL does not match the connected website" });
       }
 
-      const verified = await storage.verifyMimosaasWebsiteConnectionInstallation(connection.id, connection.trackingSecretHash, url);
+      const verification = await storage.verifyMimosaasWebsiteConnectionInstallation(connection.id, connection.trackingSecretHash, url);
       return res.json({
         success: true,
         verified: true,
-        installationStatus: verified.installationStatus,
-        verifiedAt: verified.verifiedAt,
-        lastEventAt: verified.lastEventAt,
+        newlyVerified: verification.newlyVerified,
+        installationStatus: verification.connection.installationStatus,
+        verifiedAt: verification.connection.verifiedAt,
+        lastEventAt: verification.connection.lastEventAt,
       });
     } catch (error: any) {
       const code = String(error?.code || "");

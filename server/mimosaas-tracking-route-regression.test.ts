@@ -71,7 +71,8 @@ describe("Mimosaas Tracking read-only setup route", () => {
     });
     storageMock.createMimosaasTrackingEvent.mockResolvedValue({ event: { id: "event-row-1" }, inserted: true });
     storageMock.verifyMimosaasWebsiteConnectionInstallation.mockResolvedValue({
-      id: "website-1", installationStatus: "verified", verifiedAt: new Date("2026-10-15T10:00:00.000Z"), lastEventAt: new Date("2026-10-15T10:00:00.000Z"),
+      newlyVerified: true,
+      connection: { id: "website-1", installationStatus: "verified", verifiedAt: new Date("2026-10-15T10:00:00.000Z"), lastEventAt: new Date("2026-10-15T10:00:00.000Z") },
     });
     storageMock.createMimosaasWebsiteConnection.mockImplementation(async (_ownerId, clientId, input) => ({
       id: "website-1", ownerId: "owner-1", clientId, trackingPublicId: "mtk_public", trackingSecret: "mts_secret", trackingSecretHash: "sha256:private", installationMetadata: { private: true }, ...input,
@@ -122,6 +123,24 @@ describe("Mimosaas Tracking read-only setup route", () => {
     expect(storageMock.createMimosaasTrackingEvent).not.toHaveBeenCalled();
   });
 
+  it("serves the universal tracker only while both tracker flags are enabled", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    const disabled = await fetch(`${baseUrl}/api/mimosaas-tracking/tracker.js`);
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    const enabled = await fetch(`${baseUrl}/api/mimosaas-tracking/tracker.js`);
+    const source = await enabled.text();
+
+    expect(disabled.status).toBe(404);
+    expect(enabled.status).toBe(200);
+    expect(enabled.headers.get("content-type")).toContain("application/javascript");
+    expect(enabled.headers.get("cache-control")).toBe("no-store");
+    expect(enabled.headers.get("cross-origin-resource-policy")).toBe("cross-origin");
+    expect(enabled.headers.get("x-mimosaas-tracker-version")).toBe("1.0.0");
+    expect(source).toContain("/api/mimosaas-tracking/installations/verify");
+    expect(source).toContain("/api/mimosaas-tracking/events");
+    expect(storageMock.getMimosaasWebsiteConnectionByTrackingPublicId).not.toHaveBeenCalled();
+  });
+
   it("accepts an authenticated same-site event as pending attribution", async () => {
     process.env.MIMOSAAS_TRACKING_ENABLED = "true";
     process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
@@ -167,7 +186,7 @@ describe("Mimosaas Tracking read-only setup route", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ success: true, verified: true, installationStatus: "verified" });
+    expect(await response.json()).toMatchObject({ success: true, verified: true, newlyVerified: true, installationStatus: "verified" });
     expect(storageMock.verifyMimosaasWebsiteConnectionInstallation).toHaveBeenCalledWith("website-1", trackingSecretHash, "https://example.com/landing");
     expect(storageMock.createMimosaasTrackingEvent).not.toHaveBeenCalled();
   });

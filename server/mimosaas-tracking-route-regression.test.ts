@@ -9,6 +9,7 @@ const storageMock = vi.hoisted(() => ({
   createMimosaasWebsiteConnection: vi.fn(),
   updateMimosaasWebsiteConnection: vi.fn(),
   rotateMimosaasWebsiteConnectionSecret: vi.fn(),
+  verifyMimosaasWebsiteConnectionInstallation: vi.fn(),
   getMimosaasTrackingConfiguration: vi.fn(),
   createMimosaasTrackingConfiguration: vi.fn(),
   updateMimosaasTrackingConfiguration: vi.fn(),
@@ -69,6 +70,9 @@ describe("Mimosaas Tracking read-only setup route", () => {
       installationStatus: "verified", trackingPublicId: trackingId, trackingSecretHash,
     });
     storageMock.createMimosaasTrackingEvent.mockResolvedValue({ event: { id: "event-row-1" }, inserted: true });
+    storageMock.verifyMimosaasWebsiteConnectionInstallation.mockResolvedValue({
+      id: "website-1", installationStatus: "verified", verifiedAt: new Date("2026-10-15T10:00:00.000Z"), lastEventAt: new Date("2026-10-15T10:00:00.000Z"),
+    });
     storageMock.createMimosaasWebsiteConnection.mockImplementation(async (_ownerId, clientId, input) => ({
       id: "website-1", ownerId: "owner-1", clientId, trackingPublicId: "mtk_public", trackingSecret: "mts_secret", trackingSecretHash: "sha256:private", installationMetadata: { private: true }, ...input,
     }));
@@ -149,6 +153,82 @@ describe("Mimosaas Tracking read-only setup route", () => {
     expect(response.status).toBe(204);
     expect(response.headers.get("access-control-allow-origin")).toBe("https://example.com");
     expect(response.headers.get("access-control-allow-methods")).toBe("POST, OPTIONS");
+  });
+
+  it("verifies an authenticated same-site installation without creating an analytics event", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    storageMock.getMimosaasWebsiteConnectionByTrackingPublicId.mockResolvedValueOnce({
+      id: "website-1", websiteUrl: "https://example.com", installationStatus: "pending", trackingSecretHash,
+    });
+    const response = await fetch(`${baseUrl}/api/mimosaas-tracking/installations/verify`, {
+      method: "POST", headers: { "content-type": "application/json", origin: "https://example.com" },
+      body: JSON.stringify({ trackingId, trackingSecret, url: "https://example.com/landing" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ success: true, verified: true, installationStatus: "verified" });
+    expect(storageMock.verifyMimosaasWebsiteConnectionInstallation).toHaveBeenCalledWith("website-1", trackingSecretHash, "https://example.com/landing");
+    expect(storageMock.createMimosaasTrackingEvent).not.toHaveBeenCalled();
+  });
+
+  it("keeps installation verification disabled with ingestion and rejects untrusted proofs", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    const disabled = await fetch(`${baseUrl}/api/mimosaas-tracking/installations/verify`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ trackingId, trackingSecret, url: "https://example.com" }),
+    });
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    const wrongOrigin = await fetch(`${baseUrl}/api/mimosaas-tracking/installations/verify`, {
+      method: "POST", headers: { "content-type": "application/json", origin: "https://attacker.example" },
+      body: JSON.stringify({ trackingId, trackingSecret, url: "https://example.com" }),
+    });
+    const missingOrigin = await fetch(`${baseUrl}/api/mimosaas-tracking/installations/verify`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ trackingId, trackingSecret, url: "https://example.com" }),
+    });
+    const extraFields = await fetch(`${baseUrl}/api/mimosaas-tracking/installations/verify`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ trackingId, trackingSecret, url: "https://example.com", revenue: 100 }),
+    });
+    const wrongSecret = await fetch(`${baseUrl}/api/mimosaas-tracking/installations/verify`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ trackingId, trackingSecret: `mts_${"c".repeat(43)}`, url: "https://example.com" }),
+    });
+    const wrongUrl = await fetch(`${baseUrl}/api/mimosaas-tracking/installations/verify`, {
+      method: "POST", headers: { "content-type": "application/json", origin: "https://example.com" },
+      body: JSON.stringify({ trackingId, trackingSecret, url: "https://attacker.example" }),
+    });
+
+    expect(disabled.status).toBe(404);
+    expect(wrongOrigin.status).toBe(403);
+    expect(missingOrigin.status).toBe(403);
+    expect(extraFields.status).toBe(400);
+    expect(wrongSecret.status).toBe(401);
+    expect(wrongUrl.status).toBe(400);
+    expect(storageMock.verifyMimosaasWebsiteConnectionInstallation).not.toHaveBeenCalled();
+    expect(storageMock.createMimosaasTrackingEvent).not.toHaveBeenCalled();
+  });
+
+  it("fails installation verification closed after credential rotation or deactivation", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    storageMock.verifyMimosaasWebsiteConnectionInstallation.mockRejectedValueOnce(Object.assign(new Error("rotated"), { code: "MIMOSAAS_TRACKING_AUTH_INVALID" }));
+    const rotated = await fetch(`${baseUrl}/api/mimosaas-tracking/installations/verify`, {
+      method: "POST", headers: { "content-type": "application/json", origin: "https://example.com" },
+      body: JSON.stringify({ trackingId, trackingSecret, url: "https://example.com" }),
+    });
+    storageMock.getMimosaasWebsiteConnectionByTrackingPublicId.mockResolvedValueOnce({
+      id: "website-1", websiteUrl: "https://example.com", installationStatus: "disconnected", trackingSecretHash,
+    });
+    const inactive = await fetch(`${baseUrl}/api/mimosaas-tracking/installations/verify`, {
+      method: "POST", headers: { "content-type": "application/json", origin: "https://example.com" },
+      body: JSON.stringify({ trackingId, trackingSecret, url: "https://example.com" }),
+    });
+
+    expect(rotated.status).toBe(401);
+    expect(inactive.status).toBe(403);
+    expect(storageMock.createMimosaasTrackingEvent).not.toHaveBeenCalled();
   });
 
   it("rejects unknown or incorrect credentials without writing an event", async () => {

@@ -197,6 +197,52 @@ describe("Mimosaas Tracking storage safety", () => {
     expect(mocks.state.inserts).toHaveLength(0);
   });
 
+  it("verifies a pending installation atomically without inserting an analytics event", async () => {
+    const pendingWebsite = { ...website, installationStatus: "pending", trackingSecretHash: "sha256:current" };
+    mocks.state.selectQueue = [[pendingWebsite], [{ id: "client-1" }], [pendingWebsite]];
+
+    const verified = await new DatabaseStorage().verifyMimosaasWebsiteConnectionInstallation(
+      "website-1", "sha256:current", "https://example.com/landing",
+    );
+
+    expect(verified).toMatchObject({ installationStatus: "verified", verifiedAt: expect.any(Date), lastEventAt: expect.any(Date) });
+    expect(mocks.state.inserts).toHaveLength(0);
+    expect(mocks.state.events).toHaveLength(0);
+    expect(mocks.state.updates).toHaveLength(1);
+  });
+
+  it("makes repeated installation verification idempotent", async () => {
+    const verifiedWebsite = { ...website, installationStatus: "verified", trackingSecretHash: "sha256:current", verifiedAt: new Date("2026-10-15T10:00:00.000Z") };
+    mocks.state.selectQueue = [[verifiedWebsite], [{ id: "client-1" }], [verifiedWebsite]];
+
+    const verified = await new DatabaseStorage().verifyMimosaasWebsiteConnectionInstallation(
+      "website-1", "sha256:current", "https://example.com/landing",
+    );
+
+    expect(verified).toBe(verifiedWebsite);
+    expect(mocks.state.updates).toHaveLength(0);
+  });
+
+  it("rejects installation verification after credential rotation or website change", async () => {
+    const currentWebsite = { ...website, installationStatus: "pending", trackingSecretHash: "sha256:new" };
+    mocks.state.selectQueue = [[currentWebsite], [{ id: "client-1" }], [currentWebsite]];
+    await expect(new DatabaseStorage().verifyMimosaasWebsiteConnectionInstallation(
+      "website-1", "sha256:old", "https://example.com/landing",
+    )).rejects.toMatchObject({ code: "MIMOSAAS_TRACKING_AUTH_INVALID" });
+
+    mocks.state.selectQueue = [[currentWebsite], [{ id: "client-1" }], [currentWebsite]];
+    await expect(new DatabaseStorage().verifyMimosaasWebsiteConnectionInstallation(
+      "website-1", "sha256:new", "https://attacker.example/landing",
+    )).rejects.toMatchObject({ code: "MIMOSAAS_TRACKING_EVENT_WEBSITE_SCOPE_MISMATCH" });
+
+    const disconnectedWebsite = { ...currentWebsite, installationStatus: "disconnected" };
+    mocks.state.selectQueue = [[disconnectedWebsite], [{ id: "client-1" }], [disconnectedWebsite]];
+    await expect(new DatabaseStorage().verifyMimosaasWebsiteConnectionInstallation(
+      "website-1", "sha256:new", "https://example.com/landing",
+    )).rejects.toMatchObject({ code: "MIMOSAAS_TRACKING_CONNECTION_INACTIVE" });
+    expect(mocks.state.updates).toHaveLength(0);
+  });
+
   it("fails before configuration creation when campaign ownership is not proven", async () => {
     mocks.state.selectQueue = [[{ id: "client-1" }], []];
 

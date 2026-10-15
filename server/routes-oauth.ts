@@ -3478,6 +3478,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     utmContent: mimosaasTrackingOptionalValueSchema,
     gclid: z.string().trim().max(512).nullable().optional().transform((value) => value || null),
   }).strict();
+  const mimosaasTrackingInstallationVerificationBodySchema = z.object({
+    trackingId: z.string().regex(/^mtk_[a-f0-9]{32}$/),
+    trackingSecret: z.string().regex(/^mts_[A-Za-z0-9_-]{43}$/),
+    url: mimosaasTrackingHttpUrlSchema,
+  }).strict();
   const publicMimosaasWebsiteConnection = (connection: any) => ({
     id: connection.id,
     clientId: connection.clientId,
@@ -3557,6 +3562,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.options("/api/mimosaas-tracking/events", requireMimosaasTrackingIngestionFeature, (req, res) => {
     setMimosaasTrackingCors(req, res);
     return res.status(204).end();
+  });
+
+  app.options("/api/mimosaas-tracking/installations/verify", requireMimosaasTrackingIngestionFeature, (req, res) => {
+    setMimosaasTrackingCors(req, res);
+    return res.status(204).end();
+  });
+
+  app.post("/api/mimosaas-tracking/installations/verify", requireMimosaasTrackingIngestionFeature, mimosaasTrackingRateLimiter, async (req, res) => {
+    setMimosaasTrackingCors(req, res);
+    res.setHeader("Cache-Control", "no-store");
+    const parsed = mimosaasTrackingInstallationVerificationBodySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ success: false, message: "Invalid installation verification" });
+    const { trackingId, trackingSecret, url } = parsed.data;
+
+    try {
+      const connection = await storage.getMimosaasWebsiteConnectionByTrackingPublicId(trackingId);
+      if (!connection?.trackingSecretHash || !verifyMimosaasTrackingSecret(trackingSecret, connection.trackingSecretHash)) {
+        return res.status(401).json({ success: false, message: "Invalid tracking credentials" });
+      }
+      if (!["pending", "verified"].includes(String(connection.installationStatus))) {
+        return res.status(403).json({ success: false, message: "Website tracking is not active" });
+      }
+      const requestOrigin = String(req.get("origin") || "").trim();
+      if (!requestOrigin) return res.status(403).json({ success: false, message: "Tracking origin does not match the connected website" });
+      try {
+        if (new URL(requestOrigin).origin !== new URL(String(connection.websiteUrl)).origin) {
+          return res.status(403).json({ success: false, message: "Tracking origin does not match the connected website" });
+        }
+      } catch {
+        return res.status(403).json({ success: false, message: "Tracking origin does not match the connected website" });
+      }
+      if (new URL(url).origin !== new URL(String(connection.websiteUrl)).origin) {
+        return res.status(400).json({ success: false, message: "Installation URL does not match the connected website" });
+      }
+
+      const verified = await storage.verifyMimosaasWebsiteConnectionInstallation(connection.id, connection.trackingSecretHash, url);
+      return res.json({
+        success: true,
+        verified: true,
+        installationStatus: verified.installationStatus,
+        verifiedAt: verified.verifiedAt,
+        lastEventAt: verified.lastEventAt,
+      });
+    } catch (error: any) {
+      const code = String(error?.code || "");
+      if (code === "MIMOSAAS_TRACKING_AUTH_INVALID" || code === "MIMOSAAS_TRACKING_WEBSITE_NOT_FOUND") return res.status(401).json({ success: false, message: "Invalid tracking credentials" });
+      if (code === "MIMOSAAS_TRACKING_CONNECTION_INACTIVE") return res.status(403).json({ success: false, message: "Website tracking is not active" });
+      if (code === "MIMOSAAS_TRACKING_EVENT_WEBSITE_SCOPE_MISMATCH") return res.status(400).json({ success: false, message: "Installation URL does not match the connected website" });
+      console.error("Mimosaas Tracking installation verification failed:", error);
+      return res.status(500).json({ success: false, message: "Failed to verify tracking installation" });
+    }
   });
 
   app.post("/api/mimosaas-tracking/events", requireMimosaasTrackingIngestionFeature, mimosaasTrackingRateLimiter, async (req, res) => {

@@ -187,6 +187,7 @@ export interface IStorage {
   createMimosaasWebsiteConnection(ownerId: string, clientId: string, connection: Omit<InsertMimosaasWebsiteConnection, "ownerId" | "clientId">): Promise<MimosaasWebsiteConnectionWithSecret>;
   updateMimosaasWebsiteConnection(ownerId: string, clientId: string, connectionId: string, connection: Partial<Omit<InsertMimosaasWebsiteConnection, "ownerId" | "clientId">>): Promise<MimosaasWebsiteConnection | undefined>;
   rotateMimosaasWebsiteConnectionSecret(ownerId: string, clientId: string, connectionId: string): Promise<MimosaasWebsiteConnectionWithSecret | undefined>;
+  verifyMimosaasWebsiteConnectionInstallation(websiteConnectionId: string, expectedTrackingSecretHash: string, evidenceUrl: string): Promise<MimosaasWebsiteConnection>;
   getMimosaasTrackingConfiguration(ownerId: string, clientId: string, campaignId: string): Promise<MimosaasTrackingConfiguration | undefined>;
   createMimosaasTrackingConfiguration(ownerId: string, clientId: string, campaignId: string, configuration: Omit<InsertMimosaasTrackingConfiguration, "campaignId">): Promise<MimosaasTrackingConfiguration>;
   updateMimosaasTrackingConfiguration(ownerId: string, clientId: string, campaignId: string, configuration: Partial<Omit<InsertMimosaasTrackingConfiguration, "campaignId" | "websiteConnectionId">>): Promise<MimosaasTrackingConfiguration | undefined>;
@@ -1001,6 +1002,41 @@ export class DatabaseStorage implements IStorage {
         eq(mimosaasWebsiteConnections.clientId, clientId),
       )).returning();
       return updated ? { ...updated, trackingSecret: credentials.trackingSecret } : undefined;
+    });
+  }
+
+  async verifyMimosaasWebsiteConnectionInstallation(websiteConnectionId: string, expectedTrackingSecretHash: string, evidenceUrl: string): Promise<MimosaasWebsiteConnection> {
+    return db.transaction(async (tx: any) => {
+      const [unlockedConnection] = await tx.select().from(mimosaasWebsiteConnections)
+        .where(eq(mimosaasWebsiteConnections.id, websiteConnectionId)).limit(1);
+      if (!unlockedConnection) throw Object.assign(new Error("Mimosaas Tracking website connection not found"), { code: "MIMOSAAS_TRACKING_WEBSITE_NOT_FOUND" });
+      await this.requireMimosaasOwnedClient(tx, String(unlockedConnection.ownerId), String(unlockedConnection.clientId), true);
+      const connection = await this.requireMimosaasOwnedWebsiteConnection(
+        tx, String(unlockedConnection.ownerId), String(unlockedConnection.clientId), websiteConnectionId, true,
+      );
+      if (connection.trackingSecretHash !== expectedTrackingSecretHash) {
+        throw Object.assign(new Error("Mimosaas Tracking credentials changed during installation verification"), { code: "MIMOSAAS_TRACKING_AUTH_INVALID" });
+      }
+      if (!["pending", "verified"].includes(String(connection.installationStatus))) {
+        throw Object.assign(new Error("Mimosaas Tracking website connection is inactive"), { code: "MIMOSAAS_TRACKING_CONNECTION_INACTIVE" });
+      }
+      try {
+        if (new URL(evidenceUrl).origin !== new URL(String(connection.websiteUrl)).origin) throw new Error("origin mismatch");
+      } catch {
+        throw Object.assign(new Error("Mimosaas Tracking installation URL does not match the connected website"), { code: "MIMOSAAS_TRACKING_EVENT_WEBSITE_SCOPE_MISMATCH" });
+      }
+      if (connection.installationStatus === "verified") return connection;
+
+      const verifiedAt = new Date();
+      const [verified] = await tx.update(mimosaasWebsiteConnections).set({
+        installationStatus: "verified", verifiedAt, lastEventAt: verifiedAt, updatedAt: verifiedAt,
+      }).where(and(
+        eq(mimosaasWebsiteConnections.id, websiteConnectionId),
+        eq(mimosaasWebsiteConnections.ownerId, connection.ownerId),
+        eq(mimosaasWebsiteConnections.clientId, connection.clientId),
+      )).returning();
+      if (!verified) throw new Error("Mimosaas Tracking website connection changed during installation verification");
+      return verified;
     });
   }
 

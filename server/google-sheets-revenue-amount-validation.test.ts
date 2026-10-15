@@ -22,6 +22,13 @@ describe("GA4 Google Sheets revenue amount validation", () => {
     }
   });
 
+  it("can enforce non-negative bounded tracker financial amounts without changing GA4 defaults", () => {
+    expect(isSupportedGoogleSheetsRevenueAmount("-100")).toBe(true);
+    expect(isSupportedGoogleSheetsRevenueAmount("-100", { allowNegative: false })).toBe(false);
+    expect(isSupportedGoogleSheetsRevenueAmount("10000000000", { maximumAbsoluteValue: 9_999_999_999.99 })).toBe(false);
+    expect(isSupportedGoogleSheetsRevenueAmount("0", { allowNegative: false, maximumAbsoluteValue: 9_999_999_999.99 })).toBe(true);
+  });
+
   it("checks only the exact selected campaign rows and reports sheet row numbers", () => {
     expect(findInvalidGoogleSheetsRevenueAmountRows([
       { Campaign: "Alpha", Revenue: "25.50" },

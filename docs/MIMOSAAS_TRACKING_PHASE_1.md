@@ -1,8 +1,8 @@
 # Mimosaas Tracking: Phase 1 Safety Baseline
 
-Status: Phase 1 complete; Phase 2 schema, persistence, and setup APIs deployed; Phase 3 credentials, ingestion, installation proof, universal browser tracker, protected campaign wizard, and atomic finalization deployed but disabled; automated GTM installation, attribution, daily metric aggregation, exact-date CSV financial materialization, atomic daily publication, and the campaign-local daily scheduler implemented locally behind separate disabled flags
+Status: Phase 1 complete; Phase 2 schema, persistence, and setup APIs deployed; Phase 3 credentials, ingestion, installation proof, universal browser tracker, protected campaign wizard, and atomic finalization deployed but disabled; automated GTM installation, attribution, daily metric aggregation, exact-date CSV and Google Sheets financial materialization, atomic daily publication, and the campaign-local daily scheduler implemented locally behind separate disabled flags
 Baseline date: 2026-10-14
-Last verified production revision: `bcfc894012e244894cd9054e5de1328bdc2568ab`
+Last verified production revision: `78523c2e0ee65daff96ca77d9b1534e8039c4433`
 
 ## Phase 2 Foundation Status
 
@@ -130,11 +130,15 @@ claims prevent concurrent application instances from processing the same
 campaign-day attempt, while failures in one campaign do not stop another.
 Campaigns created after the target reporting day are excluded. The existing
 GA4 and general auto-refresh schedulers are unchanged. During the same locked
-publication transaction, date-mapped tracker CSV sources can now produce an
-exact-date financial snapshot when every configured source has an explicit row
-for that date. Manual, undated, incomplete, and provider-backed sources fail
-closed and keep the day pending until their
-tracker-specific refresh path is implemented. Campaigns with no configured
+publication transaction, date-mapped tracker CSV sources can produce an
+exact-date financial snapshot when every configured CSV source has an explicit
+row for that date. The tracker scheduler now refreshes campaign-scoped,
+date-mapped Google Sheets Revenue and Spend before aggregation and publication.
+The refresh atomically replaces only that source's records, requires campaign
+currency, and treats a successful post-cutoff full-sheet refresh with no row for
+the target date as a proven zero. Refresh failure, stale evidence, manual,
+undated, incomplete, and other provider-backed sources fail closed and keep the
+day pending. Campaigns with no configured
 Revenue or Spend source can publish website metrics with those values marked
 unavailable.
 

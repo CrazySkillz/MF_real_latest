@@ -282,7 +282,7 @@ export interface IStorage {
   deleteSpendRecordsBySource(sourceId: string): Promise<boolean>;
   countSpendRecordsBySource(sourceId: string): Promise<number>;
   createSpendRecords(records: InsertSpendRecord[]): Promise<SpendRecord[]>;
-  replaceSpendSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: SpendPlatformContext, source: InsertSpendSource, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>): Promise<SpendSource>;
+  replaceSpendSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: SpendPlatformContext, source: InsertSpendSource, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>, expectedSourceMappingConfig?: string): Promise<SpendSource>;
   replaceSpendRecordsForSource(campaignId: string, sourceId: string, sourceType: string, platformContext: SpendPlatformContext, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>): Promise<void>;
   replaceCsvSpendSourceWithRecords(
     campaignId: string,
@@ -3150,7 +3150,7 @@ export class DatabaseStorage implements IStorage {
 
     return results;
   }
-  async replaceSpendSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: SpendPlatformContext, source: InsertSpendSource, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>): Promise<SpendSource> {
+  async replaceSpendSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: SpendPlatformContext, source: InsertSpendSource, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>, expectedSourceMappingConfig?: string): Promise<SpendSource> {
     return await db.transaction(async (tx: any) => {
       const contextCondition = platformContext === 'ga4'
         ? or(eq(spendSources.platformContext, 'ga4' as any), isNull(spendSources.platformContext))
@@ -3163,8 +3163,13 @@ export class DatabaseStorage implements IStorage {
           eq(spendSources.sourceType, sourceType),
           eq(spendSources.isActive, true),
           contextCondition,
+          ...(expectedSourceMappingConfig ? [eq(spendSources.mappingConfig, expectedSourceMappingConfig)] : []),
         )).returning();
-        if (!savedSource) throw new Error('Spend source not found');
+        if (!savedSource) {
+          const error: any = new Error(expectedSourceMappingConfig ? 'Spend source changed. Refresh and try again.' : 'Spend source not found');
+          if (expectedSourceMappingConfig) error.code = 'SPEND_SOURCE_CHANGED';
+          throw error;
+        }
       } else {
         [savedSource] = await tx.insert(spendSources).values({ ...source, campaignId, sourceType, platformContext, isActive: true } as any).returning();
       }

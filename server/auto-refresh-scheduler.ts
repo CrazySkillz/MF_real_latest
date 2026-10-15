@@ -717,7 +717,8 @@ export async function runGoogleSheetsRevenueSourceRefreshForValidation(campaignI
     return { success: false, reason: "invalid_request", campaignId: normalizedCampaignId, sourceId: normalizedSourceId };
   }
 
-  for (const ctx of refreshableRevenueContexts) {
+  const validationContexts = [...refreshableRevenueContexts, "mimosaas_tracking"] as const;
+  for (const ctx of validationContexts) {
     const sources = await storage.getRevenueSources(normalizedCampaignId, ctx).catch(() => [] as any[]);
     const source = (Array.isArray(sources) ? sources : []).find((s: any) => {
       if (!s || (s as any).isActive === false) return false;
@@ -730,6 +731,15 @@ export async function runGoogleSheetsRevenueSourceRefreshForValidation(campaignI
     const mappingConfig = cfgRaw ? { ...cfgRaw, platformContext: (cfgRaw as any).platformContext || (source as any).platformContext || ctx } : null;
     if (!mappingConfig?.connectionId || !mappingConfig?.revenueColumn) {
       return { success: false, reason: "missing_google_sheets_revenue_mapping", campaignId: normalizedCampaignId, sourceId: normalizedSourceId, platformContext: ctx };
+    }
+
+    if (ctx === "mimosaas_tracking") {
+      const result = await postJson(`/api/campaigns/${encodeURIComponent(normalizedCampaignId)}/revenue/sheets/process`, {
+        connectionId: mappingConfig.connectionId,
+        mapping: { ...mappingConfig, sourceId: normalizedSourceId },
+        platformContext: ctx,
+      });
+      return { success: result.ok, reason: result.ok ? undefined : "reprocess_failed", campaignId: normalizedCampaignId, sourceId: normalizedSourceId, platformContext: ctx };
     }
 
     const success = await reprocessGoogleSheetsRevenue(normalizedCampaignId, source, mappingConfig);

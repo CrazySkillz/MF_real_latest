@@ -2,6 +2,7 @@ import type { Campaign } from "@shared/schema";
 import { storage, type IStorage, type MimosaasTrackingDailyPublicationState } from "./storage";
 import { aggregateMimosaasTrackingCompletedDay } from "./mimosaas-tracking-daily-aggregation";
 import { publishMimosaasTrackingCompletedDay } from "./mimosaas-tracking-daily-publication";
+import { refreshMimosaasTrackingGoogleSheetsFinancialSources } from "./mimosaas-tracking-financial-refresh";
 import {
   getExpectedDailyRefreshAt,
   getLatestCompleteReportingDate,
@@ -12,7 +13,7 @@ import {
 const RUN_HOURS = [8, 14, 20] as const;
 const POLL_INTERVAL_MS = 60_000;
 
-type SchedulerStore = Pick<IStorage, "getCampaigns" | "getMimosaasTrackingDailyPublicationState" | "claimMimosaasTrackingDailyPublicationRun" | "releaseMimosaasTrackingDailyPublicationRun" | "aggregateMimosaasTrackingDailyMetrics" | "publishMimosaasTrackingDailySnapshot">;
+type SchedulerStore = Pick<IStorage, "getCampaigns" | "getRevenueSources" | "getSpendSources" | "getMimosaasTrackingDailyPublicationState" | "claimMimosaasTrackingDailyPublicationRun" | "releaseMimosaasTrackingDailyPublicationRun" | "aggregateMimosaasTrackingDailyMetrics" | "publishMimosaasTrackingDailySnapshot">;
 type DueSlot = { reportingDate: string; hour: (typeof RUN_HOURS)[number]; runAt: Date };
 
 export type MimosaasTrackingDailySchedulerResult = {
@@ -135,6 +136,18 @@ export async function runMimosaasTrackingDailySchedulerOnce(
             continue;
           }
           claimed = true;
+          const financialRefresh = await refreshMimosaasTrackingGoogleSheetsFinancialSources(
+            String(campaign.id), reportingDate, store,
+          );
+          if (financialRefresh.failures.length > 0) {
+            await store.releaseMimosaasTrackingDailyPublicationRun(
+              String(campaign.ownerId), String(campaign.clientId), String(campaign.id), reportingDate,
+              "financial_refresh_failed",
+            );
+            claimed = false;
+            result.datesPending += 1;
+            break;
+          }
           await aggregateMimosaasTrackingCompletedDay(
             String(campaign.ownerId), String(campaign.clientId), String(campaign.id), reportingDate, store, env, now,
           );

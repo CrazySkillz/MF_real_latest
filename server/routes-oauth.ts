@@ -3208,7 +3208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Request validation helpers (enterprise-grade consistency)
   const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
   const zCsvRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
-  const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
+  const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration", "mimosaas_tracking"]);
   const zHubSpotRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
   const zSalesforceRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
   const zShopifyRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
@@ -6320,23 +6320,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: "Select at least one campaign value, or clear campaignColumn to import the full file",
         });
       }
+      if (platformContext === "mimosaas_tracking" && campaignCol && !rows.some((row) => {
+        const value = String(row[campaignCol] ?? "").trim();
+        return campaignValueSet ? campaignValueSet.has(value) : value === campaignValue;
+      })) {
+        return sendBadRequest(res, "The configured campaign values are no longer present in this Google Sheet.");
+      }
 
       let kept = 0;
       const revenueCol = revenueColumn ? String(revenueColumn) : "";
       const convCol = conversionValueColumn ? String(conversionValueColumn) : "";
       const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
-      if (platformContext === "ga4") {
+      const requiresExactDailyRevenue = platformContext === "ga4" || platformContext === "mimosaas_tracking";
+      if (requiresExactDailyRevenue) {
         if (campaignCol === revenueCol) {
           return sendBadRequest(res, "Revenue column must be different from the Campaign column.");
         }
         if (dateCol && (dateCol === revenueCol || dateCol === campaignCol)) {
           return sendBadRequest(res, "Date column must be different from the Revenue and Campaign columns.");
         }
+        if (platformContext === "mimosaas_tracking" && !dateCol) {
+          return sendBadRequest(res, "Date column is required for Mimosaas Tracking daily Revenue.");
+        }
+        if (platformContext === "mimosaas_tracking") {
+          const mappedHeaders = [revenueCol, campaignCol, dateCol].filter((header): header is string => Boolean(header));
+          const unavailableMappedHeaders = mappedHeaders.filter((header) => headers.filter((candidate) => candidate === header).length !== 1);
+          if (unavailableMappedHeaders.length > 0) {
+            return sendBadRequest(res, `Mapped Google Sheets column is missing or duplicated: ${unavailableMappedHeaders.join(", ")}. Update the mapping before refreshing.`);
+          }
+        }
         const invalidAmountRows = findInvalidGoogleSheetsRevenueAmountRows(rows, {
           revenueColumn: revenueCol,
           campaignColumn: campaignCol,
           campaignValue,
           campaignValues,
+          allowNegative: platformContext !== "mimosaas_tracking",
+          maximumAbsoluteValue: platformContext === "mimosaas_tracking" ? GA4_CSV_MAX_REVENUE_TOTAL : undefined,
         });
         if (invalidAmountRows.length > 0) {
           return sendBadRequest(res, "Selected revenue rows contain unsupported amount formatting. Use plain numbers or US-style separators (for example 1234.56 or 1,234.56).");
@@ -6348,8 +6367,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           campaignValue,
           campaignValues,
         });
-        if (validation.keptRows === 0) {
-          return sendBadRequest(res, "No valid revenue rows found for the selected mapping");
+        if (platformContext === "ga4") {
+          if (validation.keptRows === 0) {
+            return sendBadRequest(res, "No valid revenue rows found for the selected mapping");
+          }
         }
         if (dateCol && validation.undatedRevenue > 0) {
           return sendBadRequest(res, "Selected revenue rows contain blank or invalid dates. Fix those dates or clear the Date mapping before importing.");
@@ -6416,12 +6437,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         if (rowKept) kept++;
       }
+      if (platformContext === "mimosaas_tracking" && Array.from(dailyRevenueMap.values()).some((revenue) => revenue > GA4_CSV_MAX_REVENUE_TOTAL)) {
+        return sendBadRequest(res, "Google Sheets Revenue exceeds the supported campaign-day financial limit.");
+      }
 
       const endDate = fallbackRecordDate;
 
       const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
       const requestedCurrency = String(mapping.currency || campaignCurrency).trim().toUpperCase();
-      if (platformContext === "ga4" && requestedCurrency !== campaignCurrency) {
+      if (requiresExactDailyRevenue && requestedCurrency !== campaignCurrency) {
         return res.status(400).json({
           success: false,
           code: "REVENUE_CURRENCY_MISMATCH",
@@ -6471,6 +6495,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error("[Google Sheets Revenue] Post-commit derived recompute failed; source data remains committed:", error?.message || error);
         }
         return res.json({ success: true, mode: 'revenue_to_date', sourceId: String(source.id), currency, rowCount: rows.length, keptRows: kept, date: endDate, totalRevenue: visibleTotalRevenue, importedRowsTotalRevenue: totalRevenue });
+      }
+
+      if (platformContext === "mimosaas_tracking") {
+        const records = Array.from(dailyRevenueMap.entries())
+          .filter(([, revenue]) => revenue > 0)
+          .map(([date, revenue]) => ({ campaignId, date, revenue: Number(revenue.toFixed(2)).toFixed(2) as any, currency }));
+        const source = await storage.replaceRevenueSourceWithRecords(campaignId, existingSourceId, "google_sheets", "mimosaas_tracking", {
+          campaignId,
+          sourceType: "google_sheets",
+          platformContext: "mimosaas_tracking",
+          displayName: mapping.displayName || (conn.spreadsheetName ? `Google Sheets: ${conn.spreadsheetName}` : "Google Sheets revenue"),
+          currency,
+          mappingConfig: nextMappingConfig,
+          isActive: true,
+        } as any, records, existingSourceId ? String(existingSheetsSource?.mappingConfig || "") : undefined);
+        return res.json({ success: true, mode: "revenue_to_date", sourceId: String(source.id), currency, rowCount: rows.length, keptRows: kept, totalRevenue: Number(totalRevenueToDate.toFixed(2)) });
       }
 
       let source: any = existingSheetsSource || null;
@@ -7315,7 +7355,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaignCol && (campaignValueSet || campaignValue)) {
         return res.status(400).json({ success: false, error: "campaignColumn is required when campaign values are selected" });
       }
-
       const spendCol = String(mapping.spendColumn);
       const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
       if (campaignCol && campaignCol === spendCol) {
@@ -7603,7 +7642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, error: "spendColumn is required" });
       }
       const requestedPlatformContext = String((req.body as any)?.platformContext || mapping?.platformContext || "").trim().toLowerCase();
-      if (requestedPlatformContext && !isSupportedScopedSpendPlatformContext(requestedPlatformContext)) {
+      if (requestedPlatformContext && requestedPlatformContext !== "mimosaas_tracking" && !isSupportedScopedSpendPlatformContext(requestedPlatformContext)) {
         return res.status(400).json({ success: false, error: "Unsupported spend platformContext" });
       }
       if (!requestedPlatformContext && !mapping?.sourceId) {
@@ -7737,11 +7776,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let kept = 0;
       const spendCol = String(mapping.spendColumn);
       const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
+      if (platformContext === "mimosaas_tracking" && !dateCol) {
+        return res.status(400).json({ success: false, error: "Date column is required for Mimosaas Tracking daily Spend." });
+      }
       if (campaignCol && !campaignValueSet && !campaignValue) {
         return res.status(400).json({ success: false, error: "Select at least one campaign value, or clear campaignColumn to import the full sheet" });
       }
       if (!campaignCol && (campaignValueSet || campaignValue)) {
         return res.status(400).json({ success: false, error: "campaignColumn is required when campaign values are selected" });
+      }
+      if (platformContext === "mimosaas_tracking" && campaignCol && !rows.some((row) => {
+        const value = String(row[campaignCol] ?? "").trim();
+        return campaignValueSet ? campaignValueSet.has(value) : value === campaignValue;
+      })) {
+        return res.status(400).json({ success: false, error: "The configured campaign values are no longer present in this Google Sheet." });
       }
       const mappedHeaders = [spendCol, campaignCol, dateCol].filter((header): header is string => Boolean(header));
       if (new Set(mappedHeaders).size !== mappedHeaders.length) {
@@ -7754,6 +7802,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           code: "SHEET_MAPPING_CHANGED",
           error: `Mapped Google Sheets column is missing or duplicated: ${unavailableMappedHeaders.join(", ")}. Update the mapping before refreshing.`,
         });
+      }
+      if (platformContext === "mimosaas_tracking") {
+        const invalidAmountRows = findInvalidGoogleSheetsRevenueAmountRows(rows, {
+          revenueColumn: spendCol,
+          campaignColumn: campaignCol,
+          campaignValue,
+          campaignValues,
+          allowNegative: false,
+          maximumAbsoluteValue: GA4_CSV_MAX_REVENUE_TOTAL,
+        });
+        if (invalidAmountRows.length > 0) {
+          return res.status(400).json({ success: false, error: "Selected spend rows contain unsupported amount formatting. Use non-negative plain numbers or US-style separators." });
+        }
       }
       let totalSpend = 0;
       let undatedSpend = 0;
@@ -7780,15 +7841,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           else undatedSpend += spend;
         }
       }
+      if (platformContext === "mimosaas_tracking" && Array.from(dailySpendMap.values()).some((spend) => spend > GA4_CSV_MAX_REVENUE_TOTAL)) {
+        return res.status(400).json({ success: false, error: "Google Sheets Spend exceeds the supported campaign-day financial limit." });
+      }
 
       if (platformContext === "ga4" && dateCol && undatedSpend > 0) {
+        return res.status(400).json({ success: false, error: "Selected spend rows contain blank or invalid dates. Fix those dates before importing." });
+      }
+      if (platformContext === "mimosaas_tracking" && dateCol && undatedSpend > 0) {
         return res.status(400).json({ success: false, error: "Selected spend rows contain blank or invalid dates. Fix those dates before importing." });
       }
 
       const campaign = await storage.getCampaign(campaignId);
       const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
       const requestedCurrency = String(mapping.currency || campaignCurrency).trim().toUpperCase();
-      if (platformContext === "ga4" && requestedCurrency !== campaignCurrency) {
+      if ((platformContext === "ga4" || platformContext === "mimosaas_tracking") && requestedCurrency !== campaignCurrency) {
         return res.status(400).json({
           success: false,
           code: "SPEND_CURRENCY_MISMATCH",
@@ -7841,6 +7908,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await recalcCampaignSpend(campaignId);
         await recomputeGA4SpendBeforeResponse(campaignId);
         return res.json({ success: true, sourceId: String(source.id), currency, rowCount: rows.length, keptRows: kept, spendToDate: visibleSpendToDate, importedRowsTotalSpend: Number(totalSpend.toFixed(2)) });
+      }
+
+      if (platformContext === "mimosaas_tracking") {
+        const records = Array.from(dailySpendMap.entries())
+          .filter(([, spend]) => spend > 0)
+          .map(([date, spend]) => ({ campaignId, date, spend: Number(spend.toFixed(2)).toFixed(2), currency, sourceType: "google_sheets" }));
+        const source = await storage.replaceSpendSourceWithRecords(campaignId, existingSourceId, "google_sheets", "mimosaas_tracking", {
+          campaignId,
+          sourceType: "google_sheets",
+          platformContext: "mimosaas_tracking",
+          displayName: mapping.displayName || "Google Sheets",
+          currency,
+          mappingConfig: nextSpendMappingConfig,
+          isActive: true,
+        } as any, records as any, existingSourceId ? String(existingSheetsSpendSource?.mappingConfig || "") : undefined);
+        return res.json({ success: true, sourceId: String(source.id), currency, rowCount: rows.length, keptRows: kept, spendToDate: Number(totalSpend.toFixed(2)) });
       }
 
       let source: any = existingSheetsSpendSource || null;
@@ -7907,7 +7990,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         spendToDate: Number(totalSpend.toFixed(2)),
       });
     } catch (e: any) {
-      res.status(500).json({ success: false, error: e?.message || "Failed to process sheet spend" });
+      res.status(e?.code === "SPEND_SOURCE_CHANGED" ? 409 : 500).json({ success: false, error: e?.message || "Failed to process sheet spend" });
     }
   });
 

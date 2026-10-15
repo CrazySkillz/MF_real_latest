@@ -2,14 +2,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const storageMock = vi.hoisted(() => ({
   getCampaigns: vi.fn(),
+  getRevenueSources: vi.fn(),
+  getSpendSources: vi.fn(),
   getMimosaasTrackingDailyPublicationState: vi.fn(),
   claimMimosaasTrackingDailyPublicationRun: vi.fn(),
   releaseMimosaasTrackingDailyPublicationRun: vi.fn(),
   aggregateMimosaasTrackingDailyMetrics: vi.fn(),
   publishMimosaasTrackingDailySnapshot: vi.fn(),
 }));
+const financialRefreshMock = vi.hoisted(() => vi.fn());
 
 vi.mock("./storage", () => ({ storage: storageMock }));
+vi.mock("./mimosaas-tracking-financial-refresh", () => ({
+  refreshMimosaasTrackingGoogleSheetsFinancialSources: financialRefreshMock,
+}));
 
 import {
   buildMimosaasTrackingPublicationQueue,
@@ -43,11 +49,14 @@ describe("Mimosaas Tracking daily scheduler", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     storageMock.getCampaigns.mockResolvedValue([campaign()]);
+    storageMock.getRevenueSources.mockResolvedValue([]);
+    storageMock.getSpendSources.mockResolvedValue([]);
     storageMock.getMimosaasTrackingDailyPublicationState.mockResolvedValue({ latestFinalizedDate: null, pendingDates: [] });
     storageMock.claimMimosaasTrackingDailyPublicationRun.mockResolvedValue("claimed");
     storageMock.releaseMimosaasTrackingDailyPublicationRun.mockResolvedValue(true);
     storageMock.aggregateMimosaasTrackingDailyMetrics.mockResolvedValue({ id: "metric-1" });
     storageMock.publishMimosaasTrackingDailySnapshot.mockResolvedValue({ status: "published", reasons: [] });
+    financialRefreshMock.mockResolvedValue({ attempted: 0, succeeded: 0, failures: [] });
     (global as any).__mimosaasTrackingDailySchedulerInProgress = false;
     (global as any).__mimosaasTrackingDailySchedulerInterval = null;
     (global as any).__mimosaasTrackingDailyProcessedSlots = new Set<string>();
@@ -113,8 +122,9 @@ describe("Mimosaas Tracking daily scheduler", () => {
     expect((global as any).__mimosaasTrackingDailySchedulerInterval).toBeFalsy();
   });
 
-  it("aggregates before publishing the exact previous local day", async () => {
+  it("refreshes provider financials, then aggregates and publishes the exact previous local day", async () => {
     const order: string[] = [];
+    financialRefreshMock.mockImplementation(async () => { order.push("financial"); return { attempted: 0, succeeded: 0, failures: [] }; });
     storageMock.aggregateMimosaasTrackingDailyMetrics.mockImplementation(async () => { order.push("aggregate"); return { id: "metric-1" }; });
     storageMock.publishMimosaasTrackingDailySnapshot.mockImplementation(async () => { order.push("publish"); return { status: "published", reasons: [] }; });
 
@@ -129,10 +139,37 @@ describe("Mimosaas Tracking daily scheduler", () => {
       datesPending: 0,
       datesFailed: 0,
     });
-    expect(order).toEqual(["aggregate", "publish"]);
+    expect(order).toEqual(["financial", "aggregate", "publish"]);
+    expect(financialRefreshMock).toHaveBeenCalledWith("campaign-1", "2026-10-14", storageMock);
     expect(storageMock.aggregateMimosaasTrackingDailyMetrics).toHaveBeenCalledWith(
       "owner-1", "client-1", "campaign-1", "2026-10-14", new Date("2026-10-15T06:00:00.000Z"),
     );
+  });
+
+  it("keeps a provider refresh failure pending without aggregating or publishing", async () => {
+    financialRefreshMock.mockResolvedValue({ attempted: 1, succeeded: 0, failures: ["revenue:source-1:reprocess_failed"] });
+
+    await expect(runMimosaasTrackingDailySchedulerOnce(
+      new Date("2026-10-15T06:00:00.000Z"), storageMock as any, enabledEnv,
+    )).resolves.toMatchObject({ datesAttempted: 1, datesPending: 1, datesFinalized: 0, datesFailed: 0 });
+    expect(storageMock.releaseMimosaasTrackingDailyPublicationRun).toHaveBeenCalledWith(
+      "owner-1", "client-1", "campaign-1", "2026-10-14", "financial_refresh_failed",
+    );
+    expect(storageMock.aggregateMimosaasTrackingDailyMetrics).not.toHaveBeenCalled();
+    expect(storageMock.publishMimosaasTrackingDailySnapshot).not.toHaveBeenCalled();
+  });
+
+  it("does not let one campaign's provider failure block another campaign", async () => {
+    storageMock.getCampaigns.mockResolvedValue([campaign(), campaign({ id: "campaign-2" })]);
+    financialRefreshMock
+      .mockResolvedValueOnce({ attempted: 1, succeeded: 0, failures: ["revenue:source-1:reprocess_failed"] })
+      .mockResolvedValueOnce({ attempted: 0, succeeded: 0, failures: [] });
+
+    await expect(runMimosaasTrackingDailySchedulerOnce(
+      new Date("2026-10-15T06:00:00.000Z"), storageMock as any, enabledEnv,
+    )).resolves.toMatchObject({ campaignsDue: 2, datesPending: 1, datesFinalized: 1, datesFailed: 0 });
+    expect(storageMock.aggregateMimosaasTrackingDailyMetrics).toHaveBeenCalledTimes(1);
+    expect(storageMock.aggregateMimosaasTrackingDailyMetrics.mock.calls[0][2]).toBe("campaign-2");
   });
 
   it("keeps configured-source publication pending and stops before newer dates", async () => {

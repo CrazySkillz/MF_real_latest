@@ -84,6 +84,35 @@ describe("Mimosaas Tracking financial snapshot", () => {
     expect(result).toEqual({ ready: false, reasons: ["revenue_source_reporting_date_missing"] });
   });
 
+  it("accepts a post-cutoff Google Sheets refresh and treats an absent dated row as a proven zero", () => {
+    const googleSheetsRevenue = source("revenue-sheet", {
+      sourceType: "google_sheets",
+      mappingConfig: JSON.stringify({ dateColumn: "Date", lastSyncedAt: "2026-10-15T06:00:00.000Z" }),
+    });
+    const result = buildMimosaasTrackingFinancialDailySnapshot(base({
+      revenueSources: [googleSheetsRevenue],
+      revenueRecords: [],
+    }));
+
+    expect(result).toMatchObject({
+      ready: true,
+      snapshot: { inputs: { revenue: { value: "0.00", available: true, sources: ["revenue-source:revenue-sheet"] } } },
+    });
+  });
+
+  it("keeps Google Sheets pending until it was refreshed after the reporting-day cutoff", () => {
+    const staleGoogleSheetsRevenue = source("revenue-sheet", {
+      sourceType: "google_sheets",
+      mappingConfig: JSON.stringify({ dateColumn: "Date", lastSyncedAt: "2026-10-14T20:00:00.000Z" }),
+    });
+    const result = buildMimosaasTrackingFinancialDailySnapshot(base({
+      revenueSources: [staleGoogleSheetsRevenue],
+      revenueRecords: [],
+    }));
+
+    expect(result).toEqual({ ready: false, reasons: ["revenue_source_refresh_pending:google_sheets"] });
+  });
+
   it("blocks provider-backed, manual, and undated CSV sources", () => {
     const result = buildMimosaasTrackingFinancialDailySnapshot(base({
       revenueSources: [

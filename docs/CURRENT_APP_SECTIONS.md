@@ -162,11 +162,13 @@ Durable database claims prevent concurrent application instances from owning
 the same attempt, pending dates survive restarts, and finalized dates cannot be
 aggregated or published again. Campaign Overview reads the latest immutable
 published tracker snapshot only for active Mimosaas Tracking campaigns.
-Date-mapped tracker CSV records can be materialized into the
-exact-date financial snapshot inside the locked publication transaction when
-every configured source has an explicit row for that date. Manual, undated,
-incomplete, and provider-backed sources remain pending until their
-tracker-specific refresh paths are added.
+Date-mapped tracker CSV records can be materialized into the exact-date
+financial snapshot inside the locked publication transaction when every CSV
+source has an explicit row for that date. Before publication, the tracker
+scheduler refreshes only campaign-scoped, date-mapped Google Sheets Revenue and
+Spend sources and replaces each source atomically. A failed or stale refresh,
+manual or undated source, incomplete CSV source, or another provider type keeps
+the day pending.
 
 Closing an unfinished wizard may clean up only its persisted draft. The server
 rejects that cleanup after the campaign becomes active. A confirmed campaign

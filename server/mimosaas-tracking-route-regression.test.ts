@@ -24,6 +24,8 @@ const storageMock = vi.hoisted(() => ({
   createMimosaasTrackingEvent: vi.fn(),
   resolveMimosaasTrackingUtmAttribution: vi.fn(),
   getLatestMimosaasTrackingDailySnapshot: vi.fn(),
+  getRevenueSources: vi.fn(),
+  getSpendSources: vi.fn(),
 }));
 const gtmMock = vi.hoisted(() => ({
   listMimosaasGtmContainers: vi.fn(),
@@ -94,6 +96,8 @@ describe("Mimosaas Tracking read-only setup route", () => {
     storageMock.createMimosaasTrackingEvent.mockResolvedValue({ event: { id: "event-row-1", eventId: "event_1" }, inserted: true });
     storageMock.resolveMimosaasTrackingUtmAttribution.mockResolvedValue({ eventId: "event_1", status: "attributed", campaignId: campaign.id });
     storageMock.getLatestMimosaasTrackingDailySnapshot.mockResolvedValue(undefined);
+    storageMock.getRevenueSources.mockResolvedValue([]);
+    storageMock.getSpendSources.mockResolvedValue([]);
     storageMock.verifyMimosaasWebsiteConnectionInstallation.mockResolvedValue({
       newlyVerified: true,
       connection: { id: "website-1", installationStatus: "verified", verifiedAt: new Date("2026-10-15T10:00:00.000Z"), lastEventAt: new Date("2026-10-15T10:00:00.000Z") },
@@ -196,6 +200,77 @@ describe("Mimosaas Tracking read-only setup route", () => {
     expect(body.snapshot).not.toHaveProperty("campaignId");
     expect(body.snapshot).not.toHaveProperty("sourceStates");
     expect(body.snapshot).not.toHaveProperty("financialSnapshotId");
+  });
+
+  it("keeps tracker financial source reads disabled with ingestion", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/financial-sources`);
+
+    expect(response.status).toBe(404);
+    expect(storageMock.getCampaign).not.toHaveBeenCalled();
+    expect(storageMock.getRevenueSources).not.toHaveBeenCalled();
+    expect(storageMock.getSpendSources).not.toHaveBeenCalled();
+  });
+
+  it("returns only active tracker Google Sheets financial sources for an owned active tracker campaign", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    storageMock.getCampaign.mockResolvedValueOnce({ ...campaign, platform: "mimosaas-tracking", status: "active" });
+    storageMock.getRevenueSources.mockResolvedValueOnce([
+      { id: "revenue-1", sourceType: "google_sheets", platformContext: "mimosaas_tracking", displayName: "Revenue sheet", currency: "EUR", mappingConfig: "{}", isActive: true },
+      { id: "revenue-foreign", sourceType: "google_sheets", platformContext: "ga4", isActive: true },
+    ]);
+    storageMock.getSpendSources.mockResolvedValueOnce([
+      { id: "spend-1", sourceType: "google_sheets", platformContext: "mimosaas_tracking", displayName: "Spend sheet", currency: "EUR", mappingConfig: "{}", isActive: true },
+      { id: "spend-unsupported", sourceType: "csv", platformContext: "mimosaas_tracking", isActive: true },
+    ]);
+
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/financial-sources`);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({
+      success: true,
+      revenueSources: [{ id: "revenue-1", sourceType: "google_sheets", platformContext: "mimosaas_tracking", displayName: "Revenue sheet", currency: "EUR", mappingConfig: "{}", isActive: true }],
+      spendSources: [{ id: "spend-1", sourceType: "google_sheets", platformContext: "mimosaas_tracking", displayName: "Spend sheet", currency: "EUR", mappingConfig: "{}", isActive: true }],
+    });
+    expect(storageMock.getRevenueSources).toHaveBeenCalledWith(campaign.id, "mimosaas_tracking");
+    expect(storageMock.getSpendSources).toHaveBeenCalledWith(campaign.id, "mimosaas_tracking");
+  });
+
+  it("rejects tracker financial source reads for a non-tracker campaign", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/financial-sources`);
+
+    expect(response.status).toBe(404);
+    expect(storageMock.getRevenueSources).not.toHaveBeenCalled();
+    expect(storageMock.getSpendSources).not.toHaveBeenCalled();
+  });
+
+  it("does not read tracker financial sources for another owner's campaign", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    storageMock.getCampaign.mockResolvedValueOnce({ ...campaign, ownerId: "owner-2", platform: "mimosaas-tracking", status: "active" });
+
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/financial-sources`);
+
+    expect(response.status).toBe(404);
+    expect(storageMock.getRevenueSources).not.toHaveBeenCalled();
+    expect(storageMock.getSpendSources).not.toHaveBeenCalled();
+  });
+
+  it("returns no partial tracker financial source list when either scoped read fails", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    storageMock.getCampaign.mockResolvedValueOnce({ ...campaign, platform: "mimosaas-tracking", status: "active" });
+    storageMock.getRevenueSources.mockResolvedValueOnce([{ id: "revenue-1" }]);
+    storageMock.getSpendSources.mockRejectedValueOnce(new Error("database unavailable"));
+
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/financial-sources`);
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ success: false, message: "Failed to fetch Mimosaas Tracking financial sources" });
   });
 
   it("returns null without falling back when no finalized snapshot exists", async () => {

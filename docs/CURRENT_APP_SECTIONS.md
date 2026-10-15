@@ -165,7 +165,10 @@ published tracker snapshot only for active Mimosaas Tracking campaigns.
 Tracker Revenue and Spend controls open only the Google Sheets setup flow. Both
 require a Date column and save with the isolated `mimosaas_tracking` context;
 newly imported source rows do not replace the visible immutable snapshot before
-the scheduler finalizes that reporting day.
+the scheduler finalizes that reporting day. A dedicated protected read route
+lists only active tracker-scoped Google Sheets Revenue and Spend sources for an
+owned active Mimosaas Tracking campaign; generic GA4 financial reads are not
+widened.
 Date-mapped tracker CSV records can be materialized into the exact-date
 financial snapshot inside the locked publication transaction when every CSV
 source has an explicit row for that date. Before publication, the tracker

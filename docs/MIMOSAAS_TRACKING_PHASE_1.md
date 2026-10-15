@@ -2,7 +2,7 @@
 
 Status: Phase 1 complete; Phase 2 schema, persistence, and setup APIs deployed; Phase 3 credentials, ingestion, installation proof, universal browser tracker, protected campaign wizard, and atomic finalization deployed but disabled; automated GTM installation, attribution, daily metric aggregation, exact-date CSV and Google Sheets financial materialization, tracker-scoped Google Sheets setup controls, atomic daily publication, and the campaign-local daily scheduler implemented behind separate disabled flags
 Baseline date: 2026-10-15
-Last verified production revision: `cf57d398`
+Last verified production revision: `83df45cf`
 
 ## Phase 2 Foundation Status
 
@@ -301,6 +301,9 @@ Mimosaas Tracking campaign. It does not fall back to GA4, mutable daily
 metrics, or incomplete publication runs. Campaign Overview consumes only this
 route. Its Revenue and Spend actions open the existing Google Sheets wizards
 with a locked tracker context and require an explicit Date column.
+The separately protected tracker financial-source read route returns only
+active, tracker-scoped Google Sheets sources for the owned active tracker
+campaign. Generic GA4 financial read contracts remain unchanged.
 
 ## Protected Existing Paths
 

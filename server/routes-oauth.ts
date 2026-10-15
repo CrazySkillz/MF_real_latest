@@ -3537,6 +3537,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     spendStatus: snapshot.spendStatus,
     publishedAt: snapshot.publishedAt,
   });
+  const publicMimosaasTrackingFinancialSource = (source: any) => ({
+    id: source.id,
+    sourceType: source.sourceType,
+    platformContext: source.platformContext,
+    displayName: source.displayName,
+    currency: source.currency,
+    mappingConfig: source.mappingConfig,
+    isActive: source.isActive,
+    connectedAt: source.connectedAt,
+    createdAt: source.createdAt,
+  });
   const sendMimosaasWebsiteError = (res: any, error: any) => {
     if (String(error?.code || "").endsWith("_SCOPE_NOT_FOUND")) {
       return res.status(404).json({ success: false, message: "Website connection not found" });
@@ -4042,6 +4053,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Mimosaas Tracking daily snapshot fetch error:", error);
       return res.status(500).json({ success: false, message: "Failed to fetch Mimosaas Tracking daily snapshot" });
+    }
+  });
+
+  app.get("/api/campaigns/:id/mimosaas-tracking/financial-sources", requireMimosaasTrackingIngestionFeature, requireCampaignAccessParamId, async (req, res) => {
+    try {
+      const campaign = (req as any)._campaign;
+      if (campaign?.platform !== "mimosaas-tracking" || campaign?.status !== "active") {
+        return res.status(404).json({ success: false, message: "Campaign not found" });
+      }
+      const [revenueSources, spendSources] = await Promise.all([
+        storage.getRevenueSources(String(campaign.id), "mimosaas_tracking"),
+        storage.getSpendSources(String(campaign.id), "mimosaas_tracking"),
+      ]);
+      const isSupportedSource = (source: any) => source?.isActive !== false
+        && String(source?.sourceType || "").trim().toLowerCase() === "google_sheets"
+        && String(source?.platformContext || "").trim().toLowerCase() === "mimosaas_tracking";
+      res.setHeader("Cache-Control", "no-store");
+      return res.json({
+        success: true,
+        revenueSources: revenueSources.filter(isSupportedSource).map(publicMimosaasTrackingFinancialSource),
+        spendSources: spendSources.filter(isSupportedSource).map(publicMimosaasTrackingFinancialSource),
+      });
+    } catch (error: any) {
+      console.error("Mimosaas Tracking financial source fetch error:", error);
+      return res.status(500).json({ success: false, message: "Failed to fetch Mimosaas Tracking financial sources" });
     }
   });
 

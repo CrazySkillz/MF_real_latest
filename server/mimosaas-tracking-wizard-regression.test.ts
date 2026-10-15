@@ -28,13 +28,15 @@ describe("Mimosaas Tracking campaign wizard safety", () => {
     expect(installer).not.toContain("localStorage");
   });
 
-  it("keeps automatic GTM installation separately disabled and preserves the universal fallback", () => {
+  it("offers GTM only as an explicit existing-installation choice and preserves the universal fallback", () => {
     expect(routes).toContain("MIMOSAAS_TRACKING_GTM_ENABLED");
     expect(routes).toContain('/mimosaas-tracking/gtm/availability"');
     expect(routes).toContain('/mimosaas-tracking/gtm/connect"');
     expect(routes).toContain('/mimosaas-tracking/gtm/install"');
-    expect(installer).toContain("Connect with Google");
-    expect(installer).toContain("Use installation code instead");
+    expect(installer).toContain("Choose Google Tag Manager only if it is already installed on this website.");
+    expect(installer).toContain("Use Google Tag Manager");
+    expect(installer).toContain("Use installation code");
+    expect(installer).not.toContain('onClick={gtmAvailable ? startGtmInstallation : prepareUniversalInstallation}');
     expect(installer).toContain('prepareCredentials("universal")');
     expect(installer).toContain('title="Mimosaas automatic website verification"');
     expect(installer).toContain('sandbox="allow-scripts allow-same-origin"');

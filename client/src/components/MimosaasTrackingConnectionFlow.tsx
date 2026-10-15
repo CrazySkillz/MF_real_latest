@@ -242,20 +242,17 @@ export function MimosaasTrackingConnectionFlow({ campaignId, websiteUrl, onVerif
       </div>
       {installationMode === "recommended" && (
         <>
-          <Button
-            type="button"
-            className="w-full"
-            onClick={gtmAvailable ? startGtmInstallation : prepareUniversalInstallation}
-            disabled={isPreparing || !websiteOrigin}
-          >
-            {isPreparing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {gtmAvailable ? "Connect with Google" : "Generate installation code"}
-          </Button>
+          {gtmAvailable && <p className="text-sm text-muted-foreground">Choose Google Tag Manager only if it is already installed on this website.</p>}
           {gtmAvailable && (
-            <Button type="button" variant="link" className="w-full" onClick={prepareUniversalInstallation} disabled={isPreparing}>
-              Use installation code instead
+            <Button type="button" variant="outline" className="w-full" onClick={startGtmInstallation} disabled={isPreparing || !websiteOrigin}>
+              {isPreparing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Use Google Tag Manager
             </Button>
           )}
+          <Button type="button" variant={gtmAvailable ? "outline" : "default"} className="w-full" onClick={prepareUniversalInstallation} disabled={isPreparing || !websiteOrigin}>
+            {isPreparing && !gtmAvailable && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Use installation code
+          </Button>
         </>
       )}
       {installationMode === "gtm" && (

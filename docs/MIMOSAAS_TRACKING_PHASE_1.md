@@ -207,11 +207,10 @@ The focused safety set is:
 ## Locked User Journey
 
 1. The marketer creates a campaign and selects **Mimosaas Tracking**.
-2. Mimosaas detects the available installation path and shows one recommended
-   action:
-   - an existing Google Tag Manager container: **Connect with Google**;
-   - a supported commerce or website connector: **Connect [platform]**;
-   - otherwise: **Install universal tracker**.
+2. When the GTM installer is available, Mimosaas presents two explicit choices:
+   - **Use Google Tag Manager** only when GTM is already installed on the website;
+   - **Use installation code** as the universal fallback.
+   The GTM feature flag is not treated as evidence that the website uses GTM.
 3. For Google Tag Manager, the signed-in Google user must already have publish
    permission. Mimosaas creates and publishes only its own tag, then verifies
    receipt of a test event. No Mimosaas administrator is involved.

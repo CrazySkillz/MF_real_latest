@@ -131,7 +131,9 @@ unless both Mimosaas Tracking setup and ingestion flags are enabled. That path
 requires a verified website installation and exact `utm_campaign` mapping, and
 uses its own scoped finalization route; it does not change the GA4 path.
 An automated Google Tag Manager installer is gated by the additional
-`MIMOSAAS_TRACKING_GTM_ENABLED` flag. After publishing its tag, the wizard loads
+`MIMOSAAS_TRACKING_GTM_ENABLED` flag. The flag exposes GTM as an explicit choice;
+it is not treated as evidence that GTM is installed on the campaign website.
+After publishing its tag, the wizard loads
 the exact website origin in a hidden sandboxed frame so the existing proof-only
 request can verify installation without a manual website visit. The universal
 installation-code path remains the fallback.

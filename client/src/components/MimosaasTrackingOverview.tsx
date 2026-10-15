@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, AlertCircle, Loader2, Plus } from "lucide-react";
+import { Activity, AlertCircle, Loader2, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
 import { AddSpendWizardModal } from "@/components/AddSpendWizardModal";
+import { useToast } from "@/hooks/use-toast";
 
 type MimosaasTrackingSnapshot = {
   reportingDate: string;
@@ -27,6 +30,7 @@ type MimosaasTrackingSnapshot = {
 
 type SnapshotResponse = { success: true; snapshot: MimosaasTrackingSnapshot | null };
 type FinancialSource = { id: string; displayName?: string | null };
+type FinancialSourceKind = "revenue" | "spend";
 type FinancialSourcesResponse = {
   success: true;
   revenueSources: FinancialSource[];
@@ -65,8 +69,13 @@ const formatSources = (sources: FinancialSource[] | undefined, unavailable: bool
 
 export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId: string; currency: string }) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [revenueOpen, setRevenueOpen] = useState(false);
   const [spendOpen, setSpendOpen] = useState(false);
+  const [sourcesKind, setSourcesKind] = useState<FinancialSourceKind>("revenue");
+  const [sourcesDialogOpen, setSourcesDialogOpen] = useState(false);
+  const [deletingSource, setDeletingSource] = useState<{ kind: FinancialSourceKind; source: FinancialSource } | null>(null);
+  const [deletePending, setDeletePending] = useState(false);
   const { data, isLoading, isError } = useQuery<SnapshotResponse>({
     queryKey: ["/api/campaigns", campaignId, "mimosaas-tracking", "daily-snapshot"],
     retry: false,
@@ -90,6 +99,15 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
   const revenueSources = formatSources(sourcesData?.revenueSources, sourcesError);
   const spendSources = formatSources(sourcesData?.spendSources, sourcesError);
   const refreshSources = () => void queryClient.invalidateQueries({ queryKey: sourceQueryKey });
+  const renderSourceSummary = (kind: FinancialSourceKind, text: string) => {
+    const sources = kind === "revenue" ? sourcesData?.revenueSources : sourcesData?.spendSources;
+    return sources?.length ? (
+      <button type="button" className="text-left hover:text-foreground" onClick={() => { setSourcesKind(kind); setSourcesDialogOpen(true); }}>
+        {text}
+      </button>
+    ) : <span>{text}</span>;
+  };
+  const openSources = sourcesKind === "revenue" ? sourcesData?.revenueSources : sourcesData?.spendSources;
 
   return (
     <>
@@ -120,8 +138,8 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
           <div className="flex min-h-20 flex-col items-start justify-center gap-3 rounded-lg border border-border bg-muted/60 p-3 text-sm text-muted-foreground">
             <p>No finalized daily snapshot is available yet.</p>
             <div className="space-y-1 text-xs">
-              <p className="min-h-4">{revenueSources ? `Revenue — ${revenueSources}` : ""}</p>
-              <p className="min-h-4">{spendSources ? `Spend — ${spendSources}` : ""}</p>
+              <p className="min-h-4">{revenueSources ? renderSourceSummary("revenue", `Revenue — ${revenueSources}`) : ""}</p>
+              <p className="min-h-4">{spendSources ? renderSourceSummary("spend", `Spend — ${spendSources}`) : ""}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={() => setRevenueOpen(true)}>
@@ -163,7 +181,7 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
                 <p className="mt-1 text-lg font-semibold text-foreground">
                   {formatFinancial(snapshot.revenue, snapshot.currency, snapshot.revenueStatus)}
                 </p>
-                <p className="mt-1 min-h-4 text-xs text-muted-foreground">{revenueSources}</p>
+                <p className="mt-1 min-h-4 text-xs text-muted-foreground">{renderSourceSummary("revenue", revenueSources)}</p>
               </div>
               <div className="rounded-lg border border-border bg-card p-3">
                 <div className="flex items-center justify-between gap-2">
@@ -175,13 +193,82 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
                 <p className="mt-1 text-lg font-semibold text-foreground">
                   {formatFinancial(snapshot.spend, snapshot.currency, snapshot.spendStatus)}
                 </p>
-                <p className="mt-1 min-h-4 text-xs text-muted-foreground">{spendSources}</p>
+                <p className="mt-1 min-h-4 text-xs text-muted-foreground">{renderSourceSummary("spend", spendSources)}</p>
               </div>
             </div>
           </div>
         )}
       </CardContent>
     </Card>
+    <Dialog open={sourcesDialogOpen} onOpenChange={setSourcesDialogOpen}>
+      <DialogContent className="bg-card border-border max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{sourcesKind === "revenue" ? "Revenue Sources" : "Spend Sources"}</DialogTitle>
+          <DialogDescription>Google Sheets sources connected to Mimosaas Tracking.</DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
+          {(openSources || []).map((source) => {
+            const name = String(source.displayName || "").trim() || "Google Sheets";
+            return <div key={source.id} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-foreground" title={name}>{name}</p>
+                <p className="text-xs text-muted-foreground">Google Sheets</p>
+              </div>
+              <button
+                type="button"
+                className="rounded p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                title={`Remove ${sourcesKind} source`}
+                aria-label={`Remove ${name}`}
+                onClick={() => {
+                  setDeletingSource({ kind: sourcesKind, source });
+                  setSourcesDialogOpen(false);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>;
+          })}
+        </div>
+      </DialogContent>
+    </Dialog>
+    <AlertDialog open={deletingSource !== null} onOpenChange={(open) => { if (!open && !deletePending) setDeletingSource(null); }}>
+      <AlertDialogContent className="bg-card border-border">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove {deletingSource?.kind} source?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This removes the selected source and its imported rows. Finalized Overview snapshots will remain unchanged.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deletePending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-red-600 text-white hover:bg-red-700"
+            disabled={deletePending}
+            onClick={(event) => {
+              event.preventDefault();
+              if (!deletingSource) return;
+              setDeletePending(true);
+              void (async () => {
+                try {
+                  const response = await fetch(`/api/campaigns/${campaignId}/mimosaas-tracking/financial-sources/${deletingSource.kind}/${encodeURIComponent(deletingSource.source.id)}`, { method: "DELETE", credentials: "include" });
+                  const result = await response.json().catch(() => null);
+                  if (!response.ok || result?.success === false) throw new Error(result?.message || "Failed to remove financial source");
+                  await queryClient.invalidateQueries({ queryKey: sourceQueryKey });
+                  toast({ title: `${deletingSource.kind === "revenue" ? "Revenue" : "Spend"} source removed` });
+                  setDeletingSource(null);
+                } catch (error: any) {
+                  toast({ title: "Delete failed", description: error?.message || "Please try again.", variant: "destructive" });
+                } finally {
+                  setDeletePending(false);
+                }
+              })();
+            }}
+          >
+            {deletePending ? "Removing…" : "Remove"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     <AddRevenueWizardModal
       open={revenueOpen}
       onOpenChange={setRevenueOpen}

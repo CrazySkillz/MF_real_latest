@@ -67,4 +67,13 @@ describe("Mimosaas Tracking financial source UI", () => {
     expect(deletion).toContain('deleteSpendSourceWithRecords(campaignId, sourceId, "mimosaas_tracking")');
     expect(deletion).not.toMatch(/recalcCampaignSpend|recomputeGA4|mimosaasTrackingDailySnapshots|deleteGoogleSheetsConnection/);
   });
+
+  it("opens the existing source summary as a modal and deletes through only the protected tracker route", () => {
+    expect(overview).toContain("setSourcesDialogOpen(true)");
+    expect(overview).toContain("<Trash2");
+    expect(overview).toContain("/mimosaas-tracking/financial-sources/${deletingSource.kind}/${encodeURIComponent(deletingSource.source.id)}");
+    expect(overview).toContain("Finalized Overview snapshots will remain unchanged.");
+    expect(overview).toContain("invalidateQueries({ queryKey: sourceQueryKey })");
+    expect(overview).not.toContain("?platformContext=ga4");
+  });
 });

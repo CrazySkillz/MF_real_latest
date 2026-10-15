@@ -41,7 +41,7 @@ export function GoogleAdsConnectionFlow({
   const [isTestMode, setIsTestMode] = useState(false);
   const [customers, setCustomers] = useState<CustomerAccount[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
-  const [pendingTokens, setPendingTokens] = useState<any>(null);
+  const [pendingAuthorization, setPendingAuthorization] = useState<unknown>(null);
   const [adsCampaigns, setAdsCampaigns] = useState<Array<{ id: string; name: string; spend: number; selected: boolean }>>([]);
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
   const [savingSelection, setSavingSelection] = useState(false);
@@ -51,10 +51,10 @@ export function GoogleAdsConnectionFlow({
   // Handle OAuth popup messages
   const handleMessage = useCallback((event: MessageEvent) => {
     if (event.origin !== window.location.origin) return;
-    const { type, tokens, customers: customerList, error } = event.data || {};
+    const { type, campaignId: authorizedCampaignId, authorization, customers: customerList, error } = event.data || {};
 
-    if (type === 'google_ads_auth_success') {
-      setPendingTokens(tokens);
+    if (type === 'google_ads_auth_success' && authorizedCampaignId === campaignId) {
+      setPendingAuthorization(authorization);
       if (customerList && customerList.length > 0) {
         setCustomers(customerList);
         if (customerList.length === 1) {
@@ -70,7 +70,7 @@ export function GoogleAdsConnectionFlow({
       toast({ title: 'Connection Failed', description: error || 'OAuth error', variant: 'destructive' });
       onError?.(error || 'OAuth error');
     }
-  }, [toast, onError]);
+  }, [campaignId, toast, onError]);
 
   useEffect(() => {
     window.addEventListener('message', handleMessage);
@@ -84,7 +84,7 @@ export function GoogleAdsConnectionFlow({
     if (isTestMode) {
       await new Promise(r => setTimeout(r, 1000));
       setCustomers(MOCK_CUSTOMERS);
-      setPendingTokens(null);
+      setPendingAuthorization(null);
       setStep('select-customer');
       return;
     }
@@ -158,11 +158,7 @@ export function GoogleAdsConnectionFlow({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerId: selected.id,
-          customerName: selected.descriptiveName,
-          accessToken: pendingTokens?.accessToken,
-          refreshToken: pendingTokens?.refreshToken,
-          expiresIn: pendingTokens?.expiresIn,
-          managerAccountId: selected.manager ? selected.id : undefined,
+          authorization: pendingAuthorization,
         }),
       });
       if (!res.ok) {
@@ -229,7 +225,7 @@ export function GoogleAdsConnectionFlow({
               <div className="flex gap-2">
                 <Button
                   onClick={() => selectCustomerMutation.mutate()}
-                  disabled={!selectedCustomerId || selectCustomerMutation.isPending}
+                  disabled={!selectedCustomerId || (!isTestMode && !pendingAuthorization) || selectCustomerMutation.isPending}
                 >
                   {selectCustomerMutation.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
                   Connect Account

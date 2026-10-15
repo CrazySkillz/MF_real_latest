@@ -60,6 +60,19 @@ describe("Google Ads production readiness regression guard", () => {
     expect(campaignsRoute).not.toContain("works for both test and real modes");
   });
 
+  it("passes only the protected OAuth authorization package from the browser to account selection", () => {
+    const flow = read("client", "src", "components", "GoogleAdsConnectionFlow.tsx");
+    const routes = read("server", "routes-oauth.ts");
+    const selectRoute = sliceBetween(routes, 'app.post("/api/google-ads/:campaignId/select-customer"', 'app.post("/api/google-ads/:campaignId/connect-test"');
+
+    expect(flow).toContain("campaignId: authorizedCampaignId, authorization");
+    expect(flow).toContain("authorizedCampaignId === campaignId");
+    expect(flow).toContain("authorization: pendingAuthorization");
+    expect(flow).not.toContain("pendingTokens");
+    expect(selectRoute).toContain("const { customerId, authorization } = req.body;");
+    expect(selectRoute).toContain("resolveGoogleAdsOAuthAuthorization");
+  });
+
   it("keeps disconnect and reconnect campaign-scoped so stale Google Ads rows cannot reseed the source", () => {
     const routes = read("server", "routes-oauth.ts");
     const storage = read("server", "storage.ts");

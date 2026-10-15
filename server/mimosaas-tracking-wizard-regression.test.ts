@@ -36,6 +36,9 @@ describe("Mimosaas Tracking campaign wizard safety", () => {
     expect(installer).toContain("Connect with Google");
     expect(installer).toContain("Use installation code instead");
     expect(installer).toContain('prepareCredentials("universal")');
+    expect(installer).toContain('title="Mimosaas automatic website verification"');
+    expect(installer).toContain('sandbox="allow-scripts allow-same-origin"');
+    expect(installer).toContain("Verifying website automatically");
   });
 
   it("requires verified installation and exact UTM mapping before atomic finalization", () => {

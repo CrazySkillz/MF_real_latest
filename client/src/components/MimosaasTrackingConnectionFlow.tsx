@@ -276,7 +276,17 @@ export function MimosaasTrackingConnectionFlow({ campaignId, websiteUrl, onVerif
             <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Complete Google sign-in</div>
           )}
           {gtmPublished && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className={`h-4 w-4 ${isChecking ? "animate-spin" : ""}`} /> Waiting for website verification</div>
+            <>
+              <iframe
+                src={websiteOrigin}
+                title="Mimosaas automatic website verification"
+                className="hidden"
+                aria-hidden="true"
+                tabIndex={-1}
+                sandbox="allow-scripts allow-same-origin"
+              />
+              <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className={`h-4 w-4 ${isChecking ? "animate-spin" : ""}`} /> Verifying website automatically</div>
+            </>
           )}
           {!gtmPublished && !isInstallingGtm && (
             <Button type="button" variant="link" className="w-full" onClick={prepareUniversalInstallation} disabled={isPreparing}>

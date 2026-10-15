@@ -64,9 +64,12 @@ the same installation twice and is released only by the attempt that owns it.
 The database stores GTM installation identifiers and publication metadata, not
 the plaintext tracking secret or Google access token. The published tag must
 still call the existing same-origin installation-proof endpoint before the
-campaign can be finalized. The GTM path has not been enabled or validated
-against a live Google account. Before enablement, the Tag Manager API and the
-dedicated OAuth callback URI must be configured in the Google Cloud project.
+campaign can be finalized. After publication, the wizard loads the exact
+website origin in a hidden sandboxed frame so that proof occurs automatically;
+the proof-only load creates no analytics event. Live validation has reached
+successful tag publication; automatic proof and campaign finalization remain
+pending. The Tag Manager API and dedicated OAuth callback URI must be configured
+in the Google Cloud project before enabling this path.
 
 Exact `utm_campaign` attribution is implemented locally for stored events.
 It resolves only active campaign mappings for the same owner, client, and

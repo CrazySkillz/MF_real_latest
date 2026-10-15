@@ -130,9 +130,11 @@ The codebase also contains a Mimosaas Tracking wizard path. It remains hidden
 unless both Mimosaas Tracking setup and ingestion flags are enabled. That path
 requires a verified website installation and exact `utm_campaign` mapping, and
 uses its own scoped finalization route; it does not change the GA4 path.
-An automated Google Tag Manager installer is implemented locally behind the
-additional `MIMOSAAS_TRACKING_GTM_ENABLED` flag. It is not enabled in production;
-the universal installation-code path remains the fallback.
+An automated Google Tag Manager installer is gated by the additional
+`MIMOSAAS_TRACKING_GTM_ENABLED` flag. After publishing its tag, the wizard loads
+the exact website origin in a hidden sandboxed frame so the existing proof-only
+request can verify installation without a manual website visit. The universal
+installation-code path remains the fallback.
 Exact `utm_campaign` attribution and bounded retry recovery for stored Mimosaas
 events are also implemented locally behind the disabled tracker flags. Scoped
 Google Ads `gclid` attribution is implemented locally behind the additional

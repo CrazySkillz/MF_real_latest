@@ -200,7 +200,8 @@ export const installMimosaasGtmTag = async (input: {
     const triggerId = String(trigger?.triggerId || "");
     if (!triggerId) throw Object.assign(new Error("Google Tag Manager trigger creation failed"), { code: "MIMOSAAS_GTM_INVALID_TRIGGER" });
 
-    const installationCode = `<script async src="${trackerOrigin}/api/mimosaas-tracking/tracker.js" data-tracking-id="${input.trackingId}" data-tracking-secret="${input.trackingSecret}"></script>`;
+    const trackerUrl = `${trackerOrigin}/api/mimosaas-tracking/tracker.js`;
+    const installationCode = `<script>(function(){var s=document.createElement("script");s.async=true;s.src=${JSON.stringify(trackerUrl)};s.setAttribute("data-tracking-id",${JSON.stringify(input.trackingId)});s.setAttribute("data-tracking-secret",${JSON.stringify(input.trackingSecret)});(document.head||document.documentElement).appendChild(s);}());</script>`;
     const tags = await listGtmPages<any>(input.accessToken, `${workspacePath}/tags`, "tag");
     const existingTag = findUniqueNamedEntity(tags, tagName, "tag");
     const tagBody = {

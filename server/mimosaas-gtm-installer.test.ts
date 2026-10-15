@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { runInNewContext } from "node:vm";
 import {
   buildMimosaasGtmAuthorization,
   installMimosaasGtmTag,
@@ -86,7 +87,27 @@ describe("Mimosaas Google Tag Manager installer", () => {
     expect(metadata).not.toHaveProperty("trackingSecret");
     const tagRequest = requests.find((request) => request.url.endsWith("/tags") && request.method === "POST");
     expect(tagRequest?.body).toMatchObject({ type: "html", firingTriggerId: ["30"] });
-    expect(tagRequest?.body.parameter[0].value).toContain("https://app.example/api/mimosaas-tracking/tracker.js");
+    const installationCode = String(tagRequest?.body.parameter[0].value || "");
+    const inlineScript = installationCode.match(/^<script>([\s\S]+)<\/script>$/)?.[1];
+    const appendedScripts: any[] = [];
+    const documentMock = {
+      createElement: () => ({
+        attributes: {} as Record<string, string>,
+        setAttribute(name: string, value: string) { this.attributes[name] = value; },
+      }),
+      head: { appendChild: (script: any) => appendedScripts.push(script) },
+      documentElement: { appendChild: (script: any) => appendedScripts.push(script) },
+    };
+    expect(inlineScript).toBeTruthy();
+    runInNewContext(String(inlineScript), { document: documentMock });
+    expect(appendedScripts).toEqual([expect.objectContaining({
+      async: true,
+      src: "https://app.example/api/mimosaas-tracking/tracker.js",
+      attributes: {
+        "data-tracking-id": `mtk_${"a".repeat(32)}`,
+        "data-tracking-secret": `mts_${"b".repeat(43)}`,
+      },
+    })]);
     expect(requests.map((request) => request.url)).toEqual(expect.arrayContaining([
       expect.stringContaining("/workspaces/20:create_version"),
       expect.stringContaining("/versions/50:publish"),

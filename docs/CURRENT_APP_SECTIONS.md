@@ -137,6 +137,9 @@ After publishing its tag, the wizard loads
 the exact website origin in a hidden sandboxed frame so the existing proof-only
 request can verify installation without a manual website visit. The universal
 installation-code path remains the fallback.
+When the website already has a verified client-scoped tracker connection, the
+wizard remains on Install until the marketer explicitly chooses **Continue with
+existing tracker**; it does not silently advance to Configure.
 Exact `utm_campaign` attribution and bounded retry recovery for stored Mimosaas
 events are also implemented locally behind the disabled tracker flags. Scoped
 Google Ads `gclid` attribution is implemented locally behind the additional

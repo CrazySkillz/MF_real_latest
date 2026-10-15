@@ -59,7 +59,6 @@ export function MimosaasTrackingConnectionFlow({ campaignId, websiteUrl, onVerif
     const matching = (Array.isArray(body?.connections) ? body.connections : [])
       .find((candidate: WebsiteConnection) => candidate.websiteUrl === websiteOrigin) || null;
     setConnection(matching);
-    if (matching?.installationStatus === "verified") notifyVerified(matching);
     return matching as WebsiteConnection | null;
   };
 
@@ -228,8 +227,13 @@ export function MimosaasTrackingConnectionFlow({ campaignId, websiteUrl, onVerif
 
   if (connection?.installationStatus === "verified") {
     return (
-      <div className="flex items-center gap-2 text-sm text-green-700">
-        <CheckCircle className="h-4 w-4" /> Website connected
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-sm text-green-700">
+          <CheckCircle className="h-4 w-4" /> A verified tracker is already installed on this website
+        </div>
+        <Button type="button" className="w-full" onClick={() => notifyVerified(connection)}>
+          Continue with existing tracker
+        </Button>
       </div>
     );
   }

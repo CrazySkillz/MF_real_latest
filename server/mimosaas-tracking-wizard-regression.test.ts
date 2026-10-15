@@ -28,6 +28,13 @@ describe("Mimosaas Tracking campaign wizard safety", () => {
     expect(installer).not.toContain("localStorage");
   });
 
+  it("stops on Install until the marketer explicitly accepts an existing verified tracker", () => {
+    expect(installer).not.toContain('if (matching?.installationStatus === "verified") notifyVerified(matching);');
+    expect(installer).toContain("A verified tracker is already installed on this website");
+    expect(installer).toContain("Continue with existing tracker");
+    expect(installer).toContain("onClick={() => notifyVerified(connection)}");
+  });
+
   it("offers GTM only as an explicit existing-installation choice and preserves the universal fallback", () => {
     expect(routes).toContain("MIMOSAAS_TRACKING_GTM_ENABLED");
     expect(routes).toContain('/mimosaas-tracking/gtm/availability"');

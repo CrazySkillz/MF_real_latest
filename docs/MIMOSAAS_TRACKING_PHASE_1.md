@@ -214,6 +214,8 @@ The focused safety set is:
 3. For Google Tag Manager, the signed-in Google user must already have publish
    permission. Mimosaas creates and publishes only its own tag, then verifies
    receipt of a test event. No Mimosaas administrator is involved.
+   A verified tracker already installed for the same client website is reused
+   only after the marketer explicitly confirms it on the Install step.
 4. The campaign is created only after the selected tracking installation is
    verified and its campaign mapping is valid.
 5. Revenue and Spend sources remain optional setup choices. An absent source

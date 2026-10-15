@@ -3695,7 +3695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         client_id: process.env.GOOGLE_CLIENT_ID,
         redirect_uri: redirectUri,
         response_type: "code",
-        scope: "https://www.googleapis.com/auth/tagmanager.edit.containers https://www.googleapis.com/auth/tagmanager.publish",
+        scope: "https://www.googleapis.com/auth/tagmanager.edit.containers https://www.googleapis.com/auth/tagmanager.edit.containerversions https://www.googleapis.com/auth/tagmanager.publish",
         access_type: "online",
         include_granted_scopes: "true",
         state: signMimosaasGtmOAuthState(String(campaign.id), String(connection.id)),

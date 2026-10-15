@@ -441,6 +441,7 @@ describe("Mimosaas Tracking read-only setup route", () => {
     expect(response.status).toBe(200);
     expect(authUrl.origin).toBe("https://accounts.google.com");
     expect(authUrl.searchParams.get("scope")).toContain("tagmanager.edit.containers");
+    expect(authUrl.searchParams.get("scope")).toContain("tagmanager.edit.containerversions");
     expect(authUrl.searchParams.get("scope")).toContain("tagmanager.publish");
     expect(JSON.stringify(body)).not.toContain(trackingSecret);
     expect(storageMock.getMimosaasWebsiteConnection).toHaveBeenCalledWith("owner-1", "client-1", "website-1");

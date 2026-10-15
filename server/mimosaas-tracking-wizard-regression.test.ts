@@ -42,7 +42,9 @@ describe("Mimosaas Tracking campaign wizard safety", () => {
   });
 
   it("requires verified installation and exact UTM mapping before atomic finalization", () => {
-    expect(campaigns).toContain('Enter the exact value used after utm_campaign=');
+    expect(campaigns).toContain('Campaign tracking name');
+    expect(campaigns).toContain('Example: for ?utm_campaign=summer_sale, enter summer_sale.');
+    expect(campaigns).not.toContain('Enter the exact value used after utm_campaign=');
     expect(campaigns).toContain('/mimosaas-tracking/mappings`');
     expect(campaigns).toContain('/mimosaas-tracking/finalize`');
     expect(routes).toContain('storage.finalizeMimosaasTrackingCampaign');

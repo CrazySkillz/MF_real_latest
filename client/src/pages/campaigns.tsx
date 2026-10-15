@@ -1111,7 +1111,7 @@ export default function Campaigns() {
   const handleSaveMimosaasTrackingConfiguration = async () => {
     const campaignValue = mimosaasUtmCampaignValue.trim();
     if (!draftCampaignId || !mimosaasWebsiteConnectionId || !campaignValue) {
-      toast({ title: "Campaign tracking value required", description: "Enter the exact utm_campaign value used by this campaign.", variant: "destructive" });
+      toast({ title: "Campaign tracking name required", description: "Enter the campaign name included in your website links.", variant: "destructive" });
       return;
     }
     setIsSavingMimosaasConfiguration(true);
@@ -1825,14 +1825,14 @@ export default function Campaigns() {
                       {selectedWizardPlatform === 'mimosaas-tracking' && (
                         <div className="space-y-4">
                           <div className="space-y-2">
-                            <Label htmlFor="mimosaas-utm-campaign">Campaign tracking value</Label>
+                            <Label htmlFor="mimosaas-utm-campaign">Campaign tracking name</Label>
                             <Input
                               id="mimosaas-utm-campaign"
                               value={mimosaasUtmCampaignValue}
                               onChange={(event) => setMimosaasUtmCampaignValue(event.target.value)}
-                              placeholder="summer_sale"
+                              placeholder="Example: summer_sale"
                             />
-                            <p className="text-xs text-muted-foreground">Enter the exact value used after utm_campaign= in this campaign's links.</p>
+                            <p className="text-xs text-muted-foreground">Enter the campaign name included in your website links. Example: for ?utm_campaign=summer_sale, enter summer_sale.</p>
                           </div>
                           <div className="flex gap-2 pt-2">
                             <Button type="button" variant="outline" className="flex-1" onClick={() => setWizardStep(3)} disabled={isSavingMimosaasConfiguration}>

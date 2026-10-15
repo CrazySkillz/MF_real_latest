@@ -305,11 +305,13 @@ The separately protected tracker financial-source read route returns only
 active, tracker-scoped Google Sheets sources for the owned active tracker
 campaign. The tracker Overview and its locked Google Sheets wizards use this
 route for source names and connection status. A populated source summary opens
-the matching Sources modal. Its removal action uses the protected tracker-only
-delete route, which transactionally deactivates the exact selected source and
-deletes only its campaign-scoped imported rows without GA4 recomputation,
-Google Sheets connection cleanup, or finalized-snapshot mutation. Generic GA4
-financial read contracts remain unchanged.
+the matching Sources modal. Its Edit action passes the exact source ID through
+the existing tracker-scoped process route, which atomically replaces only that
+source and rejects concurrent changes. Its removal action uses the protected
+tracker-only delete route, which transactionally deactivates the exact selected
+source and deletes only its campaign-scoped imported rows without GA4
+recomputation, Google Sheets connection cleanup, or finalized-snapshot
+mutation. Generic GA4 financial read contracts remain unchanged.
 
 ## Protected Existing Paths
 

@@ -3441,10 +3441,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     return next();
   };
+  const isMimosaasTrackingIngestionEnabled = () =>
+    String(process.env.MIMOSAAS_TRACKING_ENABLED || "").trim().toLowerCase() === "true" &&
+    String(process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED || "").trim().toLowerCase() === "true";
   const requireMimosaasTrackingIngestionFeature = (_req: any, res: any, next: any) => {
-    const setupEnabled = String(process.env.MIMOSAAS_TRACKING_ENABLED || "").trim().toLowerCase() === "true";
-    const ingestionEnabled = String(process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED || "").trim().toLowerCase() === "true";
-    if (!setupEnabled || !ingestionEnabled) return res.status(404).json({ success: false, message: "Not found" });
+    if (!isMimosaasTrackingIngestionEnabled()) return res.status(404).json({ success: false, message: "Not found" });
     return next();
   };
   const isMimosaasGtmEnabled = () =>
@@ -6047,6 +6048,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!body.success) return sendBadRequest(res, "Invalid request body", body.error.errors);
       const connectionId = body.data.connectionId;
       const platformContext = body.data.platformContext || "ga4";
+      if (platformContext === "mimosaas_tracking" && (
+        !isMimosaasTrackingIngestionEnabled() || (ok as any)?.platform !== "mimosaas-tracking" || (ok as any)?.status !== "active"
+      )) return res.status(404).json({ success: false, message: "Campaign not found" });
       const purpose = revenuePurposeForPlatformContext(platformContext);
 
       let connections = await storage.getGoogleSheetsConnections(campaignId, purpose);
@@ -6213,6 +6217,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!body.success) return sendBadRequest(res, "Invalid request body", body.error.errors);
       const connectionId = body.data.connectionId;
       const platformContext = body.data.platformContext || "ga4";
+      if (platformContext === "mimosaas_tracking" && (
+        !isMimosaasTrackingIngestionEnabled() || (ok as any)?.platform !== "mimosaas-tracking" || (ok as any)?.status !== "active"
+      )) return res.status(404).json({ success: false, message: "Campaign not found" });
 
       const parsedMapping = zRevenueMapping.safeParse(body.data.mapping || {});
       if (!parsedMapping.success) return sendBadRequest(res, "Invalid mapping", parsedMapping.error.errors);
@@ -7566,6 +7573,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const connectionId = String((req.body as any)?.connectionId || "").trim();
       if (!connectionId) return res.status(400).json({ success: false, error: "connectionId is required" });
+      const campaignAccess = (req as any)._campaign;
+      if (campaignAccess?.platform === "mimosaas-tracking" && (
+        !isMimosaasTrackingIngestionEnabled() || campaignAccess?.status !== "active"
+      )) return res.status(404).json({ success: false, message: "Campaign not found" });
 
       let connections = await storage.getGoogleSheetsConnections(campaignId, "spend");
       let conn = (connections as any[]).find((c) => String(c.id) === connectionId);
@@ -7718,6 +7729,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, error: "platformContext is required for new spend sources" });
       }
       const platformContext = requestedPlatformContext || null;
+      const campaignAccess = (req as any)._campaign;
+      if (platformContext === "mimosaas_tracking" && (
+        !isMimosaasTrackingIngestionEnabled() || campaignAccess?.platform !== "mimosaas-tracking" || campaignAccess?.status !== "active"
+      )) return res.status(404).json({ success: false, message: "Campaign not found" });
       let connections = await storage.getGoogleSheetsConnections(campaignId, "spend");
       let conn = (connections as any[]).find((c) => String(c.id) === connectionId);
       // Fall back to purpose-agnostic lookup; the connection may have a different purpose value.

@@ -28,6 +28,7 @@ const storageMock = vi.hoisted(() => ({
   getSpendSources: vi.fn(),
   getRevenueSource: vi.fn(),
   getSpendSource: vi.fn(),
+  getGoogleSheetsConnections: vi.fn(),
   deleteRevenueSourceWithRecords: vi.fn(),
   deleteSpendSourceWithRecords: vi.fn(),
 }));
@@ -104,6 +105,7 @@ describe("Mimosaas Tracking read-only setup route", () => {
     storageMock.getSpendSources.mockResolvedValue([]);
     storageMock.getRevenueSource.mockResolvedValue(undefined);
     storageMock.getSpendSource.mockResolvedValue(undefined);
+    storageMock.getGoogleSheetsConnections.mockResolvedValue([]);
     storageMock.deleteRevenueSourceWithRecords.mockResolvedValue(false);
     storageMock.deleteSpendSourceWithRecords.mockResolvedValue(false);
     storageMock.verifyMimosaasWebsiteConnectionInstallation.mockResolvedValue({
@@ -218,6 +220,43 @@ describe("Mimosaas Tracking read-only setup route", () => {
     expect(storageMock.getCampaign).not.toHaveBeenCalled();
     expect(storageMock.getRevenueSources).not.toHaveBeenCalled();
     expect(storageMock.getSpendSources).not.toHaveBeenCalled();
+  });
+
+  it("blocks tracker Google Sheets preview and writes while ingestion is disabled", async () => {
+    storageMock.getCampaign.mockResolvedValue({ ...campaign, platform: "mimosaas-tracking", status: "active" });
+    const requests = [
+      ["revenue/sheets/preview", { connectionId: "connection-1", platformContext: "mimosaas_tracking" }],
+      ["revenue/sheets/process", { connectionId: "connection-1", platformContext: "mimosaas_tracking", mapping: {} }],
+      ["spend/sheets/preview", { connectionId: "connection-1" }],
+      ["spend/sheets/process", { connectionId: "connection-1", platformContext: "mimosaas_tracking", mapping: { spendColumn: "Spend" } }],
+    ] as const;
+
+    for (const [path, body] of requests) {
+      const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/${path}`, {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+      });
+      expect(response.status).toBe(404);
+    }
+    expect(storageMock.getGoogleSheetsConnections).not.toHaveBeenCalled();
+  });
+
+  it("rejects tracker Google Sheets writes for a non-tracker campaign", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    storageMock.getCampaign.mockResolvedValue({ ...campaign, platform: "google-analytics", status: "active" });
+
+    const revenue = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/revenue/sheets/process`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ connectionId: "connection-1", platformContext: "mimosaas_tracking", mapping: {} }),
+    });
+    const spend = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/spend/sheets/process`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ connectionId: "connection-1", platformContext: "mimosaas_tracking", mapping: { spendColumn: "Spend" } }),
+    });
+
+    expect(revenue.status).toBe(404);
+    expect(spend.status).toBe(404);
+    expect(storageMock.getGoogleSheetsConnections).not.toHaveBeenCalled();
   });
 
   it("returns only active tracker Google Sheets financial sources for an owned active tracker campaign", async () => {

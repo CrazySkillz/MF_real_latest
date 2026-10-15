@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, AlertCircle, Loader2, Plus, Trash2 } from "lucide-react";
+import { Activity, AlertCircle, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +29,12 @@ type MimosaasTrackingSnapshot = {
 };
 
 type SnapshotResponse = { success: true; snapshot: MimosaasTrackingSnapshot | null };
-type FinancialSource = { id: string; displayName?: string | null };
+type FinancialSource = {
+  id: string;
+  sourceType?: string;
+  mappingConfig?: string | null;
+  displayName?: string | null;
+};
 type FinancialSourceKind = "revenue" | "spend";
 type FinancialSourcesResponse = {
   success: true;
@@ -74,6 +79,7 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
   const [spendOpen, setSpendOpen] = useState(false);
   const [sourcesKind, setSourcesKind] = useState<FinancialSourceKind>("revenue");
   const [sourcesDialogOpen, setSourcesDialogOpen] = useState(false);
+  const [editingSource, setEditingSource] = useState<{ kind: FinancialSourceKind; source: FinancialSource } | null>(null);
   const [deletingSource, setDeletingSource] = useState<{ kind: FinancialSourceKind; source: FinancialSource } | null>(null);
   const [deletePending, setDeletePending] = useState(false);
   const { data, isLoading, isError } = useQuery<SnapshotResponse>({
@@ -99,6 +105,8 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
   const revenueSources = formatSources(sourcesData?.revenueSources, sourcesError);
   const spendSources = formatSources(sourcesData?.spendSources, sourcesError);
   const refreshSources = () => void queryClient.invalidateQueries({ queryKey: sourceQueryKey });
+  const openRevenueAdd = () => { setEditingSource(null); setRevenueOpen(true); };
+  const openSpendAdd = () => { setEditingSource(null); setSpendOpen(true); };
   const renderSourceSummary = (kind: FinancialSourceKind, text: string) => {
     const sources = kind === "revenue" ? sourcesData?.revenueSources : sourcesData?.spendSources;
     return sources?.length ? (
@@ -142,10 +150,10 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
               <p className="min-h-4">{spendSources ? renderSourceSummary("spend", `Spend — ${spendSources}`) : ""}</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={() => setRevenueOpen(true)}>
+              <Button variant="outline" size="sm" onClick={openRevenueAdd}>
                 <Plus className="mr-2 h-4 w-4" /> Add Revenue
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setSpendOpen(true)}>
+              <Button variant="outline" size="sm" onClick={openSpendAdd}>
                 <Plus className="mr-2 h-4 w-4" /> Add Spend
               </Button>
             </div>
@@ -174,7 +182,7 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
               <div className="rounded-lg border border-border bg-card p-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs text-muted-foreground">Revenue</p>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Add Google Sheets Revenue" onClick={() => setRevenueOpen(true)}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Add Google Sheets Revenue" onClick={openRevenueAdd}>
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
@@ -186,7 +194,7 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
               <div className="rounded-lg border border-border bg-card p-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs text-muted-foreground">Spend</p>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Add Google Sheets Spend" onClick={() => setSpendOpen(true)}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Add Google Sheets Spend" onClick={openSpendAdd}>
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
@@ -214,18 +222,34 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
                 <p className="truncate font-medium text-foreground" title={name}>{name}</p>
                 <p className="text-xs text-muted-foreground">Google Sheets</p>
               </div>
-              <button
-                type="button"
-                className="rounded p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                title={`Remove ${sourcesKind} source`}
-                aria-label={`Remove ${name}`}
-                onClick={() => {
-                  setDeletingSource({ kind: sourcesKind, source });
-                  setSourcesDialogOpen(false);
-                }}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  title={`Edit ${sourcesKind} source`}
+                  aria-label={`Edit ${name}`}
+                  onClick={() => {
+                    setEditingSource({ kind: sourcesKind, source });
+                    setSourcesDialogOpen(false);
+                    if (sourcesKind === "revenue") setRevenueOpen(true);
+                    else setSpendOpen(true);
+                  }}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  className="rounded p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                  title={`Remove ${sourcesKind} source`}
+                  aria-label={`Remove ${name}`}
+                  onClick={() => {
+                    setDeletingSource({ kind: sourcesKind, source });
+                    setSourcesDialogOpen(false);
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>;
           })}
         </div>
@@ -271,7 +295,10 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
     </AlertDialog>
     <AddRevenueWizardModal
       open={revenueOpen}
-      onOpenChange={setRevenueOpen}
+      onOpenChange={(open) => {
+        setRevenueOpen(open);
+        if (!open) setEditingSource(null);
+      }}
       campaignId={campaignId}
       currency={currency}
       dateRange="to_date"
@@ -279,22 +306,29 @@ export function MimosaasTrackingOverview({ campaignId, currency }: { campaignId:
       initialStep="sheets_choose"
       lockInitialStep
       hideCrmSources
+      initialSource={editingSource?.kind === "revenue" ? editingSource.source : undefined}
       onSuccess={() => {
         setRevenueOpen(false);
+        setEditingSource(null);
         refreshSources();
       }}
     />
     <AddSpendWizardModal
       open={spendOpen}
-      onOpenChange={setSpendOpen}
+      onOpenChange={(open) => {
+        setSpendOpen(open);
+        if (!open) setEditingSource(null);
+      }}
       campaignId={campaignId}
       currency={currency}
       dateRange="to_date"
       platformContext="mimosaas_tracking"
       initialStep="sheets_choose"
       lockInitialStep
+      initialSource={editingSource?.kind === "spend" ? editingSource.source : undefined}
       onProcessed={() => {
         setSpendOpen(false);
+        setEditingSource(null);
         refreshSources();
       }}
     />

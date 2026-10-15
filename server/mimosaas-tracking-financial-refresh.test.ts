@@ -51,13 +51,21 @@ describe("Mimosaas Tracking financial provider refresh", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf8");
     const storage = readFileSync(join(process.cwd(), "server", "storage.ts"), "utf8");
     const scheduler = readFileSync(join(process.cwd(), "server", "auto-refresh-scheduler.ts"), "utf8");
+    const revenuePreviewStart = routes.indexOf('app.post("/api/campaigns/:id/revenue/sheets/preview"');
     const revenueStart = routes.indexOf('app.post("/api/campaigns/:id/revenue/sheets/process"');
     const revenueEnd = routes.indexOf("const spendSourceMatchesPlatformContext", revenueStart);
+    const spendPreviewStart = routes.indexOf('app.post("/api/campaigns/:id/spend/sheets/preview"');
     const spendStart = routes.indexOf('app.post("/api/campaigns/:id/spend/sheets/process"');
     const spendEnd = routes.indexOf("// Salesforce PKCE support", spendStart);
+    const revenuePreviewRoute = routes.slice(revenuePreviewStart, revenueStart);
     const revenueRoute = routes.slice(revenueStart, revenueEnd);
+    const spendPreviewRoute = routes.slice(spendPreviewStart, spendStart);
     const spendRoute = routes.slice(spendStart, spendEnd);
 
+    expect(revenuePreviewRoute).toContain('(ok as any)?.platform !== "mimosaas-tracking"');
+    expect(revenueRoute).toContain('(ok as any)?.platform !== "mimosaas-tracking"');
+    expect(spendPreviewRoute).toContain('campaignAccess?.platform === "mimosaas-tracking"');
+    expect(spendRoute).toContain('campaignAccess?.platform !== "mimosaas-tracking"');
     expect(revenueRoute).toContain('platformContext === "mimosaas_tracking" && !dateCol');
     expect(revenueRoute).toContain('replaceRevenueSourceWithRecords(campaignId, existingSourceId, "google_sheets", "mimosaas_tracking"');
     expect(revenueRoute).toContain('existingSourceId ? String(existingSheetsSource?.mappingConfig || "") : undefined');

@@ -27,6 +27,15 @@ describe("Mimosaas Tracking financial source UI", () => {
     expect(overview).not.toContain("all-data-sources");
   });
 
+  it("edits the exact selected source from the existing Sources modal", () => {
+    expect(overview).toContain("<Pencil");
+    expect(overview).toContain("setEditingSource({ kind: sourcesKind, source })");
+    expect(overview).toContain('initialSource={editingSource?.kind === "revenue" ? editingSource.source : undefined}');
+    expect(overview).toContain('initialSource={editingSource?.kind === "spend" ? editingSource.source : undefined}');
+    expect(revenueModal).toContain('{ sourceId: String(initialSource.id) }');
+    expect(spendModal).toContain('{ sourceId: String(props.initialSource.id) }');
+  });
+
   it("requires a tracker Revenue date before calling the scoped Sheets process route", () => {
     expect(revenueModal).toContain("'mimosaas_tracking'");
     expect(revenueModal).toContain('platformContext === "mimosaas_tracking"');

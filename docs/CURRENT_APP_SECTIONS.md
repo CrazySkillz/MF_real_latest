@@ -169,7 +169,8 @@ the scheduler finalizes that reporting day. A dedicated protected read route
 lists only active tracker-scoped Google Sheets Revenue and Spend sources for an
 owned active Mimosaas Tracking campaign. The tracker Overview displays those
 source names. Selecting a populated source summary opens the matching Sources
-modal, where removal calls a protected tracker-only route that deletes only the
+modal, where Edit passes the exact selected source into the locked tracker
+wizard and removal calls a protected tracker-only route that deletes only the
 selected source and its imported rows; finalized snapshots remain unchanged.
 The locked source wizards use the same scoped read route for connection status;
 generic GA4 financial reads are not widened.

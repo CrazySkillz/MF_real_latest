@@ -27,6 +27,7 @@ import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { GA4ConnectionFlow } from "@/components/GA4ConnectionFlow";
+import { MimosaasTrackingOverview } from "@/components/MimosaasTrackingOverview";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
 import { GoogleAdsConnectionFlow } from "@/components/GoogleAdsConnectionFlow";
@@ -4967,8 +4968,11 @@ export default function CampaignDetail() {
     }
   ];
 
-  // Campaign Overview is GA4-first; other main-platform cards will return in a later product version.
-  const platformMetrics = allPlatformMetrics.filter(({ platform }) => platform === "Google Analytics");
+  const isMimosaasTrackingCampaign = campaign?.platform === "mimosaas-tracking";
+  // GA4 remains the existing Overview path; Mimosaas Tracking has its own finalized-snapshot card.
+  const platformMetrics = isMimosaasTrackingCampaign
+    ? []
+    : allPlatformMetrics.filter(({ platform }) => platform === "Google Analytics");
   
   devLog('[Campaign Detail] Connected platform IDs:', connectedPlatformIds);
   devLog('[Campaign Detail] Connected platform names:', connectedPlatformNames);
@@ -5641,6 +5645,9 @@ export default function CampaignDetail() {
                 </div>
 
                 <div className="grid gap-4 items-start">
+                  {isMimosaasTrackingCampaign && campaign.status === "active" && (
+                    <MimosaasTrackingOverview campaignId={campaign.id} />
+                  )}
                   {[platformMetrics].map((columnPlatforms, columnIndex) => (
                     <div key={columnIndex} className="space-y-4">
               {columnPlatforms.map((platform, index) => (

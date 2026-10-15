@@ -88,6 +88,21 @@ export function getReportingDateEndAt(reportingDate: any, reportingTimeZone: any
   return new Date(nextDayStart.getTime() - 1);
 }
 
+export function getReportingDateStartAt(reportingDate: any, reportingTimeZone: any): Date | null {
+  const dateOnly = String(reportingDate || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return null;
+  const parsed = new Date(`${dateOnly}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime()) || formatDateOnlyUTC(parsed) !== dateOnly) return null;
+  return zonedDateTimeToUTC(
+    normalizeReportingTimeZone(reportingTimeZone),
+    parsed.getUTCFullYear(),
+    parsed.getUTCMonth() + 1,
+    parsed.getUTCDate(),
+    0,
+    0,
+  );
+}
+
 export function isCreatedThroughReportingDate(createdAt: any, reportingDate: any, reportingTimeZone: any): boolean {
   const created = createdAt instanceof Date ? createdAt : new Date(createdAt);
   const endAt = getReportingDateEndAt(reportingDate, reportingTimeZone);

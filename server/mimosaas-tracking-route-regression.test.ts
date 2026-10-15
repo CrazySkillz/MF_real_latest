@@ -22,6 +22,8 @@ const storageMock = vi.hoisted(() => ({
   updateMimosaasTrackingCampaignMapping: vi.fn(),
   finalizeMimosaasTrackingCampaign: vi.fn(),
   createMimosaasTrackingEvent: vi.fn(),
+  resolveMimosaasTrackingUtmAttribution: vi.fn(),
+  getLatestMimosaasTrackingDailySnapshot: vi.fn(),
 }));
 const gtmMock = vi.hoisted(() => ({
   listMimosaasGtmContainers: vi.fn(),
@@ -89,7 +91,9 @@ describe("Mimosaas Tracking read-only setup route", () => {
       id: "website-1", ownerId: "owner-1", clientId: "client-1", websiteUrl: "https://example.com",
       installationStatus: "verified", trackingPublicId: trackingId, trackingSecretHash,
     });
-    storageMock.createMimosaasTrackingEvent.mockResolvedValue({ event: { id: "event-row-1" }, inserted: true });
+    storageMock.createMimosaasTrackingEvent.mockResolvedValue({ event: { id: "event-row-1", eventId: "event_1" }, inserted: true });
+    storageMock.resolveMimosaasTrackingUtmAttribution.mockResolvedValue({ eventId: "event_1", status: "attributed", campaignId: campaign.id });
+    storageMock.getLatestMimosaasTrackingDailySnapshot.mockResolvedValue(undefined);
     storageMock.verifyMimosaasWebsiteConnectionInstallation.mockResolvedValue({
       newlyVerified: true,
       connection: { id: "website-1", installationStatus: "verified", verifiedAt: new Date("2026-10-15T10:00:00.000Z"), lastEventAt: new Date("2026-10-15T10:00:00.000Z") },
@@ -159,6 +163,60 @@ describe("Mimosaas Tracking read-only setup route", () => {
     expect(response.status).toBe(404);
     expect(storageMock.getMimosaasWebsiteConnectionByTrackingPublicId).not.toHaveBeenCalled();
     expect(storageMock.createMimosaasTrackingEvent).not.toHaveBeenCalled();
+  });
+
+  it("keeps finalized snapshots unavailable unless both tracker flags are enabled", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/daily-snapshot`);
+
+    expect(response.status).toBe(404);
+    expect(storageMock.getCampaign).not.toHaveBeenCalled();
+    expect(storageMock.getLatestMimosaasTrackingDailySnapshot).not.toHaveBeenCalled();
+  });
+
+  it("returns only the latest finalized snapshot's executive fields", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    storageMock.getLatestMimosaasTrackingDailySnapshot.mockResolvedValueOnce({
+      id: "snapshot-1", campaignId: campaign.id, reportingDate: "2026-10-14", reportingTimeZone: "Europe/Amsterdam",
+      users: 10, sessions: 12, engagedSessions: 8, pageviews: 20, conversions: 2,
+      engagementRate: "66.6667", conversionRate: "16.6667", revenue: "100.00", spend: null,
+      currency: "EUR", revenueStatus: "available", spendStatus: "unavailable",
+      sourceStates: { private: true }, financialSnapshotId: "financial-1", publishedAt: new Date("2026-10-15T06:00:00.000Z"),
+    });
+
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/daily-snapshot`);
+    const body: any = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(storageMock.getLatestMimosaasTrackingDailySnapshot).toHaveBeenCalledWith("owner-1", "client-1", campaign.id);
+    expect(body.snapshot).toMatchObject({ reportingDate: "2026-10-14", sessions: 12, revenue: "100.00", spendStatus: "unavailable" });
+    expect(body.snapshot).not.toHaveProperty("id");
+    expect(body.snapshot).not.toHaveProperty("campaignId");
+    expect(body.snapshot).not.toHaveProperty("sourceStates");
+    expect(body.snapshot).not.toHaveProperty("financialSnapshotId");
+  });
+
+  it("returns null without falling back when no finalized snapshot exists", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/daily-snapshot`);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ success: true, snapshot: null });
+  });
+
+  it("does not read a finalized snapshot for another owner's campaign", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    storageMock.getCampaign.mockResolvedValueOnce({ ...campaign, ownerId: "owner-2" });
+
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/daily-snapshot`);
+
+    expect(response.status).toBe(404);
+    expect(storageMock.getLatestMimosaasTrackingDailySnapshot).not.toHaveBeenCalled();
   });
 
   it("exposes wizard availability only to a signed-in user while both flags are enabled", async () => {
@@ -371,6 +429,24 @@ describe("Mimosaas Tracking read-only setup route", () => {
       resolvedCampaignId: null,
       campaignResolutionStatus: "pending",
     }), trackingSecretHash);
+    expect(storageMock.resolveMimosaasTrackingUtmAttribution).toHaveBeenCalledWith("website-1", "event_1");
+  });
+
+  it("keeps an accepted raw event durable when immediate UTM attribution must be deferred", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    storageMock.resolveMimosaasTrackingUtmAttribution.mockRejectedValueOnce(new Error("temporary attribution failure"));
+
+    const response = await fetch(`${baseUrl}/api/mimosaas-tracking/events`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "https://example.com" },
+      body: JSON.stringify(validTrackingEvent()),
+    });
+
+    expect(response.status).toBe(202);
+    expect(await response.json()).toEqual({ success: true, accepted: true, duplicate: false });
+    expect(storageMock.createMimosaasTrackingEvent).toHaveBeenCalledTimes(1);
+    expect(storageMock.resolveMimosaasTrackingUtmAttribution).toHaveBeenCalledWith("website-1", "event_1");
   });
 
   it("supports browser preflight only while ingestion is enabled", async () => {

@@ -27,6 +27,13 @@ export interface GoogleAdsCampaignInfo {
   resourceName: string;
 }
 
+export interface GoogleAdsClickCampaign {
+  gclid: string;
+  date: string;
+  campaignId: string;
+  campaignName: string;
+}
+
 export interface GoogleAdsDailyInsight {
   date: string; // YYYY-MM-DD
   campaignId: string;
@@ -56,6 +63,13 @@ const searchStreamRows = (data: unknown): any[] => {
     return batch.results || [];
   });
 };
+
+const escapeGaqlString = (value: string): string => value
+  .replace(/\\/g, '\\\\')
+  .replace(/'/g, "\\'")
+  .replace(/\n/g, '\\n')
+  .replace(/\r/g, '\\r')
+  .replace(/\t/g, '\\t');
 
 export class GoogleAdsClient {
   private accessToken: string;
@@ -220,6 +234,44 @@ export class GoogleAdsClient {
       status: r.campaign.status,
       resourceName: r.campaign.resourceName,
     }));
+  }
+
+  async getClickCampaign(gclid: string, date: string, campaignIds: string[]): Promise<GoogleAdsClickCampaign | null> {
+    const normalizedGclid = String(gclid || '').trim();
+    if (!normalizedGclid || normalizedGclid.length > 512) throw new Error('Invalid Google Ads click ID');
+    const parsedDate = new Date(`${date}T00:00:00.000Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(parsedDate.valueOf()) || parsedDate.toISOString().slice(0, 10) !== date) {
+      throw new Error('Invalid Google Ads click date');
+    }
+    const normalizedCampaignIds = Array.from(new Set((campaignIds || []).map((id) => String(id || '').trim()).filter(Boolean)));
+    if (normalizedCampaignIds.length === 0 || normalizedCampaignIds.some((id) => !/^\d+$/.test(id))) {
+      throw new Error('Invalid Google Ads campaign scope');
+    }
+    const campaignScope = new Set(normalizedCampaignIds);
+    const response = await this.api.post('/googleAds:searchStream', {
+      query: `
+        SELECT click_view.gclid, campaign.id, campaign.name, segments.date
+        FROM click_view
+        WHERE segments.date = '${date}'
+          AND click_view.gclid = '${escapeGaqlString(normalizedGclid)}'
+          AND campaign.id IN (${normalizedCampaignIds.join(', ')})
+        LIMIT 2
+      `,
+    });
+    const matches = searchStreamRows(response.data).map((row: any) => {
+      if (row?.clickView?.gclid !== normalizedGclid || row?.segments?.date !== date || !campaignScope.has(String(row?.campaign?.id || ''))) {
+        throw new Error('Invalid Google Ads click response');
+      }
+      return {
+        gclid: normalizedGclid,
+        date,
+        campaignId: String(row.campaign.id),
+        campaignName: String(row.campaign.name || ''),
+      };
+    });
+    const campaigns = new Map(matches.map((match) => [match.campaignId, match]));
+    if (campaigns.size > 1) throw new Error('Ambiguous Google Ads click attribution');
+    return campaigns.values().next().value || null;
   }
 
   /**

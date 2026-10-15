@@ -133,6 +133,40 @@ uses its own scoped finalization route; it does not change the GA4 path.
 An automated Google Tag Manager installer is implemented locally behind the
 additional `MIMOSAAS_TRACKING_GTM_ENABLED` flag. It is not enabled in production;
 the universal installation-code path remains the fallback.
+Exact `utm_campaign` attribution and bounded retry recovery for stored Mimosaas
+events are also implemented locally behind the disabled tracker flags. Scoped
+Google Ads `gclid` attribution is implemented locally behind the additional
+disabled `MIMOSAAS_TRACKING_GOOGLE_ADS_ATTRIBUTION_ENABLED` flag. It revalidates
+provider evidence before persistence, keeps unresolved clicks pending with
+database-paced retries, and stores ambiguous or UTM-disagreeing evidence as a
+conflict. It has not been validated with a live Google Ads click. Returning
+direct attribution is implemented locally behind the additional disabled
+`MIMOSAAS_TRACKING_RETURNING_DIRECT_ATTRIBUTION_ENABLED` flag; it inherits only
+the same visitor's latest eligible original campaign proof and stores uncertain
+cases without guessing. Campaign Overview reads only finalized tracker snapshots,
+never raw attribution or mutable daily aggregate rows.
+Daily tracker metric aggregation is implemented locally behind the additional
+disabled `MIMOSAAS_TRACKING_DAILY_AGGREGATION_ENABLED` flag. It writes only the
+intermediate campaign-day metric row for a completed local date and fails
+closed on pending or damaged attribution. The separately disabled daily tracker
+scheduler invokes it only for an owned, active Mimosaas Tracking campaign at
+08:00, 14:00, or 20:00 in that campaign's reporting timezone. The UI does not
+read the intermediate row.
+Atomic tracker publication is also implemented locally behind the separate
+disabled `MIMOSAAS_TRACKING_DAILY_PUBLICATION_ENABLED` flag. It can finalize
+only one exact campaign reporting date from the matching tracker aggregate and,
+when financial sources exist, an exact-date tracker-authoritative financial
+snapshot. Absent Revenue or Spend remains unavailable. A separate disabled
+`MIMOSAAS_TRACKING_DAILY_SCHEDULER_ENABLED` gate controls scheduler invocation.
+Durable database claims prevent concurrent application instances from owning
+the same attempt, pending dates survive restarts, and finalized dates cannot be
+aggregated or published again. Campaign Overview reads the latest immutable
+published tracker snapshot only for active Mimosaas Tracking campaigns.
+Date-mapped tracker CSV records can be materialized into the
+exact-date financial snapshot inside the locked publication transaction when
+every configured source has an explicit row for that date. Manual, undated,
+incomplete, and provider-backed sources remain pending until their
+tracker-specific refresh paths are added.
 
 Closing an unfinished wizard may clean up only its persisted draft. The server
 rejects that cleanup after the campaign becomes active. A confirmed campaign
@@ -403,6 +437,8 @@ restores a navigation entry and validates the resulting journey.
    but some generated section text still retains older labels such as `Key
    Outcomes`, `Financial Position`, and `7-Day Snapshot Trajectory`. Those are
    current report-output labels, not current web-page headings.
+8. Mimosaas Tracking Campaign Overview rendering is implemented behind its
+   feature flags and has not yet been validated with a live finalized snapshot.
 
 Resolve or explicitly accept these product decisions before creating the
 website onboarding flow. Documentation alone should not make a hidden or

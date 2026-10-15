@@ -1,22 +1,24 @@
 import { type Client, type InsertClient, type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GA4DailyMetric, type InsertGA4DailyMetric, type GA4OverviewSnapshot, type LinkedInDailyMetric, type InsertLinkedInDailyMetric, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type MetaDailyMetric, type InsertMetaDailyMetric, type MetaKpi, type InsertMetaKpi, type MetaBenchmark, type InsertMetaBenchmark, type MetaReport, type InsertMetaReport, type GoogleAdsConnection, type InsertGoogleAdsConnection, type GoogleAdsDailyMetric, type InsertGoogleAdsDailyMetric, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type KPIReport, type InsertKPIReport, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type FinancialDailySnapshotInput, financialDailySnapshotInputSchema, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, clients, campaigns, metrics, integrations, performanceData, ga4Connections, ga4DailyMetrics, ga4OverviewSnapshots, linkedinDailyMetrics, spendSources, spendRecords, revenueSources, revenueRecords, notifications, emailAlertEvents, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, metaDailyMetrics, metaKpis, metaBenchmarks, metaReports, googleAdsConnections, googleAdsDailyMetrics, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, reportSnapshots, reportSendEvents, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, kpiReports, benchmarks, benchmarkHistory, metricSnapshots, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { type InstagramConnection, type InsertInstagramConnection, type InstagramDailyMetric, type InsertInstagramDailyMetric, type TikTokConnection, type InsertTikTokConnection, type TikTokDailyMetric, type InsertTikTokDailyMetric, instagramConnections, instagramDailyMetrics, tiktokConnections, tiktokDailyMetrics } from "@shared/schema";
 import { type GA4GoogleAdsSpendConnection, type InsertGA4GoogleAdsSpendConnection, type GA4GoogleAdsSpendDailyMetric, type InsertGA4GoogleAdsSpendDailyMetric, ga4GoogleAdsSpendConnections, ga4GoogleAdsSpendDailyMetrics } from "@shared/schema";
-import { type MimosaasWebsiteConnection, type InsertMimosaasWebsiteConnection, type MimosaasTrackingConfiguration, type InsertMimosaasTrackingConfiguration, type MimosaasTrackingCampaignMapping, type InsertMimosaasTrackingCampaignMapping, type MimosaasTrackingEvent, type InsertMimosaasTrackingEvent, mimosaasWebsiteConnections, mimosaasTrackingConfigurations, mimosaasTrackingCampaignMappings, mimosaasTrackingEvents } from "@shared/schema";
+import { type MimosaasWebsiteConnection, type InsertMimosaasWebsiteConnection, type MimosaasTrackingConfiguration, type InsertMimosaasTrackingConfiguration, type MimosaasTrackingCampaignMapping, type InsertMimosaasTrackingCampaignMapping, type MimosaasTrackingEvent, type InsertMimosaasTrackingEvent, type MimosaasTrackingAttribution, type MimosaasTrackingDailyMetric, type MimosaasTrackingDailySnapshot, mimosaasWebsiteConnections, mimosaasTrackingConfigurations, mimosaasTrackingCampaignMappings, mimosaasTrackingEvents, mimosaasTrackingAttributions, mimosaasTrackingDailyMetrics, mimosaasTrackingPublicationRuns, mimosaasTrackingDailySnapshots } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db, pool } from "./db";
-import { eq, and, or, isNull, desc, sql, gte, lte, inArray, ne } from "drizzle-orm";
+import { eq, and, or, isNull, desc, asc, sql, gte, lte, lt, inArray, ne } from "drizzle-orm";
 import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, type EncryptedTokens } from "./utils/tokenVault";
 import { assertGA4ServiceAccountPropertyAllowed, GA4_SERVICE_ACCOUNT_METHOD, hydrateGA4ServiceAccountConnection } from "./utils/ga4-service-account";
 import { GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, hydrateGoogleSheetsServiceAccountConnection } from "./utils/google-sheets-service-account";
 import { GOOGLE_ADS_SERVICE_ACCOUNT_METHOD, hydrateGoogleAdsServiceAccountConnection } from "./utils/google-ads-service-account";
 import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness } from "./utils/revenue-record-total";
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
-import { getReportingComparisonBoundary, getReportingDateEndAt, isCreatedThroughReportingDate } from "./utils/reporting-timezone";
+import { getLatestCompleteReportingDate, getReportingComparisonBoundary, getReportingDateEndAt, getReportingDateStartAt, isCreatedThroughReportingDate, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { executiveSummaryDailySnapshotInputSchema, type ExecutiveSummaryDailySnapshotInput } from "./utils/executive-summary-daily-snapshot";
 import { createActiveCanonicalGA4KPI, isActiveGA4KPI, updateCanonicalGA4KPI as updateCanonicalGA4KPIWithGuard } from "./utils/ga4-kpi-create-guard";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { normalizeShopifyDomain, resolveNewestShopifyOauthCredential } from "./utils/shopify-provider";
 import { createMimosaasTrackingCredentials } from "./utils/mimosaas-tracking-auth";
+import { buildMimosaasTrackingDailySnapshot } from "./utils/mimosaas-tracking-daily-publication";
+import { buildMimosaasTrackingFinancialDailySnapshot } from "./utils/mimosaas-tracking-financial-snapshot";
 
 const isProd = String(process.env.NODE_ENV || "").toLowerCase() === "production";
 const devLog = (...args: any[]) => {
@@ -26,12 +28,27 @@ const devLog = (...args: any[]) => {
   }
 };
 
-export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration';
+export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration' | 'mimosaas_tracking';
 export type SpendPlatformContext = RevenuePlatformContext;
 export type MimosaasTrackingEventWriteResult = { event: MimosaasTrackingEvent; inserted: boolean };
+export type MimosaasTrackingPendingAttributionEvent = Pick<MimosaasTrackingEvent, "eventId" | "websiteConnectionId">;
+export type MimosaasTrackingGclidAttributionContext = Pick<MimosaasTrackingEvent, "eventId" | "websiteConnectionId" | "gclid" | "eventTime"> & {
+  candidateCampaignIds: string[];
+};
+export type MimosaasTrackingGclidMatch = { campaignId: string; externalCampaignId: string };
 export type MimosaasWebsiteConnectionWithSecret = MimosaasWebsiteConnection & { trackingSecret: string };
 export type MimosaasWebsiteInstallationVerificationResult = { connection: MimosaasWebsiteConnection; newlyVerified: boolean };
 export type MimosaasTrackingFinalizationResult = { campaign: Campaign; configuration: MimosaasTrackingConfiguration };
+export type MimosaasTrackingDailyPublicationResult = {
+  status: "published" | "finalized" | "pending";
+  reasons: string[];
+  snapshot?: MimosaasTrackingDailySnapshot;
+};
+export type MimosaasTrackingDailyPublicationState = {
+  latestFinalizedDate: string | null;
+  pendingDates: string[];
+};
+export type MimosaasTrackingDailyPublicationClaim = "claimed" | "busy" | "finalized";
 export type KPINotificationHide = { id: string; campaignId: string; metadata: string };
 export type CampaignDeepDiveReportLimitCode = "REPORT_LIMIT_REACHED" | "SCHEDULED_REPORT_LIMIT_REACHED";
 export type CampaignDeepDiveReportLimits = { maxActiveReports: number; maxScheduledActiveReports: number };
@@ -201,6 +218,20 @@ export interface IStorage {
   updateMimosaasTrackingCampaignMapping(ownerId: string, clientId: string, campaignId: string, mappingId: string, mapping: Partial<Omit<InsertMimosaasTrackingCampaignMapping, "campaignId" | "trackingConfigurationId">>): Promise<MimosaasTrackingCampaignMapping | undefined>;
   finalizeMimosaasTrackingCampaign(ownerId: string, clientId: string, campaignId: string): Promise<MimosaasTrackingFinalizationResult>;
   createMimosaasTrackingEvent(websiteConnectionId: string, event: Omit<InsertMimosaasTrackingEvent, "websiteConnectionId" | "clientId">, expectedTrackingSecretHash?: string): Promise<MimosaasTrackingEventWriteResult>;
+  getPendingMimosaasTrackingUtmAttributionEvents(batchSize: number): Promise<MimosaasTrackingPendingAttributionEvent[]>;
+  getPendingMimosaasTrackingGclidAttributionEvents(batchSize: number): Promise<MimosaasTrackingPendingAttributionEvent[]>;
+  getPendingMimosaasTrackingReturningDirectAttributionEvents(batchSize: number): Promise<MimosaasTrackingPendingAttributionEvent[]>;
+  getMimosaasTrackingGclidAttributionContext(websiteConnectionId: string, eventId: string): Promise<MimosaasTrackingGclidAttributionContext>;
+  deferMimosaasTrackingGclidAttribution(websiteConnectionId: string, eventId: string, expectedGclid: string): Promise<MimosaasTrackingAttribution>;
+  resolveMimosaasTrackingGclidAttribution(websiteConnectionId: string, eventId: string, expectedGclid: string, matches: MimosaasTrackingGclidMatch[]): Promise<MimosaasTrackingAttribution>;
+  resolveMimosaasTrackingUtmAttribution(websiteConnectionId: string, eventId: string): Promise<MimosaasTrackingAttribution>;
+  resolveMimosaasTrackingReturningDirectAttribution(websiteConnectionId: string, eventId: string): Promise<MimosaasTrackingAttribution>;
+  aggregateMimosaasTrackingDailyMetrics(ownerId: string, clientId: string, campaignId: string, reportingDate: string, now?: Date): Promise<MimosaasTrackingDailyMetric>;
+  getLatestMimosaasTrackingDailySnapshot(ownerId: string, clientId: string, campaignId: string): Promise<MimosaasTrackingDailySnapshot | undefined>;
+  getMimosaasTrackingDailyPublicationState(ownerId: string, clientId: string, campaignId: string, throughReportingDate: string): Promise<MimosaasTrackingDailyPublicationState>;
+  claimMimosaasTrackingDailyPublicationRun(ownerId: string, clientId: string, campaignId: string, reportingDate: string, now?: Date): Promise<MimosaasTrackingDailyPublicationClaim>;
+  releaseMimosaasTrackingDailyPublicationRun(ownerId: string, clientId: string, campaignId: string, reportingDate: string, reason: string): Promise<boolean>;
+  publishMimosaasTrackingDailySnapshot(ownerId: string, clientId: string, campaignId: string, reportingDate: string, now?: Date): Promise<MimosaasTrackingDailyPublicationResult>;
 
   // Metrics
   getMetrics(): Promise<Metric[]>;
@@ -1371,6 +1402,983 @@ export class DatabaseStorage implements IStorage {
         }
       }
       return { event: existing, inserted: false };
+    });
+  }
+
+  async getPendingMimosaasTrackingUtmAttributionEvents(batchSize: number): Promise<MimosaasTrackingPendingAttributionEvent[]> {
+    const limit = Number.isFinite(batchSize) ? Math.min(Math.max(Math.trunc(batchSize), 1), 1000) : 100;
+    return db.select({
+      eventId: mimosaasTrackingEvents.eventId,
+      websiteConnectionId: mimosaasTrackingEvents.websiteConnectionId,
+    }).from(mimosaasTrackingEvents)
+      .leftJoin(mimosaasTrackingAttributions, eq(mimosaasTrackingAttributions.eventId, mimosaasTrackingEvents.eventId))
+      .where(and(
+        eq(mimosaasTrackingEvents.campaignResolutionStatus, "pending"),
+        isNull(mimosaasTrackingEvents.resolvedCampaignId),
+        sql<boolean>`BTRIM(COALESCE(${mimosaasTrackingEvents.utmCampaign}, '')) <> ''`,
+        sql<boolean>`BTRIM(COALESCE(${mimosaasTrackingEvents.gclid}, '')) = ''`,
+        or(
+          isNull(mimosaasTrackingAttributions.eventId),
+          eq(mimosaasTrackingAttributions.status, "pending"),
+          ne(mimosaasTrackingAttributions.clientId, mimosaasTrackingEvents.clientId),
+          ne(mimosaasTrackingAttributions.websiteConnectionId, mimosaasTrackingEvents.websiteConnectionId),
+        ),
+      ))
+      .orderBy(asc(mimosaasTrackingEvents.receivedAt), asc(mimosaasTrackingEvents.eventId))
+      .limit(limit);
+  }
+
+  async getPendingMimosaasTrackingGclidAttributionEvents(batchSize: number): Promise<MimosaasTrackingPendingAttributionEvent[]> {
+    const limit = Number.isFinite(batchSize) ? Math.min(Math.max(Math.trunc(batchSize), 1), 1000) : 100;
+    return db.select({
+      eventId: mimosaasTrackingEvents.eventId,
+      websiteConnectionId: mimosaasTrackingEvents.websiteConnectionId,
+    }).from(mimosaasTrackingEvents)
+      .leftJoin(mimosaasTrackingAttributions, eq(mimosaasTrackingAttributions.eventId, mimosaasTrackingEvents.eventId))
+      .where(and(
+        eq(mimosaasTrackingEvents.campaignResolutionStatus, "pending"),
+        isNull(mimosaasTrackingEvents.resolvedCampaignId),
+        sql<boolean>`BTRIM(COALESCE(${mimosaasTrackingEvents.gclid}, '')) <> ''`,
+        or(
+          isNull(mimosaasTrackingAttributions.eventId),
+          and(
+            eq(mimosaasTrackingAttributions.status, "pending"),
+            lte(mimosaasTrackingAttributions.updatedAt, sql`CURRENT_TIMESTAMP - INTERVAL '15 minutes'`),
+          ),
+          ne(mimosaasTrackingAttributions.clientId, mimosaasTrackingEvents.clientId),
+          ne(mimosaasTrackingAttributions.websiteConnectionId, mimosaasTrackingEvents.websiteConnectionId),
+        ),
+      ))
+      .orderBy(asc(sql`COALESCE(${mimosaasTrackingAttributions.updatedAt}, ${mimosaasTrackingEvents.receivedAt})`), asc(mimosaasTrackingEvents.eventId))
+      .limit(limit);
+  }
+
+  async getPendingMimosaasTrackingReturningDirectAttributionEvents(batchSize: number): Promise<MimosaasTrackingPendingAttributionEvent[]> {
+    const limit = Number.isFinite(batchSize) ? Math.min(Math.max(Math.trunc(batchSize), 1), 1000) : 100;
+    return db.select({
+      eventId: mimosaasTrackingEvents.eventId,
+      websiteConnectionId: mimosaasTrackingEvents.websiteConnectionId,
+    }).from(mimosaasTrackingEvents)
+      .leftJoin(mimosaasTrackingAttributions, eq(mimosaasTrackingAttributions.eventId, mimosaasTrackingEvents.eventId))
+      .where(and(
+        eq(mimosaasTrackingEvents.campaignResolutionStatus, "pending"),
+        isNull(mimosaasTrackingEvents.resolvedCampaignId),
+        sql<boolean>`BTRIM(COALESCE(${mimosaasTrackingEvents.utmCampaign}, '')) = ''`,
+        sql<boolean>`BTRIM(COALESCE(${mimosaasTrackingEvents.gclid}, '')) = ''`,
+        or(
+          and(isNull(mimosaasTrackingAttributions.eventId), lte(mimosaasTrackingEvents.receivedAt, sql`CURRENT_TIMESTAMP - INTERVAL '15 minutes'`)),
+          and(eq(mimosaasTrackingAttributions.status, "pending"), lte(mimosaasTrackingAttributions.updatedAt, sql`CURRENT_TIMESTAMP - INTERVAL '15 minutes'`)),
+          ne(mimosaasTrackingAttributions.clientId, mimosaasTrackingEvents.clientId),
+          ne(mimosaasTrackingAttributions.websiteConnectionId, mimosaasTrackingEvents.websiteConnectionId),
+        ),
+      ))
+      .orderBy(asc(sql`COALESCE(${mimosaasTrackingAttributions.updatedAt}, ${mimosaasTrackingEvents.receivedAt})`), asc(mimosaasTrackingEvents.eventId))
+      .limit(limit);
+  }
+
+  async getMimosaasTrackingGclidAttributionContext(websiteConnectionId: string, eventId: string): Promise<MimosaasTrackingGclidAttributionContext> {
+    return db.transaction(async (tx: any) => {
+      const [unlockedConnection] = await tx.select().from(mimosaasWebsiteConnections)
+        .where(eq(mimosaasWebsiteConnections.id, websiteConnectionId)).limit(1);
+      if (!unlockedConnection) throw Object.assign(new Error("Mimosaas Tracking website connection not found"), { code: "MIMOSAAS_TRACKING_WEBSITE_NOT_FOUND" });
+      const ownerId = String(unlockedConnection.ownerId);
+      const clientId = String(unlockedConnection.clientId);
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId);
+      await this.requireMimosaasOwnedWebsiteConnection(tx, ownerId, clientId, websiteConnectionId);
+      const [event] = await tx.select().from(mimosaasTrackingEvents).where(and(
+        eq(mimosaasTrackingEvents.eventId, eventId),
+        eq(mimosaasTrackingEvents.websiteConnectionId, websiteConnectionId),
+        eq(mimosaasTrackingEvents.clientId, clientId),
+      )).limit(1);
+      const gclid = String(event?.gclid || "").trim();
+      if (!event || event.campaignResolutionStatus !== "pending" || event.resolvedCampaignId || !gclid) {
+        throw Object.assign(new Error("Mimosaas Tracking event is not pending Google Ads attribution"), { code: "MIMOSAAS_TRACKING_GCLID_EVENT_NOT_PENDING" });
+      }
+      const configurations = await tx.select({ campaignId: mimosaasTrackingConfigurations.campaignId })
+        .from(mimosaasTrackingConfigurations).where(and(
+          eq(mimosaasTrackingConfigurations.websiteConnectionId, websiteConnectionId),
+          eq(mimosaasTrackingConfigurations.status, "active"),
+        ));
+      const configuredCampaignIds = Array.from(new Set<string>(configurations.map((row: any) => String(row.campaignId))));
+      const activeCampaigns = configuredCampaignIds.length === 0 ? [] : await tx.select({ id: campaigns.id }).from(campaigns).where(and(
+        inArray(campaigns.id, configuredCampaignIds),
+        eq(campaigns.ownerId, ownerId),
+        eq(campaigns.clientId, clientId),
+        eq(campaigns.platform, "mimosaas-tracking"),
+        eq(campaigns.status, "active"),
+      )).limit(configuredCampaignIds.length);
+      return {
+        eventId: String(event.eventId),
+        websiteConnectionId: String(event.websiteConnectionId),
+        gclid,
+        eventTime: event.eventTime,
+        candidateCampaignIds: Array.from(new Set<string>(activeCampaigns.map((row: any) => String(row.id)))).sort(),
+      };
+    });
+  }
+
+  async resolveMimosaasTrackingUtmAttribution(websiteConnectionId: string, eventId: string): Promise<MimosaasTrackingAttribution> {
+    return db.transaction(async (tx: any) => {
+      const [unlockedConnection] = await tx.select().from(mimosaasWebsiteConnections)
+        .where(eq(mimosaasWebsiteConnections.id, websiteConnectionId)).limit(1);
+      if (!unlockedConnection) throw Object.assign(new Error("Mimosaas Tracking website connection not found"), { code: "MIMOSAAS_TRACKING_WEBSITE_NOT_FOUND" });
+      const ownerId = String(unlockedConnection.ownerId);
+      const clientId = String(unlockedConnection.clientId);
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId, true);
+      await this.requireMimosaasOwnedWebsiteConnection(tx, ownerId, clientId, websiteConnectionId, true);
+      const [event] = await tx.select().from(mimosaasTrackingEvents).where(and(
+        eq(mimosaasTrackingEvents.eventId, eventId),
+        eq(mimosaasTrackingEvents.websiteConnectionId, websiteConnectionId),
+        eq(mimosaasTrackingEvents.clientId, clientId),
+      )).for("update").limit(1);
+      if (!event) throw Object.assign(new Error("Mimosaas Tracking event scope not found"), { code: "MIMOSAAS_TRACKING_EVENT_SCOPE_NOT_FOUND" });
+      if (event.campaignResolutionStatus !== "pending" || event.resolvedCampaignId) {
+        throw Object.assign(new Error("Mimosaas Tracking raw event is not pending attribution"), { code: "MIMOSAAS_TRACKING_EVENT_NOT_PENDING" });
+      }
+
+      const [existing] = await tx.select().from(mimosaasTrackingAttributions)
+        .where(eq(mimosaasTrackingAttributions.eventId, eventId)).for("update").limit(1);
+      if (existing && (String(existing.clientId) !== clientId || String(existing.websiteConnectionId) !== websiteConnectionId)) {
+        throw Object.assign(new Error("Mimosaas Tracking attribution scope conflicts with the event"), { code: "MIMOSAAS_TRACKING_ATTRIBUTION_SCOPE_CONFLICT" });
+      }
+      if (existing && existing.status !== "pending") return existing;
+
+      let outcome: Pick<MimosaasTrackingAttribution, "campaignId" | "status" | "resolutionSource" | "externalCampaignId" | "conflictDetails" | "resolvedAt"> = {
+        campaignId: null,
+        status: "pending",
+        resolutionSource: null,
+        externalCampaignId: null,
+        conflictDetails: null,
+        resolvedAt: null,
+      };
+      const campaignValue = String(event.utmCampaign || "").trim();
+      if (!String(event.gclid || "").trim() && campaignValue) {
+        const configurations = await tx.select({ id: mimosaasTrackingConfigurations.id, campaignId: mimosaasTrackingConfigurations.campaignId })
+          .from(mimosaasTrackingConfigurations).where(and(
+            eq(mimosaasTrackingConfigurations.websiteConnectionId, websiteConnectionId),
+            eq(mimosaasTrackingConfigurations.status, "active"),
+          ));
+        const configurationCampaigns = new Map<string, string>(configurations.map((row: any): [string, string] => [String(row.id), String(row.campaignId)]));
+        const mappings = configurationCampaigns.size === 0 ? [] : await tx.select({
+          campaignId: mimosaasTrackingCampaignMappings.campaignId,
+          trackingConfigurationId: mimosaasTrackingCampaignMappings.trackingConfigurationId,
+        }).from(mimosaasTrackingCampaignMappings).where(and(
+          inArray(mimosaasTrackingCampaignMappings.trackingConfigurationId, Array.from(configurationCampaigns.keys())),
+          eq(mimosaasTrackingCampaignMappings.mappingType, "utm_campaign"),
+          eq(mimosaasTrackingCampaignMappings.campaignValue, campaignValue),
+          eq(mimosaasTrackingCampaignMappings.isActive, true),
+        ));
+        const mappedCampaignIds: string[] = Array.from(new Set<string>(mappings
+          .filter((mapping: any) => configurationCampaigns.get(String(mapping.trackingConfigurationId)) === String(mapping.campaignId))
+          .map((mapping: any) => String(mapping.campaignId))));
+        const activeCampaigns = mappedCampaignIds.length === 0 ? [] : await tx.select({ id: campaigns.id }).from(campaigns).where(and(
+          inArray(campaigns.id, mappedCampaignIds),
+          eq(campaigns.ownerId, ownerId),
+          eq(campaigns.clientId, clientId),
+          eq(campaigns.platform, "mimosaas-tracking"),
+          eq(campaigns.status, "active"),
+        )).for("update").limit(mappedCampaignIds.length);
+        const eligibleCampaignIds: string[] = Array.from(new Set<string>(activeCampaigns.map((row: any) => String(row.id)))).sort();
+        if (eligibleCampaignIds.length === 1) {
+          outcome = { campaignId: eligibleCampaignIds[0], status: "attributed", resolutionSource: "utm_campaign", externalCampaignId: campaignValue, conflictDetails: null, resolvedAt: new Date() };
+        } else if (eligibleCampaignIds.length > 1) {
+          outcome = { campaignId: null, status: "conflict", resolutionSource: "utm_campaign", externalCampaignId: campaignValue, conflictDetails: { reason: "duplicate_active_utm_campaign_mapping", campaignIds: eligibleCampaignIds }, resolvedAt: null };
+        } else {
+          outcome = { campaignId: null, status: "unattributed", resolutionSource: "utm_campaign", externalCampaignId: campaignValue, conflictDetails: null, resolvedAt: new Date() };
+        }
+      }
+
+      if (existing) {
+        const [updated] = await tx.update(mimosaasTrackingAttributions).set({ ...outcome, updatedAt: new Date() })
+          .where(and(
+            eq(mimosaasTrackingAttributions.id, existing.id),
+            eq(mimosaasTrackingAttributions.eventId, eventId),
+            eq(mimosaasTrackingAttributions.clientId, clientId),
+            eq(mimosaasTrackingAttributions.websiteConnectionId, websiteConnectionId),
+          )).returning();
+        if (!updated) throw new Error("Mimosaas Tracking attribution changed during resolution");
+        return updated;
+      }
+      const [created] = await tx.insert(mimosaasTrackingAttributions).values({
+        eventId,
+        clientId,
+        websiteConnectionId,
+        ...outcome,
+      }).returning();
+      if (!created) throw new Error("Failed to persist Mimosaas Tracking attribution");
+      return created;
+    });
+  }
+
+  async resolveMimosaasTrackingReturningDirectAttribution(websiteConnectionId: string, eventId: string): Promise<MimosaasTrackingAttribution> {
+    return db.transaction(async (tx: any) => {
+      const [unlockedConnection] = await tx.select().from(mimosaasWebsiteConnections)
+        .where(eq(mimosaasWebsiteConnections.id, websiteConnectionId)).limit(1);
+      if (!unlockedConnection) throw Object.assign(new Error("Mimosaas Tracking website connection not found"), { code: "MIMOSAAS_TRACKING_WEBSITE_NOT_FOUND" });
+      const ownerId = String(unlockedConnection.ownerId);
+      const clientId = String(unlockedConnection.clientId);
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId, true);
+      await this.requireMimosaasOwnedWebsiteConnection(tx, ownerId, clientId, websiteConnectionId, true);
+      const [event] = await tx.select().from(mimosaasTrackingEvents).where(and(
+        eq(mimosaasTrackingEvents.eventId, eventId),
+        eq(mimosaasTrackingEvents.websiteConnectionId, websiteConnectionId),
+        eq(mimosaasTrackingEvents.clientId, clientId),
+      )).for("update").limit(1);
+      const hasCampaignIdentity = [event?.gclid, event?.utmCampaign].some((value) => String(value || "").trim());
+      if (!event || event.campaignResolutionStatus !== "pending" || event.resolvedCampaignId || hasCampaignIdentity) {
+        throw Object.assign(new Error("Mimosaas Tracking event is not pending returning-direct attribution"), { code: "MIMOSAAS_TRACKING_RETURNING_DIRECT_EVENT_NOT_PENDING" });
+      }
+
+      const [existing] = await tx.select().from(mimosaasTrackingAttributions)
+        .where(eq(mimosaasTrackingAttributions.eventId, eventId)).for("update").limit(1);
+      if (existing && (String(existing.clientId) !== clientId || String(existing.websiteConnectionId) !== websiteConnectionId)) {
+        throw Object.assign(new Error("Mimosaas Tracking attribution scope conflicts with the event"), { code: "MIMOSAAS_TRACKING_ATTRIBUTION_SCOPE_CONFLICT" });
+      }
+      if (existing && existing.status !== "pending") return existing;
+
+      const hasPartialUtm = [event.utmSource, event.utmMedium, event.utmTerm, event.utmContent]
+        .some((value) => String(value || "").trim());
+      let isDirect = !hasPartialUtm && !String(event.referrer || "").trim();
+      if (!hasPartialUtm && !isDirect) {
+        try {
+          isDirect = new URL(String(event.referrer)).origin === new URL(String(event.url)).origin;
+        } catch {
+          isDirect = false;
+        }
+      }
+
+      let outcome: Pick<MimosaasTrackingAttribution, "campaignId" | "status" | "resolutionSource" | "externalCampaignId" | "conflictDetails" | "resolvedAt"> = {
+        campaignId: null,
+        status: "unattributed",
+        resolutionSource: isDirect ? "returning_direct" : null,
+        externalCampaignId: null,
+        conflictDetails: null,
+        resolvedAt: new Date(),
+      };
+      if (isDirect) {
+        const eventTime = new Date(event.eventTime);
+        const earliestEvidenceTime = new Date(eventTime.getTime() - 90 * 24 * 60 * 60 * 1000);
+        const evidence = await tx.select({
+          eventId: mimosaasTrackingEvents.eventId,
+          eventTime: mimosaasTrackingEvents.eventTime,
+          gclid: mimosaasTrackingEvents.gclid,
+          utmCampaign: mimosaasTrackingEvents.utmCampaign,
+          attributionClientId: mimosaasTrackingAttributions.clientId,
+          attributionWebsiteConnectionId: mimosaasTrackingAttributions.websiteConnectionId,
+          campaignId: mimosaasTrackingAttributions.campaignId,
+          status: mimosaasTrackingAttributions.status,
+          resolutionSource: mimosaasTrackingAttributions.resolutionSource,
+        }).from(mimosaasTrackingEvents)
+          .leftJoin(mimosaasTrackingAttributions, eq(mimosaasTrackingAttributions.eventId, mimosaasTrackingEvents.eventId))
+          .where(and(
+            eq(mimosaasTrackingEvents.clientId, clientId),
+            eq(mimosaasTrackingEvents.websiteConnectionId, websiteConnectionId),
+            eq(mimosaasTrackingEvents.anonymousVisitorId, String(event.anonymousVisitorId)),
+            gte(mimosaasTrackingEvents.eventTime, earliestEvidenceTime),
+            lt(mimosaasTrackingEvents.eventTime, eventTime),
+            or(
+              sql<boolean>`BTRIM(COALESCE(${mimosaasTrackingEvents.utmCampaign}, '')) <> ''`,
+              sql<boolean>`BTRIM(COALESCE(${mimosaasTrackingEvents.gclid}, '')) <> ''`,
+            ),
+          )).orderBy(desc(mimosaasTrackingEvents.eventTime), desc(mimosaasTrackingEvents.receivedAt), desc(mimosaasTrackingEvents.eventId));
+        if (evidence.some((row: any) => row.attributionClientId && (String(row.attributionClientId) !== clientId || String(row.attributionWebsiteConnectionId) !== websiteConnectionId))) {
+          throw Object.assign(new Error("Mimosaas Tracking attribution history scope conflicts with the event"), { code: "MIMOSAAS_TRACKING_ATTRIBUTION_SCOPE_CONFLICT" });
+        }
+        const configurations = await tx.select({
+          campaignId: mimosaasTrackingConfigurations.campaignId,
+          attributionWindowDays: mimosaasTrackingConfigurations.attributionWindowDays,
+        }).from(mimosaasTrackingConfigurations).where(and(
+          eq(mimosaasTrackingConfigurations.websiteConnectionId, websiteConnectionId),
+          eq(mimosaasTrackingConfigurations.status, "active"),
+        )).for("update");
+        const configurationByCampaign = new Map<string, number>(configurations.map((row: any) => [String(row.campaignId), Number(row.attributionWindowDays)]));
+        const configuredCampaignIds = Array.from(configurationByCampaign.keys());
+        const activeCampaigns = configuredCampaignIds.length === 0 ? [] : await tx.select({ id: campaigns.id }).from(campaigns).where(and(
+          inArray(campaigns.id, configuredCampaignIds),
+          eq(campaigns.ownerId, ownerId),
+          eq(campaigns.clientId, clientId),
+          eq(campaigns.platform, "mimosaas-tracking"),
+          eq(campaigns.status, "active"),
+        )).for("update").limit(configuredCampaignIds.length);
+        const activeCampaignIds = new Set<string>(activeCampaigns.map((row: any) => String(row.id)));
+        const proven = evidence.filter((row: any) => {
+          const campaignId = String(row.campaignId || "");
+          const windowDays = configurationByCampaign.get(campaignId);
+          const evidenceTime = new Date(row.eventTime).getTime();
+          return row.status === "attributed"
+            && (row.resolutionSource === "utm_campaign" || row.resolutionSource === "gclid")
+            && activeCampaignIds.has(campaignId)
+            && Number.isInteger(windowDays) && windowDays! >= 1 && windowDays! <= 90
+            && eventTime.getTime() - evidenceTime <= windowDays! * 24 * 60 * 60 * 1000;
+        }).sort((left: any, right: any) => new Date(right.eventTime).getTime() - new Date(left.eventTime).getTime());
+        const latestProvenTime = proven.length > 0 ? new Date(proven[0].eventTime).getTime() : -Infinity;
+        const hasNewerPendingEvidence = evidence.some((row: any) => (!row.status || row.status === "pending") && new Date(row.eventTime).getTime() >= latestProvenTime);
+        if (hasNewerPendingEvidence) {
+          outcome = { campaignId: null, status: "pending", resolutionSource: null, externalCampaignId: null, conflictDetails: null, resolvedAt: null };
+        } else if (proven.length > 0) {
+          const latestCampaignIds = Array.from(new Set<string>(proven
+            .filter((row: any) => new Date(row.eventTime).getTime() === latestProvenTime)
+            .map((row: any) => String(row.campaignId)))).sort();
+          outcome = latestCampaignIds.length === 1
+            ? { campaignId: latestCampaignIds[0], status: "attributed", resolutionSource: "returning_direct", externalCampaignId: null, conflictDetails: null, resolvedAt: new Date() }
+            : { campaignId: null, status: "conflict", resolutionSource: "returning_direct", externalCampaignId: null, conflictDetails: { reason: "ambiguous_returning_direct_history", campaignIds: latestCampaignIds }, resolvedAt: null };
+        }
+      }
+
+      if (existing) {
+        const [updated] = await tx.update(mimosaasTrackingAttributions).set({ ...outcome, updatedAt: new Date() })
+          .where(and(eq(mimosaasTrackingAttributions.id, existing.id), eq(mimosaasTrackingAttributions.eventId, eventId), eq(mimosaasTrackingAttributions.clientId, clientId), eq(mimosaasTrackingAttributions.websiteConnectionId, websiteConnectionId))).returning();
+        if (!updated) throw new Error("Mimosaas Tracking attribution changed during returning-direct resolution");
+        return updated;
+      }
+      const [created] = await tx.insert(mimosaasTrackingAttributions).values({ eventId, clientId, websiteConnectionId, ...outcome }).returning();
+      if (!created) throw new Error("Failed to persist Mimosaas Tracking returning-direct attribution");
+      return created;
+    });
+  }
+
+  async deferMimosaasTrackingGclidAttribution(websiteConnectionId: string, eventId: string, expectedGclid: string): Promise<MimosaasTrackingAttribution> {
+    const gclid = String(expectedGclid || "").trim();
+    if (!gclid) throw new Error("Invalid Mimosaas Tracking Google Ads click ID");
+    return db.transaction(async (tx: any) => {
+      const [unlockedConnection] = await tx.select().from(mimosaasWebsiteConnections)
+        .where(eq(mimosaasWebsiteConnections.id, websiteConnectionId)).limit(1);
+      if (!unlockedConnection) throw Object.assign(new Error("Mimosaas Tracking website connection not found"), { code: "MIMOSAAS_TRACKING_WEBSITE_NOT_FOUND" });
+      const clientId = String(unlockedConnection.clientId);
+      await this.requireMimosaasOwnedClient(tx, String(unlockedConnection.ownerId), clientId, true);
+      await this.requireMimosaasOwnedWebsiteConnection(tx, String(unlockedConnection.ownerId), clientId, websiteConnectionId, true);
+      const [event] = await tx.select().from(mimosaasTrackingEvents).where(and(
+        eq(mimosaasTrackingEvents.eventId, eventId),
+        eq(mimosaasTrackingEvents.websiteConnectionId, websiteConnectionId),
+        eq(mimosaasTrackingEvents.clientId, clientId),
+      )).for("update").limit(1);
+      if (!event || event.campaignResolutionStatus !== "pending" || event.resolvedCampaignId || String(event.gclid || "").trim() !== gclid) {
+        throw Object.assign(new Error("Mimosaas Tracking Google Ads event evidence changed"), { code: "MIMOSAAS_TRACKING_GCLID_EVIDENCE_CHANGED" });
+      }
+      const [existing] = await tx.select().from(mimosaasTrackingAttributions)
+        .where(eq(mimosaasTrackingAttributions.eventId, eventId)).for("update").limit(1);
+      if (existing && (String(existing.clientId) !== clientId || String(existing.websiteConnectionId) !== websiteConnectionId)) {
+        throw Object.assign(new Error("Mimosaas Tracking attribution scope conflicts with the event"), { code: "MIMOSAAS_TRACKING_ATTRIBUTION_SCOPE_CONFLICT" });
+      }
+      if (existing && existing.status !== "pending") return existing;
+      if (existing) {
+        const [updated] = await tx.update(mimosaasTrackingAttributions).set({ updatedAt: new Date() })
+          .where(and(eq(mimosaasTrackingAttributions.id, existing.id), eq(mimosaasTrackingAttributions.eventId, eventId), eq(mimosaasTrackingAttributions.clientId, clientId), eq(mimosaasTrackingAttributions.websiteConnectionId, websiteConnectionId))).returning();
+        if (!updated) throw new Error("Mimosaas Tracking attribution changed during deferral");
+        return updated;
+      }
+      const [created] = await tx.insert(mimosaasTrackingAttributions).values({
+        eventId, clientId, websiteConnectionId, campaignId: null, status: "pending", resolutionSource: null,
+        externalCampaignId: null, conflictDetails: null, resolvedAt: null,
+      }).returning();
+      if (!created) throw new Error("Failed to defer Mimosaas Tracking Google Ads attribution");
+      return created;
+    });
+  }
+
+  async resolveMimosaasTrackingGclidAttribution(
+    websiteConnectionId: string,
+    eventId: string,
+    expectedGclid: string,
+    matches: MimosaasTrackingGclidMatch[],
+  ): Promise<MimosaasTrackingAttribution> {
+    const gclid = String(expectedGclid || "").trim();
+    const normalizedMatches = Array.from(new Map((matches || []).map((match) => [
+      `${String(match?.campaignId || "").trim()}:${String(match?.externalCampaignId || "").trim()}`,
+      { campaignId: String(match?.campaignId || "").trim(), externalCampaignId: String(match?.externalCampaignId || "").trim() },
+    ])).values());
+    if (!gclid || normalizedMatches.length === 0 || normalizedMatches.some((match) => !match.campaignId || !/^\d+$/.test(match.externalCampaignId))) {
+      throw new Error("Invalid Mimosaas Tracking Google Ads attribution evidence");
+    }
+    if (new Set(normalizedMatches.map((match) => match.campaignId)).size !== normalizedMatches.length) {
+      throw new Error("Ambiguous Mimosaas Tracking Google Ads attribution evidence");
+    }
+    return db.transaction(async (tx: any) => {
+      const [unlockedConnection] = await tx.select().from(mimosaasWebsiteConnections)
+        .where(eq(mimosaasWebsiteConnections.id, websiteConnectionId)).limit(1);
+      if (!unlockedConnection) throw Object.assign(new Error("Mimosaas Tracking website connection not found"), { code: "MIMOSAAS_TRACKING_WEBSITE_NOT_FOUND" });
+      const ownerId = String(unlockedConnection.ownerId);
+      const clientId = String(unlockedConnection.clientId);
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId, true);
+      await this.requireMimosaasOwnedWebsiteConnection(tx, ownerId, clientId, websiteConnectionId, true);
+      const [event] = await tx.select().from(mimosaasTrackingEvents).where(and(
+        eq(mimosaasTrackingEvents.eventId, eventId),
+        eq(mimosaasTrackingEvents.websiteConnectionId, websiteConnectionId),
+        eq(mimosaasTrackingEvents.clientId, clientId),
+      )).for("update").limit(1);
+      if (!event || event.campaignResolutionStatus !== "pending" || event.resolvedCampaignId || String(event.gclid || "").trim() !== gclid) {
+        throw Object.assign(new Error("Mimosaas Tracking Google Ads event evidence changed"), { code: "MIMOSAAS_TRACKING_GCLID_EVIDENCE_CHANGED" });
+      }
+      const [existing] = await tx.select().from(mimosaasTrackingAttributions)
+        .where(eq(mimosaasTrackingAttributions.eventId, eventId)).for("update").limit(1);
+      if (existing && (String(existing.clientId) !== clientId || String(existing.websiteConnectionId) !== websiteConnectionId)) {
+        throw Object.assign(new Error("Mimosaas Tracking attribution scope conflicts with the event"), { code: "MIMOSAAS_TRACKING_ATTRIBUTION_SCOPE_CONFLICT" });
+      }
+      if (existing && existing.status !== "pending") return existing;
+
+      const configurations = await tx.select({ id: mimosaasTrackingConfigurations.id, campaignId: mimosaasTrackingConfigurations.campaignId })
+        .from(mimosaasTrackingConfigurations).where(and(
+          eq(mimosaasTrackingConfigurations.websiteConnectionId, websiteConnectionId),
+          eq(mimosaasTrackingConfigurations.status, "active"),
+        ));
+      const configurationCampaigns = new Map<string, string>(configurations.map((row: any): [string, string] => [String(row.id), String(row.campaignId)]));
+      const matchedCampaignIds = normalizedMatches.map((match) => match.campaignId).sort();
+      const activeCampaigns = await tx.select({ id: campaigns.id }).from(campaigns).where(and(
+        inArray(campaigns.id, matchedCampaignIds),
+        eq(campaigns.ownerId, ownerId),
+        eq(campaigns.clientId, clientId),
+        eq(campaigns.platform, "mimosaas-tracking"),
+        eq(campaigns.status, "active"),
+      )).for("update").limit(matchedCampaignIds.length);
+      const activeCampaignIds = Array.from(new Set<string>(activeCampaigns
+        .map((row: any) => String(row.id))
+        .filter((campaignId: string) => Array.from(configurationCampaigns.values()).includes(campaignId)))).sort();
+      if (activeCampaignIds.join("\n") !== matchedCampaignIds.join("\n")) {
+        throw Object.assign(new Error("Mimosaas Tracking Google Ads campaign scope changed"), { code: "MIMOSAAS_TRACKING_GCLID_SCOPE_CHANGED" });
+      }
+      const adsConnections = await tx.select({
+        campaignId: googleAdsConnections.campaignId,
+        method: googleAdsConnections.method,
+        spendOnly: googleAdsConnections.spendOnly,
+        selectedCampaignIds: googleAdsConnections.selectedCampaignIds,
+      }).from(googleAdsConnections).where(inArray(googleAdsConnections.campaignId, matchedCampaignIds)).for("update").limit(matchedCampaignIds.length);
+      for (const match of normalizedMatches) {
+        const connection = adsConnections.find((row: any) => String(row.campaignId) === match.campaignId);
+        let selectedCampaignIds: string[] = [];
+        try {
+          const parsed = JSON.parse(String(connection?.selectedCampaignIds || "[]"));
+          selectedCampaignIds = Array.isArray(parsed) ? parsed.map((id: any) => String(id || "").trim()).filter(Boolean) : [];
+        } catch {
+          selectedCampaignIds = [];
+        }
+        if (!connection || connection.method !== "oauth" || connection.spendOnly === true || !selectedCampaignIds.includes(match.externalCampaignId)) {
+          throw Object.assign(new Error("Mimosaas Tracking Google Ads selection changed"), { code: "MIMOSAAS_TRACKING_GCLID_SCOPE_CHANGED" });
+        }
+      }
+
+      const onlyMatch = normalizedMatches.length === 1 ? normalizedMatches[0] : null;
+      let outcome: Pick<MimosaasTrackingAttribution, "campaignId" | "status" | "resolutionSource" | "externalCampaignId" | "conflictDetails" | "resolvedAt">;
+      if (!onlyMatch) {
+        outcome = { campaignId: null, status: "conflict", resolutionSource: "gclid", externalCampaignId: null, conflictDetails: { reason: "multiple_google_ads_click_matches", matches: normalizedMatches }, resolvedAt: null };
+      } else {
+        const campaignValue = String(event.utmCampaign || "").trim();
+        const mappings = !campaignValue || configurationCampaigns.size === 0 ? [] : await tx.select({
+          campaignId: mimosaasTrackingCampaignMappings.campaignId,
+          trackingConfigurationId: mimosaasTrackingCampaignMappings.trackingConfigurationId,
+        }).from(mimosaasTrackingCampaignMappings).where(and(
+          inArray(mimosaasTrackingCampaignMappings.trackingConfigurationId, Array.from(configurationCampaigns.keys())),
+          eq(mimosaasTrackingCampaignMappings.mappingType, "utm_campaign"),
+          eq(mimosaasTrackingCampaignMappings.campaignValue, campaignValue),
+          eq(mimosaasTrackingCampaignMappings.isActive, true),
+        ));
+        const mappedCampaignIds = Array.from(new Set<string>(mappings
+          .filter((mapping: any) => configurationCampaigns.get(String(mapping.trackingConfigurationId)) === String(mapping.campaignId))
+          .map((mapping: any) => String(mapping.campaignId))));
+        const utmCampaigns = mappedCampaignIds.length === 0 ? [] : await tx.select({ id: campaigns.id }).from(campaigns).where(and(
+          inArray(campaigns.id, mappedCampaignIds),
+          eq(campaigns.ownerId, ownerId),
+          eq(campaigns.clientId, clientId),
+          eq(campaigns.platform, "mimosaas-tracking"),
+          eq(campaigns.status, "active"),
+        )).for("update").limit(mappedCampaignIds.length);
+        const utmCampaignIds = Array.from(new Set<string>(utmCampaigns.map((row: any) => String(row.id)))).sort();
+        if (utmCampaignIds.length > 1 || (utmCampaignIds.length === 1 && utmCampaignIds[0] !== onlyMatch.campaignId)) {
+          outcome = { campaignId: null, status: "conflict", resolutionSource: "gclid", externalCampaignId: onlyMatch.externalCampaignId, conflictDetails: { reason: "gclid_utm_campaign_mismatch", gclidCampaignId: onlyMatch.campaignId, utmCampaignIds, utmCampaign: campaignValue }, resolvedAt: null };
+        } else {
+          outcome = { campaignId: onlyMatch.campaignId, status: "attributed", resolutionSource: "gclid", externalCampaignId: onlyMatch.externalCampaignId, conflictDetails: null, resolvedAt: new Date() };
+        }
+      }
+      if (existing) {
+        const [updated] = await tx.update(mimosaasTrackingAttributions).set({ ...outcome, updatedAt: new Date() })
+          .where(and(eq(mimosaasTrackingAttributions.id, existing.id), eq(mimosaasTrackingAttributions.eventId, eventId), eq(mimosaasTrackingAttributions.clientId, clientId), eq(mimosaasTrackingAttributions.websiteConnectionId, websiteConnectionId))).returning();
+        if (!updated) throw new Error("Mimosaas Tracking attribution changed during resolution");
+        return updated;
+      }
+      const [created] = await tx.insert(mimosaasTrackingAttributions).values({ eventId, clientId, websiteConnectionId, ...outcome }).returning();
+      if (!created) throw new Error("Failed to persist Mimosaas Tracking Google Ads attribution");
+      return created;
+    });
+  }
+
+  async aggregateMimosaasTrackingDailyMetrics(
+    ownerId: string,
+    clientId: string,
+    campaignId: string,
+    reportingDate: string,
+    now = new Date(),
+  ): Promise<MimosaasTrackingDailyMetric> {
+    return db.transaction(async (tx: any) => {
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId, true);
+      const [campaign] = await tx.select().from(campaigns).where(and(
+        eq(campaigns.id, campaignId),
+        eq(campaigns.ownerId, ownerId),
+        eq(campaigns.clientId, clientId),
+        eq(campaigns.platform, "mimosaas-tracking"),
+        eq(campaigns.status, "active"),
+      )).for("update").limit(1);
+      if (!campaign) throw Object.assign(new Error("Active Mimosaas Tracking campaign scope not found"), { code: "MIMOSAAS_TRACKING_CAMPAIGN_SCOPE_NOT_FOUND" });
+
+      const reportingTimeZone = String(campaign.reportingTimeZone || "").trim();
+      if (!reportingTimeZone || normalizeReportingTimeZone(reportingTimeZone) !== reportingTimeZone) {
+        throw Object.assign(new Error("Mimosaas Tracking campaign reporting timezone is invalid"), { code: "MIMOSAAS_TRACKING_REPORTING_TIME_ZONE_INVALID" });
+      }
+      const startAt = getReportingDateStartAt(reportingDate, reportingTimeZone);
+      const endAt = getReportingDateEndAt(reportingDate, reportingTimeZone);
+      if (!startAt || !endAt || Number.isNaN(now.getTime()) || reportingDate > getLatestCompleteReportingDate(reportingTimeZone, now)) {
+        throw Object.assign(new Error("Mimosaas Tracking aggregation requires a completed reporting day"), { code: "MIMOSAAS_TRACKING_REPORTING_DATE_INCOMPLETE" });
+      }
+
+      const [finalizedSnapshot] = await tx.select({ id: mimosaasTrackingDailySnapshots.id }).from(mimosaasTrackingDailySnapshots).where(and(
+        eq(mimosaasTrackingDailySnapshots.campaignId, campaignId),
+        eq(mimosaasTrackingDailySnapshots.reportingDate, reportingDate),
+      )).limit(1);
+      if (finalizedSnapshot) throw Object.assign(new Error("Mimosaas Tracking reporting day is already finalized"), { code: "MIMOSAAS_TRACKING_REPORTING_DATE_FINALIZED" });
+
+      const [configuration] = await tx.select().from(mimosaasTrackingConfigurations).where(and(
+        eq(mimosaasTrackingConfigurations.campaignId, campaignId),
+        eq(mimosaasTrackingConfigurations.status, "active"),
+      )).for("update").limit(1);
+      if (!configuration) throw Object.assign(new Error("Active Mimosaas Tracking configuration not found"), { code: "MIMOSAAS_TRACKING_CONFIGURATION_NOT_ACTIVE" });
+      await this.requireMimosaasOwnedWebsiteConnection(tx, ownerId, clientId, String(configuration.websiteConnectionId), true);
+
+      const configuredConversionEvents = configuration.conversionEventNames;
+      if (!Array.isArray(configuredConversionEvents) || configuredConversionEvents.some((value: unknown) => !/^[A-Za-z0-9_.-]{1,100}$/.test(String(value || "")))) {
+        throw Object.assign(new Error("Mimosaas Tracking conversion-event configuration is invalid"), { code: "MIMOSAAS_TRACKING_CONVERSION_EVENTS_INVALID" });
+      }
+      const conversionEventNames = Array.from(new Set(configuredConversionEvents.map((value: unknown) => String(value))));
+      const endExclusive = new Date(endAt.getTime() + 1);
+      const [readiness] = await tx.select({
+        pendingCount: sql<number>`COUNT(*) FILTER (WHERE ${mimosaasTrackingAttributions.eventId} IS NULL OR (${mimosaasTrackingAttributions.clientId} = ${mimosaasTrackingEvents.clientId} AND ${mimosaasTrackingAttributions.websiteConnectionId} = ${mimosaasTrackingEvents.websiteConnectionId} AND ${mimosaasTrackingAttributions.status} = 'pending'))::int`,
+        scopeConflictCount: sql<number>`COUNT(*) FILTER (WHERE ${mimosaasTrackingAttributions.eventId} IS NOT NULL AND (${mimosaasTrackingAttributions.clientId} <> ${mimosaasTrackingEvents.clientId} OR ${mimosaasTrackingAttributions.websiteConnectionId} <> ${mimosaasTrackingEvents.websiteConnectionId}))::int`,
+        invalidAttributionCount: sql<number>`COUNT(*) FILTER (WHERE ${mimosaasTrackingAttributions.eventId} IS NOT NULL AND ${mimosaasTrackingAttributions.clientId} = ${mimosaasTrackingEvents.clientId} AND ${mimosaasTrackingAttributions.websiteConnectionId} = ${mimosaasTrackingEvents.websiteConnectionId} AND ((${mimosaasTrackingAttributions.status} = 'attributed') <> (${mimosaasTrackingAttributions.campaignId} IS NOT NULL)))::int`,
+      }).from(mimosaasTrackingEvents)
+        .leftJoin(mimosaasTrackingAttributions, eq(mimosaasTrackingAttributions.eventId, mimosaasTrackingEvents.eventId))
+        .where(and(
+          eq(mimosaasTrackingEvents.clientId, clientId),
+          eq(mimosaasTrackingEvents.websiteConnectionId, String(configuration.websiteConnectionId)),
+          gte(mimosaasTrackingEvents.eventTime, startAt),
+          lt(mimosaasTrackingEvents.eventTime, endExclusive),
+        ));
+      if (Number(readiness?.scopeConflictCount || 0) > 0 || Number(readiness?.invalidAttributionCount || 0) > 0) {
+        throw Object.assign(new Error("Mimosaas Tracking attribution scope is inconsistent"), { code: "MIMOSAAS_TRACKING_ATTRIBUTION_SCOPE_CONFLICT" });
+      }
+      if (Number(readiness?.pendingCount || 0) > 0) {
+        throw Object.assign(new Error("Mimosaas Tracking attribution is still pending for this reporting day"), { code: "MIMOSAAS_TRACKING_ATTRIBUTION_PENDING" });
+      }
+
+      const conversionPredicate = conversionEventNames.length > 0
+        ? inArray(mimosaasTrackingEvents.eventName, conversionEventNames)
+        : sql<boolean>`FALSE`;
+      const aggregateResult = await tx.execute(sql`
+        WITH attributed_events AS (
+          SELECT
+            ${mimosaasTrackingEvents.anonymousVisitorId} AS anonymous_visitor_id,
+            ${mimosaasTrackingEvents.sessionId} AS session_id,
+            ${mimosaasTrackingEvents.eventName} AS event_name,
+            CASE WHEN ${conversionPredicate} THEN TRUE ELSE FALSE END AS is_conversion
+          FROM ${mimosaasTrackingEvents}
+          INNER JOIN ${mimosaasTrackingAttributions}
+            ON ${mimosaasTrackingAttributions.eventId} = ${mimosaasTrackingEvents.eventId}
+          WHERE ${mimosaasTrackingEvents.clientId} = ${clientId}
+            AND ${mimosaasTrackingEvents.websiteConnectionId} = ${String(configuration.websiteConnectionId)}
+            AND ${mimosaasTrackingEvents.eventTime} >= ${startAt}
+            AND ${mimosaasTrackingEvents.eventTime} < ${endExclusive}
+            AND ${mimosaasTrackingAttributions.clientId} = ${mimosaasTrackingEvents.clientId}
+            AND ${mimosaasTrackingAttributions.websiteConnectionId} = ${mimosaasTrackingEvents.websiteConnectionId}
+            AND ${mimosaasTrackingAttributions.status} = 'attributed'
+            AND ${mimosaasTrackingAttributions.campaignId} = ${campaignId}
+        ), session_rollup AS (
+          SELECT
+            session_id,
+            COUNT(*) FILTER (WHERE event_name = 'page_view') AS pageviews,
+            BOOL_OR(event_name = 'user_engagement') AS has_engagement,
+            BOOL_OR(is_conversion) AS has_conversion
+          FROM attributed_events
+          GROUP BY session_id
+        )
+        SELECT
+          (SELECT COUNT(DISTINCT anonymous_visitor_id) FROM attributed_events)::int AS "users",
+          (SELECT COUNT(DISTINCT session_id) FROM attributed_events)::int AS "sessions",
+          (SELECT COUNT(*) FILTER (WHERE event_name = 'page_view') FROM attributed_events)::int AS "pageviews",
+          (SELECT COUNT(*) FILTER (WHERE is_conversion) FROM attributed_events)::int AS "conversions",
+          (SELECT COUNT(*) FILTER (WHERE pageviews >= 2 OR has_engagement OR has_conversion) FROM session_rollup)::int AS "engagedSessions"
+      `);
+      const aggregateRows = Array.isArray(aggregateResult) ? aggregateResult : aggregateResult?.rows;
+      const aggregate = aggregateRows?.[0];
+      const values = {
+        users: Number(aggregate?.users),
+        sessions: Number(aggregate?.sessions),
+        engagedSessions: Number(aggregate?.engagedSessions),
+        pageviews: Number(aggregate?.pageviews),
+        conversions: Number(aggregate?.conversions),
+      };
+      if (Object.values(values).some((value) => !Number.isInteger(value) || value < 0) || values.engagedSessions > values.sessions) {
+        throw Object.assign(new Error("Mimosaas Tracking aggregation returned invalid metrics"), { code: "MIMOSAAS_TRACKING_AGGREGATION_INVALID" });
+      }
+
+      const [saved] = await tx.insert(mimosaasTrackingDailyMetrics).values({
+        campaignId,
+        reportingDate,
+        reportingTimeZone,
+        ...values,
+      }).onConflictDoUpdate({
+        target: [mimosaasTrackingDailyMetrics.campaignId, mimosaasTrackingDailyMetrics.reportingDate],
+        set: { reportingTimeZone, ...values, updatedAt: new Date() },
+      }).returning();
+      if (!saved) throw new Error("Failed to persist Mimosaas Tracking daily metrics");
+      return saved;
+    });
+  }
+
+  async getLatestMimosaasTrackingDailySnapshot(
+    ownerId: string,
+    clientId: string,
+    campaignId: string,
+  ): Promise<MimosaasTrackingDailySnapshot | undefined> {
+    return db.transaction(async (tx: any) => {
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId);
+      const [campaign] = await tx.select({ id: campaigns.id }).from(campaigns).where(and(
+        eq(campaigns.id, campaignId),
+        eq(campaigns.ownerId, ownerId),
+        eq(campaigns.clientId, clientId),
+        eq(campaigns.platform, "mimosaas-tracking"),
+        eq(campaigns.status, "active"),
+      )).limit(1);
+      if (!campaign) throw Object.assign(new Error("Active Mimosaas Tracking campaign scope not found"), { code: "MIMOSAAS_TRACKING_CAMPAIGN_SCOPE_NOT_FOUND" });
+      const [snapshot] = await tx.select().from(mimosaasTrackingDailySnapshots).where(
+        eq(mimosaasTrackingDailySnapshots.campaignId, campaignId),
+      ).orderBy(desc(mimosaasTrackingDailySnapshots.reportingDate)).limit(1);
+      return snapshot;
+    });
+  }
+
+  async getMimosaasTrackingDailyPublicationState(
+    ownerId: string,
+    clientId: string,
+    campaignId: string,
+    throughReportingDate: string,
+  ): Promise<MimosaasTrackingDailyPublicationState> {
+    return db.transaction(async (tx: any) => {
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId);
+      const [campaign] = await tx.select({ id: campaigns.id }).from(campaigns).where(and(
+        eq(campaigns.id, campaignId),
+        eq(campaigns.ownerId, ownerId),
+        eq(campaigns.clientId, clientId),
+        eq(campaigns.platform, "mimosaas-tracking"),
+        eq(campaigns.status, "active"),
+      )).limit(1);
+      if (!campaign || !/^\d{4}-\d{2}-\d{2}$/.test(throughReportingDate)) {
+        throw Object.assign(new Error("Active Mimosaas Tracking campaign scope not found"), { code: "MIMOSAAS_TRACKING_CAMPAIGN_SCOPE_NOT_FOUND" });
+      }
+      const pending = await tx.select({ reportingDate: mimosaasTrackingPublicationRuns.reportingDate })
+        .from(mimosaasTrackingPublicationRuns)
+        .where(and(
+          eq(mimosaasTrackingPublicationRuns.campaignId, campaignId),
+          lte(mimosaasTrackingPublicationRuns.reportingDate, throughReportingDate),
+          ne(mimosaasTrackingPublicationRuns.status, "finalized"),
+        )).orderBy(asc(mimosaasTrackingPublicationRuns.reportingDate));
+      const [latest] = await tx.select({ reportingDate: mimosaasTrackingDailySnapshots.reportingDate })
+        .from(mimosaasTrackingDailySnapshots)
+        .where(and(
+          eq(mimosaasTrackingDailySnapshots.campaignId, campaignId),
+          lte(mimosaasTrackingDailySnapshots.reportingDate, throughReportingDate),
+        )).orderBy(desc(mimosaasTrackingDailySnapshots.reportingDate)).limit(1);
+      return {
+        latestFinalizedDate: latest?.reportingDate || null,
+        pendingDates: pending.map((row: any) => String(row.reportingDate)),
+      };
+    });
+  }
+
+  async claimMimosaasTrackingDailyPublicationRun(
+    ownerId: string,
+    clientId: string,
+    campaignId: string,
+    reportingDate: string,
+    now = new Date(),
+  ): Promise<MimosaasTrackingDailyPublicationClaim> {
+    return db.transaction(async (tx: any) => {
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId, true);
+      const [campaign] = await tx.select().from(campaigns).where(and(
+        eq(campaigns.id, campaignId),
+        eq(campaigns.ownerId, ownerId),
+        eq(campaigns.clientId, clientId),
+        eq(campaigns.platform, "mimosaas-tracking"),
+        eq(campaigns.status, "active"),
+      )).for("update").limit(1);
+      if (!campaign) throw Object.assign(new Error("Active Mimosaas Tracking campaign scope not found"), { code: "MIMOSAAS_TRACKING_CAMPAIGN_SCOPE_NOT_FOUND" });
+      const reportingTimeZone = String(campaign.reportingTimeZone || "").trim();
+      if (!reportingTimeZone || normalizeReportingTimeZone(reportingTimeZone) !== reportingTimeZone
+        || Number.isNaN(now.getTime()) || reportingDate > getLatestCompleteReportingDate(reportingTimeZone, now)) {
+        throw Object.assign(new Error("Mimosaas Tracking publication requires a completed reporting day"), { code: "MIMOSAAS_TRACKING_REPORTING_DATE_INCOMPLETE" });
+      }
+
+      await tx.insert(mimosaasTrackingPublicationRuns).values({
+        campaignId, reportingDate, reportingTimeZone, status: "pending",
+      }).onConflictDoNothing({ target: [mimosaasTrackingPublicationRuns.campaignId, mimosaasTrackingPublicationRuns.reportingDate] });
+      const [run] = await tx.select().from(mimosaasTrackingPublicationRuns).where(and(
+        eq(mimosaasTrackingPublicationRuns.campaignId, campaignId),
+        eq(mimosaasTrackingPublicationRuns.reportingDate, reportingDate),
+      )).for("update").limit(1);
+      if (!run || run.reportingTimeZone !== reportingTimeZone) {
+        throw Object.assign(new Error("Mimosaas Tracking publication run scope is inconsistent"), { code: "MIMOSAAS_TRACKING_PUBLICATION_RUN_SCOPE_CONFLICT" });
+      }
+      const [snapshot] = await tx.select({ id: mimosaasTrackingDailySnapshots.id }).from(mimosaasTrackingDailySnapshots).where(and(
+        eq(mimosaasTrackingDailySnapshots.campaignId, campaignId),
+        eq(mimosaasTrackingDailySnapshots.reportingDate, reportingDate),
+      )).limit(1);
+      if (snapshot) return "finalized";
+      const lastAttemptAt = run.lastAttemptAt ? new Date(run.lastAttemptAt).getTime() : NaN;
+      if (run.status === "running" && Number.isFinite(lastAttemptAt) && lastAttemptAt > now.getTime() - 30 * 60 * 1000) return "busy";
+      await tx.update(mimosaasTrackingPublicationRuns).set({
+        status: "running",
+        attemptCount: sql`${mimosaasTrackingPublicationRuns.attemptCount} + 1`,
+        lastAttemptAt: now,
+        lastError: null,
+        updatedAt: new Date(),
+      }).where(eq(mimosaasTrackingPublicationRuns.id, run.id));
+      return "claimed";
+    });
+  }
+
+  async releaseMimosaasTrackingDailyPublicationRun(
+    ownerId: string,
+    clientId: string,
+    campaignId: string,
+    reportingDate: string,
+    reason: string,
+  ): Promise<boolean> {
+    return db.transaction(async (tx: any) => {
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId);
+      const [campaign] = await tx.select({ id: campaigns.id }).from(campaigns).where(and(
+        eq(campaigns.id, campaignId),
+        eq(campaigns.ownerId, ownerId),
+        eq(campaigns.clientId, clientId),
+        eq(campaigns.platform, "mimosaas-tracking"),
+        eq(campaigns.status, "active"),
+      )).limit(1);
+      if (!campaign) return false;
+      const [released] = await tx.update(mimosaasTrackingPublicationRuns).set({
+        status: "pending",
+        lastError: String(reason || "scheduler_attempt_failed").slice(0, 255),
+        updatedAt: new Date(),
+      }).where(and(
+        eq(mimosaasTrackingPublicationRuns.campaignId, campaignId),
+        eq(mimosaasTrackingPublicationRuns.reportingDate, reportingDate),
+        eq(mimosaasTrackingPublicationRuns.status, "running"),
+      )).returning({ id: mimosaasTrackingPublicationRuns.id });
+      return Boolean(released);
+    });
+  }
+
+  async publishMimosaasTrackingDailySnapshot(
+    ownerId: string,
+    clientId: string,
+    campaignId: string,
+    reportingDate: string,
+    now = new Date(),
+  ): Promise<MimosaasTrackingDailyPublicationResult> {
+    return db.transaction(async (tx: any) => {
+      await this.requireMimosaasOwnedClient(tx, ownerId, clientId, true);
+      const [campaign] = await tx.select().from(campaigns).where(and(
+        eq(campaigns.id, campaignId),
+        eq(campaigns.ownerId, ownerId),
+        eq(campaigns.clientId, clientId),
+        eq(campaigns.platform, "mimosaas-tracking"),
+        eq(campaigns.status, "active"),
+      )).for("update").limit(1);
+      if (!campaign) throw Object.assign(new Error("Active Mimosaas Tracking campaign scope not found"), { code: "MIMOSAAS_TRACKING_CAMPAIGN_SCOPE_NOT_FOUND" });
+
+      const reportingTimeZone = String(campaign.reportingTimeZone || "").trim();
+      const endAt = getReportingDateEndAt(reportingDate, reportingTimeZone);
+      if (!reportingTimeZone || normalizeReportingTimeZone(reportingTimeZone) !== reportingTimeZone
+        || !endAt || Number.isNaN(now.getTime()) || reportingDate > getLatestCompleteReportingDate(reportingTimeZone, now)) {
+        throw Object.assign(new Error("Mimosaas Tracking publication requires a completed reporting day"), { code: "MIMOSAAS_TRACKING_REPORTING_DATE_INCOMPLETE" });
+      }
+
+      await tx.insert(mimosaasTrackingPublicationRuns).values({
+        campaignId,
+        reportingDate,
+        reportingTimeZone,
+        status: "pending",
+      }).onConflictDoNothing({
+        target: [mimosaasTrackingPublicationRuns.campaignId, mimosaasTrackingPublicationRuns.reportingDate],
+      });
+      const [publicationRun] = await tx.select().from(mimosaasTrackingPublicationRuns).where(and(
+        eq(mimosaasTrackingPublicationRuns.campaignId, campaignId),
+        eq(mimosaasTrackingPublicationRuns.reportingDate, reportingDate),
+      )).for("update").limit(1);
+      if (!publicationRun || publicationRun.reportingTimeZone !== reportingTimeZone) {
+        throw Object.assign(new Error("Mimosaas Tracking publication run scope is inconsistent"), { code: "MIMOSAAS_TRACKING_PUBLICATION_RUN_SCOPE_CONFLICT" });
+      }
+
+      const [existingSnapshot] = await tx.select().from(mimosaasTrackingDailySnapshots).where(and(
+        eq(mimosaasTrackingDailySnapshots.campaignId, campaignId),
+        eq(mimosaasTrackingDailySnapshots.reportingDate, reportingDate),
+      )).limit(1);
+      if (existingSnapshot) {
+        await tx.update(mimosaasTrackingPublicationRuns).set({
+          status: "finalized",
+          sourceStates: existingSnapshot.sourceStates,
+          lastError: null,
+          finalizedAt: publicationRun.finalizedAt || existingSnapshot.publishedAt,
+          updatedAt: new Date(),
+        }).where(eq(mimosaasTrackingPublicationRuns.id, publicationRun.id));
+        return { status: "finalized", reasons: [], snapshot: existingSnapshot };
+      }
+
+      if (publicationRun.status !== "running") {
+        await tx.update(mimosaasTrackingPublicationRuns).set({
+          status: "running",
+          attemptCount: sql`${mimosaasTrackingPublicationRuns.attemptCount} + 1`,
+          lastAttemptAt: now,
+          lastError: null,
+          finalizedAt: null,
+          updatedAt: new Date(),
+        }).where(eq(mimosaasTrackingPublicationRuns.id, publicationRun.id));
+      }
+
+      const [configuration] = await tx.select().from(mimosaasTrackingConfigurations).where(and(
+        eq(mimosaasTrackingConfigurations.campaignId, campaignId),
+        eq(mimosaasTrackingConfigurations.status, "active"),
+      )).for("update").limit(1);
+      if (!configuration) throw Object.assign(new Error("Active Mimosaas Tracking configuration not found"), { code: "MIMOSAAS_TRACKING_CONFIGURATION_NOT_ACTIVE" });
+      const website = await this.requireMimosaasOwnedWebsiteConnection(tx, ownerId, clientId, String(configuration.websiteConnectionId), true);
+      if (website.installationStatus !== "verified") {
+        throw Object.assign(new Error("Mimosaas Tracking website installation is not verified"), { code: "MIMOSAAS_TRACKING_INSTALLATION_NOT_VERIFIED" });
+      }
+
+      const [metrics] = await tx.select().from(mimosaasTrackingDailyMetrics).where(and(
+        eq(mimosaasTrackingDailyMetrics.campaignId, campaignId),
+        eq(mimosaasTrackingDailyMetrics.reportingDate, reportingDate),
+      )).for("update").limit(1);
+      const revenueSourceRows = await tx.select({
+        id: revenueSources.id,
+        sourceType: revenueSources.sourceType,
+        currency: revenueSources.currency,
+        mappingConfig: revenueSources.mappingConfig,
+      }).from(revenueSources).where(and(
+        eq(revenueSources.campaignId, campaignId),
+        eq(revenueSources.platformContext, "mimosaas_tracking"),
+        eq(revenueSources.isActive, true),
+        lte(revenueSources.createdAt, endAt),
+      )).for("update");
+      const spendSourceRows = await tx.select({
+        id: spendSources.id,
+        sourceType: spendSources.sourceType,
+        currency: spendSources.currency,
+        mappingConfig: spendSources.mappingConfig,
+      }).from(spendSources).where(and(
+        eq(spendSources.campaignId, campaignId),
+        eq(spendSources.platformContext, "mimosaas_tracking"),
+        eq(spendSources.isActive, true),
+        lte(spendSources.createdAt, endAt),
+      )).for("update");
+      const financialRequired = revenueSourceRows.length > 0 || spendSourceRows.length > 0;
+      let financialSnapshot: MetricSnapshot | null = null;
+      let financialReasons: string[] = [];
+      if (financialRequired && metrics) {
+        const revenueSourceIds = revenueSourceRows.map((source: any) => String(source.id));
+        const spendSourceIds = spendSourceRows.map((source: any) => String(source.id));
+        const revenueRecordRows = revenueSourceIds.length > 0 ? await tx.select({
+          revenueSourceId: revenueRecords.revenueSourceId,
+          revenue: revenueRecords.revenue,
+          currency: revenueRecords.currency,
+          subCampaignUrn: revenueRecords.subCampaignUrn,
+        }).from(revenueRecords).where(and(
+          eq(revenueRecords.campaignId, campaignId),
+          eq(revenueRecords.date, reportingDate),
+          inArray(revenueRecords.revenueSourceId, revenueSourceIds),
+        )).for("update") : [];
+        const spendRecordRows = spendSourceIds.length > 0 ? await tx.select({
+          spendSourceId: spendRecords.spendSourceId,
+          spend: spendRecords.spend,
+          currency: spendRecords.currency,
+        }).from(spendRecords).where(and(
+          eq(spendRecords.campaignId, campaignId),
+          eq(spendRecords.date, reportingDate),
+          inArray(spendRecords.spendSourceId, spendSourceIds),
+        )).for("update") : [];
+        const financial = buildMimosaasTrackingFinancialDailySnapshot({
+          campaignId,
+          reportingDate,
+          reportingTimeZone,
+          currency: String(campaign.currency || ""),
+          conversions: metrics.conversions,
+          revenueSources: revenueSourceRows,
+          spendSources: spendSourceRows,
+          revenueRecords: revenueRecordRows,
+          spendRecords: spendRecordRows,
+        });
+        if (!financial.ready) {
+          financialReasons = financial.reasons;
+        } else {
+          const { campaignId: snapshotCampaignId, reportingDate: snapshotDate, ...financialDaily } = financial.snapshot;
+          [financialSnapshot] = await tx.insert(metricSnapshots).values({
+            campaignId: snapshotCampaignId,
+            totalConversions: Math.round(financial.snapshot.inputs.conversions.value ?? 0),
+            totalSpend: financial.snapshot.inputs.spend.value ?? "0",
+            metrics: { financialDaily },
+            snapshotType: "financial_daily",
+            reportingDate: snapshotDate,
+          }).onConflictDoUpdate({
+            target: [metricSnapshots.campaignId, metricSnapshots.reportingDate],
+            targetWhere: sql`${metricSnapshots.snapshotType} = 'financial_daily' AND ${metricSnapshots.reportingDate} IS NOT NULL`,
+            set: {
+              totalConversions: sql`EXCLUDED.total_conversions`,
+              totalSpend: sql`EXCLUDED.total_spend`,
+              metrics: sql`EXCLUDED.metrics`,
+              recordedAt: sql`CURRENT_TIMESTAMP`,
+            },
+          }).returning();
+          if (!financialSnapshot) throw new Error("Failed to persist Mimosaas Tracking financial snapshot");
+        }
+      } else if (!financialRequired) {
+        [financialSnapshot] = await tx.select().from(metricSnapshots).where(and(
+          eq(metricSnapshots.campaignId, campaignId),
+          eq(metricSnapshots.snapshotType, "financial_daily"),
+          eq(metricSnapshots.reportingDate, reportingDate),
+        )).for("update").limit(1);
+      }
+      const built = buildMimosaasTrackingDailySnapshot({
+        campaignId,
+        reportingDate,
+        reportingTimeZone,
+        currency: String(campaign.currency || ""),
+        metrics: metrics || null,
+        revenueSources: revenueSourceRows,
+        spendSources: spendSourceRows,
+        financialSnapshot: financialSnapshot || null,
+      });
+      if (!built.ready) {
+        const reasons = Array.from(new Set([...financialReasons, ...built.reasons]));
+        await tx.update(mimosaasTrackingPublicationRuns).set({
+          status: "pending",
+          sourceStates: built.sourceStates,
+          lastError: reasons.join(","),
+          updatedAt: new Date(),
+        }).where(eq(mimosaasTrackingPublicationRuns.id, publicationRun.id));
+        return { status: "pending", reasons };
+      }
+
+      const [published] = await tx.insert(mimosaasTrackingDailySnapshots).values(built.values)
+        .onConflictDoNothing({
+          target: [mimosaasTrackingDailySnapshots.campaignId, mimosaasTrackingDailySnapshots.reportingDate],
+        }).returning();
+      const snapshot = published || (await tx.select().from(mimosaasTrackingDailySnapshots).where(and(
+        eq(mimosaasTrackingDailySnapshots.campaignId, campaignId),
+        eq(mimosaasTrackingDailySnapshots.reportingDate, reportingDate),
+      )).limit(1))[0];
+      if (!snapshot) throw new Error("Failed to publish Mimosaas Tracking daily snapshot");
+
+      await tx.update(mimosaasTrackingPublicationRuns).set({
+        status: "finalized",
+        sourceStates: built.values.sourceStates,
+        lastError: null,
+        finalizedAt: now,
+        updatedAt: new Date(),
+      }).where(eq(mimosaasTrackingPublicationRuns.id, publicationRun.id));
+      return { status: published ? "published" : "finalized", reasons: [], snapshot };
     });
   }
 

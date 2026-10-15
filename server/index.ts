@@ -14,6 +14,8 @@ import { startGoogleAdsScheduler } from "./google-ads-scheduler";
 import { startInstagramScheduler } from "./instagram-scheduler";
 import { startTikTokScheduler } from "./tiktok-scheduler";
 import { startAlertEmailScheduler } from "./alert-email-scheduler";
+import { startMimosaasTrackingAttributionScheduler } from "./mimosaas-tracking-attribution-scheduler";
+import { startMimosaasTrackingDailyScheduler } from "./mimosaas-tracking-daily-scheduler";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { clerkMiddleware } from "@clerk/express";
@@ -1243,6 +1245,18 @@ process.on('uncaughtException', (error: Error) => {
           startAlertEmailScheduler();
         } catch (error) {
           console.error('Failed to start alert email scheduler:', error);
+        }
+
+        try {
+          startMimosaasTrackingAttributionScheduler();
+        } catch (error) {
+          console.error('Failed to start Mimosaas Tracking attribution scheduler:', error);
+        }
+
+        try {
+          startMimosaasTrackingDailyScheduler();
+        } catch (error) {
+          console.error('Failed to start Mimosaas Tracking daily scheduler:', error);
         }
       }, 5000); // 5 second delay
     });

@@ -3520,6 +3520,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     createdAt: connection.createdAt,
     updatedAt: connection.updatedAt,
   });
+  const publicMimosaasTrackingDailySnapshot = (snapshot: any) => ({
+    reportingDate: snapshot.reportingDate,
+    reportingTimeZone: snapshot.reportingTimeZone,
+    users: snapshot.users,
+    sessions: snapshot.sessions,
+    engagedSessions: snapshot.engagedSessions,
+    pageviews: snapshot.pageviews,
+    conversions: snapshot.conversions,
+    engagementRate: snapshot.engagementRate,
+    conversionRate: snapshot.conversionRate,
+    revenue: snapshot.revenue,
+    spend: snapshot.spend,
+    currency: snapshot.currency,
+    revenueStatus: snapshot.revenueStatus,
+    spendStatus: snapshot.spendStatus,
+    publishedAt: snapshot.publishedAt,
+  });
   const sendMimosaasWebsiteError = (res: any, error: any) => {
     if (String(error?.code || "").endsWith("_SCOPE_NOT_FOUND")) {
       return res.status(404).json({ success: false, message: "Website connection not found" });
@@ -3905,6 +3922,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         resolvedCampaignId: null,
         campaignResolutionStatus: "pending",
       }, connection.trackingSecretHash);
+      try {
+        await storage.resolveMimosaasTrackingUtmAttribution(connection.id, String(result.event.eventId));
+      } catch (attributionError) {
+        console.error("Mimosaas Tracking UTM attribution deferred for stored event:", result.event.eventId, attributionError);
+      }
       return res.status(202).json({ success: true, accepted: true, duplicate: !result.inserted });
     } catch (error: any) {
       const code = String(error?.code || "");
@@ -4003,6 +4025,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Mimosaas Tracking configuration fetch error:", error);
       return res.status(500).json({ success: false, message: "Failed to fetch Mimosaas Tracking configuration" });
+    }
+  });
+
+  app.get("/api/campaigns/:id/mimosaas-tracking/daily-snapshot", requireMimosaasTrackingIngestionFeature, requireCampaignAccessParamId, async (req, res) => {
+    try {
+      const campaign = (req as any)._campaign;
+      const snapshot = await storage.getLatestMimosaasTrackingDailySnapshot(
+        getActorId(req), String(campaign.clientId), String(campaign.id),
+      );
+      res.setHeader("Cache-Control", "no-store");
+      return res.json({ success: true, snapshot: snapshot ? publicMimosaasTrackingDailySnapshot(snapshot) : null });
+    } catch (error: any) {
+      if (String(error?.code || "").endsWith("_SCOPE_NOT_FOUND")) {
+        return res.status(404).json({ success: false, message: "Campaign not found" });
+      }
+      console.error("Mimosaas Tracking daily snapshot fetch error:", error);
+      return res.status(500).json({ success: false, message: "Failed to fetch Mimosaas Tracking daily snapshot" });
     }
   });
 

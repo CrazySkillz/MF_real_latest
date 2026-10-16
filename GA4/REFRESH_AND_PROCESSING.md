@@ -46,6 +46,14 @@ Attempt observations use the existing process-local scheduler-observation patter
 
 Local evidence and remaining deployment/provider checks are recorded in `docs/GA4_PROCESSING_AND_ALIGNMENT_BACKLOG.md`.
 
+### Retained Overview financial updates
+
+Overview warns when its saved financial snapshot covers an older reporting day than the displayed GA4 facts, or was saved before the displayed GA4 update on the same reporting day. The comparison uses the existing financial `reportingDate`/`recordedAt` and GA4 `latestStoredDailyDate`/`lastUpdated`, after checking campaign, primary-property selection, import start, currency and reporting timezone. Missing or incompatible metadata yields an unverified-comparison warning. Initial missing responses and previous-property placeholders do not create a comparison.
+
+The warning preserves the displayed figures. Revenue, Spend, ROAS, ROI and CPA retain the existing financial snapshot inputs; CPA retains that snapshot's conversions. A missing financial snapshot continues to render unavailable. The existing read polling updates the warning when a later financial snapshot arrives. No new provider call, refresh trigger, database write, calculation or reporting cutoff is introduced.
+
+This is a bounded Task 2 safeguard for silent partial updates. It does not identify which provider failed or distinguish an unfinished financial stage from a failed one. A later save timestamp is not proof of a shared refresh generation or completed Google processing. Pipeline Proxy, source lists, tables and downstream reports have separate paths; this warning does not certify their synchronization. The Overview-wide reporting note remains Task 3.
+
 ## Campaign Reporting Timezone Configuration
 
 The campaign reporting timezone is the source of truth for completed-day GA4 history in Insights Trends.

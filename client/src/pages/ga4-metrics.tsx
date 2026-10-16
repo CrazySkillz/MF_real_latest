@@ -35,7 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useClient } from "@/lib/clientContext";
 import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent, normalizeRateToPercent, formatPct } from "@shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
-import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "@shared/ga4-financial-source";
+import { normalizeGA4CampaignAllocationKey, resolveGA4OverviewFinancialRefreshWarning, selectGA4FinancialTotalsSource } from "@shared/ga4-financial-source";
 import { resolveExactGA4CampaignBreakdownRevenue } from "@shared/ga4-campaign-breakdown";
 import { resolveGA4InsightsExecutiveFinancials } from "@/lib/ga4-insights-executive-financials";
 import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy, resolveKpiDataSufficiency, computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "@shared/kpi-math";
@@ -2972,6 +2972,12 @@ export default function GA4Metrics() {
   const overviewFinancialROAS = overviewFinancialSpend > 0 ? overviewFinancialRevenue / overviewFinancialSpend : 0;
   const overviewFinancialROI = computeRoiPercent(overviewFinancialRevenue, overviewFinancialSpend);
   const overviewFinancialCPA = computeCpa(overviewFinancialSpend, overviewFinancialConversions);
+  const overviewFinancialRefreshWarning = ga4ConnectionUsable && !ga4DailyPlaceholder
+    ? resolveGA4OverviewFinancialRefreshWarning({
+        campaignId: String(campaignId || ""), currency: campaignCurrency,
+        selectedPropertyId: selectedGA4PropertyId, primaryPropertyId: primaryGA4PropertyId,
+        daily: ga4DailyResp, snapshot: overviewFinancialSnapshot,
+      }) : null;
   // Initial failures render at the affected card/table. Keep the page-wide warning
   // only for visible Overview values retained from a previous successful request.
   const overviewVisibleDataUsingLastGoodData = Boolean(
@@ -6620,6 +6626,15 @@ export default function GA4Metrics() {
                   <div className="mb-4 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
                     <span>Some Overview data could not refresh. Last successful values remain visible where available; unavailable values are marked.</span>
+                  </div>
+                )}
+
+                {activeTab === "overview" && overviewFinancialRefreshWarning && (
+                  <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm" role="status" data-testid="ga4-financial-refresh-warning">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span>{overviewFinancialRefreshWarning === "earlier_update"
+                      ? "Revenue, Spend and performance figures shown are from an earlier update than the GA4 figures. CPA uses the conversions saved with that earlier financial update."
+                      : "We cannot confirm that the financial figures and GA4 figures shown are from the same update. CPA uses the conversions saved with the financial figures."}</span>
                   </div>
                 )}
 

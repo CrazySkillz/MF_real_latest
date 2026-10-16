@@ -5,17 +5,18 @@ import {
   recordFinancialDailySnapshotRefreshEvidence,
 } from "./utils/financial-daily-snapshot-observation";
 import { writeFinancialDailySnapshotIfReady } from "./utils/financial-daily-snapshot-writer";
+import { resolveGA4OverviewFinancialRefreshWarning } from "../shared/ga4-financial-source";
 
 const campaignId = "campaign-1";
 const reportingDate = "2026-08-21";
 
-const successfulEvidence = () => {
+const successfulEvidence = (completedAt = "2026-08-22T22:05:00.000Z") => {
   for (const stage of ["financial_sources", "ga4_daily"] as const) {
     recordFinancialDailySnapshotRefreshEvidence(stage, {
       campaignId,
       reportingDate,
       status: "success",
-      completedAt: "2026-08-22T22:05:00.000Z",
+      completedAt,
       failures: [],
     });
   }
@@ -72,6 +73,40 @@ describe("gated financial daily snapshot writer", () => {
   beforeEach(() => {
     beginFinancialDailySnapshotRefreshObservation("financial_sources");
     beginFinancialDailySnapshotRefreshObservation("ga4_daily");
+  });
+
+  it("retains a complete earlier financial update on source failure and clears the Overview warning after recovery", async () => {
+    successfulEvidence("2026-08-22T08:05:00.000Z");
+    let recordedAt = "2026-08-22T08:06:00.000Z";
+    let saved: any;
+    const deps = dependencies({
+      upsertFinancialDailySnapshot: vi.fn(async ({ campaignId, reportingDate, ...financialDaily }: any) => {
+        saved = { campaignId, reportingDate, recordedAt, metrics: { financialDaily } };
+        return saved;
+      }),
+    });
+    await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps);
+    const morning = JSON.stringify(saved);
+    recordFinancialDailySnapshotRefreshEvidence("financial_sources", {
+      campaignId, reportingDate, status: "failed", completedAt: "2026-08-22T14:00:00.000Z", failures: ["provider_failed"],
+    });
+    recordFinancialDailySnapshotRefreshEvidence("ga4_daily", {
+      campaignId, reportingDate, status: "success", completedAt: "2026-08-22T14:05:00.000Z", failures: [],
+    });
+    expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps)).status).toBe("blocked");
+    expect(JSON.stringify(saved)).toBe(morning);
+    expect(deps.upsertFinancialDailySnapshot).toHaveBeenCalledTimes(1);
+    const statusInput = {
+      campaignId, currency: "USD", selectedPropertyId: "542352127", primaryPropertyId: "542352127",
+      daily: { propertyId: "542352127", overviewStartDate: "2026-07-02", latestStoredDailyDate: reportingDate,
+        reportingTimeZone: "Europe/Amsterdam", lastUpdated: "2026-08-22T14:05:00.000Z" },
+    };
+    expect(resolveGA4OverviewFinancialRefreshWarning({ ...statusInput, snapshot: saved })).toBe("earlier_update");
+    successfulEvidence();
+    recordedAt = "2026-08-22T22:06:00.000Z";
+    expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps)).status).toBe("written");
+    expect(resolveGA4OverviewFinancialRefreshWarning({ ...statusInput, snapshot: saved })).toBeNull();
+    expect(saved.metrics.financialDaily.inputs).toEqual(JSON.parse(morning).metrics.financialDaily.inputs);
   });
 
   it("upserts the authoritative cumulative values only after both refresh stages pass", async () => {

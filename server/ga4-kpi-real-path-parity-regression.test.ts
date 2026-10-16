@@ -12,6 +12,7 @@ const storageMock = vi.hoisted(() => ({
   getGA4DailyMetrics: vi.fn(),
   getLatestGA4DailyMetric: vi.fn(),
   getGA4OverviewSnapshot: vi.fn(),
+  getLatestFinancialDailySnapshot: vi.fn(),
   upsertGA4DailyMetrics: vi.fn(),
   replaceGA4DailyMetricsWindow: vi.fn(),
   getRevenueSources: vi.fn(),
@@ -98,6 +99,7 @@ import { shouldTriggerAlert } from "./kpi-notifications";
 import { registerRoutes } from "./routes-oauth";
 import { refreshAllGA4DailyMetrics } from "./ga4-daily-scheduler";
 import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE } from "./utils/reporting-timezone";
+import { resolveGA4OverviewFinancialRefreshWarning } from "../shared/ga4-financial-source";
 
 const campaign = {
   id: "ga4-parity-campaign",
@@ -634,6 +636,48 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(ga4ServiceMock.getTimeSeriesData).not.toHaveBeenCalled();
     expect(storageMock.upsertGA4DailyMetrics).not.toHaveBeenCalled();
     expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
+  });
+
+  it("exposes retained financial updates through the actual read APIs without hiding newer GA4 values", async () => {
+    vi.useRealTimers();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-08-01T14:10:00.000Z"));
+    storageMock.getGA4DailyMetrics.mockResolvedValue([{ ...dailyRow, updatedAt: "2026-08-01T14:05:00.000Z" }]);
+    const snapshot = {
+      campaignId: campaign.id, reportingDate: dailyRow.date, recordedAt: "2026-08-01T08:06:00.000Z",
+      metrics: { financialDaily: {
+        currency: "USD", currentValueWindow: {
+          startDate: connection.importStartDate, endDate: dailyRow.date, reportingTimeZone: campaign.reportingTimeZone,
+        },
+        inputs: { revenue: { value: "200.00", available: true }, spend: { value: "100.00", available: true }, conversions: { value: 4, available: true } },
+      } },
+    };
+    storageMock.getLatestFinancialDailySnapshot.mockResolvedValue(snapshot);
+    const financialUrl = `${baseUrl}/api/campaigns/${campaign.id}/financial-daily-snapshot?throughDate=${dailyRow.date}`;
+    const daily = await (await fetch(`${baseUrl}/api/campaigns/${campaign.id}/ga4-daily?days=30&propertyId=${encodeURIComponent(connection.propertyId)}`)).json();
+    const financialResponse = await fetch(financialUrl);
+    const financial = await financialResponse.json();
+    expect(financialResponse.status).toBe(200);
+    expect(financial.snapshot).toEqual(snapshot);
+    expect(daily.overviewTotals.conversions).toBe(5);
+    expect(financial.snapshot.metrics.financialDaily.inputs.conversions.value).toBe(4);
+    const input = { campaignId: campaign.id, currency: campaign.currency,
+      selectedPropertyId: connection.propertyId, primaryPropertyId: connection.propertyId, daily };
+    expect(resolveGA4OverviewFinancialRefreshWarning({ ...input, snapshot: financial.snapshot })).toBe("earlier_update");
+    storageMock.getLatestFinancialDailySnapshot.mockResolvedValue({ ...snapshot, recordedAt: "2026-08-01T14:06:00.000Z" });
+    const recovered = await (await fetch(financialUrl)).json();
+    expect(resolveGA4OverviewFinancialRefreshWarning({ ...input, snapshot: recovered.snapshot })).toBeNull();
+    expect(recovered.snapshot.metrics).toEqual(snapshot.metrics);
+    expect(storageMock.getLatestFinancialDailySnapshot).toHaveBeenCalledWith(campaign.id, dailyRow.date);
+    expect(ga4ServiceMock.getTimeSeriesData).not.toHaveBeenCalled();
+    expect(storageMock.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
+    expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
+    const reads = storageMock.getLatestFinancialDailySnapshot.mock.calls.length;
+    storageMock.getCampaign.mockResolvedValue({ ...campaign, ownerId: "other-owner" });
+    expect((await fetch(financialUrl)).status).toBe(404);
+    storageMock.getCampaign.mockResolvedValue(undefined);
+    expect((await fetch(financialUrl)).status).toBe(404);
+    expect(storageMock.getLatestFinancialDailySnapshot).toHaveBeenCalledTimes(reads);
   });
 
   it.each([

@@ -287,11 +287,20 @@ wrong-date or older-run source evidence retains the affected campaign's stored
 KPI/Benchmark current values and history, including the campaign-level recompute
 and traffic items in that job. GA4 daily facts can still refresh and healthy
 campaigns continue. A later successful source refresh permits normal recomputation.
-This guard applies only when the pipeline refreshes financial sources. The KPI
-and Benchmark tabs also calculate financial values from separate requests; their
-display alignment is not certified by this stored-value safeguard. Direct
-recompute callers and Benchmark same-day history remain unchanged. See the
-2026-10-17 Task 2 entry for the exact tests and remaining boundaries.
+This guard applies only when the pipeline refreshes financial sources. Direct
+recompute callers and Benchmark same-day history remain unchanged.
+
+The browser's standard financial KPI/Benchmark values now use the same saved
+financial response as Overview, including its conversion count for CPA. Direct
+tab entry loads that response. Availability, sufficiency, scoring summaries,
+browser KPI/Benchmark PDF sections and KPI/Benchmark-derived Insights findings
+use the same inputs and freshness gates. Earlier financial updates and cached
+snapshot read failures are retained without scoring; missing or incompatible
+inputs are unavailable. Editor prefills preserve the saved row value if no
+usable financial snapshot exists. Traffic/custom metrics keep their existing
+value sources. This does not certify server report/alert paths, general Insights
+financial totals, source lifecycle behavior or atomic publication. See the
+2026-10-17 Task 2 entries in the backlog for exact validation and remaining scope.
 
 If no Spend source is configured for the completed-day window, Spend remains
 explicitly unavailable and does not block GA4 traffic, native revenue,

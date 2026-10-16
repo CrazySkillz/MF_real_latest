@@ -1871,15 +1871,7 @@ export default function GA4Metrics() {
   };
 
   const getLiveBenchmarkCurrentValue = (metric: string, name?: string, currentValue?: unknown): number =>
-    Number(resolveGA4KpiLiveValue({
-      kpi: { metric, name, currentValue },
-      breakdownTotals,
-      overviewEngagementRate,
-      financialRevenue,
-      financialSpend,
-      financialROI,
-      financialCPA,
-    })) || 0;
+    Number(getLiveKpiValue({ metric, name, currentValue })) || 0;
 
   const { data: ga4DailyResp, isLoading: ga4Loading, error: ga4Error, isPlaceholderData: ga4DailyPlaceholder } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "ga4-daily", GA4_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId],
@@ -1977,7 +1969,7 @@ export default function GA4Metrics() {
 
   const { data: financialDailySnapshotResp, isLoading: financialDailySnapshotLoading, isError: financialDailySnapshotError } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "financial-daily-snapshot", ga4OverviewExpectedEndDate],
-    enabled: activeTab === "overview" && !!campaignId && !!ga4OverviewExpectedEndDate,
+    enabled: !!campaignId && !!ga4OverviewExpectedEndDate,
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
@@ -2827,8 +2819,8 @@ export default function GA4Metrics() {
   const getMissingDependenciesForMetric = (metricKey: string) => {
     const { requiresSpend, requiresRevenue } = getGA4KpiMetricDependencies(metricKey);
     const missing: Array<"Spend" | "Revenue"> = [];
-    if (requiresSpend && !spendMetricAvailable) missing.push("Spend");
-    if (requiresRevenue && ga4RevenueWindowState.missingRevenueDependency) missing.push("Revenue");
+    if (requiresSpend && !overviewFinancialSpendAvailable) missing.push("Spend");
+    if (requiresRevenue && !overviewFinancialRevenueAvailable) missing.push("Revenue");
     return { requiresSpend, requiresRevenue, missing };
   };
 
@@ -3082,6 +3074,20 @@ export default function GA4Metrics() {
     if (ga4Loading || ga4DailyResp === undefined) return "loading";
     return "ready";
   })();
+  // Financial cards and their consumers use the same saved inputs as Overview.
+  const getFinancialSnapshotKpiInputState = (available: boolean): GA4KpiInputState => {
+    if (kpiTrafficInputState === "loading" || financialDailySnapshotLoading) return "loading";
+    if (kpiTrafficInputState === "unavailable" || !overviewFinancialSnapshot || !available
+      || !selectedGA4PropertyId || selectedGA4PropertyId !== primaryGA4PropertyId
+      || (ga4DailyResp as any)?.propertyId !== selectedGA4PropertyId
+      || overviewFinancialRefreshWarning === "unverified") return "unavailable";
+    if (financialDailySnapshotError || kpiTrafficInputState === "stale"
+      || overviewFinancialRefreshWarning === "earlier_update") return "stale";
+    return "ready";
+  };
+  const snapshotRevenueKpiInputState = getFinancialSnapshotKpiInputState(overviewFinancialRevenueAvailable);
+  const snapshotSpendKpiInputState = getFinancialSnapshotKpiInputState(overviewFinancialSpendAvailable);
+  const snapshotConversionsKpiInputState = getFinancialSnapshotKpiInputState(overviewFinancialConversionsAvailable);
   const nativeRevenueKpiInputState: GA4KpiInputState = (() => {
     if (ga4ConnectionError) return ga4Connection === undefined ? "unavailable" : "stale";
     if (ga4ConnLoading || (ga4Connection?.connected && !selectedGA4PropertyId)) return "loading";
@@ -3138,14 +3144,22 @@ export default function GA4Metrics() {
 
   const getLiveKpiValue = (kpi: any): string => {
     // Cards and the browser PDF deliberately share this resolver and source model.
+    const { identity, requiresRevenue, requiresSpend } = getGA4KpiMetricDependencies(kpi?.metric, kpi?.name);
+    // Editors also use this resolver. Preserve their saved value when no usable
+    // snapshot exists; the consumer state keeps that value out of card scoring.
+    if ((requiresRevenue && ["loading", "unavailable"].includes(snapshotRevenueKpiInputState))
+      || (requiresSpend && ["loading", "unavailable"].includes(snapshotSpendKpiInputState))
+      || (identity === "cpa" && ["loading", "unavailable"].includes(snapshotConversionsKpiInputState))) {
+      return String(kpi?.currentValue ?? "0.00");
+    }
     return resolveGA4KpiLiveValue({
       kpi,
       breakdownTotals,
       overviewEngagementRate,
-      financialRevenue,
-      financialSpend,
-      financialROI,
-      financialCPA,
+      financialRevenue: overviewFinancialRevenue,
+      financialSpend: overviewFinancialSpend,
+      financialROI: overviewFinancialROI,
+      financialCPA: overviewFinancialCPA,
     });
   };
 
@@ -3162,8 +3176,8 @@ export default function GA4Metrics() {
       metric: name,
       name: kpi?.name,
       sessions: Number(breakdownTotals.sessions || 0),
-      conversions: Number(financialConversions || 0),
-      spend: Number(financialSpend || 0),
+      conversions: overviewFinancialConversions,
+      spend: overviewFinancialSpend,
     });
   };
 
@@ -3175,9 +3189,9 @@ export default function GA4Metrics() {
       name: kpi?.name,
       listState: kpiListState,
       trafficState: kpiTrafficInputState,
-      revenueState: revenueKpiInputState,
-      spendState: spendKpiInputState,
-      financialConversionsState: financialConversionsKpiInputState,
+      revenueState: snapshotRevenueKpiInputState,
+      spendState: snapshotSpendKpiInputState,
+      financialConversionsState: snapshotConversionsKpiInputState,
       missingDependencies: deps.missing,
       sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
     });
@@ -3195,8 +3209,8 @@ export default function GA4Metrics() {
       metric: String((benchmark as any)?.metric || ""),
       name: (benchmark as any)?.name,
       sessions: Number(getLiveBenchmarkCurrentValue("sessions") || 0),
-      conversions: Number(financialConversions || 0),
-      spend: Number(financialSpend || 0),
+      conversions: overviewFinancialConversions,
+      spend: overviewFinancialSpend,
     });
   };
 
@@ -3208,9 +3222,9 @@ export default function GA4Metrics() {
       name: benchmark?.name,
       listState: benchmarkListState,
       trafficState: trafficKpiInputState,
-      revenueState: revenueKpiInputState,
-      spendState: spendKpiInputState,
-      financialConversionsState: financialConversionsKpiInputState,
+      revenueState: snapshotRevenueKpiInputState,
+      spendState: snapshotSpendKpiInputState,
+      financialConversionsState: snapshotConversionsKpiInputState,
       missingDependencies: deps.missing,
       sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
       entityLabel: "Benchmark",
@@ -4830,7 +4844,9 @@ export default function GA4Metrics() {
       : "No scored KPI tolerance available";
     return { total: items.length, scored, above, near, below, blocked, insufficient, unavailable, stale, pending, avgPct, toleranceSummary, toleranceTitle };
     // computeKpiProgress depends on live values; include the main value inputs so the tracker updates correctly.
-  }, [platformKPIs, breakdownTotals, ga4Metrics, dailySummedTotals, financialSpend, financialRevenue, financialROI, financialCPA, financialConversions, spendMetricAvailable, revenueMetricAvailable, ga4NoCompletedWindow, ga4RevenueWindowState.sufficiencyReason, kpiListState, kpiTrafficInputState, revenueKpiInputState, spendKpiInputState]);
+  }, [platformKPIs, breakdownTotals, ga4Metrics, dailySummedTotals, financialSpend, financialRevenue, financialROI, financialCPA, financialConversions, spendMetricAvailable, revenueMetricAvailable, ga4NoCompletedWindow, ga4RevenueWindowState.sufficiencyReason, kpiListState, kpiTrafficInputState, revenueKpiInputState, spendKpiInputState,
+    overviewFinancialRevenue, overviewFinancialSpend, overviewFinancialROI, overviewFinancialCPA, overviewFinancialConversions,
+    snapshotRevenueKpiInputState, snapshotSpendKpiInputState, snapshotConversionsKpiInputState]);
 
   const benchmarkTracker = useMemo(() => {
     const items = Array.isArray(benchmarks) ? benchmarks : [];
@@ -4885,6 +4901,8 @@ export default function GA4Metrics() {
     trafficKpiInputState,
     revenueKpiInputState,
     spendKpiInputState,
+    overviewFinancialRevenue, overviewFinancialSpend, overviewFinancialROI, overviewFinancialCPA, overviewFinancialConversions,
+    snapshotRevenueKpiInputState, snapshotSpendKpiInputState, snapshotConversionsKpiInputState,
   ]);
 
   const insightsRollupRows = activeTab === "insights" || activeTab === "reports" ? ga4InsightsTimeSeries : ga4TimeSeries;
@@ -5107,9 +5125,9 @@ export default function GA4Metrics() {
       name: kpi?.name,
       listState: kpiListState,
       trafficState: schedulerSynchronizedTrafficState,
-      revenueState: revenueKpiInputState,
-      spendState: spendKpiInputState,
-      financialConversionsState: schedulerSynchronizedConversionsState,
+      revenueState: snapshotRevenueKpiInputState,
+      spendState: snapshotSpendKpiInputState,
+      financialConversionsState: snapshotConversionsKpiInputState,
       missingDependencies: deps.missing,
       sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
     });
@@ -5122,9 +5140,9 @@ export default function GA4Metrics() {
       name: benchmark?.name,
       listState: benchmarkListState,
       trafficState: schedulerSynchronizedTrafficState,
-      revenueState: revenueKpiInputState,
-      spendState: spendKpiInputState,
-      financialConversionsState: schedulerSynchronizedConversionsState,
+      revenueState: snapshotRevenueKpiInputState,
+      spendState: snapshotSpendKpiInputState,
+      financialConversionsState: snapshotConversionsKpiInputState,
       missingDependencies: deps.missing,
       sufficiencyReason: sufficiency.sufficient ? null : sufficiency.reason || "Required denominator data is not available.",
       entityLabel: "Benchmark",
@@ -5884,6 +5902,8 @@ export default function GA4Metrics() {
     recommendationChannelAnalysis,
     schedulerSynchronizedTrafficState,
     schedulerSynchronizedConversionsState,
+    overviewFinancialRevenue, overviewFinancialSpend, overviewFinancialROI, overviewFinancialCPA, overviewFinancialConversions,
+    snapshotRevenueKpiInputState, snapshotSpendKpiInputState, snapshotConversionsKpiInputState,
     kpiListState,
     kpiTrafficInputState,
     trafficKpiInputState,

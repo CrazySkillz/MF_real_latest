@@ -29,6 +29,8 @@ import {
   getCampaignMetricTotalsAtDate,
   refreshCampaignCurrentValuesForCampaign,
 } from "./utils/campaign-current-values";
+import { writeFinancialDailySnapshotIfReady } from "./utils/financial-daily-snapshot-writer";
+import { beginFinancialDailySnapshotRefreshObservation, recordFinancialDailySnapshotRefreshEvidence } from "./utils/financial-daily-snapshot-observation";
 
 describe("campaign current-value financial source contract", () => {
   beforeEach(() => {
@@ -59,6 +61,57 @@ describe("campaign current-value financial source contract", () => {
   });
 
   afterEach(() => vi.useRealTimers());
+
+  it.each(["", '["Sale_A","Sale_B"]'])("blocks publishing provider revisions ahead of saved GA4 conversions for scope %s", async (ga4CampaignFilter) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-22T12:00:00.000Z"));
+    const campaignId = "campaign-1";
+    const reportingDate = "2026-08-21";
+    storageMock.getCampaign.mockResolvedValue({ id: campaignId, currency: "USD", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter });
+    const [primary] = await storageMock.getGA4Connections();
+    storageMock.getGA4Connections.mockResolvedValue([{ ...primary, propertyId: "properties/999", isPrimary: false }, primary]);
+    storageMock.getGA4DailyMetrics.mockResolvedValue([{ revenue: 200, conversions: 10 }, { revenue: 300, conversions: 15 }]);
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ totals: { revenue: 500, conversions: 25 } });
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 300, currency: "USD", sourceIds: ["revenue-1"] });
+    storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 100, currency: "USD", sourceIds: ["spend-1"] });
+    for (const stage of ["financial_sources", "ga4_daily"] as const) {
+      beginFinancialDailySnapshotRefreshObservation(stage);
+      recordFinancialDailySnapshotRefreshEvidence(stage, {
+        campaignId, reportingDate, status: "success", completedAt: "2026-08-22T10:00:00.000Z", failures: [],
+      });
+    }
+    let saved: unknown;
+    const deps = {
+      getCampaign: storageMock.getCampaign,
+      getGA4Connections: storageMock.getGA4Connections,
+      getCampaignMetricTotals,
+      getSpendSources: vi.fn().mockResolvedValue([{ id: "spend-1", isActive: true, createdAt: "2026-07-01T00:00:00.000Z" }]),
+      getRevenueTotalForRange: storageMock.getRevenueTotalForRange,
+      getSpendTotalForRange: storageMock.getSpendTotalForRange,
+      upsertFinancialDailySnapshot: vi.fn(async (snapshot) => { saved = snapshot; }),
+      now: () => new Date(),
+    };
+    expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps)).status).toBe("written");
+    const previous = JSON.stringify(saved);
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ totals: { revenue: 1000, conversions: 40 } });
+    expect(await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps)).toEqual({
+      status: "blocked", reasons: ["ga4_conversion_total_mismatch"],
+    });
+    expect(JSON.stringify(saved)).toBe(previous);
+    expect(deps.upsertFinancialDailySnapshot).toHaveBeenCalledTimes(1);
+    expect(storageMock.getGA4DailyMetrics).toHaveBeenLastCalledWith(campaignId, "properties/123", "2026-07-01", reportingDate);
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenLastCalledWith(
+      "properties/123", "token", "2026-07-01", reportingDate, ga4CampaignFilter ? ["sale_a", "sale_b"] : [], "USD",
+    );
+    expect(storageMock.getRevenueTotalForRange).toHaveBeenLastCalledWith(campaignId, "1900-01-01", reportingDate, "ga4");
+    expect(storageMock.getSpendTotalForRange).toHaveBeenLastCalledWith(campaignId, "1900-01-01", reportingDate, "ga4");
+
+    storageMock.getGA4DailyMetrics.mockResolvedValue([{ revenue: 1000, conversions: 40 }]);
+    expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps)).status).toBe("written");
+    expect(saved).toMatchObject({ inputs: {
+      conversions: { available: true, value: 40 }, revenue: { available: true, value: "1300.00" }, spend: { available: true, value: "100.00" },
+    } });
+  });
 
   it("keeps native revenue and conversions on the import window while retaining source-to-date imports", async () => {
     vi.useFakeTimers();

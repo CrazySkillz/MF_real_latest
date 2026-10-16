@@ -69,6 +69,13 @@ export async function writeFinancialDailySnapshotIfReady(
   if (totals.ga4FinancialSource === "rolling_breakdown") {
     return { status: "blocked", reasons: ["non_cumulative_ga4_financial_source"] };
   }
+  // The later financial provider request must agree with the saved GA4 conversion count.
+  if (totals.ga4Available !== true || !Number.isFinite(totals.conversions)) {
+    return { status: "blocked", reasons: ["saved_ga4_conversions_unavailable"] };
+  }
+  if (totals.financialConversionsAvailable !== false && totals.financialConversions !== totals.conversions) {
+    return { status: "blocked", reasons: ["ga4_conversion_total_mismatch"] };
+  }
 
   const currency = String(campaign.currency || "USD").trim().toUpperCase();
   const spendConfigured = (spendSources || []).some((source: any) =>

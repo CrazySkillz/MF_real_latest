@@ -141,6 +141,58 @@ describe("gated financial daily snapshot writer", () => {
     });
   });
 
+  it.each([252, 250, 0])("retains the prior snapshot when fresh GA4 conversions change to %s until the saved counts agree", async (financialConversions) => {
+    successfulEvidence();
+    let saved: unknown;
+    const deps = dependencies({
+      upsertFinancialDailySnapshot: vi.fn(async (snapshot) => { saved = snapshot; }),
+    });
+    const totals = await deps.getCampaignMetricTotals();
+    expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps)).status).toBe("written");
+    const previous = JSON.stringify(saved);
+    deps.getCampaignMetricTotals.mockResolvedValue({ ...totals, financialConversions });
+
+    expect(await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps)).toEqual({
+      status: "blocked", reasons: ["ga4_conversion_total_mismatch"],
+    });
+    expect(JSON.stringify(saved)).toBe(previous);
+    expect(deps.upsertFinancialDailySnapshot).toHaveBeenCalledTimes(1);
+
+    deps.getCampaignMetricTotals.mockResolvedValue({ ...totals, conversions: financialConversions, financialConversions });
+    expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps)).status).toBe("written");
+    expect(deps.upsertFinancialDailySnapshot).toHaveBeenCalledTimes(2);
+    expect(saved).toMatchObject({ inputs: { conversions: { available: true, value: financialConversions } } });
+  });
+
+  it.each([
+    { ga4Available: false },
+    { ga4Available: undefined },
+    { conversions: undefined },
+    { conversions: NaN },
+  ])("blocks an unverified saved GA4 count: %j", async (unverified) => {
+    successfulEvidence();
+    const deps = dependencies();
+    deps.getCampaignMetricTotals.mockResolvedValue({ ...(await deps.getCampaignMetricTotals()), ...unverified });
+
+    expect(await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps)).toEqual({
+      status: "blocked", reasons: ["saved_ga4_conversions_unavailable"],
+    });
+    expect(deps.upsertFinancialDailySnapshot).not.toHaveBeenCalled();
+  });
+
+  it("still blocks unavailable financial conversions even when their numeric placeholder matches", async () => {
+    successfulEvidence();
+    const deps = dependencies();
+    deps.getCampaignMetricTotals.mockResolvedValue({
+      ...(await deps.getCampaignMetricTotals()), conversions: 0, financialConversions: 0, financialConversionsAvailable: false,
+    });
+
+    const result = await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps);
+    expect(result.status).toBe("blocked");
+    expect(result.reasons).toContain("conversions_unavailable");
+    expect(deps.upsertFinancialDailySnapshot).not.toHaveBeenCalled();
+  });
+
   it("includes every external revenue source when native GA4 revenue is a verified zero", async () => {
     successfulEvidence();
     const deps = dependencies({

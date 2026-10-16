@@ -56,6 +56,8 @@ This is a bounded Task 2 safeguard for silent partial updates. It does not ident
 
 Overview now presents reporting cutoffs above Summary: the selected property's saved GA4 date for Summary/tables and the financial snapshot's saved date for available Revenue, Spend, ROAS, ROI and CPA. The duplicate dates inside the Revenue/Spend cards are removed. These are data-through dates, not successful refresh times, and they remain separate when the stored cutoffs differ. A configured Pipeline Proxy is identified as latest available CRM stage values. The complete reporting window, update times, schedule and provisional-data wording remain outstanding under Task 3.
 
+The financial snapshot writer also rejects an available financial conversion count that differs from the persisted GA4 conversion total read for the same import-to-yesterday window. It rejects an unavailable/invalid saved count, preserves the previous financial snapshot on rejection, and permits a later matching refresh, including zero. This prevents the later financial provider request from publishing a different CPA denominator at that boundary. It does not establish an atomic publication, compare native Revenue revisions, or prove that Google has finished processing. Local reproduction and remaining checks are recorded under Task 2 in the backlog.
+
 ## Campaign Reporting Timezone Configuration
 
 The campaign reporting timezone is the source of truth for completed-day GA4 history in Insights Trends.

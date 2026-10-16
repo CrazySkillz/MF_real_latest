@@ -270,6 +270,17 @@ partial financial results. It does not block another active campaign from
 completing its own ordered publication, although the overall scheduler status
 still records the failed provider job.
 
+Daily source discovery must also succeed. Rejected Revenue/Spend source-list
+reads now reach the existing campaign error handler rather than becoming empty
+lists and successful refresh evidence. That campaign keeps its previous financial
+snapshot; later campaigns continue and a successful retry can publish normally.
+The shared financial handlers also propagate unexpected exceptions to that
+handler, stopping the rest of that campaign's financial work for the current run.
+Actual empty lists remain valid. Mocked pipeline tests cover all 21 discovery
+positions, retention/recovery and the configured 08:00/14:00/20:00 timer paths;
+they do not certify live source materialization or downstream job calculations.
+See the Task 2 source-discovery entry in the processing/alignment backlog.
+
 If no Spend source is configured for the completed-day window, Spend remains
 explicitly unavailable and does not block GA4 traffic, native revenue,
 conversions, KPI/Benchmark recompute, or downstream snapshot publication. Once

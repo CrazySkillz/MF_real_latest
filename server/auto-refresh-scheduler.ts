@@ -1102,7 +1102,7 @@ export async function runDailyAutoRefreshOnce(
         // HubSpot revenue sources are the source of truth for saved campaign mappings.
         let hubspotRevenueCount = 0;
         for (const ctx of crmRevenueContexts) {
-          const hubspotRevenueSources = (await storage.getRevenueSources(campaignId, ctx).catch(() => [] as any[]))
+          const hubspotRevenueSources = (await storage.getRevenueSources(campaignId, ctx))
             .filter((s: any) => s && s.isActive !== false && String(s.sourceType || "").toLowerCase() === "hubspot");
           for (const hubspotSource of hubspotRevenueSources) {
             hubspotRevenueCount++;
@@ -1121,7 +1121,7 @@ export async function runDailyAutoRefreshOnce(
         // Salesforce revenue sources are the source of truth for saved campaign mappings.
         let salesforceRevenueCount = 0;
         for (const ctx of crmRevenueContexts) {
-          const salesforceRevenueSources = (await storage.getRevenueSources(campaignId, ctx).catch(() => [] as any[]))
+          const salesforceRevenueSources = (await storage.getRevenueSources(campaignId, ctx))
             .filter((s: any) => s && s.isActive !== false && String(s.sourceType || "").toLowerCase() === "salesforce");
           for (const salesforceSource of salesforceRevenueSources) {
             salesforceRevenueCount++;
@@ -1145,7 +1145,7 @@ export async function runDailyAutoRefreshOnce(
         // Shopify revenue sources are the source of truth for saved campaign mappings.
         let shopifyRevenueCount = 0;
         for (const ctx of refreshableRevenueContexts) {
-          const shopifyRevenueSources = (await storage.getRevenueSources(campaignId, ctx).catch(() => [] as any[]))
+          const shopifyRevenueSources = (await storage.getRevenueSources(campaignId, ctx))
             .filter((s: any) => s && s.isActive !== false && String(s.sourceType || "").toLowerCase() === "shopify");
           for (const shopifySource of shopifyRevenueSources) {
             shopifyRevenueCount++;
@@ -1164,7 +1164,7 @@ export async function runDailyAutoRefreshOnce(
 
         // Google Sheets (Spend) — process ALL active Sheets spend sources
         try {
-          const spendSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
+          const spendSources = await storage.getSpendSources(campaignId);
           const sheetSpendSources = (Array.isArray(spendSources) ? spendSources : []).filter((s: any) => {
             return !!s && (s as any).isActive !== false && String((s as any).sourceType || "") === "google_sheets";
           });
@@ -1178,13 +1178,13 @@ export async function runDailyAutoRefreshOnce(
             }
           }
           if (sheetSpendSources.length === 0) skipped++;
-        } catch {
-          // ignore
+        } catch (error) {
+          throw error; // Let the campaign handler block publication when source discovery fails.
         }
 
         // LinkedIn Ads (Spend)
         try {
-          const spendSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
+          const spendSources = await storage.getSpendSources(campaignId);
           const linkedInSpend = (Array.isArray(spendSources) ? spendSources : []).find((s: any) => {
             return !!s && (s as any).isActive !== false && String((s as any).sourceType || "") === "linkedin_api";
           });
@@ -1197,13 +1197,13 @@ export async function runDailyAutoRefreshOnce(
           } else {
             skipped++;
           }
-        } catch {
-          // ignore
+        } catch (error) {
+          throw error;
         }
 
         // Ad Platform Spend (Google Ads / Meta) — pull from daily metrics tables
         try {
-          const spendSrcs = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
+          const spendSrcs = await storage.getSpendSources(campaignId);
           let ga4GoogleAdsRefreshAttempted = false;
           for (const src of (Array.isArray(spendSrcs) ? spendSrcs : [])) {
             if ((src as any).isActive === false) continue;
@@ -1313,13 +1313,14 @@ export async function runDailyAutoRefreshOnce(
           }
         } catch (err: any) {
           console.error(`[Auto Refresh] Ad platform spend reprocess failed for campaign ${campaignId}:`, err?.message || err);
+          throw err;
         }
 
         // Google Sheets (Revenue) — process ALL active Sheets revenue sources across all platform contexts
         try {
           let sheetRevCount = 0;
           for (const ctx of refreshableRevenueContexts) {
-            const revenueSources = await storage.getRevenueSources(campaignId, ctx).catch(() => [] as any[]);
+            const revenueSources = await storage.getRevenueSources(campaignId, ctx);
             const sheetRevSources = (Array.isArray(revenueSources) ? revenueSources : []).filter((s: any) => {
               return !!s && (s as any).isActive !== false && String((s as any).sourceType || "") === "google_sheets";
             });
@@ -1336,8 +1337,8 @@ export async function runDailyAutoRefreshOnce(
             }
           }
           if (sheetRevCount === 0) skipped++;
-        } catch {
-          // ignore
+        } catch (error) {
+          throw error;
         }
 
         // Google Sheets (Raw Data Cache — for Overview/Summary/Insights tabs)

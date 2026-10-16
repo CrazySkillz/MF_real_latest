@@ -62,7 +62,7 @@ import {
   resolveGA4KpiMetricIdentity,
 } from "../shared/ga4-kpi-metric-identity";
 import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getGA4HistoricalImportStartDate, getLatestCompleteReportingDate, getReportingDateWindow, isCreatedThroughReportingDate, normalizeReportingTimeZone, resolveGA4DailyFreshness, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getExpectedScheduledRefreshAt, getGA4HistoricalImportStartDate, getLatestCompleteReportingDate, getReportingDateWindow, isCreatedThroughReportingDate, normalizeReportingTimeZone, resolveGA4DailyFreshness, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
@@ -9296,8 +9296,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reportingWindow = getReportingDateWindow(days, (campaign as any)?.reportingTimeZone);
       const { startDate, endDate, dataThroughDate, reportingTimeZone } = reportingWindow;
       const schedulerConfig = getGA4DailySchedulerConfig();
-      const expectedRefreshAt = getExpectedDailyRefreshAt(dataThroughDate, schedulerConfig.reportingTimeZone, schedulerConfig.hour, schedulerConfig.minute);
-      const expectedRefreshAtISO = expectedRefreshAt ? expectedRefreshAt.toISOString() : null;
       const addDateOnlyDays = (value: string, daysToAdd: number): string | null => {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return null;
         const d = new Date(`${value}T00:00:00.000Z`);
@@ -9321,6 +9319,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return missingExpectedRefreshAt && missingExpectedRefreshAt.getTime() <= now.getTime() ? oldestMissingDate : null;
       };
       const buildFreshness = (lastCompletedRefreshAt: string | null, latestStoredDailyDate: string | null, providerRefreshWarning: string | null = null, providerCoverageThroughDate: string | null = null, now = new Date()) => {
+        const expectedRefreshAt = getExpectedScheduledRefreshAt(dataThroughDate, schedulerConfig, now);
+        const expectedRefreshAtISO = expectedRefreshAt ? expectedRefreshAt.toISOString() : null;
         const freshness = resolveGA4DailyFreshness({
           dataThroughDate,
           expectedRefreshAt,

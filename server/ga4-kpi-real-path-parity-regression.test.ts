@@ -635,6 +635,50 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
     expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["11:59:00", "06:05:00", "06:00:00", false],
+    ["12:00:00", "06:05:00", "12:00:00", true],
+    ["12:10:00", "12:05:00", "12:00:00", false],
+    ["18:00:00", "12:05:00", "18:00:00", true],
+    ["18:10:00", "18:05:00", "18:00:00", false],
+  ])("checks every configured GA4 refresh at %s with stored update %s", async (time, updatedTime, expectedTime, stale) => {
+    vi.useRealTimers();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(`2026-08-01T${time}.000Z`));
+    vi.stubEnv("GA4_DAILY_REFRESH_TIME_ZONE", "Europe/Amsterdam");
+    vi.stubEnv("GA4_DAILY_REFRESH_HOURS", "20,8,14,8");
+    vi.stubEnv("GA4_DAILY_REFRESH_MINUTE", "0");
+    const updatedAt = `2026-08-01T${updatedTime}.000Z`;
+    const rows = Array.from({ length: 30 }, (_, index) => ({
+      ...dailyRow, date: `2026-07-${String(index + 2).padStart(2, "0")}`, updatedAt,
+    }));
+    storageMock.getGA4DailyMetrics.mockResolvedValue(rows);
+    try {
+      const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/ga4-daily?days=30&propertyId=${encodeURIComponent(connection.propertyId)}`);
+      const body = await response.json();
+      expect(response.status).toBe(200);
+      expect(body).toMatchObject({
+        dataThroughDate: "2026-07-31",
+        expectedRefreshAt: `2026-08-01T${expectedTime}.000Z`,
+        refreshScheduleTimeZone: "Europe/Amsterdam",
+        refreshIsStale: stale,
+        lastCompletedRefreshAt: updatedAt,
+        schedulerCoverageComplete: true,
+        providerRefreshAttempted: false,
+        providerRefreshOutcome: "read_only",
+        overviewTotals: { sessions: 3000, conversions: 150 },
+      });
+      expect(body.data).toHaveLength(30);
+      expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith(campaign.id, connection.propertyId, "2026-07-02", "2026-07-31");
+      expect(ga4ServiceMock.getTimeSeriesData).not.toHaveBeenCalled();
+      expect(storageMock.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
+      expect(storageMock.upsertGA4DailyMetrics).not.toHaveBeenCalled();
+      expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("ignores mutation-capable ga4-daily requests and serves scheduler storage only", async () => {
     storageMock.getGA4DailyMetrics.mockResolvedValue([]);
     ga4ServiceMock.getTimeSeriesData.mockResolvedValue([{ ...dailyRow, date: "2026-07-31", sessions: "not-a-number" }]);

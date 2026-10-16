@@ -21,7 +21,7 @@ import {
 import { summarizeGA4TrafficRows } from "../../shared/ga4-traffic-window";
 import { applyAlertDataSufficiency, blockAlertDecision } from "./alert-decision";
 import { resolveCampaignCurrentValueForAlert } from "./campaign-current-values";
-import { getExpectedDailyRefreshAt, resolveGA4DailyFreshness } from "./reporting-timezone";
+import { getExpectedDailyRefreshAt, getExpectedScheduledRefreshAt, resolveGA4DailyFreshness } from "./reporting-timezone";
 import { isSupportedGA4ConnectionMethod } from "./ga4-service-account";
 
 const isGA4Platform = (value: unknown) => {
@@ -43,7 +43,7 @@ type StoredGA4TrafficFreshnessInput = {
   startDate: string;
   dataThroughDate: string;
   now?: Date;
-  schedulerConfig?: { reportingTimeZone: string; hour: number; minute: number };
+  schedulerConfig?: { reportingTimeZone: string; hour: number; hours?: number[]; minute: number };
   providerCoverageThroughDate?: string | null;
 };
 
@@ -63,9 +63,13 @@ const boundedSchedulerValue = (value: unknown, fallback: number, max: number) =>
 export function resolveStoredGA4TrafficFreshness(input: StoredGA4TrafficFreshnessInput) {
   const rows = Array.isArray(input.rows) ? input.rows : [];
   const now = input.now || new Date();
+  const configuredHours = String(process.env.GA4_DAILY_REFRESH_HOURS || "").split(",")
+    .map((value) => value.trim()).filter((value) => /^\d{1,2}$/.test(value))
+    .map(Number).filter((value) => value >= 0 && value <= 23).sort((a, b) => a - b);
   const schedulerConfig = input.schedulerConfig || {
     reportingTimeZone: process.env.GA4_DAILY_REFRESH_TIME_ZONE || "UTC",
-    hour: boundedSchedulerValue(process.env.GA4_DAILY_REFRESH_HOUR, 3, 23),
+    hour: configuredHours[0] ?? boundedSchedulerValue(process.env.GA4_DAILY_REFRESH_HOUR, 3, 23),
+    hours: configuredHours,
     minute: boundedSchedulerValue(process.env.GA4_DAILY_REFRESH_MINUTE, 0, 59),
   };
   const dates = rows
@@ -94,7 +98,7 @@ export function resolveStoredGA4TrafficFreshness(input: StoredGA4TrafficFreshnes
 
   return resolveGA4DailyFreshness({
     dataThroughDate: input.dataThroughDate,
-    expectedRefreshAt: getExpectedDailyRefreshAt(input.dataThroughDate, schedulerConfig.reportingTimeZone, schedulerConfig.hour, schedulerConfig.minute),
+    expectedRefreshAt: getExpectedScheduledRefreshAt(input.dataThroughDate, schedulerConfig, now),
     lastCompletedRefreshAt,
     oldestDueMissingDailyDate,
     providerCoverageThroughDate: input.providerCoverageThroughDate || null,

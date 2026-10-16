@@ -193,6 +193,18 @@ export function getExpectedDailyRefreshAt(dataThroughDate: any, reportingTimeZon
   return zonedDateTimeToUTC(normalizeReportingTimeZone(reportingTimeZone), refreshDay.year, refreshDay.month, refreshDay.day, safeHour, safeMinute);
 }
 
+export function getExpectedScheduledRefreshAt(dataThroughDate: any, config: {
+  reportingTimeZone: string; hour: number; hours?: number[]; minute: number;
+}, now = new Date()): Date | null {
+  const hours = config.hours?.length ? config.hours : [config.hour];
+  const expected = hours
+    .map((hour) => getExpectedDailyRefreshAt(dataThroughDate, config.reportingTimeZone, hour, config.minute))
+    .filter((date): date is Date => date !== null)
+    .sort((a, b) => a.getTime() - b.getTime());
+  // Before the first run, retain its upcoming deadline; later, require the latest due run.
+  return expected.filter((date) => date.getTime() <= now.getTime()).at(-1) || expected[0] || null;
+}
+
 export function resolveGA4DailyFreshness(input: {
   dataThroughDate: string;
   expectedRefreshAt: Date | null;

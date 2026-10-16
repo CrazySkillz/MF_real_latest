@@ -31,6 +31,11 @@ export function recordFinancialDailySnapshotRefreshEvidence(
   evidenceByStage[stage].set(String(evidence.campaignId || "").trim(), evidence);
 }
 
+export function getFinancialDailySnapshotRefreshEvidence(stage: RefreshStage, campaignId: string): FinancialDailyRefreshEvidence | null {
+  const evidence = evidenceByStage[stage].get(String(campaignId || "").trim());
+  return evidence ? { ...evidence, failures: [...evidence.failures] } : null;
+}
+
 const missingEvidence = (
   campaignId: string,
   reportingDate: string,

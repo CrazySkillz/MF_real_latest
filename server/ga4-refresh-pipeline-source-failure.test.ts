@@ -6,11 +6,16 @@ const mocks = vi.hoisted(() => ({
     getRevenueSources: vi.fn(), getSpendSources: vi.fn(), getGA4DailyMetrics: vi.fn(),
     getGA4OverviewSnapshot: vi.fn(), replaceGA4DailyMetricsWindow: vi.fn(),
     getRevenueTotalForRange: vi.fn(), getSpendTotalForRange: vi.fn(), upsertFinancialDailySnapshot: vi.fn(),
+    getRevenueBreakdownBySource: vi.fn(), getSpendBreakdownBySource: vi.fn(),
     markExecutiveSummaryDailySnapshotAligned: vi.fn(),
+    getPlatformKPIs: vi.fn(), getPlatformBenchmarks: vi.fn(), getCampaignKPIs: vi.fn(), getCampaignBenchmarks: vi.fn(),
+    getKPIProgress: vi.fn(), updateKPI: vi.fn(), recordKPIProgress: vi.fn(), updateKPIProgress: vi.fn(),
+    getBenchmarkHistory: vi.fn(), updateBenchmark: vi.fn(), recordBenchmarkHistory: vi.fn(),
   },
   provider: {
     getTimeSeriesData: vi.fn(), getTrendsDailyPresenceWithToken: vi.fn(), getAcquisitionBreakdown: vi.fn(),
     getLandingPagesReport: vi.fn(), getConversionEventsReport: vi.fn(),
+    getTotalsWithRevenue: vi.fn(),
   },
   totals: vi.fn(), recompute: vi.fn(), aggregate: vi.fn(), executive: vi.fn(),
   kpiAlerts: vi.fn(), benchmarkAlerts: vi.fn(), globalKpiAlerts: vi.fn(), globalBenchmarkAlerts: vi.fn(),
@@ -37,6 +42,7 @@ import {
   getGA4DailySchedulerStatus, runGA4DailyRefreshPipelineForCampaignNow, startGA4DailyScheduler, stopGA4DailyScheduler,
 } from "./ga4-daily-scheduler";
 import { getAutoRefreshSchedulerStatus, runDailyAutoRefreshOnce } from "./auto-refresh-scheduler";
+import * as financialObservation from "./utils/financial-daily-snapshot-observation";
 
 // Run the real orchestration, source discovery, daily reconciliation, evidence and financial writer.
 // Provider/database boundaries and downstream jobs are mocked; this is not live E2E certification.
@@ -48,10 +54,10 @@ describe("GA4 ordered refresh source-discovery failures", () => {
   let daily: Map<string, any[]>;
   const connection = (id: string) => ({
     id: `${id}-connection`, campaignId: id, propertyId: `${id}-property`, isActive: true, isPrimary: true,
-    importStartDate: reportingDate, accessToken: "test-token",
+    importStartDate: reportingDate, accessToken: "test-token", method: "access_token",
   });
   const source = (id: string, kind: string) => ({
-    id: `${id}-${kind}`, campaignId: id, sourceType: "custom_upload", platformContext: "ga4",
+    id: `${id}-${kind}`, campaignId: id, sourceType: "csv", platformContext: "ga4",
     currency: "EUR", isActive: true, createdAt: "2026-10-01T00:00:00Z",
   });
   const totals = () => ({
@@ -89,6 +95,7 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     });
     mocks.storage.getRevenueTotalForRange.mockImplementation(async (id) => ({ totalRevenue: 300, currency: "EUR", sourceIds: [`${id}-revenue`] }));
     mocks.storage.getSpendTotalForRange.mockImplementation(async (id) => ({ totalSpend: 100, currency: "EUR", sourceIds: [`${id}-spend`] }));
+    mocks.storage.getRevenueBreakdownBySource.mockResolvedValue([]); mocks.storage.getSpendBreakdownBySource.mockResolvedValue([]);
     mocks.storage.upsertFinancialDailySnapshot.mockImplementation(async (snapshot) => {
       saved.set(snapshot.campaignId, structuredClone(snapshot));
       return { id: `${snapshot.campaignId}-snapshot` };
@@ -106,6 +113,12 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     }));
     mocks.aggregate.mockResolvedValue(true); mocks.executive.mockResolvedValue(true);
     mocks.storage.markExecutiveSummaryDailySnapshotAligned.mockResolvedValue(true);
+    mocks.storage.getPlatformKPIs.mockResolvedValue([]); mocks.storage.getPlatformBenchmarks.mockResolvedValue([]);
+    mocks.storage.getCampaignKPIs.mockResolvedValue([]); mocks.storage.getCampaignBenchmarks.mockResolvedValue([]);
+    mocks.storage.getKPIProgress.mockResolvedValue([]); mocks.storage.getBenchmarkHistory.mockResolvedValue([]);
+    mocks.storage.recordKPIProgress.mockResolvedValue({ id: "progress" });
+    mocks.storage.recordBenchmarkHistory.mockResolvedValue({ id: "history" });
+    mocks.provider.getTotalsWithRevenue.mockResolvedValue({ currencyCode: "EUR", totals: { users: 80, sessions: 100, pageviews: 120, conversions: 25, revenue: 500 } });
     for (const flag of ["__ga4DailyRefreshInProgress", "__autoRefreshInProgress", "__googleSheetsSpendRefreshInProgress", "__salesforcePipelineRefreshInProgress"]) {
       (global as any)[flag] = false;
     }
@@ -167,6 +180,89 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     mocks.totals.mockResolvedValue({ ...totals(), revenue: 500, spend: 0, spendAvailable: false });
     await runGA4DailyRefreshPipelineForCampaignNow("campaign-a");
     expect(saved.get("campaign-a").inputs).toMatchObject({ revenue: { value: "500.00", available: true }, spend: { available: false } });
+  });
+
+  it.each(["Revenue discovery", "Spend discovery", "Revenue HTTP", "Spend HTTP"])(
+    "preserves real KPI/Benchmark current values and history after a failed %s refresh, then updates on recovery",
+    async (failure) => {
+      const { runGA4DailyKPIAndBenchmarkJobs } = await vi.importActual<typeof import("./ga4-kpi-benchmark-jobs")>("./ga4-kpi-benchmark-jobs");
+      mocks.recompute.mockImplementation(runGA4DailyKPIAndBenchmarkJobs);
+      const metrics = ["revenue", "roas", "roi", "cpa", "sessions"];
+      const kpis = metrics.map((metric) => ({ id: `kpi-${metric}`, campaignId: "campaign-a", platformType: "google_analytics", metric, currentValue: "17" }));
+      const benchmarks = metrics.map((metric) => ({ id: `benchmark-${metric}`, campaignId: "campaign-a", platformType: "google_analytics", metric, currentValue: "19", benchmarkValue: "30" }));
+      const priorKpis = structuredClone(kpis);
+      const priorBenchmarks = structuredClone(benchmarks);
+      mocks.storage.getPlatformKPIs.mockResolvedValue(kpis);
+      mocks.storage.getPlatformBenchmarks.mockResolvedValue(benchmarks);
+      mocks.storage.updateKPI.mockImplementation(async (id, update) => Object.assign(kpis.find((row) => row.id === id)!, update));
+      mocks.storage.updateBenchmark.mockImplementation(async (id, update) => Object.assign(benchmarks.find((row) => row.id === id)!, update));
+      if (failure === "Revenue discovery") mocks.storage.getRevenueSources.mockRejectedValueOnce(new Error("Revenue list failed"));
+      if (failure === "Spend discovery") mocks.storage.getSpendSources.mockRejectedValueOnce(new Error("Spend list failed"));
+      if (failure === "Revenue HTTP") mocks.storage.getRevenueSources.mockImplementation(async (id, ctx) => ctx === "ga4" ? [{
+        ...source(id, "revenue"), sourceType: "hubspot", mappingConfig: JSON.stringify({ selectedValues: ["autumn"], revenueProperty: "amount" }),
+      }] : []);
+      if (failure === "Spend HTTP") mocks.storage.getSpendSources.mockImplementation(async (id) => [{
+        ...source(id, "spend"), sourceType: "google_sheets", mappingConfig: JSON.stringify({ connectionId: "sheet-connection-a", spendColumn: "Spend" }),
+      }]);
+      if (failure.endsWith("HTTP")) vi.mocked(fetch).mockResolvedValueOnce(new Response("{}", { status: 503 }));
+      await expect(runGA4DailyRefreshPipelineForCampaignNow("campaign-a")).rejects.toThrow("Aligned GA4 publication failed");
+      expect(kpis).toEqual(priorKpis);
+      expect(benchmarks).toEqual(priorBenchmarks);
+      expect(mocks.storage.recordKPIProgress).not.toHaveBeenCalled();
+      expect(mocks.storage.updateKPIProgress).not.toHaveBeenCalled();
+      expect(mocks.storage.recordBenchmarkHistory).not.toHaveBeenCalled();
+      expect(mocks.storage.getCampaignKPIs).not.toHaveBeenCalled();
+      expect(mocks.storage.upsertFinancialDailySnapshot).not.toHaveBeenCalled();
+      expect(mocks.aggregate).not.toHaveBeenCalled();
+      expect(mocks.kpiAlerts).not.toHaveBeenCalled();
+      if (failure.endsWith("HTTP")) vi.mocked(fetch).mockResolvedValueOnce(new Response("{}", { status: 200 }));
+      await expect(runGA4DailyRefreshPipelineForCampaignNow("campaign-a")).resolves.toBe("completed");
+      expect(Object.fromEntries(kpis.map((row) => [row.metric, row.currentValue]))).toEqual({ revenue: "800", roas: "8", roi: "700", cpa: "4", sessions: "100" });
+      expect(benchmarks.map((row) => row.currentValue)).toEqual(kpis.map((row) => row.currentValue));
+      expect(mocks.storage.recordKPIProgress).toHaveBeenCalledTimes(5);
+      expect(mocks.storage.recordBenchmarkHistory).toHaveBeenCalledTimes(5);
+      expect(mocks.storage.getCampaignKPIs).toHaveBeenCalledWith("campaign-a");
+      expect(saved.get("campaign-a").inputs.revenue.value).toBe("800.00");
+    },
+  );
+
+  it.each([
+    { label: "missing", change: null },
+    { label: "running", change: { status: "running" } },
+    { label: "failed", change: { status: "failed" } },
+    { label: "failure list", change: { failures: ["source_failed"] } },
+    { label: "wrong date", change: { reportingDate: "2026-10-14" } },
+    { label: "missing completion", change: { completedAt: null } },
+    { label: "invalid completion", change: { completedAt: "invalid" } },
+    { label: "previous run", change: { completedAt: "2026-10-16T05:59:59.999Z" } },
+  ])("rejects $label financial-refresh evidence before any recomputation", async ({ change }) => {
+    vi.spyOn(financialObservation, "getFinancialDailySnapshotRefreshEvidence").mockReturnValue(change === null ? null : {
+      campaignId: "campaign-a", reportingDate, status: "success", completedAt: "2026-10-16T06:00:00.000Z", failures: [], ...change,
+    } as any);
+    await expect(runGA4DailyRefreshPipelineForCampaignNow("campaign-a")).rejects.toThrow("Aligned GA4 publication failed");
+    expect(mocks.recompute).not.toHaveBeenCalled();
+    expect(mocks.storage.upsertFinancialDailySnapshot).not.toHaveBeenCalled();
+    expect(mocks.aggregate).not.toHaveBeenCalled();
+    expect(getGA4DailySchedulerStatus().lastAlignedRefreshFailures).toEqual([
+      { campaignIdHash: expect.any(String), stage: "financial_sources_refresh_failed" },
+    ]);
+  });
+
+  it("still runs the real KPI/Benchmark job for a campaign without external sources", async () => {
+    const { runGA4DailyKPIAndBenchmarkJobs } = await vi.importActual<typeof import("./ga4-kpi-benchmark-jobs")>("./ga4-kpi-benchmark-jobs");
+    mocks.recompute.mockImplementation(runGA4DailyKPIAndBenchmarkJobs);
+    mocks.storage.getRevenueSources.mockResolvedValue([]); mocks.storage.getSpendSources.mockResolvedValue([]);
+    mocks.storage.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0, sourceIds: [], currency: "EUR" });
+    mocks.storage.getSpendTotalForRange.mockResolvedValue({ totalSpend: 0, sourceIds: [], currency: "EUR" });
+    mocks.totals.mockResolvedValue({ ...totals(), revenue: 500, spend: 0, spendAvailable: false });
+    mocks.storage.getPlatformKPIs.mockResolvedValue([{ id: "native-revenue", metric: "revenue" }]);
+    mocks.storage.getPlatformBenchmarks.mockResolvedValue([{ id: "traffic-sessions", metric: "sessions", benchmarkValue: "120" }]);
+    mocks.storage.updateKPI.mockResolvedValue({ id: "native-revenue" });
+    mocks.storage.updateBenchmark.mockResolvedValue({ id: "traffic-sessions" });
+    await expect(runGA4DailyRefreshPipelineForCampaignNow("campaign-a")).resolves.toBe("completed");
+    expect(mocks.storage.updateKPI).toHaveBeenCalledWith("native-revenue", { currentValue: "500" });
+    expect(mocks.storage.updateBenchmark).toHaveBeenCalledWith("traffic-sessions", { currentValue: "100" });
+    expect(saved.get("campaign-a").inputs.spend.available).toBe(false);
   });
 
   it.each(["success", "HTTP failure", "network failure"].flatMap((result) => [
@@ -241,6 +337,7 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     const prior = structuredClone(saved.get("campaign-a"));
     mocks.storage.upsertFinancialDailySnapshot.mockClear(); mocks.aggregate.mockClear();
     mocks.executive.mockClear(); // Ignore the successful snapshot used to seed this test's prior state.
+    mocks.recompute.mockClear();
     mocks.storage.getCampaigns.mockResolvedValueOnce([]); // No startup bootstrap; exercise the actual scheduled timer.
     const read = mocks.storage.getRevenueSources.getMockImplementation()!;
     mocks.storage.getRevenueSources.mockImplementation(async (id, ctx) => {
@@ -255,6 +352,7 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     expect(saved.get("campaign-a")).toEqual(prior);
     expect(mocks.storage.upsertFinancialDailySnapshot.mock.calls.map(([snapshot]) => snapshot.campaignId)).toEqual(["campaign-b"]);
     expect(mocks.aggregate.mock.calls.map(([id]) => id)).toEqual(["campaign-b"]);
+    expect(mocks.recompute.mock.calls.map(([options]) => options.campaignId)).toEqual(["campaign-b"]);
     expect(mocks.executive).toHaveBeenCalledExactlyOnceWith("http://127.0.0.1:5000", "campaign-b");
     expect(mocks.kpiAlerts).toHaveBeenCalledExactlyOnceWith("campaign-b", reportingDate);
     expect(mocks.benchmarkAlerts).toHaveBeenCalledExactlyOnceWith("campaign-b", reportingDate);

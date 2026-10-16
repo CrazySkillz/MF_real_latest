@@ -147,7 +147,7 @@ This scheduler now runs the GA4 daily refresh pipeline:
 2. finds campaigns with a GA4 connection and resolves each saved GA4 campaign filter
 3. fetches and validates GA4 time-series data, including explicit verified zero-activity dates
 4. atomically replaces the exact authorized `ga4_daily_metrics` window and synchronized Overview detail snapshot
-5. recomputes GA4 KPI and Benchmark values from the refreshed facts and financial inputs
+5. when this run refreshes financial sources, requires successful campaign/date source evidence from this run before recomputing GA4 KPI and Benchmark values
 6. writes the guarded financial daily snapshot
 7. writes the compatible `platform_sync` campaign aggregate snapshot
 8. requests and confirms the guarded Executive Summary daily snapshot write
@@ -280,6 +280,18 @@ Actual empty lists remain valid. Mocked pipeline tests cover all 21 discovery
 positions, retention/recovery and the configured 08:00/14:00/20:00 timer paths;
 they do not certify live source materialization or downstream job calculations.
 See the Task 2 source-discovery entry in the processing/alignment backlog.
+
+The ordered GA4 pipeline now checks that evidence before calling the KPI/Benchmark
+job, rather than waiting for the later financial snapshot check. Failed, missing,
+wrong-date or older-run source evidence retains the affected campaign's stored
+KPI/Benchmark current values and history, including the campaign-level recompute
+and traffic items in that job. GA4 daily facts can still refresh and healthy
+campaigns continue. A later successful source refresh permits normal recomputation.
+This guard applies only when the pipeline refreshes financial sources. The KPI
+and Benchmark tabs also calculate financial values from separate requests; their
+display alignment is not certified by this stored-value safeguard. Direct
+recompute callers and Benchmark same-day history remain unchanged. See the
+2026-10-17 Task 2 entry for the exact tests and remaining boundaries.
 
 If no Spend source is configured for the completed-day window, Spend remains
 explicitly unavailable and does not block GA4 traffic, native revenue,

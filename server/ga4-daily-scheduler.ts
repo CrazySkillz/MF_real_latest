@@ -6,7 +6,7 @@ import { checkGA4BenchmarkPerformanceAlertsForCampaign, checkBenchmarkPerformanc
 import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getLatestCompleteReportingDate, getReportingDateWindow, isCreatedThroughReportingDate, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { createHash } from "crypto";
 import { addGA4InsightsDateDays, normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
-import { beginFinancialDailySnapshotRefreshObservation, recordFinancialDailySnapshotRefreshEvidence } from "./utils/financial-daily-snapshot-observation";
+import { beginFinancialDailySnapshotRefreshObservation, getFinancialDailySnapshotRefreshEvidence, recordFinancialDailySnapshotRefreshEvidence } from "./utils/financial-daily-snapshot-observation";
 import { writeFinancialDailySnapshotIfReady } from "./utils/financial-daily-snapshot-writer";
 import { captureExecutiveSummarySnapshot } from "./executive-summary-snapshot-scheduler";
 import { getAutoRefreshRunFailure, runDailyAutoRefreshOnce } from "./auto-refresh-scheduler";
@@ -539,6 +539,17 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
     };
     const recomputedCampaignIds: string[] = [];
     for (const processedCampaignId of refreshResult.campaignIdsProcessed) {
+      // Do not overwrite current values/history after this campaign's financial-source refresh failed.
+      if (refreshFinancialSources) {
+        const sourceRefresh = getFinancialDailySnapshotRefreshEvidence("financial_sources", processedCampaignId);
+        if (!sourceRefresh || sourceRefresh.reportingDate !== refreshResult.reportingDatesByCampaign[processedCampaignId] ||
+            sourceRefresh.status !== "success" || sourceRefresh.failures.length > 0 ||
+            !(Date.parse(sourceRefresh.completedAt || "") >= startedAt)) {
+          alignedRefreshFailures.push({ campaignId: processedCampaignId, stage: "financial_sources_refresh_failed" });
+          console.warn(`[GA4 Daily] Skipping KPI/Benchmark recompute for campaign ${processedCampaignId}: financial-source refresh did not succeed in this run`);
+          continue;
+        }
+      }
       const recomputeResult = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true });
       for (const key of Object.keys(recomputeEvidence) as Array<keyof typeof recomputeEvidence>) {
         recomputeEvidence[key].push(...recomputeResult[key]);

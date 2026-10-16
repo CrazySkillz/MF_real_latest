@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   beginFinancialDailySnapshotRefreshObservation,
   getFinancialDailySnapshotObservationStatus,
+  getFinancialDailySnapshotRefreshEvidence,
   observeFinancialDailySnapshotReadiness,
   recordFinancialDailySnapshotRefreshEvidence,
   recordFinancialDailySnapshotWriteOutcome,
@@ -41,6 +42,19 @@ describe("financial daily snapshot observation", () => {
   beforeEach(() => {
     beginFinancialDailySnapshotRefreshObservation("financial_sources");
     beginFinancialDailySnapshotRefreshObservation("ga4_daily");
+  });
+
+  it("returns a separate copy of exact campaign/stage evidence and clears it on the next stage run", () => {
+    const evidence = { campaignId: "campaign-1", reportingDate, status: "failed" as const, completedAt: "2026-08-22T08:00:00.000Z", failures: ["source_failed"] };
+    recordFinancialDailySnapshotRefreshEvidence("financial_sources", evidence);
+    expect(getFinancialDailySnapshotRefreshEvidence("financial_sources", "campaign-other")).toBeNull();
+    expect(getFinancialDailySnapshotRefreshEvidence("ga4_daily", "campaign-1")).toBeNull();
+    const returned = getFinancialDailySnapshotRefreshEvidence("financial_sources", "campaign-1")!;
+    expect(returned).toEqual(evidence);
+    returned.status = "success"; returned.failures.length = 0;
+    expect(getFinancialDailySnapshotRefreshEvidence("financial_sources", "campaign-1")).toEqual(evidence);
+    beginFinancialDailySnapshotRefreshObservation("financial_sources");
+    expect(getFinancialDailySnapshotRefreshEvidence("financial_sources", "campaign-1")).toBeNull();
   });
 
   it("observes readiness only after both same-day campaign refreshes completed", () => {

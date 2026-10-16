@@ -21,7 +21,7 @@ type Step = "select" | "manual" | "csv" | "csv_map" | "sheets_choose" | "sheets_
 const SELECT_NONE = "__none__";
 const GA4_CSV_MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const ENABLE_SALESFORCE_REVENUE_SOURCE = String(import.meta.env.VITE_ENABLE_SALESFORCE_REVENUE_SOURCE || "").toLowerCase() === "true";
-type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration' | 'mimosaas_tracking';
+type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration';
 type PlatformCampaignMapping = { crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string };
 
 type Preview = {
@@ -56,19 +56,14 @@ export function AddRevenueWizardModal(props: {
   onSuccess?: () => void;
   platformContext?: RevenuePlatformContext;
   initialStep?: Step;
-  lockInitialStep?: boolean;
   hideCrmSources?: boolean;
   connectedPlatforms?: Array<{ label: string; value: string }>;
 }) {
-  const { open, onOpenChange, campaignId, currency, dateRange, onSuccess, initialSource, platformContext = 'ga4', initialStep, lockInitialStep = false, hideCrmSources = false, connectedPlatforms = [] } = props;
+  const { open, onOpenChange, campaignId, currency, dateRange, onSuccess, initialSource, platformContext = 'ga4', initialStep, hideCrmSources = false, connectedPlatforms = [] } = props;
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const invalidateAfterRevenueChange = () => {
-    if (platformContext === 'mimosaas_tracking') {
-      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`], exact: false });
-      return;
-    }
     // Force refetch ALL campaign queries so revenue changes propagate immediately
     void queryClient.refetchQueries({
       predicate: (query) => {
@@ -390,10 +385,7 @@ export function AddRevenueWizardModal(props: {
     setSalesforceSourcesResolved(false);
     let cancelled = false;
     (async () => {
-      const dataSourcesUrl = platformContext === "mimosaas_tracking"
-        ? `/api/campaigns/${campaignId}/mimosaas-tracking/financial-sources`
-        : `/api/campaigns/${campaignId}/all-data-sources`;
-      const dataSourcesReq = fetch(dataSourcesUrl, { credentials: "include", cache: "no-store" }).then(r => r.json()).catch(() => ({}));
+      const dataSourcesReq = fetch(`/api/campaigns/${campaignId}/all-data-sources`, { credentials: "include", cache: "no-store" }).then(r => r.json()).catch(() => ({}));
       const [hubspotOAuth, salesforceOAuth, shopifyOAuth, dsResp] = hideCrmSources
         ? [false, false, false, await dataSourcesReq]
         : await Promise.all([
@@ -1112,7 +1104,7 @@ export function AddRevenueWizardModal(props: {
   const csvHeaders = useMemo(() => csvPreview?.headers || [], [csvPreview]);
   const sheetsHeaders = useMemo(() => sheetsPreview?.headers || [], [sheetsPreview]);
   const sheetsDateColumnHeaders = useMemo(() => {
-    if (platformContext !== "ga4" && platformContext !== "mimosaas_tracking") return sheetsHeaders;
+    if (platformContext !== "ga4") return sheetsHeaders;
     const sampleRows = Array.isArray(sheetsPreview?.sampleRows) ? sheetsPreview.sampleRows : [];
     return sheetsHeaders.filter((header) => {
       if (header === sheetsRevenueCol || header === sheetsCampaignCol) return false;
@@ -1139,7 +1131,7 @@ export function AddRevenueWizardModal(props: {
   }, [platformContext, csvHeaders, csvPreview, csvRevenueCol, csvCampaignCol, csvDateCol]);
 
   useEffect(() => {
-    if ((platformContext === "ga4" || platformContext === "mimosaas_tracking") && sheetsDateCol && !sheetsDateColumnHeaders.includes(sheetsDateCol)) {
+    if (platformContext === "ga4" && sheetsDateCol && !sheetsDateColumnHeaders.includes(sheetsDateCol)) {
       setSheetsDateCol("");
     }
   }, [platformContext, sheetsDateCol, sheetsDateColumnHeaders]);
@@ -1781,10 +1773,6 @@ export function AddRevenueWizardModal(props: {
     if (!sheetsConnectionId) return;
     if (!sheetsRevenueCol) {
       toast({ title: "Select a revenue column", variant: "destructive" });
-      return;
-    }
-    if (platformContext === "mimosaas_tracking" && !sheetsDateCol) {
-      toast({ title: "Select a date column", description: "A Date column is required for finalized daily Revenue.", variant: "destructive" });
       return;
     }
     if (requiresSheetsCampaignValueSelection) {
@@ -2613,7 +2601,7 @@ export function AddRevenueWizardModal(props: {
                     )}
 
                     <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => lockInitialStep ? onOpenChange(false) : setStep("select")}>
+                      <Button variant="outline" onClick={() => setStep("select")}>
                         Cancel
                       </Button>
                       {!showSheetsConnect && sheetsConnections.length > 0 && (
@@ -2755,24 +2743,22 @@ export function AddRevenueWizardModal(props: {
                           </div>
 
                           <div className="space-y-1 md:col-span-2 order-2">
-                            <Label className="font-normal">{platformContext === "mimosaas_tracking" ? "Date column (required)" : "Date column (recommended for daily tracking)"}</Label>
+                            <Label className="font-normal">Date column (recommended for daily tracking)</Label>
                             <Select value={sheetsDateCol || SELECT_NONE} onValueChange={(v) => setSheetsDateCol(v === SELECT_NONE ? "" : v)}>
                               <SelectTrigger>
                                 <SelectValue placeholder="None" />
                               </SelectTrigger>
                               <SelectContent className="z-[10000]">
-                                {platformContext !== "mimosaas_tracking" && <SelectItem value={SELECT_NONE}>None</SelectItem>}
+                                <SelectItem value={SELECT_NONE}>None</SelectItem>
                                 {sheetsDateColumnHeaders.map((h) => (
                                   <SelectItem key={h} value={h}>{h}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
                             <p className="text-xs text-muted-foreground/70 mt-1">
-                              {platformContext === "mimosaas_tracking"
-                                ? "A date column is required so Revenue can align with each finalized reporting day."
-                                : "Select a date column for daily revenue tracking. If you leave this blank, the source will behave like a revenue-to-date snapshot rather than daily history."}
+                              Select a date column for daily revenue tracking. If you leave this blank, the source will behave like a revenue-to-date snapshot rather than daily history.
                             </p>
-                            {(platformContext === "ga4" || platformContext === "mimosaas_tracking") && (
+                            {platformContext === "ga4" && (
                               <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
                                 <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                                 <p><strong>Use individual dated amounts.</strong> Each row must contain revenue for that day or transaction. Do not use repeated running or cumulative totals because all eligible dated rows are added together.</p>
@@ -2825,7 +2811,7 @@ export function AddRevenueWizardModal(props: {
                     )}
 
                     <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => lockInitialStep ? onOpenChange(false) : setStep("select")}>
+                      <Button variant="outline" onClick={() => setStep("select")}>
                         Cancel
                       </Button>
                       <Button
@@ -2835,8 +2821,7 @@ export function AddRevenueWizardModal(props: {
                           sheetsProcessing ||
                           (isEditing && !hasMeaningfulSheetsRevenueEditChanges) ||
                           requiresSheetsCampaignValueSelection ||
-                          !sheetsRevenueCol ||
-                          (platformContext === "mimosaas_tracking" && !sheetsDateCol)
+                          !sheetsRevenueCol
                         }
                       >
                         {sheetsProcessing ? "Processing…" : isEditing ? "Update revenue" : "Import revenue"}
@@ -2848,7 +2833,7 @@ export function AddRevenueWizardModal(props: {
               </div>
             )}
 
-            {step === "hubspot" && platformContext !== "mimosaas_tracking" && (
+            {step === "hubspot" && (
               <div className="w-full flex-1 min-h-0 flex flex-col">
                 <HubSpotRevenueWizard
                   campaignId={campaignId}
@@ -2872,7 +2857,7 @@ export function AddRevenueWizardModal(props: {
               </div>
             )}
 
-            {step === "salesforce" && platformContext !== "mimosaas_tracking" && (
+            {step === "salesforce" && (
               <div className="w-full flex-1 min-h-0 flex flex-col">
                 <SalesforceRevenueWizard
                   campaignId={campaignId}
@@ -2898,7 +2883,7 @@ export function AddRevenueWizardModal(props: {
               </div>
             )}
 
-            {step === "shopify" && platformContext !== "mimosaas_tracking" && (
+            {step === "shopify" && (
               <div className="w-full flex-1 min-h-0 flex flex-col">
                 <ShopifyRevenueWizard
                   campaignId={campaignId}

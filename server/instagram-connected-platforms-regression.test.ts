@@ -25,7 +25,7 @@ describe("Instagram Connected Platforms regression guard", () => {
   it("renders the Instagram Connected Platforms card shell with guarded analytics exposure", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-detail.tsx"), "utf-8");
 
-    expect(page).toContain("SiInstagram");
+    expect(page).toContain('import { SiGoogle, SiFacebook, SiInstagram');
     expect(page).toContain('const isInstagramConnected = platformStatusMap.get("instagram")?.connected === true;');
     expect(page).toContain('platform: "Instagram Ads"');
     expect(page).toContain("connected: isInstagramConnected");

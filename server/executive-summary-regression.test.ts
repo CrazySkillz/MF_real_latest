@@ -893,8 +893,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(executive).toContain("Risk Level:");
     expect(executive).toContain('addText("Risk Assessment"');
     expect(executive).toContain("Connected-source freshness is unavailable in this report context");
-    expect(executive).toContain("addTextBlock([");
-    expect(executive).toContain('{ value: "Recommended Actions", opts: { bold: true, indent: 4 } }');
+    expect(executive).toContain('addText("Recommended Actions"');
     expect(executive).toContain('addText("Data Accuracy Notice"');
     expect(executive).toContain("No connected paid-media source is available, so paid-media recommendations are unavailable");
     expect(executive).not.toContain('addText("KPI Progress"');

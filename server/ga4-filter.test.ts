@@ -1463,7 +1463,7 @@ describe("GA4 campaign value picker", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("excludes first-user attribution when session and campaign conversion events are empty", async () => {
+  it("uses a proven first-user campaign dimension when session campaign conversion events are empty", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
       const filterText = JSON.stringify(body?.dimensionFilter || {});
@@ -1494,13 +1494,11 @@ describe("GA4 campaign value picker", () => {
       ["campaign-a", "campaign-b"], "2026-09-06",
     );
 
-    expect(result.rows).toEqual([]);
-    expect(result.totals).toEqual({ conversions: 0, eventCount: 0, users: 0, revenue: 0 });
+    expect(result.rows).toEqual([
+      { eventName: "purchase", conversions: 193, eventCount: 193, users: 193, revenue: 43668.5 },
+    ]);
+    expect(result.totals).toEqual({ conversions: 193, eventCount: 193, users: 193, revenue: 43668.5 });
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    const filters = fetchMock.mock.calls.map(([, init]) => JSON.stringify(JSON.parse(String(init?.body || "{}")).dimensionFilter || {}));
-    expect(filters.some((filter) => filter.includes("sessionCampaignName"))).toBe(true);
-    expect(filters.some((filter) => filter.includes("campaignName"))).toBe(true);
-    expect(filters.some((filter) => filter.includes("firstUserCampaignName"))).toBe(false);
   });
 
   it("passes explicit cumulative start and end dates to Overview row reports", async () => {
@@ -1521,7 +1519,7 @@ describe("GA4 campaign value picker", () => {
     await ga4Service.getConversionEventsReport("campaign-1", storage, "2026-07-02", "123", 50, "summer_sale", "2026-08-04");
 
     const requestBodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
-    expect(requestBodies).toHaveLength(3);
+    expect(requestBodies).toHaveLength(4);
     expect(requestBodies.every((body) => JSON.stringify(body.dateRanges) === JSON.stringify([
       { startDate: "2026-07-02", endDate: "2026-08-04" },
     ]))).toBe(true);

@@ -76,9 +76,9 @@ describe("Salesforce GA4 zero-revenue safety", () => {
       [{ revenueSourceId: "salesforce-zero", revenue: "0.00" }],
     )).not.toThrow();
     expect(selectRevenueRecordTotal({ aggregate: 0, attributed: 0, hasAggregate: true })).toBe(0);
-    expect(routes).toContain('const hasLatestRevenue = latestTotalsBySource.has(sourceId);');
-    expect(routes).toContain('materializedRevenueStatus: materializedRevenueAvailable ? "available" : "unavailable"');
-    expect(ga4Page).toContain('{materializedRevenueUnavailable ? "Unavailable" : formatMoney(latestRevenue)}');
+    expect(routes).toContain('const hasMaterializedRevenue = totalsBySource.has(sourceId);');
+    expect(routes).toContain('materializedRevenueStatus: hasMaterializedRevenue ? "available" : "unavailable"');
+    expect(ga4Page).toContain('{materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))}');
     expect(revenueWizard).toContain('String(import.meta.env.VITE_ENABLE_SALESFORCE_REVENUE_SOURCE || "").toLowerCase() === "true"');
     expect(revenueWizard).toContain("const showSalesforceRevenueSource = ENABLE_SALESFORCE_REVENUE_SOURCE;");
   });

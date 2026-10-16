@@ -101,8 +101,8 @@ describe("GA4 Upload CSV revenue downstream propagation", () => {
     expect(endpoints).toContain(': "2999-12-31";');
     expect(endpoints).toContain('storage.getRevenueBreakdownBySource(campaignId, "1900-01-01", breakdownEndDate, platformContext)');
     expect(endpoints).toContain('const sourceId = String(source?.id || "");');
-    expect(endpoints).toContain("const hasCompletedDayRevenue = totalsBySource.has(sourceId);");
-    expect(endpoints).toContain("const materializedRevenueAvailable = hasLatestRevenue || (pendingCompletedDay && cfgTotal !== null);");
+    expect(endpoints).toContain("const hasMaterializedRevenue = totalsBySource.has(sourceId);");
+    expect(endpoints).toContain("const recordTotal = totalsBySource.get(sourceId) || 0;");
   });
 
   it("feeds imported CSV revenue into Total Revenue, Profit, ROAS, and ROI but not CPA", () => {
@@ -117,11 +117,10 @@ describe("GA4 Upload CSV revenue downstream propagation", () => {
     expect(financials).toContain("const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;");
     expect(financials).toContain("const financialROI = computeRoiPercent(financialRevenue, financialSpend);");
     expect(financials).toContain("const financialCPA = computeCpa(financialSpend, financialConversions);");
-    expect(financials).toContain("const overviewFinancialCPA = computeCpa(overviewFinancialSpend, overviewFinancialConversions);");
-    expect(cards).toContain("formatMoney(overviewFinancialRevenue - overviewFinancialSpend)");
-    expect(cards).toContain("overviewFinancialROAS.toFixed(2)");
-    expect(cards).toContain("formatPercentage(overviewFinancialROI)");
-    expect(cards).toContain("formatMoney(overviewFinancialCPA)");
+    expect(cards).toContain("formatMoney(financialRevenue - financialSpend)");
+    expect(cards).toContain("financialROAS.toFixed(2)");
+    expect(cards).toContain("formatPercentage(financialROI)");
+    expect(cards).toContain("formatMoney(Number(financialCPA || 0))");
   });
 
   it("refreshes every mounted CSV Revenue provenance and Overview query after mutation", () => {

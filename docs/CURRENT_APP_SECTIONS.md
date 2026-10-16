@@ -1,6 +1,6 @@
 # Current App Sections
 
-Last reconciled with the implementation: 2026-10-15.
+Last reconciled with the implementation: 2026-10-01.
 
 ## Purpose
 
@@ -125,73 +125,6 @@ The current enabled creation path is Google Analytics. The GA4 configuration
 step selects a property and campaign scope before final confirmation. The
 campaign remains a draft during setup and becomes active after the final
 `Create Campaign` action succeeds.
-
-The codebase also contains a Mimosaas Tracking wizard path. It remains hidden
-unless both Mimosaas Tracking setup and ingestion flags are enabled. That path
-requires a verified website installation and either an exact `utm_campaign`
-mapping or, behind its separate Google Ads attribution flag, an OAuth Google
-Ads connection with at least one selected campaign. Google Ads selection is
-offered only when its OAuth configuration is complete and auto-tagging is
-already enabled on the selected account. The wizard uses its own scoped
-finalization route; it does not change the GA4 path.
-An automated Google Tag Manager installer is gated by the additional
-`MIMOSAAS_TRACKING_GTM_ENABLED` flag. The flag exposes GTM as an explicit choice;
-it is not treated as evidence that GTM is installed on the campaign website.
-After publishing its tag, the wizard loads
-the exact website origin in a hidden sandboxed frame so the existing proof-only
-request can verify installation without a manual website visit. The universal
-installation-code path remains the fallback.
-When the website already has a verified client-scoped tracker connection, the
-wizard remains on Install until the marketer explicitly chooses **Continue with
-existing tracker**; it does not silently advance to Configure.
-Exact `utm_campaign` attribution and bounded retry recovery for stored Mimosaas
-events are also implemented locally behind the disabled tracker flags. Scoped
-Google Ads `gclid` attribution is implemented locally behind the additional
-disabled `MIMOSAAS_TRACKING_GOOGLE_ADS_ATTRIBUTION_ENABLED` flag. It revalidates
-provider evidence before persistence, keeps unresolved clicks pending with
-database-paced retries, and stores ambiguous or UTM-disagreeing evidence as a
-conflict. It has not been validated with a live Google Ads click. Returning
-direct attribution is implemented locally behind the additional disabled
-`MIMOSAAS_TRACKING_RETURNING_DIRECT_ATTRIBUTION_ENABLED` flag; it inherits only
-the same visitor's latest eligible original campaign proof and stores uncertain
-cases without guessing. Campaign Overview reads only finalized tracker snapshots,
-never raw attribution or mutable daily aggregate rows.
-Daily tracker metric aggregation is implemented locally behind the additional
-disabled `MIMOSAAS_TRACKING_DAILY_AGGREGATION_ENABLED` flag. It writes only the
-intermediate campaign-day metric row for a completed local date and fails
-closed on pending or damaged attribution. The separately disabled daily tracker
-scheduler invokes it only for an owned, active Mimosaas Tracking campaign at
-08:00, 14:00, or 20:00 in that campaign's reporting timezone. The UI does not
-read the intermediate row.
-Atomic tracker publication is also implemented locally behind the separate
-disabled `MIMOSAAS_TRACKING_DAILY_PUBLICATION_ENABLED` flag. It can finalize
-only one exact campaign reporting date from the matching tracker aggregate and,
-when financial sources exist, an exact-date tracker-authoritative financial
-snapshot. Absent Revenue or Spend remains unavailable. A separate disabled
-`MIMOSAAS_TRACKING_DAILY_SCHEDULER_ENABLED` gate controls scheduler invocation.
-Durable database claims prevent concurrent application instances from owning
-the same attempt, pending dates survive restarts, and finalized dates cannot be
-aggregated or published again. Campaign Overview reads the latest immutable
-published tracker snapshot only for active Mimosaas Tracking campaigns.
-Tracker Revenue and Spend controls open only the Google Sheets setup flow. Both
-require a Date column and save with the isolated `mimosaas_tracking` context;
-newly imported source rows do not replace the visible immutable snapshot before
-the scheduler finalizes that reporting day. A dedicated protected read route
-lists only active tracker-scoped Google Sheets Revenue and Spend sources for an
-owned active Mimosaas Tracking campaign. The tracker Overview displays those
-source names. Selecting a populated source summary opens the matching Sources
-modal, where Edit passes the exact selected source into the locked tracker
-wizard and removal calls a protected tracker-only route that deletes only the
-selected source and its imported rows; finalized snapshots remain unchanged.
-The locked source wizards use the same scoped read route for connection status;
-generic GA4 financial reads are not widened.
-Date-mapped tracker CSV records can be materialized into the exact-date
-financial snapshot inside the locked publication transaction when every CSV
-source has an explicit row for that date. Before publication, the tracker
-scheduler refreshes only campaign-scoped, date-mapped Google Sheets Revenue and
-Spend sources and replaces each source atomically. A failed or stale refresh,
-manual or undated source, incomplete CSV source, or another provider type keeps
-the day pending.
 
 Closing an unfinished wizard may clean up only its persisted draft. The server
 rejects that cleanup after the campaign becomes active. A confirmed campaign
@@ -462,8 +395,6 @@ restores a navigation entry and validates the resulting journey.
    but some generated section text still retains older labels such as `Key
    Outcomes`, `Financial Position`, and `7-Day Snapshot Trajectory`. Those are
    current report-output labels, not current web-page headings.
-8. Mimosaas Tracking Campaign Overview rendering is implemented behind its
-   feature flags and has not yet been validated with a live finalized snapshot.
 
 Resolve or explicitly accept these product decisions before creating the
 website onboarding flow. Documentation alone should not make a hidden or

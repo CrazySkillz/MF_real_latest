@@ -28,7 +28,7 @@ type Step =
   | "manual";
 
 type AdPlatform = "linkedin" | "meta" | "google_ads";
-type SpendPlatformContext = "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "tiktok" | "google_sheets" | "custom_integration" | "mimosaas_tracking";
+type SpendPlatformContext = "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "tiktok" | "google_sheets" | "custom_integration";
 
 const ENABLE_AD_PLATFORM_TEST_MODE = String(import.meta.env.VITE_ENABLE_AD_PLATFORM_TEST_MODE || "").toLowerCase() === "true";
 
@@ -211,7 +211,6 @@ export function AddSpendWizardModal(props: {
     && !!csvPrefillMapping
     && !String(csvPrefillMapping?.storedDateColumn || csvPrefillMapping?.dateColumn || "");
   const requiresDatedGa4Csv = props.platformContext === "ga4" && !editingExistingUndatedGa4Csv;
-  const requiresDatedTrackerSheet = props.platformContext === "mimosaas_tracking" && step === "sheets_map";
 
   useEffect(() => {
     if (props.open && props.initialSource) return;
@@ -447,11 +446,8 @@ export function AddSpendWizardModal(props: {
     (async () => {
       try {
         const contextQuery = props.platformContext ? `?platformContext=${encodeURIComponent(props.platformContext)}` : "";
-        const sourceUrl = props.platformContext === "mimosaas_tracking"
-          ? `/api/campaigns/${props.campaignId}/mimosaas-tracking/financial-sources`
-          : `/api/campaigns/${props.campaignId}/spend-sources${contextQuery}`;
         const [resp, connectionResp] = await Promise.all([
-          fetch(sourceUrl, { credentials: "include" }),
+          fetch(`/api/campaigns/${props.campaignId}/spend-sources${contextQuery}`, { credentials: "include" }),
           props.platformContext === "ga4"
             ? fetch(`/api/google-ads/${props.campaignId}/connection?spendPreview=1`, { credentials: "include", cache: "no-store" })
             : Promise.resolve(null),
@@ -463,11 +459,7 @@ export function AddSpendWizardModal(props: {
         if (!mounted) return;
         setGoogleAdsSpendConnected(connectionJson?.connected === true);
         if (!resp.ok || json?.success !== true) return;
-        const sources = props.platformContext === "mimosaas_tracking"
-          ? (Array.isArray(json?.spendSources)
-              ? json.spendSources.filter((source: any) => String(source?.platformContext || "").trim().toLowerCase() === "mimosaas_tracking")
-              : [])
-          : (Array.isArray(json?.sources) ? json.sources : []);
+        const sources = Array.isArray(json?.sources) ? json.sources : [];
         setHasGoogleSheetsSpendSource(sources.some((source: any) => source?.isActive !== false && String(source?.sourceType || "").toLowerCase() === "google_sheets"));
         setActiveCsvSpendSources(sources.filter((source: any) => source?.isActive !== false && String(source?.sourceType || "").toLowerCase() === "csv"));
         setActiveGoogleAdsSpendSources(sources.filter(isGoogleAdsSpendSource));
@@ -507,7 +499,7 @@ export function AddSpendWizardModal(props: {
     () => campaignKeyColumn || inferredCampaignColumn || "",
     [campaignKeyColumn, inferredCampaignColumn]
   );
-  const dateColumnHeaders = step === "csv_map" || props.platformContext === "mimosaas_tracking"
+  const dateColumnHeaders = step === "csv_map"
     ? headers.filter((header: string) => {
         if (header === spendColumn || header === effectiveCampaignColumn) return false;
         if (isCsvDateLikeHeader(header)) return true;
@@ -521,13 +513,13 @@ export function AddSpendWizardModal(props: {
 
   useEffect(() => {
     if (
-      (step === "csv_map" || props.platformContext === "mimosaas_tracking")
+      step === "csv_map"
       && spendDateColumn
-      && !dateColumnHeaders.includes(spendDateColumn)
+      && (spendDateColumn === spendColumn || spendDateColumn === effectiveCampaignColumn)
     ) {
       setSpendDateColumn("");
     }
-  }, [step, props.platformContext, spendDateColumn, dateColumnHeaders]);
+  }, [step, spendDateColumn, spendColumn, effectiveCampaignColumn]);
 
   useEffect(() => {
     if (!csvPreview?.success) return;
@@ -1065,10 +1057,6 @@ export function AddSpendWizardModal(props: {
     if (!selectedSheetConnectionId) return;
     if (!spendColumn) {
       toast({ title: "Missing mappings", description: "Select a Spend column.", variant: "destructive" });
-      return;
-    }
-    if (requiresDatedTrackerSheet && !spendDateColumn) {
-      toast({ title: "Missing mappings", description: "Select a Date column for finalized daily Spend.", variant: "destructive" });
       return;
     }
     if (requiresCampaignValueSelection) {
@@ -2589,7 +2577,7 @@ export function AddSpendWizardModal(props: {
                       </div>
                     )}
                     <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => isEditing || props.lockInitialStep ? props.onOpenChange(false) : setStep("select")}>Cancel</Button>
+                      <Button variant="outline" onClick={() => isEditing ? props.onOpenChange(false) : setStep("select")}>Cancel</Button>
                       {!showSheetsConnect && sheetsConnections.length > 0 && (
                         <Button onClick={() => previewSheet()} disabled={!selectedSheetConnectionId || isSheetsLoading}>
                           Next
@@ -2876,7 +2864,7 @@ export function AddSpendWizardModal(props: {
                         {(step === "csv_map" || step === "sheets_map") && (
                           <div className="pt-2 border-t space-y-2">
                             <Label className="font-normal">
-                              {(requiresDatedGa4Csv && step === "csv_map") || requiresDatedTrackerSheet ? "Date column (required)" : "Date column (recommended for daily tracking)"}
+                              {requiresDatedGa4Csv && step === "csv_map" ? "Date column (required)" : "Date column (recommended for daily tracking)"}
                             </Label>
                             <Select
                               value={spendDateColumn || CAMPAIGN_COL_NONE}
@@ -2886,15 +2874,15 @@ export function AddSpendWizardModal(props: {
                                 <SelectValue placeholder="Select date column" />
                               </SelectTrigger>
                               <SelectContent className="z-[10000]">
-                                {(!requiresDatedGa4Csv || step !== "csv_map") && !requiresDatedTrackerSheet && (
+                                {(!requiresDatedGa4Csv || step !== "csv_map") && (
                                   <SelectItem value={CAMPAIGN_COL_NONE}>None</SelectItem>
                                 )}
                                 {dateColumnHeaders.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                               </SelectContent>
                             </Select>
                             <p className="text-xs text-muted-foreground/70">
-                              {(requiresDatedGa4Csv && step === "csv_map") || requiresDatedTrackerSheet
-                                ? (requiresDatedTrackerSheet ? "A date column is required so Spend can align with each finalized reporting day." : "A date column is required for GA4 Overview CSV spend.")
+                              {requiresDatedGa4Csv && step === "csv_map"
+                                ? "A date column is required for GA4 Overview CSV spend."
                                 : "Select a date column for daily spend tracking. If you leave this blank, the source will behave like a spend-to-date snapshot rather than daily history."}
                             </p>
                             {props.platformContext === "ga4" && (
@@ -2997,7 +2985,6 @@ export function AddSpendWizardModal(props: {
         onClick={step === "csv_map" ? processCsv : processSheets}
         disabled={
           isProcessing ||
-          (requiresDatedTrackerSheet && !spendDateColumn) ||
           ((step === "csv_map" || step === "sheets_map") && requiresCampaignValueSelection) ||
           (step === "csv_map" && (
             (isEditing && !hasMeaningfulCsvEditChanges) ||

@@ -234,8 +234,8 @@ describe("Latest Day Revenue regression guard", () => {
     );
 
     expect(clientFile).toContain("const shownIds = new Set(rows.map((s: any) => String(s.sourceId || \"\")));");
-    expect(clientFile).toContain("rows.push({ sourceId: d.id, sourceType: d.sourceType, displayName: d.displayName, revenue: getCompletedDayRevenue(d), latestRevenue: getDefinitionRevenue(d), mappingConfig: d.mappingConfig, materializedRevenueStatus: d.materializedRevenueStatus, boundedRevenueZero: d.boundedRevenueZero === true, pendingCompletedDay: d.pendingCompletedDay === true, completedDayEndDate: d.completedDayEndDate || revenueBreakdownResp?.endDate || null });");
-    expect(clientFile).toContain('materializedRevenueUnavailable ? "Unavailable" : formatMoney(latestRevenue)');
+    expect(clientFile).toContain("rows.push({ sourceId: d.id, sourceType: d.sourceType, displayName: d.displayName, revenue: getDefinitionRevenue(d), mappingConfig: d.mappingConfig, materializedRevenueStatus: d.materializedRevenueStatus, boundedRevenueZero: d.boundedRevenueZero === true });");
+    expect(clientFile).toContain('materializedRevenueUnavailable ? "Unavailable" : formatMoney(Number(s.revenue || 0))');
   });
 
   it("keeps GA4 Total Revenue and source provenance on the campaign-timezone latest completed day", () => {
@@ -278,15 +278,11 @@ describe("Latest Day Revenue regression guard", () => {
     expect(revenueSourcesRoute).toContain('const breakdownEndDate = platformContext === "ga4"');
     expect(revenueSourcesRoute).toContain('getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate');
     expect(revenueSourcesRoute).toContain(': "2999-12-31";');
-    expect(revenueSourcesRoute).toContain('storage.getRevenueBreakdownBySource(campaignId, "1900-01-01", breakdownEndDate, platformContext)');
-    expect(revenueSourcesRoute).toContain('storage.getRevenueBreakdownBySource(campaignId, "1900-01-01", "2999-12-31", platformContext)');
+    expect(revenueSourcesRoute).toContain('storage.getRevenueBreakdownBySource(campaignId, futureStartDate, "2999-12-31", platformContext)');
     expect(revenueSourcesRoute).toContain('.catch(() => ({ rows: [] as any[], succeeded: false }))');
-    expect(revenueSourcesRoute).toContain('const pendingCompletedDay = isGa4RevenueSource && boundedBreakdownResult.succeeded && (');
-    expect(revenueSourcesRoute).toContain('!isCreatedThroughReportingDate(source?.createdAt, breakdownEndDate, (campaign as any)?.reportingTimeZone)');
-    expect(revenueSourcesRoute).toContain('|| (!hasCompletedDayRevenue && hasLatestRevenue)');
-    expect(revenueSourcesRoute).toContain('const materializedRevenueAvailable = hasLatestRevenue || (pendingCompletedDay && cfgTotal !== null);');
+    expect(revenueSourcesRoute).toContain('const boundedRevenueZero = platformContext === "ga4" && boundedBreakdownResult.succeeded && !hasMaterializedRevenue && futureSourceIds.has(sourceId);');
+    expect(revenueSourcesRoute).toContain('const materializedRevenueAvailable = hasMaterializedRevenue || boundedRevenueZero;');
     expect(revenueSourcesRoute).toContain('materializedRevenueStatus: materializedRevenueAvailable ? "available" : "unavailable"');
-    expect(revenueSourcesRoute).toContain('boundedRevenueZero: pendingCompletedDay && completedDayRevenue === 0');
   });
 
   it("Total Spend source provenance is not narrowed by campaign pacing metadata", () => {

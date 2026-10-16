@@ -71,7 +71,7 @@ describe("GA4 custom KPI recompute preservation", () => {
     vi.setSystemTime(new Date("2026-06-28T12:00:00.000Z"));
     resetMocks();
 
-    storageMock.getCampaign.mockResolvedValue({ id: "campaign-1", ownerId: "owner-1", status: "active", startDate: "2026-06-01T00:00:00.000Z", reportingTimeZone: "UTC", currency: "USD" });
+    storageMock.getCampaign.mockResolvedValue({ id: "campaign-1", ownerId: "owner-1", startDate: "2026-06-01T00:00:00.000Z", reportingTimeZone: "UTC", currency: "USD" });
     storageMock.getGA4Connections.mockResolvedValue([{ propertyId: "properties/123", isPrimary: true, method: "access_token", accessToken: "token", importStartDate: "2026-06-01" }]);
     storageMock.getGA4DailyMetrics.mockImplementation(async (_campaignId, _propertyId, startDate, endDate) => {
       if (startDate === "2026-06-27" && endDate === "2026-06-27") return [dailyRow];

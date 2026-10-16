@@ -44,24 +44,15 @@ describe("campaign/client delete cascade regression guards", () => {
     const methodStart = storage.indexOf("private async deleteCampaignChildren");
     const methodEnd = storage.indexOf("async deleteCampaignCascade", methodStart);
     const method = storage.slice(methodStart, methodEnd);
-    const declarations = Array.from(schema.matchAll(/export const (\w+) = pgTable\("([^"]+)", \{/g));
-    const campaignScopedTables = declarations
-      .map((match, index) => ({
-        symbol: match[1],
-        tableName: match[2],
-        body: schema.slice(match.index, declarations[index + 1]?.index ?? schema.length),
-      }))
-      .filter(({ symbol, body }) => symbol !== "campaigns" && body.includes("campaignId:"));
+    const campaignScopedTables = Array.from(schema.matchAll(/export const (\w+) = pgTable\("([^"]+)", \{([\s\S]*?)\n\}\);/g))
+      .filter(([, symbol, , body]) => symbol !== "campaigns" && body.includes("campaignId:"))
+      .map(([, symbol, tableName]) => ({ symbol, tableName }));
 
     expect(campaignScopedTables.length).toBeGreaterThan(20);
     for (const { symbol, tableName } of campaignScopedTables) {
       if (symbol === "notifications") {
         expect(method).toContain("tx.update(notifications)");
-      } else if ([
-        "metaKpis", "metaBenchmarks", "metaReports", "ga4GoogleAdsSpendConnections", "ga4GoogleAdsSpendDailyMetrics",
-        "mimosaasTrackingConfigurations", "mimosaasTrackingCampaignMappings", "mimosaasTrackingAttributions",
-        "mimosaasTrackingDailyMetrics", "mimosaasTrackingPublicationRuns", "mimosaasTrackingDailySnapshots",
-      ].includes(symbol)) {
+      } else if (["metaKpis", "metaBenchmarks", "metaReports", "ga4GoogleAdsSpendConnections", "ga4GoogleAdsSpendDailyMetrics"].includes(symbol)) {
         expect(method).toContain(`deleteOptionalCampaignTable("${tableName}")`);
       } else {
         expect(method).toContain(`tx.delete(${symbol}).where(eq(${symbol}.campaignId, campaignId))`);

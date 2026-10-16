@@ -12,9 +12,6 @@ import { assertValidGA4KPIUpdate, GA4_KPI_ACTIVE_METRIC_CONFLICT, GA4_KPI_INVALI
 import { buildShopifyRepairConfirmation, deduplicateShopifyOrders, getShopifyConfirmedRevenueAmounts, getShopifyDiscountCodes, getShopifyOrderReportingDate, getShopifyOrderReportingDateWithinWindow, getShopifyOrderUtm, resolveShopifyGa4RevenueCurrency, shopifyRepairConfirmationMatches, shouldPreserveShopifyDevelopmentStoreLastGood } from './utils/shopify-revenue';
 import { fetchShopifyOrderCustomerJourneyUtms, getShopifyApiVersion, hasShopifyAllOrdersScope, isShopifyPartnerDevelopmentStore, normalizeShopifyDomain, parseShopifyExpiringOfflineToken, refreshShopifyOfflineAccessToken, requireShopifyCampaignOrderWindow, requireShopifyOrderScope, requireShopifyOrderWindowScopes, requireShopifyRevenueScopes, resolveShopifyCampaignOrderWindow, SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE, SHOPIFY_RECENT_ORDER_WINDOW_DAYS, shopifyAdminFetch, validateShopifyOauthState, type ShopifyOauthState } from './utils/shopify-provider';
 import { assertProductionTokenEncryptionConfigured, resolveOAuthStateSigningSecret } from './utils/tokenVault';
-import { verifyMimosaasTrackingSecret } from './utils/mimosaas-tracking-auth';
-import { MIMOSAAS_BROWSER_TRACKER_SOURCE, MIMOSAAS_BROWSER_TRACKER_VERSION } from './mimosaas-browser-tracker';
-import { buildMimosaasGtmAuthorization, installMimosaasGtmTag, listMimosaasGtmContainers, resolveMimosaasGtmAuthorization } from './mimosaas-gtm-installer';
 import { assertGA4ServiceAccountPropertyAllowed, GA4_SERVICE_ACCOUNT_METHOD, getGA4ServiceAccountAccessToken, getGA4ServiceAccountPublicStatus, isSupportedGA4ConnectionMethod, normalizeGA4ServiceAccountPropertyId } from './utils/ga4-service-account';
 import { getGoogleSheetsServiceAccountAccessToken, getGoogleSheetsServiceAccountPublicStatus, GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, normalizeGoogleSheetsSpreadsheetId } from './utils/google-sheets-service-account';
 import { assertGoogleAdsServiceAccountCustomerAllowed, getGoogleAdsServiceAccountAccessToken, getGoogleAdsServiceAccountLoginCustomerId, getGoogleAdsServiceAccountPublicStatus, GOOGLE_ADS_SERVICE_ACCOUNT_METHOD, isSupportedGoogleAdsSpendConnectionMethod, normalizeGoogleAdsCustomerId } from './utils/google-ads-service-account';
@@ -894,7 +891,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     googleSheetsRateLimiter,
     ga4RateLimiter,
     importRateLimiter,
-    mimosaasTrackingRateLimiter,
   } = await import("./middleware/rateLimiter");
 
   // ============================================================================
@@ -3208,7 +3204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Request validation helpers (enterprise-grade consistency)
   const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
   const zCsvRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
-  const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration", "mimosaas_tracking"]);
+  const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
   const zHubSpotRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
   const zSalesforceRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
   const zShopifyRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
@@ -3434,777 +3430,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     (req as any)._campaign = campaign;
     return next();
   };
-
-  const requireMimosaasTrackingFeature = (_req: any, res: any, next: any) => {
-    if (String(process.env.MIMOSAAS_TRACKING_ENABLED || "").trim().toLowerCase() !== "true") {
-      return res.status(404).json({ success: false, message: "Not found" });
-    }
-    return next();
-  };
-  const isMimosaasTrackingIngestionEnabled = () =>
-    String(process.env.MIMOSAAS_TRACKING_ENABLED || "").trim().toLowerCase() === "true" &&
-    String(process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED || "").trim().toLowerCase() === "true";
-  const requireMimosaasTrackingIngestionFeature = (_req: any, res: any, next: any) => {
-    if (!isMimosaasTrackingIngestionEnabled()) return res.status(404).json({ success: false, message: "Not found" });
-    return next();
-  };
-  const isMimosaasGtmEnabled = () =>
-    String(process.env.MIMOSAAS_TRACKING_ENABLED || "").trim().toLowerCase() === "true" &&
-    String(process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED || "").trim().toLowerCase() === "true" &&
-    String(process.env.MIMOSAAS_TRACKING_GTM_ENABLED || "").trim().toLowerCase() === "true";
-  const isMimosaasGoogleAdsAttributionEnabled = () =>
-    isMimosaasTrackingIngestionEnabled() &&
-    String(process.env.MIMOSAAS_TRACKING_GOOGLE_ADS_ATTRIBUTION_ENABLED || "").trim().toLowerCase() === "true";
-  const requireMimosaasGtmFeature = (_req: any, res: any, next: any) => {
-    if (!isMimosaasGtmEnabled()) return res.status(404).json({ success: false, message: "Not found" });
-    return next();
-  };
-
-  const mimosaasWebsiteUrlSchema = z.string().trim().max(2048).url().refine((value) => {
-    try { return ["http:", "https:"].includes(new URL(value).protocol); } catch { return false; }
-  }, "Website URL must use http or https").transform((value) => new URL(value).origin);
-  const mimosaasInstallationMethodSchema = z.enum(["google_tag_manager", "shopify", "woocommerce", "website_builder", "universal"]);
-  const mimosaasWebsiteBodySchema = z.object({
-    websiteUrl: mimosaasWebsiteUrlSchema,
-    installationMethod: mimosaasInstallationMethodSchema,
-  }).strict();
-  const mimosaasWebsiteUpdateBodySchema = mimosaasWebsiteBodySchema.partial()
-    .refine((value) => Object.keys(value).length > 0, "At least one website field is required");
-  const mimosaasGtmConnectionBodySchema = z.object({
-    connectionId: z.string().trim().min(1).max(255),
-  }).strict();
-  const mimosaasGtmAuthorizationSchema = z.object({
-    v: z.literal(1),
-    iv: z.string().min(1).max(255),
-    tag: z.string().min(1).max(255),
-    data: z.string().min(1).max(200000),
-  }).strict();
-  const mimosaasGtmInstallationBodySchema = z.object({
-    connectionId: z.string().trim().min(1).max(255),
-    trackingSecret: z.string().regex(/^mts_[A-Za-z0-9_-]{43}$/),
-    containerPath: z.string().regex(/^accounts\/[^/]+\/containers\/[^/]+$/),
-    authorization: mimosaasGtmAuthorizationSchema,
-  }).strict();
-  const mimosaasTrackingHttpUrlSchema = z.string().trim().max(2048).url().refine((value) => {
-    try { return ["http:", "https:"].includes(new URL(value).protocol); } catch { return false; }
-  }, "Event URL must use http or https");
-  const mimosaasTrackingOptionalValueSchema = z.string().trim().max(255).nullable().optional()
-    .transform((value) => value || null);
-  const mimosaasTrackingEventBodySchema = z.object({
-    trackingId: z.string().regex(/^mtk_[a-f0-9]{32}$/),
-    trackingSecret: z.string().regex(/^mts_[A-Za-z0-9_-]{43}$/),
-    eventId: z.string().trim().min(1).max(128).regex(/^[A-Za-z0-9_-]+$/),
-    eventTime: z.string().datetime({ offset: true }).transform((value) => new Date(value)),
-    anonymousVisitorId: z.string().trim().min(1).max(128),
-    sessionId: z.string().trim().min(1).max(128),
-    eventName: z.string().trim().min(1).max(100).regex(/^[A-Za-z0-9_.-]+$/),
-    url: mimosaasTrackingHttpUrlSchema,
-    referrer: z.union([z.literal(""), mimosaasTrackingHttpUrlSchema]).nullable().optional().transform((value) => value || null),
-    utmSource: mimosaasTrackingOptionalValueSchema,
-    utmMedium: mimosaasTrackingOptionalValueSchema,
-    utmCampaign: mimosaasTrackingOptionalValueSchema,
-    utmTerm: mimosaasTrackingOptionalValueSchema,
-    utmContent: mimosaasTrackingOptionalValueSchema,
-    gclid: z.string().trim().max(512).nullable().optional().transform((value) => value || null),
-  }).strict();
-  const mimosaasTrackingInstallationVerificationBodySchema = z.object({
-    trackingId: z.string().regex(/^mtk_[a-f0-9]{32}$/),
-    trackingSecret: z.string().regex(/^mts_[A-Za-z0-9_-]{43}$/),
-    url: mimosaasTrackingHttpUrlSchema,
-  }).strict();
-  const publicMimosaasWebsiteConnection = (connection: any) => ({
-    id: connection.id,
-    clientId: connection.clientId,
-    websiteUrl: connection.websiteUrl,
-    installationMethod: connection.installationMethod,
-    trackingPublicId: connection.trackingPublicId,
-    installationStatus: connection.installationStatus,
-    verifiedAt: connection.verifiedAt,
-    lastEventAt: connection.lastEventAt,
-    createdAt: connection.createdAt,
-    updatedAt: connection.updatedAt,
-  });
-  const publicMimosaasTrackingDailySnapshot = (snapshot: any) => ({
-    reportingDate: snapshot.reportingDate,
-    reportingTimeZone: snapshot.reportingTimeZone,
-    users: snapshot.users,
-    sessions: snapshot.sessions,
-    engagedSessions: snapshot.engagedSessions,
-    pageviews: snapshot.pageviews,
-    conversions: snapshot.conversions,
-    engagementRate: snapshot.engagementRate,
-    conversionRate: snapshot.conversionRate,
-    revenue: snapshot.revenue,
-    spend: snapshot.spend,
-    currency: snapshot.currency,
-    revenueStatus: snapshot.revenueStatus,
-    spendStatus: snapshot.spendStatus,
-    publishedAt: snapshot.publishedAt,
-  });
-  const publicMimosaasTrackingFinancialSource = (source: any) => ({
-    id: source.id,
-    sourceType: source.sourceType,
-    platformContext: source.platformContext,
-    displayName: source.displayName,
-    currency: source.currency,
-    mappingConfig: source.mappingConfig,
-    isActive: source.isActive,
-    connectedAt: source.connectedAt,
-    createdAt: source.createdAt,
-  });
-  const mimosaasTrackingFinancialSourceDeleteParamsSchema = z.object({
-    sourceKind: z.enum(["revenue", "spend"]),
-    sourceId: z.string().trim().min(1),
-  });
-  const sendMimosaasWebsiteError = (res: any, error: any) => {
-    if (String(error?.code || "").endsWith("_SCOPE_NOT_FOUND")) {
-      return res.status(404).json({ success: false, message: "Website connection not found" });
-    }
-    if (String(error?.code || "") === "23505") {
-      return res.status(409).json({ success: false, message: "This website is already connected to the client" });
-    }
-    console.error("Mimosaas Tracking website connection error:", error);
-    return res.status(500).json({ success: false, message: "Failed to save Mimosaas Tracking website connection" });
-  };
-  const mimosaasConversionEventNamesSchema = z.array(z.string().trim().min(1).max(100)).max(50)
-    .transform((names) => Array.from(new Set(names)));
-  const mimosaasTrackingConfigurationBodySchema = z.object({
-    websiteConnectionId: z.string().trim().min(1).max(255),
-    conversionEventNames: mimosaasConversionEventNamesSchema.optional().default([]),
-    attributionWindowDays: z.number().int().min(1).max(90).optional().default(30),
-  }).strict();
-  const mimosaasTrackingConfigurationUpdateBodySchema = z.object({
-    conversionEventNames: mimosaasConversionEventNamesSchema.optional(),
-    attributionWindowDays: z.number().int().min(1).max(90).optional(),
-  }).strict().refine((value) => Object.keys(value).length > 0, "At least one configuration field is required");
-  const sendMimosaasConfigurationError = (res: any, error: any) => {
-    const code = String(error?.code || "");
-    if (code.endsWith("_SCOPE_NOT_FOUND") || code === "MIMOSAAS_TRACKING_CONFIGURATION_NOT_FOUND") {
-      return res.status(404).json({ success: false, message: "Campaign tracking setup not found" });
-    }
-    if (code === "23505") {
-      return res.status(409).json({ success: false, message: "This campaign already has a tracking configuration" });
-    }
-    console.error("Mimosaas Tracking configuration error:", error);
-    return res.status(500).json({ success: false, message: "Failed to save Mimosaas Tracking configuration" });
-  };
-  const mimosaasTrackingMappingBodySchema = z.object({
-    campaignValue: z.string().trim().min(1).max(255),
-  }).strict();
-  const mimosaasTrackingMappingUpdateBodySchema = z.object({
-    campaignValue: z.string().trim().min(1).max(255).optional(),
-    isActive: z.boolean().optional(),
-  }).strict().refine((value) => Object.keys(value).length > 0, "At least one mapping field is required");
-  const sendMimosaasMappingError = (res: any, error: any) => {
-    const code = String(error?.code || "");
-    if (code.endsWith("_SCOPE_NOT_FOUND") || code === "MIMOSAAS_TRACKING_CONFIGURATION_NOT_FOUND") {
-      return res.status(404).json({ success: false, message: "Campaign mapping not found" });
-    }
-    if (code === "23505" || code === "MIMOSAAS_TRACKING_MAPPING_CONFLICT") {
-      return res.status(409).json({ success: false, message: "This website campaign value is already mapped" });
-    }
-    console.error("Mimosaas Tracking campaign mapping error:", error);
-    return res.status(500).json({ success: false, message: "Failed to save Mimosaas Tracking campaign mapping" });
-  };
-
-  const signMimosaasGtmOAuthState = (campaignId: string, connectionId: string): string => {
-    const secret = resolveOAuthStateSigningSecret({
-      specificSecret: process.env.MIMOSAAS_TRACKING_GTM_OAUTH_STATE_SECRET,
-      purpose: "mimosaas-gtm",
-      label: "Mimosaas GTM",
-      developmentFallback: "dev-mimosaas-gtm-oauth-state-secret",
-    });
-    const payload = { c: campaignId, w: connectionId, t: Date.now(), n: randomBytes(12).toString("hex") };
-    const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
-    const signature = createHmac("sha256", secret).update(payloadB64).digest("base64url");
-    return `${payloadB64}.${signature}`;
-  };
-  const verifyMimosaasGtmOAuthState = (stateRaw: unknown): { ok: true; campaignId: string; connectionId: string } | { ok: false } => {
-    const [payloadB64, signatureB64] = String(stateRaw || "").split(".");
-    if (!payloadB64 || !signatureB64) return { ok: false };
-    const secret = resolveOAuthStateSigningSecret({
-      specificSecret: process.env.MIMOSAAS_TRACKING_GTM_OAUTH_STATE_SECRET,
-      purpose: "mimosaas-gtm",
-      label: "Mimosaas GTM",
-      developmentFallback: "dev-mimosaas-gtm-oauth-state-secret",
-    });
-    const expected = createHmac("sha256", secret).update(payloadB64).digest();
-    const provided = Buffer.from(signatureB64, "base64url");
-    if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) return { ok: false };
-    try {
-      const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
-      if (!payload?.c || !payload?.w || !Number.isFinite(payload?.t) || Date.now() - payload.t > 10 * 60 * 1000 || payload.t > Date.now() + 60_000) return { ok: false };
-      return { ok: true, campaignId: String(payload.c), connectionId: String(payload.w) };
-    } catch {
-      return { ok: false };
-    }
-  };
-  const getMimosaasGtmBaseUrl = (req: any) => String(
-    process.env.APP_BASE_URL || process.env.RENDER_EXTERNAL_URL ||
-    (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : `${req.protocol}://${req.get("host")}`),
-  ).replace(/\/+$/, "");
-  const mimosaasGtmWebsiteMatchesCampaign = (connection: any, campaign: any) => {
-    try {
-      return new URL(String(connection?.websiteUrl || "")).origin === new URL(String(campaign?.clientWebsite || "")).origin;
-    } catch {
-      return false;
-    }
-  };
-  const sendMimosaasGtmPopupMessage = (res: any, message: Record<string, unknown>) => {
-    const safeMessage = JSON.stringify(message).replace(/</g, "\\u003c");
-    return res.type("html").send(`<html><body><script>if(window.opener){window.opener.postMessage(${safeMessage},window.location.origin)}window.close()</script></body></html>`);
-  };
-
-  const setMimosaasTrackingCors = (req: any, res: any) => {
-    const origin = String(req.get("origin") || "").trim();
-    if (origin) {
-      try {
-        const normalizedOrigin = new URL(origin).origin;
-        res.setHeader("Access-Control-Allow-Origin", normalizedOrigin);
-        res.setHeader("Vary", "Origin");
-      } catch {}
-    }
-    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  };
-
-  app.get("/api/mimosaas-tracking/availability", requireMimosaasTrackingIngestionFeature, (req, res) => {
-    if (!getActorId(req)) return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
-    res.setHeader("Cache-Control", "no-store");
-    return res.json({
-      enabled: true,
-      googleAdsAttributionEnabled: isMimosaasGoogleAdsAttributionEnabled()
-        && Boolean(process.env.GOOGLE_ADS_CLIENT_ID && process.env.GOOGLE_ADS_CLIENT_SECRET && process.env.GOOGLE_ADS_DEVELOPER_TOKEN),
-    });
-  });
-
-  app.get("/api/campaigns/:id/mimosaas-tracking/gtm/availability", requireMimosaasGtmFeature, requireCampaignAccessParamId, (_req, res) => {
-    res.setHeader("Cache-Control", "no-store");
-    return res.json({ enabled: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) });
-  });
-
-  app.post("/api/campaigns/:id/mimosaas-tracking/gtm/connect", requireMimosaasGtmFeature, oauthRateLimiter, requireCampaignAccessParamId, async (req, res) => {
-    const parsed = mimosaasGtmConnectionBodySchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ success: false, message: "Invalid website connection" });
-    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-      return res.status(503).json({ success: false, message: "Google Tag Manager connection is not configured" });
-    }
-    try {
-      const campaign = (req as any)._campaign;
-      const actorId = getActorId(req);
-      const connection = await storage.getMimosaasWebsiteConnection(actorId, String(campaign.clientId), parsed.data.connectionId);
-      if (!connection || connection.installationStatus !== "pending" || !connection.trackingPublicId || !connection.trackingSecretHash || !mimosaasGtmWebsiteMatchesCampaign(connection, campaign)) {
-        return res.status(409).json({ success: false, message: "Website installation is not pending" });
-      }
-      const redirectUri = `${getMimosaasGtmBaseUrl(req)}/api/auth/mimosaas-tracking/gtm/callback`;
-      const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-      authUrl.search = new URLSearchParams({
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        redirect_uri: redirectUri,
-        response_type: "code",
-        scope: "https://www.googleapis.com/auth/tagmanager.edit.containers https://www.googleapis.com/auth/tagmanager.edit.containerversions https://www.googleapis.com/auth/tagmanager.publish",
-        access_type: "online",
-        include_granted_scopes: "true",
-        state: signMimosaasGtmOAuthState(String(campaign.id), String(connection.id)),
-      }).toString();
-      res.setHeader("Cache-Control", "no-store");
-      return res.json({ authUrl: authUrl.toString() });
-    } catch (error: any) {
-      return sendMimosaasWebsiteError(res, error);
-    }
-  });
-
-  app.get("/api/auth/mimosaas-tracking/gtm/callback", oauthRateLimiter, async (req, res) => {
-    if (!isMimosaasGtmEnabled()) return res.status(404).send("Not found");
-    const verifiedState = verifyMimosaasGtmOAuthState(req.query.state);
-    if (!verifiedState.ok) {
-      return sendMimosaasGtmPopupMessage(res, { type: "mimosaas_gtm_auth_error", error: "Google Tag Manager authorization was not completed." });
-    }
-    const popupScope = { campaignId: verifiedState.campaignId, connectionId: verifiedState.connectionId };
-    if (req.query.error || !req.query.code) {
-      return sendMimosaasGtmPopupMessage(res, { type: "mimosaas_gtm_auth_error", ...popupScope, error: "Google Tag Manager authorization was not completed." });
-    }
-    try {
-      const actorId = getActorId(req);
-      const campaign = actorId ? await storage.getCampaign(verifiedState.campaignId) : null;
-      if (!actorId || !campaign || String(campaign.ownerId || "") !== actorId) {
-        return sendMimosaasGtmPopupMessage(res, { type: "mimosaas_gtm_auth_error", ...popupScope, error: "Campaign not found." });
-      }
-      const connection = await storage.getMimosaasWebsiteConnection(actorId, String(campaign.clientId), verifiedState.connectionId);
-      if (!connection || connection.installationStatus !== "pending" || !mimosaasGtmWebsiteMatchesCampaign(connection, campaign)) {
-        return sendMimosaasGtmPopupMessage(res, { type: "mimosaas_gtm_auth_error", ...popupScope, error: "Website installation is not pending." });
-      }
-      const redirectUri = `${getMimosaasGtmBaseUrl(req)}/api/auth/mimosaas-tracking/gtm/callback`;
-      const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          code: String(req.query.code),
-          client_id: String(process.env.GOOGLE_CLIENT_ID || ""),
-          client_secret: String(process.env.GOOGLE_CLIENT_SECRET || ""),
-          redirect_uri: redirectUri,
-          grant_type: "authorization_code",
-        }),
-      });
-      const tokens = await tokenResponse.json();
-      if (!tokenResponse.ok || !tokens?.access_token) throw new Error("Google token exchange failed");
-      const containers = await listMimosaasGtmContainers(String(tokens.access_token), String(connection.websiteUrl));
-      if (containers.length === 0) {
-        return sendMimosaasGtmPopupMessage(res, { type: "mimosaas_gtm_auth_error", ...popupScope, error: "No editable web container was found in this Google account." });
-      }
-      const authorization = buildMimosaasGtmAuthorization({
-        actorId,
-        campaignId: String(campaign.id),
-        connectionId: String(connection.id),
-        accessToken: String(tokens.access_token),
-        containers,
-      });
-      return sendMimosaasGtmPopupMessage(res, {
-        type: "mimosaas_gtm_auth_success",
-        campaignId: String(campaign.id),
-        connectionId: String(connection.id),
-        authorization,
-        containers,
-      });
-    } catch (error) {
-      console.error("Mimosaas GTM authorization failed:", error);
-      return sendMimosaasGtmPopupMessage(res, { type: "mimosaas_gtm_auth_error", ...popupScope, error: "Google Tag Manager connection failed." });
-    }
-  });
-
-  app.post("/api/campaigns/:id/mimosaas-tracking/gtm/install", requireMimosaasGtmFeature, requireCampaignAccessParamId, async (req, res) => {
-    const parsed = mimosaasGtmInstallationBodySchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ success: false, message: "Invalid Google Tag Manager installation" });
-    let claim: { actorId: string; clientId: string; connectionId: string; trackingSecretHash: string; attemptId: string } | null = null;
-    try {
-      const campaign = (req as any)._campaign;
-      const actorId = getActorId(req);
-      const clientId = String(campaign.clientId);
-      const authorized = resolveMimosaasGtmAuthorization({
-        authorization: parsed.data.authorization,
-        actorId,
-        campaignId: String(campaign.id),
-        connectionId: parsed.data.connectionId,
-        containerPath: parsed.data.containerPath,
-      });
-      if (!authorized) return res.status(401).json({ success: false, message: "Google Tag Manager authorization expired or is invalid" });
-      const connection = await storage.getMimosaasWebsiteConnection(actorId, clientId, parsed.data.connectionId);
-      if (!connection?.trackingPublicId || !connection.trackingSecretHash || !verifyMimosaasTrackingSecret(parsed.data.trackingSecret, connection.trackingSecretHash)) {
-        return res.status(401).json({ success: false, message: "Invalid tracking credentials" });
-      }
-      if (!["pending", "verified"].includes(String(connection.installationStatus))) {
-        return res.status(409).json({ success: false, message: "Website installation is not active" });
-      }
-      const credentialCreatedAt = connection.trackingSecretCreatedAt instanceof Date
-        ? connection.trackingSecretCreatedAt.toISOString()
-        : String(connection.trackingSecretCreatedAt || "");
-      const attemptId = randomUUID();
-      const claimed = await storage.claimMimosaasGtmInstallation(
-        actorId, clientId, String(connection.id), connection.trackingSecretHash,
-        attemptId, authorized.container.path, credentialCreatedAt,
-      );
-      if (claimed.alreadyInstalled) {
-        return res.json({ success: true, connection: publicMimosaasWebsiteConnection(claimed.connection), alreadyInstalled: true });
-      }
-      claim = { actorId, clientId, connectionId: String(connection.id), trackingSecretHash: connection.trackingSecretHash, attemptId };
-      const installationMetadata = await installMimosaasGtmTag({
-        accessToken: authorized.accessToken,
-        container: authorized.container,
-        trackingId: String(connection.trackingPublicId),
-        trackingSecret: parsed.data.trackingSecret,
-        trackerOrigin: getMimosaasGtmBaseUrl(req),
-      });
-      const updated = await storage.recordMimosaasGtmInstallation(
-        actorId, clientId, String(connection.id), connection.trackingSecretHash, attemptId,
-        { ...installationMetadata, credentialCreatedAt },
-      );
-      claim = null;
-      res.setHeader("Cache-Control", "no-store");
-      return res.json({ success: true, connection: publicMimosaasWebsiteConnection(updated), alreadyInstalled: false });
-    } catch (error: any) {
-      if (claim) {
-        await storage.releaseMimosaasGtmInstallationClaim(
-          claim.actorId, claim.clientId, claim.connectionId, claim.trackingSecretHash, claim.attemptId,
-        ).catch(() => undefined);
-      }
-      if ([401, 403].includes(Number(error?.status))) {
-        return res.status(409).json({ success: false, message: "Your Google account cannot edit and publish this GTM container" });
-      }
-      if (error?.code === "MIMOSAAS_GTM_INSTALLATION_IN_PROGRESS") {
-        return res.status(409).json({ success: false, message: error.message });
-      }
-      if (error?.code === "MIMOSAAS_TRACKING_AUTH_INVALID" || error?.code === "MIMOSAAS_TRACKING_CONNECTION_INACTIVE") {
-        return res.status(409).json({ success: false, message: error.message });
-      }
-      console.error("Mimosaas GTM installation failed:", error);
-      return res.status(502).json({ success: false, message: "Google Tag Manager installation failed" });
-    }
-  });
-
-  app.options("/api/mimosaas-tracking/events", requireMimosaasTrackingIngestionFeature, (req, res) => {
-    setMimosaasTrackingCors(req, res);
-    return res.status(204).end();
-  });
-
-  app.get("/api/mimosaas-tracking/tracker.js", requireMimosaasTrackingIngestionFeature, (_req, res) => {
-    res.type("application/javascript");
-    res.setHeader("Cache-Control", "no-store");
-    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-    res.setHeader("X-Mimosaas-Tracker-Version", MIMOSAAS_BROWSER_TRACKER_VERSION);
-    return res.send(MIMOSAAS_BROWSER_TRACKER_SOURCE);
-  });
-
-  app.options("/api/mimosaas-tracking/installations/verify", requireMimosaasTrackingIngestionFeature, (req, res) => {
-    setMimosaasTrackingCors(req, res);
-    return res.status(204).end();
-  });
-
-  app.post("/api/mimosaas-tracking/installations/verify", requireMimosaasTrackingIngestionFeature, mimosaasTrackingRateLimiter, async (req, res) => {
-    setMimosaasTrackingCors(req, res);
-    res.setHeader("Cache-Control", "no-store");
-    const parsed = mimosaasTrackingInstallationVerificationBodySchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ success: false, message: "Invalid installation verification" });
-    const { trackingId, trackingSecret, url } = parsed.data;
-
-    try {
-      const connection = await storage.getMimosaasWebsiteConnectionByTrackingPublicId(trackingId);
-      if (!connection?.trackingSecretHash || !verifyMimosaasTrackingSecret(trackingSecret, connection.trackingSecretHash)) {
-        return res.status(401).json({ success: false, message: "Invalid tracking credentials" });
-      }
-      if (!["pending", "verified"].includes(String(connection.installationStatus))) {
-        return res.status(403).json({ success: false, message: "Website tracking is not active" });
-      }
-      const requestOrigin = String(req.get("origin") || "").trim();
-      if (!requestOrigin) return res.status(403).json({ success: false, message: "Tracking origin does not match the connected website" });
-      try {
-        if (new URL(requestOrigin).origin !== new URL(String(connection.websiteUrl)).origin) {
-          return res.status(403).json({ success: false, message: "Tracking origin does not match the connected website" });
-        }
-      } catch {
-        return res.status(403).json({ success: false, message: "Tracking origin does not match the connected website" });
-      }
-      if (new URL(url).origin !== new URL(String(connection.websiteUrl)).origin) {
-        return res.status(400).json({ success: false, message: "Installation URL does not match the connected website" });
-      }
-
-      const verification = await storage.verifyMimosaasWebsiteConnectionInstallation(connection.id, connection.trackingSecretHash, url);
-      return res.json({
-        success: true,
-        verified: true,
-        newlyVerified: verification.newlyVerified,
-        installationStatus: verification.connection.installationStatus,
-        verifiedAt: verification.connection.verifiedAt,
-        lastEventAt: verification.connection.lastEventAt,
-      });
-    } catch (error: any) {
-      const code = String(error?.code || "");
-      if (code === "MIMOSAAS_TRACKING_AUTH_INVALID" || code === "MIMOSAAS_TRACKING_WEBSITE_NOT_FOUND") return res.status(401).json({ success: false, message: "Invalid tracking credentials" });
-      if (code === "MIMOSAAS_TRACKING_CONNECTION_INACTIVE") return res.status(403).json({ success: false, message: "Website tracking is not active" });
-      if (code === "MIMOSAAS_TRACKING_EVENT_WEBSITE_SCOPE_MISMATCH") return res.status(400).json({ success: false, message: "Installation URL does not match the connected website" });
-      console.error("Mimosaas Tracking installation verification failed:", error);
-      return res.status(500).json({ success: false, message: "Failed to verify tracking installation" });
-    }
-  });
-
-  app.post("/api/mimosaas-tracking/events", requireMimosaasTrackingIngestionFeature, mimosaasTrackingRateLimiter, async (req, res) => {
-    setMimosaasTrackingCors(req, res);
-    res.setHeader("Cache-Control", "no-store");
-    const parsed = mimosaasTrackingEventBodySchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ success: false, message: "Invalid tracking event" });
-
-    const { trackingId, trackingSecret, ...event } = parsed.data;
-    const now = Date.now();
-    if (event.eventTime.getTime() > now + 5 * 60 * 1000 || event.eventTime.getTime() < now - 48 * 60 * 60 * 1000) {
-      return res.status(400).json({ success: false, message: "Tracking event time is outside the accepted window" });
-    }
-
-    try {
-      const connection = await storage.getMimosaasWebsiteConnectionByTrackingPublicId(trackingId);
-      if (!connection?.trackingSecretHash || !verifyMimosaasTrackingSecret(trackingSecret, connection.trackingSecretHash)) {
-        return res.status(401).json({ success: false, message: "Invalid tracking credentials" });
-      }
-      if (!["pending", "verified"].includes(String(connection.installationStatus))) {
-        return res.status(403).json({ success: false, message: "Website tracking is not active" });
-      }
-      const requestOrigin = String(req.get("origin") || "").trim();
-      if (requestOrigin) {
-        try {
-          if (new URL(requestOrigin).origin !== new URL(String(connection.websiteUrl)).origin) {
-            return res.status(403).json({ success: false, message: "Tracking origin does not match the connected website" });
-          }
-        } catch {
-          return res.status(403).json({ success: false, message: "Tracking origin does not match the connected website" });
-        }
-      }
-      if (new URL(event.url).origin !== new URL(String(connection.websiteUrl)).origin) {
-        return res.status(400).json({ success: false, message: "Event URL does not match the connected website" });
-      }
-
-      const result = await storage.createMimosaasTrackingEvent(connection.id, {
-        ...event,
-        resolvedCampaignId: null,
-        campaignResolutionStatus: "pending",
-      }, connection.trackingSecretHash);
-      try {
-        await storage.resolveMimosaasTrackingUtmAttribution(connection.id, String(result.event.eventId));
-      } catch (attributionError) {
-        console.error("Mimosaas Tracking UTM attribution deferred for stored event:", result.event.eventId, attributionError);
-      }
-      return res.status(202).json({ success: true, accepted: true, duplicate: !result.inserted });
-    } catch (error: any) {
-      const code = String(error?.code || "");
-      if (code === "MIMOSAAS_TRACKING_AUTH_INVALID") return res.status(401).json({ success: false, message: "Invalid tracking credentials" });
-      if (code === "MIMOSAAS_TRACKING_CONNECTION_INACTIVE") return res.status(403).json({ success: false, message: "Website tracking is not active" });
-      if (code === "MIMOSAAS_TRACKING_EVENT_WEBSITE_SCOPE_MISMATCH") return res.status(400).json({ success: false, message: "Event URL does not match the connected website" });
-      if (code === "MIMOSAAS_TRACKING_EVENT_ID_CONFLICT") return res.status(409).json({ success: false, message: "Event ID is already used by a different event" });
-      console.error("Mimosaas Tracking event receipt failed:", error);
-      return res.status(500).json({ success: false, message: "Failed to accept tracking event" });
-    }
-  });
-
-  app.get("/api/campaigns/:id/mimosaas-tracking/websites", requireMimosaasTrackingFeature, requireCampaignAccessParamId, async (req, res) => {
-    try {
-      const campaign = (req as any)._campaign;
-      const connections = await storage.getMimosaasWebsiteConnections(getActorId(req), String(campaign.clientId));
-      res.setHeader("Cache-Control", "no-store");
-      return res.json({ success: true, connections: connections.map(publicMimosaasWebsiteConnection) });
-    } catch (error: any) {
-      return sendMimosaasWebsiteError(res, error);
-    }
-  });
-
-  app.post("/api/campaigns/:id/mimosaas-tracking/websites", requireMimosaasTrackingFeature, requireCampaignAccessParamId, async (req, res) => {
-    const parsed = mimosaasWebsiteBodySchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ success: false, message: parsed.error.errors[0]?.message || "Invalid website connection" });
-    try {
-      const campaign = (req as any)._campaign;
-      const connection = await storage.createMimosaasWebsiteConnection(getActorId(req), String(campaign.clientId), {
-        ...parsed.data,
-        installationStatus: "pending",
-      });
-      res.setHeader("Cache-Control", "no-store");
-      return res.status(201).json({
-        success: true,
-        connection: publicMimosaasWebsiteConnection(connection),
-        credentials: { trackingId: connection.trackingPublicId, secret: connection.trackingSecret },
-      });
-    } catch (error: any) {
-      return sendMimosaasWebsiteError(res, error);
-    }
-  });
-
-  app.post("/api/campaigns/:id/mimosaas-tracking/websites/:connectionId/rotate-secret", requireMimosaasTrackingFeature, requireCampaignAccessParamId, async (req, res) => {
-    try {
-      const campaign = (req as any)._campaign;
-      const connection = await storage.rotateMimosaasWebsiteConnectionSecret(getActorId(req), String(campaign.clientId), String(req.params.connectionId));
-      if (!connection) return res.status(404).json({ success: false, message: "Website connection not found" });
-      res.setHeader("Cache-Control", "no-store");
-      return res.json({
-        success: true,
-        connection: publicMimosaasWebsiteConnection(connection),
-        credentials: { trackingId: connection.trackingPublicId, secret: connection.trackingSecret },
-      });
-    } catch (error: any) {
-      return sendMimosaasWebsiteError(res, error);
-    }
-  });
-
-  app.patch("/api/campaigns/:id/mimosaas-tracking/websites/:connectionId", requireMimosaasTrackingFeature, requireCampaignAccessParamId, async (req, res) => {
-    const parsed = mimosaasWebsiteUpdateBodySchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ success: false, message: parsed.error.errors[0]?.message || "Invalid website connection" });
-    try {
-      const campaign = (req as any)._campaign;
-      const connection = await storage.updateMimosaasWebsiteConnection(getActorId(req), String(campaign.clientId), String(req.params.connectionId), {
-        ...parsed.data,
-        installationStatus: "pending",
-        installationMetadata: null,
-        verifiedAt: null,
-        lastEventAt: null,
-      });
-      if (!connection) return res.status(404).json({ success: false, message: "Website connection not found" });
-      return res.json({ success: true, connection: publicMimosaasWebsiteConnection(connection) });
-    } catch (error: any) {
-      return sendMimosaasWebsiteError(res, error);
-    }
-  });
-
-  app.get("/api/campaigns/:id/mimosaas-tracking/configuration", requireMimosaasTrackingFeature, requireCampaignAccessParamId, async (req, res) => {
-    try {
-      const campaignId = String(req.params.id || "");
-      const ownerId = getActorId(req);
-      const clientId = String((req as any)._campaign?.clientId || "");
-      if (!ownerId) return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
-      if (!clientId) return res.status(404).json({ success: false, message: "Campaign not found" });
-
-      const configuration = await storage.getMimosaasTrackingConfiguration(ownerId, clientId, campaignId);
-      const mappings = configuration
-        ? await storage.getMimosaasTrackingCampaignMappings(ownerId, clientId, campaignId)
-        : [];
-      res.setHeader("Cache-Control", "no-store");
-      return res.json({ success: true, configuration: configuration || null, mappings });
-    } catch (error: any) {
-      if (String(error?.code || "").endsWith("_SCOPE_NOT_FOUND")) {
-        return res.status(404).json({ success: false, message: "Campaign not found" });
-      }
-      console.error("Mimosaas Tracking configuration fetch error:", error);
-      return res.status(500).json({ success: false, message: "Failed to fetch Mimosaas Tracking configuration" });
-    }
-  });
-
-  app.get("/api/campaigns/:id/mimosaas-tracking/daily-snapshot", requireMimosaasTrackingIngestionFeature, requireCampaignAccessParamId, async (req, res) => {
-    try {
-      const campaign = (req as any)._campaign;
-      const snapshot = await storage.getLatestMimosaasTrackingDailySnapshot(
-        getActorId(req), String(campaign.clientId), String(campaign.id),
-      );
-      res.setHeader("Cache-Control", "no-store");
-      return res.json({ success: true, snapshot: snapshot ? publicMimosaasTrackingDailySnapshot(snapshot) : null });
-    } catch (error: any) {
-      if (String(error?.code || "").endsWith("_SCOPE_NOT_FOUND")) {
-        return res.status(404).json({ success: false, message: "Campaign not found" });
-      }
-      console.error("Mimosaas Tracking daily snapshot fetch error:", error);
-      return res.status(500).json({ success: false, message: "Failed to fetch Mimosaas Tracking daily snapshot" });
-    }
-  });
-
-  app.get("/api/campaigns/:id/mimosaas-tracking/financial-sources", requireMimosaasTrackingIngestionFeature, requireCampaignAccessParamId, async (req, res) => {
-    try {
-      const campaign = (req as any)._campaign;
-      if (campaign?.platform !== "mimosaas-tracking" || campaign?.status !== "active") {
-        return res.status(404).json({ success: false, message: "Campaign not found" });
-      }
-      const [revenueSources, spendSources] = await Promise.all([
-        storage.getRevenueSources(String(campaign.id), "mimosaas_tracking"),
-        storage.getSpendSources(String(campaign.id), "mimosaas_tracking"),
-      ]);
-      const isSupportedSource = (source: any) => source?.isActive !== false
-        && String(source?.sourceType || "").trim().toLowerCase() === "google_sheets"
-        && String(source?.platformContext || "").trim().toLowerCase() === "mimosaas_tracking";
-      res.setHeader("Cache-Control", "no-store");
-      return res.json({
-        success: true,
-        revenueSources: revenueSources.filter(isSupportedSource).map(publicMimosaasTrackingFinancialSource),
-        spendSources: spendSources.filter(isSupportedSource).map(publicMimosaasTrackingFinancialSource),
-      });
-    } catch (error: any) {
-      console.error("Mimosaas Tracking financial source fetch error:", error);
-      return res.status(500).json({ success: false, message: "Failed to fetch Mimosaas Tracking financial sources" });
-    }
-  });
-
-  app.delete("/api/campaigns/:id/mimosaas-tracking/financial-sources/:sourceKind/:sourceId", requireMimosaasTrackingIngestionFeature, requireCampaignAccessParamId, async (req, res) => {
-    const parsed = mimosaasTrackingFinancialSourceDeleteParamsSchema.safeParse(req.params);
-    if (!parsed.success) return res.status(400).json({ success: false, message: "Invalid financial source" });
-    try {
-      const campaign = (req as any)._campaign;
-      if (campaign?.platform !== "mimosaas-tracking" || campaign?.status !== "active") {
-        return res.status(404).json({ success: false, message: "Campaign not found" });
-      }
-      const campaignId = String(campaign.id);
-      const { sourceKind, sourceId } = parsed.data;
-      const source = sourceKind === "revenue"
-        ? await storage.getRevenueSource(campaignId, sourceId)
-        : await storage.getSpendSource(campaignId, sourceId, "mimosaas_tracking");
-      const isTrackerSheet = source?.isActive !== false
-        && String(source?.sourceType || "").trim().toLowerCase() === "google_sheets"
-        && String(source?.platformContext || "").trim().toLowerCase() === "mimosaas_tracking";
-      if (!isTrackerSheet) return res.status(404).json({ success: false, message: "Financial source not found" });
-
-      const deleted = sourceKind === "revenue"
-        ? await storage.deleteRevenueSourceWithRecords(campaignId, sourceId, "mimosaas_tracking")
-        : await storage.deleteSpendSourceWithRecords(campaignId, sourceId, "mimosaas_tracking");
-      if (!deleted) return res.status(409).json({ success: false, message: "Financial source changed; refresh and try again" });
-      return res.json({ success: true, sourceKind, sourceId });
-    } catch (error: any) {
-      console.error("Mimosaas Tracking financial source delete error:", error);
-      return res.status(500).json({ success: false, message: "Failed to delete Mimosaas Tracking financial source" });
-    }
-  });
-
-  app.post("/api/campaigns/:id/mimosaas-tracking/configuration", requireMimosaasTrackingFeature, requireCampaignAccessParamId, async (req, res) => {
-    const parsed = mimosaasTrackingConfigurationBodySchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ success: false, message: parsed.error.errors[0]?.message || "Invalid tracking configuration" });
-    try {
-      const campaign = (req as any)._campaign;
-      const configuration = await storage.createMimosaasTrackingConfiguration(
-        getActorId(req), String(campaign.clientId), String(campaign.id), { ...parsed.data, status: "draft" },
-      );
-      return res.status(201).json({ success: true, configuration });
-    } catch (error: any) {
-      return sendMimosaasConfigurationError(res, error);
-    }
-  });
-
-  app.patch("/api/campaigns/:id/mimosaas-tracking/configuration", requireMimosaasTrackingFeature, requireCampaignAccessParamId, async (req, res) => {
-    const parsed = mimosaasTrackingConfigurationUpdateBodySchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ success: false, message: parsed.error.errors[0]?.message || "Invalid tracking configuration" });
-    try {
-      const campaign = (req as any)._campaign;
-      const configuration = await storage.updateMimosaasTrackingConfiguration(
-        getActorId(req), String(campaign.clientId), String(campaign.id), { ...parsed.data, status: "draft" },
-      );
-      if (!configuration) return res.status(404).json({ success: false, message: "Campaign tracking setup not found" });
-      return res.json({ success: true, configuration });
-    } catch (error: any) {
-      return sendMimosaasConfigurationError(res, error);
-    }
-  });
-
-  app.post("/api/campaigns/:id/mimosaas-tracking/mappings", requireMimosaasTrackingFeature, requireCampaignAccessParamId, async (req, res) => {
-    const parsed = mimosaasTrackingMappingBodySchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ success: false, message: parsed.error.errors[0]?.message || "Invalid campaign mapping" });
-    try {
-      const campaign = (req as any)._campaign;
-      const mapping = await storage.createMimosaasTrackingCampaignMapping(
-        getActorId(req), String(campaign.clientId), String(campaign.id),
-        { mappingType: "utm_campaign", campaignValue: parsed.data.campaignValue, isActive: true },
-      );
-      return res.status(201).json({ success: true, mapping });
-    } catch (error: any) {
-      return sendMimosaasMappingError(res, error);
-    }
-  });
-
-  app.patch("/api/campaigns/:id/mimosaas-tracking/mappings/:mappingId", requireMimosaasTrackingFeature, requireCampaignAccessParamId, async (req, res) => {
-    const parsed = mimosaasTrackingMappingUpdateBodySchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ success: false, message: parsed.error.errors[0]?.message || "Invalid campaign mapping" });
-    try {
-      const campaign = (req as any)._campaign;
-      const ownerId = getActorId(req);
-      const clientId = String(campaign.clientId);
-      const campaignId = String(campaign.id);
-      const mappingId = String(req.params.mappingId);
-      const existing = (await storage.getMimosaasTrackingCampaignMappings(ownerId, clientId, campaignId))
-        .find((mapping: any) => String(mapping.id) === mappingId && mapping.mappingType === "utm_campaign");
-      if (!existing) return res.status(404).json({ success: false, message: "Campaign mapping not found" });
-      const mapping = await storage.updateMimosaasTrackingCampaignMapping(ownerId, clientId, campaignId, mappingId, parsed.data);
-      if (!mapping) return res.status(404).json({ success: false, message: "Campaign mapping not found" });
-      return res.json({ success: true, mapping });
-    } catch (error: any) {
-      return sendMimosaasMappingError(res, error);
-    }
-  });
-
-  app.post("/api/campaigns/:id/mimosaas-tracking/finalize", requireMimosaasTrackingIngestionFeature, requireCampaignAccessParamId, async (req, res) => {
-    try {
-      const campaign = (req as any)._campaign;
-      const result = await storage.finalizeMimosaasTrackingCampaign(
-        getActorId(req), String(campaign.clientId), String(campaign.id), isMimosaasGoogleAdsAttributionEnabled(),
-      );
-      return res.json(withReportingTimeZone(result.campaign as any));
-    } catch (error: any) {
-      const code = String(error?.code || "");
-      if (code.endsWith("_SCOPE_NOT_FOUND") || code === "MIMOSAAS_TRACKING_CONFIGURATION_NOT_FOUND") {
-        return res.status(404).json({ success: false, message: "Campaign tracking setup not found" });
-      }
-      if (code === "MIMOSAAS_TRACKING_INSTALLATION_NOT_VERIFIED" || code === "MIMOSAAS_TRACKING_MAPPING_REQUIRED" || code === "MIMOSAAS_TRACKING_CAMPAIGN_NOT_DRAFT") {
-        return res.status(409).json({ success: false, message: error.message });
-      }
-      console.error("Mimosaas Tracking campaign finalization failed:", error);
-      return res.status(500).json({ success: false, message: "Failed to finalize Mimosaas Tracking campaign" });
-    }
-  });
 
   const hasActivatableCampaignDataPath = async (campaignId: string, nextPlatformRaw: unknown, existingCampaign?: any) => {
     const nextPlatform = String(nextPlatformRaw ?? existingCampaign?.platform ?? "").trim();
@@ -6055,9 +5280,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!body.success) return sendBadRequest(res, "Invalid request body", body.error.errors);
       const connectionId = body.data.connectionId;
       const platformContext = body.data.platformContext || "ga4";
-      if (platformContext === "mimosaas_tracking" && (
-        !isMimosaasTrackingIngestionEnabled() || (ok as any)?.platform !== "mimosaas-tracking" || (ok as any)?.status !== "active"
-      )) return res.status(404).json({ success: false, message: "Campaign not found" });
       const purpose = revenuePurposeForPlatformContext(platformContext);
 
       let connections = await storage.getGoogleSheetsConnections(campaignId, purpose);
@@ -6224,9 +5446,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!body.success) return sendBadRequest(res, "Invalid request body", body.error.errors);
       const connectionId = body.data.connectionId;
       const platformContext = body.data.platformContext || "ga4";
-      if (platformContext === "mimosaas_tracking" && (
-        !isMimosaasTrackingIngestionEnabled() || (ok as any)?.platform !== "mimosaas-tracking" || (ok as any)?.status !== "active"
-      )) return res.status(404).json({ success: false, message: "Campaign not found" });
 
       const parsedMapping = zRevenueMapping.safeParse(body.data.mapping || {});
       if (!parsedMapping.success) return sendBadRequest(res, "Invalid mapping", parsedMapping.error.errors);
@@ -6403,42 +5622,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: "Select at least one campaign value, or clear campaignColumn to import the full file",
         });
       }
-      if (platformContext === "mimosaas_tracking" && campaignCol && !rows.some((row) => {
-        const value = String(row[campaignCol] ?? "").trim();
-        return campaignValueSet ? campaignValueSet.has(value) : value === campaignValue;
-      })) {
-        return sendBadRequest(res, "The configured campaign values are no longer present in this Google Sheet.");
-      }
 
       let kept = 0;
       const revenueCol = revenueColumn ? String(revenueColumn) : "";
       const convCol = conversionValueColumn ? String(conversionValueColumn) : "";
       const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
-      const requiresExactDailyRevenue = platformContext === "ga4" || platformContext === "mimosaas_tracking";
-      if (requiresExactDailyRevenue) {
+      if (platformContext === "ga4") {
         if (campaignCol === revenueCol) {
           return sendBadRequest(res, "Revenue column must be different from the Campaign column.");
         }
         if (dateCol && (dateCol === revenueCol || dateCol === campaignCol)) {
           return sendBadRequest(res, "Date column must be different from the Revenue and Campaign columns.");
         }
-        if (platformContext === "mimosaas_tracking" && !dateCol) {
-          return sendBadRequest(res, "Date column is required for Mimosaas Tracking daily Revenue.");
-        }
-        if (platformContext === "mimosaas_tracking") {
-          const mappedHeaders = [revenueCol, campaignCol, dateCol].filter((header): header is string => Boolean(header));
-          const unavailableMappedHeaders = mappedHeaders.filter((header) => headers.filter((candidate) => candidate === header).length !== 1);
-          if (unavailableMappedHeaders.length > 0) {
-            return sendBadRequest(res, `Mapped Google Sheets column is missing or duplicated: ${unavailableMappedHeaders.join(", ")}. Update the mapping before refreshing.`);
-          }
-        }
         const invalidAmountRows = findInvalidGoogleSheetsRevenueAmountRows(rows, {
           revenueColumn: revenueCol,
           campaignColumn: campaignCol,
           campaignValue,
           campaignValues,
-          allowNegative: platformContext !== "mimosaas_tracking",
-          maximumAbsoluteValue: platformContext === "mimosaas_tracking" ? GA4_CSV_MAX_REVENUE_TOTAL : undefined,
         });
         if (invalidAmountRows.length > 0) {
           return sendBadRequest(res, "Selected revenue rows contain unsupported amount formatting. Use plain numbers or US-style separators (for example 1234.56 or 1,234.56).");
@@ -6450,10 +5650,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           campaignValue,
           campaignValues,
         });
-        if (platformContext === "ga4") {
-          if (validation.keptRows === 0) {
-            return sendBadRequest(res, "No valid revenue rows found for the selected mapping");
-          }
+        if (validation.keptRows === 0) {
+          return sendBadRequest(res, "No valid revenue rows found for the selected mapping");
         }
         if (dateCol && validation.undatedRevenue > 0) {
           return sendBadRequest(res, "Selected revenue rows contain blank or invalid dates. Fix those dates or clear the Date mapping before importing.");
@@ -6520,15 +5718,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         if (rowKept) kept++;
       }
-      if (platformContext === "mimosaas_tracking" && Array.from(dailyRevenueMap.values()).some((revenue) => revenue > GA4_CSV_MAX_REVENUE_TOTAL)) {
-        return sendBadRequest(res, "Google Sheets Revenue exceeds the supported campaign-day financial limit.");
-      }
 
       const endDate = fallbackRecordDate;
 
       const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
       const requestedCurrency = String(mapping.currency || campaignCurrency).trim().toUpperCase();
-      if (requiresExactDailyRevenue && requestedCurrency !== campaignCurrency) {
+      if (platformContext === "ga4" && requestedCurrency !== campaignCurrency) {
         return res.status(400).json({
           success: false,
           code: "REVENUE_CURRENCY_MISMATCH",
@@ -6578,22 +5773,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error("[Google Sheets Revenue] Post-commit derived recompute failed; source data remains committed:", error?.message || error);
         }
         return res.json({ success: true, mode: 'revenue_to_date', sourceId: String(source.id), currency, rowCount: rows.length, keptRows: kept, date: endDate, totalRevenue: visibleTotalRevenue, importedRowsTotalRevenue: totalRevenue });
-      }
-
-      if (platformContext === "mimosaas_tracking") {
-        const records = Array.from(dailyRevenueMap.entries())
-          .filter(([, revenue]) => revenue > 0)
-          .map(([date, revenue]) => ({ campaignId, date, revenue: Number(revenue.toFixed(2)).toFixed(2) as any, currency }));
-        const source = await storage.replaceRevenueSourceWithRecords(campaignId, existingSourceId, "google_sheets", "mimosaas_tracking", {
-          campaignId,
-          sourceType: "google_sheets",
-          platformContext: "mimosaas_tracking",
-          displayName: mapping.displayName || (conn.spreadsheetName ? `Google Sheets: ${conn.spreadsheetName}` : "Google Sheets revenue"),
-          currency,
-          mappingConfig: nextMappingConfig,
-          isActive: true,
-        } as any, records, existingSourceId ? String(existingSheetsSource?.mappingConfig || "") : undefined);
-        return res.json({ success: true, mode: "revenue_to_date", sourceId: String(source.id), currency, rowCount: rows.length, keptRows: kept, totalRevenue: Number(totalRevenueToDate.toFixed(2)) });
       }
 
       let source: any = existingSheetsSource || null;
@@ -7438,6 +6617,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaignCol && (campaignValueSet || campaignValue)) {
         return res.status(400).json({ success: false, error: "campaignColumn is required when campaign values are selected" });
       }
+
       const spendCol = String(mapping.spendColumn);
       const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
       if (campaignCol && campaignCol === spendCol) {
@@ -7580,10 +6760,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const connectionId = String((req.body as any)?.connectionId || "").trim();
       if (!connectionId) return res.status(400).json({ success: false, error: "connectionId is required" });
-      const campaignAccess = (req as any)._campaign;
-      if (campaignAccess?.platform === "mimosaas-tracking" && (
-        !isMimosaasTrackingIngestionEnabled() || campaignAccess?.status !== "active"
-      )) return res.status(404).json({ success: false, message: "Campaign not found" });
 
       let connections = await storage.getGoogleSheetsConnections(campaignId, "spend");
       let conn = (connections as any[]).find((c) => String(c.id) === connectionId);
@@ -7729,17 +6905,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, error: "spendColumn is required" });
       }
       const requestedPlatformContext = String((req.body as any)?.platformContext || mapping?.platformContext || "").trim().toLowerCase();
-      if (requestedPlatformContext && requestedPlatformContext !== "mimosaas_tracking" && !isSupportedScopedSpendPlatformContext(requestedPlatformContext)) {
+      if (requestedPlatformContext && !isSupportedScopedSpendPlatformContext(requestedPlatformContext)) {
         return res.status(400).json({ success: false, error: "Unsupported spend platformContext" });
       }
       if (!requestedPlatformContext && !mapping?.sourceId) {
         return res.status(400).json({ success: false, error: "platformContext is required for new spend sources" });
       }
       const platformContext = requestedPlatformContext || null;
-      const campaignAccess = (req as any)._campaign;
-      if (platformContext === "mimosaas_tracking" && (
-        !isMimosaasTrackingIngestionEnabled() || campaignAccess?.platform !== "mimosaas-tracking" || campaignAccess?.status !== "active"
-      )) return res.status(404).json({ success: false, message: "Campaign not found" });
       let connections = await storage.getGoogleSheetsConnections(campaignId, "spend");
       let conn = (connections as any[]).find((c) => String(c.id) === connectionId);
       // Fall back to purpose-agnostic lookup; the connection may have a different purpose value.
@@ -7867,20 +7039,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let kept = 0;
       const spendCol = String(mapping.spendColumn);
       const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
-      if (platformContext === "mimosaas_tracking" && !dateCol) {
-        return res.status(400).json({ success: false, error: "Date column is required for Mimosaas Tracking daily Spend." });
-      }
       if (campaignCol && !campaignValueSet && !campaignValue) {
         return res.status(400).json({ success: false, error: "Select at least one campaign value, or clear campaignColumn to import the full sheet" });
       }
       if (!campaignCol && (campaignValueSet || campaignValue)) {
         return res.status(400).json({ success: false, error: "campaignColumn is required when campaign values are selected" });
-      }
-      if (platformContext === "mimosaas_tracking" && campaignCol && !rows.some((row) => {
-        const value = String(row[campaignCol] ?? "").trim();
-        return campaignValueSet ? campaignValueSet.has(value) : value === campaignValue;
-      })) {
-        return res.status(400).json({ success: false, error: "The configured campaign values are no longer present in this Google Sheet." });
       }
       const mappedHeaders = [spendCol, campaignCol, dateCol].filter((header): header is string => Boolean(header));
       if (new Set(mappedHeaders).size !== mappedHeaders.length) {
@@ -7893,19 +7056,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           code: "SHEET_MAPPING_CHANGED",
           error: `Mapped Google Sheets column is missing or duplicated: ${unavailableMappedHeaders.join(", ")}. Update the mapping before refreshing.`,
         });
-      }
-      if (platformContext === "mimosaas_tracking") {
-        const invalidAmountRows = findInvalidGoogleSheetsRevenueAmountRows(rows, {
-          revenueColumn: spendCol,
-          campaignColumn: campaignCol,
-          campaignValue,
-          campaignValues,
-          allowNegative: false,
-          maximumAbsoluteValue: GA4_CSV_MAX_REVENUE_TOTAL,
-        });
-        if (invalidAmountRows.length > 0) {
-          return res.status(400).json({ success: false, error: "Selected spend rows contain unsupported amount formatting. Use non-negative plain numbers or US-style separators." });
-        }
       }
       let totalSpend = 0;
       let undatedSpend = 0;
@@ -7932,21 +7082,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           else undatedSpend += spend;
         }
       }
-      if (platformContext === "mimosaas_tracking" && Array.from(dailySpendMap.values()).some((spend) => spend > GA4_CSV_MAX_REVENUE_TOTAL)) {
-        return res.status(400).json({ success: false, error: "Google Sheets Spend exceeds the supported campaign-day financial limit." });
-      }
 
       if (platformContext === "ga4" && dateCol && undatedSpend > 0) {
-        return res.status(400).json({ success: false, error: "Selected spend rows contain blank or invalid dates. Fix those dates before importing." });
-      }
-      if (platformContext === "mimosaas_tracking" && dateCol && undatedSpend > 0) {
         return res.status(400).json({ success: false, error: "Selected spend rows contain blank or invalid dates. Fix those dates before importing." });
       }
 
       const campaign = await storage.getCampaign(campaignId);
       const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
       const requestedCurrency = String(mapping.currency || campaignCurrency).trim().toUpperCase();
-      if ((platformContext === "ga4" || platformContext === "mimosaas_tracking") && requestedCurrency !== campaignCurrency) {
+      if (platformContext === "ga4" && requestedCurrency !== campaignCurrency) {
         return res.status(400).json({
           success: false,
           code: "SPEND_CURRENCY_MISMATCH",
@@ -7999,22 +7143,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await recalcCampaignSpend(campaignId);
         await recomputeGA4SpendBeforeResponse(campaignId);
         return res.json({ success: true, sourceId: String(source.id), currency, rowCount: rows.length, keptRows: kept, spendToDate: visibleSpendToDate, importedRowsTotalSpend: Number(totalSpend.toFixed(2)) });
-      }
-
-      if (platformContext === "mimosaas_tracking") {
-        const records = Array.from(dailySpendMap.entries())
-          .filter(([, spend]) => spend > 0)
-          .map(([date, spend]) => ({ campaignId, date, spend: Number(spend.toFixed(2)).toFixed(2), currency, sourceType: "google_sheets" }));
-        const source = await storage.replaceSpendSourceWithRecords(campaignId, existingSourceId, "google_sheets", "mimosaas_tracking", {
-          campaignId,
-          sourceType: "google_sheets",
-          platformContext: "mimosaas_tracking",
-          displayName: mapping.displayName || "Google Sheets",
-          currency,
-          mappingConfig: nextSpendMappingConfig,
-          isActive: true,
-        } as any, records as any, existingSourceId ? String(existingSheetsSpendSource?.mappingConfig || "") : undefined);
-        return res.json({ success: true, sourceId: String(source.id), currency, rowCount: rows.length, keptRows: kept, spendToDate: Number(totalSpend.toFixed(2)) });
       }
 
       let source: any = existingSheetsSpendSource || null;
@@ -8081,7 +7209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         spendToDate: Number(totalSpend.toFixed(2)),
       });
     } catch (e: any) {
-      res.status(e?.code === "SPEND_SOURCE_CHANGED" ? 409 : 500).json({ success: false, error: e?.message || "Failed to process sheet spend" });
+      res.status(500).json({ success: false, error: e?.message || "Failed to process sheet spend" });
     }
   });
 
@@ -9996,11 +9124,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isDraftActivation =
         String((existingCampaign as any)?.status || "").trim().toLowerCase() === "draft" &&
         String((validatedData as any)?.status || "").trim().toLowerCase() === "active";
-      const activationPlatforms = String((validatedData as any)?.platform || "")
-        .split(",").map((value) => value.trim()).filter(Boolean);
-      if (activationPlatforms.includes("mimosaas-tracking")) {
-        return res.status(400).json({ message: "Finalize Mimosaas Tracking through its verified setup flow." });
-      }
       const ga4DailyScopeChanged =
         (Object.prototype.hasOwnProperty.call(validatedData, "ga4CampaignFilter") &&
           JSON.stringify(getGA4CampaignFilterValues((validatedData as any).ga4CampaignFilter).sort()) !==
@@ -27353,15 +26476,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return "dev-google-ads-state-secret";
   };
 
-  const signGoogleAdsOAuthState = (campaignId: string, spendOnly?: boolean, attributionOnly?: boolean): string => {
+  const signGoogleAdsOAuthState = (campaignId: string, spendOnly?: boolean): string => {
     const secret = getGoogleAdsOAuthStateSecret();
-    const payload = { c: String(campaignId || "").trim(), t: Date.now(), n: randomBytes(12).toString("hex"), s: spendOnly ? 1 : 0, a: attributionOnly ? 1 : 0 };
+    const payload = { c: String(campaignId || "").trim(), t: Date.now(), n: randomBytes(12).toString("hex"), s: spendOnly ? 1 : 0 };
     const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
     const sig = createHmac("sha256", secret).update(payloadB64).digest();
     return `${payloadB64}.${Buffer.from(sig).toString("base64url")}`;
   };
 
-  const verifyGoogleAdsOAuthState = (stateRaw: unknown): { ok: true; campaignId: string; spendOnly: boolean; attributionOnly: boolean } | { ok: false; error: string } => {
+  const verifyGoogleAdsOAuthState = (stateRaw: unknown): { ok: true; campaignId: string; spendOnly: boolean } | { ok: false; error: string } => {
     const secret = getGoogleAdsOAuthStateSecret();
     const state = String(stateRaw || "").trim();
     const parts = state.split(".");
@@ -27377,7 +26500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try { payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8")); } catch { return { ok: false, error: "Invalid state" }; }
     if (!payload.c || !payload.t) return { ok: false, error: "Invalid state" };
     if (Date.now() - Number(payload.t) > GOOGLE_ADS_OAUTH_STATE_TTL_MS) return { ok: false, error: "State expired" };
-    return { ok: true, campaignId: payload.c, spendOnly: !!payload.s, attributionOnly: !!payload.a };
+    return { ok: true, campaignId: payload.c, spendOnly: !!payload.s };
   };
 
   app.get("/api/campaigns/:id/google-ads-service-account/status", async (req, res) => {
@@ -27486,21 +26609,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const parsedCampaignId = campaignIdSchema.safeParse(String(campaignId || "").trim());
       if (!parsedCampaignId.success) return res.status(400).json({ success: false, message: "Campaign ID is required" });
 
-      const campaign = await ensureCampaignAccess(req as any, res as any, parsedCampaignId.data);
-      if (!campaign) return;
+      const accessOk = await ensureCampaignAccess(req as any, res as any, parsedCampaignId.data);
+      if (!accessOk) return;
 
       const spendOnly = !!(req.body as any)?.spendOnly;
-      const attributionOnly = (req.body as any)?.attributionOnly === true;
-      if (spendOnly && attributionOnly) return res.status(400).json({ success: false, message: "Google Ads connection purpose is invalid" });
-      if (attributionOnly) {
-        if (!isMimosaasGoogleAdsAttributionEnabled()) return res.status(404).json({ success: false, message: "Not found" });
-        const configuration = await storage.getMimosaasTrackingConfiguration(
-          getActorId(req), String((campaign as any).clientId), parsedCampaignId.data,
-        );
-        if ((campaign as any).status !== "draft" || !configuration) {
-          return res.status(409).json({ success: false, message: "Complete website tracking setup before connecting Google Ads" });
-        }
-      }
       const { clientId, clientSecret } = getGoogleAdsOAuthClientCredentials(spendOnly);
       const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
 
@@ -27519,7 +26631,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseUrl = rawBaseUrl.replace(/\/+$/, '');
       const redirectUri = `${baseUrl}/api/auth/google-ads/callback`;
 
-      const state = signGoogleAdsOAuthState(String(campaignId), spendOnly, attributionOnly);
+      const state = signGoogleAdsOAuthState(String(campaignId), spendOnly);
 
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${encodeURIComponent(clientId)}&` +
@@ -27570,7 +26682,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const campaignId = verified.campaignId;
       const spendOnly = verified.spendOnly;
-      const attributionOnly = verified.attributionOnly;
 
       const accessOk = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!accessOk) return;
@@ -27613,7 +26724,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tokenExpiresIn: tokens.expires_in || 3600,
         customers,
         spendOnly,
-        attributionOnly,
       });
       const customersJson = serializeOAuthPopupJson(customers);
 
@@ -27662,22 +26772,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!pending) {
         return res.status(400).json({ error: "Google Ads authorization is invalid or expired" });
       }
-      const { accessToken, refreshToken, expiresIn, customerName, managerAccountId, customerCurrency, customerTimeZone, spendOnly, attributionOnly, autoTaggingEnabled } = pending;
-      if (attributionOnly) {
-        if (!isMimosaasGoogleAdsAttributionEnabled()) return res.status(404).json({ error: "Not found" });
-        const configuration = await storage.getMimosaasTrackingConfiguration(
-          getActorId(req), String((campaign as any).clientId), String(campaignId),
-        );
-        if ((campaign as any).status !== "draft" || !configuration) {
-          return res.status(409).json({ error: "Complete website tracking setup before connecting Google Ads" });
-        }
-        if (!autoTaggingEnabled) {
-          return res.status(409).json({ error: "Enable auto-tagging in this Google Ads account before connecting it" });
-        }
-        if (await storage.getGoogleAdsConnection(campaignId)) {
-          return res.status(409).json({ error: "A Google Ads connection already exists for this campaign" });
-        }
-      }
+      const { accessToken, refreshToken, expiresIn, customerName, managerAccountId, customerCurrency, customerTimeZone, spendOnly } = pending;
       if (spendOnly) {
         const sources = await storage.getSpendSources(campaignId, "ga4");
         const hasGoogleAdsSpendSource = sources.some((source: any) => {
@@ -27698,11 +26793,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
-      if (!attributionOnly && (!customerCurrency || customerCurrency !== campaignCurrency)) {
+      if (!customerCurrency || customerCurrency !== campaignCurrency) {
         return res.status(400).json({ error: `Google Ads account currency ${customerCurrency || "is unavailable"}; select an account using ${campaignCurrency}` });
       }
       const campaignTimeZone = normalizeReportingTimeZone((campaign as any)?.reportingTimeZone);
-      if (!attributionOnly && (!customerTimeZone || normalizeReportingTimeZone(customerTimeZone) !== campaignTimeZone)) {
+      if (!customerTimeZone || normalizeReportingTimeZone(customerTimeZone) !== campaignTimeZone) {
         return res.status(400).json({ error: `Google Ads account timezone ${customerTimeZone || "is unavailable"}; select an account using ${campaignTimeZone}` });
       }
 
@@ -27716,11 +26811,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignStart = new Date((campaign as any)?.startDate || "2000-01-01");
       const startDate = Number.isNaN(campaignStart.getTime()) ? "2000-01-01" : campaignStart.toISOString().slice(0, 10);
       const endDate = getReportingDateWindow(1, campaignTimeZone).endDate;
-      const initialDailyMetrics = attributionOnly ? [] : startDate <= endDate
+      const initialDailyMetrics = startDate <= endDate
         ? mapGoogleAdsDailyInsights(campaignId, await provider.getDailyMetrics(startDate, endDate))
         : [];
 
-      if (!spendOnly && !attributionOnly) await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);
+      if (!spendOnly) await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);
 
       const connectionData = {
         campaignId,
@@ -27736,9 +26831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expiresAt,
         spendOnly: !!spendOnly,
       } as any;
-      if (attributionOnly) {
-        await storage.createGoogleAdsConnection(connectionData);
-      } else if (spendOnly) {
+      if (spendOnly) {
         await storage.replaceGA4GoogleAdsSpendConnection(connectionData, initialDailyMetrics as any);
       } else {
         await storage.replaceGoogleAdsConnection(connectionData, initialDailyMetrics as any);
@@ -27981,8 +27074,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/google-ads/:campaignId/selected-campaigns", async (req, res) => {
     try {
       const { campaignId } = req.params;
-      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
-      if (!campaign) return;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const { selectedCampaignIds } = req.body as { selectedCampaignIds: string[] };
       if (!Array.isArray(selectedCampaignIds)) return res.status(400).json({ error: 'selectedCampaignIds must be an array' });
 
@@ -28001,14 +27094,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       })();
       const selectionChanged = previousSelectedCampaignIds.join("\n") !== nextSelectedCampaignIds.join("\n");
-      const trackerConfiguration = isMimosaasGoogleAdsAttributionEnabled()
-        ? await storage.getMimosaasTrackingConfiguration(getActorId(req), String((campaign as any).clientId), String(campaignId))
-        : undefined;
-      const isTrackerAttribution = Boolean(trackerConfiguration) && ((campaign as any).status === "draft" || (campaign as any).platform === "mimosaas-tracking");
-      if (isTrackerAttribution && (nextSelectedCampaignIds.length === 0 || nextSelectedCampaignIds.some((id) => !/^\d+$/.test(id)))) {
-        return res.status(400).json({ error: "Select at least one valid Google Ads campaign" });
-      }
-      if (selectionChanged && !isTrackerAttribution) {
+      if (selectionChanged) {
         await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);
       }
 

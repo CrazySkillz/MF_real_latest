@@ -87,7 +87,7 @@ describe("HubSpot Pipeline Proxy automatic stage transition", () => {
       pipelineStageId: null,
       pipelineStageLabel: null,
     });
-    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1", status: "active" }] as any);
+    vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1" }] as any);
     vi.spyOn(storage, "getRevenueSources").mockResolvedValue([
       { id: "hubspot-valid", campaignId: "campaign-1", sourceType: "hubspot", platformContext: "ga4", isActive: true, mappingConfig: savedMapping },
       { id: "hubspot-other-campaign", campaignId: "campaign-2", sourceType: "hubspot", platformContext: "ga4", isActive: true, mappingConfig: savedMapping },

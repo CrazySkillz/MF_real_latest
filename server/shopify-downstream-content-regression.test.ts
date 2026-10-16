@@ -11,7 +11,6 @@ const storageMock = vi.hoisted(() => ({
   updateGA4ConnectionTokens: vi.fn(),
   getGA4DailyMetrics: vi.fn(),
   getLatestGA4DailyMetric: vi.fn(),
-  getGA4OverviewSnapshot: vi.fn(),
   getRevenueSources: vi.fn(),
   getSpendSources: vi.fn(),
   getRevenueBreakdownBySource: vi.fn(),
@@ -64,7 +63,6 @@ vi.mock("./middleware/rateLimiter", () => {
     googleSheetsRateLimiter: passThrough,
     ga4RateLimiter: passThrough,
     importRateLimiter: passThrough,
-    mimosaasTrackingRateLimiter: passThrough,
   };
 });
 vi.mock("jspdf", () => ({
@@ -106,7 +104,6 @@ const campaign = {
   id: "campaign-1",
   name: "Shopify Downstream Campaign",
   ownerId: "user-1",
-  status: "active",
   currency: "USD",
   startDate: "2026-06-01T00:00:00.000Z",
   createdAt: "2026-06-01T00:00:00.000Z",
@@ -131,7 +128,6 @@ const revenueSource = {
   displayName: "Shopify",
   currency: "USD",
   isActive: true,
-  createdAt: "2026-07-03T12:00:00.000Z",
   mappingConfig: {
     platformContext: "ga4",
     campaignValueRevenueTotals: [
@@ -201,7 +197,6 @@ function setCommonShopifyFinancialMocks() {
   });
   storageMock.getGA4DailyMetrics.mockResolvedValue([dailyRow]);
   storageMock.getLatestGA4DailyMetric.mockResolvedValue(dailyRow);
-  storageMock.getGA4OverviewSnapshot.mockResolvedValue(null);
   storageMock.getRevenueSources.mockResolvedValue([revenueSource]);
   storageMock.getSpendSources.mockResolvedValue([]);
   storageMock.getRevenueBreakdownBySource.mockResolvedValue([
@@ -398,7 +393,7 @@ describe("Shopify downstream value/content regression guard", () => {
       3,
       campaign.id,
       storageMock,
-      "2026-07-02",
+      "2026-06-01",
       "properties/123",
       2000,
       ["overview_window", "ad_import_to_date", "ad_email", "ad_social"],
@@ -589,11 +584,9 @@ describe("Shopify downstream value/content regression guard", () => {
       },
     }]);
     storageMock.getRevenueBreakdownBySource.mockResolvedValue([{ sourceId: revenueSource.id, sourceType: "shopify", displayName: "Shopify", currency: "USD", revenue: 200 }]);
-    const nativeAdRows = { rows: [{ campaign: "Alpha", sessions: 10, users: 10, conversions: 1, revenue: 500, sessionKeyEventRate: 0.1 }, { campaign: "Beta", sessions: 20, users: 20, conversions: 5, revenue: 1000, sessionKeyEventRate: 0.25 }], totals: { revenue: 1500 } };
-    ga4ServiceMock.getAcquisitionBreakdown
-      .mockResolvedValueOnce(nativeAdRows)
-      .mockResolvedValueOnce(nativeAdRows)
-      .mockResolvedValueOnce({ rows: [{ campaign: "Alpha", revenue: 5 }, { campaign: "Beta", revenue: 100 }], totals: { revenue: 105 } });
+    ga4ServiceMock.getAcquisitionBreakdown.mockImplementation(async (_campaignId: string, _storage: any, startDate: string) => startDate === "2026-06-01"
+      ? { rows: [{ campaign: "Alpha", revenue: 5 }, { campaign: "Beta", revenue: 100 }], totals: { revenue: 105 } }
+      : { rows: [{ campaign: "Alpha", sessions: 10, users: 10, conversions: 1, revenue: 500, sessionKeyEventRate: 0.1 }, { campaign: "Beta", sessions: 20, users: 20, conversions: 5, revenue: 1000, sessionKeyEventRate: 0.25 }], totals: { revenue: 1500 } });
 
     await buildGA4ScheduledPdfAttachment({
       report: { id: "report-overview-chart", campaignId: campaign.id, name: "Overview chart parity", reportType: "custom",
@@ -792,10 +785,10 @@ describe("Shopify downstream value/content regression guard", () => {
     try {
       const response = await fetch(`http://127.0.0.1:${port}/api/notifications`);
       const body = await response.json();
+      const metadata = JSON.parse(body[0].metadata);
 
       expect(response.status).toBe(200);
       expect(body).toHaveLength(1);
-      const metadata = JSON.parse(body[0].metadata);
       expect(body[0].title).toBe("GA4 KPI Alert: Revenue KPI");
       expect(metadata.currentValue).toBe("299.98");
       expect(metadata.thresholdValue).toBe("350");

@@ -23,7 +23,6 @@ interface CustomerAccount {
 
 interface GoogleAdsConnectionFlowProps {
   campaignId: string;
-  purpose?: 'analytics' | 'mimosaas_tracking';
   onConnectionSuccess?: () => void;
   onError?: (error: string) => void;
 }
@@ -35,7 +34,6 @@ const MOCK_CUSTOMERS: CustomerAccount[] = [
 
 export function GoogleAdsConnectionFlow({
   campaignId,
-  purpose = 'analytics',
   onConnectionSuccess,
   onError,
 }: GoogleAdsConnectionFlowProps) {
@@ -43,21 +41,20 @@ export function GoogleAdsConnectionFlow({
   const [isTestMode, setIsTestMode] = useState(false);
   const [customers, setCustomers] = useState<CustomerAccount[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
-  const [pendingAuthorization, setPendingAuthorization] = useState<unknown>(null);
+  const [pendingTokens, setPendingTokens] = useState<any>(null);
   const [adsCampaigns, setAdsCampaigns] = useState<Array<{ id: string; name: string; spend: number; selected: boolean }>>([]);
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
   const [savingSelection, setSavingSelection] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const attributionOnly = purpose === 'mimosaas_tracking';
 
   // Handle OAuth popup messages
   const handleMessage = useCallback((event: MessageEvent) => {
     if (event.origin !== window.location.origin) return;
-    const { type, campaignId: authorizedCampaignId, authorization, customers: customerList, error } = event.data || {};
+    const { type, tokens, customers: customerList, error } = event.data || {};
 
-    if (type === 'google_ads_auth_success' && authorizedCampaignId === campaignId) {
-      setPendingAuthorization(authorization);
+    if (type === 'google_ads_auth_success') {
+      setPendingTokens(tokens);
       if (customerList && customerList.length > 0) {
         setCustomers(customerList);
         if (customerList.length === 1) {
@@ -73,7 +70,7 @@ export function GoogleAdsConnectionFlow({
       toast({ title: 'Connection Failed', description: error || 'OAuth error', variant: 'destructive' });
       onError?.(error || 'OAuth error');
     }
-  }, [campaignId, toast, onError]);
+  }, [toast, onError]);
 
   useEffect(() => {
     window.addEventListener('message', handleMessage);
@@ -87,7 +84,7 @@ export function GoogleAdsConnectionFlow({
     if (isTestMode) {
       await new Promise(r => setTimeout(r, 1000));
       setCustomers(MOCK_CUSTOMERS);
-      setPendingAuthorization(null);
+      setPendingTokens(null);
       setStep('select-customer');
       return;
     }
@@ -96,7 +93,7 @@ export function GoogleAdsConnectionFlow({
       const res = await fetch('/api/auth/google-ads/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ campaignId, attributionOnly }),
+        body: JSON.stringify({ campaignId }),
       });
 
       if (!res.ok) {
@@ -161,7 +158,11 @@ export function GoogleAdsConnectionFlow({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerId: selected.id,
-          authorization: pendingAuthorization,
+          customerName: selected.descriptiveName,
+          accessToken: pendingTokens?.accessToken,
+          refreshToken: pendingTokens?.refreshToken,
+          expiresIn: pendingTokens?.expiresIn,
+          managerAccountId: selected.manager ? selected.id : undefined,
         }),
       });
       if (!res.ok) {
@@ -228,7 +229,7 @@ export function GoogleAdsConnectionFlow({
               <div className="flex gap-2">
                 <Button
                   onClick={() => selectCustomerMutation.mutate()}
-                  disabled={!selectedCustomerId || (!isTestMode && !pendingAuthorization) || selectCustomerMutation.isPending}
+                  disabled={!selectedCustomerId || selectCustomerMutation.isPending}
                 >
                   {selectCustomerMutation.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
                   Connect Account
@@ -276,9 +277,7 @@ export function GoogleAdsConnectionFlow({
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Select Google Ads Campaigns</CardTitle>
-          <CardDescription>{attributionOnly
-            ? "Choose the Google Ads campaigns whose clicks belong to this Mimosaas campaign."
-            : "Choose which campaigns to include in this MimoSaaS campaign. Only selected campaigns' metrics will be imported."}</CardDescription>
+          <CardDescription>Choose which campaigns to include in this MimoSaaS campaign. Only selected campaigns' metrics will be imported.</CardDescription>
         </CardHeader>
         <CardContent>
           {loadingCampaigns ? (
@@ -287,12 +286,10 @@ export function GoogleAdsConnectionFlow({
             </div>
           ) : adsCampaigns.length === 0 ? (
             <div className="text-sm text-muted-foreground py-4">
-              <p>{attributionOnly ? "No active Google Ads campaigns were found in this account." : "No campaigns found yet. Data will be available after the first import."}</p>
-              {!attributionOnly && (
-                <Button className="mt-3" onClick={() => { toast({ title: 'Google Ads Connected!' }); onConnectionSuccess?.(); }}>
-                  Continue
-                </Button>
-              )}
+              <p>No campaigns found yet. Data will be available after the first import.</p>
+              <Button className="mt-3" onClick={() => { toast({ title: 'Google Ads Connected!' }); onConnectionSuccess?.(); }}>
+                Continue
+              </Button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -341,14 +338,12 @@ export function GoogleAdsConnectionFlow({
           <CardTitle className="text-base">Google Ads</CardTitle>
         </div>
         <CardDescription>
-          {attributionOnly
-            ? "Connect Google Ads so Mimosaas can attribute tracked website visits to selected ad campaigns."
-            : "Connect your Google Ads account to import campaign metrics"}
+          Connect your Google Ads account to import campaign metrics
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {!attributionOnly && <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <Switch
               checked={isTestMode}
               onCheckedChange={setIsTestMode}
@@ -357,7 +352,7 @@ export function GoogleAdsConnectionFlow({
             <Label htmlFor="google-ads-test-mode" className="text-xs text-muted-foreground">
               Test Mode (use simulated data)
             </Label>
-          </div>}
+          </div>
           <Button
             onClick={startOAuth}
             disabled={step === 'connecting'}

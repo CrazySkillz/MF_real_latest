@@ -7,22 +7,18 @@ const campaignsPage = readFileSync(
   "utf-8",
 );
 
-describe("feature-flagged Create Campaign wizard", () => {
-  it("keeps GA4 available and exposes Mimosaas Tracking only after server availability", () => {
+describe("GA4-first Create Campaign wizard", () => {
+  it("allows only Google Analytics and excludes every other platform from finalization", () => {
     const selectionStep = campaignsPage.slice(
       campaignsPage.indexOf("/* Step 2: Select Platform */"),
       campaignsPage.indexOf("/* Step 3: Authenticate */"),
     );
 
     expect(campaignsPage).toContain('const GA4_FIRST_CREATE_CAMPAIGN_PLATFORM_IDS = new Set(["google-analytics"]);');
-    expect(campaignsPage).toContain('mimosaasTrackingAvailability?.enabled === true');
-    expect(campaignsPage).toContain('platformId === "mimosaas-tracking" && isMimosaasTrackingAvailable');
     expect(selectionStep).toContain("{createCampaignPlatforms.map((platform) => {");
     expect(selectionStep).not.toContain("{platforms.map((platform) => {");
     expect(campaignsPage).toContain("selectedPlatforms = selectedPlatforms.filter(isCreateCampaignPlatformEnabled);");
-    expect(campaignsPage).toContain('selectedPlatforms.length !== 1');
-    expect(campaignsPage).toContain('selectedPlatforms[0] === "mimosaas-tracking"');
-    expect(campaignsPage).toContain('platform: selectedPlatforms[0],');
+    expect(campaignsPage).toContain('platform: selectedPlatforms.join(", "),');
     expect(campaignsPage).toContain("handleConnectorsComplete(createCampaignConnectedPlatforms)");
   });
 

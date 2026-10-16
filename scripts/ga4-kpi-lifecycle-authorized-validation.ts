@@ -122,8 +122,8 @@ try {
   const initialList = await api(ownerAuth.page, "GET", kpiPath);
   check(initialList.ok && Array.isArray(initialList.body), "Owner KPI inventory request failed");
   const scheduler = await api(ownerAuth.page, "POST", `/api/campaigns/${encodeURIComponent(CAMPAIGN_ID)}/ga4-daily-scheduler/run-now`);
-  check(scheduler.status === 409 && scheduler.body?.error === "GA4_DAILY_HISTORY_SCHEDULER_MANAGED",
-    `Scheduler-only enforcement failed (${scheduler.status}): ${JSON.stringify(scheduler.body).slice(0, 800)}`);
+  check(scheduler.ok && scheduler.body?.success === true,
+    `Campaign scheduler validation failed (${scheduler.status}): ${JSON.stringify(scheduler.body).slice(0, 800)}`);
   const reconciliation = await api(ownerAuth.page, "POST", `/api/campaigns/${encodeURIComponent(CAMPAIGN_ID)}/ga4-notifications/reconcile`);
   check(reconciliation.ok && reconciliation.body?.success === true,
     `KPI alert reconciliation failed (${reconciliation.status}): ${JSON.stringify(reconciliation.body).slice(0, 800)}`);
@@ -284,12 +284,6 @@ try {
   });
   check(report.status === 201 && report.body?.id, `Temporary KPI report create failed (${report.status})`);
   temporaryReportId = String(report.body.id);
-  const reportInventory = await api(ownerAuth.page, "GET", `/api/platforms/google_analytics/reports?campaignId=${encodeURIComponent(CAMPAIGN_ID)}`);
-  const persistedReport = Array.isArray(reportInventory.body)
-    ? reportInventory.body.find((row: any) => String(row?.id || "") === temporaryReportId)
-    : null;
-  check(reportInventory.ok && persistedReport, "Temporary KPI report was not visible in the scoped report inventory");
-  check(String(persistedReport?.reportType || "").trim().toLowerCase() === "kpis", "Temporary KPI report type did not persist as kpis");
 
   const tsxCli = resolve(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs");
   const live = spawnSync(process.execPath, [tsxCli, "scripts/ga4-kpi-live-readonly.ts"], {
@@ -299,7 +293,6 @@ try {
       GA4_KPI_VALIDATION_BASE_URL: BASE_URL,
       GA4_KPI_VALIDATION_EXPECTED_SHA: EXPECTED_SHA,
       GA4_KPI_VALIDATION_CAMPAIGN_ID: CAMPAIGN_ID,
-      GA4_KPI_VALIDATION_REPORT_ID: temporaryReportId,
     },
     encoding: "utf8",
     maxBuffer: 20 * 1024 * 1024,
@@ -327,9 +320,9 @@ try {
       deletedKpiHash,
     },
     scheduler: {
-      mode: "scheduler_managed",
-      manualCampaignRunRejected: true,
-      naturalCycleRequiredForCertification: true,
+      manualCampaignRun: true,
+      trigger: scheduler.body?.trigger || "manual",
+      lastRunStatus: scheduler.body?.after?.lastRunStatus || null,
       reconciliation: true,
     },
     consumers: {

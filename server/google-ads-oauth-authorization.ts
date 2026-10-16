@@ -6,7 +6,6 @@ export type GoogleAdsOAuthCustomer = {
   manager?: boolean;
   currencyCode?: string;
   timeZone?: string;
-  autoTaggingEnabled?: boolean;
 };
 
 const GOOGLE_ADS_PENDING_AUTH_TTL_MS = 10 * 60 * 1000;
@@ -19,7 +18,6 @@ export function buildGoogleAdsOAuthAuthorization(input: {
   tokenExpiresIn?: number;
   customers: GoogleAdsOAuthCustomer[];
   spendOnly: boolean;
-  attributionOnly?: boolean;
   now?: number;
 }): unknown {
   assertProductionTokenEncryptionConfigured();
@@ -32,7 +30,6 @@ export function buildGoogleAdsOAuthAuthorization(input: {
     tokenExpiresIn: input.tokenExpiresIn || 3600,
     customers: input.customers,
     spendOnly: input.spendOnly,
-    attributionOnly: input.attributionOnly === true,
   }));
 }
 
@@ -51,8 +48,6 @@ export function resolveGoogleAdsOAuthAuthorization(input: {
   customerCurrency: string;
   customerTimeZone: string;
   spendOnly: boolean;
-  attributionOnly: boolean;
-  autoTaggingEnabled: boolean;
 } | null {
   assertProductionTokenEncryptionConfigured();
   let pending: any;
@@ -82,7 +77,5 @@ export function resolveGoogleAdsOAuthAuthorization(input: {
     customerCurrency: String(selectedCustomer.currencyCode || "").trim().toUpperCase(),
     customerTimeZone: String(selectedCustomer.timeZone || "").trim(),
     spendOnly: pending.spendOnly === true,
-    attributionOnly: pending.attributionOnly === true,
-    autoTaggingEnabled: selectedCustomer.autoTaggingEnabled === true,
   };
 }

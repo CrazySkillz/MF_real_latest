@@ -27,7 +27,6 @@ import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from 
 const BASE_URL = String(process.env.GA4_KPI_VALIDATION_BASE_URL || "https://marketforensics.onrender.com").replace(/\/$/, "");
 const EXPECTED_SHA = String(process.env.GA4_KPI_VALIDATION_EXPECTED_SHA || "").trim();
 const CAMPAIGN_ID = String(process.env.GA4_KPI_VALIDATION_CAMPAIGN_ID || "").trim();
-const REPORT_ID = String(process.env.GA4_KPI_VALIDATION_REPORT_ID || "").trim();
 const clerkSecret = String(process.env.CLERK_SECRET_KEY || "").trim();
 
 if (!pool) throw new Error("DATABASE_URL is required");
@@ -659,13 +658,7 @@ try {
       expectedMode = "period_mismatch";
       exact = Boolean(periodMismatchFinding) && !directFinding;
     } else {
-      const positiveRankedBeyondVisibleLimit = Boolean(
-        directExpectedId?.startsWith("positive:kpi:")
-        && !directFinding
-        && findingRows.length === 12,
-      );
-      if (positiveRankedBeyondVisibleLimit) expectedMode = "positive_ranked_beyond_visible_limit";
-      exact = (!directExpectedId || Boolean(directFinding) || positiveRankedBeyondVisibleLimit) && !periodMismatchFinding;
+      exact = (!directExpectedId || Boolean(directFinding)) && !periodMismatchFinding;
     }
     if (!exact) failures.push(`${hash(row.kpi.id)}: KPI-derived Insights context parity failed`);
     insightsEvidence.push({
@@ -685,8 +678,7 @@ try {
 
   const reports = (Array.isArray(inputs.reports?.body) ? inputs.reports.body : [])
     .filter((report: any) => String(report?.status || "active") === "active");
-  const report = reports.find((item: any) => REPORT_ID && String(item?.id || "") === REPORT_ID)
-    || reports.find((item: any) => String(item?.reportType || "").trim().toLowerCase() === "kpis")
+  const report = reports.find((item: any) => String(item?.reportType || "").trim().toLowerCase() === "kpis")
     || reports.find(reportIncludesKpiItems);
   let pdfEvidence: any = { available: false, exact: false, reportHash: null, rows: [] };
   if (!report) {
@@ -770,10 +762,6 @@ try {
       deployedNotificationsApi: "read_only_no_credential_refresh_confirmed",
     },
     insights: insightsEvidence,
-    insightsFindingInventory: {
-      visibleCount: findingRows.length,
-      ids: findingRows.map((item) => item.id),
-    },
     browserPdf: pdfEvidence,
     blockedUnsafeGets,
     readOnlyRewrites,

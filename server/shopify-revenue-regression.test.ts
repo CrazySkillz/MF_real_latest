@@ -354,7 +354,7 @@ describe("Shopify revenue regression guard", () => {
     const helper = routeSection(
       ga4Metrics,
       "const revenueSourceMappedCampaignLabel = (source: any, cfg: any) => {",
-      "const spendDisplaySources = useMemo(() => {",
+      "// Merged spend sources for micro copy display",
     );
 
     expect(helper).toContain('if (sourceType !== "shopify") return "";');

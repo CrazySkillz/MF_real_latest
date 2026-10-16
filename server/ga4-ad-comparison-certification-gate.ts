@@ -186,7 +186,7 @@ export function evaluateGA4AdComparisonCertification(
     ['server/utils/reporting-timezone.ts', 'export function resolveGA4ImportToDateWindow'],
     ['client/src/pages/ga4-metrics.tsx', 'window=import-to-date'],
     ['client/src/pages/ga4-metrics.tsx', 'campaignBreakdownAgg={adComparisonBreakdownAgg}'],
-    ['client/src/pages/ga4-ad-comparison.tsx', 'initial-import-to-latest-completed-day'],
+    ['client/src/pages/ga4-ad-comparison.tsx', 'initial-import-to-latest-completed-day comparison window'],
   ];
   for (const [path, marker] of runtimeMarkers) {
     if (context.exists(path) && !context.readText(path).includes(marker)) {

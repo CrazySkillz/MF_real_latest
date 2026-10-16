@@ -8,7 +8,7 @@ describe("Google Ads revenue platform context", () => {
   it("adds Google Ads to storage revenue context filtering without routing non-GA4 totals through LinkedIn", () => {
     const storageFile = readSource("server/storage.ts");
 
-    expect(storageFile).toContain("export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration';");
+    expect(storageFile).toContain("export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets';");
     expect(storageFile).toContain("getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext?: RevenuePlatformContext)");
     expect(storageFile).toContain("platformContext: RevenuePlatformContext = 'ga4'");
     expect(storageFile).toContain("eq(revenueSources.platformContext, platformContext as any)");
@@ -18,8 +18,8 @@ describe("Google Ads revenue platform context", () => {
   it("permits Google Ads on revenue read and manual source endpoints", () => {
     const routesFile = readSource("server/routes-oauth.ts");
 
-    expect(routesFile).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);');
-    expect(routesFile).toContain('const zRevenueReadPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);');
+    expect(routesFile).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
+    expect(routesFile).toContain('const zRevenueReadPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
     expect(routesFile).toContain("const parseRevenueReadPlatformContext = (");
     expect(routesFile).toContain('storage.getRevenueSources(campaignId, \'google_ads\').catch(() => [] as any[])');
     expect(routesFile).toContain("const revenuePurposeForPlatformContext = (platformContext: any): string => {");

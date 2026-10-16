@@ -73,48 +73,6 @@ describe('Google Ads REST SearchStream', () => {
     });
   });
 
-  it('resolves a click only within one day and the selected campaign scope', async () => {
-    mocks.post.mockResolvedValue({ data: [{ results: [{
-      clickView: { gclid: 'click-123' },
-      campaign: { id: '2', name: 'Selected campaign' },
-      segments: { date: '2026-10-14' },
-    }] }] });
-
-    await expect(client().getClickCampaign('click-123', '2026-10-14', ['2', '2'])).resolves.toEqual({
-      gclid: 'click-123', date: '2026-10-14', campaignId: '2', campaignName: 'Selected campaign',
-    });
-    const query = mocks.post.mock.calls[0][1].query;
-    expect(query).toContain("segments.date = '2026-10-14'");
-    expect(query).toContain("click_view.gclid = 'click-123'");
-    expect(query).toContain('campaign.id IN (2)');
-  });
-
-  it('escapes click IDs and fails closed for invalid or ambiguous results', async () => {
-    mocks.post.mockResolvedValueOnce({ data: [] });
-    await expect(client().getClickCampaign("click'\\id", '2026-10-14', ['2'])).resolves.toBeNull();
-    expect(mocks.post.mock.calls[0][1].query).toContain("click_view.gclid = 'click\\'\\\\id'");
-
-    await expect(client().getClickCampaign('click', '2026-10-14', [])).rejects.toThrow('Invalid Google Ads campaign scope');
-    expect(mocks.post).toHaveBeenCalledTimes(1);
-
-    mocks.post.mockResolvedValueOnce({ data: [{ results: [
-      { clickView: { gclid: 'click' }, campaign: { id: '1' }, segments: { date: '2026-10-14' } },
-      { clickView: { gclid: 'click' }, campaign: { id: '2' }, segments: { date: '2026-10-14' } },
-    ] }] });
-    await expect(client().getClickCampaign('click', '2026-10-14', ['1', '2'])).rejects.toThrow('Ambiguous Google Ads click attribution');
-  });
-
-  it('rejects invalid click inputs and out-of-scope provider results before attribution', async () => {
-    await expect(client().getClickCampaign('', '2026-10-14', ['1'])).rejects.toThrow('Invalid Google Ads click ID');
-    await expect(client().getClickCampaign('click', '2026-02-30', ['1'])).rejects.toThrow('Invalid Google Ads click date');
-    expect(mocks.post).not.toHaveBeenCalled();
-
-    mocks.post.mockResolvedValue({ data: [{ results: [{
-      clickView: { gclid: 'click' }, campaign: { id: '2' }, segments: { date: '2026-10-14' },
-    }] }] });
-    await expect(client().getClickCampaign('click', '2026-10-14', ['1'])).rejects.toThrow('Invalid Google Ads click response');
-  });
-
   it('rejects malformed stream batches instead of treating them as zero spend', async () => {
     mocks.post.mockResolvedValue({ data: [{ results: [] }, { results: {} }] });
     await expect(client().getDailyMetrics('2026-09-20', '2026-09-20')).rejects.toThrow('Invalid Google Ads SearchStream batch');

@@ -7066,7 +7066,7 @@ export default function GA4Metrics() {
                             </div>
                           ) : (
                             <div className="text-sm text-muted-foreground/70">
-                              GA4 did not provide session-scoped landing-page attribution for this campaign selection.
+                              Data coming soon
                             </div>
                           )}
                         </CardContent>

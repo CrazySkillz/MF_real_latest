@@ -18,7 +18,7 @@ vi.mock("@clerk/express", () => ({ getAuth: vi.fn(() => ({ userId: "owner-1" }))
 vi.mock("./middleware/rateLimiter", () => {
   const pass = (_req: any, _res: any, next: any) => next();
   return { oauthRateLimiter: pass, linkedInApiRateLimiter: pass,
-    googleSheetsRateLimiter: pass, ga4RateLimiter: pass, importRateLimiter: pass, mimosaasTrackingRateLimiter: pass };
+    googleSheetsRateLimiter: pass, ga4RateLimiter: pass, importRateLimiter: pass };
 });
 
 import { registerRoutes } from "./routes-oauth";

@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Edit, Trash2, ArrowLeft, CheckCircle, Loader2, FileText, Copy, Send, MousePointerClick } from "lucide-react";
+import { Plus, Edit, Trash2, ArrowLeft, CheckCircle, Loader2, FileText, Copy, Send } from "lucide-react";
 import { SiFacebook, SiGoogle, SiGoogleanalytics, SiInstagram, SiLinkedin, SiTiktok, SiX } from "react-icons/si";
 import { Campaign, insertCampaignSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -27,7 +27,6 @@ import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
 import { SimpleMetaAuth } from "@/components/SimpleMetaAuth";
 import { GoogleAdsConnectionFlow } from "@/components/GoogleAdsConnectionFlow";
-import { MimosaasTrackingConnectionFlow } from "@/components/MimosaasTrackingConnectionFlow";
 
 const DEFAULT_REPORTING_TIME_ZONE = "UTC";
 
@@ -117,14 +116,6 @@ const platforms = [
     authUrl: "https://accounts.google.com/o/oauth2/v2/auth"
   },
   {
-    id: "mimosaas-tracking",
-    name: "Mimosaas Tracking",
-    icon: MousePointerClick,
-    color: "text-orange-600",
-    description: "Connect your website directly",
-    type: "credentials"
-  },
-  {
     id: "google-sheets",
     name: "Google Sheets",
     icon: SiGoogle,
@@ -191,8 +182,9 @@ const platforms = [
 ];
 
 const GA4_FIRST_CREATE_CAMPAIGN_PLATFORM_IDS = new Set(["google-analytics"]);
-const isGA4FirstCreateCampaignPlatform = (platformId: string) =>
+const isCreateCampaignPlatformEnabled = (platformId: string) =>
   GA4_FIRST_CREATE_CAMPAIGN_PLATFORM_IDS.has(platformId);
+const createCampaignPlatforms = platforms.filter(({ id }) => isCreateCampaignPlatformEnabled(id));
 
 const SIMULATED_INSTAGRAM_AD_ACCOUNTS = [
   { id: "act_instagram_test", name: "Test Instagram Ad Account" },
@@ -234,12 +226,8 @@ export default function Campaigns() {
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
   const [linkedInImportComplete, setLinkedInImportComplete] = useState(false);
   const [connectedPlatformsInDialog, setConnectedPlatformsInDialog] = useState<string[]>([]);
+  const createCampaignConnectedPlatforms = connectedPlatformsInDialog.filter(isCreateCampaignPlatformEnabled);
   const [ga4CampaignFilterForNewCampaign, setGa4CampaignFilterForNewCampaign] = useState<string>("");
-  const [mimosaasWebsiteConnectionId, setMimosaasWebsiteConnectionId] = useState("");
-  const [mimosaasUtmCampaignValue, setMimosaasUtmCampaignValue] = useState("");
-  const [mimosaasAttributionMethod, setMimosaasAttributionMethod] = useState<'google_ads' | 'manual' | null>(null);
-  const [mimosaasGoogleAdsConnected, setMimosaasGoogleAdsConnected] = useState(false);
-  const [isSavingMimosaasConfiguration, setIsSavingMimosaasConfiguration] = useState(false);
 
   // GA4 wizard state (for Step 4: Configure)
   const [ga4Properties, setGA4Properties] = useState<Array<{ id: string; name: string; account?: string }>>([]);
@@ -261,22 +249,6 @@ export default function Campaigns() {
   const [customIntegrationConnectingAction, setCustomIntegrationConnectingAction] = useState<"upload" | "email" | null>(null);
   const [customIntegrationForwardingEmail, setCustomIntegrationForwardingEmail] = useState("");
   const { toast } = useToast();
-
-  const { data: mimosaasTrackingAvailability } = useQuery<{ enabled: boolean; googleAdsAttributionEnabled?: boolean }>({
-    queryKey: ["/api/mimosaas-tracking/availability"],
-    queryFn: async () => {
-      const response = await fetch("/api/mimosaas-tracking/availability", { credentials: "include" });
-      if (!response.ok) return { enabled: false };
-      return response.json();
-    },
-    staleTime: 60_000,
-  });
-  const isMimosaasTrackingAvailable = mimosaasTrackingAvailability?.enabled === true;
-  const isMimosaasGoogleAdsAttributionAvailable = mimosaasTrackingAvailability?.googleAdsAttributionEnabled === true;
-  const isCreateCampaignPlatformEnabled = (platformId: string) =>
-    isGA4FirstCreateCampaignPlatform(platformId) || (platformId === "mimosaas-tracking" && isMimosaasTrackingAvailable);
-  const createCampaignPlatforms = platforms.filter(({ id }) => isCreateCampaignPlatformEnabled(id));
-  const createCampaignConnectedPlatforms = connectedPlatformsInDialog.filter(isCreateCampaignPlatformEnabled);
 
   const { data: campaigns = [], isLoading } = useQuery<Campaign[]>({
     queryKey: ["/api/campaigns", { clientId: selectedClientId }],
@@ -484,7 +456,6 @@ export default function Campaigns() {
     if (draftCampaignId) {
       try {
         await apiRequest("PATCH", `/api/campaigns/${draftCampaignId}`, {
-          clientWebsite: data.clientWebsite || null,
           budget: data.budget ? data.budget.replace(/,/g, '') : null,
           currency: data.currency || "USD",
         });
@@ -538,8 +509,8 @@ export default function Campaigns() {
     if (!campaignData || !draftCampaignId) return;
 
     selectedPlatforms = selectedPlatforms.filter(isCreateCampaignPlatformEnabled);
-    if (selectedPlatforms.length !== 1) {
-      toast({ title: "One platform required", description: "Select one authoritative analytics platform for this campaign.", variant: "destructive" });
+    if (selectedPlatforms.length === 0) {
+      toast({ title: "Platform required", description: "Connect an available platform before creating this campaign.", variant: "destructive" });
       return;
     }
 
@@ -605,13 +576,11 @@ export default function Campaigns() {
     setIsFinalizingCampaign(true);
     try {
       console.log('🔧 Finalizing campaign:', draftCampaignId, 'with platforms:', selectedPlatforms);
-      const response = selectedPlatforms[0] === "mimosaas-tracking"
-        ? await apiRequest("POST", `/api/campaigns/${draftCampaignId}/mimosaas-tracking/finalize`)
-        : await apiRequest("PATCH", `/api/campaigns/${draftCampaignId}`, {
-            platform: selectedPlatforms[0],
-            ga4CampaignFilter: ga4CampaignFilterForNewCampaign || null,
-            status: "active",  // promote from draft → active so it appears in Campaign Management
-          });
+      const response = await apiRequest("PATCH", `/api/campaigns/${draftCampaignId}`, {
+        platform: selectedPlatforms.join(", "),
+        ga4CampaignFilter: ga4CampaignFilterForNewCampaign || null,
+        status: "active",  // promote from draft → active so it appears in Campaign Management
+      });
 
       console.log('🔧 PATCH response status:', response.status, response.ok);
 
@@ -822,11 +791,6 @@ export default function Campaigns() {
     setDraftCampaignId(null);
     setDraftFinalized(false);
     setGa4CampaignFilterForNewCampaign("");
-    setMimosaasWebsiteConnectionId("");
-    setMimosaasUtmCampaignValue("");
-    setMimosaasAttributionMethod(null);
-    setMimosaasGoogleAdsConnected(false);
-    setIsSavingMimosaasConfiguration(false);
     setGA4Properties([]);
     setSelectedGA4Property('');
     setGA4CampaignValues([]);
@@ -1113,88 +1077,6 @@ export default function Campaigns() {
     goToConfirmStep(4);
   };
 
-  const handleMimosaasInstallationVerified = async (connectionId: string) => {
-    if (!draftCampaignId) return;
-    setIsSavingMimosaasConfiguration(true);
-    try {
-      const currentResponse = await apiRequest("GET", `/api/campaigns/${draftCampaignId}/mimosaas-tracking/configuration`);
-      const current = await currentResponse.json();
-      if (current.configuration) {
-        if (String(current.configuration.websiteConnectionId) !== connectionId) {
-          throw new Error("This draft is linked to a different website connection.");
-        }
-      } else {
-        await apiRequest("POST", `/api/campaigns/${draftCampaignId}/mimosaas-tracking/configuration`, {
-          websiteConnectionId: connectionId,
-          conversionEventNames: [],
-          attributionWindowDays: 30,
-        });
-      }
-      const existingMapping = (Array.isArray(current.mappings) ? current.mappings : [])
-        .find((mapping: any) => mapping.mappingType === "utm_campaign" && mapping.isActive !== false);
-      setMimosaasWebsiteConnectionId(connectionId);
-      setWizardPlatformConnected(false);
-      if (existingMapping) {
-        setMimosaasUtmCampaignValue(String(existingMapping.campaignValue || ""));
-        setMimosaasAttributionMethod('manual');
-      } else if (!isMimosaasGoogleAdsAttributionAvailable) {
-        setMimosaasAttributionMethod('manual');
-      }
-      setWizardStep(4);
-    } catch (error: any) {
-      toast({ title: "Tracking setup failed", description: error?.message || "Try again.", variant: "destructive" });
-    } finally {
-      setIsSavingMimosaasConfiguration(false);
-    }
-  };
-
-  const handleSaveMimosaasTrackingConfiguration = async () => {
-    const campaignValue = mimosaasUtmCampaignValue.trim();
-    if (!draftCampaignId || !mimosaasWebsiteConnectionId || !campaignValue) {
-      toast({ title: "Campaign tracking name required", description: "Enter the campaign name included in your website links.", variant: "destructive" });
-      return;
-    }
-    setIsSavingMimosaasConfiguration(true);
-    try {
-      const currentResponse = await apiRequest("GET", `/api/campaigns/${draftCampaignId}/mimosaas-tracking/configuration`);
-      const current = await currentResponse.json();
-      if (current.configuration) {
-        if (String(current.configuration.websiteConnectionId) !== mimosaasWebsiteConnectionId) {
-          throw new Error("This draft is linked to a different website connection.");
-        }
-        await apiRequest("PATCH", `/api/campaigns/${draftCampaignId}/mimosaas-tracking/configuration`, {
-          conversionEventNames: [],
-          attributionWindowDays: 30,
-        });
-      } else {
-        await apiRequest("POST", `/api/campaigns/${draftCampaignId}/mimosaas-tracking/configuration`, {
-          websiteConnectionId: mimosaasWebsiteConnectionId,
-          conversionEventNames: [],
-          attributionWindowDays: 30,
-        });
-      }
-
-      const existingMapping = (Array.isArray(current.mappings) ? current.mappings : [])
-        .find((mapping: any) => mapping.mappingType === "utm_campaign");
-      if (existingMapping) {
-        await apiRequest("PATCH", `/api/campaigns/${draftCampaignId}/mimosaas-tracking/mappings/${existingMapping.id}`, {
-          campaignValue,
-          isActive: true,
-        });
-      } else {
-        await apiRequest("POST", `/api/campaigns/${draftCampaignId}/mimosaas-tracking/mappings`, { campaignValue });
-      }
-      setConnectedPlatformsInDialog(["mimosaas-tracking"]);
-      setWizardPlatformConnected(true);
-      toast({ title: "Mimosaas Tracking ready", description: "Website tracking and campaign attribution are ready for campaign creation." });
-      goToConfirmStep(4);
-    } catch (error: any) {
-      toast({ title: "Tracking setup failed", description: error?.message || "Try again.", variant: "destructive" });
-    } finally {
-      setIsSavingMimosaasConfiguration(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background">
 
@@ -1226,16 +1108,13 @@ export default function Campaigns() {
                       {wizardStep === 1 ? "Create New Campaign" :
                        wizardStep === 2 ? "Select Platform" :
                        wizardStep === 3 ? `Connect ${platforms.find(p => p.id === selectedWizardPlatform)?.name || "Platform"}` :
-                       wizardStep === 4 && selectedWizardPlatform === "mimosaas-tracking" ? "Connect Advertising" :
                        wizardStep === 4 ? `Configure ${platforms.find(p => p.id === selectedWizardPlatform)?.name || "Platform"}` :
                        "Confirm & Create"}
                     </DialogTitle>
                     <DialogDescription>
                       {wizardStep === 1 ? "Set up a new marketing campaign with your preferred settings." :
-                       wizardStep === 2 ? "Choose one analytics source" :
-                       wizardStep === 3 && selectedWizardPlatform === "mimosaas-tracking" ? "Install and verify website tracking" :
+                       wizardStep === 2 ? "Connect to Google Analytics" :
                        wizardStep === 3 ? "Connect your platform account" :
-                       wizardStep === 4 && selectedWizardPlatform === "mimosaas-tracking" ? "Choose how campaign visits will be attributed" :
                        wizardStep === 4 ? "Configure your platform connection settings." :
                        "Review your campaign details and create."}
                     </DialogDescription>
@@ -1247,8 +1126,8 @@ export default function Campaigns() {
                     {[
                       { step: 1 as const, label: "Details" },
                       { step: 2 as const, label: "Platform" },
-                      { step: 3 as const, label: selectedWizardPlatform === 'mimosaas-tracking' ? "Install" : selectedWizardPlatform === 'custom-integration' ? "Connect" : "Auth" },
-                      { step: 4 as const, label: selectedWizardPlatform === 'mimosaas-tracking' ? "Advertising" : "Configure" },
+                      { step: 3 as const, label: selectedWizardPlatform === 'custom-integration' ? "Connect" : "Auth" },
+                      { step: 4 as const, label: "Configure" },
                       { step: 5 as const, label: "Confirm" },
                     ].map(({ step, label }, i) => {
                       const isActive = step === wizardStep;
@@ -1423,7 +1302,6 @@ export default function Campaigns() {
                         {createCampaignPlatforms.map((platform) => {
                           const Icon = platform.icon;
                           const isConnected = connectedPlatformsInDialog.includes(platform.id);
-                          const isAnotherPlatformReady = createCampaignConnectedPlatforms.length > 0 && !isConnected;
                           const isComingSoon = ['twitter'].includes(platform.id);
                           return (
                             <button
@@ -1435,18 +1313,12 @@ export default function Campaigns() {
                                   return;
                                 }
                                 if (isConnected) return;
-                                if (platform.id === "mimosaas-tracking" && !campaignData?.clientWebsite) {
-                                  toast({ title: "Website required", description: "Enter the campaign website in Details before selecting Mimosaas Tracking.", variant: "destructive" });
-                                  setWizardStep(1);
-                                  return;
-                                }
                                 setSelectedWizardPlatform(platform.id);
                                 setWizardStep(3);
                               }}
-                              disabled={isConnected || isAnotherPlatformReady}
+                              disabled={isConnected}
                               className={`relative p-4 rounded-lg border-2 text-left transition-all ${
                                 isConnected ? 'border-green-500 bg-green-50 dark:bg-green-950/20 cursor-default' :
-                                isAnotherPlatformReady ? 'border-border opacity-50 cursor-not-allowed' :
                                 isComingSoon ? 'border-border opacity-50 cursor-not-allowed' :
                                 'border-border hover:border-primary hover:bg-primary/5 cursor-pointer'
                               }`}
@@ -1497,13 +1369,6 @@ export default function Campaigns() {
                               }}
                             />
                           </div>
-                        )}
-                        {selectedWizardPlatform === 'mimosaas-tracking' && draftCampaignId && campaignData?.clientWebsite && (
-                          <MimosaasTrackingConnectionFlow
-                            campaignId={draftCampaignId}
-                            websiteUrl={campaignData.clientWebsite}
-                            onVerified={(connectionId) => void handleMimosaasInstallationVerified(connectionId)}
-                          />
                         )}
                         {selectedWizardPlatform === 'google-sheets' && (
                           <SimpleGoogleSheetsAuth
@@ -1858,68 +1723,6 @@ export default function Campaigns() {
                               {selectedGA4CampaignValues.length > 1 ? `Save ${selectedGA4CampaignValues.length} campaigns` : "Save & Continue"}
                             </Button>
                           </div>
-                        </div>
-                      )}
-                      {selectedWizardPlatform === 'mimosaas-tracking' && (
-                        <div className="space-y-4">
-                          {!mimosaasAttributionMethod && (
-                            <div className="space-y-3">
-                              <p className="text-sm text-muted-foreground">Select where this campaign is advertised.</p>
-                              <Button type="button" variant="outline" className="w-full justify-start" onClick={() => setMimosaasAttributionMethod('google_ads')}>
-                                <i className="fab fa-google mr-2" /> Google Ads
-                              </Button>
-                              <Button type="button" variant="outline" className="w-full justify-start" onClick={() => setMimosaasAttributionMethod('manual')}>
-                                Other advertising platform
-                              </Button>
-                              <Button type="button" variant="outline" className="w-full" onClick={() => setWizardStep(3)}>
-                                <ArrowLeft className="w-4 h-4 mr-2" /> Back
-                              </Button>
-                            </div>
-                          )}
-                          {mimosaasAttributionMethod === 'google_ads' && !mimosaasGoogleAdsConnected && (
-                            <div className="space-y-3">
-                              <GoogleAdsConnectionFlow
-                                campaignId={draftCampaignId || ""}
-                                purpose="mimosaas_tracking"
-                                onConnectionSuccess={() => {
-                                  setMimosaasGoogleAdsConnected(true);
-                                  setConnectedPlatformsInDialog(["mimosaas-tracking"]);
-                                  setWizardPlatformConnected(true);
-                                  toast({ title: "Google Ads ready", description: "Selected Google Ads campaigns are ready for website attribution." });
-                                  goToConfirmStep(4);
-                                }}
-                                onError={(error) => toast({ title: "Connection Failed", description: error, variant: "destructive" })}
-                              />
-                              <Button type="button" variant="outline" className="w-full" onClick={() => setMimosaasAttributionMethod(null)}>
-                                <ArrowLeft className="w-4 h-4 mr-2" /> Back
-                              </Button>
-                            </div>
-                          )}
-                          {mimosaasAttributionMethod === 'google_ads' && mimosaasGoogleAdsConnected && (
-                            <div className="space-y-3">
-                              <p className="text-sm text-green-600">Google Ads campaigns selected.</p>
-                              <Button type="button" className="w-full" onClick={() => goToConfirmStep(4)}>Continue</Button>
-                            </div>
-                          )}
-                          {mimosaasAttributionMethod === 'manual' && <><div className="space-y-2">
-                            <Label htmlFor="mimosaas-utm-campaign">Campaign tracking name</Label>
-                            <Input
-                              id="mimosaas-utm-campaign"
-                              value={mimosaasUtmCampaignValue}
-                              onChange={(event) => setMimosaasUtmCampaignValue(event.target.value)}
-                              placeholder="Example: summer_sale"
-                            />
-                            <p className="text-xs text-muted-foreground">Enter the campaign name included in your website links. Example: for ?utm_campaign=summer_sale, enter summer_sale.</p>
-                          </div>
-                          <div className="flex gap-2 pt-2">
-                            <Button type="button" variant="outline" className="flex-1" onClick={() => setWizardStep(3)} disabled={isSavingMimosaasConfiguration}>
-                              <ArrowLeft className="w-4 h-4 mr-2" /> Back
-                            </Button>
-                            <Button type="button" className="flex-1" onClick={handleSaveMimosaasTrackingConfiguration} disabled={!mimosaasUtmCampaignValue.trim() || isSavingMimosaasConfiguration}>
-                              {isSavingMimosaasConfiguration ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : "Save & Continue"}
-                            </Button>
-                          </div>
-                          </>}
                         </div>
                       )}
                     </div>

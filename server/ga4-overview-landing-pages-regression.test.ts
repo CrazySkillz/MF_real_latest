@@ -21,7 +21,7 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
   it("keeps the exact six-column contract without a Revenue column in UI or PDFs", () => {
     const client = read("client/src/pages/ga4-metrics.tsx");
     const scheduled = read("server/ga4-scheduled-report-pdf.ts");
-    const ui = between(client, "{/* Landing Pages */}", "{/* Modals (rendered always) */}");
+    const ui = between(client, "{/* Landing Pages */}", "{/* Conversion Events */}");
     const browserPdf = between(client, "if (includeOverviewLandingPages)", "if (includeOverviewConversionEvents)");
     const scheduledPdf = between(scheduled, "if (includeLandingPages)", "if (includeConversionEvents)");
 
@@ -77,7 +77,7 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
 
   it("distinguishes loading, empty, unavailable, and cached last-good states", () => {
     const client = read("client/src/pages/ga4-metrics.tsx");
-    const ui = between(client, "{/* Landing Pages */}", "{/* Modals (rendered always) */}");
+    const ui = between(client, "{/* Landing Pages */}", "{/* Conversion Events */}");
     expect(ui).toContain("landingPagesLoading && ga4LandingPages === undefined");
     expect(ui).toContain("landingPagesUnavailable");
     expect(ui).toContain("Landing page data is unavailable. Refresh the page to try again.");

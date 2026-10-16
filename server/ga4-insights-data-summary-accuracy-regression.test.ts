@@ -62,13 +62,13 @@ describe("GA4 Insights Data Summary accuracy", () => {
       expect(section).not.toContain("financialRevenue / Math.max");
       expect(section).not.toContain("/day avg");
     }
-    expect(liveSection).not.toContain("GA4 imported history:");
+    expect(liveSection).toContain("GA4 imported history:");
     for (const section of [downloadSection, scheduledSection]) {
       expect(section).toContain("Current GA4 total");
     }
     expect(page).not.toContain("const avgDailyRev = Number(financialRevenue) / Math.max(availDays, 1);");
     expect(page).not.toContain("Averaging ~${formatMoney(avgDailyRev)}/day over ${availDays} days.");
-    expect(page).toContain("The total uses GA4 native revenue from the imported data window plus imported revenue sources.");
+    expect(page).toContain("Revenue-to-date uses GA4 native revenue plus imported revenue sources.");
   });
 
   it("preserves the Executive Financials additive revenue calculation", () => {

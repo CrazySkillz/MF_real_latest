@@ -18,7 +18,6 @@ export interface GoogleAdsCustomerAccount {
   manager: boolean;
   currencyCode: string;
   timeZone: string;
-  autoTaggingEnabled: boolean;
 }
 
 export interface GoogleAdsCampaignInfo {
@@ -26,13 +25,6 @@ export interface GoogleAdsCampaignInfo {
   name: string;
   status: string;
   resourceName: string;
-}
-
-export interface GoogleAdsClickCampaign {
-  gclid: string;
-  date: string;
-  campaignId: string;
-  campaignName: string;
 }
 
 export interface GoogleAdsDailyInsight {
@@ -64,13 +56,6 @@ const searchStreamRows = (data: unknown): any[] => {
     return batch.results || [];
   });
 };
-
-const escapeGaqlString = (value: string): string => value
-  .replace(/\\/g, '\\\\')
-  .replace(/'/g, "\\'")
-  .replace(/\n/g, '\\n')
-  .replace(/\r/g, '\\r')
-  .replace(/\t/g, '\\t');
 
 export class GoogleAdsClient {
   private accessToken: string;
@@ -172,7 +157,7 @@ export class GoogleAdsClient {
         });
 
         const detailResponse = await detailApi.post('/googleAds:searchStream', {
-          query: `SELECT customer.id, customer.descriptive_name, customer.resource_name, customer.manager, customer.currency_code, customer.time_zone, customer.auto_tagging_enabled FROM customer LIMIT 1`,
+          query: `SELECT customer.id, customer.descriptive_name, customer.resource_name, customer.manager, customer.currency_code, customer.time_zone FROM customer LIMIT 1`,
         });
 
         const results = searchStreamRows(detailResponse.data);
@@ -185,7 +170,6 @@ export class GoogleAdsClient {
             manager: customer.manager || false,
             currencyCode: String(customer.currencyCode || "").trim().toUpperCase(),
             timeZone: String(customer.timeZone || "").trim(),
-            autoTaggingEnabled: customer.autoTaggingEnabled === true,
           });
         }
       } catch {
@@ -198,7 +182,7 @@ export class GoogleAdsClient {
 
   async getCustomerAccount(): Promise<GoogleAdsCustomerAccount> {
     const response = await this.api.post('/googleAds:searchStream', {
-      query: `SELECT customer.id, customer.descriptive_name, customer.resource_name, customer.manager, customer.currency_code, customer.time_zone, customer.auto_tagging_enabled FROM customer LIMIT 1`,
+      query: `SELECT customer.id, customer.descriptive_name, customer.resource_name, customer.manager, customer.currency_code, customer.time_zone FROM customer LIMIT 1`,
     });
     const customer = searchStreamRows(response.data)[0]?.customer;
     if (!customer?.id) throw new Error('Google Ads customer metadata is unavailable');
@@ -209,7 +193,6 @@ export class GoogleAdsClient {
       manager: customer.manager === true,
       currencyCode: String(customer.currencyCode || '').trim().toUpperCase(),
       timeZone: String(customer.timeZone || '').trim(),
-      autoTaggingEnabled: customer.autoTaggingEnabled === true,
     };
   }
 
@@ -237,44 +220,6 @@ export class GoogleAdsClient {
       status: r.campaign.status,
       resourceName: r.campaign.resourceName,
     }));
-  }
-
-  async getClickCampaign(gclid: string, date: string, campaignIds: string[]): Promise<GoogleAdsClickCampaign | null> {
-    const normalizedGclid = String(gclid || '').trim();
-    if (!normalizedGclid || normalizedGclid.length > 512) throw new Error('Invalid Google Ads click ID');
-    const parsedDate = new Date(`${date}T00:00:00.000Z`);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(parsedDate.valueOf()) || parsedDate.toISOString().slice(0, 10) !== date) {
-      throw new Error('Invalid Google Ads click date');
-    }
-    const normalizedCampaignIds = Array.from(new Set((campaignIds || []).map((id) => String(id || '').trim()).filter(Boolean)));
-    if (normalizedCampaignIds.length === 0 || normalizedCampaignIds.some((id) => !/^\d+$/.test(id))) {
-      throw new Error('Invalid Google Ads campaign scope');
-    }
-    const campaignScope = new Set(normalizedCampaignIds);
-    const response = await this.api.post('/googleAds:searchStream', {
-      query: `
-        SELECT click_view.gclid, campaign.id, campaign.name, segments.date
-        FROM click_view
-        WHERE segments.date = '${date}'
-          AND click_view.gclid = '${escapeGaqlString(normalizedGclid)}'
-          AND campaign.id IN (${normalizedCampaignIds.join(', ')})
-        LIMIT 2
-      `,
-    });
-    const matches = searchStreamRows(response.data).map((row: any) => {
-      if (row?.clickView?.gclid !== normalizedGclid || row?.segments?.date !== date || !campaignScope.has(String(row?.campaign?.id || ''))) {
-        throw new Error('Invalid Google Ads click response');
-      }
-      return {
-        gclid: normalizedGclid,
-        date,
-        campaignId: String(row.campaign.id),
-        campaignName: String(row.campaign.name || ''),
-      };
-    });
-    const campaigns = new Map(matches.map((match) => [match.campaignId, match]));
-    if (campaigns.size > 1) throw new Error('Ambiguous Google Ads click attribution');
-    return campaigns.values().next().value || null;
   }
 
   /**

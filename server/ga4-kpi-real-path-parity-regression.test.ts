@@ -65,7 +65,6 @@ vi.mock("./middleware/rateLimiter", () => {
     googleSheetsRateLimiter: passThrough,
     ga4RateLimiter: passThrough,
     importRateLimiter: passThrough,
-    mimosaasTrackingRateLimiter: passThrough,
   };
 });
 vi.mock("jspdf", () => ({
@@ -103,7 +102,6 @@ const campaign = {
   id: "ga4-parity-campaign",
   name: "GA4 parity campaign",
   ownerId: "owner-1",
-  status: "active",
   clientId: "client-1",
   currency: "USD",
   reportingTimeZone: "Europe/Amsterdam",

@@ -207,8 +207,7 @@ describe("GA4 Overview Google Sheets revenue deterministic validation", () => {
     expect(scheduledReport).toContain('storage.getRevenueBreakdownBySource(campaignId, importedRevenueStartDate, importedRevenueEndDate, "ga4")');
     expect(ga4Page).toContain("const financialRevenue = ga4RevenueForFinancials + importedRevenueForFinancials;");
     expect(ga4Page).toContain("resolveExactGA4CampaignBreakdownRevenue(");
-    expect(campaignBreakdown).toContain("const totals = source?.boundedRevenueZero === true || source?.pendingCompletedDay === true");
-    expect(campaignBreakdown).toContain(": Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];");
+    expect(campaignBreakdown).toContain("const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];");
     expect(campaignBreakdown).toContain("const targetKey = targetByValue.get(valueKey);");
 
     const invalidationStart = revenueModal.indexOf("const invalidateAfterRevenueChange");
@@ -229,8 +228,8 @@ describe("GA4 Overview Google Sheets revenue deterministic validation", () => {
     expect(route).toContain("if (addRequestKey) inFlightGoogleSheetsRevenueAdds.delete(addRequestKey)");
   });
 
-  it("limits exact-daily Google Sheets Date choices and clears stale selections", () => {
-    expect(revenueModal).toContain('if (platformContext !== "ga4" && platformContext !== "mimosaas_tracking") return sheetsHeaders;');
+  it("limits only GA4 Google Sheets Date choices and clears stale selections", () => {
+    expect(revenueModal).toContain('if (platformContext !== "ga4") return sheetsHeaders;');
     expect(revenueModal).toContain("if (header === sheetsRevenueCol || header === sheetsCampaignCol) return false;");
     expect(revenueModal).toContain("{sheetsDateColumnHeaders.map((h) => (");
     expect(revenueModal).toContain("sheetsDateCol && !sheetsDateColumnHeaders.includes(sheetsDateCol)");

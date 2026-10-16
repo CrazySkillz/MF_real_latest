@@ -21,8 +21,8 @@ describe("Google Ads revenue Shopify flow", () => {
       'const server = createServer(app);'
     );
 
-    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);');
-    expect(routes).toContain('const zShopifyRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);');
+    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
+    expect(routes).toContain('const zShopifyRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
     expect(route).toContain("platformContext: zShopifyRevenuePlatformContext.optional()");
     expect(route).not.toContain("platformContext: zPlatformContext.optional()");
   });
@@ -38,7 +38,7 @@ describe("Google Ads revenue Shopify flow", () => {
     expect(route).toContain('const platformCtx = body.data.platformContext || "ga4";');
     expect(route).toContain('const effectiveValueSource: "revenue" = "revenue";');
     expect(route).toContain("storage.getRevenueSources(campaignId, platformCtx as any)");
-    expect(route).toContain("sourceType: 'shopify'");
+    expect(route).toContain('sourceType: "shopify"');
     expect(route).toContain("platformContext: platformCtx");
     expect(route).toContain('provider: "shopify"');
     expect(route).toContain("campaignValueRevenueTotals: Array.from(campaignValueRevenueTotals.entries()).map");
@@ -55,8 +55,8 @@ describe("Google Ads revenue Shopify flow", () => {
     expect(route).toContain('const activeGoogleAdsCampaignIds = platformCtx === "google_ads"');
     expect(route).toContain("googleAdsCampaignIdFromValueOrMapping(platformCtx, orderCrmValue, campaignMappings, activeGoogleAdsCampaignIds)");
     expect(route).toContain('} else if (platformCtx === "linkedin" && campaignMappings.length > 0) {');
-    expect(route).toContain('if (googleAdsCampaignId) {');
-    expect(route).toContain("subCampaignUrn: urn");
+    expect(route).toContain('if ((campaignMappings.length > 0 || platformCtx === "google_ads" || platformCtx === "meta" || platformCtx === "instagram" || platformCtx === "tiktok") && revenueByDateAndCampaign.size > 0)');
+    expect(route).toContain("subCampaignUrn: urn,");
     expect(route).not.toContain("spend weight");
   });
 
@@ -72,7 +72,7 @@ describe("Google Ads revenue Shopify flow", () => {
     expect(route).toContain('sourceType || "").toLowerCase() !== "shopify"');
     expect(route).toContain("existingCtx !== String(platformCtx || \"ga4\").trim().toLowerCase()");
     expect(route).toContain('return res.status(404).json({ error: "Shopify revenue source not found" });');
-    expect(route).toContain("await storage.deleteRevenueRecordsBySource(String(nonGa4Source.id));");
+    expect(route).toContain("await storage.deleteRevenueRecordsBySource(String((source as any).id));");
   });
 
   it("preserves Shopify additive source behavior and dry-run preview semantics", () => {
@@ -95,9 +95,9 @@ describe("Google Ads revenue Shopify flow", () => {
     const modal = readSource("client", "src", "components", "AddRevenueWizardModal.tsx");
     const scheduler = readSource("server", "auto-refresh-scheduler.ts");
 
-    expect(wizard).toContain('platformContext?: "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "tiktok" | "google_sheets" | "custom_integration";');
+    expect(wizard).toContain('platformContext?: "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "tiktok" | "google_sheets";');
     expect(wizard).toContain("platformContext = \"ga4\"");
-    expect(wizard).toContain("...(editSourceId ? { sourceId: editSourceId } : {})");
+    expect(wizard).toContain("...(initialMappingConfig?.sourceId ? { sourceId: initialMappingConfig.sourceId } : {})");
     expect(wizard).toContain("selectedValues,");
     expect(wizard).toContain("revenueMetric,");
     expect(wizard).toContain("platformContext,");
@@ -106,7 +106,7 @@ describe("Google Ads revenue Shopify flow", () => {
     expect(wizard).toContain("selectedCampaignMappings");
     expect(wizard).toContain("selectedCampaignMappings");
     expect(modal).toContain("platformContext={platformContext}");
-    expect(modal).toContain('sourceId={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "shopify" ? String(initialSource?.id || "") : undefined}');
+    expect(modal).toContain("sourceId: initialSource?.id ? String(initialSource.id) : undefined");
     expect(scheduler).toContain("async function reprocessShopify");
     expect(scheduler).toContain("platformContext: mappingConfig.platformContext");
     expect(scheduler).toContain("...(sourceId ? { sourceId } : {})");

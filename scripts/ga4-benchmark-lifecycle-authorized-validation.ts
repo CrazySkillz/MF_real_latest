@@ -153,8 +153,8 @@ try {
   check(duplicateRows.rowCount === 0, "Active exact-duplicate GA4 Benchmark records exist in the target campaign");
 
   const scheduler = await api(ownerAuth.page, "POST", `/api/campaigns/${encodeURIComponent(CAMPAIGN_ID)}/ga4-daily-scheduler/run-now`);
-  check(scheduler.status === 409 && scheduler.body?.error === "GA4_DAILY_HISTORY_SCHEDULER_MANAGED",
-    `Scheduler-only enforcement failed (${scheduler.status}): ${JSON.stringify(scheduler.body).slice(0, 800)}`);
+  check(scheduler.ok && scheduler.body?.success === true,
+    `Campaign scheduler validation failed (${scheduler.status}): ${JSON.stringify(scheduler.body).slice(0, 800)}`);
 
   const provider = await api(
     ownerAuth.page,
@@ -169,15 +169,7 @@ try {
   const providerMismatches = comparisons.filter((row: any) => row?.computable && liveProvider && (
     Math.abs(Number(row?.storedVsSchedulerDelta || 0)) > 0.01 || Math.abs(Number(row?.storedVsUiDelta || 0)) > 0.01
   ));
-  check(providerMismatches.length === 0, `${providerMismatches.length} provider/persisted/scheduler/UI Benchmark mismatches were found: ${JSON.stringify(providerMismatches.map((row: any) => ({
-    benchmarkHash: opaque(row?.id),
-    metric: row?.metric || null,
-    storedValue: row?.storedCurrentValue ?? null,
-    schedulerValue: row?.schedulerCandidateCurrentValue ?? null,
-    uiValue: row?.uiCandidateCurrentValue ?? null,
-    storedVsSchedulerDelta: row?.storedVsSchedulerDelta ?? null,
-    storedVsUiDelta: row?.storedVsUiDelta ?? null,
-  })))}`);
+  check(providerMismatches.length === 0, `${providerMismatches.length} provider/persisted/scheduler/UI Benchmark mismatches were found`);
 
   const historyDuplicates = await client.query(`
     SELECT benchmark_id, DATE(recorded_at) AS recorded_date, COALESCE(notes, '') AS scope_note, COUNT(*)::int AS row_count
@@ -375,9 +367,9 @@ try {
       repeatedAlertReconciliationVisibleRows: 1,
     },
     scheduler: {
-      mode: "scheduler_managed",
-      manualCampaignRunRejected: true,
-      naturalCycleRequiredForCertification: true,
+      manualCampaignRun: true,
+      trigger: scheduler.body?.trigger || "manual",
+      lastRunStatus: scheduler.body?.after?.lastRunStatus || null,
       mutationAlertReconciliation: true,
     },
     valueReconciliation: {

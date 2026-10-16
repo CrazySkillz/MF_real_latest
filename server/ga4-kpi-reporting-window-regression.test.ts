@@ -64,7 +64,6 @@ describe("GA4 KPI authoritative reporting window", () => {
     storageMock.getCampaign.mockResolvedValue({
       id: "campaign-1",
       ownerId: "owner-1",
-      status: "active",
       startDate: "2026-06-01T00:00:00.000Z",
       reportingTimeZone: "America/Los_Angeles",
       currency: "USD",

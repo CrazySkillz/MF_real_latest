@@ -52,7 +52,9 @@ Overview warns when its saved financial snapshot covers an older reporting day t
 
 The warning preserves the displayed figures. Revenue, Spend, ROAS, ROI and CPA retain the existing financial snapshot inputs; CPA retains that snapshot's conversions. A missing financial snapshot continues to render unavailable. The existing read polling updates the warning when a later financial snapshot arrives. No new provider call, refresh trigger, database write, calculation or reporting cutoff is introduced.
 
-This is a bounded Task 2 safeguard for silent partial updates. It does not identify which provider failed or distinguish an unfinished financial stage from a failed one. A later save timestamp is not proof of a shared refresh generation or completed Google processing. Pipeline Proxy, source lists, tables and downstream reports have separate paths; this warning does not certify their synchronization. The Overview-wide reporting note remains Task 3.
+This is a bounded Task 2 safeguard for silent partial updates. It does not identify which provider failed or distinguish an unfinished financial stage from a failed one. A later save timestamp is not proof of a shared refresh generation or completed Google processing. Pipeline Proxy, source lists, tables and downstream reports have separate paths; this warning does not certify their synchronization. The complete Overview reporting note remains Task 3.
+
+Overview now presents reporting cutoffs above Summary: the selected property's saved GA4 date for Summary/tables and the financial snapshot's saved date for available Revenue, Spend, ROAS, ROI and CPA. The duplicate dates inside the Revenue/Spend cards are removed. These are data-through dates, not successful refresh times, and they remain separate when the stored cutoffs differ. A configured Pipeline Proxy is identified as latest available CRM stage values. The complete reporting window, update times, schedule and provisional-data wording remain outstanding under Task 3.
 
 ## Campaign Reporting Timezone Configuration
 

@@ -6188,6 +6188,8 @@ export default function GA4Metrics() {
   const selectedPeriodLabel = ga4ReportDate ? `Daily (UTC: ${ga4ReportDate})` : "Daily";
 
   const ga4DailyLatestStoredDate = String((ga4DailyResp as any)?.latestStoredDailyDate || ga4ReportDate || "").trim();
+  const overviewGA4ReportingDate = ga4ConnectionUsable && !ga4DailyPlaceholder
+    && String(ga4DailyResp?.propertyId || "") === selectedGA4PropertyId ? ga4DailyLatestStoredDate : "";
   const ga4DailyExpectedThroughDate = String((ga4DailyResp as any)?.dataThroughDate || "").trim();
   const ga4DailyProviderCoverageThroughDate = String((ga4DailyResp as any)?.providerCoverageThroughDate || "").trim();
   const ga4DailyRefreshIsStale = (ga4DailyResp as any)?.refreshIsStale === true;
@@ -6640,6 +6642,11 @@ export default function GA4Metrics() {
 
                 <TabsContent value="overview" className="fade-in">
                   <div className="space-y-8">
+                    <div className="space-y-1 text-sm text-muted-foreground/70" data-testid="ga4-overview-reporting-dates">
+                      <p><span className="font-medium">GA4 metrics (Summary and tables):</span> {overviewGA4ReportingDate ? `Data through ${formatReportingDateLabel(overviewGA4ReportingDate)}` : "Reporting date unavailable"}.</p>
+                      <p><span className="font-medium">Revenue, Spend, ROAS, ROI and CPA:</span> {overviewFinancialReportingDate ? `Data through ${formatReportingDateLabel(overviewFinancialReportingDate)}` : "Reporting date unavailable"}. Applies to available figures.</p>
+                      {pipelineProxyConfigured && <p>Pipeline Proxy shows the latest available CRM stage values.</p>}
+                    </div>
                     {/* Summary Cards */}
                     <div>
                       <div className="mb-3">
@@ -6730,7 +6737,6 @@ export default function GA4Metrics() {
                             <p className="text-2xl font-bold text-foreground mt-1">
                               {renderFinancialValue(financialDailySnapshotLoading, overviewFinancialRevenueAvailable, formatMoney(overviewFinancialRevenue))}
                             </p>
-                            {overviewFinancialReportingDate && <p className="mt-1 text-xs text-muted-foreground/70">Latest imported day: {formatReportingDateLabel(overviewFinancialReportingDate)}</p>}
                             {revenueSourcesUnavailable ? (
                               <p className="mt-2 text-xs text-destructive">Sources unavailable</p>
                             ) : revenueSourcesCount > 0 && (
@@ -6764,7 +6770,6 @@ export default function GA4Metrics() {
                             <p className="text-2xl font-bold text-foreground mt-1">
                               {renderFinancialValue(financialDailySnapshotLoading, overviewFinancialSpendAvailable, formatMoney(overviewFinancialSpend))}
                             </p>
-                            {overviewFinancialReportingDate && <p className="mt-1 text-xs text-muted-foreground/70">Latest imported day: {formatReportingDateLabel(overviewFinancialReportingDate)}</p>}
                             {spendSourcesUnavailable ? (
                               <p className="mt-2 text-xs text-destructive">Sources unavailable</p>
                             ) : spendSourcesCount > 0 && (

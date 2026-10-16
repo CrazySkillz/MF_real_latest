@@ -85,7 +85,7 @@ const isYesopMockProperty = (propertyId: string) => {
   return normalized === "yesop";
 };
 
-const parseGA4CampaignFilter = (raw: unknown): string[] => {
+export const parseGA4CampaignFilter = (raw: unknown): string[] => {
   const value = String(raw || "").trim();
   if (!value) return [];
   if (value.startsWith("[") && value.endsWith("]")) {

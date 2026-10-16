@@ -1,6 +1,7 @@
 import type { FinancialDailySnapshotInput } from "../../shared/schema";
+import { parseGA4FinancialNumber } from "../../shared/ga4-financial-source";
 import { storage } from "../storage";
-import { getCampaignMetricTotals, type CampaignMetricTotals } from "./campaign-current-values";
+import { getCampaignMetricTotals, parseGA4CampaignFilter, type CampaignMetricTotals } from "./campaign-current-values";
 import { resolveCampaignCumulativeFinancials } from "./campaign-cumulative-financials";
 import {
   observeFinancialDailySnapshotReadiness,
@@ -13,6 +14,7 @@ type SourceTotal = { totalRevenue?: number; totalSpend?: number; currency?: stri
 type WriterDependencies = {
   getCampaign: (campaignId: string) => Promise<any>;
   getGA4Connections: (campaignId: string) => Promise<any[]>;
+  getGA4OverviewSnapshot: (campaignId: string, propertyId: string) => Promise<any>;
   getCampaignMetricTotals: (campaignId: string, useFullFinancialCandidate: boolean) => Promise<CampaignMetricTotals | null>;
   getSpendSources: (campaignId: string, platformContext: "ga4") => Promise<any[]>;
   getRevenueTotalForRange: (campaignId: string, startDate: string, endDate: string, platformContext: "ga4") => Promise<SourceTotal>;
@@ -24,6 +26,7 @@ type WriterDependencies = {
 const defaultDependencies: WriterDependencies = {
   getCampaign: (campaignId) => storage.getCampaign(campaignId),
   getGA4Connections: (campaignId) => storage.getGA4Connections(campaignId),
+  getGA4OverviewSnapshot: (campaignId, propertyId) => storage.getGA4OverviewSnapshot(campaignId, propertyId),
   getCampaignMetricTotals,
   getSpendSources: (campaignId, platformContext) => storage.getSpendSources(campaignId, platformContext),
   getRevenueTotalForRange: (campaignId, startDate, endDate, platformContext) =>
@@ -78,6 +81,19 @@ export async function writeFinancialDailySnapshotIfReady(
   }
 
   const currency = String(campaign.currency || "USD").trim().toUpperCase();
+  if (totals.ga4FinancialSource === "provider_to_date" && parseGA4CampaignFilter(campaign.ga4CampaignFilter).length > 0) {
+    // Compare aggregates: summing cent-rounded daily revenue is not equivalent.
+    const overview = await dependencies.getGA4OverviewSnapshot(campaignId, String(primary.propertyId));
+    const savedRevenue = parseGA4FinancialNumber(overview?.campaignBreakdown?.totals?.revenue);
+    if (!overview || overview.campaignId !== campaignId || overview.propertyId !== String(primary.propertyId) ||
+        overview.windowStart !== window.startDate || overview.windowEnd !== reportingDate ||
+        String(overview.campaignBreakdown?.meta?.currencyCode || "").trim().toUpperCase() !== currency || savedRevenue === null) {
+      return { status: "blocked", reasons: ["saved_ga4_revenue_unavailable"] };
+    }
+    if (Number(savedRevenue.toFixed(2)) !== totals.ga4Revenue) {
+      return { status: "blocked", reasons: ["ga4_revenue_total_mismatch"] };
+    }
+  }
   const spendConfigured = (spendSources || []).some((source: any) =>
     source?.isActive !== false && isCreatedThroughReportingDate(source?.createdAt, reportingDate, campaign.reportingTimeZone)
   );

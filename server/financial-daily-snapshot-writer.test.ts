@@ -9,6 +9,10 @@ import { resolveGA4OverviewFinancialRefreshWarning } from "../shared/ga4-financi
 
 const campaignId = "campaign-1";
 const reportingDate = "2026-08-21";
+const overviewSnapshot = (revenue: unknown = 55966.70) => ({
+  campaignId, propertyId: "542352127", windowStart: "2026-07-02", windowEnd: reportingDate,
+  campaignBreakdown: { totals: { revenue, conversions: 251 }, meta: { currencyCode: "USD" } },
+});
 
 const successfulEvidence = (completedAt = "2026-08-22T22:05:00.000Z") => {
   for (const stage of ["financial_sources", "ga4_daily"] as const) {
@@ -31,6 +35,7 @@ const dependencies = (overrides: Record<string, unknown> = {}) => ({
     isPrimary: true,
     importStartDate: "2026-07-02",
   }]),
+  getGA4OverviewSnapshot: vi.fn().mockResolvedValue(overviewSnapshot()),
   getCampaignMetricTotals: vi.fn().mockResolvedValue({
     revenue: 72766.69,
     ga4Revenue: 55966.70,
@@ -240,6 +245,104 @@ describe("gated financial daily snapshot writer", () => {
         conversions: { value: 12, available: true, sources: ["ga4"] },
       },
     }));
+  });
+
+  it.each([55966.71, 55966.69, 0, 60000])("retains the prior financial snapshot when GA4 revenue alone changes to %s", async (nativeRevenue) => {
+    successfulEvidence();
+    let saved: unknown;
+    const deps = dependencies({ upsertFinancialDailySnapshot: vi.fn(async (snapshot) => { saved = snapshot; }) });
+    deps.getCampaign.mockResolvedValue({ ...(await deps.getCampaign()), ga4CampaignFilter: '["sale"]' });
+    const totals = await deps.getCampaignMetricTotals();
+    expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps)).status).toBe("written");
+    const previous = JSON.stringify(saved);
+    const revenue = Number((nativeRevenue + 16799.99).toFixed(2));
+    deps.getCampaignMetricTotals.mockResolvedValue({ ...totals, ga4Revenue: nativeRevenue, revenue });
+
+    expect(await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps)).toEqual({
+      status: "blocked", reasons: ["ga4_revenue_total_mismatch"],
+    });
+    expect(JSON.stringify(saved)).toBe(previous);
+    expect(deps.upsertFinancialDailySnapshot).toHaveBeenCalledTimes(1);
+
+    deps.getGA4OverviewSnapshot.mockResolvedValue(overviewSnapshot(nativeRevenue));
+    expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps)).status).toBe("written");
+    expect(saved).toMatchObject({ inputs: {
+      revenue: { available: true, value: revenue.toFixed(2) }, conversions: { available: true, value: 251 },
+    } });
+    expect(deps.getGA4OverviewSnapshot).toHaveBeenLastCalledWith(campaignId, "542352127");
+  });
+
+  it.each([0, 55966.70])("publishes matching aggregate revenue %s with external revenue and unavailable Spend", async (nativeRevenue) => {
+    successfulEvidence();
+    const deps = dependencies({
+      getSpendSources: vi.fn().mockResolvedValue([]),
+      getSpendTotalForRange: vi.fn().mockResolvedValue({ totalSpend: 0, sourceIds: [] }),
+      getGA4OverviewSnapshot: vi.fn().mockResolvedValue(overviewSnapshot(nativeRevenue)),
+    });
+    deps.getCampaign.mockResolvedValue({ ...(await deps.getCampaign()), ga4CampaignFilter: "sale" });
+    deps.getCampaignMetricTotals.mockResolvedValue({
+      ...(await deps.getCampaignMetricTotals()), ga4Revenue: nativeRevenue,
+      revenue: Number((nativeRevenue + 16799.99).toFixed(2)), spend: 0,
+    });
+
+    const result = await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps);
+    expect(result.status).toBe("written");
+    expect(result.snapshot?.inputs).toMatchObject({
+      revenue: { available: true, value: (nativeRevenue + 16799.99).toFixed(2), sources: ["ga4", "revenue-source:revenue-1"] },
+      spend: { available: false, value: null, sources: [] },
+    });
+  });
+
+  it.each([
+    ["missing", undefined],
+    ["other campaign", { ...overviewSnapshot(), campaignId: "campaign-2" }],
+    ["other property", { ...overviewSnapshot(), propertyId: "999" }],
+    ["other import start", { ...overviewSnapshot(), windowStart: "2026-07-01" }],
+    ["older end", { ...overviewSnapshot(), windowEnd: "2026-08-20" }],
+    ["future end", { ...overviewSnapshot(), windowEnd: "2026-08-22" }],
+    ["other currency", { ...overviewSnapshot(), campaignBreakdown: { ...overviewSnapshot().campaignBreakdown, meta: { currencyCode: "EUR" } } }],
+    ["missing currency", { ...overviewSnapshot(), campaignBreakdown: { totals: { revenue: 55966.70 } } }],
+    ["missing revenue", { ...overviewSnapshot(), campaignBreakdown: { totals: {}, meta: { currencyCode: "USD" } } }],
+    ["null revenue", overviewSnapshot(null)],
+    ["empty revenue", overviewSnapshot("")],
+    ["invalid revenue", overviewSnapshot("invalid")],
+    ["nonfinite revenue", overviewSnapshot(Infinity)],
+  ])("blocks publication with an unverified Overview aggregate: %s", async (_label, snapshot) => {
+    successfulEvidence();
+    const deps = dependencies({ getGA4OverviewSnapshot: vi.fn().mockResolvedValue(snapshot) });
+    deps.getCampaign.mockResolvedValue({ ...(await deps.getCampaign()), ga4CampaignFilter: "sale" });
+
+    expect(await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps)).toEqual({
+      status: "blocked", reasons: ["saved_ga4_revenue_unavailable"],
+    });
+    expect(deps.upsertFinancialDailySnapshot).not.toHaveBeenCalled();
+  });
+
+  it("does not publish when reading the saved Overview aggregate fails", async () => {
+    successfulEvidence();
+    const deps = dependencies({ getGA4OverviewSnapshot: vi.fn().mockRejectedValue(new Error("snapshot read failed")) });
+    deps.getCampaign.mockResolvedValue({ ...(await deps.getCampaign()), ga4CampaignFilter: "sale" });
+    await expect(writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps)).rejects.toThrow("snapshot read failed");
+    expect(deps.upsertFinancialDailySnapshot).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, "", "[]", '[" "]'])("preserves the existing unfiltered path for %s", async (ga4CampaignFilter) => {
+    successfulEvidence();
+    const deps = dependencies({ getGA4OverviewSnapshot: vi.fn().mockResolvedValue(undefined) });
+    deps.getCampaign.mockResolvedValue({ ...(await deps.getCampaign()), ga4CampaignFilter });
+    expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps)).status).toBe("written");
+    expect(deps.getGA4OverviewSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("preserves the native-only daily fallback when no fresh provider aggregate is selected", async () => {
+    successfulEvidence();
+    const deps = dependencies({ getRevenueTotalForRange: vi.fn().mockResolvedValue({ totalRevenue: 0, sourceIds: [] }) });
+    deps.getCampaign.mockResolvedValue({ ...(await deps.getCampaign()), ga4CampaignFilter: "sale" });
+    deps.getCampaignMetricTotals.mockResolvedValue({
+      ...(await deps.getCampaignMetricTotals()), ga4FinancialSource: "persisted_daily", ga4Revenue: 55966.68, revenue: 55966.68,
+    });
+    expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps)).status).toBe("written");
+    expect(deps.getGA4OverviewSnapshot).not.toHaveBeenCalled();
   });
 
   it("writes GA4 revenue and conversions while preserving unavailable spend when no spend source is configured", async () => {

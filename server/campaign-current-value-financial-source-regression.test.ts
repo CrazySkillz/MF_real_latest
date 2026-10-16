@@ -4,6 +4,9 @@ const storageMock = vi.hoisted(() => ({
   getCampaign: vi.fn(),
   getGA4Connections: vi.fn(),
   getGA4DailyMetrics: vi.fn(),
+  getGA4OverviewSnapshot: vi.fn(),
+  getSpendSources: vi.fn(),
+  upsertFinancialDailySnapshot: vi.fn(),
   getRevenueTotalForRange: vi.fn(),
   getSpendTotalForRange: vi.fn(),
   getRevenueBreakdownBySource: vi.fn(),
@@ -84,6 +87,10 @@ describe("campaign current-value financial source contract", () => {
     const deps = {
       getCampaign: storageMock.getCampaign,
       getGA4Connections: storageMock.getGA4Connections,
+      getGA4OverviewSnapshot: vi.fn().mockResolvedValue({
+        campaignId, propertyId: "properties/123", windowStart: "2026-07-01", windowEnd: reportingDate,
+        campaignBreakdown: { totals: { revenue: 500 }, meta: { currencyCode: "USD" } },
+      }),
       getCampaignMetricTotals,
       getSpendSources: vi.fn().mockResolvedValue([{ id: "spend-1", isActive: true, createdAt: "2026-07-01T00:00:00.000Z" }]),
       getRevenueTotalForRange: storageMock.getRevenueTotalForRange,
@@ -107,10 +114,57 @@ describe("campaign current-value financial source contract", () => {
     expect(storageMock.getSpendTotalForRange).toHaveBeenLastCalledWith(campaignId, "1900-01-01", reportingDate, "ga4");
 
     storageMock.getGA4DailyMetrics.mockResolvedValue([{ revenue: 1000, conversions: 40 }]);
+    deps.getGA4OverviewSnapshot.mockResolvedValue({
+      campaignId, propertyId: "properties/123", windowStart: "2026-07-01", windowEnd: reportingDate,
+      campaignBreakdown: { totals: { revenue: 1000 }, meta: { currencyCode: "USD" } },
+    });
     expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps)).status).toBe("written");
     expect(saved).toMatchObject({ inputs: {
       conversions: { available: true, value: 40 }, revenue: { available: true, value: "1300.00" }, spend: { available: true, value: "100.00" },
     } });
+  });
+
+  it("checks fresh native revenue against the saved aggregate, preserving daily cent rounding and external revenue", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-22T12:00:00.000Z"));
+    const campaignId = "campaign-1";
+    const reportingDate = "2026-08-21";
+    storageMock.getCampaign.mockResolvedValue({ id: campaignId, currency: "USD", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: "Sale_A" });
+    storageMock.getGA4DailyMetrics.mockResolvedValue([{ revenue: 200.01, conversions: 10 }, { revenue: 300.01, conversions: 15 }]);
+    const snapshot = {
+      campaignId, propertyId: "properties/123", windowStart: "2026-07-01", windowEnd: reportingDate,
+      campaignBreakdown: { totals: { revenue: 500.01 }, meta: { currencyCode: "USD" } },
+    };
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(snapshot);
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ totals: { revenue: 500.01, conversions: 25 } });
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 300, currency: "USD", sourceIds: ["revenue-1"] });
+    storageMock.getSpendSources.mockResolvedValue([]);
+    storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 0, sourceIds: [] });
+    for (const stage of ["financial_sources", "ga4_daily"] as const) {
+      beginFinancialDailySnapshotRefreshObservation(stage);
+      recordFinancialDailySnapshotRefreshEvidence(stage, {
+        campaignId, reportingDate, status: "success", completedAt: "2026-08-22T10:00:00.000Z", failures: [],
+      });
+    }
+    let saved: any;
+    storageMock.upsertFinancialDailySnapshot.mockImplementation(async (value) => { saved = value; });
+    expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate })).status).toBe("written");
+    expect(saved.inputs.revenue.value).toBe("800.01");
+    const previous = JSON.stringify(saved);
+
+    ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ totals: { revenue: 500.02, conversions: 25 } });
+    expect(await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate })).toEqual({
+      status: "blocked", reasons: ["ga4_revenue_total_mismatch"],
+    });
+    expect(JSON.stringify(saved)).toBe(previous);
+    expect(storageMock.upsertFinancialDailySnapshot).toHaveBeenCalledTimes(1);
+    expect(storageMock.getGA4OverviewSnapshot).toHaveBeenLastCalledWith(campaignId, "properties/123");
+    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenLastCalledWith("properties/123", "token", "2026-07-01", reportingDate, ["sale_a"], "USD");
+
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue({ ...snapshot, campaignBreakdown: { ...snapshot.campaignBreakdown, totals: { revenue: 500.02 } } });
+    expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate })).status).toBe("written");
+    expect(saved.inputs.revenue.value).toBe("800.02");
+    expect(saved.inputs.conversions.value).toBe(25);
   });
 
   it("keeps native revenue and conversions on the import window while retaining source-to-date imports", async () => {

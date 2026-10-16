@@ -216,7 +216,7 @@ export interface IStorage {
   getMimosaasTrackingCampaignMappings(ownerId: string, clientId: string, campaignId: string): Promise<MimosaasTrackingCampaignMapping[]>;
   createMimosaasTrackingCampaignMapping(ownerId: string, clientId: string, campaignId: string, mapping: Omit<InsertMimosaasTrackingCampaignMapping, "campaignId" | "trackingConfigurationId">): Promise<MimosaasTrackingCampaignMapping>;
   updateMimosaasTrackingCampaignMapping(ownerId: string, clientId: string, campaignId: string, mappingId: string, mapping: Partial<Omit<InsertMimosaasTrackingCampaignMapping, "campaignId" | "trackingConfigurationId">>): Promise<MimosaasTrackingCampaignMapping | undefined>;
-  finalizeMimosaasTrackingCampaign(ownerId: string, clientId: string, campaignId: string): Promise<MimosaasTrackingFinalizationResult>;
+  finalizeMimosaasTrackingCampaign(ownerId: string, clientId: string, campaignId: string, allowGoogleAdsAttribution?: boolean): Promise<MimosaasTrackingFinalizationResult>;
   createMimosaasTrackingEvent(websiteConnectionId: string, event: Omit<InsertMimosaasTrackingEvent, "websiteConnectionId" | "clientId">, expectedTrackingSecretHash?: string): Promise<MimosaasTrackingEventWriteResult>;
   getPendingMimosaasTrackingUtmAttributionEvents(batchSize: number): Promise<MimosaasTrackingPendingAttributionEvent[]>;
   getPendingMimosaasTrackingGclidAttributionEvents(batchSize: number): Promise<MimosaasTrackingPendingAttributionEvent[]>;
@@ -1263,7 +1263,7 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async finalizeMimosaasTrackingCampaign(ownerId: string, clientId: string, campaignId: string): Promise<MimosaasTrackingFinalizationResult> {
+  async finalizeMimosaasTrackingCampaign(ownerId: string, clientId: string, campaignId: string, allowGoogleAdsAttribution = false): Promise<MimosaasTrackingFinalizationResult> {
     return db.transaction(async (tx: any) => {
       await this.requireMimosaasOwnedClient(tx, ownerId, clientId, true);
       const [campaign] = await tx.select().from(campaigns).where(and(
@@ -1293,7 +1293,24 @@ export class DatabaseStorage implements IStorage {
           eq(mimosaasTrackingCampaignMappings.mappingType, "utm_campaign"),
           eq(mimosaasTrackingCampaignMappings.isActive, true),
         )).limit(1);
-      if (!activeMapping) throw Object.assign(new Error("An active campaign mapping is required"), { code: "MIMOSAAS_TRACKING_MAPPING_REQUIRED" });
+      let hasGoogleAdsAttribution = false;
+      if (!activeMapping && allowGoogleAdsAttribution) {
+        const [googleAdsConnection] = await tx.select({ selectedCampaignIds: googleAdsConnections.selectedCampaignIds })
+          .from(googleAdsConnections).where(and(
+            eq(googleAdsConnections.campaignId, campaignId),
+            eq(googleAdsConnections.method, "oauth"),
+            eq(googleAdsConnections.spendOnly, false),
+          )).limit(1);
+        try {
+          const selectedCampaignIds = JSON.parse(String(googleAdsConnection?.selectedCampaignIds || "[]"));
+          hasGoogleAdsAttribution = Array.isArray(selectedCampaignIds)
+            && selectedCampaignIds.length > 0
+            && selectedCampaignIds.every((id: unknown) => /^\d+$/.test(String(id || "").trim()));
+        } catch {}
+      }
+      if (!activeMapping && !hasGoogleAdsAttribution) {
+        throw Object.assign(new Error("An active campaign attribution source is required"), { code: "MIMOSAAS_TRACKING_MAPPING_REQUIRED" });
+      }
 
       const [activeConfiguration] = await tx.update(mimosaasTrackingConfigurations)
         .set({ status: "active", updatedAt: new Date() })

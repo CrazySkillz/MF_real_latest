@@ -310,7 +310,7 @@ describe("GA4 Insights authentication and tenant scope", () => {
         actorId: "owner-a",
         accessToken: "access-secret",
         refreshToken: "refresh-secret",
-        customers: [{ id: "123", descriptiveName: "Primary", manager: false, currencyCode: "EUR", timeZone: "Europe/Amsterdam" }],
+        customers: [{ id: "123", descriptiveName: "Primary", manager: false, currencyCode: "EUR", timeZone: "Europe/Amsterdam", autoTaggingEnabled: true }],
         spendOnly: true,
         attributionOnly: true,
         now: 1_000,
@@ -326,6 +326,7 @@ describe("GA4 Insights authentication and tenant scope", () => {
         customerTimeZone: "Europe/Amsterdam",
         spendOnly: true,
         attributionOnly: true,
+        autoTaggingEnabled: true,
       });
       expect(resolveGoogleAdsOAuthAuthorization({ authorization, campaignId: "campaign-b", actorId: "owner-a", customerId: "123", now: 1_001 })).toBeNull();
       expect(resolveGoogleAdsOAuthAuthorization({ authorization, campaignId: "campaign-a", actorId: "owner-b", customerId: "123", now: 1_001 })).toBeNull();

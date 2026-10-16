@@ -128,8 +128,12 @@ campaign remains a draft during setup and becomes active after the final
 
 The codebase also contains a Mimosaas Tracking wizard path. It remains hidden
 unless both Mimosaas Tracking setup and ingestion flags are enabled. That path
-requires a verified website installation and exact `utm_campaign` mapping, and
-uses its own scoped finalization route; it does not change the GA4 path.
+requires a verified website installation and either an exact `utm_campaign`
+mapping or, behind its separate Google Ads attribution flag, an OAuth Google
+Ads connection with at least one selected campaign. Google Ads selection is
+offered only when its OAuth configuration is complete and auto-tagging is
+already enabled on the selected account. The wizard uses its own scoped
+finalization route; it does not change the GA4 path.
 An automated Google Tag Manager installer is gated by the additional
 `MIMOSAAS_TRACKING_GTM_ENABLED` flag. The flag exposes GTM as an explicit choice;
 it is not treated as evidence that GTM is installed on the campaign website.

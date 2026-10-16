@@ -50,13 +50,18 @@ describe("Mimosaas Tracking campaign wizard safety", () => {
     expect(installer).toContain("Verifying website automatically");
   });
 
-  it("requires verified installation and exact UTM mapping before atomic finalization", () => {
+  it("offers scoped Google Ads attribution with the existing manual campaign-name fallback", () => {
+    expect(campaigns).toContain('googleAdsAttributionEnabled?: boolean');
+    expect(campaigns).toContain('label: selectedWizardPlatform === \'mimosaas-tracking\' ? "Advertising" : "Configure"');
+    expect(campaigns).toContain('purpose="mimosaas_tracking"');
+    expect(campaigns).toContain('Other advertising platform');
     expect(campaigns).toContain('Campaign tracking name');
     expect(campaigns).toContain('Example: for ?utm_campaign=summer_sale, enter summer_sale.');
     expect(campaigns).not.toContain('Enter the exact value used after utm_campaign=');
     expect(campaigns).toContain('/mimosaas-tracking/mappings`');
     expect(campaigns).toContain('/mimosaas-tracking/finalize`');
     expect(routes).toContain('storage.finalizeMimosaasTrackingCampaign');
+    expect(routes).toContain('isMimosaasGoogleAdsAttributionEnabled()');
     expect(routes).toContain('Finalize Mimosaas Tracking through its verified setup flow.');
   });
 });

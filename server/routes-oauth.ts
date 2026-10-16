@@ -3671,7 +3671,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/mimosaas-tracking/availability", requireMimosaasTrackingIngestionFeature, (req, res) => {
     if (!getActorId(req)) return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
     res.setHeader("Cache-Control", "no-store");
-    return res.json({ enabled: true });
+    return res.json({
+      enabled: true,
+      googleAdsAttributionEnabled: isMimosaasGoogleAdsAttributionEnabled()
+        && Boolean(process.env.GOOGLE_ADS_CLIENT_ID && process.env.GOOGLE_ADS_CLIENT_SECRET && process.env.GOOGLE_ADS_DEVELOPER_TOKEN),
+    });
   });
 
   app.get("/api/campaigns/:id/mimosaas-tracking/gtm/availability", requireMimosaasGtmFeature, requireCampaignAccessParamId, (_req, res) => {
@@ -4186,7 +4190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaign = (req as any)._campaign;
       const result = await storage.finalizeMimosaasTrackingCampaign(
-        getActorId(req), String(campaign.clientId), String(campaign.id),
+        getActorId(req), String(campaign.clientId), String(campaign.id), isMimosaasGoogleAdsAttributionEnabled(),
       );
       return res.json(withReportingTimeZone(result.campaign as any));
     } catch (error: any) {
@@ -27658,7 +27662,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!pending) {
         return res.status(400).json({ error: "Google Ads authorization is invalid or expired" });
       }
-      const { accessToken, refreshToken, expiresIn, customerName, managerAccountId, customerCurrency, customerTimeZone, spendOnly, attributionOnly } = pending;
+      const { accessToken, refreshToken, expiresIn, customerName, managerAccountId, customerCurrency, customerTimeZone, spendOnly, attributionOnly, autoTaggingEnabled } = pending;
       if (attributionOnly) {
         if (!isMimosaasGoogleAdsAttributionEnabled()) return res.status(404).json({ error: "Not found" });
         const configuration = await storage.getMimosaasTrackingConfiguration(
@@ -27666,6 +27670,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
         if ((campaign as any).status !== "draft" || !configuration) {
           return res.status(409).json({ error: "Complete website tracking setup before connecting Google Ads" });
+        }
+        if (!autoTaggingEnabled) {
+          return res.status(409).json({ error: "Enable auto-tagging in this Google Ads account before connecting it" });
         }
         if (await storage.getGoogleAdsConnection(campaignId)) {
           return res.status(409).json({ error: "A Google Ads connection already exists for this campaign" });

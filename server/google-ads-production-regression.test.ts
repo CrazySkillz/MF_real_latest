@@ -77,6 +77,7 @@ describe("Google Ads production readiness regression guard", () => {
     const flow = read("client", "src", "components", "GoogleAdsConnectionFlow.tsx");
     const routes = read("server", "routes-oauth.ts");
     const authorization = read("server", "google-ads-oauth-authorization.ts");
+    const client = read("server", "googleAdsClient.ts");
     const selectRoute = sliceBetween(routes, 'app.post("/api/google-ads/:campaignId/select-customer"', 'app.post("/api/google-ads/:campaignId/connect-test"');
     const selectedCampaignRoute = sliceBetween(routes, 'app.patch("/api/google-ads/:campaignId/selected-campaigns"', 'app.post("/api/google-ads/:campaignId/enrich-ga4-revenue"');
 
@@ -84,6 +85,8 @@ describe("Google Ads production readiness regression guard", () => {
     expect(flow).toContain("body: JSON.stringify({ campaignId, attributionOnly })");
     expect(flow).toContain("{!attributionOnly && <div");
     expect(authorization).toContain("attributionOnly: input.attributionOnly === true");
+    expect(client).toContain("customer.auto_tagging_enabled");
+    expect(selectRoute).toContain("if (!autoTaggingEnabled)");
     expect(selectRoute).toContain("if (!spendOnly && !attributionOnly)");
     expect(selectRoute).toContain("const initialDailyMetrics = attributionOnly ? []");
     expect(selectRoute).toContain("await storage.createGoogleAdsConnection(connectionData)");

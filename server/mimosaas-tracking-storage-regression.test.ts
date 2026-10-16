@@ -1212,6 +1212,38 @@ describe("Mimosaas Tracking storage safety", () => {
     expect(mocks.state.updates).toHaveLength(2);
   });
 
+  it("accepts a scoped OAuth Google Ads campaign selection only when explicitly enabled", async () => {
+    mocks.state.selectQueue = [
+      [{ id: "client-1" }],
+      [{ id: "campaign-1", ownerId: "owner-1", clientId: "client-1", status: "draft", platform: "manual" }],
+      [{ id: "configuration-1", campaignId: "campaign-1", websiteConnectionId: "website-1", status: "draft" }],
+      [{ ...website, installationStatus: "verified" }],
+      [],
+      [{ selectedCampaignIds: JSON.stringify(["123456789"]) }],
+    ];
+
+    const result = await new DatabaseStorage().finalizeMimosaasTrackingCampaign("owner-1", "client-1", "campaign-1", true);
+
+    expect(result.configuration).toMatchObject({ status: "active" });
+    expect(result.campaign).toMatchObject({ platform: "mimosaas-tracking", status: "active" });
+    expect(mocks.state.updates).toHaveLength(2);
+  });
+
+  it("keeps the campaign draft when the Google Ads selection is empty or malformed", async () => {
+    const baseRows = [
+      [{ id: "client-1" }],
+      [{ id: "campaign-1", ownerId: "owner-1", clientId: "client-1", status: "draft", platform: "manual" }],
+      [{ id: "configuration-1", campaignId: "campaign-1", websiteConnectionId: "website-1", status: "draft" }],
+      [{ ...website, installationStatus: "verified" }],
+      [],
+    ];
+    mocks.state.selectQueue = [...baseRows, [{ selectedCampaignIds: JSON.stringify(["not-a-google-campaign-id"]) }]];
+
+    await expect(new DatabaseStorage().finalizeMimosaasTrackingCampaign("owner-1", "client-1", "campaign-1", true))
+      .rejects.toMatchObject({ code: "MIMOSAAS_TRACKING_MAPPING_REQUIRED" });
+    expect(mocks.state.updates).toHaveLength(0);
+  });
+
   it("keeps the campaign draft when website verification or mapping proof is missing", async () => {
     const baseRows = [
       [{ id: "client-1" }],

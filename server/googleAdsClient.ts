@@ -18,6 +18,7 @@ export interface GoogleAdsCustomerAccount {
   manager: boolean;
   currencyCode: string;
   timeZone: string;
+  autoTaggingEnabled: boolean;
 }
 
 export interface GoogleAdsCampaignInfo {
@@ -171,7 +172,7 @@ export class GoogleAdsClient {
         });
 
         const detailResponse = await detailApi.post('/googleAds:searchStream', {
-          query: `SELECT customer.id, customer.descriptive_name, customer.resource_name, customer.manager, customer.currency_code, customer.time_zone FROM customer LIMIT 1`,
+          query: `SELECT customer.id, customer.descriptive_name, customer.resource_name, customer.manager, customer.currency_code, customer.time_zone, customer.auto_tagging_enabled FROM customer LIMIT 1`,
         });
 
         const results = searchStreamRows(detailResponse.data);
@@ -184,6 +185,7 @@ export class GoogleAdsClient {
             manager: customer.manager || false,
             currencyCode: String(customer.currencyCode || "").trim().toUpperCase(),
             timeZone: String(customer.timeZone || "").trim(),
+            autoTaggingEnabled: customer.autoTaggingEnabled === true,
           });
         }
       } catch {
@@ -196,7 +198,7 @@ export class GoogleAdsClient {
 
   async getCustomerAccount(): Promise<GoogleAdsCustomerAccount> {
     const response = await this.api.post('/googleAds:searchStream', {
-      query: `SELECT customer.id, customer.descriptive_name, customer.resource_name, customer.manager, customer.currency_code, customer.time_zone FROM customer LIMIT 1`,
+      query: `SELECT customer.id, customer.descriptive_name, customer.resource_name, customer.manager, customer.currency_code, customer.time_zone, customer.auto_tagging_enabled FROM customer LIMIT 1`,
     });
     const customer = searchStreamRows(response.data)[0]?.customer;
     if (!customer?.id) throw new Error('Google Ads customer metadata is unavailable');
@@ -207,6 +209,7 @@ export class GoogleAdsClient {
       manager: customer.manager === true,
       currencyCode: String(customer.currencyCode || '').trim().toUpperCase(),
       timeZone: String(customer.timeZone || '').trim(),
+      autoTaggingEnabled: customer.autoTaggingEnabled === true,
     };
   }
 

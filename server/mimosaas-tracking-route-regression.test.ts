@@ -84,6 +84,10 @@ describe("Mimosaas Tracking read-only setup route", () => {
     delete process.env.MIMOSAAS_TRACKING_ENABLED;
     delete process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED;
     delete process.env.MIMOSAAS_TRACKING_GTM_ENABLED;
+    delete process.env.MIMOSAAS_TRACKING_GOOGLE_ADS_ATTRIBUTION_ENABLED;
+    delete process.env.GOOGLE_ADS_CLIENT_ID;
+    delete process.env.GOOGLE_ADS_CLIENT_SECRET;
+    delete process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
     delete process.env.GOOGLE_CLIENT_ID;
     delete process.env.GOOGLE_CLIENT_SECRET;
     authState.userId = "owner-1";
@@ -156,6 +160,10 @@ describe("Mimosaas Tracking read-only setup route", () => {
     delete process.env.MIMOSAAS_TRACKING_ENABLED;
     delete process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED;
     delete process.env.MIMOSAAS_TRACKING_GTM_ENABLED;
+    delete process.env.MIMOSAAS_TRACKING_GOOGLE_ADS_ATTRIBUTION_ENABLED;
+    delete process.env.GOOGLE_ADS_CLIENT_ID;
+    delete process.env.GOOGLE_ADS_CLIENT_SECRET;
+    delete process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
     delete process.env.GOOGLE_CLIENT_ID;
     delete process.env.GOOGLE_CLIENT_SECRET;
     await new Promise<void>((resolve, reject) => server.close((error: Error) => error ? reject(error) : resolve()));
@@ -413,7 +421,21 @@ describe("Mimosaas Tracking read-only setup route", () => {
     expect(signedOut.status).toBe(401);
     expect(enabled.status).toBe(200);
     expect(enabled.headers.get("cache-control")).toBe("no-store");
-    expect(await enabled.json()).toEqual({ enabled: true });
+    expect(await enabled.json()).toEqual({ enabled: true, googleAdsAttributionEnabled: false });
+  });
+
+  it("advertises Google Ads attribution only when its flag and OAuth configuration are complete", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_GOOGLE_ADS_ATTRIBUTION_ENABLED = "true";
+    process.env.GOOGLE_ADS_CLIENT_ID = "client-id";
+    process.env.GOOGLE_ADS_CLIENT_SECRET = "client-secret";
+    process.env.GOOGLE_ADS_DEVELOPER_TOKEN = "developer-token";
+
+    const response = await fetch(`${baseUrl}/api/mimosaas-tracking/availability`);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ enabled: true, googleAdsAttributionEnabled: true });
   });
 
   it("keeps GTM setup behind its separate feature flag", async () => {
@@ -935,8 +957,19 @@ describe("Mimosaas Tracking read-only setup route", () => {
     const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/finalize`, { method: "POST" });
 
     expect(response.status).toBe(200);
-    expect(storageMock.finalizeMimosaasTrackingCampaign).toHaveBeenCalledWith("owner-1", "client-1", campaign.id);
+    expect(storageMock.finalizeMimosaasTrackingCampaign).toHaveBeenCalledWith("owner-1", "client-1", campaign.id, false);
     expect(await response.json()).toMatchObject({ id: campaign.id, platform: "mimosaas-tracking", status: "active" });
+  });
+
+  it("passes the Google Ads attribution gate into scoped finalization", async () => {
+    process.env.MIMOSAAS_TRACKING_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_INGESTION_ENABLED = "true";
+    process.env.MIMOSAAS_TRACKING_GOOGLE_ADS_ATTRIBUTION_ENABLED = "true";
+
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/mimosaas-tracking/finalize`, { method: "POST" });
+
+    expect(response.status).toBe(200);
+    expect(storageMock.finalizeMimosaasTrackingCampaign).toHaveBeenCalledWith("owner-1", "client-1", campaign.id, true);
   });
 
   it("keeps an unverified Mimosaas Tracking campaign in draft", async () => {

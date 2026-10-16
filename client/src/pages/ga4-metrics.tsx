@@ -6185,9 +6185,18 @@ export default function GA4Metrics() {
   const ga4DailyExpectedThroughDate = String((ga4DailyResp as any)?.dataThroughDate || "").trim();
   const ga4DailyProviderCoverageThroughDate = String((ga4DailyResp as any)?.providerCoverageThroughDate || "").trim();
   const ga4DailyRefreshIsStale = (ga4DailyResp as any)?.refreshIsStale === true;
+  const ga4DailyRefreshStatus = ga4ConnectionUsable && !ga4Error && !ga4DailyPlaceholder
+    && String(ga4DailyResp?.propertyId || "") === selectedGA4PropertyId ? String(ga4DailyResp?.refreshStatus || "") : "";
+  const ga4RefreshStatusText = ga4DailyRefreshStatus === "running" ? "GA4 refresh in progress"
+    : ga4DailyRefreshStatus === "failed" ? "Last GA4 refresh failed"
+    : ga4DailyRefreshStatus === "delayed" ? "GA4 update is overdue"
+    : ga4DailyRefreshStatus === "pending" ? "Waiting for scheduled GA4 refresh"
+    : "Imported GA4 data, updated daily";
   const ga4DailyFreshnessAvailable = ga4ConnectionUsable && Boolean(ga4DailyResp);
   const ga4DailyFreshnessLabel = !ga4DailyFreshnessAvailable
     ? "Unavailable"
+    : ga4DailyRefreshStatus === "running" || ga4DailyRefreshStatus === "failed"
+      ? ga4RefreshStatusText
     : ga4DailyRefreshIsStale
       ? `Delayed — through ${ga4DailyLatestStoredDate || "no stored day"}`
       : ga4DailyProviderCoverageThroughDate
@@ -6620,7 +6629,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Summary</h3>
-                        <p className="text-sm text-muted-foreground/70">Imported GA4 data, updated daily</p>
+                        <p className="text-sm text-muted-foreground/70" data-testid="ga4-refresh-status">{ga4RefreshStatusText}</p>
                       </div>
                       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
                         <Card>

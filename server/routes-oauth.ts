@@ -46,7 +46,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign, refreshTikTokBenchmarksForCampaign, refreshTikTokKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./kpi-scheduler";
 import { refreshGoogleSheetsDataForCampaign, runGoogleSheetsRevenueSourceRefreshForValidation, runGoogleSheetsSpendSourceRefreshForValidation, runHubSpotRevenueSourceRefreshForValidation, runShopifyRevenueSourceRefreshForValidation } from "./auto-refresh-scheduler";
-import { getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getGA4DailySchedulerStatus, refreshAllGA4DailyMetrics, runGA4DailyRefreshPipelineForCampaignNow } from "./ga4-daily-scheduler";
+import { getGA4DailyRefreshAttempt, getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getGA4DailySchedulerStatus, refreshAllGA4DailyMetrics, runGA4DailyRefreshPipelineForCampaignNow } from "./ga4-daily-scheduler";
 import { isInternalAutoRefreshRequest } from "./internal-request-auth";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { createReportPdfArtifact, readReportPdfArtifact } from "./utils/report-pdf-artifact";
@@ -62,7 +62,7 @@ import {
   resolveGA4KpiMetricIdentity,
 } from "../shared/ga4-kpi-metric-identity";
 import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getExpectedScheduledRefreshAt, getGA4HistoricalImportStartDate, getLatestCompleteReportingDate, getReportingDateWindow, isCreatedThroughReportingDate, normalizeReportingTimeZone, resolveGA4DailyFreshness, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getExpectedScheduledRefreshAt, getGA4HistoricalImportStartDate, getLatestCompleteReportingDate, getReportingDateWindow, isCreatedThroughReportingDate, normalizeReportingTimeZone, resolveGA4DailyFreshness, resolveGA4RefreshStatus, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
@@ -9318,7 +9318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const missingExpectedRefreshAt = getExpectedDailyRefreshAt(oldestMissingDate, schedulerConfig.reportingTimeZone, schedulerConfig.hour, schedulerConfig.minute);
         return missingExpectedRefreshAt && missingExpectedRefreshAt.getTime() <= now.getTime() ? oldestMissingDate : null;
       };
-      const buildFreshness = (lastCompletedRefreshAt: string | null, latestStoredDailyDate: string | null, providerRefreshWarning: string | null = null, providerCoverageThroughDate: string | null = null, now = new Date()) => {
+      const buildFreshness = (lastCompletedRefreshAt: string | null, latestStoredDailyDate: string | null, providerRefreshWarning: string | null = null, providerCoverageThroughDate: string | null = null, now = new Date(), refreshAttempt: ReturnType<typeof getGA4DailyRefreshAttempt> = null) => {
         const expectedRefreshAt = getExpectedScheduledRefreshAt(dataThroughDate, schedulerConfig, now);
         const expectedRefreshAtISO = expectedRefreshAt ? expectedRefreshAt.toISOString() : null;
         const freshness = resolveGA4DailyFreshness({
@@ -9337,6 +9337,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           latestStoredDailyDate,
           providerRefreshWarning,
           ...freshness,
+          refreshStatus: resolveGA4RefreshStatus({ dataThroughDate, expectedRefreshAt, lastCompletedRefreshAt, refreshIsStale: freshness.refreshIsStale, attempt: refreshAttempt, now }),
+          refreshAttempt,
         };
       };
       const addDerivedEngagedSessions = addDerivedGA4EngagedSessions;
@@ -9493,7 +9495,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         providerRefreshOutcome,
         providerRefreshRowCount,
         schedulerCoverageComplete: storedCoverageComplete,
-        ...buildFreshness(lastUpdated, latestStoredDailyDate, providerRefreshWarning, providerCoverageThroughDate),
+        ...buildFreshness(lastUpdated, latestStoredDailyDate, providerRefreshWarning, providerCoverageThroughDate, new Date(), getGA4DailyRefreshAttempt(campaign, selectedConnection)),
         lastCompletedRefreshAt,
         lastUpdated,
       });

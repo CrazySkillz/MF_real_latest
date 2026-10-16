@@ -205,6 +205,27 @@ export function getExpectedScheduledRefreshAt(dataThroughDate: any, config: {
   return expected.filter((date) => date.getTime() <= now.getTime()).at(-1) || expected[0] || null;
 }
 
+export function resolveGA4RefreshStatus(input: {
+  dataThroughDate: string;
+  expectedRefreshAt: Date | null;
+  lastCompletedRefreshAt: string | null;
+  refreshIsStale: boolean;
+  attempt?: { reportingDate: string; status: string; startedAt: string; finishedAt: string | null } | null;
+  now?: Date;
+}): "running" | "failed" | "delayed" | "pending" | "current" {
+  const attempt = input.attempt;
+  const now = (input.now || new Date()).getTime();
+  if (attempt?.reportingDate === input.dataThroughDate && Date.parse(attempt.startedAt) <= now) {
+    if (attempt.status === "running" && !attempt.finishedAt) return "running";
+    const finishedAt = Date.parse(attempt.finishedAt || "");
+    const completedAt = Date.parse(input.lastCompletedRefreshAt || "");
+    if (attempt.status === "failed" && finishedAt <= now && finishedAt >= Date.parse(attempt.startedAt)
+      && (!Number.isFinite(completedAt) || finishedAt > completedAt)) return "failed";
+  }
+  if (input.refreshIsStale) return "delayed";
+  return input.expectedRefreshAt && input.expectedRefreshAt.getTime() > now ? "pending" : "current";
+}
+
 export function resolveGA4DailyFreshness(input: {
   dataThroughDate: string;
   expectedRefreshAt: Date | null;

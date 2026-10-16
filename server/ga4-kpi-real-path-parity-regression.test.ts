@@ -96,6 +96,7 @@ import { buildGA4ScheduledPdfAttachment } from "./ga4-scheduled-report-pdf";
 import { preflightGA4ReportKPIConsumers, buildPdfAttachmentForReport } from "./report-scheduler";
 import { shouldTriggerAlert } from "./kpi-notifications";
 import { registerRoutes } from "./routes-oauth";
+import { refreshAllGA4DailyMetrics } from "./ga4-daily-scheduler";
 import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE } from "./utils/reporting-timezone";
 
 const campaign = {
@@ -675,6 +676,66 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
       expect(storageMock.upsertGA4DailyMetrics).not.toHaveBeenCalled();
       expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
     } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("exposes scoped running and failed refresh attempts while keeping saved daily values visible", async () => {
+    vi.useRealTimers();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-08-01T12:00:00Z"));
+    vi.stubEnv("GA4_DAILY_REFRESH_TIME_ZONE", "Europe/Amsterdam");
+    vi.stubEnv("GA4_DAILY_REFRESH_HOURS", "8,14,20");
+    vi.stubEnv("GA4_DAILY_REFRESH_MINUTE", "0");
+    const activeCampaign = { ...campaign, status: "active", ga4CampaignFilter: null };
+    storageMock.getCampaign.mockResolvedValue(activeCampaign);
+    const savedRows = Array.from({ length: 30 }, (_, index) => ({
+      ...dailyRow, date: `2026-07-${String(index + 2).padStart(2, "0")}`, updatedAt: "2026-08-01T06:05:00.000Z",
+    }));
+    storageMock.getGA4DailyMetrics.mockResolvedValue(savedRows);
+    let rejectProvider!: (error: Error) => void;
+    ga4ServiceMock.getTimeSeriesData.mockReturnValue(new Promise((_resolve, reject) => { rejectProvider = reject; }));
+    const run = refreshAllGA4DailyMetrics({ campaignId: campaign.id });
+    const url = `${baseUrl}/api/campaigns/${campaign.id}/ga4-daily?days=30&propertyId=${encodeURIComponent(connection.propertyId)}`;
+    try {
+      await vi.waitFor(() => expect(ga4ServiceMock.getTimeSeriesData).toHaveBeenCalled());
+      const runningResponse = await fetch(url);
+      const running = await runningResponse.json();
+      expect(runningResponse.status).toBe(200);
+      expect(running).toMatchObject({
+        refreshStatus: "running", refreshIsStale: true,
+        refreshAttempt: { status: "running", reportingDate: "2026-07-31", finishedAt: null },
+        lastCompletedRefreshAt: "2026-08-01T06:05:00.000Z", providerRefreshAttempted: false,
+        overviewTotals: { sessions: 3000, conversions: 150 },
+      });
+      expect(running.data).toHaveLength(30);
+
+      vi.setSystemTime(new Date("2026-08-01T12:01:00Z"));
+      rejectProvider(new Error("private provider failure detail"));
+      await run;
+      const failed = await (await fetch(url)).json();
+      expect(failed).toMatchObject({
+        refreshStatus: "failed", refreshIsStale: true,
+        refreshAttempt: { status: "failed", finishedAt: "2026-08-01T12:01:00.000Z" },
+        lastCompletedRefreshAt: running.lastCompletedRefreshAt, overviewTotals: running.overviewTotals,
+      });
+      expect(failed.data).toEqual(running.data);
+      expect(JSON.stringify(failed)).not.toContain("private provider failure detail");
+      expect(storageMock.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
+      expect(ga4ServiceMock.getTimeSeriesData).toHaveBeenCalledTimes(1);
+
+      storageMock.getGA4Connection.mockResolvedValue({ ...connection, id: "reconnected-property" });
+      const reconnected = await (await fetch(url)).json();
+      expect(reconnected).toMatchObject({ refreshStatus: "delayed", refreshAttempt: null });
+      storageMock.getCampaign.mockResolvedValue({ ...activeCampaign, ownerId: "another-owner" });
+      const denied = await fetch(url);
+      expect(denied.status).toBe(404);
+      expect(await denied.json()).not.toHaveProperty("refreshAttempt");
+      storageMock.getCampaign.mockResolvedValue(undefined);
+      expect((await fetch(url)).status).toBe(404);
+    } finally {
+      rejectProvider(new Error("test cleanup"));
+      await run;
       vi.unstubAllEnvs();
     }
   });

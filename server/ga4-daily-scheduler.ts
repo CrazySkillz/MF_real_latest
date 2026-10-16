@@ -69,6 +69,24 @@ const ga4DailySchedulerStatus = {
 
 let executiveSummarySnapshotBaseUrl: string | null = null;
 const alignedRefreshByCampaign = new Map<string, { reportingDate: string; completedAt: string }>();
+type GA4DailyRefreshAttempt = {
+  reportingDate: string;
+  startedAt: string;
+  finishedAt: string | null;
+  status: "running" | "success" | "failed";
+};
+// Process-local observations only; persisted daily facts remain the freshness authority.
+const dailyRefreshAttempts = new Map<string, { scope: string; attempt: GA4DailyRefreshAttempt }>();
+const getGA4RefreshAttemptScope = (campaign: any, connection: any): string => JSON.stringify([
+  campaign?.ownerId, campaign?.clientId, connection?.propertyId, connection?.connectedAt,
+  campaign?.ga4CampaignFilter, campaign?.reportingTimeZone, campaign?.currency, connection?.importStartDate,
+]);
+
+export function getGA4DailyRefreshAttempt(campaign: any, connection: any): GA4DailyRefreshAttempt | null {
+  if (!campaign?.id || !connection?.id || connection?.campaignId !== campaign.id || connection.isActive === false) return null;
+  const observed = dailyRefreshAttempts.get(JSON.stringify([campaign.id, connection.id]));
+  return observed?.scope === getGA4RefreshAttemptScope(campaign, connection) ? { ...observed.attempt } : null;
+}
 const GA4_ALIGNED_REFRESH_MARKER_PREFIX = "ga4_aligned_refresh_v1:";
 
 export function parseGA4AlignedRefreshMarker(notes: unknown, reportingDate: string): { reportingDate: string; completedAt: string } | null {
@@ -283,6 +301,14 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
     reportingDatesByCampaign[currentCampaignId] = reportingWindow.endDate;
     let failed = false;
     for (const connection of activeConnections) {
+      const attempt: GA4DailyRefreshAttempt = {
+        reportingDate: reportingWindow.endDate, startedAt: new Date().toISOString(), finishedAt: null, status: "running",
+      };
+      if (connection.id && connection.campaignId === currentCampaignId) {
+        dailyRefreshAttempts.set(JSON.stringify([currentCampaignId, connection.id]), {
+          scope: getGA4RefreshAttemptScope(c, connection), attempt,
+        });
+      }
       try {
         const configuredImportStartDate = String(connection?.importStartDate || "").trim();
         const storageStartDate = /^\d{4}-\d{2}-\d{2}$/.test(configuredImportStartDate)
@@ -441,12 +467,16 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
         );
         upserted += Number(res?.replaced || 0);
         propertyIdsProcessed.push(propertyId);
+        attempt.status = "success";
       } catch (e: any) {
+        attempt.status = "failed";
         failed = true;
         propertyIdsFailed.push(String(connection.propertyId));
         const reason = getGA4DailyFailureReason(e);
         failureReasonsByCampaign[currentCampaignId] = Array.from(new Set([...(failureReasonsByCampaign[currentCampaignId] || []), reason]));
         console.warn(`[GA4 Daily] Refresh failed for campaign ${currentCampaignId}, property ${String(connection.propertyId)}:`, e?.message || e);
+      } finally {
+        attempt.finishedAt = new Date().toISOString();
       }
     }
     if (failed) campaignIdsFailed.push(currentCampaignId);

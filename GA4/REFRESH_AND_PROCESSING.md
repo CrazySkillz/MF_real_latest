@@ -36,6 +36,16 @@ GA4 connection lifecycle boundary:
 - lifecycle events intentionally remain after the connection or campaign is deleted so production validation and maintenance scripts cannot erase the evidence with the operational row
 - validation and maintenance scripts must remain read-only unless an exact campaign-scoped connection mutation is explicitly authorized
 
+## GA4 Refresh Status Display
+
+The existing `Overview` Summary subtitle displays the selected campaign/property's GA4 refresh state: running, last attempt failed, waiting for the scheduled refresh, or overdue. Current data retains the normal Summary caption. Values remain visible while the status changes.
+
+`/api/campaigns/:id/ga4-daily` adds `refreshStatus` and a sanitized `refreshAttempt` containing only the reporting date, start/finish timestamps and outcome. Access and active-connection selection remain campaign-scoped. The scheduler records each property's attempt and marks success only after its daily/Overview storage operation returns. A failure in another campaign or property does not supply this status.
+
+Attempt observations use the existing process-local scheduler-observation pattern. After a process restart, or on a different server process without that observation, the API falls back to saved-data freshness and configured deadlines; it does not assert a failed or running attempt. This is GA4 import status, not proof of Google processing completion or completion of Revenue/Spend and downstream publication. Durable recovery remains separate work.
+
+Local evidence and remaining deployment/provider checks are recorded in `docs/GA4_PROCESSING_AND_ALIGNMENT_BACKLOG.md`.
+
 ## Campaign Reporting Timezone Configuration
 
 The campaign reporting timezone is the source of truth for completed-day GA4 history in Insights Trends.

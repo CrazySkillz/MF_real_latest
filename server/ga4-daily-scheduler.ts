@@ -1,5 +1,5 @@
 import { storage } from "./storage";
-import { GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION, ga4Service } from "./analytics";
+import { GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION, ga4Service, type GA4DailyTrafficCapture } from "./analytics";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./kpi-scheduler";
 import { checkGA4BenchmarkPerformanceAlertsForCampaign, checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
@@ -316,6 +316,8 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
           : reportingWindow.startDate;
         if (storageStartDate > reportingWindow.endDate) throw new Error("GA4 daily import starts after the completed-day window");
         const propertyId = String(connection.propertyId);
+        const overviewDailyTraffic: GA4DailyTrafficCapture | undefined = configuredImportStartDate === storageStartDate
+          ? { campaignId: currentCampaignId } : undefined;
         const initialSeries = await withGA4DailyStage("daily_series", ga4Service.getTimeSeriesData(
           currentCampaignId,
           storage,
@@ -339,6 +341,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
                 reportingWindow.endDate,
                 campaignFilter,
                 String((c as any)?.currency || "").trim().toUpperCase(),
+                overviewDailyTraffic,
               ));
             })()
           : { dailyRows: initialSeries, presentDates: (Array.isArray(initialSeries) ? initialSeries : []).map((row: any) => String(row?.date || "")) };
@@ -395,6 +398,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
             withGA4DailyStage("overview_campaign_breakdown", ga4Service.getAcquisitionBreakdown(
               currentCampaignId, storage, overviewStartDate, propertyId, 10000, campaignFilter,
               reportingWindow.endDate, false, false, String((c as any)?.currency || "").trim().toUpperCase(), true,
+              overviewDailyTraffic,
             )),
             withGA4DailyStage("overview_landing_pages", ga4Service.getLandingPagesReport(
               currentCampaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, reportingWindow.endDate,

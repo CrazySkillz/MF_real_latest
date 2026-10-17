@@ -6,6 +6,15 @@ interface GA4Credentials {
 
 type CampaignFilter = string | string[] | undefined;
 
+// Owned by one scheduler connection attempt; never persisted or shared across requests.
+export type GA4DailyTrafficCapture = {
+  campaignId: string;
+  captured?: {
+    propertyId: string; startDate: string; endDate: string; currencyCode: string;
+    campaigns: Array<{ name: string; rows: any[] }>;
+  };
+};
+
 interface GA4Metrics {
   impressions: number;
   clicks: number;
@@ -1682,6 +1691,7 @@ export class GoogleAnalytics4Service {
     preferLandingUtmCoverage = false,
     currencyCode?: string,
     preferOverviewCampaignTotals = false,
+    overviewDailyTraffic?: GA4DailyTrafficCapture,
   ): Promise<{
     rows: Array<Record<string, any>>;
     totals: { sessions: number; sessionsRaw: number; users: number; conversions: number; revenue: number; engagedSessions: number; engagementRate: number };
@@ -1745,6 +1755,14 @@ export class GoogleAnalytics4Service {
         throw Object.assign(new Error(`GA4 report currency ${observed || 'unavailable'} does not match requested currency ${requestedCurrencyCode}`), { code: 'GA4_CURRENCY_UNVERIFIED' });
       }
     };
+
+    const capturedTraffic = overviewDailyTraffic?.captured;
+    if (capturedTraffic && (overviewDailyTraffic?.campaignId !== campaignId ||
+        capturedTraffic.propertyId !== normalizedPropertyId || capturedTraffic.startDate !== dateRange ||
+        capturedTraffic.endDate !== endDate || capturedTraffic.currencyCode !== requestedCurrencyCode ||
+        JSON.stringify(capturedTraffic.campaigns.map((item) => item.name)) !== JSON.stringify(this.normalizeCampaignFilter(campaignFilter)))) {
+      throw new Error('GA4_DAILY_TRAFFIC_SCOPE_MISMATCH');
+    }
 
     const isAuthErrorText = (txt: string) => {
       const t = String(txt || '').toLowerCase();
@@ -2148,7 +2166,8 @@ export class GoogleAnalytics4Service {
         const exactPageLocation = useExactPageLocationFinancials
           ? await fetchWithRevenueFallback([{ name: 'date' }], exactPageLocationFilter)
           : null;
-        const traffic = exactPageLocation?.data || await fetchReport(
+        const capturedCampaign = capturedTraffic?.campaigns.find((item) => item.name === campaignName);
+        const traffic = capturedCampaign || exactPageLocation?.data || await fetchReport(
           'totalRevenue', [{ name: 'date' }], undefined, exactPageLocationFilter, endDate || 'yesterday',
           [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'engagedSessions' }, { name: 'sessionKeyEventRate' }],
         );
@@ -2183,8 +2202,8 @@ export class GoogleAnalytics4Service {
             { value: String(reportMetricRowSum(traffic, 1)) },
             { value: String(supplementedFinancials?.conversions ?? reportMetricTotal(financial.data, 2)) },
             { value: String(supplementedFinancials?.revenue ?? reportMetricTotal(financial.data, 3)) },
-            { value: String(reportMetricRowSum(traffic, exactPageLocation ? 4 : 2)) },
-            { value: String(reportMetricWeightedRate(traffic, exactPageLocation ? 5 : 3)) },
+            { value: String(reportMetricRowSum(traffic, !capturedCampaign && exactPageLocation ? 4 : 2)) },
+            { value: String(reportMetricWeightedRate(traffic, !capturedCampaign && exactPageLocation ? 5 : 3)) },
           ],
         });
       }
@@ -2211,7 +2230,8 @@ export class GoogleAnalytics4Service {
         standardRevenue: Number(standardRevenue.toFixed(2)),
         rebuiltRevenue: Number(rebuiltTotals[3].toFixed(2)),
       };
-      if (rebuiltTotals[0] > standardSessions) {
+      // A verified full-window daily capture remains authoritative if a later report advances.
+      if (rebuiltTotals[0] > standardSessions || (capturedTraffic && rebuiltTotals[0] > 0)) {
         if (rebuiltTotals[2] !== expectedConversions || Math.abs(rebuiltTotals[3] - expectedRevenue) >= 0.01) {
           throw new Error('GA4_OVERVIEW_CAMPAIGN_ATTRIBUTION_UNVERIFIED');
         }
@@ -2953,7 +2973,9 @@ export class GoogleAnalytics4Service {
     campaignFilter?: CampaignFilter,
     endDate = 'today',
     currencyCode?: string,
+    overviewDailyTraffic?: GA4DailyTrafficCapture,
   ): Promise<any[]> {
+    if (overviewDailyTraffic) delete overviewDailyTraffic.captured;
     try {
       const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
       const requestedCurrencyCode = String(currencyCode || '').trim().toUpperCase();
@@ -2969,6 +2991,7 @@ export class GoogleAnalytics4Service {
       };
       const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
       const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
+      let captureFallbackTraffic = false;
 
       // Some properties don't allow totalRevenue; fall back to purchaseRevenue.
       const run = async (
@@ -3002,6 +3025,7 @@ export class GoogleAnalytics4Service {
               { name: 'engagedSessions' },
               // Available on most properties; if missing it will error (caught and surfaced).
               { name: 'engagementRate' },
+              ...(captureFallbackTraffic ? [{ name: 'sessionKeyEventRate' }] : []),
             ],
             orderBys: [
               {
@@ -3020,6 +3044,20 @@ export class GoogleAnalytics4Service {
 
         const data = await response.json();
         verifyResponseCurrency(data);
+        if (captureFallbackTraffic) {
+          const rows = Array.isArray(data?.rows) ? data.rows : [];
+          const dates = rows.map((row: any) => String(row?.dimensionValues?.[0]?.value || ''));
+          if (Number(data?.rowCount) > rows.length || new Set(dates).size !== dates.length ||
+              rows.some((row: any, index: number) => !/^\d{8}$/.test(dates[index]) ||
+                dates[index] < startDate.replace(/-/g, '') || dates[index] > queryEndDate.replace(/-/g, '') ||
+                [0, 3, 5].some((i) => row?.metricValues?.[i]?.value == null || row.metricValues[i].value === '' ||
+                  !Number.isSafeInteger(Number(row.metricValues[i].value)) || Number(row.metricValues[i].value) < 0) ||
+                Number(row.metricValues[5].value) > Number(row.metricValues[0].value) ||
+                (Number(row.metricValues[0].value) > 0 && (row?.metricValues?.[7]?.value == null || row.metricValues[7].value === '' ||
+                  !Number.isFinite(Number(row.metricValues[7].value)) || Number(row.metricValues[7].value) < 0 || Number(row.metricValues[7].value) > 1)))) {
+            throw new Error('GA4_DAILY_TRAFFIC_CAPTURE_INCOMPLETE');
+          }
+        }
         return { data, revenueMetric };
       };
 
@@ -3112,13 +3150,17 @@ export class GoogleAnalytics4Service {
               Number(latestPrimaryDateKey.slice(6, 8)) + 1,
             )).toISOString().slice(0, 10)
           : dateRange;
-        const exactCampaignFilters = this.normalizeCampaignFilter(campaignFilter)
+        const selectedCampaignNames = this.normalizeCampaignFilter(campaignFilter);
+        const exactCampaignFilters = selectedCampaignNames
           .map((name) => this.buildExactUtmCampaignPageLocationFilter(name))
           .filter(Boolean);
         const fallbackFilters = exactCampaignFilters.length > 1
           ? exactCampaignFilters
           : [pageLocationCampaignFilter];
         const utmResults: any[] = [];
+        // A tail-only fallback cannot describe the full Overview window.
+        captureFallbackTraffic = Boolean(overviewDailyTraffic && primaryRows.length === 0 &&
+          /^\d{4}-\d{2}-\d{2}$/.test(dateRange) && completedEndDateKey && /^[A-Z]{3}$/.test(requestedCurrencyCode));
         if (/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(fallbackStartDate) && completedEndDateKey) {
           const chunks: Array<{ startDate: string; endDate: string }> = [];
           let chunkEnd = endDate;
@@ -3134,8 +3176,8 @@ export class GoogleAnalytics4Service {
             chunkEnd = previousChunkEnd.toISOString().slice(0, 10);
           }
           for (const chunk of chunks) {
-            for (const fallbackFilter of fallbackFilters) {
-              utmResults.push(await runWithRevenueFallback(fallbackFilter, chunk.startDate, chunk.endDate));
+            for (const [index, fallbackFilter] of fallbackFilters.entries()) {
+              utmResults.push({ ...await runWithRevenueFallback(fallbackFilter, chunk.startDate, chunk.endDate), campaignName: selectedCampaignNames[index] });
             }
           }
         } else {
@@ -3145,6 +3187,19 @@ export class GoogleAnalytics4Service {
         }
         const utmRevenueMetrics = new Set(utmResults.map((result) => result?.revenueMetric).filter(Boolean));
         if (utmRevenueMetrics.size > 1) throw new Error('GA4_DAILY_REVENUE_METRIC_MISMATCH');
+        if (captureFallbackTraffic && overviewDailyTraffic) {
+          overviewDailyTraffic.captured = {
+            propertyId: normalizedPropertyId, startDate: dateRange, endDate, currencyCode: requestedCurrencyCode,
+            campaigns: selectedCampaignNames.map((name) => ({
+              name,
+              rows: utmResults.filter((result) => result.campaignName === name).flatMap((result) =>
+                (result.data?.rows || []).map((row: any) => ({
+                  dimensionValues: row.dimensionValues,
+                  metricValues: [0, 3, 5, 7].map((index) => ({ value: row.metricValues[index]?.value ?? '0' })),
+                }))),
+            })),
+          };
+        }
         const rawUtmRows = utmResults.flatMap((result) => Array.isArray(result?.data?.rows) ? result.data.rows : []);
         let utmRows = rawUtmRows;
         if (fallbackFilters.length > 1) {
@@ -3305,8 +3360,9 @@ export class GoogleAnalytics4Service {
     endDate: string,
     campaignFilter?: CampaignFilter,
     currencyCode?: string,
+    overviewDailyTraffic?: GA4DailyTrafficCapture,
   ): Promise<{ dailyRows: any[]; presentDates: string[] }> {
-    const dailyRows = await this.getTimeSeriesWithToken(propertyId, accessToken, startDate, campaignFilter, endDate, currencyCode);
+    const dailyRows = await this.getTimeSeriesWithToken(propertyId, accessToken, startDate, campaignFilter, endDate, currencyCode, overviewDailyTraffic);
     const presentDates = new Set(dailyRows.map((row: any) => String(row?.date || "")));
     const property = this.normalizeGA4PropertyId(propertyId);
     const currency = String(currencyCode || "").trim().toUpperCase();

@@ -5,7 +5,7 @@ import { buildGoogleSheetsPlatformSourceForAggregate } from './utils/google-shee
 import { db } from './db';
 import { sql } from 'drizzle-orm';
 import { getShopifyRevenueRefreshFreshness } from './utils/shopify-refresh-state';
-import { getCampaignMetricTotals } from './utils/campaign-current-values';
+import { getCampaignMetricTotals, parseGA4CampaignFilter } from './utils/campaign-current-values';
 import { getReportingDateWindow } from './utils/reporting-timezone';
 import { filterActiveSchedulerCampaigns } from './utils/campaign-scheduler-eligibility';
 
@@ -20,6 +20,7 @@ interface SnapshotMetrics {
 
 interface AggregateCampaignMetricsOptions {
   includeTrendAnalysis?: boolean;
+  useSavedOverview?: boolean;
 }
 
 const parseNum = (val: any): number => {
@@ -165,14 +166,25 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
       };
     }
   } catch (err) {
+    if (options.useSavedOverview) throw err;
     console.log(`No GA4 metrics found for campaign ${campaignId}`);
+  }
+  if (options.useSavedOverview && (!campaign || !ga4Connected)) {
+    throw new Error('Scheduled GA4 campaign inputs are unavailable');
   }
 
   let ga4FinancialData = { ...ga4Data };
   let ga4FinancialConversions = ga4Data.conversions;
   let ga4FinancialConversionsAvailable = false;
   if (ga4Connected) {
-    const financialTotals = await getCampaignMetricTotals(campaignId, true).catch(() => null);
+    const useSavedOverview = options.useSavedOverview === true && String(ga4PropertyId).trim().toLowerCase() !== 'yesop'
+      && parseGA4CampaignFilter(campaign?.ga4CampaignFilter).length > 0;
+    const financialTotals = await (useSavedOverview
+      ? getCampaignMetricTotals(campaignId, true, true)
+      : getCampaignMetricTotals(campaignId, true)).catch(() => null);
+    if (useSavedOverview && financialTotals?.ga4FinancialSource !== 'persisted_overview') {
+      throw new Error('Verified saved GA4 financial inputs are unavailable for the campaign snapshot');
+    }
     if (financialTotals) {
       ga4FinancialData = {
         ...ga4Data,
@@ -766,7 +778,7 @@ export async function recordCampaignMetrics(campaignId: string, opts: { allowSch
         return false;
       }
     }
-    const metrics = await aggregateCampaignMetrics(campaignId);
+    const metrics = await aggregateCampaignMetrics(campaignId, { useSavedOverview: opts.allowScheduledGA4 === true });
     if (hasSnapshotMetricValue(metrics)) {
       await storage.createMetricSnapshot({
         campaignId,

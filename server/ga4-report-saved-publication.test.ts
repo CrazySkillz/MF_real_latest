@@ -125,4 +125,37 @@ describe("GA4 report saved publication", () => {
     storageMock.getSpendSources.mockResolvedValue([]); storageMock.getSpendBreakdownBySource.mockResolvedValue([]);
     await build(); expect(printed).toContain("Unavailable");
   });
+  it.each(["overview", "kpis", "benchmarks", "custom"])("uses native GA4 Revenue without external sources in a %s report", async type => {
+    const saved: any = snapshot();
+    saved.metrics.financialDaily.inputs.revenue = { value: "100.01", available: true, sources: ["ga4"] };
+    saved.metrics.financialDaily.inputs.spend = { value: null, available: false, sources: [] };
+    storageMock.getLatestFinancialDailySnapshot.mockResolvedValue(saved);
+    storageMock.getRevenueSources.mockResolvedValue([]); storageMock.getSpendSources.mockResolvedValue([]);
+    storageMock.getRevenueBreakdownBySource.mockResolvedValue([]); storageMock.getSpendBreakdownBySource.mockResolvedValue([]);
+    storageMock.getPlatformKPIs.mockResolvedValue([{ id: "k", name: "Native Revenue KPI", metric: "revenue", currentValue: "999.99", targetValue: "200" }]);
+    storageMock.getPlatformBenchmarks.mockResolvedValue([{ id: "b", name: "Native Revenue Benchmark", metric: "revenue", currentValue: "777.77", benchmarkValue: "200" }]);
+    await build(type, { sections: { overview: true, kpis: true, benchmarks: true }, subsections: { overview: { summary: true, revenue: true, spend: true, performance: true }, kpis: { items: true }, benchmarks: { items: true } }, selectedKpiIds: ["k"], selectedBenchmarkIds: ["b"] });
+    expect(printed.join("\n")).toContain("100.01");
+    expect(printed.join("\n")).not.toMatch(/999\.99|777\.77|130\.01/);
+    if (["overview", "custom"].includes(type)) expect(printed).toContain("Unavailable");
+    for (const mock of Object.values(provider)) expect(mock).not.toHaveBeenCalled();
+  });
+  it("includes the saved native Revenue and unavailable Spend in an actual PDF artifact", async () => {
+    const actual = await vi.importActual<typeof import("jspdf")>("jspdf");
+    vi.spyOn(await import("jspdf"), "jsPDF").mockImplementation(function (...args: any[]) {
+      return new (actual.jsPDF as any)(...args);
+    } as any);
+    const saved: any = snapshot();
+    saved.metrics.financialDaily.inputs.revenue = { value: "100.01", available: true, sources: ["ga4"] };
+    saved.metrics.financialDaily.inputs.spend = { value: null, available: false, sources: [] };
+    storageMock.getLatestFinancialDailySnapshot.mockResolvedValue(saved);
+    storageMock.getRevenueSources.mockResolvedValue([]); storageMock.getSpendSources.mockResolvedValue([]);
+    storageMock.getRevenueBreakdownBySource.mockResolvedValue([]); storageMock.getSpendBreakdownBySource.mockResolvedValue([]);
+    const pdf = (await build())!;
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(pdf.toString("latin1")).toContain("EUR 100.01");
+    expect(pdf.toString("latin1")).toContain("Unavailable");
+    expect(pdf.toString("latin1")).not.toContain("EUR 130.01");
+    for (const mock of Object.values(provider)) expect(mock).not.toHaveBeenCalled();
+  });
 });

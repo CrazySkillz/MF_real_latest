@@ -470,17 +470,18 @@ export function computeCampaignCurrentValueFromConfig(rawConfig: unknown, totals
 
 export async function resolveCampaignCurrentValueForAlert<T extends { campaignId?: string | null; calculationConfig?: unknown; currentValue?: unknown }>(
   row: T,
-  cache?: Map<string, Promise<CampaignMetricTotals | null>>
+  cache?: Map<string, Promise<CampaignMetricTotals | null>>,
+  useSavedOverview = false,
 ): Promise<T> {
   const campaignId = String(row?.campaignId || "").trim();
   if (!campaignId || !isCampaignLevel(row) || !row?.calculationConfig) return row;
 
   const config = parseConfig(row.calculationConfig);
   const useFullFinancialCandidate = isFinancialMetric(config?.metric);
-  const cacheKey = `${campaignId}:${useFullFinancialCandidate ? "financial" : "base"}`;
-  const totalsPromise = cache?.get(cacheKey) || getCampaignMetricTotals(campaignId, useFullFinancialCandidate);
+  const cacheKey = `${campaignId}:${useFullFinancialCandidate ? "financial" : "base"}:${useSavedOverview}`;
+  const totalsPromise = cache?.get(cacheKey) || getCampaignMetricTotals(campaignId, useFullFinancialCandidate, useSavedOverview);
   if (cache && !cache.has(cacheKey)) cache.set(cacheKey, totalsPromise);
-  const totals = await totalsPromise;
+  const totals = await totalsPromise.catch(() => null);
   if (!totals) return blockAlertDecision(row, "unavailable");
 
   const currentValue = computeCampaignCurrentValueFromConfig(row.calculationConfig, totals);

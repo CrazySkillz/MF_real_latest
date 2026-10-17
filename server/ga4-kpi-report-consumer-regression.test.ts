@@ -17,7 +17,7 @@ describe("GA4 KPI report consumer regression guards", () => {
     const sendGuard = source.slice(sendStart, sendEnd);
 
     expect(preflight).toContain('toLowerCase() !== "google_analytics"');
-    expect(preflight).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId, ...(opts?.suppressAlerts ? { suppressAlerts: true } : {}) })");
+    expect(preflight).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId, useSavedOverview: true, ...(opts?.suppressAlerts ? { suppressAlerts: true } : {}) })");
     expect(preflight).toContain("campaignsProcessed");
     expect(preflight).toContain("reportIncludesGA4KPISection(report)");
     expect(preflight).toContain('storage.getPlatformKPIs("google_analytics", campaignId)');
@@ -48,7 +48,7 @@ describe("GA4 KPI report consumer regression guards", () => {
     expect(preflight).toContain("resolveGA4ImportToDateWindow(");
     expect(preflight.indexOf("GA4 report cumulative import boundary is unavailable"))
       .toBeLessThan(preflight.indexOf("runGA4DailyKPIAndBenchmarkJobs"));
-    expect(preflight).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId, ...(opts?.suppressAlerts ? { suppressAlerts: true } : {}) })");
+    expect(preflight).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId, useSavedOverview: true, ...(opts?.suppressAlerts ? { suppressAlerts: true } : {}) })");
     expect(preflight).not.toContain("...(date ? { date } : {})");
   });
 

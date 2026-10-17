@@ -1,4 +1,5 @@
 import { storage } from "../storage";
+import { financialDailySnapshotInputSchema } from "../../shared/schema";
 import { ga4Service } from "../analytics";
 import {
   computeKpiValue,
@@ -20,7 +21,7 @@ import {
 } from "../../shared/ga4-financial-source";
 import { summarizeGA4TrafficRows } from "../../shared/ga4-traffic-window";
 import { applyAlertDataSufficiency, blockAlertDecision } from "./alert-decision";
-import { resolveCampaignCurrentValueForAlert } from "./campaign-current-values";
+import { getCampaignMetricTotals, resolveCampaignCurrentValueForAlert } from "./campaign-current-values";
 import { getExpectedDailyRefreshAt, getExpectedScheduledRefreshAt, resolveGA4DailyFreshness } from "./reporting-timezone";
 import { isSupportedGA4ConnectionMethod } from "./ga4-service-account";
 
@@ -116,9 +117,9 @@ export async function resolveAlertCurrentValueForDecision<T extends {
 }>(
   row: T,
   cache?: Map<string, Promise<any>>,
-  options: { allowCredentialRefresh?: boolean; requireCurrentTrafficFreshness?: boolean; providerCoverageThroughDate?: string | null } = {},
+  options: { allowCredentialRefresh?: boolean; requireCurrentTrafficFreshness?: boolean; providerCoverageThroughDate?: string | null; useSavedOverview?: boolean } = {},
 ): Promise<T & Record<string, any>> {
-  const resolved = await resolveCampaignCurrentValueForAlert(row, cache);
+  const resolved = await resolveCampaignCurrentValueForAlert(row, cache, options.useSavedOverview === true);
   if (!isGA4Platform((resolved as any)?.platformType)) return resolved as T & Record<string, any>;
 
   const campaignId = String((resolved as any)?.campaignId || "").trim();
@@ -148,6 +149,9 @@ export async function resolveAlertCurrentValueForDecision<T extends {
     const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
     const sourceStartDate = financialStartDate < startDate ? financialStartDate : startDate;
     const usesFinancialSource = isGA4FinancialKpiMetricIdentity(metric);
+    const configuredFilter = parseGA4CampaignFilter(campaign.ga4CampaignFilter);
+    const useSavedOverview = options.useSavedOverview === true && usesFinancialSource && !isYesopMockProperty(propertyId)
+      && (Array.isArray(configuredFilter) ? configuredFilter.length > 0 : !!configuredFilter);
     // Share successful stored-source reads only within this alert check. Keep scope and credentials fresh.
     const readSource = <T>(kind: string, args: unknown[], read: () => Promise<T>, usable: (value: T) => boolean): Promise<T> => {
       const key = JSON.stringify(["ga4-alert-stored-source", campaignId, propertyId,
@@ -177,16 +181,21 @@ export async function resolveAlertCurrentValueForDecision<T extends {
         () => storage.getSpendTotalForRange(campaignId, spendSourceStartDate, financialWindow.endDate, "ga4"),
         (value) => parseGA4FinancialNumber(value?.totalSpend) !== null && Array.isArray(value?.sourceIds)),
     ]);
-    const [rows, connection, overviewSnapshot] = await Promise.all([
+    const [rows, connection, overviewSnapshot, savedOverviewTotals] = await Promise.all([
       readSource("daily", [sourceStartDate, endDate],
         () => storage.getGA4DailyMetrics(campaignId, propertyId, sourceStartDate, endDate),
         (value) => Array.isArray(value) && value.length > 0).catch(() => null as any),
-      !usesFinancialSource || isYesopMockProperty(propertyId) ? Promise.resolve(null)
+      !usesFinancialSource || useSavedOverview || isYesopMockProperty(propertyId) ? Promise.resolve(null)
         : storage.getGA4Connection(campaignId, propertyId).catch(() => null as any).then((value) => value || primary),
       usesFinancialSource
         ? readSource("overview-snapshot", [financialStartDate, endDate],
           () => storage.getGA4OverviewSnapshot(campaignId, propertyId),
           (value) => !!value).catch(() => null as any)
+        : Promise.resolve(null),
+      useSavedOverview
+        ? readSource("verified-overview", [financialStartDate, endDate],
+          () => getCampaignMetricTotals(campaignId, true, true),
+          (value) => value?.ga4FinancialSource === "persisted_overview").catch(() => null)
         : Promise.resolve(null),
     ]);
     const sourceRows = Array.isArray(rows) ? rows : [];
@@ -196,6 +205,13 @@ export async function resolveAlertCurrentValueForDecision<T extends {
     });
     let trafficTotals = summarizeGA4TrafficRows(trafficRows);
     const financialTotals = summarizeGA4TrafficRows(sourceRows);
+    const savedFinancialCandidate = savedOverviewTotals?.ga4FinancialSource === "persisted_overview"
+      && savedOverviewTotals.sessions === financialTotals.sessions
+      && savedOverviewTotals.financialConversions === financialTotals.conversions
+        ? { revenue: savedOverviewTotals.ga4Revenue, conversions: savedOverviewTotals.financialConversions,
+            sessions: savedOverviewTotals.sessions, users: savedOverviewTotals.users }
+        : null;
+    if (useSavedOverview && !savedFinancialCandidate) return blockAlertDecision(resolved, "unavailable");
     let ga4Inputs = toInputs(trafficTotals);
     let hasGA4SourceInput = trafficRows.length > 0;
     let hasAuthoritativeEngagementInput = trafficRows.length > 0;
@@ -309,7 +325,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
     }
 
     const selectedFinancialCandidate = selectGA4FinancialTotalsSource(
-      [mockFinancialCandidate, providerFinancialCandidate, overviewFinancialCandidate, storedFinancialCandidate],
+      useSavedOverview ? [savedFinancialCandidate] : [mockFinancialCandidate, providerFinancialCandidate, overviewFinancialCandidate, storedFinancialCandidate],
       {} as any,
     );
     const financialCandidateAvailable = isGA4FinancialTotalsCandidate(selectedFinancialCandidate);
@@ -336,10 +352,30 @@ export async function resolveAlertCurrentValueForDecision<T extends {
     if (usesFinancialSource) {
       const dependencies = getGA4KpiMetricDependencies(metric);
       const sourceVerified = !!financialInputs
-        && (!dependencies.requiresRevenue || !hasImportedRevenueSource || !!mockFinancialCandidate || !!providerFinancialCandidate)
+        && (!dependencies.requiresRevenue || !hasImportedRevenueSource || !!mockFinancialCandidate || !!providerFinancialCandidate || !!savedFinancialCandidate)
         && (!dependencies.requiresRevenue || importedRevenueValue !== null)
         && (!dependencies.requiresSpend || spendValue !== null);
       if (!sourceVerified) return blockAlertDecision(resolved, "unavailable");
+      if (useSavedOverview) {
+        const snapshot = await readSource("financial-publication", [endDate],
+          () => storage.getLatestFinancialDailySnapshot(campaignId, endDate), (value) => !!value);
+        const parsed = financialDailySnapshotInputSchema.safeParse({
+          ...(snapshot?.metrics as any)?.financialDaily,
+          campaignId: snapshot?.campaignId, reportingDate: snapshot?.reportingDate,
+        });
+        if (!parsed.success || parsed.data.campaignId !== campaignId || parsed.data.currency !== campaignCurrency
+          || parsed.data.currentValueWindow.startDate !== financialStartDate || parsed.data.reportingDate !== endDate
+          || parsed.data.currentValueWindow.reportingTimeZone !== reportingWindow.reportingTimeZone) {
+          return blockAlertDecision(resolved, "unavailable");
+        }
+        const published = parsed.data.inputs;
+        if ((dependencies.requiresRevenue && (!published.revenue.available
+              || Number(published.revenue.value) !== Number((financialInputs!.ga4Revenue + (importedRevenueValue ?? 0)).toFixed(2))))
+          || (dependencies.requiresSpend && (!published.spend.available || Number(published.spend.value) !== spendValue))
+          || (metric === "cpa" && (!published.conversions.available || published.conversions.value !== financialInputs!.conversions))) {
+          return blockAlertDecision(resolved, "unavailable");
+        }
+      }
     } else if (!hasGA4SourceInput || (metric === "engagement_rate" && !hasAuthoritativeEngagementInput)) {
       return blockAlertDecision(resolved, "unavailable");
     }

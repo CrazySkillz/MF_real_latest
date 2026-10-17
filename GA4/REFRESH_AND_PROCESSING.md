@@ -46,6 +46,12 @@ Attempt observations use the existing process-local scheduler-observation patter
 
 Local evidence and remaining deployment/provider checks are recorded in `docs/GA4_PROCESSING_AND_ALIGNMENT_BACKLOG.md`.
 
+### Shared financial consumers during partial updates
+
+For real GA4 properties with selected campaign values, report KPI/Benchmark preflight and the shared alert callers opt into the existing verified saved-Overview selector. A later provider response must not replace that native Revenue/conversion pair during those operations. Financial alert decisions additionally require their relevant combined inputs to agree with the saved financial publication's campaign, reporting window, currency and timezone. Unavailable or stale alert decisions preserve alert history and immediate-email bookkeeping; verified recovery and explicit alert disabling retain their existing resolution behavior.
+
+Ordered campaign snapshots use the same completed campaign-day cutoff for external Revenue and Spend and reject failed source reads instead of recording a partial financial total. These corrections preserve existing formulas, payload contracts and default/unfiltered/simulation paths. Report payload generation, source/configuration mutations and publication concurrency retain the unverified boundaries listed in the Task 2 backlog; this paragraph does not certify those paths.
+
 ### Retained Overview financial updates
 
 Overview warns when its saved financial snapshot covers an older reporting day than the displayed GA4 facts, or was saved before the displayed GA4 update on the same reporting day. The comparison uses the existing financial `reportingDate`/`recordedAt` and GA4 `latestStoredDailyDate`/`lastUpdated`, after checking campaign, primary-property selection, import start, currency and reporting timezone. Missing or incompatible metadata yields an unverified-comparison warning. Initial missing responses and previous-property placeholders do not create a comparison.

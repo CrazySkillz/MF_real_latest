@@ -7370,30 +7370,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return /\b(kpi|benchmark)\s+alert\b/i.test(String(n?.title || "")) && Boolean(meta?.kpiId || meta?.benchmarkId);
   };
   const resolveNotificationAlertRow = async (row: any): Promise<any> =>
-    resolveAlertCurrentValueForDecision(row);
+    resolveAlertCurrentValueForDecision(row, undefined, { useSavedOverview: true });
   const resolveNotificationKPIAlertRow = async (row: any): Promise<any> =>
-    resolveAlertCurrentValueForDecision(row, undefined, { requireCurrentTrafficFreshness: true });
+    resolveAlertCurrentValueForDecision(row, undefined, { requireCurrentTrafficFreshness: true, useSavedOverview: true });
   const resolveNotificationAlertRowForRequest = async (row: any, validationReadOnly: boolean): Promise<any> =>
     validationReadOnly
-      ? resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false })
+      ? resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false, useSavedOverview: true })
       : resolveNotificationAlertRow(row);
   const resolveNotificationKPIAlertRowForRequest = async (row: any, validationReadOnly: boolean): Promise<any> => {
     const providerCoverageThroughDate = String(row?.__providerCoverageThroughDate || "") || undefined;
     if (validationReadOnly) return providerCoverageThroughDate
-      ? resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false, requireCurrentTrafficFreshness: true, providerCoverageThroughDate })
-      : resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false, requireCurrentTrafficFreshness: true });
+      ? resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false, requireCurrentTrafficFreshness: true, providerCoverageThroughDate, useSavedOverview: true })
+      : resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false, requireCurrentTrafficFreshness: true, useSavedOverview: true });
     return providerCoverageThroughDate
-      ? resolveAlertCurrentValueForDecision(row, undefined, { requireCurrentTrafficFreshness: true, providerCoverageThroughDate })
+      ? resolveAlertCurrentValueForDecision(row, undefined, { requireCurrentTrafficFreshness: true, providerCoverageThroughDate, useSavedOverview: true })
       : resolveNotificationKPIAlertRow(row);
   };
   const resolveNotificationBenchmarkAlertRowForRequest = async (row: any, validationReadOnly: boolean): Promise<any> => {
     const providerCoverageThroughDate = String(row?.__providerCoverageThroughDate || "") || undefined;
     if (validationReadOnly) return providerCoverageThroughDate
-      ? resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false, requireCurrentTrafficFreshness: true, providerCoverageThroughDate })
-      : resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false, requireCurrentTrafficFreshness: true });
+      ? resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false, requireCurrentTrafficFreshness: true, providerCoverageThroughDate, useSavedOverview: true })
+      : resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false, requireCurrentTrafficFreshness: true, useSavedOverview: true });
     return providerCoverageThroughDate
-      ? resolveAlertCurrentValueForDecision(row, undefined, { requireCurrentTrafficFreshness: true, providerCoverageThroughDate })
-      : resolveAlertCurrentValueForDecision(row, undefined, { requireCurrentTrafficFreshness: true });
+      ? resolveAlertCurrentValueForDecision(row, undefined, { requireCurrentTrafficFreshness: true, providerCoverageThroughDate, useSavedOverview: true })
+      : resolveAlertCurrentValueForDecision(row, undefined, { requireCurrentTrafficFreshness: true, useSavedOverview: true });
   };
   const isResolvedAlertRowBreached = (resolved: any): boolean =>
     isAlertDecisionBreached(resolved);
@@ -32955,6 +32955,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : await storage.getCampaignKPIs(id);
         const evaluatedKpis = hasGA4Connection
           ? await Promise.all(kpis.map((kpi: any) => resolveAlertCurrentValueForDecision(kpi, executiveTargetSourceCache, {
+              useSavedOverview: true,
               allowCredentialRefresh: false,
               requireCurrentTrafficFreshness: true,
             })))
@@ -33013,6 +33014,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : await storage.getCampaignBenchmarks(id);
         const evaluatedBenchmarks = hasGA4Connection
           ? await Promise.all(benchmarks.map((benchmark: any) => resolveAlertCurrentValueForDecision(benchmark, executiveTargetSourceCache, {
+              useSavedOverview: true,
               allowCredentialRefresh: false,
               requireCurrentTrafficFreshness: true,
             })))

@@ -393,7 +393,7 @@ export async function preflightGA4ReportKPIConsumers(
         .filter(Boolean));
     }
 
-    const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, ...(opts?.suppressAlerts ? { suppressAlerts: true } : {}) });
+    const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, useSavedOverview: true, ...(opts?.suppressAlerts ? { suppressAlerts: true } : {}) });
     if (Number((result as any)?.campaignsProcessed || 0) <= 0) {
       return { ok: false, error: "GA4 KPI/Benchmark recompute skipped target campaign" };
     }

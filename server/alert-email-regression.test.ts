@@ -75,11 +75,11 @@ describe("alert email regression guard", () => {
 
     expect(source).toContain('import { resolveAlertCurrentValueForDecision } from "../utils/ga4-alert-current-value";');
     expect(source).toContain('import { isAlertDecisionBreached } from "../utils/alert-decision";');
-    expect(source).toContain("const kpi = await resolveAlertCurrentValueForDecision(rawKpi);");
-    expect(source).toContain("const benchmark = await resolveAlertCurrentValueForDecision(rawBenchmark);");
+    expect(source).toContain("const kpi = await resolveAlertCurrentValueForDecision(rawKpi, undefined, { useSavedOverview: true });");
+    expect(source).toContain("const benchmark = await resolveAlertCurrentValueForDecision(rawBenchmark, undefined, { useSavedOverview: true });");
     expect(source).toContain("const campaignMetricCache = new Map<string, Promise<any>>();");
-    expect(source).toContain("const kpi = await resolveAlertCurrentValueForDecision(rawKpi, campaignMetricCache);");
-    expect(source).toContain("const benchmark = await resolveAlertCurrentValueForDecision(rawBenchmark, campaignMetricCache);");
+    expect(source).toContain("const kpi = await resolveAlertCurrentValueForDecision(rawKpi, campaignMetricCache, { useSavedOverview: true });");
+    expect(source).toContain("const benchmark = await resolveAlertCurrentValueForDecision(rawBenchmark, campaignMetricCache, { useSavedOverview: true });");
     expect(source.match(/if \(!isAlertDecisionBreached\((kpi|benchmark)\)\) (return false|continue);/g)).toHaveLength(6);
   });
 

@@ -24,7 +24,7 @@ describe("campaign alert current-value regression guard", () => {
     expect(notifications).toContain('import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";');
     expect(notifications).toContain('import { evaluateAlertThreshold, parseAlertNumber } from "./utils/alert-evaluation";');
     expect(notifications).toContain("const campaignMetricCache = new Map");
-    expect(notifications).toMatch(/const b = rawBenchmark.alertsEnabled && rawBenchmark.alertThreshold != null\s*\? await resolveAlertCurrentValueForDecision\(rawBenchmark, campaignMetricCache\)\s*: rawBenchmark;/);
+    expect(notifications).toMatch(/const b = rawBenchmark.alertsEnabled && rawBenchmark.alertThreshold != null\s*\? await resolveAlertCurrentValueForDecision\(rawBenchmark, campaignMetricCache, \{ useSavedOverview: true \}\)\s*: rawBenchmark;/);
     expect(notifications).toContain("if (!isAlertDecisionBreached(b)) {");
     expect(notifications).toContain("const currentRaw = b.currentValue;");
     expect(notifications).toContain("currentValue: currentRaw");

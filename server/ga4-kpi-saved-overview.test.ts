@@ -5,7 +5,7 @@ const storageMock = vi.hoisted(() => Object.fromEntries([
   "getGA4OverviewSnapshot", "getRevenueTotalForRange", "getSpendTotalForRange", "getRevenueSources", "getSpendSources",
   "getRevenueBreakdownBySource", "getSpendBreakdownBySource", "getPlatformKPIs", "getPlatformBenchmarks",
   "getCampaignKPIs", "getCampaignBenchmarks", "updateKPI", "updateBenchmark", "getKPIProgress", "recordKPIProgress",
-  "updateKPIProgress", "getBenchmarkHistory", "recordBenchmarkHistory",
+  "updateKPIProgress", "getBenchmarkHistory", "recordBenchmarkHistory", "getLatestFinancialDailySnapshot",
 ].map((name) => [name, vi.fn()])));
 const provider = vi.hoisted(() => ({ getTotalsWithRevenue: vi.fn(), getAcquisitionBreakdown: vi.fn(), refreshAccessToken: vi.fn() }));
 const alerts = vi.hoisted(() => ({ kpi: vi.fn(), benchmark: vi.fn() }));
@@ -15,6 +15,9 @@ vi.mock("./kpi-scheduler.js", () => ({ checkGA4PerformanceAlertsForCampaign: ale
 vi.mock("./benchmark-notifications.js", () => ({ checkGA4BenchmarkPerformanceAlertsForCampaign: alerts.benchmark }));
 
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
+import { preflightGA4ReportKPIConsumers } from "./report-scheduler";
+import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
+import { isAlertDecisionBreached } from "./utils/alert-decision";
 
 const campaignId = "campaign-1";
 const propertyId = "542352127";
@@ -22,6 +25,13 @@ const date = "2026-10-16";
 const overview = () => ({ campaignId, propertyId, windowStart: "2026-10-15", windowEnd: date,
   campaignBreakdown: { totals: { sessions: 30, conversions: 5, revenue: 100.009 }, meta: { currencyCode: "EUR" } },
 });
+const financialSnapshot = () => ({ campaignId, reportingDate: date, metrics: { financialDaily: {
+  version: "financial_daily_snapshot_v1", currency: "EUR",
+  currentValueWindow: { mode: "initial_import_to_latest_completed_day", startDate: "2026-10-15", endDate: date, dataThroughDate: date, reportingTimeZone: "Europe/Amsterdam" },
+  inputs: { revenue: { value: "130.01", available: true, sources: ["ga4", "revenue-source:revenue-1"] },
+    spend: { value: "20.00", available: true, sources: ["spend-source:spend-1"] },
+    conversions: { value: 5, available: true, sources: ["ga4"] } },
+} } });
 const rows = () => [
   { campaignId, propertyId, date: "2026-10-15", sessions: 10, users: 10, pageviews: 20, engagedSessions: 5, conversions: 2, revenue: "40.00" },
   { campaignId, propertyId, date, sessions: 20, users: 20, pageviews: 40, engagedSessions: 10, conversions: 3, revenue: "60.00" },
@@ -44,6 +54,7 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
     storageMock.getGA4DailyMetrics.mockImplementation(async (_id, _property, start, end) => rows().filter((row) => row.date >= start && row.date <= end));
     storageMock.getLatestGA4DailyMetric.mockResolvedValue(rows()[1]);
     storageMock.getGA4OverviewSnapshot.mockResolvedValue(overview());
+    storageMock.getLatestFinancialDailySnapshot.mockResolvedValue(financialSnapshot());
     storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 30, currency: "EUR", sourceIds: ["revenue-1"] });
     storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 20, currency: "EUR", sourceIds: ["spend-1"] });
     storageMock.getRevenueSources.mockResolvedValue([{ id: "revenue-1", currency: "EUR", sourceType: "csv", isActive: true }]);
@@ -80,6 +91,68 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
     expect(alerts.benchmark).not.toHaveBeenCalled();
     expect(storageMock.getRevenueTotalForRange).toHaveBeenLastCalledWith(campaignId, "1900-01-01", date, "ga4");
     expect(storageMock.getSpendTotalForRange).toHaveBeenLastCalledWith(campaignId, "1900-01-01", date, "ga4");
+  });
+
+  it("keeps report preflight on the same saved GA4 values as the ordered refresh", async () => {
+    const result = await preflightGA4ReportKPIConsumers({ campaignId, platformType: "google_analytics", reportType: "kpis" }, date, { suppressAlerts: true });
+    expect(result.ok).toBe(true);
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Revenue", { currentValue: "130.01" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-CPA", { currentValue: "4" });
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
+  });
+
+  it.each([["revenue", "130.01"], ["roas", "6.5"], ["roi", "550.05"], ["cpa", "4"]])(
+    "evaluates %s alerts from verified saved GA4 inputs", async (metric, value) => {
+      const result = await resolveAlertCurrentValueForDecision({ campaignId, platformType: "google_analytics", metric, currentValue: "777" }, undefined, { useSavedOverview: true });
+      expect(result).toMatchObject({ currentValue: value, __alertDecisionEligible: true });
+      expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
+    },
+  );
+
+  it("blocks an alert when its saved inputs are missing instead of using a newer provider response", async () => {
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(undefined);
+    const result = await resolveAlertCurrentValueForDecision({ campaignId, platformType: "google_analytics", metric: "revenue", currentValue: "777" }, undefined, { useSavedOverview: true });
+    expect(result).toMatchObject({ currentValue: "777", __alertDecisionEligible: false });
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
+  });
+
+  it.each(["missing publication", "old window", "wrong currency", "different revenue", "different conversions", "source changed"])(
+    "withholds financial alerts when the publication is incompatible: %s", async (condition) => {
+      const saved = financialSnapshot();
+      if (condition === "old window") saved.metrics.financialDaily.currentValueWindow.startDate = "2026-10-14";
+      if (condition === "wrong currency") saved.metrics.financialDaily.currency = "USD";
+      if (condition === "different revenue") saved.metrics.financialDaily.inputs.revenue.value = "140.01";
+      if (condition === "different conversions") saved.metrics.financialDaily.inputs.conversions.value = 6;
+      storageMock.getLatestFinancialDailySnapshot.mockResolvedValue(condition === "missing publication" ? null : saved);
+      if (condition === "source changed") storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 40, currency: "EUR", sourceIds: ["revenue-1"] });
+      const result = await resolveAlertCurrentValueForDecision({ campaignId, platformType: "google_analytics", metric: condition === "different conversions" ? "cpa" : "revenue", currentValue: "777" }, undefined, { useSavedOverview: true });
+      expect(result).toMatchObject({ currentValue: "777", __alertDecisionEligible: false });
+      expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not create a false breach from a later provider response and recognizes the published breach", async () => {
+    const rule = { campaignId, platformType: "google_analytics", metric: "Revenue", currentValue: "777", alertsEnabled: true, alertThreshold: "135", alertCondition: "above" };
+    expect(isAlertDecisionBreached(await resolveAlertCurrentValueForDecision(rule, undefined, { useSavedOverview: true }))).toBe(false);
+    expect(isAlertDecisionBreached(await resolveAlertCurrentValueForDecision({ ...rule, alertCondition: "below" }, undefined, { useSavedOverview: true }))).toBe(true);
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
+  });
+
+  it.each(["getGA4OverviewSnapshot", "getLatestFinancialDailySnapshot", "getRevenueTotalForRange", "getSpendTotalForRange"])(
+    "withholds financial alerts after a %s failure", async (method) => {
+      storageMock[method].mockRejectedValue(new Error("storage unavailable"));
+      expect(await resolveAlertCurrentValueForDecision({ campaignId, platformType: "google_analytics", metric: "roas", currentValue: "777" }, undefined, { useSavedOverview: true }))
+        .toMatchObject({ currentValue: "777", __alertDecisionEligible: false });
+      expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
+    },
+  );
+
+  it("retains report KPI values and rejects preflight when saved GA4 inputs cannot be verified", async () => {
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(undefined);
+    const result = await preflightGA4ReportKPIConsumers({ campaignId, platformType: "google_analytics", reportType: "kpis" }, date, { suppressAlerts: true });
+    expect(result.ok).toBe(false);
+    expect(storageMock.updateKPI).not.toHaveBeenCalledWith("kpi-Revenue", expect.anything());
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 
   it.each([

@@ -199,7 +199,7 @@ class AlertMonitoringService {
     const [rawKpi] = await db.select().from(kpis).where(eq(kpis.id, kpiId));
     if (!rawKpi || !rawKpi.alertsEnabled || !rawKpi.emailNotifications || !rawKpi.emailRecipients) return false;
     if (!(await this.isLatestGA4KPIAlertCandidate(rawKpi))) return false;
-    const kpi = await resolveAlertCurrentValueForDecision(rawKpi);
+    const kpi = await resolveAlertCurrentValueForDecision(rawKpi, undefined, { useSavedOverview: true });
     const campaignName = await this.getExistingCampaignName((kpi as any).campaignId, Boolean(retryClaim));
     if (!campaignName) return false;
     if (!isAlertDecisionBreached(kpi)) return false;
@@ -267,7 +267,7 @@ class AlertMonitoringService {
   async sendImmediateBenchmarkAlertIfNeeded(benchmarkId: string, retryClaim?: ExistingAlertEmailClaim): Promise<boolean> {
     const [rawBenchmark] = await db.select().from(benchmarks).where(eq(benchmarks.id, benchmarkId));
     if (!rawBenchmark || !rawBenchmark.alertsEnabled || !rawBenchmark.emailNotifications || !rawBenchmark.emailRecipients) return false;
-    const benchmark = await resolveAlertCurrentValueForDecision(rawBenchmark);
+    const benchmark = await resolveAlertCurrentValueForDecision(rawBenchmark, undefined, { useSavedOverview: true });
     if (String((benchmark as any).status || 'active') !== 'active') return false;
     const campaignName = await this.getExistingCampaignName((benchmark as any).campaignId, Boolean(retryClaim));
     if (!campaignName) return false;
@@ -367,7 +367,7 @@ class AlertMonitoringService {
     const [rawKpi] = await db.select().from(kpis).where(eq(kpis.id, kpiId));
     if (!rawKpi || !rawKpi.alertsEnabled || !rawKpi.emailNotifications || !rawKpi.emailRecipients) return false;
     if (!(await this.isLatestGA4KPIAlertCandidate(rawKpi))) return false;
-    const kpi = await resolveAlertCurrentValueForDecision(rawKpi);
+    const kpi = await resolveAlertCurrentValueForDecision(rawKpi, undefined, { useSavedOverview: true });
     const campaignName = await this.getExistingCampaignName((kpi as any).campaignId, true);
     if (!campaignName) return false;
     if (!isAlertDecisionBreached(kpi)) return false;
@@ -382,7 +382,7 @@ class AlertMonitoringService {
   private async isBenchmarkAlertRetryStillSendable(benchmarkId: string): Promise<boolean> {
     const [rawBenchmark] = await db.select().from(benchmarks).where(eq(benchmarks.id, benchmarkId));
     if (!rawBenchmark || !rawBenchmark.alertsEnabled || !rawBenchmark.emailNotifications || !rawBenchmark.emailRecipients) return false;
-    const benchmark = await resolveAlertCurrentValueForDecision(rawBenchmark);
+    const benchmark = await resolveAlertCurrentValueForDecision(rawBenchmark, undefined, { useSavedOverview: true });
     if (String((benchmark as any).status || 'active') !== 'active') return false;
     const campaignName = await this.getExistingCampaignName((benchmark as any).campaignId, true);
     if (!campaignName) return false;
@@ -475,7 +475,7 @@ class AlertMonitoringService {
 
       for (const rawKpi of kpisToCheck) {
         if (!isLatestGA4KPIForDuplicateKey(rawKpi, latestGA4KpiIdsByDuplicateKey)) continue;
-        const kpi = await resolveAlertCurrentValueForDecision(rawKpi, campaignMetricCache);
+        const kpi = await resolveAlertCurrentValueForDecision(rawKpi, campaignMetricCache, { useSavedOverview: true });
         // Skip if no email recipients configured
         if (!kpi.emailRecipients) continue;
         const campaignName = await this.getExistingCampaignName((kpi as any).campaignId);
@@ -580,7 +580,7 @@ class AlertMonitoringService {
       const campaignMetricCache = new Map<string, Promise<any>>();
 
       for (const rawBenchmark of benchmarksToCheck) {
-        const benchmark = await resolveAlertCurrentValueForDecision(rawBenchmark, campaignMetricCache);
+        const benchmark = await resolveAlertCurrentValueForDecision(rawBenchmark, campaignMetricCache, { useSavedOverview: true });
         // Skip if no email recipients configured
         if (!benchmark.emailRecipients) continue;
         const campaignName = await this.getExistingCampaignName((benchmark as any).campaignId);

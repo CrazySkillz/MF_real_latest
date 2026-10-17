@@ -267,6 +267,7 @@ async function checkPerformanceAlertsForScope(campaignId?: string, providerCover
       }
       const kpi = rawKpi.alertsEnabled && rawKpi.alertThreshold != null
         ? await resolveAlertCurrentValueForDecision(rawKpi, campaignMetricCache, {
+            useSavedOverview: true,
             requireCurrentTrafficFreshness: true,
             providerCoverageThroughDate,
           })
@@ -277,6 +278,7 @@ async function checkPerformanceAlertsForScope(campaignId?: string, providerCover
         if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared');
         continue;
       }
+      if (kpi.__alertDecisionEligible === false && ["unavailable", "stale"].includes(kpi.__alertDecisionReason)) continue;
       // NOTE: KPI numeric values may be stored as formatted strings (e.g. "370,000").
       // Use shouldTriggerAlert/createKPIAlert for truth; these logs are best-effort.
       const currentValue = parseFloat(String(kpi.currentValue || "").replace(/,/g, ""));

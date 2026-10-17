@@ -182,7 +182,8 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
     const financialTotals = await (useSavedOverview
       ? getCampaignMetricTotals(campaignId, true, true)
       : getCampaignMetricTotals(campaignId, true)).catch(() => null);
-    if (useSavedOverview && financialTotals?.ga4FinancialSource !== 'persisted_overview') {
+    if (useSavedOverview && (financialTotals?.ga4FinancialSource !== 'persisted_overview'
+      || financialTotals.revenueAvailable !== true || financialTotals.spendAvailable !== true)) {
       throw new Error('Verified saved GA4 financial inputs are unavailable for the campaign snapshot');
     }
     if (financialTotals) {
@@ -364,7 +365,8 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
     const spendTotals = await storage.getSpendTotalForRange(campaignId, financialSourceStartDate, financialSourceEndDate, "ga4");
     persistedSpend = parseNum((spendTotals as any)?.totalSpend);
     spendSourceIds = Array.isArray((spendTotals as any)?.sourceIds) ? (spendTotals as any).sourceIds : [];
-  } catch {
+  } catch (error) {
+    if (options.useSavedOverview) throw error;
     // Keep platform spend fallback if persisted spend cannot be resolved.
   }
 
@@ -372,7 +374,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   let offsiteRevenueTotal = 0;
   try {
     const sources = await storage.getRevenueSources(campaignId, "ga4");
-    const breakdown = await storage.getRevenueBreakdownBySource(campaignId, financialSourceStartDate, endDate, "ga4");
+    const breakdown = await storage.getRevenueBreakdownBySource(campaignId, financialSourceStartDate, options.useSavedOverview ? financialSourceEndDate : endDate, "ga4");
     for (const source of sources as any[]) {
       const match = (breakdown as any[]).find((row: any) => String(row?.sourceId) === String(source?.id));
       const lastTotalRevenue = parseNum(match?.revenue);
@@ -394,7 +396,8 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
       });
       offsiteRevenueTotal += lastTotalRevenue;
     }
-  } catch {
+  } catch (error) {
+    if (options.useSavedOverview) throw error;
     // Keep GA4 onsite revenue only if external revenue cannot be resolved.
   }
 

@@ -115,7 +115,7 @@ async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, prov
 
   for (const rawBenchmark of items as any[]) {
     const b = rawBenchmark.alertsEnabled && rawBenchmark.alertThreshold != null
-      ? await resolveAlertCurrentValueForDecision(rawBenchmark, campaignMetricCache)
+      ? await resolveAlertCurrentValueForDecision(rawBenchmark, campaignMetricCache, { useSavedOverview: true })
       : rawBenchmark;
     const thresholdRaw = b.alertThreshold;
     const currentRaw = b.currentValue;
@@ -125,6 +125,7 @@ async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, prov
       if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
       continue;
     }
+    if (b.__alertDecisionEligible === false && ["unavailable", "stale"].includes(b.__alertDecisionReason)) continue;
     if (!isAlertDecisionBreached(b)) {
       if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
       continue;

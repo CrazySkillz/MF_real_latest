@@ -98,14 +98,14 @@ describe("GA4 KPI duplicate alert latest-row behavior", () => {
     expectBefore(
       immediate,
       "if (!(await this.isLatestGA4KPIAlertCandidate(rawKpi))) return false;",
-      "const kpi = await resolveAlertCurrentValueForDecision(rawKpi);"
+      "const kpi = await resolveAlertCurrentValueForDecision(rawKpi, undefined, { useSavedOverview: true });"
     );
 
     const retry = sliceBetween(alertMonitoring, "private async isKPIAlertRetryStillSendable", "private async isBenchmarkAlertRetryStillSendable");
     expectBefore(
       retry,
       "if (!(await this.isLatestGA4KPIAlertCandidate(rawKpi))) return false;",
-      "const kpi = await resolveAlertCurrentValueForDecision(rawKpi);"
+      "const kpi = await resolveAlertCurrentValueForDecision(rawKpi, undefined, { useSavedOverview: true });"
     );
 
     const scheduled = sliceBetween(alertMonitoring, "async checkKPIAlerts", "async checkBenchmarkAlerts");
@@ -114,7 +114,7 @@ describe("GA4 KPI duplicate alert latest-row behavior", () => {
     expectBefore(
       scheduled,
       "if (!isLatestGA4KPIForDuplicateKey(rawKpi, latestGA4KpiIdsByDuplicateKey)) continue;",
-      "const kpi = await resolveAlertCurrentValueForDecision(rawKpi, campaignMetricCache);"
+      "const kpi = await resolveAlertCurrentValueForDecision(rawKpi, campaignMetricCache, { useSavedOverview: true });"
     );
 
     expect(notifications).toContain("if (usesSingleActiveAlert) return String(meta.kpiId || '') === String(kpi.id);");

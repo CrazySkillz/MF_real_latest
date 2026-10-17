@@ -92,6 +92,25 @@ describe("ordered GA4 campaign snapshot saved financial inputs", () => {
     expect(storageMock.createMetricSnapshot).not.toHaveBeenCalled();
   });
 
+  it("excludes today's external revenue from the completed-day campaign snapshot", async () => {
+    storageMock.getRevenueBreakdownBySource.mockImplementation(async (_id, _start, end) => [
+      { sourceId: "revenue-1", revenue: end > date ? 80 : 30 },
+    ]);
+    expect(await record()).toBe(true);
+    expect(storageMock.createMetricSnapshot.mock.calls[0][0].metrics.performanceSummary.totals.revenue.value).toBe(130.01);
+  });
+
+  it.each(["getSpendTotalForRange", "getRevenueTotalForRange", "getRevenueSources", "getRevenueBreakdownBySource"])(
+    "retains the previous campaign snapshot if the final %s read fails", async (method) => {
+      await record();
+      const previous = structuredClone(storageMock.createMetricSnapshot.mock.calls[0][0]);
+      storageMock[method].mockRejectedValue(new Error("source read failed"));
+      expect(await record()).toBe(false);
+      expect(storageMock.createMetricSnapshot).toHaveBeenCalledTimes(1);
+      expect(storageMock.createMetricSnapshot.mock.calls[0][0]).toEqual(previous);
+    },
+  );
+
   it.each(["getCampaign", "getPrimaryGA4Connection", "getGA4DailyMetrics", "getGA4OverviewSnapshot"])(
     "does not publish a snapshot when %s fails", async (method) => {
       storageMock[method].mockRejectedValue(new Error("database read failed"));

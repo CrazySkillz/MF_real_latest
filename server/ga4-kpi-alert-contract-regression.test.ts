@@ -666,7 +666,7 @@ describe("GA4 KPI Commit 6 alert/notification contract", () => {
     expect(kpiNotifications).toContain("return isAlertDecisionBreached(kpi);");
     expect(files[2].match(/resolveAlertCurrentValueForDecision\(/g)).toHaveLength(6);
     expect(files[2].match(/isAlertDecisionBreached\(/g)).toHaveLength(6);
-    expect(files[3]).toContain("resolveAlertCurrentValueForDecision(row);");
+    expect(files[3]).toContain("resolveAlertCurrentValueForDecision(row, undefined, { useSavedOverview: true });");
     expect(files[3]).toContain("isAlertDecisionBreached(resolved);");
   });
 });

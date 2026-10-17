@@ -50,7 +50,7 @@ describe("notification visibility regression guard", () => {
       join(process.cwd(), "server", "routes-oauth.ts"),
       "utf-8"
     );
-    expect(routesFile).toContain("resolveAlertCurrentValueForDecision(row, undefined, { requireCurrentTrafficFreshness: true })");
+    expect(routesFile).toContain("resolveAlertCurrentValueForDecision(row, undefined, { requireCurrentTrafficFreshness: true, useSavedOverview: true })");
     expect(routesFile).toContain("allowCredentialRefresh: false, requireCurrentTrafficFreshness: true, providerCoverageThroughDate");
     expect(routesFile).toContain("(benchmark as any).__providerCoverageThroughDate = meta?.providerCoverageThroughDate;");
     expect(routesFile).toContain("const resolvedBenchmark = await resolveNotificationBenchmarkAlertRowForRequest(benchmark, validationReadOnly);");
@@ -111,7 +111,7 @@ describe("notification visibility regression guard", () => {
 
     expect(routesFile).toContain('import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";');
     expect(routesFile).toContain("const resolveNotificationAlertRow = async (row: any): Promise<any> =>");
-    expect(routesFile).toContain("resolveAlertCurrentValueForDecision(row);");
+    expect(routesFile).toContain("resolveAlertCurrentValueForDecision(row, undefined, { useSavedOverview: true });");
     expect(routesFile).toContain("const isResolvedAlertRowBreached = (resolved: any): boolean =>");
     expect(routesFile).toContain("isAlertDecisionBreached(resolved);");
     expect(routesFile).toContain("if (!(await isLatestGA4NotificationKPI(kpi))) return null;");

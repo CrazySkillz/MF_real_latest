@@ -3412,7 +3412,8 @@ export default function GA4Metrics() {
       if (needsSummary && !overviewSummaryAvailable) unavailable.push("Summary");
       if (needsRevenue && (!financialRevenueAvailable || importedRevenueError || revenueSourcesError || revenueBreakdownError)) unavailable.push("Revenue");
       if (needsRevenue && materializedRevenueUnavailable) unavailable.push("Revenue");
-      if (needsSpend && (!financialSpendAvailable || spendSourcesError || (spendToDateError && spendBreakdownError))) unavailable.push("Spend");
+      const reportHasNoSpendSource = spendSourceDefinitionsKnownEmpty && !hasSpendSources && !overviewFinancialSpendAvailable;
+      if (needsSpend && ((!financialSpendAvailable && !reportHasNoSpendSource) || spendSourcesError || (spendToDateError && spendBreakdownError))) unavailable.push("Spend");
       if (needsCampaignBreakdown && campaignBreakdownUnavailable) unavailable.push("Campaign Breakdown");
       if (needsLandingPages && landingPagesUnavailable) unavailable.push("Landing Pages");
       if (needsConversionEvents && conversionEventsUnavailable) unavailable.push("Conversion Events");
@@ -3739,7 +3740,7 @@ export default function GA4Metrics() {
       if (includeOverviewSpend) {
       subheading("Spend");
       metricCards([
-        ["Total Spend", fC(spend)],
+        ["Total Spend", financialSpendAvailable ? fC(spend) : "Unavailable"],
       ], 1);
       sourceRows("Spend", spendDisplaySources.map((s: any) => [
         String(s.displayName || spendSourceTypeLabel(s.sourceType)),
@@ -3750,10 +3751,10 @@ export default function GA4Metrics() {
       if (includeOverviewPerformance) {
       subheading("Performance");
       metricCards([
-        ["Profit", fC(rev - spend)],
-        ["ROAS", spend > 0 ? `${Number(financialROAS || 0).toFixed(2)}x` : "—"],
-        ["ROI", spend > 0 ? fP(roi) : "—"],
-        ["CPA", spend > 0 && convTot > 0 ? fC(cpa) : "—"],
+        ["Profit", financialSpendAvailable ? fC(rev - spend) : "Unavailable"],
+        ["ROAS", !financialSpendAvailable ? "Unavailable" : spend > 0 ? `${Number(financialROAS || 0).toFixed(2)}x` : "—"],
+        ["ROI", !financialSpendAvailable ? "Unavailable" : spend > 0 ? fP(roi) : "—"],
+        ["CPA", !financialSpendAvailable ? "Unavailable" : spend > 0 && convTot > 0 ? fC(cpa) : "—"],
       ], 4);
       y += 2;
       }

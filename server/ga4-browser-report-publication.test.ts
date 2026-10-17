@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import ts from "typescript";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { jsPDF } from "jspdf";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
+import { formatPct, normalizeRateToPercent } from "../shared/metric-math";
 
 const page = readFileSync("client/src/pages/ga4-metrics.tsx", "utf8");
 const start = page.indexOf("const downloadGA4Report = async");
@@ -9,7 +11,7 @@ const end = page.indexOf('const { jsPDF } = await import("jspdf");', start);
 if (start < 0 || end < start) throw new Error("Browser report preflight not found");
 // Run the actual preflight before the PDF dependency is loaded or a file saved.
 const preflight = page.slice(start, end) + 'return "ready"; }; return downloadGA4Report;';
-function run(overrides: Record<string, any> = {}, configuration?: any) {
+function run(overrides: Record<string, any> = {}, configuration?: any, reportType = "custom", body = preflight) {
   const bindings: Record<string, any> = {
     ga4ReportForm: {}, normalizeCustomReportConfig: (value: any) => value, resolveGA4KpiMetricIdentity,
     campaignId: "campaign-a", campaign: { reportingTimeZone: "Europe/Amsterdam" }, campaignCurrency: "EUR", selectedGA4PropertyId: "123",
@@ -20,10 +22,15 @@ function run(overrides: Record<string, any> = {}, configuration?: any) {
     overviewFinancialRefreshWarning: null, overviewFinancialReportingDate: "2026-10-16", overviewFinancialRevenue: 130,
     overviewFinancialConversions: 5, overviewFinancialSpend: 20, financialRevenue: 130, financialConversions: 5, financialSpend: 20,
     ga4ToDateResp: { startDate: "2026-10-15", endDate: "2026-10-16" },
+    overviewSummaryAvailable: true, financialRevenueAvailable: true, financialSpendAvailable: true,
+    importedRevenueError: false, revenueSourcesError: false, revenueBreakdownError: false,
+    spendSourcesError: false, spendToDateError: false, spendBreakdownError: false,
+    spendSourceDefinitionsKnownEmpty: false, hasSpendSources: true,
+    campaignBreakdownUnavailable: false, landingPagesUnavailable: false, conversionEventsUnavailable: false,
     ...overrides,
   };
-  const callback = new Function(...Object.keys(bindings), ts.transpileModule(preflight, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(bindings));
-  return callback({ reportType: "custom", configuration: configuration || { sections: { kpis: true }, subsections: {}, selectedKpiIds: ["k"], selectedBenchmarkIds: [] } });
+  const callback = new Function(...Object.keys(bindings), ts.transpileModule(body, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(bindings));
+  return callback({ reportType, configuration: configuration || { sections: { kpis: true }, subsections: {}, selectedKpiIds: ["k"], selectedBenchmarkIds: [] } });
 }
 
 describe("Browser GA4 report publication gate", () => {
@@ -41,6 +48,89 @@ describe("Browser GA4 report publication gate", () => {
   });
   it("keeps an empty saved KPI selection empty", async () => {
     await expect(run({ overviewFinancialSnapshot: null }, { sections: { kpis: true }, subsections: {}, selectedKpiIds: [], selectedBenchmarkIds: [] })).resolves.toBe("ready");
+  });
+});
+
+describe("Browser Overview reports without a Spend source", () => {
+  const absentSpend = {
+    financialSpendAvailable: false, overviewFinancialSpendAvailable: false,
+    financialSpend: 0, overviewFinancialSpend: 0, hasSpendSources: false, spendSourceDefinitionsKnownEmpty: true,
+  };
+  const customOverview = (selected: string) => ({
+    sections: { overview: true },
+    subsections: { overview: Object.fromEntries(["summary", "revenue", "spend", "performance", "campaignBreakdown", "landingPages", "conversionEvents"].map(key => [key, key === selected])) },
+    selectedKpiIds: [], selectedBenchmarkIds: [],
+  });
+  it.each(["overview", "spend", "performance"])("allows %s when Spend is confirmed absent", async section => {
+    await expect(run(absentSpend, customOverview(section), section === "overview" ? "overview" : "custom")).resolves.toBe("ready");
+  });
+  it.each([
+    ["source lookup failed", { spendSourcesError: true }],
+    ["source list not loaded or not empty", { spendSourceDefinitionsKnownEmpty: false }],
+    ["source amounts unavailable", { spendSourceDefinitionsKnownEmpty: false, hasSpendSources: true }],
+    ["retained source breakdown", { hasSpendSources: true }],
+    ["both amount requests failed", { spendToDateError: true, spendBreakdownError: true }],
+    ["old published zero Spend source", { overviewFinancialSpendAvailable: true }],
+  ])("still blocks %s", async (_name, changes) => {
+    await expect(run({ ...absentSpend, ...changes }, undefined, "overview")).rejects.toThrow("unavailable: Spend");
+  });
+  it("blocks removal of a previously published positive Spend source", async () => {
+    await expect(run({ ...absentSpend, overviewFinancialSpendAvailable: true, overviewFinancialSpend: 20 }, undefined, "overview")).rejects.toThrow("successful aligned data refresh");
+  });
+  it.each([
+    ["Summary", { overviewSummaryAvailable: false }], ["Revenue", { revenueSourcesError: true }],
+    ["Campaign Breakdown", { campaignBreakdownUnavailable: true }], ["Landing Pages", { landingPagesUnavailable: true }],
+    ["Conversion Events", { conversionEventsUnavailable: true }],
+  ])("preserves the %s failure guard", async (section, changes) => {
+    await expect(run({ ...absentSpend, ...changes }, undefined, "overview")).rejects.toThrow(`unavailable: ${section}.`);
+  });
+  it("does not require Spend for a custom Summary-only report", async () => {
+    await expect(run({ ...absentSpend, spendSourcesError: true }, customOverview("summary"))).resolves.toBe("ready");
+  });
+
+  // Execute the complete browser handler with real PDF drawing; intercept only logo loading and file saving.
+  const handlerEnd = page.indexOf("const connectedPropertyCount =", end);
+  if (handlerEnd < end) throw new Error("Browser report handler end not found");
+  const handler = page.slice(start, handlerEnd).replace('const { jsPDF } = await import("jspdf");', "") + "return downloadGA4Report;";
+  async function render(changes: Record<string, any>, reportType = "overview", configuration?: any) {
+    const doc = new jsPDF();
+    const text = vi.spyOn(doc, "text");
+    const save = vi.spyOn(doc, "save").mockReturnValue(doc);
+    await run({
+      ...absentSpend, jsPDF: function () { return doc; }, loadMimoSaaSReportLogo: async () => null,
+      campaign: { name: "Ptomo", currency: "EUR", reportingTimeZone: "Europe/Amsterdam" },
+      ga4Metrics: { propertyId: "123" }, overviewSummaryTotals: { sessions: 2977, users: 2978, conversions: 262 },
+      overviewSummaryEngagementRate: 0.724, financialRevenue: 65659.5, overviewFinancialRevenue: 65659.5,
+      financialConversions: 262, overviewFinancialConversions: 262, financialROAS: 0,
+      ga4HasRevenueMetric: true, ga4RevenueForFinancials: 65659.5, spendDisplaySources: [],
+      campaignBreakdownAgg: [], campaignBreakdownMatchedExternalRevenue: new Map(),
+      ga4LandingPages: { rows: [] }, ga4ConversionEvents: { rows: [] }, formatPct, normalizeRateToPercent,
+      ...changes,
+    }, configuration, reportType, handler);
+    expect(save).toHaveBeenCalledOnce();
+    expect(doc.output()).toMatch(/^%PDF-/);
+    const words = text.mock.calls.map(call => call[0]);
+    return (label: string) => words[words.indexOf(label.toUpperCase()) + 1];
+  }
+  it.each(["overview", "spend", "performance"])("downloads the actual %s PDF with missing Spend marked unavailable", async section => {
+    const metric = await render({}, section === "overview" ? "overview" : "custom", customOverview(section));
+    if (section !== "performance") expect(metric("Total Spend")).toBe("Unavailable");
+    if (section !== "spend") for (const label of ["Profit", "ROAS", "ROI", "CPA"]) expect(metric(label)).toBe("Unavailable");
+    if (section === "overview") {
+      expect(metric("Sessions")).toBe("2,977");
+      expect(metric("Conversions")).toBe("262");
+      expect(metric("Total Revenue")).toBe("EUR 65,659.50");
+    }
+  });
+  it.each([0, 1000])("preserves a configured Spend source with amount %s", async spend => {
+    const metric = await render({ financialSpendAvailable: true, overviewFinancialSpendAvailable: true,
+      financialSpend: spend, overviewFinancialSpend: spend, hasSpendSources: true, spendSourceDefinitionsKnownEmpty: false,
+      financialROAS: spend ? 65659.5 / spend : 0 });
+    expect(metric("Total Spend")).toBe(spend ? "EUR 1,000.00" : "EUR 0.00");
+    expect(metric("Profit")).toBe(spend ? "EUR 64,659.50" : "EUR 65,659.50");
+    expect(metric("ROAS")).toBe(spend ? "65.66x" : "—");
+    expect(metric("ROI")).toBe(spend ? formatPct(6465.95) : "—");
+    expect(metric("CPA")).toBe(spend ? "EUR 3.82" : "—");
   });
 });
 

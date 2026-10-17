@@ -5,6 +5,7 @@ const storageMock = vi.hoisted(() => ({
   getCampaign: vi.fn(),
   getGA4Connections: vi.fn(),
   getGA4DailyMetrics: vi.fn(),
+  getGA4OverviewSnapshot: vi.fn(),
   getPlatformKPIs: vi.fn(),
   getPlatformBenchmarks: vi.fn(),
   getRevenueBreakdownBySource: vi.fn(),
@@ -97,7 +98,10 @@ describe("GA4 Overview Conversion Events scheduled PDF value parity", () => {
     for (const mock of [...Object.values(storageMock), ...Object.values(ga4ServiceMock)]) mock.mockReset();
     storageMock.getCampaign.mockResolvedValue(campaign);
     storageMock.getGA4Connections.mockResolvedValue([connection]);
-    storageMock.getGA4DailyMetrics.mockResolvedValue([]);
+    storageMock.getGA4DailyMetrics.mockResolvedValue(Array.from({ length: 45 }, (_, i) => ({ date: new Date(Date.UTC(2026, 7, i + 1)).toISOString().slice(0, 10), sessions: 0, conversions: 0 })));
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue({ campaignId: campaign.id, propertyId: connection.propertyId,
+      windowStart: "2026-08-01", windowEnd: "2026-09-14", campaignBreakdown: { rows: [], totals: { sessions: 0, conversions: 0, revenue: 0 }, meta: { currencyCode: "USD" } },
+      landingPages: { rows: [] }, conversionEvents: { rows: conversionRows } });
     storageMock.getPlatformKPIs.mockResolvedValue([]);
     storageMock.getPlatformBenchmarks.mockResolvedValue([]);
     storageMock.getRevenueBreakdownBySource.mockResolvedValue([]);
@@ -125,15 +129,8 @@ describe("GA4 Overview Conversion Events scheduled PDF value parity", () => {
     const text = pdfText.join("\n");
 
     expect(result?.length).toBeGreaterThan(100);
-    expect(ga4ServiceMock.getConversionEventsReport).toHaveBeenCalledWith(
-      campaign.id,
-      storageMock,
-      "2026-08-01",
-      connection.propertyId,
-      50,
-      campaign.ga4CampaignFilter,
-      "2026-09-14",
-    );
+    expect(ga4ServiceMock.getConversionEventsReport).not.toHaveBeenCalled();
+    expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledWith(campaign.id, connection.propertyId);
     for (const value of [
       "Conversion Events", "EVENT", "CONVERSIONS", "EVENT COUNT", "USERS",
       "conv_evt_01", "2.5", "conv_evt_25",
@@ -142,8 +139,9 @@ describe("GA4 Overview Conversion Events scheduled PDF value parity", () => {
     expect(text).not.toMatch(/Revenue|99,999/i);
   });
 
-  it("fails closed when selected Conversion Events provider input is unavailable", async () => {
-    ga4ServiceMock.getConversionEventsReport.mockRejectedValue(new Error("provider unavailable"));
+  it("fails closed when selected saved Conversion Events input is unavailable", async () => {
+    const saved = await storageMock.getGA4OverviewSnapshot();
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue({ ...saved, conversionEvents: null });
     await expect(buildGA4ScheduledPdfAttachment({
       report,
       reportName: report.name,

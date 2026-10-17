@@ -101,10 +101,12 @@ export async function getGA4AlignedRefreshState(campaignId: string, reportingDat
   const normalizedCampaignId = String(campaignId || "").trim();
   const normalizedReportingDate = String(reportingDate || "").trim();
   const cached = alignedRefreshByCampaign.get(normalizedCampaignId) || null;
-  if (!normalizedReportingDate || cached?.reportingDate === normalizedReportingDate) return cached;
+  if ((global as any).__ga4DailyRefreshInProgress) return null;
+  if (!normalizedReportingDate) return cached;
   const snapshots = await storage.getExecutiveSummaryDailyComparisonData(normalizedCampaignId, normalizedReportingDate, normalizedReportingDate);
   const persisted = parseGA4AlignedRefreshMarker(snapshots.current?.notes, normalizedReportingDate);
   if (persisted) alignedRefreshByCampaign.set(normalizedCampaignId, persisted);
+  else alignedRefreshByCampaign.delete(normalizedCampaignId);
   return persisted;
 }
 
@@ -310,6 +312,8 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
         });
       }
       try {
+        const previousOverview = (campaignFilter?.length || 0) > 0
+          ? await storage.getGA4OverviewSnapshot(currentCampaignId, String(connection.propertyId)) : undefined;
         const configuredImportStartDate = String(connection?.importStartDate || "").trim();
         const storageStartDate = /^\d{4}-\d{2}-\d{2}$/.test(configuredImportStartDate)
           ? configuredImportStartDate > reportingWindow.startDate ? configuredImportStartDate : reportingWindow.startDate
@@ -458,6 +462,11 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
             campaignBreakdown,
             landingPages,
             conversionEvents,
+            refreshScope: {
+              campaign: Object.fromEntries(["ownerId", "clientId", "status", "ga4CampaignFilter", "currency", "reportingTimeZone"].map((key) => [key, (c as any)[key] ?? null])),
+              connection: Object.fromEntries(["id", "propertyId", "importStartDate", "isPrimary"].map((key) => [key, (connection as any)[key] ?? null])),
+              previousUpdatedAt: previousOverview?.updatedAt ? new Date(previousOverview.updatedAt).toISOString() : null,
+            },
           };
         }
 
@@ -518,6 +527,11 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
   ga4DailySchedulerStatus.lastRunStatus = "running";
   console.log(`[GA4 Daily] Pipeline starting (trigger=${trigger}${campaignId ? `, campaignId=${campaignId}` : ""})`);
   try {
+    const targets = filterActiveSchedulerCampaigns(campaignId ? [await storage.getCampaign(campaignId)].filter(Boolean) as any[] : await storage.getCampaigns());
+    for (const target of targets) {
+      alignedRefreshByCampaign.delete(target.id);
+      await storage.invalidateExecutiveSummaryDailySnapshotAlignment(target.id, getLatestCompleteReportingDate(target.reportingTimeZone, startedAtDate));
+    }
     const refreshFinancialSources = (trigger === "scheduled" && !campaignId)
       || (["snapshot_bootstrap", "manual"].includes(trigger) && Boolean(campaignId) && opts.refreshFinancialSources === true);
     if (refreshFinancialSources) {

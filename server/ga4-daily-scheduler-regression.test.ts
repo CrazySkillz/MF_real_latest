@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { afterEach, vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 import { GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION, ga4Service } from "./analytics";
 import { backfillMissingGA4OverviewSnapshots, getGA4AlignedRefreshState, getGA4DailyRecomputeFailure, getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getNextGA4DailyRunAt, isGA4AlignedRefreshReady, parseGA4AlignedRefreshMarker, refreshAllGA4DailyMetrics } from "./ga4-daily-scheduler";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
@@ -12,6 +12,7 @@ const aggregateSnapshotSchedulerSource = () => readFileSync(join(process.cwd(), 
 const kpiSchedulerSource = () => readFileSync(join(process.cwd(), "server", "kpi-scheduler.ts"), "utf-8");
 
 describe("GA4 daily scheduler timing", () => {
+  beforeEach(() => vi.spyOn(storage, "getGA4OverviewSnapshot").mockResolvedValue(undefined));
   afterEach(() => vi.restoreAllMocks());
   it("defaults to a controlled 03:00 UTC daily run with startup disabled", () => {
     expect(getGA4DailySchedulerConfig({} as any)).toEqual({
@@ -142,6 +143,16 @@ describe("GA4 daily scheduler timing", () => {
     expect(parseGA4AlignedRefreshMarker(`ga4_aligned_refresh_v1:2026-09-25:${completedAt}`, "2026-09-26")).toBeNull();
     expect(await getGA4AlignedRefreshState("restart-campaign", "2026-09-26"))
       .toEqual({ reportingDate: "2026-09-26", completedAt });
+  });
+
+  it("does not reuse cached readiness after a later attempt invalidates the saved marker", async () => {
+    const completedAt = "2026-09-27T03:05:00.000Z";
+    const read = vi.spyOn(storage, "getExecutiveSummaryDailyComparisonData")
+      .mockResolvedValueOnce({ current: { notes: `ga4_aligned_refresh_v1:2026-09-26:${completedAt}` }, previous: null } as any)
+      .mockResolvedValue({ current: { notes: null }, previous: null } as any);
+    expect(await getGA4AlignedRefreshState("failed-later-attempt", "2026-09-26")).not.toBeNull();
+    expect(await getGA4AlignedRefreshState("failed-later-attempt", "2026-09-26")).toBeNull();
+    expect(read).toHaveBeenCalledTimes(2);
   });
 
   it("publishes GA4 campaign snapshots only inside the ordered daily pipeline", () => {

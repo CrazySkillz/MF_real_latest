@@ -8,7 +8,9 @@ import { mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "..
 import { resolveExactGA4CampaignBreakdownRevenue } from "../shared/ga4-campaign-breakdown";
 import { computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "../shared/kpi-math";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
+import { resolveGA4KpiLiveValue } from "../shared/ga4-kpi-live-value";
 import { isSupportedGA4ConnectionMethod } from "./utils/ga4-service-account";
+import { financialDailySnapshotInputSchema } from "../shared/schema";
 import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
 
@@ -246,7 +248,8 @@ const coercePdfBufferFromDoc = (doc: any): Buffer | null => {
 
 const choosePrimaryConnection = async (campaignId: string) => {
   const connections = await storage.getGA4Connections(campaignId);
-  const selected = (connections || []).find((c: any) => c?.isPrimary) || (connections || [])[0];
+  const active = (connections || []).filter((c: any) => c?.isActive !== false);
+  const selected = active.find((c: any) => c?.isPrimary) || active[0];
   if (!selected) throw new Error("NO_GA4_CONNECTION");
   if (!isSupportedGA4ConnectionMethod(selected.method)) throw new Error("GA4_CONNECTION_METHOD_UNSUPPORTED");
   return selected;
@@ -506,15 +509,24 @@ async function buildGA4ReportPayload(report: any) {
   const financialEndDate = reportCumulativeWindow.endDate;
   const spendSourceStartDate = "1900-01-01";
   const importedRevenueStartDate = "1900-01-01";
-  const importedRevenueEndDate = new Date().toISOString().slice(0, 10);
+  const importedRevenueEndDate = financialEndDate;
   const dailyStart = reportingWindow.startDate;
   const dailyEnd = reportingWindow.endDate;
   const overviewStartDate = reportCumulativeWindow.startDate;
+  const useSavedOverview = importedCampaignNames.size > 0 && propertyId.toLowerCase() !== "yesop";
+  const savedOverview: any = useSavedOverview ? await storage.getGA4OverviewSnapshot(campaignId, propertyId) : null;
+  if (useSavedOverview && (!savedOverview || savedOverview.campaignId !== campaignId || savedOverview.propertyId !== propertyId ||
+      savedOverview.windowStart !== overviewStartDate || savedOverview.windowEnd !== financialEndDate ||
+      String((savedOverview.campaignBreakdown as any)?.meta?.currencyCode || "").toUpperCase() !== campaignCurrency)) {
+    throw new Error("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: Saved publication");
+  }
   const failedParts = new Set<string>();
   const logPartFailure = (label: string, error: any) => {
     failedParts.add(label);
     console.warn(`[GA4 Scheduled PDF] ${label} failed; checking persisted fallback:`, error?.message || error);
   };
+  if (useSavedOverview && !savedOverview!.landingPages) failedParts.add("landing pages");
+  if (useSavedOverview && !savedOverview!.conversionEvents) failedParts.add("conversion events");
   const benchmarkStorage = storage as typeof storage & {
     getPlatformBenchmarks(platformType: string, campaignId?: string): Promise<any[]>;
   };
@@ -526,18 +538,18 @@ async function buildGA4ReportPayload(report: any) {
     : benchmarkStorage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => [] as any[]);
 
   const [metrics, breakdownTraffic, adComparisonBreakdown, landingPages, conversionEvents, timeSeries, revenueSources, spendSources, revenueBreakdown, adComparisonRevenueBreakdown, spendBreakdown, platformKPIs, benchmarks] = await Promise.all([
-    ga4Service.getMetricsWithAutoRefresh(campaignId, storage, reportLookbackRange, propertyId, campaignFilter).catch((e) => { logPartFailure("metrics", e); return {} as any; }),
-    ga4Service.getAcquisitionBreakdown(campaignId, storage, overviewStartDate, propertyId, 2000, campaignFilter, dailyEnd, false, false, campaignCurrency, true).catch((e) => { logPartFailure("acquisition breakdown", e); return { rows: [] }; }),
+    useSavedOverview ? Promise.resolve({}) : ga4Service.getMetricsWithAutoRefresh(campaignId, storage, reportLookbackRange, propertyId, campaignFilter).catch((e) => { logPartFailure("metrics", e); return {} as any; }),
+    useSavedOverview ? Promise.resolve(savedOverview!.campaignBreakdown) : ga4Service.getAcquisitionBreakdown(campaignId, storage, overviewStartDate, propertyId, 2000, campaignFilter, dailyEnd, false, false, campaignCurrency, true).catch((e) => { logPartFailure("acquisition breakdown", e); return { rows: [] }; }),
     adComparisonRequirements.nativeDetail && adComparisonWindow
-      ? ga4Service.getAcquisitionBreakdown(
+      ? useSavedOverview ? Promise.resolve(savedOverview!.campaignBreakdown) : ga4Service.getAcquisitionBreakdown(
           campaignId, storage, adComparisonWindow.startDate, propertyId, 2000, campaignFilter,
           adComparisonWindow.endDate, false, false, campaignCurrency, true,
         )
           .catch((e) => { logPartFailure("ad comparison breakdown", e); return { rows: [] }; })
       : Promise.resolve({ rows: [] }),
-    ga4Service.getLandingPagesReport(campaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, dailyEnd).catch((e) => { logPartFailure("landing pages", e); return { rows: [] }; }),
-    ga4Service.getConversionEventsReport(campaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, dailyEnd).catch((e) => { logPartFailure("conversion events", e); return { rows: [] }; }),
-    ga4Service.getTimeSeriesData(campaignId, storage, dailyStart, propertyId, campaignFilter).catch((e) => { logPartFailure("time series", e); return []; }),
+    useSavedOverview ? Promise.resolve(savedOverview!.landingPages) : ga4Service.getLandingPagesReport(campaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, dailyEnd).catch((e) => { logPartFailure("landing pages", e); return { rows: [] }; }),
+    useSavedOverview ? Promise.resolve(savedOverview!.conversionEvents) : ga4Service.getConversionEventsReport(campaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, dailyEnd).catch((e) => { logPartFailure("conversion events", e); return { rows: [] }; }),
+    useSavedOverview ? Promise.resolve([]) : ga4Service.getTimeSeriesData(campaignId, storage, dailyStart, propertyId, campaignFilter).catch((e) => { logPartFailure("time series", e); return []; }),
     storage.getRevenueSources(campaignId, "ga4").catch((e) => { logPartFailure("revenue sources", e); return [] as any[]; }),
     storage.getSpendSources(campaignId, "ga4").catch((e) => { logPartFailure("spend sources", e); return [] as any[]; }),
     storage.getRevenueBreakdownBySource(campaignId, importedRevenueStartDate, importedRevenueEndDate, "ga4").catch((e) => { logPartFailure("revenue breakdown", e); return [] as any[]; }),
@@ -550,13 +562,13 @@ async function buildGA4ReportPayload(report: any) {
     loadPlatformBenchmarks,
   ]);
 
-  const ga4ToDate = await withTokenRefresh(connection, async (token) => {
+  const ga4ToDate = useSavedOverview ? { totals: savedOverview!.campaignBreakdown?.totals, revenueMetric: savedOverview!.campaignBreakdown?.meta?.revenueMetric } : await withTokenRefresh(connection, async (token) => {
     return await ga4Service.getTotalsWithRevenue(propertyId, token, financialStartDate, financialEndDate, campaignFilter, campaignCurrency);
   }).catch((e) => {
     logPartFailure("totals with revenue", e);
     return { totals: {} };
   });
-  const nativeCampaignRevenueBreakdown = await ga4Service.getAcquisitionBreakdown(
+  const nativeCampaignRevenueBreakdown = useSavedOverview ? savedOverview!.campaignBreakdown : await ga4Service.getAcquisitionBreakdown(
     campaignId, storage, financialStartDate, propertyId, 2000, campaignFilter,
     financialEndDate, false, false, campaignCurrency, true,
   ).catch((error) => {
@@ -720,6 +732,16 @@ async function buildGA4ReportPayload(report: any) {
   dailySummedTotals.revenue = Number(dailySummedTotals.revenue.toFixed(2));
   dailySummedTotals.engagementRate = dailySummedTotals.sessions > 0 ? dailySummedTotals.engagedSessions / dailySummedTotals.sessions : 0;
   const overviewSummedTotals = summarizeGA4TrafficRows(overviewDailyRows);
+  const latestOverview = useSavedOverview ? await storage.getGA4OverviewSnapshot(campaignId, propertyId) : null;
+  if (useSavedOverview && (failedParts.has("persisted daily metrics") || failedParts.has("persisted Overview Summary metrics") ||
+      !latestOverview || String(latestOverview.updatedAt) !== String(savedOverview!.updatedAt) ||
+      overviewDailyRows.length !== (Date.parse(financialEndDate) - Date.parse(overviewStartDate)) / 86400000 + 1 ||
+      new Set(overviewDailyRows.map((row: any) => String(row.date))).size !== overviewDailyRows.length ||
+      overviewDailyRows.some((row: any) => String(row.date) < overviewStartDate || String(row.date) > financialEndDate) ||
+      overviewSummedTotals.sessions !== Number((savedOverview!.campaignBreakdown as any)?.totals?.sessions) ||
+      overviewSummedTotals.conversions !== Number((savedOverview!.campaignBreakdown as any)?.totals?.conversions))) {
+    throw new Error("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: Daily publication changed");
+  }
 
   const breakdownFinancialRows = Array.isArray((breakdown as any)?.rows) ? (breakdown as any).rows : [];
   const breakdownFinancialSummed = breakdownFinancialRows.reduce(
@@ -773,6 +795,36 @@ async function buildGA4ReportPayload(report: any) {
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
   const financialROI = computeRoiPercent(financialRevenue, financialSpend);
   const financialCPA = computeCpa(financialSpend, financialConversions);
+  const reportType = String(report?.reportType || "overview").toLowerCase();
+  const reportConfig = typeof report?.configuration === "string" ? JSON.parse(report.configuration || "{}") : report?.configuration || {};
+  const financialTarget = (item: any) => ["revenue", "roas", "roi", "cpa"].includes(resolveGA4KpiMetricIdentity(item?.metric, item?.name) || "");
+  const includesFinancialTarget = (reportIncludesKPISection(report) && platformKPIs.some((item: any) => financialTarget(item) &&
+    (reportType !== "custom" || reportConfig.selectedKpiIds?.includes(String(item.id))))) ||
+    (reportIncludesBenchmarkSection(report) && benchmarks.some((item: any) => financialTarget(item) &&
+      (reportType !== "custom" || reportConfig.selectedBenchmarkIds?.includes(String(item.id)))));
+  const needsFinancialPublication = overviewRequirements.revenue || overviewRequirements.spend || adComparisonRequirements.revenueBreakdown ||
+    includesFinancialTarget || reportType === "insights" || (reportType === "custom" && reportConfig.sections?.insights);
+  let publishedFinancialInputs: any = null;
+  if (useSavedOverview && needsFinancialPublication) {
+    const published = await storage.getLatestFinancialDailySnapshot(campaignId, financialEndDate);
+    const parsed = financialDailySnapshotInputSchema.safeParse({ campaignId: published?.campaignId, reportingDate: published?.reportingDate, ...(published?.metrics as any)?.financialDaily });
+    if (!parsed.success || parsed.data.campaignId !== campaignId || parsed.data.reportingDate !== financialEndDate ||
+        parsed.data.currency !== campaignCurrency || parsed.data.currentValueWindow.startDate !== financialStartDate ||
+        parsed.data.currentValueWindow.reportingTimeZone !== reportCumulativeWindow.reportingTimeZone ||
+        failedParts.has("revenue sources") || failedParts.has("revenue breakdown") || failedParts.has("spend sources") || failedParts.has("spend breakdown") ||
+        [...activeRevenueSources, ...spendSources.filter((source: any) => source?.isActive !== false)].some((source: any) => String(source?.currency || "").trim().toUpperCase() !== campaignCurrency) ||
+        !parsed.data.inputs.revenue.available || Number(parsed.data.inputs.revenue.value) !== financialRevenue ||
+        !parsed.data.inputs.conversions.available || Number(parsed.data.inputs.conversions.value) !== financialConversions ||
+        (parsed.data.inputs.spend.available ? Number(parsed.data.inputs.spend.value) !== financialSpend : financialSpend !== 0)) {
+      throw new Error("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: Financial publication changed");
+    }
+    publishedFinancialInputs = parsed.data.inputs;
+  }
+  const reportCurrentValue = (item: any) => useSavedOverview ? { ...item, currentValue:
+    publishedFinancialInputs?.spend.available === false && ["roas", "roi", "cpa"].includes(resolveGA4KpiMetricIdentity(item?.metric, item?.name) || "") ? "Unavailable" : resolveGA4KpiLiveValue({
+    kpi: item, breakdownTotals: { ...breakdownTotals, pageviews: overviewSummedTotals.pageviews }, overviewEngagementRate: overviewSummedTotals.engagementRate,
+    financialRevenue, financialSpend, financialROI, financialCPA,
+  }) } : item;
 
   const revenueDisplaySources = revenueBreakdown.length > 0
     ? revenueBreakdown.map((row: any) => ({
@@ -894,7 +946,8 @@ async function buildGA4ReportPayload(report: any) {
             (item: any) => item?.revenue != null && Number.isFinite(Number(item.revenue)),
           )
         : [];
-      return [String(source?.sourceId || ""), totals];
+      return [String(source?.sourceId || ""), source?.revenue != null &&
+        Number(totals.reduce((sum: number, item: any) => sum + Number(item.revenue), 0).toFixed(2)) === Number(source.revenue) ? totals : []];
     })
   );
   const adComparisonSourceRevenueBreakdowns = new Map<string, any[]>(
@@ -905,7 +958,8 @@ async function buildGA4ReportPayload(report: any) {
             (item: any) => item?.revenue != null && Number.isFinite(Number(item.revenue)),
           )
         : [];
-      return [String(source?.sourceId || ""), totals];
+      return [String(source?.sourceId || ""), source?.revenue != null &&
+        Number(totals.reduce((sum: number, item: any) => sum + Number(item.revenue), 0).toFixed(2)) === Number(source.revenue) ? totals : []];
     })
   );
   const insightsRollups = buildTrendRollups(dailyRows);
@@ -926,8 +980,9 @@ async function buildGA4ReportPayload(report: any) {
     revenueDisplaySources,
     adComparisonRevenueDisplaySources,
     spendDisplaySources,
-    platformKPIs: Array.isArray(platformKPIs) ? platformKPIs : [],
-    benchmarks: Array.isArray(benchmarks) ? benchmarks : [],
+    platformKPIs: Array.isArray(platformKPIs) ? platformKPIs.map(reportCurrentValue) : [],
+    benchmarks: Array.isArray(benchmarks) ? benchmarks.map(reportCurrentValue) : [],
+    financialSpendAvailable: publishedFinancialInputs ? publishedFinancialInputs.spend.available : true,
     financialRevenue,
     financialSpend,
     financialROAS,
@@ -1218,13 +1273,13 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     if (includeSpend) {
       subheading("Spend");
       metricCards([
-        ["Total Spend", formatMoney(payload.financialSpend)],
+        ["Total Spend", payload.financialSpendAvailable ? formatMoney(payload.financialSpend) : "Unavailable"],
       ], 1);
     }
     if (includePerformance) {
       subheading("Performance");
       metricCards([
-        ["Profit", formatMoney(payload.financialRevenue - payload.financialSpend)],
+        ["Profit", payload.financialSpendAvailable ? formatMoney(payload.financialRevenue - payload.financialSpend) : "Unavailable"],
         ["ROAS", payload.financialSpend > 0 ? `${Number(payload.financialROAS || 0).toFixed(2)}x` : "—"],
         ["ROI", payload.financialSpend > 0 ? formatPct(payload.financialROI) : "—"],
         ["CPA", payload.financialSpend > 0 && payload.financialConversions > 0 ? formatMoney(payload.financialCPA) : "—"],
@@ -1493,8 +1548,8 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       y += 3;
       metricCards([
         ["Revenue", formatMoney(payload.financialRevenue)],
-        ["Spend", formatMoney(payload.financialSpend)],
-        ["Profit", formatMoney(payload.financialRevenue - payload.financialSpend)],
+        ["Spend", payload.financialSpendAvailable ? formatMoney(payload.financialSpend) : "Unavailable"],
+        ["Profit", payload.financialSpendAvailable ? formatMoney(payload.financialRevenue - payload.financialSpend) : "Unavailable"],
         ["ROAS", payload.financialSpend > 0 ? `${Number(payload.financialROAS || 0).toFixed(2)}x` : "—"],
         ["Days of Data", formatNumber(payload.insightsRollups.availableDays || 0)],
       ], 3);

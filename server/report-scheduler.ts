@@ -1318,7 +1318,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   const needsUiAlignedFinancials = performanceSummarySelected || executiveSummarySelected;
   const [performancePageTotals, performancePageRows] = needsUiAlignedTraffic && cumulativeGA4Connection && cumulativeGA4Window
     ? await Promise.all([
-        needsUiAlignedFinancials ? getCampaignMetricTotals(campaignId, true).catch(() => null) : Promise.resolve(null),
+        needsUiAlignedFinancials ? getCampaignMetricTotals(campaignId, true, true).catch(() => null) : Promise.resolve(null),
         storage.getGA4DailyMetrics(campaignId, String((cumulativeGA4Connection as any).propertyId), cumulativeGA4Window.startDate, cumulativeGA4Window.endDate).catch(() => null),
       ])
     : [null, null];

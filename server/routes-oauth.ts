@@ -4,6 +4,7 @@ import { getAuth } from "@clerk/express";
 import { storage } from "./storage";
 import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertKPIProgressSchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertLinkedInReportSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, ga4Connections, spendSources as spendSourcesTable, spendRecords as spendRecordsTable, revenueSources as revenueSourcesTable, revenueRecords as revenueRecordsTable, hubspotConnections as hubspotConnectionsTable, shopifyConnections as shopifyConnectionsTable } from "@shared/schema";
 import { z } from "zod";
+import { financialDailySnapshotInputSchema } from "@shared/schema";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
 import { computeKpiValue, getGA4KPIFinancialSourceWindow, getGA4KPIReportingWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
@@ -64,7 +65,7 @@ import {
 import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
 import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getExpectedScheduledRefreshAt, getGA4HistoricalImportStartDate, getLatestCompleteReportingDate, getReportingDateWindow, isCreatedThroughReportingDate, normalizeReportingTimeZone, resolveGA4DailyFreshness, resolveGA4RefreshStatus, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
-import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
+import { getCampaignMetricTotals, refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
 import { buildExecutiveSummaryDailySnapshotInput, buildExecutiveSummaryFinancialSourceIdentity, evaluateExecutiveSummaryTrajectory, evaluateExecutiveSummaryTrajectoryFromFinancialDaily, hasRefreshedGA4RowsForExecutiveSummarySnapshot } from "./utils/executive-summary-daily-snapshot";
 import { isAlertDecisionBreached } from "./utils/alert-decision";
@@ -4415,15 +4416,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const recomputeGA4KPIAndBenchmarkValues = async (campaignId: string, logPrefix: string) => {
     try {
-      const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId });
+      const campaign = await storage.getCampaign(campaignId);
+      if (!campaign) throw new Error("Campaign no longer exists");
+      await storage.invalidateExecutiveSummaryDailySnapshotAlignment(campaignId, getReportingDateWindow(1, campaign.reportingTimeZone).endDate);
+      const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, useSavedOverview: true });
       const targetFailed = (result.campaignIdsFailed || []).includes(campaignId);
-      const incomplete = Number(result.campaignsProcessed || 0) <= 0 || targetFailed || result.kpiIdsSkipped.length > 0 || result.kpiIdsFailed.length > 0 || result.alertReconciliationFailures.length > 0;
+      const incomplete = Number(result.campaignsProcessed || 0) <= 0 || targetFailed || result.kpiIdsSkipped.length > 0 || result.kpiIdsFailed.length > 0 ||
+        result.benchmarkIdsSkipped.length > 0 || result.benchmarkIdsFailed.length > 0 || result.alertReconciliationFailures.length > 0;
       if (incomplete) {
         console.warn(`[${logPrefix}] GA4 KPI/Benchmark recompute incomplete for campaign ${campaignId}:`, {
           campaignIdsSkipped: result.campaignIdsSkipped,
           campaignIdsFailed: result.campaignIdsFailed,
           kpiIdsSkipped: result.kpiIdsSkipped,
           kpiIdsFailed: result.kpiIdsFailed,
+          benchmarkIdsSkipped: result.benchmarkIdsSkipped,
+          benchmarkIdsFailed: result.benchmarkIdsFailed,
           alertReconciliationFailures: result.alertReconciliationFailures,
         });
         throw new Error(`GA4 KPI/Benchmark recompute incomplete for campaign ${campaignId}`);
@@ -4445,7 +4452,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         void (async () => {
           let kpiAlertReconciled = false;
           try {
-            const refreshResult = await runGA4DailyKPIAndBenchmarkJobs({ campaignId });
+            const refreshResult = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, useSavedOverview: true });
             kpiAlertReconciled = refreshResult.kpiAlertReconciliationAttempted
               && !refreshResult.alertReconciliationFailures.includes("kpi");
           } catch (e: any) {
@@ -4470,7 +4477,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const recomputeCampaignDerivedValues = async (campaignId: string, opts: { platformContext?: string | null } = {}) => {
     if (isGA4RevenuePlatformContext(opts.platformContext)) {
       const recomputePromise = (async () => {
-        await refreshCampaignCurrentValuesForCampaign(campaignId);
+        await refreshCampaignCurrentValuesForCampaign(campaignId, true);
         await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");
       })();
       let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -9779,7 +9786,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         connection = await storage.getGA4Connection(campaignId, pid).catch(() => null as any);
         if (connection) break;
       }
-      if (!connection || !isSupportedGA4ConnectionMethod(connection.method) || !connection.accessToken) {
+      if (!connection || connection.isActive === false || !isSupportedGA4ConnectionMethod(connection.method)) {
         return res.status(404).json({ success: false, error: "No usable GA4 connection found for this property/campaign." });
       }
       const savedImportWindow = resolveGA4ImportToDateWindow(
@@ -9813,6 +9820,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      if ((campaignFilter?.length || 0) > 0) {
+        const saved = await storage.getGA4OverviewSnapshot(campaignId, String(connection.propertyId));
+        if (!requestedEndDate || endDateUsed === latestCompletedEndDate || saved?.windowEnd === endDateUsed) {
+          const totals = (saved?.campaignBreakdown as any)?.totals;
+          const currencyCode = String((saved?.campaignBreakdown as any)?.meta?.currencyCode || "").trim().toUpperCase();
+          if (!saved || saved.campaignId !== campaignId || saved.propertyId !== String(connection.propertyId) ||
+              saved.windowStart !== startDateUsed || saved.windowEnd !== endDateUsed || currencyCode !== campaignCurrency ||
+              !isGA4FinancialTotalsCandidate(totals)) {
+            return res.status(503).json({ success: false, error: "Saved GA4 financial inputs are not available for this reporting window." });
+          }
+          return res.json({ success: true, propertyId: String(connection.propertyId), startDate: startDateUsed, endDate: endDateUsed,
+            revenueMetric: String((saved.campaignBreakdown as any)?.meta?.revenueMetric || ""), currencyCode, totals,
+            ...(validationReadOnly ? { validationReadOnly: true } : {}) });
+        }
+      }
+      if (!connection.accessToken) return res.status(404).json({ success: false, error: "No usable GA4 connection found for this property/campaign." });
       const attempt = async (token: string) => {
         return await ga4Service.getTotalsWithRevenue(
           String(connection.propertyId),
@@ -14809,7 +14832,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = String(req.params.id || "");
       const dateRange = String(req.query.dateRange || "30days");
-      const persistedOnly = String(req.query.persistedOnly || "").trim() === "1";
+      let persistedOnly = String(req.query.persistedOnly || "").trim() === "1";
 
       // Demo mode: return realistic mock data for testing Attribution tab
       if (req.query.demo === "1") {
@@ -14921,6 +14944,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[]),
       ]);
       const activeGA4 = (ga4Connections || []).some((c: any) => c?.isActive !== false && c?.propertyId && c.propertyId !== "");
+      const useSavedOverview = activeGA4 && (parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter)?.length || 0) > 0
+        && (ga4Connections || []).some((c: any) => c?.isActive !== false && c?.propertyId && !isYesopMockProperty(String(c.propertyId)));
+      persistedOnly = persistedOnly || useSavedOverview;
 
       // GA4 totals
       let ga4Totals: any = {
@@ -15410,6 +15436,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               source: "ga4_overview_snapshot",
             };
           }
+          if (useSavedOverview) {
+            const saved = await getCampaignMetricTotals(campaignId, true, true);
+            if (!saved || saved.ga4FinancialSource !== "persisted_overview" || !saved.revenueAvailable || !saved.spendAvailable ||
+                saved.revenue !== Number((saved.ga4Revenue + importedRevenueToDateTotal).toFixed(2)) || saved.spend !== performanceSummarySpend) {
+              throw new Error("Saved GA4 financial inputs are unavailable or changed during the read");
+            }
+            overviewFinancialCandidate = { revenue: saved.ga4Revenue, conversions: saved.financialConversions, sessions: saved.sessions,
+              users: saved.users, currencyCode: campaignCurrency, source: "ga4_overview_snapshot" };
+          }
           const propertyWindowRows = await storage.getGA4DailyMetrics(campaignId, persistedPropertyId, currentValueWindow.startDate, endDateUsed).catch(() => [] as any[]);
           if (useExecutiveCampaignToDateFinancials) {
             executiveGA4SnapshotRefreshReady = hasRefreshedGA4RowsForExecutiveSummarySnapshot({
@@ -15568,6 +15603,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? canonicalPerformanceSummarySpendAvailable ? performanceSummarySpend : platformSpendFallback
         : webAnalyticsProvider === "ga4" ? performanceSummarySpend : unifiedSpend;
       const financialConversionsForOutcome = campaignFinancialConversions ?? parseNum(financialWebAnalytics.conversions);
+      if (useSavedOverview && currentValueWindow && ![linkedIn, meta, googleAds, instagram, tiktok, googleSheets, custom].some((source) => source?.connected === true)) {
+        const publication = await storage.getLatestFinancialDailySnapshot(campaignId, currentValueWindow.endDate);
+        const parsed = financialDailySnapshotInputSchema.safeParse({ campaignId: publication?.campaignId, reportingDate: publication?.reportingDate, ...(publication?.metrics as any)?.financialDaily });
+        if (!parsed.success || parsed.data.campaignId !== campaignId || parsed.data.reportingDate !== currentValueWindow.endDate ||
+            parsed.data.currency !== campaignCurrency || parsed.data.currentValueWindow.startDate !== currentValueWindow.startDate ||
+            parsed.data.currentValueWindow.reportingTimeZone !== currentValueWindow.reportingTimeZone || !financialWebAnalytics.available || !importedRevenueAvailable ||
+            !parsed.data.inputs.revenue.available || Number(parsed.data.inputs.revenue.value) !== totalRevenueUnified ||
+            !parsed.data.inputs.conversions.available || Number(parsed.data.inputs.conversions.value) !== financialConversionsForOutcome ||
+            parsed.data.inputs.spend.available !== performanceSummarySpendAvailable ||
+            (parsed.data.inputs.spend.available && Number(parsed.data.inputs.spend.value) !== financialSpendForOutcome)) {
+          return res.status(503).json({ success: false, error: "The campaign financial publication is awaiting a successful aligned refresh." });
+        }
+      }
       const ga4FinancialConversions = webAnalyticsProvider === "ga4" ? {
         value: financialConversionsForOutcome,
         available: financialWebAnalytics.available && campaignFinancialConversions !== null,
@@ -28755,7 +28803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (String((okKpi as any)?.platformType || '').toLowerCase() === 'google_analytics' && (okKpi as any)?.campaignId) {
         try {
           const { runGA4DailyKPIAndBenchmarkJobs } = await import("./ga4-kpi-benchmark-jobs.js");
-          const refreshResult = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: String((okKpi as any).campaignId) });
+          const refreshResult = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: String((okKpi as any).campaignId), useSavedOverview: true });
           ga4KpiAlertReconciled = refreshResult.kpiAlertReconciliationAttempted
             && !refreshResult.alertReconciliationFailures.includes("kpi");
         } catch (e: any) {

@@ -745,7 +745,7 @@ describe("scheduled Campaign DeepDive UI value parity", () => {
     expect(pdfDrawCalls.fillColors).toContain("254,249,243");
     expect(pdfDrawCalls.fillColors).toContain("244,174,126");
     expect(storageMock.getExecutiveSummaryDailyComparisonData).toHaveBeenCalledWith("campaign-1", "2026-08-27", "2026-08-20");
-    expect(getCampaignMetricTotalsMock).toHaveBeenCalledWith("campaign-1", true);
+    expect(getCampaignMetricTotalsMock).toHaveBeenCalledWith("campaign-1", true, true);
   });
 
   it("fails Executive Summary freshness closed when the certified GA4 window is unavailable", async () => {

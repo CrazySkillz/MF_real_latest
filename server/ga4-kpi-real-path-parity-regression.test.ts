@@ -295,6 +295,21 @@ function setAuthoritativeFixture() {
   });
 }
 
+function setSavedReportPublication(startDate = connection.importStartDate) {
+  storageMock.getGA4OverviewSnapshot.mockResolvedValue({ campaignId: campaign.id, propertyId: connection.propertyId,
+    windowStart: startDate, windowEnd: dailyRow.date, campaignBreakdown: {
+      rows: [{ campaign: "parity_campaign", ...dailyRow, revenue: 150 }], totals: { ...dailyRow, revenue: 150 },
+      meta: { revenueMetric: "purchaseRevenue", currencyCode: "USD" },
+    }, landingPages: { rows: [] }, conversionEvents: { rows: [], totals: { conversions: 5 } } });
+  const dates: string[] = [];
+  for (let date = startDate; date <= dailyRow.date; date = new Date(Date.parse(date) + 86400000).toISOString().slice(0, 10)) dates.push(date);
+  storageMock.getGA4DailyMetrics.mockResolvedValue(dates.map(date => date === dailyRow.date ? dailyRow : { date, sessions: 0, users: 0, pageviews: 0, conversions: 0, revenue: 0, engagedSessions: 0 }));
+  storageMock.getLatestFinancialDailySnapshot.mockResolvedValue({ campaignId: campaign.id, reportingDate: dailyRow.date, metrics: { financialDaily: {
+    version: "financial_daily_snapshot_v1", currency: "USD", currentValueWindow: { mode: "initial_import_to_latest_completed_day", startDate, endDate: dailyRow.date, dataThroughDate: dailyRow.date, reportingTimeZone: "Europe/Amsterdam" },
+    inputs: { revenue: { available: true, value: "200.00", sources: ["ga4", "revenue-source:revenue-source"] }, spend: { available: true, value: "100.00", sources: ["canonical_spend_sources"] }, conversions: { available: true, value: 5, sources: ["ga4"] } },
+  } } });
+}
+
 describe("GA4 KPI real-path cross-consumer parity", () => {
   beforeAll(async () => {
     const app = express();
@@ -820,7 +835,7 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
 
     storageMock.getGA4Connection.mockResolvedValue({ ...connection, refreshToken: "refresh-token" });
     ga4ServiceMock.getTotalsWithRevenue.mockRejectedValueOnce(new Error("GA4 API Error: 401 unauthenticated"));
-    const toDate = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-to-date?propertyId=" + encodeURIComponent(connection.propertyId) + "&readOnly=1");
+    const toDate = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-to-date?propertyId=" + encodeURIComponent(connection.propertyId) + "&readOnly=1&endDate=2026-07-30");
     expect(toDate.status).toBe(401);
     expect(await toDate.json()).toMatchObject({ validationReadOnly: true, error: "TOKEN_EXPIRED" });
     expect(ga4ServiceMock.refreshAccessToken).not.toHaveBeenCalled();
@@ -842,7 +857,7 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
 
   it("uses the saved GA4 import boundary for a new campaign without a start date", async () => {
     storageMock.getCampaign.mockResolvedValue({ ...campaign, startDate: null, createdAt: "2999-01-01T00:00:00.000Z" });
-    vi.useRealTimers();
+    setSavedReportPublication();
 
     const response = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-to-date?propertyId=" + encodeURIComponent(connection.propertyId) + "&readOnly=1");
     const body = await response.json();
@@ -855,32 +870,18 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
       totals: { revenue: 150 },
     });
     expect(body.noCompletedWindow).not.toBe(true);
-    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith(
-      connection.propertyId,
-      connection.accessToken,
-      connection.importStartDate,
-      body.endDate,
-      campaign.ga4CampaignFilter,
-      campaign.currency,
-    );
+    expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 
   it("uses the saved GA4 import boundary when the campaign start is earlier", async () => {
-    vi.useRealTimers();
+    setSavedReportPublication();
 
     const response = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-to-date?propertyId=" + encodeURIComponent(connection.propertyId) + "&readOnly=1");
     const body = await response.json();
 
     expect(response.status).toBe(200);
     expect(body.startDate).toBe(connection.importStartDate);
-    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith(
-      connection.propertyId,
-      connection.accessToken,
-      connection.importStartDate,
-      body.endDate,
-      campaign.ga4CampaignFilter,
-      campaign.currency,
-    );
+    expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 
   it("uses the fixed legacy import boundary for simulated GA4 without a saved connection", async () => {
@@ -898,21 +899,14 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
   it("uses the fixed legacy fallback when a connection has no saved import boundary", async () => {
     storageMock.getCampaign.mockResolvedValue({ ...campaign, startDate: null, createdAt: "2026-06-24T00:00:00.000Z" });
     storageMock.getGA4Connection.mockResolvedValue({ ...connection, importStartDate: null });
-    vi.useRealTimers();
+    setSavedReportPublication(GA4_OVERVIEW_LEGACY_IMPORT_START_DATE);
 
     const response = await fetch(baseUrl + "/api/campaigns/" + campaign.id + "/ga4-to-date?propertyId=" + encodeURIComponent(connection.propertyId) + "&readOnly=1");
     const body = await response.json();
 
     expect(response.status).toBe(200);
     expect(body.startDate).toBe(GA4_OVERVIEW_LEGACY_IMPORT_START_DATE);
-    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith(
-      connection.propertyId,
-      connection.accessToken,
-      GA4_OVERVIEW_LEGACY_IMPORT_START_DATE,
-      body.endDate,
-      campaign.ga4CampaignFilter,
-      campaign.currency,
-    );
+    expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 
   it("serves Overview Campaign Breakdown from the scheduler snapshot without provider work", async () => {
@@ -1120,6 +1114,7 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
   });
 
   it("renders matching KPI and Insights values through the actual scheduled GA4 PDF path", async () => {
+    setSavedReportPublication();
     await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-31", suppressAlerts: true });
     const buffer = await buildGA4ScheduledPdfAttachment({ report, reportName: report.name, windowStart: "2026-07-02", windowEnd: "2026-07-31", campaignName: campaign.name });
     const text = pdfTextCalls.join("\n");
@@ -1131,6 +1126,7 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
   });
 
   it("does not expand an empty Custom Report KPI/Benchmark selection to every saved row", async () => {
+    setSavedReportPublication();
     const emptySelectionReport = {
       ...report,
       id: "ga4-empty-selection-report",
@@ -1258,6 +1254,7 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
   });
 
   it("fails the actual scheduled Benchmark PDF path closed when its Benchmark read fails", async () => {
+    setSavedReportPublication();
     storageMock.getPlatformBenchmarks.mockRejectedValue(new Error("Benchmark read failed"));
     await expect(buildGA4ScheduledPdfAttachment({
       report: benchmarkReport,

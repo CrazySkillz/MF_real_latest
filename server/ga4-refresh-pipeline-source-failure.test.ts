@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
     getRevenueTotalForRange: vi.fn(), getSpendTotalForRange: vi.fn(), upsertFinancialDailySnapshot: vi.fn(),
     getRevenueBreakdownBySource: vi.fn(), getSpendBreakdownBySource: vi.fn(),
     markExecutiveSummaryDailySnapshotAligned: vi.fn(),
+    invalidateExecutiveSummaryDailySnapshotAlignment: vi.fn(),
     getPlatformKPIs: vi.fn(), getPlatformBenchmarks: vi.fn(), getCampaignKPIs: vi.fn(), getCampaignBenchmarks: vi.fn(),
     getKPIProgress: vi.fn(), updateKPI: vi.fn(), recordKPIProgress: vi.fn(), updateKPIProgress: vi.fn(),
     getBenchmarkHistory: vi.fn(), updateBenchmark: vi.fn(), recordBenchmarkHistory: vi.fn(),
@@ -137,6 +138,16 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     expect(mocks.aggregate).toHaveBeenCalledWith("campaign-a", { allowScheduledGA4: true });
     expect(getAutoRefreshSchedulerStatus().lastRunStatus).toBe("success");
     expect(getGA4DailySchedulerStatus().lastRunStatus).toBe("success");
+    expect(mocks.storage.invalidateExecutiveSummaryDailySnapshotAlignment).toHaveBeenCalledExactlyOnceWith("campaign-a", reportingDate);
+    expect(mocks.storage.invalidateExecutiveSummaryDailySnapshotAlignment.mock.invocationCallOrder[0]).toBeLessThan(mocks.storage.getRevenueSources.mock.invocationCallOrder[0]);
+  });
+
+  it("does not refresh any source when durable readiness invalidation fails", async () => {
+    mocks.storage.invalidateExecutiveSummaryDailySnapshotAlignment.mockRejectedValue(new Error("readiness storage unavailable"));
+    await expect(runGA4DailyRefreshPipelineForCampaignNow("campaign-a")).rejects.toThrow("readiness storage unavailable");
+    expect(mocks.storage.getRevenueSources).not.toHaveBeenCalled();
+    expect(mocks.provider.getTimeSeriesData).not.toHaveBeenCalled();
+    expect(mocks.storage.upsertFinancialDailySnapshot).not.toHaveBeenCalled();
   });
 
   // Revenue discovery: HubSpot (4 contexts), Salesforce (4), Shopify (5), Sheets (5).

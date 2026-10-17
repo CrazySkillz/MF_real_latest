@@ -190,19 +190,30 @@ export default function CampaignPerformanceSummary() {
     enabled: !!campaignId && !!performanceGA4PropertyId && !!performanceGA4FinancialEndDate && !demoMode,
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const [nativeResponse, importedResponse] = await Promise.all([
+      const [nativeResponse, importedResponse, publishedResponse] = await Promise.all([
         fetch(`/api/campaigns/${campaignId}/ga4-to-date?propertyId=${encodeURIComponent(performanceGA4PropertyId)}&insightsScope=1&readOnly=1&endDate=${encodeURIComponent(performanceGA4FinancialEndDate)}`),
         fetch(`/api/campaigns/${campaignId}/revenue-to-date?platformContext=ga4&endDate=${encodeURIComponent(performanceGA4FinancialEndDate)}`),
+        fetch(`/api/campaigns/${campaignId}/financial-daily-snapshot?throughDate=${encodeURIComponent(performanceGA4FinancialEndDate)}`),
       ]);
-      const [native, imported] = await Promise.all([
+      const [native, imported, published] = await Promise.all([
         nativeResponse.json().catch(() => null),
         importedResponse.json().catch(() => null),
+        publishedResponse.json().catch(() => null),
       ]);
       if (!nativeResponse.ok || !native || native?.success === false || String(native?.propertyId || "") !== performanceGA4PropertyId || native?.endDate !== performanceGA4FinancialEndDate) {
         throw new Error(native?.error || "Failed to fetch GA4 revenue");
       }
       if (!importedResponse.ok || !imported || imported?.success === false || imported?.platformContext !== "ga4" || imported?.endDate !== performanceGA4FinancialEndDate) {
         throw new Error(imported?.error || "Failed to fetch imported GA4 revenue");
+      }
+      const saved = published?.snapshot;
+      const financial = saved?.metrics?.financialDaily;
+      if (!publishedResponse.ok || saved?.campaignId !== campaignId || saved?.reportingDate !== performanceGA4FinancialEndDate ||
+          financial?.currency !== String(campaign?.currency || "USD").toUpperCase() || financial?.currentValueWindow?.startDate !== native.startDate ||
+          financial?.currentValueWindow?.reportingTimeZone !== performanceGA4SummaryResponse?.reportingTimeZone || financial?.inputs?.revenue?.available !== true ||
+          Number(financial.inputs.revenue.value) !== Number((Number(native.totals?.revenue) + Number(imported.totalRevenue)).toFixed(2)) ||
+          financial?.inputs?.conversions?.available !== true || Number(financial.inputs.conversions.value) !== Number(native.totals?.conversions)) {
+        throw new Error("Revenue is awaiting a successful aligned refresh");
       }
       return { native, imported };
     },

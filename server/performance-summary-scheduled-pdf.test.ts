@@ -229,7 +229,7 @@ describe("scheduled Performance Summary PDF", () => {
     expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-08-21", "2026-08-27");
     expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith("campaign-1", "properties/123", "2026-07-02", "2026-08-27");
     expect(storageMock.getComparisonData).toHaveBeenCalledWith("campaign-1", "last_week", "Europe/Amsterdam", "2026-08-20");
-    expect(getCampaignMetricTotalsMock).toHaveBeenCalledWith("campaign-1", true);
+    expect(getCampaignMetricTotalsMock).toHaveBeenCalledWith("campaign-1", true, true);
   });
 
   it("renders Budget & Financial Analysis with the same branded report system", async () => {

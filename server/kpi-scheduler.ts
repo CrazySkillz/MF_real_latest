@@ -454,7 +454,7 @@ export async function runDailyKPIJobs(): Promise<void> {
     } else {
       // Ensure GA4 KPIs/Benchmarks have daily progress/history so Insights can show trends/streaks.
       // Best-effort: never fail the whole scheduler if GA4 refresh has issues.
-      await runGA4DailyKPIAndBenchmarkJobs().catch((e) => {
+      await runGA4DailyKPIAndBenchmarkJobs({ useSavedOverview: true }).catch((e) => {
         console.warn("[KPI Scheduler] GA4 daily KPI/Benchmark job failed:", (e as any)?.message || e);
       });
     }

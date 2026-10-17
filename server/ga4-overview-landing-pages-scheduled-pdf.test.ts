@@ -5,6 +5,7 @@ const storageMock = vi.hoisted(() => ({
   getCampaign: vi.fn(),
   getGA4Connections: vi.fn(),
   getGA4DailyMetrics: vi.fn(),
+  getGA4OverviewSnapshot: vi.fn(),
   getPlatformKPIs: vi.fn(),
   getPlatformBenchmarks: vi.fn(),
   getRevenueBreakdownBySource: vi.fn(),
@@ -99,7 +100,10 @@ describe("GA4 Overview Landing Pages scheduled PDF value parity", () => {
     for (const mock of [...Object.values(storageMock), ...Object.values(ga4ServiceMock)]) mock.mockReset();
     storageMock.getCampaign.mockResolvedValue(campaign);
     storageMock.getGA4Connections.mockResolvedValue([connection]);
-    storageMock.getGA4DailyMetrics.mockResolvedValue([]);
+    storageMock.getGA4DailyMetrics.mockResolvedValue(Array.from({ length: 45 }, (_, i) => ({ date: new Date(Date.UTC(2026, 7, i + 1)).toISOString().slice(0, 10), sessions: 0, conversions: 0 })));
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue({ campaignId: campaign.id, propertyId: connection.propertyId,
+      windowStart: "2026-08-01", windowEnd: "2026-09-14", campaignBreakdown: { rows: [], totals: { sessions: 0, conversions: 0, revenue: 0 }, meta: { currencyCode: "USD" } },
+      landingPages: { rows: landingRows }, conversionEvents: { rows: [] } });
     storageMock.getPlatformKPIs.mockResolvedValue([]);
     storageMock.getPlatformBenchmarks.mockResolvedValue([]);
     storageMock.getRevenueBreakdownBySource.mockResolvedValue([]);
@@ -127,15 +131,8 @@ describe("GA4 Overview Landing Pages scheduled PDF value parity", () => {
     const text = pdfText.join("\n");
 
     expect(result?.length).toBeGreaterThan(100);
-    expect(ga4ServiceMock.getLandingPagesReport).toHaveBeenCalledWith(
-      campaign.id,
-      storageMock,
-      "2026-08-01",
-      connection.propertyId,
-      50,
-      campaign.ga4CampaignFilter,
-      "2026-09-14",
-    );
+    expect(ga4ServiceMock.getLandingPagesReport).not.toHaveBeenCalled();
+    expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledWith(campaign.id, connection.propertyId);
     for (const value of [
       "Landing Pages", "LANDING PAGE", "SOURCE/MEDIUM", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE",
       landingRows[0].landingPage, "google/cpc", "8", "6", "2.5", "31.3%",

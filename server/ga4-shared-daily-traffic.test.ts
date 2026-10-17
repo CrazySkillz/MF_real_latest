@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const persisted = vi.hoisted(() => ({
   getCampaign: vi.fn(), getCampaigns: vi.fn(), getGA4Connections: vi.fn(), getGA4Connection: vi.fn(),
   getGA4DailyMetrics: vi.fn(), replaceGA4DailyMetricsWindow: vi.fn(),
+  getGA4OverviewSnapshot: vi.fn(),
 }));
 vi.mock("./storage", () => ({ storage: persisted }));
 vi.mock("./ga4-kpi-benchmark-jobs", () => ({}));
@@ -55,6 +56,7 @@ describe("GA4 shared daily traffic during provider revisions", () => {
     persisted.getGA4Connections.mockImplementation(async () => [connection()]);
     persisted.getGA4Connection.mockImplementation(async () => connection());
     persisted.getGA4DailyMetrics.mockResolvedValue([]);
+    persisted.getGA4OverviewSnapshot.mockResolvedValue(undefined);
     persisted.replaceGA4DailyMetricsWindow.mockImplementation(async (_c, _p, _s, _e, rows) => ({ replaced: rows.length }));
     for (const method of ["log", "warn", "error"] as const) vi.spyOn(console, method).mockImplementation(() => undefined);
     vi.spyOn(ga4Service, "getLandingPagesReport").mockResolvedValue({ rows: [], totals: {} } as any);
@@ -87,6 +89,19 @@ describe("GA4 shared daily traffic during provider revisions", () => {
               m === "engagementRate" ? row.engagedSessions / row.sessions : (row as any)[m === "purchaseRevenue" ? "totalRevenue" : m] ?? 0,
           ) })),
         }));
+      }
+      // GA4 returns one row per requested dimension tuple, including one row per
+      // date when several selected campaigns share that date.
+      if (isDaily && isPrimary && rows.length) {
+        const grouped = new Map<string, any>();
+        for (const row of rows) {
+          const key = row.dimensionValues[0].value;
+          const existing = grouped.get(key);
+          if (!existing) grouped.set(key, structuredClone(row));
+          else for (let i = 0; i < 6; i++) existing.metricValues[i].value = String(Number(existing.metricValues[i].value) + Number(row.metricValues[i].value));
+        }
+        rows = Array.from(grouped.values());
+        for (const row of rows) row.metricValues[6].value = String(Number(row.metricValues[5].value) / Number(row.metricValues[0].value));
       }
       if (captureRequest && malformed === "duplicate" && rows.length) rows.push(structuredClone(rows[0]));
       if (captureRequest && malformed === "date" && rows.length) rows[0].dimensionValues[0].value = "20270101";
@@ -231,6 +246,38 @@ describe("GA4 shared daily traffic during provider revisions", () => {
     await captureDaily(capture);
     expect(capture.captured).toBeUndefined();
     expect((await breakdown(capture)).totals.sessions).toBe(2896);
+  });
+
+  it.each(["complete", "partial"] as const)("retains the last publication when the %s primary branch advances independently", async mode => {
+    primary = mode; primaryBreakdown = true;
+    const result = await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T06:10:00Z"));
+    expect(result.campaignIdsFailed).toEqual([campaign.id]);
+    expect(result.failureReasonsByCampaign[campaign.id][0]).toContain("breakdown_sessions");
+    expect(persisted.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
+  });
+
+  it.each(["complete", "partial"] as const)("publishes the %s primary branch when exact reports agree", async mode => {
+    primary = mode; primaryBreakdown = true; revision = 0;
+    const result = await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T06:10:00Z"));
+    expect(result.campaignIdsFailed).toEqual([]);
+    const [, , , , rows, saved] = persisted.replaceGA4DailyMetricsWindow.mock.calls[0];
+    expect(rows.reduce((sum: number, row: any) => sum + row.sessions, 0)).toBe(saved.campaignBreakdown.totals.sessions);
+  });
+
+  it("combines retained older days with the recent refresh only when full-window totals reconcile", async () => {
+    vi.stubEnv("GA4_DAILY_LOOKBACK_DAYS", "30"); revision = 0;
+    persisted.getGA4DailyMetrics.mockResolvedValue([{ date: start, sessions: 2864, conversions: 248, revenue: 62155.55 }]);
+    const result = await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T06:10:00Z"));
+    expect(result.campaignIdsFailed).toEqual([]);
+    expect(persisted.replaceGA4DailyMetricsWindow.mock.calls[0][5].campaignBreakdown.totals.sessions).toBe(2895);
+  });
+
+  it("preserves the legacy unfiltered daily path without substituting a campaign-scoped Overview", async () => {
+    persisted.getCampaign.mockResolvedValue({ ...campaign, ga4CampaignFilter: "" });
+    const result = await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T06:10:00Z"));
+    expect(result.campaignIdsFailed).toEqual([]);
+    expect(persisted.getGA4OverviewSnapshot).not.toHaveBeenCalled();
+    expect(persisted.replaceGA4DailyMetricsWindow.mock.calls[0][5]).toBeUndefined();
   });
 
   it("keeps a single campaign's native session key-event rate and counts", async () => {

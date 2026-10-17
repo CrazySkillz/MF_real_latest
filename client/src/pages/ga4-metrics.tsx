@@ -3119,7 +3119,8 @@ export default function GA4Metrics() {
     if (importedRevenueLoading || revenueSourcesLoading) return "loading";
     return importedRevenueError ? "unavailable" : "loading";
   })();
-  const revenueKpiInputState = combineKpiInputStates(nativeRevenueKpiInputState, importedRevenueKpiInputState);
+  const revenueKpiInputState = combineKpiInputStates(nativeRevenueKpiInputState, importedRevenueKpiInputState,
+    snapshotRevenueKpiInputState, Number(financialRevenue.toFixed(2)) === overviewFinancialRevenue ? "ready" : "stale");
   const adComparisonRevenueState: GA4KpiInputState = (() => {
     if (revenueSourcesError) return revenueSourcesResp === undefined ? "unavailable" : "stale";
     if (revenueSourceDefinitionsKnownEmpty) return "ready";
@@ -3129,6 +3130,9 @@ export default function GA4Metrics() {
   })();
   const spendKpiInputState: GA4KpiInputState = (() => {
     if (spendSourcesError) return spendSourcesResp === undefined ? "unavailable" : "stale";
+    if (financialDailySnapshotResp === undefined) return financialDailySnapshotError ? "unavailable" : "loading";
+    if (financialDailySnapshotError || overviewFinancialRefreshWarning ||
+        overviewFinancialSpendAvailable !== hasSpendSources || (overviewFinancialSpendAvailable && financialSpend !== overviewFinancialSpend)) return "stale";
     if (spendSourceDefinitionsKnownEmpty) return "ready";
     if (spendBreakdownResp !== undefined) return spendBreakdownError ? "stale" : "ready";
     if (spendToDateResp !== undefined) return spendToDateError ? "stale" : "ready";
@@ -3375,6 +3379,24 @@ export default function GA4Metrics() {
         ? normalizedReportConfig.sections
         : { overview: reportType === "overview", kpis: reportType === "kpis", benchmarks: reportType === "benchmarks", ads: reportType === "ads", insights: reportType === "insights" };
     const customSubsections = reportType === "custom" ? normalizedReportConfig.subsections || {} : {};
+    const financialTargetSelected = (items: any[], ids: string[]) => items.some((item: any) =>
+      (reportType !== "custom" || ids.includes(String(item.id))) &&
+      ["revenue", "roas", "roi", "cpa"].includes(resolveGA4KpiMetricIdentity(item?.metric, item?.name) || ""));
+    const requiresFinancialPublication = sections.insights ||
+      (sections.overview && (reportType !== "custom" || customSubsections.overview?.revenue || customSubsections.overview?.spend || customSubsections.overview?.performance)) ||
+      (sections.ads && (reportType !== "custom" || customSubsections.ads?.revenueBreakdown)) ||
+      (sections.kpis && financialTargetSelected(platformKPIs || [], normalizedReportConfig.selectedKpiIds)) ||
+      (sections.benchmarks && financialTargetSelected(benchmarks, normalizedReportConfig.selectedBenchmarkIds));
+    const savedFinancialWindow = overviewFinancialSnapshot?.metrics?.financialDaily?.currentValueWindow;
+    if (requiresFinancialPublication && selectedGA4PropertyId !== "yesop" &&
+        (overviewFinancialSnapshot?.campaignId !== campaignId || !overviewFinancialRevenueAvailable || !overviewFinancialConversionsAvailable ||
+          overviewFinancialRefreshWarning || overviewFinancialReportingDate !== (ga4ToDateResp as any)?.endDate ||
+          overviewFinancialSnapshot?.metrics?.financialDaily?.currency !== campaignCurrency ||
+          savedFinancialWindow?.startDate !== (ga4ToDateResp as any)?.startDate || savedFinancialWindow?.reportingTimeZone !== normalizeClientReportingTimeZone((campaign as any)?.reportingTimeZone) ||
+          Number(financialRevenue.toFixed(2)) !== overviewFinancialRevenue || financialConversions !== overviewFinancialConversions ||
+          (overviewFinancialSpendAvailable ? financialSpend !== overviewFinancialSpend : financialSpend !== 0))) {
+      throw new Error("This report is waiting for a successful aligned data refresh. The displayed financial figures have been retained.");
+    }
     const materializedRevenueUnavailable = revenueDisplaySources.some(
       (source: any) => source?.materializedRevenueStatus === "unavailable" || source?.revenue == null,
     );
@@ -4079,9 +4101,9 @@ export default function GA4Metrics() {
         y += 14;
       };
       const insightSummaryCards: [string, string][] = [
-        ["Spend", fC(Number(financialSpend || 0))],
+        ["Spend", overviewFinancialSpendAvailable ? fC(Number(financialSpend || 0)) : "Unavailable"],
         ["Revenue", fC(Number(financialRevenue || 0))],
-        ["Profit", fC(Number(financialRevenue || 0) - Number(financialSpend || 0))],
+        ["Profit", overviewFinancialSpendAvailable ? fC(Number(financialRevenue || 0) - Number(financialSpend || 0)) : "Unavailable"],
         ["ROAS", financialSpend > 0 ? `${Number(financialROAS || 0).toFixed(2)}x` : "—"],
         ["ROI", financialSpend > 0 ? fP(Number(financialROI || 0)) : "—"],
       ];
@@ -6036,7 +6058,8 @@ export default function GA4Metrics() {
               (item: any) => item?.revenue != null && Number.isFinite(Number(item.revenue)),
             )
           : [];
-        return [String(source?.sourceId || ""), totals];
+        return [String(source?.sourceId || ""), source?.revenue != null &&
+          Number(totals.reduce((sum: number, item: any) => sum + Number(item.revenue), 0).toFixed(2)) === Number(source.revenue) ? totals : []];
       }),
     );
   }, [revenueDisplaySources]);

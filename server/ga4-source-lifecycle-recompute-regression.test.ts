@@ -1,6 +1,7 @@
 import { readFileSync } from "fs";
 import { join } from "path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import ts from "typescript";
 
 const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf8");
 const storage = readFileSync(join(process.cwd(), "server", "storage.ts"), "utf8");
@@ -17,8 +18,20 @@ const sliceBetween = (source: string, start: string, end: string) => {
 };
 
 describe("GA4 source lifecycle recompute route guards", () => {
+  it.each(["success", "kpiIdsFailed", "benchmarkIdsFailed", "benchmarkIdsSkipped"])("checks the actual source recompute result: %s", async condition => {
+    const body = sliceBetween(routes, "const recomputeGA4KPIAndBenchmarkValues =", "const recomputeGA4SpendBeforeResponse =");
+    const storage = { getCampaign: vi.fn().mockResolvedValue({ reportingTimeZone: "Europe/Amsterdam" }), invalidateExecutiveSummaryDailySnapshotAlignment: vi.fn().mockResolvedValue(undefined) };
+    const result: any = { campaignsProcessed: 1, campaignIdsFailed: [], campaignIdsSkipped: [], kpiIdsFailed: [], kpiIdsSkipped: [], benchmarkIdsFailed: [], benchmarkIdsSkipped: [], alertReconciliationFailures: [] };
+    if (condition !== "success") result[condition] = ["affected-row"];
+    const jobs = vi.fn().mockResolvedValue(result);
+    const fn = new Function("storage", "getReportingDateWindow", "runGA4DailyKPIAndBenchmarkJobs", "console", ts.transpileModule(body + "return recomputeGA4KPIAndBenchmarkValues;", { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(storage, () => ({ endDate: "2026-10-16" }), jobs, { warn: vi.fn() });
+    if (condition === "success") await expect(fn("campaign-a", "Test")).resolves.toBe(true);
+    else await expect(fn("campaign-a", "Test")).rejects.toThrow("recompute incomplete");
+    expect(storage.invalidateExecutiveSummaryDailySnapshotAlignment).toHaveBeenCalledWith("campaign-a", "2026-10-16");
+    expect(jobs).toHaveBeenCalledWith({ campaignId: "campaign-a", useSavedOverview: true });
+  });
   it("completes GA4 source-backed KPI/Benchmark recompute before mutation responses", () => {
-    expect(routes).toContain('import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";');
+    expect(routes).toContain('import { getCampaignMetricTotals, refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";');
     expect(routes).toContain('import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";');
 
     const ga4Helper = sliceBetween(
@@ -26,7 +39,8 @@ describe("GA4 source lifecycle recompute route guards", () => {
       "const recomputeGA4KPIAndBenchmarkValues",
       "const recomputeGA4SpendBeforeResponse",
     );
-    expect(ga4Helper).toContain("await runGA4DailyKPIAndBenchmarkJobs({ campaignId });");
+    expect(ga4Helper).toContain("await runGA4DailyKPIAndBenchmarkJobs({ campaignId, useSavedOverview: true });");
+    expect(ga4Helper.indexOf("await storage.invalidateExecutiveSummaryDailySnapshotAlignment")).toBeLessThan(ga4Helper.indexOf("await runGA4DailyKPIAndBenchmarkJobs"));
 
     const spendHelper = sliceBetween(routes, "const recomputeGA4SpendBeforeResponse", "const scheduleGA4KpiCreatePostResponseProcessing");
     expect(spendHelper).toContain('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");');
@@ -40,12 +54,12 @@ describe("GA4 source lifecycle recompute route guards", () => {
       "// When \"revenue to date\"",
     );
     expect(revenueHelper).toContain("if (isGA4RevenuePlatformContext(opts.platformContext))");
-    expect(revenueHelper).toContain("await refreshCampaignCurrentValuesForCampaign(campaignId);");
+    expect(revenueHelper).toContain("await refreshCampaignCurrentValuesForCampaign(campaignId, true);");
     expect(revenueHelper).toContain('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");');
     expect(revenueHelper).toContain("completed = await Promise.race([");
     expect(revenueHelper).toContain("GA4_REVENUE_RECOMPUTE_RESPONSE_WAIT_MS");
     expect(revenueHelper).toContain("continuing in background");
-    expect(revenueHelper.indexOf("await refreshCampaignCurrentValuesForCampaign(campaignId);")).toBeLessThan(
+    expect(revenueHelper.indexOf("await refreshCampaignCurrentValuesForCampaign(campaignId, true);")).toBeLessThan(
       revenueHelper.indexOf('await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");'),
     );
     expect(routes).not.toContain("scheduleGA4RevenuePostResponseRecompute");

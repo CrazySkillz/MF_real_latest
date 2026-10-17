@@ -283,7 +283,8 @@ export async function materializeGA4GoogleAdsSpendForCampaign(
   const totals = await storage.getSpendTotalForRange(campaignId, "1900-01-01", endDate, "ga4");
   await storage.updateCampaign(campaignId, { spend: totals.totalSpend.toFixed(2) } as any);
   if (!deferDownstream) {
-    const recompute = await runGA4DailyKPIAndBenchmarkJobs({ campaignId });
+    await storage.invalidateExecutiveSummaryDailySnapshotAlignment(campaignId, endDate);
+    const recompute = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, useSavedOverview: true });
     if (Number(recompute.campaignsProcessed || 0) <= 0 || recompute.campaignIdsSkipped.length > 0 || recompute.campaignIdsFailed.length > 0 || recompute.kpiIdsSkipped.length > 0 || recompute.kpiIdsFailed.length > 0 || recompute.benchmarkIdsSkipped.length > 0 || recompute.benchmarkIdsFailed.length > 0 || recompute.alertReconciliationFailures.length > 0) {
       throw new Error(`GA4 Google Ads downstream recompute was incomplete for campaign ${campaignId}`);
     }

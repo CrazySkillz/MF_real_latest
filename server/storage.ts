@@ -164,6 +164,11 @@ export type GA4OverviewSnapshotInput = {
   campaignBreakdown: Record<string, any>;
   landingPages: Record<string, any>;
   conversionEvents: Record<string, any>;
+  refreshScope?: {
+    campaign: Record<string, unknown>;
+    connection: Record<string, unknown>;
+    previousUpdatedAt: string | null;
+  };
 };
 
 export interface IStorage {
@@ -510,6 +515,7 @@ export interface IStorage {
   upsertFinancialDailySnapshot(snapshot: FinancialDailySnapshotInput): Promise<MetricSnapshot>;
   upsertExecutiveSummaryDailySnapshot(snapshot: ExecutiveSummaryDailySnapshotInput): Promise<MetricSnapshot>;
   markExecutiveSummaryDailySnapshotAligned(campaignId: string, reportingDate: string, completedAt: string): Promise<boolean>;
+  invalidateExecutiveSummaryDailySnapshotAlignment(campaignId: string, reportingDate: string): Promise<void>;
   getExecutiveSummaryDailyComparisonData(campaignId: string, currentReportingDate: string, comparisonDate: string): Promise<{
     current: MetricSnapshot | null;
     previous: MetricSnapshot | null;
@@ -1173,6 +1179,22 @@ export class DatabaseStorage implements IStorage {
     )) throw new Error("Invalid GA4 Overview snapshot");
 
     await db.transaction(async (tx: any) => {
+      if (overviewSnapshot?.refreshScope) {
+        const scope = overviewSnapshot.refreshScope;
+        const [currentCampaign] = await tx.select().from(campaigns).where(eq(campaigns.id, cid)).for("update");
+        const [currentConnection] = await tx.select().from(ga4Connections).where(and(
+          eq(ga4Connections.id, String(scope.connection.id)), eq(ga4Connections.campaignId, cid), eq(ga4Connections.propertyId, pid),
+        )).for("share");
+        if (!currentCampaign || !currentConnection || currentConnection.isActive === false ||
+            Object.entries(scope.campaign).some(([key, value]) => JSON.stringify(currentCampaign[key] ?? null) !== JSON.stringify(value ?? null)) ||
+            Object.entries(scope.connection).some(([key, value]) => JSON.stringify(currentConnection[key] ?? null) !== JSON.stringify(value ?? null))) {
+          throw new Error("GA4 refresh scope changed before publication");
+        }
+        const [previous] = await tx.select().from(ga4OverviewSnapshots).where(and(eq(ga4OverviewSnapshots.campaignId, cid), eq(ga4OverviewSnapshots.propertyId, pid)));
+        if ((previous?.updatedAt ? new Date(previous.updatedAt).toISOString() : null) !== scope.previousUpdatedAt) {
+          throw new Error("Another GA4 refresh published before this attempt");
+        }
+      }
       await tx.delete(ga4DailyMetrics).where(and(
         eq(ga4DailyMetrics.campaignId, cid),
         eq(ga4DailyMetrics.propertyId, pid),
@@ -5522,6 +5544,15 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return snapshot;
+  }
+
+  async invalidateExecutiveSummaryDailySnapshotAlignment(campaignId: string, reportingDate: string): Promise<void> {
+    await db.update(metricSnapshots).set({ notes: null }).where(and(
+      eq(metricSnapshots.campaignId, campaignId),
+      eq(metricSnapshots.snapshotType, 'executive_summary_daily'),
+      eq(metricSnapshots.reportingDate, reportingDate),
+      sql`split_part(${metricSnapshots.notes}, ':', 1) = 'ga4_aligned_refresh_v1'`,
+    ));
   }
 
   async markExecutiveSummaryDailySnapshotAligned(campaignId: string, reportingDate: string, completedAt: string): Promise<boolean> {

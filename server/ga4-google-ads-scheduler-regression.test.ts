@@ -9,6 +9,7 @@ const storageMock = vi.hoisted(() => ({
   replaceSpendRecordsForSource: vi.fn(),
   getSpendTotalForRange: vi.fn(),
   updateCampaign: vi.fn(),
+  invalidateExecutiveSummaryDailySnapshotAlignment: vi.fn(),
 }));
 const runJobsMock = vi.hoisted(() => vi.fn());
 
@@ -88,7 +89,8 @@ describe("GA4 Google Ads scheduler materialization", () => {
     );
     expect(storageMock.getSpendTotalForRange).toHaveBeenCalledWith(campaign.id, "1900-01-01", "2026-08-05", "ga4");
     expect(storageMock.updateCampaign).toHaveBeenCalledWith(campaign.id, { spend: "12.34" });
-    expect(runJobsMock).toHaveBeenCalledWith({ campaignId: campaign.id });
+    expect(storageMock.invalidateExecutiveSummaryDailySnapshotAlignment).toHaveBeenCalledWith(campaign.id, "2026-08-05");
+    expect(runJobsMock).toHaveBeenCalledWith({ campaignId: campaign.id, useSavedOverview: true });
   });
 
   it("uses the saved spend-source selection when the connection selection differs", async () => {

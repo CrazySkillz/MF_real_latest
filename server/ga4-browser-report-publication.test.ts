@@ -94,7 +94,12 @@ describe("Browser Overview reports without a Spend source", () => {
   const handler = page.slice(start, handlerEnd).replace('const { jsPDF } = await import("jspdf");', "") + "return downloadGA4Report;";
   async function render(changes: Record<string, any>, reportType = "overview", configuration?: any) {
     const doc = new jsPDF();
-    const text = vi.spyOn(doc, "text");
+    const drawn: { text: string; x: number; y: number; width: number; page: number }[] = [];
+    const originalText = doc.text.bind(doc);
+    const text = vi.spyOn(doc, "text").mockImplementation(((value: string, x: number, y: number, ...args: any[]) => {
+      if (typeof value === "string") drawn.push({ text: value, x, y, width: doc.getTextWidth(value), page: doc.getNumberOfPages() });
+      return (originalText as any)(value, x, y, ...args);
+    }) as any);
     const save = vi.spyOn(doc, "save").mockReturnValue(doc);
     await run({
       ...absentSpend, jsPDF: function () { return doc; }, loadMimoSaaSReportLogo: async () => null,
@@ -105,13 +110,76 @@ describe("Browser Overview reports without a Spend source", () => {
       ga4HasRevenueMetric: true, ga4RevenueForFinancials: 65659.5, spendDisplaySources: [],
       campaignBreakdownAgg: [], campaignBreakdownMatchedExternalRevenue: new Map(),
       ga4LandingPages: { rows: [] }, ga4ConversionEvents: { rows: [] }, formatPct, normalizeRateToPercent,
+      overviewGA4ReportingDate: "2026-10-16", overviewGA4ReportingStartDate: "2026-09-04",
+      overviewGA4ReportingTimeZone: "Europe/Amsterdam", overviewGA4UpdatedAt: "Oct 17, 2026, 09:29 PM GMT+2",
+      overviewFinancialReportingTimeZone: "Europe/Amsterdam", overviewFinancialUpdatedAt: "Oct 17, 2026, 09:30 PM GMT+2",
+      overviewFinancialWindow: { startDate: "2026-09-04" }, overviewRefreshSchedule: "08:00, 14:00, 20:00 (Europe/Amsterdam)",
+      formatReportingDateLabel: (value: string) => new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", year: "numeric", month: "short", day: "numeric" }),
+      ga4RefreshStatusText: "Imported GA4 data, updated daily", overviewVisibleDataUsingLastGoodData: false,
+      pipelineProxyConfigured: false, pipelineProxyLoading: false, pipelineProxyUnavailable: false, hasPipelineProxy: false,
+      pipelineProxyData: { success: false, totalToDate: 0 },
       ...changes,
     }, configuration, reportType, handler);
     expect(save).toHaveBeenCalledOnce();
     expect(doc.output()).toMatch(/^%PDF-/);
     const words = text.mock.calls.map(call => call[0]);
-    return (label: string) => words[words.indexOf(label.toUpperCase()) + 1];
+    return Object.assign((label: string) => words[words.indexOf(label.toUpperCase()) + 1], { doc, drawn, words, content: words.flat().join(" ") });
   }
+  it("prints the saved reporting window, separate successful times, schedule and provisional explanation", async () => {
+    const report = await render({});
+    expect(report.content).toContain("Data from Sep 4, 2026 through Oct 16, 2026 (Europe/Amsterdam)");
+    expect(report.content).toContain("Last successful update: Oct 17, 2026, 09:29 PM GMT+2");
+    expect(report.content).toContain("Last successful update: Oct 17, 2026, 09:30 PM GMT+2");
+    expect(report.content).toContain("08:00, 14:00, 20:00 (Europe/Amsterdam)");
+    expect(report.content).toContain("today's activity is excluded");
+    expect(report.content).toContain("Recent figures are provisional");
+    expect(report.content).toContain("Imported Revenue and Spend include eligible source history");
+  });
+  it.each(["GA4 update is overdue", "Last GA4 refresh failed", "GA4 refresh in progress"])("retains %s alongside saved values", async ga4RefreshStatusText => {
+    const report = await render({ ga4RefreshStatusText, overviewVisibleDataUsingLastGoodData: true });
+    expect(report.content).toContain(ga4RefreshStatusText);
+    expect(report.content).toContain("Some Overview data could not refresh");
+    expect(report("Sessions")).toBe("2,977");
+  });
+  it("keeps empty selected tables visible and identifies unconfigured Pipeline Proxy", async () => {
+    const report = await render({});
+    expect(report.words).toContain("Campaign Breakdown");
+    expect(report.content).toContain("No campaign breakdown data available for this date range.");
+    expect(report.words).toContain("Landing Pages");
+    expect(report.content).toContain("Data coming soon");
+    expect(report.words).toContain("Conversion Events");
+    expect(report.content).toContain("No conversion event breakdown available yet for this property/campaign selection.");
+    expect(report.words).toContain("Pipeline Proxy");
+    expect(report("Expected Revenue")).toBe("Not configured");
+  });
+  it.each([0, 450])("shows a separate configured Pipeline Proxy of %s without adding it to Revenue", async totalToDate => {
+    const report = await render({ pipelineProxyConfigured: true, hasPipelineProxy: true, pipelineProxyData: { success: true, totalToDate } });
+    expect(report("Expected Revenue")).toBe(`EUR ${totalToDate.toFixed(2)}`);
+    expect(report("Total Revenue")).toBe("EUR 65,659.50");
+    expect(report.content).toContain("latest available CRM stage values");
+  });
+  it.each([{ pipelineProxyLoading: true }, { pipelineProxyUnavailable: true }])("does not print an unverified Pipeline Proxy amount: %j", async changes => {
+    const report = await render({ pipelineProxyConfigured: true, hasPipelineProxy: true, pipelineProxyData: { totalToDate: 450 }, ...changes });
+    expect(report("Expected Revenue")).toBe("Unavailable");
+  });
+  it("respects custom Summary selection without unrelated financial metadata or sections", async () => {
+    const report = await render({}, "custom", customOverview("summary"));
+    expect(report.content).toContain("Data from Sep 4, 2026 through Oct 16, 2026");
+    for (const excluded of ["09:30 PM", "Pipeline Proxy", "Landing Pages", "Conversion Events", "Campaign Breakdown"]) expect(report.content).not.toContain(excluded);
+  });
+  it("wraps the Campaign Breakdown explanation within the page and above its table", async () => {
+    const report = await render({ campaignBreakdownAgg: [{ name: "yesop_brand_search", sessions: 2068, users: 2069, conversions: 219, conversionRate: 10.3, revenue: 56998.10 }] });
+    const first = report.drawn.findIndex(line => line.text.startsWith("Traffic metrics are cumulative"));
+    const header = report.drawn.findIndex((line, index) => index > first && line.text === "CAMPAIGN");
+    const note = report.drawn.slice(first, header);
+    expect(note.length).toBeGreaterThan(1);
+    for (const line of note) {
+      expect(line.x + line.width).toBeLessThanOrEqual(194.01);
+      expect(line.y).toBeLessThan(report.drawn[header].y);
+      expect(line.page).toBe(report.drawn[header].page);
+    }
+    expect(report.content).toContain("EUR 56,998.10");
+  });
   it.each(["overview", "spend", "performance"])("downloads the actual %s PDF with missing Spend marked unavailable", async section => {
     const metric = await render({}, section === "overview" ? "overview" : "custom", customOverview(section));
     if (section !== "performance") expect(metric("Total Spend")).toBe("Unavailable");

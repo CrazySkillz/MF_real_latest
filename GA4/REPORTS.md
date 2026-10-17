@@ -102,6 +102,19 @@ The browser download action supplies a PDF filename. The browser controls the
 actual operating-system download directory according to the user's browser
 settings.
 
+Browser Overview PDF presentation update (2026-10-17): the download now includes
+the Overview reporting window, successful update times, configured refresh
+schedule, provisional-data explanation and current refresh/retained-data status.
+Financial metadata appears only when a financial subsection is selected. Selected
+empty tables retain their headings and the Overview's empty-state wording;
+Campaign Breakdown explanatory text wraps within the page. Pipeline Proxy appears
+separately with the Revenue subsection, using the Overview's available value,
+`Not configured`, or `Unavailable` while loading/unavailable, and never contributes
+to confirmed financial totals. These changes apply to the browser Overview and
+custom Overview download path; scheduled/server rendering is unchanged. Local
+fixture PDF inspection and focused checks are recorded in
+`docs/GA4_PROCESSING_AND_ALIGNMENT_BACKLOG.md`; deployment validation is pending.
+
 Expected meaning:
 
 - `Overview` should represent the GA4 Overview reporting layer

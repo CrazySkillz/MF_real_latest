@@ -3526,9 +3526,10 @@ export default function GA4Metrics() {
     const fC = (n: number) => `${cur} ${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const fP = (n: number) => formatPct(Number(n || 0));
     const fN = (n: number) => `${Math.round(Number(n || 0)).toLocaleString()}`;
-    const addSimpleTable = (title: string, headers: string[], rows: string[][], widths: number[], note?: string) => {
-      if (rows.length === 0) return;
-      const fullSectionHeight = 18 + (note ? 6 : 0) + 10 + rows.length * 8 + 4;
+    const addSimpleTable = (title: string, headers: string[], rows: string[][], widths: number[], note?: string, emptyText = "Data coming soon") => {
+      doc.setFontSize(7); doc.setFont("helvetica", "normal");
+      const noteLines = note ? wrapPdfText(note, CW) : [];
+      const fullSectionHeight = 18 + noteLines.length * 4 + (note ? 2 : 0) + 10 + rows.length * 8 + 4;
       if (fullSectionHeight <= 250 && y + fullSectionHeight > 274) {
         addPageFooter();
         doc.addPage();
@@ -3539,8 +3540,14 @@ export default function GA4Metrics() {
       sectionTitle(title, C.overview);
       if (note) {
         doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
-        doc.text(note, MX, y + 2);
-        y += 6;
+        for (const line of noteLines) { doc.text(line, MX, y + 2); y += 4; }
+        y += 2;
+      }
+      if (rows.length === 0) {
+        doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
+        doc.text(emptyText, MX, y + 3);
+        y += 12;
+        return;
       }
       doc.setFillColor(...C.cardBg);
       doc.roundedRect(MX, y, CW, 8, 2, 2, "F");
@@ -3647,6 +3654,26 @@ export default function GA4Metrics() {
       const includeOverviewCampaignBreakdown = reportType !== "custom" || overviewSubsections.campaignBreakdown !== false;
       const includeOverviewLandingPages = reportType !== "custom" || overviewSubsections.landingPages !== false;
       const includeOverviewConversionEvents = reportType !== "custom" || overviewSubsections.conversionEvents !== false;
+      const reportingNotes = [
+        `GA4 metrics (Summary and tables): ${overviewGA4ReportingDate ? `${overviewGA4ReportingStartDate ? `Data from ${formatReportingDateLabel(overviewGA4ReportingStartDate)} through` : "Data through"} ${formatReportingDateLabel(overviewGA4ReportingDate)} (${overviewGA4ReportingTimeZone})` : "Reporting date unavailable"}. Last successful update: ${overviewGA4UpdatedAt}.`,
+        ...(includeOverviewRevenue || includeOverviewSpend || includeOverviewPerformance ? [
+          `Revenue, Spend, ROAS, ROI and CPA: ${overviewFinancialReportingDate ? `Data through ${formatReportingDateLabel(overviewFinancialReportingDate)} (${overviewFinancialReportingTimeZone})` : "Reporting date unavailable"}. Last successful update: ${overviewFinancialUpdatedAt}. Applies to available figures.`,
+          ...(overviewFinancialReportingDate && overviewFinancialWindow?.startDate ? [`Financial GA4 inputs cover ${formatReportingDateLabel(overviewFinancialWindow.startDate)} through ${formatReportingDateLabel(overviewFinancialReportingDate)}. Imported Revenue and Spend include eligible source history through that date, which may start earlier.`] : []),
+        ] : []),
+        `Scheduled refreshes: ${overviewRefreshSchedule}. Each refresh checks data through the previous day; today's activity is excluded.`,
+        "Recent figures are provisional: GA4 processing can take 24-48 hours, sometimes longer. Conversion attribution can change for up to 12 days after the event. Later refreshes can revise earlier figures and ratios that use GA4 data.",
+        ga4RefreshStatusText,
+        ...(overviewVisibleDataUsingLastGoodData ? ["Some Overview data could not refresh. Last successful values remain visible where available; unavailable values are marked."] : []),
+      ];
+      doc.setFontSize(7); doc.setFont("helvetica", "normal");
+      for (const note of reportingNotes) {
+        for (const line of wrapPdfText(note, CW)) {
+          checkPage(5);
+          doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
+          doc.text(line, MX, y + 3); y += 4;
+        }
+        y += 2;
+      }
       const spend = Number(financialSpend || 0);
       const rev = Number(financialRevenue || 0);
       const convTot = Number(financialConversions || 0);
@@ -3748,6 +3775,18 @@ export default function GA4Metrics() {
       ] as [string, string]));
       }
 
+      if (includeOverviewRevenue) {
+        subheading("Pipeline Proxy");
+        metricCards([["Expected Revenue", pipelineProxyLoading || pipelineProxyUnavailable ? "Unavailable"
+          : hasPipelineProxy ? fC(Number(pipelineProxyData.totalToDate || 0)) : "Not configured"]], 1);
+        if (pipelineProxyConfigured) {
+          checkPage(10);
+          doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
+          doc.text("Pipeline Proxy shows the latest available CRM stage values; excluded from confirmed financial totals.", MX, y + 3);
+          y += 10;
+        }
+      }
+
       if (includeOverviewPerformance) {
       subheading("Performance");
       metricCards([
@@ -3773,6 +3812,7 @@ export default function GA4Metrics() {
           ]),
           [52, 22, 20, 28, 26, 36],
           "Traffic metrics are cumulative from the initial GA4 import; Revenue combines native GA4 revenue from the imported data window with exact campaign-mapped imported revenue.",
+          "No campaign breakdown data available for this date range.",
         );
       }
 
@@ -3799,7 +3839,9 @@ export default function GA4Metrics() {
           r?.eventCount == null ? "Unavailable" : fN(Number(r.eventCount)),
           r?.users == null ? "Unavailable" : fN(Number(r.users)),
         ]),
-        [76, 36, 36, 28]
+        [76, 36, 36, 28],
+        undefined,
+        "No conversion event breakdown available yet for this property/campaign selection."
       );
     }
 

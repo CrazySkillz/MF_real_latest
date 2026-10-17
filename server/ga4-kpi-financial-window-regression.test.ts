@@ -73,6 +73,7 @@ describe("GA4 KPI persisted financial source window", () => {
 
     storageMock.getCampaign.mockResolvedValue({
       id: "campaign-1",
+      status: "active",
       ownerId: "owner-1",
       startDate: "2026-05-20T00:00:00.000Z",
       currency: "USD",
@@ -152,6 +153,7 @@ describe("GA4 KPI persisted financial source window", () => {
   it("uses the saved GA4 import boundary for financial values when no campaign start is configured", async () => {
     storageMock.getCampaign.mockResolvedValue({
       id: "campaign-1",
+      status: "active",
       ownerId: "owner-1",
       createdAt: "2026-06-22T15:59:49.000Z",
       startDate: null,
@@ -198,6 +200,7 @@ describe("GA4 KPI persisted financial source window", () => {
     storageMock.getCampaign.mockResolvedValue({
       id: "campaign-1",
       ownerId: "owner-1",
+      status: "active",
       createdAt: "2026-06-22T15:59:49.000Z",
       startDate: null,
       currency: "USD",

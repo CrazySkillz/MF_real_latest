@@ -13,6 +13,9 @@ const component = file.statements.find((node): node is ts.FunctionDeclaration =>
   ts.isFunctionDeclaration(node) && node.name?.text === "GA4Metrics")!;
 const declarations = component.body!.statements.flatMap((statement) =>
   ts.isVariableStatement(statement) ? [...statement.declarationList.declarations] : []);
+const reportingHelpers = file.statements.flatMap((statement) =>
+  ts.isVariableStatement(statement) ? [...statement.declarationList.declarations] : []).filter((node) =>
+  ["DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE", "normalizeClientReportingTimeZone", "formatReportingTimestampLabel"].includes(node.name.getText(file)));
 let executiveCard: ts.JsxElement | undefined;
 const visit = (node: ts.Node) => {
   if (ts.isJsxElement(node) && node.openingElement.attributes.properties.some((attr) =>
@@ -83,7 +86,7 @@ function render(input = fixture()) {
   };
   const selected = declarations.filter((node) =>
     /^(overviewFinancial|getFinancialSnapshotKpiInputState|snapshot.*KpiInputState|renderFinancialValue)/.test(node.name.getText(file)));
-  const text = selected.map((node) => `const ${node.getText(file)};`).join("\n");
+  const text = [...reportingHelpers, ...selected].map((node) => `const ${node.getText(file)};`).join("\n");
   const code = ts.transpileModule(`${text}\nreturn (${section.getText(file)});`, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React },
   }).outputText;

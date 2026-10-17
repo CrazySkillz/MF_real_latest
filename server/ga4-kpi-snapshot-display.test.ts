@@ -17,6 +17,9 @@ const declarations = component.body!.statements.flatMap((statement) =>
   ts.isVariableStatement(statement) ? [...statement.declarationList.declarations] : []);
 const declaration = (name: string) => declarations.find((node) => node.name.getText(file) === name);
 const compile = (text: string) => ts.transpileModule(text, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+const reportingHelpers = file.statements.flatMap((statement) =>
+  ts.isVariableStatement(statement) ? [...statement.declarationList.declarations] : []).filter((node) =>
+  ["DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE", "normalizeClientReportingTimeZone", "formatReportingTimestampLabel"].includes(node.name.getText(file)));
 
 const fixture = (): Record<string, any> => ({
   campaignId: "campaign-a", campaignCurrency: "EUR", selectedGA4PropertyId: "123", primaryGA4PropertyId: "123",
@@ -59,7 +62,7 @@ function page(input = fixture()) {
   const functions = ["getMissingDependenciesForMetric", "getLiveKpiValue", "getLiveBenchmarkCurrentValue",
     "getKpiDataSufficiency", "getBenchmarkDataSufficiency", "getKpiConsumerState", "getBenchmarkConsumerState",
     "getFindingKpiConsumerState", "getFindingBenchmarkConsumerState"];
-  const body = [...overview, ...snapshotStates, ...functions.map((name) => declaration(name)!)].map((node) => `const ${node.getText(file)};`).join("\n");
+  const body = [...reportingHelpers, ...overview, ...snapshotStates, ...functions.map((name) => declaration(name)!)].map((node) => `const ${node.getText(file)};`).join("\n");
   const exports = [...functions, ...overview.map((node) => node.name.getText(file)), ...snapshotStates.map((node) => node.name.getText(file))];
   return new Function(...Object.keys(bindings), compile(`${body}\nreturn { ${exports.join(", ")} };`))(...Object.values(bindings));
 }

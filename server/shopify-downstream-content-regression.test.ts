@@ -11,6 +11,8 @@ const storageMock = vi.hoisted(() => ({
   updateGA4ConnectionTokens: vi.fn(),
   getGA4DailyMetrics: vi.fn(),
   getLatestGA4DailyMetric: vi.fn(),
+  getGA4OverviewSnapshot: vi.fn(),
+  getLatestFinancialDailySnapshot: vi.fn(),
   getRevenueSources: vi.fn(),
   getSpendSources: vi.fn(),
   getRevenueBreakdownBySource: vi.fn(),
@@ -104,6 +106,8 @@ const campaign = {
   id: "campaign-1",
   name: "Shopify Downstream Campaign",
   ownerId: "user-1",
+  status: "active",
+  reportingTimeZone: "UTC",
   currency: "USD",
   startDate: "2026-06-01T00:00:00.000Z",
   createdAt: "2026-06-01T00:00:00.000Z",
@@ -128,6 +132,7 @@ const revenueSource = {
   displayName: "Shopify",
   currency: "USD",
   isActive: true,
+  createdAt: "2026-07-01T00:00:00.000Z",
   mappingConfig: {
     platformContext: "ga4",
     campaignValueRevenueTotals: [
@@ -179,6 +184,37 @@ function resetMocks() {
   pdfTextCalls.length = 0;
 }
 
+// A single saved publication supplies the report tables and matching daily coverage.
+function setSavedPublication(breakdown: { rows: any[]; totals?: Record<string, number> }, importedRevenue = 199.98) {
+  const totals = { sessions: 0, users: 0, conversions: 0, revenue: 0, pageviews: 0, engagedSessions: 0 };
+  for (const row of breakdown.rows) {
+    for (const key of Object.keys(totals) as Array<keyof typeof totals>) totals[key] += Number(row[key] || 0);
+  }
+  Object.assign(totals, breakdown.totals);
+  storageMock.getGA4OverviewSnapshot.mockResolvedValue({
+    campaignId: campaign.id, propertyId: "properties/123", windowStart: "2026-07-02", windowEnd: "2026-07-04",
+    updatedAt: dailyRow.updatedAt,
+    campaignBreakdown: { rows: breakdown.rows, totals, meta: { currencyCode: "USD", revenueMetric: "purchaseRevenue" } },
+    landingPages: { rows: [] }, conversionEvents: { rows: [] },
+  });
+  const rows = ["2026-07-02", "2026-07-03", "2026-07-04"].map((date) => ({
+    ...dailyRow, ...Object.fromEntries(Object.keys(totals).map((key) => [key, 0])),
+    ...(date === "2026-07-04" ? totals : {}), date,
+  }));
+  storageMock.getGA4DailyMetrics.mockImplementation(async (_id, _property, start, end) => rows.filter((row) => row.date >= start && row.date <= end));
+  storageMock.getLatestGA4DailyMetric.mockResolvedValue(rows[2]);
+  storageMock.getLatestFinancialDailySnapshot.mockResolvedValue({
+    campaignId: campaign.id, reportingDate: "2026-07-04", metrics: { financialDaily: {
+      version: "financial_daily_snapshot_v1", currency: "USD",
+      currentValueWindow: { mode: "initial_import_to_latest_completed_day", startDate: "2026-07-02", endDate: "2026-07-04", dataThroughDate: "2026-07-04", reportingTimeZone: "UTC" },
+      inputs: { revenue: { available: true, value: (totals.revenue + importedRevenue).toFixed(2), sources: ["ga4", `revenue-source:${revenueSource.id}`] },
+        spend: { available: false, value: null, sources: [] }, conversions: { available: true, value: totals.conversions, sources: ["ga4"] } },
+    } },
+  });
+  getCampaignMetricTotalsMock.mockResolvedValue({ ...totals, ga4Revenue: totals.revenue,
+    financialConversions: totals.conversions, ga4FinancialSource: "persisted_overview" });
+}
+
 function setCommonShopifyFinancialMocks() {
   storageMock.getCampaign.mockResolvedValue(campaign);
   storageMock.getCampaigns.mockResolvedValue([campaign]);
@@ -195,8 +231,7 @@ function setCommonShopifyFinancialMocks() {
     lookbackDays: 30,
     importStartDate: "2026-07-02",
   });
-  storageMock.getGA4DailyMetrics.mockResolvedValue([dailyRow]);
-  storageMock.getLatestGA4DailyMetric.mockResolvedValue(dailyRow);
+  setSavedPublication({ rows: [{ campaign: "shopify_campaign", ...dailyRow, revenue: 100, sessionKeyEventRate: 0.2 }] });
   storageMock.getRevenueSources.mockResolvedValue([revenueSource]);
   storageMock.getSpendSources.mockResolvedValue([]);
   storageMock.getRevenueBreakdownBySource.mockResolvedValue([
@@ -218,19 +253,7 @@ function setCommonShopifyFinancialMocks() {
   storageMock.getNotifications.mockResolvedValue([]);
   refreshCampaignCurrentValuesForCampaignMock.mockResolvedValue(undefined);
 
-  ga4ServiceMock.getMetricsWithAutoRefresh.mockResolvedValue({ sessions: 10, users: 5, conversions: 2, revenue: 100 });
-  ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
-    rows: [{ campaign: "shopify_campaign", sessions: 10, users: 5, conversions: 2, revenue: 100, sessionKeyEventRate: 0.2 }],
-    totals: { sessions: 10, users: 5, conversions: 2, revenue: 100 },
-  });
-  ga4ServiceMock.getLandingPagesReport.mockResolvedValue({ rows: [] });
-  ga4ServiceMock.getConversionEventsReport.mockResolvedValue({ rows: [] });
-  ga4ServiceMock.getTimeSeriesData.mockResolvedValue([dailyRow]);
-  ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({
-    revenueMetric: "purchaseRevenue",
-    currencyCode: "USD",
-    totals: { sessions: 10, users: 5, conversions: 2, pageviews: 20, revenue: 100 },
-  });
+  for (const mock of Object.values(ga4ServiceMock)) mock.mockRejectedValue(new Error("Live GA4 must not replace the saved publication"));
 }
 
 describe("Shopify downstream value/content regression guard", () => {
@@ -243,6 +266,7 @@ describe("Shopify downstream value/content regression guard", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    for (const mock of Object.values(ga4ServiceMock)) expect(mock).not.toHaveBeenCalled();
   });
 
   it("renders scheduled GA4 PDF content with Shopify source revenue and total revenue", async () => {
@@ -284,48 +308,26 @@ describe("Shopify downstream value/content regression guard", () => {
     expect(text).toContain("Revenue KPI");
     expect(text).toContain("Revenue Benchmark");
     expect(text).toContain("299.98");
-    expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenNthCalledWith(
-      1,
-      campaign.id,
-      storageMock,
-      "2026-07-02",
-      "properties/123",
-      2000,
-      "shopify_campaign",
-      "2026-07-04",
-      false,
-      false,
-      "USD",
-      true,
-    );
+    expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledWith(campaign.id, "properties/123");
     expect(storageMock.getRevenueBreakdownBySource).toHaveBeenCalledWith(
       campaign.id,
       "1900-01-01",
-      "2026-07-05",
+      "2026-07-04",
       "ga4",
     );
   });
 
-  it("keeps scheduled Ad Comparison on import-to-date rows without changing Overview rows", async () => {
+  it("keeps scheduled Ad Comparison and Overview on the same saved import-to-date rows", async () => {
     storageMock.getCampaign.mockResolvedValue({
       ...campaign,
       ga4CampaignFilter: JSON.stringify(["overview_window", "ad_import_to_date", "ad_email", "ad_social"]),
     });
-    ga4ServiceMock.getAcquisitionBreakdown.mockReset()
-      .mockResolvedValueOnce({
-        rows: [{ campaign: "overview_window", sessions: 7, users: 7, conversions: 1, revenue: 700, sessionKeyEventRate: 1 / 7 }],
-      })
-      .mockResolvedValueOnce({
-        rows: [
-          { campaign: "ad_import_to_date", sessions: 55, users: 55, conversions: 55, revenue: 12409.8, sessionKeyEventRate: 1 },
-          { campaign: "ad_email", sessions: 43, users: 43, conversions: 43, revenue: 8952.6, sessionKeyEventRate: 1 },
-          { campaign: "ad_social", sessions: 40, users: 40, conversions: 40, revenue: 9476.6, sessionKeyEventRate: 1 },
-        ],
-      })
-      .mockResolvedValueOnce({
-        rows: [{ campaign: "overview_window", sessions: 7, users: 7, conversions: 1, revenue: 100, sessionKeyEventRate: 1 / 7 }],
-        totals: { revenue: 100 },
-      });
+    setSavedPublication({ rows: [
+      { campaign: "overview_window", sessions: 7, users: 7, conversions: 1, revenue: 0, sessionKeyEventRate: 1 / 7 },
+      { campaign: "ad_import_to_date", sessions: 55, users: 55, conversions: 55, revenue: 12409.8, sessionKeyEventRate: 1 },
+      { campaign: "ad_email", sessions: 43, users: 43, conversions: 43, revenue: 8952.6, sessionKeyEventRate: 1 },
+      { campaign: "ad_social", sessions: 40, users: 40, conversions: 40, revenue: 9476.6, sessionKeyEventRate: 1 },
+    ] });
 
     await buildGA4ScheduledPdfAttachment({
       report: {
@@ -360,49 +362,10 @@ describe("Shopify downstream value/content regression guard", () => {
     expect(text).toContain("TOTAL SESSIONS");
     expect(text).toContain("CAMPAIGNS COMPARED");
     expect(text).toContain("USERS");
+    expect(text).toContain("145");
     expect(text).not.toContain("GA4 REVENUE (30 DAYS)");
-    expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenNthCalledWith(
-      1,
-      campaign.id,
-      storageMock,
-      "2026-07-02",
-      "properties/123",
-      2000,
-      ["overview_window", "ad_import_to_date", "ad_email", "ad_social"],
-      "2026-07-04",
-      false,
-      false,
-      "USD",
-      true,
-    );
-    expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenNthCalledWith(
-      2,
-      campaign.id,
-      storageMock,
-      "2026-07-02",
-      "properties/123",
-      2000,
-      ["overview_window", "ad_import_to_date", "ad_email", "ad_social"],
-      "2026-07-04",
-      false,
-      false,
-      "USD",
-      true,
-    );
-    expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenNthCalledWith(
-      3,
-      campaign.id,
-      storageMock,
-      "2026-06-01",
-      "properties/123",
-      2000,
-      ["overview_window", "ad_import_to_date", "ad_email", "ad_social"],
-      "2026-07-04",
-      false,
-      false,
-      "USD",
-      true,
-    );
+    expect(storageMock.getGA4DailyMetrics).toHaveBeenCalledWith(campaign.id, "properties/123", "2026-07-02", "2026-07-04");
+    expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledTimes(2);
   });
 
   it("keeps the scheduled Ad Comparison chart and summary on the saved selector", async () => {
@@ -418,7 +381,7 @@ describe("Shopify downstream value/content regression guard", () => {
       ...campaign,
       ga4CampaignFilter: JSON.stringify(["Alpha", "Beta", ...descendingFractionalRows.map((row) => row.campaign)]),
     });
-    ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
+    setSavedPublication({
       rows: [
         { campaign: "Alpha", sessions: 60, users: 30, conversions: 3, revenue: 100, sessionKeyEventRate: 0.05 },
         { campaign: "alpha", sessions: 40, users: 20, conversions: 7, revenue: 50, sessionKeyEventRate: 0.175 },
@@ -464,7 +427,7 @@ describe("Shopify downstream value/content regression guard", () => {
       ...campaign,
       ga4CampaignFilter: JSON.stringify(["Alpha", "Beta"]),
     });
-    ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
+    setSavedPublication({
       rows: [
         { campaign: "Alpha", sessions: 60, users: 30, conversions: 3, revenue: 100, sessionKeyEventRate: 0.05 },
         { campaign: "alpha", sessions: 40, users: 20, conversions: 7, revenue: 50, sessionKeyEventRate: 0.175 },
@@ -526,7 +489,7 @@ describe("Shopify downstream value/content regression guard", () => {
       ...campaign,
       ga4CampaignFilter: JSON.stringify(["Alpha", "Beta"]),
     });
-    ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
+    setSavedPublication({
       rows: [
         { campaign: "Alpha", sessions: 10, users: 100, conversions: 1, revenue: 5, sessionKeyEventRate: 0.1 },
         { campaign: "Beta", sessions: 20, users: 50, conversions: 5, revenue: 100, sessionKeyEventRate: 0.25 },
@@ -584,9 +547,10 @@ describe("Shopify downstream value/content regression guard", () => {
       },
     }]);
     storageMock.getRevenueBreakdownBySource.mockResolvedValue([{ sourceId: revenueSource.id, sourceType: "shopify", displayName: "Shopify", currency: "USD", revenue: 200 }]);
-    ga4ServiceMock.getAcquisitionBreakdown.mockImplementation(async (_campaignId: string, _storage: any, startDate: string) => startDate === "2026-06-01"
-      ? { rows: [{ campaign: "Alpha", revenue: 5 }, { campaign: "Beta", revenue: 100 }], totals: { revenue: 105 } }
-      : { rows: [{ campaign: "Alpha", sessions: 10, users: 10, conversions: 1, revenue: 500, sessionKeyEventRate: 0.1 }, { campaign: "Beta", sessions: 20, users: 20, conversions: 5, revenue: 1000, sessionKeyEventRate: 0.25 }], totals: { revenue: 1500 } });
+    setSavedPublication({ rows: [
+      { campaign: "Alpha", sessions: 10, users: 10, conversions: 1, revenue: 5, sessionKeyEventRate: 0.1 },
+      { campaign: "Beta", sessions: 20, users: 20, conversions: 5, revenue: 100, sessionKeyEventRate: 0.25 },
+    ] }, 200);
 
     await buildGA4ScheduledPdfAttachment({
       report: { id: "report-overview-chart", campaignId: campaign.id, name: "Overview chart parity", reportType: "custom",
@@ -599,12 +563,14 @@ describe("Shopify downstream value/content regression guard", () => {
     expect(pdfTextCalls[pdfTextCalls.indexOf("MOST KEY EVENTS") + 1]).toBe("Beta");
     expect(pdfTextCalls[pdfTextCalls.indexOf("HIGHEST CONVERSION RATE") + 1]).toBe("Beta");
     expect(pdfTextCalls).toContain("25.00% CR - USD 100.00 revenue");
-    expect(pdfTextCalls.slice(pdfTextCalls.indexOf("All Campaigns"))).toEqual(expect.arrayContaining(["USD 500.00", "USD 1,000.00"]));
+    const nativeRows = pdfTextCalls.slice(pdfTextCalls.indexOf("All Campaigns"));
+    expect(nativeRows).toEqual(expect.arrayContaining(["USD 5.00", "USD 100.00"]));
+    expect(nativeRows).not.toContain("USD 205.00");
   });
 
   it("builds leader-card-only reports from Overview rows without requesting native Ad Comparison detail", async () => {
     storageMock.getCampaign.mockResolvedValue({ ...campaign, ga4CampaignFilter: JSON.stringify(["Alpha", "Beta"]) });
-    ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
+    setSavedPublication({
       rows: [{ campaign: "Alpha", sessions: 10, users: 10, conversions: 1, revenue: 50, sessionKeyEventRate: 0.1 },
         { campaign: "Beta", sessions: 20, users: 20, conversions: 5, revenue: 50, sessionKeyEventRate: 0.25 }],
       totals: { revenue: 100 },
@@ -616,7 +582,8 @@ describe("Shopify downstream value/content regression guard", () => {
       reportName: "Leader cards", windowStart: "2026-06-01", windowEnd: "2026-07-04", campaignName: campaign.name,
     });
 
-    expect(ga4ServiceMock.getAcquisitionBreakdown).toHaveBeenCalledTimes(2);
+    expect(storageMock.getGA4OverviewSnapshot).toHaveBeenCalledTimes(2);
+    expect(storageMock.getLatestFinancialDailySnapshot).not.toHaveBeenCalled();
     expect(pdfTextCalls).toEqual(expect.arrayContaining(["MOST KEY EVENTS", "HIGHEST CONVERSION RATE", "NEEDS ATTENTION"]));
     expect(pdfTextCalls).not.toContain("All Campaigns");
   });
@@ -640,10 +607,11 @@ describe("Shopify downstream value/content regression guard", () => {
         displayName: "Unmatched",
         currency: "USD",
         isActive: true,
+        createdAt: "2026-07-01T00:00:00.000Z",
         mappingConfig: { campaignValueRevenueTotals: [{ campaignValue: "outside", revenue: 50 }] },
       },
     ]);
-    ga4ServiceMock.getAcquisitionBreakdown.mockResolvedValue({
+    setSavedPublication({
       rows,
       totals: { sessions: 136, users: 136, conversions: 15, revenue: 100 },
     });
@@ -691,8 +659,8 @@ describe("Shopify downstream value/content regression guard", () => {
     })).rejects.toThrow("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: Campaign Breakdown");
   });
 
-  it("fails the deterministic scheduled Ad Comparison path closed when GA4 rows are unavailable", async () => {
-    ga4ServiceMock.getAcquisitionBreakdown.mockRejectedValue(new Error("provider unavailable"));
+  it("fails scheduled Ad Comparison closed when its saved GA4 publication is unavailable", async () => {
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(null);
 
     await expect(buildGA4ScheduledPdfAttachment({
       report: {
@@ -709,7 +677,8 @@ describe("Shopify downstream value/content regression guard", () => {
       windowStart: "2026-06-01",
       windowEnd: "2026-07-04",
       campaignName: campaign.name,
-    })).rejects.toThrow("GA4_AD_COMPARISON_REPORT_INPUT_UNAVAILABLE: GA4 Overview Campaign Breakdown");
+    })).rejects.toThrow("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: Saved publication");
+    expect(pdfTextCalls).toEqual([]);
   });
 
   it("fails the deterministic scheduled revenue provenance path closed when its read fails", async () => {
@@ -734,7 +703,10 @@ describe("Shopify downstream value/content regression guard", () => {
   });
 
   it("does not combine Shopify revenue with an unverified persisted GA4 fallback", async () => {
-    ga4ServiceMock.getTotalsWithRevenue.mockRejectedValue(new Error("provider unavailable"));
+    const saved = await storageMock.getGA4OverviewSnapshot();
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue({ ...saved, campaignBreakdown: {
+      ...saved.campaignBreakdown, meta: { ...saved.campaignBreakdown.meta, currencyCode: "EUR" },
+    } });
 
     await expect(buildGA4ScheduledPdfAttachment({
       report: {
@@ -751,12 +723,16 @@ describe("Shopify downstream value/content regression guard", () => {
       windowStart: "2026-06-01",
       windowEnd: "2026-07-04",
       campaignName: campaign.name,
-    })).rejects.toThrow("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: Revenue");
+    })).rejects.toThrow("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: Saved publication");
+    expect(pdfTextCalls).toEqual([]);
   });
 
   it("persists GA4 KPI and Benchmark row values from the Shopify imported revenue total", async () => {
-    await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-04", suppressAlerts: true });
+    const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: campaign.id, date: "2026-07-04", suppressAlerts: true, useSavedOverview: true });
 
+    expect(result.campaignIdsFailed).toEqual([]);
+    expect(result.kpiIdsSkipped).toEqual([]);
+    expect(result.benchmarkIdsSkipped).toEqual([]);
     expect(storageMock.getRevenueTotalForRange).toHaveBeenCalledWith(campaign.id, "1900-01-01", "2026-07-04", "ga4");
     expect(storageMock.updateKPI).toHaveBeenCalledWith(revenueKpi.id, { currentValue: "299.98" });
     expect(storageMock.updateBenchmark).toHaveBeenCalledWith(revenueBenchmark.id, { currentValue: "299.98" });
@@ -785,10 +761,9 @@ describe("Shopify downstream value/content regression guard", () => {
     try {
       const response = await fetch(`http://127.0.0.1:${port}/api/notifications`);
       const body = await response.json();
-      const metadata = JSON.parse(body[0].metadata);
-
       expect(response.status).toBe(200);
       expect(body).toHaveLength(1);
+      const metadata = JSON.parse(body[0].metadata);
       expect(body[0].title).toBe("GA4 KPI Alert: Revenue KPI");
       expect(metadata.currentValue).toBe("299.98");
       expect(metadata.thresholdValue).toBe("350");

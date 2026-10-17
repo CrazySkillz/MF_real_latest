@@ -97,8 +97,10 @@ describe("GA4 Google Sheets revenue downstream propagation", () => {
     }
     expect(endpoints).toContain("storage.getRevenueTotalForRange(campaignId, startDate, resolvedEndDate, platformContext)");
     expect(endpoints).toContain("storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, platformContext as any)");
-    expect(endpoints).toContain("const hasMaterializedRevenue = totalsBySource.has(sourceId);");
-    expect(endpoints).toContain("? materializedRevenueAvailable ? Number(recordTotal.toFixed(2)) : null");
+    expect(endpoints).toContain("const hasCompletedDayRevenue = totalsBySource.has(sourceId);");
+    expect(endpoints).toContain("const completedDayRevenue = hasCompletedDayRevenue ? Number(totalsBySource.get(sourceId) || 0) : 0;");
+    expect(endpoints).toContain("const hasLatestRevenue = latestTotalsBySource.has(sourceId);");
+    expect(endpoints).toContain("? materializedRevenueAvailable ? Number(Number(latestRevenue || 0).toFixed(2)) : null");
   });
 
   it("feeds Total Revenue, Profit, ROAS, and ROI but never changes CPA inputs", () => {
@@ -113,10 +115,13 @@ describe("GA4 Google Sheets revenue downstream propagation", () => {
     expect(financials).toContain("const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;");
     expect(financials).toContain("const financialROI = computeRoiPercent(financialRevenue, financialSpend);");
     expect(financials).toContain("const financialCPA = computeCpa(financialSpend, financialConversions);");
-    expect(cards).toContain("formatMoney(financialRevenue - financialSpend)");
-    expect(cards).toContain("financialROAS.toFixed(2)");
-    expect(cards).toContain("formatPercentage(financialROI)");
-    expect(cards).toContain("formatMoney(Number(financialCPA || 0))");
+    expect(financials).toContain("const overviewFinancialInputs = overviewFinancialSnapshot?.metrics?.financialDaily?.inputs;");
+    expect(financials).toContain("const overviewFinancialCPA = computeCpa(overviewFinancialSpend, overviewFinancialConversions);");
+    expect(cards).toContain("formatMoney(overviewFinancialRevenue)");
+    expect(cards).toContain("formatMoney(overviewFinancialRevenue - overviewFinancialSpend)");
+    expect(cards).toContain("overviewFinancialROAS.toFixed(2)");
+    expect(cards).toContain("formatPercentage(overviewFinancialROI)");
+    expect(cards).toContain("formatMoney(overviewFinancialCPA)");
   });
 
   it("invalidates foreground queries and bounds open-page reads only for active Sheets revenue", () => {

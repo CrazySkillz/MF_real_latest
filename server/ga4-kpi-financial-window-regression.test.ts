@@ -221,7 +221,7 @@ describe("GA4 KPI persisted financial source window", () => {
     );
   });
 
-  it("updates Benchmark current values and skips same-date history even when the target date is not latest", async () => {
+  it("updates Benchmark current values and the exact requested history date even when a newer entry exists", async () => {
     storageMock.getPlatformKPIs.mockResolvedValue([]);
     storageMock.getPlatformBenchmarks.mockResolvedValue([
       { id: "benchmark-revenue", metric: "Revenue", benchmarkValue: "2000" },
@@ -234,7 +234,11 @@ describe("GA4 KPI persisted financial source window", () => {
     const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: "campaign-1", date: "2026-06-27" });
 
     expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-revenue", { currentValue: "1300" });
-    expect(storageMock.recordBenchmarkHistory).not.toHaveBeenCalled();
+    expect(storageMock.recordBenchmarkHistory).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      benchmarkId: "benchmark-revenue", currentValue: "1300", benchmarkValue: "2000", variance: "-35", performanceRating: "poor",
+      recordedAt: new Date("2026-06-27T23:59:59.000Z"),
+      notes: "auto:ga4_daily:2026-06-27;ga4_scope_v1:123:Europe%2FAmsterdam:USD:%5B%5D",
+    }));
     expect(result).toMatchObject({
       benchmarksUpdated: 1,
       benchmarksRecorded: 0,

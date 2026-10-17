@@ -85,7 +85,7 @@ Current implementation boundary:
 - the platform list endpoint is campaign-access guarded and returns rows for the exact campaign and `google_analytics` platform; it does not independently filter the persisted `status` field
 - the current GA4 UI creates and updates rows as `active` and hard-deletes them; archived/draft direct-API rows are outside the exercised certification path
 - identical user-created Benchmark definitions are not rejected by a database or API uniqueness rule; the certification proved zero active exact-duplicate groups in the deployed inventory, not duplicate-definition prevention
-- automatic `auto:ga4_daily:` history is different: it is serialized per Benchmark and returns the existing row for the exact automatic history note, while manual history remains append-only
+- automatic `auto:ga4_daily:` history is serialized per Benchmark: a later successful recompute updates the exact date-and-scope entry's current value, benchmark value, variance and historical rating, preserving its ID and recorded date; manual history remains append-only. Multiple rows with the same exact automatic note are rejected as ambiguous, without rewriting them.
 
 When editing an existing benchmark:
 
@@ -248,6 +248,8 @@ After GA4 Overview-driving values refresh, the required order is:
 4. run benchmark alert checks against refreshed values
 
 The executive snapshot tracker should also recompute whenever related inputs change.
+
+B1 correction (2026-10-17, local implementation; deployment pending): the job now sends later same-day values through `recordBenchmarkHistory` even when the automatic entry exists. The existing transaction and per-Benchmark lock select by Benchmark ID plus the complete automatic note (reporting date, property, timezone, currency and campaign filter). Only that entry's value fields are updated; other dates, scopes and manual entries retain their existing data. Exact-date GA4-row eligibility and financial-input guards still apply. This corrects subsequent history reads and their variance/trend calculations; it does not backfill earlier dates or rewrite saved report artifacts. Local validation and its limits are recorded under B1 in `docs/GA4_PROCESSING_AND_ALIGNMENT_BACKLOG.md`.
 
 For active real GA4 campaigns, the ordered GA4 daily pipeline owns the scheduled recompute by default and runs the campaign alert check only after synchronized financial and GA4 inputs plus dependent snapshots succeed. The generic KPI/Benchmark scheduler skips its duplicate GA4 recompute and alert sweep unless `GA4_DAILY_PIPELINE_OWNS_RECOMPUTE=false` is explicitly configured. A failed unrelated campaign does not block a successfully refreshed campaign's Benchmark recompute or campaign-scoped alert check.
 

@@ -113,7 +113,11 @@ separately with the Revenue subsection, using the Overview's available value,
 to confirmed financial totals. These changes apply to the browser Overview and
 custom Overview download path; scheduled/server rendering is unchanged. Local
 fixture PDF inspection and focused checks are recorded in
-`docs/GA4_PROCESSING_AND_ALIGNMENT_BACKLOG.md`; deployment validation is pending.
+`docs/GA4_PROCESSING_AND_ALIGNMENT_BACKLOG.md`. The user's October 17 Ptomo PDF,
+generated at 21:58:54, confirms these browser presentation corrections and matches
+the supplied Overview figures, reporting window and 21:29 successful update times.
+This is bounded artifact evidence; scheduled/server output and whole-Reports
+certification remain unverified.
 
 Expected meaning:
 

@@ -5417,11 +5417,20 @@ export class DatabaseStorage implements IStorage {
       const [existing] = await tx.select({ id: benchmarks.id }).from(benchmarks).where(eq(benchmarks.id, benchmarkId)).limit(1);
       if (!existing) throw new Error("Benchmark not found");
       if (isAutomaticGA4Daily) {
-        const [recorded] = await tx.select().from(benchmarkHistory).where(and(
+        const recorded = await tx.select().from(benchmarkHistory).where(and(
           eq(benchmarkHistory.benchmarkId, benchmarkId),
           eq(benchmarkHistory.notes, notes),
-        )).limit(1);
-        if (recorded) return recorded;
+        )).limit(2);
+        if (recorded.length > 1) throw new Error("Benchmark automatic history is ambiguous");
+        if (recorded.length === 1) {
+          const { currentValue, benchmarkValue, variance, performanceRating } = historyData;
+          const [updated] = await tx.update(benchmarkHistory)
+            .set({ currentValue, benchmarkValue, variance, performanceRating })
+            .where(and(eq(benchmarkHistory.id, recorded[0].id), eq(benchmarkHistory.benchmarkId, benchmarkId), eq(benchmarkHistory.notes, notes)))
+            .returning();
+          if (!updated) throw new Error("Benchmark automatic history update did not change a row");
+          return updated;
+        }
       }
       const [history] = await tx.insert(benchmarkHistory).values(historyData).returning();
       return history;

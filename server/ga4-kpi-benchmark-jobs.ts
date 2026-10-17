@@ -613,7 +613,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         }
         const currentValue = computeKpiValue(metricKey, metricInputs);
         // Always refresh stored currentValue so same-day persisted GA4 daily rows update what alert checks read,
-        // even if we skip writing another history point for the same date.
+        // and refresh the exact automatic history entry for the same reporting date.
         try {
           const updated = await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);
           if (!updated) throw new Error("Benchmark current-value update did not change a row");
@@ -622,8 +622,9 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           if (historyResult.status === "rejected") throw historyResult.reason;
           const history = historyResult.value;
           const hist = filterGA4InsightsHistoryByScope(Array.isArray(history) ? history : [], historyScopeMarker);
-          const already = hist.some((h: any) => isoDateUTC(new Date((h as any)?.recordedAt || 0)) === date);
-          if (hasExactDailyRow && !already) {
+          const historyNotes = `auto:ga4_daily:${date};${historyScopeMarker}`;
+          const already = hist.some((h: any) => h.notes === historyNotes);
+          if (hasExactDailyRow) {
             const benchmarkValue = Number((b as any)?.benchmarkValue || 0) || 0;
             const variance = computeBenchmarkVariance(metricKey, currentValue, benchmarkValue);
             const rating = computeBenchmarkRating(variance);
@@ -635,9 +636,9 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
               variance: String(round2(variance)),
               performanceRating: rating,
               recordedAt,
-              notes: `auto:ga4_daily:${date};${historyScopeMarker}`,
+              notes: historyNotes,
             } as any);
-            benchmarksRecorded += 1;
+            if (!already) benchmarksRecorded += 1;
           }
           benchmarksUpdated += 1;
           benchmarkIdsUpdated.push(benchmarkId);

@@ -236,7 +236,7 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
     expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 
-  it("preserves existing same-day KPI progress and Benchmark history handling", async () => {
+  it("refreshes same-day Benchmark history alongside the current value and KPI progress", async () => {
     await run();
     const progress = storageMock.recordKPIProgress.mock.calls.map(([row]) => ({ ...row, id: `progress-${row.kpiId}` }));
     const history = storageMock.recordBenchmarkHistory.mock.calls.map(([row]) => ({ ...row, id: `history-${row.benchmarkId}` }));
@@ -245,12 +245,16 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
     storageMock.recordKPIProgress.mockClear();
     storageMock.recordBenchmarkHistory.mockClear();
     storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 50, currency: "EUR", sourceIds: ["revenue-1"] });
-    await run();
+    const result = await run();
     expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Revenue", { currentValue: "150.01" });
     expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-Revenue", { currentValue: "150.01" });
     expect(storageMock.updateKPIProgress).toHaveBeenCalledWith("progress-kpi-Revenue", expect.objectContaining({ value: "150.01" }));
     expect(storageMock.recordKPIProgress).not.toHaveBeenCalled();
-    expect(storageMock.recordBenchmarkHistory).not.toHaveBeenCalled(); // Same-day Benchmark rewriting remains the separate B1 task.
+    expect(storageMock.recordBenchmarkHistory).toHaveBeenCalledWith(expect.objectContaining({
+      benchmarkId: "benchmark-Revenue", currentValue: "150.01", benchmarkValue: "100", variance: "50.01", performanceRating: "excellent",
+      notes: history.find((row) => row.benchmarkId === "benchmark-Revenue")!.notes,
+    }));
+    expect(result.benchmarksRecorded).toBe(0);
     expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 
@@ -268,5 +272,55 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
     await runGA4DailyKPIAndBenchmarkJobs({ campaignId, suppressAlerts: true });
     expect(storageMock.updateKPI.mock.calls).toEqual(firstWrites);
     expect(storageMock.getGA4OverviewSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("updates the same-day history target, variance and rating when the Benchmark target changes", async () => {
+    await run();
+    const history = storageMock.recordBenchmarkHistory.mock.calls.map(([row]) => ({ ...row, id: `history-${row.benchmarkId}` }));
+    storageMock.getBenchmarkHistory.mockImplementation(async (id) => history.filter((row) => row.benchmarkId === id));
+    storageMock.getPlatformBenchmarks.mockResolvedValue([{ id: "benchmark-Sessions", metric: "Sessions", benchmarkValue: "20" }]);
+    storageMock.recordBenchmarkHistory.mockClear();
+    const result = await run();
+    expect(storageMock.recordBenchmarkHistory).toHaveBeenCalledWith(expect.objectContaining({
+      benchmarkId: "benchmark-Sessions", currentValue: "30", benchmarkValue: "20", variance: "50", performanceRating: "excellent",
+    }));
+    expect(result.benchmarksRecorded).toBe(0);
+  });
+
+  it("does not replace manual history that shares the same date and GA4 scope", async () => {
+    await run();
+    const manual = storageMock.recordBenchmarkHistory.mock.calls.map(([row]) => ({ ...row, id: `manual-${row.benchmarkId}`, notes: row.notes.replace(`auto:ga4_daily:${date}`, "manual review") }));
+    storageMock.getBenchmarkHistory.mockImplementation(async (id) => manual.filter((row) => row.benchmarkId === id));
+    storageMock.recordBenchmarkHistory.mockClear();
+    const result = await run();
+    expect(result.benchmarksRecorded).toBe(metrics.length);
+    for (const [row] of storageMock.recordBenchmarkHistory.mock.calls) {
+      expect(row.notes).toMatch(/^auto:ga4_daily:2026-10-16;ga4_scope_v1:/);
+      expect(row).not.toHaveProperty("id");
+    }
+  });
+
+  it("does not write target-day history when the exact daily GA4 row is missing", async () => {
+    storageMock.getGA4DailyMetrics.mockImplementation(async (_id, _property, start, end) => start === end ? [] : rows());
+    storageMock.getLatestGA4DailyMetric.mockResolvedValue(rows()[0]);
+    const result = await run();
+    expect(result.benchmarksRecorded).toBe(0);
+    expect(storageMock.recordBenchmarkHistory).not.toHaveBeenCalled();
+  });
+
+  it("reports a same-day history write failure and withholds alert reconciliation", async () => {
+    await run();
+    const history = storageMock.recordBenchmarkHistory.mock.calls.map(([row]) => ({ ...row, id: `history-${row.benchmarkId}` }));
+    storageMock.getBenchmarkHistory.mockImplementation(async (id) => history.filter((row) => row.benchmarkId === id));
+    storageMock.recordBenchmarkHistory.mockImplementation(async (row) => {
+      if (row.benchmarkId === "benchmark-Revenue") throw new Error("history write failed");
+      return { id: "saved", ...row };
+    });
+    const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, useSavedOverview: true });
+    expect(result.benchmarkIdsFailed).toEqual(["benchmark-Revenue"]);
+    expect(result.benchmarkIdsUpdated).not.toContain("benchmark-Revenue");
+    expect(result.benchmarkIdsUpdated).toContain("benchmark-Sessions");
+    expect(alerts.kpi).not.toHaveBeenCalled();
+    expect(alerts.benchmark).not.toHaveBeenCalled();
   });
 });

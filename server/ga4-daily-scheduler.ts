@@ -330,6 +330,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
           campaignFilter,
           reportingWindow.endDate,
           String((c as any)?.currency || "").trim().toUpperCase(),
+          overviewDailyTraffic,
         ));
         const hasCampaignFilter = Array.isArray(campaignFilter)
           ? campaignFilter.length > 0
@@ -346,6 +347,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
                 campaignFilter,
                 String((c as any)?.currency || "").trim().toUpperCase(),
                 overviewDailyTraffic,
+                initialSeries,
               ));
             })()
           : { dailyRows: initialSeries, presentDates: (Array.isArray(initialSeries) ? initialSeries : []).map((row: any) => String(row?.date || "")) };

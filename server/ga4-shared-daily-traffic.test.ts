@@ -4,6 +4,7 @@ const persisted = vi.hoisted(() => ({
   getCampaign: vi.fn(), getCampaigns: vi.fn(), getGA4Connections: vi.fn(), getGA4Connection: vi.fn(),
   getGA4DailyMetrics: vi.fn(), replaceGA4DailyMetricsWindow: vi.fn(),
   getGA4OverviewSnapshot: vi.fn(),
+  updateGA4ConnectionTokens: vi.fn(),
 }));
 vi.mock("./storage", () => ({ storage: persisted }));
 vi.mock("./ga4-kpi-benchmark-jobs", () => ({}));
@@ -136,6 +137,7 @@ describe("GA4 shared daily traffic during provider revisions", () => {
   });
 
   it("publishes daily facts and matching Overview together through the actual scheduler", async () => {
+    const series = vi.spyOn(ga4Service, "getTimeSeriesWithToken");
     const result = await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T06:10:00Z"));
     expect(result.campaignIdsFailed).toEqual([]);
     expect(persisted.replaceGA4DailyMetricsWindow).toHaveBeenCalledTimes(1);
@@ -145,6 +147,11 @@ describe("GA4 shared daily traffic during provider revisions", () => {
     expect(overview.campaignBreakdown.totals.sessions).toBe(2895);
     expect(rows.find((r: any) => r.date === end)).toMatchObject({ sessions: 31, users: 31, engagedSessions: 16, pageviews: 47 });
     expect(rows.find((r: any) => r.date === "2026-09-05").sessions).toBe(0);
+    expect(series).toHaveBeenCalledTimes(1);
+    expect(series.mock.calls[0]).toEqual(["542352127", "test-token", start, names, end, "EUR", expect.objectContaining({ campaignId: campaign.id })]);
+    const dailyRequests = requests.filter(r => r.metrics.some((m: any) => m.name === "screenPageViews") && r.metrics.some((m: any) => m.name === "conversions"));
+    expect(dailyRequests).toHaveLength(5); // One primary request and two date chunks for each of two campaigns.
+    expect(dailyRequests.filter(r => r.metrics.some((m: any) => m.name === "sessionKeyEventRate"))).toHaveLength(4);
   });
 
   it("uses the full daily capture if primary attribution becomes available during the later report", async () => {
@@ -155,6 +162,119 @@ describe("GA4 shared daily traffic during provider revisions", () => {
     expect(report.meta.overviewCampaignAttribution).toMatchObject({ standardSessions: 2896, rebuiltSessions: 2895, selected: true });
     expect(report.totals.sessions).toBe(2895);
     expect(report.rows.map((r: any) => [r.campaign, r.sessions])).toEqual([["brand", 2007], ["retargeting", 888]]);
+  });
+
+  it.each(["empty primary", "complete primary", "partial primary", "purchaseRevenue", "supplemented", "zero"])(
+    "returns the same series, presence and capture as the previous two-fetch sequence: %s", async mode => {
+      if (mode === "complete primary") primary = "complete";
+      if (mode === "partial primary") primary = "partial";
+      purchaseOnly = mode === "purchaseRevenue";
+      utmFinancials = mode !== "supplemented";
+      empty = mode === "zero";
+      const previousCapture: any = { campaignId: campaign.id };
+      await ga4Service.getTimeSeriesData(campaign.id, persisted, start, "542352127", names, end, "EUR");
+      const previousResult = await captureDaily(previousCapture);
+      const dailyRequestCount = () => requests.filter(r => r.metrics.some((m: any) => m.name === "screenPageViews") && r.metrics.some((m: any) => m.name === "conversions")).length;
+      const previousDailyRequests = dailyRequestCount();
+      requests = [];
+      const capture: any = { campaignId: campaign.id };
+      const initialSeries = await ga4Service.getTimeSeriesData(campaign.id, persisted, start, "542352127", names, end, "EUR", capture);
+      const result = await ga4Service.getTrendsDailyPresenceWithToken("542352127", "test-token", start, end, names, "EUR", capture, initialSeries);
+      expect(result).toEqual(previousResult);
+      expect(capture).toEqual(previousCapture);
+      expect(dailyRequestCount() * 2).toBe(previousDailyRequests);
+    },
+  );
+
+  it("keeps captured traffic and uses the renewed token for presence after an auth retry", async () => {
+    let token = "expired-token";
+    persisted.getGA4Connection.mockImplementation(async () => ({ ...connection(), accessToken: token, refreshToken: "refresh-token" }));
+    persisted.updateGA4ConnectionTokens.mockImplementation(async (_id, update) => { token = update.accessToken; });
+    const refresh = vi.spyOn(ga4Service, "refreshAccessToken").mockResolvedValue({ access_token: "renewed-token", expires_in: 3600 });
+    const series = vi.spyOn(ga4Service, "getTimeSeriesWithToken").mockImplementationOnce(async (...args) => {
+      args[6]!.captured = { propertyId: "stale", startDate: start, endDate: end, currencyCode: "EUR", campaigns: [] };
+      throw new Error("401 UNAUTHENTICATED");
+    });
+    const result = await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T06:10:00Z"));
+    expect(result.campaignIdsFailed).toEqual([]);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(series).toHaveBeenCalledTimes(2); // Failed authentication plus one successful series; no presence refetch.
+    expect(series.mock.calls.map(args => args[1])).toEqual(["expired-token", "renewed-token"]);
+    expect(series.mock.calls[0][6]).toBe(series.mock.calls[1][6]);
+    expect(series.mock.calls[1][6]?.captured?.propertyId).toBe("542352127");
+    expect(vi.mocked(fetch).mock.calls.every(([, init]) => (init!.headers as any).Authorization === "Bearer renewed-token")).toBe(true);
+    expect(persisted.replaceGA4DailyMetricsWindow.mock.calls[0][5].campaignBreakdown.totals.sessions).toBe(2895);
+  });
+
+  it("preserves the hydrated service-account path with one daily-series fetch", async () => {
+    persisted.getGA4Connections.mockResolvedValue([{ ...connection(), method: "service_account" }]);
+    persisted.getGA4Connection.mockResolvedValue({ ...connection(), method: "service_account" });
+    const series = vi.spyOn(ga4Service, "getTimeSeriesWithToken");
+    const result = await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T06:10:00Z"));
+    expect(result.campaignIdsFailed).toEqual([]);
+    expect(series).toHaveBeenCalledTimes(1);
+    expect(persisted.replaceGA4DailyMetricsWindow.mock.calls[0][5].campaignBreakdown.totals.sessions).toBe(2895);
+  });
+
+  it("keeps reused daily rows isolated between campaign/property/filter scopes", async () => {
+    const campaigns = [
+      { ...campaign, ga4CampaignFilter: '["brand"]' },
+      { ...campaign, id: "campaign-b", ownerId: "owner-b", clientId: "client-b", ga4CampaignFilter: '["retargeting"]' },
+    ];
+    const connections = campaigns.map((c, i) => ({ ...connection(), id: `connection-${i}`, campaignId: c.id, propertyId: String(542352127 + i) }));
+    persisted.getCampaigns.mockResolvedValue(campaigns);
+    persisted.getGA4Connections.mockImplementation(async id => connections.filter(c => c.campaignId === id));
+    persisted.getGA4Connection.mockImplementation(async (id, propertyId) => connections.find(c => c.campaignId === id && c.propertyId === propertyId));
+    vi.mocked(ga4Service.getConversionEventsReport).mockImplementation(async id => {
+      const conversions = id === campaign.id ? 212 : 40;
+      return { rows: [{ eventName: "purchase", conversions }], totals: { conversions } } as any;
+    });
+    const series = vi.spyOn(ga4Service, "getTimeSeriesWithToken");
+    const presence = vi.spyOn(ga4Service, "getTrendsDailyPresenceWithToken");
+    const result = await refreshAllGA4DailyMetrics({}, new Date("2026-10-17T06:10:00Z"));
+    expect(result.campaignIdsFailed).toEqual([]);
+    expect(series).toHaveBeenCalledTimes(2);
+    expect(persisted.replaceGA4DailyMetricsWindow).toHaveBeenCalledTimes(2);
+    for (const [i, call] of Array.from(persisted.replaceGA4DailyMetricsWindow.mock.calls.entries())) {
+      const [id, property, from, to, rows, overview] = call;
+      expect([id, property, from, to]).toEqual([campaigns[i].id, connections[i].propertyId, start, end]);
+      expect(rows.every((r: any) => r.campaignId === id && r.propertyId === property)).toBe(true);
+      expect(rows.reduce((n: number, r: any) => n + r.sessions, 0)).toBe(i === 0 ? 2007 : 888);
+      expect(overview.campaignBreakdown.rows.map((r: any) => r.campaign)).toEqual([names[i]]);
+      expect(presence.mock.calls[i][7]).toBe(await series.mock.results[i].value);
+    }
+    expect(presence.mock.calls[0][7]).not.toBe(presence.mock.calls[1][7]);
+  });
+
+  it("fetches new values on the next attempt instead of caching the first attempt", async () => {
+    const series = vi.spyOn(ga4Service, "getTimeSeriesWithToken");
+    await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T06:10:00Z"));
+    empty = true;
+    vi.mocked(ga4Service.getConversionEventsReport).mockResolvedValue({ rows: [], totals: { conversions: 0 } } as any);
+    const result = await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T12:10:00Z"));
+    expect(result.campaignIdsFailed).toEqual([]);
+    expect(series).toHaveBeenCalledTimes(2);
+    expect(persisted.replaceGA4DailyMetricsWindow.mock.calls[0][5].campaignBreakdown.totals.sessions).toBe(2895);
+    expect(persisted.replaceGA4DailyMetricsWindow.mock.calls[1][5].campaignBreakdown.totals.sessions).toBe(0);
+    expect(persisted.replaceGA4DailyMetricsWindow.mock.calls[1][4].every((row: any) => row.sessions === 0)).toBe(true);
+  });
+
+  it("rejects new presence-only activity rather than filling the missing date with zero", async () => {
+    const provider = vi.mocked(fetch).getMockImplementation()!;
+    vi.mocked(fetch).mockImplementation(async (...args) => {
+      const response = await provider(...args);
+      const body = JSON.parse(args[1]!.body as string);
+      if (body.dimensions.length === 1 && body.dimensions[0].name === "date" && body.metrics.length === 3) {
+        return { ok: true, json: async () => ({ metadata: { currencyCode: "EUR" }, rows: [{ dimensionValues: [{ value: "20260905" }] }] }) } as any;
+      }
+      return response;
+    });
+    const series = vi.spyOn(ga4Service, "getTimeSeriesWithToken");
+    const result = await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T06:10:00Z"));
+    expect(series).toHaveBeenCalledTimes(1);
+    expect(result.campaignIdsFailed).toEqual([campaign.id]);
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining(`Refresh failed for campaign ${campaign.id}`), "GA4 reported activity for a date without a complete daily metric row");
+    expect(persisted.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
   });
 
   it("continues rejecting genuinely different financial values", async () => {
@@ -168,7 +288,7 @@ describe("GA4 shared daily traffic during provider revisions", () => {
     malformed = issue; revision = 0;
     const result = await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T06:10:00Z"));
     expect(result.campaignIdsFailed).toEqual([campaign.id]);
-    expect(result.failureReasonsByCampaign[campaign.id][0]).toContain("daily_presence:");
+    expect(result.failureReasonsByCampaign[campaign.id][0]).toContain("daily_series:");
     expect(persisted.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
   });
 

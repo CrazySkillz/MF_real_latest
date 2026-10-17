@@ -46,6 +46,8 @@ Attempt observations use the existing process-local scheduler-observation patter
 
 Local evidence and remaining deployment/provider checks are recorded in `docs/GA4_PROCESSING_AND_ALIGNMENT_BACKLOG.md`.
 
+P1 request reuse (2026-10-17, implemented locally; deployment pending): filtered-campaign refreshes now reuse the successful daily-series response within the same campaign/property/filter/currency/date-window attempt. The first fetch also collects the existing per-campaign traffic capture needed for Summary/Breakdown parity, including after token renewal. The separate traffic/conversion presence queries, malformed-data/currency/window checks, Overview reconciliation and transactional publication guards still run. Standalone Trends coverage requests retain their existing fetch path. This removes a repeated daily-series fetch, not Google's processing delay; actual production time savings remain unmeasured. Captured-traffic failures now identify the `daily_series` stage. Exact test evidence and scope limits are recorded under P1 in the backlog.
+
 ### Shared financial consumers during partial updates
 
 For real GA4 properties with selected campaign values, report KPI/Benchmark preflight and the shared alert callers opt into the existing verified saved-Overview selector. A later provider response must not replace that native Revenue/conversion pair during those operations. Financial alert decisions additionally require their relevant combined inputs to agree with the saved financial publication's campaign, reporting window, currency and timezone. Unavailable or stale alert decisions preserve alert history and immediate-email bookkeeping; verified recovery and explicit alert disabling retain their existing resolution behavior.

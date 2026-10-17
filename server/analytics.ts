@@ -2892,6 +2892,7 @@ export class GoogleAnalytics4Service {
     campaignFilter?: CampaignFilter,
     endDate = 'today',
     currencyCode?: string,
+    overviewDailyTraffic?: GA4DailyTrafficCapture,
   ): Promise<any[]> {
     const connection = await storage.getGA4Connection(campaignId, propertyId);
     if (!connection || !isSupportedGA4ConnectionMethod(connection.method)) {
@@ -2914,7 +2915,7 @@ export class GoogleAnalytics4Service {
     }
 
     try {
-      return await this.getTimeSeriesWithToken(connection.propertyId, connection.accessToken, dateRange, campaignFilter, endDate, requestedCurrencyCode);
+      return await this.getTimeSeriesWithToken(connection.propertyId, connection.accessToken, dateRange, campaignFilter, endDate, requestedCurrencyCode, overviewDailyTraffic);
     } catch (error: any) {
       console.log('GA4 time series API call failed:', error.message);
       
@@ -2955,7 +2956,7 @@ export class GoogleAnalytics4Service {
           }
 
           console.log('Access token refreshed successfully - retrying time series call');
-          return await this.getTimeSeriesWithToken(connection.propertyId, refreshResult.access_token, dateRange, campaignFilter, endDate, requestedCurrencyCode);
+          return await this.getTimeSeriesWithToken(connection.propertyId, refreshResult.access_token, dateRange, campaignFilter, endDate, requestedCurrencyCode, overviewDailyTraffic);
         } else {
           const tokenExpiredError = new Error('TOKEN_EXPIRED');
           (tokenExpiredError as any).isTokenExpired = true;
@@ -3361,8 +3362,10 @@ export class GoogleAnalytics4Service {
     campaignFilter?: CampaignFilter,
     currencyCode?: string,
     overviewDailyTraffic?: GA4DailyTrafficCapture,
+    initialSeries?: any[],
   ): Promise<{ dailyRows: any[]; presentDates: string[] }> {
-    const dailyRows = await this.getTimeSeriesWithToken(propertyId, accessToken, startDate, campaignFilter, endDate, currencyCode, overviewDailyTraffic);
+    // The scheduler supplies its successful same-attempt result for this exact scope/window.
+    const dailyRows = initialSeries ?? await this.getTimeSeriesWithToken(propertyId, accessToken, startDate, campaignFilter, endDate, currencyCode, overviewDailyTraffic);
     const presentDates = new Set(dailyRows.map((row: any) => String(row?.date || "")));
     const property = this.normalizeGA4PropertyId(propertyId);
     const currency = String(currencyCode || "").trim().toUpperCase();

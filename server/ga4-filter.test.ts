@@ -1463,15 +1463,15 @@ describe("GA4 campaign value picker", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("uses a proven first-user campaign dimension when session campaign conversion events are empty", async () => {
+  it("uses the scheduler-compatible campaign dimension when session campaign conversion events are empty", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
       const filterText = JSON.stringify(body?.dimensionFilter || {});
       return {
         ok: true,
         json: async () => ({
-          rowCount: filterText.includes("firstUserCampaignName") ? 2 : 0,
-          rows: filterText.includes("firstUserCampaignName") ? [
+          rowCount: filterText.includes('"fieldName":"campaignName"') ? 2 : 0,
+          rows: filterText.includes('"fieldName":"campaignName"') ? [
             {
               dimensionValues: [{ value: "purchase" }],
               metricValues: [{ value: "193" }, { value: "193" }, { value: "193" }, { value: "43668.5" }],
@@ -1499,6 +1499,13 @@ describe("GA4 campaign value picker", () => {
     ]);
     expect(result.totals).toEqual({ conversions: 193, eventCount: 193, users: 193, revenue: 43668.5 });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    const requestBodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
+    ["sessionCampaignName", "campaignName"].forEach((fieldName, index) => {
+      expect(requestBodies[index].dimensionFilter.orGroup.expressions).toEqual(
+        ["campaign-a", "campaign-b"].map((value) => ({ filter: { fieldName, stringFilter: { matchType: "EXACT", value, caseSensitive: false } } })),
+      );
+    });
+    expect(JSON.stringify(requestBodies)).not.toContain("firstUser");
   });
 
   it("passes explicit cumulative start and end dates to Overview row reports", async () => {
@@ -1519,7 +1526,8 @@ describe("GA4 campaign value picker", () => {
     await ga4Service.getConversionEventsReport("campaign-1", storage, "2026-07-02", "123", 50, "summer_sale", "2026-08-04");
 
     const requestBodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as any)?.body || "{}")));
-    expect(requestBodies).toHaveLength(4);
+    expect(requestBodies).toHaveLength(3);
+    expect(requestBodies.slice(1).map((body) => body.dimensionFilter.filter.fieldName)).toEqual(["sessionCampaignName", "campaignName"]);
     expect(requestBodies.every((body) => JSON.stringify(body.dateRanges) === JSON.stringify([
       { startDate: "2026-07-02", endDate: "2026-08-04" },
     ]))).toBe(true);

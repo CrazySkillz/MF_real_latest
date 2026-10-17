@@ -108,11 +108,11 @@ describe("GA4 Insights authentication and tenant scope", () => {
     expect(route).toContain("activationGA4Connections.some");
     expect(route).toContain('const preparedData = shouldRunInitialGA4Import ? { ...validatedData, status: "draft" } : validatedData;');
     expect(route).toContain("await storage.updateCampaignWithGA4DailyInvalidation(campaignId, preparedData)");
-    expect(route).toContain("await refreshAllGA4DailyMetrics({ campaignId })");
+    expect(route).toContain("await refreshAllGA4DailyMetrics({ campaignId, includeTargetDraft: true })");
     expect(route).toContain("getGA4DailyRefreshFailure(initialImport, campaignId)");
     expect(route).toContain('error: "GA4_INITIAL_IMPORT_FAILED"');
     expect(route).toContain('await storage.updateCampaign(campaignId, { status: "active" } as any)');
-    expect(route.indexOf("await refreshAllGA4DailyMetrics({ campaignId })")).toBeLessThan(
+    expect(route.indexOf("await refreshAllGA4DailyMetrics({ campaignId, includeTargetDraft: true })")).toBeLessThan(
       route.indexOf('await storage.updateCampaign(campaignId, { status: "active" } as any)'),
     );
     expect(route).not.toContain("runGA4DailyRefreshPipeline");

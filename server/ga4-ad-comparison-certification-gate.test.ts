@@ -28,7 +28,7 @@ const content = Object.fromEntries(
       path === 'server/analytics.ts' ? "endDateOverride: string = endDate || 'yesterday'" : '',
       path === 'server/utils/reporting-timezone.ts' ? 'export function resolveGA4ImportToDateWindow' : '',
       path === 'client/src/pages/ga4-metrics.tsx' ? 'window=import-to-date campaignBreakdownAgg={adComparisonBreakdownAgg}' : '',
-      path === 'client/src/pages/ga4-ad-comparison.tsx' ? 'initial-import-to-latest-completed-day comparison window' : '',
+      path === 'client/src/pages/ga4-ad-comparison.tsx' ? 'GA4 revenue uses the initial-import-to-latest-completed-day.' : '',
     ].filter(Boolean).join('\n'),
   ]),
 );
@@ -119,17 +119,20 @@ describe('GA4 Ad Comparison certification gate', () => {
     );
   });
 
-  it('rejects removal of the production accumulation wiring', () => {
+  it.each([
+    ['client/src/pages/ga4-metrics.tsx', 'window=import-to-date'],
+    ['client/src/pages/ga4-ad-comparison.tsx', 'GA4 revenue uses the initial-import-to-latest-completed-day.'],
+  ])('rejects removal of the accumulation marker in %s', (path, marker) => {
     const changed = {
       ...content,
-      'client/src/pages/ga4-metrics.tsx': 'dependency without cumulative query',
+      [path]: content[path].replace(marker, ''),
     };
     const result = evaluateGA4AdComparisonCertification(
       baseRecord(),
       gateContext(changed),
     );
     expect(result.errors.join('\n')).toContain(
-      'missing accumulation-path marker window=import-to-date',
+      path + ': missing accumulation-path marker ' + marker,
     );
   });
 

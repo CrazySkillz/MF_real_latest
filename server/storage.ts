@@ -1200,8 +1200,9 @@ export class DatabaseStorage implements IStorage {
         eq(ga4DailyMetrics.propertyId, pid),
         sql`${ga4DailyMetrics.date} >= ${start} AND ${ga4DailyMetrics.date} <= ${end}`,
       ));
-      for (const row of scoped as any[]) {
-        await tx.insert(ga4DailyMetrics).values({
+      // Bound query parameters while keeping every batch and Overview in this transaction.
+      for (let offset = 0; offset < scoped.length; offset += 500) {
+        await tx.insert(ga4DailyMetrics).values(scoped.slice(offset, offset + 500).map((row: any) => ({
           ...row,
           campaignId: cid,
           propertyId: pid,
@@ -1216,7 +1217,7 @@ export class DatabaseStorage implements IStorage {
           revenueMetric: row?.revenueMetric ?? null,
           isSimulated: Boolean(row?.isSimulated),
           updatedAt: new Date(),
-        } as any);
+        })));
       }
       if (overviewSnapshot) {
         await tx.insert(ga4OverviewSnapshots).values({

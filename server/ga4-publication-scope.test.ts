@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => {
         return { for: async (mode: string) => { state.calls.push(`lock:${mode}`); return rows; }, then: (resolve: any) => resolve(rows) };
       } }) }),
       delete: () => ({ where: async () => { state.calls.push("delete"); } }),
-      insert: () => ({ values: () => ({ then: (resolve: any) => { state.calls.push("insert-daily"); resolve(); }, onConflictDoUpdate: async () => { state.calls.push("insert-overview"); } }) }),
+      insert: () => ({ values: (values: any) => ({ then: (resolve: any) => { state.calls.push("insert-daily"); state.batches.push(values); resolve(); }, onConflictDoUpdate: async () => { state.calls.push("insert-overview"); } }) }),
     };
     return fn(tx);
   });
@@ -31,10 +31,22 @@ const row = { campaignId: "c", propertyId: "123", date: "2026-10-16", sessions: 
 const write = (snapshot = overview()) => storage.replaceGA4DailyMetricsWindow("c", "123", "2026-10-16", "2026-10-16", [row] as any, snapshot);
 
 describe("GA4 atomic publication scope", () => {
-  beforeEach(() => { mocks.state.campaign = { ...campaign }; mocks.state.connection = { ...connection }; mocks.state.previous = { updatedAt: new Date("2026-10-17T06:00:00Z") }; mocks.state.calls = []; });
+  beforeEach(() => { mocks.state.campaign = { ...campaign }; mocks.state.connection = { ...connection }; mocks.state.previous = { updatedAt: new Date("2026-10-17T06:00:00Z") }; mocks.state.calls = []; mocks.state.batches = []; });
   it("locks and verifies the campaign and connection before replacing either publication", async () => {
     await expect(write()).resolves.toEqual({ replaced: 1 });
     expect(mocks.state.calls).toEqual(["lock:update", "lock:share", "delete", "insert-daily", "insert-overview"]);
+  });
+  it.each([0, 1, 90, 365, 500, 501])("bounds insert calls for %i rows and preserves their order", async count => {
+    const rows = Array.from({ length: count }, (_, i) => ({ ...row,
+      date: new Date(Date.UTC(2025, 0, 1 + i)).toISOString().slice(0, 10), revenue: String(i),
+    }));
+    await expect(storage.replaceGA4DailyMetricsWindow("c", "123", "2025-01-01", "2026-10-16", rows as any, overview()))
+      .resolves.toEqual({ replaced: count });
+    expect(mocks.state.batches.map((batch: any[]) => batch.length)).toEqual(count > 500 ? [500, count - 500] : count ? [count] : []);
+    expect(mocks.state.batches.flat()).toEqual(rows.map(value => ({ ...value,
+      revenueMetric: null, isSimulated: false, updatedAt: expect.any(Date),
+    })));
+    expect(mocks.state.calls.at(-1)).toBe("insert-overview");
   });
   it("invalidates only this campaign/date's GA4 readiness marker, preserving other notes and snapshots", async () => {
     await storage.invalidateExecutiveSummaryDailySnapshotAlignment("c", "2026-10-16");

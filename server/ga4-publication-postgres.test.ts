@@ -6,6 +6,7 @@ import { getTableColumns, getTableName, SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 import * as schema from "../shared/schema";
 import { buildExecutiveSummaryDailySnapshotInput } from "./utils/executive-summary-daily-snapshot";
+import { addGA4InsightsDateDays } from "../shared/ga4-insights";
 
 const database = vi.hoisted(() => ({ current: null as any }));
 vi.mock("./db", () => ({ get db() { return database.current; }, pool: null }));
@@ -26,6 +27,8 @@ const storage = new DatabaseStorage();
 let admin: Pool;
 let pool: Pool;
 let created = false;
+const queries: string[] = [];
+const logger = { logQuery: (query: string) => { queries.push(query); } };
 const date = "2026-10-16";
 const campaign = (id = "a") => ({ id, name: `Test ${id}`, ownerId: `owner-${id}`, clientId: `client-${id}`, status: "active",
   currency: "EUR", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: "sale" });
@@ -53,7 +56,7 @@ describe.skipIf(!testUrl)("GA4 publication with real PostgreSQL transactions", (
     admin = new Pool({ connectionString: testUrl, max: 2 });
     await admin.query(`CREATE SCHEMA "${schemaName}"`); created = true;
     pool = new Pool({ connectionString: testUrl, options: `-c search_path=${schemaName}`, application_name: schemaName, max: 6 });
-    database.current = drizzle(pool, { schema });
+    database.current = drizzle(pool, { schema, logger });
     const dialect = new PgDialect();
     for (const table of tables) {
       const columns = Object.values(getTableColumns(table)).map((column: any) => {
@@ -87,6 +90,82 @@ describe.skipIf(!testUrl)("GA4 publication with real PostgreSQL transactions", (
     await write(20, await overview(20));
     await expectSaved(20); await expectSaved(10, "b");
   });
+  it.each([0, 1, 90, 365, 500, 501])("saves %i daily rows in bounded batches with identical values and scope", async count => {
+    const start = addGA4InsightsDateDays(date, 1 - Math.max(count, 1))!;
+    const input = Array.from({ length: count }, (_, i) => ({ ...row(i % 3 === 0 ? 0 : 10),
+      date: addGA4InsightsDateDays(start, i)!, users: i % 3 === 0 ? 0 : "8", conversions: i % 3 === 0 ? 0 : "2",
+      engagedSessions: i % 3 === 0 ? 0 : i % 3 === 1 ? null : 2.6,
+      engagementRate: i % 3 === 0 ? 0 : "0.5", revenue: i % 3 === 0 ? "0" : "-12.345",
+      revenueMetric: i % 3 === 0 ? null : "purchaseRevenue", isSimulated: i % 3 === 0,
+    }));
+    const untouched = [
+      { ...row(17), date: addGA4InsightsDateDays(start, -1)! },
+      { ...row(18), date: addGA4InsightsDateDays(date, 1)! },
+      { ...row(19), propertyId: "other-property", date: start },
+    ];
+    const sentinels = await database.current.insert(schema.ga4DailyMetrics).values(untouched).returning();
+    const snapshot = { ...await overview(20), windowStart: start };
+    queries.length = 0;
+    await expect(storage.replaceGA4DailyMetricsWindow("a", "property-a", start, date, input as any, snapshot))
+      .resolves.toEqual({ replaced: count });
+    expect(queries.filter(query => query.startsWith('insert into "ga4_daily_metrics"'))).toHaveLength(Math.ceil(count / 500));
+    const saved = await storage.getGA4DailyMetrics("a", "property-a", start, date);
+    expect(saved).toHaveLength(count);
+    expect(new Set(saved.map(value => value.id)).size).toBe(count);
+    for (const [i, actual] of saved.entries()) {
+      expect(actual).toMatchObject({ campaignId: "a", propertyId: "property-a", date: input[i].date,
+        users: i % 3 === 0 ? 0 : 8, sessions: i % 3 === 0 ? 0 : 10, pageviews: i % 3 === 0 ? 0 : 10,
+        conversions: i % 3 === 0 ? 0 : 2, engagedSessions: i % 3 === 0 ? 0 : i % 3 === 1 ? null : 3,
+        engagementRate: i % 3 === 0 ? "0.0000" : "0.5000", revenue: i % 3 === 0 ? "0.00" : "-12.35",
+        revenueMetric: i % 3 === 0 ? null : "purchaseRevenue", isSimulated: i % 3 === 0,
+      });
+      expect(actual.id).toBeTruthy(); expect(actual.updatedAt).toBeInstanceOf(Date); expect(actual.createdAt).toBeInstanceOf(Date);
+    }
+    const all = await database.current.select().from(schema.ga4DailyMetrics);
+    expect(all.filter((value: any) => sentinels.some((sentinel: any) => sentinel.id === value.id))).toEqual(sentinels);
+    expect(await storage.getGA4OverviewSnapshot("a", "property-a")).toMatchObject({ windowStart: start, windowEnd: date,
+      campaignBreakdown: snapshot.campaignBreakdown, landingPages: snapshot.landingPages, conversionEvents: snapshot.conversionEvents });
+    await expectSaved(10, "b");
+  });
+  it("preserves the daily-only path and leaves its existing Overview untouched", async () => {
+    const previous = await storage.getGA4OverviewSnapshot("a", "property-a");
+    const start = addGA4InsightsDateDays(date, -1)!;
+    const input = [{ ...row(20), date: start }, row(30)];
+    await expect(storage.replaceGA4DailyMetricsWindow("a", "property-a", start, date, input)).resolves.toEqual({ replaced: 2 });
+    expect((await storage.getGA4DailyMetrics("a", "property-a", start, date)).map(value => value.sessions)).toEqual([20, 30]);
+    expect(await storage.getGA4OverviewSnapshot("a", "property-a")).toEqual(previous);
+    await expectSaved(10, "b");
+  });
+  it.each(["metric", "campaign", "property", "date", "window"])("rejects an invalid %s before starting any replacement", async invalid => {
+    const input: any = row(20);
+    if (invalid === "metric") input.revenue = "NaN";
+    if (invalid === "campaign") input.campaignId = "b";
+    if (invalid === "property") input.propertyId = "property-b";
+    if (invalid === "date") input.date = "2026-10-17";
+    const snapshot = await overview(20);
+    queries.length = 0;
+    await expect(storage.replaceGA4DailyMetricsWindow("a", "property-a", invalid === "window" ? "bad" : date, date, [input], snapshot)).rejects.toThrow();
+    expect(queries).toEqual([]);
+    await expectSaved(10); await expectSaved(10, "b");
+  });
+  it.each(["later daily batch", "Overview"])("rolls back every batch when %s fails and allows retry", async failure => {
+    const start = addGA4InsightsDateDays(date, -500)!;
+    const input: any[] = Array.from({ length: 501 }, (_, i) => ({ ...row(20), date: addGA4InsightsDateDays(start, i)! }));
+    const snapshot = { ...await overview(20), windowStart: start };
+    const before = await database.current.select().from(schema.ga4DailyMetrics);
+    const beforeOverview = await storage.getGA4OverviewSnapshot("a", "property-a");
+    if (failure === "later daily batch") input[500].id = before.find((value: any) => value.campaignId === "b").id;
+    const rejected = failure === "Overview" ? { ...snapshot, campaignBreakdown: { rejectForTest: true } } : snapshot;
+    queries.length = 0;
+    await expect(storage.replaceGA4DailyMetricsWindow("a", "property-a", start, date, input, rejected)).rejects.toThrow();
+    expect(queries.filter(query => query.startsWith('insert into "ga4_daily_metrics"'))).toHaveLength(2);
+    expect(await database.current.select().from(schema.ga4DailyMetrics)).toEqual(before);
+    expect(await storage.getGA4OverviewSnapshot("a", "property-a")).toEqual(beforeOverview);
+    delete input[500].id;
+    await expect(storage.replaceGA4DailyMetricsWindow("a", "property-a", start, date, input, snapshot)).resolves.toEqual({ replaced: 501 });
+    expect(await storage.getGA4DailyMetrics("a", "property-a", start, date)).toHaveLength(501);
+    await expectSaved(10, "b");
+  });
   it("rolls back daily replacement if Overview storage fails, then permits a clean retry", async () => {
     const snapshot = await overview(20);
     await expect(write(20, { ...snapshot, campaignBreakdown: { rejectForTest: true } })).rejects.toThrow();
@@ -98,6 +177,12 @@ describe.skipIf(!testUrl)("GA4 publication with real PostgreSQL transactions", (
     const snapshot = await overview(20);
     let pending: Promise<unknown> | undefined;
     let blockedPid: number | undefined;
+    const acquired: any[] = [];
+    const trackClient = (client: any) => { acquired.push(client); };
+    const connectionErrors: Error[] = [];
+    const captureDisconnect = (error: Error) => { connectionErrors.push(error); };
+    let writer: any;
+    pool.on("acquire", trackClient);
     await pool.query("CREATE FUNCTION hold_overview_write() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_advisory_xact_lock(55439001); RETURN NEW; END $$");
     await pool.query("CREATE TRIGGER hold_overview_write BEFORE INSERT ON ga4_overview_snapshots FOR EACH ROW EXECUTE FUNCTION hold_overview_write()");
     try {
@@ -112,10 +197,18 @@ describe.skipIf(!testUrl)("GA4 publication with real PostgreSQL transactions", (
         await new Promise(resolve => setTimeout(resolve, 25));
       }
       expect(blockedPid).toBeTypeOf("number");
+      writer = acquired.find(client => client.processID === blockedPid);
+      expect(writer).toBeTruthy();
+      writer.on("error", captureDisconnect); // pg also emits a client error for this intentional termination.
+      const disconnected = new Promise(resolve => writer.once("end", resolve));
       await expectSaved(10); // The writer has already replaced daily rows inside its uncommitted transaction.
       await admin.query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE pid=$1 AND application_name=$2", [blockedPid, schemaName]);
       expect(await pending).toBeInstanceOf(Error);
+      await disconnected;
+      for (const error of connectionErrors) expect(error.message).toBe("Connection terminated unexpectedly");
     } finally {
+      pool.off("acquire", trackClient);
+      writer?.off("error", captureDisconnect);
       await holder.query("ROLLBACK"); holder.release();
       await pending;
       await pool.query("DROP TRIGGER hold_overview_write ON ga4_overview_snapshots");
@@ -170,7 +263,7 @@ describe.skipIf(!testUrl)("GA4 publication with real PostgreSQL transactions", (
     }
     await pool.end();
     pool = new Pool({ connectionString: testUrl, options: `-c search_path=${schemaName}`, application_name: schemaName, max: 6 });
-    database.current = drizzle(pool, { schema });
+    database.current = drizzle(pool, { schema, logger });
     const restarted = new DatabaseStorage();
     const marker = `ga4_aligned_refresh_v1:${date}:2026-10-17T12:12:00.000Z`;
     expect((await restarted.getExecutiveSummaryDailyComparisonData("a", date, date)).current?.notes).toBe(marker);

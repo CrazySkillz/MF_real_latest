@@ -8,17 +8,21 @@ describe("campaign KPI UI regression guard", () => {
       join(process.cwd(), "client", "src", "pages", "campaign-detail.tsx"),
       "utf-8"
     );
-    const tabsNavigation = campaignDetail.slice(
-      campaignDetail.indexOf("{/* Tabs Navigation */}"),
-      campaignDetail.indexOf('<TabsContent value="overview"')
-    );
+    const tabsStart = campaignDetail.indexOf("<Tabs defaultValue=");
+    const overviewStart = campaignDetail.indexOf('<TabsContent value="overview"', tabsStart);
+    expect(tabsStart).toBeGreaterThan(-1);
+    expect(overviewStart).toBeGreaterThan(tabsStart);
+    const tabsNavigation = campaignDetail.slice(tabsStart, overviewStart);
 
-    expect(tabsNavigation).toContain('className="grid w-full grid-cols-3"');
-    expect(tabsNavigation).not.toContain('<TabsTrigger value="kpis">');
-    expect(tabsNavigation).not.toContain('<TabsTrigger value="benchmarks">');
-    expect(campaignDetail).toContain("['overview','kpis','benchmarks','insights','webhooks'].includes(h)");
+    expect(tabsNavigation).toContain('Campaign Overview</h2>');
+    expect(campaignDetail).not.toContain('<TabsList');
+    expect(campaignDetail).not.toContain('<TabsTrigger');
+    expect(tabsNavigation).toContain("['overview','kpis','benchmarks'].includes(h)");
     expect(campaignDetail).toContain('<TabsContent value="kpis"');
     expect(campaignDetail).toContain('<TabsContent value="benchmarks"');
+    const ga4Page = readFileSync(join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"), "utf-8");
+    expect(ga4Page).toContain('<TabsTrigger value="kpis">KPIs</TabsTrigger>');
+    expect(ga4Page).toContain('<TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>');
   });
 
   it("colors campaign KPI progress bars from the same band used by the summary panel", () => {

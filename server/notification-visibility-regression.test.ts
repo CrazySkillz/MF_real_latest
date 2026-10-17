@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { QueryClient, QueryObserver } from "@tanstack/react-query";
+import { ScriptTarget, transpileModule } from "typescript";
 import { resolveStoredGA4TrafficFreshness } from "./utils/ga4-alert-current-value";
 
 describe("notification visibility regression guard", () => {
@@ -414,12 +416,46 @@ describe("notification visibility regression guard", () => {
     expect(storageFile).toContain("await tx.update(notifications)");
     expect(storageFile).toContain("'dismissalReason', 'campaign_deleted'");
     expect(storageFile).toContain("await this.deleteCampaignChildren(String(campaign.id), tx);");
-    expect(homeFile).toContain("onSuccess: async (_data, clientId) => {");
-    expect(homeFile).toContain('await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });');
-    expect(homeFile).toContain('await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });');
+    const homeSuccess = homeFile.slice(homeFile.indexOf("onSuccess:"), homeFile.indexOf("onError:"));
+    expect(homeSuccess).toContain("onSuccess: (_data, clientId) => {");
+    expect(homeSuccess).toContain('queryClient.invalidateQueries({ queryKey: ["/api/notifications"] })');
+    expect(homeSuccess).toContain("void Promise.all([");
+    expect(homeSuccess).not.toContain("await queryClient");
     expect(campaignsFile).toContain("onSuccess: async () => {");
     expect(campaignsFile).toContain('await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });');
     expect(campaignsFile).toContain('await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });');
+  });
+
+  it.each(["deleted-client", "other-client"])("refreshes active notifications after client deletion while selected client is %s", async (selectedClientId) => {
+    const homeFile = readFileSync(join(process.cwd(), "client", "src", "pages", "home.tsx"), "utf-8");
+    const start = homeFile.indexOf("onSuccess:");
+    const end = homeFile.indexOf("onError:", start);
+    expect(start).toBeGreaterThan(-1); expect(end).toBeGreaterThan(start);
+    const callback = homeFile.slice(start + "onSuccess:".length, end).trim().replace(/,$/, "");
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    const remaining = [{ id: "other-alert", campaignId: "other-campaign" }];
+    queryClient.setQueryData(["/api/clients"], [{ id: "deleted-client" }, { id: "other-client" }]);
+    queryClient.setQueryData(["/api/notifications"], [{ id: "deleted-alert", campaignId: "deleted-campaign" }, ...remaining]);
+    let completeRefresh!: (rows: typeof remaining) => void;
+    const fetchNotifications = vi.fn(() => new Promise<typeof remaining>((resolve) => { completeRefresh = resolve; }));
+    const observer = new QueryObserver(queryClient, { queryKey: ["/api/notifications"], queryFn: fetchNotifications });
+    const unsubscribe = observer.subscribe(() => {});
+    const bindings = { queryClient, selectedClientId, setSelectedClientId: vi.fn(), setClientToDelete: vi.fn(), toast: vi.fn() };
+    try {
+      const onSuccess = new Function(...Object.keys(bindings), transpileModule(`return (${callback});`, {
+        compilerOptions: { target: ScriptTarget.ES2022 },
+      }).outputText)(...Object.values(bindings));
+      expect(onSuccess({ success: true }, "deleted-client")).toBeUndefined();
+      expect(bindings.setClientToDelete).toHaveBeenCalledWith(null);
+      expect(queryClient.getQueryData(["/api/clients"])).toEqual([{ id: "other-client" }]);
+      if (selectedClientId === "deleted-client") expect(bindings.setSelectedClientId).toHaveBeenCalledWith(null);
+      else expect(bindings.setSelectedClientId).not.toHaveBeenCalled();
+      expect(fetchNotifications).toHaveBeenCalledTimes(1);
+      completeRefresh(remaining);
+      await vi.waitFor(() => expect(queryClient.getQueryData(["/api/notifications"])).toEqual(remaining));
+    } finally {
+      unsubscribe(); queryClient.clear();
+    }
   });
 
   it("routes top bar bell clicks directly to Notifications and disables it on the Notifications page", () => {

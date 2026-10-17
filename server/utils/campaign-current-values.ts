@@ -217,8 +217,8 @@ async function getCampaignMetricTotalsForEndDate(
       financialConversions = conversions;
       ga4FinancialSource = "deterministic_simulation";
     } else if (useFullFinancialCandidate && useSavedOverview && parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter).length > 0) {
-      // The financial writer must use the aggregate already reconciled and saved with
-      // Overview, not a later provider revision. Other callers keep their existing selection.
+      // Opted-in publication jobs use the aggregate reconciled and saved with Overview.
+      // Other callers keep their existing selection.
       const overview = await storage.getGA4OverviewSnapshot(campaignId, propertyId);
       const savedTotals = (overview?.campaignBreakdown as any)?.totals;
       const savedRevenue = parseGA4FinancialNumber(savedTotals?.revenue);
@@ -504,7 +504,7 @@ export async function resolveCampaignCurrentValueForAlert<T extends { campaignId
   );
 }
 
-export async function refreshCampaignCurrentValuesForCampaign(campaignId: string): Promise<{ kpisUpdated: number; benchmarksUpdated: number }> {
+export async function refreshCampaignCurrentValuesForCampaign(campaignId: string, useSavedOverview = false): Promise<{ kpisUpdated: number; benchmarksUpdated: number }> {
   const id = String(campaignId || "").trim();
   if (!id) return { kpisUpdated: 0, benchmarksUpdated: 0 };
 
@@ -514,7 +514,7 @@ export async function refreshCampaignCurrentValuesForCampaign(campaignId: string
   ]);
   const rows = [...(Array.isArray(kpis) ? kpis : []), ...(Array.isArray(benchmarks) ? benchmarks : [])];
   const useFullFinancialCandidate = rows.some((row: any) => isFinancialMetric(parseConfig(row?.calculationConfig)?.metric));
-  const totals = await getCampaignMetricTotals(id, useFullFinancialCandidate);
+  const totals = await getCampaignMetricTotals(id, useFullFinancialCandidate, useSavedOverview);
   if (!totals) return { kpisUpdated: 0, benchmarksUpdated: 0 };
 
   let kpisUpdated = 0;

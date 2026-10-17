@@ -10,7 +10,7 @@ import {
 } from "../shared/ga4-kpi-metric-identity";
 import { isGA4FinancialTotalsCandidate, parseGA4FinancialNumber, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
 import { summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
-import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
+import { refreshCampaignCurrentValuesForCampaign, getCampaignMetricTotals } from "./utils/campaign-current-values";
 import { getReportingDateWindow, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { assertGA4InsightsFinancialCurrencyScope, buildGA4InsightsHistoryScopeMarker, filterGA4InsightsHistoryByScope } from "../shared/ga4-insights";
 import { isSupportedGA4ConnectionMethod } from "./utils/ga4-service-account";
@@ -219,7 +219,7 @@ export function computeBenchmarkRating(variancePct: number) {
   return "poor";
 }
 
-export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: string; campaignIds?: string[]; date?: string; suppressAlerts?: boolean }) {
+export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: string; campaignIds?: string[]; date?: string; suppressAlerts?: boolean; useSavedOverview?: boolean }) {
   const requestedDate = String(opts?.date || "").trim();
   const requestedCampaignIds = Array.isArray(opts?.campaignIds)
     ? new Set(opts.campaignIds.map((id) => String(id)))
@@ -291,6 +291,8 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       }
       const propertyId = String(primary.propertyId);
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+      const useSavedOverview = opts?.useSavedOverview === true && !isYesopMockProperty(propertyId) &&
+        (Array.isArray(campaignFilter) ? campaignFilter.length > 0 : Boolean(campaignFilter));
       const historyScopeMarker = buildGA4InsightsHistoryScopeMarker(
         propertyId,
         campaignFilter,
@@ -304,6 +306,9 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         primary.importStartDate,
       );
       const date = reportingWindow.endDate;
+      if (useSavedOverview && date !== resolveGA4ImportToDateWindow(primary.importStartDate, (campaign as any)?.reportingTimeZone)?.endDate) {
+        throw new Error("Saved GA4 Overview is only available for the current completed-day window");
+      }
       const recordedAt = toRecordedAtUtc(date);
       if (opts?.campaignId) reportedDate = date;
 
@@ -329,8 +334,8 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
       }
 
       // Build native GA4 totals from the same initial-import boundary used by cumulative traffic.
-      // Production path: GA4 API totals (with automatic token refresh).
-      // Stored daily totals are retained only for the explicit mock/demo property.
+      // The ordered scheduler uses verified saved Overview totals. Other callers keep
+      // their existing provider path; mock/demo properties retain their daily baseline.
       const financialStartDate = reportingWindow.startDate;
       const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
       const [reportingRows, toDateRows] = await Promise.all([
@@ -375,6 +380,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         storage.getSpendSources(campaignId, "ga4"),
       ]);
       let providerFinancialCandidate: any = null;
+      let savedFinancialCandidate: any = null;
       if (isYesopMockProperty(propertyId)) {
         const baseline = getYesopMockBaselineTotals(campaignId, (campaign as any)?.ga4CampaignFilter, noRevenue);
         sessionsToDate += baseline.sessions;
@@ -382,6 +388,16 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         conversionsToDate += baseline.conversions;
         pageviewsToDate += baseline.pageviews;
         ga4RevenueToDate += baseline.revenue;
+      } else if (useSavedOverview) {
+        try {
+          const saved = await getCampaignMetricTotals(campaignId, true, true);
+          if (hasExactDailyRow && saved?.ga4FinancialSource === "persisted_overview" &&
+              saved.sessions === trafficTotals.sessions && saved.conversions === trafficTotals.conversions) {
+            savedFinancialCandidate = { revenue: saved.ga4Revenue, conversions: saved.financialConversions };
+          }
+        } catch {
+          // Retain saved KPI/Benchmark values when the verified Overview cannot be read.
+        }
       } else {
         try {
           const conn = await storage.getGA4Connection(campaignId, propertyId).catch(() => null as any);
@@ -475,7 +491,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         revenue: round2(ga4RevenueToDate || 0),
       } : null;
       const selectedFinancialCandidate = selectGA4FinancialTotalsSource(
-        [providerFinancialCandidate, isYesopMockProperty(propertyId) ? persistedFinancialCandidate : null],
+        [savedFinancialCandidate, providerFinancialCandidate, isYesopMockProperty(propertyId) ? persistedFinancialCandidate : null],
         {} as any,
       );
       const financialCandidateAvailable = isGA4FinancialTotalsCandidate(selectedFinancialCandidate);
@@ -631,7 +647,8 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         }
       }
 
-      await refreshCampaignCurrentValuesForCampaign(campaignId);
+      if (useSavedOverview) await refreshCampaignCurrentValuesForCampaign(campaignId, true);
+      else await refreshCampaignCurrentValuesForCampaign(campaignId);
 
       processed += 1;
       campaignIdsProcessed.add(campaignId);

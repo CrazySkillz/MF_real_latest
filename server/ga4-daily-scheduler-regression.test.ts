@@ -97,7 +97,7 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("const campaignId = String(opts.campaignId || \"\").trim();");
     expect(source).toContain("const campaigns = filterActiveSchedulerCampaigns(");
     expect(source).toContain('opts.includeTargetDraft ? campaignId : ""');
-    expect(source).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true })");
+    expect(source).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true, useSavedOverview: true })");
     expect(source).toContain("[GA4 Daily] KPI/Benchmark recompute result");
     expect(source).toContain("recomputeEvidence[key].push(...recomputeResult[key])");
     expect(source).toContain("lastRecomputeRecordedAt = new Date()");

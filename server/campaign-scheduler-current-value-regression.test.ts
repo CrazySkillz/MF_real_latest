@@ -6,7 +6,7 @@ describe("campaign scheduler current-value regression guard", () => {
   it("reconciles campaign KPI and Benchmark current values from the GA4 scheduler recompute path", () => {
     const ga4Jobs = readFileSync(join(process.cwd(), "server", "ga4-kpi-benchmark-jobs.ts"), "utf-8");
 
-    expect(ga4Jobs).toContain('import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";');
+    expect(ga4Jobs).toContain('import { refreshCampaignCurrentValuesForCampaign, getCampaignMetricTotals } from "./utils/campaign-current-values";');
     expect(ga4Jobs).toContain("await refreshCampaignCurrentValuesForCampaign(campaignId);");
   });
 
@@ -29,7 +29,7 @@ describe("campaign scheduler current-value regression guard", () => {
     expect(autoRefresh).toContain("await runGA4DailyKPIAndBenchmarkJobs({ campaignId }).catch");
     expect(autoRefresh).toContain("anyCampaignUpdated && !anyCampaignRecomputeFailed");
     expect(autoRefresh).toContain("recomputeResult.kpiIdsSkipped.length > 0");
-    expect(dailyScheduler).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true })");
+    expect(dailyScheduler).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true, useSavedOverview: true })");
     expect(dailyScheduler).toContain("getGA4DailyRecomputeFailure(recomputeResult, true)");
     expect(dailyScheduler).not.toContain("recomputeResult.kpiIdsSkipped.length > 0");
     expect(dailyScheduler).toContain("benchmarkIdsFailed: hashEvidenceIds(recomputeEvidence.benchmarkIdsFailed)");

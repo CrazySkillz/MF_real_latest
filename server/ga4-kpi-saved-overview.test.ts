@@ -1,0 +1,199 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const storageMock = vi.hoisted(() => Object.fromEntries([
+  "getCampaign", "getCampaigns", "getGA4Connections", "getGA4Connection", "getGA4DailyMetrics", "getLatestGA4DailyMetric",
+  "getGA4OverviewSnapshot", "getRevenueTotalForRange", "getSpendTotalForRange", "getRevenueSources", "getSpendSources",
+  "getRevenueBreakdownBySource", "getSpendBreakdownBySource", "getPlatformKPIs", "getPlatformBenchmarks",
+  "getCampaignKPIs", "getCampaignBenchmarks", "updateKPI", "updateBenchmark", "getKPIProgress", "recordKPIProgress",
+  "updateKPIProgress", "getBenchmarkHistory", "recordBenchmarkHistory",
+].map((name) => [name, vi.fn()])));
+const provider = vi.hoisted(() => ({ getTotalsWithRevenue: vi.fn(), getAcquisitionBreakdown: vi.fn(), refreshAccessToken: vi.fn() }));
+const alerts = vi.hoisted(() => ({ kpi: vi.fn(), benchmark: vi.fn() }));
+vi.mock("./storage", () => ({ storage: storageMock }));
+vi.mock("./analytics", () => ({ ga4Service: provider }));
+vi.mock("./kpi-scheduler.js", () => ({ checkGA4PerformanceAlertsForCampaign: alerts.kpi }));
+vi.mock("./benchmark-notifications.js", () => ({ checkGA4BenchmarkPerformanceAlertsForCampaign: alerts.benchmark }));
+
+import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
+
+const campaignId = "campaign-1";
+const propertyId = "542352127";
+const date = "2026-10-16";
+const overview = () => ({ campaignId, propertyId, windowStart: "2026-10-15", windowEnd: date,
+  campaignBreakdown: { totals: { sessions: 30, conversions: 5, revenue: 100.009 }, meta: { currencyCode: "EUR" } },
+});
+const rows = () => [
+  { campaignId, propertyId, date: "2026-10-15", sessions: 10, users: 10, pageviews: 20, engagedSessions: 5, conversions: 2, revenue: "40.00" },
+  { campaignId, propertyId, date, sessions: 20, users: 20, pageviews: 40, engagedSessions: 10, conversions: 3, revenue: "60.00" },
+];
+const metrics = ["Revenue", "ROAS", "ROI", "CPA", "Sessions", "Conversions"];
+const run = () => runGA4DailyKPIAndBenchmarkJobs({ campaignId, suppressAlerts: true, useSavedOverview: true });
+
+describe("scheduled KPI and Benchmark saved Overview inputs", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-17T08:00:00Z"));
+    Object.values(storageMock).forEach((mock) => mock.mockReset());
+    Object.values(provider).forEach((mock) => mock.mockReset());
+    Object.values(alerts).forEach((mock) => mock.mockReset());
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    storageMock.getCampaign.mockResolvedValue({ id: campaignId, ownerId: "owner-1", status: "active", currency: "EUR", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: '["sale_a","sale_b"]' });
+    const connection = { campaignId, propertyId, isActive: true, isPrimary: true, importStartDate: "2026-10-15", method: "access_token", accessToken: "test-token" };
+    storageMock.getGA4Connections.mockResolvedValue([connection]);
+    storageMock.getGA4Connection.mockResolvedValue(connection);
+    storageMock.getGA4DailyMetrics.mockImplementation(async (_id, _property, start, end) => rows().filter((row) => row.date >= start && row.date <= end));
+    storageMock.getLatestGA4DailyMetric.mockResolvedValue(rows()[1]);
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(overview());
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 30, currency: "EUR", sourceIds: ["revenue-1"] });
+    storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 20, currency: "EUR", sourceIds: ["spend-1"] });
+    storageMock.getRevenueSources.mockResolvedValue([{ id: "revenue-1", currency: "EUR", sourceType: "csv", isActive: true }]);
+    storageMock.getSpendSources.mockResolvedValue([{ id: "spend-1", currency: "EUR", sourceType: "csv", isActive: true }]);
+    storageMock.getRevenueBreakdownBySource.mockResolvedValue([{ sourceId: "revenue-1", revenue: 30 }]);
+    storageMock.getSpendBreakdownBySource.mockResolvedValue([{ sourceId: "spend-1", spend: 20 }]);
+    storageMock.getPlatformKPIs.mockResolvedValue(metrics.map((metric) => ({ id: `kpi-${metric}`, metric })));
+    storageMock.getPlatformBenchmarks.mockResolvedValue(metrics.map((metric) => ({ id: `benchmark-${metric}`, metric, benchmarkValue: "100" })));
+    storageMock.getCampaignKPIs.mockResolvedValue([{ id: "campaign-revenue", platformType: "campaign", currentValue: "777", calculationConfig: JSON.stringify({ metric: "revenue", inputs: { revenue: ["total_revenue"] } }) }]);
+    storageMock.getCampaignBenchmarks.mockResolvedValue([{ id: "campaign-cpa", platformType: "campaign", currentValue: "777", calculationConfig: JSON.stringify({ metric: "cpa", inputs: { spend: ["total_spend"], conversions: ["total_conversions"] } }) }]);
+    for (const name of ["getKPIProgress", "getBenchmarkHistory"]) storageMock[name].mockResolvedValue([]);
+    for (const name of ["updateKPI", "updateBenchmark", "recordKPIProgress", "updateKPIProgress", "recordBenchmarkHistory"]) storageMock[name].mockResolvedValue({ id: "saved" });
+    provider.getTotalsWithRevenue.mockResolvedValue({ currencyCode: "EUR", totals: { sessions: 31, users: 31, conversions: 6, revenue: 110 } });
+  });
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+
+  it("saves financial values and progress from Overview rather than a newer provider response", async () => {
+    const result = await run();
+    expect(result.campaignIdsFailed).toEqual([]);
+    expect(result.kpiIdsSkipped).toEqual([]);
+    expect(result.benchmarkIdsSkipped).toEqual([]);
+    const expected = { Revenue: "130.01", ROAS: "6.5", ROI: "550.05", CPA: "4", Sessions: "30", Conversions: "5" };
+    for (const [metric, value] of Object.entries(expected)) {
+      expect(storageMock.updateKPI).toHaveBeenCalledWith(`kpi-${metric}`, { currentValue: value });
+      expect(storageMock.updateBenchmark).toHaveBeenCalledWith(`benchmark-${metric}`, { currentValue: value });
+      expect(storageMock.recordKPIProgress).toHaveBeenCalledWith(expect.objectContaining({ kpiId: `kpi-${metric}`, value }));
+      expect(storageMock.recordBenchmarkHistory).toHaveBeenCalledWith(expect.objectContaining({ benchmarkId: `benchmark-${metric}`, currentValue: value }));
+    }
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("campaign-revenue", { currentValue: "130.01" });
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("campaign-cpa", { currentValue: "4" });
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
+    expect(provider.getAcquisitionBreakdown).not.toHaveBeenCalled();
+    expect(alerts.kpi).not.toHaveBeenCalled();
+    expect(alerts.benchmark).not.toHaveBeenCalled();
+    expect(storageMock.getRevenueTotalForRange).toHaveBeenLastCalledWith(campaignId, "1900-01-01", date, "ga4");
+    expect(storageMock.getSpendTotalForRange).toHaveBeenLastCalledWith(campaignId, "1900-01-01", date, "ga4");
+  });
+
+  it.each([
+    ["missing", undefined], ["other campaign", { ...overview(), campaignId: "other" }],
+    ["other property", { ...overview(), propertyId: "999" }],
+    ["old end", { ...overview(), windowEnd: "2026-10-15" }],
+    ["wrong currency", { ...overview(), campaignBreakdown: { ...overview().campaignBreakdown, meta: { currencyCode: "USD" } } }],
+    ["different conversions", { ...overview(), campaignBreakdown: { ...overview().campaignBreakdown, totals: { ...overview().campaignBreakdown.totals, conversions: 6 } } }],
+  ])("retains financial values and histories when saved GA4 inputs are incompatible: %s", async (_label, saved) => {
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(saved);
+    const result = await run();
+    for (const metric of ["Revenue", "ROAS", "ROI", "CPA"]) {
+      expect(result.kpiIdsSkipped).toContain(`kpi-${metric}`);
+      expect(result.benchmarkIdsSkipped).toContain(`benchmark-${metric}`);
+      expect(storageMock.updateKPI).not.toHaveBeenCalledWith(`kpi-${metric}`, expect.anything());
+      expect(storageMock.updateBenchmark).not.toHaveBeenCalledWith(`benchmark-${metric}`, expect.anything());
+      expect(storageMock.recordKPIProgress).not.toHaveBeenCalledWith(expect.objectContaining({ kpiId: `kpi-${metric}` }));
+      expect(storageMock.recordBenchmarkHistory).not.toHaveBeenCalledWith(expect.objectContaining({ benchmarkId: `benchmark-${metric}` }));
+    }
+    expect(storageMock.updateKPI).not.toHaveBeenCalledWith("campaign-revenue", expect.anything());
+    expect(storageMock.updateBenchmark).not.toHaveBeenCalledWith("campaign-cpa", expect.anything());
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Sessions", { currentValue: "30" });
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-Conversions", { currentValue: "5" });
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
+  });
+
+  it("keeps the previous provider path for callers that do not opt in", async () => {
+    await runGA4DailyKPIAndBenchmarkJobs({ campaignId, suppressAlerts: true });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Revenue", { currentValue: "140" });
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-CPA", { currentValue: "3.33" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("campaign-revenue", { currentValue: "140" });
+    expect(provider.getTotalsWithRevenue).toHaveBeenCalled();
+    expect(storageMock.getGA4OverviewSnapshot).not.toHaveBeenCalled();
+  });
+
+  it.each(["Revenue", "Spend"] as const)("still skips only dependent financial metrics when external %s reads fail", async (source) => {
+    storageMock[`get${source}TotalForRange`].mockRejectedValue(new Error("source read failed"));
+    const result = await run();
+    const skipped = source === "Revenue" ? ["Revenue", "ROAS", "ROI"] : ["ROAS", "ROI", "CPA"];
+    for (const metric of skipped) {
+      expect(result.kpiIdsSkipped).toContain(`kpi-${metric}`);
+      expect(result.benchmarkIdsSkipped).toContain(`benchmark-${metric}`);
+    }
+    expect(storageMock.updateKPI).toHaveBeenCalledWith(source === "Revenue" ? "kpi-CPA" : "kpi-Revenue", { currentValue: source === "Revenue" ? "4" : "130.01" });
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
+  });
+
+  it("accepts genuine zero GA4 values without external sources", async () => {
+    storageMock.getGA4DailyMetrics.mockImplementation(async (_id, _property, start, end) => rows()
+      .filter((row) => row.date >= start && row.date <= end).map((row) => ({ ...row, conversions: 0, revenue: "0.00" })));
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue({ ...overview(), campaignBreakdown: {
+      ...overview().campaignBreakdown, totals: { sessions: 30, conversions: 0, revenue: 0 },
+    } });
+    storageMock.getRevenueSources.mockResolvedValue([]);
+    storageMock.getSpendSources.mockResolvedValue([]);
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0, sourceIds: [], currency: "EUR" });
+    storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 0, sourceIds: [], currency: "EUR" });
+    await run();
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Revenue", { currentValue: "0" });
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-Conversions", { currentValue: "0" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("campaign-revenue", { currentValue: "0" });
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
+  });
+
+  it("retains financial values after a saved Overview read error and recovers on a later run", async () => {
+    storageMock.getGA4OverviewSnapshot.mockRejectedValue(new Error("database read failed"));
+    await run();
+    expect(storageMock.updateKPI).not.toHaveBeenCalledWith("kpi-Revenue", expect.anything());
+    expect(storageMock.updateBenchmark).not.toHaveBeenCalledWith("campaign-cpa", expect.anything());
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(overview());
+    expect((await run()).campaignIdsFailed).toEqual([]);
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Revenue", { currentValue: "130.01" });
+  });
+
+  it("rejects current saved totals for a historical reporting date before writes", async () => {
+    const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, date: "2026-10-15", useSavedOverview: true });
+    expect(result.campaignIdsFailed).toEqual([campaignId]);
+    expect(storageMock.updateKPI).not.toHaveBeenCalled();
+    expect(storageMock.updateBenchmark).not.toHaveBeenCalled();
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
+  });
+
+  it("preserves existing same-day KPI progress and Benchmark history handling", async () => {
+    await run();
+    const progress = storageMock.recordKPIProgress.mock.calls.map(([row]) => ({ ...row, id: `progress-${row.kpiId}` }));
+    const history = storageMock.recordBenchmarkHistory.mock.calls.map(([row]) => ({ ...row, id: `history-${row.benchmarkId}` }));
+    storageMock.getKPIProgress.mockImplementation(async (id) => progress.filter((row) => row.kpiId === id));
+    storageMock.getBenchmarkHistory.mockImplementation(async (id) => history.filter((row) => row.benchmarkId === id));
+    storageMock.recordKPIProgress.mockClear();
+    storageMock.recordBenchmarkHistory.mockClear();
+    storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 50, currency: "EUR", sourceIds: ["revenue-1"] });
+    await run();
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Revenue", { currentValue: "150.01" });
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-Revenue", { currentValue: "150.01" });
+    expect(storageMock.updateKPIProgress).toHaveBeenCalledWith("progress-kpi-Revenue", expect.objectContaining({ value: "150.01" }));
+    expect(storageMock.recordKPIProgress).not.toHaveBeenCalled();
+    expect(storageMock.recordBenchmarkHistory).not.toHaveBeenCalled(); // Same-day Benchmark rewriting remains the separate B1 task.
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
+  });
+
+  it.each(["unfiltered", "simulation"])("preserves the existing %s path when the scheduler opts in", async (scope) => {
+    const campaign = await storageMock.getCampaign(campaignId);
+    if (scope === "unfiltered") storageMock.getCampaign.mockResolvedValue({ ...campaign, ga4CampaignFilter: "" });
+    else {
+      const connection = { ...await storageMock.getGA4Connection(campaignId, propertyId), propertyId: "yesop" };
+      storageMock.getGA4Connections.mockResolvedValue([connection]);
+      storageMock.getGA4Connection.mockResolvedValue(connection);
+    }
+    await run();
+    const firstWrites = storageMock.updateKPI.mock.calls.map((args) => structuredClone(args));
+    storageMock.updateKPI.mockClear();
+    await runGA4DailyKPIAndBenchmarkJobs({ campaignId, suppressAlerts: true });
+    expect(storageMock.updateKPI.mock.calls).toEqual(firstWrites);
+    expect(storageMock.getGA4OverviewSnapshot).not.toHaveBeenCalled();
+  });
+});

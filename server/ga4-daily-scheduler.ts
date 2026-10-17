@@ -554,7 +554,7 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
           continue;
         }
       }
-      const recomputeResult = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true });
+      const recomputeResult = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true, useSavedOverview: true });
       for (const key of Object.keys(recomputeEvidence) as Array<keyof typeof recomputeEvidence>) {
         recomputeEvidence[key].push(...recomputeResult[key]);
       }

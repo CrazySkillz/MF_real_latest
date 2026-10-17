@@ -63,7 +63,7 @@ describe("GA4 ordered refresh source-discovery failures", () => {
   const totals = () => ({
     revenue: 800, ga4Revenue: 500, spend: 100, conversions: 25, financialConversions: 25,
     revenueAvailable: true, spendAvailable: true, ga4Available: true, ga4RevenueAvailable: true,
-    financialConversionsAvailable: true, ga4FinancialSource: "provider_to_date",
+    financialConversionsAvailable: true, ga4FinancialSource: "persisted_overview",
     revenueBySource: new Map(), spendBySource: new Map(), users: 80, sessions: 100, engagementRate: 0.5,
   });
   beforeEach(() => {

@@ -15,7 +15,7 @@ type WriterDependencies = {
   getCampaign: (campaignId: string) => Promise<any>;
   getGA4Connections: (campaignId: string) => Promise<any[]>;
   getGA4OverviewSnapshot: (campaignId: string, propertyId: string) => Promise<any>;
-  getCampaignMetricTotals: (campaignId: string, useFullFinancialCandidate: boolean) => Promise<CampaignMetricTotals | null>;
+  getCampaignMetricTotals: (campaignId: string, useFullFinancialCandidate: boolean, useSavedOverview?: boolean) => Promise<CampaignMetricTotals | null>;
   getSpendSources: (campaignId: string, platformContext: "ga4") => Promise<any[]>;
   getRevenueTotalForRange: (campaignId: string, startDate: string, endDate: string, platformContext: "ga4") => Promise<SourceTotal>;
   getSpendTotalForRange: (campaignId: string, startDate: string, endDate: string, platformContext: "ga4") => Promise<SourceTotal>;
@@ -63,7 +63,7 @@ export async function writeFinancialDailySnapshotIfReady(
   }
 
   const [totals, spendSources, revenueSourceTotal, spendSourceTotal] = await Promise.all([
-    dependencies.getCampaignMetricTotals(campaignId, true),
+    dependencies.getCampaignMetricTotals(campaignId, true, parseGA4CampaignFilter(campaign.ga4CampaignFilter).length > 0),
     dependencies.getSpendSources(campaignId, "ga4"),
     dependencies.getRevenueTotalForRange(campaignId, "1900-01-01", reportingDate, "ga4"),
     dependencies.getSpendTotalForRange(campaignId, "1900-01-01", reportingDate, "ga4"),
@@ -72,7 +72,7 @@ export async function writeFinancialDailySnapshotIfReady(
   if (totals.ga4FinancialSource === "rolling_breakdown") {
     return { status: "blocked", reasons: ["non_cumulative_ga4_financial_source"] };
   }
-  // The later financial provider request must agree with the saved GA4 conversion count.
+  // Financial inputs must agree with the saved GA4 conversion count.
   if (totals.ga4Available !== true || !Number.isFinite(totals.conversions)) {
     return { status: "blocked", reasons: ["saved_ga4_conversions_unavailable"] };
   }
@@ -81,7 +81,7 @@ export async function writeFinancialDailySnapshotIfReady(
   }
 
   const currency = String(campaign.currency || "USD").trim().toUpperCase();
-  if (totals.ga4FinancialSource === "provider_to_date" && parseGA4CampaignFilter(campaign.ga4CampaignFilter).length > 0) {
+  if (["provider_to_date", "persisted_overview"].includes(totals.ga4FinancialSource || "") && parseGA4CampaignFilter(campaign.ga4CampaignFilter).length > 0) {
     // Compare aggregates: summing cent-rounded daily revenue is not equivalent.
     const overview = await dependencies.getGA4OverviewSnapshot(campaignId, String(primary.propertyId));
     const savedRevenue = parseGA4FinancialNumber(overview?.campaignBreakdown?.totals?.revenue);
@@ -89,6 +89,10 @@ export async function writeFinancialDailySnapshotIfReady(
         overview.windowStart !== window.startDate || overview.windowEnd !== reportingDate ||
         String(overview.campaignBreakdown?.meta?.currencyCode || "").trim().toUpperCase() !== currency || savedRevenue === null) {
       return { status: "blocked", reasons: ["saved_ga4_revenue_unavailable"] };
+    }
+    if (totals.ga4FinancialSource === "persisted_overview" &&
+        parseGA4FinancialNumber(overview.campaignBreakdown?.totals?.conversions) !== totals.financialConversions) {
+      return { status: "blocked", reasons: ["ga4_conversion_total_mismatch"] };
     }
     if (Number(savedRevenue.toFixed(2)) !== totals.ga4Revenue) {
       return { status: "blocked", reasons: ["ga4_revenue_total_mismatch"] };

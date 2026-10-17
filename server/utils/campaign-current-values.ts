@@ -1,6 +1,6 @@
 import { storage } from "../storage";
 import { ga4Service } from "../analytics";
-import { isGA4FinancialTotalsCandidate, selectGA4FinancialTotalsSource } from "../../shared/ga4-financial-source";
+import { isGA4FinancialTotalsCandidate, parseGA4FinancialNumber, selectGA4FinancialTotalsSource } from "../../shared/ga4-financial-source";
 import { applyAlertDataSufficiency, blockAlertDecision } from "./alert-decision";
 import { resolveGA4ImportToDateWindow } from "./reporting-timezone";
 import { isSupportedGA4ConnectionMethod } from "./ga4-service-account";
@@ -28,7 +28,7 @@ export type CampaignMetricTotals = {
   ga4Available?: boolean;
   ga4RevenueAvailable?: boolean;
   financialConversionsAvailable?: boolean;
-  ga4FinancialSource?: "provider_to_date" | "persisted_daily" | "rolling_breakdown" | "deterministic_simulation" | "pre_campaign_zero" | null;
+  ga4FinancialSource?: "provider_to_date" | "persisted_overview" | "persisted_daily" | "rolling_breakdown" | "deterministic_simulation" | "pre_campaign_zero" | null;
 };
 
 const round2 = (value: number) => Number((Number.isFinite(value) ? value : 0).toFixed(2));
@@ -132,8 +132,8 @@ const getYesopMockBaselineTotals = (campaignId: string, ga4CampaignFilter: unkno
   };
 };
 
-async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandidate = false): Promise<CampaignMetricTotals | null> {
-  return getCampaignMetricTotalsForEndDate(campaignId, useFullFinancialCandidate);
+async function getCampaignMetricTotals(campaignId: string, useFullFinancialCandidate = false, useSavedOverview = false): Promise<CampaignMetricTotals | null> {
+  return getCampaignMetricTotalsForEndDate(campaignId, useFullFinancialCandidate, undefined, undefined, useSavedOverview);
 }
 
 async function getCampaignMetricTotalsForEndDate(
@@ -141,6 +141,7 @@ async function getCampaignMetricTotalsForEndDate(
   useFullFinancialCandidate: boolean,
   exactEndDate?: string,
   exactFinancialStartDate?: string,
+  useSavedOverview = false,
 ): Promise<CampaignMetricTotals | null> {
   const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
   if (!campaign) return null;
@@ -157,7 +158,7 @@ async function getCampaignMetricTotalsForEndDate(
     exactEndDate ? { migrateLegacyTokens: false } : undefined,
   ).catch(() => null as any);
   if (!connections) return null;
-  const eligibleConnections = exactEndDate
+  const eligibleConnections = exactEndDate || useSavedOverview
     ? (connections || []).filter((conn: any) => conn?.isActive !== false && String(conn?.propertyId || "").trim())
     : (connections || []);
   const primary = eligibleConnections.find((conn: any) => conn?.isPrimary) || eligibleConnections[0];
@@ -215,6 +216,34 @@ async function getCampaignMetricTotalsForEndDate(
       engagementRate = engagementRate > 0 ? engagementRate : baseline.engagementRate;
       financialConversions = conversions;
       ga4FinancialSource = "deterministic_simulation";
+    } else if (useFullFinancialCandidate && useSavedOverview && parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter).length > 0) {
+      // The financial writer must use the aggregate already reconciled and saved with
+      // Overview, not a later provider revision. Other callers keep their existing selection.
+      const overview = await storage.getGA4OverviewSnapshot(campaignId, propertyId);
+      const savedTotals = (overview?.campaignBreakdown as any)?.totals;
+      const savedRevenue = parseGA4FinancialNumber(savedTotals?.revenue);
+      const savedConversions = parseGA4FinancialNumber(savedTotals?.conversions);
+      const savedSessions = parseGA4FinancialNumber(savedTotals?.sessions);
+      const currency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
+      if (!overview || overview.campaignId !== campaignId || overview.propertyId !== propertyId ||
+          overview.windowStart !== startDate || overview.windowEnd !== endDate ||
+          !/^[A-Z]{3}$/.test(currency) || String((overview.campaignBreakdown as any)?.meta?.currencyCode || "").trim().toUpperCase() !== currency ||
+          savedRevenue === null || savedRevenue < 0 || savedConversions === null || savedConversions < 0 || !Number.isInteger(savedConversions) ||
+          savedSessions === null || savedSessions < 0 || !Number.isInteger(savedSessions)) return null;
+      const expectedDays = (Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`)) / 86400000 + 1;
+      if (rows.length !== expectedDays || new Set(rows.map((row: any) => row.date)).size !== expectedDays ||
+          rows.some((row: any) => row.campaignId !== campaignId || row.propertyId !== propertyId ||
+            !/^\d{4}-\d{2}-\d{2}$/.test(String(row.date)) || row.date < startDate || row.date > endDate ||
+            !Number.isFinite(Date.parse(`${row.date}T00:00:00Z`)) || new Date(`${row.date}T00:00:00Z`).toISOString().slice(0, 10) !== row.date ||
+            ["sessions", "conversions", "revenue"].some((field) => {
+              const value = parseGA4FinancialNumber(row[field]);
+              return value === null || value < 0 || (field !== "revenue" && !Number.isInteger(value));
+            })) || savedConversions !== conversions || savedSessions !== sessions ||
+          Math.abs(savedRevenue - ga4Revenue) > rows.length * 0.005 + 1e-9) return null;
+      ga4Revenue = savedRevenue;
+      financialConversions = savedConversions;
+      ga4FinancialSource = "persisted_overview";
+      verifiedToDateFinancialCandidateAvailable = true;
     } else if (useFullFinancialCandidate) {
       const financialEndDate = endDate;
       const financialRows = isBeforeFinancialStart

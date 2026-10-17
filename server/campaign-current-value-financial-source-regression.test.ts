@@ -65,7 +65,8 @@ describe("campaign current-value financial source contract", () => {
 
   afterEach(() => vi.useRealTimers());
 
-  it.each(["", '["Sale_A","Sale_B"]'])("blocks publishing provider revisions ahead of saved GA4 conversions for scope %s", async (ga4CampaignFilter) => {
+  it("blocks publishing provider revisions ahead of saved GA4 conversions on the unfiltered legacy path", async () => {
+    const ga4CampaignFilter = "";
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-22T12:00:00.000Z"));
     const campaignId = "campaign-1";
@@ -124,16 +125,19 @@ describe("campaign current-value financial source contract", () => {
     } });
   });
 
-  it("checks fresh native revenue against the saved aggregate, preserving daily cent rounding and external revenue", async () => {
+  it("uses saved aggregate revenue rather than a later provider revision, preserving daily cent rounding and external revenue", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-22T12:00:00.000Z"));
     const campaignId = "campaign-1";
     const reportingDate = "2026-08-21";
     storageMock.getCampaign.mockResolvedValue({ id: campaignId, currency: "USD", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: "Sale_A" });
-    storageMock.getGA4DailyMetrics.mockResolvedValue([{ revenue: 200.01, conversions: 10 }, { revenue: 300.01, conversions: 15 }]);
+    storageMock.getGA4DailyMetrics.mockResolvedValue(Array.from({ length: 52 }, (_, index) => ({
+      campaignId, propertyId: "properties/123", date: new Date(Date.UTC(2026, 6, 1 + index)).toISOString().slice(0, 10),
+      sessions: 0, revenue: index === 0 ? 200.01 : index === 1 ? 300.01 : 0, conversions: index === 0 ? 10 : index === 1 ? 15 : 0,
+    })));
     const snapshot = {
       campaignId, propertyId: "properties/123", windowStart: "2026-07-01", windowEnd: reportingDate,
-      campaignBreakdown: { totals: { revenue: 500.01 }, meta: { currencyCode: "USD" } },
+      campaignBreakdown: { totals: { revenue: 500.01, conversions: 25, sessions: 0 }, meta: { currencyCode: "USD" } },
     };
     storageMock.getGA4OverviewSnapshot.mockResolvedValue(snapshot);
     ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ totals: { revenue: 500.01, conversions: 25 } });
@@ -150,18 +154,14 @@ describe("campaign current-value financial source contract", () => {
     storageMock.upsertFinancialDailySnapshot.mockImplementation(async (value) => { saved = value; });
     expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate })).status).toBe("written");
     expect(saved.inputs.revenue.value).toBe("800.01");
-    const previous = JSON.stringify(saved);
-
     ga4ServiceMock.getTotalsWithRevenue.mockResolvedValue({ totals: { revenue: 500.02, conversions: 25 } });
-    expect(await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate })).toEqual({
-      status: "blocked", reasons: ["ga4_revenue_total_mismatch"],
-    });
-    expect(JSON.stringify(saved)).toBe(previous);
-    expect(storageMock.upsertFinancialDailySnapshot).toHaveBeenCalledTimes(1);
+    expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate })).status).toBe("written");
+    expect(saved.inputs.revenue.value).toBe("800.01");
+    expect(storageMock.upsertFinancialDailySnapshot).toHaveBeenCalledTimes(2);
     expect(storageMock.getGA4OverviewSnapshot).toHaveBeenLastCalledWith(campaignId, "properties/123");
-    expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenLastCalledWith("properties/123", "token", "2026-07-01", reportingDate, ["sale_a"], "USD");
+    expect(ga4ServiceMock.getTotalsWithRevenue).not.toHaveBeenCalled();
 
-    storageMock.getGA4OverviewSnapshot.mockResolvedValue({ ...snapshot, campaignBreakdown: { ...snapshot.campaignBreakdown, totals: { revenue: 500.02 } } });
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue({ ...snapshot, campaignBreakdown: { ...snapshot.campaignBreakdown, totals: { ...snapshot.campaignBreakdown.totals, revenue: 500.02 } } });
     expect((await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate })).status).toBe("written");
     expect(saved.inputs.revenue.value).toBe("800.02");
     expect(saved.inputs.conversions.value).toBe(25);

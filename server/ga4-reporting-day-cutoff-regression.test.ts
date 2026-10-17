@@ -103,12 +103,12 @@ describe("GA4 reporting-day cutoff", () => {
     expect(routes).toContain("providerRefreshOutcome,");
     expect(routes).toContain("providerRefreshRowCount,");
     expect(routes).toContain("const providerCoverageThroughDate: string | null = null;");
-    expect(routes).toContain("providerRefreshCompletedAt || lastUpdated");
+    expect(routes).toContain("const lastCompletedRefreshAt = storedCoverageComplete ? lastUpdated : null;");
     expect(routes).toContain("Daily history reads never contact GA4 or write storage; the scheduler is the sole live writer.");
     expect(routes).not.toContain("Existing rows can still be stale. Try to fill due missing completed days, but keep serving stored rows if the provider fails.");
 
     expect(page).toContain("const trendsReportingTimeZone = normalizeClientReportingTimeZone((ga4InsightsDailyResp as any)?.reportingTimeZone);");
-    expect(page).toContain("const trendsDataThroughDate = String(ga4InsightsDataThroughDate || \"\").trim();");
+    expect(page).toContain("const trendsDataThroughDate = String((ga4InsightsDailyResp as any)?.historyDataThroughDate || ga4InsightsDataThroughDate || \"\").trim();");
     expect(page).toContain("completed {trendsReportingTimeZoneLabel} GA4 daily rows");
     expect(page).toContain("const ga4DailyRefreshIsStale = (ga4DailyResp as any)?.refreshIsStale === true;");
     expect(page).toContain("Checked through ${ga4DailyProviderCoverageThroughDate}; latest activity ${ga4DailyLatestStoredDate");

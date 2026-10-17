@@ -114,7 +114,7 @@ describe("GA4 KPI deployed read-only validator", () => {
 
     expect(routes).toContain("const resolveNotificationAlertRow = async (row: any): Promise<any> =>");
     expect(routes).toContain("const resolveNotificationAlertRowForRequest = async (row: any, validationReadOnly: boolean)");
-    expect(routes).toContain("? resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false })");
+    expect(routes).toContain("? resolveAlertCurrentValueForDecision(row, undefined, { allowCredentialRefresh: false, useSavedOverview: true })");
     expect(routes).toContain(": resolveNotificationAlertRow(row);");
     expect(routes).toContain('res.setHeader("X-GA4-Validation-Read-Only", "1")');
     expect(routes).toContain('res.setHeader("X-GA4-Credential-Refresh-Allowed", "0")');

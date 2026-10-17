@@ -145,7 +145,7 @@ describe("GA4 Overview Spend readiness contract", () => {
     expect(overview).toContain("Latest imported source values. Total Spend uses completed data through");
   });
 
-  it("withholds Spend and dependent Performance when source details are unavailable", () => {
+  it("checks live source availability while rendering Spend and Performance from the saved publication", () => {
     const availability = slice(overview, "const financialSpendAvailable =", "const financialSpendLoading =");
     expect(availability).toContain("hasSpendSources &&");
     expect(availability).toContain("spendMetricAvailable");
@@ -159,8 +159,9 @@ describe("GA4 Overview Spend readiness contract", () => {
     expect(evaluate(true, { totalSpend: 338 }, undefined, false, true)).toBe(true);
     expect(evaluate(true, { totalSpend: 338 }, { spendToDate: 338 }, false, true)).toBe(true);
     const cards = slice(overview, "{/* Total Spend */}", "{/* Campaign Breakdown */}");
-    expect(cards).toContain("renderFinancialValue(financialSpendLoading, financialSpendAvailable");
-    expect(cards).toContain("financialRevenueAvailable && financialSpendAvailable");
+    expect(cards).toContain("renderFinancialValue(financialDailySnapshotLoading, overviewFinancialSpendAvailable, formatMoney(overviewFinancialSpend))");
+    expect(cards).toContain("overviewFinancialRevenueAvailable && overviewFinancialSpendAvailable");
+    expect(cards).not.toContain("renderFinancialValue(financialSpendLoading, financialSpendAvailable");
   });
 
   it("propagates GA4 Spend to KPI, aggregate, snapshot, report, and UI refresh consumers", () => {

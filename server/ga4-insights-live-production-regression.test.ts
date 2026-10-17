@@ -19,7 +19,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain('["/api/ga4/check-connection", campaignId, insightsValidationReadOnly]');
     expect(page).toContain('activeTab === "insights"');
     expect(page).toContain('String(data?.propertyId || "") !== String(selectedGA4PropertyId)');
-    expect(page).toContain('const insightsRollupRows = activeTab === "insights" ? ga4InsightsTimeSeries : ga4TimeSeries');
+    expect(page).toContain('const insightsRollupRows = activeTab === "insights" || activeTab === "reports" ? ga4InsightsTimeSeries : ga4TimeSeries');
     expect(page).toContain("buildGA4InsightsRollups(insightsRollupRows, insightsRollupCutoff)");
     expect(page).not.toContain('queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_DAILY_LOOKBACK_DAYS');
   });
@@ -53,7 +53,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).not.toContain('id: "integrity:daily_history_outdated"');
     expect(page).toContain('(ga4DailyResp as any)?.refreshIsStale === true');
     expect(page).toContain('trafficState: schedulerSynchronizedTrafficState');
-    expect(page).toContain('financialConversionsState: schedulerSynchronizedConversionsState');
+    expect(page).toContain('financialConversionsState: snapshotConversionsKpiInputState');
     expect(page).toContain('const findingsDailyRows = trendsDailyRows;');
     expect(page).not.toContain('id: "info:scheduler_no_history"');
     expect(page).toContain('id: "integrity:analytics_history_unavailable"');
@@ -151,19 +151,20 @@ describe("live GA4 Insights production boundary", () => {
     expect(section).not.toContain("scaledSessions");
   });
 
-  it("keeps valid-zero, unavailable, not-connected, and last-good financial states distinct", () => {
+  it("keeps published zero, unavailable, and last-saved financial states distinct", () => {
     const page = read("client", "src", "pages", "ga4-metrics.tsx");
     const start = page.indexOf('<CardTitle className="text-lg">Executive Financials</CardTitle>');
     const end = page.indexOf("{/* Trends card", start);
     const section = page.slice(start, end);
 
-    expect(section).toContain("renderFinancialValue(financialSpendLoading, financialSpendAvailable");
-    expect(section).toContain('spendKpiInputState === "ready" && !spendMetricAvailable ? "Not connected" : "Unavailable"');
-    expect(section).toContain('revenueKpiInputState === "ready" && !revenueMetricAvailable ? "Not connected" : "Unavailable"');
-    expect(section).toContain("Showing last-good financial values");
+    expect(section).toContain('renderFinancialValue(snapshotSpendKpiInputState === "loading", executiveSpendAvailable, formatMoney(overviewFinancialSpend))');
+    expect(section).toContain('renderFinancialValue(snapshotRevenueKpiInputState === "loading", executiveRevenueAvailable, formatMoney(overviewFinancialRevenue)');
+    expect(page).toContain('const executiveSpendAvailable = ["ready", "stale"].includes(snapshotSpendKpiInputState);');
+    expect(page).toContain('const executiveRevenueAvailable = ["ready", "stale"].includes(snapshotRevenueKpiInputState);');
+    expect(section).toContain("Showing financial figures from the last saved update; a newer update has not been verified.");
     expect(page).not.toContain("Showing last-good Data Summary financial values because one or more source refreshes failed.");
     expect(page).not.toContain("Showing last-good GA4 summary values; trend recommendations are withheld until refresh succeeds.");
-    expect(page).toContain("GA4 imported history:");
+    expect(page).toContain("const overviewFinancialInputs = overviewFinancialSnapshot?.metrics?.financialDaily?.inputs;");
     expect(page).toContain('const financialRevenueAvailable = activeTab === "insights"');
     expect(page).toContain("? ga4ToDateResp !== undefined && (!requiresVerifiedNativeCurrency || ga4NativeCurrencyVerified) && importedRevenueAvailable && revenueMetricAvailable");
     expect(page).toContain(": ga4FinancialNativeAvailable && importedRevenueAvailable && revenueMetricAvailable;");
@@ -172,7 +173,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(page).toContain('title: ga4ToDateResp === undefined ? "GA4 imported-window totals are unavailable" : "GA4 imported-window totals are stale"');
     expect(page).toContain('if (spendKpiInputState === "ready" && revenueKpiInputState === "ready" && spendMetricAvailable && !revenueMetricAvailable)');
     expect(page).toContain('if (revenueKpiInputState === "ready" && spendKpiInputState === "ready" && revenueMetricAvailable && !spendMetricAvailable)');
-    expect(section).toContain('financialSpendAvailable && financialSpend <= 0 ? "—" : "Unavailable"');
+    expect(section).toContain('executiveRevenueAvailable && executiveSpendAvailable && overviewFinancialSpend <= 0 ? "—" : "Unavailable"');
   });
 
   it("binds daily, breakdown, and to-date values to campaign access and completed reporting days", () => {

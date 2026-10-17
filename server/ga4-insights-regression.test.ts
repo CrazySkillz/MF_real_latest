@@ -46,7 +46,7 @@ describe("GA4 Insights regression guard", () => {
     expect(metrics.pipelineProxy).toBe(8000);
   });
 
-  it("renders Insights Executive Financials from financialRevenue and financialSpend", () => {
+  it("renders Insights Executive Financials from the saved Overview financial inputs", () => {
     const content = ga4MetricsFile();
     const sectionStart = content.indexOf('<CardTitle className="text-lg">Executive Financials</CardTitle>');
     const sectionEnd = content.indexOf("{/* Trends card", sectionStart);
@@ -54,11 +54,12 @@ describe("GA4 Insights regression guard", () => {
 
     expect(sectionStart).toBeGreaterThan(-1);
     expect(sectionEnd).toBeGreaterThan(sectionStart);
-    expect(section).toContain("renderFinancialValue(financialSpendLoading, financialSpendAvailable");
-    expect(section).toContain("renderFinancialValue(financialRevenueLoading, financialRevenueAvailable");
-    expect(section).toContain("formatMoney(financialRevenue - financialSpend)");
-    expect(section).toContain("${Number(financialROAS || 0).toFixed(2)}x");
-    expect(section).toContain("formatPercentage(Number(financialROI || 0))");
+    expect(section).toContain('renderFinancialValue(snapshotSpendKpiInputState === "loading", executiveSpendAvailable, formatMoney(overviewFinancialSpend))');
+    expect(section).toContain('renderFinancialValue(snapshotRevenueKpiInputState === "loading", executiveRevenueAvailable, formatMoney(overviewFinancialRevenue)');
+    expect(section).toContain("formatMoney(overviewFinancialRevenue - overviewFinancialSpend)");
+    expect(section).toContain("${overviewFinancialROAS.toFixed(2)}x");
+    expect(section).toContain("formatPercentage(overviewFinancialROI)");
+    expect(section).not.toContain("formatMoney(financialRevenue - financialSpend)");
     expect(section).not.toContain("pipelineProxyData.totalToDate");
   });
 

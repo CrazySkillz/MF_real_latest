@@ -79,7 +79,8 @@ describe("GA4 Overview Performance readiness contract", () => {
   it("propagates paired financial conversions to DeepDive, KPI, Benchmark, and scheduled Report CPA consumers", () => {
     expect(performance).toContain("financialConversions: scoringFinancialConversions");
     expect(performance).toContain("financialConversionsState: financialConversionsInputState,");
-    expect(overview).toContain("financialConversionsState: financialConversionsKpiInputState,");
+    expect(overview).toContain("financialConversionsState: snapshotConversionsKpiInputState,");
+    expect(overview).toContain("const overviewFinancialCPA = computeCpa(overviewFinancialSpend, overviewFinancialConversions);");
     expect(campaignDetail).toContain("parseNumSafe(financials?.conversions ?? getUnifiedConversions())");
     expect(campaignDetail).not.toContain("parseNumSafe(financials?.conversions) || getUnifiedConversions()");
     expect(campaignDetail).not.toContain("parseNumSafe((kpiConnectedPlatformTotals as any)?.conversions) || getUnifiedConversions()");

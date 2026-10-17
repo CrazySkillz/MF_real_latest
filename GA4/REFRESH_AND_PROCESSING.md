@@ -302,6 +302,16 @@ value sources. This does not certify server report/alert paths, general Insights
 financial totals, source lifecycle behavior or atomic publication. See the
 2026-10-17 Task 2 entries in the backlog for exact validation and remaining scope.
 
+Insights Executive Financials now also reads Overview's saved Revenue and Spend,
+deriving Profit, ROAS and ROI from that same response with the existing financial
+scope/freshness checks. It retains an earlier update with a warning and withholds
+missing or incompatible inputs. Its Revenue footer joins saved contributor IDs;
+Spend contributor names are unavailable because the saved contract contains only
+a generic Spend marker. Independent live source totals no longer supply this
+card. The local 94-test packet covers this correction, not the complete Insights
+tab, a live deployment, source lifecycle behavior or atomic publication. See the
+Executive Financials Task 2 entry for reproduction and remaining boundaries.
+
 If no Spend source is configured for the completed-day window, Spend remains
 explicitly unavailable and does not block GA4 traffic, native revenue,
 conversions, KPI/Benchmark recompute, or downstream snapshot publication. Once

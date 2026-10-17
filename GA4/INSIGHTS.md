@@ -82,11 +82,12 @@ Shows:
 
 Current meaning:
 
-- spend comes from active campaign-owned GA4-context spend-source totals
-- revenue is GA4 native revenue plus imported revenue sources when present
-- source provenance is shown in the shared `Sources used` footer
-- the copy is conditional on actual connected spend and revenue sources
-- this section does not show Trends date-range or freshness metadata
+- the five cards use the same saved financial update as Overview; its Spend comes from campaign-owned GA4-context sources and its Revenue combines verified GA4 native revenue with imported sources when present
+- Profit, ROAS and ROI derive from that saved Revenue and Spend together; unavailable inputs remain unavailable and zero Spend leaves ratios undefined
+- the existing financial scope/freshness checks retain earlier saved amounts with a warning and withhold incompatible inputs; independent live totals do not replace them
+- the shared `Sources used` footer matches saved Revenue contributor IDs to source names and includes native Revenue only when its saved marker is present
+- saved Spend has no individual contributor IDs, so available Spend shows `Source details unavailable` instead of using a newer contributor list; missing Revenue names are also explicitly unavailable
+- this section does not show the Trends date-range controls; the bounded 2026-10-17 correction is covered by local render tests, with deployment and whole-tab recertification still unverified (see the Task 2 entry in `docs/GA4_PROCESSING_AND_ALIGNMENT_BACKLOG.md`)
 
 ### Trends
 

@@ -9192,32 +9192,32 @@ export default function GA4Metrics() {
                     </div>
 
                     {(() => {
+                      const executiveSpendAvailable = ["ready", "stale"].includes(snapshotSpendKpiInputState);
+                      const executiveRevenueAvailable = ["ready", "stale"].includes(snapshotRevenueKpiInputState);
+                      const savedRevenueSources: string[] = overviewFinancialInputs?.revenue?.sources || [];
+                      const savedRevenueSourceIds = savedRevenueSources.filter((source) => source.startsWith("revenue-source:"))
+                        .map((source) => source.slice("revenue-source:".length));
                       const executive = resolveGA4InsightsExecutiveFinancials({
-                        overviewSpend: financialSpend,
-                        overviewSpendAvailable: financialSpendAvailable,
-                        overviewHasSpendSources: hasSpendSources,
-                        spendToDate: spendToDateResp,
-                        spendBreakdown: spendBreakdownResp,
-                        spendDisplaySources,
-                        spendSourceDefinitions: Array.isArray(spendSourcesResp?.sources) ? spendSourcesResp.sources : [],
-                        spendDetailsError: spendSourcesError || spendBreakdownError,
-                        revenueToDate: importedRevenueToDateResp,
+                        overviewSpend: overviewFinancialSpend,
+                        overviewSpendAvailable: executiveSpendAvailable,
+                        overviewHasSpendSources: overviewFinancialSpendAvailable,
+                        // Saved Spend has no contributor IDs; newer source lists cannot identify its contributors.
+                        spendDetailsError: executiveSpendAvailable,
+                        revenueToDate: savedRevenueSourceIds.length > 0 ? { sourceIds: savedRevenueSourceIds } : undefined,
                         revenueDisplaySources,
-                        revenueDetailsError: revenueSourcesError || revenueBreakdownError,
-                        hasNativeRevenueMetric: ga4HasRevenueMetric,
+                        hasNativeRevenueMetric: savedRevenueSources.includes("ga4"),
                       });
-                      const executiveSpendAvailable = executive.spendAvailable;
-                      const spendSourceLabels = executive.spendSourceLabels;
-                      const revenueSourceLabels = executive.revenueSourceLabels;
+                      const spendSourceLabels = executiveSpendAvailable ? executive.spendSourceLabels : [];
+                      const revenueSourceLabels = executiveRevenueAvailable ? executive.revenueSourceLabels : [];
                       return <Card className="border-border" data-testid="insights-executive-financials">
                       <CardHeader>
                         <CardTitle className="text-lg">Executive Financials</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        {(spendKpiInputState === "stale" || revenueKpiInputState === "stale") && (
+                        {(snapshotSpendKpiInputState === "stale" || snapshotRevenueKpiInputState === "stale") && (
                           <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                             <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                            <span>Showing last-good financial values because one or more source refreshes failed.</span>
+                            <span>Showing financial figures from the last saved update; a newer update has not been verified.</span>
                           </div>
                         )}
                         <div className="grid gap-4 md:grid-cols-5">
@@ -9225,7 +9225,7 @@ export default function GA4Metrics() {
                             <CardContent className="p-5">
                               <div className="text-sm font-medium text-muted-foreground/70">Spend</div>
                               <div className="text-2xl font-bold text-foreground">
-                                {renderFinancialValue(financialSpendLoading, financialSpendAvailable && executiveSpendAvailable, formatMoney(Number(financialSpend || 0)), spendKpiInputState === "ready" && !spendMetricAvailable ? "Not connected" : "Unavailable")}
+                                {renderFinancialValue(snapshotSpendKpiInputState === "loading", executiveSpendAvailable, formatMoney(overviewFinancialSpend))}
                               </div>
                             </CardContent>
                           </Card>
@@ -9233,18 +9233,18 @@ export default function GA4Metrics() {
                             <CardContent className="p-5">
                               <div className="text-sm font-medium text-muted-foreground/70">Revenue</div>
                               <div className="text-2xl font-bold text-foreground">
-                                {renderFinancialValue(financialRevenueLoading, financialRevenueAvailable, formatMoney(Number(financialRevenue || 0)), ga4RevenueWindowState.awaitingFirstCompletedDay ? ga4RevenueWindowState.unavailableLabel : revenueKpiInputState === "ready" && !revenueMetricAvailable ? "Not connected" : "Unavailable")}
+                                {renderFinancialValue(snapshotRevenueKpiInputState === "loading", executiveRevenueAvailable, formatMoney(overviewFinancialRevenue), ga4RevenueWindowState.awaitingFirstCompletedDay ? ga4RevenueWindowState.unavailableLabel : "Unavailable")}
                               </div>
                             </CardContent>
                           </Card>
                           <Card data-testid="insights-financial-profit">
                             <CardContent className="p-5">
                               <div className="text-sm font-medium text-muted-foreground/70">Profit</div>
-                              <div className={`text-2xl font-bold ${!(financialRevenueAvailable && financialSpendAvailable && executiveSpendAvailable) ? 'text-foreground' : (financialRevenue - financialSpend) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                              <div className={`text-2xl font-bold ${!(executiveRevenueAvailable && executiveSpendAvailable) ? 'text-foreground' : (overviewFinancialRevenue - overviewFinancialSpend) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                                 {renderFinancialValue(
-                                  financialRevenueLoading || financialSpendLoading,
-                                  financialRevenueAvailable && financialSpendAvailable && executiveSpendAvailable,
-                                  formatMoney(financialRevenue - financialSpend),
+                                  snapshotRevenueKpiInputState === "loading" || snapshotSpendKpiInputState === "loading",
+                                  executiveRevenueAvailable && executiveSpendAvailable,
+                                  formatMoney(overviewFinancialRevenue - overviewFinancialSpend),
                                 )}
                               </div>
                             </CardContent>
@@ -9254,10 +9254,10 @@ export default function GA4Metrics() {
                               <div className="text-sm font-medium text-muted-foreground/70">ROAS</div>
                               <div className="text-2xl font-bold text-foreground">
                                 {renderFinancialValue(
-                                  financialRevenueLoading || financialSpendLoading,
-                                  financialRevenueAvailable && financialSpendAvailable && executiveSpendAvailable && financialSpend > 0,
-                                  `${Number(financialROAS || 0).toFixed(2)}x`,
-                                  executiveSpendAvailable ? (financialSpendAvailable && financialSpend <= 0 ? "—" : "Unavailable") : "Unavailable",
+                                  snapshotRevenueKpiInputState === "loading" || snapshotSpendKpiInputState === "loading",
+                                  executiveRevenueAvailable && executiveSpendAvailable && overviewFinancialSpend > 0,
+                                  `${overviewFinancialROAS.toFixed(2)}x`,
+                                  executiveRevenueAvailable && executiveSpendAvailable && overviewFinancialSpend <= 0 ? "—" : "Unavailable",
                                 )}
                               </div>
                             </CardContent>
@@ -9267,10 +9267,10 @@ export default function GA4Metrics() {
                               <div className="text-sm font-medium text-muted-foreground/70">ROI</div>
                               <div className="text-2xl font-bold text-foreground">
                                 {renderFinancialValue(
-                                  financialRevenueLoading || financialSpendLoading,
-                                  financialRevenueAvailable && financialSpendAvailable && executiveSpendAvailable && financialSpend > 0,
-                                  formatPercentage(Number(financialROI || 0)),
-                                  executiveSpendAvailable ? (financialSpendAvailable && financialSpend <= 0 ? "—" : "Unavailable") : "Unavailable",
+                                  snapshotRevenueKpiInputState === "loading" || snapshotSpendKpiInputState === "loading",
+                                  executiveRevenueAvailable && executiveSpendAvailable && overviewFinancialSpend > 0,
+                                  formatPercentage(overviewFinancialROI),
+                                  executiveRevenueAvailable && executiveSpendAvailable && overviewFinancialSpend <= 0 ? "—" : "Unavailable",
                                 )}
                               </div>
                             </CardContent>
@@ -9282,11 +9282,11 @@ export default function GA4Metrics() {
                           <div className="font-medium text-foreground/80/60 mb-1">Sources used</div>
                           <div className="grid gap-1">
                             <div>
-                              <span className="font-medium">Spend</span>: {spendSourceLabels.length > 0 ? spendSourceLabels.join(", ") : "Not connected"}
+                              <span className="font-medium">Spend</span>: {spendSourceLabels.length > 0 ? spendSourceLabels.join(", ") : "Unavailable"}
                             </div>
                             <div>
                               <span className="font-medium">Revenue</span>:{" "}
-                              {revenueSourceLabels.length > 0 ? revenueSourceLabels.join(", ") : ga4NoCompletedWindow ? "GA4 native revenue — no completed day yet" : "Not connected"}
+                              {revenueSourceLabels.length > 0 ? revenueSourceLabels.join(", ") : ga4NoCompletedWindow ? "GA4 native revenue — no completed day yet" : "Unavailable"}
                             </div>
                           </div>
                         </div>

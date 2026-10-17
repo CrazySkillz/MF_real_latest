@@ -11,9 +11,119 @@ const schedulerSource = () => readFileSync(join(process.cwd(), "server", "ga4-da
 const aggregateSnapshotSchedulerSource = () => readFileSync(join(process.cwd(), "server", "scheduler.ts"), "utf-8");
 const kpiSchedulerSource = () => readFileSync(join(process.cwd(), "server", "kpi-scheduler.ts"), "utf-8");
 
+describe("GA4 startup recovery after a missed scheduled slot", () => {
+  let campaign: any;
+  let marker: string | null;
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-17T18:00:42Z"));
+    vi.stubEnv("GA4_DAILY_REFRESH_TIME_ZONE", "Europe/Amsterdam");
+    vi.stubEnv("GA4_DAILY_REFRESH_HOURS", "8,14,20");
+    vi.stubEnv("GA4_DAILY_REFRESH_MINUTE", "0");
+    campaign = { id: "ptomo", ownerId: "owner", clientId: "client", status: "active", currency: "EUR", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: "saved-filter" };
+    marker = "ga4_aligned_refresh_v1:2026-10-16:2026-10-17T12:12:40Z";
+    vi.spyOn(storage, "getCampaigns").mockImplementation(async () => [campaign]);
+    vi.spyOn(storage, "getGA4Connections").mockResolvedValue([{
+      id: "connection", campaignId: "ptomo", propertyId: "542352127", importStartDate: "2026-09-04", isActive: true, isPrimary: true,
+    }] as any);
+    vi.spyOn(storage, "getGA4OverviewSnapshot").mockResolvedValue({
+      windowStart: "2026-09-04", windowEnd: "2026-10-16", updatedAt: new Date("2026-10-17T12:10:25Z"),
+      campaignBreakdown: { meta: { currencyCode: "EUR" } }, conversionEvents: { version: GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION },
+    } as any);
+    vi.spyOn(storage, "getLatestGA4DailyMetric").mockResolvedValue({ date: "2026-10-16", updatedAt: new Date("2026-10-17T12:10:25Z") } as any);
+    vi.spyOn(storage, "getSpendSources").mockResolvedValue([]);
+    vi.spyOn(storage, "getFinancialDailyComparisonData").mockImplementation(async () => ({
+      current: { metrics: { financialDaily: {
+        currency: "EUR", currentValueWindow: { startDate: "2026-09-04", reportingTimeZone: campaign.reportingTimeZone },
+        inputs: { revenue: { available: true, value: "0.00" }, conversions: { available: true, value: 0 }, spend: { available: false } },
+      } } }, previous: null,
+    } as any));
+    vi.spyOn(storage, "getExecutiveSummaryDailyComparisonData").mockImplementation(async () => ({ current: { notes: marker }, previous: null } as any));
+  });
+  afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllEnvs(); });
+
+  it.each([
+    ["missed 20:00 refresh", "ga4_aligned_refresh_v1:2026-10-16:2026-10-17T12:12:40Z"],
+    ["interrupted publication", null],
+    ["invalid completion time", "ga4_aligned_refresh_v1:2026-10-16:invalid"],
+    ["different reporting date", "ga4_aligned_refresh_v1:2026-10-15:2026-10-17T18:00:30Z"],
+    ["future completion time", "ga4_aligned_refresh_v1:2026-10-16:2026-10-17T19:00:00Z"],
+  ])("recovers %s through the scoped financial and GA4 pipeline", async (_case, notes) => {
+    marker = notes;
+    const runPipeline = vi.fn(async () => undefined);
+    await expect(backfillMissingGA4OverviewSnapshots(runPipeline)).resolves.toEqual(["ptomo"]);
+    expect(runPipeline).toHaveBeenCalledExactlyOnceWith("snapshot_bootstrap", {
+      campaignId: "ptomo", suppressAlerts: false, refreshFinancialSources: true,
+    });
+    expect(storage.getExecutiveSummaryDailyComparisonData).toHaveBeenCalledWith("ptomo", "2026-10-16", "2026-10-16");
+  });
+
+  it.each([
+    ["already completed 20:00", "2026-10-17T18:15:00Z", "2026-10-16", "2026-10-17T18:12:40Z"],
+    ["before 14:00", "2026-10-17T11:59:59Z", "2026-10-16", "2026-10-17T06:12:40Z"],
+    ["before 08:00", "2026-10-17T05:59:59Z", "2026-10-15", "2026-10-16T18:12:40Z"],
+    ["after midnight", "2026-10-17T22:15:00Z", "2026-10-16", "2026-10-17T18:12:40Z"],
+  ])("skips a complete publication %s", async (_case, now, date, completedAt) => {
+    vi.setSystemTime(new Date(now)); marker = `ga4_aligned_refresh_v1:${date}:${completedAt}`;
+    const runPipeline = vi.fn(async () => undefined);
+    await expect(backfillMissingGA4OverviewSnapshots(runPipeline)).resolves.toEqual([]);
+    expect(runPipeline).not.toHaveBeenCalled();
+  });
+
+  it("recovers a missed evening slot after midnight without treating 08:00 as due", async () => {
+    vi.setSystemTime(new Date("2026-10-17T22:15:00Z"));
+    const runPipeline = vi.fn(async () => undefined);
+    await expect(backfillMissingGA4OverviewSnapshots(runPipeline)).resolves.toEqual(["ptomo"]);
+    expect(storage.getExecutiveSummaryDailyComparisonData).toHaveBeenCalledWith("ptomo", "2026-10-16", "2026-10-16");
+  });
+
+  it.each([
+    ["2026-10-17T18:29:59Z", "2026-10-17T12:42:00Z", false],
+    ["2026-10-17T18:30:42Z", "2026-10-17T12:42:00Z", true],
+    ["2026-10-17T18:45:00Z", "2026-10-17T18:42:00Z", false],
+  ])("honors the configured minute at %s", async (now, completedAt, overdue) => {
+    vi.stubEnv("GA4_DAILY_REFRESH_MINUTE", "30");
+    vi.setSystemTime(new Date(now)); marker = `ga4_aligned_refresh_v1:2026-10-16:${completedAt}`;
+    const runPipeline = vi.fn(async () => undefined);
+    await expect(backfillMissingGA4OverviewSnapshots(runPipeline)).resolves.toEqual(overdue ? ["ptomo"] : []);
+  });
+
+  it.each([
+    ["2026-03-29T18:00:42Z", "2026-03-28", "2026-03-29T12:12:40Z"],
+    ["2026-10-25T19:00:42Z", "2026-10-24", "2026-10-25T13:12:40Z"],
+  ])("recovers the local 20:00 slot across daylight saving at %s", async (now, date, completedAt) => {
+    vi.setSystemTime(new Date(now)); marker = `ga4_aligned_refresh_v1:${date}:${completedAt}`;
+    await expect(backfillMissingGA4OverviewSnapshots(vi.fn(async () => undefined))).resolves.toEqual(["ptomo"]);
+    expect(storage.getExecutiveSummaryDailyComparisonData).toHaveBeenCalledWith("ptomo", date, date);
+  });
+
+  it("looks up the campaign's reporting date at the scheduler's due slot", async () => {
+    campaign.reportingTimeZone = "Asia/Tokyo";
+    marker = "ga4_aligned_refresh_v1:2026-10-17:2026-10-17T18:00:30Z";
+    await expect(backfillMissingGA4OverviewSnapshots(vi.fn(async () => undefined))).resolves.toEqual([]);
+    expect(storage.getExecutiveSummaryDailyComparisonData).toHaveBeenCalledWith("ptomo", "2026-10-17", "2026-10-17");
+  });
+
+  it.each(["draft", "inactive", "archived"])("does not recover a %s campaign", async (status) => {
+    campaign.status = status;
+    await expect(backfillMissingGA4OverviewSnapshots(vi.fn(async () => undefined))).resolves.toEqual([]);
+    expect(storage.getGA4Connections).not.toHaveBeenCalled();
+  });
+
+  it("does not recover a campaign without an active connection or selected campaign filter", async () => {
+    vi.mocked(storage.getGA4Connections).mockResolvedValue([]);
+    await expect(backfillMissingGA4OverviewSnapshots(vi.fn(async () => undefined))).resolves.toEqual([]);
+    expect(storage.getExecutiveSummaryDailyComparisonData).not.toHaveBeenCalled();
+    campaign.ga4CampaignFilter = null;
+    vi.mocked(storage.getGA4Connections).mockClear();
+    await expect(backfillMissingGA4OverviewSnapshots(vi.fn(async () => undefined))).resolves.toEqual([]);
+    expect(storage.getGA4Connections).not.toHaveBeenCalled();
+  });
+});
+
 describe("GA4 daily scheduler timing", () => {
   beforeEach(() => vi.spyOn(storage, "getGA4OverviewSnapshot").mockResolvedValue(undefined));
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllEnvs(); });
   it("defaults to a controlled 03:00 UTC daily run with startup disabled", () => {
     expect(getGA4DailySchedulerConfig({} as any)).toEqual({
       reportingTimeZone: "UTC",
@@ -108,7 +218,7 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("benchmarkIdsUpdated: hashEvidenceIds(recomputeEvidence.benchmarkIdsUpdated)");
     expect(source).toContain("benchmarkIdsSkipped: hashEvidenceIds(recomputeEvidence.benchmarkIdsSkipped)");
     expect(source).toContain("benchmarkIdsFailed: hashEvidenceIds(recomputeEvidence.benchmarkIdsFailed)");
-    expect(source).toContain("if (!campaignId && !opts.suppressAlerts) {");
+    expect(source).toContain('if (!opts.suppressAlerts && (!campaignId || trigger === "snapshot_bootstrap")) {');
     expect(source).toContain("Next scheduled run at");
     expect(source).toContain("const dataThroughDate = getLatestCompleteReportingDate(config.reportingTimeZone, nextRunAt);");
     expect(source).toContain("dataThroughDate=${dataThroughDate}");
@@ -171,6 +281,14 @@ describe("GA4 daily scheduler timing", () => {
   });
 
   it("bootstraps only campaign-scoped daily publications whose Overview or required financial snapshot is incomplete", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-06T04:00:00Z"));
+    vi.stubEnv("GA4_DAILY_REFRESH_TIME_ZONE", "UTC");
+    vi.stubEnv("GA4_DAILY_REFRESH_HOURS", "3");
+    vi.stubEnv("GA4_DAILY_REFRESH_MINUTE", "0");
+    vi.spyOn(storage, "getExecutiveSummaryDailyComparisonData").mockResolvedValue({
+      current: { notes: "ga4_aligned_refresh_v1:2026-08-05:2026-08-06T03:15:00Z" }, previous: null,
+    } as any);
     vi.spyOn(storage, "getCampaigns").mockResolvedValue([
       { id: "campaign-missing", status: "active", currency: "USD", ga4CampaignFilter: "saved-filter" },
       { id: "campaign-mismatched", status: "active", currency: "USD", ga4CampaignFilter: "saved-filter" },
@@ -347,7 +465,7 @@ describe("GA4 daily scheduler timing", () => {
     expect(source.indexOf("alignedRefreshByCampaign.set(processedCampaignId")).toBeLessThan(
       source.indexOf(finalFailureCheck),
     );
-    expect(source).toContain("if (!refreshFailure && alignedRefreshFailures.length === 0) {");
+    expect(source).toContain("if (!campaignId && !refreshFailure && alignedRefreshFailures.length === 0) {");
     expect(source).toContain("Skipping global alert sweeps because ${refreshFailure || `${alignedRefreshFailures.length} campaign stage(s) failed`}");
   });
 

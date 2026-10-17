@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
     getCampaign: vi.fn(), getCampaigns: vi.fn(), getGA4Connections: vi.fn(), getGA4Connection: vi.fn(),
     getRevenueSources: vi.fn(), getSpendSources: vi.fn(), getGA4DailyMetrics: vi.fn(),
     getGA4OverviewSnapshot: vi.fn(), replaceGA4DailyMetricsWindow: vi.fn(),
+    getLatestGA4DailyMetric: vi.fn(), getFinancialDailyComparisonData: vi.fn(), getExecutiveSummaryDailyComparisonData: vi.fn(),
     getRevenueTotalForRange: vi.fn(), getSpendTotalForRange: vi.fn(), upsertFinancialDailySnapshot: vi.fn(),
     getRevenueBreakdownBySource: vi.fn(), getSpendBreakdownBySource: vi.fn(),
     markExecutiveSummaryDailySnapshotAligned: vi.fn(),
@@ -140,6 +141,82 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     expect(getGA4DailySchedulerStatus().lastRunStatus).toBe("success");
     expect(mocks.storage.invalidateExecutiveSummaryDailySnapshotAlignment).toHaveBeenCalledExactlyOnceWith("campaign-a", reportingDate);
     expect(mocks.storage.invalidateExecutiveSummaryDailySnapshotAlignment.mock.invocationCallOrder[0]).toBeLessThan(mocks.storage.getRevenueSources.mock.invocationCallOrder[0]);
+    expect(mocks.kpiAlerts).not.toHaveBeenCalled(); expect(mocks.benchmarkAlerts).not.toHaveBeenCalled();
+    expect(mocks.globalKpiAlerts).not.toHaveBeenCalled(); expect(mocks.globalBenchmarkAlerts).not.toHaveBeenCalled();
+  });
+
+  it("does not mark startup recovery complete when the campaign alert stage fails", async () => {
+    campaigns = campaigns.slice(0, 1);
+    await runGA4DailyRefreshPipelineForCampaignNow("campaign-a");
+    mocks.storage.getLatestGA4DailyMetric.mockImplementation(async (id) => daily.get(id)?.at(-1));
+    mocks.storage.getFinancialDailyComparisonData.mockImplementation(async (id) => ({ current: { metrics: { financialDaily: saved.get(id) } }, previous: null }));
+    mocks.storage.getExecutiveSummaryDailyComparisonData.mockResolvedValue({ current: { notes: null }, previous: null });
+    mocks.kpiAlerts.mockRejectedValue(new Error("alert check failed"));
+    vi.clearAllMocks();
+    vi.setSystemTime(new Date("2026-10-16T18:00:42Z"));
+    startGA4DailyScheduler(5000);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(getGA4DailySchedulerStatus()).toMatchObject({ lastRunStatus: "failed", inProgress: false });
+    expect(getGA4DailySchedulerStatus().lastSnapshotBootstrapFailures).toHaveLength(1);
+    expect(mocks.storage.markExecutiveSummaryDailySnapshotAligned).not.toHaveBeenCalled();
+    expect(mocks.globalKpiAlerts).not.toHaveBeenCalled(); expect(mocks.globalBenchmarkAlerts).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])("recovers overdue startup publications through the real pipeline (first source fails: %s)", async (failFirst) => {
+    const markers = new Map<string, string>();
+    mocks.storage.markExecutiveSummaryDailySnapshotAligned.mockImplementation(async (id, date, completedAt) => {
+      markers.set(id, `ga4_aligned_refresh_v1:${date}:${completedAt}`); return true;
+    });
+    mocks.storage.invalidateExecutiveSummaryDailySnapshotAlignment.mockImplementation(async (id) => { markers.delete(id); });
+    mocks.storage.getExecutiveSummaryDailyComparisonData.mockImplementation(async (id) => ({ current: { notes: markers.get(id) }, previous: null }));
+    mocks.storage.getLatestGA4DailyMetric.mockImplementation(async (id) => daily.get(id)?.at(-1));
+    mocks.storage.getFinancialDailyComparisonData.mockImplementation(async (id) => ({ current: { metrics: { financialDaily: saved.get(id) } }, previous: null }));
+    await runGA4DailyRefreshPipelineForCampaignNow("campaign-a");
+    if (!failFirst) vi.setSystemTime(new Date("2026-10-16T18:00:30Z"));
+    await runGA4DailyRefreshPipelineForCampaignNow("campaign-b");
+    // Seed durable completion from earlier scheduled runs; manual refreshes do not mark report readiness.
+    markers.set("campaign-a", `ga4_aligned_refresh_v1:${reportingDate}:2026-10-16T06:00:00Z`);
+    markers.set("campaign-b", `ga4_aligned_refresh_v1:${reportingDate}:${failFirst ? "2026-10-16T06:00:00Z" : "2026-10-16T18:00:30Z"}`);
+    const prior = structuredClone(saved.get("campaign-a"));
+    vi.clearAllMocks();
+    if (failFirst) {
+      const read = mocks.storage.getRevenueSources.getMockImplementation()!;
+      mocks.storage.getRevenueSources.mockImplementation(async (id, ctx) => {
+        if (id === "campaign-a") throw new Error("campaign-a source lookup failed");
+        return read(id, ctx);
+      });
+    }
+    vi.setSystemTime(new Date("2026-10-16T18:00:42Z"));
+    startGA4DailyScheduler(5000);
+    await vi.advanceTimersByTimeAsync(0);
+
+    const recovered = failFirst ? "campaign-b" : "campaign-a";
+    expect(getGA4DailySchedulerStatus()).toMatchObject({
+      nextRunAt: "2026-10-17T06:00:00.000Z", lastRunTrigger: "snapshot_bootstrap", lastRunStatus: "success", inProgress: false,
+    });
+    expect(mocks.storage.upsertFinancialDailySnapshot.mock.calls.map(([snapshot]) => snapshot.campaignId)).toEqual([recovered]);
+    expect(mocks.recompute.mock.calls.map(([options]) => options.campaignId)).toEqual([recovered]);
+    expect(mocks.aggregate).toHaveBeenCalledExactlyOnceWith(recovered, { allowScheduledGA4: true });
+    expect(mocks.executive).toHaveBeenCalledExactlyOnceWith("http://127.0.0.1:5000", recovered);
+    expect(mocks.storage.markExecutiveSummaryDailySnapshotAligned).toHaveBeenCalledExactlyOnceWith(recovered, reportingDate, "2026-10-16T18:00:42.000Z");
+    expect(mocks.kpiAlerts).toHaveBeenCalledExactlyOnceWith(recovered, reportingDate);
+    expect(mocks.benchmarkAlerts).toHaveBeenCalledExactlyOnceWith(recovered, reportingDate);
+    expect(mocks.globalKpiAlerts).not.toHaveBeenCalled(); expect(mocks.globalBenchmarkAlerts).not.toHaveBeenCalled();
+    if (failFirst) {
+      expect(saved.get("campaign-a")).toEqual(prior);
+      expect(markers.has("campaign-a")).toBe(false);
+      expect(getGA4DailySchedulerStatus().lastSnapshotBootstrapFailures).toHaveLength(1);
+    } else {
+      expect(getGA4DailySchedulerStatus().lastSnapshotBootstrapFailures).toEqual([]);
+      expect(mocks.storage.invalidateExecutiveSummaryDailySnapshotAlignment).toHaveBeenCalledExactlyOnceWith("campaign-a", reportingDate);
+      expect(mocks.storage.getRevenueSources.mock.calls.every(([id]) => id === "campaign-a")).toBe(true);
+      vi.clearAllMocks();
+      stopGA4DailyScheduler(); startGA4DailyScheduler(5000);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(mocks.storage.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
+      expect(mocks.storage.upsertFinancialDailySnapshot).not.toHaveBeenCalled();
+      expect(mocks.kpiAlerts).not.toHaveBeenCalled(); expect(mocks.benchmarkAlerts).not.toHaveBeenCalled();
+    }
   });
 
   it("does not refresh any source when durable readiness invalidation fails", async () => {

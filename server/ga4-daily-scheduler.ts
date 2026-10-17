@@ -3,7 +3,7 @@ import { GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION, ga4Service, type GA4DailyTraffi
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./kpi-scheduler";
 import { checkGA4BenchmarkPerformanceAlertsForCampaign, checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getLatestCompleteReportingDate, getReportingDateWindow, isCreatedThroughReportingDate, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedScheduledRefreshAt, getLatestCompleteReportingDate, getReportingDateWindow, isCreatedThroughReportingDate, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { createHash } from "crypto";
 import { addGA4InsightsDateDays, normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 import { beginFinancialDailySnapshotRefreshObservation, getFinancialDailySnapshotRefreshEvidence, recordFinancialDailySnapshotRefreshEvidence } from "./utils/financial-daily-snapshot-observation";
@@ -638,7 +638,7 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
       ga4DailySchedulerStatus.lastExecutiveSummarySnapshotRequestedAt = new Date();
       ga4DailySchedulerStatus.lastExecutiveSummarySnapshotRequestFailures = hashEvidenceIds(executiveSummarySnapshotFailures);
     }
-    if (!campaignId && !opts.suppressAlerts) {
+    if (!opts.suppressAlerts && (!campaignId || trigger === "snapshot_bootstrap")) {
       const alignedAlertCampaignIds: string[] = [];
       for (const processedCampaignId of executiveSummaryCapturedCampaignIds) {
         const providerCoverageThroughDate = refreshResult.reportingDatesByCampaign[processedCampaignId];
@@ -652,7 +652,7 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
           console.warn(`[GA4 Daily] Campaign-scoped alert check failed for ${processedCampaignId}:`, e?.message || e);
         }
       }
-      if (!refreshFailure && alignedRefreshFailures.length === 0) {
+      if (!campaignId && !refreshFailure && alignedRefreshFailures.length === 0) {
         try {
           await checkPerformanceAlerts();
         } catch (e: any) {
@@ -664,7 +664,7 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
         } catch (e: any) {
           console.warn("[GA4 Daily] Benchmark alert check failed:", e?.message || e);
         }
-      } else {
+      } else if (!campaignId) {
         console.warn(`[GA4 Daily] Skipping global alert sweeps because ${refreshFailure || `${alignedRefreshFailures.length} campaign stage(s) failed`}`);
       }
       const alignedCompletedAt = new Date().toISOString();
@@ -762,9 +762,17 @@ export async function backfillMissingGA4OverviewSnapshots(
   runPipeline: GA4DailyPipelineRunner = runGA4DailyRefreshPipelineForTrigger,
 ): Promise<string[]> {
   ga4DailySchedulerStatus.lastSnapshotBootstrapFailures = [];
+  const now = new Date();
+  const config = getGA4DailySchedulerConfig();
+  const scheduleDate = getLatestCompleteReportingDate(config.reportingTimeZone, now);
+  let latestDueAt = getExpectedScheduledRefreshAt(scheduleDate, config, now);
+  if (latestDueAt && latestDueAt > now) {
+    latestDueAt = getExpectedScheduledRefreshAt(addGA4InsightsDateDays(scheduleDate, -1), config, now);
+  }
   const campaigns = filterActiveSchedulerCampaigns(await storage.getCampaigns());
   const campaignIds: string[] = [];
   const financialBootstrapCampaignIds = new Set<string>();
+  const overdueCampaignIds = new Set<string>();
   for (const campaign of campaigns) {
     const campaignId = String((campaign as any)?.id || "").trim();
     const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
@@ -813,6 +821,17 @@ export async function backfillMissingGA4OverviewSnapshots(
         financialBootstrapCampaignIds.add(campaignId);
       }
     }
+    if (primaryConnection && latestDueAt) {
+      // A restart can miss a slot even when the older snapshots are structurally valid.
+      const reportingDate = getLatestCompleteReportingDate((campaign as any)?.reportingTimeZone, latestDueAt);
+      const aligned = await getGA4AlignedRefreshState(campaignId, reportingDate);
+      const completedAt = Date.parse(aligned?.completedAt || "");
+      if (!(completedAt >= latestDueAt.getTime() && completedAt <= now.getTime())) {
+        needsBootstrap = true;
+        financialBootstrapCampaignIds.add(campaignId);
+        overdueCampaignIds.add(campaignId);
+      }
+    }
     if (needsBootstrap) campaignIds.push(campaignId);
   }
 
@@ -820,7 +839,7 @@ export async function backfillMissingGA4OverviewSnapshots(
     try {
       await runPipeline("snapshot_bootstrap", {
         campaignId,
-        suppressAlerts: true,
+        suppressAlerts: !overdueCampaignIds.has(campaignId),
         ...(financialBootstrapCampaignIds.has(campaignId) ? { refreshFinancialSources: true } : {}),
       });
     } catch (error: any) {

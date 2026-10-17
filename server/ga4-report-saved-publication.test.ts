@@ -158,4 +158,42 @@ describe("GA4 report saved publication", () => {
     expect(pdf.toString("latin1")).not.toContain("EUR 130.01");
     for (const mock of Object.values(provider)) expect(mock).not.toHaveBeenCalled();
   });
+  it.each([null, 0, 20])("renders zero Revenue without external Revenue sources and Spend=%s", async spend => {
+    const ga4 = overview();
+    ga4.campaignBreakdown.totals.revenue = 0;
+    ga4.campaignBreakdown.rows[0].revenue = 0;
+    const saved: any = snapshot();
+    saved.metrics.financialDaily.inputs.revenue = { value: "0.00", available: true, sources: ["ga4"] };
+    saved.metrics.financialDaily.inputs.spend = spend === null
+      ? { value: null, available: false, sources: [] }
+      : { value: String(spend), available: true, sources: ["spend-source:s"] };
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(ga4);
+    storageMock.getLatestFinancialDailySnapshot.mockResolvedValue(saved);
+    storageMock.getRevenueSources.mockResolvedValue([]);
+    storageMock.getRevenueBreakdownBySource.mockResolvedValue([]);
+    storageMock.getSpendSources.mockResolvedValue(spend === null ? [] : [{ id: "s", isActive: true, currency: "EUR" }]);
+    storageMock.getSpendBreakdownBySource.mockResolvedValue(spend === null ? [] : [{ sourceId: "s", spend, currency: "EUR" }]);
+    expect((await build())?.length).toBeGreaterThan(100);
+    const metric = (label: string) => printed[printed.indexOf(label.toUpperCase()) + 1];
+    expect(metric("Total Revenue")).toBe("EUR 0.00");
+    expect(metric("Total Spend")).toBe(spend === null ? "Unavailable" : `EUR ${spend.toFixed(2)}`);
+    if (spend === null) {
+      expect(metric("Profit")).toBe("Unavailable");
+      for (const label of ["ROAS", "ROI", "CPA"]) expect(metric(label)).toBe("—");
+    }
+    if (spend === 20) {
+      expect(metric("Profit")).toBe("EUR -20.00");
+      expect(metric("ROAS")).toBe("0.00x");
+      expect(metric("ROI")).toBe("-100.0%");
+      expect(metric("CPA")).toBe("EUR 4.00");
+    }
+    for (const mock of Object.values(provider)) expect(mock).not.toHaveBeenCalled();
+  });
+  it("rejects unavailable Revenue in the saved publication", async () => {
+    const saved: any = snapshot();
+    saved.metrics.financialDaily.inputs.revenue = { value: null, available: false, sources: [] };
+    storageMock.getLatestFinancialDailySnapshot.mockResolvedValue(saved);
+    await expect(build()).rejects.toThrow("Financial publication changed");
+    expect(printed).toEqual([]);
+  });
 });

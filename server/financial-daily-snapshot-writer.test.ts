@@ -293,6 +293,21 @@ describe("gated financial daily snapshot writer", () => {
     });
   });
 
+  it("publishes verified zero GA4 Revenue without external Revenue or Spend sources", async () => {
+    successfulEvidence();
+    const deps = dependencies({
+      getSpendSources: vi.fn().mockResolvedValue([]),
+      getRevenueTotalForRange: vi.fn().mockResolvedValue({ totalRevenue: 0, sourceIds: [] }),
+      getSpendTotalForRange: vi.fn().mockResolvedValue({ totalSpend: 0, sourceIds: [] }),
+      getGA4OverviewSnapshot: vi.fn().mockResolvedValue(overviewSnapshot(0)),
+    });
+    deps.getCampaign.mockResolvedValue({ ...(await deps.getCampaign()), ga4CampaignFilter: "sale" });
+    deps.getCampaignMetricTotals.mockResolvedValue({ ...(await deps.getCampaignMetricTotals()), ga4FinancialSource: "persisted_overview", ga4Revenue: 0, revenue: 0, spend: 0 });
+    const result = await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps);
+    expect(result.status).toBe("written");
+    expect(result.snapshot?.inputs).toMatchObject({ revenue: { available: true, value: "0.00", sources: ["ga4"] }, spend: { available: false, value: null, sources: [] } });
+  });
+
   it.each([
     ["missing", undefined],
     ["other campaign", { ...overviewSnapshot(), campaignId: "campaign-2" }],

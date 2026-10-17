@@ -233,6 +233,8 @@ describe("GA4 shared daily traffic during provider revisions", () => {
     expect(rows.every((r: any) => r.sessions === 0 && r.conversions === 0 && Number(r.revenue) === 0)).toBe(true);
     expect(overview.campaignBreakdown.rows).toEqual([]);
     expect(overview.campaignBreakdown.totals.sessions).toBe(0);
+    expect(overview.campaignBreakdown.totals.revenue).toBe(0);
+    expect(overview.campaignBreakdown.meta.revenueMetric).toBe("totalRevenue");
   });
 
   it("does not bypass provider currency verification", async () => {

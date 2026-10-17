@@ -132,6 +132,62 @@ describe("Browser Overview reports without a Spend source", () => {
     expect(metric("ROI")).toBe(spend ? formatPct(6465.95) : "—");
     expect(metric("CPA")).toBe(spend ? "EUR 3.82" : "—");
   });
+
+  // Derive Revenue availability from the page expressions, rather than forcing a ready flag for zero.
+  const revenueNames = ["ga4RevenueMetricName", "ga4FinancialNativeAvailable", "ga4RevenueForFinancials", "ga4HasRevenueMetric",
+    "revenueMetricAvailable", "importedRevenueForFinancials", "revenueSourceDefinitionsKnownEmpty", "importedRevenueAvailable",
+    "financialRevenueAvailable", "financialRevenue"];
+  const revenueExpressions: Record<string, string> = {};
+  const ast = ts.createSourceFile("ga4-metrics.tsx", page, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  function visitRevenue(node: ts.Node) {
+    if (ts.isVariableDeclaration(node) && revenueNames.includes(node.name.getText(ast))) revenueExpressions[node.name.getText(ast)] = node.initializer!.getText(ast);
+    ts.forEachChild(node, visitRevenue);
+  }
+  visitRevenue(ast);
+  function zeroRevenue(changes: Record<string, any> = {}) {
+    const args: Record<string, any> = {
+      ga4ToDateResp: { revenueMetric: "totalRevenue", startDate: "2026-10-15", endDate: "2026-10-16" },
+      ga4FinancialTotalsSource: { revenue: 0, conversions: 262 }, activeRevenueSource: null,
+      requiresVerifiedNativeCurrency: false, importedRevenueToDateResp: undefined,
+      revenueSourcesResp: { sources: [] }, activeTab: "reports", useMemo: (callback: () => any) => callback(), ...changes,
+    };
+    const body = revenueNames.map(name => `const ${name} = ${revenueExpressions[name]};`).join("\n") + `return { ${revenueNames.join(",")} };`;
+    return { ...args, ...new Function(...Object.keys(args), ts.transpileModule(body, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(args)), overviewFinancialRevenue: 0 };
+  }
+  it.each(["totalRevenue", "purchaseRevenue"])("accepts zero %s with no external Revenue or Spend source", async revenueMetric => {
+    const inputs = zeroRevenue({ ga4ToDateResp: { revenueMetric, startDate: "2026-10-15", endDate: "2026-10-16" } });
+    expect(inputs.financialRevenueAvailable).toBe(true);
+    const metric = await render(inputs);
+    expect(metric("Total Revenue")).toBe("EUR 0.00");
+    for (const name of ["Total Spend", "Profit", "ROAS", "ROI", "CPA"]) expect(metric(name)).toBe("Unavailable");
+  });
+  it("downloads a custom Revenue-only PDF with valid zero revenue", async () => {
+    const metric = await render(zeroRevenue(), "custom", customOverview("revenue"));
+    expect(metric("Total Revenue")).toBe("EUR 0.00");
+  });
+  it("keeps zero Revenue with positive Spend distinct from unavailable Revenue", async () => {
+    const metric = await render({ ...zeroRevenue(), financialSpendAvailable: true, overviewFinancialSpendAvailable: true,
+      financialSpend: 1000, overviewFinancialSpend: 1000, hasSpendSources: true, spendSourceDefinitionsKnownEmpty: false });
+    expect(metric("Total Revenue")).toBe("EUR 0.00");
+    expect(metric("Profit")).toBe("EUR -1,000.00");
+    expect(metric("ROAS")).toBe("0.00x");
+    expect(metric("ROI")).toBe(formatPct(-100));
+    expect(metric("CPA")).toBe("EUR 3.82");
+  });
+  it.each([
+    { importedRevenueError: true }, { revenueSourcesError: true }, { revenueBreakdownError: true },
+    { revenueDisplaySources: [{ revenue: null, materializedRevenueStatus: "unavailable" }] },
+  ])("still rejects failed Revenue inputs when the last value is zero: %j", async changes => {
+    await expect(run({ ...absentSpend, ...zeroRevenue(), ...changes }, undefined, "overview")).rejects.toThrow("unavailable: Revenue.");
+  });
+  it("blocks an unknown Revenue source list even when native Revenue is zero", async () => {
+    const inputs = zeroRevenue({ revenueSourcesResp: undefined });
+    expect(inputs.financialRevenueAvailable).toBe(false);
+    await expect(run({ ...absentSpend, ...inputs }, undefined, "overview")).rejects.toThrow("unavailable: Revenue.");
+  });
+  it("blocks a missing or failed Revenue publication rather than inventing zero", async () => {
+    await expect(run({ ...absentSpend, ...zeroRevenue(), overviewFinancialRevenueAvailable: false }, undefined, "overview")).rejects.toThrow("successful aligned data refresh");
+  });
 });
 
 describe("Insights financial recommendation input states", () => {

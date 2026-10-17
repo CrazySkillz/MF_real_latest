@@ -15,7 +15,8 @@ describe("Performance Summary scheduler snapshot alignment", () => {
     expect(scheduler).toContain('const financialSourceStartDate = "1900-01-01";');
     expect(scheduler).toContain("getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate");
     expect(scheduler).toContain('storage.getSpendTotalForRange(campaignId, financialSourceStartDate, financialSourceEndDate, "ga4")');
-    expect(scheduler).toContain('storage.getRevenueBreakdownBySource(campaignId, financialSourceStartDate, endDate, "ga4")');
+    expect(scheduler).toContain('storage.getRevenueBreakdownBySource(campaignId, financialSourceStartDate, options.useSavedOverview ? financialSourceEndDate : endDate, "ga4")');
+    expect(scheduler).toContain('aggregateCampaignMetrics(campaignId, { useSavedOverview: opts.allowScheduledGA4 === true })');
     expect(scheduler).toContain("COALESCE(ss.platform_context, 'ga4') = 'ga4'");
     expect(scheduler).toContain("COALESCE(rs.platform_context, 'ga4') = 'ga4'");
     expect(scheduler).toContain('ga4: { connected: ga4Connected, ...ga4FinancialData }');

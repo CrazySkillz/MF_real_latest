@@ -97,6 +97,27 @@ describe("published GA4 readers", () => {
     expect(res.body.financials).toMatchObject({ totalRevenue: 130.01, spend: 20, conversions: 5, cpa: 4 });
     expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled(); expect(provider.getAcquisitionBreakdown).not.toHaveBeenCalled();
   });
+  it.each([undefined, "0", "1"])("keeps native-only GA4 diagnostics on saved figures with persistedOnly=%s", async (persistedOnly) => {
+    const saved = published();
+    saved.metrics.financialDaily.inputs.revenue = { available: true, value: "100.01", sources: ["ga4"] };
+    saved.metrics.financialDaily.inputs.spend = { available: false, value: null, sources: [] } as any;
+    storage.getLatestFinancialDailySnapshot.mockResolvedValue(saved);
+    storage.getRevenueSources.mockResolvedValue([]); storage.getSpendSources.mockResolvedValue([]);
+    storage.getRevenueBreakdownBySource.mockResolvedValue([]); storage.getSpendBreakdownBySource.mockResolvedValue([]);
+    storage.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0, currency: "EUR", sourceIds: [] });
+    storage.getSpendTotalForRange.mockResolvedValue({ totalSpend: 0, currency: "EUR", sourceIds: [] });
+    bindings.getCampaignMetricTotals.mockResolvedValue({ ga4FinancialSource: "persisted_overview", revenueAvailable: true, spendAvailable: true,
+      revenue: 100.01, ga4Revenue: 100.01, spend: 0, financialConversions: 5, sessions: 30, users: 25 });
+    const res = response();
+    await route("/api/campaigns/:id/outcome-totals", bindings)(req(persistedOnly === undefined ? {} : { persistedOnly }), res);
+    expect(res.code, JSON.stringify(res.body)).toBe(200);
+    const totals = res.body.performanceSummary.totals;
+    expect(totals.revenue).toMatchObject({ available: true, value: 100.01 });
+    expect(totals.sessions.value).toBe(30); expect(totals.conversions.value).toBe(5);
+    expect(totals.spend).toMatchObject({ available: false, sources: [] });
+    for (const metric of ["roas", "roi", "cpa"]) expect(totals[metric]).toMatchObject({ available: false, value: null });
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled(); expect(provider.getAcquisitionBreakdown).not.toHaveBeenCalled();
+  });
   it.each(["missing publication", "new imported revenue", "changed publication", "failed source read"])("withholds mixed diagnostic figures: %s", async (kind) => {
     if (kind === "missing publication") storage.getLatestFinancialDailySnapshot.mockResolvedValue(null);
     if (kind === "new imported revenue") storage.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 40, currency: "EUR", sourceIds: ["r"] });

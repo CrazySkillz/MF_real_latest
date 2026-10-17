@@ -114,7 +114,9 @@ describe("scheduled report email regression guard", () => {
     expect(serverSource).toContain('const spendSourceStartDate = "1900-01-01";');
     expect(serverSource).toContain('storage.getSpendBreakdownBySource(campaignId, spendSourceStartDate, financialEndDate, "ga4")');
     expect(serverSource).toContain('const importedRevenueStartDate = "1900-01-01";');
-    expect(serverSource).toContain("const importedRevenueEndDate = new Date().toISOString().slice(0, 10);");
+    expect(serverSource).toContain("const importedRevenueEndDate = financialEndDate;");
+    expect(serverSource).toContain('storage.getRevenueBreakdownBySource(campaignId, importedRevenueStartDate, importedRevenueEndDate, "ga4")');
+    expect(serverSource).not.toContain("const importedRevenueEndDate = new Date().toISOString().slice(0, 10);");
     expect(serverSource).not.toContain("lookbackDays === 30 ? GA4_OVERVIEW_LEGACY_IMPORT_START_DATE : dailyStart");
     expect(serverSource).not.toContain("Window: ${windowStart} to ${windowEnd} (UTC)");
   });

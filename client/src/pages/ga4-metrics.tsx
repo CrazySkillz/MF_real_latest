@@ -6233,6 +6233,27 @@ export default function GA4Metrics() {
   const ga4DailyLatestStoredDate = String((ga4DailyResp as any)?.latestStoredDailyDate || ga4ReportDate || "").trim();
   const overviewGA4ReportingDate = ga4ConnectionUsable && !ga4DailyPlaceholder
     && String(ga4DailyResp?.propertyId || "") === selectedGA4PropertyId ? ga4DailyLatestStoredDate : "";
+  const overviewGA4MetadataAvailable = ga4ConnectionUsable && !ga4DailyPlaceholder
+    && String(ga4DailyResp?.propertyId || "") === selectedGA4PropertyId;
+  const overviewGA4ReportingStartDate = overviewGA4MetadataAvailable ? String(ga4DailyResp?.overviewStartDate || "") : "";
+  const overviewGA4ReportingTimeZone = normalizeClientReportingTimeZone(ga4DailyResp?.reportingTimeZone);
+  const overviewFinancialWindow = overviewFinancialSnapshot?.metrics?.financialDaily?.currentValueWindow;
+  const overviewFinancialReportingTimeZone = normalizeClientReportingTimeZone(overviewFinancialWindow?.reportingTimeZone);
+  // Stored timestamps describe the displayed data, never a scheduled start or a failed attempt.
+  const overviewGA4UpdatedAt = overviewGA4ReportingDate && ga4DailyResp?.providerRefreshOutcome !== "simulated"
+    && Number.isFinite(Date.parse(ga4DailyResp?.lastUpdated || ""))
+      ? formatReportingTimestampLabel(ga4DailyResp.lastUpdated, overviewGA4ReportingTimeZone) : "Not available yet";
+  const overviewFinancialUpdatedAt = overviewFinancialReportingDate
+    && Number.isFinite(Date.parse(overviewFinancialSnapshot?.recordedAt || ""))
+      ? formatReportingTimestampLabel(overviewFinancialSnapshot.recordedAt, overviewFinancialReportingTimeZone) : "Not available yet";
+  const overviewRefreshScheduleHours = ga4DailyResp?.refreshScheduleHours;
+  const overviewRefreshScheduleMinute = ga4DailyResp?.refreshScheduleMinute;
+  const overviewRefreshSchedule = overviewGA4MetadataAvailable && Array.isArray(overviewRefreshScheduleHours)
+    && overviewRefreshScheduleHours.length > 0 && overviewRefreshScheduleHours.every((hour: any) => Number.isInteger(hour) && hour >= 0 && hour <= 23)
+    && Number.isInteger(overviewRefreshScheduleMinute) && overviewRefreshScheduleMinute >= 0 && overviewRefreshScheduleMinute <= 59
+    && ga4DailyResp?.refreshScheduleTimeZone
+      ? `${overviewRefreshScheduleHours.map((hour: number) => `${String(hour).padStart(2, "0")}:${String(overviewRefreshScheduleMinute).padStart(2, "0")}`).join(", ")} (${ga4DailyResp.refreshScheduleTimeZone})`
+      : "Schedule unavailable";
   const ga4DailyExpectedThroughDate = String((ga4DailyResp as any)?.dataThroughDate || "").trim();
   const ga4DailyProviderCoverageThroughDate = String((ga4DailyResp as any)?.providerCoverageThroughDate || "").trim();
   const ga4DailyRefreshIsStale = (ga4DailyResp as any)?.refreshIsStale === true;
@@ -6686,8 +6707,11 @@ export default function GA4Metrics() {
                 <TabsContent value="overview" className="fade-in">
                   <div className="space-y-8">
                     <div className="space-y-1 text-sm text-muted-foreground/70" data-testid="ga4-overview-reporting-dates">
-                      <p><span className="font-medium">GA4 metrics (Summary and tables):</span> {overviewGA4ReportingDate ? `Data through ${formatReportingDateLabel(overviewGA4ReportingDate)}` : "Reporting date unavailable"}.</p>
-                      <p><span className="font-medium">Revenue, Spend, ROAS, ROI and CPA:</span> {overviewFinancialReportingDate ? `Data through ${formatReportingDateLabel(overviewFinancialReportingDate)}` : "Reporting date unavailable"}. Applies to available figures.</p>
+                      <p><span className="font-medium">GA4 metrics (Summary and tables):</span> {overviewGA4ReportingDate ? `${overviewGA4ReportingStartDate ? `Data from ${formatReportingDateLabel(overviewGA4ReportingStartDate)} through` : "Data through"} ${formatReportingDateLabel(overviewGA4ReportingDate)} (${overviewGA4ReportingTimeZone})` : "Reporting date unavailable"}. Last successful update: {overviewGA4UpdatedAt}.</p>
+                      <p><span className="font-medium">Revenue, Spend, ROAS, ROI and CPA:</span> {overviewFinancialReportingDate ? `Data through ${formatReportingDateLabel(overviewFinancialReportingDate)} (${overviewFinancialReportingTimeZone})` : "Reporting date unavailable"}. Last successful update: {overviewFinancialUpdatedAt}. Applies to available figures.</p>
+                      {overviewFinancialReportingDate && overviewFinancialWindow?.startDate && <p>Financial GA4 inputs cover {formatReportingDateLabel(overviewFinancialWindow.startDate)} through {formatReportingDateLabel(overviewFinancialReportingDate)}. Imported Revenue and Spend include eligible source history through that date, which may start earlier.</p>}
+                      <p><span className="font-medium">Scheduled refreshes:</span> {overviewRefreshSchedule}. Each refresh checks data through the previous day; today's activity is excluded.</p>
+                      <p><span className="font-medium">Recent figures are provisional:</span> GA4 processing can take 24–48 hours, sometimes longer. Conversion attribution can change for up to 12 days after the event. Later refreshes can revise earlier figures and ratios that use GA4 data. <a href="https://support.google.com/analytics/answer/11198161?hl=en" target="_blank" rel="noopener noreferrer" className="underline">Google's processing guidance</a></p>
                       {pipelineProxyConfigured && <p>Pipeline Proxy shows the latest available CRM stage values.</p>}
                     </div>
                     {/* Summary Cards */}

@@ -9340,6 +9340,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return {
           expectedRefreshAt: expectedRefreshAtISO,
           refreshScheduleTimeZone: schedulerConfig.reportingTimeZone,
+          refreshScheduleHours: schedulerConfig.hours,
+          refreshScheduleMinute: schedulerConfig.minute,
           lastCompletedRefreshAt,
           latestStoredDailyDate,
           providerRefreshWarning,

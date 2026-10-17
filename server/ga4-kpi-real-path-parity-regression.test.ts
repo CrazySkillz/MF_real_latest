@@ -721,6 +721,8 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
         dataThroughDate: "2026-07-31",
         expectedRefreshAt: `2026-08-01T${expectedTime}.000Z`,
         refreshScheduleTimeZone: "Europe/Amsterdam",
+        refreshScheduleHours: [8, 14, 20],
+        refreshScheduleMinute: 0,
         refreshIsStale: stale,
         lastCompletedRefreshAt: updatedAt,
         schedulerCoverageComplete: true,
@@ -734,6 +736,25 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
       expect(storageMock.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
       expect(storageMock.upsertGA4DailyMetrics).not.toHaveBeenCalled();
       expect(storageMock.updateGA4ConnectionTokens).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("exposes the configured legacy single-hour schedule and minutes without fetching the provider", async () => {
+    vi.stubEnv("GA4_DAILY_REFRESH_TIME_ZONE", "America/New_York");
+    vi.stubEnv("GA4_DAILY_REFRESH_HOURS", "");
+    vi.stubEnv("GA4_DAILY_REFRESH_HOUR", "6");
+    vi.stubEnv("GA4_DAILY_REFRESH_MINUTE", "35");
+    try {
+      const response = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/ga4-daily?days=30&propertyId=${encodeURIComponent(connection.propertyId)}`);
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        refreshScheduleTimeZone: "America/New_York", refreshScheduleHours: [6], refreshScheduleMinute: 35,
+        reportingTimeZone: "Europe/Amsterdam", providerRefreshAttempted: false,
+      });
+      expect(ga4ServiceMock.getTimeSeriesData).not.toHaveBeenCalled();
+      expect(storageMock.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
     } finally {
       vi.unstubAllEnvs();
     }

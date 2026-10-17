@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 
 const source = readFileSync("client/src/pages/ga4-metrics.tsx", "utf8");
 const file = ts.createSourceFile("ga4-metrics.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+const alertDefaults = source.match(/^const DEFAULT_KPI_ALERT_SCHEDULE_(?:HOUR|DAY) = [^\r\n]+;/gm) || [];
+if (alertDefaults.length !== 2) throw new Error("Missing page alert schedule defaults");
 
 // Execute the actual page callbacks, rather than copying their implementation into tests.
 function mutationOptions(name: string, bindings: Record<string, any>) {
@@ -16,7 +18,7 @@ function mutationOptions(name: string, bindings: Record<string, any>) {
   };
   visit(file);
   if (!options) throw new Error(`Missing mutation ${name}`);
-  const compiled = ts.transpileModule(`const options = ${options.getText(file)}; exports.options = options;`, {
+  const compiled = ts.transpileModule(`${alertDefaults.join("\n")}\nconst options = ${options.getText(file)}; exports.options = options;`, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
   }).outputText;
   const exports: any = {};

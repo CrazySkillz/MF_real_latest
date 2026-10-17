@@ -29,7 +29,8 @@ describe("GA4 Insights Data Summary stale warning", () => {
     expect(section).not.toContain("trendsRefreshIsStale && dataSummaryHistoryAvailable");
     expect(section).not.toContain('data-testid="insights-data-summary-stale"');
     expect(section).not.toContain("Daily data may be out of date; verify the refresh before using these figures.");
-    expect(section).toContain("no-activity days count as 0.");
+    expect(section).toContain("ga4InsightsDailyError && ga4InsightsDailyResp === undefined");
+    expect(section).toContain("GA4 summary values are unavailable; no zero values are inferred.");
   });
 
   it("accepts exact live coverage of sparse zero-activity dates without hiding real failures", () => {

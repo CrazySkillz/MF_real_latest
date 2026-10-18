@@ -69,6 +69,7 @@ const ga4DailySchedulerStatus = {
 
 let executiveSummarySnapshotBaseUrl: string | null = null;
 const alignedRefreshByCampaign = new Map<string, { reportingDate: string; completedAt: string }>();
+let alignedCampaignIdsInCurrentRun = new Set<string>();
 type GA4DailyRefreshAttempt = {
   reportingDate: string;
   startedAt: string;
@@ -101,9 +102,12 @@ export async function getGA4AlignedRefreshState(campaignId: string, reportingDat
   const normalizedCampaignId = String(campaignId || "").trim();
   const normalizedReportingDate = String(reportingDate || "").trim();
   const cached = alignedRefreshByCampaign.get(normalizedCampaignId) || null;
-  if ((global as any).__ga4DailyRefreshInProgress) return null;
+  const completedCampaignIds = alignedCampaignIdsInCurrentRun;
+  if ((global as any).__ga4DailyRefreshInProgress && !completedCampaignIds.has(normalizedCampaignId)) return null;
   if (!normalizedReportingDate) return cached;
   const snapshots = await storage.getExecutiveSummaryDailyComparisonData(normalizedCampaignId, normalizedReportingDate, normalizedReportingDate);
+  // A newer run may have invalidated the marker while this database read was pending.
+  if (completedCampaignIds !== alignedCampaignIdsInCurrentRun) return null;
   const persisted = parseGA4AlignedRefreshMarker(snapshots.current?.notes, normalizedReportingDate);
   if (persisted) alignedRefreshByCampaign.set(normalizedCampaignId, persisted);
   else alignedRefreshByCampaign.delete(normalizedCampaignId);
@@ -514,6 +518,8 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
   }
 
   (global as any).__ga4DailyRefreshInProgress = true;
+  const completedCampaignIds = new Set<string>();
+  alignedCampaignIdsInCurrentRun = completedCampaignIds;
   beginFinancialDailySnapshotRefreshObservation("ga4_daily");
   const startedAtDate = new Date();
   const startedAt = Date.now();
@@ -650,6 +656,7 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
             const persisted = await storage.markExecutiveSummaryDailySnapshotAligned(processedCampaignId, reportingDate, alignedCompletedAt);
             if (!persisted) throw new Error("Executive Summary daily snapshot was not found");
             alignedRefreshByCampaign.set(processedCampaignId, { reportingDate, completedAt: alignedCompletedAt });
+            completedCampaignIds.add(processedCampaignId);
           } catch (e: any) {
             alignedRefreshFailures.push({ campaignId: processedCampaignId, stage: "report_readiness_persist_failed" });
             console.warn(`[GA4 Daily] Report-readiness persistence failed for campaign ${processedCampaignId}:`, e?.message || e);

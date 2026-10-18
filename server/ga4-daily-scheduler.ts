@@ -536,11 +536,144 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
     }
     const refreshFinancialSources = (trigger === "scheduled" && !campaignId)
       || (["snapshot_bootstrap", "manual"].includes(trigger) && Boolean(campaignId) && opts.refreshFinancialSources === true);
+    const recomputeEvidence = {
+      campaignIdsProcessed: [] as string[], campaignIdsSkipped: [] as string[], campaignIdsFailed: [] as string[],
+      kpiIdsUpdated: [] as string[], kpiIdsSkipped: [] as string[], kpiIdsFailed: [] as string[],
+      benchmarkIdsUpdated: [] as string[], benchmarkIdsSkipped: [] as string[], benchmarkIdsFailed: [] as string[],
+    };
+    const refreshFailures: string[] = [];
+    const executiveSummarySnapshotFailures: string[] = [];
+    const publishRefresh = async (refreshResult: GA4DailyRefreshResult) => {
+      const refreshFailure = getGA4DailyRefreshFailure(refreshResult, campaignId);
+      if (refreshFailure) refreshFailures.push(refreshFailure);
+      if (campaignId && refreshFailure) throw new Error(refreshFailure);
+      const recomputedCampaignIds: string[] = [];
+      for (const processedCampaignId of refreshResult.campaignIdsProcessed) {
+        // Do not overwrite current values/history after this campaign's financial-source refresh failed.
+        if (refreshFinancialSources) {
+          const sourceRefresh = getFinancialDailySnapshotRefreshEvidence("financial_sources", processedCampaignId);
+          if (!sourceRefresh || sourceRefresh.reportingDate !== refreshResult.reportingDatesByCampaign[processedCampaignId] ||
+              sourceRefresh.status !== "success" || sourceRefresh.failures.length > 0 ||
+              !(Date.parse(sourceRefresh.completedAt || "") >= startedAt)) {
+            alignedRefreshFailures.push({ campaignId: processedCampaignId, stage: "financial_sources_refresh_failed" });
+            console.warn(`[GA4 Daily] Skipping KPI/Benchmark recompute for campaign ${processedCampaignId}: financial-source refresh did not succeed in this run`);
+            continue;
+          }
+        }
+        const recomputeResult = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true, useSavedOverview: true });
+        for (const key of Object.keys(recomputeEvidence) as Array<keyof typeof recomputeEvidence>) {
+          recomputeEvidence[key].push(...recomputeResult[key]);
+        }
+        const recomputeFailure = getGA4DailyRecomputeFailure(recomputeResult, true);
+        if (recomputeFailure) {
+          alignedRefreshFailures.push({ campaignId: processedCampaignId, stage: "kpi_benchmark_recompute_failed" });
+          console.warn(`[GA4 Daily] KPI/Benchmark recompute failed for campaign ${processedCampaignId}: ${recomputeFailure}`);
+        } else {
+          recomputedCampaignIds.push(processedCampaignId);
+        }
+      }
+      ga4DailySchedulerStatus.lastRecomputeRecordedAt = new Date();
+      ga4DailySchedulerStatus.lastRecomputeEvidence = {
+        campaignIdsProcessed: hashEvidenceIds(recomputeEvidence.campaignIdsProcessed),
+        campaignIdsSkipped: hashEvidenceIds(recomputeEvidence.campaignIdsSkipped),
+        campaignIdsFailed: hashEvidenceIds(recomputeEvidence.campaignIdsFailed),
+        kpiIdsUpdated: hashEvidenceIds(recomputeEvidence.kpiIdsUpdated),
+        kpiIdsSkipped: hashEvidenceIds(recomputeEvidence.kpiIdsSkipped),
+        kpiIdsFailed: hashEvidenceIds(recomputeEvidence.kpiIdsFailed),
+        benchmarkIdsUpdated: hashEvidenceIds(recomputeEvidence.benchmarkIdsUpdated),
+        benchmarkIdsSkipped: hashEvidenceIds(recomputeEvidence.benchmarkIdsSkipped),
+        benchmarkIdsFailed: hashEvidenceIds(recomputeEvidence.benchmarkIdsFailed),
+      };
+      console.log(`[GA4 Daily] KPI/Benchmark recompute result ${JSON.stringify(recomputeEvidence)}`);
+
+      const completedAt = new Date().toISOString();
+      const alignedSnapshotCampaignIds: string[] = [];
+      for (const processedCampaignId of recomputedCampaignIds) {
+        const reportingDate = refreshResult.reportingDatesByCampaign[processedCampaignId] || "";
+        recordFinancialDailySnapshotRefreshEvidence("ga4_daily", {
+          campaignId: processedCampaignId,
+          reportingDate,
+          status: "success",
+          completedAt,
+          failures: [],
+        });
+        try {
+          const writeResult = await writeFinancialDailySnapshotIfReady({ campaignId: processedCampaignId, reportingDate });
+          console.log(`[GA4 Daily] Financial snapshot ${writeResult.status} for campaign ${processedCampaignId}${writeResult.reasons.length > 0 ? ` (${writeResult.reasons.join(", ")})` : ""}`);
+          if (writeResult.status === "written") alignedSnapshotCampaignIds.push(processedCampaignId);
+          else alignedRefreshFailures.push({ campaignId: processedCampaignId, stage: `financial_snapshot_${writeResult.status}` });
+        } catch (error: any) {
+          alignedRefreshFailures.push({ campaignId: processedCampaignId, stage: "financial_snapshot_failed" });
+          console.warn(`[GA4 Daily] Financial snapshot write failed for campaign ${processedCampaignId}:`, error?.message || error);
+        }
+      }
+      const alignedAggregateSnapshotCampaignIds: string[] = [];
+      for (const processedCampaignId of alignedSnapshotCampaignIds) {
+        if (await recordCampaignMetrics(processedCampaignId, { allowScheduledGA4: true })) {
+          alignedAggregateSnapshotCampaignIds.push(processedCampaignId);
+        } else {
+          alignedRefreshFailures.push({ campaignId: processedCampaignId, stage: "aggregate_snapshot_failed" });
+        }
+      }
+
+      const executiveSummaryCapturedCampaignIds: string[] = [];
+      if (executiveSummarySnapshotBaseUrl) {
+        for (const processedCampaignId of alignedAggregateSnapshotCampaignIds) {
+          const captured = await captureExecutiveSummarySnapshot(executiveSummarySnapshotBaseUrl, processedCampaignId);
+          if (captured) executiveSummaryCapturedCampaignIds.push(processedCampaignId);
+          else {
+            executiveSummarySnapshotFailures.push(processedCampaignId);
+            alignedRefreshFailures.push({ campaignId: processedCampaignId, stage: "executive_snapshot_failed" });
+          }
+        }
+        ga4DailySchedulerStatus.lastExecutiveSummarySnapshotRequestedAt = new Date();
+        ga4DailySchedulerStatus.lastExecutiveSummarySnapshotRequestFailures = hashEvidenceIds(executiveSummarySnapshotFailures);
+      }
+      if (!opts.suppressAlerts && (!campaignId || trigger === "snapshot_bootstrap")) {
+        const alignedAlertCampaignIds: string[] = [];
+        for (const processedCampaignId of executiveSummaryCapturedCampaignIds) {
+          const providerCoverageThroughDate = refreshResult.reportingDatesByCampaign[processedCampaignId];
+          if (!providerCoverageThroughDate) continue;
+          try {
+            await checkGA4PerformanceAlertsForCampaign(processedCampaignId, providerCoverageThroughDate);
+            await checkGA4BenchmarkPerformanceAlertsForCampaign(processedCampaignId, providerCoverageThroughDate);
+            alignedAlertCampaignIds.push(processedCampaignId);
+          } catch (e: any) {
+            alignedRefreshFailures.push({ campaignId: processedCampaignId, stage: "campaign_alerts_failed" });
+            console.warn(`[GA4 Daily] Campaign-scoped alert check failed for ${processedCampaignId}:`, e?.message || e);
+          }
+        }
+        const alignedCompletedAt = new Date().toISOString();
+        for (const processedCampaignId of alignedAlertCampaignIds) {
+          const reportingDate = refreshResult.reportingDatesByCampaign[processedCampaignId];
+          try {
+            const persisted = await storage.markExecutiveSummaryDailySnapshotAligned(processedCampaignId, reportingDate, alignedCompletedAt);
+            if (!persisted) throw new Error("Executive Summary daily snapshot was not found");
+            alignedRefreshByCampaign.set(processedCampaignId, { reportingDate, completedAt: alignedCompletedAt });
+          } catch (e: any) {
+            alignedRefreshFailures.push({ campaignId: processedCampaignId, stage: "report_readiness_persist_failed" });
+            console.warn(`[GA4 Daily] Report-readiness persistence failed for campaign ${processedCampaignId}:`, e?.message || e);
+          }
+        }
+      }
+    };
+    const finishEachCampaign = trigger === "scheduled" && !campaignId;
+    const finishedCampaignIds = new Set<string>();
     if (refreshFinancialSources) {
       const financialRefresh = await runDailyAutoRefreshOnce(trigger === "scheduled" ? "scheduled" : "manual", {
         financialSourcesOnly: true,
         deferDownstream: true,
         ...(campaignId ? { campaignId } : {}),
+        ...(finishEachCampaign ? { onCampaignRefreshed: async (id: string) => {
+          if (finishedCampaignIds.has(id) || !targets.some(target => target.id === id)) return;
+          finishedCampaignIds.add(id);
+          try {
+            await publishRefresh(await refreshAllGA4DailyMetrics({ campaignId: id }));
+          } catch (error: any) {
+            alignedRefreshFailures.push({ campaignId: id, stage: "campaign_pipeline_failed" });
+            console.warn(`[GA4 Daily] Campaign pipeline failed for ${id}:`, error?.message || error);
+          }
+        } } : {}),
       });
       if (!financialRefresh) throw new Error("Financial source refresh did not start");
       const financialRefreshFailure = getAutoRefreshRunFailure(financialRefresh);
@@ -548,139 +681,17 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
         console.warn(`[GA4 Daily] Financial source refresh was incomplete; affected campaigns will fail the aligned snapshot gate: ${financialRefreshFailure}`);
       }
     }
-    const refreshResult = await refreshAllGA4DailyMetrics({ campaignId });
-    const refreshFailure = getGA4DailyRefreshFailure(refreshResult, campaignId);
-    if (campaignId && refreshFailure) throw new Error(refreshFailure);
-
-    const recomputeEvidence = {
-      campaignIdsProcessed: [] as string[], campaignIdsSkipped: [] as string[], campaignIdsFailed: [] as string[],
-      kpiIdsUpdated: [] as string[], kpiIdsSkipped: [] as string[], kpiIdsFailed: [] as string[],
-      benchmarkIdsUpdated: [] as string[], benchmarkIdsSkipped: [] as string[], benchmarkIdsFailed: [] as string[],
-    };
-    const recomputedCampaignIds: string[] = [];
-    for (const processedCampaignId of refreshResult.campaignIdsProcessed) {
-      // Do not overwrite current values/history after this campaign's financial-source refresh failed.
-      if (refreshFinancialSources) {
-        const sourceRefresh = getFinancialDailySnapshotRefreshEvidence("financial_sources", processedCampaignId);
-        if (!sourceRefresh || sourceRefresh.reportingDate !== refreshResult.reportingDatesByCampaign[processedCampaignId] ||
-            sourceRefresh.status !== "success" || sourceRefresh.failures.length > 0 ||
-            !(Date.parse(sourceRefresh.completedAt || "") >= startedAt)) {
-          alignedRefreshFailures.push({ campaignId: processedCampaignId, stage: "financial_sources_refresh_failed" });
-          console.warn(`[GA4 Daily] Skipping KPI/Benchmark recompute for campaign ${processedCampaignId}: financial-source refresh did not succeed in this run`);
-          continue;
-        }
+    if (!finishEachCampaign) await publishRefresh(await refreshAllGA4DailyMetrics({ campaignId }));
+    const refreshFailure = refreshFailures.join("; ") || null;
+    if (!opts.suppressAlerts && !campaignId && !refreshFailure && alignedRefreshFailures.length === 0) {
+      try { await checkPerformanceAlerts(); } catch (e: any) {
+        console.warn("[GA4 Daily] KPI alert check failed:", e?.message || e);
       }
-      const recomputeResult = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true, useSavedOverview: true });
-      for (const key of Object.keys(recomputeEvidence) as Array<keyof typeof recomputeEvidence>) {
-        recomputeEvidence[key].push(...recomputeResult[key]);
+      try { await checkBenchmarkPerformanceAlerts(); } catch (e: any) {
+        console.warn("[GA4 Daily] Benchmark alert check failed:", e?.message || e);
       }
-      const recomputeFailure = getGA4DailyRecomputeFailure(recomputeResult, true);
-      if (recomputeFailure) {
-        alignedRefreshFailures.push({ campaignId: processedCampaignId, stage: "kpi_benchmark_recompute_failed" });
-        console.warn(`[GA4 Daily] KPI/Benchmark recompute failed for campaign ${processedCampaignId}: ${recomputeFailure}`);
-      } else {
-        recomputedCampaignIds.push(processedCampaignId);
-      }
-    }
-    ga4DailySchedulerStatus.lastRecomputeRecordedAt = new Date();
-    ga4DailySchedulerStatus.lastRecomputeEvidence = {
-      campaignIdsProcessed: hashEvidenceIds(recomputeEvidence.campaignIdsProcessed),
-      campaignIdsSkipped: hashEvidenceIds(recomputeEvidence.campaignIdsSkipped),
-      campaignIdsFailed: hashEvidenceIds(recomputeEvidence.campaignIdsFailed),
-      kpiIdsUpdated: hashEvidenceIds(recomputeEvidence.kpiIdsUpdated),
-      kpiIdsSkipped: hashEvidenceIds(recomputeEvidence.kpiIdsSkipped),
-      kpiIdsFailed: hashEvidenceIds(recomputeEvidence.kpiIdsFailed),
-      benchmarkIdsUpdated: hashEvidenceIds(recomputeEvidence.benchmarkIdsUpdated),
-      benchmarkIdsSkipped: hashEvidenceIds(recomputeEvidence.benchmarkIdsSkipped),
-      benchmarkIdsFailed: hashEvidenceIds(recomputeEvidence.benchmarkIdsFailed),
-    };
-    console.log(`[GA4 Daily] KPI/Benchmark recompute result ${JSON.stringify(recomputeEvidence)}`);
-
-    const completedAt = new Date().toISOString();
-    const alignedSnapshotCampaignIds: string[] = [];
-    for (const processedCampaignId of recomputedCampaignIds) {
-      const reportingDate = refreshResult.reportingDatesByCampaign[processedCampaignId] || "";
-      recordFinancialDailySnapshotRefreshEvidence("ga4_daily", {
-        campaignId: processedCampaignId,
-        reportingDate,
-        status: "success",
-        completedAt,
-        failures: [],
-      });
-      try {
-        const writeResult = await writeFinancialDailySnapshotIfReady({ campaignId: processedCampaignId, reportingDate });
-        console.log(`[GA4 Daily] Financial snapshot ${writeResult.status} for campaign ${processedCampaignId}${writeResult.reasons.length > 0 ? ` (${writeResult.reasons.join(", ")})` : ""}`);
-        if (writeResult.status === "written") alignedSnapshotCampaignIds.push(processedCampaignId);
-        else alignedRefreshFailures.push({ campaignId: processedCampaignId, stage: `financial_snapshot_${writeResult.status}` });
-      } catch (error: any) {
-        alignedRefreshFailures.push({ campaignId: processedCampaignId, stage: "financial_snapshot_failed" });
-        console.warn(`[GA4 Daily] Financial snapshot write failed for campaign ${processedCampaignId}:`, error?.message || error);
-      }
-    }
-    const alignedAggregateSnapshotCampaignIds: string[] = [];
-    for (const processedCampaignId of alignedSnapshotCampaignIds) {
-      if (await recordCampaignMetrics(processedCampaignId, { allowScheduledGA4: true })) {
-        alignedAggregateSnapshotCampaignIds.push(processedCampaignId);
-      } else {
-        alignedRefreshFailures.push({ campaignId: processedCampaignId, stage: "aggregate_snapshot_failed" });
-      }
-    }
-
-    const executiveSummaryCapturedCampaignIds: string[] = [];
-    if (executiveSummarySnapshotBaseUrl) {
-      const executiveSummarySnapshotFailures: string[] = [];
-      for (const processedCampaignId of alignedAggregateSnapshotCampaignIds) {
-        const captured = await captureExecutiveSummarySnapshot(executiveSummarySnapshotBaseUrl, processedCampaignId);
-        if (captured) executiveSummaryCapturedCampaignIds.push(processedCampaignId);
-        else {
-          executiveSummarySnapshotFailures.push(processedCampaignId);
-          alignedRefreshFailures.push({ campaignId: processedCampaignId, stage: "executive_snapshot_failed" });
-        }
-      }
-      ga4DailySchedulerStatus.lastExecutiveSummarySnapshotRequestedAt = new Date();
-      ga4DailySchedulerStatus.lastExecutiveSummarySnapshotRequestFailures = hashEvidenceIds(executiveSummarySnapshotFailures);
-    }
-    if (!opts.suppressAlerts && (!campaignId || trigger === "snapshot_bootstrap")) {
-      const alignedAlertCampaignIds: string[] = [];
-      for (const processedCampaignId of executiveSummaryCapturedCampaignIds) {
-        const providerCoverageThroughDate = refreshResult.reportingDatesByCampaign[processedCampaignId];
-        if (!providerCoverageThroughDate) continue;
-        try {
-          await checkGA4PerformanceAlertsForCampaign(processedCampaignId, providerCoverageThroughDate);
-          await checkGA4BenchmarkPerformanceAlertsForCampaign(processedCampaignId, providerCoverageThroughDate);
-          alignedAlertCampaignIds.push(processedCampaignId);
-        } catch (e: any) {
-          alignedRefreshFailures.push({ campaignId: processedCampaignId, stage: "campaign_alerts_failed" });
-          console.warn(`[GA4 Daily] Campaign-scoped alert check failed for ${processedCampaignId}:`, e?.message || e);
-        }
-      }
-      if (!campaignId && !refreshFailure && alignedRefreshFailures.length === 0) {
-        try {
-          await checkPerformanceAlerts();
-        } catch (e: any) {
-          console.warn("[GA4 Daily] KPI alert check failed:", e?.message || e);
-        }
-
-        try {
-          await checkBenchmarkPerformanceAlerts();
-        } catch (e: any) {
-          console.warn("[GA4 Daily] Benchmark alert check failed:", e?.message || e);
-        }
-      } else if (!campaignId) {
-        console.warn(`[GA4 Daily] Skipping global alert sweeps because ${refreshFailure || `${alignedRefreshFailures.length} campaign stage(s) failed`}`);
-      }
-      const alignedCompletedAt = new Date().toISOString();
-      for (const processedCampaignId of alignedAlertCampaignIds) {
-        const reportingDate = refreshResult.reportingDatesByCampaign[processedCampaignId];
-        try {
-          const persisted = await storage.markExecutiveSummaryDailySnapshotAligned(processedCampaignId, reportingDate, alignedCompletedAt);
-          if (!persisted) throw new Error("Executive Summary daily snapshot was not found");
-          alignedRefreshByCampaign.set(processedCampaignId, { reportingDate, completedAt: alignedCompletedAt });
-        } catch (e: any) {
-          alignedRefreshFailures.push({ campaignId: processedCampaignId, stage: "report_readiness_persist_failed" });
-          console.warn(`[GA4 Daily] Report-readiness persistence failed for campaign ${processedCampaignId}:`, e?.message || e);
-        }
-      }
+    } else if (!opts.suppressAlerts && !campaignId) {
+      console.warn(`[GA4 Daily] Skipping global alert sweeps because ${refreshFailure || `${alignedRefreshFailures.length} campaign stage(s) failed`}`);
     }
     if (refreshFailure || alignedRefreshFailures.length > 0) {
       throw new Error(refreshFailure || `Aligned GA4 publication failed for ${alignedRefreshFailures.length} campaign stage(s)`);

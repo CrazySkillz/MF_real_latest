@@ -230,7 +230,7 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain('await runDailyAutoRefreshOnce(trigger === "scheduled" ? "scheduled" : "manual", {');
     expect(source).toContain('...(campaignId ? { campaignId } : {})');
     expect(source.indexOf('await runDailyAutoRefreshOnce(trigger === "scheduled" ? "scheduled" : "manual", {')).toBeLessThan(
-      source.indexOf("const refreshResult = await refreshAllGA4DailyMetrics({ campaignId });"),
+      source.indexOf("if (!finishEachCampaign) await publishRefresh(await refreshAllGA4DailyMetrics({ campaignId }));"),
     );
   });
 
@@ -465,7 +465,7 @@ describe("GA4 daily scheduler timing", () => {
     expect(source.indexOf("alignedRefreshByCampaign.set(processedCampaignId")).toBeLessThan(
       source.indexOf(finalFailureCheck),
     );
-    expect(source).toContain("if (!campaignId && !refreshFailure && alignedRefreshFailures.length === 0) {");
+    expect(source).toContain("if (!opts.suppressAlerts && !campaignId && !refreshFailure && alignedRefreshFailures.length === 0) {");
     expect(source).toContain("Skipping global alert sweeps because ${refreshFailure || `${alignedRefreshFailures.length} campaign stage(s) failed`}");
   });
 

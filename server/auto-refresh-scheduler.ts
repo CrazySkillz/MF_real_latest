@@ -45,6 +45,7 @@ export type AutoRefreshRunOptions = {
   financialSourcesOnly?: boolean;
   deferDownstream?: boolean;
   campaignId?: string;
+  onCampaignRefreshed?: (campaignId: string) => Promise<void>;
 };
 type AutoRefreshRunStatus = "idle" | "running" | "success" | "failed" | "skipped";
 export type AutoRefreshRunSummary = {
@@ -1407,6 +1408,10 @@ export async function runDailyAutoRefreshOnce(
             console.warn(`[Auto Refresh] Financial snapshot write failed for campaign ${campaignId}:`, error?.message || error);
           }
         }
+      }
+      // The GA4 pipeline can finish this campaign before the next source refresh starts.
+      if (opts.financialSourcesOnly && opts.deferDownstream && opts.onCampaignRefreshed) {
+        await opts.onCampaignRefreshed(campaignId);
       }
     }
 

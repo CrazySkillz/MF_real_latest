@@ -170,6 +170,7 @@ export type GA4OverviewSnapshotInput = {
     campaign: Record<string, unknown>;
     connection: Record<string, unknown>;
     previousUpdatedAt: string | null;
+    work?: { id: string; leaseToken: string };
   };
 };
 
@@ -1274,6 +1275,7 @@ export class DatabaseStorage implements IStorage {
     )) throw new Error("Invalid GA4 Overview snapshot");
 
     await db.transaction(async (tx: any) => {
+      let workOwnership: ReturnType<typeof and> = undefined;
       if (overviewSnapshot?.refreshScope) {
         const scope = overviewSnapshot.refreshScope;
         const [currentCampaign] = await tx.select().from(campaigns).where(eq(campaigns.id, cid)).for("update");
@@ -1288,6 +1290,20 @@ export class DatabaseStorage implements IStorage {
         const [previous] = await tx.select().from(ga4OverviewSnapshots).where(and(eq(ga4OverviewSnapshots.campaignId, cid), eq(ga4OverviewSnapshots.propertyId, pid)));
         if ((previous?.updatedAt ? new Date(previous.updatedAt).toISOString() : null) !== scope.previousUpdatedAt) {
           throw new Error("Another GA4 refresh published before this attempt");
+        }
+        if ("work" in scope) {
+          if (typeof scope.work?.id !== "string" || !scope.work.id.trim() ||
+              typeof scope.work?.leaseToken !== "string" || !scope.work.leaseToken.trim()) {
+            throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+          }
+          const currentScope = await this.readGA4RefreshWorkScope(tx, cid, String(scope.campaign.ownerId || ""));
+          if (!currentScope) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+          workOwnership = and(eq(ga4RefreshWork.id, scope.work.id), eq(ga4RefreshWork.campaignId, cid),
+            eq(ga4RefreshWork.scopeHash, currentScope.scopeHash), eq(ga4RefreshWork.reportingDate, end),
+            eq(ga4RefreshWork.status, "running"), eq(ga4RefreshWork.leaseToken, scope.work.leaseToken),
+            sql`${ga4RefreshWork.leaseExpiresAt} > clock_timestamp()`);
+          const [owned] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork).where(workOwnership).for("share");
+          if (!owned) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
         }
       }
       await tx.delete(ga4DailyMetrics).where(and(
@@ -1335,6 +1351,11 @@ export class DatabaseStorage implements IStorage {
             updatedAt: new Date(),
           },
         });
+      }
+      // The campaign lock excludes takeover until commit; expiry during the writes rolls both outputs back.
+      if (workOwnership) {
+        const [owned] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork).where(workOwnership);
+        if (!owned) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
       }
     });
     return { replaced: scoped.length };

@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { getTableColumns, getTableName, SQL } from "drizzle-orm";
@@ -69,6 +70,7 @@ describe.skipIf(!testUrl)("GA4 publication with real PostgreSQL transactions", (
     }
     await pool.query("CREATE UNIQUE INDEX overview_identity ON ga4_overview_snapshots (campaign_id,property_id)");
     await pool.query("CREATE UNIQUE INDEX executive_identity ON metric_snapshots (campaign_id,reporting_date) WHERE snapshot_type='executive_summary_daily' AND reporting_date IS NOT NULL");
+    await pool.query(readFileSync(new URL("../migrations/0020_add_ga4_refresh_work.sql", import.meta.url), "utf8"));
     // Force a failure after daily replacement, inside the actual storage transaction.
     await pool.query("ALTER TABLE ga4_overview_snapshots ADD CONSTRAINT test_rejected_payload CHECK (NOT (campaign_breakdown ? 'rejectForTest'))");
   });
@@ -78,6 +80,7 @@ describe.skipIf(!testUrl)("GA4 publication with real PostgreSQL transactions", (
     await admin?.end();
   });
   beforeEach(async () => {
+    await pool.query("DELETE FROM ga4_refresh_work");
     for (const table of [...tables].reverse()) await pool.query(`DELETE FROM "${getTableName(table)}"`);
     for (const id of ["a", "b"]) {
       await database.current.insert(schema.campaigns).values(campaign(id));
@@ -249,6 +252,113 @@ describe.skipIf(!testUrl)("GA4 publication with real PostgreSQL transactions", (
     if (change === "deleted campaign") await pool.query("DELETE FROM campaigns WHERE id='a'");
     await expect(write(20, snapshot)).rejects.toThrow("scope changed");
     await expectSaved(10); await expectSaved(10, "b");
+  });
+  describe("work-owned publication", () => {
+    const claimWork = async (id = "a", reportingDate = date, leaseMs = 120_000) => {
+      const work = await storage.ensureGA4RefreshWork(id, `owner-${id}`, new Date(Date.now() - 60_000), reportingDate);
+      return (await storage.claimGA4RefreshWork(id, `owner-${id}`, work!.id, leaseMs))!;
+    };
+    const withWork = async (work: any, sessions = 20) => {
+      const snapshot = await overview(sessions);
+      return { ...snapshot, refreshScope: { ...snapshot.refreshScope, work: { id: work.id, leaseToken: work.leaseToken } } };
+    };
+    const expireWork = (id: string) => pool.query("UPDATE ga4_refresh_work SET lease_expires_at=clock_timestamp()-interval '1 second' WHERE id=$1", [id]);
+
+    it("publishes for the live owner without changing ownership or another campaign", async () => {
+      const work = await claimWork(); const snapshot = await withWork(work);
+      await write(20, snapshot);
+      await expectSaved(20); await expectSaved(10, "b");
+      const { rows } = await pool.query("SELECT status,lease_token FROM ga4_refresh_work WHERE id=$1", [work.id]);
+      expect(rows[0]).toEqual({ status: "running", lease_token: work.leaseToken });
+    });
+    it.each(["expired", "replaced", "released", "completed", "wrong campaign", "wrong date", "wrong token", "missing work"])(
+      "rejects the %s owner before replacing any daily or Overview data", async state => {
+        const work = await claimWork(state === "wrong campaign" ? "b" : "a", state === "wrong date" ? "2026-10-15" : date);
+        const snapshot = await withWork(work);
+        if (state === "expired" || state === "replaced") await expireWork(work.id);
+        if (state === "replaced") expect(await storage.claimGA4RefreshWork("a", "owner-a", work.id, 120_000)).toBeDefined();
+        if (state === "released") await storage.updateGA4RefreshWorkLease("a", "owner-a", work.id, work.leaseToken!, "release");
+        if (state === "completed") await pool.query("UPDATE ga4_refresh_work SET status='completed',lease_token=NULL,lease_expires_at=NULL,completed_at=clock_timestamp() WHERE id=$1", [work.id]);
+        if (state === "wrong token") snapshot.refreshScope.work.leaseToken = "not-the-owner";
+        if (state === "missing work") snapshot.refreshScope.work.id = "missing";
+        queries.length = 0;
+        await expect(write(20, snapshot)).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+        expect(queries.some(query => /^(insert|update|delete)/.test(query))).toBe(false);
+        await expectSaved(10); await expectSaved(10, "b");
+      },
+    );
+    it.each([null, {}, { id: "work" }, { id: "work", leaseToken: "" }])("rejects malformed work metadata %j", async work => {
+      const snapshot = await overview(20);
+      await expect(write(20, { ...snapshot, refreshScope: { ...snapshot.refreshScope, work } })).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+      await expectSaved(10); await expectSaved(10, "b");
+    });
+    it("requires the work's original scope even if the candidate uses the newly edited scope", async () => {
+      const work = await claimWork(); const snapshot = await withWork(work);
+      await pool.query("UPDATE campaigns SET ga4_campaign_filter='edited' WHERE id='a'");
+      snapshot.refreshScope.campaign.ga4CampaignFilter = "edited";
+      await expect(write(20, snapshot)).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+      await expectSaved(10); await expectSaved(10, "b");
+    });
+    it.each(["owner", "paused", "primary connection"])("rejects old work after a %s change despite a freshly read candidate", async change => {
+      const work = await claimWork(); const snapshot = await withWork(work);
+      if (change === "owner") {
+        await pool.query("UPDATE campaigns SET owner_id='new-owner' WHERE id='a'");
+        snapshot.refreshScope.campaign.ownerId = "new-owner";
+      } else if (change === "paused") {
+        await pool.query("UPDATE campaigns SET status='paused' WHERE id='a'");
+        snapshot.refreshScope.campaign.status = "paused";
+      } else {
+        await pool.query("UPDATE ga4_connections SET is_primary=false WHERE campaign_id='a'");
+        snapshot.refreshScope.connection.isPrimary = false;
+      }
+      await expect(write(20, snapshot)).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+      await expectSaved(10); await expectSaved(10, "b");
+    });
+    it("rejects an old response after takeover, then allows the new owner to publish", async () => {
+      const old = await claimWork(); const oldSnapshot = await withWork(old);
+      await expireWork(old.id);
+      const replacement = (await storage.claimGA4RefreshWork("a", "owner-a", old.id, 120_000))!;
+      const newSnapshot = await withWork(replacement, 30);
+      await expect(write(20, oldSnapshot)).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+      await write(30, newSnapshot); await expectSaved(30); await expectSaved(10, "b");
+    });
+    it("allows only the current owner when old and new responses compete on separate connections", async () => {
+      const old = await claimWork(); const oldSnapshot = await withWork(old);
+      await expireWork(old.id);
+      const replacement = (await storage.claimGA4RefreshWork("a", "owner-a", old.id, 120_000))!;
+      const newSnapshot = await withWork(replacement, 30);
+      const holder = await pool.connect();
+      let pending: Promise<PromiseSettledResult<unknown>[]> | undefined;
+      let blocked = 0;
+      try {
+        await holder.query("BEGIN"); await holder.query("SELECT id FROM campaigns WHERE id='a' FOR UPDATE");
+        pending = Promise.allSettled([write(20, oldSnapshot), write(30, newSnapshot)]);
+        const deadline = Date.now() + 5000;
+        while (Date.now() < deadline) {
+          blocked = Number((await admin.query("SELECT count(*) FROM pg_stat_activity WHERE application_name=$1 AND wait_event_type='Lock'", [schemaName])).rows[0].count);
+          if (blocked === 2) break;
+          await new Promise(resolve => setTimeout(resolve, 25));
+        }
+      } finally { await holder.query("ROLLBACK"); holder.release(); }
+      const results = await pending!;
+      expect(blocked).toBe(2);
+      expect(results[0].status).toBe("rejected"); expect(results[1].status).toBe("fulfilled");
+      await expectSaved(30); await expectSaved(10, "b");
+    });
+    it("rolls back both saved outputs if the lease expires during their transaction", async () => {
+      await pool.query("CREATE FUNCTION delay_work_publication() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(1.2); RETURN NEW; END $$");
+      await pool.query("CREATE TRIGGER delay_work_publication BEFORE INSERT ON ga4_overview_snapshots FOR EACH ROW EXECUTE FUNCTION delay_work_publication()");
+      const work = await claimWork("a", date, 1000);
+      try {
+        await expect(write(20, await withWork(work))).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+      } finally {
+        await pool.query("DROP TRIGGER delay_work_publication ON ga4_overview_snapshots");
+        await pool.query("DROP FUNCTION delay_work_publication()");
+      }
+      await expectSaved(10); await expectSaved(10, "b");
+      const replacement = (await storage.claimGA4RefreshWork("a", "owner-a", work.id, 120_000))!;
+      await write(30, await withWork(replacement, 30)); await expectSaved(30);
+    });
   });
   it("reads durable readiness on a new connection, invalidates only the target date and restores it after completion", async () => {
     const value = { value: 10, available: true, sources: ["ga4"] };

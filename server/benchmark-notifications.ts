@@ -2,7 +2,7 @@ import { db } from "./db";
 import { benchmarks, linkedinDailyMetrics, notifications } from "../shared/schema";
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import type { InsertNotification } from "../shared/schema";
-import { storage } from "./storage";
+import { storage, type GA4RefreshWriteInput } from "./storage";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
 import { evaluateAlertThreshold, parseAlertNumber } from "./utils/alert-evaluation";
 import { isAlertDecisionBreached } from "./utils/alert-decision";
@@ -87,27 +87,33 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
   return checkBenchmarkPerformanceAlertsForScope();
 }
 
-export async function checkGA4BenchmarkPerformanceAlertsForCampaign(campaignId: string, providerCoverageThroughDate: string): Promise<number> {
+export async function checkGA4BenchmarkPerformanceAlertsForCampaign(campaignId: string, providerCoverageThroughDate: string, options: GA4RefreshWriteInput = {}): Promise<number> {
   const requestedCampaignId = String(campaignId || "").trim();
   if (!requestedCampaignId) throw new Error("Campaign ID is required");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(providerCoverageThroughDate)) throw new Error("GA4 provider coverage date is required");
+  if ("refreshScope" in options) {
+    if (options.refreshScope?.campaignId !== requestedCampaignId || options.refreshScope.reportingDate !== providerCoverageThroughDate) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    return storage.writeWithGA4RefreshOwnership(options.refreshScope, tx => checkBenchmarkPerformanceAlertsForScope(requestedCampaignId, providerCoverageThroughDate, tx));
+  }
   return checkBenchmarkPerformanceAlertsForScope(requestedCampaignId, providerCoverageThroughDate);
 }
 
-async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, providerCoverageThroughDate?: string): Promise<number> {
+async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, providerCoverageThroughDate?: string, transaction?: any): Promise<number> {
+  const alertDb = transaction || db;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const requestedCampaignId = String(campaignId || "").trim();
-  const items = await db.select().from(benchmarks).where(requestedCampaignId
+  const itemQuery = alertDb.select().from(benchmarks).where(requestedCampaignId
     ? and(eq(benchmarks.status, "active"), eq(benchmarks.campaignId, requestedCampaignId), eq(benchmarks.platformType, "google_analytics"))
     : eq(benchmarks.status, "active"));
+  const items = transaction ? await itemQuery.for("share") : await itemQuery;
 
   // Pull all performance-alert notifications once and do metadata matching in-memory (cheap at current scale).
-  const existingAlerts = await db
+  const existingAlerts = await alertDb
     .select()
     .from(notifications)
-    .where(eq(notifications.type, "performance-alert"));
+    .where(and(eq(notifications.type, "performance-alert"), transaction ? eq(notifications.campaignId, requestedCampaignId) : undefined));
 
   let created = 0;
   const windowKeyByCampaign = new Map<string, string>();
@@ -122,12 +128,12 @@ async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, prov
     const platformType = String((b?.platformType || "")).trim().toLowerCase();
     const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";
     if (!b.alertsEnabled || thresholdRaw === null || typeof thresholdRaw === "undefined") {
-      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
+      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared", transaction);
       continue;
     }
     if (b.__alertDecisionEligible === false && ["unavailable", "stale"].includes(b.__alertDecisionReason)) continue;
     if (!isAlertDecisionBreached(b)) {
-      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
+      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared", transaction);
       continue;
     }
 
@@ -138,16 +144,16 @@ async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, prov
     });
     const { currentValue, thresholdValue } = evaluation;
     if (!Number.isFinite(thresholdValue)) {
-      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
+      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared", transaction);
       continue;
     }
     if (!Number.isFinite(currentValue)) {
-      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
+      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared", transaction);
       continue;
     }
 
     if (!evaluation.triggered) {
-      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
+      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared", transaction);
       continue;
     }
 
@@ -184,7 +190,7 @@ async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, prov
 
     const campaignId = String(b.campaignId || "").trim();
     if (!campaignId) {
-      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
+      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared", transaction);
       continue;
     }
     const campaign = await storage.getCampaign(campaignId).catch((error) => {
@@ -192,12 +198,12 @@ async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, prov
       return undefined;
     });
     if (!campaign) {
-      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
+      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared", transaction);
       continue;
     }
     const campaignOwnerId = String((campaign as any).ownerId || "").trim();
     if (!campaignOwnerId) {
-      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
+      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared", transaction);
       continue;
     }
 
@@ -247,7 +253,7 @@ async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, prov
         if (preservedAlertId && String(alert.id) === String(preservedAlertId)) continue;
         try {
           const meta = typeof alert.metadata === "string" ? JSON.parse(alert.metadata) : (alert.metadata || {});
-          await storage.updateNotification(String(alert.id), {
+          const changes = {
             read: true,
             metadata: JSON.stringify({
               ...meta,
@@ -255,8 +261,11 @@ async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, prov
               resolvedAt: new Date().toISOString(),
               resolvedReason: "superseded",
             }),
-          } as any);
-        } catch {
+          };
+          if (transaction) await transaction.update(notifications).set(changes).where(and(eq(notifications.id, String(alert.id)), eq(notifications.campaignId, campaignId)));
+          else await storage.updateNotification(String(alert.id), changes as any);
+        } catch (error) {
+          if (transaction && !(error instanceof SyntaxError)) throw error;
           // ignore malformed legacy metadata
         }
       }
@@ -270,7 +279,7 @@ async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, prov
           const meta = typeof preservedAlert.metadata === "string"
             ? JSON.parse(preservedAlert.metadata)
             : (preservedAlert.metadata || {});
-          await storage.updateNotification(String(preservedAlert.id), {
+          const changes = {
             title: nextTitle,
             message: nextMessage,
             priority: "high",
@@ -284,8 +293,11 @@ async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, prov
               ...(windowKey ? { windowKey } : {}),
               ...(providerCoverageThroughDate ? { providerCoverageThroughDate } : {}),
             }),
-          } as any);
-        } catch {
+          };
+          if (transaction) await transaction.update(notifications).set(changes).where(and(eq(notifications.id, String(preservedAlert.id)), eq(notifications.campaignId, campaignId)));
+          else await storage.updateNotification(String(preservedAlert.id), changes as any);
+        } catch (error) {
+          if (transaction && !(error instanceof SyntaxError)) throw error;
           // ignore malformed legacy metadata
         }
       }
@@ -304,7 +316,7 @@ async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, prov
     };
 
     if (usesSingleActiveAlert) {
-      const inserted = await db.transaction(async (tx: any) => {
+      const inserted = await alertDb.transaction(async (tx: any) => {
         await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`active-alert:benchmark:${String(b.id)}`}, 0))`);
         const latestAlerts = await tx.select().from(notifications).where(eq(notifications.type, "performance-alert"));
         const activeExists = latestAlerts.some((alert: any) => {
@@ -321,7 +333,7 @@ async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, prov
       });
       if (inserted) created += 1;
     } else {
-      await db.insert(notifications).values(notification);
+      await alertDb.insert(notifications).values(notification);
       created += 1;
     }
   }
@@ -329,26 +341,29 @@ async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, prov
   return created;
 }
 
-export async function resolveBenchmarkAlerts(benchmarkId: string, reason: "cleared" | "superseded" = "cleared"): Promise<void> {
+export async function resolveBenchmarkAlerts(benchmarkId: string, reason: "cleared" | "superseded" = "cleared", transaction?: any): Promise<void> {
   const id = String(benchmarkId || "").trim();
   if (!id) return;
+  const alertDb = transaction || db;
+  const [parent] = transaction ? await transaction.select({ campaignId: benchmarks.campaignId }).from(benchmarks).where(eq(benchmarks.id, id)).for("share") : [];
+  if (transaction && !parent?.campaignId) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
   if (reason === "cleared") {
-    await db.update(benchmarks).set({ lastAlertSent: null }).where(and(
+    await alertDb.update(benchmarks).set({ lastAlertSent: null }).where(and(
       eq(benchmarks.id, id),
       eq(benchmarks.alertFrequency, "immediate"),
       isNotNull(benchmarks.lastAlertSent),
     ));
   }
-  const existingAlerts = await db
+  const existingAlerts = await alertDb
     .select()
     .from(notifications)
-    .where(eq(notifications.type, "performance-alert"));
+    .where(and(eq(notifications.type, "performance-alert"), transaction ? eq(notifications.campaignId, parent.campaignId) : undefined));
   for (const alert of existingAlerts) {
     if (!alert.metadata) continue;
     try {
       const meta = typeof alert.metadata === "string" ? JSON.parse(alert.metadata) : alert.metadata;
       if (String(meta?.benchmarkId || "") !== id || meta?.resolved) continue;
-      await storage.updateNotification(String(alert.id), {
+      const changes = {
         read: true,
         metadata: JSON.stringify({
           ...meta,
@@ -356,8 +371,11 @@ export async function resolveBenchmarkAlerts(benchmarkId: string, reason: "clear
           resolvedAt: new Date().toISOString(),
           resolvedReason: reason,
         }),
-      } as any);
-    } catch {
+      };
+      if (transaction) await transaction.update(notifications).set(changes).where(and(eq(notifications.id, String(alert.id)), eq(notifications.campaignId, parent.campaignId)));
+      else await storage.updateNotification(String(alert.id), changes as any);
+    } catch (error) {
+      if (transaction && !(error instanceof SyntaxError)) throw error;
       // ignore malformed legacy metadata
     }
   }

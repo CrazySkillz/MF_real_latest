@@ -578,8 +578,10 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           })() : null;
 
           // A row is reported updated only after its current value and applicable daily progress write succeed.
-          const updated = await storage.updateKPI(kpiId, { currentValue: String(round2(valueNum)), ...refreshWriteInput } as any);
-          if (!updated) throw new Error("KPI current-value update did not change a row");
+          if (!("refreshScope" in refreshWriteInput) || !progressData) {
+            const updated = await storage.updateKPI(kpiId, { currentValue: String(round2(valueNum)), ...refreshWriteInput } as any);
+            if (!updated) throw new Error("KPI current-value update did not change a row");
+          }
 
           if (progressData && sameDatePts.length === 1) {
             const progress = await storage.updateKPIProgress(sameDatePts[0].id, { ...progressData, ...refreshWriteInput } as any);
@@ -618,8 +620,10 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         // Always refresh stored currentValue so same-day persisted GA4 daily rows update what alert checks read,
         // and refresh the exact automatic history entry for the same reporting date.
         try {
-          const updated = await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)), ...refreshWriteInput } as any);
-          if (!updated) throw new Error("Benchmark current-value update did not change a row");
+          if (!("refreshScope" in refreshWriteInput) || !hasExactDailyRow) {
+            const updated = await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)), ...refreshWriteInput } as any);
+            if (!updated) throw new Error("Benchmark current-value update did not change a row");
+          }
 
           const historyResult = benchmarkHistories[index % 4];
           if (historyResult.status === "rejected") throw historyResult.reason;

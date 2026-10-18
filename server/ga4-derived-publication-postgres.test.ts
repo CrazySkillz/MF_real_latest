@@ -295,4 +295,17 @@ describe.skipIf(!testUrl)("GA4 derived writes with real PostgreSQL ownership", (
     await expect(storage.recordKPIProgress({ kpiId: "missing", value: "20" })).rejects.toThrow("KPI not found");
     await expect(storage.recordBenchmarkHistory({ ...history(), benchmarkId: "missing" })).rejects.toThrow("Benchmark not found");
   });
+  it.each(["progress update", "progress insert", "history"] as const)("publishes %s and its parent's current value in the same guarded write", async kind => {
+    const scope = await claim();
+    await write(kind, scope, "a", "27");
+    const table = kind === "history" ? "benchmarks" : "kpis";
+    expect((await pool.query(`SELECT current_value FROM ${table} WHERE campaign_id='a'`)).rows[0].current_value).toBe("27.00");
+    expect((await pool.query(`SELECT current_value FROM ${table} WHERE campaign_id='b'`)).rows[0].current_value).toBe("10.00");
+  });
+  it("rejects a changed Benchmark target without writing its value or history", async () => {
+    const scope = await claim(); await storage.updateBenchmark("benchmark-a", { benchmarkValue: "200" });
+    const before = await saved();
+    await expect(write("history", scope)).rejects.toThrow("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    expect(await saved()).toEqual(before);
+  });
 });

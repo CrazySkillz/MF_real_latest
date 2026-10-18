@@ -180,6 +180,7 @@ export type GA4RefreshWriteInput = {
 };
 
 export interface IStorage {
+  writeWithGA4RefreshOwnership<T>(scope: GA4RefreshWriteInput["refreshScope"], write: (tx: any) => Promise<T>): Promise<T>;
   // Campaigns
   getCampaigns(): Promise<Campaign[]>;
   getCampaign(id: string): Promise<Campaign | undefined>;
@@ -216,7 +217,7 @@ export interface IStorage {
   // GA4 Daily Metrics (daily facts)
   ensureGA4RefreshWork(campaignId: string, ownerId: string, dueAt: Date, reportingDate: string): Promise<GA4RefreshWork | undefined>;
   claimGA4RefreshWork(campaignId: string, ownerId: string, workId: string, leaseMs: number): Promise<GA4RefreshWork | undefined>;
-  updateGA4RefreshWorkLease(campaignId: string, ownerId: string, workId: string, leaseToken: string, action: "renew" | "release" | "complete", leaseMs?: number): Promise<GA4RefreshWork | undefined>;
+  updateGA4RefreshWorkLease(campaignId: string, ownerId: string, workId: string, leaseToken: string, action: "renew" | "release" | "complete", leaseMs?: number, publicationCompletedAt?: string): Promise<GA4RefreshWork | undefined>;
   upsertGA4DailyMetrics(rows: InsertGA4DailyMetric[]): Promise<{ upserted: number }>;
   replaceGA4DailyMetricsWindow(campaignId: string, propertyId: string, startDate: string, endDate: string, rows: InsertGA4DailyMetric[], overviewSnapshot?: GA4OverviewSnapshotInput): Promise<{ replaced: number }>;
   getGA4DailyMetrics(campaignId: string, propertyId: string, startDate: string, endDate: string): Promise<GA4DailyMetric[]>;
@@ -1134,7 +1135,7 @@ export class DatabaseStorage implements IStorage {
     return { scope, scopeHash: createHash("sha256").update(JSON.stringify(scope)).digest("hex") };
   }
 
-  private async writeWithGA4RefreshOwnership<T>(scope: GA4RefreshWriteInput["refreshScope"], write: (tx: any) => Promise<T>): Promise<T> {
+  async writeWithGA4RefreshOwnership<T>(scope: GA4RefreshWriteInput["refreshScope"], write: (tx: any) => Promise<T>): Promise<T> {
     if (![scope?.campaignId, scope?.ownerId, scope?.reportingDate, scope?.work?.id, scope?.work?.leaseToken]
       .every(value => typeof value === "string" && value.trim())) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
     return db.transaction(async (tx: any) => {
@@ -1198,10 +1199,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateGA4RefreshWorkLease(campaignId: string, ownerId: string, workId: string, leaseToken: string,
-    action: "renew" | "release" | "complete", leaseMs = 120_000): Promise<GA4RefreshWork | undefined> {
+    action: "renew" | "release" | "complete", leaseMs = 120_000, publicationCompletedAt?: string): Promise<GA4RefreshWork | undefined> {
     if (!["renew", "release", "complete"].includes(action) || !Number.isInteger(leaseMs) || leaseMs < 1000 || leaseMs > 900_000)
       throw new Error("Invalid GA4 work lease update");
     if (!leaseToken?.trim()) return undefined;
+    if (publicationCompletedAt !== undefined && (action !== "complete" || !Number.isFinite(Date.parse(publicationCompletedAt)))) throw new Error("Invalid GA4 work completion time");
     return db.transaction(async (tx: any) => {
       await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
       await tx.execute(sql`SET LOCAL statement_timeout = '30s'`);
@@ -1219,15 +1221,35 @@ export class DatabaseStorage implements IStorage {
           eq(metricSnapshots.reportingDate, work.reportingDate),
         )).for("share");
         const prefix = `ga4_aligned_refresh_v1:${work.reportingDate}:`;
-        if (!snapshot?.notes?.startsWith(prefix)) return undefined;
-        completedAt = new Date(snapshot.notes.slice(prefix.length));
+        if (publicationCompletedAt !== undefined) {
+          const receipt = `ga4_refresh_publication_v1:${workId}:${createHash("sha256").update(leaseToken).digest("hex")}`;
+          if (snapshot?.notes !== receipt) return undefined;
+          completedAt = new Date(publicationCompletedAt);
+        } else {
+          if (!snapshot?.notes?.startsWith(prefix)) return undefined;
+          completedAt = new Date(snapshot.notes.slice(prefix.length));
+        }
         if (!Number.isFinite(completedAt.getTime()) || completedAt < work.dueAt || completedAt < work.startedAt) return undefined;
+        if (publicationCompletedAt !== undefined) {
+          const [marked] = await tx.update(metricSnapshots).set({ notes: `${prefix}${publicationCompletedAt}` }).where(and(
+            eq(metricSnapshots.campaignId, campaignId), eq(metricSnapshots.snapshotType, "executive_summary_daily"),
+            eq(metricSnapshots.reportingDate, work.reportingDate), sql`${completedAt}::timestamptz <= clock_timestamp()`,
+          )).returning({ id: metricSnapshots.id });
+          if (!marked) return undefined;
+        }
       }
       const [updated] = await tx.update(ga4RefreshWork).set(action === "renew" ? {
         leaseExpiresAt: sql`clock_timestamp() + ${leaseMs} * interval '1 millisecond'`, updatedAt: sql`clock_timestamp()`,
       } : { status: action === "complete" ? "completed" : "pending", leaseToken: null, leaseExpiresAt: null,
         completedAt, updatedAt: sql`clock_timestamp()`,
       }).where(and(owned, completedAt ? sql`${completedAt}::timestamptz <= clock_timestamp()` : undefined)).returning();
+      if (publicationCompletedAt !== undefined && !updated) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+      if (publicationCompletedAt !== undefined) {
+        const [withinLease] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork).where(and(
+          eq(ga4RefreshWork.id, workId), sql`${work.leaseExpiresAt}::timestamptz > clock_timestamp()`,
+        ));
+        if (!withinLease) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+      }
       return updated;
     });
   }
@@ -5370,6 +5392,7 @@ export class DatabaseStorage implements IStorage {
           eq(kpiProgress.notes, values.notes!), sql`${kpiProgress.recordedAt}::date = ${refreshScope!.reportingDate}::date`) : undefined))
         .returning();
       if (guarded && !progress) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+      if (guarded) await tx.update(kpis).set({ currentValue: progress.value, updatedAt: new Date() }).where(eq(kpis.id, progress.kpiId));
       return progress;
     };
     return guarded ? this.writeWithGA4RefreshOwnership(refreshScope, save) : save(db);
@@ -5614,11 +5637,12 @@ export class DatabaseStorage implements IStorage {
     const isAutomaticGA4Daily = notes.startsWith("auto:ga4_daily:");
     const save = async (tx: any) => {
       if (guarded) {
-        const [parent] = await tx.select({ id: benchmarks.id }).from(benchmarks).where(and(
+        const [parent] = await tx.select({ id: benchmarks.id, benchmarkValue: benchmarks.benchmarkValue }).from(benchmarks).where(and(
           eq(benchmarks.id, benchmarkId), eq(benchmarks.campaignId, refreshScope!.campaignId), eq(benchmarks.platformType, "google_analytics"),
-        )).for("share");
+        )).for("update");
         if (!parent || !(values.recordedAt instanceof Date) || values.recordedAt.toISOString().slice(0, 10) !== refreshScope!.reportingDate ||
-            !notes.startsWith(`auto:ga4_daily:${refreshScope!.reportingDate};`)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+            !notes.startsWith(`auto:ga4_daily:${refreshScope!.reportingDate};`) || Number(parent.benchmarkValue) !== Number(values.benchmarkValue)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+        await tx.update(benchmarks).set({ currentValue: values.currentValue, updatedAt: new Date() }).where(eq(benchmarks.id, benchmarkId));
       }
       if (isAutomaticGA4Daily) {
         await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`benchmark_history:${benchmarkId}`}, 0))`);

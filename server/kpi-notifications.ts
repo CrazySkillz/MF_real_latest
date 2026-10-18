@@ -119,16 +119,18 @@ export async function createKPIReminder(kpi: KPI): Promise<void> {
  * Create a performance alert notification
  * Triggered when current value breaches alert threshold
  */
-export async function createKPIAlert(kpi: KPI, options: { providerCoverageThroughDate?: string } = {}): Promise<void> {
+export async function createKPIAlert(kpi: KPI, options: { providerCoverageThroughDate?: string; transaction?: any } = {}): Promise<void> {
+  const transaction = options.transaction;
+  const alertDb = transaction || db;
   if (!shouldTriggerAlert(kpi)) {
-    await resolveKPIAlerts(String(kpi.id), 'cleared');
+    await resolveKPIAlerts(String(kpi.id), 'cleared', transaction);
     return;
   }
   const platformType = String((kpi as any)?.platformType || "").trim().toLowerCase();
   const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";
   const campaignId = String(kpi.campaignId || "").trim();
   if (!campaignId) {
-    if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared');
+    if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared', transaction);
     return;
   }
   const campaign = await storage.getCampaign(campaignId).catch((error) => {
@@ -136,11 +138,11 @@ export async function createKPIAlert(kpi: KPI, options: { providerCoverageThroug
     return undefined;
   });
   if (!campaign) {
-    if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared');
+    if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared', transaction);
     return;
   }
   if (platformType === "google_analytics" && !String((campaign as any).ownerId || '').trim()) {
-    await resolveKPIAlerts(String(kpi.id), 'cleared');
+    await resolveKPIAlerts(String(kpi.id), 'cleared', transaction);
     return;
   }
 
@@ -169,9 +171,9 @@ export async function createKPIAlert(kpi: KPI, options: { providerCoverageThroug
     // ignore
   }
   
-  const existingAlerts = await db.select()
+  const existingAlerts = await alertDb.select()
     .from(notifications)
-    .where(eq(notifications.type, 'performance-alert')) as AppNotification[];
+    .where(and(eq(notifications.type, 'performance-alert'), transaction ? eq(notifications.campaignId, campaignId) : undefined)) as AppNotification[];
   
   const alertThreshold = kpi.alertThreshold === null || typeof kpi.alertThreshold === "undefined"
     ? null
@@ -251,7 +253,7 @@ export async function createKPIAlert(kpi: KPI, options: { providerCoverageThroug
     if (preservedAlertId && String(alert.id) === String(preservedAlertId)) continue;
     try {
       const meta = typeof alert.metadata === 'string' ? JSON.parse(alert.metadata) : (alert.metadata || {});
-      await storage.updateNotification(String(alert.id), {
+      const changes = {
         read: true,
         metadata: JSON.stringify({
           ...meta,
@@ -259,8 +261,11 @@ export async function createKPIAlert(kpi: KPI, options: { providerCoverageThroug
           resolvedAt: new Date().toISOString(),
           resolvedReason: 'superseded',
         }),
-      } as any);
-    } catch {
+      };
+      if (transaction) await transaction.update(notifications).set(changes).where(and(eq(notifications.id, String(alert.id)), eq(notifications.campaignId, campaignId)));
+      else await storage.updateNotification(String(alert.id), changes as any);
+    } catch (error) {
+      if (transaction && !(error instanceof SyntaxError)) throw error;
       // ignore malformed legacy metadata
     }
   }
@@ -274,7 +279,7 @@ export async function createKPIAlert(kpi: KPI, options: { providerCoverageThroug
         const meta = typeof preservedAlert.metadata === 'string'
           ? JSON.parse(preservedAlert.metadata)
           : (preservedAlert.metadata || {});
-        await storage.updateNotification(String(preservedAlert.id), {
+        const changes = {
           title: nextTitle,
           message: nextMessage,
           priority: nextPriority,
@@ -288,8 +293,11 @@ export async function createKPIAlert(kpi: KPI, options: { providerCoverageThroug
             ...(providerCoverageThroughDate ? { providerCoverageThroughDate } : {}),
             ...(windowKey ? { windowKey } : {}),
           }),
-        } as any);
-      } catch {
+        };
+        if (transaction) await transaction.update(notifications).set(changes).where(and(eq(notifications.id, String(preservedAlert.id)), eq(notifications.campaignId, campaignId)));
+        else await storage.updateNotification(String(preservedAlert.id), changes as any);
+      } catch (error) {
+        if (transaction && !(error instanceof SyntaxError)) throw error;
         // ignore malformed legacy metadata
       }
     }
@@ -309,7 +317,7 @@ export async function createKPIAlert(kpi: KPI, options: { providerCoverageThroug
   };
 
   if (usesSingleActiveAlert) {
-    const inserted = await db.transaction(async (tx: any) => {
+    const inserted = await alertDb.transaction(async (tx: any) => {
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`active-alert:kpi:${String(kpi.id)}`}, 0))`);
       const latestAlerts = await tx.select().from(notifications).where(eq(notifications.type, 'performance-alert')) as AppNotification[];
       const activeExists = latestAlerts.some((alert) => {
@@ -329,30 +337,33 @@ export async function createKPIAlert(kpi: KPI, options: { providerCoverageThroug
       return;
     }
   } else {
-    await db.insert(notifications).values(notification);
+    await alertDb.insert(notifications).values(notification);
   }
   console.log(`[KPI Notification] Created alert for KPI: ${kpi.name}`);
 }
 
-export async function resolveKPIAlerts(kpiId: string, reason: 'cleared' | 'superseded' = 'cleared'): Promise<void> {
+export async function resolveKPIAlerts(kpiId: string, reason: 'cleared' | 'superseded' = 'cleared', transaction?: any): Promise<void> {
   const id = String(kpiId || '').trim();
   if (!id) return;
+  const alertDb = transaction || db;
+  const [parent] = transaction ? await transaction.select({ campaignId: kpis.campaignId }).from(kpis).where(eq(kpis.id, id)).for("share") : [];
+  if (transaction && !parent?.campaignId) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
   if (reason === 'cleared') {
-    await db.update(kpis).set({ lastAlertSent: null }).where(and(
+    await alertDb.update(kpis).set({ lastAlertSent: null }).where(and(
       eq(kpis.id, id),
       eq(kpis.alertFrequency, 'immediate'),
       isNotNull(kpis.lastAlertSent),
     ));
   }
-  const existingAlerts = await db.select()
+  const existingAlerts = await alertDb.select()
     .from(notifications)
-    .where(eq(notifications.type, 'performance-alert'));
+    .where(and(eq(notifications.type, 'performance-alert'), transaction ? eq(notifications.campaignId, parent.campaignId) : undefined));
   for (const alert of existingAlerts) {
     if (!alert.metadata) continue;
     try {
       const meta = typeof alert.metadata === 'string' ? JSON.parse(alert.metadata) : alert.metadata;
       if (String(meta.kpiId || '') !== id || meta.resolved) continue;
-      await storage.updateNotification(String(alert.id), {
+      const changes = {
         read: true,
         metadata: JSON.stringify({
           ...meta,
@@ -360,8 +371,11 @@ export async function resolveKPIAlerts(kpiId: string, reason: 'cleared' | 'super
           resolvedAt: new Date().toISOString(),
           resolvedReason: reason,
         }),
-      } as any);
-    } catch {
+      };
+      if (transaction) await transaction.update(notifications).set(changes).where(and(eq(notifications.id, String(alert.id)), eq(notifications.campaignId, parent.campaignId)));
+      else await storage.updateNotification(String(alert.id), changes as any);
+    } catch (error) {
+      if (transaction && !(error instanceof SyntaxError)) throw error;
       // ignore malformed legacy metadata
     }
   }

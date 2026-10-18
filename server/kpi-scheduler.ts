@@ -13,6 +13,7 @@ import {
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
 import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
+import { storage, type GA4RefreshWriteInput } from "./storage";
 
 /**
  * KPI Scheduler - Daily Jobs
@@ -237,20 +238,24 @@ export async function checkPerformanceAlerts(): Promise<void> {
   await checkPerformanceAlertsForScope();
 }
 
-export async function checkGA4PerformanceAlertsForCampaign(campaignId: string, providerCoverageThroughDate: string): Promise<void> {
+export async function checkGA4PerformanceAlertsForCampaign(campaignId: string, providerCoverageThroughDate: string, options: GA4RefreshWriteInput = {}): Promise<void> {
   const requestedCampaignId = String(campaignId || "").trim();
   if (!requestedCampaignId) throw new Error("Campaign ID is required");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(providerCoverageThroughDate)) throw new Error("GA4 provider coverage date is required");
-  await checkPerformanceAlertsForScope(requestedCampaignId, providerCoverageThroughDate);
+  if ("refreshScope" in options) {
+    if (options.refreshScope?.campaignId !== requestedCampaignId || options.refreshScope.reportingDate !== providerCoverageThroughDate) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    await storage.writeWithGA4RefreshOwnership(options.refreshScope, tx => checkPerformanceAlertsForScope(requestedCampaignId, providerCoverageThroughDate, tx));
+  } else await checkPerformanceAlertsForScope(requestedCampaignId, providerCoverageThroughDate);
 }
 
-async function checkPerformanceAlertsForScope(campaignId?: string, providerCoverageThroughDate?: string): Promise<void> {
+async function checkPerformanceAlertsForScope(campaignId?: string, providerCoverageThroughDate?: string, transaction?: any): Promise<void> {
   console.log('[KPI Scheduler] Checking performance alerts...');
 
   try {
     const requestedCampaignId = String(campaignId || "").trim();
-    const activeKPIsRaw = await db.select()
-      .from(kpis);
+    const activeKPIsRaw = transaction
+      ? await transaction.select().from(kpis).where(and(eq(kpis.campaignId, requestedCampaignId), eq(kpis.platformType, "google_analytics"))).for("share")
+      : await db.select().from(kpis);
     const activeKPIs = activeKPIsRaw;
     const scopedActiveKPIs = requestedCampaignId
       ? activeKPIs.filter((kpi: any) => String(kpi?.campaignId || "") === requestedCampaignId && String(kpi?.platformType || "") === "google_analytics")
@@ -262,7 +267,7 @@ async function checkPerformanceAlertsForScope(campaignId?: string, providerCover
     const campaignMetricCache = new Map<string, Promise<any>>();
     for (const rawKpi of scopedActiveKPIs) {
       if (!isLatestGA4KPIForDuplicateKey(rawKpi, latestGA4KpiIdsByDuplicateKey)) {
-        await resolveKPIAlerts(String((rawKpi as any).id), 'superseded');
+        await resolveKPIAlerts(String((rawKpi as any).id), 'superseded', transaction);
         continue;
       }
       const kpi = rawKpi.alertsEnabled && rawKpi.alertThreshold != null
@@ -275,7 +280,7 @@ async function checkPerformanceAlertsForScope(campaignId?: string, providerCover
       const platformType = String((kpi as any)?.platformType || "").trim().toLowerCase();
       const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";
       if (!kpi.alertsEnabled || kpi.alertThreshold === null || typeof kpi.alertThreshold === "undefined") {
-        if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared');
+        if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared', transaction);
         continue;
       }
       if (kpi.__alertDecisionEligible === false && ["unavailable", "stale"].includes(kpi.__alertDecisionReason)) continue;
@@ -293,11 +298,11 @@ async function checkPerformanceAlertsForScope(campaignId?: string, providerCover
       
       if (shouldTriggerAlert(kpi)) {
         console.log(`[KPI Scheduler] ✅ TRIGGERING ALERT for: ${kpi.name}`);
-        if (providerCoverageThroughDate) await createKPIAlert(kpi, { providerCoverageThroughDate });
+        if (providerCoverageThroughDate) await createKPIAlert(kpi, { providerCoverageThroughDate, ...(transaction ? { transaction } : {}) });
         else await createKPIAlert(kpi);
       } else {
         console.log(`[KPI Scheduler] ❌ No alert needed for: ${kpi.name}`);
-        await resolveKPIAlerts(String(kpi.id), 'cleared');
+        await resolveKPIAlerts(String(kpi.id), 'cleared', transaction);
       }
     }
   } catch (error) {

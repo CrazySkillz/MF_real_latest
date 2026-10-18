@@ -7,19 +7,19 @@ describe("benchmark alert lifecycle regression guard", () => {
     const schedulerSource = readFileSync(join(process.cwd(), "server", "kpi-scheduler.ts"), "utf-8");
     const kpiSource = readFileSync(join(process.cwd(), "server", "kpi-notifications.ts"), "utf-8");
 
-    expect(schedulerSource).toContain("const activeKPIsRaw = await db.select()");
+    expect(schedulerSource).toContain("const activeKPIsRaw = transaction");
     expect(schedulerSource).toContain("if (!kpi.alertsEnabled || kpi.alertThreshold === null || typeof kpi.alertThreshold === \"undefined\") {");
-    expect(schedulerSource).toContain("if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared');");
+    expect(schedulerSource).toContain("if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared', transaction);");
     expect(kpiSource).toContain("if (!campaignId) {");
     expect(kpiSource).toContain("if (!campaign) {");
     expect(kpiSource).toContain('if (platformType === "google_analytics" && !String((campaign as any).ownerId || \'\').trim()) {');
-    expect(kpiSource).toContain("if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared');");
+    expect(kpiSource).toContain("if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared', transaction);");
   });
 
   it("resolves active GA4/campaign Benchmark alerts when the row no longer has a valid breach", () => {
     const source = readFileSync(join(process.cwd(), "server", "benchmark-notifications.ts"), "utf-8");
 
-    expect(source).toContain('export async function resolveBenchmarkAlerts(benchmarkId: string, reason: "cleared" | "superseded" = "cleared"): Promise<void> {');
+    expect(source).toContain('export async function resolveBenchmarkAlerts(benchmarkId: string, reason: "cleared" | "superseded" = "cleared", transaction?: any): Promise<void> {');
     expect(source).toContain('? and(eq(benchmarks.status, "active"), eq(benchmarks.campaignId, requestedCampaignId), eq(benchmarks.platformType, "google_analytics"))');
     expect(source).toContain(': eq(benchmarks.status, "active"));');
     expect(source).not.toContain('.where(and(eq(benchmarks.status, "active"), eq(benchmarks.alertsEnabled, true)))');
@@ -27,7 +27,7 @@ describe("benchmark alert lifecycle regression guard", () => {
     expect(source).toContain('if (!Number.isFinite(thresholdValue)) {');
     expect(source).toContain('if (!Number.isFinite(currentValue)) {');
     expect(source).toContain('if (!evaluation.triggered) {');
-    expect(source).toContain('await resolveBenchmarkAlerts(String(b.id), "cleared");');
+    expect(source).toContain('await resolveBenchmarkAlerts(String(b.id), "cleared", transaction);');
   });
 
   it("fails closed when a breached Benchmark no longer has valid campaign context", () => {
@@ -37,7 +37,7 @@ describe("benchmark alert lifecycle regression guard", () => {
     expect(source).toContain('if (platformType === "google_analytics") throw error;');
     expect(source).toContain('if (!campaignId) {');
     expect(source).toContain('if (!campaign) {');
-    expect(source).toContain('if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");');
+    expect(source).toContain('if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared", transaction);');
   });
 
   it("allows dismissed still-breached Benchmark alerts to recreate one active alert", () => {
@@ -46,7 +46,7 @@ describe("benchmark alert lifecycle regression guard", () => {
     expect(source).toContain("if (meta?.dismissedAt) return false;");
     expect(source).toContain("!meta?.resolved && !meta?.dismissedAt");
     expect(source).toContain("if (hasRecent) {");
-    expect(source).toContain("await storage.updateNotification(String(preservedAlert.id), {");
+    expect(source).toContain("await storage.updateNotification(String(preservedAlert.id), changes as any);");
     expect(source).toContain("continue;");
   });
 

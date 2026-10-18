@@ -9,7 +9,10 @@ import * as schema from "../shared/schema";
 
 const database = vi.hoisted(() => ({ current: null as any }));
 vi.mock("./db", () => ({ get db() { return database.current; }, pool: null }));
+vi.mock("./utils/ga4-alert-current-value", () => ({ resolveAlertCurrentValueForDecision: async (item: any) => item }));
 import { DatabaseStorage } from "./storage";
+import { checkGA4PerformanceAlertsForCampaign } from "./kpi-scheduler";
+import { checkGA4BenchmarkPerformanceAlertsForCampaign } from "./benchmark-notifications";
 
 const testUrl = String(process.env.GA4_TEST_DATABASE_URL || "").trim();
 if (testUrl) {
@@ -20,7 +23,7 @@ if (testUrl) {
   }
 }
 const schemaName = `ga4_snapshot_it_${randomUUID().replace(/-/g, "")}`;
-const tables = [schema.campaigns, schema.ga4Connections, schema.metricSnapshots];
+const tables = [schema.campaigns, schema.ga4Connections, schema.metricSnapshots, schema.kpis, schema.benchmarks, schema.notifications];
 const storage = new DatabaseStorage();
 const date = "2026-10-17";
 let admin: Pool, pool: Pool, created = false;
@@ -203,5 +206,83 @@ describe.skipIf(!testUrl)("GA4 aggregate, executive and completion ownership in 
     const scope = await claim(); await write("executive", scope); const before = await saved();
     await expect(storage.markExecutiveSummaryDailySnapshotAligned("a", date, completedAt, { refreshScope: scope })).rejects.toThrow("GA4_REFRESH_TARGET_SCOPE_CHANGED");
     expect(await saved()).toEqual(before);
+  });
+  it("commits report readiness and work completion together", async () => {
+    const scope = await claim(); await write("executive", scope);
+    const completedAt = new Date().toISOString();
+    const result = await storage.updateGA4RefreshWorkLease("a", "owner-a", scope.work.id, scope.work.leaseToken, "complete", 120_000, completedAt);
+    expect(result?.status).toBe("completed");
+    expect((await saved()).find(row => row.campaign_id === "a").notes).toBe(`ga4_aligned_refresh_v1:${date}:${completedAt}`);
+  });
+  it.each(["expired", "replaced", "old-receipt", "future", "before-start"])("preserves both rows when atomic completion rejects %s", async mode => {
+    const scope = await claim(); await write("executive", scope);
+    if (["expired", "replaced", "old-receipt"].includes(mode)) await expire(scope);
+    if (["replaced", "old-receipt"].includes(mode)) {
+      const next = (await storage.claimGA4RefreshWork("a", "owner-a", scope.work.id, 120_000))!;
+      if (mode === "old-receipt") scope.work.leaseToken = next.leaseToken!;
+    }
+    const before = await saved(); const beforeWork = (await pool.query("SELECT * FROM ga4_refresh_work")).rows;
+    const completedAt = mode === "future" ? "2099-01-01T00:00:00Z" : mode === "before-start" ? "2020-01-01T00:00:00Z" : new Date().toISOString();
+    expect(await storage.updateGA4RefreshWorkLease("a", "owner-a", scope.work.id, scope.work.leaseToken, "complete", 120_000, completedAt)).toBeUndefined();
+    expect(await saved()).toEqual(before); expect((await pool.query("SELECT * FROM ga4_refresh_work")).rows).toEqual(beforeWork);
+  });
+  it.each(["metric_snapshots", "ga4_refresh_work"])("rolls back both completion writes when a delayed %s write crosses expiry", async table => {
+    const scope = await claim(); await write("executive", scope);
+    const before = await saved();
+    await pool.query("UPDATE ga4_refresh_work SET lease_expires_at=clock_timestamp()+interval '1 second' WHERE id=$1", [scope.work.id]);
+    const beforeWork = (await pool.query("SELECT * FROM ga4_refresh_work")).rows;
+    await pool.query("CREATE FUNCTION delay_complete() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(1.2); RETURN NEW; END $$");
+    await pool.query(`CREATE TRIGGER delay_complete BEFORE UPDATE ON ${table} FOR EACH ROW EXECUTE FUNCTION delay_complete()`);
+    try {
+      await expect(storage.updateGA4RefreshWorkLease("a", "owner-a", scope.work.id, scope.work.leaseToken, "complete", 120_000, new Date().toISOString())).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+      expect(await saved()).toEqual(before); expect((await pool.query("SELECT * FROM ga4_refresh_work")).rows).toEqual(beforeWork);
+    } finally { await pool.query(`DROP TRIGGER delay_complete ON ${table}`); await pool.query("DROP FUNCTION delay_complete()"); }
+  });
+  describe.each(["kpi", "benchmark"] as const)("%s alert ownership", kind => {
+    const table = kind === "kpi" ? schema.kpis : schema.benchmarks;
+    const tableName = kind === "kpi" ? "kpis" : "benchmarks";
+    const check = kind === "kpi" ? checkGA4PerformanceAlertsForCampaign : checkGA4BenchmarkPerformanceAlertsForCampaign;
+    beforeEach(async () => {
+      for (const campaignId of ["a", "b"]) await database.current.insert(table).values({
+        id: `rule-${campaignId}`, campaignId, platformType: "google_analytics", name: "Total Sessions", metric: "sessions", category: "traffic",
+        ...(kind === "kpi" ? { targetValue: "100", status: "tracking" } : { benchmarkValue: "100", status: "active" }),
+        currentValue: "20", unit: "count", alertsEnabled: true, alertThreshold: "30", alertCondition: "below", alertFrequency: "immediate", lastAlertSent: new Date(),
+      });
+    });
+    const alerts = async () => (await pool.query("SELECT * FROM notifications ORDER BY id")).rows;
+    it("creates, updates and resolves only the owned campaign's alert", async () => {
+      const scope = await claim();
+      await check("a", date, { refreshScope: scope });
+      const [created] = await alerts(); expect(created.campaign_id).toBe("a");
+      await pool.query(`UPDATE ${tableName} SET current_value=25 WHERE id='rule-a'`);
+      await check("a", date, { refreshScope: scope });
+      expect(await alerts()).toHaveLength(1); expect((await alerts())[0].message).toContain("25");
+      await pool.query(`UPDATE ${tableName} SET current_value=40 WHERE id='rule-a'`);
+      await check("a", date, { refreshScope: scope });
+      expect(JSON.parse((await alerts())[0].metadata).resolved).toBe(true);
+      expect((await pool.query(`SELECT last_alert_sent FROM ${tableName} WHERE id='rule-a'`)).rows[0].last_alert_sent).toBeNull();
+      expect((await pool.query(`SELECT last_alert_sent FROM ${tableName} WHERE id='rule-b'`)).rows[0].last_alert_sent).not.toBeNull();
+    });
+    it.each(["expired", "replacement", "campaign", "date", "malformed"])("keeps alerts and email bookkeeping when %s ownership is rejected", async mode => {
+      const scope = await claim(); await check("a", date, { refreshScope: scope });
+      await pool.query(`UPDATE ${tableName} SET current_value=40 WHERE id='rule-a'`);
+      if (["expired", "replacement"].includes(mode)) await expire(scope);
+      if (mode === "replacement") await storage.claimGA4RefreshWork("a", "owner-a", scope.work.id, 120_000);
+      const before = await alerts(); const rules = (await pool.query(`SELECT * FROM ${tableName} ORDER BY id`)).rows;
+      await expect(check(mode === "campaign" ? "b" : "a", mode === "date" ? "2026-10-16" : date, { refreshScope: mode === "malformed" ? undefined : scope })).rejects.toThrow();
+      expect(await alerts()).toEqual(before); expect((await pool.query(`SELECT * FROM ${tableName} ORDER BY id`)).rows).toEqual(rules);
+    });
+    it("rolls back alert resolution and email bookkeeping together on lease expiry", async () => {
+      const scope = await claim(); await check("a", date, { refreshScope: scope });
+      await pool.query(`UPDATE ${tableName} SET current_value=40 WHERE id='rule-a'`);
+      const before = await alerts(); const rules = (await pool.query(`SELECT * FROM ${tableName} ORDER BY id`)).rows;
+      await pool.query("CREATE FUNCTION delay_alert() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(1.2); RETURN NEW; END $$");
+      await pool.query("CREATE TRIGGER delay_alert BEFORE UPDATE ON notifications FOR EACH ROW EXECUTE FUNCTION delay_alert()");
+      await pool.query("UPDATE ga4_refresh_work SET lease_expires_at=clock_timestamp()+interval '1 second' WHERE id=$1", [scope.work.id]);
+      try {
+        await expect(check("a", date, { refreshScope: scope })).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+        expect(await alerts()).toEqual(before); expect((await pool.query(`SELECT * FROM ${tableName} ORDER BY id`)).rows).toEqual(rules);
+      } finally { await pool.query("DROP TRIGGER delay_alert ON notifications"); await pool.query("DROP FUNCTION delay_alert()"); }
+    });
   });
 });

@@ -212,16 +212,16 @@ describe("notification visibility regression guard", () => {
     );
 
     expect(kpiNotificationsFile).toContain("if (!shouldTriggerAlert(kpi)) {");
-    expect(kpiNotificationsFile).toContain("await resolveKPIAlerts(String(kpi.id), 'cleared');");
+    expect(kpiNotificationsFile).toContain("await resolveKPIAlerts(String(kpi.id), 'cleared', transaction);");
     expect(kpiNotificationsFile).toContain('const campaignId = String(kpi.campaignId || "").trim();');
     expect(kpiNotificationsFile).toContain('if (platformType === "google_analytics") throw error;');
     expect(kpiNotificationsFile).toContain("if (!campaign) {");
-    expect(kpiNotificationsFile).toContain("if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared');");
+    expect(kpiNotificationsFile).toContain("if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared', transaction);");
     expect(kpiNotificationsFile).toContain('const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";');
     expect(benchmarkNotificationsFile).toContain('const campaignId = String(b.campaignId || "").trim();');
     expect(benchmarkNotificationsFile).toContain('if (platformType === "google_analytics") throw error;');
     expect(benchmarkNotificationsFile).toContain("if (!campaign) {");
-    expect(benchmarkNotificationsFile).toContain('if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");');
+    expect(benchmarkNotificationsFile).toContain('if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared", transaction);');
     expect(benchmarkNotificationsFile).toContain('const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";');
   });
 
@@ -310,12 +310,12 @@ describe("notification visibility regression guard", () => {
     );
 
     expect(kpiNotificationsFile).toContain("const preservedAlert = preservedAlertId");
-    expect(kpiNotificationsFile).toContain("await storage.updateNotification(String(preservedAlert.id), {");
+    expect(kpiNotificationsFile).toContain("await storage.updateNotification(String(preservedAlert.id), changes as any);");
     expect(kpiNotificationsFile).toContain("message: nextMessage,");
     expect(kpiNotificationsFile).toContain("campaignName: campaign.name,");
     expect(kpiNotificationsFile).toContain("metadata: JSON.stringify({");
     expect(benchmarkNotificationsFile).toContain("const preservedAlert = preservedAlertId");
-    expect(benchmarkNotificationsFile).toContain("await storage.updateNotification(String(preservedAlert.id), {");
+    expect(benchmarkNotificationsFile).toContain("await storage.updateNotification(String(preservedAlert.id), changes as any);");
     expect(benchmarkNotificationsFile).toContain("message: nextMessage,");
     expect(benchmarkNotificationsFile).toContain("campaignName: campaign.name,");
     expect(benchmarkNotificationsFile).toContain("metadata: JSON.stringify({");

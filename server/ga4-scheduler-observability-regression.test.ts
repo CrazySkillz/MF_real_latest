@@ -40,7 +40,7 @@ describe("GA4 scheduler and scheduled report observability", () => {
     expect(daily).toContain("lastAlignedRefreshFailures: ga4DailySchedulerStatus.lastAlignedRefreshFailures");
     expect(daily).toContain("alignedRefreshCampaigns: Array.from(alignedRefreshByCampaign.entries())");
     expect(daily).toContain('createHash("sha256")');
-    expectBefore(daily, "ga4DailySchedulerStatus.nextRunAt = nextRunAt;", "setTimeout(() => {");
+    expectBefore(daily, "ga4DailySchedulerStatus.nextRunAt = nextRunAt;", "setTimeout(runScheduled, delayMs)");
   });
 
   it("keeps the on-demand scheduler trigger owner-guarded and campaign-scoped", () => {

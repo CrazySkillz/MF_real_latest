@@ -935,11 +935,18 @@ export function startGA4DailyScheduler(port?: number): void {
     ga4DailySchedulerStatus.nextRunAt = nextRunAt;
     ga4DailySchedulerStatus.nextDataThroughDate = dataThroughDate;
     console.log(`[GA4 Daily] Next scheduled run at ${nextRunAt.toISOString()} (${formatSchedulerLocalTime(nextRunAt, config.reportingTimeZone)}, timezone=${config.reportingTimeZone}, dataThroughDate=${dataThroughDate})`);
-    (global as any).ga4DailySchedulerTimer = setTimeout(() => {
+    const runScheduled = () => {
+      // Keep the elapsed slot pending while startup recovery or a manual run owns the lock.
+      if ((global as any).__ga4DailyRefreshInProgress) {
+        console.log(`[GA4 Daily] Scheduled pipeline deferred (already in progress; due=${nextRunAt.toISOString()}; retry in 60 seconds)`);
+        (global as any).ga4DailySchedulerTimer = setTimeout(runScheduled, 60_000);
+        return;
+      }
       runGA4DailyRefreshPipelineForTrigger("scheduled").catch((e) => {
         console.warn("[GA4 Daily] Scheduled pipeline failed:", (e as any)?.message || e);
       }).finally(scheduleNextRun);
-    }, delayMs);
+    };
+    (global as any).ga4DailySchedulerTimer = setTimeout(runScheduled, delayMs);
   };
 
   const configuredTimes = config.hours

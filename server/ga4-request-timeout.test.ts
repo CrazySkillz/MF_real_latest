@@ -2,23 +2,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createServer, type Server } from "node:http";
 import { ga4Service } from "./analytics";
 
+let service = ga4Service;
 const nativeFetch = globalThis.fetch;
 const nativeTimeout = AbortSignal.timeout.bind(AbortSignal);
 const date = "2026-10-16";
 const connection = { id: "connection-a", campaignId: "campaign-a", propertyId: "123", accessToken: "test-token", refreshToken: "test-refresh", clientId: "test-client", clientSecret: "test-secret", method: "access_token" };
 const storage = { getGA4Connection: vi.fn(), getCampaign: vi.fn(), updateGA4ConnectionTokens: vi.fn() };
-const daily = () => ga4Service.getTimeSeriesData("campaign-a", storage, date, "123", "sale", date, "EUR");
-const acquisition = (insights = false) => ga4Service.getAcquisitionBreakdown("campaign-a", storage, date, "123", 50, "sale", date, false, insights, "EUR");
+const daily = () => service.getTimeSeriesData("campaign-a", storage, date, "123", "sale", date, "EUR");
+const acquisition = (insights = false) => service.getAcquisitionBreakdown("campaign-a", storage, date, "123", 50, "sale", date, false, insights, "EUR");
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
 const empty = () => json({ rows: [], rowCount: 0, metadata: { currencyCode: "EUR" } });
 const requestCases = [
   { name: "daily series", run: daily, target: () => true },
   { name: "daily conversion supplement", run: daily, target: (body: any) => body.metrics.length === 2,
     prior: () => json({ rows: [{ dimensionValues: [{ value: "20261016" }], metricValues: ["100", "120", "0", "80", "0", "50", "0.5"].map(value => ({ value })) }], metadata: { currencyCode: "EUR" } }) },
-  { name: "daily presence", run: () => ga4Service.getTrendsDailyPresenceWithToken("123", "test-token", date, date, "sale", "EUR", undefined, []), target: () => true },
-  { name: "landing pages", run: () => ga4Service.getLandingPagesReport("campaign-a", storage, date, "123", 50, "sale", date), target: () => true },
-  { name: "conversion events", run: () => ga4Service.getConversionEventsReport("campaign-a", storage, date, "123", 50, "sale", date), target: () => true },
-  { name: "conversion daily reconciliation", run: () => ga4Service.getConversionEventsReport("campaign-a", storage, date, "123", 50, "sale", date, false, { [date]: 1 }), target: (body: any) => body.dimensions.length === 2 },
+  { name: "daily presence", run: () => service.getTrendsDailyPresenceWithToken("123", "test-token", date, date, "sale", "EUR", undefined, []), target: () => true },
+  { name: "landing pages", run: () => service.getLandingPagesReport("campaign-a", storage, date, "123", 50, "sale", date), target: () => true },
+  { name: "conversion events", run: () => service.getConversionEventsReport("campaign-a", storage, date, "123", 50, "sale", date), target: () => true },
+  { name: "conversion daily reconciliation", run: () => service.getConversionEventsReport("campaign-a", storage, date, "123", 50, "sale", date, false, { [date]: 1 }), target: (body: any) => body.dimensions.length === 2 },
   { name: "acquisition", run: () => acquisition(), target: () => true },
   { name: "acquisition pagination", run: () => acquisition(), target: (body: any) => body.offset === 1,
     prior: () => json({ rows: [{ dimensionValues: [{ value: "20261016" }], metricValues: [] }], rowCount: 2, metadata: { currencyCode: "EUR" } }) },
@@ -26,13 +27,13 @@ const requestCases = [
     prior: (_body: any, call: number) => call === 1 ? json({ error: { code: 401, status: "UNAUTHENTICATED" } }, 401) : json({ access_token: "renewed-token", expires_in: 3600 }) },
   { name: "acquisition optional landing coverage", run: () => acquisition(true), target: (body: any) => body.dimensions.some((d: any) => d.name === "pageLocation") },
   { name: "acquisition empty URL fallback", run: () => acquisition(), target: (body: any) => body.dimensions.some((d: any) => d.name === "pageLocation") },
-  { name: "OAuth renewal", run: () => ga4Service.refreshAccessToken("test-refresh", "test-client", "test-secret"), target: () => true },
-  { name: "OAuth credential fallback", run: () => ga4Service.refreshAccessToken("test-refresh"), target: () => true },
+  { name: "OAuth renewal", run: () => service.refreshAccessToken("test-refresh", "test-client", "test-secret"), target: () => true },
+  { name: "OAuth credential fallback", run: () => service.refreshAccessToken("test-refresh"), target: () => true },
 ];
 
 describe("GA4 native request cancellation", () => {
   beforeEach(() => {
-    vi.useFakeTimers(); vi.resetAllMocks();
+    vi.useFakeTimers(); vi.resetAllMocks(); service = ga4Service;
     vi.stubEnv("GOOGLE_CLIENT_ID", ""); vi.stubEnv("GOOGLE_CLIENT_SECRET", "");
     storage.getGA4Connection.mockResolvedValue(connection);
     storage.getCampaign.mockResolvedValue({ id: "campaign-a", currency: "EUR" });
@@ -79,6 +80,28 @@ describe("GA4 native request cancellation", () => {
     });
   }
 
+  it.each(requestCases)("cancels $name immediately when its owning refresh stops", async test => {
+    const controller = new AbortController(); service = ga4Service.withAbortSignal(controller.signal);
+    let calls = 0, signal: AbortSignal | undefined;
+    vi.stubGlobal("fetch", vi.fn(async (_url, init) => {
+      const body = typeof init.body === "string" ? JSON.parse(init.body) : {};
+      calls++;
+      if (!test.target(body, calls)) return "prior" in test ? test.prior!(body, calls) : empty();
+      signal = init.signal;
+      return new Promise((_resolve, reject) => init.signal.addEventListener("abort", () => reject(init.signal.reason), { once: true }));
+    }));
+    const result = test.run().catch(error => error);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(signal?.aborted).toBe(false);
+    controller.abort(new DOMException("Owner stopped", "AbortError"));
+    expect(await result).toMatchObject({ name: "AbortError" });
+    expect(signal?.aborted).toBe(true);
+    // Other requests keep their own lifetime; no shared singleton cancellation.
+    service = ga4Service; vi.mocked(fetch).mockResolvedValue(empty());
+    await service.getTimeSeriesWithToken("123", "test-token", date, undefined, date, "EUR");
+    expect((vi.mocked(fetch).mock.lastCall?.[1] as any).signal.aborted).toBe(false);
+  });
+
   it("does not attempt token renewal for a timed-out daily report and succeeds on the next attempt", async () => {
     const signals: AbortSignal[] = [];
     vi.stubGlobal("fetch", vi.fn(async (_url, init) => {
@@ -91,7 +114,7 @@ describe("GA4 native request cancellation", () => {
     await vi.advanceTimersByTimeAsync(120000);
     expect((await result).name).toBe("TimeoutError");
     expect(storage.updateGA4ConnectionTokens).not.toHaveBeenCalled();
-    expect(await ga4Service.getTimeSeriesWithToken("123", "test-token", date, undefined, date, "EUR")).toEqual([]);
+    expect(await service.getTimeSeriesWithToken("123", "test-token", date, undefined, date, "EUR")).toEqual([]);
     expect(signals[1]).not.toBe(signals[0]);
     expect(signals[1].aborted).toBe(false);
   });
@@ -117,7 +140,7 @@ describe("GA4 native request cancellation", () => {
       .mockResolvedValueOnce(json({ error: { code: 401, status: "UNAUTHENTICATED" } }, 401))
       .mockResolvedValueOnce(outcome === "success" ? json({ access_token: "renewed-token", expires_in: 3600 }) : json({ error: outcome }, 400))
       .mockImplementation(async () => empty()));
-    const result = ga4Service.getTimeSeriesData("campaign-a", storage, date, "123", undefined, date, "EUR");
+    const result = service.getTimeSeriesData("campaign-a", storage, date, "123", undefined, date, "EUR");
     if (outcome === "success") {
       expect(await result).toEqual([]);
       expect(storage.updateGA4ConnectionTokens).toHaveBeenCalledExactlyOnceWith("connection-a", expect.objectContaining({ accessToken: "renewed-token" }));
@@ -164,7 +187,7 @@ describe("GA4 cancellation with native fetch and a local HTTP server", () => {
       return response;
     }));
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    await expect(ga4Service.getTimeSeriesWithToken("123", "test-token", date, undefined, date, "EUR"))
+    await expect(service.getTimeSeriesWithToken("123", "test-token", date, undefined, date, "EUR"))
       .rejects.toMatchObject({ name: expect.stringMatching(/^(TimeoutError|AbortError)$/) });
     await disconnected;
     expect(controller.signal.aborted).toBe(true);

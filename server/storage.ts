@@ -5,6 +5,7 @@ import { randomUUID, createHash } from "crypto";
 import { ga4RefreshWork, type GA4RefreshWork } from "@shared/schema";
 import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 import { db, pool } from "./db";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { eq, and, or, isNull, desc, sql, gte, lte, inArray, ne } from "drizzle-orm";
 import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, type EncryptedTokens } from "./utils/tokenVault";
 import { assertGA4ServiceAccountPropertyAllowed, GA4_SERVICE_ACCOUNT_METHOD, hydrateGA4ServiceAccountConnection } from "./utils/ga4-service-account";
@@ -214,7 +215,7 @@ export interface IStorage {
   getPrimaryGA4Connection(campaignId: string): Promise<GA4Connection | undefined>;
   createGA4Connection(connection: InsertGA4Connection): Promise<GA4Connection>;
   updateGA4Connection(connectionId: string, connection: Partial<InsertGA4Connection>): Promise<GA4Connection | undefined>;
-  updateGA4ConnectionTokens(connectionId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }): Promise<GA4Connection | undefined>;
+  updateGA4ConnectionTokens(connectionId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }, options?: GA4RefreshWriteInput): Promise<GA4Connection | undefined>;
   setPrimaryGA4Connection(campaignId: string, connectionId: string): Promise<boolean>;
   deleteGA4Connection(connectionId: string): Promise<boolean>;
 
@@ -1055,15 +1056,19 @@ export class DatabaseStorage implements IStorage {
     return updated ? (await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(updated) as any) as any) : undefined;
   }
 
-  async updateGA4ConnectionTokens(connectionId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }): Promise<GA4Connection | undefined> {
-    const [existing] = await db.select().from(ga4Connections).where(eq(ga4Connections.id, connectionId));
+  async updateGA4ConnectionTokens(connectionId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }, options: GA4RefreshWriteInput = {}): Promise<GA4Connection | undefined> {
+    const guarded = "refreshScope" in options;
+    const write = async (db: any) => {
+    const query = db.select().from(ga4Connections).where(eq(ga4Connections.id, connectionId));
+    const [existing] = await (guarded ? query.for("update") : query);
+    if (guarded && (!existing || existing.isActive === false || existing.campaignId !== options.refreshScope?.campaignId)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
     if (!existing) return undefined;
 
     const nextEnc = buildEncryptedTokens({
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       clientSecret: undefined, // preserve
-      prev: (existing as any).encryptedTokens,
+      prev: (existing as any).encryptedTokens || (guarded ? buildEncryptedTokens({ accessToken: existing.accessToken, refreshToken: existing.refreshToken, clientSecret: existing.clientSecret }) : undefined),
     });
 
     const [updated] = await db
@@ -1079,6 +1084,8 @@ export class DatabaseStorage implements IStorage {
       .where(eq(ga4Connections.id, connectionId))
       .returning();
     return updated ? (await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(updated) as any) as any) : undefined;
+    };
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : write(db);
   }
 
   async setPrimaryGA4Connection(campaignId: string, connectionId: string): Promise<boolean> {
@@ -1127,6 +1134,41 @@ export class DatabaseStorage implements IStorage {
 
   // All work transitions lock the campaign first, serializing competing slots and workers.
   // This foundation is not invoked by the scheduler until publication fencing is integrated.
+  private async withGA4RefreshTransaction<T>(write: (tx: any) => Promise<T>): Promise<T> {
+    if (!pool) return db.transaction(write);
+    const refreshPool = pool;
+    // A transaction's SET LOCAL limits cannot bound waiting for a pool connection.
+    const client = await new Promise<import("pg").PoolClient>((resolve, reject) => {
+      let expired = false;
+      const timer = setTimeout(() => { expired = true; reject(new Error("GA4_REFRESH_DATABASE_WAIT_TIMEOUT")); }, 10_000);
+      refreshPool.connect().then(client => {
+        clearTimeout(timer);
+        if (expired) client.release(); else resolve(client);
+      }, error => { clearTimeout(timer); if (!expired) reject(error); });
+    });
+    let destroyed = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let connectionError: ((error: Error) => void) | undefined;
+    const interrupted = new Promise<never>((_resolve, reject) => {
+      connectionError = error => { if (!destroyed) { destroyed = true; client.release(true); } reject(error); };
+      client.on("error", connectionError);
+      // Closing the connection rolls back even if BEGIN/ROLLBACK or the callback stalls.
+      timer = setTimeout(() => connectionError!(new Error("GA4_REFRESH_DATABASE_TRANSACTION_TIMEOUT")), 120_000);
+    });
+    try {
+      return await Promise.race([interrupted, drizzle(client).transaction(async tx => {
+        await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
+        await tx.execute(sql`SET LOCAL statement_timeout = '30s'`);
+        await tx.execute(sql`SET LOCAL idle_in_transaction_session_timeout = '30s'`);
+        return write(tx);
+      })]);
+    } finally {
+      if (timer) clearTimeout(timer);
+      if (connectionError) client.removeListener("error", connectionError);
+      if (!destroyed) client.release();
+    }
+  }
+
   private async readGA4RefreshWorkScope(tx: any, campaignId: string, ownerId: string) {
     if (!campaignId?.trim() || !ownerId?.trim()) return undefined;
     const [campaign] = await tx.select().from(campaigns).where(and(
@@ -1148,7 +1190,7 @@ export class DatabaseStorage implements IStorage {
   async writeWithGA4RefreshOwnership<T>(scope: GA4RefreshWriteInput["refreshScope"], write: (tx: any) => Promise<T>): Promise<T> {
     if (![scope?.campaignId, scope?.ownerId, scope?.reportingDate, scope?.work?.id, scope?.work?.leaseToken]
       .every(value => typeof value === "string" && value.trim())) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
-    return db.transaction(async (tx: any) => {
+    return this.withGA4RefreshTransaction(async (tx: any) => {
       await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
       await tx.execute(sql`SET LOCAL statement_timeout = '30s'`);
       const current = await this.readGA4RefreshWorkScope(tx, scope!.campaignId, scope!.ownerId);
@@ -1156,7 +1198,8 @@ export class DatabaseStorage implements IStorage {
       const owned = and(eq(ga4RefreshWork.id, scope!.work.id), eq(ga4RefreshWork.campaignId, scope!.campaignId),
         eq(ga4RefreshWork.reportingDate, scope!.reportingDate), eq(ga4RefreshWork.scopeHash, current.scopeHash),
         eq(ga4RefreshWork.status, "running"), eq(ga4RefreshWork.leaseToken, scope!.work.leaseToken),
-        sql`${ga4RefreshWork.leaseExpiresAt} > clock_timestamp()`);
+        sql`${ga4RefreshWork.leaseExpiresAt} > clock_timestamp()`,
+        sql`${ga4RefreshWork.startedAt} + interval '15 minutes' > clock_timestamp()`);
       const [work] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork).where(owned).for("share");
       if (!work) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
       const result = await write(tx);
@@ -1170,7 +1213,7 @@ export class DatabaseStorage implements IStorage {
   async ensureGA4RefreshWork(campaignId: string, ownerId: string, dueAt: Date, reportingDate: string): Promise<GA4RefreshWork | undefined> {
     if (!(dueAt instanceof Date) || !Number.isFinite(dueAt.getTime()) || !/^\d{4}-\d{2}-\d{2}$/.test(reportingDate)
       || new Date(`${reportingDate}T00:00:00Z`).toISOString().slice(0, 10) !== reportingDate) throw new Error("Invalid GA4 work date");
-    return db.transaction(async (tx: any) => {
+    return this.withGA4RefreshTransaction(async (tx: any) => {
       await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
       await tx.execute(sql`SET LOCAL statement_timeout = '30s'`);
       const scope = await this.readGA4RefreshWorkScope(tx, campaignId, ownerId);
@@ -1184,7 +1227,7 @@ export class DatabaseStorage implements IStorage {
 
   async claimGA4RefreshWork(campaignId: string, ownerId: string, workId: string, leaseMs: number): Promise<GA4RefreshWork | undefined> {
     if (!Number.isInteger(leaseMs) || leaseMs < 1000 || leaseMs > 900_000) throw new Error("Invalid GA4 work lease duration");
-    return db.transaction(async (tx: any) => {
+    return this.withGA4RefreshTransaction(async (tx: any) => {
       await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
       await tx.execute(sql`SET LOCAL statement_timeout = '30s'`);
       const scope = await this.readGA4RefreshWorkScope(tx, campaignId, ownerId);
@@ -1214,14 +1257,15 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Invalid GA4 work lease update");
     if (!leaseToken?.trim()) return undefined;
     if (publicationCompletedAt !== undefined && (action !== "complete" || !Number.isFinite(Date.parse(publicationCompletedAt)))) throw new Error("Invalid GA4 work completion time");
-    return db.transaction(async (tx: any) => {
+    return this.withGA4RefreshTransaction(async (tx: any) => {
       await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
       await tx.execute(sql`SET LOCAL statement_timeout = '30s'`);
       const scope = await this.readGA4RefreshWorkScope(tx, campaignId, ownerId);
       if (!scope) return undefined;
       const owned = and(eq(ga4RefreshWork.id, workId), eq(ga4RefreshWork.campaignId, campaignId),
         eq(ga4RefreshWork.scopeHash, scope.scopeHash), eq(ga4RefreshWork.status, "running"),
-        eq(ga4RefreshWork.leaseToken, leaseToken), sql`${ga4RefreshWork.leaseExpiresAt} > clock_timestamp()`);
+        eq(ga4RefreshWork.leaseToken, leaseToken), sql`${ga4RefreshWork.leaseExpiresAt} > clock_timestamp()`,
+        sql`${ga4RefreshWork.startedAt} + interval '15 minutes' > clock_timestamp()`);
       const [work] = await tx.select().from(ga4RefreshWork).where(owned);
       if (!work) return undefined;
       let completedAt: Date | null = null;
@@ -1249,7 +1293,7 @@ export class DatabaseStorage implements IStorage {
         }
       }
       const [updated] = await tx.update(ga4RefreshWork).set(action === "renew" ? {
-        leaseExpiresAt: sql`clock_timestamp() + ${leaseMs} * interval '1 millisecond'`, updatedAt: sql`clock_timestamp()`,
+        leaseExpiresAt: sql`LEAST(clock_timestamp() + ${leaseMs} * interval '1 millisecond', ${ga4RefreshWork.startedAt} + interval '15 minutes')`, updatedAt: sql`clock_timestamp()`,
       } : { status: action === "complete" ? "completed" : "pending", leaseToken: null, leaseExpiresAt: null,
         completedAt, updatedAt: sql`clock_timestamp()`,
       }).where(and(owned, completedAt ? sql`${completedAt}::timestamptz <= clock_timestamp()` : undefined)).returning();
@@ -1339,7 +1383,9 @@ export class DatabaseStorage implements IStorage {
       !overviewSnapshot.campaignBreakdown || !overviewSnapshot.landingPages || !overviewSnapshot.conversionEvents
     )) throw new Error("Invalid GA4 Overview snapshot");
 
-    await db.transaction(async (tx: any) => {
+    const transaction = overviewSnapshot?.refreshScope && "work" in overviewSnapshot.refreshScope
+      ? this.withGA4RefreshTransaction.bind(this) : db.transaction.bind(db);
+    await transaction(async (tx: any) => {
       let workOwnership: ReturnType<typeof and> = undefined;
       if (overviewSnapshot?.refreshScope && "work" in overviewSnapshot.refreshScope) {
         await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
@@ -1370,7 +1416,8 @@ export class DatabaseStorage implements IStorage {
           workOwnership = and(eq(ga4RefreshWork.id, scope.work.id), eq(ga4RefreshWork.campaignId, cid),
             eq(ga4RefreshWork.scopeHash, currentScope.scopeHash), eq(ga4RefreshWork.reportingDate, end),
             eq(ga4RefreshWork.status, "running"), eq(ga4RefreshWork.leaseToken, scope.work.leaseToken),
-            sql`${ga4RefreshWork.leaseExpiresAt} > clock_timestamp()`);
+            sql`${ga4RefreshWork.leaseExpiresAt} > clock_timestamp()`,
+            sql`${ga4RefreshWork.startedAt} + interval '15 minutes' > clock_timestamp()`);
           const [owned] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork).where(workOwnership).for("share");
           if (!owned) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
         }

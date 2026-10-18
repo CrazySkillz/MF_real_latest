@@ -45,7 +45,20 @@ export const GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION = "ga4_conversion_events_val
 const GA4_REQUEST_TIMEOUT_MS = 120_000;
 
 export class GoogleAnalytics4Service {
+  constructor(private readonly requestSignal?: AbortSignal) {}
+
+  withAbortSignal(signal: AbortSignal): GoogleAnalytics4Service {
+    return new GoogleAnalytics4Service(signal);
+  }
+
+  private requestAbortSignal(): AbortSignal {
+    const timeout = AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS);
+    return this.requestSignal ? AbortSignal.any([this.requestSignal, timeout]) : timeout;
+  }
+
   private async requestReport(url: string, options: RequestInit): Promise<Response> {
+    if (this.requestSignal) options = { ...options, signal: options.signal
+      ? AbortSignal.any([this.requestSignal, options.signal]) : this.requestAbortSignal() };
     return retryWithBackoff(async () => {
       try {
         options.signal?.throwIfAborted();
@@ -269,7 +282,7 @@ export class GoogleAnalytics4Service {
       };
       const resp = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
-        signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS),
+        signal: this.requestAbortSignal(),
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
       });
@@ -528,7 +541,7 @@ export class GoogleAnalytics4Service {
     ) => {
       const resp = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
-        signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS),
+        signal: this.requestAbortSignal(),
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           dateRanges: [{ startDate: dateRange, endDate }],
@@ -657,7 +670,7 @@ export class GoogleAnalytics4Service {
         const runPage = async (offset: number) => {
           const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
             method: 'POST',
-            signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS),
+            signal: this.requestAbortSignal(),
             headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
               dateRanges: [{ startDate: dateRange, endDate }],
@@ -1762,7 +1775,7 @@ export class GoogleAnalytics4Service {
             email,
             key,
             scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
-            transporterOptions: { timeout: GA4_REQUEST_TIMEOUT_MS, signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS) },
+            transporterOptions: { timeout: GA4_REQUEST_TIMEOUT_MS, signal: this.requestAbortSignal() },
           });
           const tokenResp = await jwt.getAccessToken();
           accessToken = tokenResp?.token ? String(tokenResp.token) : null;
@@ -1840,7 +1853,7 @@ export class GoogleAnalytics4Service {
           `https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`,
           {
             method: 'POST',
-            signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS),
+            signal: this.requestAbortSignal(),
             headers: {
               Authorization: `Bearer ${accessToken}`,
               'Content-Type': 'application/json',
@@ -1900,7 +1913,7 @@ export class GoogleAnalytics4Service {
       };
       const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
-        signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS),
+        signal: this.requestAbortSignal(),
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -1933,7 +1946,7 @@ export class GoogleAnalytics4Service {
 
               const retry = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
                 method: 'POST',
-                signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS),
+                signal: this.requestAbortSignal(),
                 headers: {
                   'Authorization': `Bearer ${accessToken}`,
                   'Content-Type': 'application/json',
@@ -2871,7 +2884,7 @@ export class GoogleAnalytics4Service {
       console.log('Using OAuth credentials for automatic refresh (source:', clientId ? 'database' : 'environment', ')');
       const response = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
-        signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS),
+        signal: this.requestAbortSignal(),
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         },
@@ -2908,7 +2921,7 @@ export class GoogleAnalytics4Service {
       console.log('WARNING: No OAuth credentials - attempting refresh without client auth (may fail)');
       const response = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
-        signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS),
+        signal: this.requestAbortSignal(),
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         },
@@ -3061,7 +3074,7 @@ export class GoogleAnalytics4Service {
       ) => {
         const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
           method: 'POST',
-          signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS),
+          signal: this.requestAbortSignal(),
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
@@ -3142,7 +3155,7 @@ export class GoogleAnalytics4Service {
       const runConversionRevenue = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue', scopeFilter: any) => {
         const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
           method: 'POST',
-          signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS),
+          signal: this.requestAbortSignal(),
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
@@ -3436,7 +3449,7 @@ export class GoogleAnalytics4Service {
     const runPresence = async (filter: any, metrics: string[]) => {
       const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${property}:runReport`, {
         method: "POST",
-        signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS),
+        signal: this.requestAbortSignal(),
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           dateRanges: [{ startDate, endDate }],

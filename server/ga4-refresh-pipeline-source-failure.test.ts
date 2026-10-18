@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   storage: {
-    getCampaign: vi.fn(), getCampaigns: vi.fn(), getGA4Connections: vi.fn(), getGA4Connection: vi.fn(),
+    getCampaign: vi.fn(), getCampaigns: vi.fn(), getGA4Connections: vi.fn(), getGA4Connection: vi.fn(), updateGA4ConnectionTokens: vi.fn(),
     getRevenueSources: vi.fn(), getSpendSources: vi.fn(), getGA4DailyMetrics: vi.fn(),
     getGA4OverviewSnapshot: vi.fn(), replaceGA4DailyMetricsWindow: vi.fn(),
     getLatestGA4DailyMetric: vi.fn(), getFinancialDailyComparisonData: vi.fn(), getExecutiveSummaryDailyComparisonData: vi.fn(),
@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
     getBenchmarkHistory: vi.fn(), updateBenchmark: vi.fn(), recordBenchmarkHistory: vi.fn(),
   },
   provider: {
-    getTimeSeriesData: vi.fn(), getTrendsDailyPresenceWithToken: vi.fn(), getAcquisitionBreakdown: vi.fn(),
+    withAbortSignal: vi.fn(), getTimeSeriesData: vi.fn(), getTrendsDailyPresenceWithToken: vi.fn(), getAcquisitionBreakdown: vi.fn(),
     getLandingPagesReport: vi.fn(), getConversionEventsReport: vi.fn(),
     getTotalsWithRevenue: vi.fn(),
   },
@@ -83,6 +83,7 @@ describe("GA4 ordered refresh source-discovery failures", () => {
   });
   beforeEach(() => {
     vi.resetAllMocks();
+    mocks.provider.withAbortSignal.mockImplementation(() => mocks.provider);
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-10-16T06:00:00Z"));
     vi.stubEnv("GA4_DAILY_REFRESH_TIME_ZONE", "Europe/Amsterdam");
@@ -190,6 +191,20 @@ describe("GA4 ordered refresh source-discovery failures", () => {
       expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "complete")).toBe(false);
       expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "release")).toBe(true);
     });
+    it("carries the owning claim into native credential renewal without read-side backfills", async () => {
+      const rows = await mocks.provider.getTimeSeriesData();
+      mocks.provider.getTimeSeriesData.mockImplementationOnce(async (_id, providerStorage) => {
+        await providerStorage.updateGA4ConnectionTokens("campaign-a-connection", { accessToken: "renewed" });
+        return rows;
+      });
+      await runGA4DailyRefreshPipelineForTrigger("snapshot_bootstrap", options());
+      expect(mocks.storage.updateGA4ConnectionTokens).toHaveBeenCalledExactlyOnceWith("campaign-a-connection", { accessToken: "renewed" }, { refreshScope: scope });
+      expect(mocks.storage.getGA4Connections).toHaveBeenCalledWith("campaign-a", { migrateLegacyTokens: false });
+      const dependency = mocks.provider.getTimeSeriesData.mock.calls.at(-1)![1];
+      for (const method of [mocks.provider.getAcquisitionBreakdown, mocks.provider.getLandingPagesReport, mocks.provider.getConversionEventsReport]) {
+        expect(method.mock.calls[0][1]).toBe(dependency);
+      }
+    });
     it.each(["claim", "completed", "source", "source-read", "no-filter"])("does not touch saved data after %s rejection", async mode => {
       if (mode === "claim") mocks.storage.claimGA4RefreshWork.mockResolvedValue(undefined);
       if (mode === "completed") mocks.storage.ensureGA4RefreshWork.mockResolvedValue({ id: "work-a", status: "completed" });
@@ -223,6 +238,31 @@ describe("GA4 ordered refresh source-discovery failures", () => {
       const count = mocks.storage.updateGA4RefreshWorkLease.mock.calls.length;
       await vi.advanceTimersByTimeAsync(60_000);
       expect(mocks.storage.updateGA4RefreshWorkLease).toHaveBeenCalledTimes(count);
+    });
+    it.each(["stop", "lease-loss", "deadline"])("ends a stuck owned run on %s without waiting for the provider reply", async mode => {
+      mocks.provider.getTimeSeriesData.mockImplementationOnce(() => new Promise(() => {}));
+      const outcome = runGA4DailyRefreshPipelineForTrigger("snapshot_bootstrap", options()).then(() => null, error => error);
+      await vi.advanceTimersByTimeAsync(0);
+      const signal = mocks.provider.withAbortSignal.mock.calls[0][0] as AbortSignal;
+      expect(signal.aborted).toBe(false);
+      if (mode === "stop") stopGA4DailyScheduler();
+      if (mode === "lease-loss") { live = false; await vi.advanceTimersByTimeAsync(30_000); }
+      if (mode === "deadline") await vi.advanceTimersByTimeAsync(900_000);
+      expect(await outcome).toBeInstanceOf(Error); expect(signal.aborted).toBe(true);
+      expect(getGA4DailySchedulerStatus().inProgress).toBe(false);
+      expect(mocks.storage.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
+      expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "complete")).toBe(false);
+    });
+    it("bounds cleanup even when a database renewal and release never settle", async () => {
+      mocks.provider.getTimeSeriesData.mockImplementationOnce(() => new Promise(() => {}));
+      const outcome = runGA4DailyRefreshPipelineForTrigger("snapshot_bootstrap", options()).catch(error => error);
+      await vi.advanceTimersByTimeAsync(0);
+      mocks.storage.updateGA4RefreshWorkLease.mockImplementation(() => new Promise(() => {}));
+      await vi.advanceTimersByTimeAsync(30_000); stopGA4DailyScheduler();
+      await vi.advanceTimersByTimeAsync(24_000);
+      expect(await outcome).toBeInstanceOf(Error);
+      expect(getGA4DailySchedulerStatus().inProgress).toBe(false);
+      expect(mocks.storage.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
     });
     it("never enables claims for the existing manual caller", async () => {
       await runGA4DailyRefreshPipelineForCampaignNow("campaign-a");

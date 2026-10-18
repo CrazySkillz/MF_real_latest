@@ -31,7 +31,9 @@ type GA4DailyRefreshPipelineOptions = {
   // Internal opt-in only; timers/bootstrap do not enable ownership recovery yet.
   workDueAt?: Date;
   assertWorkOwnership?: () => Promise<void>;
+  signal?: AbortSignal;
 } & GA4RefreshWriteInput;
+let ownedRefreshAbort: AbortController | undefined;
 export type GA4DailyRefreshResult = {
   campaignIdsProcessed: string[];
   campaignIdsSkipped: string[];
@@ -277,6 +279,15 @@ const formatSchedulerLocalTime = (date: Date, reportingTimeZone: string) =>
 export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOptions = {}, now = new Date()): Promise<GA4DailyRefreshResult> {
   const campaignId = String(opts.campaignId || "").trim();
   if ("refreshScope" in opts && (!opts.refreshScope || opts.refreshScope.campaignId !== campaignId)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+  // Provider helpers already accept their storage dependency; keep credential saves
+  // inside this attempt without changing ordinary/manual service callers.
+  const providerStorage = opts.refreshScope ? {
+    getCampaign: storage.getCampaign.bind(storage),
+    getGA4Connection: storage.getGA4Connection.bind(storage),
+    updateGA4ConnectionTokens: (id: string, tokens: Parameters<typeof storage.updateGA4ConnectionTokens>[1]) =>
+      storage.updateGA4ConnectionTokens(id, tokens, { refreshScope: opts.refreshScope }),
+  } : storage;
+  const provider = opts.signal ? ga4Service.withAbortSignal(opts.signal) : ga4Service;
   const lookbackDays = Math.min(
     Math.max(parseInt(process.env.GA4_DAILY_LOOKBACK_DAYS || "90", 10) || 90, 7),
     365
@@ -303,7 +314,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
     const currentCampaignId = String((c as any)?.id || "");
     let conns;
     try {
-      conns = await storage.getGA4Connections(currentCampaignId);
+      conns = await storage.getGA4Connections(currentCampaignId, ...(opts.refreshScope ? [{ migrateLegacyTokens: false }] : []));
     } catch (error: any) {
       campaignIdsFailed.push(currentCampaignId);
       failureReasonsByCampaign[currentCampaignId] = [getGA4DailyFailureReason(error)];
@@ -341,9 +352,9 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
         const propertyId = String(connection.propertyId);
         const overviewDailyTraffic: GA4DailyTrafficCapture | undefined = configuredImportStartDate === storageStartDate
           ? { campaignId: currentCampaignId } : undefined;
-        const initialSeries = await withGA4DailyStage("daily_series", ga4Service.getTimeSeriesData(
+        const initialSeries = await withGA4DailyStage("daily_series", provider.getTimeSeriesData(
           currentCampaignId,
-          storage,
+          providerStorage,
           storageStartDate,
           propertyId,
           campaignFilter,
@@ -358,7 +369,7 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
           ? await (async () => {
               const refreshedConnection = await storage.getGA4Connection(currentCampaignId, propertyId);
               if (!refreshedConnection?.accessToken) throw new Error("GA4 access token is unavailable for daily presence verification");
-              return withGA4DailyStage("daily_presence", ga4Service.getTrendsDailyPresenceWithToken(
+              return withGA4DailyStage("daily_presence", provider.getTrendsDailyPresenceWithToken(
                 propertyId,
                 String(refreshedConnection.accessToken),
                 storageStartDate,
@@ -420,13 +431,13 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
         let overviewSnapshot: any = undefined;
         if (hasCampaignFilter) {
           const [campaignBreakdown, landingPages, existingOverviewRows] = await Promise.all([
-            withGA4DailyStage("overview_campaign_breakdown", ga4Service.getAcquisitionBreakdown(
-              currentCampaignId, storage, overviewStartDate, propertyId, 10000, campaignFilter,
+            withGA4DailyStage("overview_campaign_breakdown", provider.getAcquisitionBreakdown(
+              currentCampaignId, providerStorage, overviewStartDate, propertyId, 10000, campaignFilter,
               reportingWindow.endDate, false, false, String((c as any)?.currency || "").trim().toUpperCase(), true,
               overviewDailyTraffic,
             )),
-            withGA4DailyStage("overview_landing_pages", ga4Service.getLandingPagesReport(
-              currentCampaignId, storage, overviewStartDate, propertyId, 50, campaignFilter, reportingWindow.endDate,
+            withGA4DailyStage("overview_landing_pages", provider.getLandingPagesReport(
+              currentCampaignId, providerStorage, overviewStartDate, propertyId, 50, campaignFilter, reportingWindow.endDate,
             )),
             withGA4DailyStage("overview_daily_storage", storage.getGA4DailyMetrics(currentCampaignId, propertyId, overviewStartDate, reportingWindow.endDate)),
           ]);
@@ -445,8 +456,8 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
           const expectedDailyConversions = Object.fromEntries(overviewRows.map((row: any) => [
             String(row.date), Number(row?.conversions || 0),
           ]));
-          const conversionEvents = await withGA4DailyStage("overview_conversion_events", ga4Service.getConversionEventsReport(
-            currentCampaignId, storage, overviewStartDate, propertyId, 50, campaignFilter,
+          const conversionEvents = await withGA4DailyStage("overview_conversion_events", provider.getConversionEventsReport(
+            currentCampaignId, providerStorage, overviewStartDate, propertyId, 50, campaignFilter,
             reportingWindow.endDate, false, expectedDailyConversions,
           ));
           const campaignCurrency = String((c as any)?.currency || "").trim().toUpperCase();
@@ -551,6 +562,9 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
   let ownershipError: unknown;
   let workCompleted = false;
   let closing = false;
+  const controller = opts.workDueAt ? new AbortController() : undefined;
+  if (controller) ownedRefreshAbort = controller;
+  const deadline = controller ? setTimeout(() => controller.abort(new Error("GA4_REFRESH_WORK_DEADLINE_EXCEEDED")), 900_000) : undefined;
   const checkOwnership = async () => {
     if (!refreshWriteInput.refreshScope) return;
     const scope = refreshWriteInput.refreshScope;
@@ -567,7 +581,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
   };
   const scheduleHeartbeat = () => {
     heartbeat = setTimeout(() => {
-      renewal = checkOwnership().catch(error => { ownershipError = error; }).finally(() => {
+      renewal = checkOwnership().catch(error => { ownershipError = error; controller?.abort(error); }).finally(() => {
         if (!closing && !ownershipError) scheduleHeartbeat();
       });
     }, 30_000);
@@ -585,6 +599,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
   ga4DailySchedulerStatus.lastRunStatus = "running";
   console.log(`[GA4 Daily] Pipeline starting (trigger=${trigger}${campaignId ? `, campaignId=${campaignId}` : ""})`);
   try {
+    await withGA4DailyStage("owned_pipeline", (async () => {
     const targets = filterActiveSchedulerCampaigns(campaignId ? [await storage.getCampaign(campaignId)].filter(Boolean) as any[] : await storage.getCampaigns());
     if (opts.workDueAt) {
       const target = targets[0];
@@ -778,7 +793,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
       }
     }
     if (!finishEachCampaign) await publishRefresh(await refreshAllGA4DailyMetrics({ campaignId, ...refreshWriteInput,
-      ...(refreshWriteInput.refreshScope ? { assertWorkOwnership: checkOwnership } : {}),
+      ...(refreshWriteInput.refreshScope ? { assertWorkOwnership: checkOwnership, signal: controller?.signal } : {}),
     }));
     const refreshFailure = refreshFailures.join("; ") || null;
     if (!opts.suppressAlerts && !campaignId && !refreshFailure && alignedRefreshFailures.length === 0) {
@@ -794,6 +809,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
     if (refreshFailure || alignedRefreshFailures.length > 0) {
       throw new Error(refreshFailure || `Aligned GA4 publication failed for ${alignedRefreshFailures.length} campaign stage(s)`);
     }
+    })(), controller?.signal);
   } catch (e: any) {
     if (completedCampaignIds === alignedCampaignIdsInCurrentRun) {
       ga4DailySchedulerStatus.lastRunStatus = "failed";
@@ -803,11 +819,15 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
     throw e;
   } finally {
     closing = true;
+    if (deadline) clearTimeout(deadline);
+    controller?.abort(new Error("GA4_REFRESH_WORK_CLOSED"));
+    if (ownedRefreshAbort === controller) ownedRefreshAbort = undefined;
     if (heartbeat) clearTimeout(heartbeat);
-    await renewal;
+    try { await withGA4DailyStage("lease_cleanup", renewal || Promise.resolve(), undefined, 12_000); }
+    catch { console.warn("[GA4 Daily] Lease renewal cleanup exceeded its wait; the database lease remains authoritative"); }
     if (refreshWriteInput.refreshScope && !workCompleted) {
       const scope = refreshWriteInput.refreshScope;
-      try { await storage.updateGA4RefreshWorkLease(scope.campaignId, scope.ownerId, scope.work.id, scope.work.leaseToken, "release"); }
+      try { await withGA4DailyStage("lease_release", storage.updateGA4RefreshWorkLease(scope.campaignId, scope.ownerId, scope.work.id, scope.work.leaseToken, "release"), undefined, 12_000); }
       catch { console.warn("[GA4 Daily] Work release failed; its database lease will expire"); }
     }
     if (completedCampaignIds === alignedCampaignIdsInCurrentRun) {
@@ -871,12 +891,24 @@ const getGA4DailyFailureReason = (error: any) => {
   return `${stage}:GA4_PROVIDER_REQUEST_FAILED`;
 };
 
-const withGA4DailyStage = async <T>(stage: string, operation: Promise<T>): Promise<T> => {
+const withGA4DailyStage = async <T>(stage: string, operation: Promise<T>, signal?: AbortSignal, maxWaitMs?: number): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let abort: (() => void) | undefined;
   try {
-    return await operation;
+    if (!signal && !maxWaitMs) return await operation;
+    return await new Promise<T>((resolve, reject) => {
+      abort = () => reject(signal!.reason);
+      signal?.addEventListener("abort", abort, { once: true });
+      if (signal?.aborted) abort();
+      if (maxWaitMs) timer = setTimeout(() => reject(new Error("GA4_REFRESH_STAGE_WAIT_TIMEOUT")), maxWaitMs);
+      operation.then(resolve, reject);
+    });
   } catch (error: any) {
     error.ga4DailyStage = stage;
     throw error;
+  } finally {
+    if (timer) clearTimeout(timer);
+    if (abort) signal?.removeEventListener("abort", abort);
   }
 };
 
@@ -1088,6 +1120,7 @@ export function startGA4DailyScheduler(port?: number): void {
 }
 
 export function stopGA4DailyScheduler(): void {
+  ownedRefreshAbort?.abort(new Error("GA4_REFRESH_WORK_STOPPED"));
   if ((global as any).ga4DailySchedulerTimer) {
     clearTimeout((global as any).ga4DailySchedulerTimer);
     (global as any).ga4DailySchedulerTimer = null;

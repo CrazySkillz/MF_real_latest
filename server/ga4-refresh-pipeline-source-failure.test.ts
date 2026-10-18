@@ -241,6 +241,54 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     expect(mocks.storage.upsertFinancialDailySnapshot).not.toHaveBeenCalled();
   });
 
+  it.each(["headers", "body"])("retains the saved publication, releases the worker and recovers after a native GA4 %s timeout", async phase => {
+    await runGA4DailyRefreshPipelineForCampaignNow("campaign-a");
+    const previous = { financial: structuredClone(saved.get("campaign-a")), overview: structuredClone(overviews.get("campaign-a")), daily: structuredClone(daily.get("campaign-a")) };
+    vi.clearAllMocks();
+    vi.setSystemTime(new Date("2026-10-16T05:59:59Z"));
+    mocks.storage.getCampaigns.mockResolvedValueOnce([]);
+    vi.spyOn(AbortSignal, "timeout").mockImplementation(ms => {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(new DOMException("The operation was aborted due to timeout", "TimeoutError")), ms);
+      return controller.signal;
+    });
+    const original = mocks.provider.getTimeSeriesData.getMockImplementation()!;
+    const { ga4Service: actual } = await vi.importActual<typeof import("./analytics")>("./analytics");
+    mocks.provider.getTimeSeriesData.mockImplementation(async (...args) => args[0] === "campaign-a"
+      ? (actual.getTimeSeriesData as any)(...args) : original(...args));
+    let cancelled = false, finishLate!: (value: any) => void;
+    vi.mocked(fetch).mockImplementation(async (_url, init) => {
+      const signal = init!.signal!;
+      expect(signal).toBeInstanceOf(AbortSignal);
+      const pending = () => new Promise<any>((resolve, reject) => {
+        finishLate = resolve;
+        signal.addEventListener("abort", () => { cancelled = true; reject(phase === "headers" ? signal.reason : new DOMException("The operation was aborted", "AbortError")); }, { once: true });
+      });
+      return phase === "headers" ? pending() : { ok: true, json: pending } as any;
+    });
+    startGA4DailyScheduler(5000);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(await getScheduledReportAlignedRefreshGate(report("campaign-b"))).toEqual({ ready: true });
+    await vi.advanceTimersByTimeAsync(119999);
+    expect(getGA4DailySchedulerStatus().inProgress).toBe(true);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(cancelled).toBe(true);
+    expect(getGA4DailySchedulerStatus()).toMatchObject({ inProgress: false, lastRunStatus: "failed" });
+    expect(getAutoRefreshSchedulerStatus().inProgress).toBe(false);
+    expect(mocks.storage.replaceGA4DailyMetricsWindow.mock.calls.map(([id]) => id)).toEqual(["campaign-b"]);
+    expect(mocks.recompute.mock.calls.map(([opts]) => opts.campaignId)).toEqual(["campaign-b"]);
+    expect(await getScheduledReportAlignedRefreshGate(report("campaign-a"))).toMatchObject({ ready: false });
+    finishLate({ rows: [] });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(saved.get("campaign-a")).toEqual(previous.financial);
+    expect(overviews.get("campaign-a")).toEqual(previous.overview);
+    expect(daily.get("campaign-a")).toEqual(previous.daily);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    mocks.provider.getTimeSeriesData.mockImplementation(original);
+    expect(await runGA4DailyRefreshPipelineForCampaignNow("campaign-a")).toBe("completed");
+    expect(getGA4DailySchedulerStatus().lastRunStatus).toBe("success");
+  });
+
   // Revenue discovery: HubSpot (4 contexts), Salesforce (4), Shopify (5), Sheets (5).
   // Spend discovery: Sheets, LinkedIn, ad platforms. Fail just one lookup, then let later reads recover.
   const discoveries = [

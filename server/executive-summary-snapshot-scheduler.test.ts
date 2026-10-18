@@ -29,7 +29,7 @@ describe("Executive Summary snapshot scheduler", () => {
     await expect(captureExecutiveSummarySnapshot("http://127.0.0.1:5000", "campaign one")).resolves.toBe(true);
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:5000/api/campaigns/campaign%20one/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date",
-      { headers: { "x-internal-auto-refresh-token": "internal-token" } },
+      { headers: { "x-internal-auto-refresh-token": "internal-token" }, signal: expect.any(AbortSignal) },
     );
     expect(cancel).toHaveBeenCalledOnce();
   });
@@ -45,11 +45,11 @@ describe("Executive Summary snapshot scheduler", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock).toHaveBeenNthCalledWith(1,
       "http://127.0.0.1:5000/api/campaigns/campaign%20one/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date",
-      { headers: { "x-internal-auto-refresh-token": "internal-token" } },
+      { headers: { "x-internal-auto-refresh-token": "internal-token" }, signal: expect.any(AbortSignal) },
     );
     expect(fetchMock).toHaveBeenNthCalledWith(2,
       "http://127.0.0.1:5000/api/campaigns/campaign-2/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date",
-      { headers: { "x-internal-auto-refresh-token": "internal-token" } },
+      { headers: { "x-internal-auto-refresh-token": "internal-token" }, signal: expect.any(AbortSignal) },
     );
     expect(cancel).toHaveBeenCalledTimes(2);
   });
@@ -63,6 +63,23 @@ describe("Executive Summary snapshot scheduler", () => {
 
     await expect(captureExecutiveSummarySnapshots("http://127.0.0.1:5000")).resolves.toBeUndefined();
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("carries refresh ownership only when supplied and actually aborts a stalled capture", async () => {
+    const controller = new AbortController();
+    const timeout = vi.spyOn(AbortSignal, "timeout").mockReturnValue(controller.signal);
+    const scope = { campaignId: "a", ownerId: "owner-a", reportingDate: "2026-10-17", work: { id: "work", leaseToken: "lease" } };
+    const fetchMock = vi.fn(async (_url, init) => new Promise((_resolve, reject) => {
+      init.signal.addEventListener("abort", () => reject(init.signal.reason), { once: true });
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const pending = captureExecutiveSummarySnapshot("http://127.0.0.1:5000", "a", { refreshScope: scope });
+    expect(timeout).toHaveBeenCalledWith(120_000);
+    expect(fetchMock.mock.calls[0][1].headers["x-internal-ga4-refresh-scope"]).toBe(JSON.stringify(scope));
+    controller.abort(new DOMException("Timed out", "TimeoutError"));
+    await expect(pending).resolves.toBe(false);
+    timeout.mockRestore();
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 
   it("leaves active GA4 campaigns to the aligned GA4 daily pipeline", async () => {

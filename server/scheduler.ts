@@ -1,4 +1,4 @@
-import { storage } from './storage';
+import { storage, type GA4RefreshWriteInput } from './storage';
 import { buildPerformanceSummaryAggregate } from './utils/performance-summary-aggregate';
 import { buildTrendAnalysisAggregate } from './utils/trend-analysis-aggregate';
 import { buildGoogleSheetsPlatformSourceForAggregate } from './utils/google-sheets-aggregate-source';
@@ -772,7 +772,7 @@ async function hasActiveScheduledGA4Campaign(campaignId: string): Promise<boolea
   }
 }
 
-export async function recordCampaignMetrics(campaignId: string, opts: { allowScheduledGA4?: boolean } = {}): Promise<boolean> {
+export async function recordCampaignMetrics(campaignId: string, opts: { allowScheduledGA4?: boolean } & GA4RefreshWriteInput = {}): Promise<boolean> {
   try {
     if (!opts.allowScheduledGA4) {
       const activeGA4 = await hasActiveScheduledGA4Campaign(campaignId);
@@ -792,7 +792,8 @@ export async function recordCampaignMetrics(campaignId: string, opts: { allowSch
         totalLeads: metrics.totalLeads,
         totalSpend: metrics.totalSpend.toFixed(2),
         metrics: metrics.detailedMetrics,
-        snapshotType: 'platform_sync'
+        snapshotType: 'platform_sync',
+        ...("refreshScope" in opts ? { refreshScope: opts.refreshScope } : {}),
       });
       console.log(`[Metrics] Recorded data point for campaign ${campaignId} after platform sync`);
       return true;

@@ -297,7 +297,15 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
 
   for (const c of campaigns) {
     const currentCampaignId = String((c as any)?.id || "");
-    const conns = await storage.getGA4Connections(currentCampaignId).catch(() => [] as any[]);
+    let conns;
+    try {
+      conns = await storage.getGA4Connections(currentCampaignId);
+    } catch (error: any) {
+      campaignIdsFailed.push(currentCampaignId);
+      failureReasonsByCampaign[currentCampaignId] = [getGA4DailyFailureReason(error)];
+      console.warn(`[GA4 Daily] Connection lookup failed for campaign ${currentCampaignId}:`, error?.message || error);
+      continue;
+    }
     const activeConnections = conns.filter((connection: any) =>
       connection?.isActive !== false && String(connection?.propertyId || "").trim()
     );
@@ -738,6 +746,7 @@ export async function runGA4DailyRefreshPipelineForCampaignNow(campaignId: strin
 const getGA4DailyFailureReason = (error: any) => {
   const stage = String(error?.ga4DailyStage || "unknown").replace(/[^a-z0-9_-]/gi, "_");
   const message = String(error?.message || error || "");
+  if (error?.code === "GA4_TRANSIENT_ERROR") return `${stage}:GA4_TRANSIENT_ERROR`;
   const knownCode = [
     "TOKEN_EXPIRED", "NO_GA4_CONNECTION", "GA4_CURRENCY_UNVERIFIED",
     "GA4_API_PAGINATION_INCOMPLETE", "GA4_CONVERSION_EVENT_PROVIDER_VALUE_UNSAFE",

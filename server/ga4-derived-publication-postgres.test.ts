@@ -251,6 +251,21 @@ describe.skipIf(!testUrl)("GA4 derived writes with real PostgreSQL ownership", (
     expect(revised).toMatchObject({ id: first.id, currentValue: "30.00", recordedAt: first.recordedAt });
     expect((await pool.query("SELECT * FROM benchmark_history WHERE benchmark_id='benchmark-a'")).rows).toHaveLength(1);
   });
+  it("keeps one automatic KPI progress entry when a replacement repeats the same date and scope", async () => {
+    const scope = await claim();
+    const first = await write("progress insert", scope); await expire(scope);
+    const next = (await storage.claimGA4RefreshWork("a", "owner-a", scope.work.id, 120_000))!;
+    const revised = await write("progress insert", { ...scope, work: { id: next.id, leaseToken: next.leaseToken! } }, "a", "30");
+    expect(revised).toMatchObject({ id: first.id, value: "30.00" });
+    expect((await pool.query("SELECT * FROM kpi_progress WHERE kpi_id='kpi-a'")).rows).toHaveLength(1);
+  });
+  it("does not rewrite ambiguous existing KPI progress", async () => {
+    const scope = await claim();
+    await database.current.insert(schema.kpiProgress).values({ id: "duplicate", ...progress() });
+    const before = await saved();
+    await expect(write("progress insert", scope)).rejects.toThrow("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    expect(await saved()).toEqual(before);
+  });
   it("keeps financial snapshot identity and unavailable inputs on a same-day revision", async () => {
     const scope = await claim();
     const first = await write("financial", scope);

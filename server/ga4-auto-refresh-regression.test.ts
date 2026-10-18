@@ -10,6 +10,7 @@ import {
   hasCompletedDaySalesforceEvidence,
   isRetryableSalesforceRefreshFailure,
   runGoogleSheetsRevenueAutoRefreshOnce,
+  runDailyAutoRefreshOnce,
 } from "./auto-refresh-scheduler";
 import { storage } from "./storage";
 
@@ -563,5 +564,32 @@ describe("GA4 external value auto-refresh regression guard", () => {
 
   it("bounds proactive Google Sheets OAuth token refresh requests", () => {
     expect(googleSheetsTokenSchedulerFile()).toContain("signal: AbortSignal.timeout(15000)");
+  });
+});
+
+describe("daily refresh waiting for interval financial work", () => {
+  afterEach(() => {
+    vi.clearAllTimers(); vi.useRealTimers(); vi.restoreAllMocks();
+    delete (global as any).__autoRefreshInProgress;
+    delete (global as any).__googleSheetsSpendRefreshInProgress;
+    delete (global as any).__salesforcePipelineRefreshInProgress;
+  });
+  it.each(["__googleSheetsSpendRefreshInProgress", "__salesforcePipelineRefreshInProgress"])("bounds %s without overlapping it and releases daily ownership", async flag => {
+    vi.useFakeTimers();
+    for (const method of ["log", "warn", "error"] as const) vi.spyOn(console, method).mockImplementation(() => undefined);
+    const campaigns = vi.spyOn(storage, "getCampaigns").mockResolvedValue([]);
+    (global as any)[flag] = true;
+    const pending = runDailyAutoRefreshOnce("scheduled", { financialSourcesOnly: true }).catch(error => error);
+    await vi.advanceTimersByTimeAsync(119999);
+    expect(campaigns).not.toHaveBeenCalled();
+    expect((global as any).__autoRefreshInProgress).toBe(true);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await pending).toMatchObject({ message: "FINANCIAL_REFRESH_WAIT_TIMEOUT" });
+    expect(getAutoRefreshSchedulerStatus()).toMatchObject({ lastRunStatus: "failed", lastError: "FINANCIAL_REFRESH_WAIT_TIMEOUT" });
+    expect((global as any).__autoRefreshInProgress).toBe(false);
+    expect((global as any)[flag]).toBe(true);
+    (global as any)[flag] = false;
+    await expect(runDailyAutoRefreshOnce("scheduled", { financialSourcesOnly: true })).resolves.toMatchObject({ campaignsScanned: 0, providerJobsAttempted: 0 });
+    expect(getAutoRefreshSchedulerStatus().lastRunStatus).toBe("success");
   });
 });

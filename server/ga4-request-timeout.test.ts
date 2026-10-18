@@ -95,6 +95,22 @@ describe("GA4 native request cancellation", () => {
     expect(signals[1]).not.toBe(signals[0]);
     expect(signals[1].aborted).toBe(false);
   });
+  it.each(requestCases.filter(test => !["OAuth renewal", "OAuth credential fallback"].includes(test.name)))
+    ("propagates exhausted transient failure in $name without accepting partial or empty data", async test => {
+      let calls = 0, failing = false, failures = 0;
+      vi.stubGlobal("fetch", vi.fn(async (_url, init) => {
+        const body = typeof init.body === "string" ? JSON.parse(init.body) : {};
+        calls++;
+        if (!failing && !test.target(body, calls)) return "prior" in test ? test.prior!(body, calls) : empty();
+        failing = true; failures++;
+        return json({ error: { code: 503 } }, 503);
+      }));
+      const pending = test.run().catch(error => error);
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(await pending).toMatchObject({ code: "GA4_TRANSIENT_ERROR", status: 503 });
+      expect(failures).toBe(3);
+      expect(storage.updateGA4ConnectionTokens).toHaveBeenCalledTimes(test.name === "acquisition OAuth retry" ? 1 : 0);
+    });
 
   it.each(["success", "invalid_grant", "server_error"])("preserves confirmed-auth renewal behavior: %s", async outcome => {
     vi.stubGlobal("fetch", vi.fn()

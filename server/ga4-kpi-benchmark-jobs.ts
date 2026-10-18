@@ -1,4 +1,4 @@
-import { storage } from "./storage";
+import { storage, type GA4RefreshWriteInput } from "./storage";
 import { ga4Service } from "./analytics";
 import { computeCpa, computeConversionRatePercent, computeRoiPercent, normalizeRateToPercent } from "../shared/metric-math";
 import {
@@ -219,7 +219,10 @@ export function computeBenchmarkRating(variancePct: number) {
   return "poor";
 }
 
-export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: string; campaignIds?: string[]; date?: string; suppressAlerts?: boolean; useSavedOverview?: boolean }) {
+export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: string; campaignIds?: string[]; date?: string; suppressAlerts?: boolean; useSavedOverview?: boolean } & GA4RefreshWriteInput) {
+  const refreshWriteInput = opts && "refreshScope" in opts ? { refreshScope: opts.refreshScope } : {};
+  if ("refreshScope" in refreshWriteInput && (!opts?.refreshScope || opts.refreshScope.campaignId !== opts.campaignId
+    || opts.suppressAlerts !== true || opts.useSavedOverview !== true)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
   const requestedDate = String(opts?.date || "").trim();
   const requestedCampaignIds = Array.isArray(opts?.campaignIds)
     ? new Set(opts.campaignIds.map((id) => String(id)))
@@ -575,14 +578,14 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
           })() : null;
 
           // A row is reported updated only after its current value and applicable daily progress write succeed.
-          const updated = await storage.updateKPI(kpiId, { currentValue: String(round2(valueNum)) } as any);
+          const updated = await storage.updateKPI(kpiId, { currentValue: String(round2(valueNum)), ...refreshWriteInput } as any);
           if (!updated) throw new Error("KPI current-value update did not change a row");
 
           if (progressData && sameDatePts.length === 1) {
-            const progress = await storage.updateKPIProgress(sameDatePts[0].id, progressData as any);
+            const progress = await storage.updateKPIProgress(sameDatePts[0].id, { ...progressData, ...refreshWriteInput } as any);
             if (!progress) throw new Error("KPI same-date progress update did not change a row");
           } else if (progressData) {
-            await storage.recordKPIProgress(progressData as any);
+            await storage.recordKPIProgress({ ...progressData, ...refreshWriteInput } as any);
             kpisRecorded += 1;
           }
           kpiIdsUpdated.add(kpiId);
@@ -615,7 +618,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         // Always refresh stored currentValue so same-day persisted GA4 daily rows update what alert checks read,
         // and refresh the exact automatic history entry for the same reporting date.
         try {
-          const updated = await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);
+          const updated = await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)), ...refreshWriteInput } as any);
           if (!updated) throw new Error("Benchmark current-value update did not change a row");
 
           const historyResult = benchmarkHistories[index % 4];
@@ -637,6 +640,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
               performanceRating: rating,
               recordedAt,
               notes: historyNotes,
+              ...refreshWriteInput,
             } as any);
             if (!already) benchmarksRecorded += 1;
           }
@@ -648,7 +652,8 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         }
       }
 
-      if (useSavedOverview) await refreshCampaignCurrentValuesForCampaign(campaignId, true);
+      if ("refreshScope" in refreshWriteInput) await refreshCampaignCurrentValuesForCampaign(campaignId, useSavedOverview, refreshWriteInput);
+      else if (useSavedOverview) await refreshCampaignCurrentValuesForCampaign(campaignId, true);
       else await refreshCampaignCurrentValuesForCampaign(campaignId);
 
       processed += 1;

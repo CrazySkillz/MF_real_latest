@@ -100,6 +100,26 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
     expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-CPA", { currentValue: "4" });
     expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
+  it("carries supplied ownership to platform and campaign current values and daily history", async () => {
+    const refreshScope = { campaignId, ownerId: "owner-1", reportingDate: date, work: { id: "work", leaseToken: "lease" } };
+    const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, suppressAlerts: true, useSavedOverview: true, refreshScope });
+    expect(result.campaignIdsFailed).toEqual([]);
+    for (const name of ["updateKPI", "updateBenchmark"]) {
+      expect(storageMock[name]).toHaveBeenCalled();
+      for (const [, data] of storageMock[name].mock.calls) expect(data.refreshScope).toEqual(refreshScope);
+    }
+    for (const name of ["recordKPIProgress", "recordBenchmarkHistory"]) {
+      expect(storageMock[name]).toHaveBeenCalled();
+      for (const [data] of storageMock[name].mock.calls) expect(data.refreshScope).toEqual(refreshScope);
+    }
+    expect(provider.getAcquisitionBreakdown).not.toHaveBeenCalled();
+    expect(alerts.kpi).not.toHaveBeenCalled(); expect(alerts.benchmark).not.toHaveBeenCalled();
+  });
+  it("fails closed if a guarded recompute would emit unguarded alerts", async () => {
+    const refreshScope = { campaignId, ownerId: "owner-1", reportingDate: date, work: { id: "work", leaseToken: "lease" } };
+    await expect(runGA4DailyKPIAndBenchmarkJobs({ campaignId, useSavedOverview: true, refreshScope })).rejects.toThrow("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    expect(storageMock.updateKPI).not.toHaveBeenCalled(); expect(alerts.kpi).not.toHaveBeenCalled();
+  });
 
   it.each([["revenue", "130.01"], ["roas", "6.5"], ["roi", "550.05"], ["cpa", "4"]])(
     "evaluates %s alerts from verified saved GA4 inputs", async (metric, value) => {

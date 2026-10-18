@@ -1,6 +1,6 @@
 import type { FinancialDailySnapshotInput } from "../../shared/schema";
 import { parseGA4FinancialNumber } from "../../shared/ga4-financial-source";
-import { storage } from "../storage";
+import { storage, type GA4RefreshWriteInput } from "../storage";
 import { getCampaignMetricTotals, parseGA4CampaignFilter, type CampaignMetricTotals } from "./campaign-current-values";
 import { resolveCampaignCumulativeFinancials } from "./campaign-cumulative-financials";
 import {
@@ -19,7 +19,7 @@ type WriterDependencies = {
   getSpendSources: (campaignId: string, platformContext: "ga4") => Promise<any[]>;
   getRevenueTotalForRange: (campaignId: string, startDate: string, endDate: string, platformContext: "ga4") => Promise<SourceTotal>;
   getSpendTotalForRange: (campaignId: string, startDate: string, endDate: string, platformContext: "ga4") => Promise<SourceTotal>;
-  upsertFinancialDailySnapshot: (snapshot: FinancialDailySnapshotInput) => Promise<unknown>;
+  upsertFinancialDailySnapshot: (snapshot: FinancialDailySnapshotInput & GA4RefreshWriteInput) => Promise<unknown>;
   now: () => Date;
 };
 
@@ -40,7 +40,7 @@ const defaultDependencies: WriterDependencies = {
 const unavailableMoney = (value: number) => ({ value, available: false, sources: [] as string[] });
 
 export async function writeFinancialDailySnapshotIfReady(
-  input: { campaignId: string; reportingDate: string },
+  input: { campaignId: string; reportingDate: string } & GA4RefreshWriteInput,
   dependencies: WriterDependencies = defaultDependencies,
 ): Promise<{ status: "written" | "blocked" | "skipped"; reasons: string[]; snapshot?: FinancialDailySnapshotInput }> {
   const campaignId = String(input.campaignId || "").trim();
@@ -152,7 +152,9 @@ export async function writeFinancialDailySnapshotIfReady(
   if (!readiness.ready) return { status: "blocked", reasons: readiness.reasons, snapshot: cumulative.snapshot };
 
   try {
-    await dependencies.upsertFinancialDailySnapshot(cumulative.snapshot);
+    await dependencies.upsertFinancialDailySnapshot({ ...cumulative.snapshot,
+      ...("refreshScope" in input ? { refreshScope: input.refreshScope } : {}),
+    });
     recordFinancialDailySnapshotWriteOutcome(campaignId, reportingDate, "written");
     return { status: "written", reasons: [], snapshot: cumulative.snapshot };
   } catch (error) {

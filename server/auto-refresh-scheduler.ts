@@ -1047,10 +1047,6 @@ export async function runDailyAutoRefreshOnce(
   autoRefreshSchedulerStatus.lastRunStatus = "running";
   autoRefreshSchedulerStatus.lastError = null;
   autoRefreshSchedulerStatus.lastRunSummary = null;
-  while ((global as any).__googleSheetsSpendRefreshInProgress || (global as any).__salesforcePipelineRefreshInProgress) {
-    console.log("[Auto Refresh] Waiting for an interval financial refresh to finish");
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
   const refreshRunId = randomUUID();
   let campaignsScanned = 0;
   const totals = { attempted: 0, succeeded: 0, retained: 0, skipped: 0, campaignErrors: 0 };
@@ -1062,6 +1058,11 @@ export async function runDailyAutoRefreshOnce(
   console.log(`Run ID: ${refreshRunId}`);
 
   try {
+    while ((global as any).__googleSheetsSpendRefreshInProgress || (global as any).__salesforcePipelineRefreshInProgress) {
+      if (Date.now() - startedAt >= 120_000) throw new Error("FINANCIAL_REFRESH_WAIT_TIMEOUT");
+      console.log("[Auto Refresh] Waiting for an interval financial refresh to finish");
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
     // 1) Refresh LinkedIn first (ensures latest conversions are available in latest import session).
     try {
       if (!opts.financialSourcesOnly) {

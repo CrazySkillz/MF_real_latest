@@ -45,6 +45,7 @@ vi.mock("./utils/campaign-current-values", async (importOriginal) => ({
 
 import {
   backfillMissingGA4OverviewSnapshots, getGA4AlignedRefreshState, getGA4DailySchedulerStatus, runGA4DailyRefreshPipelineForCampaignNow, startGA4DailyScheduler, stopGA4DailyScheduler,
+  refreshAllGA4DailyMetrics,
 } from "./ga4-daily-scheduler";
 import { checkScheduledReports, getScheduledReportAlignedRefreshGate } from "./report-scheduler";
 import { getAutoRefreshSchedulerStatus, runDailyAutoRefreshOnce } from "./auto-refresh-scheduler";
@@ -157,6 +158,26 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     expect(mocks.storage.invalidateExecutiveSummaryDailySnapshotAlignment.mock.invocationCallOrder[0]).toBeLessThan(mocks.storage.getRevenueSources.mock.invocationCallOrder[0]);
     expect(mocks.kpiAlerts).not.toHaveBeenCalled(); expect(mocks.benchmarkAlerts).not.toHaveBeenCalled();
     expect(mocks.globalKpiAlerts).not.toHaveBeenCalled(); expect(mocks.globalBenchmarkAlerts).not.toHaveBeenCalled();
+  });
+  it("reports a failed connection/token lookup instead of treating it as an absent connection", async () => {
+    await refreshAllGA4DailyMetrics(); const before = structuredClone(overviews.get("campaign-a"));
+    mocks.storage.getGA4Connections.mockImplementation(async id => {
+      if (id === "campaign-a") throw new DOMException("Token lookup timed out", "TimeoutError");
+      return [connection(id)];
+    });
+    const result = await refreshAllGA4DailyMetrics();
+    expect(result.campaignIdsFailed).toEqual(["campaign-a"]);
+    expect(result.campaignIdsSkipped).not.toContain("campaign-a");
+    expect(result.campaignIdsProcessed).toEqual(["campaign-b"]);
+    expect(overviews.get("campaign-a")).toEqual(before);
+  });
+  it("classifies an exhausted temporary provider failure without publishing a replacement", async () => {
+    await refreshAllGA4DailyMetrics(); const before = structuredClone(overviews.get("campaign-a"));
+    mocks.provider.getTimeSeriesData.mockRejectedValue(Object.assign(new Error("Temporary failure"), { code: "GA4_TRANSIENT_ERROR" }));
+    const result = await refreshAllGA4DailyMetrics({ campaignId: "campaign-a" });
+    expect(result.failureReasonsByCampaign?.["campaign-a"]).toEqual(["daily_series:GA4_TRANSIENT_ERROR"]);
+    expect(result.campaignIdsFailed).toEqual(["campaign-a"]);
+    expect(overviews.get("campaign-a")).toEqual(before);
   });
 
   it("does not mark startup recovery complete when the campaign alert stage fails", async () => {

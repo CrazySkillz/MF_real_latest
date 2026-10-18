@@ -48,7 +48,7 @@ import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign,
 import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./kpi-scheduler";
 import { refreshGoogleSheetsDataForCampaign, runGoogleSheetsRevenueSourceRefreshForValidation, runGoogleSheetsSpendSourceRefreshForValidation, runHubSpotRevenueSourceRefreshForValidation, runShopifyRevenueSourceRefreshForValidation } from "./auto-refresh-scheduler";
 import { getGA4DailyRefreshAttempt, getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getGA4DailySchedulerStatus, refreshAllGA4DailyMetrics, runGA4DailyRefreshPipelineForCampaignNow } from "./ga4-daily-scheduler";
-import { isInternalAutoRefreshRequest } from "./internal-request-auth";
+import { isInternalAutoRefreshRequest, getInternalGA4RefreshWriteInput } from "./internal-request-auth";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { createReportPdfArtifact, readReportPdfArtifact } from "./utils/report-pdf-artifact";
 import { resolveCampaignCumulativeFinancials } from "./utils/campaign-cumulative-financials";
@@ -14833,6 +14833,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/outcome-totals", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = String(req.params.id || "");
+      const refreshWriteInput = getInternalGA4RefreshWriteInput(req);
+      if (refreshWriteInput.refreshScope && refreshWriteInput.refreshScope.campaignId !== campaignId) {
+        return res.status(403).json({ message: "GA4 refresh campaign scope mismatch" });
+      }
       const dateRange = String(req.query.dateRange || "30days");
       let persistedOnly = String(req.query.persistedOnly || "").trim() === "1";
 
@@ -15816,7 +15820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
           });
           if (!executiveSnapshot.totals.revenue.available) throw new Error("Authoritative revenue is unavailable");
-          await storage.upsertExecutiveSummaryDailySnapshot(executiveSnapshot);
+          await storage.upsertExecutiveSummaryDailySnapshot({ ...executiveSnapshot, ...refreshWriteInput });
           executiveSummarySnapshotCaptured = true;
         } catch (snapshotError: any) {
           console.warn(`[Executive Summary] Daily snapshot unavailable for campaign ${campaignId}:`, snapshotError?.message || snapshotError);

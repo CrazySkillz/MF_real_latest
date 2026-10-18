@@ -4,18 +4,21 @@
  */
 
 interface RetryOptions {
+  signal?: AbortSignal;
   maxAttempts?: number;
   initialDelayMs?: number;
   maxDelayMs?: number;
   backoffMultiplier?: number;
   shouldRetry?: (error: any) => boolean;
+  retryDelayMs?: (error: any, attempt: number) => number | undefined;
 }
 
-const DEFAULT_OPTIONS: Required<RetryOptions> = {
+const DEFAULT_OPTIONS: Required<Omit<RetryOptions, "signal">> = {
   maxAttempts: 3,
   initialDelayMs: 1000, // 1 second
   maxDelayMs: 10000, // 10 seconds
   backoffMultiplier: 2,
+  retryDelayMs: () => undefined,
   shouldRetry: (error: any) => {
     // Retry on network errors, timeouts, and 5xx server errors
     if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND') {
@@ -39,14 +42,19 @@ const DEFAULT_OPTIONS: Required<RetryOptions> = {
 /**
  * Sleep for a specified duration
  */
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
+  return new Promise((resolve, reject) => {
+    const abort = () => { clearTimeout(timer); reject(signal!.reason); };
+    const timer = setTimeout(() => { signal?.removeEventListener("abort", abort); resolve(); }, ms);
+    signal?.addEventListener("abort", abort, { once: true });
+  });
 }
 
 /**
  * Calculate delay with exponential backoff and jitter
  */
-function calculateDelay(attempt: number, options: Required<RetryOptions>): number {
+function calculateDelay(attempt: number, options: Required<Omit<RetryOptions, "signal">>): number {
   const exponentialDelay = options.initialDelayMs * Math.pow(options.backoffMultiplier, attempt - 1);
   const cappedDelay = Math.min(exponentialDelay, options.maxDelayMs);
   
@@ -79,6 +87,7 @@ export async function retryWithBackoff<T>(
   
   for (let attempt = 1; attempt <= opts.maxAttempts; attempt++) {
     try {
+      opts.signal?.throwIfAborted();
       console.log(`[Retry] Attempt ${attempt}/${opts.maxAttempts}`);
       const result = await fn();
       
@@ -103,9 +112,9 @@ export async function retryWithBackoff<T>(
       }
       
       // Calculate delay and wait before next attempt
-      const delay = calculateDelay(attempt, opts);
+      const delay = opts.retryDelayMs(error, attempt) ?? calculateDelay(attempt, opts);
       console.log(`[Retry] Attempt ${attempt} failed. Retrying in ${delay}ms...`, error.message);
-      await sleep(delay);
+      await sleep(delay, opts.signal);
     }
   }
   

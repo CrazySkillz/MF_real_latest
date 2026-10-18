@@ -175,7 +175,7 @@ export type GA4OverviewSnapshotInput = {
 };
 
 // Internal refresh metadata; never part of a persisted metric or API response.
-type GA4RefreshWriteInput = {
+export type GA4RefreshWriteInput = {
   refreshScope?: { campaignId: string; ownerId: string; reportingDate: string; work: { id: string; leaseToken: string } };
 };
 
@@ -522,11 +522,11 @@ export interface IStorage {
   getCampaignSnapshots(campaignId: string): Promise<MetricSnapshot[]>;
   getCampaignSnapshotsByPeriod(campaignId: string, period: 'daily' | 'weekly' | 'monthly'): Promise<MetricSnapshot[]>;
   getSnapshotByDate(campaignId: string, date: Date): Promise<MetricSnapshot | undefined>;
-  createMetricSnapshot(snapshot: InsertMetricSnapshot): Promise<MetricSnapshot>;
+  createMetricSnapshot(snapshot: InsertMetricSnapshot & GA4RefreshWriteInput): Promise<MetricSnapshot>;
   upsertFinancialDailySnapshot(snapshot: FinancialDailySnapshotInput & GA4RefreshWriteInput): Promise<MetricSnapshot>;
-  upsertExecutiveSummaryDailySnapshot(snapshot: ExecutiveSummaryDailySnapshotInput): Promise<MetricSnapshot>;
-  markExecutiveSummaryDailySnapshotAligned(campaignId: string, reportingDate: string, completedAt: string): Promise<boolean>;
-  invalidateExecutiveSummaryDailySnapshotAlignment(campaignId: string, reportingDate: string): Promise<void>;
+  upsertExecutiveSummaryDailySnapshot(snapshot: ExecutiveSummaryDailySnapshotInput & GA4RefreshWriteInput): Promise<MetricSnapshot>;
+  markExecutiveSummaryDailySnapshotAligned(campaignId: string, reportingDate: string, completedAt: string, options?: GA4RefreshWriteInput): Promise<boolean>;
+  invalidateExecutiveSummaryDailySnapshotAlignment(campaignId: string, reportingDate: string, options?: GA4RefreshWriteInput): Promise<void>;
   getExecutiveSummaryDailyComparisonData(campaignId: string, currentReportingDate: string, comparisonDate: string): Promise<{
     current: MetricSnapshot | null;
     previous: MetricSnapshot | null;
@@ -1138,6 +1138,8 @@ export class DatabaseStorage implements IStorage {
     if (![scope?.campaignId, scope?.ownerId, scope?.reportingDate, scope?.work?.id, scope?.work?.leaseToken]
       .every(value => typeof value === "string" && value.trim())) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
     return db.transaction(async (tx: any) => {
+      await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
+      await tx.execute(sql`SET LOCAL statement_timeout = '30s'`);
       const current = await this.readGA4RefreshWorkScope(tx, scope!.campaignId, scope!.ownerId);
       if (!current) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
       const owned = and(eq(ga4RefreshWork.id, scope!.work.id), eq(ga4RefreshWork.campaignId, scope!.campaignId),
@@ -1158,6 +1160,8 @@ export class DatabaseStorage implements IStorage {
     if (!(dueAt instanceof Date) || !Number.isFinite(dueAt.getTime()) || !/^\d{4}-\d{2}-\d{2}$/.test(reportingDate)
       || new Date(`${reportingDate}T00:00:00Z`).toISOString().slice(0, 10) !== reportingDate) throw new Error("Invalid GA4 work date");
     return db.transaction(async (tx: any) => {
+      await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
+      await tx.execute(sql`SET LOCAL statement_timeout = '30s'`);
       const scope = await this.readGA4RefreshWorkScope(tx, campaignId, ownerId);
       if (!scope) return undefined;
       await tx.insert(ga4RefreshWork).values({ campaignId, dueAt, reportingDate, ...scope }).onConflictDoNothing();
@@ -1170,6 +1174,8 @@ export class DatabaseStorage implements IStorage {
   async claimGA4RefreshWork(campaignId: string, ownerId: string, workId: string, leaseMs: number): Promise<GA4RefreshWork | undefined> {
     if (!Number.isInteger(leaseMs) || leaseMs < 1000 || leaseMs > 900_000) throw new Error("Invalid GA4 work lease duration");
     return db.transaction(async (tx: any) => {
+      await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
+      await tx.execute(sql`SET LOCAL statement_timeout = '30s'`);
       const scope = await this.readGA4RefreshWorkScope(tx, campaignId, ownerId);
       if (!scope) return undefined;
       const [work] = await tx.select().from(ga4RefreshWork).where(and(eq(ga4RefreshWork.id, workId),
@@ -1197,6 +1203,8 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Invalid GA4 work lease update");
     if (!leaseToken?.trim()) return undefined;
     return db.transaction(async (tx: any) => {
+      await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
+      await tx.execute(sql`SET LOCAL statement_timeout = '30s'`);
       const scope = await this.readGA4RefreshWorkScope(tx, campaignId, ownerId);
       if (!scope) return undefined;
       const owned = and(eq(ga4RefreshWork.id, workId), eq(ga4RefreshWork.campaignId, campaignId),
@@ -1301,6 +1309,10 @@ export class DatabaseStorage implements IStorage {
 
     await db.transaction(async (tx: any) => {
       let workOwnership: ReturnType<typeof and> = undefined;
+      if (overviewSnapshot?.refreshScope && "work" in overviewSnapshot.refreshScope) {
+        await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
+        await tx.execute(sql`SET LOCAL statement_timeout = '30s'`);
+      }
       if (overviewSnapshot?.refreshScope) {
         const scope = overviewSnapshot.refreshScope;
         const [currentCampaign] = await tx.select().from(campaigns).where(eq(campaigns.id, cid)).for("update");
@@ -5393,10 +5405,14 @@ export class DatabaseStorage implements IStorage {
         throw new Error("KPI not found");
       }
 
-      const [progress] = await tx
-        .insert(kpiProgress)
-        .values(values)
-        .returning();
+      const existing = guarded ? await tx.select({ id: kpiProgress.id }).from(kpiProgress).where(and(
+        eq(kpiProgress.kpiId, values.kpiId), eq(kpiProgress.notes, values.notes!),
+        sql`${kpiProgress.recordedAt}::date = ${refreshScope!.reportingDate}::date`,
+      )).limit(2) : [];
+      if (existing.length > 1) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+      const [progress] = existing.length
+        ? await tx.update(kpiProgress).set(values).where(eq(kpiProgress.id, existing[0].id)).returning()
+        : await tx.insert(kpiProgress).values(values).returning();
 
       // Update the KPI's current value
       await tx
@@ -5683,15 +5699,36 @@ export class DatabaseStorage implements IStorage {
     return snapshot || undefined;
   }
 
-  async createMetricSnapshot(snapshotData: InsertMetricSnapshot): Promise<MetricSnapshot> {
+  async createMetricSnapshot(snapshotData: InsertMetricSnapshot & GA4RefreshWriteInput): Promise<MetricSnapshot> {
     if (snapshotData.snapshotType === 'financial_daily' || snapshotData.reportingDate != null) {
       throw new Error('Use upsertFinancialDailySnapshot for reporting-day financial snapshots');
     }
-    const [snapshot] = await db
-      .insert(metricSnapshots)
-      .values(snapshotData)
-      .returning();
-    return snapshot;
+    const { refreshScope, ...values } = snapshotData;
+    const guarded = "refreshScope" in snapshotData;
+    const save = async (tx: any) => {
+      if (guarded) {
+        if (values.campaignId !== refreshScope!.campaignId || values.snapshotType !== 'platform_sync') {
+          throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+        }
+        // One aggregate per durable work item, including a repeated/recovered attempt.
+        const notes = `ga4_refresh_work_v1:${refreshScope!.work.id}`;
+        const existing = await tx.select({ id: metricSnapshots.id }).from(metricSnapshots).where(and(
+          eq(metricSnapshots.campaignId, values.campaignId), eq(metricSnapshots.snapshotType, 'platform_sync'),
+          eq(metricSnapshots.notes, notes),
+        )).limit(2);
+        if (existing.length > 1) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+        if (existing.length) {
+          const [snapshot] = await tx.update(metricSnapshots).set({ ...values, notes, recordedAt: sql`CURRENT_TIMESTAMP` })
+            .where(eq(metricSnapshots.id, existing[0].id)).returning();
+          return snapshot;
+        }
+        const [snapshot] = await tx.insert(metricSnapshots).values({ ...values, notes }).returning();
+        return snapshot;
+      }
+      const [snapshot] = await tx.insert(metricSnapshots).values(values).returning();
+      return snapshot;
+    };
+    return guarded ? this.writeWithGA4RefreshOwnership(refreshScope, save) : save(db);
   }
 
   async upsertFinancialDailySnapshot(snapshotData: FinancialDailySnapshotInput & GA4RefreshWriteInput): Promise<MetricSnapshot> {
@@ -5729,54 +5766,87 @@ export class DatabaseStorage implements IStorage {
     return guarded ? this.writeWithGA4RefreshOwnership(refreshScope, save) : save(db);
   }
 
-  async upsertExecutiveSummaryDailySnapshot(snapshotData: ExecutiveSummaryDailySnapshotInput): Promise<MetricSnapshot> {
-    const snapshotInput = executiveSummaryDailySnapshotInputSchema.parse(snapshotData);
+  async upsertExecutiveSummaryDailySnapshot(snapshotData: ExecutiveSummaryDailySnapshotInput & GA4RefreshWriteInput): Promise<MetricSnapshot> {
+    const { refreshScope, ...values } = snapshotData;
+    const guarded = "refreshScope" in snapshotData;
+    const snapshotInput = executiveSummaryDailySnapshotInputSchema.parse(values);
     const { campaignId, reportingDate, ...executiveSummaryDaily } = snapshotInput;
-    const [snapshot] = await db
-      .insert(metricSnapshots)
-      .values({
-        campaignId,
-        totalConversions: Math.round(snapshotInput.totals.conversions.value ?? 0),
-        totalSpend: (snapshotInput.totals.spend.value ?? 0).toFixed(2),
-        metrics: { executiveSummaryDaily },
-        snapshotType: 'executive_summary_daily',
-        reportingDate,
-      })
-      .onConflictDoUpdate({
-        target: [metricSnapshots.campaignId, metricSnapshots.reportingDate],
-        targetWhere: sql`${metricSnapshots.snapshotType} = 'executive_summary_daily' AND ${metricSnapshots.reportingDate} IS NOT NULL`,
-        set: {
-          totalConversions: sql`EXCLUDED.total_conversions`,
-          totalSpend: sql`EXCLUDED.total_spend`,
-          metrics: sql`EXCLUDED.metrics`,
-          notes: null,
-          recordedAt: sql`CURRENT_TIMESTAMP`,
-        },
-      })
-      .returning();
-    return snapshot;
+    const save = async (tx: any) => {
+      if (guarded && (campaignId !== refreshScope!.campaignId || reportingDate !== refreshScope!.reportingDate)) {
+        throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+      }
+      const receipt = guarded ? `ga4_refresh_publication_v1:${refreshScope!.work.id}:${createHash("sha256").update(refreshScope!.work.leaseToken).digest("hex")}` : null;
+      const [snapshot] = await tx
+        .insert(metricSnapshots)
+        .values({
+          campaignId,
+          totalConversions: Math.round(snapshotInput.totals.conversions.value ?? 0),
+          totalSpend: (snapshotInput.totals.spend.value ?? 0).toFixed(2),
+          metrics: { executiveSummaryDaily },
+          snapshotType: 'executive_summary_daily',
+          reportingDate,
+          notes: receipt,
+        })
+        .onConflictDoUpdate({
+          target: [metricSnapshots.campaignId, metricSnapshots.reportingDate],
+          targetWhere: sql`${metricSnapshots.snapshotType} = 'executive_summary_daily' AND ${metricSnapshots.reportingDate} IS NOT NULL`,
+          set: {
+            totalConversions: sql`EXCLUDED.total_conversions`,
+            totalSpend: sql`EXCLUDED.total_spend`,
+            metrics: sql`EXCLUDED.metrics`,
+            notes: receipt,
+            recordedAt: sql`CURRENT_TIMESTAMP`,
+          },
+        })
+        .returning();
+      return snapshot;
+    };
+    return guarded ? this.writeWithGA4RefreshOwnership(refreshScope, save) : save(db);
   }
 
-  async invalidateExecutiveSummaryDailySnapshotAlignment(campaignId: string, reportingDate: string): Promise<void> {
-    await db.update(metricSnapshots).set({ notes: null }).where(and(
-      eq(metricSnapshots.campaignId, campaignId),
-      eq(metricSnapshots.snapshotType, 'executive_summary_daily'),
-      eq(metricSnapshots.reportingDate, reportingDate),
-      sql`split_part(${metricSnapshots.notes}, ':', 1) = 'ga4_aligned_refresh_v1'`,
-    ));
-  }
-
-  async markExecutiveSummaryDailySnapshotAligned(campaignId: string, reportingDate: string, completedAt: string): Promise<boolean> {
-    const marker = `ga4_aligned_refresh_v1:${reportingDate}:${completedAt}`;
-    const [updated] = await db.update(metricSnapshots)
-      .set({ notes: marker })
-      .where(and(
+  async invalidateExecutiveSummaryDailySnapshotAlignment(campaignId: string, reportingDate: string, options: GA4RefreshWriteInput = {}): Promise<void> {
+    const guarded = "refreshScope" in options;
+    const save = async (tx: any) => {
+      if (guarded && (campaignId !== options.refreshScope!.campaignId || reportingDate !== options.refreshScope!.reportingDate)) {
+        throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+      }
+      await tx.update(metricSnapshots).set({ notes: null }).where(and(
         eq(metricSnapshots.campaignId, campaignId),
         eq(metricSnapshots.snapshotType, 'executive_summary_daily'),
         eq(metricSnapshots.reportingDate, reportingDate),
-      ))
-      .returning({ id: metricSnapshots.id });
-    return Boolean(updated);
+        sql`split_part(${metricSnapshots.notes}, ':', 1) = 'ga4_aligned_refresh_v1'`,
+      ));
+    };
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : save(db);
+  }
+
+  async markExecutiveSummaryDailySnapshotAligned(campaignId: string, reportingDate: string, completedAt: string, options: GA4RefreshWriteInput = {}): Promise<boolean> {
+    const guarded = "refreshScope" in options;
+    const marker = `ga4_aligned_refresh_v1:${reportingDate}:${completedAt}`;
+    const save = async (tx: any) => {
+      if (guarded) {
+        if (campaignId !== options.refreshScope!.campaignId || reportingDate !== options.refreshScope!.reportingDate
+          || !Number.isFinite(Date.parse(completedAt))) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+        const [work] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork).where(and(
+          eq(ga4RefreshWork.id, options.refreshScope!.work.id),
+          sql`${completedAt}::timestamptz >= ${ga4RefreshWork.startedAt}`,
+          sql`${completedAt}::timestamptz >= ${ga4RefreshWork.dueAt}`,
+          sql`${completedAt}::timestamptz <= clock_timestamp()`,
+        ));
+        if (!work) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+      }
+      const [updated] = await tx.update(metricSnapshots)
+        .set({ notes: marker })
+        .where(and(
+          eq(metricSnapshots.campaignId, campaignId),
+          eq(metricSnapshots.snapshotType, 'executive_summary_daily'),
+          eq(metricSnapshots.reportingDate, reportingDate),
+          guarded ? eq(metricSnapshots.notes, `ga4_refresh_publication_v1:${options.refreshScope!.work.id}:${createHash("sha256").update(options.refreshScope!.work.leaseToken).digest("hex")}`) : undefined,
+        ))
+        .returning({ id: metricSnapshots.id });
+      return Boolean(updated);
+    };
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : save(db);
   }
 
   async getExecutiveSummaryDailyComparisonData(

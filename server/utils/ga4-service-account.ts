@@ -89,6 +89,7 @@ export async function getGA4ServiceAccountAccessToken(): Promise<{ accessToken: 
     email: config.email,
     key: config.privateKey,
     scopes: ["https://www.googleapis.com/auth/analytics.readonly"],
+    transporterOptions: { timeout: 120_000, signal: AbortSignal.timeout(120_000) },
   });
   const credentials = await client.authorize();
   const token = String(credentials.access_token || "").trim();

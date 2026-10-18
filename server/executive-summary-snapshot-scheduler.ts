@@ -1,14 +1,17 @@
 import { getInternalAutoRefreshToken } from "./internal-request-auth";
-import { storage } from "./storage";
+import { storage, type GA4RefreshWriteInput } from "./storage";
 import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export async function captureExecutiveSummarySnapshot(baseUrl: string, campaignId: string): Promise<boolean> {
+export async function captureExecutiveSummarySnapshot(baseUrl: string, campaignId: string, options: GA4RefreshWriteInput = {}): Promise<boolean> {
   const token = getInternalAutoRefreshToken();
   try {
     const response = await fetch(`${baseUrl}/api/campaigns/${encodeURIComponent(campaignId)}/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date`, {
-      headers: { "x-internal-auto-refresh-token": token },
+      headers: { "x-internal-auto-refresh-token": token,
+        ...("refreshScope" in options ? { "x-internal-ga4-refresh-scope": JSON.stringify(options.refreshScope ?? null) } : {}),
+      },
+      signal: AbortSignal.timeout(120_000),
     });
     if (!response.ok) {
       console.warn(`[Executive Summary] Daily snapshot request failed for campaign ${campaignId}: ${response.status}`);

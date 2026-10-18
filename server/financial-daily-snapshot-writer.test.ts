@@ -79,6 +79,14 @@ describe("gated financial daily snapshot writer", () => {
     beginFinancialDailySnapshotRefreshObservation("financial_sources");
     beginFinancialDailySnapshotRefreshObservation("ga4_daily");
   });
+  it("carries ownership to storage without exposing it in the returned snapshot", async () => {
+    successfulEvidence(); const deps = dependencies();
+    const refreshScope = { campaignId, ownerId: "owner-1", reportingDate, work: { id: "work", leaseToken: "lease" } };
+    const result = await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate, refreshScope }, deps);
+    expect(result.status).toBe("written");
+    expect(deps.upsertFinancialDailySnapshot).toHaveBeenCalledWith({ ...result.snapshot, refreshScope });
+    expect(result.snapshot).not.toHaveProperty("refreshScope");
+  });
 
   it("retains a complete earlier financial update on source failure and clears the Overview warning after recovery", async () => {
     successfulEvidence("2026-08-22T08:05:00.000Z");

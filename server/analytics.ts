@@ -39,11 +39,41 @@ interface GA4Metrics {
 
 import { JWT } from "google-auth-library";
 import { isSupportedGA4ConnectionMethod } from "./utils/ga4-service-account";
+import { retryWithBackoff } from "./utils/retry";
 
 export const GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION = "ga4_conversion_events_validation_v3";
 const GA4_REQUEST_TIMEOUT_MS = 120_000;
 
 export class GoogleAnalytics4Service {
+  private async requestReport(url: string, options: RequestInit): Promise<Response> {
+    return retryWithBackoff(async () => {
+      try {
+        options.signal?.throwIfAborted();
+        const response = await fetch(url, options);
+        if (![429, 500, 502, 503, 504].includes(response.status)) return response;
+        const header = response.headers.get("retry-after");
+        const parsed = header === null ? undefined : /^\d+(\.\d+)?$/.test(header.trim())
+          ? Number(header) * 1000 : Date.parse(header) - Date.now();
+        const retryAfterMs = parsed === undefined ? undefined : Number.isFinite(parsed) ? Math.max(0, parsed) : Infinity;
+        await response.body?.cancel();
+        throw Object.assign(new Error(`GA4_TEMPORARY_UNAVAILABLE: HTTP ${response.status}`), {
+          code: "GA4_TRANSIENT_ERROR", status: response.status, retryAfterMs,
+        });
+      } catch (error: any) {
+        if (["ECONNRESET", "ETIMEDOUT", "EAI_AGAIN", "UND_ERR_SOCKET"].includes(error?.cause?.code || error?.code)) {
+          throw Object.assign(new Error("GA4_TEMPORARY_UNAVAILABLE: connection interrupted"), { code: "GA4_TRANSIENT_ERROR" });
+        }
+        throw error;
+      }
+    }, {
+      maxAttempts: 3, initialDelayMs: 1000, maxDelayMs: 2000,
+      signal: options.signal || undefined,
+      shouldRetry: (error) => !options.signal?.aborted && error?.code === "GA4_TRANSIENT_ERROR"
+        && (error.retryAfterMs === undefined || error.retryAfterMs <= 10_000),
+      retryDelayMs: (error) => error?.retryAfterMs,
+    });
+  }
+
   private mergeDailyConversionRevenueTotals(
     primaryReport: any,
     supplementalReport: any,
@@ -237,7 +267,7 @@ export class GoogleAnalytics4Service {
         limit: boundedLimit,
         offset,
       };
-      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+      const resp = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS),
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
@@ -496,7 +526,7 @@ export class GoogleAnalytics4Service {
       conversionMetric: 'conversions' | 'keyEvents' = 'conversions',
       includeEventCount = true,
     ) => {
-      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+      const resp = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS),
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
@@ -625,7 +655,7 @@ export class GoogleAnalytics4Service {
     const fetchDailyRows = async (accessToken: string, scopeFilter: any) => {
       const fetchMetric = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
         const runPage = async (offset: number) => {
-          const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+          const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
             method: 'POST',
             signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS),
             headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
@@ -1732,11 +1762,16 @@ export class GoogleAnalytics4Service {
             email,
             key,
             scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
+            transporterOptions: { timeout: GA4_REQUEST_TIMEOUT_MS, signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS) },
           });
           const tokenResp = await jwt.getAccessToken();
           accessToken = tokenResp?.token ? String(tokenResp.token) : null;
         }
-      } catch (e) {
+      } catch (e: any) {
+        if (e?.name === 'TimeoutError' || e?.name === 'AbortError' || e?.code === 'ETIMEDOUT' || e?.code === 'ERR_CANCELED') throw e;
+        if ([429, 500, 502, 503, 504].includes(e?.response?.status)) {
+          throw Object.assign(new Error('GA4_TEMPORARY_UNAVAILABLE: service-account token request failed'), { code: 'GA4_TRANSIENT_ERROR' });
+        }
         console.error('[GA4 Breakdown] Failed to get service-account token:', e);
       }
     }
@@ -1801,7 +1836,7 @@ export class GoogleAnalytics4Service {
         );
       }
       while (rows.length < expectedRows) {
-        const response = await fetch(
+        const response = await this.requestReport(
           `https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`,
           {
             method: 'POST',
@@ -1863,7 +1898,7 @@ export class GoogleAnalytics4Service {
         orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
         limit: pageSize,
       };
-      const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+      const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS),
         headers: {
@@ -1896,7 +1931,7 @@ export class GoogleAnalytics4Service {
               });
               accessToken = refreshResult.access_token;
 
-              const retry = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+              const retry = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
                 method: 'POST',
                 signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS),
                 headers: {
@@ -1911,9 +1946,12 @@ export class GoogleAnalytics4Service {
               }
               return completeReportRows(await retry.json(), requestBody);
             } catch (refreshError: any) {
-              if (refreshError?.isPaginationIncomplete || refreshError?.code === 'GA4_CURRENCY_UNVERIFIED' || refreshError?.name === 'TimeoutError' || refreshError?.name === 'AbortError') {
+              if (refreshError?.isPaginationIncomplete || refreshError?.code === 'GA4_TRANSIENT_ERROR' || refreshError?.code === 'GA4_CURRENCY_UNVERIFIED' || refreshError?.name === 'TimeoutError' || refreshError?.name === 'AbortError') {
                 throw refreshError;
               }
+              const authFailure = String(refreshError?.oauthError || refreshError?.message || '').toLowerCase();
+              if (!['invalid_grant', 'invalid_client', 'unauthorized_client', '401', 'unauthenticated', 'invalid authentication credentials']
+                .some(value => authFailure.includes(value))) throw refreshError;
               const autoRefreshError = new Error('AUTO_REFRESH_NEEDED');
               (autoRefreshError as any).isAutoRefreshNeeded = true;
               throw autoRefreshError;
@@ -2131,7 +2169,7 @@ export class GoogleAnalytics4Service {
         chosenDims = candidate.dims;
         chosenRevenueMetric = result.revenueMetric;
       } catch (e: any) {
-        if (e?.isPaginationIncomplete || e?.isTokenExpired || e?.isAutoRefreshNeeded || e?.code === 'GA4_CURRENCY_UNVERIFIED' || e?.name === 'TimeoutError' || e?.name === 'AbortError' ||
+        if (e?.isPaginationIncomplete || e?.isTokenExpired || e?.isAutoRefreshNeeded || e?.code === 'GA4_TRANSIENT_ERROR' || e?.code === 'GA4_CURRENCY_UNVERIFIED' || e?.name === 'TimeoutError' || e?.name === 'AbortError' ||
             (preferOverviewCampaignTotals && /sessionKeyEventRate|RESOURCE_EXHAUSTED|"code": 429/i.test(String(e?.message || '')))) {
           throw e;
         }
@@ -2393,7 +2431,7 @@ export class GoogleAnalytics4Service {
           insightsLandingCoverage.reason = 'selected';
         }
       } catch (error: any) {
-        if (error?.isPaginationIncomplete || error?.isTokenExpired || error?.isAutoRefreshNeeded || error?.name === 'TimeoutError' || error?.name === 'AbortError') throw error;
+        if (error?.isPaginationIncomplete || error?.isTokenExpired || error?.isAutoRefreshNeeded || error?.code === 'GA4_TRANSIENT_ERROR' || error?.name === 'TimeoutError' || error?.name === 'AbortError') throw error;
         insightsLandingCoverage = {
           attempted: true,
           selected: false,
@@ -2415,7 +2453,7 @@ export class GoogleAnalytics4Service {
             chosenRevenueMetric = result.revenueMetric;
           }
         } catch (error: any) {
-          if (error?.isPaginationIncomplete || error?.isTokenExpired || error?.isAutoRefreshNeeded || error?.name === 'TimeoutError' || error?.name === 'AbortError') {
+          if (error?.isPaginationIncomplete || error?.isTokenExpired || error?.isAutoRefreshNeeded || error?.code === 'GA4_TRANSIENT_ERROR' || error?.name === 'TimeoutError' || error?.name === 'AbortError') {
             throw error;
           }
           // Keep the original empty result if the URL fallback is not compatible for this property.
@@ -2850,9 +2888,13 @@ export class GoogleAnalytics4Service {
         const refreshError = new Error(`Failed to refresh token: ${errorData.error_description || errorData.error}`) as Error & {
           oauthError?: string;
           oauthStatus?: number;
+          code?: string;
         };
         refreshError.oauthError = String(errorData.error || '');
         refreshError.oauthStatus = response.status;
+        if ([429, 500, 502, 503, 504].includes(response.status) || ['server_error', 'temporarily_unavailable'].includes(refreshError.oauthError)) {
+          refreshError.code = 'GA4_TRANSIENT_ERROR';
+        }
         throw refreshError;
       }
 
@@ -2882,9 +2924,13 @@ export class GoogleAnalytics4Service {
         const refreshError = new Error('Automatic refresh requires Google OAuth credentials for guaranteed operation') as Error & {
           oauthError?: string;
           oauthStatus?: number;
+          code?: string;
         };
         refreshError.oauthError = String(errorData.error || '');
         refreshError.oauthStatus = response.status;
+        if ([429, 500, 502, 503, 504].includes(response.status) || ['server_error', 'temporarily_unavailable'].includes(refreshError.oauthError)) {
+          refreshError.code = 'GA4_TRANSIENT_ERROR';
+        }
         throw refreshError;
       }
 
@@ -3013,7 +3059,7 @@ export class GoogleAnalytics4Service {
         startDate: string = dateRange,
         queryEndDate: string = endDate,
       ) => {
-        const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+        const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
           method: 'POST',
           signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS),
           headers: {
@@ -3094,7 +3140,7 @@ export class GoogleAnalytics4Service {
       };
 
       const runConversionRevenue = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue', scopeFilter: any) => {
-        const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+        const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
           method: 'POST',
           signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS),
           headers: {
@@ -3321,7 +3367,7 @@ export class GoogleAnalytics4Service {
 
       if (hasBaseTraffic && hasMissingConversionRevenue && campaignNameConversionFilter) {
         const supplemental = await runConversionRevenueWithFallback(campaignNameConversionFilter).catch((error) => {
-          if (error?.name === 'TimeoutError' || error?.name === 'AbortError') throw error;
+          if (error?.code === 'GA4_TRANSIENT_ERROR' || error?.name === 'TimeoutError' || error?.name === 'AbortError') throw error;
           return null;
         });
         const supplementalRows = Array.isArray(supplemental?.data?.rows) ? supplemental.data.rows : [];
@@ -3388,7 +3434,7 @@ export class GoogleAnalytics4Service {
     const property = this.normalizeGA4PropertyId(propertyId);
     const currency = String(currencyCode || "").trim().toUpperCase();
     const runPresence = async (filter: any, metrics: string[]) => {
-      const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${property}:runReport`, {
+      const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${property}:runReport`, {
         method: "POST",
         signal: AbortSignal.timeout(GA4_REQUEST_TIMEOUT_MS),
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, timestamp, boolean, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, timestamp, boolean, jsonb, uniqueIndex, check } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -111,6 +111,29 @@ export const ga4ConnectionLifecycleEvents = pgTable("ga4_connection_lifecycle_ev
   reason: text("reason").notNull(),
   changedAt: timestamp("changed_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+// Durable scheduled work. Completion is bookkeeping; the aligned snapshot marker remains authoritative.
+export const ga4RefreshWork = pgTable("ga4_refresh_work", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
+  reportingDate: text("reporting_date").notNull(),
+  scopeHash: text("scope_hash").notNull(),
+  scope: jsonb("scope").notNull(),
+  status: text("status").notNull().default("pending"),
+  leaseToken: text("lease_token"),
+  leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("ga4_refresh_work_identity").on(table.campaignId, table.dueAt, table.reportingDate, table.scopeHash),
+  uniqueIndex("ga4_refresh_work_running_campaign").on(table.campaignId).where(sql`${table.status} = 'running'`),
+  check("ga4_refresh_work_state", sql`(${table.status} = 'pending' AND ${table.leaseToken} IS NULL AND ${table.leaseExpiresAt} IS NULL AND ${table.completedAt} IS NULL)
+    OR (${table.status} = 'running' AND ${table.leaseToken} IS NOT NULL AND ${table.leaseExpiresAt} IS NOT NULL AND ${table.startedAt} IS NOT NULL AND ${table.completedAt} IS NULL)
+    OR (${table.status} = 'completed' AND ${table.leaseToken} IS NULL AND ${table.leaseExpiresAt} IS NULL AND ${table.completedAt} IS NOT NULL)`),
+]);
+export type GA4RefreshWork = typeof ga4RefreshWork.$inferSelect;
 
 // GA4 Daily Metrics (persisted daily facts; used to power "daily values" UI and schedulers)
 export const ga4DailyMetrics = pgTable("ga4_daily_metrics", {

@@ -1,7 +1,9 @@
 import { type Client, type InsertClient, type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GA4DailyMetric, type InsertGA4DailyMetric, type GA4OverviewSnapshot, type LinkedInDailyMetric, type InsertLinkedInDailyMetric, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type MetaDailyMetric, type InsertMetaDailyMetric, type MetaKpi, type InsertMetaKpi, type MetaBenchmark, type InsertMetaBenchmark, type MetaReport, type InsertMetaReport, type GoogleAdsConnection, type InsertGoogleAdsConnection, type GoogleAdsDailyMetric, type InsertGoogleAdsDailyMetric, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type KPIReport, type InsertKPIReport, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type FinancialDailySnapshotInput, financialDailySnapshotInputSchema, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, clients, campaigns, metrics, integrations, performanceData, ga4Connections, ga4DailyMetrics, ga4OverviewSnapshots, linkedinDailyMetrics, spendSources, spendRecords, revenueSources, revenueRecords, notifications, emailAlertEvents, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, metaDailyMetrics, metaKpis, metaBenchmarks, metaReports, googleAdsConnections, googleAdsDailyMetrics, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, reportSnapshots, reportSendEvents, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, kpiReports, benchmarks, benchmarkHistory, metricSnapshots, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { type InstagramConnection, type InsertInstagramConnection, type InstagramDailyMetric, type InsertInstagramDailyMetric, type TikTokConnection, type InsertTikTokConnection, type TikTokDailyMetric, type InsertTikTokDailyMetric, instagramConnections, instagramDailyMetrics, tiktokConnections, tiktokDailyMetrics } from "@shared/schema";
 import { type GA4GoogleAdsSpendConnection, type InsertGA4GoogleAdsSpendConnection, type GA4GoogleAdsSpendDailyMetric, type InsertGA4GoogleAdsSpendDailyMetric, ga4GoogleAdsSpendConnections, ga4GoogleAdsSpendDailyMetrics } from "@shared/schema";
-import { randomUUID } from "crypto";
+import { randomUUID, createHash } from "crypto";
+import { ga4RefreshWork, type GA4RefreshWork } from "@shared/schema";
+import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql, gte, lte, inArray, ne } from "drizzle-orm";
 import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, type EncryptedTokens } from "./utils/tokenVault";
@@ -206,6 +208,9 @@ export interface IStorage {
   deleteGA4Connection(connectionId: string): Promise<boolean>;
 
   // GA4 Daily Metrics (daily facts)
+  ensureGA4RefreshWork(campaignId: string, ownerId: string, dueAt: Date, reportingDate: string): Promise<GA4RefreshWork | undefined>;
+  claimGA4RefreshWork(campaignId: string, ownerId: string, workId: string, leaseMs: number): Promise<GA4RefreshWork | undefined>;
+  updateGA4RefreshWorkLease(campaignId: string, ownerId: string, workId: string, leaseToken: string, action: "renew" | "release" | "complete", leaseMs?: number): Promise<GA4RefreshWork | undefined>;
   upsertGA4DailyMetrics(rows: InsertGA4DailyMetric[]): Promise<{ upserted: number }>;
   replaceGA4DailyMetricsWindow(campaignId: string, propertyId: string, startDate: string, endDate: string, rows: InsertGA4DailyMetric[], overviewSnapshot?: GA4OverviewSnapshotInput): Promise<{ replaced: number }>;
   getGA4DailyMetrics(campaignId: string, propertyId: string, startDate: string, endDate: string): Promise<GA4DailyMetric[]>;
@@ -1100,6 +1105,96 @@ export class DatabaseStorage implements IStorage {
       ));
       const result = await tx.delete(ga4Connections).where(eq(ga4Connections.id, connectionId));
       return (result.rowCount || 0) > 0;
+    });
+  }
+
+  // All work transitions lock the campaign first, serializing competing slots and workers.
+  // This foundation is not invoked by the scheduler until publication fencing is integrated.
+  private async readGA4RefreshWorkScope(tx: any, campaignId: string, ownerId: string) {
+    if (!campaignId?.trim() || !ownerId?.trim()) return undefined;
+    const [campaign] = await tx.select().from(campaigns).where(and(
+      eq(campaigns.id, campaignId), eq(campaigns.ownerId, ownerId),
+    )).for("update");
+    if (!campaign || !filterActiveSchedulerCampaigns([campaign]).length) return undefined;
+    const connections = await tx.select({ id: ga4Connections.id, propertyId: ga4Connections.propertyId,
+      importStartDate: ga4Connections.importStartDate, isPrimary: ga4Connections.isPrimary,
+      method: ga4Connections.method, lookbackDays: ga4Connections.lookbackDays, connectedAt: ga4Connections.connectedAt,
+    }).from(ga4Connections).where(and(eq(ga4Connections.campaignId, campaignId), eq(ga4Connections.isActive, true)))
+      .orderBy(ga4Connections.id).for("share");
+    if (!connections.length || connections.some((connection: any) => !connection.propertyId.trim())) return undefined;
+    const scope = { version: 1, campaign: Object.fromEntries([
+      "id", "createdAt", "ownerId", "clientId", "status", "ga4CampaignFilter", "currency", "reportingTimeZone",
+    ].map(key => [key, campaign[key] ?? null])), connections };
+    return { scope, scopeHash: createHash("sha256").update(JSON.stringify(scope)).digest("hex") };
+  }
+
+  async ensureGA4RefreshWork(campaignId: string, ownerId: string, dueAt: Date, reportingDate: string): Promise<GA4RefreshWork | undefined> {
+    if (!(dueAt instanceof Date) || !Number.isFinite(dueAt.getTime()) || !/^\d{4}-\d{2}-\d{2}$/.test(reportingDate)
+      || new Date(`${reportingDate}T00:00:00Z`).toISOString().slice(0, 10) !== reportingDate) throw new Error("Invalid GA4 work date");
+    return db.transaction(async (tx: any) => {
+      const scope = await this.readGA4RefreshWorkScope(tx, campaignId, ownerId);
+      if (!scope) return undefined;
+      await tx.insert(ga4RefreshWork).values({ campaignId, dueAt, reportingDate, ...scope }).onConflictDoNothing();
+      const [work] = await tx.select().from(ga4RefreshWork).where(and(eq(ga4RefreshWork.campaignId, campaignId),
+        eq(ga4RefreshWork.dueAt, dueAt), eq(ga4RefreshWork.reportingDate, reportingDate), eq(ga4RefreshWork.scopeHash, scope.scopeHash)));
+      return work;
+    });
+  }
+
+  async claimGA4RefreshWork(campaignId: string, ownerId: string, workId: string, leaseMs: number): Promise<GA4RefreshWork | undefined> {
+    if (!Number.isInteger(leaseMs) || leaseMs < 1000 || leaseMs > 900_000) throw new Error("Invalid GA4 work lease duration");
+    return db.transaction(async (tx: any) => {
+      const scope = await this.readGA4RefreshWorkScope(tx, campaignId, ownerId);
+      if (!scope) return undefined;
+      const [work] = await tx.select().from(ga4RefreshWork).where(and(eq(ga4RefreshWork.id, workId),
+        eq(ga4RefreshWork.campaignId, campaignId), eq(ga4RefreshWork.scopeHash, scope.scopeHash),
+        sql`${ga4RefreshWork.dueAt} <= clock_timestamp()`));
+      if (!work || work.status === "completed") return undefined;
+      // Expiry clears only work ownership; it never authorizes an old owner to publish.
+      await tx.update(ga4RefreshWork).set({ status: "pending", leaseToken: null, leaseExpiresAt: null, updatedAt: sql`clock_timestamp()` })
+        .where(and(eq(ga4RefreshWork.campaignId, campaignId), eq(ga4RefreshWork.status, "running"),
+          sql`${ga4RefreshWork.leaseExpiresAt} <= clock_timestamp()`));
+      const [busy] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork)
+        .where(and(eq(ga4RefreshWork.campaignId, campaignId), eq(ga4RefreshWork.status, "running")));
+      if (busy) return undefined;
+      const [claimed] = await tx.update(ga4RefreshWork).set({ status: "running", leaseToken: randomUUID(),
+        leaseExpiresAt: sql`clock_timestamp() + ${leaseMs} * interval '1 millisecond'`,
+        startedAt: sql`clock_timestamp()`, updatedAt: sql`clock_timestamp()`,
+      }).where(and(eq(ga4RefreshWork.id, workId), eq(ga4RefreshWork.campaignId, campaignId), eq(ga4RefreshWork.status, "pending"))).returning();
+      return claimed;
+    });
+  }
+
+  async updateGA4RefreshWorkLease(campaignId: string, ownerId: string, workId: string, leaseToken: string,
+    action: "renew" | "release" | "complete", leaseMs = 120_000): Promise<GA4RefreshWork | undefined> {
+    if (!["renew", "release", "complete"].includes(action) || !Number.isInteger(leaseMs) || leaseMs < 1000 || leaseMs > 900_000)
+      throw new Error("Invalid GA4 work lease update");
+    if (!leaseToken?.trim()) return undefined;
+    return db.transaction(async (tx: any) => {
+      const scope = await this.readGA4RefreshWorkScope(tx, campaignId, ownerId);
+      if (!scope) return undefined;
+      const owned = and(eq(ga4RefreshWork.id, workId), eq(ga4RefreshWork.campaignId, campaignId),
+        eq(ga4RefreshWork.scopeHash, scope.scopeHash), eq(ga4RefreshWork.status, "running"),
+        eq(ga4RefreshWork.leaseToken, leaseToken), sql`${ga4RefreshWork.leaseExpiresAt} > clock_timestamp()`);
+      const [work] = await tx.select().from(ga4RefreshWork).where(owned);
+      if (!work) return undefined;
+      let completedAt: Date | null = null;
+      if (action === "complete") {
+        const [snapshot] = await tx.select({ notes: metricSnapshots.notes }).from(metricSnapshots).where(and(
+          eq(metricSnapshots.campaignId, campaignId), eq(metricSnapshots.snapshotType, "executive_summary_daily"),
+          eq(metricSnapshots.reportingDate, work.reportingDate),
+        )).for("share");
+        const prefix = `ga4_aligned_refresh_v1:${work.reportingDate}:`;
+        if (!snapshot?.notes?.startsWith(prefix)) return undefined;
+        completedAt = new Date(snapshot.notes.slice(prefix.length));
+        if (!Number.isFinite(completedAt.getTime()) || completedAt < work.dueAt || completedAt < work.startedAt) return undefined;
+      }
+      const [updated] = await tx.update(ga4RefreshWork).set(action === "renew" ? {
+        leaseExpiresAt: sql`clock_timestamp() + ${leaseMs} * interval '1 millisecond'`, updatedAt: sql`clock_timestamp()`,
+      } : { status: action === "complete" ? "completed" : "pending", leaseToken: null, leaseExpiresAt: null,
+        completedAt, updatedAt: sql`clock_timestamp()`,
+      }).where(and(owned, completedAt ? sql`${completedAt}::timestamptz <= clock_timestamp()` : undefined)).returning();
+      return updated;
     });
   }
 

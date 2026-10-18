@@ -3191,7 +3191,8 @@ export class GoogleAnalytics4Service {
             chunkEnd = previousChunkEnd.toISOString().slice(0, 10);
           }
           for (const chunk of chunks) {
-            for (const [index, fallbackFilter] of fallbackFilters.entries()) {
+            for (let index = 0; index < fallbackFilters.length; index += 1) {
+              const fallbackFilter = fallbackFilters[index];
               utmResults.push({ ...await runWithRevenueFallback(fallbackFilter, chunk.startDate, chunk.endDate), campaignName: selectedCampaignNames[index] });
             }
           }

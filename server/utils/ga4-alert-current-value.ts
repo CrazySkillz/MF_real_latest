@@ -130,7 +130,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
   try {
     const [campaign, connections] = await Promise.all([
       storage.getCampaign(campaignId).catch(() => undefined as any),
-      storage.getGA4Connections(campaignId).catch(() => null as any),
+      storage.getGA4Connections(campaignId, { migrateLegacyTokens: false }).catch(() => null as any),
     ]);
     const primary = (Array.isArray(connections) ? connections : []).find((connection: any) => connection?.isPrimary)
       || (Array.isArray(connections) ? connections : [])[0];

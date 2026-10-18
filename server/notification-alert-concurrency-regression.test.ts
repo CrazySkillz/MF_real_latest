@@ -54,7 +54,10 @@ vi.mock("./db", async () => {
     db: {
       select: vi.fn(() => ({
         from: vi.fn((table: any) => ({
-          where: vi.fn(async () => table === benchmarks ? mocks.state.benchmarks.slice() : []),
+          where: vi.fn(() => {
+            const rows = table === benchmarks ? mocks.state.benchmarks.slice() : [];
+            return Object.assign(Promise.resolve(rows), { for: async () => rows });
+          }),
         })),
       })),
       update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => undefined) })) })),
@@ -64,8 +67,10 @@ vi.mock("./db", async () => {
   };
 });
 
-vi.mock("./storage", () => ({
+vi.mock("./storage", async () => ({
   storage: {
+    getGA4PublicationVersion: async () => null,
+    writeGA4DerivedChange: async (_id: string, _options: any, write: any) => write((await import("./db")).db),
     getCampaign: vi.fn(async () => ({ id: "campaign-1", name: "Campaign One", ownerId: mocks.state.campaignOwnerId })),
     getLinkedInConnection: vi.fn(async () => undefined),
     updateNotification: vi.fn(),

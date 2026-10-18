@@ -6,7 +6,7 @@ import { ga4RefreshWork, type GA4RefreshWork } from "@shared/schema";
 import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 import { db, pool } from "./db";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { eq, and, or, isNull, desc, sql, gte, lte, inArray, ne } from "drizzle-orm";
+import { eq, and, or, isNull, desc, sql, gte, lte, lt, inArray, ne } from "drizzle-orm";
 import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, type EncryptedTokens } from "./utils/tokenVault";
 import { assertGA4ServiceAccountPropertyAllowed, GA4_SERVICE_ACCOUNT_METHOD, hydrateGA4ServiceAccountConnection } from "./utils/ga4-service-account";
 import { GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, hydrateGoogleSheetsServiceAccountConnection } from "./utils/google-sheets-service-account";
@@ -171,6 +171,7 @@ export type GA4OverviewSnapshotInput = {
     campaign: Record<string, unknown>;
     connection: Record<string, unknown>;
     previousUpdatedAt: string | null;
+    previousWorkVersion?: string | null;
     work?: { id: string; leaseToken: string };
   };
 };
@@ -178,6 +179,7 @@ export type GA4OverviewSnapshotInput = {
 // Internal refresh metadata; never part of a persisted metric or API response.
 export type GA4RefreshWriteInput = {
   refreshScope?: { campaignId: string; ownerId: string; reportingDate: string; work: { id: string; leaseToken: string } };
+  publicationVersion?: { campaignId: string; version: string | null };
 };
 
 export type GA4RefreshConnectionWriteInput = GA4RefreshWriteInput & { expectedConnection?: Record<string, any> };
@@ -186,6 +188,11 @@ export type GA4RefreshGoogleAdsWriteInput = GA4RefreshConnectionWriteInput & { e
 
 export interface IStorage {
   writeWithGA4RefreshOwnership<T>(scope: GA4RefreshWriteInput["refreshScope"], write: (tx: any) => Promise<T>): Promise<T>;
+  getGA4PublicationVersion(campaignId: string): Promise<string | null>;
+  isGA4NativeRecoveryEligible(campaignId: string): Promise<boolean>;
+  getRecoverableGA4RefreshWork(): Promise<GA4RefreshWork[]>;
+  retireGA4RefreshWork(campaignId: string): Promise<void>;
+  writeGA4DerivedChange<T>(campaignId: string | null | undefined, options: GA4RefreshWriteInput, write: (tx: any) => Promise<T>): Promise<T>;
   // Campaigns
   getCampaigns(): Promise<Campaign[]>;
   getCampaign(id: string): Promise<Campaign | undefined>;
@@ -215,14 +222,14 @@ export interface IStorage {
   getPrimaryGA4Connection(campaignId: string): Promise<GA4Connection | undefined>;
   createGA4Connection(connection: InsertGA4Connection): Promise<GA4Connection>;
   updateGA4Connection(connectionId: string, connection: Partial<InsertGA4Connection>): Promise<GA4Connection | undefined>;
-  updateGA4ConnectionTokens(connectionId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }, options?: GA4RefreshWriteInput): Promise<GA4Connection | undefined>;
+  updateGA4ConnectionTokens(connectionId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }, options?: GA4RefreshConnectionWriteInput): Promise<GA4Connection | undefined>;
   setPrimaryGA4Connection(campaignId: string, connectionId: string): Promise<boolean>;
   deleteGA4Connection(connectionId: string): Promise<boolean>;
 
   // GA4 Daily Metrics (daily facts)
-  ensureGA4RefreshWork(campaignId: string, ownerId: string, dueAt: Date, reportingDate: string): Promise<GA4RefreshWork | undefined>;
+  ensureGA4RefreshWork(campaignId: string, ownerId: string, dueAt: Date, reportingDate: string, options?: { suppressAlerts?: boolean }): Promise<GA4RefreshWork | undefined>;
   claimGA4RefreshWork(campaignId: string, ownerId: string, workId: string, leaseMs: number): Promise<GA4RefreshWork | undefined>;
-  updateGA4RefreshWorkLease(campaignId: string, ownerId: string, workId: string, leaseToken: string, action: "renew" | "release" | "complete", leaseMs?: number, publicationCompletedAt?: string): Promise<GA4RefreshWork | undefined>;
+  updateGA4RefreshWorkLease(campaignId: string, ownerId: string, workId: string, leaseToken: string, action: "renew" | "release" | "complete" | "complete_without_alerts", leaseMs?: number, publicationCompletedAt?: string, failure?: { retryable: boolean; code: string; retryAfterMs?: number }): Promise<GA4RefreshWork | undefined>;
   upsertGA4DailyMetrics(rows: InsertGA4DailyMetric[]): Promise<{ upserted: number }>;
   replaceGA4DailyMetricsWindow(campaignId: string, propertyId: string, startDate: string, endDate: string, rows: InsertGA4DailyMetric[], overviewSnapshot?: GA4OverviewSnapshotInput): Promise<{ replaced: number }>;
   getGA4DailyMetrics(campaignId: string, propertyId: string, startDate: string, endDate: string): Promise<GA4DailyMetric[]>;
@@ -831,6 +838,7 @@ export class DatabaseStorage implements IStorage {
     const existing = await this.getCampaign(id);
     if (!existing) return false;
     await db.transaction(async (tx: any) => {
+      await tx.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, id)).for("update");
       await this.deleteCampaignChildren(id, tx);
       await tx.delete(campaigns).where(eq(campaigns.id, id));
     });
@@ -912,7 +920,10 @@ export class DatabaseStorage implements IStorage {
           await db
             .update(ga4Connections)
             .set({ encryptedTokens: nextEnc as any, accessToken: null, refreshToken: null, clientSecret: null } as any)
-            .where(eq(ga4Connections.id, String(r.id)));
+            .where(and(eq(ga4Connections.id, String(r.id)), isNull(ga4Connections.encryptedTokens),
+              sql`${ga4Connections.accessToken} IS NOT DISTINCT FROM ${r.accessToken}`,
+              sql`${ga4Connections.refreshToken} IS NOT DISTINCT FROM ${r.refreshToken}`,
+              sql`${ga4Connections.clientSecret} IS NOT DISTINCT FROM ${r.clientSecret}`));
         } catch {
           // ignore
         }
@@ -1064,13 +1075,19 @@ export class DatabaseStorage implements IStorage {
     return saved ? await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(saved) as any) as any : undefined;
   }
 
-  async updateGA4ConnectionTokens(connectionId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }, options: GA4RefreshWriteInput = {}): Promise<GA4Connection | undefined> {
-    const guarded = "refreshScope" in options;
+  async updateGA4ConnectionTokens(connectionId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }, options: GA4RefreshConnectionWriteInput = {}): Promise<GA4Connection | undefined> {
+    const guarded = "refreshScope" in options || "publicationVersion" in options;
     const write = async (db: any) => {
     const query = db.select().from(ga4Connections).where(eq(ga4Connections.id, connectionId));
     const [existing] = await (guarded ? query.for("update") : query);
-    if (guarded && (!existing || existing.isActive === false || existing.campaignId !== options.refreshScope?.campaignId)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    if (guarded && (!existing || existing.isActive === false || existing.campaignId !== (options.refreshScope?.campaignId ?? options.publicationVersion?.campaignId))) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
     if (!existing) return undefined;
+    if ("publicationVersion" in options) {
+      const expected = options.expectedConnection;
+      const current = hydrateDecryptedTokens(existing) as any;
+      if (!expected || ["id", "campaignId", "propertyId", "method", "clientId", "accessToken", "refreshToken", "clientSecret"]
+        .some(field => (current[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
+    }
 
     const nextEnc = buildEncryptedTokens({
       accessToken: tokens.accessToken,
@@ -1094,7 +1111,7 @@ export class DatabaseStorage implements IStorage {
     return updated;
     };
     const [target] = guarded ? [] : await db.select({ campaignId: ga4Connections.campaignId }).from(ga4Connections).where(eq(ga4Connections.id, connectionId));
-    const saved = guarded ? await this.writeWithGA4RefreshOwnership(options.refreshScope, write)
+    const saved = guarded ? await this.writeGA4DerivedChange(options.refreshScope?.campaignId ?? options.publicationVersion?.campaignId, options, write)
       : target ? await this.writeGA4RefreshInputChange(target.campaignId, write) : undefined;
     return saved ? await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(saved) as any) as any : undefined;
   }
@@ -1218,13 +1235,63 @@ export class DatabaseStorage implements IStorage {
           scopeHash: sql`'invalidated:' || ${ga4RefreshWork.id}`,
           status: sql`CASE WHEN ${ga4RefreshWork.status} = 'completed' THEN 'completed' ELSE 'pending' END`,
           leaseToken: null, leaseExpiresAt: null, updatedAt: sql`clock_timestamp()`,
-        }).where(and(inArray(ga4RefreshWork.campaignId, campaignIds), sql`${ga4RefreshWork.scopeHash} NOT LIKE 'invalidated:%'`)).returning({ campaignId: ga4RefreshWork.campaignId });
+        }).where(inArray(ga4RefreshWork.campaignId, campaignIds)).returning({ campaignId: ga4RefreshWork.campaignId });
         if (invalidated.length) await tx.update(metricSnapshots).set({ notes: null }).where(and(
           inArray(metricSnapshots.campaignId, invalidated.map((work: any) => work.campaignId)), eq(metricSnapshots.snapshotType, "executive_summary_daily"),
           sql`split_part(${metricSnapshots.notes}, ':', 1) IN ('ga4_aligned_refresh_v1', 'ga4_refresh_publication_v1')`,
         ));
       }
       return result;
+    });
+  }
+
+  private async readGA4PublicationVersion(tx: any, campaignId: string): Promise<string | null> {
+    const table = await tx.execute(sql`SELECT to_regclass('ga4_refresh_work') AS name`);
+    if (!table.rows[0]?.name) return null;
+    const result = await tx.execute(sql`SELECT md5(string_agg(id || ':' || xmin::text, ',' ORDER BY id)) AS version,
+      bool_or(status <> 'completed' AND scope_hash NOT LIKE 'invalidated:%') AS busy FROM ga4_refresh_work WHERE campaign_id = ${campaignId}`);
+    const row = result.rows[0];
+    if (row?.busy) throw new Error("GA4_REFRESH_PUBLICATION_BUSY");
+    return row?.version ?? null;
+  }
+
+  async getGA4PublicationVersion(campaignId: string): Promise<string | null> {
+    return this.withGA4RefreshTransaction(tx => this.readGA4PublicationVersion(tx, campaignId));
+  }
+
+  async isGA4NativeRecoveryEligible(campaignId: string): Promise<boolean> {
+    return this.withGA4RefreshTransaction(async tx => {
+      const [campaign] = await tx.select().from(campaigns).where(eq(campaigns.id, campaignId)).for("share");
+      if (!campaign?.ownerId || !filterActiveSchedulerCampaigns([campaign]).length || !campaign.ga4CampaignFilter?.trim()) return false;
+      const connections = await tx.select().from(ga4Connections).where(and(eq(ga4Connections.campaignId, campaignId), eq(ga4Connections.isActive, true)));
+      if (!connections.length || connections.some((connection: any) => !/^\d+$/.test(connection.propertyId) ||
+        !['access_token', 'service_account'].includes(connection.method))) return false;
+      for (const table of [revenueSources, spendSources, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections]) {
+        const [source] = await tx.select({ id: table.id }).from(table).where(and(eq(table.campaignId, campaignId), eq(table.isActive, true))).limit(1);
+        if (source) return false;
+      }
+      for (const table of [linkedinConnections, metaConnections, instagramConnections, tiktokConnections, googleAdsConnections, ga4GoogleAdsSpendConnections]) {
+        const [source] = await tx.select({ id: table.id }).from(table).where(eq(table.campaignId, campaignId)).limit(1);
+        if (source) return false;
+      }
+      return true;
+    });
+  }
+
+  async writeGA4DerivedChange<T>(campaignId: string | null | undefined, options: GA4RefreshWriteInput, write: (tx: any) => Promise<T>): Promise<T> {
+    if ("refreshScope" in options) return this.writeWithGA4RefreshOwnership(options.refreshScope, write);
+    if (!campaignId) {
+      if ("publicationVersion" in options) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+      return db.transaction(write);
+    }
+    return this.withGA4RefreshTransaction(async tx => {
+      const [campaign] = await tx.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, campaignId)).for("update");
+      if (!campaign) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+      const version = await this.readGA4PublicationVersion(tx, campaignId);
+      if ("publicationVersion" in options) {
+        if (options.publicationVersion?.campaignId !== campaignId || options.publicationVersion.version !== version) throw new Error("GA4_REFRESH_PUBLICATION_CHANGED");
+      } else if (version !== null) throw new Error("GA4_REFRESH_PUBLICATION_CHANGED");
+      return write(tx);
     });
   }
 
@@ -1251,7 +1318,20 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async ensureGA4RefreshWork(campaignId: string, ownerId: string, dueAt: Date, reportingDate: string): Promise<GA4RefreshWork | undefined> {
+  async getRecoverableGA4RefreshWork(): Promise<GA4RefreshWork[]> {
+    return this.withGA4RefreshTransaction(tx => tx.select().from(ga4RefreshWork).where(and(
+      sql`${ga4RefreshWork.scopeHash} NOT LIKE 'invalidated:%'`, eq(ga4RefreshWork.retryable, true), lt(ga4RefreshWork.attemptCount, 3),
+      sql`${ga4RefreshWork.dueAt} <= clock_timestamp()`,
+      or(eq(ga4RefreshWork.status, 'pending'), and(eq(ga4RefreshWork.status, 'running'), sql`${ga4RefreshWork.leaseExpiresAt} <= clock_timestamp()`)),
+      sql`(${ga4RefreshWork.nextAttemptAt} IS NULL OR ${ga4RefreshWork.nextAttemptAt} <= clock_timestamp())`,
+    )).orderBy(desc(ga4RefreshWork.dueAt)));
+  }
+
+  async retireGA4RefreshWork(campaignId: string): Promise<void> {
+    await this.writeGA4RefreshInputChange(campaignId, async () => true);
+  }
+
+  async ensureGA4RefreshWork(campaignId: string, ownerId: string, dueAt: Date, reportingDate: string, options: { suppressAlerts?: boolean } = {}): Promise<GA4RefreshWork | undefined> {
     if (!(dueAt instanceof Date) || !Number.isFinite(dueAt.getTime()) || !/^\d{4}-\d{2}-\d{2}$/.test(reportingDate)
       || new Date(`${reportingDate}T00:00:00Z`).toISOString().slice(0, 10) !== reportingDate) throw new Error("Invalid GA4 work date");
     return this.withGA4RefreshTransaction(async (tx: any) => {
@@ -1259,7 +1339,18 @@ export class DatabaseStorage implements IStorage {
       await tx.execute(sql`SET LOCAL statement_timeout = '30s'`);
       const scope = await this.readGA4RefreshWorkScope(tx, campaignId, ownerId);
       if (!scope) return undefined;
-      await tx.insert(ga4RefreshWork).values({ campaignId, dueAt, reportingDate, ...scope }).onConflictDoNothing();
+      // A later slot supersedes unfinished older slots, including after midnight.
+      const [newer] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork).where(and(
+        eq(ga4RefreshWork.campaignId, campaignId), sql`${ga4RefreshWork.dueAt} > ${dueAt}`,
+        sql`${ga4RefreshWork.dueAt} <= clock_timestamp()`, sql`${ga4RefreshWork.scopeHash} NOT LIKE 'invalidated:%'`));
+      if (newer) return undefined;
+      await tx.update(ga4RefreshWork).set({ scopeHash: sql`'invalidated:' || ${ga4RefreshWork.id}`,
+        status: "pending", leaseToken: null, leaseExpiresAt: null, updatedAt: sql`clock_timestamp()` })
+        .where(and(eq(ga4RefreshWork.campaignId, campaignId), eq(ga4RefreshWork.status, "pending"),
+          or(lt(ga4RefreshWork.dueAt, dueAt), and(eq(ga4RefreshWork.dueAt, dueAt), ne(ga4RefreshWork.reportingDate, reportingDate))),
+          sql`NOT (COALESCE(${ga4RefreshWork.lastError}, '') = 'GA4_PROVIDER_BACKOFF' AND ${ga4RefreshWork.nextAttemptAt} > clock_timestamp())`,
+          sql`${dueAt}::timestamptz <= clock_timestamp()`, sql`${ga4RefreshWork.scopeHash} NOT LIKE 'invalidated:%'`));
+      await tx.insert(ga4RefreshWork).values({ campaignId, dueAt, reportingDate, suppressAlerts: options.suppressAlerts === true, ...scope }).onConflictDoNothing();
       const [work] = await tx.select().from(ga4RefreshWork).where(and(eq(ga4RefreshWork.campaignId, campaignId),
         eq(ga4RefreshWork.dueAt, dueAt), eq(ga4RefreshWork.reportingDate, reportingDate), eq(ga4RefreshWork.scopeHash, scope.scopeHash)));
       return work;
@@ -1275,16 +1366,27 @@ export class DatabaseStorage implements IStorage {
       if (!scope) return undefined;
       const [work] = await tx.select().from(ga4RefreshWork).where(and(eq(ga4RefreshWork.id, workId),
         eq(ga4RefreshWork.campaignId, campaignId), eq(ga4RefreshWork.scopeHash, scope.scopeHash),
-        sql`${ga4RefreshWork.dueAt} <= clock_timestamp()`));
-      if (!work || work.status === "completed") return undefined;
+        sql`${ga4RefreshWork.dueAt} <= clock_timestamp()`,
+        sql`(${ga4RefreshWork.nextAttemptAt} IS NULL OR ${ga4RefreshWork.nextAttemptAt} <= clock_timestamp())`));
+      if (!work || work.status === "completed" || !work.retryable || work.attemptCount >= 3) return undefined;
+      const [providerBackoff] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork).where(and(
+        eq(ga4RefreshWork.campaignId, campaignId), eq(ga4RefreshWork.scopeHash, scope.scopeHash),
+        eq(ga4RefreshWork.lastError, "GA4_PROVIDER_BACKOFF"), sql`${ga4RefreshWork.nextAttemptAt} > clock_timestamp()`));
+      if (providerBackoff) return undefined;
+      const [newer] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork).where(and(
+        eq(ga4RefreshWork.campaignId, campaignId), sql`${ga4RefreshWork.dueAt} > ${work.dueAt}`,
+        sql`${ga4RefreshWork.dueAt} <= clock_timestamp()`, sql`${ga4RefreshWork.scopeHash} NOT LIKE 'invalidated:%'`));
+      if (newer) return undefined;
       // Expiry clears only work ownership; it never authorizes an old owner to publish.
-      await tx.update(ga4RefreshWork).set({ status: "pending", leaseToken: null, leaseExpiresAt: null, updatedAt: sql`clock_timestamp()` })
+      await tx.update(ga4RefreshWork).set({ status: "pending", leaseToken: null, leaseExpiresAt: null, updatedAt: sql`clock_timestamp()`,
+        scopeHash: sql`CASE WHEN ${ga4RefreshWork.id} = ${workId} THEN ${ga4RefreshWork.scopeHash} ELSE 'invalidated:' || ${ga4RefreshWork.id} END` })
         .where(and(eq(ga4RefreshWork.campaignId, campaignId), eq(ga4RefreshWork.status, "running"),
           sql`${ga4RefreshWork.leaseExpiresAt} <= clock_timestamp()`));
       const [busy] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork)
         .where(and(eq(ga4RefreshWork.campaignId, campaignId), eq(ga4RefreshWork.status, "running")));
       if (busy) return undefined;
       const [claimed] = await tx.update(ga4RefreshWork).set({ status: "running", leaseToken: randomUUID(),
+        attemptCount: sql`${ga4RefreshWork.attemptCount} + 1`, nextAttemptAt: null,
         leaseExpiresAt: sql`clock_timestamp() + ${leaseMs} * interval '1 millisecond'`,
         startedAt: sql`clock_timestamp()`, updatedAt: sql`clock_timestamp()`,
       }).where(and(eq(ga4RefreshWork.id, workId), eq(ga4RefreshWork.campaignId, campaignId), eq(ga4RefreshWork.status, "pending"))).returning();
@@ -1293,11 +1395,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateGA4RefreshWorkLease(campaignId: string, ownerId: string, workId: string, leaseToken: string,
-    action: "renew" | "release" | "complete", leaseMs = 120_000, publicationCompletedAt?: string): Promise<GA4RefreshWork | undefined> {
-    if (!["renew", "release", "complete"].includes(action) || !Number.isInteger(leaseMs) || leaseMs < 1000 || leaseMs > 900_000)
+    action: "renew" | "release" | "complete" | "complete_without_alerts", leaseMs = 120_000, publicationCompletedAt?: string, failure?: { retryable: boolean; code: string; retryAfterMs?: number }): Promise<GA4RefreshWork | undefined> {
+    if (!["renew", "release", "complete", "complete_without_alerts"].includes(action) || !Number.isInteger(leaseMs) || leaseMs < 1000 || leaseMs > 900_000)
       throw new Error("Invalid GA4 work lease update");
     if (!leaseToken?.trim()) return undefined;
-    if (publicationCompletedAt !== undefined && (action !== "complete" || !Number.isFinite(Date.parse(publicationCompletedAt)))) throw new Error("Invalid GA4 work completion time");
+    if (publicationCompletedAt !== undefined && (!["complete", "complete_without_alerts"].includes(action) || !Number.isFinite(Date.parse(publicationCompletedAt)))) throw new Error("Invalid GA4 work completion time");
     return this.withGA4RefreshTransaction(async (tx: any) => {
       await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
       await tx.execute(sql`SET LOCAL statement_timeout = '30s'`);
@@ -1310,7 +1412,7 @@ export class DatabaseStorage implements IStorage {
       const [work] = await tx.select().from(ga4RefreshWork).where(owned);
       if (!work) return undefined;
       let completedAt: Date | null = null;
-      if (action === "complete") {
+      if (action === "complete" || action === "complete_without_alerts") {
         const [snapshot] = await tx.select({ notes: metricSnapshots.notes }).from(metricSnapshots).where(and(
           eq(metricSnapshots.campaignId, campaignId), eq(metricSnapshots.snapshotType, "executive_summary_daily"),
           eq(metricSnapshots.reportingDate, work.reportingDate),
@@ -1325,7 +1427,7 @@ export class DatabaseStorage implements IStorage {
           completedAt = new Date(snapshot.notes.slice(prefix.length));
         }
         if (!Number.isFinite(completedAt.getTime()) || completedAt < work.dueAt || completedAt < work.startedAt) return undefined;
-        if (publicationCompletedAt !== undefined) {
+        if (publicationCompletedAt !== undefined && action === "complete") {
           const [marked] = await tx.update(metricSnapshots).set({ notes: `${prefix}${publicationCompletedAt}` }).where(and(
             eq(metricSnapshots.campaignId, campaignId), eq(metricSnapshots.snapshotType, "executive_summary_daily"),
             eq(metricSnapshots.reportingDate, work.reportingDate), sql`${completedAt}::timestamptz <= clock_timestamp()`,
@@ -1335,8 +1437,14 @@ export class DatabaseStorage implements IStorage {
       }
       const [updated] = await tx.update(ga4RefreshWork).set(action === "renew" ? {
         leaseExpiresAt: sql`LEAST(clock_timestamp() + ${leaseMs} * interval '1 millisecond', ${ga4RefreshWork.startedAt} + interval '15 minutes')`, updatedAt: sql`clock_timestamp()`,
-      } : { status: action === "complete" ? "completed" : "pending", leaseToken: null, leaseExpiresAt: null,
+      } : { status: action.startsWith("complete") ? "completed" : "pending", leaseToken: null, leaseExpiresAt: null,
         completedAt, updatedAt: sql`clock_timestamp()`,
+        ...(action === "release" && failure ? {
+          retryable: failure.retryable, lastError: failure.code.replace(/[^a-z0-9_:.-]/gi, "_").slice(0, 160),
+          nextAttemptAt: failure.retryAfterMs !== undefined && (!Number.isFinite(failure.retryAfterMs) || failure.retryAfterMs > 31_536_000_000)
+            ? sql`'infinity'::timestamptz`
+            : sql`clock_timestamp() + ${Math.max(60_000 * 2 ** Math.min(work.attemptCount - 1, 2), failure.retryAfterMs || 0)} * interval '1 millisecond'`,
+        } : {}),
       }).where(and(owned, completedAt ? sql`${completedAt}::timestamptz <= clock_timestamp()` : undefined)).returning();
       if (publicationCompletedAt !== undefined && !updated) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
       if (publicationCompletedAt !== undefined) {
@@ -1446,6 +1554,9 @@ export class DatabaseStorage implements IStorage {
         const [previous] = await tx.select().from(ga4OverviewSnapshots).where(and(eq(ga4OverviewSnapshots.campaignId, cid), eq(ga4OverviewSnapshots.propertyId, pid)));
         if ((previous?.updatedAt ? new Date(previous.updatedAt).toISOString() : null) !== scope.previousUpdatedAt) {
           throw new Error("Another GA4 refresh published before this attempt");
+        }
+        if (!("work" in scope) && (scope.previousWorkVersion ?? null) !== await this.readGA4PublicationVersion(tx, cid)) {
+          throw new Error("GA4_REFRESH_PUBLICATION_CHANGED");
         }
         if ("work" in scope) {
           if (typeof scope.work?.id !== "string" || !scope.work.id.trim() ||
@@ -4201,6 +4312,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createLinkedInConnection(connection: InsertLinkedInConnection): Promise<LinkedInConnection> {
+    return this.writeGA4RefreshInputChange(connection.campaignId, async db => {
     const enc = buildEncryptedTokens({
       accessToken: (connection as any).accessToken,
       refreshToken: (connection as any).refreshToken,
@@ -4217,9 +4329,11 @@ export class DatabaseStorage implements IStorage {
       } as any)
       .returning();
     return hydrateDecryptedTokens(linkedinConnection) as any;
+    });
   }
 
   async updateLinkedInConnection(campaignId: string, connection: Partial<InsertLinkedInConnection>): Promise<LinkedInConnection | undefined> {
+    return this.writeGA4RefreshInputChange([campaignId, ...(connection.campaignId ? [connection.campaignId] : [])], async db => {
     const [existing] = await db.select().from(linkedinConnections).where(eq(linkedinConnections.campaignId, campaignId));
     if (!existing) return undefined;
 
@@ -4247,13 +4361,16 @@ export class DatabaseStorage implements IStorage {
       .where(eq(linkedinConnections.campaignId, campaignId))
       .returning();
     return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
+    });
   }
 
   async deleteLinkedInConnection(campaignId: string): Promise<boolean> {
+    return this.writeGA4RefreshInputChange(campaignId, async db => {
     const result = await db
       .delete(linkedinConnections)
       .where(eq(linkedinConnections.campaignId, campaignId));
     return (result.rowCount || 0) > 0;
+    });
   }
 
   async deleteLinkedInCampaignAnalytics(campaignId: string): Promise<boolean> {
@@ -4371,6 +4488,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMetaConnection(connection: InsertMetaConnection): Promise<MetaConnection> {
+    return this.writeGA4RefreshInputChange(connection.campaignId, async db => {
     const enc = buildEncryptedTokens({
       accessToken: (connection as any).accessToken,
       refreshToken: (connection as any).refreshToken,
@@ -4385,9 +4503,11 @@ export class DatabaseStorage implements IStorage {
       } as any)
       .returning();
     return hydrateDecryptedTokens(metaConnection) as any;
+    });
   }
 
   async updateMetaConnection(campaignId: string, connection: Partial<InsertMetaConnection>): Promise<MetaConnection | undefined> {
+    return this.writeGA4RefreshInputChange([campaignId, ...(connection.campaignId ? [connection.campaignId] : [])], async db => {
     const [existing] = await db.select().from(metaConnections).where(eq(metaConnections.campaignId, campaignId));
     if (!existing) return undefined;
 
@@ -4412,9 +4532,11 @@ export class DatabaseStorage implements IStorage {
       .where(eq(metaConnections.campaignId, campaignId))
       .returning();
     return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
+    });
   }
 
   async deleteMetaConnection(campaignId: string): Promise<boolean> {
+    return this.writeGA4RefreshInputChange(campaignId, async db => {
     return await db.transaction(async (tx: any) => {
       const [existing] = await tx
         .select({ campaignId: metaConnections.campaignId })
@@ -4438,6 +4560,7 @@ export class DatabaseStorage implements IStorage {
         .where(eq(metaConnections.campaignId, campaignId));
       return (result.rowCount || 0) > 0;
     });
+    });
   }
 
   // Instagram Connection methods
@@ -4448,6 +4571,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createInstagramConnection(connection: InsertInstagramConnection): Promise<InstagramConnection> {
+    return this.writeGA4RefreshInputChange(connection.campaignId, async db => {
     const enc = buildEncryptedTokens({
       accessToken: (connection as any).accessToken,
       refreshToken: (connection as any).refreshToken,
@@ -4462,9 +4586,11 @@ export class DatabaseStorage implements IStorage {
       } as any)
       .returning();
     return hydrateDecryptedTokens(instagramConnection) as any;
+    });
   }
 
   async updateInstagramConnection(campaignId: string, connection: Partial<InsertInstagramConnection>): Promise<InstagramConnection | undefined> {
+    return this.writeGA4RefreshInputChange([campaignId, ...(connection.campaignId ? [connection.campaignId] : [])], async db => {
     const [existing] = await db.select().from(instagramConnections).where(eq(instagramConnections.campaignId, campaignId));
     if (!existing) return undefined;
 
@@ -4489,9 +4615,11 @@ export class DatabaseStorage implements IStorage {
       .where(eq(instagramConnections.campaignId, campaignId))
       .returning();
     return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
+    });
   }
 
   async deleteInstagramConnection(campaignId: string): Promise<boolean> {
+    return this.writeGA4RefreshInputChange(campaignId, async db => {
     return await db.transaction(async (tx: any) => {
       await deleteInstagramFinancialDataForCampaign(tx, campaignId);
       const result = await tx
@@ -4502,6 +4630,7 @@ export class DatabaseStorage implements IStorage {
         await tx.delete(instagramDailyMetrics).where(eq(instagramDailyMetrics.campaignId, campaignId));
       }
       return deleted;
+    });
     });
   }
 
@@ -4566,6 +4695,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTikTokConnection(connection: InsertTikTokConnection): Promise<TikTokConnection> {
+    return this.writeGA4RefreshInputChange(connection.campaignId, async db => {
     const enc = buildEncryptedTokens({
       accessToken: (connection as any).accessToken,
       refreshToken: (connection as any).refreshToken,
@@ -4580,9 +4710,11 @@ export class DatabaseStorage implements IStorage {
       } as any)
       .returning();
     return hydrateDecryptedTokens(tiktokConnection) as any;
+    });
   }
 
   async updateTikTokConnection(campaignId: string, connection: Partial<InsertTikTokConnection>): Promise<TikTokConnection | undefined> {
+    return this.writeGA4RefreshInputChange([campaignId, ...(connection.campaignId ? [connection.campaignId] : [])], async db => {
     const [existing] = await db.select().from(tiktokConnections).where(eq(tiktokConnections.campaignId, campaignId));
     if (!existing) return undefined;
 
@@ -4607,9 +4739,11 @@ export class DatabaseStorage implements IStorage {
       .where(eq(tiktokConnections.campaignId, campaignId))
       .returning();
     return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
+    });
   }
 
   async deleteTikTokConnection(campaignId: string): Promise<boolean> {
+    return this.writeGA4RefreshInputChange(campaignId, async db => {
     return await db.transaction(async (tx: any) => {
       const result = await tx
         .delete(tiktokConnections)
@@ -4620,6 +4754,7 @@ export class DatabaseStorage implements IStorage {
         await deleteTikTokFinancialDataForCampaign(tx, campaignId);
       }
       return deleted;
+    });
     });
   }
 
@@ -5637,7 +5772,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateKPI(id: string, kpiData: Partial<InsertKPI> & GA4RefreshWriteInput): Promise<KPI | undefined> {
-    const { refreshScope, ...values } = kpiData;
+    const { refreshScope, publicationVersion, ...values } = kpiData;
     const guarded = "refreshScope" in kpiData;
     const save = async (tx: any) => {
       if (guarded && Object.keys(values).some(key => key !== "currentValue")) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
@@ -5653,6 +5788,9 @@ export class DatabaseStorage implements IStorage {
     if (guarded) return this.writeWithGA4RefreshOwnership(refreshScope, save);
     const target = await this.getKPI(id);
     const changesDefinition = Object.keys(values).some(key => !['currentValue', 'lastComputedValue', 'lastAlertSent', 'updatedAt'].includes(key));
+    if (target?.campaignId && !changesDefinition && ['', 'campaign', 'google_analytics'].includes(String(target.platformType || '').trim().toLowerCase())) {
+      return this.writeGA4DerivedChange(target.campaignId, kpiData, save);
+    }
     return target?.campaignId && changesDefinition && ['', 'campaign', 'google_analytics'].includes(String(target.platformType || '').trim().toLowerCase())
       ? this.writeGA4RefreshInputChange([target.campaignId, ...(values.campaignId ? [values.campaignId] : [])], save) : save(db);
   }
@@ -5710,7 +5848,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateKPIProgress(id: string, progressData: Partial<InsertKPIProgress> & { recordedAt?: Date } & GA4RefreshWriteInput): Promise<KPIProgress | undefined> {
-    const { refreshScope, ...values } = progressData;
+    const { refreshScope, publicationVersion, ...values } = progressData;
     const guarded = "refreshScope" in progressData;
     const save = async (tx: any) => {
       if (guarded) {
@@ -5730,7 +5868,11 @@ export class DatabaseStorage implements IStorage {
       if (guarded) await tx.update(kpis).set({ currentValue: progress.value, updatedAt: new Date() }).where(eq(kpis.id, progress.kpiId));
       return progress;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(refreshScope, save) : save(db);
+    if (guarded) return this.writeWithGA4RefreshOwnership(refreshScope, save);
+    const [existing] = await db.select({ kpiId: kpiProgress.kpiId }).from(kpiProgress).where(eq(kpiProgress.id, id));
+    const parent = existing ? await this.getKPI(existing.kpiId) : undefined;
+    return parent?.campaignId && ['', 'campaign', 'google_analytics'].includes(String(parent.platformType || '').trim().toLowerCase())
+      ? this.writeGA4DerivedChange(parent.campaignId, progressData, save) : save(db);
   }
 
   async getLatestKPIPeriod(kpiId: string): Promise<any> {
@@ -5744,7 +5886,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async recordKPIProgress(progressData: InsertKPIProgress & { recordedAt?: Date } & GA4RefreshWriteInput): Promise<KPIProgress> {
-    const { refreshScope, ...values } = progressData;
+    const { refreshScope, publicationVersion, ...values } = progressData;
     const guarded = "refreshScope" in progressData;
     const save = async (tx: any) => {
       if (guarded) {
@@ -5780,7 +5922,10 @@ export class DatabaseStorage implements IStorage {
 
       return progress;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(refreshScope, save) : save(db);
+    if (guarded) return this.writeWithGA4RefreshOwnership(refreshScope, save);
+    const parent = await this.getKPI(values.kpiId);
+    return parent?.campaignId && ['', 'campaign', 'google_analytics'].includes(String(parent.platformType || '').trim().toLowerCase())
+      ? this.writeGA4DerivedChange(parent.campaignId, progressData, save) : save(db);
   }
 
   async getKPIAnalytics(kpiId: string, timeframe: string = "30d"): Promise<{
@@ -5925,7 +6070,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateBenchmark(id: string, updateData: Partial<InsertBenchmark> & GA4RefreshWriteInput): Promise<Benchmark | undefined> {
-    const { refreshScope, ...values } = updateData;
+    const { refreshScope, publicationVersion, ...values } = updateData;
     const guarded = "refreshScope" in updateData;
     const save = async (tx: any) => {
       if (guarded && Object.keys(values).some(key => key !== "currentValue")) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
@@ -5941,6 +6086,9 @@ export class DatabaseStorage implements IStorage {
     if (guarded) return this.writeWithGA4RefreshOwnership(refreshScope, save);
     const target = await this.getBenchmark(id);
     const changesDefinition = Object.keys(values).some(key => !['currentValue', 'lastAlertSent', 'lastUpdated', 'updatedAt'].includes(key));
+    if (target?.campaignId && !changesDefinition && ['', 'campaign', 'google_analytics'].includes(String(target.platformType || '').trim().toLowerCase())) {
+      return this.writeGA4DerivedChange(target.campaignId, updateData, save);
+    }
     return target?.campaignId && changesDefinition && ['', 'campaign', 'google_analytics'].includes(String(target.platformType || '').trim().toLowerCase())
       ? this.writeGA4RefreshInputChange([target.campaignId, ...(values.campaignId ? [values.campaignId] : [])], save) : save(db);
   }
@@ -5976,7 +6124,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async recordBenchmarkHistory(historyData: InsertBenchmarkHistory & { recordedAt?: Date } & GA4RefreshWriteInput): Promise<BenchmarkHistory> {
-    const { refreshScope, ...values } = historyData;
+    const { refreshScope, publicationVersion, ...values } = historyData;
     const guarded = "refreshScope" in historyData;
     const benchmarkId = String((historyData as any)?.benchmarkId || "").trim();
     const notes = String((historyData as any)?.notes || "");
@@ -6014,7 +6162,10 @@ export class DatabaseStorage implements IStorage {
       const [history] = await tx.insert(benchmarkHistory).values(values).returning();
       return history;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(refreshScope, save) : db.transaction(save);
+    if (guarded) return this.writeWithGA4RefreshOwnership(refreshScope, save);
+    const parent = await this.getBenchmark(benchmarkId);
+    return parent?.campaignId && ['', 'campaign', 'google_analytics'].includes(String(parent.platformType || '').trim().toLowerCase())
+      ? this.writeGA4DerivedChange(parent.campaignId, historyData, save) : db.transaction(save);
   }
 
   // Metric Snapshot methods
@@ -6073,7 +6224,7 @@ export class DatabaseStorage implements IStorage {
     if (snapshotData.snapshotType === 'financial_daily' || snapshotData.reportingDate != null) {
       throw new Error('Use upsertFinancialDailySnapshot for reporting-day financial snapshots');
     }
-    const { refreshScope, ...values } = snapshotData;
+    const { refreshScope, publicationVersion, ...values } = snapshotData;
     const guarded = "refreshScope" in snapshotData;
     const save = async (tx: any) => {
       if (guarded) {
@@ -6098,11 +6249,11 @@ export class DatabaseStorage implements IStorage {
       const [snapshot] = await tx.insert(metricSnapshots).values(values).returning();
       return snapshot;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(refreshScope, save) : save(db);
+    return this.writeGA4DerivedChange(values.campaignId, snapshotData, save);
   }
 
   async upsertFinancialDailySnapshot(snapshotData: FinancialDailySnapshotInput & GA4RefreshWriteInput): Promise<MetricSnapshot> {
-    const { refreshScope, ...values } = snapshotData;
+    const { refreshScope, publicationVersion, ...values } = snapshotData;
     const guarded = "refreshScope" in snapshotData;
     const snapshotInput = financialDailySnapshotInputSchema.parse(values);
     const { campaignId, reportingDate, ...financialDaily } = snapshotInput;
@@ -6133,11 +6284,11 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return snapshot;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(refreshScope, save) : save(db);
+    return this.writeGA4DerivedChange(campaignId, snapshotData, save);
   }
 
   async upsertExecutiveSummaryDailySnapshot(snapshotData: ExecutiveSummaryDailySnapshotInput & GA4RefreshWriteInput): Promise<MetricSnapshot> {
-    const { refreshScope, ...values } = snapshotData;
+    const { refreshScope, publicationVersion, ...values } = snapshotData;
     const guarded = "refreshScope" in snapshotData;
     const snapshotInput = executiveSummaryDailySnapshotInputSchema.parse(values);
     const { campaignId, reportingDate, ...executiveSummaryDaily } = snapshotInput;
@@ -6171,7 +6322,7 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return snapshot;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(refreshScope, save) : save(db);
+    return this.writeGA4DerivedChange(campaignId, snapshotData, save);
   }
 
   async invalidateExecutiveSummaryDailySnapshotAlignment(campaignId: string, reportingDate: string, options: GA4RefreshWriteInput = {}): Promise<void> {
@@ -6187,11 +6338,12 @@ export class DatabaseStorage implements IStorage {
         sql`split_part(${metricSnapshots.notes}, ':', 1) = 'ga4_aligned_refresh_v1'`,
       ));
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : save(db);
+    return this.writeGA4DerivedChange(campaignId, options, save);
   }
 
   async markExecutiveSummaryDailySnapshotAligned(campaignId: string, reportingDate: string, completedAt: string, options: GA4RefreshWriteInput = {}): Promise<boolean> {
     const guarded = "refreshScope" in options;
+    if (!guarded && !await this.getCampaign(campaignId)) return false;
     const marker = `ga4_aligned_refresh_v1:${reportingDate}:${completedAt}`;
     const save = async (tx: any) => {
       if (guarded) {
@@ -6216,7 +6368,7 @@ export class DatabaseStorage implements IStorage {
         .returning({ id: metricSnapshots.id });
       return Boolean(updated);
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : save(db);
+    return this.writeGA4DerivedChange(campaignId, options, save);
   }
 
   async getExecutiveSummaryDailyComparisonData(
@@ -6506,6 +6658,11 @@ export class DatabaseStorage implements IStorage {
 
     await db.transaction(async (tx: any) => {
       for (const campaign of clientCampaigns) {
+        const [locked] = await tx.select({ id: campaigns.id }).from(campaigns).where(and(
+          eq(campaigns.id, String(campaign.id)), eq(campaigns.clientId, clientId),
+          or(eq(campaigns.ownerId, ownerId), isNull(campaigns.ownerId)),
+        )).for("update");
+        if (!locked) throw new Error("Campaign ownership changed during client deletion");
         await this.deleteCampaignChildren(String(campaign.id), tx);
         await tx.delete(campaigns).where(eq(campaigns.id, String(campaign.id)));
       }

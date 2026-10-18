@@ -161,6 +161,7 @@ describe.skipIf(!testUrl)("financial source saves with real PostgreSQL refresh o
       await pool.query(`CREATE TABLE "${getTableName(table)}" (${columns.join(", ")})`);
     }
     await pool.query(readFileSync(new URL("../migrations/0020_add_ga4_refresh_work.sql", import.meta.url), "utf8"));
+    await pool.query(readFileSync(new URL("../migrations/0021_add_ga4_refresh_recovery.sql", import.meta.url), "utf8"));
   });
   afterAll(async () => {
     await pool?.end();

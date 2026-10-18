@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const storageMock = vi.hoisted(() => ({
+  getGA4PublicationVersion: vi.fn(async () => null),
   getCampaign: vi.fn(),
   getGA4Connections: vi.fn(),
   getGA4DailyMetrics: vi.fn(),
@@ -182,7 +183,7 @@ describe("campaign current-value financial source contract", () => {
     expect(storageMock.getSpendTotalForRange).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-20", "ga4");
     expect(storageMock.getSpendBreakdownBySource).toHaveBeenCalledWith("campaign-1", "1900-01-01", "2026-08-20", "ga4");
     expect(ga4ServiceMock.getTotalsWithRevenue).toHaveBeenCalledWith("properties/123", "token", "2026-07-01", "2026-08-20", [], "USD");
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("campaign-revenue", { currentValue: "1300" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("campaign-revenue", { currentValue: "1300", publicationVersion: { campaignId: "campaign-1", version: null } });
   });
 
   it("preserves last-good campaign values when every native candidate is unavailable", async () => {

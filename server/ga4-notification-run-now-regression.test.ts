@@ -9,8 +9,10 @@ describe("GA4 campaign run-now notification reconciliation", () => {
     const kpi = source("kpi-scheduler.ts");
     const benchmark = source("benchmark-notifications.ts");
 
-    expect(kpi).toContain('String(kpi?.campaignId || "") === requestedCampaignId && String(kpi?.platformType || "") === "google_analytics"');
-    expect(benchmark).toContain('eq(benchmarks.campaignId, requestedCampaignId), eq(benchmarks.platformType, "google_analytics")');
+    expect(kpi).toContain('String(kpi?.campaignId || "") === requestedCampaignId &&');
+    expect(benchmark).toContain('eq(benchmarks.campaignId, requestedCampaignId), includeCampaignLevel');
+    expect(kpi).toContain(': String(kpi?.platformType || "") === "google_analytics"');
+    expect(benchmark).toContain(': eq(benchmarks.platformType, "google_analytics")');
     expect(kpi).toContain("providerCoverageThroughDate");
     const scopedAlertCheck = kpi.slice(
       kpi.indexOf("async function checkPerformanceAlertsForScope"),

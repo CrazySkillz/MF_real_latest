@@ -131,6 +131,7 @@ describe("gated financial daily snapshot writer", () => {
     expect(result.status).toBe("written");
     expect(deps.upsertFinancialDailySnapshot).toHaveBeenCalledWith({
       version: "financial_daily_snapshot_v1",
+      publicationVersion: { campaignId, version: null },
       campaignId,
       reportingDate,
       currency: "USD",

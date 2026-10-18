@@ -71,6 +71,7 @@ describe.skipIf(!testUrl)("GA4 publication with real PostgreSQL transactions", (
     await pool.query("CREATE UNIQUE INDEX overview_identity ON ga4_overview_snapshots (campaign_id,property_id)");
     await pool.query("CREATE UNIQUE INDEX executive_identity ON metric_snapshots (campaign_id,reporting_date) WHERE snapshot_type='executive_summary_daily' AND reporting_date IS NOT NULL");
     await pool.query(readFileSync(new URL("../migrations/0020_add_ga4_refresh_work.sql", import.meta.url), "utf8"));
+    await pool.query(readFileSync(new URL("../migrations/0021_add_ga4_refresh_recovery.sql", import.meta.url), "utf8"));
     // Force a failure after daily replacement, inside the actual storage transaction.
     await pool.query("ALTER TABLE ga4_overview_snapshots ADD CONSTRAINT test_rejected_payload CHECK (NOT (campaign_breakdown ? 'rejectForTest'))");
   });

@@ -4,16 +4,22 @@ const state = vi.hoisted(() => ({ rules: [] as any[], alerts: [] as any[], reaso
   update: vi.fn(), updateNotification: vi.fn(), insert: vi.fn() }));
 vi.mock("./db", async () => {
   const { notifications } = await import("../shared/schema");
+  const { PgDialect } = await import("drizzle-orm/pg-core");
   return { db: {
     select: () => ({ from: (table: any) => {
       const rows = table === notifications ? state.alerts : state.rules;
-      return { then: (resolve: any) => Promise.resolve(rows).then(resolve), where: async () => rows };
+      return { then: (resolve: any) => Promise.resolve(rows).then(resolve), where: () => Object.assign(Promise.resolve(rows), { for: async () => rows }) };
     } }),
-    update: (table: any) => ({ set: (values: any) => ({ where: async () => state.update(table, values) }) }),
+    update: (table: any) => ({ set: (values: any) => ({ where: async (condition: any) => table === notifications
+      ? state.updateNotification(new PgDialect().sqlToQuery(condition).params[0], values) : state.update(table, values) }) }),
     insert: state.insert,
   } };
 });
-vi.mock("./storage", () => ({ storage: { updateNotification: state.updateNotification } }));
+vi.mock("./storage", async () => {
+  const { db } = await import("./db");
+  return { storage: { updateNotification: state.updateNotification, getGA4PublicationVersion: async () => null,
+    writeGA4DerivedChange: async (_id: string, _options: any, write: any) => write(db) } };
+});
 vi.mock("./ga4-kpi-benchmark-jobs", () => ({ runGA4DailyKPIAndBenchmarkJobs: vi.fn() }));
 vi.mock("./utils/ga4-alert-current-value", () => ({ resolveAlertCurrentValueForDecision: async (row: any) => ({
   ...row, __alertDecisionEligible: !state.reason, __alertDecisionReason: state.reason,

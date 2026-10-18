@@ -11,16 +11,22 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("./db", async () => {
   const { kpis, benchmarks, notifications } = await import("../shared/schema");
+  const { PgDialect } = await import("drizzle-orm/pg-core");
   return { db: {
     select: () => ({ from: (table: any) => {
       if (![kpis, benchmarks, notifications].includes(table)) throw new Error("Unexpected table");
       const rows = table === notifications ? mocks.alerts : mocks.rows;
-      return Object.assign(Promise.resolve(rows), { where: () => Promise.resolve(rows) });
+      return Object.assign(Promise.resolve(rows), { where: () => Object.assign(Promise.resolve(rows), { for: async () => rows }) });
     } }),
-    update: (table: any) => ({ set: (values: any) => ({ where: async (condition: any) => mocks.updateRule(table, values, condition) }) }),
+    update: (table: any) => ({ set: (values: any) => ({ where: async (condition: any) => table === notifications
+      ? mocks.updateNotification(new PgDialect().sqlToQuery(condition).params[0], values) : mocks.updateRule(table, values, condition) }) }),
   } };
 });
-vi.mock("./storage", () => ({ storage: { updateNotification: mocks.updateNotification } }));
+vi.mock("./storage", async () => {
+  const { db } = await import("./db");
+  return { storage: { updateNotification: mocks.updateNotification, getGA4PublicationVersion: async () => null,
+    writeGA4DerivedChange: async (_id: string, _options: any, write: any) => write(db) } };
+});
 vi.mock("./utils/ga4-alert-current-value", () => ({ resolveAlertCurrentValueForDecision: mocks.resolve }));
 vi.mock("./ga4-kpi-benchmark-jobs", () => ({ runGA4DailyKPIAndBenchmarkJobs: vi.fn() }));
 vi.mock("./kpi-notifications", () => ({
@@ -54,7 +60,7 @@ describe.each([
     Object.assign(mocks.rows[0], settings);
     await check();
     expect(mocks.resolve).not.toHaveBeenCalled();
-    if (kind === "KPI") expect(mocks.clearKPI).toHaveBeenCalledWith("rule", "cleared");
+    if (kind === "KPI") expect(mocks.clearKPI).toHaveBeenCalledWith("rule", "cleared", expect.any(Object));
     else {
       expect(mocks.updateRule).toHaveBeenCalledTimes(1);
       expect(mocks.updateRule.mock.calls[0][1]).toEqual({ lastAlertSent: null });

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const storageMock = vi.hoisted(() => ({
+  getGA4PublicationVersion: vi.fn(),
   getCampaign: vi.fn(), getGA4Connections: vi.fn(), getGA4DailyMetrics: vi.fn(), getGA4OverviewSnapshot: vi.fn(),
   getRevenueTotalForRange: vi.fn(), getSpendTotalForRange: vi.fn(),
   getRevenueBreakdownBySource: vi.fn(), getSpendBreakdownBySource: vi.fn(),
@@ -39,6 +40,7 @@ describe("financial snapshot reuses the verified GA4 Overview", () => {
     vi.setSystemTime(new Date("2026-10-17T08:00:00.000Z"));
     Object.values(storageMock).forEach((mock) => mock.mockReset());
     Object.values(provider).forEach((mock) => mock.mockReset());
+    storageMock.getGA4PublicationVersion.mockResolvedValue(null);
     storageMock.getCampaign.mockResolvedValue({ id: campaignId, currency: "EUR", reportingTimeZone: "Europe/Amsterdam", ga4CampaignFilter: '["sale_a","sale_b"]' });
     storageMock.getGA4Connections.mockResolvedValue([{ campaignId, propertyId, isPrimary: true, isActive: true, importStartDate: "2026-10-15", method: "access_token", accessToken: "test-token" }]);
     storageMock.getGA4DailyMetrics.mockResolvedValue(dailyRows());

@@ -155,7 +155,7 @@ async function getCampaignMetricTotalsForEndDate(
 
   const connections = await storage.getGA4Connections(
     campaignId,
-    exactEndDate ? { migrateLegacyTokens: false } : undefined,
+    exactEndDate || useSavedOverview ? { migrateLegacyTokens: false } : undefined,
   ).catch(() => null as any);
   if (!connections) return null;
   const eligibleConnections = exactEndDate || useSavedOverview
@@ -508,6 +508,10 @@ export async function resolveCampaignCurrentValueForAlert<T extends { campaignId
 export async function refreshCampaignCurrentValuesForCampaign(campaignId: string, useSavedOverview = false, options: GA4RefreshWriteInput = {}): Promise<{ kpisUpdated: number; benchmarksUpdated: number }> {
   const id = String(campaignId || "").trim();
   if (!id) return { kpisUpdated: 0, benchmarksUpdated: 0 };
+
+  if (!("refreshScope" in options) && !("publicationVersion" in options)) {
+    options = { publicationVersion: { campaignId: id, version: await storage.getGA4PublicationVersion(id) } };
+  }
 
   const [kpis, benchmarks] = await Promise.all([
     storage.getCampaignKPIs(id).catch(() => [] as any[]),

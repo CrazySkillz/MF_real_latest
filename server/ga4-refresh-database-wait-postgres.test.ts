@@ -50,6 +50,7 @@ describe.skipIf(!testUrl)("GA4 owned database waits and credentials with real Po
       await pool.query(`CREATE TABLE "${getTableName(table)}" (${columns.join(", ")})`);
     }
     await pool.query(readFileSync(new URL("../migrations/0020_add_ga4_refresh_work.sql", import.meta.url), "utf8"));
+    await pool.query(readFileSync(new URL("../migrations/0021_add_ga4_refresh_recovery.sql", import.meta.url), "utf8"));
   });
   afterAll(async () => { await pool?.end(); if (created) await admin.query(`DROP SCHEMA "${schemaName}" CASCADE`); await admin?.end(); });
   beforeEach(async () => {

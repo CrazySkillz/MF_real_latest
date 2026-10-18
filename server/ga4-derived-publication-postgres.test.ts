@@ -83,6 +83,7 @@ describe.skipIf(!testUrl)("GA4 derived writes with real PostgreSQL ownership", (
     }
     await pool.query("CREATE UNIQUE INDEX financial_identity ON metric_snapshots (campaign_id,reporting_date) WHERE snapshot_type='financial_daily' AND reporting_date IS NOT NULL");
     await pool.query(readFileSync(new URL("../migrations/0020_add_ga4_refresh_work.sql", import.meta.url), "utf8"));
+    await pool.query(readFileSync(new URL("../migrations/0021_add_ga4_refresh_recovery.sql", import.meta.url), "utf8"));
   });
   afterAll(async () => {
     await pool?.end();
@@ -306,6 +307,39 @@ describe.skipIf(!testUrl)("GA4 derived writes with real PostgreSQL ownership", (
     const scope = await claim(); await storage.updateBenchmark("benchmark-a", { benchmarkValue: "200" });
     const before = await saved();
     await expect(write("history", scope)).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+    expect(await saved()).toEqual(before);
+  });
+  const ordinaryWrite = (kind: Writer, version: string | null) => {
+    const publicationVersion = { campaignId: "a", version };
+    if (kind === "kpi") return storage.updateKPI("kpi-a", { currentValue: "30", publicationVersion });
+    if (kind === "progress update") return storage.updateKPIProgress("progress-a", { ...progress("a", "30"), publicationVersion });
+    if (kind === "progress insert") return storage.recordKPIProgress({ ...progress("a", "30"), publicationVersion });
+    if (kind === "benchmark") return storage.updateBenchmark("benchmark-a", { currentValue: "30", publicationVersion });
+    if (kind === "history") return storage.recordBenchmarkHistory({ ...history("a", "30"), publicationVersion });
+    return storage.upsertFinancialDailySnapshot({ ...financial("a", "30"), publicationVersion });
+  };
+  it.each(writers)("rejects an ordinary %s calculation made before recovery started", async kind => {
+    const version = await storage.getGA4PublicationVersion("a");
+    await claim(); const before = await saved();
+    await expect(ordinaryWrite(kind, version)).rejects.toThrow("GA4_REFRESH_PUBLICATION_BUSY");
+    expect(await saved()).toEqual(before);
+  });
+  it.each(writers)("rejects a late ordinary %s after recovery completed", async kind => {
+    const version = await storage.getGA4PublicationVersion("a");
+    const scope = await claim();
+    await pool.query("UPDATE ga4_refresh_work SET status='completed',lease_token=NULL,lease_expires_at=NULL,completed_at=clock_timestamp() WHERE id=$1", [scope.work.id]);
+    const before = await saved();
+    await expect(ordinaryWrite(kind, version)).rejects.toThrow("GA4_REFRESH_PUBLICATION_CHANGED");
+    expect(await saved()).toEqual(before);
+    expect(await ordinaryWrite(kind, await storage.getGA4PublicationVersion("a"))).toBeDefined();
+  });
+  it.each(writers)("rejects ordinary %s across repeated edits after work invalidation", async kind => {
+    await claim();
+    await storage.updateCampaign("a", { name: "first edit" });
+    const version = await storage.getGA4PublicationVersion("a");
+    await storage.updateCampaign("a", { name: "second edit" });
+    const before = await saved();
+    await expect(ordinaryWrite(kind, version)).rejects.toThrow("GA4_REFRESH_PUBLICATION_CHANGED");
     expect(await saved()).toEqual(before);
   });
 });

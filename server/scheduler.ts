@@ -781,6 +781,8 @@ export async function recordCampaignMetrics(campaignId: string, opts: { allowSch
         return false;
       }
     }
+    const writeInput: GA4RefreshWriteInput = "refreshScope" in opts ? { refreshScope: opts.refreshScope }
+      : { publicationVersion: opts.publicationVersion ?? { campaignId, version: await storage.getGA4PublicationVersion(campaignId) } };
     const metrics = await aggregateCampaignMetrics(campaignId, { useSavedOverview: opts.allowScheduledGA4 === true });
     if (hasSnapshotMetricValue(metrics)) {
       await storage.createMetricSnapshot({
@@ -793,13 +795,14 @@ export async function recordCampaignMetrics(campaignId: string, opts: { allowSch
         totalSpend: metrics.totalSpend.toFixed(2),
         metrics: metrics.detailedMetrics,
         snapshotType: 'platform_sync',
-        ...("refreshScope" in opts ? { refreshScope: opts.refreshScope } : {}),
+        ...writeInput,
       });
       console.log(`[Metrics] Recorded data point for campaign ${campaignId} after platform sync`);
       return true;
     }
   } catch (error: any) {
     console.error(`[Metrics] Failed to record data point for campaign ${campaignId}:`, error?.message || error);
+    if (opts.refreshScope) throw error;
   }
   return false;
 }

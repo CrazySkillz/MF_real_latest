@@ -10,6 +10,10 @@ import { storage } from "./storage";
 const schedulerSource = () => readFileSync(join(process.cwd(), "server", "ga4-daily-scheduler.ts"), "utf-8");
 const aggregateSnapshotSchedulerSource = () => readFileSync(join(process.cwd(), "server", "scheduler.ts"), "utf-8");
 const kpiSchedulerSource = () => readFileSync(join(process.cwd(), "server", "kpi-scheduler.ts"), "utf-8");
+beforeEach(() => {
+  vi.spyOn(storage, "getGA4PublicationVersion").mockResolvedValue(null);
+  vi.spyOn(storage, "getCampaign").mockImplementation(async id => (await storage.getCampaigns()).find(campaign => campaign.id === id));
+});
 
 describe("GA4 startup recovery after a missed scheduled slot", () => {
   let campaign: any;
@@ -208,7 +212,7 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("const campaignId = String(opts.campaignId || \"\").trim();");
     expect(source).toContain("const campaigns = filterActiveSchedulerCampaigns(");
     expect(source).toContain('opts.includeTargetDraft ? campaignId : ""');
-    expect(source).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true, useSavedOverview: true })");
+    expect(source).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId: processedCampaignId, suppressAlerts: true, useSavedOverview: true, ...writeInputFor(processedCampaignId) })");
     expect(source).toContain("[GA4 Daily] KPI/Benchmark recompute result");
     expect(source).toContain("recomputeEvidence[key].push(...recomputeResult[key])");
     expect(source).toContain("lastRecomputeRecordedAt = new Date()");
@@ -218,7 +222,7 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain("benchmarkIdsUpdated: hashEvidenceIds(recomputeEvidence.benchmarkIdsUpdated)");
     expect(source).toContain("benchmarkIdsSkipped: hashEvidenceIds(recomputeEvidence.benchmarkIdsSkipped)");
     expect(source).toContain("benchmarkIdsFailed: hashEvidenceIds(recomputeEvidence.benchmarkIdsFailed)");
-    expect(source).toContain('if (!opts.suppressAlerts && (!campaignId || trigger === "snapshot_bootstrap")) {');
+    expect(source).toContain('if (!opts.suppressAlerts && (!campaignId || trigger === "snapshot_bootstrap" || refreshWriteInput.refreshScope)) {');
     expect(source).toContain("Next scheduled run at");
     expect(source).toContain("const dataThroughDate = getLatestCompleteReportingDate(config.reportingTimeZone, nextRunAt);");
     expect(source).toContain("dataThroughDate=${dataThroughDate}");
@@ -230,7 +234,7 @@ describe("GA4 daily scheduler timing", () => {
     expect(source).toContain('await runDailyAutoRefreshOnce(trigger === "scheduled" ? "scheduled" : "manual", {');
     expect(source).toContain('...(campaignId ? { campaignId } : {})');
     expect(source.indexOf('await runDailyAutoRefreshOnce(trigger === "scheduled" ? "scheduled" : "manual", {')).toBeLessThan(
-      source.indexOf("if (!finishEachCampaign) await publishRefresh(await refreshAllGA4DailyMetrics({ campaignId }));"),
+      source.indexOf("if (!finishEachCampaign) await publishRefresh(await refreshAllGA4DailyMetrics({ campaignId, ...refreshWriteInput,"),
     );
   });
 
@@ -456,10 +460,10 @@ describe("GA4 daily scheduler timing", () => {
     expect(source.indexOf('recordFinancialDailySnapshotRefreshEvidence("ga4_daily"')).toBeLessThan(
       source.indexOf(finalFailureCheck),
     );
-    expect(source.indexOf("await captureExecutiveSummarySnapshot(executiveSummarySnapshotBaseUrl, processedCampaignId)")).toBeGreaterThan(
-      source.indexOf("await writeFinancialDailySnapshotIfReady({ campaignId: processedCampaignId, reportingDate })"),
+    expect(source.indexOf("await captureExecutiveSummarySnapshot(executiveSummarySnapshotBaseUrl, processedCampaignId,")).toBeGreaterThan(
+      source.indexOf("await writeFinancialDailySnapshotIfReady({ campaignId: processedCampaignId, reportingDate, ...writeInputFor(processedCampaignId) })"),
     );
-    expect(source.indexOf("await captureExecutiveSummarySnapshot(executiveSummarySnapshotBaseUrl, processedCampaignId)")).toBeLessThan(
+    expect(source.indexOf("await captureExecutiveSummarySnapshot(executiveSummarySnapshotBaseUrl, processedCampaignId,")).toBeLessThan(
       source.indexOf(finalFailureCheck),
     );
     expect(source.indexOf("alignedRefreshByCampaign.set(processedCampaignId")).toBeLessThan(
@@ -630,7 +634,7 @@ describe("GA4 daily scheduler timing", () => {
 
     expect(result.campaignIdsProcessed).toEqual(["campaign-1"]);
     expect(conversionEvents).toHaveBeenCalledWith(
-      "campaign-1", storage, "2026-08-02", "properties/active", 50, "saved-filter", "2026-08-05", false,
+      "campaign-1", expect.objectContaining({ getCampaign: expect.any(Function), getGA4Connection: expect.any(Function), updateGA4ConnectionTokens: expect.any(Function) }), "2026-08-02", "properties/active", 50, "saved-filter", "2026-08-05", false,
       { "2026-08-02": 0, "2026-08-03": 1, "2026-08-04": 1, "2026-08-05": 0 },
     );
     expect(replace).toHaveBeenCalledTimes(1);

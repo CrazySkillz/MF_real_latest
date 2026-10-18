@@ -77,7 +77,7 @@ describe("Executive Summary snapshot scheduler", () => {
     expect(timeout).toHaveBeenCalledWith(120_000);
     expect(fetchMock.mock.calls[0][1].headers["x-internal-ga4-refresh-scope"]).toBe(JSON.stringify(scope));
     controller.abort(new DOMException("Timed out", "TimeoutError"));
-    await expect(pending).resolves.toBe(false);
+    await expect(pending).rejects.toMatchObject({ name: "TimeoutError" });
     timeout.mockRestore();
     expect(fetchMock).toHaveBeenCalledOnce();
   });

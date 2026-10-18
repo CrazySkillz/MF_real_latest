@@ -6,6 +6,18 @@ This file defines the daily auto-refresh and auto-process model for GA4.
 
 For the current Salesforce reference implementation, HubSpot parity gaps, and CRM lifecycle invariants, also read `GA4/CRM_REVENUE_SOURCE_PATTERN.md`.
 
+## Current P5 Recovery Status — 2026-10-18
+
+P5 implementation and local acceptance are complete for the agreed Ptomo native-GA4 scope, on top of `e5b60bb8`. The completion changes are included in this revision; **deployment remains unconfirmed**. This status supersedes the historical P5 checkpoints below; it is not whole-platform production certification.
+
+- Eligible active native-only campaigns now use persisted claims in the existing scheduled/bootstrap/manual paths. A one-minute poll resumes current-date interrupted work. Ownership/version checks prevent late workers and ordinary recomputes from overwriting newer results or configuration changes.
+- Native-only source readiness is rebuilt on every owned attempt, including after restart with empty process memory. Completion and report readiness are published only after the required derived/snapshot/alert stages succeed. Manual alert suppression survives restart.
+- Attempts are capped at three per work identity, with persisted backoff/provider holds and a 15-minute deadline. The 08:00/14:00/20:00 schedule, two-campaign concurrency, formulas, reporting windows and UI remain unchanged.
+- External financial/advertising connections exclude a campaign from automatic recovery; their ordinary refresh path remains. Shared pool defaults now bound checkout to 10 seconds, statements to 120 seconds, driver queries to 125 seconds and idle transactions to 120 seconds. These shared defaults also affect other callers and startup migrations. The detailed wait inventory and rollback switch `GA4_DURABLE_RECOVERY_ENABLED=false` are in the backlog.
+- Validation: 60 selected files, **1,495 passed**, the same **23 baseline failures**, two supplemental notification-DB tests skipped; no new failure identities. All activated P5 checks ran, including 11 real-process and six real local API-route checks. TypeScript/build pass. Real process tests use actual PostgreSQL storage/alert stages with deterministic inputs; scheduler/provider boundaries are separately controlled. No live provider, production database, browser or email delivery was exercised.
+
+See `docs/GA4_PROCESSING_AND_ALIGNMENT_BACKLOG.md`, **P5 completion package**, for root causes, exact paths/files, test evidence, activation exclusions and release checks. Deployment must apply additive migration `0021_add_ga4_refresh_recovery.sql`; confirm the next natural Ptomo refresh after deployment. P4, P6 and P7 remain separate work.
+
 ## Daily Auto-Refresh And Auto-Process
 
 This platform has a required no-click freshness pattern for GA4 campaigns.

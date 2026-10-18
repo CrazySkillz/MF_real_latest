@@ -125,6 +125,11 @@ export const ga4RefreshWork = pgTable("ga4_refresh_work", {
   leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
   startedAt: timestamp("started_at", { withTimezone: true }),
   completedAt: timestamp("completed_at", { withTimezone: true }),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }),
+  suppressAlerts: boolean("suppress_alerts").notNull().default(false),
+  retryable: boolean("retryable").notNull().default(true),
+  lastError: text("last_error"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
   uniqueIndex("ga4_refresh_work_identity").on(table.campaignId, table.dueAt, table.reportingDate, table.scopeHash),

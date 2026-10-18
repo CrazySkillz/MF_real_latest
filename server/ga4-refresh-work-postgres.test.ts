@@ -71,6 +71,7 @@ describe.skipIf(!testUrl)("durable GA4 work with real PostgreSQL", () => {
     }
     await pool.query(migration);
     await pool.query(startupSql);
+    await pool.query(readFileSync(new URL("../migrations/0021_add_ga4_refresh_recovery.sql", import.meta.url), "utf8"));
   });
   afterAll(async () => {
     await pool?.end();
@@ -252,5 +253,37 @@ describe.skipIf(!testUrl)("durable GA4 work with real PostgreSQL", () => {
     expect(await storage.ensureGA4RefreshWork("a", "owner-b", dueAt, date)).toBeUndefined();
     expect(await storage.ensureGA4RefreshWork("a", "", dueAt, date)).toBeUndefined();
     expect((await pool.query("SELECT * FROM ga4_refresh_work")).rows).toHaveLength(0);
+  });
+  it("persists retry delays and stops after three claims, including crash takeovers", async () => {
+    const pending = (await ensure())!;
+    let work = (await claim(pending.id))!;
+    await storage.updateGA4RefreshWorkLease("a", "owner-a", work.id, work.leaseToken!, "release", 120_000, undefined,
+      { retryable: true, code: "GA4_TRANSIENT_ERROR" });
+    expect(await claim(work.id)).toBeUndefined();
+    await pool.query("UPDATE ga4_refresh_work SET next_attempt_at=clock_timestamp()-interval '1 second' WHERE id=$1", [work.id]);
+    work = (await claim(work.id))!; expect(work.attemptCount).toBe(2);
+    await expire(work.id); work = (await claim(work.id))!; expect(work.attemptCount).toBe(3);
+    await expire(work.id); expect(await claim(work.id)).toBeUndefined();
+  });
+  it("does not retry permanent credential failures and lets a later slot proceed", async () => {
+    const work = (await claim((await ensure())!.id))!;
+    await storage.updateGA4RefreshWorkLease("a", "owner-a", work.id, work.leaseToken!, "release", 120_000, undefined,
+      { retryable: false, code: "TOKEN_EXPIRED" });
+    expect(await claim(work.id)).toBeUndefined();
+    const later = (await ensure("a", new Date(dueAt.getTime() + 1000)))!;
+    expect(await claim(later.id)).toMatchObject({ attemptCount: 1, status: "running" });
+    expect(await claim(work.id)).toBeUndefined();
+  });
+  it.each([300_000, Infinity])("honors provider backoff across due slots (%s ms)", async retryAfterMs => {
+    const work = (await claim((await ensure())!.id))!;
+    await storage.updateGA4RefreshWorkLease("a", "owner-a", work.id, work.leaseToken!, "release", 120_000, undefined,
+      { retryable: true, code: "GA4_PROVIDER_BACKOFF", retryAfterMs });
+    const later = (await ensure("a", new Date(dueAt.getTime() + 1000)))!;
+    expect(await claim(later.id)).toBeUndefined();
+    expect(await claim(work.id)).toBeUndefined();
+    // Only the explicit input change clears a provider hold; time is controlled in this isolated fixture.
+    await storage.retireGA4RefreshWork("a");
+    const fresh = (await ensure("a", new Date(dueAt.getTime() + 2000)))!;
+    expect(await claim(fresh.id)).toBeDefined();
   });
 });

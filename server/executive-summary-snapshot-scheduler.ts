@@ -4,22 +4,26 @@ import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligi
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export async function captureExecutiveSummarySnapshot(baseUrl: string, campaignId: string, options: GA4RefreshWriteInput = {}): Promise<boolean> {
+export async function captureExecutiveSummarySnapshot(baseUrl: string, campaignId: string, options: GA4RefreshWriteInput & { signal?: AbortSignal } = {}): Promise<boolean> {
   const token = getInternalAutoRefreshToken();
   try {
     const response = await fetch(`${baseUrl}/api/campaigns/${encodeURIComponent(campaignId)}/outcome-totals?dateRange=90days&captureExecutiveSnapshot=1&executiveFinancialScope=campaign_to_date`, {
       headers: { "x-internal-auto-refresh-token": token,
         ...("refreshScope" in options ? { "x-internal-ga4-refresh-scope": JSON.stringify(options.refreshScope ?? null) } : {}),
       },
-      signal: AbortSignal.timeout(120_000),
+      signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(120_000)]) : AbortSignal.timeout(120_000),
     });
     if (!response.ok) {
       console.warn(`[Executive Summary] Daily snapshot request failed for campaign ${campaignId}: ${response.status}`);
     }
     await response.body?.cancel().catch(() => null);
+    if (options.refreshScope && !response.ok) throw Object.assign(new Error(`Executive snapshot HTTP ${response.status}`), {
+      code: response.status === 429 || response.status >= 500 ? "GA4_TRANSIENT_ERROR" : "GA4_EXECUTIVE_CAPTURE_REJECTED",
+    });
     return response.ok;
   } catch (error: any) {
     console.warn(`[Executive Summary] Daily snapshot request failed for campaign ${campaignId}:`, error?.message || error);
+    if (options.refreshScope) throw error;
     return false;
   }
 }

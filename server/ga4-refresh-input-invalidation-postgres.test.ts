@@ -24,7 +24,9 @@ const tables = [schema.campaigns, schema.ga4Connections, schema.metricSnapshots,
   schema.revenueSources, schema.revenueRecords, schema.spendSources, schema.spendRecords,
   schema.kpis, schema.kpiProgress, schema.kpiAlerts, schema.kpiPeriods, schema.benchmarks, schema.benchmarkHistory, schema.notifications,
   schema.googleSheetsConnections, schema.salesforceConnections, schema.hubspotConnections, schema.shopifyConnections,
-  schema.googleAdsConnections, schema.ga4GoogleAdsSpendConnections, schema.googleAdsDailyMetrics, schema.ga4GoogleAdsSpendDailyMetrics];
+  schema.googleAdsConnections, schema.ga4GoogleAdsSpendConnections, schema.googleAdsDailyMetrics, schema.ga4GoogleAdsSpendDailyMetrics,
+  schema.linkedinConnections, schema.metaConnections, schema.instagramConnections, schema.tiktokConnections,
+  schema.metaDailyMetrics, schema.instagramDailyMetrics, schema.tiktokDailyMetrics];
 const storage = new DatabaseStorage();
 const date = "2026-10-17";
 const dueAt = new Date(Date.now() - 60_000);
@@ -54,6 +56,7 @@ describe.skipIf(!testUrl)("GA4 refresh invalidation on ordinary input edits", ()
       await pool.query(`CREATE TABLE "${getTableName(table)}" (${columns.join(", ")})`);
     }
     await pool.query(readFileSync(new URL("../migrations/0020_add_ga4_refresh_work.sql", import.meta.url), "utf8"));
+    await pool.query(readFileSync(new URL("../migrations/0021_add_ga4_refresh_recovery.sql", import.meta.url), "utf8"));
   });
   afterAll(async () => { await pool?.end(); if (created) await admin.query(`DROP SCHEMA "${schemaName}" CASCADE`); await admin?.end(); });
   beforeEach(async () => {
@@ -71,6 +74,48 @@ describe.skipIf(!testUrl)("GA4 refresh invalidation on ordinary input edits", ()
   const kpi = { campaignId: "a", platformType: "google_analytics", name: "Total Sessions", metric: "sessions", targetValue: "100", unit: "count", alertsEnabled: false };
   const benchmark = { campaignId: "a", platformType: "google_analytics", category: "traffic", name: "Sessions", metric: "sessions", benchmarkValue: "100", unit: "count" };
   const source = { campaignId: "a", sourceType: "google_sheets", platformContext: "ga4", mappingConfig: "original" };
+  it.each(["LinkedIn", "Meta", "Instagram", "TikTok"])("invalidates native work for %s connection create, edit and delete", async platform => {
+    const methods = storage as any;
+    const payload = { campaignId: "a", method: "manual_token", accessToken: "test", adAccountId: "account", advertiserId: "account" };
+    let scope = await claim();
+    await methods[`create${platform}Connection`](payload);
+    await expect(accepts(scope)).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+    scope = await claim();
+    await methods[`update${platform}Connection`]("a", { accessToken: "replacement" });
+    await expect(accepts(scope)).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+    scope = await claim();
+    await methods[`delete${platform}Connection`]("a");
+    await expect(accepts(scope)).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+    expect((await storage.getCampaign("b"))?.ownerId).toBe("owner-b");
+  });
+  it("only activates automatic recovery for active native-only campaign scopes", async () => {
+    await pool.query("UPDATE ga4_connections SET property_id='542352127'");
+    expect(await storage.isGA4NativeRecoveryEligible("a")).toBe(true);
+    expect(await storage.isGA4NativeRecoveryEligible("missing")).toBe(false);
+    await storage.createRevenueSource(source);
+    expect(await storage.isGA4NativeRecoveryEligible("a")).toBe(false);
+    expect(await storage.isGA4NativeRecoveryEligible("b")).toBe(true);
+    await pool.query("UPDATE revenue_sources SET is_active=false");
+    expect(await storage.isGA4NativeRecoveryEligible("a")).toBe(true);
+    await storage.createMetaConnection({ campaignId: "a", method: "manual_token", adAccountId: "account" });
+    expect(await storage.isGA4NativeRecoveryEligible("a")).toBe(false);
+    await storage.deleteMetaConnection("a");
+    await storage.updateCampaign("a", { status: "paused" });
+    expect(await storage.isGA4NativeRecoveryEligible("a")).toBe(false);
+  });
+  it("renews an ordinary credential without invalidating itself, but rejects reconnection and edited inputs", async () => {
+    await ensure(); await storage.retireGA4RefreshWork("a");
+    const version = await storage.getGA4PublicationVersion("a");
+    const expectedConnection = await storage.getGA4Connection("a");
+    const options = { publicationVersion: { campaignId: "a", version }, expectedConnection };
+    expect(await storage.updateGA4ConnectionTokens("connection-a", { accessToken: "renewed" }, options)).toMatchObject({ accessToken: "renewed", refreshToken: "keep-refresh", clientSecret: "keep-secret" });
+    expect(await storage.getGA4PublicationVersion("a")).toBe(version);
+    await expect(storage.updateGA4ConnectionTokens("connection-a", { accessToken: "stale" }, options)).rejects.toThrow("GA4_REFRESH_CONNECTION_CHANGED");
+    const fresh = { ...options, expectedConnection: await storage.getGA4Connection("a") };
+    await storage.updateGA4Connection("connection-a", { accessToken: "user-reconnected" });
+    await expect(storage.updateGA4ConnectionTokens("connection-a", { accessToken: "stale" }, fresh)).rejects.toThrow("GA4_REFRESH_PUBLICATION_CHANGED");
+    expect((await storage.getGA4Connection("a"))?.accessToken).toBe("user-reconnected");
+  });
   const changes: Array<[string, () => Promise<unknown>]> = [
     ["campaign edit then restore", async () => { await storage.updateCampaign("a", { ga4CampaignFilter: "other" }); await storage.updateCampaign("a", { ga4CampaignFilter: "sale" }); }],
     ["GA4 reconnect with unchanged property", () => storage.updateGA4Connection("connection-a", { accessToken: "replacement" })],
@@ -246,6 +291,7 @@ describe.skipIf(!testUrl)("GA4 refresh invalidation on ordinary input edits", ()
   it("retains ordinary saves before the optional durable-work migration exists", async () => {
     await pool.query("DROP TABLE ga4_refresh_work");
     try { expect(await storage.createRevenueSource(source)).toMatchObject(source); }
-    finally { await pool.query(readFileSync(new URL("../migrations/0020_add_ga4_refresh_work.sql", import.meta.url), "utf8")); }
+    finally { await pool.query(readFileSync(new URL("../migrations/0020_add_ga4_refresh_work.sql", import.meta.url), "utf8"));
+    await pool.query(readFileSync(new URL("../migrations/0021_add_ga4_refresh_recovery.sql", import.meta.url), "utf8")); }
   });
 });

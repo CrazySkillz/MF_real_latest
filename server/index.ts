@@ -1134,6 +1134,16 @@ process.on('uncaughtException', (error: Error) => {
           console.error('GA4 refresh work storage migration failed:', error instanceof Error ? error.message : String(error));
         }
 
+        try {
+          await db.execute(sql`ALTER TABLE ga4_refresh_work ADD COLUMN IF NOT EXISTS attempt_count INTEGER NOT NULL DEFAULT 0`);
+          await db.execute(sql`ALTER TABLE ga4_refresh_work ADD COLUMN IF NOT EXISTS next_attempt_at TIMESTAMPTZ`);
+          await db.execute(sql`ALTER TABLE ga4_refresh_work ADD COLUMN IF NOT EXISTS retryable BOOLEAN NOT NULL DEFAULT TRUE`);
+          await db.execute(sql`ALTER TABLE ga4_refresh_work ADD COLUMN IF NOT EXISTS last_error TEXT`);
+          await db.execute(sql`ALTER TABLE ga4_refresh_work ADD COLUMN IF NOT EXISTS suppress_alerts BOOLEAN NOT NULL DEFAULT FALSE`);
+        } catch (error) {
+          console.error('GA4 refresh recovery migration failed:', error instanceof Error ? error.message : String(error));
+        }
+
         // GA4 Google Ads Spend storage is independent of the existing Connected Platform tables.
         try {
           await db.execute(sql`

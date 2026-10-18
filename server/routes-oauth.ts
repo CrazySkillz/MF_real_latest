@@ -14854,6 +14854,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (refreshWriteInput.refreshScope && refreshWriteInput.refreshScope.campaignId !== campaignId) {
         return res.status(403).json({ message: "GA4 refresh campaign scope mismatch" });
       }
+      if (!("refreshScope" in refreshWriteInput) && String(req.query.captureExecutiveSnapshot || "") === "1") {
+        refreshWriteInput.publicationVersion = { campaignId, version: await storage.getGA4PublicationVersion(campaignId) };
+      }
       const dateRange = String(req.query.dateRange || "30days");
       let persistedOnly = String(req.query.persistedOnly || "").trim() === "1";
 
@@ -27534,7 +27537,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }) as any;
         delete validatedUpdates.campaignId;
         delete validatedUpdates.platformType;
-        const benchmark = await storage.updateBenchmark(benchmarkId, validatedUpdates);
+        const benchmark = await storage.updateBenchmark(benchmarkId, { ...validatedUpdates,
+          ...(existing.campaignId && ['', 'campaign', 'google_analytics'].includes(String(existing.platformType || ''))
+            && Object.keys(validatedUpdates).every(key => ['currentValue', 'lastAlertSent', 'lastUpdated', 'updatedAt'].includes(key))
+            ? { publicationVersion: { campaignId: existing.campaignId, version: await storage.getGA4PublicationVersion(existing.campaignId) } } : {}),
+        });
         if (!benchmark) {
           return res.status(404).json({ message: "Benchmark not found" });
         }
@@ -28979,6 +28986,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       delete updateData.campaignId;
       delete updateData.platformType;
+      delete updateData.refreshScope;
+      delete updateData.publicationVersion;
 
       if (req.body.targetValue !== undefined) {
         updateData.targetValue = req.body.targetValue?.toString();
@@ -28995,7 +29004,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : null;
       }
 
-      const kpi = await storage.updateKPI(kpiId, updateData);
+      const kpi = await storage.updateKPI(kpiId, { ...updateData,
+        ...(Object.keys(updateData).every(key => ['currentValue', 'lastComputedValue', 'lastAlertSent', 'updatedAt'].includes(key))
+          ? { publicationVersion: { campaignId, version: await storage.getGA4PublicationVersion(campaignId) } } : {}),
+      });
       if (!kpi) {
         return res.status(404).json({ message: "KPI not found" });
       }
@@ -29358,7 +29370,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       delete validatedBenchmark.campaignId;
       delete validatedBenchmark.platformType;
 
-      const benchmark = await storage.updateBenchmark(benchmarkId, validatedBenchmark);
+      const benchmark = await storage.updateBenchmark(benchmarkId, { ...validatedBenchmark,
+        ...(Object.keys(validatedBenchmark).every(key => ['currentValue', 'lastAlertSent', 'lastUpdated', 'updatedAt'].includes(key))
+          ? { publicationVersion: { campaignId, version: await storage.getGA4PublicationVersion(campaignId) } } : {}),
+      });
       if (!benchmark) {
         return res.status(404).json({ message: "Benchmark not found" });
       }
@@ -29495,7 +29510,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const validated = insertKPIProgressSchema.parse(progressData);
-      const progress = await storage.recordKPIProgress(validated);
+      const progress = await storage.recordKPIProgress({ ...validated,
+        ...(okKpi.campaignId && ['', 'campaign', 'google_analytics'].includes(String(okKpi.platformType || ''))
+          ? { publicationVersion: { campaignId: okKpi.campaignId, version: await storage.getGA4PublicationVersion(okKpi.campaignId) } } : {}),
+      });
       res.json(progress);
     } catch (error) {
       console.error('KPI progress recording error:', error);
@@ -29630,7 +29648,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         validatedData.variance = variance.toString();
       }
 
-      const benchmark = await storage.updateBenchmark(benchmarkId, validatedData);
+      const benchmark = await storage.updateBenchmark(benchmarkId, { ...validatedData,
+        ...(existing.campaignId && ['', 'campaign', 'google_analytics'].includes(String(existing.platformType || ''))
+          && Object.keys(validatedData).every(key => ['currentValue', 'lastAlertSent', 'lastUpdated', 'updatedAt'].includes(key))
+          ? { publicationVersion: { campaignId: existing.campaignId, version: await storage.getGA4PublicationVersion(existing.campaignId) } } : {}),
+      });
       if (!benchmark) {
         return res.status(404).json({ message: "Benchmark not found" });
       }
@@ -30484,7 +30506,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const emailRecipientsError = getGA4AlertEmailRecipientsError({ ...existing, ...validated });
       if (emailRecipientsError) return res.status(400).json({ message: emailRecipientsError });
 
-      const benchmark = await storage.updateBenchmark(id, validated);
+      const benchmark = await storage.updateBenchmark(id, { ...validated,
+        ...(existing.campaignId && ['', 'campaign', 'google_analytics'].includes(String(existing.platformType || ''))
+          && Object.keys(validated).every(key => ['currentValue', 'lastAlertSent', 'lastUpdated', 'updatedAt'].includes(key))
+          ? { publicationVersion: { campaignId: existing.campaignId, version: await storage.getGA4PublicationVersion(existing.campaignId) } } : {}),
+      });
 
       if (!benchmark) {
         return res.status(404).json({ message: "Benchmark not found" });
@@ -30647,7 +30673,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const validated = insertBenchmarkHistorySchema.parse(historyData);
-      const history = await storage.recordBenchmarkHistory(validated);
+      const history = await storage.recordBenchmarkHistory({ ...validated,
+        ...(existing.campaignId && ['', 'campaign', 'google_analytics'].includes(String(existing.platformType || ''))
+          ? { publicationVersion: { campaignId: existing.campaignId, version: await storage.getGA4PublicationVersion(existing.campaignId) } } : {}),
+      });
       res.json(history);
     } catch (error) {
       console.error('Benchmark history recording error:', error);

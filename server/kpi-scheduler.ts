@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { kpis, kpiPeriods } from "../shared/schema";
-import { eq, and, lt, desc } from "drizzle-orm";
+import { eq, and, lt, desc, sql } from "drizzle-orm";
 import type { KPI, InsertKPIPeriod, KPIPeriod } from "../shared/schema";
 import {
   createKPIReminder,
@@ -245,27 +245,44 @@ export async function checkGA4PerformanceAlertsForCampaign(campaignId: string, p
   if ("refreshScope" in options) {
     if (options.refreshScope?.campaignId !== requestedCampaignId || options.refreshScope.reportingDate !== providerCoverageThroughDate) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
     await storage.writeWithGA4RefreshOwnership(options.refreshScope, tx => checkPerformanceAlertsForScope(requestedCampaignId, providerCoverageThroughDate, tx));
-  } else await checkPerformanceAlertsForScope(requestedCampaignId, providerCoverageThroughDate);
+  } else {
+    const publicationVersion = options.publicationVersion ?? { campaignId: requestedCampaignId, version: await storage.getGA4PublicationVersion(requestedCampaignId) };
+    await storage.writeGA4DerivedChange(requestedCampaignId, { publicationVersion }, tx => checkPerformanceAlertsForScope(requestedCampaignId, providerCoverageThroughDate, tx));
+  }
 }
 
-async function checkPerformanceAlertsForScope(campaignId?: string, providerCoverageThroughDate?: string, transaction?: any): Promise<void> {
+async function checkPerformanceAlertsForScope(campaignId?: string, providerCoverageThroughDate?: string, transaction?: any, includeCampaignLevel = false): Promise<void> {
   console.log('[KPI Scheduler] Checking performance alerts...');
 
   try {
     const requestedCampaignId = String(campaignId || "").trim();
     const activeKPIsRaw = transaction
-      ? await transaction.select().from(kpis).where(and(eq(kpis.campaignId, requestedCampaignId), eq(kpis.platformType, "google_analytics"))).for("share")
+      ? await transaction.select().from(kpis).where(and(eq(kpis.campaignId, requestedCampaignId), includeCampaignLevel
+        ? sql`COALESCE(${kpis.platformType}, '') IN ('', 'campaign', 'google_analytics')` : eq(kpis.platformType, "google_analytics"))).for("share")
       : await db.select().from(kpis);
     const activeKPIs = activeKPIsRaw;
     const scopedActiveKPIs = requestedCampaignId
-      ? activeKPIs.filter((kpi: any) => String(kpi?.campaignId || "") === requestedCampaignId && String(kpi?.platformType || "") === "google_analytics")
+      ? activeKPIs.filter((kpi: any) => String(kpi?.campaignId || "") === requestedCampaignId &&
+        (includeCampaignLevel ? ['', 'campaign', 'google_analytics'].includes(String(kpi?.platformType || "")) : String(kpi?.platformType || "") === "google_analytics"))
       : activeKPIs;
     const latestGA4KpiIdsByDuplicateKey = getLatestGA4KPIIdsByDuplicateKey(scopedActiveKPIs);
 
     console.log(`[KPI Scheduler] Found ${activeKPIs.length} active KPIs with alerts enabled`);
 
     const campaignMetricCache = new Map<string, Promise<any>>();
+    const checkedCampaigns = new Set<string>();
     for (const rawKpi of scopedActiveKPIs) {
+      if (!requestedCampaignId && rawKpi.campaignId && ['', 'campaign', 'google_analytics'].includes(String(rawKpi.platformType || ''))) {
+        if (checkedCampaigns.has(rawKpi.campaignId)) continue;
+        checkedCampaigns.add(rawKpi.campaignId);
+        try {
+          const publicationVersion = { campaignId: rawKpi.campaignId, version: await storage.getGA4PublicationVersion(rawKpi.campaignId) };
+          await storage.writeGA4DerivedChange(rawKpi.campaignId, { publicationVersion }, tx => checkPerformanceAlertsForScope(rawKpi.campaignId, undefined, tx, true));
+        } catch (error: any) {
+          if (!String(error?.message).startsWith('GA4_REFRESH_PUBLICATION_')) throw error;
+        }
+        continue;
+      }
       if (!isLatestGA4KPIForDuplicateKey(rawKpi, latestGA4KpiIdsByDuplicateKey)) {
         await resolveKPIAlerts(String((rawKpi as any).id), 'superseded', transaction);
         continue;
@@ -299,7 +316,7 @@ async function checkPerformanceAlertsForScope(campaignId?: string, providerCover
       if (shouldTriggerAlert(kpi)) {
         console.log(`[KPI Scheduler] ✅ TRIGGERING ALERT for: ${kpi.name}`);
         if (providerCoverageThroughDate) await createKPIAlert(kpi, { providerCoverageThroughDate, ...(transaction ? { transaction } : {}) });
-        else await createKPIAlert(kpi);
+        else await createKPIAlert(kpi, transaction ? { transaction } : {});
       } else {
         console.log(`[KPI Scheduler] ❌ No alert needed for: ${kpi.name}`);
         await resolveKPIAlerts(String(kpi.id), 'cleared', transaction);

@@ -13,7 +13,7 @@ describe("campaign alert current-value regression guard", () => {
     expect(scheduler).toContain("requireCurrentTrafficFreshness: true");
     expect(scheduler).toContain("providerCoverageThroughDate");
     expect(scheduler).toContain("shouldTriggerAlert(kpi)");
-    expect(scheduler).toContain("await createKPIAlert(kpi)");
+    expect(scheduler).toContain("await createKPIAlert(kpi, transaction ? { transaction } : {})");
     expect(kpiNotifications).toContain('import { isAlertDecisionBreached } from "./utils/alert-decision";');
     expect(kpiNotifications).toContain("return isAlertDecisionBreached(kpi);");
   });

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveGA4RefreshStatus } from "./utils/reporting-timezone";
 
 const storageMock = vi.hoisted(() => ({
+  getGA4PublicationVersion: vi.fn(async () => null),
   getCampaign: vi.fn(), getCampaigns: vi.fn(), getGA4Connections: vi.fn(), replaceGA4DailyMetricsWindow: vi.fn(),
 }));
 const providerMock = vi.hoisted(() => ({ getTimeSeriesData: vi.fn() }));
@@ -85,6 +86,7 @@ describe("GA4 property refresh observations", () => {
     const second = { ...connection, id: `${connection.id}-second`, propertyId: "properties/456" };
     const otherConnection = { ...connection, id: `${connection.id}-other`, campaignId: otherCampaign.id };
     storageMock.getCampaigns.mockResolvedValue([campaign, otherCampaign]);
+    storageMock.getCampaign.mockImplementation(async id => id === campaign.id ? campaign : otherCampaign);
     storageMock.getGA4Connections.mockImplementation(async (id) => id === campaign.id ? [connection, second] : [otherConnection]);
     providerMock.getTimeSeriesData.mockRejectedValueOnce(new Error("provider failed"));
     await refreshAllGA4DailyMetrics();

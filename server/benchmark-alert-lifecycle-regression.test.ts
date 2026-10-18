@@ -20,7 +20,7 @@ describe("benchmark alert lifecycle regression guard", () => {
     const source = readFileSync(join(process.cwd(), "server", "benchmark-notifications.ts"), "utf-8");
 
     expect(source).toContain('export async function resolveBenchmarkAlerts(benchmarkId: string, reason: "cleared" | "superseded" = "cleared", transaction?: any): Promise<void> {');
-    expect(source).toContain('? and(eq(benchmarks.status, "active"), eq(benchmarks.campaignId, requestedCampaignId), eq(benchmarks.platformType, "google_analytics"))');
+    expect(source).toContain('? and(eq(benchmarks.status, "active"), eq(benchmarks.campaignId, requestedCampaignId), includeCampaignLevel');
     expect(source).toContain(': eq(benchmarks.status, "active"));');
     expect(source).not.toContain('.where(and(eq(benchmarks.status, "active"), eq(benchmarks.alertsEnabled, true)))');
     expect(source).toContain('if (!b.alertsEnabled || thresholdRaw === null || typeof thresholdRaw === "undefined") {');

@@ -12,6 +12,7 @@ import { isCreatedThroughReportingDate, resolveGA4ImportToDateWindow } from "./r
 type SourceTotal = { totalRevenue?: number; totalSpend?: number; currency?: string; sourceIds: string[] };
 
 type WriterDependencies = {
+  getGA4PublicationVersion?: (campaignId: string) => Promise<string | null>;
   getCampaign: (campaignId: string) => Promise<any>;
   getGA4Connections: (campaignId: string) => Promise<any[]>;
   getGA4OverviewSnapshot: (campaignId: string, propertyId: string) => Promise<any>;
@@ -24,6 +25,7 @@ type WriterDependencies = {
 };
 
 const defaultDependencies: WriterDependencies = {
+  getGA4PublicationVersion: campaignId => storage.getGA4PublicationVersion(campaignId),
   getCampaign: (campaignId) => storage.getCampaign(campaignId),
   getGA4Connections: (campaignId) => storage.getGA4Connections(campaignId),
   getGA4OverviewSnapshot: (campaignId, propertyId) => storage.getGA4OverviewSnapshot(campaignId, propertyId),
@@ -45,6 +47,8 @@ export async function writeFinancialDailySnapshotIfReady(
 ): Promise<{ status: "written" | "blocked" | "skipped"; reasons: string[]; snapshot?: FinancialDailySnapshotInput }> {
   const campaignId = String(input.campaignId || "").trim();
   const reportingDate = String(input.reportingDate || "").trim();
+  const writeInput: GA4RefreshWriteInput = "refreshScope" in input ? { refreshScope: input.refreshScope }
+    : { publicationVersion: input.publicationVersion ?? { campaignId, version: await dependencies.getGA4PublicationVersion?.(campaignId) ?? null } };
   const [campaign, connections] = await Promise.all([
     dependencies.getCampaign(campaignId),
     dependencies.getGA4Connections(campaignId),
@@ -153,7 +157,7 @@ export async function writeFinancialDailySnapshotIfReady(
 
   try {
     await dependencies.upsertFinancialDailySnapshot({ ...cumulative.snapshot,
-      ...("refreshScope" in input ? { refreshScope: input.refreshScope } : {}),
+      ...writeInput,
     });
     recordFinancialDailySnapshotWriteOutcome(campaignId, reportingDate, "written");
     return { status: "written", reasons: [], snapshot: cumulative.snapshot };

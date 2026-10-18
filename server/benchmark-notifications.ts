@@ -95,17 +95,19 @@ export async function checkGA4BenchmarkPerformanceAlertsForCampaign(campaignId: 
     if (options.refreshScope?.campaignId !== requestedCampaignId || options.refreshScope.reportingDate !== providerCoverageThroughDate) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
     return storage.writeWithGA4RefreshOwnership(options.refreshScope, tx => checkBenchmarkPerformanceAlertsForScope(requestedCampaignId, providerCoverageThroughDate, tx));
   }
-  return checkBenchmarkPerformanceAlertsForScope(requestedCampaignId, providerCoverageThroughDate);
+  const publicationVersion = options.publicationVersion ?? { campaignId: requestedCampaignId, version: await storage.getGA4PublicationVersion(requestedCampaignId) };
+  return storage.writeGA4DerivedChange(requestedCampaignId, { publicationVersion }, tx => checkBenchmarkPerformanceAlertsForScope(requestedCampaignId, providerCoverageThroughDate, tx));
 }
 
-async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, providerCoverageThroughDate?: string, transaction?: any): Promise<number> {
+async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, providerCoverageThroughDate?: string, transaction?: any, includeCampaignLevel = false): Promise<number> {
   const alertDb = transaction || db;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const requestedCampaignId = String(campaignId || "").trim();
   const itemQuery = alertDb.select().from(benchmarks).where(requestedCampaignId
-    ? and(eq(benchmarks.status, "active"), eq(benchmarks.campaignId, requestedCampaignId), eq(benchmarks.platformType, "google_analytics"))
+    ? and(eq(benchmarks.status, "active"), eq(benchmarks.campaignId, requestedCampaignId), includeCampaignLevel
+      ? sql`COALESCE(${benchmarks.platformType}, '') IN ('', 'campaign', 'google_analytics')` : eq(benchmarks.platformType, "google_analytics"))
     : eq(benchmarks.status, "active"));
   const items = transaction ? await itemQuery.for("share") : await itemQuery;
 
@@ -118,8 +120,20 @@ async function checkBenchmarkPerformanceAlertsForScope(campaignId?: string, prov
   let created = 0;
   const windowKeyByCampaign = new Map<string, string>();
   const campaignMetricCache = new Map<string, Promise<any>>();
+  const checkedCampaigns = new Set<string>();
 
   for (const rawBenchmark of items as any[]) {
+    if (!requestedCampaignId && rawBenchmark.campaignId && ['', 'campaign', 'google_analytics'].includes(String(rawBenchmark.platformType || ''))) {
+      if (checkedCampaigns.has(rawBenchmark.campaignId)) continue;
+      checkedCampaigns.add(rawBenchmark.campaignId);
+      try {
+        const publicationVersion = { campaignId: rawBenchmark.campaignId, version: await storage.getGA4PublicationVersion(rawBenchmark.campaignId) };
+        created += await storage.writeGA4DerivedChange(rawBenchmark.campaignId, { publicationVersion }, tx => checkBenchmarkPerformanceAlertsForScope(rawBenchmark.campaignId, undefined, tx, true));
+      } catch (error: any) {
+        if (!String(error?.message).startsWith('GA4_REFRESH_PUBLICATION_')) throw error;
+      }
+      continue;
+    }
     const b = rawBenchmark.alertsEnabled && rawBenchmark.alertThreshold != null
       ? await resolveAlertCurrentValueForDecision(rawBenchmark, campaignMetricCache, { useSavedOverview: true })
       : rawBenchmark;

@@ -220,8 +220,8 @@ export function computeBenchmarkRating(variancePct: number) {
 }
 
 export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: string; campaignIds?: string[]; date?: string; suppressAlerts?: boolean; useSavedOverview?: boolean } & GA4RefreshWriteInput) {
-  const refreshWriteInput = opts && "refreshScope" in opts ? { refreshScope: opts.refreshScope } : {};
-  if ("refreshScope" in refreshWriteInput && (!opts?.refreshScope || opts.refreshScope.campaignId !== opts.campaignId
+  const ownedWriteInput = opts && "refreshScope" in opts ? { refreshScope: opts.refreshScope } : {};
+  if ("refreshScope" in ownedWriteInput && (!opts?.refreshScope || opts.refreshScope.campaignId !== opts.campaignId
     || opts.suppressAlerts !== true || opts.useSavedOverview !== true)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
   const requestedDate = String(opts?.date || "").trim();
   const requestedCampaignIds = Array.isArray(opts?.campaignIds)
@@ -249,7 +249,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
   const alertReconciliationFailures: string[] = [];
   let kpiAlertReconciliationAttempted = false;
 
-  for (const campaign of campaigns) {
+  for (let campaign of campaigns) {
     const campaignId = String((campaign as any)?.id || "");
     if (!campaignId) continue;
     const campaignOwnerId = String((campaign as any)?.ownerId || "").trim();
@@ -261,11 +261,19 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
     let campaignBenchmarks: any[] = [];
 
     try {
+      const refreshWriteInput: GA4RefreshWriteInput = "refreshScope" in ownedWriteInput ? ownedWriteInput
+        : { publicationVersion: opts?.publicationVersion ?? { campaignId, version: await storage.getGA4PublicationVersion(campaignId) } };
+      campaign = await storage.getCampaign(campaignId);
+      if (!campaign || campaign.ownerId !== campaignOwnerId || !filterActiveSchedulerCampaigns([campaign]).length) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
       const [campaignKpisResult, campaignBenchmarksResult, connectionsResult] = await Promise.allSettled([
         storage.getPlatformKPIs("google_analytics", campaignId),
         storage.getPlatformBenchmarks("google_analytics", campaignId),
-        storage.getGA4Connections(campaignId),
+        storage.getGA4Connections(campaignId, { migrateLegacyTokens: false }),
       ]);
+      if (opts?.refreshScope) {
+        const failure = [campaignKpisResult, campaignBenchmarksResult, connectionsResult].find(result => result.status === "rejected");
+        if (failure?.status === "rejected") throw failure.reason;
+      }
       if (campaignKpisResult.status === "fulfilled") {
         campaignKpis = campaignKpisResult.value;
       } else {
@@ -594,6 +602,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         } catch (e: any) {
           kpiIdsFailed.add(kpiId);
           console.warn(`[GA4 KPI/Benchmarks] KPI ${kpiId} failed for campaign ${campaignId}:`, e?.message || e);
+          if (opts?.refreshScope) throw e;
         }
       }
 
@@ -653,16 +662,16 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         } catch (e: any) {
           benchmarkIdsFailed.add(benchmarkId);
           console.warn(`[GA4 KPI/Benchmarks] Benchmark ${benchmarkId} failed for campaign ${campaignId}:`, e?.message || e);
+          if (opts?.refreshScope) throw e;
         }
       }
 
-      if ("refreshScope" in refreshWriteInput) await refreshCampaignCurrentValuesForCampaign(campaignId, useSavedOverview, refreshWriteInput);
-      else if (useSavedOverview) await refreshCampaignCurrentValuesForCampaign(campaignId, true);
-      else await refreshCampaignCurrentValuesForCampaign(campaignId);
+      await refreshCampaignCurrentValuesForCampaign(campaignId, useSavedOverview, refreshWriteInput);
 
       processed += 1;
       campaignIdsProcessed.add(campaignId);
     } catch (e: any) {
+      if (opts?.refreshScope) throw e;
       campaignIdsFailed.add(campaignId);
       for (const kpi of campaignKpis) {
         const kpiId = String(kpi?.id || "").trim();

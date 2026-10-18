@@ -216,12 +216,18 @@ describe("GA4 shared daily traffic during provider revisions", () => {
     expect(persisted.replaceGA4DailyMetricsWindow.mock.calls[0][5].campaignBreakdown.totals.sessions).toBe(2895);
   });
 
-  it("keeps reused daily rows isolated between campaign/property/filter scopes", async () => {
+  it.each([
+    { concurrent: false, sharedProperty: false },
+    { concurrent: true, sharedProperty: false },
+    { concurrent: true, sharedProperty: true },
+  ])("keeps daily rows, credentials and filters isolated (concurrent=$concurrent, sharedProperty=$sharedProperty)", async ({ concurrent, sharedProperty }) => {
     const campaigns = [
       { ...campaign, ga4CampaignFilter: '["brand"]' },
       { ...campaign, id: "campaign-b", ownerId: "owner-b", clientId: "client-b", ga4CampaignFilter: '["retargeting"]' },
     ];
-    const connections = campaigns.map((c, i) => ({ ...connection(), id: `connection-${i}`, campaignId: c.id, propertyId: String(542352127 + i) }));
+    const connections = campaigns.map((c, i) => ({ ...connection(), id: `connection-${i}`, campaignId: c.id,
+      propertyId: String(542352127 + (sharedProperty ? 0 : i)), accessToken: `token-${c.id}` }));
+    persisted.getCampaign.mockImplementation(async id => campaigns.find(c => c.id === id));
     persisted.getCampaigns.mockResolvedValue(campaigns);
     persisted.getGA4Connections.mockImplementation(async id => connections.filter(c => c.campaignId === id));
     persisted.getGA4Connection.mockImplementation(async (id, propertyId) => connections.find(c => c.campaignId === id && c.propertyId === propertyId));
@@ -231,17 +237,40 @@ describe("GA4 shared daily traffic during provider revisions", () => {
     });
     const series = vi.spyOn(ga4Service, "getTimeSeriesWithToken");
     const presence = vi.spyOn(ga4Service, "getTrendsDailyPresenceWithToken");
-    const result = await refreshAllGA4DailyMetrics({}, new Date("2026-10-17T06:10:00Z"));
-    expect(result.campaignIdsFailed).toEqual([]);
+    const provider = vi.mocked(fetch).getMockImplementation()!;
+    let release!: () => void;
+    const pending = new Promise<void>(resolve => { release = resolve; });
+    vi.mocked(fetch).mockImplementation(async (url, init) => {
+      const token = (init!.headers as any).Authorization;
+      const i = connections.findIndex(c => token === `Bearer ${c.accessToken}`);
+      expect(i).toBeGreaterThanOrEqual(0);
+      expect(String(url)).toContain(connections[i].propertyId);
+      expect(JSON.stringify(JSON.parse(init!.body as string).dimensionFilter)).toContain(names[i]);
+      if (concurrent && i === 0) await pending;
+      return provider(url, init);
+    });
+    const now = new Date("2026-10-17T06:10:00Z");
+    if (concurrent) {
+      const first = refreshAllGA4DailyMetrics({ campaignId: campaigns[0].id }, now);
+      try {
+        const second = await refreshAllGA4DailyMetrics({ campaignId: campaigns[1].id }, now);
+        expect(second.campaignIdsFailed).toEqual([]);
+        expect(persisted.replaceGA4DailyMetricsWindow.mock.calls.map(args => args[0])).toEqual([campaigns[1].id]);
+      } finally { release(); }
+      expect((await first).campaignIdsFailed).toEqual([]);
+    } else expect((await refreshAllGA4DailyMetrics({}, now)).campaignIdsFailed).toEqual([]);
     expect(series).toHaveBeenCalledTimes(2);
     expect(persisted.replaceGA4DailyMetricsWindow).toHaveBeenCalledTimes(2);
-    for (const [i, call] of Array.from(persisted.replaceGA4DailyMetricsWindow.mock.calls.entries())) {
+    for (const call of persisted.replaceGA4DailyMetricsWindow.mock.calls) {
       const [id, property, from, to, rows, overview] = call;
+      const i = campaigns.findIndex(c => c.id === id);
       expect([id, property, from, to]).toEqual([campaigns[i].id, connections[i].propertyId, start, end]);
       expect(rows.every((r: any) => r.campaignId === id && r.propertyId === property)).toBe(true);
       expect(rows.reduce((n: number, r: any) => n + r.sessions, 0)).toBe(i === 0 ? 2007 : 888);
       expect(overview.campaignBreakdown.rows.map((r: any) => r.campaign)).toEqual([names[i]]);
-      expect(presence.mock.calls[i][7]).toBe(await series.mock.results[i].value);
+      const presenceCall = presence.mock.calls.find(args => args[1] === connections[i].accessToken)!;
+      const seriesIndex = series.mock.calls.findIndex(args => args[1] === connections[i].accessToken);
+      expect(presenceCall[7]).toBe(await series.mock.results[seriesIndex].value);
     }
     expect(presence.mock.calls[0][7]).not.toBe(presence.mock.calls[1][7]);
   });

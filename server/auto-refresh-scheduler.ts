@@ -45,6 +45,7 @@ export type AutoRefreshRunOptions = {
   financialSourcesOnly?: boolean;
   deferDownstream?: boolean;
   campaignId?: string;
+  campaignConcurrency?: 1 | 2;
   onCampaignRefreshed?: (campaignId: string) => Promise<void>;
 };
 type AutoRefreshRunStatus = "idle" | "running" | "success" | "failed" | "skipped";
@@ -1052,11 +1053,7 @@ export async function runDailyAutoRefreshOnce(
   }
   const refreshRunId = randomUUID();
   let campaignsScanned = 0;
-  let attempted = 0;
-  let succeeded = 0;
-  let retained = 0;
-  let skipped = 0;
-  let campaignErrors = 0;
+  const totals = { attempted: 0, succeeded: 0, retained: 0, skipped: 0, campaignErrors: 0 };
   let anyCampaignRecomputeFailed = false;
   let linkedInRefreshFailed = false;
   let completedSummary: AutoRefreshRunSummary | null = null;
@@ -1090,11 +1087,13 @@ export async function runDailyAutoRefreshOnce(
 
     let anyCampaignUpdated = false;
 
-    for (const campaign of campaigns) {
+    const refreshCampaign = async (campaign: (typeof campaigns)[number]) => {
       const campaignId = String(campaign.id);
-      const campaignAttemptedAtStart = attempted;
-      const campaignSucceededAtStart = succeeded;
-      const campaignRetainedAtStart = retained;
+      let attempted = 0;
+      let succeeded = 0;
+      let retained = 0;
+      let skipped = 0;
+      let campaignErrors = 0;
       let campaignError = false;
       let campaignRecomputeFailed = false;
       let deferCampaignDownstream = Boolean(opts.deferDownstream);
@@ -1381,9 +1380,9 @@ export async function runDailyAutoRefreshOnce(
           }
         }
         const failures = getCampaignAutoRefreshFailures({
-          providerJobsAttempted: attempted - campaignAttemptedAtStart,
-          providerJobsSucceeded: succeeded - campaignSucceededAtStart,
-          providerJobsRetained: retained - campaignRetainedAtStart,
+          providerJobsAttempted: attempted,
+          providerJobsSucceeded: succeeded,
+          providerJobsRetained: retained,
           campaignError,
           recomputeFailed: campaignRecomputeFailed,
           linkedInRequired: !opts.financialSourcesOnly && Boolean(linkedInConnection),
@@ -1409,11 +1408,35 @@ export async function runDailyAutoRefreshOnce(
           }
         }
       }
-      // The GA4 pipeline can finish this campaign before the next source refresh starts.
+      totals.attempted += attempted;
+      totals.succeeded += succeeded;
+      totals.retained += retained;
+      totals.skipped += skipped;
+      totals.campaignErrors += campaignErrors;
+      // Keep downstream publication inside this campaign's worker slot.
       if (opts.financialSourcesOnly && opts.deferDownstream && opts.onCampaignRefreshed) {
         await opts.onCampaignRefreshed(campaignId);
       }
+    };
+    if (trigger === "scheduled" && !requestedCampaignId && opts.financialSourcesOnly && opts.deferDownstream
+        && opts.onCampaignRefreshed && opts.campaignConcurrency === 2) {
+      let nextCampaignIndex = 0;
+      const claimedCampaignIds = new Set<string>();
+      const campaignRunErrors: unknown[] = [];
+      await Promise.all(Array.from({ length: 2 }, async () => {
+        while (nextCampaignIndex < campaigns.length) {
+          const campaign = campaigns[nextCampaignIndex++];
+          if (claimedCampaignIds.has(campaign.id)) continue;
+          claimedCampaignIds.add(campaign.id);
+          try { await refreshCampaign(campaign); } catch (error) { campaignRunErrors.push(error); }
+        }
+      }));
+      // Retain the overlap lock until both workers settle, even after a failure.
+      if (campaignRunErrors.length > 0) throw campaignRunErrors[0];
+    } else {
+      for (const campaign of campaigns) await refreshCampaign(campaign);
     }
+    const { attempted, succeeded, retained, skipped, campaignErrors } = totals;
 
     // Run alert check once per refresh cycle (avoid N-times per campaign).
     if (!opts.deferDownstream && anyCampaignUpdated && !anyCampaignRecomputeFailed) {

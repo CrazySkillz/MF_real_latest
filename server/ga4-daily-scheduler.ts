@@ -664,7 +664,7 @@ async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts: GA4Da
         financialSourcesOnly: true,
         deferDownstream: true,
         ...(campaignId ? { campaignId } : {}),
-        ...(finishEachCampaign ? { onCampaignRefreshed: async (id: string) => {
+        ...(finishEachCampaign ? { campaignConcurrency: 2, onCampaignRefreshed: async (id: string) => {
           if (finishedCampaignIds.has(id) || !targets.some(target => target.id === id)) return;
           finishedCampaignIds.add(id);
           try {

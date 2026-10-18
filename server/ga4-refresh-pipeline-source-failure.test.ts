@@ -415,7 +415,11 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     expect(await runGA4DailyRefreshPipelineForCampaignNow("campaign-a")).toBe("completed");
   });
 
-  it.each(["financial sources", "GA4"])("publishes the first campaign while a later campaign waits for %s", async stage => {
+  it.each([
+    ["financial sources", "campaign-b"], ["GA4", "campaign-b"],
+    ["financial sources", "campaign-a"], ["GA4", "campaign-a"],
+  ])("publishes the other campaign while %s waits in %s", async (stage, waitingCampaign) => {
+    const finishedCampaign = waitingCampaign === "campaign-a" ? "campaign-b" : "campaign-a";
     vi.setSystemTime(new Date("2026-10-16T05:59:59Z"));
     mocks.storage.getCampaigns.mockResolvedValueOnce([]); // Skip bootstrap and exercise the scheduled timer.
     let release!: () => void;
@@ -424,13 +428,13 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     if (stage === "financial sources") {
       const read = mocks.storage.getRevenueSources.getMockImplementation()!;
       mocks.storage.getRevenueSources.mockImplementation(async (id, ctx) => {
-        if (id === "campaign-b") { waiting = true; await pending; }
+        if (id === waitingCampaign) { waiting = true; await pending; }
         return read(id, ctx);
       });
     } else {
       const read = mocks.provider.getTimeSeriesData.getMockImplementation()!;
       mocks.provider.getTimeSeriesData.mockImplementation(async (...args) => {
-        if (args[0] === "campaign-b") { waiting = true; await pending; }
+        if (args[0] === waitingCampaign) { waiting = true; await pending; }
         return read(...args);
       });
     }
@@ -438,28 +442,35 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     try {
       await vi.advanceTimersByTimeAsync(1000);
       expect(waiting).toBe(true);
-      expect(saved.get("campaign-a")?.inputs.revenue.value).toBe("800.00");
-      expect(saved.has("campaign-b")).toBe(false);
-      expect(mocks.storage.markExecutiveSummaryDailySnapshotAligned).toHaveBeenCalledExactlyOnceWith("campaign-a", reportingDate, expect.any(String));
+      expect(saved.get(finishedCampaign)?.inputs.revenue.value).toBe("800.00");
+      expect(saved.has(waitingCampaign)).toBe(false);
+      expect(mocks.storage.markExecutiveSummaryDailySnapshotAligned).toHaveBeenCalledExactlyOnceWith(finishedCampaign, reportingDate, expect.any(String));
       expect(mocks.globalKpiAlerts).not.toHaveBeenCalled();
       expect(getGA4DailySchedulerStatus()).toMatchObject({ inProgress: true, lastRunStatus: "running" });
       expect(await runGA4DailyRefreshPipelineForCampaignNow("campaign-a")).toBe("skipped");
     } finally { release(); await vi.advanceTimersByTimeAsync(0); }
     expect(getGA4DailySchedulerStatus()).toMatchObject({ inProgress: false, lastRunStatus: "success" });
-    expect(saved.get("campaign-b")?.inputs.revenue.value).toBe("800.00");
-    expect(mocks.recompute.mock.calls.map(([options]) => options.campaignId)).toEqual(["campaign-a", "campaign-b"]);
+    expect(saved.get(waitingCampaign)?.inputs.revenue.value).toBe("800.00");
+    expect(mocks.recompute.mock.calls.map(([options]) => options.campaignId)).toEqual([finishedCampaign, waitingCampaign]);
     expect(mocks.globalKpiAlerts).toHaveBeenCalledTimes(1);
     expect(mocks.globalBenchmarkAlerts).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps a shared property sequential until the first campaign's publication finishes", async () => {
+  it("allows shared-property campaigns to finish independently while retaining overlap protection", async () => {
     vi.setSystemTime(new Date("2026-10-16T05:59:59Z"));
     mocks.storage.getCampaigns.mockResolvedValueOnce([]);
     mocks.storage.getGA4Connections.mockImplementation(async id => [{ ...connection(id), propertyId: "shared-property" }]);
     mocks.storage.getGA4Connection.mockImplementation(async id => ({ ...connection(id), propertyId: "shared-property" }));
+    mocks.storage.getRevenueTotalForRange.mockImplementation(async id => ({ totalRevenue: id === "campaign-a" ? 300 : 700, currency: "EUR", sourceIds: [`${id}-revenue`] }));
+    mocks.storage.getSpendTotalForRange.mockImplementation(async id => ({ totalSpend: id === "campaign-a" ? 100 : 200, currency: "EUR", sourceIds: [`${id}-spend`] }));
+    mocks.totals.mockImplementation(async id => ({ ...totals(), revenue: id === "campaign-a" ? 800 : 1200, spend: id === "campaign-a" ? 100 : 200 }));
+    mocks.storage.getPlatformKPIs.mockImplementation(async (_platform, id) => ["revenue", "cpa"].map(metric => ({ id: `${id}-${metric}`, campaignId: id, metric, currentValue: "17" })));
+    mocks.storage.getPlatformBenchmarks.mockImplementation(async (_platform, id) => ["revenue", "cpa"].map(metric => ({ id: `${id}-${metric}`, campaignId: id, metric, benchmarkValue: "100", currentValue: "17" })));
+    mocks.storage.updateKPI.mockImplementation(async (id, value) => ({ id, ...value }));
+    mocks.storage.updateBenchmark.mockImplementation(async (id, value) => ({ id, ...value }));
     let release!: () => void;
     const pending = new Promise<void>(resolve => { release = resolve; });
-    const recompute = mocks.recompute.getMockImplementation()!;
+    const { runGA4DailyKPIAndBenchmarkJobs: recompute } = await vi.importActual<typeof import("./ga4-kpi-benchmark-jobs")>("./ga4-kpi-benchmark-jobs");
     mocks.recompute.mockImplementation(async options => {
       if (options.campaignId === "campaign-a") await pending;
       return recompute(options);
@@ -467,20 +478,144 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     startGA4DailyScheduler(5000);
     try {
       await vi.advanceTimersByTimeAsync(1000);
-      expect(mocks.recompute).toHaveBeenCalledTimes(1);
-      expect(mocks.storage.getRevenueSources.mock.calls.every(([id]) => id === "campaign-a")).toBe(true);
-      expect(mocks.provider.getTimeSeriesData).toHaveBeenCalledTimes(1);
+      expect(mocks.recompute).toHaveBeenCalledTimes(2);
+      expect(mocks.provider.getTimeSeriesData).toHaveBeenCalledTimes(2);
       expect(getAutoRefreshSchedulerStatus().inProgress).toBe(true);
       expect(await runDailyAutoRefreshOnce("manual", { campaignId: "campaign-b", financialSourcesOnly: true })).toBeNull();
-      expect(mocks.storage.markExecutiveSummaryDailySnapshotAligned).not.toHaveBeenCalled();
+      expect(mocks.storage.markExecutiveSummaryDailySnapshotAligned).toHaveBeenCalledExactlyOnceWith("campaign-b", reportingDate, expect.any(String));
+      expect(saved.has("campaign-a")).toBe(false);
     } finally { release(); await vi.advanceTimersByTimeAsync(0); }
     expect(getGA4DailySchedulerStatus().lastRunStatus).toBe("success");
     expect(mocks.provider.getTimeSeriesData.mock.calls.map(args => [args[0], args[3]])).toEqual([
       ["campaign-a", "shared-property"], ["campaign-b", "shared-property"],
     ]);
-    expect(mocks.storage.markExecutiveSummaryDailySnapshotAligned.mock.calls.map(([id]) => id)).toEqual(["campaign-a", "campaign-b"]);
+    expect(mocks.storage.markExecutiveSummaryDailySnapshotAligned.mock.calls.map(([id]) => id)).toEqual(["campaign-b", "campaign-a"]);
     expect(financialObservation.getFinancialDailySnapshotRefreshEvidence("financial_sources", "campaign-a")?.status).toBe("success");
     expect(financialObservation.getFinancialDailySnapshotRefreshEvidence("financial_sources", "campaign-b")?.status).toBe("success");
+    for (const [id, revenue, spend, cpa] of [["campaign-a", "800", "100", "4"], ["campaign-b", "1200", "200", "8"]]) {
+      expect(saved.get(id)?.inputs).toMatchObject({ revenue: { value: `${revenue}.00` }, spend: { value: `${spend}.00` } });
+      for (const update of [mocks.storage.updateKPI, mocks.storage.updateBenchmark]) {
+        expect(update).toHaveBeenCalledWith(`${id}-revenue`, { currentValue: revenue });
+        expect(update).toHaveBeenCalledWith(`${id}-cpa`, { currentValue: cpa });
+      }
+    }
+  });
+
+  it("keeps at most two campaigns running and drains later campaigns while the first is stalled", async () => {
+    campaigns.push(...["campaign-c", "campaign-d"].map(id => ({ ...campaigns[1], id, ownerId: id, clientId: id })));
+    const releases = new Map<string, () => void>();
+    const pending = new Map(campaigns.map(c => [c.id, new Promise<void>(resolve => { releases.set(c.id, resolve); })]));
+    let active = 0, maximum = 0;
+    const read = mocks.provider.getTimeSeriesData.getMockImplementation()!;
+    mocks.provider.getTimeSeriesData.mockImplementation(async (...args) => {
+      maximum = Math.max(maximum, ++active);
+      await pending.get(args[0]);
+      active--;
+      return read(...args);
+    });
+    vi.setSystemTime(new Date("2026-10-16T05:59:59Z"));
+    mocks.storage.getCampaigns.mockResolvedValueOnce([]);
+    startGA4DailyScheduler(5000);
+    try {
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(mocks.provider.getTimeSeriesData.mock.calls.map(args => args[0])).toEqual(["campaign-a", "campaign-b"]);
+      for (const id of ["campaign-b", "campaign-c", "campaign-d"]) {
+        releases.get(id)!(); await vi.advanceTimersByTimeAsync(0);
+        expect(saved.has(id)).toBe(true);
+        expect(mocks.storage.markExecutiveSummaryDailySnapshotAligned).toHaveBeenCalledWith(id, reportingDate, expect.any(String));
+      }
+      expect(saved.has("campaign-a")).toBe(false);
+      expect(maximum).toBe(2);
+      expect(getAutoRefreshSchedulerStatus().inProgress).toBe(true);
+      expect(mocks.globalKpiAlerts).not.toHaveBeenCalled();
+    } finally { for (const release of releases.values()) release(); await vi.advanceTimersByTimeAsync(0); }
+    expect(saved.size).toBe(4);
+    expect(mocks.storage.markExecutiveSummaryDailySnapshotAligned).toHaveBeenCalledTimes(4);
+    expect(mocks.globalKpiAlerts).toHaveBeenCalledTimes(1);
+    expect(getGA4DailySchedulerStatus().lastRunStatus).toBe("success");
+  });
+
+  it.each([[503, 200], [200, 503], [429, 200], [200, 200]])("keeps concurrent source results isolated (first %s, second %s)", async (aStatus, bStatus) => {
+    mocks.storage.getRevenueSources.mockImplementation(async (id, ctx) => ctx === "ga4" ? [{
+      ...source(id, "revenue"), sourceType: "hubspot", mappingConfig: JSON.stringify({ selectedValues: [id], revenueProperty: "amount" }),
+    }] : []);
+    let release!: () => void;
+    const pending = new Promise<void>(resolve => { release = resolve; });
+    vi.mocked(fetch).mockImplementation(async (url, request) => {
+      const id = String(url).includes("campaign-a") ? "campaign-a" : "campaign-b";
+      expect(JSON.parse(request!.body as string)).toMatchObject({ sourceId: `${id}-revenue`, selectedValues: [id], platformContext: "ga4" });
+      if (id === "campaign-a") await pending;
+      return new Response("{}", { status: id === "campaign-a" ? aStatus : bStatus });
+    });
+    vi.setSystemTime(new Date("2026-10-16T05:59:59Z"));
+    mocks.storage.getCampaigns.mockResolvedValueOnce([]);
+    startGA4DailyScheduler(5000);
+    try {
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(saved.has("campaign-b")).toBe(bStatus === 200);
+      expect(saved.has("campaign-a")).toBe(false);
+      expect(financialObservation.getFinancialDailySnapshotRefreshEvidence("financial_sources", "campaign-b")?.status).toBe(bStatus === 200 ? "success" : "failed");
+    } finally { release(); await vi.advanceTimersByTimeAsync(0); }
+    expect(saved.has("campaign-a")).toBe(aStatus === 200);
+    expect(getAutoRefreshSchedulerStatus().lastRunSummary).toMatchObject({
+      providerJobsAttempted: 2, providerJobsSucceeded: Number(aStatus === 200) + Number(bStatus === 200), providerJobsRetained: 0,
+    });
+    expect(getGA4DailySchedulerStatus().lastRunStatus).toBe(aStatus === 200 && bStatus === 200 ? "success" : "failed");
+    for (const [id, status] of [["campaign-a", aStatus], ["campaign-b", bStatus]] as const) {
+      expect(mocks.recompute.mock.calls.some(([opts]) => opts.campaignId === id)).toBe(status === 200);
+      expect(financialObservation.getFinancialDailySnapshotRefreshEvidence("financial_sources", id)?.status).toBe(status === 200 ? "success" : "failed");
+    }
+  });
+
+  it("waits for active workers before releasing the lock after an unexpected callback failure", async () => {
+    campaigns.push({ ...campaigns[1], id: "campaign-c" });
+    let release!: () => void;
+    const pending = new Promise<void>(resolve => { release = resolve; });
+    const completed: string[] = [];
+    let settled = false;
+    const run = runDailyAutoRefreshOnce("scheduled", {
+      financialSourcesOnly: true, deferDownstream: true, campaignConcurrency: 2,
+      onCampaignRefreshed: async id => {
+        if (id === "campaign-a") throw new Error("unexpected callback failure");
+        if (id === "campaign-b") await pending;
+        completed.push(id);
+      },
+    }).then(() => { settled = true; return null; }, error => { settled = true; return error; });
+    try {
+      await vi.advanceTimersByTimeAsync(0);
+      expect(completed).toEqual(["campaign-c"]);
+      expect(settled).toBe(false);
+      expect(getAutoRefreshSchedulerStatus().inProgress).toBe(true);
+    } finally { release(); }
+    expect((await run)?.message).toBe("unexpected callback failure");
+    expect(getAutoRefreshSchedulerStatus()).toMatchObject({ inProgress: false, lastRunStatus: "failed" });
+  });
+
+  it("keeps manual runs sequential even if concurrent campaign processing is requested", async () => {
+    let release!: () => void;
+    const pending = new Promise<void>(resolve => { release = resolve; });
+    const callback = vi.fn(async (id: string) => { if (id === "campaign-a") await pending; });
+    const run = runDailyAutoRefreshOnce("manual", {
+      financialSourcesOnly: true, deferDownstream: true, campaignConcurrency: 2, onCampaignRefreshed: callback,
+    });
+    try {
+      await vi.advanceTimersByTimeAsync(0);
+      expect(callback.mock.calls).toEqual([["campaign-a"]]);
+      expect(mocks.storage.getRevenueSources.mock.calls.every(([id]) => id === "campaign-a")).toBe(true);
+    } finally { release(); }
+    await run;
+    expect(callback.mock.calls).toEqual([["campaign-a"], ["campaign-b"]]);
+  });
+
+  it("refreshes a duplicated campaign only once during a concurrent scheduled run", async () => {
+    campaigns.splice(1, 0, { ...campaigns[0] });
+    vi.setSystemTime(new Date("2026-10-16T05:59:59Z"));
+    mocks.storage.getCampaigns.mockResolvedValueOnce([]);
+    startGA4DailyScheduler(5000);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(mocks.provider.getTimeSeriesData.mock.calls.map(args => args[0]).sort()).toEqual(["campaign-a", "campaign-b"]);
+    expect(mocks.storage.markExecutiveSummaryDailySnapshotAligned).toHaveBeenCalledTimes(2);
+    expect(financialObservation.getFinancialDailySnapshotObservationStatus().financialSourceEvidenceCampaigns).toBe(2);
   });
 
   it.each(["GA4", "recompute", "aggregate", "executive", "alerts", "readiness"])("continues to the next campaign after a %s failure", async stage => {

@@ -44,7 +44,7 @@ vi.mock("./utils/campaign-current-values", async (importOriginal) => ({
 }));
 
 import {
-  getGA4AlignedRefreshState, getGA4DailySchedulerStatus, runGA4DailyRefreshPipelineForCampaignNow, startGA4DailyScheduler, stopGA4DailyScheduler,
+  backfillMissingGA4OverviewSnapshots, getGA4AlignedRefreshState, getGA4DailySchedulerStatus, runGA4DailyRefreshPipelineForCampaignNow, startGA4DailyScheduler, stopGA4DailyScheduler,
 } from "./ga4-daily-scheduler";
 import { checkScheduledReports, getScheduledReportAlignedRefreshGate } from "./report-scheduler";
 import { getAutoRefreshSchedulerStatus, runDailyAutoRefreshOnce } from "./auto-refresh-scheduler";
@@ -335,6 +335,121 @@ describe("GA4 ordered refresh source-discovery failures", () => {
       expect(getGA4DailySchedulerStatus().totalScheduledRuns).toBe(scheduledRuns + (["stop", "restart"].includes(change) ? 0 : 1));
     },
   );
+
+  it.each(["during", "after"].flatMap(timing => [false, true].map(fails => [timing, fails] as const)))(
+    "rechecks startup candidates when discovery finishes %s another run (provider fails: %s)", async (timing, fails) => {
+      vi.setSystemTime(new Date("2026-10-16T05:59:59Z"));
+      mocks.storage.getLatestGA4DailyMetric.mockImplementation(async id => daily.get(id)?.at(-1));
+      mocks.storage.getFinancialDailyComparisonData.mockImplementation(async id => ({ current: { metrics: { financialDaily: saved.get(id) } }, previous: null }));
+      let discover!: () => void, finish!: () => void;
+      const discoveryPending = new Promise<void>(resolve => { discover = resolve; });
+      const providerPending = new Promise<void>(resolve => { finish = resolve; });
+      mocks.storage.getGA4Connections.mockImplementationOnce(async id => { await discoveryPending; return [connection(id)]; });
+      const read = mocks.provider.getTimeSeriesData.getMockImplementation()!;
+      mocks.provider.getTimeSeriesData.mockImplementationOnce(async (...args) => {
+        await providerPending;
+        if (fails) throw new Error("TOKEN_EXPIRED");
+        return read(...args);
+      });
+      startGA4DailyScheduler(5000);
+      let completedOther: any;
+      try {
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(mocks.provider.getTimeSeriesData).toHaveBeenCalledTimes(2);
+        expect(saved.has("campaign-a")).toBe(false);
+        completedOther = structuredClone(saved.get("campaign-b"));
+        expect(completedOther).toBeDefined();
+        if (timing === "during") {
+          discover();
+          await vi.advanceTimersByTimeAsync(3000);
+          expect(mocks.provider.getTimeSeriesData).toHaveBeenCalledTimes(2);
+          expect(getGA4DailySchedulerStatus().lastRunStatus).toBe("running");
+        }
+        finish(); await vi.advanceTimersByTimeAsync(0);
+        if (timing === "after") discover();
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(mocks.provider.getTimeSeriesData.mock.calls.map(([id]) => id).sort()).toEqual(
+          fails ? ["campaign-a", "campaign-a", "campaign-b"] : ["campaign-a", "campaign-b"],
+        );
+        expect(mocks.storage.markExecutiveSummaryDailySnapshotAligned.mock.calls.map(([id]) => id).sort()).toEqual(["campaign-a", "campaign-b"]);
+        expect(saved.get("campaign-b")).toEqual(completedOther);
+        for (const { id } of campaigns) {
+          expect(saved.get(id)).toMatchObject({ campaignId: id, reportingDate, inputs: { revenue: { value: "800.00" }, spend: { value: "100.00" } } });
+          expect(await getScheduledReportAlignedRefreshGate(report(id))).toEqual({ ready: true });
+        }
+        expect(getGA4DailySchedulerStatus()).toMatchObject({ inProgress: false, nextRunAt: "2026-10-16T12:00:00.000Z" });
+        expect(vi.getTimerCount()).toBe(1);
+      } finally { discover(); finish(); await vi.advanceTimersByTimeAsync(1000); }
+    },
+  );
+
+  it.each(["deleted", "paused", "disconnected"])("rechecks %s campaigns after waiting for an ongoing refresh", async change => {
+    vi.setSystemTime(new Date("2026-10-16T05:59:59Z"));
+    mocks.storage.getCampaigns.mockResolvedValueOnce([]);
+    mocks.storage.getLatestGA4DailyMetric.mockImplementation(async id => daily.get(id)?.at(-1));
+    mocks.storage.getFinancialDailyComparisonData.mockImplementation(async id => ({ current: { metrics: { financialDaily: saved.get(id) } }, previous: null }));
+    let finish!: () => void;
+    const pending = new Promise<void>(resolve => { finish = resolve; });
+    mocks.provider.getTimeSeriesData.mockImplementationOnce(async () => { await pending; throw new Error("interrupted provider"); });
+    startGA4DailyScheduler(5000);
+    await vi.advanceTimersByTimeAsync(1000);
+    const recovery = backfillMissingGA4OverviewSnapshots();
+    try {
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(mocks.provider.getTimeSeriesData).toHaveBeenCalledTimes(2);
+      if (change === "deleted") campaigns = campaigns.filter(c => c.id !== "campaign-a");
+      else if (change === "paused") campaigns[0].status = "paused";
+      else mocks.storage.getGA4Connections.mockImplementation(async id => id === "campaign-a" ? [] : [connection(id)]);
+      finish(); await vi.advanceTimersByTimeAsync(1000);
+      expect(await recovery).toEqual([]);
+      expect(mocks.provider.getTimeSeriesData).toHaveBeenCalledTimes(2);
+      expect(mocks.storage.markExecutiveSummaryDailySnapshotAligned.mock.calls.map(([id]) => id)).toEqual(["campaign-b"]);
+      expect(vi.getTimerCount()).toBe(1);
+    } finally { finish(); await vi.advanceTimersByTimeAsync(1000); await recovery; }
+  });
+
+  it.each(["waiting", "discovering"])("cancels old startup recovery on scheduler stop while %s", async phase => {
+    const run = vi.fn(async () => undefined);
+    let release!: () => void;
+    const pending = new Promise<void>(resolve => { release = resolve; });
+    if (phase === "waiting") (global as any).__ga4DailyRefreshInProgress = true;
+    else mocks.storage.getCampaigns.mockImplementationOnce(async () => { await pending; return campaigns; });
+    const recovery = backfillMissingGA4OverviewSnapshots(run);
+    try {
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(run).not.toHaveBeenCalled();
+      stopGA4DailyScheduler();
+      release(); await vi.advanceTimersByTimeAsync(1000);
+      expect(await recovery).toEqual([]);
+      expect(run).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally { (global as any).__ga4DailyRefreshInProgress = false; release(); await vi.advanceTimersByTimeAsync(1000); await recovery; }
+  });
+
+  it("retains recovery failure evidence and does not retry an attempted campaign after a later overlap", async () => {
+    let finish!: () => void;
+    const pending = new Promise<void>(resolve => { finish = resolve; });
+    const read = mocks.provider.getTimeSeriesData.getMockImplementation()!;
+    mocks.provider.getTimeSeriesData.mockImplementationOnce(async (...args) => { await pending; return read(...args); });
+    let concurrent: Promise<unknown> | undefined;
+    const run = vi.fn(async (_trigger, opts) => {
+      if (opts.campaignId === "campaign-a") {
+        concurrent = runGA4DailyRefreshPipelineForCampaignNow("campaign-b");
+        throw new Error("recovery source failure");
+      }
+    });
+    const recovery = backfillMissingGA4OverviewSnapshots(run);
+    try {
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(run.mock.calls.map(([, opts]) => opts.campaignId)).toEqual(["campaign-a"]);
+      finish(); await concurrent; await vi.advanceTimersByTimeAsync(1000);
+      expect(await recovery).toEqual(["campaign-a", "campaign-b"]);
+      expect(run.mock.calls.map(([, opts]) => opts.campaignId)).toEqual(["campaign-a", "campaign-b"]);
+      expect(getGA4DailySchedulerStatus().lastSnapshotBootstrapFailures).toEqual([
+        { campaignIdHash: expect.any(String), reason: "recovery source failure" },
+      ]);
+    } finally { finish(); await concurrent; await vi.advanceTimersByTimeAsync(1000); await recovery; }
+  });
 
   it("does not refresh any source when durable readiness invalidation fails", async () => {
     mocks.storage.invalidateExecutiveSummaryDailySnapshotAlignment.mockRejectedValue(new Error("readiness storage unavailable"));

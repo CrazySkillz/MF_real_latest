@@ -217,7 +217,7 @@ describe("GA4 Benchmark automatic history idempotency", () => {
 
   it("uses a transaction-scoped advisory lock before the exact duplicate check", async () => {
     const source = await import("node:fs").then(({ readFileSync }) => readFileSync("server/storage.ts", "utf8"));
-    const start = source.indexOf("async recordBenchmarkHistory(historyData: InsertBenchmarkHistory)");
+    const start = source.indexOf("async recordBenchmarkHistory(historyData: InsertBenchmarkHistory");
     const end = source.indexOf("// Metric Snapshot methods", start);
     const method = source.slice(start, end);
 

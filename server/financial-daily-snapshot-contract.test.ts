@@ -118,7 +118,7 @@ describe("compact daily financial snapshot contract", () => {
     expect(migration).toContain("WHERE snapshot_type = 'financial_daily' AND reporting_date IS NOT NULL");
     expect(migration).not.toMatch(/\b(UPDATE|DELETE)\b/i);
     expect(startup).toContain("CREATE UNIQUE INDEX IF NOT EXISTS metric_snapshots_financial_day_unique");
-    expect(storage).toContain("upsertFinancialDailySnapshot(snapshotData: FinancialDailySnapshotInput)");
+    expect(storage).toContain("upsertFinancialDailySnapshot(snapshotData: FinancialDailySnapshotInput & GA4RefreshWriteInput)");
     expect(storage).toContain("Use upsertFinancialDailySnapshot for reporting-day financial snapshots");
     expect(storage).toContain("metrics: { financialDaily }");
     expect(storage).toContain("target: [metricSnapshots.campaignId, metricSnapshots.reportingDate]");

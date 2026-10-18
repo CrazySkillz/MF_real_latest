@@ -91,7 +91,7 @@ describe("Benchmark route isolation regression guard", () => {
       "utf-8"
     );
 
-    expect(storageFile).toContain("async recordBenchmarkHistory(historyData: InsertBenchmarkHistory): Promise<BenchmarkHistory> {");
+    expect(storageFile).toContain("async recordBenchmarkHistory(historyData: InsertBenchmarkHistory");
     expect(storageFile).toContain("const benchmarkId = String((historyData as any)?.benchmarkId || \"\").trim();");
     expect(storageFile).toContain("const [existing] = await tx.select({ id: benchmarks.id }).from(benchmarks).where(eq(benchmarks.id, benchmarkId)).limit(1);");
     expect(storageFile).toContain("throw new Error(\"Benchmark not found\");");

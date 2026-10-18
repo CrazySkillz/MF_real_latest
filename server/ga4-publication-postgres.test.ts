@@ -140,6 +140,34 @@ describe.skipIf(!testUrl)("GA4 publication with real PostgreSQL transactions", (
     expect(await storage.getGA4OverviewSnapshot("a", "property-a")).toEqual(previous);
     await expectSaved(10, "b");
   });
+  it("commits a recent repair with cumulative Overview while preserving older rows and the full-check receipt", async () => {
+    const start = addGA4InsightsDateDays(date, -99)!;
+    const recent = addGA4InsightsDateDays(date, -13)!;
+    const input = Array.from({ length: 100 }, (_, i) => ({ ...row(10), date: addGA4InsightsDateDays(start, i)! }));
+    const meta = { dailyHistoryRefresh: { version: 1, scope: "verified-scope", reportingDate: date } };
+    const first = { ...await overview(1000), windowStart: start, campaignBreakdown: { totals: { sessions: 1000 }, meta } };
+    await storage.replaceGA4DailyMetricsWindow("a", "property-a", start, date, input, first);
+    const before = await storage.getGA4DailyMetrics("a", "property-a", start, date);
+    const next = { ...await overview(1140), windowStart: start, campaignBreakdown: { totals: { sessions: 1140 }, meta } };
+    const correction = input.filter(r => r.date >= recent).map(r => ({ ...r, sessions: 20 }));
+    await storage.replaceGA4DailyMetricsWindow("a", "property-a", recent, date, correction, next);
+    const after = await storage.getGA4DailyMetrics("a", "property-a", start, date);
+    expect(after.filter(r => r.date < recent)).toEqual(before.filter(r => r.date < recent));
+    expect(after.reduce((sum, r) => sum + r.sessions, 0)).toBe(1140);
+    expect(await storage.getGA4OverviewSnapshot("a", "property-a")).toMatchObject({ windowStart: start,
+      campaignBreakdown: { totals: { sessions: 1140 }, meta } });
+    await expectSaved(10, "b");
+  });
+  it("rolls back recent repairs and the full-check receipt when cumulative Overview cannot be written", async () => {
+    const before = await storage.getGA4DailyMetrics("a", "property-a", date, date);
+    const beforeOverview = await storage.getGA4OverviewSnapshot("a", "property-a");
+    const next = { ...await overview(20), campaignBreakdown: { rejectForTest: true,
+      meta: { dailyHistoryRefresh: { version: 1, scope: "new-scope", reportingDate: date } } } };
+    await expect(write(20, next)).rejects.toThrow();
+    expect(await storage.getGA4DailyMetrics("a", "property-a", date, date)).toEqual(before);
+    expect(await storage.getGA4OverviewSnapshot("a", "property-a")).toEqual(beforeOverview);
+    await expectSaved(10, "b");
+  });
   it.each(["metric", "campaign", "property", "date", "window"])("rejects an invalid %s before starting any replacement", async invalid => {
     const input: any = row(20);
     if (invalid === "metric") input.revenue = "NaN";

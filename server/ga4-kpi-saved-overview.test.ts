@@ -6,6 +6,7 @@ const storageMock = vi.hoisted(() => Object.fromEntries([
   "getRevenueBreakdownBySource", "getSpendBreakdownBySource", "getPlatformKPIs", "getPlatformBenchmarks",
   "getCampaignKPIs", "getCampaignBenchmarks", "updateKPI", "updateBenchmark", "getKPIProgress", "recordKPIProgress",
   "updateKPIProgress", "getBenchmarkHistory", "recordBenchmarkHistory", "getLatestFinancialDailySnapshot",
+  "getGA4PublicationVersion",
 ].map((name) => [name, vi.fn()])));
 const provider = vi.hoisted(() => ({ getTotalsWithRevenue: vi.fn(), getAcquisitionBreakdown: vi.fn(), refreshAccessToken: vi.fn() }));
 const alerts = vi.hoisted(() => ({ kpi: vi.fn(), benchmark: vi.fn() }));
@@ -20,6 +21,7 @@ import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-v
 import { isAlertDecisionBreached } from "./utils/alert-decision";
 
 const campaignId = "campaign-1";
+const publicationVersion = { campaignId, version: null };
 const propertyId = "542352127";
 const date = "2026-10-16";
 const overview = () => ({ campaignId, propertyId, windowStart: "2026-10-15", windowEnd: date,
@@ -44,6 +46,7 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-10-17T08:00:00Z"));
     Object.values(storageMock).forEach((mock) => mock.mockReset());
+    storageMock.getGA4PublicationVersion.mockResolvedValue(null);
     Object.values(provider).forEach((mock) => mock.mockReset());
     Object.values(alerts).forEach((mock) => mock.mockReset());
     vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -78,13 +81,13 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
     expect(result.benchmarkIdsSkipped).toEqual([]);
     const expected = { Revenue: "130.01", ROAS: "6.5", ROI: "550.05", CPA: "4", Sessions: "30", Conversions: "5" };
     for (const [metric, value] of Object.entries(expected)) {
-      expect(storageMock.updateKPI).toHaveBeenCalledWith(`kpi-${metric}`, { currentValue: value });
-      expect(storageMock.updateBenchmark).toHaveBeenCalledWith(`benchmark-${metric}`, { currentValue: value });
+      expect(storageMock.updateKPI).toHaveBeenCalledWith(`kpi-${metric}`, { currentValue: value, publicationVersion });
+      expect(storageMock.updateBenchmark).toHaveBeenCalledWith(`benchmark-${metric}`, { currentValue: value, publicationVersion });
       expect(storageMock.recordKPIProgress).toHaveBeenCalledWith(expect.objectContaining({ kpiId: `kpi-${metric}`, value }));
       expect(storageMock.recordBenchmarkHistory).toHaveBeenCalledWith(expect.objectContaining({ benchmarkId: `benchmark-${metric}`, currentValue: value }));
     }
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("campaign-revenue", { currentValue: "130.01" });
-    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("campaign-cpa", { currentValue: "4" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("campaign-revenue", { currentValue: "130.01", publicationVersion });
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("campaign-cpa", { currentValue: "4", publicationVersion });
     expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
     expect(provider.getAcquisitionBreakdown).not.toHaveBeenCalled();
     expect(alerts.kpi).not.toHaveBeenCalled();
@@ -96,8 +99,8 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
   it("keeps report preflight on the same saved GA4 values as the ordered refresh", async () => {
     const result = await preflightGA4ReportKPIConsumers({ campaignId, platformType: "google_analytics", reportType: "kpis" }, date, { suppressAlerts: true });
     expect(result.ok).toBe(true);
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Revenue", { currentValue: "130.01" });
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-CPA", { currentValue: "4" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Revenue", { currentValue: "130.01", publicationVersion });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-CPA", { currentValue: "4", publicationVersion });
     expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
   it("carries supplied ownership to platform and campaign current values and daily history", async () => {
@@ -194,16 +197,16 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
     }
     expect(storageMock.updateKPI).not.toHaveBeenCalledWith("campaign-revenue", expect.anything());
     expect(storageMock.updateBenchmark).not.toHaveBeenCalledWith("campaign-cpa", expect.anything());
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Sessions", { currentValue: "30" });
-    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-Conversions", { currentValue: "5" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Sessions", { currentValue: "30", publicationVersion });
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-Conversions", { currentValue: "5", publicationVersion });
     expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 
   it("keeps the previous provider path for callers that do not opt in", async () => {
     await runGA4DailyKPIAndBenchmarkJobs({ campaignId, suppressAlerts: true });
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Revenue", { currentValue: "140" });
-    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-CPA", { currentValue: "3.33" });
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("campaign-revenue", { currentValue: "140" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Revenue", { currentValue: "140", publicationVersion });
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-CPA", { currentValue: "3.33", publicationVersion });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("campaign-revenue", { currentValue: "140", publicationVersion });
     expect(provider.getTotalsWithRevenue).toHaveBeenCalled();
     expect(storageMock.getGA4OverviewSnapshot).not.toHaveBeenCalled();
   });
@@ -216,7 +219,7 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
       expect(result.kpiIdsSkipped).toContain(`kpi-${metric}`);
       expect(result.benchmarkIdsSkipped).toContain(`benchmark-${metric}`);
     }
-    expect(storageMock.updateKPI).toHaveBeenCalledWith(source === "Revenue" ? "kpi-CPA" : "kpi-Revenue", { currentValue: source === "Revenue" ? "4" : "130.01" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith(source === "Revenue" ? "kpi-CPA" : "kpi-Revenue", { currentValue: source === "Revenue" ? "4" : "130.01", publicationVersion });
     expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 
@@ -231,9 +234,9 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
     storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0, sourceIds: [], currency: "EUR" });
     storageMock.getSpendTotalForRange.mockResolvedValue({ totalSpend: 0, sourceIds: [], currency: "EUR" });
     await run();
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Revenue", { currentValue: "0" });
-    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-Conversions", { currentValue: "0" });
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("campaign-revenue", { currentValue: "0" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Revenue", { currentValue: "0", publicationVersion });
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-Conversions", { currentValue: "0", publicationVersion });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("campaign-revenue", { currentValue: "0", publicationVersion });
     expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
   });
 
@@ -245,7 +248,7 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
     expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
     storageMock.getGA4OverviewSnapshot.mockResolvedValue(overview());
     expect((await run()).campaignIdsFailed).toEqual([]);
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Revenue", { currentValue: "130.01" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Revenue", { currentValue: "130.01", publicationVersion });
   });
 
   it("rejects current saved totals for a historical reporting date before writes", async () => {
@@ -266,8 +269,8 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
     storageMock.recordBenchmarkHistory.mockClear();
     storageMock.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 50, currency: "EUR", sourceIds: ["revenue-1"] });
     const result = await run();
-    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Revenue", { currentValue: "150.01" });
-    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-Revenue", { currentValue: "150.01" });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Revenue", { currentValue: "150.01", publicationVersion });
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-Revenue", { currentValue: "150.01", publicationVersion });
     expect(storageMock.updateKPIProgress).toHaveBeenCalledWith("progress-kpi-Revenue", expect.objectContaining({ value: "150.01" }));
     expect(storageMock.recordKPIProgress).not.toHaveBeenCalled();
     expect(storageMock.recordBenchmarkHistory).toHaveBeenCalledWith(expect.objectContaining({

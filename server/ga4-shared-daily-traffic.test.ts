@@ -5,6 +5,7 @@ const persisted = vi.hoisted(() => ({
   getGA4DailyMetrics: vi.fn(), replaceGA4DailyMetricsWindow: vi.fn(),
   getGA4OverviewSnapshot: vi.fn(),
   updateGA4ConnectionTokens: vi.fn(),
+  getGA4PublicationVersion: vi.fn(),
 }));
 vi.mock("./storage", () => ({ storage: persisted }));
 vi.mock("./ga4-kpi-benchmark-jobs", () => ({}));
@@ -54,6 +55,7 @@ describe("GA4 shared daily traffic during provider revisions", () => {
     empty = false; purchaseOnly = false; utmFinancials = true; primaryBreakdown = false;
     vi.stubEnv("GA4_DAILY_LOOKBACK_DAYS", "90");
     persisted.getCampaign.mockResolvedValue(campaign); persisted.getCampaigns.mockResolvedValue([campaign]);
+    persisted.getGA4PublicationVersion.mockResolvedValue(null);
     persisted.getGA4Connections.mockImplementation(async () => [connection()]);
     persisted.getGA4Connection.mockImplementation(async () => connection());
     persisted.getGA4DailyMetrics.mockResolvedValue([]);
@@ -288,6 +290,33 @@ describe("GA4 shared daily traffic during provider revisions", () => {
     expect(persisted.replaceGA4DailyMetricsWindow.mock.calls[1][4].every((row: any) => row.sessions === 0)).toBe(true);
   });
 
+  it.each([false, true])("reduces repeated daily requests with identical published values (purchaseRevenue=%s)", async purchase => {
+    revision = 0; purchaseOnly = purchase;
+    let savedRows: any[] = [], savedOverview: any;
+    persisted.getGA4DailyMetrics.mockImplementation(async () => structuredClone(savedRows));
+    persisted.getGA4OverviewSnapshot.mockImplementation(async () => structuredClone(savedOverview));
+    persisted.replaceGA4DailyMetricsWindow.mockImplementation(async (_cid, _pid, from, to, rows, overview) => {
+      savedRows = [...savedRows.filter(r => r.date < from || r.date > to), ...structuredClone(rows)];
+      savedOverview = structuredClone(overview);
+      return { replaced: rows.length };
+    });
+    expect((await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T06:10:00Z"))).campaignIdsFailed).toEqual([]);
+    const baseline = { rows: structuredClone(savedRows), breakdown: structuredClone(savedOverview.campaignBreakdown) };
+    const fullRequests = requests.length;
+    requests = [];
+    expect((await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T12:10:00Z"))).campaignIdsFailed).toEqual([]);
+    expect(savedRows).toEqual(baseline.rows);
+    expect(savedOverview.campaignBreakdown).toEqual(baseline.breakdown);
+    expect(persisted.replaceGA4DailyMetricsWindow.mock.lastCall?.[4]).toHaveLength(14);
+    expect(fullRequests - requests.length).toBe(purchase ? 4 : 2);
+    expect(requests.filter(r => r.metrics.some((m: any) => m.name === "screenPageViews") && r.metrics.some((m: any) => m.name === "conversions")))
+      .toHaveLength(purchase ? 6 : 3);
+    vi.stubEnv("GA4_INCREMENTAL_REFRESH_ENABLED", "false"); requests = [];
+    expect((await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T18:10:00Z"))).campaignIdsFailed).toEqual([]);
+    expect(savedRows).toEqual(baseline.rows);
+    expect(requests).toHaveLength(fullRequests);
+  });
+
   it("rejects new presence-only activity rather than filling the missing date with zero", async () => {
     const provider = vi.mocked(fetch).getMockImplementation()!;
     vi.mocked(fetch).mockImplementation(async (...args) => {
@@ -346,12 +375,13 @@ describe("GA4 shared daily traffic during provider revisions", () => {
     expect(two.captured.campaigns[0].name).toBe("retargeting");
   });
 
-  it("retains the strict guard when the refreshed daily window is shorter than Overview", async () => {
+  it("repairs missing historical days instead of comparing a short window with cumulative Overview", async () => {
     vi.stubEnv("GA4_DAILY_LOOKBACK_DAYS", "30");
     const result = await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T06:10:00Z"));
-    expect(result.campaignIdsFailed).toEqual([campaign.id]);
-    expect(persisted.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();
-    expect(requests.some(r => r.metrics.some((m: any) => m.name === "screenPageViews") && r.metrics.some((m: any) => m.name === "sessionKeyEventRate"))).toBe(false);
+    expect(result.campaignIdsFailed).toEqual([]);
+    expect(persisted.replaceGA4DailyMetricsWindow.mock.lastCall?.[2]).toBe(start);
+    expect(persisted.replaceGA4DailyMetricsWindow.mock.lastCall?.[5].campaignBreakdown.totals.sessions).toBe(2895);
+    expect(requests.some(r => r.metrics.some((m: any) => m.name === "screenPageViews") && r.metrics.some((m: any) => m.name === "sessionKeyEventRate"))).toBe(true);
   });
 
   it("preserves the existing purchaseRevenue fallback with shared traffic", async () => {

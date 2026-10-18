@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => {
   const transaction = vi.fn(async (fn: any) => {
     let read = 0;
     const tx = {
+      execute: async () => ({ rows: [{ name: null }] }), // This fixture has no durable work table.
+      update: () => ({ set: (value: any) => ({ where: async (query: any) => { state.invalidatedValue = value; state.invalidatedQuery = query; } }) }),
       select: () => ({ from: () => ({ where: () => {
         const value = [state.campaign, state.connection, state.previous][read++];
         const rows = value ? [value] : [];

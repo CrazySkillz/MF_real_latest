@@ -32,6 +32,37 @@ The cancellation prerequisite `608e7b8d` is deployed per the user. The subsequen
 
 ## Daily Auto-Refresh And Auto-Process
 
+### P6 correction-window policy - local implementation, 2026-10-18
+
+For filtered campaigns, the first successful refresh for each completed reporting
+date verifies the entire fixed initial-import history. Later refreshes for that
+same date may read only the latest 14 completed days, after verifying full stored
+coverage and a matching scope/date receipt in the saved Overview metadata. New
+imports, configuration changes, missing or invalid dates and older snapshots
+without that receipt use the full history. Legacy unfiltered imports retain the
+configured lookback.
+
+Every run still fetches the full-window Campaign Breakdown, Landing Pages and
+Conversion Events. If a short refresh cannot reconcile to those cumulative
+values, it performs one full-history repair before publishing. If that fails,
+the last valid publication remains. Authentication, currency, cancellation and
+ownership failures do not trigger this repair fallback. Daily rows, all three
+Overview reports and the history receipt commit through the existing transaction.
+
+The 14-day window is not a claim of final data. It covers Google's documented
+12-day key-event attribution revision interval with a daily full-history
+backstop. Older revisions that preserve cumulative Sessions/Conversions/Revenue
+(including users, pageviews, engagement or offsetting daily corrections) can
+wait until the next successful full-history check; failed or delayed runs can
+extend that wait. Necessary cumulative unique-user/provider-rate queries remain
+unchanged. See [Google's processing guidance](https://support.google.com/analytics/answer/11198161?hl=en)
+and the P6 evidence in `docs/GA4_PROCESSING_AND_ALIGNMENT_BACKLOG.md`.
+
+`GA4_INCREMENTAL_REFRESH_ENABLED=false` disables shortened requests, keeping
+full imported-history checks. The schedule remains unchanged. This revision is
+locally validated, not deployed; actual provider latency and production request
+savings remain unmeasured. No additional manual UI workflow is required.
+
 This platform has a required no-click freshness pattern for GA4 campaigns.
 
 Executive-ready local reporting-time behavior is tracked in `GA4/REPORTING_TIMEZONE_PRODUCTION_READINESS.md`. GA4 Trends uses the campaign reporting timezone for completed-day cutoff, the GA4 daily scheduler uses a configured local reporting-time schedule, and the external value scheduler uses a configured operations timezone.

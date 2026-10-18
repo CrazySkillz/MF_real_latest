@@ -3,7 +3,7 @@ import { GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION, ga4Service, type GA4DailyTraffi
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./kpi-scheduler";
 import { checkGA4BenchmarkPerformanceAlertsForCampaign, checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedScheduledRefreshAt, getLatestCompleteReportingDate, getReportingDateWindow, isCreatedThroughReportingDate, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedScheduledRefreshAt, getLatestCompleteReportingDate, getReportingDateWindow, isCreatedThroughReportingDate, normalizeReportingTimeZone, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { createHash } from "crypto";
 import { addGA4InsightsDateDays, normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
 import { beginFinancialDailySnapshotRefreshObservation, getFinancialDailySnapshotRefreshEvidence, recordFinancialDailySnapshotRefreshEvidence } from "./utils/financial-daily-snapshot-observation";
@@ -358,164 +358,209 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
         const previousOverview = (campaignFilter?.length || 0) > 0
           ? await storage.getGA4OverviewSnapshot(currentCampaignId, String(connection.propertyId)) : undefined;
         const configuredImportStartDate = String(connection?.importStartDate || "").trim();
-        const storageStartDate = /^\d{4}-\d{2}-\d{2}$/.test(configuredImportStartDate)
-          ? configuredImportStartDate > reportingWindow.startDate ? configuredImportStartDate : reportingWindow.startDate
-          : reportingWindow.startDate;
-        if (storageStartDate > reportingWindow.endDate) throw new Error("GA4 daily import starts after the completed-day window");
-        const propertyId = String(connection.propertyId);
-        const overviewDailyTraffic: GA4DailyTrafficCapture | undefined = configuredImportStartDate === storageStartDate
-          ? { campaignId: currentCampaignId } : undefined;
-        const initialSeries = await withGA4DailyStage("daily_series", provider.getTimeSeriesData(
-          currentCampaignId,
-          providerStorage,
-          storageStartDate,
-          propertyId,
-          campaignFilter,
-          reportingWindow.endDate,
-          String((c as any)?.currency || "").trim().toUpperCase(),
-          overviewDailyTraffic,
-        ));
         const hasCampaignFilter = Array.isArray(campaignFilter)
           ? campaignFilter.length > 0
           : Boolean(String(campaignFilter || "").trim());
-        const providerResult = hasCampaignFilter
-          ? await (async () => {
-              const refreshedConnection = await storage.getGA4Connection(currentCampaignId, propertyId);
-              if (!refreshedConnection?.accessToken) throw new Error("GA4 access token is unavailable for daily presence verification");
-              return withGA4DailyStage("daily_presence", provider.getTrendsDailyPresenceWithToken(
-                propertyId,
-                String(refreshedConnection.accessToken),
-                storageStartDate,
-                reportingWindow.endDate,
-                campaignFilter,
-                String((c as any)?.currency || "").trim().toUpperCase(),
-                overviewDailyTraffic,
-                initialSeries,
-              ));
-            })()
-          : { dailyRows: initialSeries, presentDates: (Array.isArray(initialSeries) ? initialSeries : []).map((row: any) => String(row?.date || "")) };
-        const rows = Array.isArray(providerResult.dailyRows) ? providerResult.dailyRows : [];
-        const normalizedRows = rows.map((r: any) => normalizeGA4InsightsDailyMetricValues({
-          campaignId: currentCampaignId,
-          propertyId,
-          date: String(r?.date || "").trim(),
-          users: r?.users,
-          sessions: r?.sessions,
-          engagedSessions: r?.engagedSessions,
-          pageviews: r?.pageviews,
-          conversions: r?.conversions,
-          revenue: r?.revenue ?? 0,
-          engagementRate: (r as any)?.engagementRate ?? null,
-          revenueMetric: (r as any)?.revenueMetric ?? null,
-          isSimulated: false,
-        }));
-        if (normalizedRows.some((row) => !row)) throw new Error("GA4 returned an invalid daily metric value");
-        const toUpsert = normalizedRows as any[];
-        if (toUpsert.some((row: any) =>
-          !/^\d{4}-\d{2}-\d{2}$/.test(String(row.date || "")) ||
-          row.date < storageStartDate ||
-          row.date > reportingWindow.endDate
-        )) throw new Error("GA4 returned a daily row outside the requested completed-day window");
-        const rowsByDate = new Map(toUpsert.map((row: any) => [String(row.date), row]));
-        if (rowsByDate.size !== toUpsert.length) throw new Error("GA4 returned duplicate daily rows");
-        for (const presentDate of providerResult.presentDates) {
-          if (!rowsByDate.has(String(presentDate))) {
-            throw new Error("GA4 reported activity for a date without a complete daily metric row");
-          }
-        }
-        const completeRows = getDateRange(storageStartDate, reportingWindow.endDate).map((date) => rowsByDate.get(date) || {
-          campaignId: currentCampaignId,
-          propertyId,
-          date,
-          users: 0,
-          sessions: 0,
-          engagedSessions: 0,
-          pageviews: 0,
-          conversions: 0,
-          revenue: 0,
-          engagementRate: 0,
-          revenueMetric: null,
-          isSimulated: false,
-        });
-
-        const overviewStartDate = /^\d{4}-\d{2}-\d{2}$/.test(configuredImportStartDate)
-          ? configuredImportStartDate
-          : GA4_OVERVIEW_LEGACY_IMPORT_START_DATE;
-        let overviewSnapshot: any = undefined;
-        if (hasCampaignFilter) {
-          const [campaignBreakdown, landingPages, existingOverviewRows] = await Promise.all([
-            withGA4DailyStage("overview_campaign_breakdown", provider.getAcquisitionBreakdown(
-              currentCampaignId, providerStorage, overviewStartDate, propertyId, 10000, campaignFilter,
-              reportingWindow.endDate, false, false, String((c as any)?.currency || "").trim().toUpperCase(), true,
-              overviewDailyTraffic,
-            )),
-            withGA4DailyStage("overview_landing_pages", provider.getLandingPagesReport(
-              currentCampaignId, providerStorage, overviewStartDate, propertyId, 50, campaignFilter, reportingWindow.endDate,
-            )),
-            withGA4DailyStage("overview_daily_storage", storage.getGA4DailyMetrics(currentCampaignId, propertyId, overviewStartDate, reportingWindow.endDate)),
-          ]);
-          const overviewRowsByDate = new Map(
-            (Array.isArray(existingOverviewRows) ? existingOverviewRows : []).map((row: any) => [String(row.date), row]),
-          );
-          for (const row of completeRows) overviewRowsByDate.set(String(row.date), row);
-          const overviewRows = Array.from(overviewRowsByDate.values()).filter((row: any) =>
-            String(row.date) >= overviewStartDate && String(row.date) <= reportingWindow.endDate
-          );
-          const expected = overviewRows.reduce((totals: any, row: any) => ({
-            sessions: totals.sessions + Number(row?.sessions || 0),
-            conversions: totals.conversions + Number(row?.conversions || 0),
-            revenue: totals.revenue + Number(row?.revenue || 0),
-          }), { sessions: 0, conversions: 0, revenue: 0 });
-          const expectedDailyConversions = Object.fromEntries(overviewRows.map((row: any) => [
-            String(row.date), Number(row?.conversions || 0),
-          ]));
-          const conversionEvents = await withGA4DailyStage("overview_conversion_events", provider.getConversionEventsReport(
-            currentCampaignId, providerStorage, overviewStartDate, propertyId, 50, campaignFilter,
-            reportingWindow.endDate, false, expectedDailyConversions,
+        const importWindow = resolveGA4ImportToDateWindow(configuredImportStartDate, c.reportingTimeZone, now);
+        if (hasCampaignFilter && !importWindow) throw new Error("GA4 daily import has an invalid completed-day window");
+        const overviewStartDate = importWindow?.startDate || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE;
+        const propertyId = String(connection.propertyId);
+        const existingOverviewRows = hasCampaignFilter
+          ? await withGA4DailyStage("overview_daily_storage", storage.getGA4DailyMetrics(currentCampaignId, propertyId, overviewStartDate, reportingWindow.endDate))
+          : [];
+        // A recent window is an optimization, never a claim that older data is final.
+        // Recheck all imported dates on the first successful run for each reporting day.
+        const historyScope = createHash("sha256").update(JSON.stringify([
+          currentCampaignId, connection.id, connection.method, connection.isPrimary,
+          getGA4RefreshAttemptScope(c, connection),
+        ])).digest("hex");
+        const previousHistory = (previousOverview?.campaignBreakdown as any)?.meta?.dailyHistoryRefresh;
+        const historyDates = new Set((existingOverviewRows || []).map((row: any) => String(row.date)));
+        const expectedHistoryDates = hasCampaignFilter ? getDateRange(overviewStartDate, reportingWindow.endDate) : [];
+        const completeHistory = hasCampaignFilter && Array.isArray(existingOverviewRows) &&
+          historyDates.size === existingOverviewRows.length && historyDates.size === expectedHistoryDates.length &&
+          expectedHistoryDates.every(date => historyDates.has(date)) &&
+          existingOverviewRows.every((row: any) => row.campaignId === currentCampaignId && row.propertyId === propertyId &&
+            row.isSimulated === false && normalizeGA4InsightsDailyMetricValues(row));
+        const canUseRecentWindow = process.env.GA4_INCREMENTAL_REFRESH_ENABLED !== "false" && !opts.includeTargetDraft && completeHistory &&
+          previousOverview?.windowStart === overviewStartDate && previousOverview?.windowEnd === reportingWindow.endDate &&
+          previousHistory?.version === 1 && previousHistory?.scope === historyScope && previousHistory?.reportingDate === reportingWindow.endDate;
+        const recentStartDate = getReportingDateWindow(14, c.reportingTimeZone, now).startDate;
+        let storageStartDate = hasCampaignFilter
+          ? canUseRecentWindow && recentStartDate > overviewStartDate ? recentStartDate : overviewStartDate
+          : /^\d{4}-\d{2}-\d{2}$/.test(configuredImportStartDate)
+          ? configuredImportStartDate > reportingWindow.startDate ? configuredImportStartDate : reportingWindow.startDate
+          : reportingWindow.startDate;
+        if (storageStartDate > reportingWindow.endDate) throw new Error("GA4 daily import starts after the completed-day window");
+        const fetchWindow = async (storageStartDate: string) => {
+          const overviewDailyTraffic: GA4DailyTrafficCapture | undefined = overviewStartDate === storageStartDate
+            ? { campaignId: currentCampaignId } : undefined;
+          const initialSeries = await withGA4DailyStage("daily_series", provider.getTimeSeriesData(
+            currentCampaignId,
+            providerStorage,
+            storageStartDate,
+            propertyId,
+            campaignFilter,
+            reportingWindow.endDate,
+            String((c as any)?.currency || "").trim().toUpperCase(),
+            overviewDailyTraffic,
           ));
-          const campaignCurrency = String((c as any)?.currency || "").trim().toUpperCase();
-          const verifiedOverviewCurrency = String(campaignBreakdown?.meta?.currencyCode || "").trim().toUpperCase();
-          if (!/^[A-Z]{3}$/.test(campaignCurrency) || verifiedOverviewCurrency !== campaignCurrency) {
-            throw Object.assign(new Error("GA4_CURRENCY_UNVERIFIED: GA4 Overview report currency is unverified"), {
-              code: "GA4_CURRENCY_UNVERIFIED",
-              ga4DailyStage: "overview_campaign_breakdown",
-            });
+          const providerResult = hasCampaignFilter
+            ? await (async () => {
+                const refreshedConnection = await storage.getGA4Connection(currentCampaignId, propertyId);
+                if (!refreshedConnection?.accessToken) throw new Error("GA4 access token is unavailable for daily presence verification");
+                return withGA4DailyStage("daily_presence", provider.getTrendsDailyPresenceWithToken(
+                  propertyId,
+                  String(refreshedConnection.accessToken),
+                  storageStartDate,
+                  reportingWindow.endDate,
+                  campaignFilter,
+                  String((c as any)?.currency || "").trim().toUpperCase(),
+                  overviewDailyTraffic,
+                  initialSeries,
+                ));
+              })()
+            : { dailyRows: initialSeries, presentDates: (Array.isArray(initialSeries) ? initialSeries : []).map((row: any) => String(row?.date || "")) };
+          const rows = Array.isArray(providerResult.dailyRows) ? providerResult.dailyRows : [];
+          const normalizedRows = rows.map((r: any) => normalizeGA4InsightsDailyMetricValues({
+            campaignId: currentCampaignId,
+            propertyId,
+            date: String(r?.date || "").trim(),
+            users: r?.users,
+            sessions: r?.sessions,
+            engagedSessions: r?.engagedSessions,
+            pageviews: r?.pageviews,
+            conversions: r?.conversions,
+            revenue: r?.revenue ?? 0,
+            engagementRate: (r as any)?.engagementRate ?? null,
+            revenueMetric: (r as any)?.revenueMetric ?? null,
+            isSimulated: false,
+          }));
+          if (normalizedRows.some((row) => !row)) throw new Error("GA4 returned an invalid daily metric value");
+          const toUpsert = normalizedRows as any[];
+          if (toUpsert.some((row: any) =>
+            !/^\d{4}-\d{2}-\d{2}$/.test(String(row.date || "")) ||
+            row.date < storageStartDate ||
+            row.date > reportingWindow.endDate
+          )) throw new Error("GA4 returned a daily row outside the requested completed-day window");
+          const rowsByDate = new Map(toUpsert.map((row: any) => [String(row.date), row]));
+          if (rowsByDate.size !== toUpsert.length) throw new Error("GA4 returned duplicate daily rows");
+          for (const presentDate of providerResult.presentDates) {
+            if (!rowsByDate.has(String(presentDate))) {
+              throw new Error("GA4 reported activity for a date without a complete daily metric row");
+            }
           }
-          // Daily revenue is stored at cent precision while GA4's aggregate can retain
-          // more source precision. Permit only the maximum per-day quantization delta.
-          const revenueRoundingTolerance = overviewRows.length * 0.005 + 1e-9;
-          const breakdownTotals = campaignBreakdown?.totals || {};
-          const eventTotals = conversionEvents?.totals || {};
-          const eventConversionTotal = Number(eventTotals.conversions || 0);
-          const eventConversionSource = String((conversionEvents as any)?._reconciliationSource || "unknown")
-            .replace(/[^a-z0-9_]/gi, "_");
-          const reconciliationMismatches = [
-            Number(breakdownTotals.sessions || 0) !== expected.sessions ? "breakdown_sessions" : "",
-            Number(breakdownTotals.conversions || 0) !== expected.conversions ? "breakdown_conversions" : "",
-            Math.abs(Number(breakdownTotals.revenue || 0) - expected.revenue) > revenueRoundingTolerance ? "breakdown_revenue" : "",
-            eventConversionTotal !== expected.conversions
-              ? `event_conversions_${eventConversionSource}_${eventConversionTotal < expected.conversions ? "low" : "high"}`
-              : "",
-          ].filter(Boolean);
-          if (reconciliationMismatches.length > 0) throw Object.assign(
-            new Error(`GA4 Overview detail totals do not reconcile with scheduler daily facts: ${reconciliationMismatches.join("+")}`),
-            { ga4DailyStage: "overview_reconciliation" },
-          );
-          overviewSnapshot = {
-            windowStart: overviewStartDate,
-            windowEnd: reportingWindow.endDate,
-            campaignBreakdown,
-            landingPages,
-            conversionEvents,
-            refreshScope: {
-              campaign: Object.fromEntries(["ownerId", "clientId", "status", "ga4CampaignFilter", "currency", "reportingTimeZone"].map((key) => [key, (c as any)[key] ?? null])),
-              connection: Object.fromEntries(["id", "propertyId", "importStartDate", "isPrimary"].map((key) => [key, (connection as any)[key] ?? null])),
-              previousUpdatedAt: previousOverview?.updatedAt ? new Date(previousOverview.updatedAt).toISOString() : null,
-              previousWorkVersion,
-              ...(opts.refreshScope ? { work: opts.refreshScope.work } : {}),
-            },
-          };
+          const completeRows = getDateRange(storageStartDate, reportingWindow.endDate).map((date) => rowsByDate.get(date) || {
+            campaignId: currentCampaignId,
+            propertyId,
+            date,
+            users: 0,
+            sessions: 0,
+            engagedSessions: 0,
+            pageviews: 0,
+            conversions: 0,
+            revenue: 0,
+            engagementRate: 0,
+            revenueMetric: null,
+            isSimulated: false,
+          });
+
+          let overviewSnapshot: any = undefined;
+          if (hasCampaignFilter) {
+            const [campaignBreakdown, landingPages] = await Promise.all([
+              withGA4DailyStage("overview_campaign_breakdown", provider.getAcquisitionBreakdown(
+                currentCampaignId, providerStorage, overviewStartDate, propertyId, 10000, campaignFilter,
+                reportingWindow.endDate, false, false, String((c as any)?.currency || "").trim().toUpperCase(), true,
+                overviewDailyTraffic,
+              )),
+              withGA4DailyStage("overview_landing_pages", provider.getLandingPagesReport(
+                currentCampaignId, providerStorage, overviewStartDate, propertyId, 50, campaignFilter, reportingWindow.endDate,
+              )),
+            ]);
+            const overviewRowsByDate = new Map(
+              (Array.isArray(existingOverviewRows) ? existingOverviewRows : [])
+                .filter((row: any) => String(row.date) < storageStartDate)
+                .map((row: any) => [String(row.date), row]),
+            );
+            for (const row of completeRows) overviewRowsByDate.set(String(row.date), row);
+            const overviewRows = Array.from(overviewRowsByDate.values()).filter((row: any) =>
+              String(row.date) >= overviewStartDate && String(row.date) <= reportingWindow.endDate
+            );
+            const expected = overviewRows.reduce((totals: any, row: any) => ({
+              sessions: totals.sessions + Number(row?.sessions || 0),
+              conversions: totals.conversions + Number(row?.conversions || 0),
+              revenue: totals.revenue + Number(row?.revenue || 0),
+            }), { sessions: 0, conversions: 0, revenue: 0 });
+            const expectedDailyConversions = Object.fromEntries(overviewRows.map((row: any) => [
+              String(row.date), Number(row?.conversions || 0),
+            ]));
+            const conversionEvents = await withGA4DailyStage("overview_conversion_events", provider.getConversionEventsReport(
+              currentCampaignId, providerStorage, overviewStartDate, propertyId, 50, campaignFilter,
+              reportingWindow.endDate, false, expectedDailyConversions,
+            ));
+            const campaignCurrency = String((c as any)?.currency || "").trim().toUpperCase();
+            const verifiedOverviewCurrency = String(campaignBreakdown?.meta?.currencyCode || "").trim().toUpperCase();
+            if (!/^[A-Z]{3}$/.test(campaignCurrency) || verifiedOverviewCurrency !== campaignCurrency) {
+              throw Object.assign(new Error("GA4_CURRENCY_UNVERIFIED: GA4 Overview report currency is unverified"), {
+                code: "GA4_CURRENCY_UNVERIFIED",
+                ga4DailyStage: "overview_campaign_breakdown",
+              });
+            }
+            // Daily revenue is stored at cent precision while GA4's aggregate can retain
+            // more source precision. Permit only the maximum per-day quantization delta.
+            const revenueRoundingTolerance = overviewRows.length * 0.005 + 1e-9;
+            const breakdownTotals = campaignBreakdown?.totals || {};
+            const eventTotals = conversionEvents?.totals || {};
+            const eventConversionTotal = Number(eventTotals.conversions || 0);
+            const eventConversionSource = String((conversionEvents as any)?._reconciliationSource || "unknown")
+              .replace(/[^a-z0-9_]/gi, "_");
+            const reconciliationMismatches = [
+              Number(breakdownTotals.sessions || 0) !== expected.sessions ? "breakdown_sessions" : "",
+              Number(breakdownTotals.conversions || 0) !== expected.conversions ? "breakdown_conversions" : "",
+              Math.abs(Number(breakdownTotals.revenue || 0) - expected.revenue) > revenueRoundingTolerance ? "breakdown_revenue" : "",
+              eventConversionTotal !== expected.conversions
+                ? `event_conversions_${eventConversionSource}_${eventConversionTotal < expected.conversions ? "low" : "high"}`
+                : "",
+            ].filter(Boolean);
+            if (reconciliationMismatches.length > 0) throw Object.assign(
+              new Error(`GA4 Overview detail totals do not reconcile with scheduler daily facts: ${reconciliationMismatches.join("+")}`),
+              { ga4DailyStage: "overview_reconciliation" },
+            );
+            overviewSnapshot = {
+              windowStart: overviewStartDate,
+              windowEnd: reportingWindow.endDate,
+              campaignBreakdown: { ...campaignBreakdown, meta: { ...campaignBreakdown.meta,
+                dailyHistoryRefresh: { version: 1, scope: historyScope, reportingDate: reportingWindow.endDate },
+              } },
+              landingPages,
+              conversionEvents,
+              refreshScope: {
+                campaign: Object.fromEntries(["ownerId", "clientId", "status", "ga4CampaignFilter", "currency", "reportingTimeZone"].map((key) => [key, (c as any)[key] ?? null])),
+                connection: Object.fromEntries(["id", "propertyId", "importStartDate", "isPrimary"].map((key) => [key, (connection as any)[key] ?? null])),
+                previousUpdatedAt: previousOverview?.updatedAt ? new Date(previousOverview.updatedAt).toISOString() : null,
+                previousWorkVersion,
+                ...(opts.refreshScope ? { work: opts.refreshScope.work } : {}),
+              },
+            };
+          }
+          return { completeRows, overviewSnapshot };
+        };
+
+        let fetched;
+        try {
+          fetched = await fetchWindow(storageStartDate);
+        } catch (error: any) {
+          // Cumulative reports can reveal a correction outside the recent window.
+          // Repair the full history once, before any write; keep every existing guard.
+          const needsHistoryRepair = error?.ga4DailyStage === "overview_reconciliation" ||
+            ["GA4_CONVERSION_EVENT_DAILY_RECONCILIATION_FAILED", "GA4_OVERVIEW_CAMPAIGN_ATTRIBUTION_UNVERIFIED"].includes(error?.message);
+          if (!hasCampaignFilter || storageStartDate === overviewStartDate || !needsHistoryRepair) throw error;
+          opts.signal?.throwIfAborted();
+          await opts.assertWorkOwnership?.();
+          storageStartDate = overviewStartDate;
+          fetched = await fetchWindow(storageStartDate);
         }
+        const { completeRows, overviewSnapshot } = fetched;
 
         await opts.assertWorkOwnership?.();
         const res = await storage.replaceGA4DailyMetricsWindow(

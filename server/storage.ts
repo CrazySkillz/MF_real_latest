@@ -2,7 +2,7 @@ import { type Client, type InsertClient, type Campaign, type InsertCampaign, typ
 import { type InstagramConnection, type InsertInstagramConnection, type InstagramDailyMetric, type InsertInstagramDailyMetric, type TikTokConnection, type InsertTikTokConnection, type TikTokDailyMetric, type InsertTikTokDailyMetric, instagramConnections, instagramDailyMetrics, tiktokConnections, tiktokDailyMetrics } from "@shared/schema";
 import { type GA4GoogleAdsSpendConnection, type InsertGA4GoogleAdsSpendConnection, type GA4GoogleAdsSpendDailyMetric, type InsertGA4GoogleAdsSpendDailyMetric, ga4GoogleAdsSpendConnections, ga4GoogleAdsSpendDailyMetrics } from "@shared/schema";
 import { randomUUID, createHash } from "crypto";
-import { ga4RefreshWork, type GA4RefreshWork } from "@shared/schema";
+import { ga4RefreshWork, type GA4RefreshWork, type GA4InitialImportStatus } from "@shared/schema";
 import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligibility";
 import { db, pool } from "./db";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -13,7 +13,7 @@ import { GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, hydrateGoogleSheetsServiceAccount
 import { GOOGLE_ADS_SERVICE_ACCOUNT_METHOD, hydrateGoogleAdsServiceAccountConnection } from "./utils/google-ads-service-account";
 import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness } from "./utils/revenue-record-total";
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
-import { getReportingComparisonBoundary, getReportingDateEndAt, isCreatedThroughReportingDate } from "./utils/reporting-timezone";
+import { getLatestCompleteReportingDate, getReportingComparisonBoundary, getReportingDateEndAt, isCreatedThroughReportingDate } from "./utils/reporting-timezone";
 import { executiveSummaryDailySnapshotInputSchema, type ExecutiveSummaryDailySnapshotInput } from "./utils/executive-summary-daily-snapshot";
 import { createActiveCanonicalGA4KPI, isActiveGA4KPI, updateCanonicalGA4KPI as updateCanonicalGA4KPIWithGuard } from "./utils/ga4-kpi-create-guard";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
@@ -191,6 +191,9 @@ export interface IStorage {
   getGA4PublicationVersion(campaignId: string): Promise<string | null>;
   isGA4NativeRecoveryEligible(campaignId: string): Promise<boolean>;
   getRecoverableGA4RefreshWork(): Promise<GA4RefreshWork[]>;
+  requestGA4InitialImport(campaignId: string, ownerId: string, updates: Pick<InsertCampaign, "platform" | "ga4CampaignFilter">, retry?: boolean): Promise<GA4RefreshWork | undefined>;
+  getGA4InitialImportWork(campaignId: string, ownerId: string, workId?: string): Promise<GA4RefreshWork | undefined>;
+  getGA4InitialImportStatus(campaignId: string, ownerId: string): Promise<GA4InitialImportStatus | null>;
   retireGA4RefreshWork(campaignId: string): Promise<void>;
   writeGA4DerivedChange<T>(campaignId: string | null | undefined, options: GA4RefreshWriteInput, write: (tx: any) => Promise<T>): Promise<T>;
   // Campaigns
@@ -229,7 +232,7 @@ export interface IStorage {
   // GA4 Daily Metrics (daily facts)
   ensureGA4RefreshWork(campaignId: string, ownerId: string, dueAt: Date, reportingDate: string, options?: { suppressAlerts?: boolean }): Promise<GA4RefreshWork | undefined>;
   claimGA4RefreshWork(campaignId: string, ownerId: string, workId: string, leaseMs: number): Promise<GA4RefreshWork | undefined>;
-  updateGA4RefreshWorkLease(campaignId: string, ownerId: string, workId: string, leaseToken: string, action: "renew" | "release" | "complete" | "complete_without_alerts", leaseMs?: number, publicationCompletedAt?: string, failure?: { retryable: boolean; code: string; retryAfterMs?: number }): Promise<GA4RefreshWork | undefined>;
+  updateGA4RefreshWorkLease(campaignId: string, ownerId: string, workId: string, leaseToken: string, action: "renew" | "release" | "complete" | "complete_without_alerts" | "complete_initial_import", leaseMs?: number, publicationCompletedAt?: string, failure?: { retryable: boolean; code: string; retryAfterMs?: number }): Promise<GA4RefreshWork | undefined>;
   upsertGA4DailyMetrics(rows: InsertGA4DailyMetric[]): Promise<{ upserted: number }>;
   replaceGA4DailyMetricsWindow(campaignId: string, propertyId: string, startDate: string, endDate: string, rows: InsertGA4DailyMetric[], overviewSnapshot?: GA4OverviewSnapshotInput): Promise<{ replaced: number }>;
   getGA4DailyMetrics(campaignId: string, propertyId: string, startDate: string, endDate: string): Promise<GA4DailyMetric[]>;
@@ -843,6 +846,12 @@ export class DatabaseStorage implements IStorage {
       if (options) {
         if (!options.expectedDraftOwnerId?.trim() || existing.ownerId !== options.expectedDraftOwnerId) return false;
         if (String(existing.status || "").trim().toLowerCase() !== "draft") throw new Error("CAMPAIGN_NO_LONGER_DRAFT");
+        const workTable = await tx.execute(sql`SELECT to_regclass('ga4_refresh_work') AS name`);
+        if (workTable.rows[0]?.name) {
+          const [accepted] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork)
+            .where(and(eq(ga4RefreshWork.campaignId, id), sql`${ga4RefreshWork.scope}->>'kind' = 'initial_import'`)).limit(1);
+          if (accepted) throw new Error("CAMPAIGN_NO_LONGER_DRAFT");
+        }
       }
       await this.deleteCampaignChildren(id, tx);
       const deleted = await tx.delete(campaigns).where(eq(campaigns.id, id));
@@ -1206,21 +1215,39 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  private async readGA4RefreshWorkScope(tx: any, campaignId: string, ownerId: string) {
+  private async readGA4RefreshWorkScope(tx: any, campaignId: string, ownerId: string, options: { initialImport?: boolean; workId?: string } = {}) {
     if (!campaignId?.trim() || !ownerId?.trim()) return undefined;
     const [campaign] = await tx.select().from(campaigns).where(and(
       eq(campaigns.id, campaignId), eq(campaigns.ownerId, ownerId),
     )).for("update");
-    if (!campaign || !filterActiveSchedulerCampaigns([campaign]).length) return undefined;
+    let initialImport = options.initialImport === true;
+    if (options.workId) {
+      const [work] = await tx.select({ scope: ga4RefreshWork.scope }).from(ga4RefreshWork)
+        .where(and(eq(ga4RefreshWork.id, options.workId), eq(ga4RefreshWork.campaignId, campaignId)));
+      initialImport = work?.scope?.kind === "initial_import";
+    }
+    if (!campaign || (initialImport ? campaign.status !== "draft" : !filterActiveSchedulerCampaigns([campaign]).length)) return undefined;
     const connections = await tx.select({ id: ga4Connections.id, propertyId: ga4Connections.propertyId,
       importStartDate: ga4Connections.importStartDate, isPrimary: ga4Connections.isPrimary,
       method: ga4Connections.method, lookbackDays: ga4Connections.lookbackDays, connectedAt: ga4Connections.connectedAt,
     }).from(ga4Connections).where(and(eq(ga4Connections.campaignId, campaignId), eq(ga4Connections.isActive, true)))
       .orderBy(ga4Connections.id).for("share");
     if (!connections.length || connections.some((connection: any) => !connection.propertyId.trim())) return undefined;
+    if (initialImport) {
+      if (!campaign.ga4CampaignFilter?.trim() || connections.some((connection: any) => !/^\d+$/.test(connection.propertyId)
+        || !["access_token", "service_account"].includes(connection.method))) return undefined;
+      for (const table of [revenueSources, spendSources, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections]) {
+        const [source] = await tx.select({ id: table.id }).from(table).where(and(eq(table.campaignId, campaignId), eq(table.isActive, true))).limit(1);
+        if (source) return undefined;
+      }
+      for (const table of [linkedinConnections, metaConnections, instagramConnections, tiktokConnections, googleAdsConnections, ga4GoogleAdsSpendConnections]) {
+        const [source] = await tx.select({ id: table.id }).from(table).where(eq(table.campaignId, campaignId)).limit(1);
+        if (source) return undefined;
+      }
+    }
     const scope = { version: 1, campaign: Object.fromEntries([
       "id", "createdAt", "ownerId", "clientId", "status", "ga4CampaignFilter", "currency", "reportingTimeZone",
-    ].map(key => [key, campaign[key] ?? null])), connections };
+    ].map(key => [key, campaign[key] ?? null])), connections, ...(initialImport ? { kind: "initial_import" } : {}) };
     return { scope, scopeHash: createHash("sha256").update(JSON.stringify(scope)).digest("hex") };
   }
 
@@ -1306,7 +1333,7 @@ export class DatabaseStorage implements IStorage {
     return this.withGA4RefreshTransaction(async (tx: any) => {
       await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
       await tx.execute(sql`SET LOCAL statement_timeout = '30s'`);
-      const current = await this.readGA4RefreshWorkScope(tx, scope!.campaignId, scope!.ownerId);
+      const current = await this.readGA4RefreshWorkScope(tx, scope!.campaignId, scope!.ownerId, { workId: scope!.work.id });
       if (!current) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
       const owned = and(eq(ga4RefreshWork.id, scope!.work.id), eq(ga4RefreshWork.campaignId, scope!.campaignId),
         eq(ga4RefreshWork.reportingDate, scope!.reportingDate), eq(ga4RefreshWork.scopeHash, current.scopeHash),
@@ -1336,6 +1363,66 @@ export class DatabaseStorage implements IStorage {
     await this.writeGA4RefreshInputChange(campaignId, async () => true);
   }
 
+  async requestGA4InitialImport(campaignId: string, ownerId: string, updates: Pick<InsertCampaign, "platform" | "ga4CampaignFilter">, retry = false): Promise<GA4RefreshWork | undefined> {
+    return this.withGA4RefreshTransaction(async tx => {
+      const [campaign] = await tx.select().from(campaigns).where(and(eq(campaigns.id, campaignId), eq(campaigns.ownerId, ownerId))).for("update");
+      if (!campaign || campaign.status !== "draft") return undefined;
+      const changes = { platform: updates.platform ?? campaign.platform, ga4CampaignFilter: updates.ga4CampaignFilter ?? campaign.ga4CampaignFilter };
+      const changed = changes.platform !== campaign.platform || changes.ga4CampaignFilter !== campaign.ga4CampaignFilter;
+      if (changed) {
+        await tx.update(campaigns).set(changes).where(eq(campaigns.id, campaignId));
+        if (changes.ga4CampaignFilter !== campaign.ga4CampaignFilter) {
+          await tx.delete(ga4DailyMetrics).where(eq(ga4DailyMetrics.campaignId, campaignId));
+          await tx.delete(ga4OverviewSnapshots).where(eq(ga4OverviewSnapshots.campaignId, campaignId));
+        }
+        await tx.update(ga4RefreshWork).set({ scopeHash: sql`'invalidated:' || ${ga4RefreshWork.id}`,
+          status: "pending", leaseToken: null, leaseExpiresAt: null, completedAt: null, updatedAt: sql`clock_timestamp()` })
+          .where(eq(ga4RefreshWork.campaignId, campaignId));
+      }
+      const scope = await this.readGA4RefreshWorkScope(tx, campaignId, ownerId, { initialImport: true });
+      if (!scope) throw new Error("GA4_INITIAL_IMPORT_CONFIGURATION_REQUIRED");
+      const [existing] = await tx.select().from(ga4RefreshWork).where(and(eq(ga4RefreshWork.campaignId, campaignId),
+        eq(ga4RefreshWork.scopeHash, scope.scopeHash))).orderBy(desc(ga4RefreshWork.dueAt)).limit(1);
+      if (existing) {
+        // Repeated Create, lost responses and reopened browsers reuse the same request.
+        if (retry && existing.status !== "completed" && (!existing.retryable || existing.attemptCount >= 3)
+          && !(existing.status === "running" && existing.leaseExpiresAt > new Date())) {
+          const [updated] = await tx.update(ga4RefreshWork).set({ status: "pending", retryable: true, attemptCount: 0,
+            leaseToken: null, leaseExpiresAt: null, completedAt: null,
+            nextAttemptAt: existing.lastError === "GA4_PROVIDER_BACKOFF" ? existing.nextAttemptAt : null,
+            updatedAt: sql`clock_timestamp()` }).where(eq(ga4RefreshWork.id, existing.id)).returning();
+          return updated;
+        }
+        return existing;
+      }
+      const dueAt = new Date();
+      const reportingDate = getLatestCompleteReportingDate(campaign.reportingTimeZone, dueAt);
+      const [work] = await tx.insert(ga4RefreshWork).values({ campaignId, dueAt, reportingDate, suppressAlerts: true, ...scope }).returning();
+      return work;
+    });
+  }
+
+  async getGA4InitialImportWork(campaignId: string, ownerId: string, workId?: string): Promise<GA4RefreshWork | undefined> {
+    const [row] = await db.select({ work: ga4RefreshWork }).from(ga4RefreshWork)
+      .innerJoin(campaigns, and(eq(campaigns.id, ga4RefreshWork.campaignId), eq(campaigns.ownerId, ownerId)))
+      .where(and(eq(ga4RefreshWork.campaignId, campaignId), sql`${ga4RefreshWork.scope}->>'kind' = 'initial_import'`,
+        workId ? eq(ga4RefreshWork.id, workId) : undefined))
+      .orderBy(desc(ga4RefreshWork.dueAt), desc(ga4RefreshWork.updatedAt)).limit(1);
+    return row?.work;
+  }
+
+  async getGA4InitialImportStatus(campaignId: string, ownerId: string): Promise<GA4InitialImportStatus | null> {
+    const work = await this.getGA4InitialImportWork(campaignId, ownerId);
+    if (!work) return null;
+    const invalidated = work.scopeHash.startsWith("invalidated:");
+    const completed = work.status === "completed" && !invalidated;
+    const running = work.status === "running" && Boolean(work.leaseExpiresAt && work.leaseExpiresAt > new Date());
+    const failed = invalidated || (!running && (!work.retryable || work.attemptCount >= 3));
+    return { state: completed ? "completed" : failed ? "failed" : running ? "running" : work.attemptCount > 0 ? "retrying" : "queued",
+      canRetry: !completed && failed, dataThroughDate: work.reportingDate,
+      error: failed ? invalidated ? "GA4_INITIAL_IMPORT_CONFIGURATION_CHANGED" : work.lastError || "GA4_INITIAL_IMPORT_INTERRUPTED" : null };
+  }
+
   async ensureGA4RefreshWork(campaignId: string, ownerId: string, dueAt: Date, reportingDate: string, options: { suppressAlerts?: boolean } = {}): Promise<GA4RefreshWork | undefined> {
     if (!(dueAt instanceof Date) || !Number.isFinite(dueAt.getTime()) || !/^\d{4}-\d{2}-\d{2}$/.test(reportingDate)
       || new Date(`${reportingDate}T00:00:00Z`).toISOString().slice(0, 10) !== reportingDate) throw new Error("Invalid GA4 work date");
@@ -1347,6 +1434,7 @@ export class DatabaseStorage implements IStorage {
       // A later slot supersedes unfinished older slots, including after midnight.
       const [newer] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork).where(and(
         eq(ga4RefreshWork.campaignId, campaignId), sql`${ga4RefreshWork.dueAt} > ${dueAt}`,
+        sql`COALESCE(${ga4RefreshWork.scope}->>'kind', '') <> 'initial_import'`,
         sql`${ga4RefreshWork.dueAt} <= clock_timestamp()`, sql`${ga4RefreshWork.scopeHash} NOT LIKE 'invalidated:%'`));
       if (newer) return undefined;
       await tx.update(ga4RefreshWork).set({ scopeHash: sql`'invalidated:' || ${ga4RefreshWork.id}`,
@@ -1367,7 +1455,7 @@ export class DatabaseStorage implements IStorage {
     return this.withGA4RefreshTransaction(async (tx: any) => {
       await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
       await tx.execute(sql`SET LOCAL statement_timeout = '30s'`);
-      const scope = await this.readGA4RefreshWorkScope(tx, campaignId, ownerId);
+      const scope = await this.readGA4RefreshWorkScope(tx, campaignId, ownerId, { workId });
       if (!scope) return undefined;
       const [work] = await tx.select().from(ga4RefreshWork).where(and(eq(ga4RefreshWork.id, workId),
         eq(ga4RefreshWork.campaignId, campaignId), eq(ga4RefreshWork.scopeHash, scope.scopeHash),
@@ -1380,6 +1468,7 @@ export class DatabaseStorage implements IStorage {
       if (providerBackoff) return undefined;
       const [newer] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork).where(and(
         eq(ga4RefreshWork.campaignId, campaignId), sql`${ga4RefreshWork.dueAt} > ${work.dueAt}`,
+        scope.scope.kind === "initial_import" ? undefined : sql`COALESCE(${ga4RefreshWork.scope}->>'kind', '') <> 'initial_import'`,
         sql`${ga4RefreshWork.dueAt} <= clock_timestamp()`, sql`${ga4RefreshWork.scopeHash} NOT LIKE 'invalidated:%'`));
       if (newer) return undefined;
       // Expiry clears only work ownership; it never authorizes an old owner to publish.
@@ -1400,15 +1489,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateGA4RefreshWorkLease(campaignId: string, ownerId: string, workId: string, leaseToken: string,
-    action: "renew" | "release" | "complete" | "complete_without_alerts", leaseMs = 120_000, publicationCompletedAt?: string, failure?: { retryable: boolean; code: string; retryAfterMs?: number }): Promise<GA4RefreshWork | undefined> {
-    if (!["renew", "release", "complete", "complete_without_alerts"].includes(action) || !Number.isInteger(leaseMs) || leaseMs < 1000 || leaseMs > 900_000)
+    action: "renew" | "release" | "complete" | "complete_without_alerts" | "complete_initial_import", leaseMs = 120_000, publicationCompletedAt?: string, failure?: { retryable: boolean; code: string; retryAfterMs?: number }): Promise<GA4RefreshWork | undefined> {
+    if (!["renew", "release", "complete", "complete_without_alerts", "complete_initial_import"].includes(action) || !Number.isInteger(leaseMs) || leaseMs < 1000 || leaseMs > 900_000)
       throw new Error("Invalid GA4 work lease update");
     if (!leaseToken?.trim()) return undefined;
     if (publicationCompletedAt !== undefined && (!["complete", "complete_without_alerts"].includes(action) || !Number.isFinite(Date.parse(publicationCompletedAt)))) throw new Error("Invalid GA4 work completion time");
     return this.withGA4RefreshTransaction(async (tx: any) => {
       await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
       await tx.execute(sql`SET LOCAL statement_timeout = '30s'`);
-      const scope = await this.readGA4RefreshWorkScope(tx, campaignId, ownerId);
+      const scope = await this.readGA4RefreshWorkScope(tx, campaignId, ownerId, { workId });
       if (!scope) return undefined;
       const owned = and(eq(ga4RefreshWork.id, workId), eq(ga4RefreshWork.campaignId, campaignId),
         eq(ga4RefreshWork.scopeHash, scope.scopeHash), eq(ga4RefreshWork.status, "running"),
@@ -1416,7 +1505,16 @@ export class DatabaseStorage implements IStorage {
         sql`${ga4RefreshWork.startedAt} + interval '15 minutes' > clock_timestamp()`);
       const [work] = await tx.select().from(ga4RefreshWork).where(owned);
       if (!work) return undefined;
+      const initialImport = work.scope?.kind === "initial_import";
+      if (action.startsWith("complete") && initialImport !== (action === "complete_initial_import")) return undefined;
       let completedAt: Date | null = null;
+      if (action === "complete_initial_import") {
+        const receipt = createHash("sha256").update(leaseToken).digest("hex");
+        if (!scope.scope.connections.every((connection: any) => work.scope?.initialImportPublications?.[connection.id] === receipt)) return undefined;
+        // Activation and completion share the campaign lock and commit together.
+        await tx.update(campaigns).set({ status: "active" }).where(and(eq(campaigns.id, campaignId), eq(campaigns.ownerId, ownerId), eq(campaigns.status, "draft")));
+        completedAt = new Date();
+      }
       if (action === "complete" || action === "complete_without_alerts") {
         const [snapshot] = await tx.select({ notes: metricSnapshots.notes }).from(metricSnapshots).where(and(
           eq(metricSnapshots.campaignId, campaignId), eq(metricSnapshots.snapshotType, "executive_summary_daily"),
@@ -1451,8 +1549,8 @@ export class DatabaseStorage implements IStorage {
             : sql`clock_timestamp() + ${Math.max(60_000 * 2 ** Math.min(work.attemptCount - 1, 2), failure.retryAfterMs || 0)} * interval '1 millisecond'`,
         } : {}),
       }).where(and(owned, completedAt ? sql`${completedAt}::timestamptz <= clock_timestamp()` : undefined)).returning();
-      if (publicationCompletedAt !== undefined && !updated) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
-      if (publicationCompletedAt !== undefined) {
+      if ((publicationCompletedAt !== undefined || action === "complete_initial_import") && !updated) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+      if (publicationCompletedAt !== undefined || action === "complete_initial_import") {
         const [withinLease] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork).where(and(
           eq(ga4RefreshWork.id, workId), sql`${work.leaseExpiresAt}::timestamptz > clock_timestamp()`,
         ));
@@ -1568,7 +1666,7 @@ export class DatabaseStorage implements IStorage {
               typeof scope.work?.leaseToken !== "string" || !scope.work.leaseToken.trim()) {
             throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
           }
-          const currentScope = await this.readGA4RefreshWorkScope(tx, cid, String(scope.campaign.ownerId || ""));
+          const currentScope = await this.readGA4RefreshWorkScope(tx, cid, String(scope.campaign.ownerId || ""), { workId: scope.work.id });
           if (!currentScope) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
           workOwnership = and(eq(ga4RefreshWork.id, scope.work.id), eq(ga4RefreshWork.campaignId, cid),
             eq(ga4RefreshWork.scopeHash, currentScope.scopeHash), eq(ga4RefreshWork.reportingDate, end),
@@ -1627,6 +1725,13 @@ export class DatabaseStorage implements IStorage {
       }
       // The campaign lock excludes takeover until commit; expiry during the writes rolls both outputs back.
       if (workOwnership) {
+        const scope = overviewSnapshot!.refreshScope!;
+        if ("work" in scope && scope.work) {
+          const receipt = createHash("sha256").update(scope.work.leaseToken).digest("hex");
+          await tx.update(ga4RefreshWork).set({ scope: sql`jsonb_set(${ga4RefreshWork.scope}, '{initialImportPublications}',
+            COALESCE(${ga4RefreshWork.scope}->'initialImportPublications', '{}'::jsonb) || jsonb_build_object(${String(scope.connection.id)}::text, ${receipt}::text))` })
+            .where(and(workOwnership, sql`${ga4RefreshWork.scope}->>'kind' = 'initial_import'`));
+        }
         const [owned] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork).where(workOwnership);
         if (!owned) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
       }

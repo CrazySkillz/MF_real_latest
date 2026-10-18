@@ -47,7 +47,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign, refreshTikTokBenchmarksForCampaign, refreshTikTokKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./kpi-scheduler";
 import { refreshGoogleSheetsDataForCampaign, runGoogleSheetsRevenueSourceRefreshForValidation, runGoogleSheetsSpendSourceRefreshForValidation, runHubSpotRevenueSourceRefreshForValidation, runShopifyRevenueSourceRefreshForValidation } from "./auto-refresh-scheduler";
-import { getGA4DailyRefreshAttempt, getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getGA4DailySchedulerStatus, refreshAllGA4DailyMetrics, runGA4DailyRefreshPipelineForCampaignNow } from "./ga4-daily-scheduler";
+import { getGA4DailyRefreshAttempt, getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getGA4DailySchedulerStatus, refreshAllGA4DailyMetrics, runGA4DailyRefreshPipelineForCampaignNow, recoverInterruptedGA4Refreshes } from "./ga4-daily-scheduler";
 import { isInternalAutoRefreshRequest, getInternalGA4RefreshWriteInput } from "./internal-request-auth";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { createReportPdfArtifact, readReportPdfArtifact } from "./utils/report-pdf-artifact";
@@ -8996,6 +8996,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       const campaigns = await storage.getCampaigns();
+      const initialImports = new Map<string, Awaited<ReturnType<typeof storage.getGA4InitialImportStatus>>>();
+      if (req.query.includeInitialImports === "1") {
+        await Promise.all(campaigns.filter(c => c.ownerId === actorId && c.status === "draft" && ownedClientIds.has(String(c.clientId || ""))
+          && (!clientId || c.clientId === clientId)).map(async c => {
+          const status = await storage.getGA4InitialImportStatus(c.id, actorId);
+          if (status) initialImports.set(c.id, status);
+        }));
+      }
       const visible = (Array.isArray(campaigns) ? campaigns : []).filter((c: any) => {
         const ownerId = String(c?.ownerId || "").trim();
         if (ownerId !== actorId) return false;
@@ -9003,7 +9011,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Hide draft campaigns – they only become visible after the user
         // clicks the final "Create" button which PATCHes status → "active".
         const status = String(c?.status || "").trim().toLowerCase();
-        if (status === "draft") return false;
+        if (status === "draft" && !initialImports.has(c.id)) return false;
         // Filter by clientId if provided — only show campaigns belonging to that client
         if (clientId && String(c?.clientId || "") !== clientId) return false;
         return true;
@@ -9014,6 +9022,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         visible.map((c: any) => withReportingTimeZone({
           ...c,
           ownerId: c.ownerId,
+          ...(initialImports.has(c.id) ? { initialImport: initialImports.get(c.id) } : {}),
           // TODO: Calculate real values from platform connections and KPIs
           conversions: c.conversions || 0,
           revenue: c.revenue || 0,
@@ -9131,6 +9140,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingCampaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!existingCampaign) return;
 
+      // An accepted Create may have completed while its HTTP response was lost.
+      if (req.body?.asyncInitialImport === true && existingCampaign.status === "active") {
+        const initialImport = await storage.getGA4InitialImportStatus(campaignId, String(existingCampaign.ownerId));
+        if (initialImport?.state === "completed") return res.json({ ...withReportingTimeZone(existingCampaign as any), initialImport });
+        return res.status(409).json({ message: "This campaign is already active." });
+      }
+
       const sanitizedData = { ...(req.body || {}) };
       if (Object.prototype.hasOwnProperty.call(sanitizedData, "reportingTimeZone")) {
         sanitizedData.reportingTimeZone = normalizeReportingTimeZone(sanitizedData.reportingTimeZone);
@@ -9174,7 +9190,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      if (req.body?.asyncInitialImport === true) {
+        if (!shouldRunInitialGA4Import) return res.status(400).json({ message: "Select a GA4 property and campaign before creating this campaign." });
+        if (process.env.GA4_DURABLE_RECOVERY_ENABLED === "false") return res.status(503).json({ message: "Campaign imports are temporarily paused. Please try again later." });
+        const work = await storage.requestGA4InitialImport(campaignId, String(existingCampaign.ownerId), {
+          platform: validatedData.platform, ga4CampaignFilter: validatedData.ga4CampaignFilter,
+        }, req.body.retryInitialImport === true);
+        if (!work) return res.status(409).json({ message: "Campaign changed. Reopen it and try again." });
+        const campaign = await storage.getCampaign(campaignId);
+        if (!campaign) return res.status(404).json({ message: "Campaign not found" });
+        const initialImport = await storage.getGA4InitialImportStatus(campaignId, String(existingCampaign.ownerId));
+        // Persisted work is also discovered after a restart or a busy scheduler.
+        void recoverInterruptedGA4Refreshes().catch(error => console.warn("[GA4 Initial Import] Dispatch failed:", error?.message || error));
+        return res.status(202).json({ ...withReportingTimeZone(campaign as any), initialImport });
+      }
+
       const preparedData = shouldRunInitialGA4Import ? { ...validatedData, status: "draft" } : validatedData;
+      if (isDraftActivation && await storage.getGA4InitialImportWork(campaignId, String(existingCampaign.ownerId))) {
+        return res.status(409).json({ message: "Campaign creation has already started. Reopen its setup to view or retry the import." });
+      }
       let campaign = ga4DailyScopeChanged
         ? await storage.updateCampaignWithGA4DailyInvalidation(campaignId, preparedData)
         : await storage.updateCampaign(campaignId, preparedData);
@@ -9197,6 +9231,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(withReportingTimeZone(campaign as any));
     } catch (error) {
       console.error('Campaign update error:', error);
+      if (error instanceof Error && error.message === "GA4_INITIAL_IMPORT_CONFIGURATION_REQUIRED") {
+        return res.status(400).json({ message: "This initial import requires a connected GA4 property and selected GA4 campaigns, without other connected sources." });
+      }
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid campaign data", errors: error.errors });
       }
@@ -9212,7 +9249,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!campaign) return;
 
-      res.json(withReportingTimeZone(campaign as any));
+      res.json({ ...withReportingTimeZone(campaign as any), ...(req.query.initialImport === "1" ? {
+        initialImport: await storage.getGA4InitialImportStatus(campaignId, String(campaign.ownerId)),
+      } : {}) });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch campaign" });
     }

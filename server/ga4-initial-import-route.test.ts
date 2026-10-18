@@ -8,10 +8,13 @@ const storageMock = vi.hoisted(() => ({
   updateCampaign: vi.fn(),
   updateCampaignWithGA4DailyInvalidation: vi.fn(),
   deleteCampaignCascade: vi.fn(),
+  requestGA4InitialImport: vi.fn(), getGA4InitialImportWork: vi.fn(), getGA4InitialImportStatus: vi.fn(),
+  getClients: vi.fn(), getCampaigns: vi.fn(),
 }));
 const schedulerMock = vi.hoisted(() => ({
   refreshAllGA4DailyMetrics: vi.fn(),
   getGA4DailyRefreshFailure: vi.fn(),
+  recoverInterruptedGA4Refreshes: vi.fn(),
 }));
 
 vi.mock("./storage", () => ({ storage: storageMock }));
@@ -21,6 +24,7 @@ vi.mock("./ga4-daily-scheduler", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./ga4-daily-scheduler")>()),
   refreshAllGA4DailyMetrics: schedulerMock.refreshAllGA4DailyMetrics,
   getGA4DailyRefreshFailure: schedulerMock.getGA4DailyRefreshFailure,
+  recoverInterruptedGA4Refreshes: schedulerMock.recoverInterruptedGA4Refreshes,
 }));
 vi.mock("./middleware/rateLimiter", () => {
   const pass = (_req: any, _res: any, next: any) => next();
@@ -50,9 +54,15 @@ describe("new campaign initial GA4 import", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    storageMock.getGA4InitialImportWork.mockResolvedValue(undefined);
+    storageMock.getGA4InitialImportStatus.mockResolvedValue(null);
+    storageMock.requestGA4InitialImport.mockResolvedValue({ id: "work-1" });
+    schedulerMock.recoverInterruptedGA4Refreshes.mockResolvedValue(undefined);
+    storageMock.getClients.mockResolvedValue([{ id: "client-1" }]);
     storageMock.getCampaign.mockResolvedValue({
       id: campaignId,
       ownerId: "owner-1",
+      clientId: "client-1",
       name: "New campaign",
       status: "draft",
       platform: "manual",
@@ -99,6 +109,72 @@ describe("new campaign initial GA4 import", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "active", platform, ga4CampaignFilter }),
     });
+
+  const queue = (extra = {}) => fetch(`${baseUrl}/api/campaigns/${campaignId}`, {
+    method: "PATCH", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: "active", platform: "google-analytics", ga4CampaignFilter: "selected_campaign", asyncInitialImport: true, ...extra }),
+  });
+  it("acknowledges persisted initial work without waiting for the provider", async () => {
+    schedulerMock.recoverInterruptedGA4Refreshes.mockReturnValueOnce(new Promise(() => {}));
+    const initialImport = { state: "queued", canRetry: false, dataThroughDate: "2026-10-17", error: null };
+    storageMock.getGA4InitialImportStatus.mockResolvedValue(initialImport);
+    const response = await queue();
+    expect(response.status).toBe(202);
+    expect(await response.json()).toMatchObject({ status: "draft", initialImport });
+    expect(storageMock.requestGA4InitialImport).toHaveBeenCalledWith(campaignId, "owner-1", { platform: "google-analytics", ga4CampaignFilter: "selected_campaign" }, false);
+    expect(storageMock.updateCampaign).not.toHaveBeenCalled();
+    expect(schedulerMock.refreshAllGA4DailyMetrics).not.toHaveBeenCalled();
+  });
+  it("does not dispatch work when persistence fails", async () => {
+    storageMock.requestGA4InitialImport.mockRejectedValueOnce(new Error("database unavailable"));
+    expect((await queue()).status).toBe(500);
+    expect(schedulerMock.recoverInterruptedGA4Refreshes).not.toHaveBeenCalled();
+  });
+  it("forwards an explicit retry while ignoring caller-supplied worker ownership", async () => {
+    expect((await queue({ retryInitialImport: true, refreshScope: { work: { id: "forged" } } })).status).toBe(202);
+    expect(storageMock.requestGA4InitialImport).toHaveBeenCalledWith(campaignId, "owner-1", { platform: "google-analytics", ga4CampaignFilter: "selected_campaign" }, true);
+    expect(schedulerMock.recoverInterruptedGA4Refreshes).toHaveBeenCalledWith();
+  });
+  it("preserves existing campaign GET format unless initial-import status is requested", async () => {
+    storageMock.getGA4InitialImportStatus.mockResolvedValue({ state: "running" });
+    expect(await (await fetch(`${baseUrl}/api/campaigns/${campaignId}`)).json()).not.toHaveProperty("initialImport");
+    expect(await (await fetch(`${baseUrl}/api/campaigns/${campaignId}?initialImport=1`)).json()).toHaveProperty("initialImport.state", "running");
+  });
+  it("exposes only accepted imports owned by the selected client in the opted-in list", async () => {
+    const draft = await storageMock.getCampaign();
+    storageMock.getCampaigns.mockResolvedValue([draft, { ...draft, id: "other", ownerId: "owner-2" }, { ...draft, id: "unaccepted" }, { ...draft, id: "wrong-client", clientId: "client-2" }]);
+    storageMock.getGA4InitialImportStatus.mockImplementation(async id => id === campaignId ? { state: "running" } : null);
+    expect(await (await fetch(`${baseUrl}/api/campaigns?clientId=client-1`)).json()).toEqual([]);
+    const visible = await (await fetch(`${baseUrl}/api/campaigns?clientId=client-1&includeInitialImports=1`)).json();
+    expect(visible.map((c: any) => c.id)).toEqual([campaignId]);
+    expect(storageMock.getGA4InitialImportStatus.mock.calls.every(([id]) => [campaignId, "unaccepted"].includes(id))).toBe(true);
+  });
+  it("rejects cross-owner status and Create requests before looking up work", async () => {
+    storageMock.getCampaign.mockResolvedValue({ id: campaignId, ownerId: "other-owner", status: "draft" });
+    expect((await queue()).status).toBe(404);
+    expect((await fetch(`${baseUrl}/api/campaigns/${campaignId}?initialImport=1`)).status).toBe(404);
+    expect(storageMock.requestGA4InitialImport).not.toHaveBeenCalled();
+    expect(storageMock.getGA4InitialImportStatus).not.toHaveBeenCalled();
+  });
+  it("acknowledges completed Create retries without changing active campaign data", async () => {
+    storageMock.getCampaign.mockResolvedValue({ id: campaignId, ownerId: "owner-1", status: "active" });
+    storageMock.getGA4InitialImportStatus.mockResolvedValue({ state: "completed" });
+    expect((await queue()).status).toBe(200);
+    expect(storageMock.requestGA4InitialImport).not.toHaveBeenCalled();
+    expect(storageMock.updateCampaign).not.toHaveBeenCalled();
+  });
+  it("does not let an old browser start a synchronous import over accepted work", async () => {
+    storageMock.getGA4InitialImportWork.mockResolvedValue({ id: "work-1" });
+    expect((await activate()).status).toBe(409);
+    expect(storageMock.updateCampaignWithGA4DailyInvalidation).not.toHaveBeenCalled();
+    expect(schedulerMock.refreshAllGA4DailyMetrics).not.toHaveBeenCalled();
+  });
+  it("rejects imports while recovery is disabled", async () => {
+    vi.stubEnv("GA4_DURABLE_RECOVERY_ENABLED", "false");
+    try { expect((await queue()).status).toBe(503); }
+    finally { vi.unstubAllEnvs(); }
+    expect(storageMock.requestGA4InitialImport).not.toHaveBeenCalled();
+  });
 
   it("imports the persisted GA4 scope before promoting the draft to active", async () => {
     const response = await activate();

@@ -123,12 +123,20 @@ The visible wizard has five steps:
 
 The current enabled creation path is Google Analytics. The GA4 configuration
 step selects a property and campaign scope before final confirmation. The
-campaign remains a draft during setup and becomes active after the final
-`Create Campaign` action succeeds.
+campaign remains a draft during setup. Final `Create Campaign` saves the initial
+GA4 import for background processing; activation follows successful import of
+all selected properties. Accepted imports appear in All Campaigns with their
+status; clicking reopens Confirm. Users may close the wizard and return, retry
+a failed import, or use Back to review configuration/reconnect Google.
 
-Closing an unfinished wizard may clean up only its persisted draft. The server
-rejects that cleanup after the campaign becomes active. A confirmed campaign
-delete remains available from the All Campaigns card.
+Closing before final Create may clean up only the unsubmitted persisted draft.
+Once Create is accepted, closing preserves the import. The server rejects stale
+wizard cleanup after acceptance or activation. Confirmed campaign deletion
+remains available from the All Campaigns card and cancels its saved work.
+
+This asynchronous initial-import flow is locally validated in the current P4
+revision; deployment/live creation confirmation is pending. It covers the
+currently enabled native GA4-only creation path.
 
 Several additional platform definitions and connector implementations remain
 in the codebase. They are filtered out of the current Create Campaign platform

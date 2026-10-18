@@ -26,7 +26,7 @@ describe("GA4-first Create Campaign wizard", () => {
     expect(campaignsPage).toContain("const finalizingCampaignRef = useRef(false);");
     expect(campaignsPage).toContain("if (finalizingCampaignRef.current) return;");
     expect(campaignsPage).toContain("finalizingCampaignRef.current = true;");
-    expect(campaignsPage).toContain("disabled={isFinalizingCampaign || createCampaignConnectedPlatforms.length === 0}");
+    expect(campaignsPage).toContain("disabled={isFinalizingCampaign || importPending || createCampaignConnectedPlatforms.length === 0}");
     expect(campaignsPage).toContain("{isFinalizingCampaign ? (");
     expect(campaignsPage).toContain("finalizingCampaignRef.current = false;");
   });

@@ -4,7 +4,7 @@ async function main() {
 const testUrl = new URL(String(process.env.GA4_TEST_DATABASE_URL || ""));
 const schemaName = String(process.env.GA4_TEST_SCHEMA || "");
 if (testUrl.hostname !== "127.0.0.1" || testUrl.pathname !== "/ga4_alignment_test" || testUrl.search ||
-    process.env.DATABASE_URL || !/^ga4_process_it_[a-f0-9]+$/.test(schemaName)) throw new Error("Unsafe process test database");
+    process.env.DATABASE_URL || !/^(ga4_process_it_|initial_import_)[a-f0-9]+$/.test(schemaName)) throw new Error("Unsafe process test database");
 testUrl.searchParams.set("options", `-c search_path=${schemaName}`);
 testUrl.searchParams.set("application_name", schemaName);
 process.env.DATABASE_URL = testUrl.toString();
@@ -40,7 +40,10 @@ const checkpoint = async (stage: string) => {
   await continued;
 };
 try {
-  const pending = await storage.ensureGA4RefreshWork(campaignId, `owner-${campaignId}`, dueAt, date);
+  const initialImport = process.env.GA4_TEST_INITIAL_IMPORT === "true";
+  const pending = initialImport
+    ? await storage.getGA4InitialImportWork(campaignId, `owner-${campaignId}`) || await storage.requestGA4InitialImport(campaignId, `owner-${campaignId}`, { platform: "google-analytics" })
+    : await storage.ensureGA4RefreshWork(campaignId, `owner-${campaignId}`, dueAt, date);
   if (pending?.status === "completed") {
     process.send?.({ type: "result", status: "already_completed" });
   } else {
@@ -65,6 +68,12 @@ try {
       },
     });
     await checkpoint("daily");
+    if (initialImport) {
+      if (!await storage.updateGA4RefreshWorkLease(campaignId, `owner-${campaignId}`, work.id, work.leaseToken, "complete_initial_import")) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+      await checkpoint("complete");
+      process.send?.({ type: "result", status: "completed" });
+      return;
+    }
     const notes = `auto:ga4_daily:${date};ga4_scope_v1:test`;
     const recordedAt = new Date(`${date}T23:59:59Z`);
     await storage.recordKPIProgress({ kpiId: `kpi-${campaignId}`, value: "20", notes, recordedAt, refreshScope });

@@ -18,7 +18,17 @@ P5 implementation and local acceptance are complete for the agreed Ptomo native-
 
 See `docs/GA4_PROCESSING_AND_ALIGNMENT_BACKLOG.md`, **P5 completion package**, for root causes, exact paths/files, test evidence, activation exclusions and release checks. Deployment requires additive migration `0021_add_ga4_refresh_recovery.sql`. The normal scheduled publication is confirmed; production failure injection and restart recovery are not claimed. P4, P6 and P7 remain separate work.
 
-P4 cancellation prerequisite (included in this revision, deployment unconfirmed, 2026-10-18): wizard draft cleanup now checks draft status and the authorized owner inside the deletion transaction, preventing a delayed cleanup from removing a campaign finalized while it waited. Campaign/client cleanup also removes only the deleted campaign's recovery work through the existing optional-table helper. Initial imports remain synchronous; automatic draft recovery and creation-status UI are still outstanding. No production orphan-work cleanup was performed.
+## P4 initial campaign import - local completion, 2026-10-18
+
+The cancellation prerequisite `608e7b8d` is deployed per the user. The subsequent consolidated initial-import package is locally implemented; deployment and live creation validation remain pending. See the backlog's **P4 consolidated initial-import completion** for evidence and limits.
+
+- The enabled GA4 wizard submits final Create with `asyncInitialImport: true`. The existing campaign PATCH persists native-only draft work before HTTP 202; it does not await Google. Normal draft edits and legacy unsubmitted-draft activation retain their existing contracts.
+- The existing recovery dispatcher discovers accepted draft work by its explicit `initial_import` scope marker. It uses the original reporting date, current owner/configuration checks, capped attempts/backoff, leases and cancellation. Ordinary unsubmitted drafts remain excluded, and regular active-campaign scheduling remains unchanged.
+- Each property's daily facts, Overview and current-attempt receipt commit together. Only receipts for every current selected property authorize atomic draft activation/work completion. Partial imports, stale workers, expired leases, deletion and configuration changes cannot activate the campaign.
+- All Campaigns opts into accepted-draft status and can reopen Confirm. Closing preserves accepted work; failed work supports Retry and the existing Back/reconnect path. Foreground status polling stops on completion/failure. Confirmed deletion cancels the scoped work; stale wizard cleanup is rejected after acceptance.
+- Initial activation preserves the former required daily/Overview boundary. Financial/derived/report/alert readiness remains on its existing post-activation path. The initial date is frozen across restart/retry; regular refreshes advance it after activation. This package does not change metric formulas or refresh timing.
+- Existing `ga4_refresh_work` JSON stores the work kind and token-digest receipts; no new migration is needed beyond P5's deployed work tables. `GA4_DURABLE_RECOVERY_ENABLED=false` pauses acceptance/discovery and retains saved work. External-source imports remain outside this native-only creation path. No production data cleanup or failure injection was performed.
+
 
 ## Daily Auto-Refresh And Auto-Process
 

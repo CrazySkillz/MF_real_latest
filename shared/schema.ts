@@ -140,6 +140,13 @@ export const ga4RefreshWork = pgTable("ga4_refresh_work", {
 ]);
 export type GA4RefreshWork = typeof ga4RefreshWork.$inferSelect;
 
+export type GA4InitialImportStatus = {
+  state: "queued" | "running" | "retrying" | "failed" | "completed";
+  canRetry: boolean;
+  dataThroughDate: string;
+  error: string | null;
+};
+
 // GA4 Daily Metrics (persisted daily facts; used to power "daily values" UI and schedulers)
 export const ga4DailyMetrics = pgTable("ga4_daily_metrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

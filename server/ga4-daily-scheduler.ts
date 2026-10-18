@@ -30,6 +30,7 @@ type GA4DailyRefreshPipelineOptions = {
   refreshFinancialSources?: boolean;
   // Internal opt-in only; timers/bootstrap do not enable ownership recovery yet.
   workDueAt?: Date;
+  initialImportWorkId?: string;
   assertWorkOwnership?: () => Promise<void>;
   signal?: AbortSignal;
 } & GA4RefreshWriteInput;
@@ -566,6 +567,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
   if ("refreshScope" in opts || ("workDueAt" in opts && (!campaignId || !(opts.workDueAt instanceof Date) || !Number.isFinite(opts.workDueAt.getTime()) || opts.workDueAt > new Date()))) {
     throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
   }
+  if (opts.initialImportWorkId && (!opts.workDueAt || process.env.GA4_DURABLE_RECOVERY_ENABLED === "false")) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
   if ((global as any).__ga4DailyRefreshInProgress && !parentRun) {
     ga4DailySchedulerStatus.totalSkippedRuns += 1;
     ga4DailySchedulerStatus.lastRunTrigger = trigger;
@@ -602,10 +604,10 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
     const renewed = await storage.updateGA4RefreshWorkLease(scope.campaignId, scope.ownerId, scope.work.id, scope.work.leaseToken, "renew", 120_000);
     if (!renewed) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
     const target = await storage.getCampaign(scope.campaignId);
-    if (!target || getLatestCompleteReportingDate(target.reportingTimeZone) !== scope.reportingDate) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    if (!target || getLatestCompleteReportingDate(target.reportingTimeZone, opts.initialImportWorkId ? opts.workDueAt : undefined) !== scope.reportingDate) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
     const [revenue, spend] = await Promise.all([storage.getRevenueSources(scope.campaignId), storage.getSpendSources(scope.campaignId)]);
     if ([...revenue, ...spend].some(source => source.isActive !== false)) throw new Error("GA4_REFRESH_SOURCE_OWNERSHIP_NOT_INTEGRATED");
-    if (process.env.GA4_DURABLE_RECOVERY_ENABLED !== "false" && !await storage.isGA4NativeRecoveryEligible(scope.campaignId)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    if (!opts.initialImportWorkId && process.env.GA4_DURABLE_RECOVERY_ENABLED !== "false" && !await storage.isGA4NativeRecoveryEligible(scope.campaignId)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
   };
   const scheduleHeartbeat = () => {
     heartbeat = setTimeout(() => {
@@ -630,7 +632,7 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
   console.log(`[GA4 Daily] Pipeline starting (trigger=${trigger}${campaignId ? `, campaignId=${campaignId}` : ""})`);
   try {
     await withGA4DailyStage("owned_pipeline", (async () => {
-    const targets = filterActiveSchedulerCampaigns(campaignId ? [await storage.getCampaign(campaignId)].filter(Boolean) as any[] : await storage.getCampaigns());
+    const targets = filterActiveSchedulerCampaigns(campaignId ? [await storage.getCampaign(campaignId)].filter(Boolean) as any[] : await storage.getCampaigns(), opts.initialImportWorkId ? campaignId : "");
     const nativeRecoveryTargets = new Set<string>();
     const ordinaryWriteInputs = new Map<string, GA4RefreshWriteInput>();
     const writeInputFor = (id: string): GA4RefreshWriteInput => refreshWriteInput.refreshScope ? refreshWriteInput : ordinaryWriteInputs.get(id) || {};
@@ -640,11 +642,15 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
       // Automatic recovery is limited to native-only configurations. Reject external sources before claiming.
       const [revenue, spend] = await Promise.all([storage.getRevenueSources(campaignId), storage.getSpendSources(campaignId)]);
       if ([...revenue, ...spend].some(source => source.isActive !== false)) throw new Error("GA4_REFRESH_SOURCE_OWNERSHIP_NOT_INTEGRATED");
-      if (process.env.GA4_DURABLE_RECOVERY_ENABLED !== "false" && !await storage.isGA4NativeRecoveryEligible(campaignId)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
-      const reportingDate = getLatestCompleteReportingDate(target.reportingTimeZone, startedAtDate);
-      const work = await storage.ensureGA4RefreshWork(campaignId, target.ownerId, opts.workDueAt, reportingDate, { suppressAlerts: opts.suppressAlerts === true });
+      if (!opts.initialImportWorkId && process.env.GA4_DURABLE_RECOVERY_ENABLED !== "false" && !await storage.isGA4NativeRecoveryEligible(campaignId)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+      const reportingDate = getLatestCompleteReportingDate(target.reportingTimeZone, opts.initialImportWorkId ? opts.workDueAt : startedAtDate);
+      const work = opts.initialImportWorkId
+        ? await storage.getGA4InitialImportWork(campaignId, target.ownerId, opts.initialImportWorkId)
+        : await storage.ensureGA4RefreshWork(campaignId, target.ownerId, opts.workDueAt, reportingDate, { suppressAlerts: opts.suppressAlerts === true });
       if (!work) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+      if (opts.initialImportWorkId && (work.reportingDate !== reportingDate || work.dueAt.getTime() !== opts.workDueAt.getTime())) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
       if (work.status === "completed") {
+        if (opts.initialImportWorkId) return;
         const saved = await storage.getExecutiveSummaryDailyComparisonData(campaignId, reportingDate, reportingDate);
         if (parseGA4AlignedRefreshMarker(saved.current?.notes, reportingDate)) completedCampaignIds.add(campaignId);
         return;
@@ -654,6 +660,23 @@ export async function runGA4DailyRefreshPipelineForTrigger(trigger: string, opts
       if (!claimed?.leaseToken) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
       refreshWriteInput = { refreshScope: { campaignId, ownerId: target.ownerId, reportingDate, work: { id: work.id, leaseToken: claimed.leaseToken } } };
       scheduleHeartbeat();
+    }
+    if (opts.initialImportWorkId) {
+      await checkOwnership();
+      const imported = await refreshAllGA4DailyMetrics({ campaignId, includeTargetDraft: true, ...refreshWriteInput,
+        assertWorkOwnership: checkOwnership, signal: controller?.signal }, opts.workDueAt);
+      const failure = getGA4DailyRefreshFailure(imported, campaignId);
+      if (failure) throw new Error(failure);
+      await checkOwnership();
+      if (heartbeat) clearTimeout(heartbeat);
+      closing = true;
+      await renewal;
+      if (ownershipError) throw ownershipError;
+      const scope = refreshWriteInput.refreshScope!;
+      const completed = await storage.updateGA4RefreshWorkLease(campaignId, scope.ownerId, scope.work.id, scope.work.leaseToken, "complete_initial_import");
+      if (!completed) throw new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+      workCompleted = true;
+      return;
     }
     for (const target of targets) {
       if (!campaignId && trigger === "scheduled" && process.env.GA4_DURABLE_RECOVERY_ENABLED !== "false" && await storage.isGA4NativeRecoveryEligible(target.id)) {
@@ -1129,11 +1152,12 @@ export async function recoverInterruptedGA4Refreshes(): Promise<void> {
         const item = pending[next++];
         try {
           const campaign = await storage.getCampaign(item.campaignId);
+          const initialImport = (item.scope as any)?.kind === "initial_import";
           if (!campaign || campaign.ownerId !== (item.scope as any)?.campaign?.ownerId ||
-              getLatestCompleteReportingDate(campaign.reportingTimeZone) !== item.reportingDate ||
-              !await storage.isGA4NativeRecoveryEligible(item.campaignId)) continue;
+              getLatestCompleteReportingDate(campaign.reportingTimeZone, initialImport ? item.dueAt : undefined) !== item.reportingDate ||
+              (initialImport ? campaign.status !== "draft" : !await storage.isGA4NativeRecoveryEligible(item.campaignId))) continue;
           await runGA4DailyRefreshPipelineForTrigger("recovery", { campaignId: item.campaignId, workDueAt: item.dueAt,
-            suppressAlerts: item.suppressAlerts, refreshFinancialSources: true }, completed);
+            suppressAlerts: item.suppressAlerts, refreshFinancialSources: true, ...(initialImport ? { initialImportWorkId: item.id } : {}) }, completed);
         } catch (error: any) {
           console.warn(`[GA4 Daily] Recovery attempt failed for campaign ${item.campaignId}:`, error?.message || error);
         }

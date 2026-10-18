@@ -18,7 +18,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, Edit, Trash2, ArrowLeft, CheckCircle, Loader2, FileText, Copy, Send } from "lucide-react";
 import { SiFacebook, SiGoogle, SiGoogleanalytics, SiInstagram, SiLinkedin, SiTiktok, SiX } from "react-icons/si";
-import { Campaign, insertCampaignSchema } from "@shared/schema";
+import { Campaign, insertCampaignSchema, type GA4InitialImportStatus } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useClient } from "@/lib/clientContext";
@@ -29,6 +29,7 @@ import { SimpleMetaAuth } from "@/components/SimpleMetaAuth";
 import { GoogleAdsConnectionFlow } from "@/components/GoogleAdsConnectionFlow";
 
 const DEFAULT_REPORTING_TIME_ZONE = "UTC";
+type CampaignWithInitialImport = Campaign & { initialImport?: GA4InitialImportStatus | null };
 
 const isValidReportingTimeZone = (value: string) => {
   try {
@@ -221,6 +222,7 @@ export default function Campaigns() {
   const [draftFinalized, setDraftFinalized] = useState(false);
   const [isFinalizingCampaign, setIsFinalizingCampaign] = useState(false);
   const finalizingCampaignRef = useRef(false);
+  const [initialImportRequested, setInitialImportRequested] = useState(false);
   const [highlightCampaignId, setHighlightCampaignId] = useState<string | null>(null);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
@@ -250,12 +252,12 @@ export default function Campaigns() {
   const [customIntegrationForwardingEmail, setCustomIntegrationForwardingEmail] = useState("");
   const { toast } = useToast();
 
-  const { data: campaigns = [], isLoading } = useQuery<Campaign[]>({
-    queryKey: ["/api/campaigns", { clientId: selectedClientId }],
+  const { data: campaigns = [], isLoading } = useQuery<CampaignWithInitialImport[]>({
+    queryKey: ["/api/campaigns", { clientId: selectedClientId, includeInitialImports: true }],
     queryFn: async () => {
       const url = selectedClientId
-        ? `/api/campaigns?clientId=${encodeURIComponent(selectedClientId)}`
-        : "/api/campaigns";
+        ? `/api/campaigns?clientId=${encodeURIComponent(selectedClientId)}&includeInitialImports=1`
+        : "/api/campaigns?includeInitialImports=1";
       console.log('🔍 [Campaigns Query] Fetching campaigns for clientId:', selectedClientId);
       const res = await fetch(url, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch campaigns");
@@ -263,7 +265,48 @@ export default function Campaigns() {
       console.log('✅ [Campaigns Query] Received campaigns:', data.length, 'campaigns');
       return data;
     },
+    refetchInterval: query => query.state.data?.some(c => c.status === "draft" && c.initialImport && c.initialImport.state !== "failed") ? 5000 : false,
+    refetchOnWindowFocus: true,
+    staleTime: 5000,
   });
+
+  const importQueryKey = ["/api/campaigns", draftCampaignId, "initial-import"];
+  const importQuery = useQuery<CampaignWithInitialImport>({
+    queryKey: importQueryKey,
+    enabled: isCreateModalOpen && initialImportRequested && Boolean(draftCampaignId),
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/campaigns/${draftCampaignId}?initialImport=1`);
+      return response.json();
+    },
+    refetchInterval: query => query.state.data?.status === "active" || query.state.data?.initialImport?.state === "failed" ? false : 3000,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+    retry: false,
+  });
+  const initialImport = initialImportRequested ? importQuery.data?.initialImport : null;
+  const importPending = initialImportRequested && initialImport?.state !== "failed" && initialImport !== null;
+
+  useEffect(() => {
+    if (!isCreateModalOpen || !initialImportRequested || !draftCampaignId || importQuery.data?.status !== "active" || finalizingCampaignRef.current) return;
+    finalizingCampaignRef.current = true;
+    setIsFinalizingCampaign(true);
+    void finishCampaignCreation(draftCampaignId).finally(() => {
+      finalizingCampaignRef.current = false;
+      setIsFinalizingCampaign(false);
+    });
+  }, [isCreateModalOpen, initialImportRequested, draftCampaignId, importQuery.data?.status, isFinalizingCampaign]);
+
+  useEffect(() => {
+    if (!initialImportRequested || wizardStep !== 4 || !draftCampaignId || ga4Properties.length) return;
+    let cancelled = false;
+    void apiRequest("GET", `/api/campaigns/${draftCampaignId}/ga4-connection-status`).then(response => response.json()).then(data => {
+      if (cancelled) return;
+      const properties = Array.isArray(data.properties) ? data.properties.filter((p: any) => p.id) : [];
+      setGA4Properties(properties);
+      setSelectedGA4Property(properties[0]?.id || data.propertyId || "");
+    }).catch(() => { /* The existing Back action returns to Google connection setup. */ });
+    return () => { cancelled = true; };
+  }, [initialImportRequested, wizardStep, draftCampaignId, ga4Properties.length]);
 
   // If we arrive on /campaigns?created=..., highlight the new campaign card.
   useEffect(() => {
@@ -505,6 +548,37 @@ export default function Campaigns() {
     }
   };
 
+  const finishCampaignCreation = async (createdId: string) => {
+    setDraftFinalized(true);
+
+    // Wait for source and aggregate query invalidation to complete before navigating.
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", createdId] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", createdId, "connected-platforms"] }),
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${createdId}/outcome-totals`], exact: false }),
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", createdId, "executive-summary"] }),
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${createdId}/executive-summary`], exact: false }),
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${createdId}/trend-analysis`], exact: false }),
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${createdId}/kpis`], exact: false }),
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${createdId}/benchmarks`], exact: false }),
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${createdId}/all-data-sources`], exact: false }),
+      queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"], exact: false }),
+      queryClient.invalidateQueries({ queryKey: [`/api/tiktok/${createdId}/connection`], exact: false }),
+    ]);
+
+    toast({
+      title: "Campaign created",
+      description: "Your new campaign has been created successfully.",
+    });
+
+    setIsCreateModalOpen(false);
+    resetCreateModalState();
+
+    // Take the user back to Campaign Management, with the new campaign visible.
+    setLocation(`/campaigns?created=${encodeURIComponent(createdId)}`);
+  };
+
   const handleConnectorsComplete = async (selectedPlatforms: string[]) => {
     if (!campaignData || !draftCampaignId) return;
 
@@ -575,10 +649,14 @@ export default function Campaigns() {
     finalizingCampaignRef.current = true;
     setIsFinalizingCampaign(true);
     try {
+      const asyncInitialImport = selectedPlatforms.includes("google-analytics");
+      // Preserve an accepted request even if the browser loses its response.
+      if (asyncInitialImport) setInitialImportRequested(true);
       console.log('🔧 Finalizing campaign:', draftCampaignId, 'with platforms:', selectedPlatforms);
       const response = await apiRequest("PATCH", `/api/campaigns/${draftCampaignId}`, {
         platform: selectedPlatforms.join(", "),
         ga4CampaignFilter: ga4CampaignFilterForNewCampaign || null,
+        ...(asyncInitialImport ? { asyncInitialImport: true, retryInitialImport: initialImport?.canRetry === true } : {}),
         status: "active",  // promote from draft → active so it appears in Campaign Management
       });
 
@@ -591,38 +669,18 @@ export default function Campaigns() {
       }
 
       const result = await response.json();
+      if (asyncInitialImport) {
+        queryClient.setQueryData(importQueryKey, result);
+        void queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+        if (result.status !== "active") return;
+      }
       console.log('✅ Campaign finalized:', result);
 
-      setDraftFinalized(true);
-
-      // Wait for source and aggregate query invalidation to complete before navigating.
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", draftCampaignId] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", draftCampaignId, "connected-platforms"] }),
-        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${draftCampaignId}/outcome-totals`], exact: false }),
-        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", draftCampaignId, "executive-summary"] }),
-        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${draftCampaignId}/executive-summary`], exact: false }),
-        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${draftCampaignId}/trend-analysis`], exact: false }),
-        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${draftCampaignId}/kpis`], exact: false }),
-        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${draftCampaignId}/benchmarks`], exact: false }),
-        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${draftCampaignId}/all-data-sources`], exact: false }),
-        queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"], exact: false }),
-        queryClient.invalidateQueries({ queryKey: [`/api/tiktok/${draftCampaignId}/connection`], exact: false }),
-      ]);
-
-      toast({
-        title: "Campaign created",
-        description: "Your new campaign has been created successfully.",
-      });
-
-      setIsCreateModalOpen(false);
-      resetCreateModalState();
-
-      // Take the user back to Campaign Management, with the new campaign visible.
-      setLocation(`/campaigns?created=${encodeURIComponent(draftCampaignId)}`);
+      await finishCampaignCreation(draftCampaignId);
     } catch (e: any) {
       console.error("Failed to finalize campaign:", e?.message || e);
+      // A failed response does not prove the persisted request failed.
+      if (selectedPlatforms.includes("google-analytics")) void queryClient.invalidateQueries({ queryKey: importQueryKey });
       toast({
         title: "Error finalizing campaign",
         description: e?.message || "Failed to activate campaign. Please try again or contact support.",
@@ -781,6 +839,7 @@ export default function Campaigns() {
   };
 
   const resetCreateModalState = () => {
+    setInitialImportRequested(false);
     setWizardStep(1);
     setWizardConfirmBackStep(null);
     setSelectedWizardPlatform(null);
@@ -821,12 +880,28 @@ export default function Campaigns() {
     if (!open && finalizingCampaignRef.current) return;
     setIsCreateModalOpen(open);
     // If the user closes the modal mid-setup, clean up the draft campaign (best-effort).
-    if (!open && draftCampaignId && !draftFinalized) {
+    if (!open && draftCampaignId && !draftFinalized && !initialImportRequested) {
       apiRequest("DELETE", `/api/campaigns/${draftCampaignId}?draftCleanup=1`).catch(() => {
         // ignore cleanup errors
       });
     }
     resetCreateModalState();
+  };
+
+  const reopenInitialImport = (campaign: CampaignWithInitialImport) => {
+    resetCreateModalState();
+    setDraftCampaignId(campaign.id);
+    setCampaignData({ ...campaign, startDate: campaign.startDate || undefined, endDate: campaign.endDate || undefined } as CampaignFormData);
+    form.reset({ ...campaign, startDate: campaign.startDate || undefined, endDate: campaign.endDate || undefined } as CampaignFormData);
+    setSelectedWizardPlatform("google-analytics");
+    setConnectedPlatformsInDialog(["google-analytics"]);
+    setGa4CampaignFilterForNewCampaign(campaign.ga4CampaignFilter || "");
+    setWizardPlatformConnected(true);
+    setWizardConfirmBackStep(4);
+    setWizardStep(5);
+    queryClient.setQueryData(["/api/campaigns", campaign.id, "initial-import"], campaign);
+    setInitialImportRequested(true);
+    setIsCreateModalOpen(true);
   };
 
   // ── Wizard GA4 helpers (Step 3 → Step 4 flow) ──
@@ -1792,22 +1867,32 @@ export default function Campaigns() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3 pt-4 border-t">
-                        <Button type="button" variant="outline" className="flex-1" onClick={handleBackFromConfirm} disabled={isFinalizingCampaign}>
+                        <Button type="button" variant="outline" className="flex-1" onClick={handleBackFromConfirm} disabled={isFinalizingCampaign || importPending}>
                           <ArrowLeft className="w-4 h-4 mr-2" /> Back
                         </Button>
                         <Button
                           type="button"
                           className="flex-1"
                           onClick={() => handleConnectorsComplete(createCampaignConnectedPlatforms)}
-                          disabled={isFinalizingCampaign || createCampaignConnectedPlatforms.length === 0}
+                          disabled={isFinalizingCampaign || importPending || createCampaignConnectedPlatforms.length === 0}
                         >
                           {isFinalizingCampaign ? (
                             <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...</>
                           ) : (
-                            <>Create Campaign <CheckCircle className="w-4 h-4 ml-2" /></>
+                            <>{initialImport?.canRetry ? "Retry import" : importPending ? "Import in progress" : "Create Campaign"} <CheckCircle className="w-4 h-4 ml-2" /></>
                           )}
                         </Button>
                       </div>
+                      {initialImportRequested && (
+                        <div className="text-sm space-y-2" role="status">
+                          <p>{initialImport?.state === "failed"
+                            ? initialImport.error?.includes("TOKEN_EXPIRED") ? "Google access expired. Go back to reconnect Google, then retry the import." : "The import could not finish. Your campaign setup is saved. Retry the import or go back to review your connection."
+                            : initialImport === null ? "The import has not started. Try Create Campaign again."
+                            : "Your campaign is being prepared. You can close this window and reopen it from All Campaigns. It becomes active when the import finishes."}</p>
+                          {importQuery.isError && <p>Import status is temporarily unavailable. Your saved setup is preserved.</p>}
+                          <Button type="button" variant="outline" onClick={() => handleCreateModalChange(false)}>Close</Button>
+                        </div>
+                      )}
                     </div>
                   ) : null}
                   </div>
@@ -1840,7 +1925,9 @@ export default function Campaigns() {
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {campaigns.map((campaign) => (
-                  <Link key={campaign.id} href={`/campaigns/${campaign.id}`}>
+                  <Link key={campaign.id} href={`/campaigns/${campaign.id}`} onClick={e => {
+                    if (campaign.status === "draft") { e.preventDefault(); reopenInitialImport(campaign); }
+                  }}>
                     <Card
                       data-campaign-id={campaign.id}
                       className={`bg-accent hover:shadow-md transition-shadow cursor-pointer ${highlightCampaignId && String(highlightCampaignId) === String(campaign.id)
@@ -1851,6 +1938,7 @@ export default function Campaigns() {
                       <CardContent className="p-6">
                         <div className="mb-4">
                           <h3 className="font-semibold text-foreground">{campaign.name}</h3>
+                          {campaign.initialImport && campaign.status === "draft" && <p className="text-sm mt-2">{campaign.initialImport.state === "failed" ? "Import needs attention" : "Import in progress"} — click to reopen setup</p>}
                         </div>
 
                         <div className="flex items-center justify-between">
@@ -1864,7 +1952,8 @@ export default function Campaigns() {
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                setEditingCampaign(campaign);
+                                if (campaign.status === "draft") reopenInitialImport(campaign);
+                                else setEditingCampaign(campaign);
                               }}
                             >
                               <Edit className="w-4 h-4" />

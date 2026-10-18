@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
     markExecutiveSummaryDailySnapshotAligned: vi.fn(),
     invalidateExecutiveSummaryDailySnapshotAlignment: vi.fn(),
     ensureGA4RefreshWork: vi.fn(), claimGA4RefreshWork: vi.fn(), updateGA4RefreshWorkLease: vi.fn(),
+    getGA4InitialImportWork: vi.fn(),
     getScheduledPlatformReports: vi.fn(),
     getPlatformKPIs: vi.fn(), getPlatformBenchmarks: vi.fn(), getCampaignKPIs: vi.fn(), getCampaignBenchmarks: vi.fn(),
     getKPIProgress: vi.fn(), updateKPI: vi.fn(), recordKPIProgress: vi.fn(), updateKPIProgress: vi.fn(),
@@ -216,6 +217,56 @@ describe("GA4 ordered refresh source-discovery failures", () => {
       expect(mocks.storage.markExecutiveSummaryDailySnapshotAligned).not.toHaveBeenCalled();
       expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "release")).toBe(false);
       expect(await getGA4AlignedRefreshState("campaign-a", reportingDate)).not.toBeNull();
+    });
+    describe("accepted draft initial imports", () => {
+      const initialOptions = () => ({ ...options(), initialImportWorkId: "work-a" });
+      beforeEach(() => {
+        campaigns[0].status = "draft";
+        mocks.storage.isGA4NativeRecoveryEligible.mockResolvedValue(false);
+        mocks.storage.getGA4InitialImportWork.mockResolvedValue({ id: "work-a", campaignId: "campaign-a", dueAt: options().workDueAt,
+          reportingDate, status: "pending", suppressAlerts: true, scope: { kind: "initial_import", campaign: { ownerId: "campaign-a-owner" } } });
+      });
+      it("imports only the accepted draft and completes through atomic activation without downstream alert/report publication", async () => {
+        await runGA4DailyRefreshPipelineForTrigger("recovery", initialOptions());
+        expect(mocks.storage.getGA4InitialImportWork).toHaveBeenCalledWith("campaign-a", "campaign-a-owner", "work-a");
+        expect(mocks.storage.ensureGA4RefreshWork).not.toHaveBeenCalled();
+        expect(mocks.storage.replaceGA4DailyMetricsWindow).toHaveBeenCalledTimes(1);
+        expect(mocks.storage.replaceGA4DailyMetricsWindow.mock.calls[0][5].refreshScope.work).toEqual(scope.work);
+        expect(mocks.storage.updateGA4RefreshWorkLease).toHaveBeenCalledWith("campaign-a", "campaign-a-owner", "work-a", "owner-token", "complete_initial_import");
+        expect(mocks.recompute).not.toHaveBeenCalled(); expect(mocks.kpiAlerts).not.toHaveBeenCalled(); expect(mocks.executive).not.toHaveBeenCalled();
+      });
+      it.each(["pending", "running"])("discovers %s initial work after midnight using its original reporting window", async status => {
+        const work = { ...await mocks.storage.getGA4InitialImportWork(), status };
+        mocks.storage.getRecoverableGA4RefreshWork.mockResolvedValue([work]);
+        vi.setSystemTime(new Date("2026-10-17T06:00:00Z"));
+        await recoverInterruptedGA4Refreshes();
+        expect(mocks.provider.getTimeSeriesData.mock.calls[0][5]).toBe(reportingDate);
+        expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "complete_initial_import")).toBe(true);
+      });
+      it.each(["TOKEN_EXPIRED", "GA4_TRANSIENT_ERROR"])("preserves the draft and classifies %s for retry", async message => {
+        mocks.provider.getTimeSeriesData.mockRejectedValue(new Error(message));
+        await expect(runGA4DailyRefreshPipelineForTrigger("recovery", initialOptions())).rejects.toThrow(message);
+        expect(mocks.storage.updateGA4RefreshWorkLease).toHaveBeenCalledWith("campaign-a", "campaign-a-owner", "work-a", "owner-token", "release", 120_000, undefined,
+          expect.objectContaining({ retryable: message === "GA4_TRANSIENT_ERROR" }));
+        expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "complete_initial_import")).toBe(false);
+        expect(campaigns[0].status).toBe("draft");
+      });
+      it("refuses activation after one selected property fails", async () => {
+        mocks.storage.getGA4Connections.mockResolvedValue([connection("campaign-a"), { ...connection("campaign-a"), id: "second", propertyId: "second-property" }]);
+        mocks.provider.getTimeSeriesData.mockRejectedValueOnce(new Error("TOKEN_EXPIRED"));
+        await expect(runGA4DailyRefreshPipelineForTrigger("recovery", initialOptions())).rejects.toThrow("TOKEN_EXPIRED");
+        expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "complete_initial_import")).toBe(false);
+      });
+      it("does not touch the provider when the saved initial request is missing", async () => {
+        mocks.storage.getGA4InitialImportWork.mockResolvedValue(undefined);
+        await expect(runGA4DailyRefreshPipelineForTrigger("recovery", initialOptions())).rejects.toThrow("OWNERSHIP_LOST");
+        expect(mocks.provider.getTimeSeriesData).not.toHaveBeenCalled();
+      });
+      it("leaves persisted work queued while another pipeline is running", async () => {
+        (global as any).__ga4DailyRefreshInProgress = true;
+        await recoverInterruptedGA4Refreshes();
+        expect(mocks.storage.claimGA4RefreshWork).not.toHaveBeenCalled();
+      });
     });
     it("automatically claims a native campaign in the scheduled pipeline", async () => {
       campaigns.splice(1);

@@ -6919,6 +6919,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, error: "platformContext is required for new spend sources" });
       }
       const platformContext = requestedPlatformContext || null;
+      const expectedSourceMappingSupplied = Object.prototype.hasOwnProperty.call(req.body || {}, "expectedSourceMappingConfig");
+      let expectedSourceMappingConfig: string | null | undefined;
+      if (platformContext === 'ga4' && mapping?.sourceId) {
+        const initialSource = (await storage.getSpendSources(campaignId)).find((s: any) =>
+          String(s.id) === String(mapping.sourceId) && s.isActive !== false && s.sourceType === 'google_sheets' && spendSourceMatchesPlatformContext(s, platformContext));
+        if (!initialSource) return res.status(404).json({ success: false, error: "Spend source not found" });
+        expectedSourceMappingConfig = expectedSourceMappingSupplied ? req.body.expectedSourceMappingConfig : initialSource.mappingConfig ?? null;
+        if (expectedSourceMappingConfig !== null && typeof expectedSourceMappingConfig !== 'string') return res.status(400).json({ success: false, error: "Invalid expected source mapping" });
+        if (expectedSourceMappingConfig !== (initialSource.mappingConfig ?? null)) return res.status(409).json({ success: false, code: "SPEND_SOURCE_CHANGED", error: "Spend source changed. Refresh and try again." });
+      }
       let connections = await storage.getGoogleSheetsConnections(campaignId, "spend");
       let conn = (connections as any[]).find((c) => String(c.id) === connectionId);
       // Fall back to purpose-agnostic lookup; the connection may have a different purpose value.
@@ -7146,7 +7156,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const visibleSpendToDate = Number(records.filter((record: any) => String(record.date) <= completedDate).reduce((sum: number, record: any) => sum + Number(record.spend || 0), 0).toFixed(2));
         const source = await storage.replaceSpendSourceWithRecords(campaignId, existingSourceId, 'google_sheets', 'ga4', {
           campaignId, sourceType: 'google_sheets', platformContext: 'ga4', displayName: mapping.displayName || 'Google Sheets', currency, mappingConfig: nextSpendMappingConfig, isActive: true,
-        } as any, records as any);
+        } as any, records as any, expectedSourceMappingConfig);
         await recalcCampaignSpend(campaignId);
         await recomputeGA4SpendBeforeResponse(campaignId);
         return res.json({ success: true, sourceId: String(source.id), currency, rowCount: rows.length, keptRows: kept, spendToDate: visibleSpendToDate, importedRowsTotalSpend: Number(totalSpend.toFixed(2)) });
@@ -7216,6 +7226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         spendToDate: Number(totalSpend.toFixed(2)),
       });
     } catch (e: any) {
+      if (e?.code === "SPEND_SOURCE_CHANGED") return res.status(409).json({ success: false, code: e.code, error: e.message });
       res.status(500).json({ success: false, error: e?.message || "Failed to process sheet spend" });
     }
   });

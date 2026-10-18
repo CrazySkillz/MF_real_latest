@@ -242,8 +242,8 @@ export interface IStorage {
   deleteSpendRecordsBySource(sourceId: string): Promise<boolean>;
   countSpendRecordsBySource(sourceId: string): Promise<number>;
   createSpendRecords(records: InsertSpendRecord[]): Promise<SpendRecord[]>;
-  replaceSpendSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: SpendPlatformContext, source: InsertSpendSource, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>): Promise<SpendSource>;
-  replaceSpendRecordsForSource(campaignId: string, sourceId: string, sourceType: string, platformContext: SpendPlatformContext, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>): Promise<void>;
+  replaceSpendSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: SpendPlatformContext, source: InsertSpendSource, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>, expectedSourceMappingConfig?: string | null, options?: GA4RefreshWriteInput): Promise<SpendSource>;
+  replaceSpendRecordsForSource(campaignId: string, sourceId: string, sourceType: string, platformContext: SpendPlatformContext, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>, expectedSourceMappingConfig?: string | null, options?: GA4RefreshWriteInput): Promise<void>;
   replaceCsvSpendSourceWithRecords(
     campaignId: string,
     existingSourceId: string | null,
@@ -268,8 +268,8 @@ export interface IStorage {
     requests: Array<{ campaignId: string; expectedActiveSourceIds: string[]; expectedActiveConnectionIds: string[] }>,
   ): Promise<Array<{ campaignId: string; deactivatedSourceIds: string[]; deactivatedConnectionIds: string[]; deletedRecordIds: string[]; resolvedNotificationIds: string[] }>>;
   createRevenueRecords(records: InsertRevenueRecord[]): Promise<RevenueRecord[]>;
-  replaceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: RevenuePlatformContext, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>, expectedSourceMappingConfig?: string): Promise<RevenueSource>;
-  replaceGa4SalesforceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, connectionId: string, connectionMappingConfig: string, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>, expectedSourceMappingConfig?: string): Promise<RevenueSource>;
+  replaceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: RevenuePlatformContext, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>, expectedSourceMappingConfig?: string | null, options?: GA4RefreshWriteInput): Promise<RevenueSource>;
+  replaceGa4SalesforceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, connectionId: string, connectionMappingConfig: string, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>, expectedSourceMappingConfig?: string | null, options?: GA4RefreshWriteInput & { expectedConnectionMappingConfig?: string | null }): Promise<RevenueSource>;
   replaceGa4CsvRevenueSourceWithRecords(
     campaignId: string,
     existingSourceId: string | null,
@@ -284,7 +284,8 @@ export interface IStorage {
     connectionMappingConfig: string,
     source: InsertRevenueSource,
     records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>,
-    expectedSourceMappingConfig?: string,
+    expectedSourceMappingConfig?: string | null,
+    options?: GA4RefreshWriteInput & { expectedConnectionMappingConfig?: string | null },
   ): Promise<RevenueSource>;
   disableGa4CrmPipelineProxy(
     campaignId: string,
@@ -302,8 +303,9 @@ export interface IStorage {
     source: InsertRevenueSource,
     records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>,
     expectedState?: { sourceMappingConfig: string | null; connectionMappingConfig: string | null },
+    options?: GA4RefreshWriteInput,
   ): Promise<RevenueSource>;
-  updateGa4ShopifyRevenueSourceRefreshState(campaignId: string, sourceId: string, mappingConfig: string, expectedRunId?: string): Promise<RevenueSource | undefined>;
+  updateGa4ShopifyRevenueSourceRefreshState(campaignId: string, sourceId: string, mappingConfig: string, expectedRunId?: string, options?: GA4RefreshWriteInput & { expectedSourceMappingConfig?: string | null }): Promise<RevenueSource | undefined>;
   getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext?: RevenuePlatformContext): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }>;
   getRevenueBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext?: RevenuePlatformContext): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number; currency?: string }>>;
 
@@ -1774,8 +1776,10 @@ export class DatabaseStorage implements IStorage {
 
     return results;
   }
-  async replaceSpendSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: SpendPlatformContext, source: InsertSpendSource, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>): Promise<SpendSource> {
-    return await db.transaction(async (tx: any) => {
+  async replaceSpendSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: SpendPlatformContext, source: InsertSpendSource, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>, expectedSourceMappingConfig?: string | null, options: GA4RefreshWriteInput = {}): Promise<SpendSource> {
+    const guarded = "refreshScope" in options;
+    if (guarded && (options.refreshScope?.campaignId !== campaignId || platformContext !== 'ga4' || !existingSourceId || expectedSourceMappingConfig === undefined)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    const save = async (tx: any) => {
       const contextCondition = platformContext === 'ga4'
         ? or(eq(spendSources.platformContext, 'ga4' as any), isNull(spendSources.platformContext))
         : eq(spendSources.platformContext, platformContext as any);
@@ -1787,8 +1791,9 @@ export class DatabaseStorage implements IStorage {
           eq(spendSources.sourceType, sourceType),
           eq(spendSources.isActive, true),
           contextCondition,
+          expectedSourceMappingConfig === undefined ? undefined : expectedSourceMappingConfig === null ? isNull(spendSources.mappingConfig) : eq(spendSources.mappingConfig, expectedSourceMappingConfig),
         )).returning();
-        if (!savedSource) throw new Error('Spend source not found');
+        if (!savedSource) throw Object.assign(new Error(expectedSourceMappingConfig === undefined ? 'Spend source not found' : 'Spend source changed. Refresh and try again.'), { code: expectedSourceMappingConfig === undefined ? 'SPEND_SOURCE_NOT_FOUND' : 'SPEND_SOURCE_CHANGED' });
       } else {
         [savedSource] = await tx.insert(spendSources).values({ ...source, campaignId, sourceType, platformContext, isActive: true } as any).returning();
       }
@@ -1797,11 +1802,14 @@ export class DatabaseStorage implements IStorage {
       await tx.delete(spendRecords).where(and(eq(spendRecords.campaignId, campaignId), eq(spendRecords.spendSourceId, sourceId)));
       if (records.length) await tx.insert(spendRecords).values(records.map((record) => ({ ...record, campaignId, spendSourceId: sourceId, sourceType })) as any);
       return savedSource;
-    });
+    };
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : db.transaction(save);
   }
 
-  async replaceSpendRecordsForSource(campaignId: string, sourceId: string, sourceType: string, platformContext: SpendPlatformContext, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>): Promise<void> {
-    await db.transaction(async (tx: any) => {
+  async replaceSpendRecordsForSource(campaignId: string, sourceId: string, sourceType: string, platformContext: SpendPlatformContext, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>, expectedSourceMappingConfig?: string | null, options: GA4RefreshWriteInput = {}): Promise<void> {
+    const guarded = "refreshScope" in options;
+    if (guarded && (options.refreshScope?.campaignId !== campaignId || platformContext !== 'ga4' || !sourceId || expectedSourceMappingConfig === undefined)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    const save = async (tx: any) => {
       const contextCondition = platformContext === "ga4"
         ? or(eq(spendSources.platformContext, "ga4" as any), isNull(spendSources.platformContext))
         : eq(spendSources.platformContext, platformContext as any);
@@ -1811,11 +1819,13 @@ export class DatabaseStorage implements IStorage {
         eq(spendSources.sourceType, sourceType),
         eq(spendSources.isActive, true),
         contextCondition,
-      )).limit(1);
+        expectedSourceMappingConfig === undefined ? undefined : expectedSourceMappingConfig === null ? isNull(spendSources.mappingConfig) : eq(spendSources.mappingConfig, expectedSourceMappingConfig),
+      )).limit(1).for("update");
       if (!source) throw new Error("Spend source not found");
       await tx.delete(spendRecords).where(and(eq(spendRecords.campaignId, campaignId), eq(spendRecords.spendSourceId, sourceId)));
       if (records.length) await tx.insert(spendRecords).values(records.map((record) => ({ ...record, campaignId, spendSourceId: sourceId, sourceType })) as any);
-    });
+    };
+    await (guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : db.transaction(save));
   }
   async replaceCsvSpendSourceWithRecords(
     campaignId: string,
@@ -2374,8 +2384,10 @@ export class DatabaseStorage implements IStorage {
 
     return results;
   }
-  async replaceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: RevenuePlatformContext, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>, expectedSourceMappingConfig?: string): Promise<RevenueSource> {
-    return await db.transaction(async (tx: any) => {
+  async replaceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: RevenuePlatformContext, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>, expectedSourceMappingConfig?: string | null, options: GA4RefreshWriteInput = {}): Promise<RevenueSource> {
+    const guarded = "refreshScope" in options;
+    if (guarded && (options.refreshScope?.campaignId !== campaignId || platformContext !== 'ga4' || !existingSourceId || expectedSourceMappingConfig === undefined)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    const save = async (tx: any) => {
       const contextCondition = platformContext === 'ga4'
         ? or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext))
         : eq(revenueSources.platformContext, platformContext as any);
@@ -2387,11 +2399,11 @@ export class DatabaseStorage implements IStorage {
           eq(revenueSources.sourceType, sourceType),
           eq(revenueSources.isActive, true),
           contextCondition,
-          ...(expectedSourceMappingConfig ? [eq(revenueSources.mappingConfig, expectedSourceMappingConfig)] : []),
+          expectedSourceMappingConfig === undefined ? undefined : expectedSourceMappingConfig === null ? isNull(revenueSources.mappingConfig) : eq(revenueSources.mappingConfig, expectedSourceMappingConfig),
         )).returning();
         if (!savedSource) {
-          const error: any = new Error(expectedSourceMappingConfig ? 'Revenue source changed. Refresh and try again.' : 'Revenue source not found');
-          if (expectedSourceMappingConfig) error.code = 'REVENUE_SOURCE_CHANGED';
+          const error: any = new Error(expectedSourceMappingConfig !== undefined ? 'Revenue source changed. Refresh and try again.' : 'Revenue source not found');
+          if (expectedSourceMappingConfig !== undefined) error.code = 'REVENUE_SOURCE_CHANGED';
           throw error;
         }
       } else {
@@ -2402,12 +2414,15 @@ export class DatabaseStorage implements IStorage {
       await tx.delete(revenueRecords).where(and(eq(revenueRecords.campaignId, campaignId), eq(revenueRecords.revenueSourceId, sourceId)));
       if (records.length) await tx.insert(revenueRecords).values(records.map((record) => ({ ...record, campaignId, revenueSourceId: sourceId, sourceType })) as any);
       return savedSource;
-    });
+    };
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : db.transaction(save);
   }
 
-  async replaceGa4SalesforceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, connectionId: string, connectionMappingConfig: string, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>, expectedSourceMappingConfig?: string): Promise<RevenueSource> {
+  async replaceGa4SalesforceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, connectionId: string, connectionMappingConfig: string, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>, expectedSourceMappingConfig?: string | null, options: GA4RefreshWriteInput & { expectedConnectionMappingConfig?: string | null } = {}): Promise<RevenueSource> {
     if (!records.length) throw new Error('Salesforce revenue requires at least one materialized record');
-    return await db.transaction(async (tx: any) => {
+    const guarded = "refreshScope" in options;
+    if (guarded && (options.refreshScope?.campaignId !== campaignId || !existingSourceId || expectedSourceMappingConfig === undefined || options.expectedConnectionMappingConfig === undefined)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    const save = async (tx: any) => {
       const sourceValues = { ...source, campaignId, sourceType: 'salesforce', platformContext: 'ga4', isActive: true } as any;
       let savedSource: RevenueSource | undefined;
       if (existingSourceId) {
@@ -2417,13 +2432,13 @@ export class DatabaseStorage implements IStorage {
           eq(revenueSources.sourceType, 'salesforce'),
           eq(revenueSources.isActive, true),
           or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext)),
-          ...(expectedSourceMappingConfig ? [eq(revenueSources.mappingConfig, expectedSourceMappingConfig)] : []),
+          expectedSourceMappingConfig === undefined ? undefined : expectedSourceMappingConfig === null ? isNull(revenueSources.mappingConfig) : eq(revenueSources.mappingConfig, expectedSourceMappingConfig),
         )).returning();
         if (!savedSource) {
-          const error: any = new Error(expectedSourceMappingConfig
+          const error: any = new Error(expectedSourceMappingConfig !== undefined
             ? 'Salesforce revenue source changed. Refresh and try again.'
             : 'Salesforce revenue source not found');
-          if (expectedSourceMappingConfig) error.code = 'SALESFORCE_REVENUE_SOURCE_CHANGED';
+          if (expectedSourceMappingConfig !== undefined) error.code = 'SALESFORCE_REVENUE_SOURCE_CHANGED';
           throw error;
         }
       } else {
@@ -2437,10 +2452,12 @@ export class DatabaseStorage implements IStorage {
         eq(salesforceConnections.id, connectionId),
         eq(salesforceConnections.campaignId, campaignId),
         eq(salesforceConnections.isActive, true),
+        options.expectedConnectionMappingConfig === undefined ? undefined : options.expectedConnectionMappingConfig === null ? isNull(salesforceConnections.mappingConfig) : eq(salesforceConnections.mappingConfig, options.expectedConnectionMappingConfig),
       )).returning({ id: salesforceConnections.id });
       if (!savedConnection) throw new Error('Salesforce connection not found');
       return savedSource;
-    });
+    };
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : db.transaction(save);
   }
 
   async replaceGa4CsvRevenueSourceWithRecords(
@@ -2511,10 +2528,13 @@ export class DatabaseStorage implements IStorage {
     connectionMappingConfig: string,
     source: InsertRevenueSource,
     records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>,
-    expectedSourceMappingConfig?: string,
+    expectedSourceMappingConfig?: string | null,
+    options: GA4RefreshWriteInput & { expectedConnectionMappingConfig?: string | null } = {},
   ): Promise<RevenueSource> {
     if (!records.length) throw new Error('No HubSpot revenue records to save');
-    return await db.transaction(async (tx: any) => {
+    const guarded = "refreshScope" in options;
+    if (guarded && (options.refreshScope?.campaignId !== campaignId || !existingSourceId || expectedSourceMappingConfig === undefined || options.expectedConnectionMappingConfig === undefined)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    const save = async (tx: any) => {
       const sourceValues = {
         ...source,
         campaignId,
@@ -2533,14 +2553,14 @@ export class DatabaseStorage implements IStorage {
             eq(revenueSources.sourceType, 'hubspot'),
             eq(revenueSources.isActive, true),
             or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext)),
-            ...(expectedSourceMappingConfig ? [eq(revenueSources.mappingConfig, expectedSourceMappingConfig)] : []),
+            expectedSourceMappingConfig === undefined ? undefined : expectedSourceMappingConfig === null ? isNull(revenueSources.mappingConfig) : eq(revenueSources.mappingConfig, expectedSourceMappingConfig),
           ))
           .returning();
         if (!savedSource) {
-          const error: any = new Error(expectedSourceMappingConfig
+          const error: any = new Error(expectedSourceMappingConfig !== undefined
             ? 'HubSpot revenue source changed. Refresh and try again.'
             : 'HubSpot revenue source not found');
-          if (expectedSourceMappingConfig) error.code = 'HUBSPOT_REVENUE_SOURCE_CHANGED';
+          if (expectedSourceMappingConfig !== undefined) error.code = 'HUBSPOT_REVENUE_SOURCE_CHANGED';
           throw error;
         }
       } else {
@@ -2570,12 +2590,14 @@ export class DatabaseStorage implements IStorage {
           sql`${hubspotConnections.id}::text = ${connectionId}`,
           eq(hubspotConnections.campaignId, campaignId),
           eq(hubspotConnections.isActive, true),
+          options.expectedConnectionMappingConfig === undefined ? undefined : options.expectedConnectionMappingConfig === null ? isNull(hubspotConnections.mappingConfig) : eq(hubspotConnections.mappingConfig, options.expectedConnectionMappingConfig),
         ))
         .returning({ id: hubspotConnections.id });
       if (!savedConnection) throw new Error('HubSpot connection not found');
 
       return savedSource;
-    });
+    };
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : db.transaction(save);
   }
 
   async disableGa4CrmPipelineProxy(
@@ -2631,9 +2653,11 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async replaceGa4ShopifyRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, connectionId: string, connectionMappingConfig: string, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>, expectedState?: { sourceMappingConfig: string | null; connectionMappingConfig: string | null }): Promise<RevenueSource> {
+  async replaceGa4ShopifyRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, connectionId: string, connectionMappingConfig: string, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>, expectedState?: { sourceMappingConfig: string | null; connectionMappingConfig: string | null }, options: GA4RefreshWriteInput = {}): Promise<RevenueSource> {
     if (!records.length) throw new Error('No Shopify revenue records to save');
-    return await db.transaction(async (tx: any) => {
+    const guarded = "refreshScope" in options;
+    if (guarded && (options.refreshScope?.campaignId !== campaignId || !existingSourceId || expectedState?.sourceMappingConfig === undefined || expectedState?.connectionMappingConfig === undefined)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    const save = async (tx: any) => {
       const sourceValues = { ...source, campaignId, sourceType: 'shopify', platformContext: 'ga4', isActive: true } as any;
       let savedSource: RevenueSource | undefined;
       if (existingSourceId) {
@@ -2671,22 +2695,30 @@ export class DatabaseStorage implements IStorage {
         .returning({ id: shopifyConnections.id });
       if (!savedConnection) throw new Error(expectedState ? 'Shopify connection changed since preview' : 'Shopify connection not found');
       return savedSource;
-    });
+    };
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : db.transaction(save);
   }
 
-  async updateGa4ShopifyRevenueSourceRefreshState(campaignId: string, sourceId: string, mappingConfig: string, expectedRunId?: string): Promise<RevenueSource | undefined> {
-    const [source] = await db.update(revenueSources)
-      .set({ mappingConfig } as any)
-      .where(and(
-        sql`${revenueSources.id}::text = ${sourceId}`,
-        eq(revenueSources.campaignId, campaignId),
-        eq(revenueSources.sourceType, 'shopify'),
-        eq(revenueSources.isActive, true),
-        or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext)),
-        expectedRunId ? sql`${revenueSources.mappingConfig}::jsonb ->> 'lastRefreshRunId' = ${expectedRunId}` : undefined,
-      ))
-      .returning();
-    return source || undefined;
+  async updateGa4ShopifyRevenueSourceRefreshState(campaignId: string, sourceId: string, mappingConfig: string, expectedRunId?: string, options: GA4RefreshWriteInput & { expectedSourceMappingConfig?: string | null } = {}): Promise<RevenueSource | undefined> {
+    const guarded = "refreshScope" in options;
+    if (guarded && (options.refreshScope?.campaignId !== campaignId || !sourceId || options.expectedSourceMappingConfig === undefined)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    const save = async (tx: any) => {
+      const [source] = await tx.update(revenueSources)
+        .set({ mappingConfig } as any)
+        .where(and(
+          sql`${revenueSources.id}::text = ${sourceId}`,
+          eq(revenueSources.campaignId, campaignId),
+          eq(revenueSources.sourceType, 'shopify'),
+          eq(revenueSources.isActive, true),
+          or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext)),
+          expectedRunId ? sql`${revenueSources.mappingConfig}::jsonb ->> 'lastRefreshRunId' = ${expectedRunId}` : undefined,
+          options.expectedSourceMappingConfig === undefined ? undefined : options.expectedSourceMappingConfig === null ? isNull(revenueSources.mappingConfig) : eq(revenueSources.mappingConfig, options.expectedSourceMappingConfig),
+        ))
+        .returning();
+      if (guarded && !source) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+      return source || undefined;
+    };
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : save(db);
   }
 
   async getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext: RevenuePlatformContext = 'ga4'): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }> {

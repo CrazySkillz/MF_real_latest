@@ -28,7 +28,7 @@ const mocks = vi.hoisted(() => {
     })),
     select: vi.fn(() => ({
       from: vi.fn(() => ({
-        where: vi.fn(() => ({ limit: vi.fn(async () => [{ id: "source-1" }]) })),
+        where: vi.fn(() => ({ limit: vi.fn(() => ({ for: vi.fn(async () => [{ id: "source-1" }]) })) })),
       })),
     })),
     delete: vi.fn(() => ({

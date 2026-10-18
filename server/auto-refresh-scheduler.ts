@@ -462,6 +462,8 @@ async function reprocessGoogleSheetsSpendWithDetails(campaignId: string, source:
     connectionId,
     // The process endpoint tolerates extra keys; we keep the exact mapping that the user configured.
     mapping: { ...(mappingConfig || {}), sourceId: String(source?.id || "") },
+    platformContext: mappingConfig?.platformContext || source?.platformContext || "ga4",
+    expectedSourceMappingConfig: source.mappingConfig ?? null,
   };
   const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/spend/sheets/process`, body);
   if (!result.ok) {

@@ -72,6 +72,6 @@ describe("Salesforce invalid-session recovery", () => {
     const recoveryEnd = routes.indexOf("async function getHubspotAccessTokenForCampaign", recoveryStart);
     const recovery = routes.slice(recoveryStart, recoveryEnd);
     expect(recovery).toContain('String(latest.accessToken) !== rejectedAccessToken');
-    expect(recovery).toContain("return await refreshSalesforceToken(latest, true)");
+    expect(recovery).toContain("return await refreshSalesforceToken(latest, true, refreshWriteInput)");
   });
 });

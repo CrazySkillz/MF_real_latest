@@ -658,8 +658,8 @@ describe("source safety regression guards", () => {
     expect(source).toContain('const refreshableRevenueContexts = ["ga4", "linkedin", "meta", "google_ads", "google_sheets"] as const;');
     expect(source).toContain('const crmRevenueContexts = ["ga4", "meta", "google_ads", "google_sheets"] as const;');
     expect(source).toContain("for (const ctx of refreshableRevenueContexts)");
-    expect(source).toContain("for (const ctx of crmRevenueContexts)");
-    expect(source).toContain("if (await reprocessGoogleSheetsRevenue(campaignId, sheetRevenue, revCfg))");
+    expect(source).toContain('for (const ctx of (guarded ? ["ga4"] as const : crmRevenueContexts))');
+    expect(source).toContain("if (await reprocessGoogleSheetsRevenue(campaignId, sheetRevenue, revCfg, refreshWriteInput))");
   });
 
   it("Google Sheets main platform feeds Campaign DeepDive aggregate without raw sheet revenue/spend rows", () => {

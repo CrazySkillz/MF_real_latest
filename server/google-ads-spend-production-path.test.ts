@@ -40,6 +40,8 @@ const mocks = vi.hoisted(() => {
       replaceSpendRecordsForSource: vi.fn(),
       getSpendTotalForRange: vi.fn(),
       updateCampaign: vi.fn(),
+      invalidateExecutiveSummaryDailySnapshotAlignment: vi.fn(),
+      writeWithGA4RefreshOwnership: vi.fn(async (_scope, write) => write({})),
       updateGoogleAdsDailyMetricsGA4Revenue: vi.fn(),
     },
     db: {
@@ -156,6 +158,35 @@ describe("Google Ads GA4 Overview spend production path", () => {
       "campaign-1",
       expect.objectContaining({ lastRefreshAt: expect.any(Date) })
     );
+  });
+
+  it.each([false, true])("passes ownership through Google Ads facts, records and cache (dedicated=%s)", async dedicated => {
+    const refreshScope = { campaignId: "campaign-1", ownerId: "owner-1", reportingDate: "2026-08-05", work: { id: "work-1", leaseToken: "test-lease" } };
+    const connection = { id: "conn-1", campaignId: "campaign-1", method: "oauth", spendOnly: true, accessToken: "fake", customerId: "123", lastRefreshAt: new Date() };
+    mocks.storage.getGoogleAdsConnection.mockResolvedValue(connection);
+    mocks.storage.getGA4GoogleAdsSpendConnection.mockResolvedValue(connection);
+    await refreshGoogleAdsForCampaign("campaign-1", connection, { ga4SpendConnection: dedicated, deferDownstream: true, refreshScope });
+    const facts = dedicated ? mocks.storage.replaceGA4GoogleAdsSpendDailyMetricsForWindow : mocks.storage.replaceGoogleAdsDailyMetricsForWindow;
+    expect(facts).toHaveBeenCalledWith("campaign-1", "2026-07-01", "2026-08-05", expect.any(Array), expect.objectContaining({ refreshScope, expectedConnection: connection, expectedSource: { id: "source-1", mappingConfig: JSON.stringify({ platform: "google_ads", selectedCampaignIds: ["google-campaign-1"] }) } }));
+    expect(mocks.storage.replaceSpendRecordsForSource).toHaveBeenCalledWith("campaign-1", "source-1", "ad_platforms", "ga4", expect.any(Array), expect.any(String), expect.objectContaining({ refreshScope }));
+    expect(mocks.storage.updateCampaign).toHaveBeenCalledWith("campaign-1", { spend: "123.45" }, expect.objectContaining({ refreshScope }));
+    expect(mocks.runGA4DailyKPIAndBenchmarkJobs).not.toHaveBeenCalled();
+    expect(mocks.storage.invalidateExecutiveSummaryDailySnapshotAlignment).not.toHaveBeenCalled();
+  });
+
+  it("stops Google Ads after a late provider response loses ownership", async () => {
+    const refreshScope = { campaignId: "campaign-1", ownerId: "owner-1", reportingDate: "2026-08-05", work: { id: "work-1", leaseToken: "test-lease" } };
+    mocks.storage.replaceGoogleAdsDailyMetricsForWindow.mockRejectedValueOnce(new Error("GA4_REFRESH_WORK_OWNERSHIP_LOST"));
+    await expect(refreshGoogleAdsForCampaign("campaign-1", { id: "conn-1", campaignId: "campaign-1", method: "oauth", spendOnly: true, accessToken: "fake", customerId: "123" }, { deferDownstream: true, refreshScope })).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+    expect(mocks.storage.replaceSpendRecordsForSource).not.toHaveBeenCalled(); expect(mocks.storage.updateCampaign).not.toHaveBeenCalled(); expect(mocks.runGA4DailyKPIAndBenchmarkJobs).not.toHaveBeenCalled();
+  });
+
+  it("rejects a source edit between Google Ads fetch and materialization", async () => {
+    const refreshScope = { campaignId: "campaign-1", ownerId: "owner-1", reportingDate: "2026-08-05", work: { id: "work-1", leaseToken: "test-lease" } };
+    const source = (await mocks.storage.getSpendSources())[0];
+    mocks.storage.getSpendSources.mockResolvedValueOnce([source]).mockResolvedValueOnce([source]).mockResolvedValueOnce([{ ...source, mappingConfig: '{"platform":"google_ads","selectedCampaignIds":["changed"]}' }]);
+    await expect(refreshGoogleAdsForCampaign("campaign-1", { id: "conn-1", campaignId: "campaign-1", method: "oauth", spendOnly: true, accessToken: "fake", customerId: "123" }, { deferDownstream: true, refreshScope })).rejects.toThrow("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    expect(mocks.storage.replaceSpendRecordsForSource).not.toHaveBeenCalled(); expect(mocks.storage.updateCampaign).not.toHaveBeenCalled();
   });
 
   it("refreshes a hydrated temporary service-account Spend connection through dedicated storage", async () => {

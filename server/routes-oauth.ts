@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { getAuth } from "@clerk/express";
-import { storage } from "./storage";
+import { storage, type GA4RefreshWriteInput } from "./storage";
 import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertKPIProgressSchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertLinkedInReportSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, ga4Connections, spendSources as spendSourcesTable, spendRecords as spendRecordsTable, revenueSources as revenueSourcesTable, revenueRecords as revenueRecordsTable, hubspotConnections as hubspotConnectionsTable, shopifyConnections as shopifyConnectionsTable } from "@shared/schema";
 import { z } from "zod";
 import { financialDailySnapshotInputSchema } from "@shared/schema";
@@ -5959,7 +5959,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const scopedSpendPlatformContexts = new Set(["ga4", "google_sheets", "custom_integration"]);
   const isSupportedScopedSpendPlatformContext = (value: string) => scopedSpendPlatformContexts.has(value);
 
-  const recalcCampaignSpend = async (campaignId: string) => {
+  const recalcCampaignSpend = async (campaignId: string, refreshWriteInput: GA4RefreshWriteInput = {}) => {
     const campaign = await storage.getCampaign(campaignId);
     const startDate = "1900-01-01";
     const endDate = new Date().toISOString().slice(0, 10);
@@ -5979,7 +5979,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const total = recordsTotal + configTotal;
     const cur = (campaign as any)?.currency || "USD";
-    await storage.updateCampaign(campaignId, { spend: Number(total.toFixed(2)).toFixed(2) as any, currency: cur } as any);
+    await storage.updateCampaign(campaignId, { spend: Number(total.toFixed(2)).toFixed(2) as any, currency: cur } as any, refreshWriteInput);
     return total;
   };
 
@@ -6905,6 +6905,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/spend/sheets/process", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;
+      const refreshWriteInput = getInternalGA4RefreshWriteInput(req);
       const connectionId = String((req.body as any)?.connectionId || "").trim();
       const mapping = (req.body as any)?.mapping || null;
       if (!connectionId) return res.status(400).json({ success: false, error: "connectionId is required" });
@@ -6919,6 +6920,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, error: "platformContext is required for new spend sources" });
       }
       const platformContext = requestedPlatformContext || null;
+      if (refreshWriteInput.refreshScope) {
+        if (refreshWriteInput.refreshScope.campaignId !== campaignId || platformContext !== "ga4" || !mapping?.sourceId
+          || !Object.prototype.hasOwnProperty.call(req.body || {}, "expectedSourceMappingConfig")) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+        await storage.writeWithGA4RefreshOwnership(refreshWriteInput.refreshScope, async () => {});
+      }
       const expectedSourceMappingSupplied = Object.prototype.hasOwnProperty.call(req.body || {}, "expectedSourceMappingConfig");
       let expectedSourceMappingConfig: string | null | undefined;
       if (platformContext === 'ga4' && mapping?.sourceId) {
@@ -6929,11 +6935,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (expectedSourceMappingConfig !== null && typeof expectedSourceMappingConfig !== 'string') return res.status(400).json({ success: false, error: "Invalid expected source mapping" });
         if (expectedSourceMappingConfig !== (initialSource.mappingConfig ?? null)) return res.status(409).json({ success: false, code: "SPEND_SOURCE_CHANGED", error: "Spend source changed. Refresh and try again." });
       }
-      let connections = await storage.getGoogleSheetsConnections(campaignId, "spend");
+      let connections = await storage.getGoogleSheetsConnections(campaignId, "spend", refreshWriteInput);
       let conn = (connections as any[]).find((c) => String(c.id) === connectionId);
       // Fall back to purpose-agnostic lookup; the connection may have a different purpose value.
       if (!conn) {
-        connections = await storage.getGoogleSheetsConnections(campaignId);
+        connections = await storage.getGoogleSheetsConnections(campaignId, undefined, refreshWriteInput);
         conn = (connections as any[]).find((c) => String(c.id) === connectionId);
       }
       if (!conn) return res.status(404).json({ success: false, error: "Google Sheets connection not found" });
@@ -6942,14 +6948,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const shouldRefresh = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);
         if (shouldRefresh && conn.refreshToken) {
-          accessToken = await refreshGoogleSheetsToken(conn);
+          accessToken = await refreshGoogleSheetsToken(conn, refreshWriteInput);
         }
       } catch {
         // ignore and try existing token
       }
       if (!accessToken && conn.refreshToken) {
         try {
-          accessToken = await refreshGoogleSheetsToken(conn);
+          accessToken = await refreshGoogleSheetsToken(conn, refreshWriteInput);
         } catch {
           // fall through
         }
@@ -6970,7 +6976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       if (!resp.ok && resp.status === 401 && conn.refreshToken) {
         try {
-          accessToken = await refreshGoogleSheetsToken(conn);
+          accessToken = await refreshGoogleSheetsToken(conn, refreshWriteInput);
           resp = await fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
             { headers: { "Authorization": `Bearer ${accessToken}` } }
@@ -6980,7 +6986,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       if (!resp.ok && resp.status === 401) {
-        const fallbackCandidates = (await storage.getGoogleSheetsConnections(campaignId))
+        const fallbackCandidates = (await storage.getGoogleSheetsConnections(campaignId, undefined, refreshWriteInput))
           .filter((c: any) => c && String(c.id) !== String(conn.id) && (c.accessToken || c.refreshToken))
           .sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime());
         for (const fallback of fallbackCandidates) {
@@ -6994,7 +7000,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           if ((!fallbackResp || (!fallbackResp.ok && fallbackResp.status === 401)) && fallback.refreshToken) {
             try {
-              fallbackAccessToken = await refreshGoogleSheetsToken(fallback);
+              fallbackAccessToken = await refreshGoogleSheetsToken(fallback, refreshWriteInput);
               fallbackResp = await fetch(
                 `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
                 { headers: { "Authorization": `Bearer ${fallbackAccessToken}` } }
@@ -7013,7 +7019,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               clientSecret: fallback.clientSecret || conn.clientSecret,
               expiresAt: fallback.expiresAt || conn.expiresAt,
               isActive: true as any,
-            } as any);
+            } as any, { ...refreshWriteInput, expectedConnection: conn });
             break;
           }
         }
@@ -7156,9 +7162,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const visibleSpendToDate = Number(records.filter((record: any) => String(record.date) <= completedDate).reduce((sum: number, record: any) => sum + Number(record.spend || 0), 0).toFixed(2));
         const source = await storage.replaceSpendSourceWithRecords(campaignId, existingSourceId, 'google_sheets', 'ga4', {
           campaignId, sourceType: 'google_sheets', platformContext: 'ga4', displayName: mapping.displayName || 'Google Sheets', currency, mappingConfig: nextSpendMappingConfig, isActive: true,
-        } as any, records as any, expectedSourceMappingConfig);
-        await recalcCampaignSpend(campaignId);
-        await recomputeGA4SpendBeforeResponse(campaignId);
+        } as any, records as any, expectedSourceMappingConfig, refreshWriteInput);
+        await recalcCampaignSpend(campaignId, refreshWriteInput);
+        if (!refreshWriteInput.refreshScope) await recomputeGA4SpendBeforeResponse(campaignId);
         return res.json({ success: true, sourceId: String(source.id), currency, rowCount: rows.length, keptRows: kept, spendToDate: visibleSpendToDate, importedRowsTotalSpend: Number(totalSpend.toFixed(2)) });
       }
 
@@ -18585,6 +18591,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/salesforce/save-mappings", importRateLimiter, requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;
+      const refreshWriteInput = getInternalGA4RefreshWriteInput(req);
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
       const body = z
@@ -18644,6 +18651,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : platformCtx === "tiktok"
               ? await getActiveTikTokCampaignIdSet(campaignId)
             : new Set<string>();
+      if (refreshWriteInput.refreshScope) {
+        if (refreshWriteInput.refreshScope.campaignId !== campaignId || platformCtx !== "ga4" || !existingSourceIdOrNull || !expectedSourceMappingConfig) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+        await storage.writeWithGA4RefreshOwnership(refreshWriteInput.refreshScope, async () => {});
+      }
       if (existingSourceIdOrNull) {
         const existingSource = await storage.getRevenueSource(campaignId, existingSourceIdOrNull);
         const existingCtx = String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase();
@@ -18652,7 +18663,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const { accessToken, instanceUrl, fetchImpl: salesforceFetch } = await getSalesforceAccessTokenForCampaign(campaignId);
+      const { accessToken, instanceUrl, fetchImpl: salesforceFetch } = await getSalesforceAccessTokenForCampaign(campaignId, refreshWriteInput);
+      const refreshConnection = refreshWriteInput.refreshScope ? await storage.getSalesforceConnection(campaignId, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : [])) : null;
       const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
       if (pipelineEnabled) {
         if (!pipelineStageName) return res.status(400).json({ error: "Select an active open Salesforce stage for Pipeline Proxy." });
@@ -18833,7 +18845,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateLinkedInImportSession(latestSession.id, { conversionValue: convValue.toFixed(2) as any } as any);
 
         // Persist mapping config on Salesforce connection for auditability.
-        const sfConn: any = await storage.getSalesforceConnection(campaignId);
+        const sfConn: any = await storage.getSalesforceConnection(campaignId, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : []));
         if (sfConn) {
           const rcRaw = String(revenueClassification || '').trim();
           const rc =
@@ -18945,7 +18957,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       let pipelineProxyFields: any = {};
-      const sfConn: any = await storage.getSalesforceConnection(campaignId);
+      const sfConn: any = await storage.getSalesforceConnection(campaignId, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : []));
       let salesforceConnectionMappingConfig: string | null = null;
       if (sfConn) {
         const rcRaw = String(revenueClassification || '').trim();
@@ -19173,9 +19185,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(500).json({ error: 'Salesforce revenue was fetched but no daily revenue records were materialized.' });
         }
         if (!sfConn || !salesforceConnectionMappingConfig) return res.status(404).json({ error: 'Salesforce connection not found.' });
+        if (refreshWriteInput.refreshScope && sfConn.id !== refreshConnection?.id) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
         source = await storage.replaceGa4SalesforceRevenueSourceWithRecords(campaignId, existingSourceIdOrNull, String(sfConn.id), salesforceConnectionMappingConfig, {
           campaignId, sourceType: 'salesforce', platformContext: 'ga4', displayName: 'Salesforce (Opportunities)', currency: cur, mappingConfig: JSON.stringify(normalizedMapping), isActive: true,
-        } as any, revenueRecordsToInsert, expectedSourceMappingConfig);
+        } as any, revenueRecordsToInsert, expectedSourceMappingConfig, { ...refreshWriteInput, ...(refreshWriteInput.refreshScope ? { expectedConnectionMappingConfig: refreshConnection?.mappingConfig ?? null } : {}) });
         materializedRecordCount = revenueRecordsToInsert.length;
       } else if (revenueRecordsToInsert.length > 0) {
         const inserted = await storage.createRevenueRecords(revenueRecordsToInsert);
@@ -19211,7 +19224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Ensure KPIs/alerts are recomputed BEFORE responding so immediate refetch sees correct values.
-      await recomputeCampaignDerivedValues(campaignId, { platformContext: platformCtx });
+      if (!refreshWriteInput.refreshScope) await recomputeCampaignDerivedValues(campaignId, { platformContext: platformCtx });
 
       res.json({
         success: true,
@@ -19991,6 +20004,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/hubspot/save-mappings", importRateLimiter, requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;
+      const refreshWriteInput = getInternalGA4RefreshWriteInput(req);
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
       const body = z
@@ -20049,6 +20063,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : new Set<string>();
       const requestedSourceId = String((body.data as any).sourceId || "").trim();
       const expectedSourceMappingConfig = body.data.expectedSourceMappingConfig;
+      if (refreshWriteInput.refreshScope) {
+        if (refreshWriteInput.refreshScope.campaignId !== campaignId || platformCtx !== "ga4" || !requestedSourceId || !expectedSourceMappingConfig) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+        await storage.writeWithGA4RefreshOwnership(refreshWriteInput.refreshScope, async () => {});
+      }
       if (requestedSourceId) {
         const existingSource = await storage.getRevenueSource(campaignId, requestedSourceId);
         const existingCtx = String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase();
@@ -20060,8 +20078,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const camp = await storage.getCampaign(campaignId);
       const campaignCurrency = String((camp as any)?.currency || "USD").trim().toUpperCase();
 
-      const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
+      const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId, refreshWriteInput);
 
+      const refreshConnection = refreshWriteInput.refreshScope ? await storage.getHubspotConnection(campaignId, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : [])) : null;
       // User-selected date field; fall back to Close Date for confirmed revenue.
       const dateFieldChoice = body.data.dateField || "closedate";
       const effectiveValueSource: 'revenue' | 'conversion_value' = (platformCtx === 'linkedin' ? parsedValueSource : 'revenue');
@@ -20311,7 +20330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let pipelineProxyFields: any = {};
       let ga4HubspotConnectionId: string | null = null;
       let ga4HubspotConnectionMappingConfig: string | null = null;
-      const hubspotConn: any = await storage.getHubspotConnection(campaignId);
+      const hubspotConn: any = await storage.getHubspotConnection(campaignId, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : []));
       if (hubspotConn) {
         const rcRaw = String(revenueClassification || '').trim();
         const rc =
@@ -20538,6 +20557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               } as any);
             }
           }
+          if (refreshWriteInput.refreshScope && ga4HubspotConnectionId !== refreshConnection?.id) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
           source = await storage.replaceGa4HubspotRevenueSourceWithRecords(
             campaignId,
             existingHubspot ? String((existingHubspot as any).id) : null,
@@ -20546,6 +20566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sourceValues,
             records,
             expectedSourceMappingConfig,
+            { ...refreshWriteInput, ...(refreshWriteInput.refreshScope ? { expectedConnectionMappingConfig: refreshConnection?.mappingConfig ?? null } : {}) },
           );
         } else {
           source = existingHubspot
@@ -20656,7 +20677,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Ensure KPIs/alerts are recomputed BEFORE responding so immediate refetch sees correct values.
-      await recomputeCampaignDerivedValues(campaignId, { platformContext: platformCtx });
+      if (!refreshWriteInput.refreshScope) await recomputeCampaignDerivedValues(campaignId, { platformContext: platformCtx });
 
       res.json({
         success: true,
@@ -20675,7 +20696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Helper function to refresh Google Sheets access token with robust error handling
-  async function refreshGoogleSheetsToken(connection: any) {
+  async function refreshGoogleSheetsToken(connection: any, refreshWriteInput: GA4RefreshWriteInput = {}) {
     if (!connection.refreshToken || !connection.clientId || !connection.clientSecret) {
       throw new Error('Missing refresh token or OAuth credentials for token refresh');
     }
@@ -20764,7 +20785,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const expiresAt = new Date(Date.now() + ((retryTokens.expires_in || 3600) * 1000));
           const updateData: any = { accessToken: retryTokens.access_token, expiresAt };
           if (retryTokens.refresh_token) updateData.refreshToken = retryTokens.refresh_token;
-          await storage.updateGoogleSheetsConnection(String(connection.id), updateData);
+          const renewed = await storage.updateGoogleSheetsConnection(String(connection.id), updateData, { ...refreshWriteInput, expectedConnection: connection });
+          if (refreshWriteInput.refreshScope && renewed) Object.assign(connection, renewed);
           devLog('✅ Token refresh succeeded on retry');
           return retryTokens.access_token;
         }
@@ -20789,22 +20811,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     // IMPORTANT: update by connection id (not campaign id)
-    await storage.updateGoogleSheetsConnection(String(connection.id), updateData);
+    const renewed = await storage.updateGoogleSheetsConnection(String(connection.id), updateData, { ...refreshWriteInput, expectedConnection: connection });
+          if (refreshWriteInput.refreshScope && renewed) Object.assign(connection, renewed);
 
     devLog('✅ Google Sheets token refreshed successfully for campaign:', connection.campaignId);
     return tokens.access_token;
   }
 
   const hubspotTokenRefreshes = new Map<string, Promise<string>>();
-  async function refreshHubspotToken(connection: any) {
+  async function refreshHubspotToken(connection: any, refreshWriteInput: GA4RefreshWriteInput = {}) {
     const connectionId = String(connection?.id || '');
     const campaignId = String(connection?.campaignId || '');
     if (!connectionId || !campaignId) throw new Error('HubSpot connection identity is missing');
-    const inFlight = hubspotTokenRefreshes.get(connectionId);
+    const refreshKey = refreshWriteInput.refreshScope ? `${connectionId}:${refreshWriteInput.refreshScope.work.id}:${refreshWriteInput.refreshScope.work.leaseToken}` : connectionId;
+    const inFlight = hubspotTokenRefreshes.get(refreshKey);
     if (inFlight) return await inFlight;
 
     const refreshPromise = (async () => {
-      const latest: any = await storage.getHubspotConnection(campaignId);
+      const latest: any = await storage.getHubspotConnection(campaignId, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : []));
       if (!latest || String(latest.id || '') !== connectionId || latest.isActive === false) {
         throw new Error('HubSpot connection changed during token refresh');
       }
@@ -20843,7 +20867,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expiresAt: renewedExpiresAt,
       };
       if (tokens.refresh_token) updateData.refreshToken = String(tokens.refresh_token);
-      const updated: any = await storage.updateHubspotConnection(connectionId, updateData);
+      const updated: any = await storage.updateHubspotConnection(connectionId, updateData, { ...refreshWriteInput, expectedConnection: latest });
       if (!updated?.accessToken
         || new Date(updated.expiresAt || 0).getTime() !== renewedExpiresAt.getTime()
         || (tokens.refresh_token && updated.refreshToken !== String(tokens.refresh_token))) {
@@ -20851,24 +20875,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       return String(updated.accessToken);
     })();
-    hubspotTokenRefreshes.set(connectionId, refreshPromise);
+    hubspotTokenRefreshes.set(refreshKey, refreshPromise);
     try {
       return await refreshPromise;
     } finally {
-      if (hubspotTokenRefreshes.get(connectionId) === refreshPromise) hubspotTokenRefreshes.delete(connectionId);
+      if (hubspotTokenRefreshes.get(refreshKey) === refreshPromise) hubspotTokenRefreshes.delete(refreshKey);
     }
   }
 
   const salesforceTokenRefreshes = new Map<string, Promise<string>>();
-  async function refreshSalesforceToken(connection: any, force = false) {
+  async function refreshSalesforceToken(connection: any, force = false, refreshWriteInput: GA4RefreshWriteInput = {}) {
     const connectionId = String(connection?.id || '');
     const campaignId = String(connection?.campaignId || '');
     if (!connectionId || !campaignId) throw new Error('Salesforce connection identity is missing');
-    const inFlight = salesforceTokenRefreshes.get(connectionId);
+    const refreshKey = refreshWriteInput.refreshScope ? `${connectionId}:${refreshWriteInput.refreshScope.work.id}:${refreshWriteInput.refreshScope.work.leaseToken}` : connectionId;
+    const inFlight = salesforceTokenRefreshes.get(refreshKey);
     if (inFlight) return await inFlight;
 
     const refreshPromise = (async () => {
-      const latest: any = await storage.getSalesforceConnection(campaignId);
+      const latest: any = await storage.getSalesforceConnection(campaignId, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : []));
       if (!latest || String(latest.id || '') !== connectionId || latest.isActive === false) {
         throw new Error('Salesforce connection changed during token refresh');
       }
@@ -20910,27 +20935,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         instanceUrl: json.instance_url || latest.instanceUrl || null,
       };
       if (json.refresh_token) updateData.refreshToken = String(json.refresh_token);
-      const updated: any = await storage.updateSalesforceConnection(connectionId, updateData);
+      const updated: any = await storage.updateSalesforceConnection(connectionId, updateData, { ...refreshWriteInput, expectedConnection: latest });
       if (!updated?.accessToken || (json.refresh_token && updated.refreshToken !== String(json.refresh_token))) {
         throw new Error('Failed to persist renewed Salesforce OAuth credentials');
       }
       return String(updated.accessToken);
     })();
-    salesforceTokenRefreshes.set(connectionId, refreshPromise);
+    salesforceTokenRefreshes.set(refreshKey, refreshPromise);
     try {
       return await refreshPromise;
     } finally {
-      if (salesforceTokenRefreshes.get(connectionId) === refreshPromise) salesforceTokenRefreshes.delete(connectionId);
+      if (salesforceTokenRefreshes.get(refreshKey) === refreshPromise) salesforceTokenRefreshes.delete(refreshKey);
     }
   }
 
-  async function getSalesforceAccessTokenForCampaign(campaignId: string): Promise<{ accessToken: string; instanceUrl: string; connectionId: string; fetchImpl: typeof fetch }> {
-    const conn: any = await storage.getSalesforceConnection(campaignId);
+  async function getSalesforceAccessTokenForCampaign(campaignId: string, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<{ accessToken: string; instanceUrl: string; connectionId: string; fetchImpl: typeof fetch }> {
+    const conn: any = await storage.getSalesforceConnection(campaignId, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : []));
     if (!conn || !conn.instanceUrl) throw new Error('No Salesforce connection found');
     let accessToken = conn.accessToken;
     if (!accessToken) {
       if (conn.refreshToken) {
-        accessToken = await refreshSalesforceToken(conn);
+        accessToken = await refreshSalesforceToken(conn, false, refreshWriteInput);
       } else {
         throw new Error('Salesforce access token missing and no refresh token available. Please reconnect Salesforce.');
       }
@@ -20938,7 +20963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const shouldRefresh = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);
     if (shouldRefresh) {
       if (conn.refreshToken) {
-        accessToken = await refreshSalesforceToken(conn);
+        accessToken = await refreshSalesforceToken(conn, false, refreshWriteInput);
       } else {
         throw new Error('Salesforce access token expired and no refresh token available. Please reconnect Salesforce.');
       }
@@ -20947,27 +20972,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       accessToken,
       fetchImpl: ((url, options) => fetchWithTimeout(String(url), options)) as typeof fetch,
       refreshAccessToken: async (rejectedAccessToken) => {
-        const latest: any = await storage.getSalesforceConnection(campaignId);
+        const latest: any = await storage.getSalesforceConnection(campaignId, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : []));
         if (!latest || String(latest.id || "") !== String(conn.id) || latest.isActive === false) {
           throw new Error("Salesforce connection changed during invalid-session recovery");
         }
         if (latest.accessToken && String(latest.accessToken) !== rejectedAccessToken) {
           return String(latest.accessToken);
         }
-        return await refreshSalesforceToken(latest, true);
+        return await refreshSalesforceToken(latest, true, refreshWriteInput);
       },
     });
     return { accessToken, instanceUrl: String(conn.instanceUrl), connectionId: String(conn.id), fetchImpl };
   }
 
-  async function getHubspotAccessTokenForCampaign(campaignId: string): Promise<{ accessToken: string; connectionId: string }> {
-    const conn: any = await storage.getHubspotConnection(campaignId);
+  async function getHubspotAccessTokenForCampaign(campaignId: string, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<{ accessToken: string; connectionId: string }> {
+    const conn: any = await storage.getHubspotConnection(campaignId, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : []));
     if (!conn) throw new Error('No HubSpot connection found');
 
     let accessToken = conn.accessToken;
     const shouldRefresh = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);
     if ((!accessToken || shouldRefresh) && conn.refreshToken) {
-      accessToken = await refreshHubspotToken(conn);
+      accessToken = await refreshHubspotToken(conn, refreshWriteInput);
     }
     if (!accessToken) {
       throw new Error('HubSpot access token missing and no refresh token available. Please reconnect HubSpot.');
@@ -35468,8 +35493,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .filter(Boolean);
   };
 
-  const getShopifyConnectionForCampaign = async (campaignId: string) => {
-    const conn: any = await storage.getShopifyConnection(campaignId);
+  const getShopifyConnectionForCampaign = async (campaignId: string, refreshWriteInput: GA4RefreshWriteInput = {}) => {
+    const conn: any = await storage.getShopifyConnection(campaignId, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : []));
     if (!conn || !conn.isActive || !conn.accessToken || !conn.shopDomain) {
       throw new Error("No active Shopify connection found for this campaign.");
     }
@@ -35482,7 +35507,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const connectionId = String(conn.id || '');
     if (!connectionId) throw new Error('Shopify OAuth connection identity is missing');
     return await storage.withShopifyOauthStoreLock(conn.shopDomain, async () => {
-      const latest: any = await storage.getShopifyConnection(campaignId);
+      const latest: any = await storage.getShopifyConnection(campaignId, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : []));
       if (!latest || String(latest.id || '') !== connectionId || !latest.isActive
         || String(latest.shopDomain || '') !== String(conn.shopDomain || '')) {
         throw new Error('Shopify OAuth connection changed during token refresh');
@@ -35534,7 +35559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accessToken: token.accessToken,
         refreshToken: token.refreshToken,
         mappingConfig: JSON.stringify(nextConfig),
-      } as any);
+      } as any, { ...refreshWriteInput, expectedConnection: latest });
       if (!updated?.accessToken || !updated?.refreshToken) throw new Error('Failed to persist renewed Shopify OAuth credentials');
       return updated;
     });
@@ -36094,6 +36119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/shopify/save-mappings", importRateLimiter, requireCampaignAccessParamId, async (req, res) => {
     let refreshAudit: { campaignId: string; sourceId: string; mapping: Record<string, any>; event: ShopifyRevenueRefreshEvent } | null = null;
     let refreshCommitted = false;
+    let refreshWriteInput: GA4RefreshWriteInput = {};
     const persistRefreshFailure = async (error: any) => {
       if (!refreshAudit || refreshCommitted) return;
       try {
@@ -36104,6 +36130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           refreshAudit.sourceId,
           JSON.stringify(failedMapping),
           refreshAudit.event.runId,
+          { ...refreshWriteInput, ...(refreshWriteInput.refreshScope ? { expectedSourceMappingConfig: JSON.stringify(refreshAudit.mapping) } : {}) },
         );
         if (failedSource) refreshAudit.mapping = failedMapping;
       } catch (auditError: any) {
@@ -36112,6 +36139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
     try {
       const campaignId = req.params.id;
+      refreshWriteInput = getInternalGA4RefreshWriteInput(req);
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
       const body = z
@@ -36178,14 +36206,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ? await getActiveTikTokCampaignIdSet(campaignId)
             : new Set<string>();
       const requestedSourceId = String(body.data.sourceId || "").trim();
+      if (refreshWriteInput.refreshScope) {
+        if (refreshWriteInput.refreshScope.campaignId !== campaignId || platformCtx !== "ga4" || !requestedSourceId || isDryRun || repairConfirmation
+          || typeof body.data.expectedSourceMappingConfig !== "string") throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+        await storage.writeWithGA4RefreshOwnership(refreshWriteInput.refreshScope, async () => {});
+      }
       let requestedSource: any = null;
       let requestedSourceMapping: Record<string, any> = {};
+      let expectedRefreshSourceMapping: string | null = null;
       if (requestedSourceId) {
         requestedSource = await storage.getRevenueSource(campaignId, requestedSourceId);
         const existingCtx = String(requestedSource?.platformContext || "ga4").trim().toLowerCase();
         if (!requestedSource || requestedSource.isActive === false || String(requestedSource.sourceType || "").toLowerCase() !== "shopify" || existingCtx !== String(platformCtx || "ga4").trim().toLowerCase()) {
           return res.status(404).json({ error: "Shopify revenue source not found" });
         }
+        if (refreshWriteInput.refreshScope && body.data.expectedSourceMappingConfig !== requestedSource.mappingConfig) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
         if (platformCtx === "ga4" && !isDryRun && !repairConfirmation) {
           try {
             requestedSourceMapping = requestedSource.mappingConfig ? JSON.parse(String(requestedSource.mappingConfig)) : {};
@@ -36193,15 +36228,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             requestedSourceMapping = {};
           }
           const attemptedMapping = markShopifyRevenueRefreshAttempt(requestedSourceMapping, refreshEvent);
-          const auditedSource = await storage.updateGa4ShopifyRevenueSourceRefreshState(campaignId, requestedSourceId, JSON.stringify(attemptedMapping));
+          const auditedSource = await storage.updateGa4ShopifyRevenueSourceRefreshState(campaignId, requestedSourceId, JSON.stringify(attemptedMapping), undefined, { ...refreshWriteInput, ...(refreshWriteInput.refreshScope ? { expectedSourceMappingConfig: requestedSource.mappingConfig ?? null } : {}) });
           if (!auditedSource) throw new Error("Shopify revenue source not found");
+          expectedRefreshSourceMapping = auditedSource.mappingConfig ?? null;
           refreshAudit = { campaignId, sourceId: requestedSourceId, mapping: attemptedMapping, event: refreshEvent };
         }
       }
 
       const camp = await storage.getCampaign(campaignId);
       if (!camp) throw new Error('Campaign not found');
-      const conn = await getShopifyConnectionForCampaign(campaignId);
+      const conn = await getShopifyConnectionForCampaign(campaignId, refreshWriteInput);
       const apiVersion = getShopifyApiVersion();
       const fallbackCreatedAtMin = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000);
       const campaignWindowStartAt = getShopifyCampaignWindowStartAt(camp);
@@ -36440,7 +36476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Persist GA4 connection metadata with its revenue replacement transaction below.
       let shopifyConnectionId: string | null = null;
       let shopifyConnectionMappingConfig: string | null = null;
-      const shopifyConn: any = repairConfirmation ? conn : await storage.getShopifyConnection(campaignId);
+      const shopifyConn: any = repairConfirmation ? conn : await storage.getShopifyConnection(campaignId, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : []));
       if (shopifyConn) {
         let existingConnConfig: any = {};
         try {
@@ -36642,6 +36678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!shopifyConnectionId || !shopifyConnectionMappingConfig) {
             throw new Error('Active Shopify connection not found');
           }
+          if (refreshWriteInput.refreshScope && shopifyConnectionId !== conn.id) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
           await storage.replaceGa4ShopifyRevenueSourceWithRecords(
             campaignId,
             existingShopify ? String((existingShopify as any).id) : null,
@@ -36652,7 +36689,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             repairConfirmation ? {
               sourceMappingConfig: requestedSource.mappingConfig == null ? null : String(requestedSource.mappingConfig),
               connectionMappingConfig: conn.mappingConfig == null ? null : String(conn.mappingConfig),
+            } : refreshWriteInput.refreshScope ? {
+              sourceMappingConfig: expectedRefreshSourceMapping,
+              connectionMappingConfig: conn.mappingConfig ?? null,
             } : undefined,
+            refreshWriteInput,
           );
           refreshCommitted = true;
         } else {
@@ -36667,7 +36708,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Also clear any HubSpot pipeline proxy configuration when a non-CRM (Shopify) revenue source
           // is being saved for LinkedIn. Pipeline proxy is CRM-specific and should not persist.
           try {
-            const hubspotConn: any = await storage.getHubspotConnection(campaignId);
+            const hubspotConn: any = await storage.getHubspotConnection(campaignId, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : []));
             if (hubspotConn?.id) {
               let cfg: any = {};
               try {
@@ -36704,7 +36745,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Ensure KPIs/alerts are recomputed BEFORE responding so immediate refetch sees correct values.
-      await recomputeCampaignDerivedValues(campaignId, { platformContext: platformCtx });
+      if (!refreshWriteInput.refreshScope) await recomputeCampaignDerivedValues(campaignId, { platformContext: platformCtx });
 
       res.json({
         success: true,

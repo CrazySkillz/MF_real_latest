@@ -13,7 +13,7 @@
  * - This avoids duplicating provider token-refresh logic (HubSpot/Salesforce) here.
  */
 
-import { storage } from "./storage";
+import { storage, type GA4RefreshWriteInput } from "./storage";
 import { refreshAllLinkedInData } from "./linkedin-scheduler";
 import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
@@ -41,7 +41,7 @@ type AutoRefreshSchedulerConfig = {
   salesforcePipelineIntervalMinutes: number;
 };
 type AutoRefreshRunTrigger = "startup" | "scheduled" | "manual";
-export type AutoRefreshRunOptions = {
+export type AutoRefreshRunOptions = GA4RefreshWriteInput & {
   financialSourcesOnly?: boolean;
   deferDownstream?: boolean;
   campaignId?: string;
@@ -182,12 +182,14 @@ function getServerBaseUrl(): string {
   return `http://127.0.0.1:${port}`;
 }
 
-async function postJson(path: string, body: AnyRecord): Promise<{ ok: boolean; status: number; json?: any; text?: string }> {
+async function postJson(path: string, body: AnyRecord, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<{ ok: boolean; status: number; json?: any; text?: string }> {
+  if ("refreshScope" in refreshWriteInput) await storage.writeWithGA4RefreshOwnership(refreshWriteInput.refreshScope, async () => {});
   const url = `${getServerBaseUrl()}${path.startsWith("/") ? "" : "/"}${path}`;
   const timeoutMs = Math.max(parseInt(String(process.env.AUTO_REFRESH_INTERNAL_TIMEOUT_MS || "120000"), 10) || 120000, 10000);
   const resp = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-internal-auto-refresh-token": getInternalAutoRefreshToken() },
+    headers: { "Content-Type": "application/json", "x-internal-auto-refresh-token": getInternalAutoRefreshToken(),
+      ...(refreshWriteInput.refreshScope ? { "x-internal-ga4-refresh-scope": JSON.stringify(refreshWriteInput.refreshScope) } : {}) },
     body: JSON.stringify(body || {}),
     signal: AbortSignal.timeout(timeoutMs),
   });
@@ -197,6 +199,10 @@ async function postJson(path: string, body: AnyRecord): Promise<{ ok: boolean; s
     json = text ? JSON.parse(text) : undefined;
   } catch {
     // ignore
+  }
+  if (refreshWriteInput.refreshScope) {
+    await storage.writeWithGA4RefreshOwnership(refreshWriteInput.refreshScope, async () => {});
+    if (!resp.ok) throw new Error(`GA4 financial refresh request failed (${resp.status})`);
   }
   return { ok: resp.ok, status: resp.status, json, text };
 }
@@ -236,7 +242,7 @@ async function withTimeout<T>(label: string, promise: Promise<T>, timeoutMs: num
   }
 }
 
-async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean> {
+async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord, sourceId?: string, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<boolean> {
   const body: AnyRecord = {
     campaignProperty: mappingConfig.campaignProperty,
     selectedValues: mappingConfig.selectedValues,
@@ -255,7 +261,7 @@ async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord, so
       ? { campaignMappings: mappingConfig.campaignMappings }
       : {}),
   };
-  const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/hubspot/save-mappings`, body);
+  const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/hubspot/save-mappings`, body, refreshWriteInput);
   if (!result.ok) {
     if (isStaleRevenueSourceReprocess(result)) {
       console.warn(`[Auto Refresh] Skipping stale HubSpot revenue source for campaign ${campaignId}`);
@@ -267,11 +273,11 @@ async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord, so
   return true;
 }
 
-async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean> {
-  return (await reprocessSalesforceWithDetails(campaignId, mappingConfig, sourceId)).success;
+async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord, sourceId?: string, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<boolean> {
+  return (await reprocessSalesforceWithDetails(campaignId, mappingConfig, sourceId, refreshWriteInput)).success;
 }
 
-async function reprocessSalesforceWithDetails(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<ReprocessResult> {
+async function reprocessSalesforceWithDetails(campaignId: string, mappingConfig: AnyRecord, sourceId?: string, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<ReprocessResult> {
   const body: AnyRecord = {
     campaignField: mappingConfig.campaignField,
     selectedValues: mappingConfig.selectedValues,
@@ -292,8 +298,9 @@ async function reprocessSalesforceWithDetails(campaignId: string, mappingConfig:
   };
   let result: Awaited<ReturnType<typeof postJson>>;
   try {
-    result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/salesforce/save-mappings`, body);
+    result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/salesforce/save-mappings`, body, refreshWriteInput);
   } catch (error: any) {
+    if (refreshWriteInput.refreshScope) throw error;
     console.error(`[Auto Refresh] Salesforce reprocess failed for campaign ${campaignId}:`, error?.message || error);
     return { success: false, error: String(error?.message || error || "Salesforce request failed") };
   }
@@ -357,7 +364,7 @@ export async function hasCompletedDaySalesforceEvidence(
   }
 }
 
-async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean> {
+async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, sourceId?: string, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<boolean> {
   const body: AnyRecord = {
     campaignField: mappingConfig.campaignField,
     selectedValues: mappingConfig.selectedValues,
@@ -368,11 +375,12 @@ async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, so
     valueSource: mappingConfig.valueSource,
     ...(mappingConfig.refreshRunId ? { refreshRunId: mappingConfig.refreshRunId } : {}),
     ...(sourceId ? { sourceId } : {}),
+    ...(refreshWriteInput.refreshScope ? { expectedSourceMappingConfig: mappingConfig.expectedSourceMappingConfig } : {}),
     ...(Array.isArray(mappingConfig.campaignMappings) && mappingConfig.campaignMappings.length > 0
       ? { campaignMappings: mappingConfig.campaignMappings }
       : {}),
   };
-  const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/shopify/save-mappings`, body);
+  const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/shopify/save-mappings`, body, refreshWriteInput);
   if (!result.ok) {
     if (isStaleRevenueSourceReprocess(result)) {
       console.warn(`[Auto Refresh] Skipping stale Shopify revenue source for campaign ${campaignId}`);
@@ -451,7 +459,7 @@ export async function runShopifyRevenueSourceRefreshForValidation(campaignId: st
   return { success, reason: success ? undefined : "reprocess_failed", campaignId: normalizedCampaignId, sourceId: normalizedSourceId, platformContext: "ga4" };
 }
 
-async function reprocessGoogleSheetsSpendWithDetails(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<ReprocessResult> {
+async function reprocessGoogleSheetsSpendWithDetails(campaignId: string, source: any, mappingConfig: AnyRecord, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<ReprocessResult> {
   const connectionId = String(mappingConfig?.connectionId || "").trim();
   if (!connectionId) return { success: false, error: "missing_connection_id" };
   if (isSourceOutsideCampaign(source, campaignId)) {
@@ -465,7 +473,7 @@ async function reprocessGoogleSheetsSpendWithDetails(campaignId: string, source:
     platformContext: mappingConfig?.platformContext || source?.platformContext || "ga4",
     expectedSourceMappingConfig: source.mappingConfig ?? null,
   };
-  const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/spend/sheets/process`, body);
+  const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/spend/sheets/process`, body, refreshWriteInput);
   if (!result.ok) {
     const error = result.json?.error || result.json?.message || result.text || `HTTP ${result.status}`;
     console.error(`[Auto Refresh] Google Sheets spend reprocess failed for campaign ${campaignId}:`, result.status, error);
@@ -474,10 +482,10 @@ async function reprocessGoogleSheetsSpendWithDetails(campaignId: string, source:
   return { success: true, status: result.status };
 }
 
-async function reprocessGoogleSheetsSpend(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<boolean> {
-  return (await reprocessGoogleSheetsSpendWithDetails(campaignId, source, mappingConfig)).success;
+async function reprocessGoogleSheetsSpend(campaignId: string, source: any, mappingConfig: AnyRecord, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<boolean> {
+  return (await reprocessGoogleSheetsSpendWithDetails(campaignId, source, mappingConfig, refreshWriteInput)).success;
 }
-async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<boolean> {
+async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, mappingConfig: AnyRecord, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<boolean> {
   const connectionId = String(mappingConfig?.connectionId || "").trim();
   if (!connectionId) return false;
   if (isSourceOutsideCampaign(source, campaignId)) {
@@ -485,12 +493,16 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
     return false;
   }
   try {
+    if ("refreshScope" in refreshWriteInput) {
+      if (refreshWriteInput.refreshScope?.campaignId !== campaignId || String(mappingConfig.platformContext || source?.platformContext || "ga4") !== "ga4") throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+      await storage.writeWithGA4RefreshOwnership(refreshWriteInput.refreshScope, async () => {});
+    }
     // Direct DB operations — avoids auth/rate-limit issues from HTTP self-calls
-    const connections = await storage.getGoogleSheetsConnections(campaignId);
+    const connections = await storage.getGoogleSheetsConnections(campaignId, undefined, refreshWriteInput);
     let conn = (connections as any[]).find((c: any) => String(c.id) === connectionId);
     if (!conn) {
       // Try without purpose filter
-      const allConns = await storage.getGoogleSheetsConnections(campaignId);
+      const allConns = await storage.getGoogleSheetsConnections(campaignId, undefined, refreshWriteInput);
       conn = (allConns as any[]).find((c: any) => String(c.id) === connectionId);
     }
     if (!conn) {
@@ -512,11 +524,12 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
       const tokens = await tr.json();
       const nextAccessToken = String(tokens.access_token || "");
       if (!nextAccessToken) return null;
-      await storage.updateGoogleSheetsConnection(conn.id, {
+      const renewed = await storage.updateGoogleSheetsConnection(conn.id, {
         accessToken: nextAccessToken,
         expiresAt: new Date(Date.now() + (tokens.expires_in || 3600) * 1000),
         ...(tokens.refresh_token ? { refreshToken: tokens.refresh_token } : {}),
-      } as any);
+      } as any, { ...refreshWriteInput, expectedConnection: conn });
+      if (refreshWriteInput.refreshScope && renewed) Object.assign(conn, renewed);
       if (tokens.refresh_token) conn.refreshToken = tokens.refresh_token;
       return nextAccessToken;
     };
@@ -669,11 +682,12 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
         lastSyncedAt: new Date().toISOString(),
       }),
       isActive: true,
-    } as any, records as any, String(source.mappingConfig || ""));
+    } as any, records as any, source.mappingConfig ?? null, refreshWriteInput);
 
     console.log(`[Auto Refresh] ✅ Google Sheets revenue synced for campaign ${campaignId}: $${total} from ${kept} rows`);
     return true;
   } catch (err: any) {
+    if (refreshWriteInput.refreshScope) throw err;
     console.error(`[Auto Refresh] Google Sheets revenue reprocess failed for campaign ${campaignId}:`, err?.message || err);
     return false;
   }
@@ -1025,6 +1039,15 @@ export async function runDailyAutoRefreshOnce(
   trigger: AutoRefreshRunTrigger = "manual",
   opts: AutoRefreshRunOptions = {},
 ): Promise<AutoRefreshRunSummary | null> {
+  const guarded = "refreshScope" in opts;
+  const refreshWriteInput: GA4RefreshWriteInput = guarded ? { refreshScope: opts.refreshScope } : {};
+  const assertOwnership = async () => {
+    if (guarded) await storage.writeWithGA4RefreshOwnership(opts.refreshScope, async () => {});
+  };
+  if (guarded) {
+    if (!opts.campaignId || opts.refreshScope?.campaignId !== opts.campaignId || !opts.financialSourcesOnly || !opts.deferDownstream || opts.onCampaignRefreshed) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    await assertOwnership();
+  }
   // Give the daily job priority without overlapping an interval financial refresh.
   if ((global as any).__autoRefreshInProgress) {
     autoRefreshSchedulerStatus.totalSkippedRuns += 1;
@@ -1061,6 +1084,7 @@ export async function runDailyAutoRefreshOnce(
 
   try {
     while ((global as any).__googleSheetsSpendRefreshInProgress || (global as any).__salesforcePipelineRefreshInProgress) {
+      await assertOwnership();
       if (Date.now() - startedAt >= 120_000) throw new Error("FINANCIAL_REFRESH_WAIT_TIMEOUT");
       console.log("[Auto Refresh] Waiting for an interval financial refresh to finish");
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -1086,6 +1110,7 @@ export async function runDailyAutoRefreshOnce(
     const campaigns = filterActiveSchedulerCampaigns(requestedCampaignId
       ? (requestedCampaign ? [requestedCampaign] : [])
       : await storage.getCampaigns());
+    if (guarded && campaigns.length !== 1) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
     campaignsScanned = campaigns.length;
 
     let anyCampaignUpdated = false;
@@ -1101,10 +1126,17 @@ export async function runDailyAutoRefreshOnce(
       let campaignRecomputeFailed = false;
       let deferCampaignDownstream = Boolean(opts.deferDownstream);
       try {
+        await assertOwnership();
         let anyUpdated = false;
+        if (guarded) {
+          const [revenueSources, spendSources] = await Promise.all([storage.getRevenueSources(campaignId, "ga4"), storage.getSpendSources(campaignId, "ga4")]);
+          if (revenueSources.some(source => source.isActive !== false && !["hubspot", "salesforce", "shopify", "google_sheets", "csv", "manual", "custom"].includes(source.sourceType))
+            || spendSources.some(source => source.isActive !== false && !["google_sheets", "ad_platforms", "csv", "manual", "custom"].includes(source.sourceType))) throw new Error("GA4_REFRESH_UNSUPPORTED_FINANCIAL_SOURCE");
+          if (spendSources.some(source => source.isActive !== false && source.sourceType === "ad_platforms" && safeJsonParse(source.mappingConfig)?.platform !== "google_ads")) throw new Error("GA4_REFRESH_UNSUPPORTED_FINANCIAL_SOURCE");
+        }
         // HubSpot revenue sources are the source of truth for saved campaign mappings.
         let hubspotRevenueCount = 0;
-        for (const ctx of crmRevenueContexts) {
+        for (const ctx of (guarded ? ["ga4"] as const : crmRevenueContexts)) {
           const hubspotRevenueSources = (await storage.getRevenueSources(campaignId, ctx))
             .filter((s: any) => s && s.isActive !== false && String(s.sourceType || "").toLowerCase() === "hubspot");
           for (const hubspotSource of hubspotRevenueSources) {
@@ -1113,7 +1145,7 @@ export async function runDailyAutoRefreshOnce(
             const hubCfg = hubCfgRaw ? { ...hubCfgRaw, platformContext: hubCfgRaw.platformContext || hubspotSource.platformContext || ctx, expectedSourceMappingConfig: String(hubspotSource.mappingConfig) } : null;
             if (hubCfg?.selectedValues?.length) {
               attempted++;
-              if (await reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id))) { succeeded++; anyUpdated = true; }
+              if (await reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id), refreshWriteInput)) { succeeded++; anyUpdated = true; }
             } else {
               skipped++;
             }
@@ -1123,7 +1155,7 @@ export async function runDailyAutoRefreshOnce(
 
         // Salesforce revenue sources are the source of truth for saved campaign mappings.
         let salesforceRevenueCount = 0;
-        for (const ctx of crmRevenueContexts) {
+        for (const ctx of (guarded ? ["ga4"] as const : crmRevenueContexts)) {
           const salesforceRevenueSources = (await storage.getRevenueSources(campaignId, ctx))
             .filter((s: any) => s && s.isActive !== false && String(s.sourceType || "").toLowerCase() === "salesforce");
           for (const salesforceSource of salesforceRevenueSources) {
@@ -1132,7 +1164,7 @@ export async function runDailyAutoRefreshOnce(
             const sfCfg = sfCfgRaw ? { ...sfCfgRaw, platformContext: sfCfgRaw.platformContext || salesforceSource.platformContext || ctx, expectedSourceMappingConfig: String(salesforceSource.mappingConfig) } : null;
             if (sfCfg?.selectedValues?.length) {
               attempted++;
-              const salesforceResult = await reprocessSalesforceWithDetails(campaignId, sfCfg, String(salesforceSource.id));
+              const salesforceResult = await reprocessSalesforceWithDetails(campaignId, sfCfg, String(salesforceSource.id), refreshWriteInput);
               if (salesforceResult.success) { succeeded++; anyUpdated = true; }
               else if (isRetryableSalesforceRefreshFailure(salesforceResult) && await hasCompletedDaySalesforceEvidence(salesforceSource, campaign, startedAtDate)) {
                 retained++;
@@ -1147,17 +1179,17 @@ export async function runDailyAutoRefreshOnce(
 
         // Shopify revenue sources are the source of truth for saved campaign mappings.
         let shopifyRevenueCount = 0;
-        for (const ctx of refreshableRevenueContexts) {
+        for (const ctx of (guarded ? ["ga4"] as const : refreshableRevenueContexts)) {
           const shopifyRevenueSources = (await storage.getRevenueSources(campaignId, ctx))
             .filter((s: any) => s && s.isActive !== false && String(s.sourceType || "").toLowerCase() === "shopify");
           for (const shopifySource of shopifyRevenueSources) {
             shopifyRevenueCount++;
             const shopCfgRaw = safeJsonParse(shopifySource?.mappingConfig);
             const shopCfg = shopCfgRaw ? { ...shopCfgRaw, platformContext: shopCfgRaw.platformContext || shopifySource.platformContext || ctx } : null;
-            if (shopCfg) shopCfg.refreshRunId = refreshRunId;
+            if (shopCfg) { shopCfg.refreshRunId = refreshRunId; if (guarded) shopCfg.expectedSourceMappingConfig = shopifySource.mappingConfig; }
             if (shopCfg?.selectedValues?.length) {
               attempted++;
-              if (await reprocessShopify(campaignId, shopCfg, String(shopifySource.id))) { succeeded++; anyUpdated = true; }
+              if (await reprocessShopify(campaignId, shopCfg, String(shopifySource.id), refreshWriteInput)) { succeeded++; anyUpdated = true; }
             } else {
               skipped++;
             }
@@ -1167,7 +1199,7 @@ export async function runDailyAutoRefreshOnce(
 
         // Google Sheets (Spend) — process ALL active Sheets spend sources
         try {
-          const spendSources = await storage.getSpendSources(campaignId);
+          const spendSources = await storage.getSpendSources(campaignId, guarded ? "ga4" : undefined);
           const sheetSpendSources = (Array.isArray(spendSources) ? spendSources : []).filter((s: any) => {
             return !!s && (s as any).isActive !== false && String((s as any).sourceType || "") === "google_sheets";
           });
@@ -1175,7 +1207,7 @@ export async function runDailyAutoRefreshOnce(
             const spendCfg = safeJsonParse(sheetSpend?.mappingConfig);
             if (spendCfg?.connectionId && spendCfg?.spendColumn) {
               attempted++;
-              if (await reprocessGoogleSheetsSpend(campaignId, sheetSpend, spendCfg)) { succeeded++; anyUpdated = true; }
+              if (await reprocessGoogleSheetsSpend(campaignId, sheetSpend, spendCfg, refreshWriteInput)) { succeeded++; anyUpdated = true; }
             } else {
               skipped++;
             }
@@ -1187,7 +1219,7 @@ export async function runDailyAutoRefreshOnce(
 
         // LinkedIn Ads (Spend)
         try {
-          const spendSources = await storage.getSpendSources(campaignId);
+          const spendSources = await storage.getSpendSources(campaignId, guarded ? "ga4" : undefined);
           const linkedInSpend = (Array.isArray(spendSources) ? spendSources : []).find((s: any) => {
             return !!s && (s as any).isActive !== false && String((s as any).sourceType || "") === "linkedin_api";
           });
@@ -1206,7 +1238,7 @@ export async function runDailyAutoRefreshOnce(
 
         // Ad Platform Spend (Google Ads / Meta) — pull from daily metrics tables
         try {
-          const spendSrcs = await storage.getSpendSources(campaignId);
+          const spendSrcs = await storage.getSpendSources(campaignId, guarded ? "ga4" : undefined);
           let ga4GoogleAdsRefreshAttempted = false;
           for (const src of (Array.isArray(spendSrcs) ? spendSrcs : [])) {
             if ((src as any).isActive === false) continue;
@@ -1234,14 +1266,15 @@ export async function runDailyAutoRefreshOnce(
               ga4GoogleAdsRefreshAttempted = true;
               attempted++;
               try {
-                const dedicatedConnection = await storage.getGA4GoogleAdsSpendConnection(campaignId).catch(() => null);
-                const legacyConnection = dedicatedConnection ? null : await storage.getGoogleAdsConnection(campaignId).catch(() => null);
+                const dedicatedConnection = await storage.getGA4GoogleAdsSpendConnection(campaignId).catch(error => { if (guarded) throw error; return null; });
+                const legacyConnection = dedicatedConnection ? null : await storage.getGoogleAdsConnection(campaignId, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : [])).catch(error => { if (guarded) throw error; return null; });
                 const connection = dedicatedConnection || (legacyConnection?.spendOnly ? legacyConnection : null);
                 if (!connection || !isSupportedGoogleAdsSpendConnectionMethod(connection.method)) throw new Error("live spend connection is unavailable");
                 const { refreshGoogleAdsForCampaign } = await import("./google-ads-scheduler");
                 const refresh = await refreshGoogleAdsForCampaign(campaignId, connection, {
                   ga4SpendConnection: Boolean(dedicatedConnection),
                   deferDownstream: true,
+                  ...refreshWriteInput,
                 });
                 if (!refresh.providerRefreshed || refresh.spendMaterialization?.updated !== true) throw new Error("spend materialization was incomplete");
                 succeeded++;
@@ -1266,7 +1299,7 @@ export async function runDailyAutoRefreshOnce(
                 skipped++;
                 continue;
               }
-              const connection: any = await storage.getGoogleAdsConnection(campaignId).catch(() => null);
+              const connection: any = await storage.getGoogleAdsConnection(campaignId, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : [])).catch(() => null);
               if (!connection || !connection.spendOnly || !isSupportedGoogleAdsSpendConnectionMethod(connection.method)) {
                 console.error(`[Auto Refresh] Refusing unsupported Google Ads spend connection for campaign ${campaignId}`);
                 skipped++;
@@ -1322,7 +1355,7 @@ export async function runDailyAutoRefreshOnce(
         // Google Sheets (Revenue) — process ALL active Sheets revenue sources across all platform contexts
         try {
           let sheetRevCount = 0;
-          for (const ctx of refreshableRevenueContexts) {
+          for (const ctx of (guarded ? ["ga4"] as const : refreshableRevenueContexts)) {
             const revenueSources = await storage.getRevenueSources(campaignId, ctx);
             const sheetRevSources = (Array.isArray(revenueSources) ? revenueSources : []).filter((s: any) => {
               return !!s && (s as any).isActive !== false && String((s as any).sourceType || "") === "google_sheets";
@@ -1333,7 +1366,7 @@ export async function runDailyAutoRefreshOnce(
               const revCfg = revCfgRaw ? { ...revCfgRaw, platformContext: revCfgRaw.platformContext || sheetRevenue.platformContext || ctx } : null;
               if (revCfg?.connectionId && revCfg?.revenueColumn) {
                 attempted++;
-                if (await reprocessGoogleSheetsRevenue(campaignId, sheetRevenue, revCfg)) { succeeded++; anyUpdated = true; }
+                if (await reprocessGoogleSheetsRevenue(campaignId, sheetRevenue, revCfg, refreshWriteInput)) { succeeded++; anyUpdated = true; }
               } else {
                 skipped++;
               }
@@ -1346,7 +1379,7 @@ export async function runDailyAutoRefreshOnce(
 
         // Google Sheets (Raw Data Cache — for Overview/Summary/Insights tabs)
         try {
-          if (await refreshGoogleSheetsDataForCampaign(campaignId)) { anyUpdated = true; }
+          if (!guarded && await refreshGoogleSheetsDataForCampaign(campaignId)) { anyUpdated = true; }
         } catch {
           // ignore
         }
@@ -1371,8 +1404,10 @@ export async function runDailyAutoRefreshOnce(
       } catch (e: any) {
         campaignErrors++;
         campaignError = true;
+        if (guarded) throw e;
         console.error(`[Auto Refresh] Error processing campaign ${campaignId}:`, e?.message || e);
       } finally {
+        await assertOwnership();
         let linkedInConnection: any = null;
         let linkedInConnectionCheckFailed = false;
         if (!opts.financialSourcesOnly) {

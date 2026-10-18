@@ -179,13 +179,17 @@ export type GA4RefreshWriteInput = {
   refreshScope?: { campaignId: string; ownerId: string; reportingDate: string; work: { id: string; leaseToken: string } };
 };
 
+export type GA4RefreshConnectionWriteInput = GA4RefreshWriteInput & { expectedConnection?: Record<string, any> };
+
+export type GA4RefreshGoogleAdsWriteInput = GA4RefreshConnectionWriteInput & { expectedSource?: { id: string; mappingConfig: string | null } };
+
 export interface IStorage {
   writeWithGA4RefreshOwnership<T>(scope: GA4RefreshWriteInput["refreshScope"], write: (tx: any) => Promise<T>): Promise<T>;
   // Campaigns
   getCampaigns(): Promise<Campaign[]>;
   getCampaign(id: string): Promise<Campaign | undefined>;
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
-  updateCampaign(id: string, campaign: Partial<InsertCampaign>): Promise<Campaign | undefined>;
+  updateCampaign(id: string, campaign: Partial<InsertCampaign>, options?: GA4RefreshWriteInput): Promise<Campaign | undefined>;
   updateCampaignWithGA4DailyInvalidation(id: string, campaign: Partial<InsertCampaign>): Promise<Campaign | undefined>;
   deleteCampaign(id: string): Promise<boolean>;
   deleteCampaignCascade(id: string): Promise<boolean>;
@@ -310,34 +314,34 @@ export interface IStorage {
   getRevenueBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext?: RevenuePlatformContext): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number; currency?: string }>>;
 
   // Google Sheets Connections
-  getGoogleSheetsConnections(campaignId: string, purpose?: string): Promise<GoogleSheetsConnection[]>;
+  getGoogleSheetsConnections(campaignId: string, purpose?: string, options?: GA4RefreshWriteInput): Promise<GoogleSheetsConnection[]>;
   getGoogleSheetsConnection(campaignId: string, spreadsheetId?: string): Promise<GoogleSheetsConnection | undefined>;
   getPrimaryGoogleSheetsConnection(campaignId: string): Promise<GoogleSheetsConnection | undefined>;
   createGoogleSheetsConnection(connection: InsertGoogleSheetsConnection): Promise<GoogleSheetsConnection>;
-  updateGoogleSheetsConnection(connectionId: string, connection: Partial<InsertGoogleSheetsConnection>): Promise<GoogleSheetsConnection | undefined>;
+  updateGoogleSheetsConnection(connectionId: string, connection: Partial<InsertGoogleSheetsConnection>, options?: GA4RefreshConnectionWriteInput): Promise<GoogleSheetsConnection | undefined>;
   setPrimaryGoogleSheetsConnection(campaignId: string, connectionId: string): Promise<boolean>;
   deleteGoogleSheetsConnection(connectionId: string): Promise<boolean>;
 
   // HubSpot Connections
   getHubspotConnections(campaignId: string): Promise<HubspotConnection[]>;
-  getHubspotConnection(campaignId: string): Promise<HubspotConnection | undefined>;
+  getHubspotConnection(campaignId: string, options?: GA4RefreshWriteInput): Promise<HubspotConnection | undefined>;
   createHubspotConnection(connection: InsertHubspotConnection): Promise<HubspotConnection>;
-  updateHubspotConnection(connectionId: string, connection: Partial<InsertHubspotConnection>): Promise<HubspotConnection | undefined>;
+  updateHubspotConnection(connectionId: string, connection: Partial<InsertHubspotConnection>, options?: GA4RefreshConnectionWriteInput): Promise<HubspotConnection | undefined>;
   deleteHubspotConnection(connectionId: string): Promise<boolean>;
 
   // Salesforce Connections
   getSalesforceConnections(campaignId: string): Promise<SalesforceConnection[]>;
-  getSalesforceConnection(campaignId: string): Promise<SalesforceConnection | undefined>;
+  getSalesforceConnection(campaignId: string, options?: GA4RefreshWriteInput): Promise<SalesforceConnection | undefined>;
   createSalesforceConnection(connection: InsertSalesforceConnection): Promise<SalesforceConnection>;
-  updateSalesforceConnection(connectionId: string, connection: Partial<InsertSalesforceConnection>): Promise<SalesforceConnection | undefined>;
+  updateSalesforceConnection(connectionId: string, connection: Partial<InsertSalesforceConnection>, options?: GA4RefreshConnectionWriteInput): Promise<SalesforceConnection | undefined>;
   deleteSalesforceConnection(connectionId: string): Promise<boolean>;
 
   // Shopify Connections
   getShopifyConnections(campaignId: string): Promise<ShopifyConnection[]>;
-  getShopifyConnection(campaignId: string): Promise<ShopifyConnection | undefined>;
+  getShopifyConnection(campaignId: string, options?: GA4RefreshWriteInput): Promise<ShopifyConnection | undefined>;
   createShopifyConnection(connection: InsertShopifyConnection): Promise<ShopifyConnection>;
   replaceShopifyConnection(connection: InsertShopifyConnection): Promise<ShopifyConnection>;
-  updateShopifyConnection(connectionId: string, connection: Partial<InsertShopifyConnection>): Promise<ShopifyConnection | undefined>;
+  updateShopifyConnection(connectionId: string, connection: Partial<InsertShopifyConnection>, options?: GA4RefreshConnectionWriteInput): Promise<ShopifyConnection | undefined>;
   deleteShopifyConnection(connectionId: string): Promise<boolean>;
   withShopifyOauthStoreLock<T>(shopDomain: string, operation: () => Promise<T>): Promise<T>;
 
@@ -379,23 +383,23 @@ export interface IStorage {
   upsertTikTokDailyMetrics(metrics: InsertTikTokDailyMetric[]): Promise<{ upserted: number }>;
 
   // Google Ads Connections
-  getGoogleAdsConnection(campaignId: string): Promise<GoogleAdsConnection | undefined>;
+  getGoogleAdsConnection(campaignId: string, options?: GA4RefreshWriteInput): Promise<GoogleAdsConnection | undefined>;
   createGoogleAdsConnection(connection: InsertGoogleAdsConnection): Promise<GoogleAdsConnection>;
   replaceGoogleAdsConnection(connection: InsertGoogleAdsConnection, dailyMetrics?: InsertGoogleAdsDailyMetric[]): Promise<GoogleAdsConnection>;
-  updateGoogleAdsConnection(campaignId: string, connection: Partial<InsertGoogleAdsConnection>): Promise<GoogleAdsConnection | undefined>;
+  updateGoogleAdsConnection(campaignId: string, connection: Partial<InsertGoogleAdsConnection>, options?: GA4RefreshConnectionWriteInput): Promise<GoogleAdsConnection | undefined>;
   deleteGoogleAdsConnection(campaignId: string): Promise<boolean>;
   deleteGoogleAdsDailyMetrics(campaignId: string): Promise<boolean>;
 
   // Google Ads Daily Metrics
   getGoogleAdsDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<GoogleAdsDailyMetric[]>;
   upsertGoogleAdsDailyMetrics(metrics: InsertGoogleAdsDailyMetric[]): Promise<{ upserted: number }>;
-  replaceGoogleAdsDailyMetricsForWindow(campaignId: string, startDate: string, endDate: string, metrics: InsertGoogleAdsDailyMetric[]): Promise<{ replaced: number }>;
+  replaceGoogleAdsDailyMetricsForWindow(campaignId: string, startDate: string, endDate: string, metrics: InsertGoogleAdsDailyMetric[], options?: GA4RefreshGoogleAdsWriteInput): Promise<{ replaced: number }>;
   updateGoogleAdsDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ googleCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }>;
   getGA4GoogleAdsSpendConnection(campaignId: string): Promise<GA4GoogleAdsSpendConnection | undefined>;
   replaceGA4GoogleAdsSpendConnection(connection: InsertGA4GoogleAdsSpendConnection, dailyMetrics: InsertGA4GoogleAdsSpendDailyMetric[]): Promise<GA4GoogleAdsSpendConnection>;
-  updateGA4GoogleAdsSpendConnection(campaignId: string, connection: Partial<InsertGA4GoogleAdsSpendConnection>): Promise<GA4GoogleAdsSpendConnection | undefined>;
+  updateGA4GoogleAdsSpendConnection(campaignId: string, connection: Partial<InsertGA4GoogleAdsSpendConnection>, options?: GA4RefreshConnectionWriteInput): Promise<GA4GoogleAdsSpendConnection | undefined>;
   getGA4GoogleAdsSpendDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<GA4GoogleAdsSpendDailyMetric[]>;
-  replaceGA4GoogleAdsSpendDailyMetricsForWindow(campaignId: string, startDate: string, endDate: string, metrics: InsertGA4GoogleAdsSpendDailyMetric[]): Promise<{ replaced: number }>;
+  replaceGA4GoogleAdsSpendDailyMetricsForWindow(campaignId: string, startDate: string, endDate: string, metrics: InsertGA4GoogleAdsSpendDailyMetric[], options?: GA4RefreshGoogleAdsWriteInput): Promise<{ replaced: number }>;
   updateMetaDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ metaCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }>;
   updateLinkedInDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ linkedinCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }>;
 
@@ -680,13 +684,17 @@ export class DatabaseStorage implements IStorage {
     return campaign;
   }
 
-  async updateCampaign(id: string, updateData: Partial<InsertCampaign>): Promise<Campaign | undefined> {
+  async updateCampaign(id: string, updateData: Partial<InsertCampaign>, options: GA4RefreshWriteInput = {}): Promise<Campaign | undefined> {
+    const write = async (db: any) => {
     const [campaign] = await db
       .update(campaigns)
       .set(updateData)
       .where(eq(campaigns.id, id))
       .returning();
     return campaign || undefined;
+    };
+    if ("refreshScope" in options && options.refreshScope?.campaignId !== id) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    return "refreshScope" in options ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : write(db);
   }
 
   async updateCampaignWithGA4DailyInvalidation(id: string, updateData: Partial<InsertCampaign>): Promise<Campaign | undefined> {
@@ -2856,7 +2864,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Google Sheets Connection methods
-  async getGoogleSheetsConnections(campaignId: string, purpose?: string): Promise<GoogleSheetsConnection[]> {
+  async getGoogleSheetsConnections(campaignId: string, purpose?: string, options: GA4RefreshWriteInput = {}): Promise<GoogleSheetsConnection[]> {
     try {
       const purposeCol = (googleSheetsConnections as any).purpose;
       const purposeFilter = purpose
@@ -2898,7 +2906,7 @@ export class DatabaseStorage implements IStorage {
         rows.map(async (r: any) => {
           const hasPlain = Boolean(r?.accessToken) || Boolean(r?.refreshToken) || Boolean(r?.clientSecret);
           const hasEnc = Boolean(r?.encryptedTokens);
-          if (!hasPlain || hasEnc || !r?.id) return;
+          if ("refreshScope" in options || !hasPlain || hasEnc || !r?.id) return;
           try {
             const nextEnc = buildEncryptedTokens({
               accessToken: r.accessToken,
@@ -3212,10 +3220,22 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateGoogleSheetsConnection(connectionId: string, connection: Partial<InsertGoogleSheetsConnection>): Promise<GoogleSheetsConnection | undefined> {
+  async updateGoogleSheetsConnection(connectionId: string, connection: Partial<InsertGoogleSheetsConnection>, options: GA4RefreshConnectionWriteInput = {}): Promise<GoogleSheetsConnection | undefined> {
+    const guarded = "refreshScope" in options;
+    const write = async (db: any) => {
     try {
-      const [existing] = await db.select().from(googleSheetsConnections).where(eq(googleSheetsConnections.id, connectionId));
-      if (!existing) return undefined;
+      const existingQuery = db.select().from(googleSheetsConnections).where(eq(googleSheetsConnections.id, connectionId));
+    const [existing] = await (guarded ? existingQuery.for("update") : existingQuery);
+      if (guarded) {
+      const expected = options.expectedConnection;
+      if (existing && expected && !existing.encryptedTokens && !expected.encryptedTokens && existing.method !== "service_account"
+        && ["accessToken", "refreshToken", "clientSecret"].some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
+      const fields = ["id", "campaignId", "encryptedTokens", "method", "clientId", "mappingConfig", "spreadsheetId", "sheetName", "purpose", "instanceUrl", "shopDomain", "customerId", "managerAccountId", "selectedCampaignIds", "spendOnly"];
+      if (!existing || existing.isActive === false || !expected || expected.id !== existing.id
+        || options.refreshScope?.campaignId !== existing.campaignId || expected.campaignId !== existing.campaignId
+        || fields.some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
+    }
+    if (!existing) return undefined;
       const method = String((connection as any).method || (existing as any).method || "access_token").trim().toLowerCase();
       const isServiceAccount = method === GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD;
 
@@ -3242,7 +3262,7 @@ export class DatabaseStorage implements IStorage {
           accessToken: (connection as any).accessToken,
           refreshToken: (connection as any).refreshToken,
           clientSecret: (connection as any).clientSecret,
-          prev: (existing as any).encryptedTokens,
+          prev: (existing as any).encryptedTokens || (guarded ? buildEncryptedTokens({ accessToken: existing.accessToken, refreshToken: existing.refreshToken, clientSecret: existing.clientSecret }) : undefined),
         });
         setData.accessToken = null;
         setData.refreshToken = null;
@@ -3293,6 +3313,7 @@ export class DatabaseStorage implements IStorage {
         ? await hydrateGoogleSheetsConnectionForRead(hydrateDecryptedTokens(updated) as any) as any
         : undefined;
     } catch (error: any) {
+      if (guarded) throw error;
       // If sheet_name column doesn't exist yet, use raw SQL update
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
         devLog('[Storage] sheet_name column not found, using fallback update for updateGoogleSheetsConnection');
@@ -3392,6 +3413,8 @@ export class DatabaseStorage implements IStorage {
       }
       throw error;
     }
+    };
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : write(db);
   }
 
   async setPrimaryGoogleSheetsConnection(campaignId: string, connectionId: string): Promise<boolean> {
@@ -3525,7 +3548,7 @@ export class DatabaseStorage implements IStorage {
     return rows.map((r: any) => hydrateDecryptedTokens(r)) as any;
   }
 
-  async getHubspotConnection(campaignId: string): Promise<HubspotConnection | undefined> {
+  async getHubspotConnection(campaignId: string, options: GA4RefreshWriteInput = {}): Promise<HubspotConnection | undefined> {
     const [latest] = await db
       .select()
       .from(hubspotConnections)
@@ -3536,7 +3559,7 @@ export class DatabaseStorage implements IStorage {
     const hydrated = hydrateDecryptedTokens(latest) as any;
     const hasPlain = Boolean((latest as any).accessToken) || Boolean((latest as any).refreshToken) || Boolean((latest as any).clientSecret);
     const hasEnc = Boolean((latest as any).encryptedTokens);
-    if (hasPlain && !hasEnc) {
+    if (!("refreshScope" in options) && hasPlain && !hasEnc) {
       try {
         const nextEnc = buildEncryptedTokens({
           accessToken: (latest as any).accessToken,
@@ -3573,8 +3596,20 @@ export class DatabaseStorage implements IStorage {
     return hydrateDecryptedTokens(created) as any;
   }
 
-  async updateHubspotConnection(connectionId: string, connection: Partial<InsertHubspotConnection>): Promise<HubspotConnection | undefined> {
-    const [existing] = await db.select().from(hubspotConnections).where(eq(hubspotConnections.id, connectionId));
+  async updateHubspotConnection(connectionId: string, connection: Partial<InsertHubspotConnection>, options: GA4RefreshConnectionWriteInput = {}): Promise<HubspotConnection | undefined> {
+    const guarded = "refreshScope" in options;
+    const write = async (db: any) => {
+    const existingQuery = db.select().from(hubspotConnections).where(eq(hubspotConnections.id, connectionId));
+    const [existing] = await (guarded ? existingQuery.for("update") : existingQuery);
+    if (guarded) {
+      const expected = options.expectedConnection;
+      if (existing && expected && !existing.encryptedTokens && !expected.encryptedTokens && existing.method !== "service_account"
+        && ["accessToken", "refreshToken", "clientSecret"].some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
+      const fields = ["id", "campaignId", "encryptedTokens", "method", "clientId", "mappingConfig", "spreadsheetId", "sheetName", "purpose", "instanceUrl", "shopDomain", "customerId", "managerAccountId", "selectedCampaignIds", "spendOnly"];
+      if (!existing || existing.isActive === false || !expected || expected.id !== existing.id
+        || options.refreshScope?.campaignId !== existing.campaignId || expected.campaignId !== existing.campaignId
+        || fields.some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
+    }
     if (!existing) return undefined;
 
     const tokenFieldsProvided =
@@ -3588,7 +3623,7 @@ export class DatabaseStorage implements IStorage {
         accessToken: (connection as any).accessToken,
         refreshToken: (connection as any).refreshToken,
         clientSecret: (connection as any).clientSecret,
-        prev: (existing as any).encryptedTokens,
+        prev: (existing as any).encryptedTokens || (guarded ? buildEncryptedTokens({ accessToken: existing.accessToken, refreshToken: existing.refreshToken, clientSecret: existing.clientSecret }) : undefined),
       });
       setObj.accessToken = null;
       setObj.refreshToken = null;
@@ -3601,6 +3636,8 @@ export class DatabaseStorage implements IStorage {
       .where(eq(hubspotConnections.id, connectionId))
       .returning();
     return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
+    };
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : write(db);
   }
 
   async deleteHubspotConnection(connectionId: string): Promise<boolean> {
@@ -3641,7 +3678,7 @@ export class DatabaseStorage implements IStorage {
     return rows.map((r: any) => hydrateDecryptedTokens(r)) as any;
   }
 
-  async getSalesforceConnection(campaignId: string): Promise<SalesforceConnection | undefined> {
+  async getSalesforceConnection(campaignId: string, options: GA4RefreshWriteInput = {}): Promise<SalesforceConnection | undefined> {
     const [latest] = await db
       .select()
       .from(salesforceConnections)
@@ -3652,7 +3689,7 @@ export class DatabaseStorage implements IStorage {
     const hydrated = hydrateDecryptedTokens(latest) as any;
     const hasPlain = Boolean((latest as any).accessToken) || Boolean((latest as any).refreshToken) || Boolean((latest as any).clientSecret);
     const hasEnc = Boolean((latest as any).encryptedTokens);
-    if (hasPlain && !hasEnc) {
+    if (!("refreshScope" in options) && hasPlain && !hasEnc) {
       try {
         const nextEnc = buildEncryptedTokens({
           accessToken: (latest as any).accessToken,
@@ -3689,8 +3726,20 @@ export class DatabaseStorage implements IStorage {
     return hydrateDecryptedTokens(created) as any;
   }
 
-  async updateSalesforceConnection(connectionId: string, connection: Partial<InsertSalesforceConnection>): Promise<SalesforceConnection | undefined> {
-    const [existing] = await db.select().from(salesforceConnections).where(eq(salesforceConnections.id, connectionId));
+  async updateSalesforceConnection(connectionId: string, connection: Partial<InsertSalesforceConnection>, options: GA4RefreshConnectionWriteInput = {}): Promise<SalesforceConnection | undefined> {
+    const guarded = "refreshScope" in options;
+    const write = async (db: any) => {
+    const existingQuery = db.select().from(salesforceConnections).where(eq(salesforceConnections.id, connectionId));
+    const [existing] = await (guarded ? existingQuery.for("update") : existingQuery);
+    if (guarded) {
+      const expected = options.expectedConnection;
+      if (existing && expected && !existing.encryptedTokens && !expected.encryptedTokens && existing.method !== "service_account"
+        && ["accessToken", "refreshToken", "clientSecret"].some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
+      const fields = ["id", "campaignId", "encryptedTokens", "method", "clientId", "mappingConfig", "spreadsheetId", "sheetName", "purpose", "instanceUrl", "shopDomain", "customerId", "managerAccountId", "selectedCampaignIds", "spendOnly"];
+      if (!existing || existing.isActive === false || !expected || expected.id !== existing.id
+        || options.refreshScope?.campaignId !== existing.campaignId || expected.campaignId !== existing.campaignId
+        || fields.some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
+    }
     if (!existing) return undefined;
 
     const tokenFieldsProvided =
@@ -3704,7 +3753,7 @@ export class DatabaseStorage implements IStorage {
         accessToken: (connection as any).accessToken,
         refreshToken: (connection as any).refreshToken,
         clientSecret: (connection as any).clientSecret,
-        prev: (existing as any).encryptedTokens,
+        prev: (existing as any).encryptedTokens || (guarded ? buildEncryptedTokens({ accessToken: existing.accessToken, refreshToken: existing.refreshToken, clientSecret: existing.clientSecret }) : undefined),
       });
       setObj.accessToken = null;
       setObj.refreshToken = null;
@@ -3717,6 +3766,8 @@ export class DatabaseStorage implements IStorage {
       .where(eq(salesforceConnections.id, connectionId))
       .returning();
     return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
+    };
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : write(db);
   }
 
   async deleteSalesforceConnection(connectionId: string): Promise<boolean> {
@@ -3754,7 +3805,7 @@ export class DatabaseStorage implements IStorage {
     return rows.map((r: any) => hydrateDecryptedTokens(r)) as any;
   }
 
-  async getShopifyConnection(campaignId: string): Promise<ShopifyConnection | undefined> {
+  async getShopifyConnection(campaignId: string, options: GA4RefreshWriteInput = {}): Promise<ShopifyConnection | undefined> {
     assertProductionTokenEncryptionConfigured();
     const [latest] = await db
       .select()
@@ -3766,7 +3817,7 @@ export class DatabaseStorage implements IStorage {
     const hydrated = hydrateDecryptedTokens(latest) as any;
     const hasPlain = Boolean((latest as any).accessToken);
     const hasEnc = Boolean((latest as any).encryptedTokens);
-    if (hasPlain && !hasEnc) {
+    if (!("refreshScope" in options) && hasPlain && !hasEnc) {
       try {
         const nextEnc = buildEncryptedTokens({ accessToken: (latest as any).accessToken });
         await db
@@ -3777,6 +3828,7 @@ export class DatabaseStorage implements IStorage {
         // ignore
       }
     }
+    if ("refreshScope" in options) return hydrated; // Owned work must use this campaign's exact persisted connection.
     let targetConfig: any = {};
     try { targetConfig = hydrated.mappingConfig ? JSON.parse(String(hydrated.mappingConfig)) : {}; } catch { targetConfig = {}; }
     if (String(targetConfig.authType || '').toLowerCase() !== 'oauth') return hydrated;
@@ -3878,9 +3930,21 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async updateShopifyConnection(connectionId: string, connection: Partial<InsertShopifyConnection>): Promise<ShopifyConnection | undefined> {
+  async updateShopifyConnection(connectionId: string, connection: Partial<InsertShopifyConnection>, options: GA4RefreshConnectionWriteInput = {}): Promise<ShopifyConnection | undefined> {
+    const guarded = "refreshScope" in options;
+    const write = async (db: any) => {
     assertProductionTokenEncryptionConfigured();
-    const [existing] = await db.select().from(shopifyConnections).where(eq(shopifyConnections.id, connectionId));
+    const existingQuery = db.select().from(shopifyConnections).where(eq(shopifyConnections.id, connectionId));
+    const [existing] = await (guarded ? existingQuery.for("update") : existingQuery);
+    if (guarded) {
+      const expected = options.expectedConnection;
+      if (existing && expected && !existing.encryptedTokens && !expected.encryptedTokens && existing.method !== "service_account"
+        && ["accessToken", "refreshToken", "clientSecret"].some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
+      const fields = ["id", "campaignId", "encryptedTokens", "method", "clientId", "mappingConfig", "spreadsheetId", "sheetName", "purpose", "instanceUrl", "shopDomain", "customerId", "managerAccountId", "selectedCampaignIds", "spendOnly"];
+      if (!existing || existing.isActive === false || !expected || expected.id !== existing.id
+        || options.refreshScope?.campaignId !== existing.campaignId || expected.campaignId !== existing.campaignId
+        || fields.some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
+    }
     if (!existing) return undefined;
 
     const tokenProvided = Object.prototype.hasOwnProperty.call(connection, "accessToken");
@@ -3890,7 +3954,7 @@ export class DatabaseStorage implements IStorage {
       setObj.encryptedTokens = buildEncryptedTokens({
         accessToken: (connection as any).accessToken,
         refreshToken: (connection as any).refreshToken,
-        prev: (existing as any).encryptedTokens,
+        prev: (existing as any).encryptedTokens || (guarded ? buildEncryptedTokens({ accessToken: existing.accessToken, refreshToken: existing.refreshToken, clientSecret: existing.clientSecret }) : undefined),
       } as any);
       setObj.accessToken = null;
     }
@@ -3902,6 +3966,8 @@ export class DatabaseStorage implements IStorage {
       .where(eq(shopifyConnections.id, connectionId))
       .returning();
     return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
+    };
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : write(db);
   }
 
   async deleteShopifyConnection(connectionId: string): Promise<boolean> {
@@ -4478,9 +4544,21 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async updateGA4GoogleAdsSpendConnection(campaignId: string, connection: Partial<InsertGA4GoogleAdsSpendConnection>): Promise<GA4GoogleAdsSpendConnection | undefined> {
-    const [existing] = await db.select().from(ga4GoogleAdsSpendConnections)
+  async updateGA4GoogleAdsSpendConnection(campaignId: string, connection: Partial<InsertGA4GoogleAdsSpendConnection>, options: GA4RefreshConnectionWriteInput = {}): Promise<GA4GoogleAdsSpendConnection | undefined> {
+    const guarded = "refreshScope" in options;
+    const write = async (db: any) => {
+    const existingQuery = db.select().from(ga4GoogleAdsSpendConnections)
       .where(eq(ga4GoogleAdsSpendConnections.campaignId, campaignId));
+    const [existing] = await (guarded ? existingQuery.for("update") : existingQuery);
+    if (guarded) {
+      const expected = options.expectedConnection;
+      if (existing && expected && !existing.encryptedTokens && !expected.encryptedTokens && existing.method !== "service_account"
+        && ["accessToken", "refreshToken", "clientSecret"].some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
+      const fields = ["id", "campaignId", "encryptedTokens", "method", "clientId", "mappingConfig", "spreadsheetId", "sheetName", "purpose", "instanceUrl", "shopDomain", "customerId", "managerAccountId", "selectedCampaignIds", "spendOnly"];
+      if (!existing || existing.isActive === false || !expected || expected.id !== existing.id
+        || options.refreshScope?.campaignId !== existing.campaignId || expected.campaignId !== existing.campaignId
+        || fields.some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
+    }
     if (!existing) return undefined;
     const setObj: any = { ...connection };
     if (Object.prototype.hasOwnProperty.call(connection, "accessToken") ||
@@ -4490,7 +4568,7 @@ export class DatabaseStorage implements IStorage {
         accessToken: (connection as any).accessToken,
         refreshToken: (connection as any).refreshToken,
         clientSecret: (connection as any).clientSecret,
-        prev: (existing as any).encryptedTokens,
+        prev: (existing as any).encryptedTokens || (guarded ? buildEncryptedTokens({ accessToken: existing.accessToken, refreshToken: existing.refreshToken, clientSecret: existing.clientSecret }) : undefined),
       });
       setObj.accessToken = null;
       setObj.refreshToken = null;
@@ -4499,6 +4577,8 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db.update(ga4GoogleAdsSpendConnections).set(setObj)
       .where(eq(ga4GoogleAdsSpendConnections.campaignId, campaignId)).returning();
     return updated ? hydrateDecryptedTokens(updated) as any : undefined;
+    };
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : write(db);
   }
 
   async getGA4GoogleAdsSpendDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<GA4GoogleAdsSpendDailyMetric[]> {
@@ -4509,12 +4589,21 @@ export class DatabaseStorage implements IStorage {
     )).orderBy(ga4GoogleAdsSpendDailyMetrics.date);
   }
 
-  async replaceGA4GoogleAdsSpendDailyMetricsForWindow(campaignId: string, startDate: string, endDate: string, metrics: InsertGA4GoogleAdsSpendDailyMetric[]): Promise<{ replaced: number }> {
+  async replaceGA4GoogleAdsSpendDailyMetricsForWindow(campaignId: string, startDate: string, endDate: string, metrics: InsertGA4GoogleAdsSpendDailyMetric[], options: GA4RefreshGoogleAdsWriteInput = {}): Promise<{ replaced: number }> {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate) || startDate > endDate ||
         metrics.some((row) => row.campaignId !== campaignId || !/^\d{4}-\d{2}-\d{2}$/.test(row.date) || row.date < startDate || row.date > endDate)) {
       throw new Error("Google Ads Spend replacement rows are outside the campaign window");
     }
-    return await db.transaction(async (tx: any) => {
+    const guarded = "refreshScope" in options;
+    const write = async (tx: any) => {
+      if (guarded) {
+        if (options.refreshScope?.campaignId !== campaignId || !options.expectedSource || !options.expectedConnection) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+        const [source] = await tx.select().from(spendSources).where(and(eq(spendSources.id, options.expectedSource.id), eq(spendSources.campaignId, campaignId))).for("update");
+        const [connection] = await tx.select().from(ga4GoogleAdsSpendConnections).where(eq(ga4GoogleAdsSpendConnections.campaignId, campaignId)).for("update");
+        if (!source || source.isActive === false || source.sourceType !== "ad_platforms" || (source.platformContext || "ga4") !== "ga4"
+          || source.mappingConfig !== options.expectedSource.mappingConfig || !connection || connection.isActive === false || !connection.spendOnly
+          || ["id", "campaignId", "encryptedTokens", "customerId", "managerAccountId", "method", "selectedCampaignIds"].some(field => (connection[field] ?? null) !== (options.expectedConnection![field] ?? null))) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+      }
       await tx.delete(ga4GoogleAdsSpendDailyMetrics).where(and(
         eq(ga4GoogleAdsSpendDailyMetrics.campaignId, campaignId),
         gte(ga4GoogleAdsSpendDailyMetrics.date, startDate),
@@ -4525,17 +4614,18 @@ export class DatabaseStorage implements IStorage {
         date: row.date, impressions: row.impressions, clicks: row.clicks, spend: row.spend,
       })) as any);
       return { replaced: metrics.length };
-    });
+    };
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : db.transaction(write);
   }
 
   // Google Ads Connection methods
-  async getGoogleAdsConnection(campaignId: string): Promise<GoogleAdsConnection | undefined> {
+  async getGoogleAdsConnection(campaignId: string, options: GA4RefreshWriteInput = {}): Promise<GoogleAdsConnection | undefined> {
     const [connection] = await db.select().from(googleAdsConnections).where(eq(googleAdsConnections.campaignId, campaignId));
     if (!connection) return undefined;
     const hydrated = hydrateDecryptedTokens(connection) as any;
     const hasPlain = Boolean((connection as any).accessToken) || Boolean((connection as any).refreshToken) || Boolean((connection as any).clientSecret);
     const hasEnc = Boolean((connection as any).encryptedTokens);
-    if (hasPlain && !hasEnc) {
+    if (!("refreshScope" in options) && hasPlain && !hasEnc) {
       try {
         const nextEnc = buildEncryptedTokens({
           accessToken: (connection as any).accessToken,
@@ -4600,8 +4690,20 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async updateGoogleAdsConnection(campaignId: string, connection: Partial<InsertGoogleAdsConnection>): Promise<GoogleAdsConnection | undefined> {
-    const [existing] = await db.select().from(googleAdsConnections).where(eq(googleAdsConnections.campaignId, campaignId));
+  async updateGoogleAdsConnection(campaignId: string, connection: Partial<InsertGoogleAdsConnection>, options: GA4RefreshConnectionWriteInput = {}): Promise<GoogleAdsConnection | undefined> {
+    const guarded = "refreshScope" in options;
+    const write = async (db: any) => {
+    const existingQuery = db.select().from(googleAdsConnections).where(eq(googleAdsConnections.campaignId, campaignId));
+    const [existing] = await (guarded ? existingQuery.for("update") : existingQuery);
+    if (guarded) {
+      const expected = options.expectedConnection;
+      if (existing && expected && !existing.encryptedTokens && !expected.encryptedTokens && existing.method !== "service_account"
+        && ["accessToken", "refreshToken", "clientSecret"].some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
+      const fields = ["id", "campaignId", "encryptedTokens", "method", "clientId", "mappingConfig", "spreadsheetId", "sheetName", "purpose", "instanceUrl", "shopDomain", "customerId", "managerAccountId", "selectedCampaignIds", "spendOnly"];
+      if (!existing || existing.isActive === false || !expected || expected.id !== existing.id
+        || options.refreshScope?.campaignId !== existing.campaignId || expected.campaignId !== existing.campaignId
+        || fields.some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
+    }
     if (!existing) return undefined;
 
     const tokenFieldsProvided =
@@ -4615,7 +4717,7 @@ export class DatabaseStorage implements IStorage {
         accessToken: (connection as any).accessToken,
         refreshToken: (connection as any).refreshToken,
         clientSecret: (connection as any).clientSecret,
-        prev: (existing as any).encryptedTokens,
+        prev: (existing as any).encryptedTokens || (guarded ? buildEncryptedTokens({ accessToken: existing.accessToken, refreshToken: existing.refreshToken, clientSecret: existing.clientSecret }) : undefined),
       });
       setObj.accessToken = null;
       setObj.refreshToken = null;
@@ -4628,6 +4730,8 @@ export class DatabaseStorage implements IStorage {
       .where(eq(googleAdsConnections.campaignId, campaignId))
       .returning();
     return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
+    };
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : write(db);
   }
 
   async deleteGoogleAdsConnection(campaignId: string): Promise<boolean> {
@@ -4698,7 +4802,7 @@ export class DatabaseStorage implements IStorage {
     return { upserted };
   }
 
-  async replaceGoogleAdsDailyMetricsForWindow(campaignId: string, startDate: string, endDate: string, metrics: InsertGoogleAdsDailyMetric[]): Promise<{ replaced: number }> {
+  async replaceGoogleAdsDailyMetricsForWindow(campaignId: string, startDate: string, endDate: string, metrics: InsertGoogleAdsDailyMetric[], options: GA4RefreshGoogleAdsWriteInput = {}): Promise<{ replaced: number }> {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate) || startDate > endDate) {
       throw new Error("Invalid Google Ads replacement window");
     }
@@ -4707,7 +4811,16 @@ export class DatabaseStorage implements IStorage {
       !/^\d{4}-\d{2}-\d{2}$/.test(String(metric?.date || "")) ||
       String(metric.date) < startDate || String(metric.date) > endDate
     )) throw new Error("Google Ads replacement row is outside the authorized scope");
-    return await db.transaction(async (tx: any) => {
+    const guarded = "refreshScope" in options;
+    const write = async (tx: any) => {
+      if (guarded) {
+        if (options.refreshScope?.campaignId !== campaignId || !options.expectedSource || !options.expectedConnection) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+        const [source] = await tx.select().from(spendSources).where(and(eq(spendSources.id, options.expectedSource.id), eq(spendSources.campaignId, campaignId))).for("update");
+        const [connection] = await tx.select().from(googleAdsConnections).where(eq(googleAdsConnections.campaignId, campaignId)).for("update");
+        if (!source || source.isActive === false || source.sourceType !== "ad_platforms" || (source.platformContext || "ga4") !== "ga4"
+          || source.mappingConfig !== options.expectedSource.mappingConfig || !connection || connection.isActive === false || !connection.spendOnly
+          || ["id", "campaignId", "encryptedTokens", "customerId", "managerAccountId", "method", "selectedCampaignIds"].some(field => (connection[field] ?? null) !== (options.expectedConnection![field] ?? null))) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+      }
       await tx.delete(googleAdsDailyMetrics).where(and(
         eq(googleAdsDailyMetrics.campaignId, campaignId),
         gte(googleAdsDailyMetrics.date, startDate),
@@ -4717,7 +4830,8 @@ export class DatabaseStorage implements IStorage {
         await tx.insert(googleAdsDailyMetrics).values(metrics.map((metric: any) => ({ ...metric, campaignId })) as any);
       }
       return { replaced: metrics.length };
-    });
+    };
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : db.transaction(write);
   }
 
   async updateGoogleAdsDailyMetricsGA4Revenue(campaignId: string, updates: Array<{ googleCampaignId: string; date: string; ga4Revenue: string; ga4UtmName: string }>): Promise<{ updated: number }> {

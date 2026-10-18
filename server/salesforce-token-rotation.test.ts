@@ -13,13 +13,14 @@ describe('Salesforce OAuth refresh-token rotation', () => {
 
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);
-    expect(refresh).toContain('const inFlight = salesforceTokenRefreshes.get(connectionId);');
-    expect(refresh).toContain('const latest: any = await storage.getSalesforceConnection(campaignId);');
+    expect(refresh).toContain('const inFlight = salesforceTokenRefreshes.get(refreshKey);');
+    expect(refresh).toContain('const latest: any = await storage.getSalesforceConnection(campaignId,');
+    expect(refresh).toContain('...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : [])');
     expect(refresh).toContain("refresh_token: String(latest.refreshToken)");
     expect(refresh).toContain('if (json.refresh_token) updateData.refreshToken = String(json.refresh_token);');
-    expect(refresh).toContain('await storage.updateSalesforceConnection(connectionId, updateData);');
+    expect(refresh).toContain('await storage.updateSalesforceConnection(connectionId, updateData, { ...refreshWriteInput, expectedConnection: latest });');
     expect(refresh).toContain('updated.refreshToken !== String(json.refresh_token)');
-    expect(refresh).toContain('salesforceTokenRefreshes.set(connectionId, refreshPromise);');
-    expect(refresh).toContain('salesforceTokenRefreshes.delete(connectionId);');
+    expect(refresh).toContain('salesforceTokenRefreshes.set(refreshKey, refreshPromise);');
+    expect(refresh).toContain('salesforceTokenRefreshes.delete(refreshKey);');
   });
 });

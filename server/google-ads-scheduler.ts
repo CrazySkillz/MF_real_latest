@@ -3,7 +3,7 @@
  * Handles periodic data sync for Google Ads connections (mock + real)
  * Follows the meta-scheduler.ts pattern
  */
-import { storage } from "./storage";
+import { storage, type GA4RefreshWriteInput, type GA4RefreshGoogleAdsWriteInput } from "./storage";
 import { db } from "./db";
 import { googleAdsConnections, googleAdsDailyMetrics, ga4GoogleAdsSpendConnections } from "../shared/schema";
 import { eq, desc } from "drizzle-orm";
@@ -142,6 +142,7 @@ async function fetchRealGoogleAdsData(
   connection: any,
   campaign: any,
   dedicatedSpend = false,
+  refreshWriteInput: GA4RefreshGoogleAdsWriteInput = {},
 ): Promise<void> {
   const { GoogleAdsClient, mapGoogleAdsDailyInsights } = await import('./googleAdsClient');
 
@@ -157,9 +158,12 @@ async function fetchRealGoogleAdsData(
       const refreshed = await GoogleAdsClient.refreshAccessToken(refreshToken, clientId, clientSecret);
       accessToken = refreshed.access_token;
       const expiresAt = new Date(Date.now() + refreshed.expires_in * 1000);
-      if (dedicatedSpend) await storage.updateGA4GoogleAdsSpendConnection(campaignId, { accessToken, expiresAt } as any);
-      else await storage.updateGoogleAdsConnection(campaignId, { accessToken, expiresAt } as any);
+      const renewed = dedicatedSpend
+        ? await storage.updateGA4GoogleAdsSpendConnection(campaignId, { accessToken, expiresAt } as any, ...("refreshScope" in refreshWriteInput ? [{ ...refreshWriteInput, expectedConnection: connection }] : []))
+        : await storage.updateGoogleAdsConnection(campaignId, { accessToken, expiresAt } as any, ...("refreshScope" in refreshWriteInput ? [{ ...refreshWriteInput, expectedConnection: connection }] : []));
+      if (refreshWriteInput.refreshScope && renewed) Object.assign(connection, renewed);
     } catch (e: any) {
+      if (refreshWriteInput.refreshScope) throw e;
       console.warn(`[Google Ads] Token refresh failed for campaign ${campaignId}:`, e.message);
     }
   }
@@ -188,6 +192,7 @@ async function fetchRealGoogleAdsData(
       const mapping = typeof source.mappingConfig === "string" ? JSON.parse(source.mappingConfig) : source.mappingConfig || {};
       return String(mapping.platform || "").trim().toLowerCase() === "google_ads" || String(source.displayName || "").trim() === "Google Ads";
     });
+    if (refreshWriteInput.refreshScope && (sources.length !== 1 || sources[0].id !== refreshWriteInput.expectedSource?.id || sources[0].mappingConfig !== refreshWriteInput.expectedSource?.mappingConfig)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
     if (sources.length > 1) throw new Error(`Multiple active GA4 Google Ads spend sources require review for campaign ${campaignId}`);
     const mapping = sources.length ? (typeof sources[0].mappingConfig === "string" ? JSON.parse(sources[0].mappingConfig) : sources[0].mappingConfig || {}) : null;
     if (mapping && String(mapping.platform || "").trim().toLowerCase() !== "google_ads") throw new Error(`GA4 Google Ads source mapping is unavailable for campaign ${campaignId}`);
@@ -207,14 +212,15 @@ async function fetchRealGoogleAdsData(
 
   const metricsToUpsert = mapGoogleAdsDailyInsights(campaignId, insights);
 
+  const writeOptions = { ...refreshWriteInput, expectedConnection: connection };
   const { replaced } = dedicatedSpend
-    ? await storage.replaceGA4GoogleAdsSpendDailyMetricsForWindow(campaignId, startDateIso, endDateIso, metricsToUpsert as any)
-    : await storage.replaceGoogleAdsDailyMetricsForWindow(campaignId, startDateIso, endDateIso, metricsToUpsert as any);
+    ? await storage.replaceGA4GoogleAdsSpendDailyMetricsForWindow(campaignId, startDateIso, endDateIso, metricsToUpsert as any, ...("refreshScope" in refreshWriteInput ? [writeOptions] : []))
+    : await storage.replaceGoogleAdsDailyMetricsForWindow(campaignId, startDateIso, endDateIso, metricsToUpsert as any, ...("refreshScope" in refreshWriteInput ? [writeOptions] : []));
   console.log(`[Google Ads] Replaced ${replaced} daily metrics for campaign ${campaignId}`);
 
   // Update lastRefreshAt
-  if (dedicatedSpend) await storage.updateGA4GoogleAdsSpendConnection(campaignId, { lastRefreshAt: new Date() } as any);
-  else await storage.updateGoogleAdsConnection(campaignId, { lastRefreshAt: new Date() } as any);
+  if (dedicatedSpend) await storage.updateGA4GoogleAdsSpendConnection(campaignId, { lastRefreshAt: new Date() } as any, ...("refreshScope" in refreshWriteInput ? [writeOptions] : []));
+  else await storage.updateGoogleAdsConnection(campaignId, { lastRefreshAt: new Date() } as any, ...("refreshScope" in refreshWriteInput ? [writeOptions] : []));
 }
 
 const parseSelectedGoogleAdsCampaignIds = (value: unknown): string[] => {
@@ -232,9 +238,10 @@ export async function materializeGA4GoogleAdsSpendForCampaign(
   connection?: any,
   dedicatedSpend = false,
   deferDownstream = false,
+  refreshWriteInput: GA4RefreshGoogleAdsWriteInput = {},
 ): Promise<{ updated: boolean; sourceId: string | null; records: number; totalSpend: number | null }> {
   campaign = campaign || await storage.getCampaign(campaignId).catch(() => null);
-  connection = connection || await (dedicatedSpend ? storage.getGA4GoogleAdsSpendConnection(campaignId) : storage.getGoogleAdsConnection(campaignId)).catch(() => null);
+  connection = connection || await (dedicatedSpend ? storage.getGA4GoogleAdsSpendConnection(campaignId) : storage.getGoogleAdsConnection(campaignId, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : []))).catch(() => null);
   if (!campaign || !connection || !connection.spendOnly || !isSupportedGoogleAdsSpendConnectionMethod(connection.method)) {
     throw new Error(`GA4 Google Ads spend scope is unavailable for campaign ${campaignId}`);
   }
@@ -251,6 +258,8 @@ export async function materializeGA4GoogleAdsSpendForCampaign(
   if (googleAdsSources.length === 0) return { updated: false, sourceId: null, records: 0, totalSpend: null };
   if (googleAdsSources.length !== 1) throw new Error(`Multiple active GA4 Google Ads spend sources require review for campaign ${campaignId}`);
   const source = googleAdsSources[0];
+  if (refreshWriteInput.refreshScope && (!deferDownstream || source.id !== refreshWriteInput.expectedSource?.id || source.mappingConfig !== refreshWriteInput.expectedSource?.mappingConfig)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+  if (refreshWriteInput.refreshScope && ["id", "campaignId", "encryptedTokens", "customerId", "managerAccountId", "method"].some(field => (connection[field] ?? null) !== (refreshWriteInput.expectedConnection?.[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
   const mapping = typeof source.mappingConfig === "string" ? JSON.parse(source.mappingConfig) : source.mappingConfig || {};
   const sourceIds = parseSelectedGoogleAdsCampaignIds(mapping.selectedCampaignIds);
   if (sourceIds.length === 0) throw new Error(`GA4 Google Ads selected campaign scope is unavailable for campaign ${campaignId}`);
@@ -279,9 +288,10 @@ export async function materializeGA4GoogleAdsSpendForCampaign(
     fetchedAt: refreshedAt.toISOString(),
     requireEverySelectedCampaign: false,
   });
-  await storage.replaceSpendRecordsForSource(campaignId, String(source.id), "ad_platforms", "ga4", materialized.records as any);
+  if (refreshWriteInput.refreshScope) await storage.replaceSpendRecordsForSource(campaignId, String(source.id), "ad_platforms", "ga4", materialized.records as any, refreshWriteInput.expectedSource?.mappingConfig, refreshWriteInput);
+  else await storage.replaceSpendRecordsForSource(campaignId, String(source.id), "ad_platforms", "ga4", materialized.records as any);
   const totals = await storage.getSpendTotalForRange(campaignId, "1900-01-01", endDate, "ga4");
-  await storage.updateCampaign(campaignId, { spend: totals.totalSpend.toFixed(2) } as any);
+  await storage.updateCampaign(campaignId, { spend: totals.totalSpend.toFixed(2) } as any, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : []));
   if (!deferDownstream) {
     await storage.invalidateExecutiveSummaryDailySnapshotAlignment(campaignId, endDate);
     const recompute = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, useSavedOverview: true });
@@ -337,15 +347,27 @@ export async function enrichGoogleAdsWithGA4Revenue(
 export async function refreshGoogleAdsForCampaign(
   campaignId: string,
   connection?: any,
-  opts?: { advanceTestDay?: boolean; ga4SpendConnection?: boolean; deferDownstream?: boolean }
+  opts?: GA4RefreshWriteInput & { advanceTestDay?: boolean; ga4SpendConnection?: boolean; deferDownstream?: boolean }
 ): Promise<{ providerRefreshed: boolean; spendMaterialization: { updated: boolean; sourceId: string | null; records: number; totalSpend: number | null } | null }> {
+  const guarded = !!opts && "refreshScope" in opts;
+  const refreshWriteInput: GA4RefreshGoogleAdsWriteInput = guarded ? { refreshScope: opts!.refreshScope } : {};
+  if (guarded) {
+    if (opts?.refreshScope?.campaignId !== campaignId || !opts?.deferDownstream || opts?.advanceTestDay) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    await storage.writeWithGA4RefreshOwnership(opts.refreshScope, async () => {});
+    const sources = (await storage.getSpendSources(campaignId, "ga4")).filter(source => source.isActive !== false && source.sourceType === "ad_platforms"
+      && JSON.parse(source.mappingConfig || "{}").platform === "google_ads");
+    if (sources.length !== 1) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    refreshWriteInput.expectedSource = { id: sources[0].id, mappingConfig: sources[0].mappingConfig };
+  }
   if (!connection) {
     connection = opts?.ga4SpendConnection
       ? await storage.getGA4GoogleAdsSpendConnection(campaignId)
-      : await storage.getGoogleAdsConnection(campaignId);
+      : await storage.getGoogleAdsConnection(campaignId, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : []));
   }
   if (!connection) throw new Error(`Google Ads connection is unavailable for campaign ${campaignId}`);
+  if (guarded) refreshWriteInput.expectedConnection = connection;
   const isSpendOnly = !!(connection as any).spendOnly;
+  if (guarded && (!isSpendOnly || connection.method === "test_mode")) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
   const isTestMode = String((connection as any).method || "") === "test_mode";
   if (isSpendOnly && isTestMode) return { providerRefreshed: false, spendMaterialization: null };
   const campaign = await storage.getCampaign(campaignId).catch(() => null);
@@ -357,12 +379,12 @@ export async function refreshGoogleAdsForCampaign(
     await generateMockGoogleAdsData(campaignId, connection, { advanceDay: opts?.advanceTestDay });
     return { providerRefreshed: true, spendMaterialization: null };
   } else {
-    await fetchRealGoogleAdsData(campaignId, connection, campaign, !!opts?.ga4SpendConnection);
+    await fetchRealGoogleAdsData(campaignId, connection, campaign, !!opts?.ga4SpendConnection, refreshWriteInput);
     if (isSpendOnly) {
       const refreshedConnection = opts?.ga4SpendConnection
         ? await storage.getGA4GoogleAdsSpendConnection(campaignId)
-        : await storage.getGoogleAdsConnection(campaignId);
-      const spendMaterialization = await materializeGA4GoogleAdsSpendForCampaign(campaignId, campaign, refreshedConnection, !!opts?.ga4SpendConnection, !!opts?.deferDownstream);
+        : await storage.getGoogleAdsConnection(campaignId, ...("refreshScope" in refreshWriteInput ? [refreshWriteInput] : []));
+      const spendMaterialization = await materializeGA4GoogleAdsSpendForCampaign(campaignId, campaign, refreshedConnection, !!opts?.ga4SpendConnection, !!opts?.deferDownstream, refreshWriteInput);
       return { providerRefreshed: true, spendMaterialization };
     }
     return { providerRefreshed: true, spendMaterialization: null };

@@ -176,17 +176,17 @@ describe("GA4 external value auto-refresh regression guard", () => {
     const content = schedulerFile();
 
     expect(content).toContain("function isStaleRevenueSourceReprocess");
-    expect(content).toContain("async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean>");
-    expect(content).toContain("async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean>");
-    expect(content).toContain("async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean>");
+    expect(content).toContain("async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord, sourceId?: string, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<boolean>");
+    expect(content).toContain("async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord, sourceId?: string, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<boolean>");
+    expect(content).toContain("async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, sourceId?: string, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<boolean>");
     expect(content).toContain("...(sourceId ? { sourceId } : {}),");
     expect(content).toContain('String(s.sourceType || "").toLowerCase() === "hubspot"');
     expect(content).toContain('String(s.sourceType || "").toLowerCase() === "salesforce"');
     expect(content).toContain('String(s.sourceType || "").toLowerCase() === "shopify"');
-    expect(content).toContain("reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id))");
-    expect(content).toContain("reprocessSalesforceWithDetails(campaignId, sfCfg, String(salesforceSource.id))");
+    expect(content).toContain("reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id), refreshWriteInput)");
+    expect(content).toContain("reprocessSalesforceWithDetails(campaignId, sfCfg, String(salesforceSource.id), refreshWriteInput)");
     expect(content).toContain("hasCompletedDaySalesforceEvidence(salesforceSource, campaign, startedAtDate)");
-    expect(content).toContain("reprocessShopify(campaignId, shopCfg, String(shopifySource.id))");
+    expect(content).toContain("reprocessShopify(campaignId, shopCfg, String(shopifySource.id), refreshWriteInput)");
     expect(content).toContain("Skipping stale Salesforce revenue source");
   });
 
@@ -291,6 +291,7 @@ describe("GA4 external value auto-refresh regression guard", () => {
       expect.objectContaining({ campaignId: "campaign-1", sourceType: "google_sheets", platformContext: "ga4", currency: "USD" }),
       [expect.objectContaining({ campaignId: "campaign-1", revenue: "25.00", currency: "USD" })],
       expect.any(String),
+      {},
     );
   });
 
@@ -338,13 +339,13 @@ describe("GA4 external value auto-refresh regression guard", () => {
   it("refreshes Google Sheets revenue and spend sources, but does not auto-refresh CSV snapshots", () => {
     const content = schedulerFile();
 
-    expect(content).toContain("async function reprocessGoogleSheetsSpendWithDetails(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<ReprocessResult>");
-    expect(content).toContain("async function reprocessGoogleSheetsSpend(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<boolean>");
-    expect(content).toContain("async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<boolean>");
+    expect(content).toContain("async function reprocessGoogleSheetsSpendWithDetails(campaignId: string, source: any, mappingConfig: AnyRecord, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<ReprocessResult>");
+    expect(content).toContain("async function reprocessGoogleSheetsSpend(campaignId: string, source: any, mappingConfig: AnyRecord, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<boolean>");
+    expect(content).toContain("async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, mappingConfig: AnyRecord, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<boolean>");
     expect(content).toContain('String((s as any).sourceType || "") === "google_sheets"');
-    expect(content).toContain("reprocessGoogleSheetsSpend(campaignId, sheetSpend, spendCfg)");
+    expect(content).toContain("reprocessGoogleSheetsSpend(campaignId, sheetSpend, spendCfg, refreshWriteInput)");
     expect(content).toContain('mapping: { ...(mappingConfig || {}), sourceId: String(source?.id || "") },');
-    expect(content).toContain("reprocessGoogleSheetsRevenue(campaignId, sheetRevenue, revCfg)");
+    expect(content).toContain("reprocessGoogleSheetsRevenue(campaignId, sheetRevenue, revCfg, refreshWriteInput)");
     expect(content).toContain("await storage.replaceRevenueSourceWithRecords(");
     expect(content).toContain("await storage.replaceSpendRecordsForSource(");
     expect(content).not.toContain("await storage.deleteRevenueRecordsBySource(sourceId);");
@@ -392,7 +393,8 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(previewEnd).toBeGreaterThan(previewStart);
     expect(processStart).toBeGreaterThan(-1);
     expect(processEnd).toBeGreaterThan(processStart);
-    for (const route of [previewRoute, processRoute]) {
+    for (const rawRoute of [previewRoute, processRoute]) {
+      const route = rawRoute.replace(/getGoogleSheetsConnections\(campaignId, "spend", refreshWriteInput\)/g, 'getGoogleSheetsConnections(campaignId, "spend")').replace(/getGoogleSheetsConnections\(campaignId, undefined, refreshWriteInput\)/g, "getGoogleSheetsConnections(campaignId)");
       expect(route).toContain('let connections = await storage.getGoogleSheetsConnections(campaignId, "spend");');
       expect(route).toContain("connections = await storage.getGoogleSheetsConnections(campaignId);");
       expect(route.indexOf("connections = await storage.getGoogleSheetsConnections(campaignId);")).toBeLessThan(route.indexOf('if (!conn) return res.status(404).json({ success: false, error: "Google Sheets connection not found" });'));
@@ -401,7 +403,9 @@ describe("GA4 external value auto-refresh regression guard", () => {
       expect(route).toContain("for (const fallback of fallbackCandidates)");
       expect(route).toContain("let fallbackAccessToken = fallback.accessToken;");
       expect(route).toContain("if ((!fallbackResp || (!fallbackResp.ok && fallbackResp.status === 401)) && fallback.refreshToken)");
-      expect(route).toContain("fallbackAccessToken = await refreshGoogleSheetsToken(fallback);");
+      expect(route).toContain(route.includes("getInternalGA4RefreshWriteInput(req)")
+        ? "fallbackAccessToken = await refreshGoogleSheetsToken(fallback, refreshWriteInput);"
+        : "fallbackAccessToken = await refreshGoogleSheetsToken(fallback);");
       expect(route).toContain('{ headers: { "Authorization": `Bearer ${fallbackAccessToken}` } }');
       expect(route).toContain("accessToken: fallbackAccessToken,");
       expect(route).toContain("break;");

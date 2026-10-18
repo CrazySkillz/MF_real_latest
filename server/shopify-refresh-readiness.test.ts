@@ -150,7 +150,7 @@ describe("Shopify refresh lifecycle wiring", () => {
     const scheduler = read("auto-refresh-scheduler.ts");
     expect(scheduler).toContain("const refreshRunId = randomUUID();");
     expect(scheduler).toContain("refreshRunId } : {}");
-    expect(scheduler).toContain("if (shopCfg) shopCfg.refreshRunId = refreshRunId;");
+    expect(scheduler).toContain("if (shopCfg) { shopCfg.refreshRunId = refreshRunId;");
     expect(scheduler).toContain("setTimeout(() => {");
     expect(scheduler).toContain('runDailyAutoRefreshOnce("scheduled")');
   });

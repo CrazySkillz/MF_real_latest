@@ -8,6 +8,17 @@ import { PgDialect } from "drizzle-orm/pg-core";
 import * as schema from "../shared/schema";
 import ts from "typescript";
 import { normalizeFinancialSourceDateKey } from "./utils/csv";
+import { getInternalAutoRefreshToken, getInternalGA4RefreshWriteInput, isInternalAutoRefreshRequest } from "./internal-request-auth";
+import { z } from "zod";
+import * as sfQuery from "./utils/salesforce-query";
+import * as sfCurrency from "./utils/salesforceCurrency";
+import * as hubCurrency from "./utils/hubspot-currency";
+import * as hubPagination from "./utils/hubspot-pagination";
+import * as shopRevenue from "./utils/shopify-revenue";
+import * as shopRefresh from "./utils/shopify-refresh-state";
+import { normalizeStrictUtcDateKey } from "./utils/data-transformation";
+import { normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { createHash } from "node:crypto";
 
 const database = vi.hoisted(() => ({ current: null as any }));
 vi.mock("./db", () => ({ get db() { return database.current; }, pool: null }));
@@ -23,7 +34,8 @@ if (testUrl) {
 }
 const schemaName = `ga4_source_it_${randomUUID().replace(/-/g, "")}`;
 const financialTables = [schema.spendSources, schema.spendRecords, schema.revenueSources, schema.revenueRecords,
-  schema.salesforceConnections, schema.hubspotConnections, schema.shopifyConnections];
+  schema.salesforceConnections, schema.hubspotConnections, schema.shopifyConnections, schema.googleSheetsConnections,
+  schema.googleAdsConnections, schema.ga4GoogleAdsSpendConnections, schema.googleAdsDailyMetrics, schema.ga4GoogleAdsSpendDailyMetrics];
 const tables = [schema.campaigns, schema.ga4Connections, ...financialTables];
 const kinds = ["spend", "spend records", "revenue", "salesforce", "hubspot", "shopify", "shopify state"] as const;
 type Kind = typeof kinds[number];
@@ -65,7 +77,7 @@ async function write(kind: Kind, options: any = {}, overrides: any = {}) {
 }
 
 // Execute the actual route body with real storage; only provider/auth harness and downstream jobs are controlled.
-function sheetsRoute(beforeResponse?: () => Promise<void>) {
+function sheetsRoute(beforeResponse?: () => Promise<void>, scope?: any) {
   const source = readFileSync(new URL("./routes-oauth.ts", import.meta.url), "utf8");
   const start = source.indexOf('app.post("/api/campaigns/:id/spend/sheets/process"');
   const end = source.indexOf("// Salesforce PKCE support", start);
@@ -75,17 +87,62 @@ function sheetsRoute(beforeResponse?: () => Promise<void>) {
   scopedStorage.getGoogleSheetsConnections = vi.fn().mockResolvedValue([{ id: "sheet-a", spreadsheetId: "sheet", accessToken: "fake-provider-token" }]);
   const fetch = vi.fn(async () => { await beforeResponse?.(); return { ok: true, json: async () => ({ values: [["Date", "Spend", "Campaign"], [date, "20", "old"], [date, "99", "new"]] }) }; });
   const recalc = vi.fn(), recompute = vi.fn(); let handler: any;
-  const names = ["app", "requireCampaignAccessParamId", "storage", "fetch", "isSupportedScopedSpendPlatformContext", "refreshGoogleSheetsToken", "toA1Prefix", "parseNum", "normalizeFinancialSourceDateKey", "getReportingDateWindow", "recalcCampaignSpend", "recomputeGA4SpendBeforeResponse"];
+  const names = ["app", "requireCampaignAccessParamId", "storage", "fetch", "isSupportedScopedSpendPlatformContext", "refreshGoogleSheetsToken", "toA1Prefix", "parseNum", "normalizeFinancialSourceDateKey", "getReportingDateWindow", "recalcCampaignSpend", "recomputeGA4SpendBeforeResponse", "getInternalGA4RefreshWriteInput"];
   new Function(...names, ts.transpileModule(source.slice(helperStart, helperEnd) + source.slice(start, end), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(
     { post: (_path: string, _auth: any, fn: any) => { handler = fn; } }, () => {}, scopedStorage, fetch,
     (context: string) => ["ga4", "linkedin"].includes(context), vi.fn(), (value: string) => value, Number,
-    normalizeFinancialSourceDateKey, () => ({ endDate: date }), recalc, recompute);
+    normalizeFinancialSourceDateKey, () => ({ endDate: date }), recalc, recompute, getInternalGA4RefreshWriteInput);
   const body: any = { connectionId: "sheet-a", platformContext: "ga4", mapping: { sourceId: "spend-a", spendColumn: "Spend", dateColumn: "Date", campaignColumn: "Campaign", campaignValues: ["old"], currency: "EUR", platformContext: "ga4" } };
   const invoke = async () => {
     const res: any = { statusCode: 200, status(code: number) { this.statusCode = code; return this; }, json(payload: any) { this.body = payload; return this; } };
-    await handler({ params: { id: "a" }, body }, res); return res;
+    await handler({ params: { id: "a" }, body, ...internalRequest(scope) }, res); return res;
   };
   return { invoke, body, fetch, recalc, recompute };
+}
+
+function internalRequest(scope?: any) {
+  return { socket: { remoteAddress: "127.0.0.1" }, headers: { "x-internal-auto-refresh-token": getInternalAutoRefreshToken(),
+    ...(scope ? { "x-internal-ga4-refresh-scope": JSON.stringify(scope) } : {}) } };
+}
+
+// Actual save routes and real materialization/ownership transactions; provider reads and auth are fixtures.
+function revenueRoute(provider: "salesforce" | "hubspot" | "shopify", scope?: any, beforeResponse?: () => Promise<void>) {
+  const source = readFileSync(new URL("./routes-oauth.ts", import.meta.url), "utf8");
+  const start = source.indexOf(`app.post("/api/campaigns/:id/${provider}/save-mappings"`);
+  const end = provider === "salesforce" ? source.indexOf('app.get("/api/salesforce/:campaignId/pipeline-proxy"', start)
+    : provider === "hubspot" ? source.indexOf("async function refreshGoogleSheetsToken(", start) : source.indexOf("const server = createServer(app)", start);
+  const recompute = vi.fn(); let handler: any;
+  const providerRead = vi.fn(async () => { await beforeResponse?.(); });
+  const dependencies: any = {
+    app: { post: (_path: string, _rate: any, _auth: any, fn: any) => { handler = fn; } }, storage, z,
+    importRateLimiter: () => {}, requireCampaignAccessParamId: () => {}, ensureCampaignAccess: async () => true,
+    sendBadRequest: (res: any, error: any) => res.status(400).json({ error }), getInternalGA4RefreshWriteInput, isInternalAutoRefreshRequest,
+    zSelectedValues: z.array(z.string()), zValueSource: z.enum(["revenue", "conversion_value"]), zNumberLike: z.coerce.number(),
+    zSalesforceRevenuePlatformContext: z.enum(["ga4", "linkedin"]), zHubSpotRevenuePlatformContext: z.enum(["ga4", "linkedin"]), zShopifyRevenuePlatformContext: z.enum(["ga4", "linkedin"]),
+    ...sfQuery, ...sfCurrency, ...hubCurrency, ...hubPagination, ...shopRevenue, ...shopRefresh,
+    normalizeStrictUtcDateKey, normalizeReportingTimeZone, randomUUID, createHash,
+    yesterdayUTC: () => date, googleAdsCampaignIdFromValueOrMapping: () => null, recomputeCampaignDerivedValues: recompute,
+    getSalesforceAccessTokenForCampaign: async () => ({ accessToken: "fake", instanceUrl: "https://example.invalid", fetchImpl: vi.fn() }),
+    fetchCompleteSalesforceQuery: async () => { await providerRead(); return [{ Id: "op-1", Campaign: "old", Amount: "20", CurrencyIsoCode: "EUR", CloseDate: date }]; },
+    getHubspotAccessTokenForCampaign: async () => ({ accessToken: "fake" }),
+    fetch: async () => ({ ok: true, json: async () => ({ results: [{ stages: [{ id: "closedwon", label: "Closed Won", metadata: { isClosed: "true", probability: "1.0" } }] }] }) }),
+    deriveDefaultClosedWonStageIds: () => ["closedwon"], MAX_HUBSPOT_RESULTS: 10000,
+    hubspotSearchDeals: async () => { await providerRead(); return { results: [{ id: "deal-1", properties: { Campaign: "old", amount: "20", hs_currency: "EUR", closedate: date } }] }; },
+    assertProductionTokenEncryptionConfigured: () => {}, getShopifyConnectionForCampaign: () => storage.getShopifyConnection("a"),
+    getShopifyApiVersion: () => "2026-07", getShopifyConnectionOrderAccess: () => ({ isOauth: false }),
+    getShopifyCampaignOrderWindow: () => ({ limited: false }), getShopifyCampaignWindowStartAt: () => new Date("2026-09-04T00:00:00Z"),
+    isShopifyPartnerDevelopmentStore: async () => false,
+    shopifyFetchAllOrders: async () => { await providerRead(); return { orders: [{ id: "order-1", tags: "old", test: false, cancelled_at: null, financial_status: "paid", current_total_price: "20.00", currency: "EUR", created_at: `${date}T10:00:00Z` }] }; },
+    getShopifyOrderTags: (order: any) => String(order.tags).split(",").map(value => value.trim()), devLog: () => {},
+    SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE: "SHOPIFY_CAMPAIGN_WINDOW_EXCEEDED", SALESFORCE_PAGINATION_ERROR_CODE: "PAGINATION", SALESFORCE_RESULT_LIMIT_ERROR_CODE: "LIMIT",
+  };
+  new Function(...Object.keys(dependencies), ts.transpileModule(source.slice(start, end), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(dependencies));
+  const body: any = { sourceId: `${provider}-a`, platformContext: "ga4", selectedValues: ["old"], days: 90,
+    expectedSourceMappingConfig: initialMapping, campaignField: provider === "shopify" ? "tags" : "Campaign", campaignProperty: "Campaign", revenueField: "Amount", revenueProperty: "amount" };
+  return { body, providerRead, recompute, invoke: async () => {
+    const res: any = { statusCode: 200, status(code: number) { this.statusCode = code; return this; }, json(payload: any) { this.body = payload; return this; } };
+    await handler({ params: { id: "a" }, body, ...internalRequest(scope) }, res); return res;
+  } };
 }
 
 describe.skipIf(!testUrl)("financial source saves with real PostgreSQL refresh ownership", () => {
@@ -127,6 +184,10 @@ describe.skipIf(!testUrl)("financial source saves with real PostgreSQL refresh o
       for (const kind of ["salesforce", "hubspot", "shopify"] as const) {
         await database.current.insert(schema[`${kind}Connections`]).values({ id: `${kind}-${id}`, campaignId: id,
           ...(kind === "shopify" ? { shopDomain: `${id}.myshopify.com` } : {}), mappingConfig: initialMapping });
+      }
+      await database.current.insert(schema.googleSheetsConnections).values({ id: `sheet-${id}`, campaignId: id, spreadsheetId: "sheet", method: "oauth", isActive: true });
+      for (const table of [schema.googleAdsConnections, schema.ga4GoogleAdsSpendConnections]) {
+        await database.current.insert(table).values({ id: `ads-${id}`, campaignId: id, customerId: `customer-${id}`, method: "oauth", spendOnly: true });
       }
     }
   });
@@ -258,7 +319,7 @@ describe.skipIf(!testUrl)("financial source saves with real PostgreSQL refresh o
     if (mode === "new") delete fixture.body.mapping.sourceId;
     if (mode === "legacy") await pool.query("UPDATE spend_sources SET platform_context=NULL WHERE id='spend-a'");
     const before = await saved(); const res = await fixture.invoke(); expect(res.statusCode).toBe(200); expect(res.body.success).toBe(true);
-    expect(res.body.spendToDate).toBe(20); expect(fixture.recalc).toHaveBeenCalledWith("a"); expect(fixture.recompute).toHaveBeenCalledWith("a");
+    expect(res.body.spendToDate).toBe(20); expect(fixture.recalc).toHaveBeenCalledWith("a", {}); expect(fixture.recompute).toHaveBeenCalledWith("a");
     const after = await saved(); expect(after.spend_sources.length).toBe(before.spend_sources.length + (mode === "new" ? 1 : 0));
     expect(after.spend_records.filter(row => row.spend_source_id === res.body.sourceId).map(row => row.spend)).toEqual(["20.00"]);
     expect(after.spend_records.filter(row => row.campaign_id === "b")).toEqual(before.spend_records.filter(row => row.campaign_id === "b"));
@@ -281,6 +342,90 @@ describe.skipIf(!testUrl)("financial source saves with real PostgreSQL refresh o
     const mapping = { connectionId: "sheet-a", spendColumn: "Spend", campaignValues: ["old"] };
     const savedMapping = JSON.stringify(mapping);
     expect((await fn("a", { id: "spend-a", campaignId: "a", platformContext: null, mappingConfig: savedMapping }, mapping)).success).toBe(true);
-    expect(post).toHaveBeenCalledWith("/api/campaigns/a/spend/sheets/process", { connectionId: "sheet-a", platformContext: "ga4", expectedSourceMappingConfig: savedMapping, mapping: { ...mapping, sourceId: "spend-a" } });
+    expect(post).toHaveBeenCalledWith("/api/campaigns/a/spend/sheets/process", { connectionId: "sheet-a", platformContext: "ga4", expectedSourceMappingConfig: savedMapping, mapping: { ...mapping, sourceId: "spend-a" } }, {});
+  });
+
+  it.each(["salesforce", "hubspot", "shopify"] as const)("runs the actual %s owned route and defers follow-up calculations", async provider => {
+    const scope = await claim(); const fixture = revenueRoute(provider, scope);
+    const result = await fixture.invoke(); expect(result.body, result.body.error).toMatchObject({ success: true, totalRevenue: 20 });
+    expect(fixture.recompute).not.toHaveBeenCalled(); expect(fixture.providerRead).toHaveBeenCalled();
+    expect((await saved()).revenue_records.filter(row => row.revenue_source_id === `${provider}-a`).map(row => row.revenue)).toEqual(["20.00"]);
+  });
+  it.each(["salesforce", "hubspot", "shopify"] as const)("keeps ordinary %s saves and downstream recompute", async provider => {
+    const fixture = revenueRoute(provider); const result = await fixture.invoke();
+    expect(result.body, result.body.error).toMatchObject({ success: true, totalRevenue: 20 }); expect(fixture.recompute).toHaveBeenCalledWith("a", { platformContext: "ga4" });
+  });
+  it.each(["salesforce", "hubspot", "shopify"] as const)("rejects %s replies and failure audit writes after lease expiry", async provider => {
+    const scope = await claim(); let afterExpiry: any;
+    const fixture = revenueRoute(provider, scope, async () => { await expire(scope); afterExpiry = await saved(); });
+    const result = await fixture.invoke(); expect(result.statusCode).toBeGreaterThanOrEqual(400);
+    expect(fixture.providerRead).toHaveBeenCalled(); expect(await saved()).toEqual(afterExpiry); expect(fixture.recompute).not.toHaveBeenCalled();
+  });
+  it.each(["salesforce", "hubspot", "shopify"] as const)("rejects delayed %s data after the source is edited", async provider => {
+    const scope = await claim(); let afterEdit: any;
+    const fixture = revenueRoute(provider, scope, async () => {
+      await pool.query("UPDATE revenue_sources SET mapping_config='{}' WHERE id=$1", [`${provider}-a`]); afterEdit = await saved();
+    });
+    expect((await fixture.invoke()).statusCode).toBeGreaterThanOrEqual(400);
+    expect(fixture.providerRead).toHaveBeenCalled(); expect(await saved()).toEqual(afterEdit); expect(fixture.recompute).not.toHaveBeenCalled();
+  });
+  it("rejects a delayed owned Sheets Spend reply and does not recalculate", async () => {
+    const scope = await claim(); const before = await saved();
+    const fixture = sheetsRoute(async () => { await expire(scope); }, scope); fixture.body.expectedSourceMappingConfig = initialMapping;
+    expect((await fixture.invoke()).statusCode).toBeGreaterThanOrEqual(400);
+    expect(await saved()).toEqual(before); expect(fixture.recalc).not.toHaveBeenCalled(); expect(fixture.recompute).not.toHaveBeenCalled();
+  });
+  it("passes ownership into the Sheets Spend cache update and defers derived calculations", async () => {
+    const scope = await claim(); const fixture = sheetsRoute(undefined, scope); fixture.body.expectedSourceMappingConfig = initialMapping;
+    expect((await fixture.invoke()).body.success).toBe(true);
+    expect(fixture.recalc).toHaveBeenCalledWith("a", { refreshScope: scope }); expect(fixture.recompute).not.toHaveBeenCalled();
+  });
+
+  const connections = [
+    ["GoogleSheets", schema.googleSheetsConnections, "sheet-a", "sheet-a"], ["Hubspot", schema.hubspotConnections, "hubspot-a", "hubspot-a"],
+    ["Salesforce", schema.salesforceConnections, "salesforce-a", "salesforce-a"], ["Shopify", schema.shopifyConnections, "shopify-a", "shopify-a"],
+    ["GoogleAds", schema.googleAdsConnections, "ads-a", "a"], ["GA4GoogleAdsSpend", schema.ga4GoogleAdsSpendConnections, "ads-a", "a"],
+  ] as const;
+  it.each(connections)("fences %s credential renewal, including expired and changed credentials", async (name, table, id, arg) => {
+    const scope = await claim(); const [expectedConnection] = (await database.current.select().from(table)).filter((row: any) => row.id === id);
+    const update = (options: any) => (storage as any)[`update${name}Connection`](arg, { accessToken: "new-fake-token" }, options);
+    await update({ refreshScope: scope, expectedConnection });
+    const after = await saved(); expect(JSON.stringify(after)).not.toContain(scope.work.leaseToken);
+    await expect(update({ refreshScope: scope, expectedConnection })).rejects.toThrow("GA4_REFRESH_CONNECTION_CHANGED"); expect(await saved()).toEqual(after);
+    const [current] = (await database.current.select().from(table)).filter((row: any) => row.id === id);
+    await expire(scope); await expect(update({ refreshScope: scope, expectedConnection: current })).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST"); expect(await saved()).toEqual(after);
+  });
+  it.each(connections)("rejects %s credential saves without exact connection evidence", async (name, _table, _id, arg) => {
+    const scope = await claim(); const before = await saved();
+    await expect((storage as any)[`update${name}Connection`](arg, { accessToken: "fake" }, { refreshScope: scope })).rejects.toThrow("GA4_REFRESH_CONNECTION_CHANGED");
+    expect(await saved()).toEqual(before);
+  });
+  it.each(connections)("keeps owned %s reads free of legacy-token backfill writes", async (name, table, id, arg) => {
+    const scope = await claim();
+    await database.current.update(table).set({ accessToken: "legacy-access", ...(name !== "Shopify" ? { refreshToken: "legacy-refresh", clientSecret: "legacy-secret" } : {}) });
+    const before = await saved();
+    const expectedConnection = name === "GoogleSheets" ? (await storage.getGoogleSheetsConnections("a", undefined, { refreshScope: scope }))[0]
+      : name === "GA4GoogleAdsSpend" ? await storage.getGA4GoogleAdsSpendConnection("a")
+      : await (storage as any)[`get${name}Connection`]("a", { refreshScope: scope });
+    expect(expectedConnection.id).toBe(id); expect(await saved()).toEqual(before);
+    const renewed = await (storage as any)[`update${name}Connection`](arg, { accessToken: "renewed-access" }, { refreshScope: scope, expectedConnection });
+    expect(renewed.accessToken).toBe("renewed-access");
+    if (name !== "Shopify") expect(renewed.refreshToken).toBe("legacy-refresh");
+  });
+  it.each([false, true])("fences Google Ads daily facts (dedicated=%s) and rejects changed mappings", async dedicated => {
+    const scope = await claim(); const table = dedicated ? schema.ga4GoogleAdsSpendConnections : schema.googleAdsConnections;
+    const [expectedConnection] = (await database.current.select().from(table)).filter((row: any) => row.campaignId === "a");
+    const options = { refreshScope: scope, expectedConnection, expectedSource: { id: "spend records-a", mappingConfig: initialMapping } };
+    const replace = dedicated ? storage.replaceGA4GoogleAdsSpendDailyMetricsForWindow.bind(storage) : storage.replaceGoogleAdsDailyMetricsForWindow.bind(storage);
+    await replace("a", date, date, [{ campaignId: "a", googleCampaignId: "selected", date, spend: "20.00" }], options);
+    await pool.query("UPDATE spend_sources SET mapping_config='{}' WHERE id='spend records-a'"); const before = await saved();
+    await expect(replace("a", date, date, [], options)).rejects.toThrow("GA4_REFRESH_TARGET_SCOPE_CHANGED"); expect(await saved()).toEqual(before);
+    await expire(scope); await expect(replace("a", date, date, [], options)).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST"); expect(await saved()).toEqual(before);
+  });
+  it("prevents expired or cross-campaign jobs from changing the campaign Spend cache", async () => {
+    const scope = await claim(); await storage.updateCampaign("a", { spend: "20.00" }, { refreshScope: scope });
+    await expect(storage.updateCampaign("b", { spend: "99.00" }, { refreshScope: scope })).rejects.toThrow("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    await expire(scope); await expect(storage.updateCampaign("a", { spend: "99.00" }, { refreshScope: scope })).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST");
+    expect((await storage.getCampaign("a"))?.spend).toBe("20.00"); expect((await storage.getCampaign("b"))?.spend).not.toBe("99.00");
   });
 });

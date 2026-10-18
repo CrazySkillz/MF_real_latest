@@ -181,7 +181,7 @@ describe("GA4 Overview Google Sheets revenue deterministic validation", () => {
     expect(fn).toContain("if (!accessToken)");
     expect(fn).toContain("await refreshAccessToken()");
     expect(fn).toContain("tokens.refresh_token ? { refreshToken: tokens.refresh_token }");
-    expect(fn).toContain('records as any, String(source.mappingConfig || "")');
+    expect(fn).toContain('records as any, source.mappingConfig ?? null, refreshWriteInput');
     expect(route.indexOf("const existingSheetsSource")).toBeLessThan(route.indexOf("https://sheets.googleapis.com"));
     expect(route).toContain('e?.code === "REVENUE_SOURCE_CHANGED" ? 409 : 500');
     expect(storage).toContain("eq(revenueSources.mappingConfig, expectedSourceMappingConfig)");

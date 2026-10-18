@@ -50,7 +50,11 @@ async function write(kind: Kind, scope?: any, id = "a") {
   const options = arguments.length > 1 ? { refreshScope: scope } : {};
   if (kind === "aggregate") return storage.createMetricSnapshot({ ...aggregate(id), ...options });
   if (kind === "executive") return storage.upsertExecutiveSummaryDailySnapshot({ ...executive(id), ...options });
-  if (kind === "mark") return storage.markExecutiveSummaryDailySnapshotAligned(id, date, new Date().toISOString(), options);
+  if (kind === "mark") {
+    // Preserve database precision: a millisecond JS timestamp can precede a claim made in the same millisecond.
+    const { rows } = await pool.query(`SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS completed_at`);
+    return storage.markExecutiveSummaryDailySnapshotAligned(id, date, rows[0].completed_at, options);
+  }
   return storage.invalidateExecutiveSummaryDailySnapshotAlignment(id, date, options);
 }
 

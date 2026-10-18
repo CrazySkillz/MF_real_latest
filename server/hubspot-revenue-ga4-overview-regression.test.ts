@@ -247,8 +247,8 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     const scheduler = schedulerFile();
     const reprocessHubSpot = sliceBetween(
       scheduler,
-      "async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean>",
-      "async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean>"
+      "async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord, sourceId?: string, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<boolean>",
+      "async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord, sourceId?: string, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<boolean>"
     );
     const hubspotLoop = sliceBetween(
       scheduler,
@@ -259,13 +259,13 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(reprocessHubSpot).toContain("dateField: mappingConfig.dateField,");
     expect(reprocessHubSpot).toContain("platformContext: mappingConfig.platformContext,");
     expect(reprocessHubSpot).toContain("...(sourceId ? { sourceId } : {}),");
-    expect(reprocessHubSpot).toContain('postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/hubspot/save-mappings`, body)');
+    expect(reprocessHubSpot).toContain('postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/hubspot/save-mappings`, body, refreshWriteInput)');
     expect(reprocessHubSpot).toContain("Skipping stale HubSpot revenue source");
 
     expect(hubspotLoop).toContain("const hubspotRevenueSources = (await storage.getRevenueSources(campaignId, ctx).catch(() => [] as any[]))");
     expect(hubspotLoop).toContain('String(s.sourceType || "").toLowerCase() === "hubspot"');
     expect(hubspotLoop).toContain("const hubCfg = hubCfgRaw ? { ...hubCfgRaw, platformContext: hubCfgRaw.platformContext || hubspotSource.platformContext || ctx, expectedSourceMappingConfig: String(hubspotSource.mappingConfig) } : null;");
-    expect(hubspotLoop).toContain("reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id))");
+    expect(hubspotLoop).toContain("reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id), refreshWriteInput)");
   });
 
   it("scopes the GA4 HubSpot Pipeline Proxy fetch to GA4 platform context", () => {
@@ -630,9 +630,9 @@ describe("HubSpot revenue GA4 Overview regression guard", () => {
     expect(routes).not.toContain('/api/campaigns/:id/revenue-sources/:sourceId/hubspot-reprocess/run-now');
     expect(routes).not.toContain('/api/campaigns/:id/revenue-sources/:sourceId/hubspot/run-now');
 
-    expect(scheduler).toContain("async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean>");
-    expect(scheduler).toContain('postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/hubspot/save-mappings`, body)');
-    expect(scheduler).toContain("reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id))");
+    expect(scheduler).toContain("async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord, sourceId?: string, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<boolean>");
+    expect(scheduler).toContain('postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/hubspot/save-mappings`, body, refreshWriteInput)');
+    expect(scheduler).toContain("reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id), refreshWriteInput)");
     expect(scheduler).toContain("export async function runHubSpotRevenueSourceRefreshForValidation");
   });
 

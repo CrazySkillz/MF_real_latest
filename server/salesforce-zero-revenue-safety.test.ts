@@ -58,7 +58,8 @@ describe("Salesforce GA4 zero-revenue safety", () => {
       "async replaceGa4SalesforceRevenueSourceWithRecords(",
       "async replaceGa4CsvRevenueSourceWithRecords(",
     );
-    expect(replacement.indexOf("if (!records.length)")).toBeLessThan(replacement.indexOf("db.transaction"));
+    expect(replacement.indexOf("this.writeGA4RefreshInputChange")).toBeGreaterThan(-1);
+    expect(replacement.indexOf("if (!records.length)")).toBeLessThan(replacement.indexOf("this.writeGA4RefreshInputChange"));
     expect(replacement).toContain("Salesforce revenue requires at least one materialized record");
   });
 

@@ -4,18 +4,17 @@ const mocks = vi.hoisted(() => {
   const original = { id: 'old-connection', campaignId: 'campaign-1', shopDomain: 'old.myshopify.com', isActive: true };
   const state = { connections: [{ ...original }] as any[], activeSources: [] as any[], failInsert: true, selectCall: 0 };
   const tx = {
-    select: vi.fn(() => {
-      state.selectCall++;
-      const rows = state.selectCall === 1
-        ? state.activeSources.map(({ id }) => ({ id }))
-        : state.connections.filter((connection) => connection.isActive).map(({ shopDomain }) => ({ shopDomain }));
-      return { from: vi.fn(() => ({ where: vi.fn(async () => rows) })) };
-    }),
+    execute: vi.fn(async () => ({ rows: [{ name: null }] })),
+    select: vi.fn(() => ({ from: vi.fn((table: any) => {
+      const name = table[Symbol.for('drizzle:Name')];
+      if (name === 'campaigns') return { where: () => ({ orderBy: () => ({ for: async () => [{ id: 'campaign-1' }] }) }) };
+      return { where: vi.fn(async () => name === 'revenue_sources' ? state.activeSources : state.connections.filter(connection => connection.isActive)) };
+    }) })),
     update: vi.fn(() => ({
       set: vi.fn((values: any) => ({
-        where: vi.fn(async () => {
+        where: vi.fn(() => {
           state.connections = state.connections.map(connection => ({ ...connection, ...values }));
-          return { rowCount: state.connections.length };
+          return { rowCount: state.connections.length, returning: async () => state.connections };
         }),
       })),
     })),

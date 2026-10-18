@@ -695,11 +695,11 @@ export class DatabaseStorage implements IStorage {
     return campaign || undefined;
     };
     if ("refreshScope" in options && options.refreshScope?.campaignId !== id) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
-    return "refreshScope" in options ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : write(db);
+    return "refreshScope" in options ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : this.writeGA4RefreshInputChange(id, write);
   }
 
   async updateCampaignWithGA4DailyInvalidation(id: string, updateData: Partial<InsertCampaign>): Promise<Campaign | undefined> {
-    return db.transaction(async (tx: any) => {
+    return this.writeGA4RefreshInputChange(id, async (tx: any) => {
       const [campaign] = await tx
         .update(campaigns)
         .set(updateData)
@@ -1004,15 +1004,21 @@ export class DatabaseStorage implements IStorage {
       displayName: connection.displayName || connection.propertyName || null,
     };
 
-    const [ga4Connection] = await db
+    const ga4Connection = await this.writeGA4RefreshInputChange(connection.campaignId, async tx => {
+    const [saved] = await tx
       .insert(ga4Connections)
       .values(connectionData)
       .returning();
+    return saved;
+    });
     return await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(ga4Connection) as any) as any;
   }
 
   async updateGA4Connection(connectionId: string, connection: Partial<InsertGA4Connection>): Promise<GA4Connection | undefined> {
-    const [existing] = await db.select().from(ga4Connections).where(eq(ga4Connections.id, connectionId));
+    const [target] = await db.select({ campaignId: ga4Connections.campaignId }).from(ga4Connections).where(eq(ga4Connections.id, connectionId));
+    if (!target) return undefined;
+    const saved = await this.writeGA4RefreshInputChange(target.campaignId, async db => {
+    const [existing] = await db.select().from(ga4Connections).where(and(eq(ga4Connections.id, connectionId), eq(ga4Connections.campaignId, target.campaignId))).for("update");
     if (!existing) return undefined;
     const nextMethod = String(connection.method ?? existing.method ?? "").trim().toLowerCase();
     if (nextMethod === GA4_SERVICE_ACCOUNT_METHOD) {
@@ -1053,7 +1059,9 @@ export class DatabaseStorage implements IStorage {
         eq(ga4OverviewSnapshots.propertyId, String((existing as any).propertyId)),
       ));
     }
-    return updated ? (await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(updated) as any) as any) : undefined;
+    return updated;
+    });
+    return saved ? await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(saved) as any) as any : undefined;
   }
 
   async updateGA4ConnectionTokens(connectionId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }, options: GA4RefreshWriteInput = {}): Promise<GA4Connection | undefined> {
@@ -1083,12 +1091,16 @@ export class DatabaseStorage implements IStorage {
       } as any)
       .where(eq(ga4Connections.id, connectionId))
       .returning();
-    return updated ? (await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(updated) as any) as any) : undefined;
+    return updated;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : write(db);
+    const [target] = guarded ? [] : await db.select({ campaignId: ga4Connections.campaignId }).from(ga4Connections).where(eq(ga4Connections.id, connectionId));
+    const saved = guarded ? await this.writeWithGA4RefreshOwnership(options.refreshScope, write)
+      : target ? await this.writeGA4RefreshInputChange(target.campaignId, write) : undefined;
+    return saved ? await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(saved) as any) as any : undefined;
   }
 
   async setPrimaryGA4Connection(campaignId: string, connectionId: string): Promise<boolean> {
+    return this.writeGA4RefreshInputChange(campaignId, async db => {
     const [targetConnection] = await db
       .select()
       .from(ga4Connections)
@@ -1117,11 +1129,14 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     return !!updated;
+    });
   }
 
   async deleteGA4Connection(connectionId: string): Promise<boolean> {
-    return db.transaction(async (tx: any) => {
-      const [connection] = await tx.select().from(ga4Connections).where(eq(ga4Connections.id, connectionId));
+    const [target] = await db.select({ campaignId: ga4Connections.campaignId }).from(ga4Connections).where(eq(ga4Connections.id, connectionId));
+    if (!target) return false;
+    return this.writeGA4RefreshInputChange(target.campaignId, async (tx: any) => {
+      const [connection] = await tx.select().from(ga4Connections).where(and(eq(ga4Connections.id, connectionId), eq(ga4Connections.campaignId, target.campaignId)));
       if (!connection) return false;
       await tx.delete(ga4OverviewSnapshots).where(and(
         eq(ga4OverviewSnapshots.campaignId, String(connection.campaignId)),
@@ -1185,6 +1200,32 @@ export class DatabaseStorage implements IStorage {
       "id", "createdAt", "ownerId", "clientId", "status", "ga4CampaignFilter", "currency", "reportingTimeZone",
     ].map(key => [key, campaign[key] ?? null])), connections };
     return { scope, scopeHash: createHash("sha256").update(JSON.stringify(scope)).digest("hex") };
+  }
+
+  // Serialize an ordinary input edit with owned publication. Invalidating the work
+  // identity also rejects edit-then-restore; comparing current field values cannot.
+  private async writeGA4RefreshInputChange<T>(campaignId: string | null | undefined | string[], write: (tx: any) => Promise<T>): Promise<T> {
+    const campaignIds = Array.from(new Set((Array.isArray(campaignId) ? campaignId : [campaignId]).filter((id): id is string => Boolean(id)))).sort();
+    return db.transaction(async (tx: any) => {
+      if (campaignIds.length) await tx.select({ id: campaigns.id }).from(campaigns).where(inArray(campaigns.id, campaignIds)).orderBy(campaigns.id).for("update");
+      const result = await write(tx);
+      if (campaignIds.length && result !== false && result !== undefined) {
+        // Ordinary saves also run on installations where durable work has not
+        // been migrated yet; no owner can exist without its work table.
+        const workTable = await tx.execute(sql`SELECT to_regclass('ga4_refresh_work') AS name`);
+        if (!workTable.rows[0]?.name) return result;
+        const invalidated = await tx.update(ga4RefreshWork).set({
+          scopeHash: sql`'invalidated:' || ${ga4RefreshWork.id}`,
+          status: sql`CASE WHEN ${ga4RefreshWork.status} = 'completed' THEN 'completed' ELSE 'pending' END`,
+          leaseToken: null, leaseExpiresAt: null, updatedAt: sql`clock_timestamp()`,
+        }).where(and(inArray(ga4RefreshWork.campaignId, campaignIds), sql`${ga4RefreshWork.scopeHash} NOT LIKE 'invalidated:%'`)).returning({ campaignId: ga4RefreshWork.campaignId });
+        if (invalidated.length) await tx.update(metricSnapshots).set({ notes: null }).where(and(
+          inArray(metricSnapshots.campaignId, invalidated.map((work: any) => work.campaignId)), eq(metricSnapshots.snapshotType, "executive_summary_daily"),
+          sql`split_part(${metricSnapshots.notes}, ':', 1) IN ('ga4_aligned_refresh_v1', 'ga4_refresh_publication_v1')`,
+        ));
+      }
+      return result;
+    });
   }
 
   async writeWithGA4RefreshOwnership<T>(scope: GA4RefreshWriteInput["refreshScope"], write: (tx: any) => Promise<T>): Promise<T> {
@@ -1601,6 +1642,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSpendSource(source: InsertSpendSource): Promise<SpendSource> {
+    const save = async (db: any) => {
     const [s] = await db
       .insert(spendSources)
       .values({
@@ -1609,27 +1651,40 @@ export class DatabaseStorage implements IStorage {
       } as any)
       .returning();
     return s;
+    };
+    return !source.platformContext || source.platformContext === 'ga4' ? this.writeGA4RefreshInputChange(source.campaignId, save) : save(db);
   }
 
   async updateSpendSource(sourceId: string, source: Partial<InsertSpendSource>): Promise<SpendSource | undefined> {
+    const [target] = await db.select().from(spendSources).where(sql`${spendSources.id}::text = ${sourceId}`);
+    if (!target) return undefined;
+    const save = async (db: any) => {
     const [s] = await db
       .update(spendSources)
       .set(source as any)
       .where(sql`${spendSources.id}::text = ${sourceId}`)
       .returning();
     return s || undefined;
+    };
+    return !target.platformContext || target.platformContext === 'ga4' ? this.writeGA4RefreshInputChange(target.campaignId, save) : save(db);
   }
 
   async deleteSpendSource(sourceId: string): Promise<boolean> {
+    const [target] = await db.select().from(spendSources).where(sql`${spendSources.id}::text = ${sourceId}`);
+    if (!target) return false;
+    const save = async (db: any) => {
     const result = await db
       .update(spendSources)
       .set({ isActive: false } as any)
       .where(sql`${spendSources.id}::text = ${sourceId}`);
     return (result.rowCount || 0) > 0;
+    };
+    return !target.platformContext || target.platformContext === 'ga4' ? this.writeGA4RefreshInputChange(target.campaignId, save) : save(db);
   }
 
   async deleteSpendSourceWithRecords(campaignId: string, sourceId: string, platformContext: SpendPlatformContext): Promise<boolean> {
-    return await db.transaction(async (tx: any) => {
+    const transaction = platformContext === 'ga4' ? this.writeGA4RefreshInputChange.bind(this, campaignId) : db.transaction.bind(db);
+    return await transaction(async (tx: any) => {
       const contextCondition = platformContext === "ga4"
         ? or(eq(spendSources.platformContext, "ga4" as any), isNull(spendSources.platformContext))
         : eq(spendSources.platformContext, platformContext as any);
@@ -1656,7 +1711,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async disconnectGa4GoogleSheetsSpend(campaignId: string): Promise<{ sourceIds: string[]; connectionIds: string[] }> {
-    return await db.transaction(async (tx: any) => {
+    return await this.writeGA4RefreshInputChange(campaignId, async (tx: any) => {
       const activeSources = await tx
         .select({ id: spendSources.id, platformContext: spendSources.platformContext, mappingConfig: spendSources.mappingConfig })
         .from(spendSources)
@@ -1746,7 +1801,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async disconnectGa4GoogleAdsSpend(campaignId: string): Promise<{ sourceIds: string[]; connectionRemoved: boolean }> {
-    return await db.transaction(async (tx: any) => {
+    return await this.writeGA4RefreshInputChange(campaignId, async (tx: any) => {
       const candidates = await tx.select({
         id: spendSources.id, displayName: spendSources.displayName, mappingConfig: spendSources.mappingConfig,
       }).from(spendSources).where(and(
@@ -1805,10 +1860,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteSpendRecordsBySource(sourceId: string): Promise<boolean> {
+    const [target] = await db.select().from(spendSources).where(sql`${spendSources.id}::text = ${sourceId}`);
+    const write = async (db: any) => {
     const result = await db
       .delete(spendRecords)
       .where(eq(spendRecords.spendSourceId, sourceId));
     return (result.rowCount || 0) >= 0;
+    };
+    return target && (!target.platformContext || target.platformContext === 'ga4')
+      ? this.writeGA4RefreshInputChange(target.campaignId, write) : write(db);
   }
 
   async countSpendRecordsBySource(sourceId: string): Promise<number> {
@@ -1823,6 +1883,10 @@ export class DatabaseStorage implements IStorage {
     if (!records.length) return [];
 
     // Use onConflictDoNothing for idempotent inserts (auto-refresh scheduler may re-run)
+    const sourceIds = Array.from(new Set(records.map(record => record.spendSourceId)));
+    const sources = await db.select().from(spendSources).where(inArray(spendSources.id, sourceIds));
+    const affected = sources.filter((source: any) => !source.platformContext || source.platformContext === 'ga4').map((source: any) => source.campaignId);
+    const write = async (db: any) => {
     const results = await db
       .insert(spendRecords)
       .values(records as any)
@@ -1830,6 +1894,8 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     return results;
+    };
+    return affected.length ? this.writeGA4RefreshInputChange(affected, write) : write(db);
   }
   async replaceSpendSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: SpendPlatformContext, source: InsertSpendSource, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>, expectedSourceMappingConfig?: string | null, options: GA4RefreshWriteInput = {}): Promise<SpendSource> {
     const guarded = "refreshScope" in options;
@@ -1858,7 +1924,7 @@ export class DatabaseStorage implements IStorage {
       if (records.length) await tx.insert(spendRecords).values(records.map((record) => ({ ...record, campaignId, spendSourceId: sourceId, sourceType })) as any);
       return savedSource;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : db.transaction(save);
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : platformContext === 'ga4' ? this.writeGA4RefreshInputChange(campaignId, save) : db.transaction(save);
   }
 
   async replaceSpendRecordsForSource(campaignId: string, sourceId: string, sourceType: string, platformContext: SpendPlatformContext, records: Array<Omit<InsertSpendRecord, 'spendSourceId'>>, expectedSourceMappingConfig?: string | null, options: GA4RefreshWriteInput = {}): Promise<void> {
@@ -1879,8 +1945,9 @@ export class DatabaseStorage implements IStorage {
       if (!source) throw new Error("Spend source not found");
       await tx.delete(spendRecords).where(and(eq(spendRecords.campaignId, campaignId), eq(spendRecords.spendSourceId, sourceId)));
       if (records.length) await tx.insert(spendRecords).values(records.map((record) => ({ ...record, campaignId, spendSourceId: sourceId, sourceType })) as any);
+      return true;
     };
-    await (guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : db.transaction(save));
+    await (guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : platformContext === 'ga4' ? this.writeGA4RefreshInputChange(campaignId, save) : db.transaction(save));
   }
   async replaceCsvSpendSourceWithRecords(
     campaignId: string,
@@ -1888,7 +1955,8 @@ export class DatabaseStorage implements IStorage {
     source: InsertSpendSource,
     records: Array<Omit<InsertSpendRecord, "spendSourceId">>,
   ): Promise<SpendSource> {
-    return await db.transaction(async (tx: any) => {
+    const transaction = !source.platformContext || source.platformContext === 'ga4' ? this.writeGA4RefreshInputChange.bind(this, campaignId) : db.transaction.bind(db);
+    return await transaction(async (tx: any) => {
       const platformContext = String((source as any)?.platformContext || "").trim() as SpendPlatformContext;
       let savedSource: SpendSource | undefined;
       if (existingSourceId) {
@@ -2039,6 +2107,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createRevenueSource(source: InsertRevenueSource): Promise<RevenueSource> {
+    const save = async (db: any) => {
     const [s] = await db
       .insert(revenueSources)
       .values({
@@ -2047,34 +2116,52 @@ export class DatabaseStorage implements IStorage {
       } as any)
       .returning();
     return s;
+    };
+    return !source.platformContext || source.platformContext === 'ga4' ? this.writeGA4RefreshInputChange(source.campaignId, save) : save(db);
   }
 
   async updateRevenueSource(sourceId: string, source: Partial<InsertRevenueSource>): Promise<RevenueSource | undefined> {
+    const [target] = await db.select().from(revenueSources).where(sql`${revenueSources.id}::text = ${sourceId}`);
+    if (!target) return undefined;
+    const save = async (db: any) => {
     const [s] = await db
       .update(revenueSources)
       .set(source as any)
       .where(sql`${revenueSources.id}::text = ${sourceId}`)
       .returning();
     return s || undefined;
+    };
+    return !target.platformContext || target.platformContext === 'ga4' ? this.writeGA4RefreshInputChange(target.campaignId, save) : save(db);
   }
 
   async deleteRevenueSource(sourceId: string): Promise<boolean> {
+    const [target] = await db.select().from(revenueSources).where(sql`${revenueSources.id}::text = ${sourceId}`);
+    if (!target) return false;
+    const save = async (db: any) => {
     const result = await db
       .update(revenueSources)
       .set({ isActive: false } as any)
       .where(sql`${revenueSources.id}::text = ${sourceId}`);
     return (result.rowCount || 0) > 0;
+    };
+    return !target.platformContext || target.platformContext === 'ga4' ? this.writeGA4RefreshInputChange(target.campaignId, save) : save(db);
   }
 
   async deleteRevenueRecordsBySource(sourceId: string): Promise<boolean> {
+    const [target] = await db.select().from(revenueSources).where(sql`${revenueSources.id}::text = ${sourceId}`);
+    const write = async (db: any) => {
     const result = await db
       .delete(revenueRecords)
       .where(eq(revenueRecords.revenueSourceId, sourceId));
     return (result.rowCount || 0) >= 0;
+    };
+    return target && (!target.platformContext || target.platformContext === 'ga4')
+      ? this.writeGA4RefreshInputChange(target.campaignId, write) : write(db);
   }
 
   async deleteRevenueSourceWithRecords(campaignId: string, sourceId: string, platformContext: RevenuePlatformContext): Promise<boolean> {
-    return await db.transaction(async (tx: any) => {
+    const transaction = platformContext === 'ga4' ? this.writeGA4RefreshInputChange.bind(this, campaignId) : db.transaction.bind(db);
+    return await transaction(async (tx: any) => {
       const contextCondition = platformContext === "ga4"
         ? or(eq(revenueSources.platformContext, "ga4" as any), isNull(revenueSources.platformContext))
         : eq(revenueSources.platformContext, platformContext as any);
@@ -2098,7 +2185,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async disconnectGa4HubspotRevenue(campaignId: string): Promise<{ sourceIds: string[]; connectionId: string }> {
-    return await db.transaction(async (tx: any) => {
+    return await this.writeGA4RefreshInputChange(campaignId, async (tx: any) => {
       const activeSources = await tx
         .select({ id: revenueSources.id, platformContext: revenueSources.platformContext })
         .from(revenueSources)
@@ -2155,7 +2242,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async disconnectGa4GoogleSheetsRevenue(campaignId: string): Promise<{ sourceIds: string[]; connectionIds: string[] }> {
-    return await db.transaction(async (tx: any) => {
+    return await this.writeGA4RefreshInputChange(campaignId, async (tx: any) => {
       const activeSources = await tx
         .select({ id: revenueSources.id, platformContext: revenueSources.platformContext, mappingConfig: revenueSources.mappingConfig })
         .from(revenueSources)
@@ -2248,7 +2335,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async disconnectGa4ShopifyRevenue(campaignId: string): Promise<{ sourceIds: string[]; connectionId: string }> {
-    return await db.transaction(async (tx: any) => {
+    return await this.writeGA4RefreshInputChange(campaignId, async (tx: any) => {
       const activeSources = await tx
         .select({ id: revenueSources.id, platformContext: revenueSources.platformContext })
         .from(revenueSources)
@@ -2431,6 +2518,10 @@ export class DatabaseStorage implements IStorage {
     if (!records.length) return [];
 
     // Use onConflictDoNothing for idempotent inserts (auto-refresh scheduler may re-run)
+    const sourceIds = Array.from(new Set(records.map(record => record.revenueSourceId)));
+    const sources = await db.select().from(revenueSources).where(inArray(revenueSources.id, sourceIds));
+    const affected = sources.filter((source: any) => !source.platformContext || source.platformContext === 'ga4').map((source: any) => source.campaignId);
+    const write = async (db: any) => {
     const results = await db
       .insert(revenueRecords)
       .values(records as any)
@@ -2438,6 +2529,8 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     return results;
+    };
+    return affected.length ? this.writeGA4RefreshInputChange(affected, write) : write(db);
   }
   async replaceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, sourceType: string, platformContext: RevenuePlatformContext, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>, expectedSourceMappingConfig?: string | null, options: GA4RefreshWriteInput = {}): Promise<RevenueSource> {
     const guarded = "refreshScope" in options;
@@ -2470,7 +2563,7 @@ export class DatabaseStorage implements IStorage {
       if (records.length) await tx.insert(revenueRecords).values(records.map((record) => ({ ...record, campaignId, revenueSourceId: sourceId, sourceType })) as any);
       return savedSource;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : db.transaction(save);
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : platformContext === 'ga4' ? this.writeGA4RefreshInputChange(campaignId, save) : db.transaction(save);
   }
 
   async replaceGa4SalesforceRevenueSourceWithRecords(campaignId: string, existingSourceId: string | null, connectionId: string, connectionMappingConfig: string, source: InsertRevenueSource, records: Array<Omit<InsertRevenueRecord, 'revenueSourceId'>>, expectedSourceMappingConfig?: string | null, options: GA4RefreshWriteInput & { expectedConnectionMappingConfig?: string | null } = {}): Promise<RevenueSource> {
@@ -2512,7 +2605,7 @@ export class DatabaseStorage implements IStorage {
       if (!savedConnection) throw new Error('Salesforce connection not found');
       return savedSource;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : db.transaction(save);
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : this.writeGA4RefreshInputChange(campaignId, save);
   }
 
   async replaceGa4CsvRevenueSourceWithRecords(
@@ -2523,7 +2616,7 @@ export class DatabaseStorage implements IStorage {
     expectedSourceMappingConfig?: string,
   ): Promise<RevenueSource> {
     if (!records.length) throw new Error("No valid revenue records to save");
-    return await db.transaction(async (tx: any) => {
+    return await this.writeGA4RefreshInputChange(campaignId, async (tx: any) => {
       const sourceValues = {
         ...source,
         campaignId,
@@ -2652,7 +2745,7 @@ export class DatabaseStorage implements IStorage {
 
       return savedSource;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : db.transaction(save);
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : this.writeGA4RefreshInputChange(campaignId, save);
   }
 
   async disableGa4CrmPipelineProxy(
@@ -2751,7 +2844,7 @@ export class DatabaseStorage implements IStorage {
       if (!savedConnection) throw new Error(expectedState ? 'Shopify connection changed since preview' : 'Shopify connection not found');
       return savedSource;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : db.transaction(save);
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : this.writeGA4RefreshInputChange(campaignId, save);
   }
 
   async updateGa4ShopifyRevenueSourceRefreshState(campaignId: string, sourceId: string, mappingConfig: string, expectedRunId?: string, options: GA4RefreshWriteInput & { expectedSourceMappingConfig?: string | null } = {}): Promise<RevenueSource | undefined> {
@@ -2773,7 +2866,7 @@ export class DatabaseStorage implements IStorage {
       if (guarded && !source) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
       return source || undefined;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : save(db);
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : this.writeGA4RefreshInputChange(campaignId, save);
   }
 
   async getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext: RevenuePlatformContext = 'ga4'): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }> {
@@ -3189,6 +3282,8 @@ export class DatabaseStorage implements IStorage {
     const method = String((connection as any).method || "access_token").trim().toLowerCase();
     const isServiceAccount = method === GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD;
 
+    const saved = await this.writeGA4RefreshInputChange(connection.campaignId, async db => {
+    await db.execute(sql`SAVEPOINT sheets_connection_create`);
     try {
       // Try to insert - Drizzle will include all fields from schema, which may fail if sheet_name doesn't exist
       const enc = buildEncryptedTokens({
@@ -3211,10 +3306,11 @@ export class DatabaseStorage implements IStorage {
           isActive: true
         })
         .returning();
-      return await hydrateGoogleSheetsConnectionForRead(hydrateDecryptedTokens(sheetsConnection) as any) as any;
+      return sheetsConnection;
     } catch (error: any) {
       // If sheet_name column doesn't exist yet, use raw SQL insert
       if (error.message?.includes('sheet_name') || error.message?.includes('purpose') || error.message?.includes('column') || error.code === '42703') {
+        await db.execute(sql`ROLLBACK TO SAVEPOINT sheets_connection_create`);
         if (isServiceAccount) throw new Error('Google Sheets service-account storage migration is required');
         devLog('[Storage] sheet_name/purpose column not found, using fallback insert for createGoogleSheetsConnection');
         const enc = buildEncryptedTokens({
@@ -3265,11 +3361,14 @@ export class DatabaseStorage implements IStorage {
       }
       throw error;
     }
+    });
+    return await hydrateGoogleSheetsConnectionForRead(hydrateDecryptedTokens(saved) as any) as any;
   }
 
   async updateGoogleSheetsConnection(connectionId: string, connection: Partial<InsertGoogleSheetsConnection>, options: GA4RefreshConnectionWriteInput = {}): Promise<GoogleSheetsConnection | undefined> {
     const guarded = "refreshScope" in options;
     const write = async (db: any) => {
+    if (!guarded) await db.execute(sql`SAVEPOINT sheets_connection_update`);
     try {
       const existingQuery = db.select().from(googleSheetsConnections).where(eq(googleSheetsConnections.id, connectionId));
     const [existing] = await (guarded ? existingQuery.for("update") : existingQuery);
@@ -3356,13 +3455,12 @@ export class DatabaseStorage implements IStorage {
           connectedAt: googleSheetsConnections.connectedAt,
           createdAt: googleSheetsConnections.createdAt,
         });
-      return updated
-        ? await hydrateGoogleSheetsConnectionForRead(hydrateDecryptedTokens(updated) as any) as any
-        : undefined;
+      return updated;
     } catch (error: any) {
       if (guarded) throw error;
       // If sheet_name column doesn't exist yet, use raw SQL update
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
+        await db.execute(sql`ROLLBACK TO SAVEPOINT sheets_connection_update`);
         devLog('[Storage] sheet_name column not found, using fallback update for updateGoogleSheetsConnection');
         // Build update query without sheet_name
         const updates: string[] = [];
@@ -3428,15 +3526,13 @@ export class DatabaseStorage implements IStorage {
           return { ...conn, sheetName: null } as GoogleSheetsConnection;
         }
 
-        // Use pool.query for dynamic SQL with proper parameterization
+        // Keep the legacy fallback on the same transaction and parameterize every value.
         const updateClause = updates.join(', ');
         values.push(connectionId);
         const queryText = `UPDATE google_sheets_connections SET ${updateClause} WHERE id = $${paramIndex} RETURNING id, campaign_id, spreadsheet_id, spreadsheet_name, access_token, refresh_token, client_id, client_secret, expires_at, is_primary, is_active, column_mappings, connected_at, created_at`;
 
-        if (!pool) {
-          throw new Error("Database pool is not initialized");
-        }
-        const result = await pool.query(queryText, values);
+        const result = await db.execute(sql.join(queryText.split(/\$(\d+)/g).map((part, index) =>
+          index % 2 ? sql`${values[Number(part) - 1]}` : sql.raw(part)), sql.raw('')));
 
         if (result.rows.length === 0) return undefined;
         const row = result.rows[0] as any;
@@ -3461,10 +3557,14 @@ export class DatabaseStorage implements IStorage {
       throw error;
     }
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : write(db);
+    const [target] = guarded ? [] : await db.select({ campaignId: googleSheetsConnections.campaignId }).from(googleSheetsConnections).where(eq(googleSheetsConnections.id, connectionId));
+    const saved = guarded ? await this.writeWithGA4RefreshOwnership(options.refreshScope, write)
+      : target ? await this.writeGA4RefreshInputChange(target.campaignId, write) : undefined;
+    return saved ? await hydrateGoogleSheetsConnectionForRead(hydrateDecryptedTokens(saved) as any) as any : undefined;
   }
 
   async setPrimaryGoogleSheetsConnection(campaignId: string, connectionId: string): Promise<boolean> {
+    return this.writeGA4RefreshInputChange(campaignId, async db => {
     const [targetConnection] = await db
       .select({ id: googleSheetsConnections.id })
       .from(googleSheetsConnections)
@@ -3493,9 +3593,14 @@ export class DatabaseStorage implements IStorage {
       ));
 
     return (result.rowCount || 0) > 0;
+    });
   }
 
   async deleteGoogleSheetsConnection(connectionId: string): Promise<boolean> {
+    const [target] = await db.select({ campaignId: googleSheetsConnections.campaignId }).from(googleSheetsConnections).where(eq(googleSheetsConnections.id, connectionId));
+    if (!target) return false;
+    return this.writeGA4RefreshInputChange(target.campaignId, async db => {
+    await db.execute(sql`SAVEPOINT sheets_connection_delete`);
     try {
       const connection = await db.select().from(googleSheetsConnections)
         .where(eq(googleSheetsConnections.id, connectionId))
@@ -3514,9 +3619,11 @@ export class DatabaseStorage implements IStorage {
 
       // If this was the primary connection, make the first remaining connection primary
       if (wasPrimary) {
-        const remainingConnections = await this.getGoogleSheetsConnections(campaignId);
+        const remainingConnections = await db.select({ id: googleSheetsConnections.id }).from(googleSheetsConnections)
+          .where(and(eq(googleSheetsConnections.campaignId, campaignId), eq(googleSheetsConnections.isActive, true))).orderBy(googleSheetsConnections.connectedAt);
         if (remainingConnections.length > 0) {
-          await this.setPrimaryGoogleSheetsConnection(campaignId, remainingConnections[0].id);
+          await db.update(googleSheetsConnections).set({ isPrimary: false }).where(eq(googleSheetsConnections.campaignId, campaignId));
+          await db.update(googleSheetsConnections).set({ isPrimary: true }).where(and(eq(googleSheetsConnections.campaignId, campaignId), eq(googleSheetsConnections.id, remainingConnections[0].id)));
         }
       }
 
@@ -3524,6 +3631,7 @@ export class DatabaseStorage implements IStorage {
     } catch (error: any) {
       // Fallback if sheet_name column doesn't exist
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {
+        await db.execute(sql`ROLLBACK TO SAVEPOINT sheets_connection_delete`);
         devLog('[Storage] sheet_name column not found, using fallback query for deleteGoogleSheetsConnection');
         try {
           // First, get connection info using raw SQL
@@ -3549,9 +3657,11 @@ export class DatabaseStorage implements IStorage {
 
           // If this was the primary connection, make the first remaining connection primary
           if (wasPrimary) {
-            const remainingConnections = await this.getGoogleSheetsConnections(campaignId);
+            const remainingConnections = await db.select({ id: googleSheetsConnections.id }).from(googleSheetsConnections)
+              .where(and(eq(googleSheetsConnections.campaignId, campaignId), eq(googleSheetsConnections.isActive, true))).orderBy(googleSheetsConnections.connectedAt);
             if (remainingConnections.length > 0) {
-              await this.setPrimaryGoogleSheetsConnection(campaignId, remainingConnections[0].id);
+              await db.update(googleSheetsConnections).set({ isPrimary: false }).where(eq(googleSheetsConnections.campaignId, campaignId));
+              await db.update(googleSheetsConnections).set({ isPrimary: true }).where(and(eq(googleSheetsConnections.campaignId, campaignId), eq(googleSheetsConnections.id, remainingConnections[0].id)));
             }
           }
 
@@ -3563,6 +3673,7 @@ export class DatabaseStorage implements IStorage {
       }
       throw error;
     }
+    });
   }
 
   // HubSpot Connection methods
@@ -3639,7 +3750,7 @@ export class DatabaseStorage implements IStorage {
       refreshToken: null,
       encryptedTokens: enc as any,
     };
-    const [created] = await db.insert(hubspotConnections).values(connectionData).returning();
+    const [created] = await this.writeGA4RefreshInputChange<HubspotConnection[]>(connection.campaignId, tx => tx.insert(hubspotConnections).values(connectionData).returning());
     return hydrateDecryptedTokens(created) as any;
   }
 
@@ -3684,15 +3795,21 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : write(db);
+    if (guarded) return this.writeWithGA4RefreshOwnership(options.refreshScope, write);
+    const [target] = await db.select({ campaignId: hubspotConnections.campaignId }).from(hubspotConnections).where(eq(hubspotConnections.id, connectionId));
+    return target ? this.writeGA4RefreshInputChange(target.campaignId, write) : undefined;
   }
 
   async deleteHubspotConnection(connectionId: string): Promise<boolean> {
+    const [target] = await db.select({ campaignId: hubspotConnections.campaignId }).from(hubspotConnections).where(eq(hubspotConnections.id, connectionId));
+    if (!target) return false;
+    return this.writeGA4RefreshInputChange(target.campaignId, async db => {
     const result = await db
       .update(hubspotConnections)
       .set({ isActive: false })
       .where(eq(hubspotConnections.id, connectionId));
     return (result.rowCount || 0) > 0;
+    });
   }
 
   // Salesforce Connection methods
@@ -3769,7 +3886,7 @@ export class DatabaseStorage implements IStorage {
       refreshToken: null,
       encryptedTokens: enc as any,
     };
-    const [created] = await db.insert(salesforceConnections).values(connectionData).returning();
+    const [created] = await this.writeGA4RefreshInputChange<SalesforceConnection[]>(connection.campaignId, tx => tx.insert(salesforceConnections).values(connectionData).returning());
     return hydrateDecryptedTokens(created) as any;
   }
 
@@ -3814,15 +3931,21 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : write(db);
+    if (guarded) return this.writeWithGA4RefreshOwnership(options.refreshScope, write);
+    const [target] = await db.select({ campaignId: salesforceConnections.campaignId }).from(salesforceConnections).where(eq(salesforceConnections.id, connectionId));
+    return target ? this.writeGA4RefreshInputChange(target.campaignId, write) : undefined;
   }
 
   async deleteSalesforceConnection(connectionId: string): Promise<boolean> {
+    const [target] = await db.select({ campaignId: salesforceConnections.campaignId }).from(salesforceConnections).where(eq(salesforceConnections.id, connectionId));
+    if (!target) return false;
+    return this.writeGA4RefreshInputChange(target.campaignId, async db => {
     const result = await db
       .update(salesforceConnections)
       .set({ isActive: false })
       .where(eq(salesforceConnections.id, connectionId));
     return (result.rowCount || 0) > 0;
+    });
   }
 
   // Shopify Connection methods
@@ -3921,7 +4044,7 @@ export class DatabaseStorage implements IStorage {
       mappingConfig: connection.mappingConfig || null,
     };
     delete connectionData.refreshToken;
-    const [created] = await db.insert(shopifyConnections).values(connectionData).returning();
+    const [created] = await this.writeGA4RefreshInputChange<ShopifyConnection[]>(connection.campaignId, tx => tx.insert(shopifyConnections).values(connectionData).returning());
     return hydrateDecryptedTokens(created) as any;
   }
 
@@ -3940,7 +4063,7 @@ export class DatabaseStorage implements IStorage {
       mappingConfig: connection.mappingConfig || null,
     };
     delete connectionData.refreshToken;
-    return await db.transaction(async (tx: any) => {
+    return await this.writeGA4RefreshInputChange(connection.campaignId, async (tx: any) => {
       const activeSources = await tx
         .select({ id: revenueSources.id })
         .from(revenueSources)
@@ -4014,15 +4137,21 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : write(db);
+    if (guarded) return this.writeWithGA4RefreshOwnership(options.refreshScope, write);
+    const [target] = await db.select({ campaignId: shopifyConnections.campaignId }).from(shopifyConnections).where(eq(shopifyConnections.id, connectionId));
+    return target ? this.writeGA4RefreshInputChange(target.campaignId, write) : undefined;
   }
 
   async deleteShopifyConnection(connectionId: string): Promise<boolean> {
+    const [target] = await db.select({ campaignId: shopifyConnections.campaignId }).from(shopifyConnections).where(eq(shopifyConnections.id, connectionId));
+    if (!target) return false;
+    return this.writeGA4RefreshInputChange(target.campaignId, async db => {
     const result = await db
       .update(shopifyConnections)
       .set({ isActive: false })
       .where(eq(shopifyConnections.id, connectionId));
     return (result.rowCount || 0) > 0;
+    });
   }
 
   async withShopifyOauthStoreLock<T>(shopDomain: string, operation: () => Promise<T>): Promise<T> {
@@ -4573,7 +4702,7 @@ export class DatabaseStorage implements IStorage {
       refreshToken: isServiceAccount ? null : (connection as any).refreshToken,
       clientSecret: isServiceAccount ? null : (connection as any).clientSecret,
     });
-    return await db.transaction(async (tx: any) => {
+    return await this.writeGA4RefreshInputChange(connection.campaignId, async (tx: any) => {
       await tx.delete(ga4GoogleAdsSpendConnections).where(eq(ga4GoogleAdsSpendConnections.campaignId, connection.campaignId));
       await tx.delete(ga4GoogleAdsSpendDailyMetrics).where(eq(ga4GoogleAdsSpendDailyMetrics.campaignId, connection.campaignId));
       const [saved] = await tx.insert(ga4GoogleAdsSpendConnections).values({
@@ -4625,7 +4754,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(ga4GoogleAdsSpendConnections.campaignId, campaignId)).returning();
     return updated ? hydrateDecryptedTokens(updated) as any : undefined;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : write(db);
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : this.writeGA4RefreshInputChange(campaignId, write);
   }
 
   async getGA4GoogleAdsSpendDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<GA4GoogleAdsSpendDailyMetric[]> {
@@ -4696,7 +4825,7 @@ export class DatabaseStorage implements IStorage {
       refreshToken: (connection as any).refreshToken,
       clientSecret: (connection as any).clientSecret,
     });
-    const [gadsConnection] = await db
+    const [gadsConnection] = await this.writeGA4RefreshInputChange<GoogleAdsConnection[]>(connection.campaignId, tx => tx
       .insert(googleAdsConnections)
       .values({
         ...connection,
@@ -4705,7 +4834,7 @@ export class DatabaseStorage implements IStorage {
         clientSecret: null,
         encryptedTokens: enc as any,
       } as any)
-      .returning();
+      .returning());
     return hydrateDecryptedTokens(gadsConnection) as any;
   }
 
@@ -4726,7 +4855,7 @@ export class DatabaseStorage implements IStorage {
       campaignUtmMap: null,
       lastRefreshAt: null,
     };
-    return await db.transaction(async (tx: any) => {
+    return await this.writeGA4RefreshInputChange(connection.campaignId, async (tx: any) => {
       await tx.delete(googleAdsConnections).where(eq(googleAdsConnections.campaignId, connection.campaignId));
       await tx.delete(googleAdsDailyMetrics).where(eq(googleAdsDailyMetrics.campaignId, connection.campaignId));
       const [created] = await tx.insert(googleAdsConnections).values(connectionData).returning();
@@ -4778,11 +4907,11 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : write(db);
+    return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : this.writeGA4RefreshInputChange(campaignId, write);
   }
 
   async deleteGoogleAdsConnection(campaignId: string): Promise<boolean> {
-    return await db.transaction(async (tx: any) => {
+    return await this.writeGA4RefreshInputChange(campaignId, async (tx: any) => {
       const result = await tx
         .delete(googleAdsConnections)
         .where(eq(googleAdsConnections.campaignId, campaignId));
@@ -5477,7 +5606,7 @@ export class DatabaseStorage implements IStorage {
       && Boolean(resolveGA4KpiMetricIdentity(kpiData.metric, kpiData.name));
     if (isCanonicalActiveGA4KPI) {
       return createActiveCanonicalGA4KPI(kpiData, {
-        withTransaction: (run) => db.transaction(run),
+        withTransaction: (run) => this.writeGA4RefreshInputChange(campaignId, run),
         lockCampaign: async (tx: any, id) => {
           const rows = await tx.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, id)).for("update");
           return rows.length === 1;
@@ -5496,11 +5625,15 @@ export class DatabaseStorage implements IStorage {
         },
       });
     }
+    const save = async (db: any) => {
     const [kpi] = await db
       .insert(kpis)
       .values(kpiData)
       .returning();
     return kpi;
+    };
+    return campaignId && ['', 'campaign', 'google_analytics'].includes(String(kpiData.platformType || '').trim().toLowerCase())
+      ? this.writeGA4RefreshInputChange(campaignId, save) : save(db);
   }
 
   async updateKPI(id: string, kpiData: Partial<InsertKPI> & GA4RefreshWriteInput): Promise<KPI | undefined> {
@@ -5517,12 +5650,18 @@ export class DatabaseStorage implements IStorage {
       if (guarded && !kpi) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
       return kpi || undefined;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(refreshScope, save) : save(db);
+    if (guarded) return this.writeWithGA4RefreshOwnership(refreshScope, save);
+    const target = await this.getKPI(id);
+    const changesDefinition = Object.keys(values).some(key => !['currentValue', 'lastComputedValue', 'lastAlertSent', 'updatedAt'].includes(key));
+    return target?.campaignId && changesDefinition && ['', 'campaign', 'google_analytics'].includes(String(target.platformType || '').trim().toLowerCase())
+      ? this.writeGA4RefreshInputChange([target.campaignId, ...(values.campaignId ? [values.campaignId] : [])], save) : save(db);
   }
 
   async updateCanonicalGA4KPI(id: string, kpiData: Partial<InsertKPI>): Promise<KPI | undefined> {
+    const target = await this.getKPI(id);
+    if (!target) return undefined;
     return updateCanonicalGA4KPIWithGuard(id, kpiData, {
-      withTransaction: (run) => db.transaction(run),
+      withTransaction: (run) => this.writeGA4RefreshInputChange([...(target.campaignId ? [target.campaignId] : []), ...(kpiData.campaignId ? [kpiData.campaignId] : [])], run),
       getById: async (tx: any, kpiId) => (await tx.select().from(kpis).where(eq(kpis.id, kpiId)).limit(1))[0],
       lockCampaign: async (tx: any, campaignId) => (await tx.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, campaignId)).for("update")).length === 1,
       listCampaignGA4KPIs: (tx: any, campaignId) => tx.select().from(kpis).where(and(eq(kpis.platformType, "google_analytics"), eq(kpis.campaignId, campaignId))),
@@ -5532,7 +5671,10 @@ export class DatabaseStorage implements IStorage {
 
   async deleteKPI(id: string, notificationHides: KPINotificationHide[] = []): Promise<boolean> {
     try {
-      return await db.transaction(async (tx: any) => {
+      const target = await this.getKPI(id);
+      const transaction = target?.campaignId && ['', 'campaign', 'google_analytics'].includes(String(target.platformType || '').trim().toLowerCase())
+        ? this.writeGA4RefreshInputChange.bind(this, target.campaignId) : db.transaction.bind(db);
+      return await transaction(async (tx: any) => {
         const [existing] = await tx.select({ id: kpis.id, campaignId: kpis.campaignId })
           .from(kpis)
           .where(eq(kpis.id, id))
@@ -5771,11 +5913,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBenchmark(benchmarkData: InsertBenchmark): Promise<Benchmark> {
+    const save = async (db: any) => {
     const [benchmark] = await db
       .insert(benchmarks)
       .values(benchmarkData)
       .returning();
     return benchmark;
+    };
+    return benchmarkData.campaignId && ['', 'campaign', 'google_analytics'].includes(String(benchmarkData.platformType || '').trim().toLowerCase())
+      ? this.writeGA4RefreshInputChange(benchmarkData.campaignId, save) : save(db);
   }
 
   async updateBenchmark(id: string, updateData: Partial<InsertBenchmark> & GA4RefreshWriteInput): Promise<Benchmark | undefined> {
@@ -5792,11 +5938,18 @@ export class DatabaseStorage implements IStorage {
       if (guarded && !benchmark) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
       return benchmark || undefined;
     };
-    return guarded ? this.writeWithGA4RefreshOwnership(refreshScope, save) : save(db);
+    if (guarded) return this.writeWithGA4RefreshOwnership(refreshScope, save);
+    const target = await this.getBenchmark(id);
+    const changesDefinition = Object.keys(values).some(key => !['currentValue', 'lastAlertSent', 'lastUpdated', 'updatedAt'].includes(key));
+    return target?.campaignId && changesDefinition && ['', 'campaign', 'google_analytics'].includes(String(target.platformType || '').trim().toLowerCase())
+      ? this.writeGA4RefreshInputChange([target.campaignId, ...(values.campaignId ? [values.campaignId] : [])], save) : save(db);
   }
 
   async deleteBenchmark(id: string, notificationHides: KPINotificationHide[] = []): Promise<boolean> {
-    return await db.transaction(async (tx: any) => {
+    const target = await this.getBenchmark(id);
+      const transaction = target?.campaignId && ['', 'campaign', 'google_analytics'].includes(String(target.platformType || '').trim().toLowerCase())
+        ? this.writeGA4RefreshInputChange.bind(this, target.campaignId) : db.transaction.bind(db);
+      return await transaction(async (tx: any) => {
       const [existing] = await tx.select({ id: benchmarks.id, campaignId: benchmarks.campaignId }).from(benchmarks).where(eq(benchmarks.id, id)).limit(1);
       if (!existing) return false;
       for (const hide of notificationHides) {

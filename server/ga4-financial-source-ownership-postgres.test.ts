@@ -36,7 +36,7 @@ const schemaName = `ga4_source_it_${randomUUID().replace(/-/g, "")}`;
 const financialTables = [schema.spendSources, schema.spendRecords, schema.revenueSources, schema.revenueRecords,
   schema.salesforceConnections, schema.hubspotConnections, schema.shopifyConnections, schema.googleSheetsConnections,
   schema.googleAdsConnections, schema.ga4GoogleAdsSpendConnections, schema.googleAdsDailyMetrics, schema.ga4GoogleAdsSpendDailyMetrics];
-const tables = [schema.campaigns, schema.ga4Connections, ...financialTables];
+const tables = [schema.campaigns, schema.ga4Connections, schema.metricSnapshots, ...financialTables];
 const kinds = ["spend", "spend records", "revenue", "salesforce", "hubspot", "shopify", "shopify state"] as const;
 type Kind = typeof kinds[number];
 const storage = new DatabaseStorage();

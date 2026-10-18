@@ -104,15 +104,18 @@ describe("GA4 Overview Spend readiness contract", () => {
     const sheetsReplacement = slice(storage, "async replaceSpendSourceWithRecords(", "async replaceSpendRecordsForSource");
     const deletion = slice(storage, "async deleteSpendSourceWithRecords(", "async hardDeleteInactiveSpendSource");
 
-    expect(csvReplacement).toContain("return await db.transaction");
+    expect(csvReplacement).toContain("this.writeGA4RefreshInputChange.bind(this, campaignId)");
+    expect(csvReplacement).toContain("return await transaction");
     expect(csvReplacement).toContain("spendPlatformContextPredicate(platformContext)");
     expect(csvReplacement).toContain("eq(spendSources.campaignId, campaignId)");
     expect(csvReplacement).toContain("eq(spendSources.sourceType, \"csv\")");
     expect(csvReplacement).toContain("eq(spendRecords.campaignId, campaignId)");
-    expect(sheetsReplacement).toContain("return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save) : db.transaction(save)");
+    expect(sheetsReplacement).toContain("return guarded ? this.writeWithGA4RefreshOwnership(options.refreshScope, save)");
+    expect(sheetsReplacement).toContain("this.writeGA4RefreshInputChange(campaignId, save) : db.transaction(save)");
     expect(sheetsReplacement).toContain("contextCondition");
     expect(sheetsReplacement).toContain("eq(spendSources.campaignId, campaignId)");
-    expect(deletion).toContain("return await db.transaction");
+    expect(deletion).toContain("this.writeGA4RefreshInputChange.bind(this, campaignId)");
+    expect(deletion).toContain("return await transaction");
     expect(deletion).toContain("eq(spendRecords.campaignId, campaignId)");
   });
 

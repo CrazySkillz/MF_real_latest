@@ -305,7 +305,7 @@ describe.skipIf(!testUrl)("GA4 derived writes with real PostgreSQL ownership", (
   it("rejects a changed Benchmark target without writing its value or history", async () => {
     const scope = await claim(); await storage.updateBenchmark("benchmark-a", { benchmarkValue: "200" });
     const before = await saved();
-    await expect(write("history", scope)).rejects.toThrow("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    await expect(write("history", scope)).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST");
     expect(await saved()).toEqual(before);
   });
 });

@@ -237,7 +237,8 @@ describe("source safety regression guards", () => {
     const deleteMethodStart = storageSource.indexOf("async deleteRevenueSourceWithRecords(");
     const deleteMethodEnd = storageSource.indexOf("async createRevenueRecords", deleteMethodStart);
     const deleteMethod = storageSource.slice(deleteMethodStart, deleteMethodEnd);
-    expect(deleteMethod).toContain("return await db.transaction(async (tx: any) => {");
+    expect(deleteMethod).toContain("this.writeGA4RefreshInputChange.bind(this, campaignId)");
+    expect(deleteMethod).toContain("return await transaction(async (tx: any) => {");
     expect(deleteMethod).toContain("eq(revenueSources.campaignId, campaignId)");
     expect(deleteMethod).toContain("eq(revenueSources.isActive, true)");
     expect(deleteMethod).toContain('or(eq(revenueSources.platformContext, "ga4" as any), isNull(revenueSources.platformContext))');
@@ -270,7 +271,8 @@ describe("source safety regression guards", () => {
     const deleteMethodStart = storageSource.indexOf("async deleteSpendSourceWithRecords(");
     const deleteMethodEnd = storageSource.indexOf("async hardDeleteInactiveSpendSource", deleteMethodStart);
     const deleteMethod = storageSource.slice(deleteMethodStart, deleteMethodEnd);
-    expect(deleteMethod).toContain("return await db.transaction(async (tx: any) => {");
+    expect(deleteMethod).toContain("this.writeGA4RefreshInputChange.bind(this, campaignId)");
+    expect(deleteMethod).toContain("return await transaction(async (tx: any) => {");
     expect(deleteMethod).toContain("eq(spendSources.campaignId, campaignId)");
     expect(deleteMethod).toContain("eq(spendRecords.campaignId, campaignId)");
     expect(deleteMethod).toContain("eq(spendRecords.spendSourceId, sourceId)");
@@ -372,7 +374,7 @@ describe("source safety regression guards", () => {
     expect(routeStart).toBeGreaterThan(-1);
     expect(route).toContain("ensureCampaignAccess");
     expect(route).toContain("storage.disconnectGa4GoogleSheetsRevenue(campaignId)");
-    expect(method).toContain("return await db.transaction");
+    expect(method).toContain("return await this.writeGA4RefreshInputChange(campaignId,");
     expect(method).toContain("sharedRevenueConnectionIds");
     expect(method).toContain("sharedSpendConnectionIds");
     expect(method).toContain("disabledSources.length !== sourceIds.length");

@@ -52,7 +52,18 @@ const mocks = vi.hoisted(() => {
       records: state.records.map(record => ({ ...record })),
     };
     try {
-      return await callback(tx);
+      return await callback({
+        ...tx,
+        execute: async () => ({ rows: [{ name: 'ga4_refresh_work' }] }),
+        // These rollback fixtures contain no durable work; real PostgreSQL cases
+        // separately exercise active work invalidation and campaign lock contention.
+        select: (...args: any[]) => ({ from: (table: any) => table[Symbol.for('drizzle:Name')] === 'campaigns'
+          ? { where: () => ({ orderBy: () => ({ for: async () => [{ id: 'campaign-1' }] }) }) }
+          : (tx as any).select(...args).from(table) }),
+        update: (table: any) => table[Symbol.for('drizzle:Name')] === 'ga4_refresh_work'
+          ? { set: () => ({ where: () => ({ returning: async () => [] }) }) }
+          : (tx as any).update(table),
+      });
     } catch (error) {
       state.connection = before.connection;
       state.source = before.source;

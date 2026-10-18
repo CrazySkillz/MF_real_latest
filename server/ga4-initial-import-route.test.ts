@@ -144,7 +144,29 @@ describe("new campaign initial GA4 import", () => {
     const response = await fetch(`${baseUrl}/api/campaigns/${campaignId}?draftCleanup=1`, { method: "DELETE" });
 
     expect(response.status).toBe(200);
-    expect(storageMock.deleteCampaignCascade).toHaveBeenCalledWith(campaignId);
+    expect(storageMock.deleteCampaignCascade).toHaveBeenCalledWith(campaignId, { expectedDraftOwnerId: "owner-1" });
+  });
+
+  it("returns conflict if the draft is finalized after the initial route check", async () => {
+    storageMock.deleteCampaignCascade.mockRejectedValueOnce(new Error("CAMPAIGN_NO_LONGER_DRAFT"));
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaignId}?draftCleanup=1`, { method: "DELETE" });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ success: false, message: "Campaign is no longer a draft" });
+    expect(storageMock.deleteCampaignCascade).toHaveBeenCalledWith(campaignId, { expectedDraftOwnerId: "owner-1" });
+  });
+
+  it("reports not found when a draft disappears before the locked delete", async () => {
+    storageMock.deleteCampaignCascade.mockResolvedValueOnce(false);
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaignId}?draftCleanup=1`, { method: "DELETE" });
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ message: "Campaign not found" });
+  });
+
+  it("does not delete a campaign belonging to another owner", async () => {
+    storageMock.getCampaign.mockResolvedValue({ id: campaignId, ownerId: "another-owner", status: "draft" });
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaignId}?draftCleanup=1`, { method: "DELETE" });
+    expect(response.status).toBe(404);
+    expect(storageMock.deleteCampaignCascade).not.toHaveBeenCalled();
   });
 
   it("rejects stale wizard cleanup after the campaign is active", async () => {

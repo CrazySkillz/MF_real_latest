@@ -20,7 +20,7 @@ User-directed validation scope, updated 2026-10-17: focus remaining Task 4 work 
 
 ## Remaining P-task delivery checklist, 2026-10-18
 
-**8 acceptance items remain open**, ordered P4 -> P6 -> P7. **P5 implementation and local acceptance are complete for the agreed Ptomo native-GA4 scope; deployment and natural production-refresh confirmation remain unverified.** This is a scoped completion statement, not whole-platform production certification. The current completion evidence below supersedes earlier partial checkpoints and step estimates. The completion package is included in this revision on top of `e5b60bb8`.
+**8 acceptance items remain open**, ordered P4 -> P6 -> P7. **P5 implementation and local acceptance are complete for the agreed Ptomo native-GA4 scope; `6462b939` deployment and Ptomo's October 18 natural 20:00 refresh are confirmed below.** This is a scoped completion statement, not whole-platform production certification. The current completion evidence below supersedes earlier partial checkpoints and step estimates. The P4 cancellation review below records a subsequently found deletion-bookkeeping gap and its correction in this revision.
 
 | Task | Open acceptance items | Current scope |
 | --- | ---: | --- |
@@ -28,7 +28,7 @@ User-directed validation scope, updated 2026-10-17: focus remaining Task 4 work 
 | P2 | 0 | Agreed transactional batch-write implementation and local validation complete. Production latency remains unmeasured. |
 | P3 | 0 | Agreed campaign concurrency and report-wait implementation complete/deployed. Ptomo has no scheduled report; live report timing/delivery remains deferred. |
 | P4 | 3 | Recoverable initial import in the existing campaign-creation flow. Depends on P5. |
-| P5 | 0 | Scoped implementation/local validation complete. Automatic recovery is enabled in this revision for eligible native-only campaigns; deployment and production confirmation remain unverified. |
+| P5 | 0 | Scoped implementation/local validation complete; `6462b939` deployment confirmed. Ptomo completed the October 18 scheduled refresh at 20:15 Amsterdam. Recovery-record deletion correction recorded under P4 below. |
 | P6 | 3 | Safe correction-window policy, efficient refresh/backfill and parity validation. |
 | P7 | 2 | Prompt, coherent browser refresh after publication and display/load validation. |
 
@@ -55,7 +55,7 @@ The code review at `15f12a09` confirms the remaining integration boundaries: `re
 
 ### P5 completion package — current implementation and validation, 2026-10-18
 
-Status: **scoped implementation and local acceptance complete, included in this revision on top of `e5b60bb8`; deployment unconfirmed**. This section supersedes the historical dormant-integration descriptions below. Deployed schema/configuration and the next natural Ptomo refresh remain release checks, not additional implementation batches.
+Status: **scoped implementation and local acceptance complete, committed as `6462b939`; deployment confirmed by the user and live health endpoint**. This section supersedes the historical dormant-integration descriptions below. At 20:24 Amsterdam on October 18, `/health/scheduler` showed the scheduled run started at 20:00 and finished at 20:15:40, with `inProgress=false`. Ptomo's verified campaign hash `b85505d40a0a` had an aligned completion at 20:15:32 through October 17. Five other campaigns failed; this confirms Ptomo's normal scheduled publication, not a production restart/timeout experiment or a new browser/PDF comparison. The subsequently found recovery-record deletion gap and correction in this revision are recorded under P4 below; the earlier deletion evidence did not prove removal of the work rows.
 
 **Confirmed causes and paths corrected:** an interrupted process lost its in-memory work; an old worker or ordinary recompute could subsequently write after a newer refresh or configuration edit. The existing scheduler now creates/claims persisted work, resumes eligible pending/expired work, and propagates ownership through native GA4, KPI/Benchmark current values/history, financial/aggregate/executive snapshots, alerts and the report-readiness marker. Ordinary writers capture a publication version before computation and compare it under the campaign lock before saving. Input edits invalidate that version atomically, including edit-then-restore. Automatic token renewal compares the credentials it read and preserves its own generation; user reconnection invalidates it. A process test exposed a read-side legacy credential migration waiting on its own alert transaction; saved-Overview/alert reads now suppress that migration. Formulae, reporting windows and public response shapes are unchanged.
 
@@ -113,6 +113,16 @@ The 152 scheduler integration cases, 185 derived-publication PostgreSQL cases, 4
 - [ ] **P4.1 — Run a durable initial import:** use the P5 recovery mechanism to stop holding campaign creation open for the entire import; keep the exact saved campaign/property/filter and activation guards.
 - [ ] **P4.2 — Expose import status and recovery:** integrate pending/success/failure/retry behavior into the existing creation journey; activate only after the required import succeeds, with no duplicate Create/import action.
 - [ ] **P4.3 — Validate the creation lifecycle:** verify browser close, repeated Create, request timeout, restart, auth failure, retry, deletion/cancellation, tenant access and eventual correct activation.
+
+#### P4 cancellation safety prerequisite, 2026-10-18
+
+Correction included in this revision within P4.3; deployment unconfirmed and P4.1-P4.3 remain open. The initial import still awaits its HTTP request, drafts are still excluded from ordinary P5 recovery, and no background initial-import activation or resumable wizard is claimed.
+
+- **Confirmed root cause/path:** `campaigns.tsx` wizard close -> `DELETE /api/campaigns/:id?draftCleanup=1` -> `deleteCampaignCascade`. The route checked draft status before the transaction; storage then waited for a campaign lock and deleted without rechecking status. A concurrent successful activation could therefore be deleted. Isolated PostgreSQL reproduced this race, changed-owner deletion, and a false success after a competing delete. Storage now verifies draft status and the already-authorized owner under the existing campaign lock before any child mutation; a late finalized campaign returns the same 409 conflict. Confirmed ordinary deletion retains its existing caller contract and reports the actual deleted row.
+- **Related recovery-record gap:** the existing cascade omitted `ga4_refresh_work`, which has no database foreign-key cascade. Two local tests proved work rows remained after campaign deletion. The existing optional-table helper now removes only that campaign's work, inside the same transaction, and also applies to the shared client cascade. Missing recovery tables remain compatible. Missing-campaign guards already reject stale workers; that did not establish correct work-row removal.
+- **Files:** runtime changes only in `server/storage.ts` and `server/routes-oauth.ts`; regression coverage in `server/campaign-draft-cleanup-postgres.test.ts`, `server/ga4-initial-import-route.test.ts` and `server/campaign-delete-cascade-regression.test.ts`. No UI, schema, scheduler timing or metric calculation changes.
+- **Validation:** `audit-temp/p4-draft-cleanup-before.json` records four failing/three passing baseline cases; `p4-recovery-cleanup-before.json` records both selected orphan-work cases failing. The final seven-file packet (`p4-draft-cleanup-final.json`) has **116 passed, zero failed/skipped**, including 13 real PostgreSQL cleanup cases, API guards, activation, shared client cleanup, both activation/cancellation lock orderings, rollback, absent-table compatibility, publication and input invalidation. TypeScript, production build and `git diff --check` pass (`p4-draft-cleanup-typecheck.log`, `p4-draft-cleanup-build.log`). This is a bounded cancellation check, not whole-client deletion or P4 lifecycle certification.
+- **Remaining boundary:** browser close/reopen, asynchronous import persistence/resume/status/retry, auth failures and eventual activation remain P4 work. No production mutation or failure injection was performed. Existing orphan work is not rewritten: any historical cleanup requires a separate read-only inventory proving the campaign no longer exists and a targeted cleanup plan.
 
 ### P6: three remaining steps
 

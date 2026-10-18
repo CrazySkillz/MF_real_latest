@@ -9228,7 +9228,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (draftCleanup && String((campaign as any)?.status || "").trim().toLowerCase() !== "draft") {
         return res.status(409).json({ success: false, message: "Campaign is no longer a draft" });
       }
-      const success = await storage.deleteCampaignCascade(campaignId);
+      const success = draftCleanup
+        ? await storage.deleteCampaignCascade(campaignId, { expectedDraftOwnerId: String(campaign.ownerId || "") })
+        : await storage.deleteCampaignCascade(campaignId);
 
       if (!success) {
         return res.status(404).json({ message: "Campaign not found" });
@@ -9236,6 +9238,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, message: "Campaign deleted successfully" });
     } catch (error) {
+      if (error instanceof Error && error.message === "CAMPAIGN_NO_LONGER_DRAFT") {
+        return res.status(409).json({ success: false, message: "Campaign is no longer a draft" });
+      }
       res.status(500).json({ message: "Failed to delete campaign" });
     }
   });

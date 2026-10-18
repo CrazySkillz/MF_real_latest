@@ -200,7 +200,7 @@ export interface IStorage {
   updateCampaign(id: string, campaign: Partial<InsertCampaign>, options?: GA4RefreshWriteInput): Promise<Campaign | undefined>;
   updateCampaignWithGA4DailyInvalidation(id: string, campaign: Partial<InsertCampaign>): Promise<Campaign | undefined>;
   deleteCampaign(id: string): Promise<boolean>;
-  deleteCampaignCascade(id: string): Promise<boolean>;
+  deleteCampaignCascade(id: string, options?: { expectedDraftOwnerId: string }): Promise<boolean>;
 
   // Metrics
   getMetrics(): Promise<Metric[]>;
@@ -785,6 +785,7 @@ export class DatabaseStorage implements IStorage {
       }
     };
 
+    await deleteOptionalCampaignTable("ga4_refresh_work");
     await tx.delete(spendRecords).where(eq(spendRecords.campaignId, campaignId));
     await tx.delete(revenueRecords).where(eq(revenueRecords.campaignId, campaignId));
     await tx.delete(spendSources).where(eq(spendSources.campaignId, campaignId));
@@ -834,15 +835,19 @@ export class DatabaseStorage implements IStorage {
     await tx.delete(attributionInsights).where(eq(attributionInsights.campaignId, campaignId));
   }
 
-  async deleteCampaignCascade(id: string): Promise<boolean> {
-    const existing = await this.getCampaign(id);
-    if (!existing) return false;
-    await db.transaction(async (tx: any) => {
-      await tx.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, id)).for("update");
+  async deleteCampaignCascade(id: string, options?: { expectedDraftOwnerId: string }): Promise<boolean> {
+    return db.transaction(async (tx: any) => {
+      const [existing] = await tx.select({ id: campaigns.id, status: campaigns.status, ownerId: campaigns.ownerId })
+        .from(campaigns).where(eq(campaigns.id, id)).for("update");
+      if (!existing) return false;
+      if (options) {
+        if (!options.expectedDraftOwnerId?.trim() || existing.ownerId !== options.expectedDraftOwnerId) return false;
+        if (String(existing.status || "").trim().toLowerCase() !== "draft") throw new Error("CAMPAIGN_NO_LONGER_DRAFT");
+      }
       await this.deleteCampaignChildren(id, tx);
-      await tx.delete(campaigns).where(eq(campaigns.id, id));
+      const deleted = await tx.delete(campaigns).where(eq(campaigns.id, id));
+      return (deleted.rowCount || 0) > 0;
     });
-    return true;
   }
 
   // Metrics methods

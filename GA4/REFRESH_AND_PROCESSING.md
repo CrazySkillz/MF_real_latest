@@ -8,7 +8,7 @@ For the current Salesforce reference implementation, HubSpot parity gaps, and CR
 
 ## Current P5 Recovery Status — 2026-10-18
 
-P5 implementation and local acceptance are complete for the agreed Ptomo native-GA4 scope, on top of `e5b60bb8`. The completion changes are included in this revision; **deployment remains unconfirmed**. This status supersedes the historical P5 checkpoints below; it is not whole-platform production certification.
+P5 implementation and local acceptance are complete for the agreed Ptomo native-GA4 scope, on top of `e5b60bb8`. **Deployment of `6462b939` is confirmed; the live scheduler recorded Ptomo's October 18 scheduled refresh completing at 20:15:32 Amsterdam through October 17.** This status supersedes the historical P5 checkpoints below; it is not whole-platform production certification. The subsequent P4 cancellation review found that deletion left recovery rows behind; its localized correction and evidence are recorded in the backlog.
 
 - Eligible active native-only campaigns now use persisted claims in the existing scheduled/bootstrap/manual paths. A one-minute poll resumes current-date interrupted work. Ownership/version checks prevent late workers and ordinary recomputes from overwriting newer results or configuration changes.
 - Native-only source readiness is rebuilt on every owned attempt, including after restart with empty process memory. Completion and report readiness are published only after the required derived/snapshot/alert stages succeed. Manual alert suppression survives restart.
@@ -16,7 +16,9 @@ P5 implementation and local acceptance are complete for the agreed Ptomo native-
 - External financial/advertising connections exclude a campaign from automatic recovery; their ordinary refresh path remains. Shared pool defaults now bound checkout to 10 seconds, statements to 120 seconds, driver queries to 125 seconds and idle transactions to 120 seconds. These shared defaults also affect other callers and startup migrations. The detailed wait inventory and rollback switch `GA4_DURABLE_RECOVERY_ENABLED=false` are in the backlog.
 - Validation: 60 selected files, **1,495 passed**, the same **23 baseline failures**, two supplemental notification-DB tests skipped; no new failure identities. All activated P5 checks ran, including 11 real-process and six real local API-route checks. TypeScript/build pass. Real process tests use actual PostgreSQL storage/alert stages with deterministic inputs; scheduler/provider boundaries are separately controlled. No live provider, production database, browser or email delivery was exercised.
 
-See `docs/GA4_PROCESSING_AND_ALIGNMENT_BACKLOG.md`, **P5 completion package**, for root causes, exact paths/files, test evidence, activation exclusions and release checks. Deployment must apply additive migration `0021_add_ga4_refresh_recovery.sql`; confirm the next natural Ptomo refresh after deployment. P4, P6 and P7 remain separate work.
+See `docs/GA4_PROCESSING_AND_ALIGNMENT_BACKLOG.md`, **P5 completion package**, for root causes, exact paths/files, test evidence, activation exclusions and release checks. Deployment requires additive migration `0021_add_ga4_refresh_recovery.sql`. The normal scheduled publication is confirmed; production failure injection and restart recovery are not claimed. P4, P6 and P7 remain separate work.
+
+P4 cancellation prerequisite (included in this revision, deployment unconfirmed, 2026-10-18): wizard draft cleanup now checks draft status and the authorized owner inside the deletion transaction, preventing a delayed cleanup from removing a campaign finalized while it waited. Campaign/client cleanup also removes only the deleted campaign's recovery work through the existing optional-table helper. Initial imports remain synchronous; automatic draft recovery and creation-status UI are still outstanding. No production orphan-work cleanup was performed.
 
 ## Daily Auto-Refresh And Auto-Process
 

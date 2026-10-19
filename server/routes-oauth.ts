@@ -47,7 +47,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign, refreshTikTokBenchmarksForCampaign, refreshTikTokKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkGA4PerformanceAlertsForCampaign, checkPerformanceAlerts } from "./kpi-scheduler";
 import { refreshGoogleSheetsDataForCampaign, runGoogleSheetsRevenueSourceRefreshForValidation, runGoogleSheetsSpendSourceRefreshForValidation, runHubSpotRevenueSourceRefreshForValidation, runShopifyRevenueSourceRefreshForValidation } from "./auto-refresh-scheduler";
-import { getGA4DailyRefreshAttempt, getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getGA4DailySchedulerStatus, refreshAllGA4DailyMetrics, runGA4DailyRefreshPipelineForCampaignNow, recoverInterruptedGA4Refreshes } from "./ga4-daily-scheduler";
+import { parseGA4AlignedRefreshMarker, getGA4DailyRefreshAttempt, getGA4DailyRefreshFailure, getGA4DailySchedulerConfig, getGA4DailySchedulerStatus, refreshAllGA4DailyMetrics, runGA4DailyRefreshPipelineForCampaignNow, recoverInterruptedGA4Refreshes } from "./ga4-daily-scheduler";
 import { isInternalAutoRefreshRequest, getInternalGA4RefreshWriteInput } from "./internal-request-auth";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { createReportPdfArtifact, readReportPdfArtifact } from "./utils/report-pdf-artifact";
@@ -9364,6 +9364,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reportingWindow = getReportingDateWindow(days, (campaign as any)?.reportingTimeZone);
       const { startDate, endDate, dataThroughDate, reportingTimeZone } = reportingWindow;
       const schedulerConfig = getGA4DailySchedulerConfig();
+      if (req.query.statusOnly === "1") {
+        const connection = requestedPropertyId ? await storage.getGA4Connection(campaignId, requestedPropertyId) : null;
+        if (!connection || connection.campaignId !== campaignId || connection.isActive === false
+          || !/^\d+$/.test(requestedPropertyId) || shouldSimulate || !isSupportedGA4ConnectionMethod(connection.method)) {
+          return res.status(404).json({ success: false, error: "NO_GA4_CONNECTION" });
+        }
+        const now = new Date();
+        const expectedRefreshAt = getExpectedScheduledRefreshAt(dataThroughDate, schedulerConfig, now);
+        const attempt = getGA4DailyRefreshAttempt(campaign, connection);
+        let publication: { reportingDate: string; completedAt: string } | null = null;
+        let version: string | null = null;
+        try {
+          version = await storage.getGA4PublicationVersion(campaignId);
+          const snapshots = await storage.getExecutiveSummaryDailyComparisonData(campaignId, dataThroughDate, dataThroughDate);
+          publication = parseGA4AlignedRefreshMarker(snapshots.current?.notes, dataThroughDate);
+          // Reject a receipt read across another worker starting or finishing a write.
+          if (version !== await storage.getGA4PublicationVersion(campaignId)) publication = null;
+        } catch (error: any) {
+          if (error?.message !== "GA4_REFRESH_PUBLICATION_BUSY") throw error;
+          publication = null;
+        }
+        return res.json({
+          success: true, campaignId, propertyId: requestedPropertyId, dataThroughDate,
+          publicationToken: publication ? JSON.stringify([publication.reportingDate, publication.completedAt, version]) : null,
+          refreshStatus: resolveGA4RefreshStatus({
+            dataThroughDate, expectedRefreshAt, lastCompletedRefreshAt: publication?.completedAt || null,
+            refreshIsStale: !!expectedRefreshAt && expectedRefreshAt <= now
+              && (!publication || Date.parse(publication.completedAt) < expectedRefreshAt.getTime()),
+            attempt, now,
+          }),
+        });
+      }
       const addDateOnlyDays = (value: string, daysToAdd: number): string | null => {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return null;
         const d = new Date(`${value}T00:00:00.000Z`);

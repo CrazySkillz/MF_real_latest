@@ -13,6 +13,7 @@ if (start < 0 || end < start) throw new Error("Browser report preflight not foun
 const preflight = page.slice(start, end) + 'return "ready"; }; return downloadGA4Report;';
 function run(overrides: Record<string, any> = {}, configuration?: any, reportType = "custom", body = preflight) {
   const bindings: Record<string, any> = {
+    ga4PublicationDisplayPending: false, ga4PublicationDisplayFailed: false,
     ga4ReportForm: {}, normalizeCustomReportConfig: (value: any) => value, resolveGA4KpiMetricIdentity,
     campaignId: "campaign-a", campaign: { reportingTimeZone: "Europe/Amsterdam" }, campaignCurrency: "EUR", selectedGA4PropertyId: "123",
     normalizeClientReportingTimeZone: (value: string) => value,
@@ -34,6 +35,9 @@ function run(overrides: Record<string, any> = {}, configuration?: any, reportTyp
 }
 
 describe("Browser GA4 report publication gate", () => {
+  it.each(["ga4PublicationDisplayPending", "ga4PublicationDisplayFailed"])("withholds a PDF while %s", async state => {
+    await expect(run({ [state]: true })).rejects.toThrow("latest displayed figures are still being checked");
+  });
   it("accepts aligned figures", async () => { await expect(run()).resolves.toBe("ready"); });
   it.each([
     { financialRevenue: 140 }, { financialConversions: 6 }, { financialSpend: 30 },

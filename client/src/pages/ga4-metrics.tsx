@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient, keepPreviousData, useQueries } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData, useQueries, useIsFetching } from "@tanstack/react-query";
 import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useLocation, useRoute, useSearch } from "wouter";
 import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, Pencil, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, AlertCircle, CheckCircle2, Download, FileText, Settings, Activity, Info, Trophy } from "lucide-react";
@@ -1664,7 +1664,7 @@ export default function GA4Metrics() {
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: 5 * 60 * 1000, // 5 minutes
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const response = await fetch(`/api/ga4/check-connection/${campaignId}${insightsValidationReadOnly ? "?readOnly=1" : ""}`);
       const json = await response.json().catch(() => null);
@@ -1681,7 +1681,7 @@ export default function GA4Metrics() {
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: 10 * 60 * 1000, // 10 minutes
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/ga4-connections${insightsValidationReadOnly ? "?readOnly=1" : ""}`);
       const json = await response.json().catch(() => null);
@@ -1860,6 +1860,68 @@ export default function GA4Metrics() {
   const kpiAnalyticsFailed = kpiAnalyticsQueries.some((query: any) => query?.isError);
   const benchmarkAnalyticsFailed = benchmarkAnalyticsQueries.some((query: any) => query?.isError);
 
+  const ga4PublicationScope = JSON.stringify([campaignId, selectedGA4PropertyId]);
+  const { data: ga4PublicationStatus, dataUpdatedAt: ga4PublicationCheckedAt, isError: ga4PublicationStatusError, refetch: refetchGA4PublicationStatus } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "ga4-publication-status", selectedGA4PropertyId],
+    enabled: !!campaignId && ga4ConnectionUsable && /^\d+$/.test(selectedGA4PropertyId),
+    staleTime: 0, refetchInterval: 30_000, refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true, refetchOnReconnect: true,
+    queryFn: async ({ signal }) => {
+      const response = await fetch(`/api/campaigns/${campaignId}/ga4-daily?statusOnly=1&propertyId=${encodeURIComponent(selectedGA4PropertyId)}`, { signal, cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok || data?.success !== true || data.campaignId !== campaignId || data.propertyId !== selectedGA4PropertyId) {
+        throw new Error("Could not check the latest completed GA4 refresh");
+      }
+      return data;
+    },
+  });
+  const isGA4PublicationQuery = ({ queryKey: key }: { queryKey: readonly unknown[] }) => {
+    if (key[0] === "/api/campaigns" && key[1] === campaignId) {
+      if (key[2] === "financial-daily-snapshot") return true;
+      return ["ga4-daily", "ga4-insights-daily", "ga4-breakdown", "ga4-ad-comparison-breakdown", "ga4-landing-pages", "ga4-conversion-events"].includes(String(key[2]))
+        && key[4] === selectedGA4PropertyId;
+    }
+    if (["/api/platforms/google_analytics/kpis", "/api/platforms/google_analytics/benchmarks", "/api/platforms/google_analytics/reports"].includes(String(key[0]))) return key[1] === campaignId;
+    if (key[0] === "/api/kpis") return key[2] === "analytics" && key[4] === selectedGA4PropertyId && platformKPIs.some((k: any) => k.id === key[1]);
+    if (key[0] === "/api/benchmarks") return key[2] === "analytics" && key[3] === selectedGA4PropertyId && benchmarks.some((b: any) => b.id === key[1]);
+    if (key[0] === `/api/campaigns/${campaignId}/ga4-to-date`) return key[1] === selectedGA4PropertyId;
+    return ["revenue-to-date", "revenue-sources", "revenue-breakdown", "revenue-daily",
+      "spend-to-date?platformContext=ga4", "spend-sources?platformContext=ga4", "spend-breakdown?platformContext=ga4", "spend-daily?platformContext=ga4"]
+      .some(path => key[0] === `/api/campaigns/${campaignId}/${path}`);
+  };
+  const ga4PublicationReceipt = useRef({ scope: "", token: "", pending: false });
+  const [ga4PublicationSync, setGA4PublicationSync] = useState({ scope: "", pending: false, failed: false });
+  const ga4PublicationFetching = useIsFetching({ predicate: query => query.queryKey[0] === "/api/campaigns" && isGA4PublicationQuery(query) });
+  useEffect(() => {
+    const token = ga4PublicationStatus?.publicationToken;
+    if (!token || ga4PublicationStatusError || ga4PublicationStatus?.campaignId !== campaignId
+      || ga4PublicationStatus?.propertyId !== selectedGA4PropertyId) return;
+    const previous = ga4PublicationReceipt.current;
+    if (previous.scope === ga4PublicationScope && (previous.pending || previous.token === token)) return;
+    const receipt = { scope: ga4PublicationScope, token, pending: true };
+    ga4PublicationReceipt.current = receipt;
+    setGA4PublicationSync({ scope: ga4PublicationScope, pending: true, failed: false });
+    // Inactive tabs are marked stale; only mounted, enabled queries are fetched.
+    void queryClient.invalidateQueries({ predicate: isGA4PublicationQuery }, { throwOnError: true }).then(async () => {
+      if (ga4PublicationReceipt.current !== receipt) return;
+      const checked = await refetchGA4PublicationStatus();
+      if (checked.isError || checked.data?.publicationToken !== token) throw new Error("GA4 publication changed while the page was refreshing");
+      if (ga4PublicationReceipt.current !== receipt) return;
+      receipt.pending = false;
+      setGA4PublicationSync({ scope: receipt.scope, pending: false, failed: false });
+    }).catch(() => {
+      if (ga4PublicationReceipt.current !== receipt) return;
+      receipt.pending = false;
+      receipt.token = ""; // Retry on the next status check, retaining cached values.
+      setGA4PublicationSync({ scope: receipt.scope, pending: false, failed: true });
+    });
+  }, [campaignId, selectedGA4PropertyId, ga4PublicationCheckedAt, ga4PublicationStatusError, queryClient]);
+  const ga4PublicationDisplayPending = ga4PublicationSync.scope === ga4PublicationScope
+    && (ga4PublicationSync.pending || ga4PublicationFetching > 0);
+  const ga4PublicationDisplayFailed = ga4PublicationStatusError
+    || ga4PublicationSync.scope === ga4PublicationScope && ga4PublicationSync.failed;
+  const ga4PublicationRefreshStale = ["running", "failed", "delayed"].includes(ga4PublicationStatus?.refreshStatus);
+
   const deriveBenchmarkCategoryFromMetric = (metric: string): string => {
     const m = String(metric || "").toLowerCase();
     if (m === "revenue") return "revenue";
@@ -1878,10 +1940,10 @@ export default function GA4Metrics() {
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     placeholderData: keepPreviousData,
     staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: 5 * 60 * 1000,
-    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: !ga4PublicationStatus || ga4PublicationStatusError,
+    refetchOnReconnect: !ga4PublicationStatus || ga4PublicationStatusError,
+    refetchInterval: (ga4PublicationStatus && !ga4PublicationStatusError) ? false : 5 * 60 * 1000,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const response = await fetch(
         `/api/campaigns/${campaignId}/ga4-daily?days=${encodeURIComponent(String(GA4_DAILY_LOOKBACK_DAYS))}&propertyId=${encodeURIComponent(
@@ -1907,10 +1969,10 @@ export default function GA4Metrics() {
     queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId],
     enabled: (activeTab === "insights" || activeTab === "reports") && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: 5 * 60 * 1000,
-    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: !ga4PublicationStatus || ga4PublicationStatusError,
+    refetchOnReconnect: !ga4PublicationStatus || ga4PublicationStatusError,
+    refetchInterval: (ga4PublicationStatus && !ga4PublicationStatusError) ? false : 5 * 60 * 1000,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const response = await fetch(
         `/api/campaigns/${campaignId}/ga4-daily?days=${GA4_INSIGHTS_DAILY_LOOKBACK_DAYS}&propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}&readOnly=1`
@@ -1970,11 +2032,14 @@ export default function GA4Metrics() {
   const { data: financialDailySnapshotResp, isLoading: financialDailySnapshotLoading, isError: financialDailySnapshotError } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "financial-daily-snapshot", ga4OverviewExpectedEndDate],
     enabled: !!campaignId && !!ga4OverviewExpectedEndDate,
+    placeholderData: (previousData: any, previousQuery: any) => previousQuery?.queryKey?.[1] === campaignId
+      && previousData?.snapshot?.campaignId === campaignId ? previousData : undefined,
     staleTime: 0,
+    // Financial-only source refreshes can publish without a new GA4 receipt.
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: 10 * 60 * 1000,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/financial-daily-snapshot?throughDate=${encodeURIComponent(ga4OverviewExpectedEndDate)}`);
       const json = await resp.json().catch(() => null);
@@ -2081,10 +2146,10 @@ export default function GA4Metrics() {
         : undefined;
     },
     staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: 10 * 60 * 1000, // 10 minutes
-    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: activeTab === "insights" || !ga4PublicationStatus || ga4PublicationStatusError,
+    refetchOnReconnect: activeTab === "insights" || !ga4PublicationStatus || ga4PublicationStatusError,
+    refetchInterval: (activeTab !== "insights" && ga4PublicationStatus && !ga4PublicationStatusError) ? false : 10 * 60 * 1000,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(
         `/api/campaigns/${campaignId}/ga4-breakdown?${activeTab === "insights" ? `dateRange=${encodeURIComponent(dateRange)}` : "window=import-to-date"}&propertyId=${encodeURIComponent(
@@ -2109,10 +2174,10 @@ export default function GA4Metrics() {
     enabled: (activeTab === "campaigns" || activeTab === "reports") && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     placeholderData: keepPreviousData,
     staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: 10 * 60 * 1000,
-    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: !ga4PublicationStatus || ga4PublicationStatusError,
+    refetchOnReconnect: !ga4PublicationStatus || ga4PublicationStatusError,
+    refetchInterval: (ga4PublicationStatus && !ga4PublicationStatusError) ? false : 10 * 60 * 1000,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(
         `/api/campaigns/${campaignId}/ga4-breakdown?window=import-to-date&propertyId=${encodeURIComponent(
@@ -2137,10 +2202,10 @@ export default function GA4Metrics() {
         : undefined;
     },
     staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: 10 * 60 * 1000,
-    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: !ga4PublicationStatus || ga4PublicationStatusError,
+    refetchOnReconnect: !ga4PublicationStatus || ga4PublicationStatusError,
+    refetchInterval: (ga4PublicationStatus && !ga4PublicationStatusError) ? false : 10 * 60 * 1000,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const params = new URLSearchParams({
         propertyId: String(selectedGA4PropertyId),
@@ -2170,10 +2235,10 @@ export default function GA4Metrics() {
         : undefined;
     },
     staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: 10 * 60 * 1000,
-    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: !ga4PublicationStatus || ga4PublicationStatusError,
+    refetchOnReconnect: !ga4PublicationStatus || ga4PublicationStatusError,
+    refetchInterval: (ga4PublicationStatus && !ga4PublicationStatusError) ? false : 10 * 60 * 1000,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const params = new URLSearchParams({
         propertyId: String(selectedGA4PropertyId),
@@ -2201,7 +2266,7 @@ export default function GA4Metrics() {
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: 15 * 1000,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/spend-to-date?platformContext=ga4`);
       const json = await resp.json().catch(() => null);
@@ -2219,7 +2284,7 @@ export default function GA4Metrics() {
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: 10 * 60 * 1000,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(
         `/api/campaigns/${campaignId}/ga4-to-date?propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}&insightsScope=1${insightsValidationReadOnly ? "&readOnly=1" : ""}`
@@ -2341,7 +2406,7 @@ export default function GA4Metrics() {
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: () => getImportedRevenueRefetchInterval(),
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue-to-date`);
       const json = await resp.json().catch(() => null);
@@ -2359,7 +2424,7 @@ export default function GA4Metrics() {
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: (query) => getImportedRevenueRefetchInterval(query.state.data),
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue-sources`);
       const json = await resp.json().catch(() => null);
@@ -2390,7 +2455,7 @@ export default function GA4Metrics() {
     staleTime: 0,
     retry: false,
     refetchInterval: 60 * 1000,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(`/api/hubspot/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=ga4`);
       const json = await resp.json().catch(() => null);
@@ -2407,7 +2472,7 @@ export default function GA4Metrics() {
     staleTime: 0,
     retry: false,
     refetchInterval: 60 * 1000,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(`/api/salesforce/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=ga4`);
       const json = await resp.json().catch(() => null);
@@ -2436,7 +2501,7 @@ export default function GA4Metrics() {
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: 15 * 1000, // 15 seconds
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/spend-sources?platformContext=ga4`);
       const json = await resp.json().catch(() => null);
@@ -2455,7 +2520,7 @@ export default function GA4Metrics() {
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: () => getImportedRevenueRefetchInterval(),
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue-breakdown`);
       const json = await resp.json().catch(() => null);
@@ -2473,7 +2538,7 @@ export default function GA4Metrics() {
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: 15 * 1000,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/spend-breakdown?platformContext=ga4`);
       const json = await resp.json().catch(() => null);
@@ -3060,8 +3125,9 @@ export default function GA4Metrics() {
     if (!ga4ConnectionUsable) return "unavailable";
     if (ga4DailyPlaceholder) return "loading";
     if (ga4Error) return ga4DailyResp === undefined ? "unavailable" : "stale";
-    if ((ga4DailyResp as any)?.refreshIsStale === true) return "stale";
+    if ((ga4DailyResp as any)?.refreshIsStale === true || ga4PublicationRefreshStale) return "stale";
     if (ga4Loading || ga4DailyResp === undefined) return "loading";
+    if (ga4PublicationDisplayPending || ga4PublicationDisplayFailed) return "stale";
     return "ready";
   })();
   const kpiTrafficInputState: GA4KpiInputState = (() => {
@@ -3070,8 +3136,9 @@ export default function GA4Metrics() {
     if (!ga4ConnectionUsable) return "unavailable";
     if (ga4DailyPlaceholder) return "loading";
     if (ga4Error) return ga4DailyResp === undefined ? "unavailable" : "stale";
-    if ((ga4DailyResp as any)?.refreshIsStale === true) return "stale";
+    if ((ga4DailyResp as any)?.refreshIsStale === true || ga4PublicationRefreshStale) return "stale";
     if (ga4Loading || ga4DailyResp === undefined) return "loading";
+    if (ga4PublicationDisplayPending || ga4PublicationDisplayFailed) return "stale";
     return "ready";
   })();
   // Financial cards and their consumers use the same saved inputs as Overview.
@@ -3365,6 +3432,9 @@ export default function GA4Metrics() {
   };
 
   const downloadGA4Report = async (opts: { reportType: string; configuration?: any; reportName?: string }) => {
+    if (ga4PublicationDisplayPending || ga4PublicationDisplayFailed) {
+      throw new Error("The latest displayed figures are still being checked. Please try the report again once the update finishes.");
+    }
     const reportType = String(opts.reportType || "overview").toLowerCase();
     if (!["overview", "kpis", "benchmarks", "ads", "insights", "custom"].includes(reportType)) {
       throw new Error(`Cannot generate this report because "${reportType}" is not a supported GA4 report type.`);
@@ -4836,7 +4906,7 @@ export default function GA4Metrics() {
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: 10 * 60 * 1000, // 10 minutes
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const response = await fetch(
         `/api/campaigns/${campaignId}/ga4-geographic?dateRange=${encodeURIComponent(dateRange)}&propertyId=${encodeURIComponent(
@@ -6301,7 +6371,8 @@ export default function GA4Metrics() {
   const ga4DailyProviderCoverageThroughDate = String((ga4DailyResp as any)?.providerCoverageThroughDate || "").trim();
   const ga4DailyRefreshIsStale = (ga4DailyResp as any)?.refreshIsStale === true;
   const ga4DailyRefreshStatus = ga4ConnectionUsable && !ga4Error && !ga4DailyPlaceholder
-    && String(ga4DailyResp?.propertyId || "") === selectedGA4PropertyId ? String(ga4DailyResp?.refreshStatus || "") : "";
+    && String(ga4DailyResp?.propertyId || "") === selectedGA4PropertyId
+      ? String(!ga4PublicationStatusError && ga4PublicationStatus?.refreshStatus || ga4DailyResp?.refreshStatus || "") : "";
   const ga4RefreshStatusText = ga4DailyRefreshStatus === "running" ? "GA4 refresh in progress"
     : ga4DailyRefreshStatus === "failed" ? "Last GA4 refresh failed"
     : ga4DailyRefreshStatus === "delayed" ? "GA4 update is overdue"
@@ -6730,6 +6801,14 @@ export default function GA4Metrics() {
                     </>
                   )}
                 </TabsList>
+
+                {ga4DailyResp !== undefined && (ga4PublicationDisplayPending || ga4PublicationDisplayFailed) && (
+                  <p className="text-sm text-muted-foreground" role="status" data-testid="ga4-publication-display-status">
+                    {ga4PublicationDisplayFailed
+                      ? "Some figures could not refresh. Previously loaded values remain visible; the page will check again automatically."
+                      : "Updating displayed figures. Some sections may still show the previous update."}
+                  </p>
+                )}
 
                 {activeTab === "overview" && overviewVisibleDataUsingLastGoodData && (
                   <div className="mb-4 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">

@@ -353,10 +353,13 @@ On-demand GA4 daily-history writes are restricted to the same ordered pipeline u
 
 ## GA4 Page Query Refetch Timing
 
-The GA4 analytics page periodically rereads saved values in addition to the background scheduler:
+The GA4 analytics page rereads saved values in addition to the background scheduler. P7's browser timing change is locally validated; deployment confirmation is pending:
 
-- `/api/campaigns/:id/ga4-daily` refetches on page load, browser focus/reconnect, and every 5 minutes while the page is open, but normal browser callers use `readOnly=1` and cannot query GA4 or rewrite daily history
-- `/api/campaigns/:id/ga4-to-date` and the Overview table endpoints refetch on page load, browser focus/reconnect, and every 10 minutes while the page is open; an Overview table refetch rereads storage and does not contact GA4
+- the existing `/api/campaigns/:id/ga4-daily?statusOnly=1&propertyId=...` route checks the authorized campaign's persisted completed-day alignment marker/work version every 30 seconds while visible and on focus/reconnect. This branch does not fetch historical metrics, call providers or write data; unavailable, busy or changed work cannot announce completion
+- a new completion receipt invalidates existing campaign/property daily, table, financial, KPI, Benchmark, report and related source queries. Only mounted, enabled queries refetch immediately; inactive queries become stale. The receipt is rechecked after the reads. Repeated receipts do not trigger another metric reload
+- the six saved daily/detail queries use that completion check instead of independent five-/ten-minute intervals while status reads work. Their original intervals/focus/reconnect behavior remains the fallback when status is unavailable or fails. Initial page loads and changed query keys still fetch normally
+- `/api/campaigns/:id/ga4-to-date`, financial snapshots and the separate live Insights breakdown retain their ten-minute foreground/focus/reconnect cadence. Financial-only source changes and live provider responses can change without a new GA4 completion marker. Other source foreground intervals are preserved; page interval polling pauses while hidden
+- failed reads retain cached values. Related saved-data reads may finish at different times; a non-replacing notice identifies the unsettled display, KPI/Benchmark inputs are marked stale, and browser PDF generation waits for the check to settle. Reporting-date changes retain only the same campaign's financial placeholder with its original date/warning; table window/property guards remain
 - `/api/campaigns/:id/ga4-breakdown`, `/api/campaigns/:id/ga4-landing-pages`, and `/api/campaigns/:id/ga4-conversion-events` read the atomic scheduler snapshot for the fixed initial-import boundary through the exact stored day returned with Summary; the browser query identity includes that day so different scheduler generations are not mixed. The separate Insights breakdown request retains its live analysis-window behavior
 - `/ga4-daily` is hard read-only on the server even if a caller omits `readOnly=1`; it never contacts GA4 and never rewrites daily history
 - `/ga4-daily` returns stored rows, scheduler/history coverage metadata, and `providerRefreshOutcome: "read_only"`; its browser refetch cadence is not a live GA4 refresh

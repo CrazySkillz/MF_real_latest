@@ -20,7 +20,7 @@ User-directed validation scope, updated 2026-10-17: focus remaining Task 4 work 
 
 ## Remaining P-task delivery checklist, 2026-10-18
 
-**2 implementation acceptance items remain open, both in P7.** P6 is implemented and locally validated as one package in this revision; deployment and live performance measurement remain pending. P4.1-P4.3 are implemented and locally validated in `ef6a8b07`; deployment is unconfirmed and the live creation check is deferred until the user's next normal campaign creation. **P5 implementation and local acceptance are complete for the agreed Ptomo native-GA4 scope; `6462b939` deployment and Ptomo's October 18 natural 20:00 refresh are confirmed below.** This is a scoped completion statement, not whole-platform production certification. The current completion evidence below supersedes earlier partial checkpoints and step estimates.
+**0 planned implementation acceptance items remain open in P1-P7 for the agreed scope.** P7's two items are implemented and locally validated together below; commit, deployment and natural-refresh confirmation remain pending. P6 is pushed as `020c34d4`; deployment and live performance measurement remain unconfirmed. P4.1-P4.3 are implemented and locally validated in `ef6a8b07`; deployment is unconfirmed and the live creation check is deferred until the user's next normal campaign creation. **P5 implementation and local acceptance are complete for the agreed Ptomo native-GA4 scope; `6462b939` deployment and Ptomo's October 18 natural 20:00 refresh are confirmed below.** This is a scoped completion statement, not whole-platform production certification. The current completion evidence below supersedes earlier partial checkpoints and step estimates.
 
 | Task | Open acceptance items | Current scope |
 | --- | ---: | --- |
@@ -30,7 +30,7 @@ User-directed validation scope, updated 2026-10-17: focus remaining Task 4 work 
 | P4 | 0 | Initial import, status/retry/reopen and local lifecycle validation complete in this revision. Release/live creation check pending. |
 | P5 | 0 | Scoped implementation/local validation complete; `6462b939` deployment confirmed. Ptomo completed the October 18 scheduled refresh at 20:15 Amsterdam. Recovery-record deletion correction recorded under P4 below. |
 | P6 | 0 | Correction-window policy, guarded recent refresh/full-history repair and local parity/request-count validation complete below. Release/live timing pending. |
-| P7 | 2 | Prompt, coherent browser refresh after publication and display/load validation. |
+| P7 | 0 | Completion detection, coordinated browser refresh, cached-value retention and display/load validation complete below. Commit/deployment/natural-refresh confirmation pending. |
 
 ### P5: consolidated completion package
 
@@ -160,12 +160,34 @@ Final test command: with `GA4_TEST_DATABASE_URL` set to the isolated `127.0.0.1:
 
 **Measured local benefit and limits:** in the real-parser two-campaign UTM fixture spanning 43 dates, later same-day daily-series requests fall from 5 to 3 (10 to 6 with purchaseRevenue retry), with identical stored metric values and Overview output. Whole-fixture HTTP calls decrease by 2, or 4 with that revenue fallback; daily rows replaced fall from 43 to 14. Correct primary attribution can use one daily request for either window, so fewer HTTP calls are not guaranteed for every configuration. Initial/daily full checks and detected mismatches still perform full work; long histories can take longer on those runs. No production speed percentage, Google finality guarantee, whole-platform certification or absence of every possible side effect is claimed. A normal subsequent scheduled refresh can confirm deployment behavior without a new test campaign or deliberate production failure.
 
-### P7: two remaining steps
+### P7: consolidated browser publication update, 2026-10-18
 
-- [ ] **P7.1 — Refresh the browser after publication:** reuse the existing query layer to detect completed publication and refresh the dependent views together, while retaining prior valid data during work or failure.
-- [ ] **P7.2 — Validate display consistency and request load:** verify complete updates appear promptly, partially published inputs do not appear aligned, stale/error states remain accurate, and idle/background pages do not poll excessively.
+Status: both implementation/local acceptance items complete; final validation is recorded below. Not committed or deployed. P6 was committed and pushed as `020c34d4`; its deployment is unconfirmed.
 
-The zero counts for P1-P3 mean no currently planned implementation step in their agreed scope. They do not claim every live timing, provider, lifecycle or production-readiness path is certified; the existing evidence limits remain attached to each task. New bugs in those paths must be proven and assigned explicitly, not silently added as unnumbered work.
+- **P7.1 — Completion detection:** an opt-in `statusOnly=1` branch on the existing owner-guarded `/api/campaigns/:id/ga4-daily` route reads the persisted completed-day alignment marker and checks the existing work version before/after that read. It does not fetch provider data, sum historical metrics, write records, or use another campaign's process-wide running flag. Busy work, changed versions, missing/wrong-day markers and failed reads cannot announce a new completed publication. Normal daily responses retain their contract.
+- **P7.2 — Coordinated display and load:** the page checks this response every 30 seconds while visible and on focus/reconnection. A new receipt invalidates only the current campaign/property's existing keys; inactive queries become stale without immediate requests. Repeated receipts do not reload metric data. The receipt is checked again after those reads. Errors retain cached values and retry on a later status check. Six saved-data queries use completion-triggered updates, retaining their original intervals if status checks fail or are unsupported. The live Insights breakdown, GA4 to-date and financial snapshot queries retain their ten-minute/focus/reconnect cadence: provider-backed or financial-only updates need not produce a new GA4 receipt. Existing source polling intervals are preserved in the foreground; all page interval polling pauses while hidden.
+
+**Root cause/path:** `ga4-metrics.tsx` had independent five-/ten-minute GA4 polls, while KPI/Benchmark lists inherited infinite cache freshness without scheduled-publication invalidation. Same-day refreshes did not change date-based keys. The changed path is scheduler completion -> stored alignment marker/work version -> authorized daily status read -> TanStack invalidation -> existing daily/detail/financial/KPI/Benchmark/report reads and renders. No scheduler, provider query, storage write, schema, formula, campaign creation or navigation logic changed.
+
+**Display contract:** responses still arrive independently; this is not an atomic browser snapshot. While related saved-data reads are pending, available values remain visible with a notice that some sections may show the previous update. KPI/Benchmark eligibility is stale during those reads or status/read failure. Browser PDF generation is withheld until this check settles. Reporting-date changes retain only the same campaign's financial placeholder, with its original date and existing older-update warning. Existing table window/property guards remain: a newly requested table window without a verified response stays loading/unavailable rather than using another window's rows.
+
+| Consumer / boundary | Local evidence and limits |
+| --- | --- |
+| Overview cards/tables/Financial/note | Rendered-page test covers same-day updates, delayed financial reads, failed daily reads, retry and reporting-date transition. Existing inputs/formulas retained. |
+| KPI / Benchmark | Scoped lists invalidate; actual browser cards converge to Overview. Existing saved-value/consumer-state tests retain zero/unavailable/last-good semantics. |
+| Insights / Ad Comparison / reports | Selected-property keys and current campaign KPI/Benchmark history IDs invalidate; inactive queries wait until enabled. Whole-tab live/provider certification is not claimed. |
+| Browser PDFs | Actual preflight rejects unsettled/failed display refresh. Existing generated-PDF tests retain valid zero Revenue, absent Spend, reporting dates and stale labels. |
+| Financial sources / Pipeline Proxy | Foreground source, to-date and financial-only snapshot cadence preserved. Proxy retains separate provider-timestamp invalidation. Ingestion/provenance/edit/delete paths are unchanged and not recertified. |
+| Ownership / concurrent navigation | Campaign access precedes status reads. Connection/campaign/property guards, version races, receipt changes during reads, scoped keys and late callbacks are tested. |
+| Jobs / deletion / alerts / scheduled email | The status-only request performs no mutations or provider calls. Refetched endpoints retain their existing saved/live read and token-handling behavior. No scheduler, deletion, alert or email code changes; those lifecycle paths are not recertified. |
+
+**Final local result:** all **293 tests across 12 files passed**, with zero failed/skipped tests. `npm run check`, `npm run build` and `git diff --check` passed. The packet includes a Chromium run of the actual page, with delayed/failed requests, recovery, KPI/Benchmark parity, date rollover and hidden-tab request counts. This is local fixture evidence, not deployed/provider certification.
+
+**Validation:** run `npx vitest run` with `server/ga4-publication-browser.test.ts`, `server/ga4-browser-publication-refresh.test.ts`, `server/ga4-browser-report-publication.test.ts`, `server/ga4-overview-partial-refresh.test.ts`, `server/ga4-kpi-ui-browser-state-regression.test.ts`, `server/ga4-refresh-status-regression.test.ts`, `server/ga4-refresh-attempt-regression.test.ts`, `server/ga4-report-saved-publication.test.ts`, `server/ga4-overview-reporting-note.test.ts`, `server/ga4-kpi-saved-overview.test.ts`, `server/ga4-overview-initial-import-window-regression.test.ts` and `server/financial-snapshot-saved-ga4.test.ts`. Evidence: `audit-temp/p7-final.json`, `p7-final.log`, `p7-final-check.log` and `p7-build.log`. The browser test bundles the actual GA4 page/query client, replaces unrelated auth/layout/setup entry points, and intercepts every request with local fixtures. No application server, production database, Google request or email is used. An unchanged receipt produces no extra daily reads across two status intervals; ten minutes hidden produces no page API polling. QueryObserver tests independently cover cadence, failure retry and retained cache. The whole repository suite and unrelated platform failures were not rerun or waived.
+
+**Files/release:** runtime changes only in `client/src/pages/ga4-metrics.tsx` and `server/routes-oauth.ts`; two new tests plus the existing browser-report fixture cover them. No dependency or migration is added. Production latency, real network interruption, configured external-provider timing and a natural refresh on this deployed revision remain unmeasured. Running/failed attempts are process-local; a different server instance can conservatively show overdue rather than that attempt's exact status. The completion marker/work version is persisted. The release confirmation is the next normal Ptomo refresh with the page open; no new campaign or deliberate failure is required. Reverting P7 restores prior browser timing without data cleanup.
+
+The zero counts for P1-P7 mean no currently planned implementation step in their agreed scope. They do not claim every live timing, provider, lifecycle or production-readiness path is certified; the existing evidence limits remain attached to each task. New bugs in those paths must be proven and assigned explicitly, not silently added as unnumbered work.
 
 ## A1 - Align GA4, Revenue, and Spend by processing readiness
 
@@ -938,9 +960,8 @@ existing explicitly daily-summed Summary Users contract is unchanged.
 
 ### P7 - Show a completed publication promptly
 
-- **Evidence:** [ga4-metrics.tsx](../client/src/pages/ga4-metrics.tsx) polls the main daily metrics every five minutes and several Overview/snapshot queries every ten minutes. Other source queries have different intervals.
-- **Proposal:** prefer lightweight publication-status/version polling and coordinated query invalidation through the existing query layer. Consider an existing notification mechanism only if suitable; no new service is required by this backlog.
-- **Validation:** finished data appears promptly, all related cards use the same publication, previous valid content stays visible during refresh, errors preserve stale-state labeling, and idle pages do not create excessive requests.
+- **Implementation:** the consolidated P7 entry above replaces the independent saved-data timers with a 30-second foreground completion check and scoped query invalidation. Existing live/financial-only foreground intervals remain; hidden intervals pause.
+- **Validation:** local rendered-page and query tests cover completed updates, stale/error handling, retained values, dependent KPI/Benchmark refresh and bounded requests. Independent responses can arrive at different times; a visible notice and PDF guard cover unsettled reads. This does not introduce an atomic browser snapshot.
 - **Boundary:** faster browser polling only reduces display lag after publication. It cannot fix provider processing delays or failed imports.
 
 ## Review coverage and remaining uncertainty

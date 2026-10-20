@@ -32,6 +32,8 @@ These checks prove public reachability, the exact running revision and those ano
 
 The user followed **Ptomo Campaign Overview -> Connected Platform -> Google Analytics -> View Detailed Analytics** and reported **"it looks normal"**. The basic Ptomo analytics page-load/display smoke check is therefore **PASSED (user-reported)** after the confirmed deployment above. This supplies bounded live UI evidence; it is not an independent browser session or a reconciliation of individual metrics. Reporting dates, successful refresh after deployment, fresh customer Google consent and foreign-owner isolation were not established by that response. No connection, campaign or source was changed for this check. Broader authenticated acceptance and V1 certification remain open.
 
+The user then reported the GA4 metrics line as **"Last successful update: Oct 20, 2026, 08:14 PM GMT+2"** (18:14 UTC). This predates the confirmed new runtime at 21:01:30 UTC (23:01:30 GMT+2). It supports display of saved data, not a successful provider refresh under Batch 1. The timestamp alone is not evidence of a failure. The current Overview renders the actual configured schedule on its **Scheduled refreshes** line (`client/src/pages/ga4-metrics.tsx:6835`); the next scheduled-refresh check must use that deployed value rather than assume the code default or invent a manual refresh button. Post-deployment refresh acceptance remains pending.
+
 ## Local evidence
 
 - [Before correction](database-grants-before.log): the existing environment-only guard rejected a correctly scoped database permission with `SERVICE_ACCOUNT_RESOURCE_NOT_GRANTED`.

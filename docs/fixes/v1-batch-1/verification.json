@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-20T21:42:59.804Z",
+  "at": "2026-10-20T21:46:00.599Z",
   "baseHead": "777aae6f6353e998d60b635d3e66b413093117c2",
   "revision": "Batch 1 and both follow-ups pushed as 4522f83486a28ebbf1fe6152f1053fdc83565223; live activation is separately recorded in DATABASE_GRANTS.md and database-grants-live-health.json",
   "scope": {
@@ -182,10 +182,10 @@
   },
   "artifactHashes": {
     "docs/CURRENT_APP_SECTIONS.md": "87ebe4038630762f7b507b43e716c204eb7cf74b39a97af36fdb7cf32e4daccd",
-    "docs/V1_RELEASE_READINESS.md": "ff28eef753612a49d5039ef1399c030adf5a259ecc729cb4a518dd6625cdbee2",
+    "docs/V1_RELEASE_READINESS.md": "f44baeaaeae0c056e0ff052084819d22121102085a74f1479d49470e45619895",
     "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md": "4e3e6581a34e166e244bcd8f1218aef767acc1f1955950c7c2fbe5b4e7ff1e11",
     "docs/fixes/v1-batch-1/.gitattributes": "72ef59d9d8255973d9bd4e313ff80ffed3ff620727204a9c627665242476ac82",
-    "docs/fixes/v1-batch-1/DATABASE_GRANTS.md": "50ee436c0c47e57d41ae166affaac93302f790c231d0a03bdd528ba7a868d2c0",
+    "docs/fixes/v1-batch-1/DATABASE_GRANTS.md": "1cadb3bed7eb0311ad47a132e418fc848a98dce0cabfb4d5162a9ed4decc8c9a",
     "docs/fixes/v1-batch-1/ONBOARDING_IMPACT.md": "c7a2f6ec23cc4de5757deedbf00f7c819782eacf165f3e787f027c828ebbabb1",
     "docs/fixes/v1-batch-1/README.md": "3bf73ebc8682024b52ad4d3529854fc3786201b343ddfa09b82ab38e9f7458b0",
     "docs/fixes/v1-batch-1/access-after.json": "99e86065de121ed60be30831871b295053c518a6556bfcc1a94a7c655836c367",

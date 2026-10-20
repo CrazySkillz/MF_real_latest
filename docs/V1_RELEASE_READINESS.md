@@ -8,6 +8,8 @@ This is the controlling index for the requested current V1 audit. Earlier record
 
 **130 audit findings:120 unresolved V1 items and10 deferred-provider functional items. Batch 1's 20 code corrections are implemented and locally checked; final verification is recorded below. No item is closed for release.** Local implementations and their validation are recorded below. The120 remain in scope while the currently reachable/offered features remain included. Any additional exclusion requires explicit agreement and evidence that its UI/API/job boundary is safely enforced.
 
+**Batch 1: IMPLEMENTED AND DEPLOYED; LIVE ACCEPTANCE IN PROGRESS.** Runtime `4522f834` is confirmed on Render. Ptomo's basic visual check passed (user-reported). Its screenshot shows updates from before deployment, so the next check is the **October 21, 2026, 08:00 Amsterdam** scheduled run, after completion: verify both update timestamps and data-through dates. No manual Render setup is required. [The Batch 1 status table](fixes/v1-batch-1/README.md#current-batch-1-status) separates completed checks from remaining acceptance; the 182 failed tests and other release gates remain open.
+
 These are findings and release-verification requirements, **not130 separate code patches**. Several related findings can share a localized correction; some items require test repair, configuration or deployed/provider evidence instead of a code change. The182 failed tests are evidence within the queue, not182 additional independent fixes. Across all130 findings, severity is7P0,115P1 and8P2; all ten exclusively deferred findings are P1.
 
 | Batch | Area | Unresolved V1 items | Deferred functional items |

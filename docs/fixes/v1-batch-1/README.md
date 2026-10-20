@@ -8,6 +8,25 @@ Scope: V1-001, 002, 003, 004, 005, 006, 008, 026, 027, 030, 034, 052, 053, 054, 
 
 During the implementation phase, no production application/database request, real email, provider activation, campaign modification, deployment, commit or push was performed. Ptomo and redundant campaigns were not modified. All test identities, credentials, reports and database rows are synthetic. The later commit/deployment preflight is recorded below.
 
+## Current Batch 1 status
+
+**IMPLEMENTED AND DEPLOYED; LIVE ACCEPTANCE IN PROGRESS.** All 20 Batch 1 code corrections are deployed. The visual check below has passed, but the batch is not closed for release.
+
+| Check | Current result |
+|---|---|
+| Implementation and deployment | Complete; Render confirmed runtime `4522f83486a28ebbf1fe6152f1053fdc83565223`. Later audit-only commits use `[skip render]`. |
+| Focused validation | 141 focused tests and 34 isolated PostgreSQL checks passed; TypeScript and production build passed. |
+| Current full suite | 3,907 passed, 182 failed, zero skipped. All 182 failures remain open; no new failure identities or changed first messages. |
+| Deployed public checks | Health/revision confirmed; five protected APIs returned HTTP 401 to anonymous requests. |
+| Ptomo visual check | Passed, user-reported: Campaign Overview -> Connected Platform -> Google Analytics -> View Detailed Analytics "looks normal". |
+| Ptomo scheduled refresh after deployment | **Pending.** The screenshot shows native/financial data through Oct 19, last updated Oct 20 at 20:14/20:15 GMT+2, before the 23:01 deployment. |
+| Customer connection setup | Normal new-customer flow uses Google sign-in without per-customer Render entries. Ptomo's exact existing shared permission is stored and verified in the database. Live fresh-customer Google consent remains unverified. |
+| Other Batch 1 release acceptance | Still open where identified in the finding rows and [remaining acceptance](#remaining-release-acceptance). One successful Ptomo refresh would not close these other requirements. |
+
+**Next Ptomo check:** after the **October 21, 2026, 08:00 Europe/Amsterdam** scheduled refresh finishes, inspect the same Overview section. Check both **Last successful update** timestamps and both data-through dates; the expected completed-day cutoff for that run is October 20. Retain the screenshot/result in the [live evidence record](DATABASE_GRANTS.md#post-deployment-user-visual-check). The configured schedule is 08:00, 14:00 and 20:00 Amsterdam time. No completion duration is assumed and no manual import or configuration change is needed for this check. If the timestamps do not advance or an error appears, keep acceptance pending and investigate the actual run.
+
+This status supersedes the earlier environment-only deployment holds in the historical chronology below. The overall V1 release decision remains **NO-GO**.
+
 ## Corrections and evidence boundaries
 
 Links point to the working tree. Original finding-register line locations remain evidence for the baseline. The final manifest records exact files/hashes.
@@ -42,7 +61,7 @@ Do not deploy this patch alone as a V1 release. The remaining batches and extern
 1. **Migration 0022:** [SQL](../../../migrations/0022_v1_entrypoint_ownership.sql) adds five nullable owner columns/indexes and durable inbound receipts in a transaction. Apply before starting this code. Tests cover baseline-schema upgrade/reapply and fresh current schema. The full historical migration/startup catalog remains Batch 2.
 2. **Legacy data:** unowned global/attribution rows stay unowned and are not assigned to a guessed customer. Existing plaintext, lost in-memory attribution and possible prior bad conversion/spend data require separate inventories and an exact-boundary cleanup plan.
 3. **Encryption:** configure `TOKEN_ENCRYPTION_KEY` or `ENCRYPTION_KEY` with the existing compatible value. If old ciphertext derived from a fallback, prove its derivation/decryptability first. Do not generate a replacement key that strands existing credentials. Recovery must include the compatible key.
-4. **TLS:** verify the hosted PostgreSQL hostname/trust chain with certificate checking enabled. Untrusted certificates and `NODE_TLS_REJECT_UNAUTHORIZED=0` must fail. No hosted handshake was exercised.
+4. **TLS:** the deployment runners connected to the confirmed hosted database with certificate verification enabled. Effective TLS configuration inside the Render application process remains unverified. Untrusted certificates and `NODE_TLS_REJECT_UNAUTHORIZED=0` must fail.
 5. **Shared credentials:** exact `{ownerId, clientId, provider, resourceId}` authorization is mandatory. Optional `SERVICE_ACCOUNT_RESOURCE_GRANTS` JSON entries remain supported; internal `service_account_resource_grants` rows provide the same permission boundary without Render edits. Neither source automatically trusts saved connections. Missing authorization in both denies access. Provider is `ga4`, `google_sheets` or `google_ads`; use normalized GA4/Ads IDs and exact spreadsheet IDs. Only independently reviewed operator grants may be inserted. Ptomo's single database grant and migration 0023 are applied/verified as recorded in [the follow-up](DATABASE_GRANTS.md). New customer OAuth does not require shared grants. No production identifiers or credentials are committed.
 6. **Inbound email:** configure SendGrid's ECDSA public key in `SENDGRID_WEBHOOK_VERIFICATION_KEY` (PEM/base64 SPKI) and/or `MAILGUN_WEBHOOK_SIGNING_KEY` for enabled providers. Missing keys return 503, invalid signatures 401; allowed timestamp difference is 24 hours. SendGrid exact-wire replay digest survives signature variation; logically repeated mail with changed MIME boundaries requires deployed provider testing. Replay tombstones contain fingerprint, campaign/metric IDs and time, not message bodies/credentials, and deliberately survive deletion.
 7. **Conversion sender:** use an owner session or current Custom Integration token in `x-campaign-webhook-token`. An external adapter must match this contract; native Shopify/Stripe webhooks are not automatically compatible. Supply finite value, campaign currency, optional nonfuture date and a stable unique `conversionId` for retry protection. Missing IDs retain non-idempotent compatibility. Changed values for an existing ID are rejected. Public delivery rejects drafts; token rotation/deletion revokes access.
@@ -109,6 +128,8 @@ The isolated PostgreSQL fixture on `127.0.0.1:55443` was stopped successfully af
 ## Documentation alignment and remaining acceptance
 
 ### Commit/deployment preflight — 2026-10-20
+
+The following chronology preserves earlier checkpoints. The [current Batch 1 status](#current-batch-1-status) and [confirmed deployment record](DATABASE_GRANTS.md) supersede its former manual Render prerequisite and push holds.
 
 The user subsequently authorized committing and pushing Batch 1 to trigger Render. Local and remote `main` were both `777aae6f6353e998d60b635d3e66b413093117c2` before this commit. `render.yaml` enables automatic deployment from `main`, but neither its build command nor startup applies migration 0022. This commit packages the verified candidate and its audit evidence; it does not certify V1.
 

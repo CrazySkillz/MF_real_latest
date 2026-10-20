@@ -27,7 +27,7 @@ assert.ok(!fs.existsSync("C:/Users/me/AppData/Local/Temp/mf-v1-migration-audit-2
 const artifactFiles = fs.readdirSync(dir).filter(file => file !== "verification.json").map(file => dir + file)
   .filter(file => fs.statSync(file).isFile()).concat(["docs/V1_RELEASE_READINESS.md", "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md"]);
 const result = {
-  at: new Date().toISOString(), baseHead: candidate.head, revision: "Uncommitted Batch 1; not deployed",
+  at: new Date().toISOString(), baseHead: candidate.head, revision: "Implementation c1248a875af9c8eea1289a824a0e903e599ab174; not pushed or deployed",
   scope: { implemented: 20, locallyVerified: "Specified boundaries in README and index, not whole-path or release certification", closedForRelease: 0 },
   commands: [
     { command: "node node_modules/vitest/vitest.mjs run --maxWorkers=2 --reporter=json --outputFile=docs/fixes/v1-batch-1/full-suite-final.json", exit: 1, tests: 4088, passed: 3906, failed: 182, skipped: 0 },

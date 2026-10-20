@@ -110,6 +110,8 @@ The isolated PostgreSQL fixture on `127.0.0.1:55443` was stopped successfully af
 
 The user subsequently authorized committing and pushing Batch 1 to trigger Render. Local and remote `main` were both `777aae6f6353e998d60b635d3e66b413093117c2` before this commit. `render.yaml` enables automatic deployment from `main`, but neither its build command nor startup applies migration 0022. This commit packages the verified candidate and its audit evidence; it does not certify V1.
 
+**Implementation commit:** `c1248a875af9c8eea1289a824a0e903e599ab174` (`Harden V1 access, ingestion and credential boundaries (Batch 1)`). The tracked working tree was clean immediately after this commit. A subsequent remote read confirmed `main` still at `777aae6f6353e998d60b635d3e66b413093117c2`; no push or deployment was initiated. This documentation follow-up records the resulting commit and leaves all external acceptance gates open.
+
 A [metadata-only read-only check](deployment-preflight.json), using [this runner](deployment-preflight.cjs), verified a certificate-checked TLS connection to the repository-configured database. All five required owner columns and the inbound receipt table are **absent**. Binding of that database to the Render service is still unverified. No schema or customer data was changed.
 
 No Render credential or authenticated browser session was available. The existing compatible encryption key and exact Ptomo resource grant therefore remain unverified in Render. Pushing the auto-deploy branch is held until migration/target binding and required deployment settings are established. The explicit deployment authorization is retained; additional push permission is not the missing requirement.

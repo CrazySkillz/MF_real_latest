@@ -14,6 +14,16 @@ export const clients = pgTable("clients", {
 export type Client = typeof clients.$inferSelect;
 export type InsertClient = typeof clients.$inferInsert;
 
+// Operator-reviewed shared-resource permissions; never populated from customer requests.
+export const serviceAccountResourceGrants = pgTable("service_account_resource_grants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: text("owner_id").notNull(),
+  clientId: text("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  resourceId: text("resource_id").notNull(),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [uniqueIndex("service_account_resource_grants_scope_idx").on(table.ownerId, table.clientId, table.provider, table.resourceId)]);
+
 export const insertClientSchema = createInsertSchema(clients).pick({
   ownerId: true,
   name: true,

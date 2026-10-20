@@ -8,7 +8,7 @@ import { db, pool } from "./db";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { eq, and, or, isNull, desc, sql, gte, lte, lt, inArray, ne } from "drizzle-orm";
 import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, encryptString, type EncryptedTokens } from "./utils/tokenVault";
-import { inboundWebhookReceipts } from "@shared/schema";
+import { inboundWebhookReceipts, serviceAccountResourceGrants } from "@shared/schema";
 import { assertGA4ServiceAccountPropertyAllowed, GA4_SERVICE_ACCOUNT_METHOD, hydrateGA4ServiceAccountConnection } from "./utils/ga4-service-account";
 import { GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, hydrateGoogleSheetsServiceAccountConnection } from "./utils/google-sheets-service-account";
 import { GOOGLE_ADS_SERVICE_ACCOUNT_METHOD, hydrateGoogleAdsServiceAccountConnection } from "./utils/google-ads-service-account";
@@ -678,11 +678,17 @@ export class DatabaseStorage implements IStorage {
       .from(campaigns).innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId))).where(eq(campaigns.id, campaignId));
     let grants: unknown;
     try { grants = JSON.parse(process.env.SERVICE_ACCOUNT_RESOURCE_GRANTS || "[]"); } catch { grants = []; }
-    if (!campaign?.ownerId || !campaign.clientId || campaign.status === "deleted" || !resourceId || !Array.isArray(grants) || !grants.some(grant =>
-      grant?.ownerId === campaign.ownerId && grant?.clientId === campaign.clientId &&
-      grant?.provider === provider && grant?.resourceId === resourceId)) {
-      throw Object.assign(new Error("This provider resource is not approved for this customer"), { code: "SERVICE_ACCOUNT_RESOURCE_NOT_GRANTED" });
+    if (campaign?.ownerId && campaign.clientId && campaign.status !== "deleted" && resourceId) {
+      if (Array.isArray(grants) && grants.some(grant =>
+        grant?.ownerId === campaign.ownerId && grant?.clientId === campaign.clientId &&
+        grant?.provider === provider && grant?.resourceId === resourceId)) return;
+      const [grant] = await db.select({ id: serviceAccountResourceGrants.id }).from(serviceAccountResourceGrants).where(and(
+        eq(serviceAccountResourceGrants.ownerId, campaign.ownerId), eq(serviceAccountResourceGrants.clientId, campaign.clientId),
+        eq(serviceAccountResourceGrants.provider, provider), eq(serviceAccountResourceGrants.resourceId, resourceId),
+      )).limit(1);
+      if (grant) return;
     }
+    throw Object.assign(new Error("This provider resource is not approved for this customer"), { code: "SERVICE_ACCOUNT_RESOURCE_NOT_GRANTED" });
   }
 
   // Campaign methods

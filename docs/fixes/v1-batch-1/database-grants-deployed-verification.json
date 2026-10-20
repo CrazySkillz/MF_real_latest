@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-20T20:51:59.318Z",
+  "targetBinding": "User confirmed Render uses repository DATABASE_URL.",
+  "boundary": "Exact reviewed Ptomo permission only; no analytics, credential or connection writes; no provider calls.",
+  "committed": false,
+  "verifiedTlsConnection": true,
+  "exactGrantMatches": 1,
+  "readOnly": true
+}

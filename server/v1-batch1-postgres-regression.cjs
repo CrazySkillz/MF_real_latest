@@ -49,10 +49,15 @@ async function row(table, overrides) {
     const baseline = JSON.parse(fs.readFileSync("docs/audits/v1-2026-10-19/schema-generation.json", "utf8"));
     for (const statement of baseline.statements) { assert.ok(!/(?:"public"|\bpublic)\s*\./i.test(statement)); await pool.query(statement); }
     const migration = fs.readFileSync("migrations/0022_v1_entrypoint_ownership.sql", "utf8");
+    const grantsMigration = fs.readFileSync("migrations/0023_service_account_resource_grants.sql", "utf8");
     await check("0022 upgrade and repeated application preserve unowned rows", async () => {
       await pool.query("INSERT INTO metrics(name,value,change,icon) VALUES ('legacy','1','0','fixture')");
       await pool.query(migration); await pool.query(migration);
       assert.equal((await pool.query("SELECT owner_id FROM metrics WHERE name='legacy'")).rows[0].owner_id, null);
+    });
+    await check("0023 upgrade and repeated application create an empty grant table", async () => {
+      await pool.query(grantsMigration); await pool.query(grantsMigration);
+      assert.equal((await pool.query("SELECT count(*)::int AS n FROM service_account_resource_grants")).rows[0].n, 0);
     });
     await row(schema.clients, { id: "client-a", ownerId: "owner-a", name: "Fixture client A" });
     await row(schema.clients, { id: "client-b", ownerId: "owner-b", name: "Fixture client B" });
@@ -132,6 +137,45 @@ async function row(table, overrides) {
       fixtureEnv.env.SERVICE_ACCOUNT_RESOURCE_GRANTS = "invalid-json";
       await assert.rejects(store.assertServiceAccountResourceAccess("campaign-a", "ga4", "123"), /not approved/);
     });
+    await check("database grant preserves approved access without any Render grant setting", async () => {
+      delete fixtureEnv.env.SERVICE_ACCOUNT_RESOURCE_GRANTS;
+      await pool.query("INSERT INTO service_account_resource_grants(owner_id,client_id,provider,resource_id) VALUES ('owner-a','client-a','ga4','123')");
+      await store.assertServiceAccountResourceAccess("campaign-a", "ga4", "123");
+      const restarted = storageFor(drizzle(pool));
+      await restarted.assertServiceAccountResourceAccess("campaign-a", "ga4", "123");
+    });
+    await check("database grant rejects foreign owner, client, provider, property and missing campaign", async () => {
+      await row(schema.clients, { id: "client-a2", ownerId: "owner-a", name: "Other owned client" });
+      await row(schema.campaigns, { id: "campaign-a2", ownerId: "owner-a", clientId: "client-a2", name: "Other owned campaign" });
+      for (const args of [["campaign-b", "ga4", "123"], ["campaign-a2", "ga4", "123"], ["campaign-a", "ga4", "456"], ["campaign-a", "google_ads", "123"], ["campaign-a", "google_sheets", "123"], ["missing", "ga4", "123"]]) {
+        await assert.rejects(store.assertServiceAccountResourceAccess(...args), /not approved/);
+      }
+    });
+    await check("database grant does not survive changed campaign/client ownership or deletion status", async () => {
+      for (const change of [{ ownerId: "owner-b" }, { clientId: "client-a2" }, { status: "deleted" }]) {
+        await db.update(schema.campaigns).set(change).where(orm.eq(schema.campaigns.id, "campaign-a"));
+        await assert.rejects(store.assertServiceAccountResourceAccess("campaign-a", "ga4", "123"), /not approved/);
+        await db.update(schema.campaigns).set({ ownerId: "owner-a", clientId: "client-a", status: "active" }).where(orm.eq(schema.campaigns.id, "campaign-a"));
+      }
+      await db.update(schema.clients).set({ ownerId: "owner-b" }).where(orm.eq(schema.clients.id, "client-a"));
+      await assert.rejects(store.assertServiceAccountResourceAccess("campaign-a", "ga4", "123"), /not approved/);
+      await db.update(schema.clients).set({ ownerId: "owner-a" }).where(orm.eq(schema.clients.id, "client-a"));
+    });
+    await check("database grants enforce exact uniqueness and immediate revocation across storage instances", async () => {
+      await assert.rejects(pool.query("INSERT INTO service_account_resource_grants(owner_id,client_id,provider,resource_id) VALUES ('owner-a','client-a','ga4','123')"), { code: "23505" });
+      await pool.query("DELETE FROM service_account_resource_grants WHERE owner_id='owner-a' AND client_id='client-a' AND provider='ga4' AND resource_id='123'");
+      await assert.rejects(store.assertServiceAccountResourceAccess("campaign-a", "ga4", "123"), /not approved/);
+      await assert.rejects(storageFor(drizzle(pool)).assertServiceAccountResourceAccess("campaign-a", "ga4", "123"), /not approved/);
+    });
+    await check("client deletion cascades only that client's stored grants", async () => {
+      await pool.query("INSERT INTO service_account_resource_grants(owner_id,client_id,provider,resource_id) VALUES ('owner-a','client-a2','ga4','123'),('owner-b','client-b','ga4','456')");
+      await db.delete(schema.clients).where(orm.eq(schema.clients.id, "client-a2"));
+      const remaining = (await pool.query("SELECT owner_id,client_id,provider,resource_id FROM service_account_resource_grants")).rows;
+      assert.deepEqual(remaining, [{ owner_id: "owner-b", client_id: "client-b", provider: "ga4", resource_id: "456" }]);
+      await assert.rejects(store.assertServiceAccountResourceAccess("campaign-a2", "ga4", "123"), /not approved/);
+      await store.assertServiceAccountResourceAccess("campaign-b", "ga4", "456");
+      await pool.query("DELETE FROM service_account_resource_grants WHERE client_id='client-b'");
+    });
     await check("legacy updates preserve campaign and row identity while saving allowed fields", async () => {
       for (const [table, method] of [[schema.metaKpis, "updateMetaKPI"], [schema.metaBenchmarks, "updateMetaBenchmark"]]) {
         const previous = await row(table, { campaignId: "campaign-a", name: "Before" });
@@ -202,22 +246,73 @@ async function row(table, overrides) {
       const persisted = (await db.select().from(table))[0];
       assert.equal(vault.decryptTokens(persisted.encryptedTokens).accessToken, "fixture-renewed");
     });
-    await check("fresh current schema and repeated 0022 migration agree on ownership indexes and durable receipts", async () => {
+    const { applyReviewedGrant } = require("../docs/fixes/v1-batch-1/apply-reviewed-resource-grant.cjs");
+    const approved = { ownerId: "owner-a", clientId: "client-a", provider: "ga4", resourceId: "123" };
+    await row(schema.ga4Connections, { campaignId: "campaign-a", method: "service_account", propertyId: "123", isActive: true });
+    const deploymentClient = await pool.connect();
+    try {
+      await check("reviewed deployment dry-run rolls back its permission write", async () => {
+        const result = await applyReviewedGrant(deploymentClient, approved, { campaignName: "Fixture A" });
+        assert.equal(result.committed, false); assert.equal(result.rolledBack, true);
+        assert.equal((await pool.query("SELECT count(*)::int AS n FROM service_account_resource_grants")).rows[0].n, 0);
+      });
+      await check("reviewed deployment refuses wrong owner, client, resource, provider or missing campaign", async () => {
+        for (const change of [{ ownerId: "owner-b" }, { clientId: "client-b" }, { resourceId: "999" }, { provider: "google_ads" }]) {
+          await assert.rejects(applyReviewedGrant(deploymentClient, { ...approved, ...change }, { campaignName: "Fixture A", apply: true }));
+        }
+        await assert.rejects(applyReviewedGrant(deploymentClient, approved, { campaignName: "missing", apply: true }));
+        assert.equal((await pool.query("SELECT count(*)::int AS n FROM service_account_resource_grants")).rows[0].n, 0);
+      });
+      await check("reviewed deployment refuses ambiguous or OAuth-only connections", async () => {
+        const extra = await row(schema.ga4Connections, { campaignId: "campaign-a", method: "service_account", propertyId: "123", isActive: true });
+        await assert.rejects(applyReviewedGrant(deploymentClient, approved, { campaignName: "Fixture A", apply: true }));
+        await db.delete(schema.ga4Connections).where(orm.eq(schema.ga4Connections.id, extra.id));
+        await pool.query("UPDATE ga4_connections SET method='access_token' WHERE campaign_id='campaign-a'");
+        await assert.rejects(applyReviewedGrant(deploymentClient, approved, { campaignName: "Fixture A", apply: true }));
+        await pool.query("UPDATE ga4_connections SET method='service_account' WHERE campaign_id='campaign-a'");
+      });
+      await check("reviewed deployment rolls back a failed permission insert", async () => {
+        await pool.query("ALTER TABLE service_account_resource_grants ADD CONSTRAINT fixture_reject_insert CHECK (resource_id<>'123')");
+        await assert.rejects(applyReviewedGrant(deploymentClient, approved, { campaignName: "Fixture A", apply: true }), { code: "23514" });
+        assert.equal((await pool.query("SELECT count(*)::int AS n FROM service_account_resource_grants")).rows[0].n, 0);
+        await pool.query("ALTER TABLE service_account_resource_grants DROP CONSTRAINT fixture_reject_insert");
+      });
+      await check("reviewed deployment commits exactly one permission idempotently without changing customer records", async () => {
+        async function records() {
+          const saved = [];
+          for (const table of ['clients','campaigns','ga4_connections']) saved.push((await pool.query(`SELECT json_agg(t ORDER BY id) AS data FROM ${table} t`)).rows);
+          return saved;
+        }
+        const before = await records();
+        const first = await applyReviewedGrant(deploymentClient, approved, { campaignName: "Fixture A", apply: true });
+        assert.equal(first.committed, true); assert.equal(first.grantsInserted, 1);
+        const second = await applyReviewedGrant(deploymentClient, approved, { campaignName: "Fixture A", apply: true });
+        assert.equal(second.committed, true); assert.equal(second.grantsInserted, 0);
+        assert.equal((await pool.query("SELECT count(*)::int AS n FROM service_account_resource_grants")).rows[0].n, 1);
+        assert.deepEqual(await records(), before);
+        await store.assertServiceAccountResourceAccess("campaign-a", "ga4", "123");
+      });
+    } finally { deploymentClient.release(); }
+    await check("fresh current schema and repeated 0022/0023 migrations agree on ownership, receipts and grants", async () => {
       const { generateDrizzleJson, generateMigration } = require("drizzle-kit/api");
       const current = generateDrizzleJson(schema), statements = await generateMigration(generateDrizzleJson({}), current);
-      assert.equal(Object.keys(current.tables).length, 63);
+      assert.equal(Object.keys(current.tables).length, 64);
       assert.match(fixtureSchema, /^v1_batch1_[a-f0-9]{32}$/);
       await admin.query(`DROP SCHEMA "${fixtureSchema}" CASCADE`);
       await admin.query(`CREATE SCHEMA "${fixtureSchema}"`);
-      for (const statement of statements) { assert.ok(!/(?:"public"|\bpublic)\s*\./i.test(statement)); await pool.query(statement); }
+      for (const statement of statements) {
+        const scoped = statement.replace('REFERENCES "public"."clients"', 'REFERENCES "clients"');
+        assert.ok(!/(?:"public"|\bpublic)\s*\./i.test(scoped)); await pool.query(scoped);
+      }
       await pool.query(migration);
+      await pool.query(grantsMigration);
       for (const table of ["metrics", "integrations", "performance_data", "attribution_models", "customer_journeys"]) {
         const index = await pool.query("SELECT indexname FROM pg_indexes WHERE schemaname=$1 AND indexname=$2", [fixtureSchema, `${table}_owner_id_idx`]);
         assert.equal(index.rows.length, 1);
       }
       assert.equal((await pool.query("SELECT count(*)::int AS n FROM inbound_webhook_receipts")).rows[0].n, 0);
     });
-    fs.writeFileSync("docs/fixes/v1-batch-1/postgres-after.json", JSON.stringify({ at: new Date().toISOString(), base: "777aae6f", boundary: "Exact current storage methods, real PostgreSQL isolated schema; no provider calls or production state", results }, null, 2) + "\n");
+    fs.writeFileSync("docs/fixes/v1-batch-1/database-grants-postgres.json", JSON.stringify({ at: new Date().toISOString(), base: "2fcee885", boundary: "Exact current storage methods, real PostgreSQL isolated schema; no provider calls or production state", results }, null, 2) + "\n");
     console.log(`${results.length} PostgreSQL checks passed`);
   } finally {
     await pool.end();

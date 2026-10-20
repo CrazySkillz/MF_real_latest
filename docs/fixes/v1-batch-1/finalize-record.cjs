@@ -5,12 +5,19 @@ const read = name => JSON.parse(fs.readFileSync(dir + name, "utf8"));
 const hash = file => crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 const candidate = read("candidate-files.json"), suite = read("full-suite-final.json"), targeted = read("current-targeted.json"), failures = read("failure-reconciliation.json");
 const onboarding = fs.existsSync(dir + "onboarding-candidate.json") ? read("onboarding-candidate.json") : null;
-const currentHashes = { ...candidate.hashes, ...onboarding?.hashes };
+const databaseGrants = fs.existsSync(dir + "database-grants-candidate.json") ? read("database-grants-candidate.json") : null;
+const currentHashes = { ...candidate.hashes, ...onboarding?.hashes, ...databaseGrants?.hashes };
 for (const [file, expected] of Object.entries(currentHashes)) assert.equal(hash(file), expected, file);
 if (onboarding) {
   const current = read("onboarding-targeted.json"), browser = read("onboarding-after.json");
   assert.equal(current.numPassedTests, 138); assert.equal(current.numFailedTests, 0); assert.equal(current.numPendingTests, 0);
   assert.equal(browser.results.length, 13); assert.ok(browser.results.every(row => row.result === "PASS"));
+}
+if (databaseGrants) {
+  const current = read("database-grants-targeted.json"), postgres = read("database-grants-postgres.json"), full = read("database-grants-failure-reconciliation.json");
+  assert.equal(current.numPassedTests, 141); assert.equal(current.numFailedTests, 0); assert.equal(current.numPendingTests, 0);
+  assert.equal(postgres.results.length, 34); assert.ok(postgres.results.every(row => row.result === "PASS"));
+  assert.equal(full.newFailures, 0); assert.equal(full.failed, 182); assert.equal(full.skipped, 0);
 }
 assert.equal(targeted.numPassedTests, 137); assert.equal(targeted.numFailedTests, 0); assert.equal(targeted.numPendingTests, 0);
 assert.equal(suite.numTotalTests, 4088); assert.equal(suite.numPassedTests, 3906); assert.equal(suite.numFailedTests, 182); assert.equal(suite.numPendingTests, 0);
@@ -57,6 +64,11 @@ const result = {
     candidate: "onboarding-candidate.json", runtimeChangedLines: 3,
     validation: { focusedPassed: 138, focusedFailed: 0, focusedSkipped: 0, browserAndHandlerChecksPassed: 13, typecheckExit: 0, buildExit: 0 },
     boundary: "Synthetic identities/providers/storage and loopback Chromium. No live Google consent or database/provider mutation. Initial full-suite/PostgreSQL results above were not rerun for this frontend-only follow-up; all 182 recorded full-suite failures remain open.",
+  } : null,
+  databaseGrantsFollowup: databaseGrants ? {
+    candidate: "database-grants-candidate.json", reconciliation: "database-grants-failure-reconciliation.json",
+    validation: { focusedPassed: 141, focusedFailed: 0, postgresChecksPassed: 34, typecheckExit: 0, buildExit: 0 },
+    boundary: "Exact storage methods and deployment runner in isolated PostgreSQL; current full suite reconciled separately. Hosted database deployment and live application revision are recorded separately in DATABASE_GRANTS.md. No provider acceptance is inferred.",
   } : null,
   artifactHashes: Object.fromEntries(artifactFiles.sort().map(file => [file, hash(file)])),
 };

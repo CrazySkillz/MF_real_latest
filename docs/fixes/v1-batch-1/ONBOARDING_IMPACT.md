@@ -2,6 +2,8 @@
 
 Reviewed on 2026-10-20 after the user asked whether each user would need a Render entry, then explicitly required removal of that operational burden. This remains under existing finding **V1-123**, not a new finding count or release certification. The initial clarification changed no runtime code; the subsequent localized correction and its evidence are recorded below.
 
+**Superseding deployment update:** after the user rejected the remaining manual Ptomo Render entry, the storage guard was extended to accept the same exact reviewed permission from the database. Migration 0023 and one exact Ptomo grant were applied and verified. No manual Render grant is now required for Ptomo. New customers continue to use their own Google OAuth authorization. The historical requirement for an environment entry below is superseded by [DATABASE_GRANTS.md](DATABASE_GRANTS.md); no blanket approval of existing connections or weakening of the ownership boundary was introduced.
+
 ## Pre-correction implementation, verified at 11d30cab
 
 - [Campaign creation](../../../client/src/pages/campaigns.tsx:1437) mounts `IntegratedGA4Auth` without a `connectionMode` override.
@@ -41,4 +43,4 @@ Track this under primary Batch 1 finding V1-123, with the customer-onboarding ac
 
 Required acceptance includes a fresh customer connecting only their authorized property without a per-customer Render change; foreign-resource denial; draft ownership; property selection and discovery completeness; cancellation/retry; refresh/reconnect; and preservation of Ptomo's current connection and selected scope. Existing V1-037 reconnect/cancellation and other onboarding findings remain open. Switching a UI prop alone does not prove this acceptance.
 
-The user has not confirmed saving the Ptomo grant. The push remains held pending deployment configuration and preservation of that existing connection. The correction above changes only the local onboarding component; production connections, credentials and schema were not changed by this follow-up.
+At the end of the frontend-only correction, the user had not saved the Ptomo environment grant and push was held. That frontend correction did not change production connections, credentials or schema. The later [database follow-up](DATABASE_GRANTS.md) now preserves the exact reviewed Ptomo permission without a Render entry; its separately recorded additive schema and permission operation supersedes that deployment hold.

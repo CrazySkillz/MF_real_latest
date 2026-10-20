@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-20T20:51:55.568Z",
+  "targetBinding": "User confirmed Render uses repository DATABASE_URL.",
+  "boundary": "Exact reviewed Ptomo permission only; no analytics, credential or connection writes; no provider calls.",
+  "committed": true,
+  "verifiedTlsConnection": true,
+  "dryRun": false,
+  "migration": "migrations/0023_service_account_resource_grants.sql",
+  "migrationSha256": "3706014c63914e00b038606bbe4a0d471c613c71842803a0975bda4425e12cfe",
+  "campaignMatches": 1,
+  "activeConnectionMatches": 1,
+  "grantsInserted": 1,
+  "exactGrantMatches": 1,
+  "schemaVerified": true,
+  "rolledBack": false
+}

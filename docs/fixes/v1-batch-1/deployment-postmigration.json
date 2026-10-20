@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-20T19:38:43.888Z",
+  "boundary": "User confirmed Render uses this repository DATABASE_URL. Metadata-only READ ONLY transaction; no customer records, credentials or configuration values returned.",
+  "readOnly": true,
+  "verifiedTlsConnection": true,
+  "ownerColumns": [
+    {
+      "table_name": "attribution_models",
+      "present": true
+    },
+    {
+      "table_name": "customer_journeys",
+      "present": true
+    },
+    {
+      "table_name": "integrations",
+      "present": true
+    },
+    {
+      "table_name": "metrics",
+      "present": true
+    },
+    {
+      "table_name": "performance_data",
+      "present": true
+    }
+  ],
+  "receiptsTablePresent": true,
+  "migration0022Present": true
+}

@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-20T19:38:44.651Z",
+  "url": "https://marketforensics.onrender.com/api/health",
+  "status": 200,
+  "ok": true,
+  "commit": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "nodeEnv": "production",
+  "boundary": "Public health/revision observation only; no authenticated or provider validation."
+}

@@ -1,6 +1,7 @@
 // Read-only schema/TLS check. Never imports application startup or provider code.
 const fs = require('node:fs'), { parseEnv } = require('node:util'), { Client } = require('pg');
-const result = { at: new Date().toISOString(), boundary: 'Repository-configured database; binding to Render is not established. Metadata-only READ ONLY transaction; no customer records, credentials or configuration values returned.' };
+const confirmedRender = process.argv.includes('--confirmed-render');
+const result = { at: new Date().toISOString(), boundary: (confirmedRender ? 'User confirmed Render uses this repository DATABASE_URL. ' : 'Repository-configured database; binding to Render is not established. ') + 'Metadata-only READ ONLY transaction; no customer records, credentials or configuration values returned.' };
 let client;
 (async () => {
   try {
@@ -23,7 +24,7 @@ let client;
   } catch (error) { result.errorCode = error.code || error.name; process.exitCode = 1; }
   finally {
     if (client) await client.end().catch(() => {});
-    fs.writeFileSync('docs/fixes/v1-batch-1/deployment-preflight.json', JSON.stringify(result, null, 2) + '\n');
+    fs.writeFileSync(`docs/fixes/v1-batch-1/${confirmedRender ? 'deployment-postmigration' : 'deployment-preflight'}.json`, JSON.stringify(result, null, 2) + '\n');
     console.log(JSON.stringify(result, null, 2));
   }
 })();

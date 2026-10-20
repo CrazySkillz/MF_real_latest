@@ -1,0 +1,144 @@
+{
+  "at": "2026-10-20T19:38:04.871Z",
+  "migration": "migrations/0022_v1_entrypoint_ownership.sql",
+  "targetBinding": "User confirmed Render uses the DATABASE_URL in this repository .env.",
+  "boundary": "Reviewed additive DDL only; metadata checks, no customer-row reads or writes.",
+  "committed": true,
+  "migrationSha256": "b4c924c7f9bf368a326b7e249d227d90ee9560ecdcf26e0f4790776579b26ae6",
+  "verifiedTlsConnection": true,
+  "before": {
+    "owners": [
+      {
+        "table_name": "attribution_models",
+        "table_present": true,
+        "data_type": null,
+        "is_nullable": null
+      },
+      {
+        "table_name": "customer_journeys",
+        "table_present": true,
+        "data_type": null,
+        "is_nullable": null
+      },
+      {
+        "table_name": "integrations",
+        "table_present": true,
+        "data_type": null,
+        "is_nullable": null
+      },
+      {
+        "table_name": "metrics",
+        "table_present": true,
+        "data_type": null,
+        "is_nullable": null
+      },
+      {
+        "table_name": "performance_data",
+        "table_present": true,
+        "data_type": null,
+        "is_nullable": null
+      }
+    ],
+    "indexes": [],
+    "receipts": [],
+    "receiptPrimaryKey": []
+  },
+  "after": {
+    "owners": [
+      {
+        "table_name": "attribution_models",
+        "table_present": true,
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "customer_journeys",
+        "table_present": true,
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "integrations",
+        "table_present": true,
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "metrics",
+        "table_present": true,
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "performance_data",
+        "table_present": true,
+        "data_type": "text",
+        "is_nullable": "YES"
+      }
+    ],
+    "indexes": [
+      {
+        "index_name": "attribution_models_owner_id_idx",
+        "indisvalid": true,
+        "indisready": true,
+        "definition": "CREATE INDEX attribution_models_owner_id_idx ON public.attribution_models USING btree (owner_id)"
+      },
+      {
+        "index_name": "customer_journeys_owner_id_idx",
+        "indisvalid": true,
+        "indisready": true,
+        "definition": "CREATE INDEX customer_journeys_owner_id_idx ON public.customer_journeys USING btree (owner_id)"
+      },
+      {
+        "index_name": "integrations_owner_id_idx",
+        "indisvalid": true,
+        "indisready": true,
+        "definition": "CREATE INDEX integrations_owner_id_idx ON public.integrations USING btree (owner_id)"
+      },
+      {
+        "index_name": "metrics_owner_id_idx",
+        "indisvalid": true,
+        "indisready": true,
+        "definition": "CREATE INDEX metrics_owner_id_idx ON public.metrics USING btree (owner_id)"
+      },
+      {
+        "index_name": "performance_data_owner_id_idx",
+        "indisvalid": true,
+        "indisready": true,
+        "definition": "CREATE INDEX performance_data_owner_id_idx ON public.performance_data USING btree (owner_id)"
+      }
+    ],
+    "receipts": [
+      {
+        "column_name": "id",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "campaign_id",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "metrics_id",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "NO",
+        "column_default": "CURRENT_TIMESTAMP"
+      }
+    ],
+    "receiptPrimaryKey": [
+      {
+        "definition": "PRIMARY KEY (id)"
+      }
+    ]
+  },
+  "completedAt": "2026-10-20T19:38:08.441Z"
+}

@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-20T19:40:19.786Z",
+  "boundary": "Ptomo-only read-only saved connection configuration; no credentials or analytics data read; provider ownership/permission not independently revalidated.",
+  "campaignMatches": 1,
+  "campaignClientOwnerMatches": true,
+  "connections": [
+    {
+      "provider": "ga4",
+      "method": "service_account",
+      "active": true,
+      "count": 1
+    }
+  ],
+  "preparedGrantEntries": 1,
+  "appliedToRender": false
+}

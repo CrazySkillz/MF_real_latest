@@ -28,6 +28,10 @@ The first post-push public health observation still served `777aae6f`. [The revi
 
 These checks prove public reachability, the exact running revision and those anonymous denials only. Authenticated Ptomo analytics, Google consent, natural refresh completion, foreign-owner denial and full V1 acceptance remain unverified. The documentation-only evidence commit uses Render's documented [`[skip render]` phrase](https://render.com/docs/deploys#skipping-an-auto-deploy) to preserve this runtime deployment. Repository HEAD may therefore be later than the confirmed runtime SHA with only documentation/evidence differences.
 
+### Post-deployment user visual check
+
+The user followed **Ptomo Campaign Overview -> Connected Platform -> Google Analytics -> View Detailed Analytics** and reported **"it looks normal"**. The basic Ptomo analytics page-load/display smoke check is therefore **PASSED (user-reported)** after the confirmed deployment above. This supplies bounded live UI evidence; it is not an independent browser session or a reconciliation of individual metrics. Reporting dates, successful refresh after deployment, fresh customer Google consent and foreign-owner isolation were not established by that response. No connection, campaign or source was changed for this check. Broader authenticated acceptance and V1 certification remain open.
+
 ## Local evidence
 
 - [Before correction](database-grants-before.log): the existing environment-only guard rejected a correctly scoped database permission with `SERVICE_ACCOUNT_RESOURCE_NOT_GRANTED`.

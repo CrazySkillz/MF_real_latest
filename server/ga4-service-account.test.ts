@@ -25,17 +25,27 @@ afterEach(() => {
 });
 
 describe("temporary GA4 service-account boundary", () => {
-  it("keeps OAuth supported while using the service account by default", () => {
+  it("defaults customer onboarding to OAuth while retaining explicit service-account support", () => {
     const authSource = readFileSync(resolve(process.cwd(), "client/src/components/IntegratedGA4Auth.tsx"), "utf8");
     expect(isSupportedGA4ConnectionMethod("access_token")).toBe(true);
     expect(isSupportedGA4ConnectionMethod("service_account")).toBe(true);
     expect(isSupportedGA4ConnectionMethod("password")).toBe(false);
     expect(authSource).toContain("/api/auth/ga4/connect");
-    expect(authSource).toContain('connectionMode = "service-account"');
+    expect(authSource).toContain('connectionMode = "oauth"');
     expect(authSource).toContain('connectionMode === "oauth"');
     expect(authSource).toContain("/ga4-service-account/connect");
     expect(authSource).not.toContain("Temporary test connection");
     expect(authSource).not.toContain("Connect test property");
+  });
+
+  it("uses customer OAuth credentials without shared-account configuration or grants", async () => {
+    delete process.env.GA4_SERVICE_ACCOUNT_JSON;
+    delete process.env.GA4_SERVICE_ACCOUNT_ALLOWED_PROPERTY_IDS;
+    grant.mockRejectedValue(new Error("No shared resource grant"));
+    const connection = { campaignId: "customer-draft", method: "access_token", propertyId: "123456789", accessToken: "customer-token" };
+    expect(await hydrateGA4ServiceAccountConnection(connection)).toBe(connection);
+    expect(grant).not.toHaveBeenCalled();
+    expect(authorize).not.toHaveBeenCalled();
   });
 
   it("normalizes and permits only explicitly allowlisted properties", () => {

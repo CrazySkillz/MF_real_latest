@@ -129,6 +129,12 @@ all selected properties. Accepted imports appear in All Campaigns with their
 status; clicking reopens Confirm. Users may close the wizard and return, retry
 a failed import, or use Back to review configuration/reconnect Google.
 
+The local Batch 1 onboarding correction uses customer Google sign-in at `Auth`.
+Customers authorize their own Google account; normal creation does not require
+per-customer Render resource-grant entries. Existing shared-service-account
+connections retain separate access controls. App-wide Google configuration and
+deployed onboarding acceptance remain pending in the [V1 audit](V1_RELEASE_READINESS.md).
+
 Closing before final Create may clean up only the unsubmitted persisted draft.
 Once Create is accepted, closing preserves the import. The server rejects stale
 wizard cleanup after acceptance or activation. Confirmed campaign deletion

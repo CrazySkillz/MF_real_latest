@@ -4,7 +4,14 @@ const dir = "docs/fixes/v1-batch-1/";
 const read = name => JSON.parse(fs.readFileSync(dir + name, "utf8"));
 const hash = file => crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 const candidate = read("candidate-files.json"), suite = read("full-suite-final.json"), targeted = read("current-targeted.json"), failures = read("failure-reconciliation.json");
-for (const [file, expected] of Object.entries(candidate.hashes)) assert.equal(hash(file), expected, file);
+const onboarding = fs.existsSync(dir + "onboarding-candidate.json") ? read("onboarding-candidate.json") : null;
+const currentHashes = { ...candidate.hashes, ...onboarding?.hashes };
+for (const [file, expected] of Object.entries(currentHashes)) assert.equal(hash(file), expected, file);
+if (onboarding) {
+  const current = read("onboarding-targeted.json"), browser = read("onboarding-after.json");
+  assert.equal(current.numPassedTests, 138); assert.equal(current.numFailedTests, 0); assert.equal(current.numPendingTests, 0);
+  assert.equal(browser.results.length, 13); assert.ok(browser.results.every(row => row.result === "PASS"));
+}
 assert.equal(targeted.numPassedTests, 137); assert.equal(targeted.numFailedTests, 0); assert.equal(targeted.numPendingTests, 0);
 assert.equal(suite.numTotalTests, 4088); assert.equal(suite.numPassedTests, 3906); assert.equal(suite.numFailedTests, 182); assert.equal(suite.numPendingTests, 0);
 assert.equal(failures.newFailures, 0); assert.equal(failures.failures.length, 182);
@@ -25,9 +32,9 @@ assert.equal((index.match(/^\| V1-\d{3} \/ B1 \| VERIFIED LOCALLY/gm) || []).len
 assert.equal((index.match(/^\| V1-\d{3} \| P[012] \//gm) || []).length, 130);
 assert.ok(!fs.existsSync("C:/Users/me/AppData/Local/Temp/mf-v1-migration-audit-20261020/postmaster.pid"), "Fixture must be stopped");
 const artifactFiles = fs.readdirSync(dir).filter(file => file !== "verification.json").map(file => dir + file)
-  .filter(file => fs.statSync(file).isFile()).concat(["docs/V1_RELEASE_READINESS.md", "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md"]);
+  .filter(file => fs.statSync(file).isFile()).concat(["docs/V1_RELEASE_READINESS.md", "docs/CURRENT_APP_SECTIONS.md", "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md"]);
 const result = {
-  at: new Date().toISOString(), baseHead: candidate.head, revision: "Implementation c1248a875af9c8eea1289a824a0e903e599ab174; not pushed or deployed",
+  at: new Date().toISOString(), baseHead: candidate.head, revision: "Initial implementation c1248a875af9c8eea1289a824a0e903e599ab174; current onboarding follow-up bound by onboarding-candidate.json when present; not pushed or deployed",
   scope: { implemented: 20, locallyVerified: "Specified boundaries in README and index, not whole-path or release certification", closedForRelease: 0 },
   commands: [
     { command: "node node_modules/vitest/vitest.mjs run --maxWorkers=2 --reporter=json --outputFile=docs/fixes/v1-batch-1/full-suite-final.json", exit: 1, tests: 4088, passed: 3906, failed: 182, skipped: 0 },
@@ -45,6 +52,12 @@ const result = {
   failures: { originalMatched: 182, newIdentities: 0, changedFirstMessagesReviewed: changedMessages.map(row => row.id), waived: 0, closed: 0 },
   liveApplicationOrProvidersUsed: false, testDatabaseStopped: true, releaseDecision: "NO-GO",
   candidateHashes: candidate.hashes,
+  currentCandidateHashes: currentHashes,
+  onboardingFollowup: onboarding ? {
+    candidate: "onboarding-candidate.json", runtimeChangedLines: 3,
+    validation: { focusedPassed: 138, focusedFailed: 0, focusedSkipped: 0, browserAndHandlerChecksPassed: 13, typecheckExit: 0, buildExit: 0 },
+    boundary: "Synthetic identities/providers/storage and loopback Chromium. No live Google consent or database/provider mutation. Initial full-suite/PostgreSQL results above were not rerun for this frontend-only follow-up; all 182 recorded full-suite failures remain open.",
+  } : null,
   artifactHashes: Object.fromEntries(artifactFiles.sort().map(file => [file, hash(file)])),
 };
 fs.writeFileSync(dir + "verification.json", JSON.stringify(result, null, 2) + "\n");
@@ -55,4 +68,4 @@ for (const file of ["docs/V1_RELEASE_READINESS.md", dir + "README.md", "docs/aud
     assert.ok(fs.existsSync(path.resolve(path.dirname(file), target)), `${file}: ${target}`);
   }
 }
-console.log(JSON.stringify({ candidateFiles: Object.keys(candidate.hashes).length, artifacts: artifactFiles.length, findings: 130, batch1Implemented: 20, fullSuiteFailuresOpen: 182, links: "PASS", fixture: "STOPPED" }));
+console.log(JSON.stringify({ candidateFiles: Object.keys(currentHashes).length, artifacts: artifactFiles.length, findings: 130, batch1Implemented: 20, fullSuiteFailuresOpen: 182, onboardingFollowup: Boolean(onboarding), links: "PASS", fixture: "STOPPED" }));

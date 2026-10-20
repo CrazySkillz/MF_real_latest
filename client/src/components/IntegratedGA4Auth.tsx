@@ -15,7 +15,7 @@ interface IntegratedGA4AuthProps {
   connectionMode?: "oauth" | "service-account";
 }
 
-export function IntegratedGA4Auth({ campaignId, onSuccess, onError, connectionMode = "service-account" }: IntegratedGA4AuthProps) {
+export function IntegratedGA4Auth({ campaignId, onSuccess, onError, connectionMode = "oauth" }: IntegratedGA4AuthProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isServiceAccountConnecting, setIsServiceAccountConnecting] = useState(false);
   const [authCompleted, setAuthCompleted] = useState(false);
@@ -52,7 +52,7 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError, connectionMo
   }, [campaignId, onSuccess]);
 
   useEffect(() => {
-    if (!campaignId) return;
+    if (!campaignId || connectionMode !== "service-account") return;
     setServiceAccountStatusLoaded(false);
     setShowServiceAccountFlow(false);
     fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/ga4-service-account/status`, { credentials: "include" })
@@ -60,7 +60,7 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError, connectionMo
       .then((data) => setServiceAccountStatus({ enabled: data?.enabled === true, email: data?.email || null }))
       .catch(() => setServiceAccountStatus({ enabled: false, email: null }))
       .finally(() => setServiceAccountStatusLoaded(true));
-  }, [campaignId]);
+  }, [campaignId, connectionMode]);
 
   useEffect(() => {
     const handlePopupMessage = (event: MessageEvent) => {

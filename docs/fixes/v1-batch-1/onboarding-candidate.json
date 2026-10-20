@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-20T20:24:07.994Z",
+  "baseHead": "11d30cab",
+  "boundary": "Localized self-service onboarding follow-up. Runtime: three changed lines in IntegratedGA4Auth; original Batch 1 backend unchanged. Original full-suite evidence is not a rerun against this follow-up.",
+  "hashes": {
+    "client/src/components/IntegratedGA4Auth.tsx": "a9e40b4909d5f4b31337e5597bdf5eaac55aebadc0619b38bc346bf2b8674086",
+    "server/ga4-service-account.test.ts": "ae7f7a0f7b299c9c5296a044bf2176ba33742dc77d11b18d8cb39811a7073f10",
+    "server/v1-batch1-ga4-onboarding-regression.cjs": "0ccd0880969daf06318804a58d1624f9e8da123842ea9d6dbe6af07e10cdd446"
+  }
+}

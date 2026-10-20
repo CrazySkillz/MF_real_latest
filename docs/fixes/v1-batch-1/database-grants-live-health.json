@@ -1,0 +1,79 @@
+{
+  "expectedCommit": "4522f83486a28ebbf1fe6152f1053fdc83565223",
+  "boundary": "Public health/revision only; no authenticated analytics or provider certification.",
+  "observations": [
+    {
+      "at": "2026-10-20T20:57:58.889Z",
+      "httpStatus": 200,
+      "ok": true,
+      "commit": "777aae6f6353e998d60b635d3e66b413093117c2",
+      "nodeEnv": "production",
+      "serverTime": "2026-10-20T20:57:58.860Z"
+    },
+    {
+      "at": "2026-10-20T20:58:29.132Z",
+      "httpStatus": 200,
+      "ok": true,
+      "commit": "777aae6f6353e998d60b635d3e66b413093117c2",
+      "nodeEnv": "production",
+      "serverTime": "2026-10-20T20:58:29.044Z"
+    },
+    {
+      "at": "2026-10-20T20:58:59.330Z",
+      "httpStatus": 200,
+      "ok": true,
+      "commit": "777aae6f6353e998d60b635d3e66b413093117c2",
+      "nodeEnv": "production",
+      "serverTime": "2026-10-20T20:58:59.231Z"
+    },
+    {
+      "at": "2026-10-20T20:59:29.500Z",
+      "httpStatus": 200,
+      "ok": true,
+      "commit": "777aae6f6353e998d60b635d3e66b413093117c2",
+      "nodeEnv": "production",
+      "serverTime": "2026-10-20T20:59:29.375Z"
+    },
+    {
+      "at": "2026-10-20T20:59:59.634Z",
+      "httpStatus": 200,
+      "ok": true,
+      "commit": "777aae6f6353e998d60b635d3e66b413093117c2",
+      "nodeEnv": "production",
+      "serverTime": "2026-10-20T20:59:59.501Z"
+    },
+    {
+      "at": "2026-10-20T21:00:29.763Z",
+      "httpStatus": 200,
+      "ok": true,
+      "commit": "777aae6f6353e998d60b635d3e66b413093117c2",
+      "nodeEnv": "production",
+      "serverTime": "2026-10-20T21:00:29.704Z"
+    },
+    {
+      "at": "2026-10-20T21:00:59.978Z",
+      "httpStatus": 200,
+      "ok": true,
+      "commit": "777aae6f6353e998d60b635d3e66b413093117c2",
+      "nodeEnv": "production",
+      "serverTime": "2026-10-20T21:00:59.881Z"
+    },
+    {
+      "at": "2026-10-20T21:01:30.154Z",
+      "httpStatus": 200,
+      "ok": true,
+      "commit": "4522f83486a28ebbf1fe6152f1053fdc83565223",
+      "nodeEnv": "production",
+      "serverTime": "2026-10-20T21:01:30.011Z"
+    },
+    {
+      "at": "2026-10-20T21:02:00.287Z",
+      "httpStatus": 200,
+      "ok": true,
+      "commit": "4522f83486a28ebbf1fe6152f1053fdc83565223",
+      "nodeEnv": "production",
+      "serverTime": "2026-10-20T21:02:00.190Z"
+    }
+  ],
+  "matched": true
+}

@@ -41,7 +41,7 @@ assert.ok(!fs.existsSync("C:/Users/me/AppData/Local/Temp/mf-v1-migration-audit-2
 const artifactFiles = fs.readdirSync(dir).filter(file => file !== "verification.json").map(file => dir + file)
   .filter(file => fs.statSync(file).isFile()).concat(["docs/V1_RELEASE_READINESS.md", "docs/CURRENT_APP_SECTIONS.md", "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md"]);
 const result = {
-  at: new Date().toISOString(), baseHead: candidate.head, revision: "Initial implementation c1248a875af9c8eea1289a824a0e903e599ab174; current onboarding follow-up bound by onboarding-candidate.json when present; not pushed or deployed",
+  at: new Date().toISOString(), baseHead: candidate.head, revision: "Batch 1 and both follow-ups pushed as 4522f83486a28ebbf1fe6152f1053fdc83565223; live activation is separately recorded in DATABASE_GRANTS.md and database-grants-live-health.json",
   scope: { implemented: 20, locallyVerified: "Specified boundaries in README and index, not whole-path or release certification", closedForRelease: 0 },
   commands: [
     { command: "node node_modules/vitest/vitest.mjs run --maxWorkers=2 --reporter=json --outputFile=docs/fixes/v1-batch-1/full-suite-final.json", exit: 1, tests: 4088, passed: 3906, failed: 182, skipped: 0 },

@@ -20,6 +20,14 @@ The user already authorized Batch 1 commit/push/deployment and identified Ptomo 
 
 At **2026-10-20 20:51:55 UTC**, [the deployment operation](database-grants-deployment.json) committed migration 0023 and exactly one Ptomo permission. A [fresh read-only connection](database-grants-deployed-verification.json) verified the persisted grant against the current campaign/client/connection identity. No Render environment change was made or required. No other shared connection was approved. The running application was not replaced by this database operation; current-revision application and provider acceptance remain separate.
 
+## Commit and push
+
+The corrected Batch 1 package is committed as **`4522f83486a28ebbf1fe6152f1053fdc83565223`** and was pushed to `origin/main` on 2026-10-20 at approximately 20:57 UTC. `git ls-remote` independently returned that exact remote SHA. This push includes the original Batch 1 changes, the customer OAuth default correction and the database-grant correction. No force push was used. An obsolete `credential-manager-core` helper warning did not prevent successful push through the configured authentication fallback.
+
+The first post-push public health observation still served `777aae6f`. [The revision observations](database-grants-live-health.json) then confirmed **`4522f83486a28ebbf1fe6152f1053fdc83565223`** with HTTP 200 and `ok:true` at **21:01:30 and 21:02:00 UTC**. The production runtime is therefore confirmed separately from the Git push. The [deployed access check](database-grants-deployed-access.json), run by [this read-only checker](check-deployed-access.cjs), rechecked that SHA and received HTTP 401 for all five anonymous GETs: `/api/clients`, `/api/campaigns`, `/api/metrics`, `/api/integrations` and `/api/attribution/models`. No response data, credentials or provider requests were used.
+
+These checks prove public reachability, the exact running revision and those anonymous denials only. Authenticated Ptomo analytics, Google consent, natural refresh completion, foreign-owner denial and full V1 acceptance remain unverified. The documentation-only evidence commit uses Render's documented [`[skip render]` phrase](https://render.com/docs/deploys#skipping-an-auto-deploy) to preserve this runtime deployment. Repository HEAD may therefore be later than the confirmed runtime SHA with only documentation/evidence differences.
+
 ## Local evidence
 
 - [Before correction](database-grants-before.log): the existing environment-only guard rejected a correctly scoped database permission with `SERVICE_ACCOUNT_RESOURCE_NOT_GRANTED`.

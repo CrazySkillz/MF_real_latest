@@ -1,0 +1,38 @@
+{
+  "at": "2026-10-20T21:02:06.768Z",
+  "expectedCommit": "4522f83486a28ebbf1fe6152f1053fdc83565223",
+  "boundary": "Anonymous read-only health/API checks; does not prove owner/foreign-owner isolation, Google consent, analytics or scheduler acceptance.",
+  "results": [
+    {
+      "method": "GET",
+      "route": "/api/clients",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "route": "/api/campaigns",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "route": "/api/metrics",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "route": "/api/integrations",
+      "status": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "route": "/api/attribution/models",
+      "status": 401,
+      "result": "PASS"
+    }
+  ],
+  "observedCommit": "4522f83486a28ebbf1fe6152f1053fdc83565223"
+}

@@ -8,7 +8,8 @@ describe("GA4 publication in the rendered page", () => {
       stdin: { contents: `import React from 'react'; import {createRoot} from 'react-dom/client';
         import {QueryClientProvider, focusManager} from '@tanstack/react-query';
         import {TooltipProvider} from './client/src/components/ui/tooltip';
-        import {queryClient} from './client/src/lib/queryClient'; import Page from './client/src/pages/ga4-metrics';
+        import {createAppQueryClient} from './client/src/lib/queryClient'; import Page from './client/src/pages/ga4-metrics';
+        const queryClient = createAppQueryClient();
         window.testFocus = value => focusManager.setFocused(value);
         createRoot(document.getElementById('root')).render(<QueryClientProvider client={queryClient}><TooltipProvider><Page /></TooltipProvider></QueryClientProvider>);`,
         loader: "tsx", resolveDir: process.cwd() },

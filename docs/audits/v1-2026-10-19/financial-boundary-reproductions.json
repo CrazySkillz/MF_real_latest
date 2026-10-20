@@ -1,0 +1,269 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact current pure helpers and AST-selected page/server narrative expressions. No provider/database/browser/full report rendering. Source-window identity supplied by fixtures; upstream truth remains separately required.",
+  "results": [
+    {
+      "case": "Current-window cost metrics exclude clicks/impressions from a source without spend",
+      "cpc": {
+        "value": 10,
+        "available": true,
+        "sources": [
+          "spend",
+          "clicks"
+        ],
+        "unavailableReasons": []
+      },
+      "cpm": {
+        "value": 100,
+        "available": true,
+        "sources": [
+          "spend",
+          "impressions"
+        ],
+        "unavailableReasons": []
+      },
+      "allClicks": 1000
+    },
+    {
+      "case": "Unavailable configured GA4 conversions do not fall back to paid conversions",
+      "conversions": {
+        "value": 0,
+        "available": false,
+        "sources": [],
+        "unavailableReasons": [
+          "No connected source provides conversions"
+        ]
+      },
+      "cvr": {
+        "value": null,
+        "available": false,
+        "sources": [],
+        "unavailableReasons": [
+          "CVR requires available conversions and clicks or web sessions"
+        ]
+      }
+    },
+    {
+      "case": "Spring DST days",
+      "input": {
+        "startDate": "2026-03-28",
+        "endDate": "2026-03-30",
+        "dataThroughDate": "2026-03-30",
+        "reportingTimeZone": "Europe/Amsterdam"
+      },
+      "value": {
+        "startDateOrdinal": 1774656000000,
+        "endDateOrdinal": 1774828800000,
+        "todayDateOrdinal": 1774828800000,
+        "hasStartDate": true,
+        "hasEndDate": true,
+        "hasDateRange": true,
+        "elapsedDays": 3,
+        "totalDays": 3
+      }
+    },
+    {
+      "case": "Autumn DST days",
+      "input": {
+        "startDate": "2026-10-24",
+        "endDate": "2026-10-26",
+        "dataThroughDate": "2026-10-26",
+        "reportingTimeZone": "Europe/Amsterdam"
+      },
+      "value": {
+        "startDateOrdinal": 1792800000000,
+        "endDateOrdinal": 1792972800000,
+        "todayDateOrdinal": 1792972800000,
+        "hasStartDate": true,
+        "hasEndDate": true,
+        "hasDateRange": true,
+        "elapsedDays": 3,
+        "totalDays": 3
+      }
+    },
+    {
+      "case": "Future period has no elapsed days",
+      "input": {
+        "startDate": "2026-11-01",
+        "endDate": "2026-11-30",
+        "dataThroughDate": "2026-10-19",
+        "reportingTimeZone": "UTC"
+      },
+      "value": {
+        "startDateOrdinal": 1793491200000,
+        "endDateOrdinal": 1795996800000,
+        "todayDateOrdinal": 1792368000000,
+        "hasStartDate": true,
+        "hasEndDate": true,
+        "hasDateRange": true,
+        "elapsedDays": 0,
+        "totalDays": 30
+      }
+    },
+    {
+      "case": "Elapsed days stop at period end",
+      "input": {
+        "startDate": "2026-10-01",
+        "endDate": "2026-10-10",
+        "dataThroughDate": "2026-10-19",
+        "reportingTimeZone": "UTC"
+      },
+      "value": {
+        "startDateOrdinal": 1790812800000,
+        "endDateOrdinal": 1791590400000,
+        "todayDateOrdinal": 1792368000000,
+        "hasStartDate": true,
+        "hasEndDate": true,
+        "hasDateRange": true,
+        "elapsedDays": 10,
+        "totalDays": 10
+      }
+    },
+    {
+      "case": "Invalid calendar date withholds valid-range status",
+      "input": {
+        "startDate": "2026-02-30",
+        "endDate": "2026-03-03",
+        "dataThroughDate": "2026-03-03",
+        "reportingTimeZone": "UTC"
+      },
+      "value": {
+        "startDateOrdinal": null,
+        "endDateOrdinal": 1772496000000,
+        "todayDateOrdinal": 1772496000000,
+        "hasStartDate": false,
+        "hasEndDate": true,
+        "hasDateRange": false,
+        "elapsedDays": 0,
+        "totalDays": 0
+      }
+    },
+    {
+      "case": "Budget-period identity and availability preserve zero and reject mismatches",
+      "zeroAccepted": true,
+      "rejections": [
+        {
+          "campaignId": "other"
+        },
+        {
+          "periodStartDate": "2026-09-01"
+        },
+        {
+          "periodEndDate": "2026-11-01"
+        },
+        {
+          "currency": "USD"
+        },
+        {
+          "spend": {
+            "available": false,
+            "value": 100
+          }
+        },
+        {
+          "spend": {
+            "available": true,
+            "value": null
+          }
+        }
+      ]
+    },
+    {
+      "case": "Allocation advice requires reconciliation",
+      "rejected": {
+        "title": "Spend source allocation unavailable",
+        "body": "The spend-source breakdown does not reconcile to authoritative Total Spend, so no allocation guidance is shown.",
+        "tone": "info"
+      },
+      "accepted": {
+        "title": "Review spend source mix",
+        "body": "Source A is the largest of 2 spend sources at EUR 60 (60%). Compare the recorded source mix with the intended campaign plan before changing allocation.",
+        "tone": "info"
+      }
+    },
+    {
+      "case": "Return narrative control: revenue99",
+      "spend": 100,
+      "revenue": 99,
+      "profit": -1,
+      "roas": 0.99,
+      "roi": -1,
+      "outputs": [
+        {
+          "consumer": "current page",
+          "title": "Return below break-even",
+          "body": "ROAS is 0.99x and ROI is -1.00%. Review revenue attribution, conversion efficiency, and spend before adding budget.",
+          "tone": "warning"
+        },
+        {
+          "consumer": "server/report-scheduler.ts:2005",
+          "title": "Return below break-even",
+          "body": "ROAS is 0.99x and ROI is -1.00%. Review revenue attribution, conversion efficiency, and spend before adding budget."
+        },
+        {
+          "consumer": "server/report-scheduler.ts:2661",
+          "title": "Return below break-even",
+          "body": "ROAS is 0.99x and ROI is -1.00%. Review revenue attribution, conversion efficiency, and spend before adding budget."
+        }
+      ]
+    },
+    {
+      "case": "Break-even profit0 is labelled Positive financial return in page and both server renderers",
+      "spend": 100,
+      "revenue": 100,
+      "profit": 0,
+      "roas": 1,
+      "roi": 0,
+      "outputs": [
+        {
+          "consumer": "current page",
+          "title": "Positive financial return",
+          "body": "ROAS is 1.00x and ROI is 0.00%. Protect current returns while monitoring pacing and source capacity.",
+          "tone": "success"
+        },
+        {
+          "consumer": "server/report-scheduler.ts:2005",
+          "title": "Positive financial return",
+          "body": "ROAS is 1.00x and ROI is 0.00%. Protect current returns while monitoring pacing and source capacity."
+        },
+        {
+          "consumer": "server/report-scheduler.ts:2661",
+          "title": "Positive financial return",
+          "body": "ROAS is 1.00x and ROI is 0.00%. Protect current returns while monitoring pacing and source capacity."
+        }
+      ]
+    },
+    {
+      "case": "Return narrative control: revenue101",
+      "spend": 100,
+      "revenue": 101,
+      "profit": 1,
+      "roas": 1.01,
+      "roi": 1,
+      "outputs": [
+        {
+          "consumer": "current page",
+          "title": "Positive financial return",
+          "body": "ROAS is 1.01x and ROI is 1.00%. Protect current returns while monitoring pacing and source capacity.",
+          "tone": "success"
+        },
+        {
+          "consumer": "server/report-scheduler.ts:2005",
+          "title": "Positive financial return",
+          "body": "ROAS is 1.01x and ROI is 1.00%. Protect current returns while monitoring pacing and source capacity."
+        },
+        {
+          "consumer": "server/report-scheduler.ts:2661",
+          "title": "Positive financial return",
+          "body": "ROAS is 1.01x and ROI is 1.00%. Protect current returns while monitoring pacing and source capacity."
+        }
+      ]
+    },
+    {
+      "case": "Projection exactly on budget end date is described as before it",
+      "projectedDate": "2026-10-31",
+      "endDate": "2026-10-31",
+      "actualRelation": "before"
+    }
+  ]
+}

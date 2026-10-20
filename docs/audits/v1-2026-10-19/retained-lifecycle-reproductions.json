@@ -1,0 +1,67 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact current retained handlers/grouping helper, fixture storage only. No live deletion/transfer/cleanup. No current frontend caller found for these routes, but registration remains.",
+  "results": [
+    {
+      "case": "ga4 same-campaign transfer deletes all connections",
+      "guards": [
+        "same",
+        "same"
+      ],
+      "response": {
+        "success": true,
+        "message": "GA4 connection transferred successfully",
+        "connectionId": "new"
+      },
+      "remaining": []
+    },
+    {
+      "case": "linkedin same-campaign transfer deletes all connections",
+      "guards": [
+        "same",
+        "same"
+      ],
+      "response": {
+        "success": true,
+        "message": "LinkedIn connection and import sessions transferred"
+      },
+      "remaining": []
+    },
+    {
+      "case": "Sheets transfer omits tab/purpose/auth method/service-account/mapping/cache",
+      "copied": {
+        "campaignId": "to",
+        "spreadsheetId": "sheet"
+      },
+      "response": {
+        "success": true,
+        "message": "Google Sheets connection transferred"
+      }
+    },
+    {
+      "case": "Duplicate cleanup groups sources across platform and currency",
+      "queries": [
+        [
+          "fixture"
+        ]
+      ],
+      "deletes": [
+        {
+          "records": "linkedin-new"
+        },
+        {
+          "source": "linkedin-new"
+        }
+      ],
+      "response": {
+        "success": true,
+        "deactivatedSourceIds": [
+          "linkedin-new"
+        ],
+        "deactivatedCount": 1,
+        "skippedGroups": []
+      },
+      "boundary": "Campaign-access middleware omitted by fixture; both sources are in the owned campaign. Current storage predicate with no context reads both."
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact current GA4 service and private merge helper; requestReport replaced with deterministic provider-shaped responses. No actual Google API/authentication/database/complete publication execution. Integer control included.",
+  "results": [
+    {
+      "case": "Primary decimal conversion is truncated",
+      "providerPrimaryConversions": 0.75,
+      "providerSupplementalConversions": null,
+      "returnedConversions": 0,
+      "queries": [
+        {
+          "metrics": [
+            "sessions",
+            "screenPageViews",
+            "conversions",
+            "totalUsers",
+            "totalRevenue",
+            "engagedSessions",
+            "engagementRate"
+          ],
+          "filter": null
+        }
+      ]
+    },
+    {
+      "case": "Event-scoped supplemental decimal is truncated",
+      "providerPrimaryConversions": 0,
+      "providerSupplementalConversions": 0.75,
+      "returnedConversions": 0,
+      "queries": [
+        {
+          "metrics": [
+            "sessions",
+            "screenPageViews",
+            "conversions",
+            "totalUsers",
+            "totalRevenue",
+            "engagedSessions",
+            "engagementRate"
+          ],
+          "filter": {
+            "filter": {
+              "fieldName": "sessionCampaignName",
+              "stringFilter": {
+                "matchType": "EXACT",
+                "value": "fixture",
+                "caseSensitive": false
+              }
+            }
+          }
+        },
+        {
+          "metrics": [
+            "conversions",
+            "totalRevenue"
+          ],
+          "filter": {
+            "filter": {
+              "fieldName": "campaignName",
+              "stringFilter": {
+                "matchType": "EXACT",
+                "value": "fixture",
+                "caseSensitive": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "case": "Integer conversion control",
+      "providerPrimaryConversions": 2,
+      "providerSupplementalConversions": null,
+      "returnedConversions": 2,
+      "queries": [
+        {
+          "metrics": [
+            "sessions",
+            "screenPageViews",
+            "conversions",
+            "totalUsers",
+            "totalRevenue",
+            "engagedSessions",
+            "engagementRate"
+          ],
+          "filter": null
+        }
+      ]
+    },
+    {
+      "case": "Shared daily supplemental-total merge truncates fractional conversion",
+      "providerSupplementalConversions": 0.75,
+      "merged": {
+        "conversions": 0,
+        "revenue": 100
+      }
+    }
+  ]
+}

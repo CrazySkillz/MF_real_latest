@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
+import ts from "typescript";
 
 function readRoutesSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "server", "routes-oauth.ts"), "utf8");
@@ -44,13 +45,27 @@ describe("campaign/client delete cascade regression guards", () => {
     const methodStart = storage.indexOf("private async deleteCampaignChildren");
     const methodEnd = storage.indexOf("async deleteCampaignCascade", methodStart);
     const method = storage.slice(methodStart, methodEnd);
-    const campaignScopedTables = Array.from(schema.matchAll(/export const (\w+) = pgTable\("([^"]+)", \{([\s\S]*?)\n\}\);/g))
-      .filter(([, symbol, , body]) => symbol !== "campaigns" && body.includes("campaignId:"))
-      .map(([, symbol, tableName]) => ({ symbol, tableName }));
+    const parsed = ts.createSourceFile("schema.ts", schema, ts.ScriptTarget.Latest, true);
+    const campaignScopedTables: { symbol: string; tableName: string }[] = [];
+    function visit(node: ts.Node) {
+      if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer
+        && ts.isCallExpression(node.initializer) && node.initializer.expression.getText(parsed) === "pgTable") {
+        const [name, columns] = node.initializer.arguments;
+        if (node.name.text !== "campaigns" && ts.isStringLiteral(name) && ts.isObjectLiteralExpression(columns)
+          && columns.properties.some(column => column.name?.getText(parsed) === "campaignId"))
+          campaignScopedTables.push({ symbol: node.name.text, tableName: name.text });
+      }
+      ts.forEachChild(node, visit);
+    }
+    visit(parsed);
 
     expect(campaignScopedTables.length).toBeGreaterThan(20);
     for (const { symbol, tableName } of campaignScopedTables) {
-      if (symbol === "notifications") {
+      if (symbol === "inboundWebhookReceipts") {
+        // Receipt tombstones must outlive deleted metrics/campaigns to reject
+        // replays after deletion or an attempted reuse of the same identifier.
+        expect(method).not.toContain("tx.delete(inboundWebhookReceipts)");
+      } else if (symbol === "notifications") {
         expect(method).toContain("tx.update(notifications)");
       } else if (["ga4RefreshWork", "metaKpis", "metaBenchmarks", "metaReports", "ga4GoogleAdsSpendConnections", "ga4GoogleAdsSpendDailyMetrics"].includes(symbol)) {
         expect(method).toContain(`deleteOptionalCampaignTable("${tableName}")`);

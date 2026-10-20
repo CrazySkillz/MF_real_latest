@@ -1,0 +1,123 @@
+{
+  "at": "2026-10-20T19:15:41.906Z",
+  "boundary": "Local Chromium, current callbacks/App/ClientProvider/query defaults; fixture identity/API responses; all external browser requests blocked. Does not validate Clerk deployment.",
+  "results": [
+    {
+      "name": "/api/auth/salesforce/callback error",
+      "result": "PASS",
+      "markerExecuted": false
+    },
+    {
+      "name": "/api/auth/salesforce/callback error_description",
+      "result": "PASS",
+      "markerExecuted": false
+    },
+    {
+      "name": "/api/auth/linkedin/callback error_description",
+      "result": "PASS",
+      "markerExecuted": false
+    },
+    {
+      "name": "/api/auth/meta/callback error_description",
+      "result": "PASS",
+      "markerExecuted": false
+    },
+    {
+      "name": "/api/auth/google/callback error",
+      "result": "PASS",
+      "markerExecuted": false
+    },
+    {
+      "name": "/api/auth/google/simulation-auth state",
+      "result": "PASS",
+      "markerExecuted": false
+    },
+    {
+      "name": "Exact App account cache boundary and ClientProvider: switch, late request, signout and account-specific selection",
+      "result": "PASS",
+      "observations": [
+        {
+          "userId": "a",
+          "ids": [],
+          "selected": null
+        },
+        {
+          "userId": "a",
+          "ids": [
+            "a-1",
+            "a-2"
+          ],
+          "selected": null
+        },
+        {
+          "userId": "a",
+          "ids": [
+            "a-1",
+            "a-2"
+          ],
+          "selected": "a-1"
+        },
+        {
+          "userId": "a",
+          "ids": [
+            "a-1",
+            "a-2"
+          ],
+          "selected": "a-2"
+        },
+        {
+          "userId": "b",
+          "ids": [],
+          "selected": null
+        },
+        {
+          "userId": "b",
+          "ids": [
+            "b-1",
+            "b-2"
+          ],
+          "selected": null
+        },
+        {
+          "userId": "b",
+          "ids": [
+            "b-1",
+            "b-2"
+          ],
+          "selected": "b-1"
+        },
+        {
+          "userId": "slow",
+          "ids": [],
+          "selected": null
+        },
+        {
+          "userId": "b",
+          "ids": [],
+          "selected": "b-1"
+        },
+        {
+          "userId": "b",
+          "ids": [
+            "b-1",
+            "b-2"
+          ],
+          "selected": "b-1"
+        },
+        {
+          "userId": "a",
+          "ids": [],
+          "selected": "a-2"
+        },
+        {
+          "userId": "a",
+          "ids": [
+            "a-1",
+            "a-2"
+          ],
+          "selected": "a-2"
+        }
+      ]
+    }
+  ]
+}

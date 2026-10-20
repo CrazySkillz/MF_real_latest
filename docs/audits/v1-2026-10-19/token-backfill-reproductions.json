@@ -1,0 +1,105 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact storage getter/hydration methods and real tokenVault encryption/decryption under fixture-only environment. In-memory query builder models one SELECT snapshot then a completed credential update before lazy migration WHERE evaluation. No PostgreSQL/provider/OAuth exchange or production credential access. GA4 compare-and-set is a positive control; source-specific post-read helpers are identities.",
+  "results": [
+    {
+      "case": "getGoogleSheetsConnections legacy plaintext read races a completed credential update",
+      "method": "getGoogleSheetsConnections",
+      "table": "googleSheetsConnections",
+      "readCount": 1,
+      "migrationWrites": 1,
+      "newCredentialPreserved": false,
+      "staleCredentialRestored": true
+    },
+    {
+      "case": "getHubspotConnections legacy plaintext read races a completed credential update",
+      "method": "getHubspotConnections",
+      "table": "hubspotConnections",
+      "readCount": 1,
+      "migrationWrites": 1,
+      "newCredentialPreserved": false,
+      "staleCredentialRestored": true
+    },
+    {
+      "case": "getHubspotConnection legacy plaintext read races a completed credential update",
+      "method": "getHubspotConnection",
+      "table": "hubspotConnections",
+      "readCount": 1,
+      "migrationWrites": 1,
+      "newCredentialPreserved": false,
+      "staleCredentialRestored": true
+    },
+    {
+      "case": "getSalesforceConnections legacy plaintext read races a completed credential update",
+      "method": "getSalesforceConnections",
+      "table": "salesforceConnections",
+      "readCount": 1,
+      "migrationWrites": 1,
+      "newCredentialPreserved": false,
+      "staleCredentialRestored": true
+    },
+    {
+      "case": "getSalesforceConnection legacy plaintext read races a completed credential update",
+      "method": "getSalesforceConnection",
+      "table": "salesforceConnections",
+      "readCount": 1,
+      "migrationWrites": 1,
+      "newCredentialPreserved": false,
+      "staleCredentialRestored": true
+    },
+    {
+      "case": "getShopifyConnections legacy plaintext read races a completed credential update",
+      "method": "getShopifyConnections",
+      "table": "shopifyConnections",
+      "readCount": 1,
+      "migrationWrites": 1,
+      "newCredentialPreserved": false,
+      "staleCredentialRestored": true
+    },
+    {
+      "case": "getShopifyConnection legacy plaintext read races a completed credential update",
+      "method": "getShopifyConnection",
+      "table": "shopifyConnections",
+      "readCount": 1,
+      "migrationWrites": 1,
+      "newCredentialPreserved": false,
+      "staleCredentialRestored": true
+    },
+    {
+      "case": "getLinkedInConnection legacy plaintext read races a completed credential update",
+      "method": "getLinkedInConnection",
+      "table": "linkedinConnections",
+      "readCount": 1,
+      "migrationWrites": 1,
+      "newCredentialPreserved": false,
+      "staleCredentialRestored": true
+    },
+    {
+      "case": "getMetaConnection legacy plaintext read races a completed credential update",
+      "method": "getMetaConnection",
+      "table": "metaConnections",
+      "readCount": 1,
+      "migrationWrites": 1,
+      "newCredentialPreserved": false,
+      "staleCredentialRestored": true
+    },
+    {
+      "case": "getGoogleAdsConnection legacy plaintext read races a completed credential update",
+      "method": "getGoogleAdsConnection",
+      "table": "googleAdsConnections",
+      "readCount": 1,
+      "migrationWrites": 1,
+      "newCredentialPreserved": false,
+      "staleCredentialRestored": true
+    },
+    {
+      "case": "getGA4Connections legacy plaintext read races a completed credential update",
+      "method": "getGA4Connections",
+      "table": "ga4Connections",
+      "readCount": 1,
+      "migrationWrites": 0,
+      "newCredentialPreserved": true,
+      "staleCredentialRestored": false
+    }
+  ]
+}

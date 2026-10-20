@@ -2,7 +2,12 @@ import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from "@shared/schema";
 
-const connectionString = process.env.DATABASE_URL;
+const databaseUrl = process.env.DATABASE_URL ? new URL(process.env.DATABASE_URL) : null;
+if (databaseUrl && process.env.NODE_ENV === "production") {
+  if (process.env.NODE_TLS_REJECT_UNAUTHORIZED === "0") throw new Error("Production database requires certificate verification");
+  databaseUrl.searchParams.set("sslmode", "verify-full");
+}
+const connectionString = databaseUrl?.toString();
 
 /**
  * DATABASE_URL is required for database-backed storage.
@@ -16,9 +21,6 @@ export const pool: Pool | null = connectionString
       statement_timeout: 120_000,
       query_timeout: 125_000,
       idle_in_transaction_session_timeout: 120_000,
-      ssl: connectionString?.includes("sslmode=require")
-        ? { rejectUnauthorized: false }
-        : undefined,
     })
   : null;
 

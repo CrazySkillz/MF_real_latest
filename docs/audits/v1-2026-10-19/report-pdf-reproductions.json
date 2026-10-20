@@ -1,0 +1,703 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "at": "2026-10-19T21:53:25.614Z",
+  "fixedNow": "2026-10-19T12:00:00.000Z",
+  "boundary": "Complete current server module and real jsPDF. Extra fixture-only export exposes the unchanged payload builder; import.meta.dirname and Date receive equivalent deterministic host bindings. Storage responses are synthetic coherent saved native and financial publications. Provider calls throw. No DB, email or external network. Rendering is separate; browser report output and real-provider parity remain unverified.",
+  "results": [
+    {
+      "case": "Real PDF saved Overview with long campaign, landing page and event labels",
+      "file": "pdf-overview-long-fixture.pdf",
+      "bytes": 66708,
+      "days": 30,
+      "findings": [
+        {
+          "title": "No major anomalies detected",
+          "description": "Recent GA4 trends are stable relative to the prior comparison window."
+        }
+      ],
+      "storageCalls": [
+        {
+          "method": "getCampaign",
+          "args": [
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getGA4Connections",
+          "args": [
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getGA4OverviewSnapshot",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654"
+          ]
+        },
+        {
+          "method": "getPlatformKPIs",
+          "args": [
+            "google_analytics",
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getPlatformBenchmarks",
+          "args": [
+            "google_analytics",
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getRevenueSources",
+          "args": [
+            "v1-pdf-fixture",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getSpendSources",
+          "args": [
+            "v1-pdf-fixture",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getRevenueBreakdownBySource",
+          "args": [
+            "v1-pdf-fixture",
+            "1900-01-01",
+            "2026-10-18",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getSpendBreakdownBySource",
+          "args": [
+            "v1-pdf-fixture",
+            "1900-01-01",
+            "2026-10-18",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getGA4DailyMetrics",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654",
+            "2026-09-19",
+            "2026-10-18"
+          ]
+        },
+        {
+          "method": "getGA4DailyMetrics",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654",
+            "2026-09-04",
+            "2026-10-18"
+          ]
+        },
+        {
+          "method": "getGA4OverviewSnapshot",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654"
+          ]
+        },
+        {
+          "method": "getCampaign",
+          "args": [
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getGA4Connections",
+          "args": [
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getGA4OverviewSnapshot",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654"
+          ]
+        },
+        {
+          "method": "getPlatformKPIs",
+          "args": [
+            "google_analytics",
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getPlatformBenchmarks",
+          "args": [
+            "google_analytics",
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getRevenueSources",
+          "args": [
+            "v1-pdf-fixture",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getSpendSources",
+          "args": [
+            "v1-pdf-fixture",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getRevenueBreakdownBySource",
+          "args": [
+            "v1-pdf-fixture",
+            "1900-01-01",
+            "2026-10-18",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getSpendBreakdownBySource",
+          "args": [
+            "v1-pdf-fixture",
+            "1900-01-01",
+            "2026-10-18",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getGA4DailyMetrics",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654",
+            "2026-09-19",
+            "2026-10-18"
+          ]
+        },
+        {
+          "method": "getGA4DailyMetrics",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654",
+            "2026-09-04",
+            "2026-10-18"
+          ]
+        },
+        {
+          "method": "getGA4OverviewSnapshot",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "Full valid six-day publication loses the complete three-day decline in server Insights",
+      "sessions3Delta": -100,
+      "clientTrendFindings": [
+        "Conversion rate dropped 100.0% (3-day comparison)",
+        "Engagement depth decreased 100.0% (3-day comparison)",
+        "Sessions dropped 100.0% (3-day comparison)",
+        "Revenue dropped 100.0% (3-day comparison)",
+        "Conversions dropped 100.0% (3-day comparison)"
+      ],
+      "file": "pdf-insights-six-days-fixture.pdf",
+      "bytes": 45283,
+      "days": 6,
+      "findings": [
+        {
+          "title": "No major anomalies detected",
+          "description": "Recent GA4 trends are stable relative to the prior comparison window."
+        }
+      ],
+      "storageCalls": [
+        {
+          "method": "getCampaign",
+          "args": [
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getGA4Connections",
+          "args": [
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getGA4OverviewSnapshot",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654"
+          ]
+        },
+        {
+          "method": "getPlatformKPIs",
+          "args": [
+            "google_analytics",
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getPlatformBenchmarks",
+          "args": [
+            "google_analytics",
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getRevenueSources",
+          "args": [
+            "v1-pdf-fixture",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getSpendSources",
+          "args": [
+            "v1-pdf-fixture",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getRevenueBreakdownBySource",
+          "args": [
+            "v1-pdf-fixture",
+            "1900-01-01",
+            "2026-10-18",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getSpendBreakdownBySource",
+          "args": [
+            "v1-pdf-fixture",
+            "1900-01-01",
+            "2026-10-18",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getGA4DailyMetrics",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654",
+            "2026-09-19",
+            "2026-10-18"
+          ]
+        },
+        {
+          "method": "getGA4DailyMetrics",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654",
+            "2026-10-13",
+            "2026-10-18"
+          ]
+        },
+        {
+          "method": "getGA4OverviewSnapshot",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654"
+          ]
+        },
+        {
+          "method": "getLatestFinancialDailySnapshot",
+          "args": [
+            "v1-pdf-fixture",
+            "2026-10-18"
+          ]
+        },
+        {
+          "method": "getCampaign",
+          "args": [
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getGA4Connections",
+          "args": [
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getGA4OverviewSnapshot",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654"
+          ]
+        },
+        {
+          "method": "getPlatformKPIs",
+          "args": [
+            "google_analytics",
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getPlatformBenchmarks",
+          "args": [
+            "google_analytics",
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getRevenueSources",
+          "args": [
+            "v1-pdf-fixture",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getSpendSources",
+          "args": [
+            "v1-pdf-fixture",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getRevenueBreakdownBySource",
+          "args": [
+            "v1-pdf-fixture",
+            "1900-01-01",
+            "2026-10-18",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getSpendBreakdownBySource",
+          "args": [
+            "v1-pdf-fixture",
+            "1900-01-01",
+            "2026-10-18",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getGA4DailyMetrics",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654",
+            "2026-09-19",
+            "2026-10-18"
+          ]
+        },
+        {
+          "method": "getGA4DailyMetrics",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654",
+            "2026-10-13",
+            "2026-10-18"
+          ]
+        },
+        {
+          "method": "getGA4OverviewSnapshot",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654"
+          ]
+        },
+        {
+          "method": "getLatestFinancialDailySnapshot",
+          "args": [
+            "v1-pdf-fixture",
+            "2026-10-18"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "Full valid fourteen-day publication loses conversion-rate decline in server Insights",
+      "prior7ConversionRate": 10,
+      "last7ConversionRate": 5,
+      "clientTrendFindings": [
+        "Conversion rate dropped 50.0% week-over-week",
+        "Sessions up 100.0% week-over-week"
+      ],
+      "file": "pdf-insights-rate-fixture.pdf",
+      "bytes": 51524,
+      "days": 14,
+      "findings": [
+        {
+          "title": "No major anomalies detected",
+          "description": "Recent GA4 trends are stable relative to the prior comparison window."
+        }
+      ],
+      "storageCalls": [
+        {
+          "method": "getCampaign",
+          "args": [
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getGA4Connections",
+          "args": [
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getGA4OverviewSnapshot",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654"
+          ]
+        },
+        {
+          "method": "getPlatformKPIs",
+          "args": [
+            "google_analytics",
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getPlatformBenchmarks",
+          "args": [
+            "google_analytics",
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getRevenueSources",
+          "args": [
+            "v1-pdf-fixture",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getSpendSources",
+          "args": [
+            "v1-pdf-fixture",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getRevenueBreakdownBySource",
+          "args": [
+            "v1-pdf-fixture",
+            "1900-01-01",
+            "2026-10-18",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getSpendBreakdownBySource",
+          "args": [
+            "v1-pdf-fixture",
+            "1900-01-01",
+            "2026-10-18",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getGA4DailyMetrics",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654",
+            "2026-09-19",
+            "2026-10-18"
+          ]
+        },
+        {
+          "method": "getGA4DailyMetrics",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654",
+            "2026-10-05",
+            "2026-10-18"
+          ]
+        },
+        {
+          "method": "getGA4OverviewSnapshot",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654"
+          ]
+        },
+        {
+          "method": "getLatestFinancialDailySnapshot",
+          "args": [
+            "v1-pdf-fixture",
+            "2026-10-18"
+          ]
+        },
+        {
+          "method": "getCampaign",
+          "args": [
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getGA4Connections",
+          "args": [
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getGA4OverviewSnapshot",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654"
+          ]
+        },
+        {
+          "method": "getPlatformKPIs",
+          "args": [
+            "google_analytics",
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getPlatformBenchmarks",
+          "args": [
+            "google_analytics",
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getRevenueSources",
+          "args": [
+            "v1-pdf-fixture",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getSpendSources",
+          "args": [
+            "v1-pdf-fixture",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getRevenueBreakdownBySource",
+          "args": [
+            "v1-pdf-fixture",
+            "1900-01-01",
+            "2026-10-18",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getSpendBreakdownBySource",
+          "args": [
+            "v1-pdf-fixture",
+            "1900-01-01",
+            "2026-10-18",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getGA4DailyMetrics",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654",
+            "2026-09-19",
+            "2026-10-18"
+          ]
+        },
+        {
+          "method": "getGA4DailyMetrics",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654",
+            "2026-10-05",
+            "2026-10-18"
+          ]
+        },
+        {
+          "method": "getGA4OverviewSnapshot",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654"
+          ]
+        },
+        {
+          "method": "getLatestFinancialDailySnapshot",
+          "args": [
+            "v1-pdf-fixture",
+            "2026-10-18"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "Positive control: Insights-only report rejects Benchmark storage failure",
+      "rejected": true,
+      "storageCalls": [
+        {
+          "method": "getCampaign",
+          "args": [
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getGA4Connections",
+          "args": [
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getGA4OverviewSnapshot",
+          "args": [
+            "v1-pdf-fixture",
+            "properties/987654"
+          ]
+        },
+        {
+          "method": "getPlatformKPIs",
+          "args": [
+            "google_analytics",
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getPlatformBenchmarks",
+          "args": [
+            "google_analytics",
+            "v1-pdf-fixture"
+          ]
+        },
+        {
+          "method": "getRevenueSources",
+          "args": [
+            "v1-pdf-fixture",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getSpendSources",
+          "args": [
+            "v1-pdf-fixture",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getRevenueBreakdownBySource",
+          "args": [
+            "v1-pdf-fixture",
+            "1900-01-01",
+            "2026-10-18",
+            "ga4"
+          ]
+        },
+        {
+          "method": "getSpendBreakdownBySource",
+          "args": [
+            "v1-pdf-fixture",
+            "1900-01-01",
+            "2026-10-18",
+            "ga4"
+          ]
+        }
+      ]
+    }
+  ]
+}

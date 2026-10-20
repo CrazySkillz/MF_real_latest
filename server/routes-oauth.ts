@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { urlencoded } from "express";
 import { createServer, type Server } from "http";
 import { getAuth } from "@clerk/express";
 import { storage, type GA4RefreshWriteInput } from "./storage";
@@ -27,9 +28,9 @@ import { selectRevenueRecordTotal } from "./utils/revenue-record-total";
 import { inspectGa4ShopifyCrossCampaignOverlap, inspectGa4ShopifyRevenueDamage } from "./utils/shopify-revenue-damage-inventory";
 import { findOpenShopifyRefreshFailureNotification, parseShopifyRefreshNotificationMetadata, resolveShopifyRefreshFailureNotification, SHOPIFY_REFRESH_FAILURE_NOTIFICATION_KIND } from "./utils/shopify-refresh-notification";
 import type { ParsedMetrics } from "./services/pdf-parser";
-import { isSupportedCustomIntegrationFile, parseCustomIntegrationFile, supportedCustomIntegrationFileDescription } from "./services/custom-integration-file-parser";
+import { downloadCustomIntegrationReport, isSupportedCustomIntegrationFile, parseCustomIntegrationFile, supportedCustomIntegrationFileDescription } from "./services/custom-integration-file-parser";
 import { nanoid } from "nanoid";
-import { randomBytes, randomUUID, createHash, createHmac, timingSafeEqual } from "crypto";
+import { randomBytes, randomUUID, createHash, createHmac, createVerify, createPublicKey, timingSafeEqual } from "crypto";
 import { snapshotScheduler } from "./scheduler";
 import { detectColumnTypes, type DetectedColumn } from "./utils/column-detection";
 import { discoverSchema } from "./utils/schema-discovery";
@@ -782,6 +783,10 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
+    files: 5,
+    fields: 40,
+    parts: 45,
+    fieldSize: 128 * 1024,
   },
   fileFilter: (req, file, cb) => {
     if (isSupportedCustomIntegrationFile(file.originalname, file.mimetype)) {
@@ -791,6 +796,39 @@ const upload = multer({
     }
   },
 });
+
+// Hash the exact wire bytes while multer consumes the bounded multipart stream.
+// No lookup, parsing of report content, or persistence occurs before verification.
+const verifySendGridInbound = (req: any, res: any, next: any) => {
+  req.setTimeout(30_000, () => req.destroy());
+  const key = String(process.env.SENDGRID_WEBHOOK_VERIFICATION_KEY || "").trim();
+  if (!key) return res.status(503).json({ error: "Inbound verification is not configured" });
+  const timestamp = req.headers["x-twilio-email-event-webhook-timestamp"];
+  const signature = req.headers["x-twilio-email-event-webhook-signature"];
+  if (typeof timestamp !== "string" || !/^\d{10}$/.test(timestamp) || typeof signature !== "string"
+    || signature.length > 512 || Math.abs(Date.now() - Number(timestamp) * 1000) > 24 * 3600000) {
+    return res.status(401).json({ error: "Invalid signature" });
+  }
+  try {
+    const publicKey = key.includes("BEGIN PUBLIC KEY") ? createPublicKey(key) : createPublicKey({ key: Buffer.from(key, "base64"), format: "der", type: "spki" });
+    const verifier = createVerify("sha256").update(timestamp);
+    const bodyHash = createHash("sha256");
+    let bytes = 0;
+    req.on("data", (chunk: Buffer) => {
+      bytes += chunk.length;
+      if (bytes > 12 * 1024 * 1024) { req.destroy(); return; }
+      verifier.update(chunk);
+      bodyHash.update(chunk);
+    });
+    req.on("end", () => {
+      try {
+        req.inboundSignatureVerified = verifier.verify(publicKey, Buffer.from(signature, "base64"));
+        if (req.inboundSignatureVerified) req.inboundReceipt = bodyHash.digest("hex");
+      } catch { req.inboundSignatureVerified = false; }
+    });
+    next();
+  } catch { return res.status(503).json({ error: "Inbound verification is not configured" }); }
+};
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Render/infra health checks should be fast and never depend on DB/OAuth.
@@ -812,31 +850,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ── Dashboard data endpoints ────────────────────────────────────────────
-  app.get("/api/metrics", async (_req, res) => {
-    const data = await storage.getMetrics();
-    res.json(data);
+  app.get("/api/metrics", async (req, res, next) => {
+    const ownerId = getActorId(req);
+    if (!ownerId) return res.status(401).json({ message: "Unauthorized" });
+    try { res.json(await storage.getMetrics(ownerId)); } catch (error) { next(error); }
   });
-  app.post("/api/metrics", async (req, res) => {
-    const metric = await storage.createMetric(req.body);
-    res.json(metric);
-  });
-
-  app.get("/api/performance", async (_req, res) => {
-    const data = await storage.getPerformanceData();
-    res.json(data);
-  });
-  app.post("/api/performance", async (req, res) => {
-    const item = await storage.createPerformanceData(req.body);
-    res.json(item);
+  app.post("/api/metrics", async (req, res, next) => {
+    const ownerId = getActorId(req);
+    if (!ownerId) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const validated = insertMetricSchema.safeParse(req.body);
+      if (!validated.success) return res.status(400).json({ message: "Invalid metric" });
+      res.json(await storage.createMetric(validated.data, ownerId));
+    } catch (error) { next(error); }
   });
 
-  app.get("/api/integrations", async (_req, res) => {
-    const data = await storage.getIntegrations();
-    res.json(data);
+  app.get("/api/performance", async (req, res, next) => {
+    const ownerId = getActorId(req);
+    if (!ownerId) return res.status(401).json({ message: "Unauthorized" });
+    try { res.json(await storage.getPerformanceData(ownerId)); } catch (error) { next(error); }
   });
-  app.post("/api/integrations", async (req, res) => {
-    const integration = await storage.createIntegration(req.body);
-    res.json(integration);
+  app.post("/api/performance", async (req, res, next) => {
+    const ownerId = getActorId(req);
+    if (!ownerId) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const validated = insertPerformanceDataSchema.safeParse(req.body);
+      if (!validated.success) return res.status(400).json({ message: "Invalid performance data" });
+      res.json(await storage.createPerformanceData(validated.data, ownerId));
+    } catch (error) { next(error); }
+  });
+
+  app.get("/api/integrations", async (req, res, next) => {
+    const ownerId = getActorId(req);
+    if (!ownerId) return res.status(401).json({ message: "Unauthorized" });
+    try { res.json(await storage.getIntegrations(ownerId)); } catch (error) { next(error); }
+  });
+  app.post("/api/integrations", async (req, res, next) => {
+    const ownerId = getActorId(req);
+    if (!ownerId) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const validated = insertIntegrationSchema.safeParse(req.body);
+      if (!validated.success) return res.status(400).json({ message: "Invalid integration" });
+      res.json(await storage.createIntegration(validated.data, ownerId));
+    } catch (error) { next(error); }
   });
 
   // --------------------------------------------------------------------------
@@ -6193,25 +6249,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const processConnectorDerivedSpend = async (req: any, res: any) => {
     try {
       const campaignId = req.params.id;
-      const amount = parseNum((req.body as any)?.amount);
-      const currency = (req.body as any)?.currency ? String((req.body as any).currency) : undefined;
+      const campaign = await ensureCampaignAccess(req, res, campaignId);
+      if (!campaign) return;
+      const amount = Number((req.body as any)?.amount);
+      const currency = String(req.body?.currency || campaign.currency || "USD").trim().toUpperCase();
       const breakdown = (req.body as any)?.breakdown || null;
-      if (!(amount > 0)) {
+      if (!Number.isFinite(amount) || !(amount > 0)) {
         return res.status(400).json({ success: false, error: "Amount must be > 0" });
       }
-      const campaign = await storage.getCampaign(campaignId);
-      const cur = currency || (campaign as any)?.currency || "USD";
-
-      await storage.updateCampaign(campaignId, { spend: Number(amount.toFixed(2)).toFixed(2) as any, currency: cur } as any);
-
-      const source = await storage.createSpendSource({
+      const cur = currency;
+      if (cur !== String(campaign.currency || "USD").toUpperCase()) return res.status(400).json({ success: false, error: "Currency must match the campaign currency" });
+      const platformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]).safeParse(req.body?.platformContext);
+      const rows = z.array(z.object({ date: z.string(), spend: z.union([z.number(), z.string()]) })).min(1).max(5000).safeParse(req.body?.records);
+      if (!platformContext.success || !rows.success) return res.status(400).json({ success: false, error: "A platform context and dated spend records are required" });
+      const today = new Date().toISOString().slice(0, 10);
+      if (rows.data.some(r => !normalizeStrictUtcDateKey(r.date) || r.date > today || String(r.spend).trim() === "" || !Number.isFinite(Number(r.spend)) || Number(r.spend) < 0)) return res.status(400).json({ success: false, error: "Invalid spend records" });
+      const records = rows.data.map(r => ({ campaignId, date: r.date, spend: Number(r.spend).toFixed(2), currency: cur, sourceType: "connector_derived" }));
+      if (records.reduce((sum, r) => sum + Math.round(Number(r.spend) * 100), 0) !== Math.round(amount * 100)) return res.status(400).json({ success: false, error: "Spend records must reconcile to the supplied total" });
+      const existingSourceId = typeof req.body?.existingSourceId === "string" ? req.body.existingSourceId : null;
+      const source = await storage.replaceSpendSourceWithRecords(campaignId, existingSourceId, "connector_derived", platformContext.data, {
         campaignId,
         sourceType: "connector_derived",
+        platformContext: platformContext.data,
         displayName: "Connector-derived spend",
         currency: cur,
         mappingConfig: breakdown ? JSON.stringify(breakdown) : null,
         isActive: true,
-      } as any);
+      } as any, records);
+      await recalcCampaignSpend(campaignId);
+      await recomputeGA4SpendBeforeResponse(campaignId);
 
       res.json({ success: true, sourceId: source.id, spendToDate: Number(amount.toFixed(2)), currency: cur });
     } catch (e: any) {
@@ -8334,16 +8400,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DEV/MVP utility: generate mock LinkedIn daily facts for a campaign (for UI/testing).
-  // Safety: disabled in production unless explicitly allowed.
+  // Safety: always disabled in production; development still requires campaign ownership.
   app.post("/api/campaigns/:id/linkedin-daily/mock", async (req, res) => {
     try {
       res.setHeader("Cache-Control", "no-store");
-      const allowInProd = String(process.env.ALLOW_MOCK_DATA || "").toLowerCase() === "true";
-      if (process.env.NODE_ENV === "production" && !allowInProd) {
+      if (process.env.NODE_ENV === "production") {
         return res.status(403).json({ success: false, message: "Mock data is disabled in production." });
       }
 
       const campaignId = String(req.params.id || "").trim();
+      if (!await ensureCampaignAccess(req, res, campaignId)) return;
       if (!campaignId) return res.status(400).json({ success: false, message: "Missing campaign id." });
 
       const body = (req.body || {}) as any;
@@ -8464,16 +8530,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // DEV/MVP utility: seed a full LinkedIn mock dataset for a campaign (Overview + Insights).
   // - Overview tab reads: GET /api/linkedin/imports/:sessionId (linkedin_import_sessions + linkedin_import_metrics + linkedin_ad_performance)
   // - Insights tab reads:  GET /api/campaigns/:id/linkedin-daily (linkedin_daily_metrics) and GET /api/linkedin/insights/:sessionId
-  // Safety: disabled in production unless explicitly allowed.
+  // Safety: always disabled in production; development still requires campaign ownership.
   app.post("/api/campaigns/:id/linkedin/mock-seed", async (req, res) => {
     try {
       res.setHeader("Cache-Control", "no-store");
-      const allowInProd = String(process.env.ALLOW_MOCK_DATA || "").toLowerCase() === "true";
-      if (process.env.NODE_ENV === "production" && !allowInProd) {
+      if (process.env.NODE_ENV === "production") {
         return res.status(403).json({ success: false, message: "Mock data is disabled in production." });
       }
 
       const campaignId = String(req.params.id || "").trim();
+      if (!await ensureCampaignAccess(req, res, campaignId)) return;
       if (!campaignId) return res.status(400).json({ success: false, message: "Missing campaign id." });
 
       const body = (req.body || {}) as any;
@@ -8695,8 +8761,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Send a test alert email (admin/dev utility)
-  app.post("/api/alerts/test-email", async (req, res) => {
+  app.post("/api/alerts/test-email", oauthRateLimiter, async (req, res) => {
     try {
+      if (process.env.NODE_ENV === "production") return res.status(404).json({ message: "Not found" });
+      if (!getActorId(req)) return res.status(401).json({ message: "Unauthorized" });
       const { emailService } = await import("./services/email-service.js");
       const configured = !!(
         (process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN) ||
@@ -10865,8 +10933,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <script>
               function authorize() {
                 const code = 'demo_auth_code_' + Date.now();
-                const campaignState = '${String(state).replace(/'/g, "\\'")}';
-                const callbackUrl = '/api/auth/google/callback?code=' + code + '&state=' + campaignState;
+                const campaignState = ${serializeOAuthPopupJson(String(state))};
+                const callbackUrl = '/api/auth/google/callback?code=' + code + '&state=' + encodeURIComponent(campaignState);
                 window.location.href = callbackUrl;
               }
             </script>
@@ -11513,11 +11581,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <head><title>Authentication Failed</title></head>
             <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
               <h2>Authentication Failed</h2>
-              <p><strong>Error:</strong> ${String(error)}</p>
-              ${desc ? `<p style="max-width: 820px; margin: 12px auto; color: #555;"><strong>Details:</strong> ${desc}</p>` : ''}
+              <p><strong>Error:</strong> ${escapeOAuthPopupHtml(error)}</p>
+              ${desc ? `<p style="max-width: 820px; margin: 12px auto; color: #555;"><strong>Details:</strong> ${escapeOAuthPopupHtml(desc)}</p>` : ''}
               <script>
                 if (window.opener) {
-                  window.opener.postMessage({ type: 'salesforce_auth_error', error: ${JSON.stringify(String(error))}, details: ${JSON.stringify(desc)} }, window.location.origin);
+                  window.opener.postMessage({ type: 'salesforce_auth_error', error: ${serializeOAuthPopupJson(String(error))}, details: ${serializeOAuthPopupJson(desc)} }, window.location.origin);
                 }
                 setTimeout(() => window.close(), 2000);
               </script>
@@ -14432,7 +14500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[Connected Platforms] Google Sheets connection:`, googleSheetsConnection ? `Found (ID: ${googleSheetsConnection.id})` : 'Not found');
       console.log(`[Connected Platforms] LinkedIn connection:`, linkedInConnection ? `Found (ID: ${linkedInConnection.id}, adAccountId: ${linkedInConnection.adAccountId || 'missing'})` : 'Not found');
       console.log(`[Connected Platforms] Meta connection:`, metaConnection ? `Found (ID: ${metaConnection.id})` : 'Not found');
-      console.log(`[Connected Platforms] Custom Integration:`, customIntegration ? `Found (ID: ${customIntegration.id}, webhook: ${customIntegration.webhookToken})` : 'Not found');
+      console.log(`[Connected Platforms] Custom Integration:`, customIntegration ? `Found (ID: ${customIntegration.id})` : 'Not found');
 
       // Get LinkedIn analytics path with latest session ID
       let linkedInAnalyticsPath = null;
@@ -14599,6 +14667,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/linkedin-campaigns", async (req, res) => {
     try {
       const campaignId = String(req.params.id);
+      if (!await ensureCampaignAccess(req, res, campaignId)) return;
       const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
       if (!latestSession) {
         return res.json({ campaigns: [] });
@@ -14628,6 +14697,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/linkedin-campaign-revenue", async (req, res) => {
     try {
       const campaignId = String(req.params.id);
+      if (!await ensureCampaignAccess(req, res, campaignId)) return;
 
       // Get total LinkedIn revenue for context
       const totals = await storage.getRevenueTotalForRange(
@@ -16118,6 +16188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const propertyId = assertGA4ServiceAccountPropertyAllowed(req.body?.propertyId);
+      await storage.assertServiceAccountResourceAccess(campaignId, "ga4", propertyId);
       const credentials = await getGA4ServiceAccountAccessToken();
       const validationResponse = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(propertyId)}:runReport`, {
         method: "POST",
@@ -16170,7 +16241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       const code = String(error?.code || "");
       const status = code === "GA4_PROPERTY_ID_INVALID" ? 400
-        : code === "GA4_SERVICE_ACCOUNT_PROPERTY_NOT_ALLOWED" ? 403
+        : code === "GA4_SERVICE_ACCOUNT_PROPERTY_NOT_ALLOWED" || code === "SERVICE_ACCOUNT_RESOURCE_NOT_GRANTED" ? 403
           : code === "GA4_SERVICE_ACCOUNT_NOT_CONFIGURED" || code === "GA4_SERVICE_ACCOUNT_CONFIG_INVALID" ? 503
             : 500;
       res.status(status).json({ success: false, error: code || "GA4_SERVICE_ACCOUNT_CONNECT_FAILED", message: error?.message || "Temporary GA4 connection failed" });
@@ -16629,6 +16700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ error: "This campaign already has a Google OAuth Sheets connection. Use a new test campaign for temporary service-account access." });
       }
 
+      await storage.assertServiceAccountResourceAccess(campaignId, "google_sheets", spreadsheetId);
       const credentials = await getGoogleSheetsServiceAccountAccessToken();
       const metadataResponse = await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}?fields=spreadsheetId,properties.title,sheets.properties(sheetId,title,index,sheetType,gridProperties)`,
@@ -16679,7 +16751,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sheets,
       });
     } catch (error: any) {
-      const status = error?.code === "GOOGLE_SHEETS_ID_INVALID" ? 400 : 500;
+      const status = error?.code === "GOOGLE_SHEETS_ID_INVALID" ? 400 : error?.code === "SERVICE_ACCOUNT_RESOURCE_NOT_GRANTED" ? 403 : 500;
       res.status(status).json({ error: error?.message || "Failed to connect the shared spreadsheet" });
     }
   });
@@ -23307,10 +23379,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
 
       // Get campaign to access industry and keywords
-      const campaign = await storage.getCampaign(id);
-      if (!campaign) {
-        return res.status(404).json({ message: "Campaign not found" });
-      }
+      const campaign = await ensureCampaignAccess(req, res, id);
+      if (!campaign) return;
 
       const keywords: string[] = (campaign as any).trendKeywords || [];
       const industry = (campaign as any).industry;
@@ -23402,11 +23472,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const LINKEDIN_OAUTH_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
   const signLinkedInOAuthState = (campaignId: string, spendOnly?: boolean): string => {
-    const secret =
-      process.env.LINKEDIN_OAUTH_STATE_SECRET ||
-      process.env.SESSION_SECRET ||
-      process.env.APP_SECRET ||
-      "dev-linkedin-oauth-state-secret";
+    const secret = resolveOAuthStateSigningSecret({
+      specificSecret: process.env.LINKEDIN_OAUTH_STATE_SECRET || process.env.APP_SECRET,
+      purpose: "linkedin", label: "LinkedIn", developmentFallback: "dev-linkedin-oauth-state-secret",
+    });
 
     // Stateless, tamper-proof state payload to prevent callback spoofing/replays.
     const payload = {
@@ -23422,11 +23491,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   const verifyLinkedInOAuthState = (stateRaw: unknown): { ok: true; campaignId: string; spendOnly: boolean } | { ok: false; error: string } => {
-    const secret =
-      process.env.LINKEDIN_OAUTH_STATE_SECRET ||
-      process.env.SESSION_SECRET ||
-      process.env.APP_SECRET ||
-      "dev-linkedin-oauth-state-secret";
+    const secret = resolveOAuthStateSigningSecret({
+      specificSecret: process.env.LINKEDIN_OAUTH_STATE_SECRET || process.env.APP_SECRET,
+      purpose: "linkedin", label: "LinkedIn", developmentFallback: "dev-linkedin-oauth-state-secret",
+    });
 
     const state = String(stateRaw || "").trim();
     const parts = state.split(".");
@@ -23445,7 +23513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = String(payload?.c || "").trim();
       const t = Number(payload?.t || 0);
       if (!campaignId) return { ok: false, error: "Invalid state" };
-      if (!Number.isFinite(t) || t <= 0) return { ok: false, error: "Invalid state" };
+      if (!Number.isFinite(t) || t <= 0 || t > Date.now()) return { ok: false, error: "Invalid state" };
       if (Date.now() - t > LINKEDIN_OAUTH_STATE_TTL_MS) return { ok: false, error: "State expired" };
       return { ok: true, campaignId, spendOnly: !!payload.s };
     } catch {
@@ -23525,12 +23593,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <head><title>Authentication Error</title></head>
             <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
               <h2>Authentication Error</h2>
-              <p>${error_description || error}</p>
+              <p>${escapeOAuthPopupHtml(error_description || error)}</p>
               <script>
                 if (window.opener) {
                   window.opener.postMessage({ 
                     type: 'linkedin_auth_error', 
-                    error: '${error_description || error}' 
+                    error: ${serializeOAuthPopupJson(String(error_description || error))}
                   }, window.location.origin);
                 }
                 setTimeout(() => window.close(), 2000);
@@ -23951,11 +24019,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const META_OAUTH_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
   const signMetaOAuthState = (campaignId: string, spendOnly?: boolean): string => {
-    const secret =
-      process.env.META_OAUTH_STATE_SECRET ||
-      process.env.SESSION_SECRET ||
-      process.env.APP_SECRET ||
-      "dev-meta-oauth-state-secret";
+    const secret = resolveOAuthStateSigningSecret({
+      specificSecret: process.env.META_OAUTH_STATE_SECRET || process.env.APP_SECRET,
+      purpose: "meta", label: "Meta", developmentFallback: "dev-meta-oauth-state-secret",
+    });
 
     // Stateless, tamper-proof state payload to prevent callback spoofing/replays.
     const payload = {
@@ -23971,11 +24038,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   const verifyMetaOAuthState = (stateRaw: unknown): { ok: true; campaignId: string; spendOnly: boolean } | { ok: false; error: string } => {
-    const secret =
-      process.env.META_OAUTH_STATE_SECRET ||
-      process.env.SESSION_SECRET ||
-      process.env.APP_SECRET ||
-      "dev-meta-oauth-state-secret";
+    const secret = resolveOAuthStateSigningSecret({
+      specificSecret: process.env.META_OAUTH_STATE_SECRET || process.env.APP_SECRET,
+      purpose: "meta", label: "Meta", developmentFallback: "dev-meta-oauth-state-secret",
+    });
 
     const state = String(stateRaw || "").trim();
     const parts = state.split(".");
@@ -24002,6 +24068,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     const age = Date.now() - Number(payload.t);
+    if (!Number.isFinite(age) || age < 0) return { ok: false, error: "Invalid state" };
     if (age > META_OAUTH_STATE_TTL_MS) {
       return { ok: false, error: "State expired" };
     }
@@ -24081,12 +24148,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <head><title>Authentication Error</title></head>
             <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
               <h2>Authentication Error</h2>
-              <p>${error_description || error}</p>
+              <p>${escapeOAuthPopupHtml(error_description || error)}</p>
               <script>
                 if (window.opener) {
                   window.opener.postMessage({
                     type: 'meta_auth_error',
-                    error: '${error_description || error}'
+                    error: ${serializeOAuthPopupJson(String(error_description || error))}
                   }, window.location.origin);
                 }
                 setTimeout(() => window.close(), 2000);
@@ -26550,7 +26617,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, existingKPI.campaignId);
       if (!ok) return;
 
-      const updatedKPI = await storage.updateMetaKPI(kpiId, updates);
+      const { id: _id, campaignId: _campaignId, ...mutableUpdates } = updates;
+      const updatedKPI = await storage.updateMetaKPI(kpiId, mutableUpdates);
       res.json({ kpi: updatedKPI });
     } catch (error: any) {
       console.error('[Meta KPIs] Update error:', error);
@@ -26690,6 +26758,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
       const customerId = assertGoogleAdsServiceAccountCustomerAllowed(req.body?.customerId);
+      await storage.assertServiceAccountResourceAccess(campaignId, "google_ads", customerId);
 
       const existingConnection: any = await storage.getGA4GoogleAdsSpendConnection(campaignId);
       if (existingConnection && String(existingConnection.method || "").trim().toLowerCase() !== GOOGLE_ADS_SERVICE_ACCOUNT_METHOD) {
@@ -26760,7 +26829,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const code = String(error?.code || "");
       const providerStatus = Number(error?.response?.status || 0);
       const status = code === "GOOGLE_ADS_CUSTOMER_ID_INVALID" ? 400
-        : code === "GOOGLE_ADS_SERVICE_ACCOUNT_CUSTOMER_NOT_ALLOWED" ? 403
+        : code === "GOOGLE_ADS_SERVICE_ACCOUNT_CUSTOMER_NOT_ALLOWED" || code === "SERVICE_ACCOUNT_RESOURCE_NOT_GRANTED" ? 403
           : code === "GOOGLE_ADS_SERVICE_ACCOUNT_NOT_CONFIGURED" || code === "GOOGLE_ADS_SERVICE_ACCOUNT_CONFIG_INVALID" ? 503
             : providerStatus === 401 || providerStatus === 403 ? 403
               : 502;
@@ -26816,7 +26885,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[Google Ads OAuth] Flow initiated for campaign ${campaignId}`);
       res.json({ authUrl, message: "Google Ads OAuth flow initiated" });
     } catch (error: any) {
-      console.error('[Google Ads OAuth] Initiation error:', error);
+      console.error('[Google Ads OAuth] Initiation error:', { name: (error as any)?.name, status: (error as any)?.response?.status });
       res.status(500).json({ success: false, message: "Failed to initiate authentication" });
     }
   });
@@ -26914,7 +26983,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         </script>
       </body></html>`);
     } catch (error: any) {
-      console.error('[Google Ads OAuth] Callback error:', error);
+      console.error('[Google Ads OAuth] Callback error:', { name: (error as any)?.name, status: (error as any)?.response?.status });
       res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
         <h2>Authentication Failed</h2><p>Google Ads authentication failed.</p>
         <script>if(window.opener){window.opener.postMessage({type:'google_ads_auth_error',error:'Google Ads authentication failed'},window.location.origin)}setTimeout(()=>window.close(),2000)</script>
@@ -27011,7 +27080,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[Google Ads] Customer ${customerId} connected to campaign ${campaignId} (spendOnly: ${spendOnly})`);
       res.json({ success: true, message: 'Google Ads customer connected' });
     } catch (error: any) {
-      console.error('[Google Ads] Select customer error:', error);
+      console.error('[Google Ads] Select customer error:', { name: error?.name, status: error?.response?.status });
       res.status(500).json({ error: error.message || 'Failed to connect Google Ads customer' });
     }
   });
@@ -27053,7 +27122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, message: 'Google Ads connected in test mode' });
     } catch (error: any) {
-      console.error('[Google Ads] Test connection error:', error);
+      console.error('[Google Ads] Test connection error:', { name: error?.name, status: error?.response?.status });
       res.status(500).json({ error: error.message || 'Failed to connect test account' });
     }
   });
@@ -27167,7 +27236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, message: 'Google Ads data refreshed', ...refresh });
     } catch (error: any) {
-      console.error('[Google Ads] Refresh error:', error);
+      console.error('[Google Ads] Refresh error:', { name: error?.name, status: error?.response?.status });
       res.status(500).json({ error: error.message || 'Failed to refresh data' });
     }
   });
@@ -27627,7 +27696,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, existingBenchmark.campaignId);
       if (!ok) return;
 
-      const updatedBenchmark = await storage.updateMetaBenchmark(benchmarkId, updates);
+      const { id: _id, campaignId: _campaignId, ...mutableUpdates } = updates;
+      const updatedBenchmark = await storage.updateMetaBenchmark(benchmarkId, mutableUpdates);
       res.json({ benchmark: updatedBenchmark });
     } catch (error: any) {
       console.error('[Meta Benchmarks] Update error:', error);
@@ -28043,24 +28113,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const webhookToken = existing?.webhookToken || nanoid(32);
 
       // Create or update the custom integration
-      console.log("[Custom Integration] Creating custom integration for:", { campaignId, email, webhookToken, allowedEmailAddresses: validatedEmailAddresses });
+      console.log("[Custom Integration] Creating custom integration for:", { campaignId });
       const customIntegration = await storage.createCustomIntegration({
         campaignId,
         email,
         webhookToken,
         allowedEmailAddresses: validatedEmailAddresses
       });
-      console.log("[Custom Integration] Created successfully:", customIntegration);
+      console.log("[Custom Integration] Created successfully:", { id: customIntegration.id });
 
       const responseData = {
         success: true,
         customIntegration,
         message: `Successfully connected to ${email}`
       };
-      console.log("[Custom Integration] Sending response:", responseData);
       res.json(responseData);
     } catch (error) {
-      console.error("[Custom Integration] Connection error:", error);
+      console.error("[Custom Integration] Connection error:", { name: (error as any)?.name, code: (error as any)?.code });
       res.status(500).json({
         success: false,
         error: "Failed to connect custom integration"
@@ -28234,7 +28303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         uploadedAt: metrics.uploadedAt,
       });
     } catch (error) {
-      console.error("[Custom Integration Upload] Error processing report:", error);
+      console.error("[Custom Integration Upload] Error processing report:", { name: (error as any)?.name, code: (error as any)?.code });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : "Failed to process report"
@@ -28243,19 +28312,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Public webhook endpoint for receiving report files from external services (Zapier, IFTTT, etc.)
-  app.post("/api/webhook/custom-integration/:token", upload.single('pdf'), async (req, res) => {
+  app.post("/api/webhook/custom-integration/:token", importRateLimiter, upload.single('pdf'), async (req, res) => {
     try {
       const { token } = req.params;
 
-      console.log(`[Webhook] Received request with token: ${token}`);
-      console.log(`[Webhook] Request body:`, req.body);
       console.log(`[Webhook] Has file:`, !!req.file);
 
       // Find the custom integration by webhook token
       const integration = await storage.getCustomIntegrationByToken(token);
 
       if (!integration) {
-        console.log(`[Webhook] Invalid token: ${token}`);
         return res.status(401).json({
           success: false,
           error: "Invalid webhook token"
@@ -28276,18 +28342,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if a report URL was provided (IFTTT)
       else if (req.body.fileUrl || req.body.file_url || req.body.pdfUrl || req.body.pdf_url || req.body.value1) {
         const fileUrl = req.body.fileUrl || req.body.file_url || req.body.pdfUrl || req.body.pdf_url || req.body.value1;
-        console.log(`[Webhook] Downloading report from URL: ${fileUrl}`);
 
         try {
-          const response = await fetch(fileUrl);
-          if (!response.ok) {
-            throw new Error(`Failed to download report: ${response.statusText}`);
-          }
-
-          const arrayBuffer = await response.arrayBuffer();
-          fileBuffer = Buffer.from(arrayBuffer);
-          fileName = fileUrl.split('/').pop()?.split('?')[0] || 'downloaded-report';
-          fileMimeType = response.headers.get("content-type");
+          const download = await downloadCustomIntegrationReport(String(fileUrl));
+          fileBuffer = download.buffer;
+          fileName = download.fileName;
+          fileMimeType = download.contentType;
 
           console.log(`[Webhook] Downloaded report for campaign ${integration.campaignId}, size: ${fileBuffer.length} bytes`);
         } catch (downloadError) {
@@ -28327,7 +28387,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pdfFileName: fileName,
         emailSubject: req.body.subject || req.body.value2 || null,
         emailId: req.body.emailId || req.body.value3 || null,
-      });
+      }, { integrationId: integration.id, webhookToken: token });
 
       console.log(`[Webhook] Metrics stored successfully:`, metrics.id);
 
@@ -28360,7 +28420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(response);
     } catch (error) {
-      console.error("[Webhook] Error processing report:", error);
+      console.error("[Webhook] Error processing report:", { name: (error as any)?.name, code: (error as any)?.code });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : "Failed to process report"
@@ -28369,11 +28429,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // CloudMailin email receiving endpoint
-  app.post("/api/email/inbound/:token", async (req, res) => {
+  app.post("/api/email/inbound/:token", importRateLimiter, async (req, res) => {
     try {
       const { token } = req.params;
 
-      console.log(`[Email] Received email with token: ${token}`);
       console.log(`[Email] From:`, req.body.envelope?.from);
       console.log(`[Email] Subject:`, req.body.headers?.subject);
 
@@ -28381,7 +28440,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const integration = await storage.getCustomIntegrationByToken(token);
 
       if (!integration) {
-        console.log(`[Email] Invalid token: ${token}`);
         return res.status(401).json({
           success: false,
           error: "Invalid email token"
@@ -28437,14 +28495,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       // Check if attachment has URL (cloud storage)
       else if (reportAttachment.url) {
-        console.log(`[Email] Downloading report from cloud storage: ${reportAttachment.url}`);
         try {
-          const response = await fetch(reportAttachment.url);
-          if (!response.ok) {
-            throw new Error(`Failed to download report: ${response.statusText}`);
-          }
-          const arrayBuffer = await response.arrayBuffer();
-          fileBuffer = Buffer.from(arrayBuffer);
+          fileBuffer = (await downloadCustomIntegrationReport(String(reportAttachment.url))).buffer;
         } catch (downloadError) {
           console.error('[Email] Report download error:', downloadError);
           return res.status(400).json({
@@ -28460,6 +28512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      if (fileBuffer.length > 10 * 1024 * 1024) return res.status(413).json({ success: false, error: "Report exceeds 10MB" });
       console.log(`[Email] Processing report for campaign ${integration.campaignId}, size: ${fileBuffer.length} bytes`);
 
       // Parse the report file to extract metrics
@@ -28502,7 +28555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Change tracking
         previousMetrics: previousMetrics,
         previousUpdateAt: previousUpdateAt,
-      });
+      }, { integrationId: integration.id, webhookToken: token, senderEmail: senderEmail || "" });
 
       console.log(`[Email] Metrics stored successfully:`, metrics.id);
 
@@ -28515,7 +28568,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         uploadedAt: metrics.uploadedAt,
       });
     } catch (error) {
-      console.error("[Email] Error processing report:", error);
+      console.error("[Email] Error processing report:", { name: (error as any)?.name, code: (error as any)?.code });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : "Failed to process email report"
@@ -28647,6 +28700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       const validatedData = insertLinkedInConnectionSchema.partial().parse(req.body);
+      delete validatedData.campaignId;
 
       const updatedConnection = await storage.updateLinkedInConnection(campaignId, validatedData);
 
@@ -30812,76 +30866,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Attribution Models endpoints
   app.get('/api/attribution/models', async (req, res) => {
+    const ownerId = getActorId(req);
+    if (!ownerId) return res.status(401).json({ error: "Unauthorized" });
     try {
-      // Fallback attribution models for demo
-      const models = [
-        {
-          id: "first-touch",
-          name: "First Touch",
-          type: "first_touch",
-          description: "100% credit to the first touchpoint in the customer journey",
-          configuration: null,
-          isDefault: true,
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        {
-          id: "last-touch",
-          name: "Last Touch",
-          type: "last_touch",
-          description: "100% credit to the last touchpoint before conversion",
-          configuration: null,
-          isDefault: false,
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        {
-          id: "linear",
-          name: "Linear",
-          type: "linear",
-          description: "Equal credit distributed across all touchpoints",
-          configuration: null,
-          isDefault: false,
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        {
-          id: "position-based",
-          name: "Position Based",
-          type: "position_based",
-          description: "40% first, 40% last, 20% middle touchpoints",
-          configuration: '{"first": 0.4, "last": 0.4, "middle": 0.2}',
-          isDefault: false,
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        {
-          id: "time-decay",
-          name: "Time Decay",
-          type: "time_decay",
-          description: "More credit to touchpoints closer to conversion",
-          configuration: '{"half_life": 7}',
-          isDefault: false,
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      ];
-      res.json(models);
-    } catch (error) {
-      console.error('Failed to get attribution models:', error);
-      res.status(500).json({ error: 'Failed to get attribution models' });
+      res.json(await storage.getAttributionModels(ownerId));
+    } catch {
+      res.status(500).json({ error: "Failed to read attribution data" });
     }
   });
 
   app.post('/api/attribution/models', async (req, res) => {
     try {
+      const ownerId = getActorId(req);
+      if (!ownerId) return res.status(401).json({ error: "Unauthorized" });
       const validated = insertAttributionModelSchema.parse(req.body);
-      const model = await storage.createAttributionModel(validated);
+      const model = await storage.createAttributionModel(validated, ownerId);
       res.json(model);
     } catch (error) {
       console.error('Failed to create attribution model:', error);
@@ -30895,6 +30894,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/attribution/models/:id', async (req, res) => {
     try {
+      const ownerId = getActorId(req);
+      if (!ownerId) return res.status(401).json({ error: "Unauthorized" });
+      if ((await storage.getAttributionModel(req.params.id))?.ownerId !== ownerId) return res.status(404).json({ error: "Attribution model not found" });
       const validated = insertAttributionModelSchema.partial().parse(req.body);
       const model = await storage.updateAttributionModel(req.params.id, validated);
       if (!model) {
@@ -30914,6 +30916,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/attribution/models/:id', async (req, res) => {
     try {
+      const ownerId = getActorId(req);
+      if (!ownerId) return res.status(401).json({ error: "Unauthorized" });
+      if ((await storage.getAttributionModel(req.params.id))?.ownerId !== ownerId) return res.status(404).json({ error: "Attribution model not found" });
       const success = await storage.deleteAttributionModel(req.params.id);
       if (!success) {
         res.status(404).json({ error: 'Attribution model not found' });
@@ -30928,6 +30933,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/attribution/models/:id/set-default', async (req, res) => {
     try {
+      const ownerId = getActorId(req);
+      if (!ownerId) return res.status(401).json({ error: "Unauthorized" });
+      if ((await storage.getAttributionModel(req.params.id))?.ownerId !== ownerId) return res.status(404).json({ error: "Attribution model not found" });
       const success = await storage.setDefaultAttributionModel(req.params.id);
       if (!success) {
         res.status(404).json({ error: 'Attribution model not found' });
@@ -30942,101 +30950,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Customer Journey endpoints
   app.get('/api/attribution/journeys', async (req, res) => {
+    const ownerId = getActorId(req);
+    if (!ownerId) return res.status(401).json({ error: "Unauthorized" });
     try {
-      const { status } = req.query;
-
-      // Sample customer journeys with touchpoints for demo
-      const journeys = [
-        {
-          id: "journey-001",
-          customerId: "CUST_001",
-          sessionId: "session_abc123",
-          deviceId: null,
-          userId: null,
-          journeyStart: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000), // 14 days ago
-          journeyEnd: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
-          totalTouchpoints: 5,
-          conversionValue: "285.00",
-          conversionType: "purchase",
-          status: "completed",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: "journey-002",
-          customerId: "CUST_002",
-          sessionId: "session_def456",
-          deviceId: null,
-          userId: null,
-          journeyStart: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000), // 21 days ago
-          journeyEnd: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
-          totalTouchpoints: 4,
-          conversionValue: "125.50",
-          conversionType: "subscription",
-          status: "completed",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: "journey-003",
-          customerId: "CUST_003",
-          sessionId: "session_ghi789",
-          deviceId: null,
-          userId: null,
-          journeyStart: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
-          journeyEnd: new Date(),
-          totalTouchpoints: 5,
-          conversionValue: "450.00",
-          conversionType: "purchase",
-          status: "completed",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: "journey-004",
-          customerId: "CUST_004",
-          sessionId: "session_jkl012",
-          deviceId: null,
-          userId: null,
-          journeyStart: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
-          journeyEnd: null, // Still active
-          totalTouchpoints: 6,
-          conversionValue: null,
-          conversionType: null,
-          status: "active",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: "journey-005",
-          customerId: "CUST_005",
-          sessionId: "session_mno345",
-          deviceId: null,
-          userId: null,
-          journeyStart: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000), // 45 days ago
-          journeyEnd: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000), // 35 days ago
-          totalTouchpoints: 4,
-          conversionValue: null,
-          conversionType: null,
-          status: "abandoned",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }
-      ];
-
-      // Filter by status if provided
-      const filteredJourneys = status ? journeys.filter(j => j.status === status) : journeys;
-      res.json(filteredJourneys);
-    } catch (error) {
-      console.error('Failed to get customer journeys:', error);
-      res.status(500).json({ error: 'Failed to get customer journeys' });
+      res.json(await storage.getCustomerJourneys(typeof req.query.status === "string" ? req.query.status : undefined, ownerId));
+    } catch {
+      res.status(500).json({ error: "Failed to read attribution data" });
     }
   });
 
   app.post('/api/attribution/journeys', async (req, res) => {
     try {
-      const validated = insertCustomerJourneySchema.parse(req.body);
-      const journey = await storage.createCustomerJourney(validated);
+      const ownerId = getActorId(req);
+      if (!ownerId) return res.status(401).json({ error: "Unauthorized" });
+      const validated = insertCustomerJourneySchema.parse({ ...req.body, journeyStart: new Date(req.body?.journeyStart),
+        journeyEnd: req.body?.journeyEnd ? new Date(req.body.journeyEnd) : null });
+      const journey = await storage.createCustomerJourney(validated, ownerId);
       res.json(journey);
     } catch (error) {
       console.error('Failed to create customer journey:', error);
@@ -31050,6 +30979,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/attribution/journeys/:id', async (req, res) => {
     try {
+      const ownerId = getActorId(req);
+      if (!ownerId) return res.status(401).json({ error: "Unauthorized" });
+      if ((await storage.getCustomerJourney(req.params.id))?.ownerId !== ownerId) return res.status(404).json({ error: "Journey not found" });
       const validated = insertCustomerJourneySchema.partial().parse(req.body);
       const journey = await storage.updateCustomerJourney(req.params.id, validated);
       if (!journey) {
@@ -31069,8 +31001,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/attribution/journeys/:id', async (req, res) => {
     try {
+      const ownerId = getActorId(req);
+      if (!ownerId) return res.status(401).json({ error: "Unauthorized" });
       const journey = await storage.getCustomerJourney(req.params.id);
-      if (!journey) {
+      if (!journey || journey.ownerId !== ownerId) {
         res.status(404).json({ error: 'Customer journey not found' });
         return;
       }
@@ -31083,254 +31017,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Touchpoint endpoints  
   app.get('/api/attribution/touchpoints', async (req, res) => {
+    const ownerId = getActorId(req);
+    if (!ownerId) return res.status(401).json({ error: "Unauthorized" });
     try {
-      const { journeyId } = req.query;
-
-      // Sample touchpoints data based on journey ID
-      const touchpointsData: Record<string, any[]> = {
-        "journey-001": [
-          {
-            id: "tp-001-1",
-            journeyId: "journey-001",
-            channel: "Google Ads",
-            touchpointType: "paid_search",
-            timestamp: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
-            utm_source: "google",
-            utm_medium: "cpc",
-            utm_campaign: "summer_sale",
-            attribution_credit: 0.20,
-            sequence: 1,
-            device_type: "desktop",
-            referrer: "https://google.com/search?q=summer+sale",
-            page_url: "/landing/summer-sale",
-            conversion_value: "57.00"
-          },
-          {
-            id: "tp-001-2",
-            journeyId: "journey-001",
-            channel: "Facebook",
-            touchpointType: "paid_social",
-            timestamp: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-            utm_source: "facebook",
-            utm_medium: "social",
-            utm_campaign: "retargeting",
-            attribution_credit: 0.20,
-            sequence: 2,
-            device_type: "mobile",
-            referrer: "https://facebook.com",
-            page_url: "/products/category/shoes",
-            conversion_value: "57.00"
-          },
-          {
-            id: "tp-001-3",
-            journeyId: "journey-001",
-            channel: "Email",
-            touchpointType: "email",
-            timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-            utm_source: "newsletter",
-            utm_medium: "email",
-            utm_campaign: "weekly_newsletter",
-            attribution_credit: 0.20,
-            sequence: 3,
-            device_type: "mobile",
-            referrer: "email_client",
-            page_url: "/products/featured",
-            conversion_value: "57.00"
-          },
-          {
-            id: "tp-001-4",
-            journeyId: "journey-001",
-            channel: "Direct",
-            touchpointType: "direct",
-            timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-            utm_source: "direct",
-            utm_medium: "none",
-            utm_campaign: "none",
-            attribution_credit: 0.20,
-            sequence: 4,
-            device_type: "desktop",
-            referrer: "",
-            page_url: "/",
-            conversion_value: "57.00"
-          },
-          {
-            id: "tp-001-5",
-            journeyId: "journey-001",
-            channel: "Google Ads",
-            touchpointType: "paid_search_retargeting",
-            timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-            utm_source: "google",
-            utm_medium: "cpc",
-            utm_campaign: "retargeting",
-            attribution_credit: 0.20,
-            sequence: 5,
-            device_type: "desktop",
-            referrer: "https://google.com/search?q=brand+shoes",
-            page_url: "/checkout",
-            conversion_value: "57.00"
-          }
-        ],
-        "journey-002": [
-          {
-            id: "tp-002-1",
-            journeyId: "journey-002",
-            channel: "LinkedIn Ads",
-            touchpointType: "paid_social",
-            timestamp: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
-            utm_source: "linkedin",
-            utm_medium: "social",
-            utm_campaign: "b2b_software",
-            attribution_credit: 0.25,
-            sequence: 1,
-            device_type: "desktop",
-            referrer: "https://linkedin.com",
-            page_url: "/landing/b2b-solution",
-            conversion_value: "31.38"
-          },
-          {
-            id: "tp-002-2",
-            journeyId: "journey-002",
-            channel: "Content Marketing",
-            touchpointType: "organic",
-            timestamp: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
-            utm_source: "google",
-            utm_medium: "organic",
-            utm_campaign: "none",
-            attribution_credit: 0.25,
-            sequence: 2,
-            device_type: "desktop",
-            referrer: "https://google.com/search?q=marketing+automation",
-            page_url: "/blog/marketing-automation-guide",
-            conversion_value: "31.38"
-          },
-          {
-            id: "tp-002-3",
-            journeyId: "journey-002",
-            channel: "Email",
-            touchpointType: "email",
-            timestamp: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
-            utm_source: "drip_campaign",
-            utm_medium: "email",
-            utm_campaign: "nurture_sequence",
-            attribution_credit: 0.25,
-            sequence: 3,
-            device_type: "desktop",
-            referrer: "email_client",
-            page_url: "/pricing",
-            conversion_value: "31.38"
-          },
-          {
-            id: "tp-002-4",
-            journeyId: "journey-002",
-            channel: "LinkedIn Ads",
-            touchpointType: "paid_social_retargeting",
-            timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-            utm_source: "linkedin",
-            utm_medium: "social",
-            utm_campaign: "retargeting",
-            attribution_credit: 0.25,
-            sequence: 4,
-            device_type: "desktop",
-            referrer: "https://linkedin.com",
-            page_url: "/signup",
-            conversion_value: "31.38"
-          }
-        ],
-        "journey-003": [
-          {
-            id: "tp-003-1",
-            journeyId: "journey-003",
-            channel: "Instagram",
-            touchpointType: "paid_social",
-            timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-            utm_source: "instagram",
-            utm_medium: "social",
-            utm_campaign: "brand_awareness",
-            attribution_credit: 0.20,
-            sequence: 1,
-            device_type: "mobile",
-            referrer: "https://instagram.com",
-            page_url: "/products/new-arrivals",
-            conversion_value: "90.00"
-          },
-          {
-            id: "tp-003-2",
-            journeyId: "journey-003",
-            channel: "Google Ads",
-            touchpointType: "paid_search",
-            timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-            utm_source: "google",
-            utm_medium: "cpc",
-            utm_campaign: "shopping_ads",
-            attribution_credit: 0.20,
-            sequence: 2,
-            device_type: "desktop",
-            referrer: "https://google.com/search?q=trendy+shoes",
-            page_url: "/products/id/12345",
-            conversion_value: "90.00"
-          },
-          {
-            id: "tp-003-3",
-            journeyId: "journey-003",
-            channel: "YouTube",
-            touchpointType: "video_ad",
-            timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-            utm_source: "youtube",
-            utm_medium: "video",
-            utm_campaign: "product_demo",
-            attribution_credit: 0.20,
-            sequence: 3,
-            device_type: "mobile",
-            referrer: "https://youtube.com",
-            page_url: "/video/product-demo",
-            conversion_value: "90.00"
-          },
-          {
-            id: "tp-003-4",
-            journeyId: "journey-003",
-            channel: "Email",
-            touchpointType: "email",
-            timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-            utm_source: "abandoned_cart",
-            utm_medium: "email",
-            utm_campaign: "cart_recovery",
-            attribution_credit: 0.20,
-            sequence: 4,
-            device_type: "desktop",
-            referrer: "email_client",
-            page_url: "/cart",
-            conversion_value: "90.00"
-          },
-          {
-            id: "tp-003-5",
-            journeyId: "journey-003",
-            channel: "Google Ads",
-            touchpointType: "paid_search_retargeting",
-            timestamp: new Date(),
-            utm_source: "google",
-            utm_medium: "cpc",
-            utm_campaign: "retargeting",
-            attribution_credit: 0.20,
-            sequence: 5,
-            device_type: "desktop",
-            referrer: "https://google.com/search?q=buy+shoes+now",
-            page_url: "/checkout/complete",
-            conversion_value: "90.00"
-          }
-        ]
-      };
-
-      const touchpoints = touchpointsData[journeyId as string] || [];
-      res.json(touchpoints);
-    } catch (error) {
-      console.error('Failed to get touchpoints:', error);
-      res.status(500).json({ error: 'Failed to get touchpoints' });
+      const journeyId = String(req.query.journeyId || "");
+      const journey = await storage.getCustomerJourney(journeyId);
+      if (!journey || journey.ownerId !== ownerId) return res.status(404).json({ error: "Journey not found" });
+      res.json(await storage.getJourneyTouchpoints(journeyId));
+    } catch {
+      res.status(500).json({ error: "Failed to read attribution data" });
     }
   });
 
   app.post('/api/attribution/touchpoints', async (req, res) => {
     try {
-      const validated = insertTouchpointSchema.parse(req.body);
+      const ownerId = getActorId(req);
+      if (!ownerId) return res.status(401).json({ error: "Unauthorized" });
+      const validated = insertTouchpointSchema.parse({ ...req.body, timestamp: new Date(req.body?.timestamp) });
+      if ((await storage.getCustomerJourney(validated.journeyId))?.ownerId !== ownerId) return res.status(404).json({ error: "Journey not found" });
+      if (validated.campaignId && !await ensureCampaignAccess(req, res, validated.campaignId)) return;
       const touchpoint = await storage.createTouchpoint(validated);
       res.json(touchpoint);
     } catch (error) {
@@ -31346,12 +31051,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Attribution Calculation endpoint
   app.post('/api/attribution/calculate', async (req, res) => {
     try {
+      const ownerId = getActorId(req);
+      if (!ownerId) return res.status(401).json({ error: "Unauthorized" });
       const { journeyId, modelId } = req.body;
 
       if (!journeyId || !modelId) {
         res.status(400).json({ error: 'Journey ID and Model ID are required' });
         return;
       }
+      if ((await storage.getCustomerJourney(journeyId))?.ownerId !== ownerId || (await storage.getAttributionModel(modelId))?.ownerId !== ownerId) return res.status(404).json({ error: "Attribution input not found" });
 
       const results = await storage.calculateAttributionResults(journeyId, modelId);
       res.json(results);
@@ -31363,80 +31071,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Channel Performance Attribution endpoint
   app.get('/api/attribution/channel-performance', async (req, res) => {
+    const ownerId = getActorId(req);
+    if (!ownerId) return res.status(401).json({ error: "Unauthorized" });
     try {
-      const { startDate, endDate, modelId } = req.query;
-
-      // Sample channel performance data with correct structure for frontend
-      const performance = [
-        {
-          channel: "Google Ads",
-          totalTouchpoints: 1247,
-          totalAttributedValue: 12450.75,
-          averageCredit: 0.42,
-          assistedConversions: 89,
-          lastClickConversions: 67,
-          firstClickConversions: 78,
-          conversionRate: 0.034,
-          avgOrderValue: 285.00,
-          attributionCredit: 0.42,
-          costPerAcquisition: 45.20,
-          returnOnAdSpend: 6.8
-        },
-        {
-          channel: "Facebook",
-          totalTouchpoints: 892,
-          totalAttributedValue: 8920.50,
-          averageCredit: 0.31,
-          assistedConversions: 45,
-          lastClickConversions: 23,
-          firstClickConversions: 67,
-          conversionRate: 0.028,
-          avgOrderValue: 255.30,
-          attributionCredit: 0.31,
-          costPerAcquisition: 52.10,
-          returnOnAdSpend: 4.9
-        },
-        {
-          channel: "Email",
-          totalTouchpoints: 634,
-          totalAttributedValue: 6340.25,
-          averageCredit: 0.18,
-          assistedConversions: 78,
-          lastClickConversions: 34,
-          firstClickConversions: 12,
-          conversionRate: 0.045,
-          avgOrderValue: 195.80,
-          attributionCredit: 0.18,
-          costPerAcquisition: 12.50,
-          returnOnAdSpend: 15.6
-        },
-        {
-          channel: "Direct",
-          totalTouchpoints: 423,
-          totalAttributedValue: 4230.00,
-          averageCredit: 0.09,
-          assistedConversions: 12,
-          lastClickConversions: 78,
-          firstClickConversions: 34,
-          conversionRate: 0.067,
-          avgOrderValue: 310.50,
-          attributionCredit: 0.09,
-          costPerAcquisition: 0.00,
-          returnOnAdSpend: 999.9
-        }
-      ];
-
-      res.json(performance);
-    } catch (error) {
-      console.error('Failed to get channel performance attribution:', error);
-      res.status(500).json({ error: 'Failed to get channel performance attribution' });
+      const modelId = typeof req.query.modelId === "string" ? req.query.modelId : undefined;
+      if (modelId && (await storage.getAttributionModel(modelId))?.ownerId !== ownerId) return res.status(404).json({ error: "Model not found" });
+      const endDate = req.query.endDate ? new Date(String(req.query.endDate)) : new Date();
+      const startDate = req.query.startDate ? new Date(String(req.query.startDate)) : new Date(endDate.getTime() - 30 * 86400000);
+      if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime()) || startDate > endDate) return res.status(400).json({ error: "Invalid attribution dates" });
+      res.json(await storage.getChannelPerformanceAttribution(startDate, endDate, modelId, ownerId));
+    } catch {
+      res.status(500).json({ error: "Failed to read attribution data" });
     }
   });
 
   // Campaign-specific attribution endpoint
   app.get('/api/campaigns/:campaignId/attribution', async (req, res) => {
     try {
+      if (!await ensureCampaignAccess(req, res, req.params.campaignId)) return;
       const { modelId } = req.query;
+      if (modelId && (await storage.getAttributionModel(String(modelId)))?.ownerId !== getActorId(req)) return res.status(404).json({ error: "Attribution model not found" });
 
       // Get campaign touchpoints
       const touchpoints = await storage.getCampaignTouchpoints(req.params.campaignId);
@@ -33729,25 +33383,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/custom-integration/:campaignId/connect", async (req, res) => {
     try {
       const { campaignId } = req.params;
-      const { allowedEmailAddresses, campaignName } = req.body;
+      const { allowedEmailAddresses } = req.body;
 
       console.log(`[Custom Integration] Connecting for campaign ${campaignId}`);
 
-      // Handle temporary campaign during setup flow
-      let nameForEmail: string;
-
-      if (campaignId === 'temp-campaign-setup') {
-        // Use provided campaign name or generate a temporary one
-        nameForEmail = campaignName || `temp-${Date.now()}`;
-        console.log(`[Custom Integration] Using temporary campaign name: ${nameForEmail}`);
-      } else {
-        // Get campaign details to generate email from name
-        const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
-        if (!campaign) {
-          return;
-        }
-        nameForEmail = campaign.name;
-      }
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
+      const nameForEmail = campaign.name;
 
       // Generate unique email address based on campaign name
       const { generateCampaignEmail } = await import('./utils/email-generator');
@@ -33775,7 +33417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         webhookUrl: `${req.protocol}://${req.get('host')}/api/mailgun/inbound`
       });
     } catch (error: any) {
-      console.error('[Custom Integration] Connection error:', error);
+      console.error('[Custom Integration] Connection error:', { name: error?.name, code: error?.code });
       res.status(500).json({ error: error.message || 'Failed to connect custom integration' });
     }
   });
@@ -33796,7 +33438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(404).json({ error: 'Custom integration not found' });
       }
     } catch (error: any) {
-      console.error('[Custom Integration] Delete error:', error);
+      console.error('[Custom Integration] Delete error:', { name: error?.name, code: error?.code });
       res.status(500).json({ error: error.message || 'Failed to delete custom integration' });
     }
   });
@@ -33806,29 +33448,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * Receives forwarded emails with supported report attachments
    * Email format: {campaign-slug}@import.mforensics.com
    */
-  app.post("/api/sendgrid/inbound", async (req, res) => {
+  app.post("/api/sendgrid/inbound", importRateLimiter, verifySendGridInbound, upload.any(), async (req, res) => {
     try {
       console.log('[SendGrid] Received inbound email webhook');
 
-      // 1. Verify webhook signature (if SendGrid verification key is configured)
-      if (process.env.SENDGRID_WEBHOOK_VERIFICATION_KEY) {
-        const signature = req.headers['x-twilio-email-event-webhook-signature'];
-        const timestamp = req.headers['x-twilio-email-event-webhook-timestamp'];
-
-        if (signature && timestamp) {
-          const crypto = await import('crypto');
-          const payload = timestamp + JSON.stringify(req.body);
-          const expectedSignature = crypto
-            .createHmac('sha256', process.env.SENDGRID_WEBHOOK_VERIFICATION_KEY)
-            .update(payload)
-            .digest('base64');
-
-          if (signature !== expectedSignature) {
-            console.error('[SendGrid] Invalid webhook signature');
-            return res.status(401).json({ error: 'Invalid signature' });
-          }
-        }
-      }
+      if (!(req as any).inboundSignatureVerified) return res.status(401).json({ error: "Invalid signature" });
+      const receipt = "sendgrid:" + (req as any).inboundReceipt;
 
       // 2. Extract email details (SendGrid format)
       const recipient = req.body.to; // e.g., "q4-wine-marketing@import.mforensics.com"
@@ -33867,9 +33492,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let reportFileName: string | null = null;
       let reportMimeType: string | null = null;
 
+      const file = ((req as any).files as Express.Multer.File[] | undefined)?.find(f => isSupportedCustomIntegrationFile(f.originalname, f.mimetype));
+      if (file) { reportBuffer = file.buffer; reportFileName = file.originalname; reportMimeType = file.mimetype; }
       // SendGrid sends attachments as JSON string
       const attachmentsStr = req.body.attachments;
-      if (attachmentsStr) {
+      if (!reportBuffer && attachmentsStr?.startsWith("[")) {
         try {
           const attachments = JSON.parse(attachmentsStr);
           console.log(`[SendGrid] Found ${attachments.length} attachment(s)`);
@@ -33901,13 +33528,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const metrics = await parseCustomIntegrationFile(reportBuffer, reportFileName, reportMimeType);
 
       // 7. Store metrics
-      await storage.createCustomIntegrationMetrics({
+      const saved = await storage.createCustomIntegrationMetrics({
         campaignId,
         ...normalizeCustomIntegrationMetrics(metrics),
         pdfFileName: reportFileName,
         emailSubject: subject,
         emailId: req.body['message-id'] || `sendgrid-${Date.now()}`,
-      });
+      }, { integrationId: integration.id, receipt, recipientEmail: cleanRecipient, senderEmail: extractEmailAddress(sender) });
+      if (saved.alreadyProcessed) return res.json({ success: true, campaignId, message: "Webhook already processed" });
 
       console.log(`[SendGrid] ✅ Metrics stored for campaign ${campaignId}`);
       console.log(`[SendGrid] Confidence: ${metrics._confidence}%`);
@@ -33940,31 +33568,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * Email format: {campaign-slug}@sandbox....mailgun.org
    * Note: Uses multer middleware to parse multipart/form-data from Mailgun
    */
-  app.post("/api/mailgun/inbound", upload.any(), async (req, res) => {
+  app.post("/api/mailgun/inbound", importRateLimiter, urlencoded({ extended: false, limit: "128kb", parameterLimit: 40 }), upload.any(), async (req, res) => {
     try {
       console.log('[Mailgun] Received inbound email webhook');
       console.log('[Mailgun] Request body keys:', Object.keys(req.body));
 
-      // 1. Verify webhook signature (if Mailgun signing key is configured)
-      if (process.env.MAILGUN_WEBHOOK_SIGNING_KEY) {
-        const crypto = await import('crypto');
-        const timestamp = req.body.timestamp;
-        const token = req.body.token;
-        const signature = req.body.signature;
-
-        if (timestamp && token && signature) {
-          const expectedSignature = crypto
-            .createHmac('sha256', process.env.MAILGUN_WEBHOOK_SIGNING_KEY)
-            .update(timestamp + token)
-            .digest('hex');
-
-          if (signature !== expectedSignature) {
-            console.error('[Mailgun] Invalid webhook signature');
-            return res.status(401).json({ error: 'Invalid signature' });
-          }
-          console.log('[Mailgun] Signature verified');
-        }
-      }
+      const signingKey = process.env.MAILGUN_WEBHOOK_SIGNING_KEY;
+      if (!signingKey) return res.status(503).json({ error: "Inbound verification is not configured" });
+      const { timestamp, token, signature } = req.body;
+      if (typeof timestamp !== "string" || !/^\d{10}$/.test(timestamp) || typeof token !== "string" || token.length !== 50
+        || typeof signature !== "string" || !/^[a-f0-9]{64}$/i.test(signature)
+        || Math.abs(Date.now() - Number(timestamp) * 1000) > 24 * 3600000) return res.status(401).json({ error: "Invalid signature" });
+      const expectedSignature = createHmac("sha256", signingKey).update(timestamp + token).digest();
+      if (!timingSafeEqual(Buffer.from(signature, "hex"), expectedSignature)) return res.status(401).json({ error: "Invalid signature" });
+      const receipt = "mailgun:" + createHash("sha256").update(token).digest("hex");
 
       // 2. Extract email details (Mailgun format)
       const recipient = req.body.recipient; // e.g., "temp-1763426057214@sandbox....mailgun.org"
@@ -34067,13 +33684,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // 7. Store metrics
-      await storage.createCustomIntegrationMetrics({
+      const saved = await storage.createCustomIntegrationMetrics({
         campaignId,
         ...normalizeCustomIntegrationMetrics(metrics),
         pdfFileName: reportFileName,
         emailSubject: subject,
         emailId: req.body['message-id'] || req.body['Message-Id'] || `mailgun-${Date.now()}`,
-      });
+      }, { integrationId: integration.id, receipt, recipientEmail: cleanRecipient, senderEmail: extractEmailAddress(sender) });
+      if (saved.alreadyProcessed) return res.json({ success: true, campaignId, message: "Webhook already processed" });
 
       console.log(`[Mailgun] ✅ Metrics stored for campaign ${campaignId}`);
       console.log(`[Mailgun] Confidence: ${metrics._confidence}%`);
@@ -34101,10 +33719,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { fromCampaignId, toCampaignId } = req.body;
       console.log(`[Custom Integration Transfer] Transferring from ${fromCampaignId} to ${toCampaignId}`);
-      if (fromCampaignId !== 'temp-campaign-setup') {
-        const fromCampaign = await ensureCampaignAccess(req as any, res as any, fromCampaignId);
-        if (!fromCampaign) return;
-      }
+      const fromCampaign = await ensureCampaignAccess(req as any, res as any, fromCampaignId);
+      if (!fromCampaign) return;
       const toCampaign = await ensureCampaignAccess(req as any, res as any, toCampaignId);
       if (!toCampaign) return;
 
@@ -34126,7 +33742,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       console.log(`[Custom Integration Transfer] Created new integration for campaign ${toCampaignId}:`, {
         id: newIntegration.id,
-        webhookToken: newIntegration.webhookToken,
         email: newIntegration.email
       });
 
@@ -34199,7 +33814,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, message: 'Custom integration and metrics transferred' });
     } catch (error) {
-      console.error('[Custom Integration Transfer] Error:', error);
+      console.error('[Custom Integration Transfer] Error:', { name: (error as any)?.name, code: (error as any)?.code });
       res.status(500).json({ success: false, error: 'Transfer failed' });
     }
   });
@@ -34211,34 +33826,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { campaignId } = req.params;
       const { value, currency, conversionId, conversionType, occurredAt, metadata } = req.body;
 
-      // Validate campaign exists
-      const campaign = await storage.getCampaign(campaignId);
+      const webhookToken = req.get("x-campaign-webhook-token");
+      const integration = webhookToken ? await storage.getCustomIntegrationByToken(webhookToken) : null;
+      if (webhookToken && (!integration || integration.campaignId !== campaignId)) {
+        return res.status(401).json({ success: false, error: "Invalid webhook token" });
+      }
+      const campaign = webhookToken ? await storage.getCampaign(campaignId) : await ensureCampaignAccess(req, res, campaignId);
       if (!campaign) {
-        return res.status(404).json({
-          success: false,
-          error: "Campaign not found"
-        });
+        if (webhookToken) return res.status(404).json({ success: false, error: "Campaign not found" });
+        return;
+      }
+      if (!campaign.ownerId || (webhookToken && ["draft", "deleted"].includes(String(campaign.status)))) {
+        return res.status(404).json({ success: false, error: "Campaign not found" });
       }
 
       // Validate required fields
-      if (!value || isNaN(parseFloat(value))) {
+      const amount = typeof value === "number" || typeof value === "string" && value.trim() !== "" ? Number(value) : NaN;
+      const eventCurrency = String(currency || campaign.currency || "USD").trim().toUpperCase();
+      const eventDate = occurredAt ? new Date(occurredAt) : new Date();
+      if (!Number.isFinite(amount) || Math.abs(amount) >= 100000000) {
         return res.status(400).json({
           success: false,
           error: "Invalid or missing 'value' field. Must be a number."
         });
       }
+      if (eventCurrency !== String(campaign.currency || "USD").toUpperCase()) return res.status(400).json({ success: false, error: "Currency must match the campaign currency" });
+      if (!Number.isFinite(eventDate.getTime()) || eventDate.getTime() > Date.now()) return res.status(400).json({ success: false, error: "Invalid conversion date" });
 
       // Create conversion event
       const event = await storage.createConversionEvent({
         campaignId,
         conversionId: conversionId || null,
-        value: String(parseFloat(value).toFixed(2)),
-        currency: currency || "USD",
+        value: amount.toFixed(2),
+        currency: eventCurrency,
         conversionType: conversionType || null,
         source: "webhook",
         metadata: metadata || null,
-        occurredAt: occurredAt ? new Date(occurredAt) : new Date(),
-      });
+        occurredAt: eventDate,
+      }, { ownerId: campaign.ownerId, webhookToken });
 
       console.log(`[Conversion Webhook] Created event for campaign ${campaignId}:`, {
         eventId: event.id,
@@ -34247,21 +33872,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conversionType: event.conversionType
       });
 
-      // Optionally update campaign's average conversion value (for backward compatibility)
-      // Calculate average from recent events (last 30 days)
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const recentEvents = await storage.getConversionEvents(campaignId, thirtyDaysAgo);
-
-      if (recentEvents.length > 0) {
-        const totalValue = recentEvents.reduce((sum, e) => sum + parseFloat(e.value || "0"), 0);
-        const avgValue = (totalValue / recentEvents.length).toFixed(2);
-
-        // Update campaign's conversionValue with average (optional - for backward compatibility)
-        await storage.updateCampaign(campaignId, {
-          conversionValue: avgValue
-        });
-      }
+      // The event and same-currency average are committed atomically in storage.
 
       return res.status(200).json({
         success: true,
@@ -34274,7 +33885,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Conversion event recorded successfully"
       });
     } catch (error) {
-      console.error("[Conversion Webhook] Error:", error);
+      console.error("[Conversion Webhook] Error:", { name: (error as any)?.name, code: (error as any)?.code });
       return res.status(500).json({
         success: false,
         error: "Failed to process conversion event"
@@ -34291,6 +33902,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { platform } = req.params;
       const { campaignId } = req.query;
+      if (campaignId !== undefined && !await ensureCampaignAccess(req, res, campaignId)) return;
 
       let fields = getPlatformFields(platform);
 

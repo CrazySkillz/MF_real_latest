@@ -1,0 +1,257 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact current aggregate/snapshot helpers, page expressions and extracted server GA4 read branch with isolated payloads. No HTTP/auth/browser/provider/database/full PDF execution; current page and legacy/API consumers distinguished.",
+  "results": [
+    {
+      "case": "Mixed GA4 and paid clicks",
+      "displayedLabel": "Click-Through CVR",
+      "cvr": {
+        "value": 10,
+        "available": true,
+        "sources": [
+          "conversions",
+          "sessions"
+        ],
+        "unavailableReasons": []
+      },
+      "conversions": {
+        "value": 10,
+        "available": true,
+        "sources": [
+          "ga4"
+        ],
+        "unavailableReasons": []
+      },
+      "sessions": {
+        "value": 100,
+        "available": true,
+        "sources": [
+          "ga4"
+        ],
+        "unavailableReasons": []
+      },
+      "clicks": {
+        "value": 20,
+        "available": true,
+        "sources": [
+          "meta"
+        ],
+        "unavailableReasons": []
+      }
+    },
+    {
+      "case": "GA4-only control",
+      "displayedLabel": "Conversion Rate",
+      "cvr": {
+        "value": 10,
+        "available": true,
+        "sources": [
+          "conversions",
+          "sessions"
+        ],
+        "unavailableReasons": []
+      },
+      "conversions": {
+        "value": 10,
+        "available": true,
+        "sources": [
+          "ga4"
+        ],
+        "unavailableReasons": []
+      },
+      "sessions": {
+        "value": 100,
+        "available": true,
+        "sources": [
+          "ga4"
+        ],
+        "unavailableReasons": []
+      },
+      "clicks": {
+        "value": 0,
+        "available": false,
+        "sources": [],
+        "unavailableReasons": [
+          "No connected paid-media source provides clicks"
+        ]
+      }
+    },
+    {
+      "case": "Paid-only control",
+      "displayedLabel": "Click-Through CVR",
+      "cvr": {
+        "value": 25,
+        "available": true,
+        "sources": [
+          "conversions",
+          "clicks"
+        ],
+        "unavailableReasons": []
+      },
+      "conversions": {
+        "value": 5,
+        "available": true,
+        "sources": [
+          "meta"
+        ],
+        "unavailableReasons": []
+      },
+      "sessions": {
+        "value": 0,
+        "available": false,
+        "sources": [],
+        "unavailableReasons": [
+          "No connected web analytics source provides sessions"
+        ]
+      },
+      "clicks": {
+        "value": 20,
+        "available": true,
+        "sources": [
+          "meta"
+        ],
+        "unavailableReasons": []
+      }
+    },
+    {
+      "case": "Executive conversion formatting 0.75",
+      "verifiedNumericInput": 0.75,
+      "headline": "0",
+      "kpi": "0",
+      "limitation": "The fixture starts with a preserved fractional aggregate; upstream GA4 conversion truncation is a separate defect."
+    },
+    {
+      "case": "Executive conversion formatting 3",
+      "verifiedNumericInput": 3,
+      "headline": "3",
+      "kpi": "3",
+      "limitation": "The fixture starts with a preserved fractional aggregate; upstream GA4 conversion truncation is a separate defect."
+    },
+    {
+      "case": "Currency formatter preserves valid EUR and withholds missing currency",
+      "valid": "€100.00",
+      "missing": "Unavailable"
+    },
+    {
+      "case": "Executive API successful provider read selects oldest property,30day range,loses native Revenue and adds overlapping pageviews",
+      "declaredPeriod": "all",
+      "configuredPrimary": "selected-primary",
+      "calls": [
+        {
+          "method": "getMetricsWithAutoRefresh",
+          "range": "30daysAgo",
+          "propertyId": "old-property",
+          "filter": "selected"
+        },
+        {
+          "method": "getGA4DailyMetrics",
+          "args": [
+            "fixture",
+            "old-property",
+            "2000-01-01",
+            "2026-10-19"
+          ]
+        }
+      ],
+      "value": {
+        "ga4Metrics": {
+          "sessions": 100,
+          "conversions": 10,
+          "bounceRate": 0,
+          "pageviews": 60,
+          "users": 50,
+          "revenue": 0
+        },
+        "ga4LastUpdate": "2026-10-18",
+        "hasGA4Connection": true
+      },
+      "boundary": "Exact GA4 branch in current handler; deterministic provider/storage stubs, no whole endpoint execution. Downstream current funnel reads separate outcome API."
+    },
+    {
+      "case": "Executive API provider-failure daily fallback control",
+      "declaredPeriod": "all",
+      "configuredPrimary": "selected-primary",
+      "calls": [
+        {
+          "method": "getMetricsWithAutoRefresh",
+          "range": "30daysAgo",
+          "propertyId": "old-property",
+          "filter": "selected"
+        },
+        {
+          "method": "getGA4DailyMetrics",
+          "args": [
+            "fixture",
+            "old-property",
+            "2000-01-01",
+            "2026-10-19"
+          ]
+        }
+      ],
+      "value": {
+        "ga4Metrics": {
+          "sessions": 40,
+          "conversions": 4,
+          "bounceRate": 0,
+          "pageviews": 10,
+          "users": 30,
+          "revenue": 300
+        },
+        "ga4LastUpdate": "2026-10-18",
+        "hasGA4Connection": true
+      },
+      "boundary": "Exact GA4 branch in current handler; deterministic provider/storage stubs, no whole endpoint execution. Downstream current funnel reads separate outcome API."
+    },
+    {
+      "case": "Financial source identity ignores refreshed amount/time but detects mapping change",
+      "identity": {
+        "id": "revenue-fixture",
+        "configurationFingerprint": "9ce9fa3178d92e2bdef87ccdf49b12e3b16b6b2fc7d42c6690af83ab52486c5d"
+      },
+      "same": {
+        "id": "revenue-fixture",
+        "configurationFingerprint": "9ce9fa3178d92e2bdef87ccdf49b12e3b16b6b2fc7d42c6690af83ab52486c5d"
+      },
+      "changed": {
+        "id": "revenue-fixture",
+        "configurationFingerprint": "b616b7931149847f0bf80382b33af69acb99dbc611a3fb8cb8691348d0c0ba45"
+      }
+    },
+    {
+      "case": "Exact seven-day compatible comparison",
+      "value": {
+        "available": true,
+        "trajectory": "accelerating",
+        "trendPercentage": 20,
+        "reason": null
+      }
+    },
+    {
+      "case": "Changed financial mapping is not comparable",
+      "value": {
+        "available": false,
+        "trajectory": null,
+        "trendPercentage": null,
+        "reason": "incompatible_history"
+      }
+    },
+    {
+      "case": "Changed currency is not comparable",
+      "value": {
+        "available": false,
+        "trajectory": null,
+        "trendPercentage": null,
+        "reason": "incompatible_history"
+      }
+    },
+    {
+      "case": "Zero Revenue baseline has no growth percentage",
+      "value": {
+        "available": false,
+        "trajectory": null,
+        "trendPercentage": null,
+        "reason": "revenue_history_unavailable"
+      }
+    }
+  ]
+}

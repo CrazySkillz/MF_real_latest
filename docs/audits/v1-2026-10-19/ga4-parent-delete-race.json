@@ -1,0 +1,22 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact two storage methods; minimal isolated tables preserve relevant not-null/no-FK schema. Durable work table absent (supported ordinary-save branch). Parent deletion is the completed interleaving before save; full HTTP/upload and deployed migrations not exercised.",
+  "results": [
+    {
+      "case": "Existing parent control: committed source and record",
+      "counts": {
+        "parents": 1,
+        "sources": 1,
+        "records": 1
+      }
+    },
+    {
+      "case": "Parent deleted before final write: committed orphan source and record",
+      "counts": {
+        "parents": 0,
+        "sources": 1,
+        "records": 1
+      }
+    }
+  ]
+}

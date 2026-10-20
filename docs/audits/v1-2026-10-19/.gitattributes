@@ -1,0 +1,5 @@
+# Preserve recorded evidence bytes, including hashes and binary fixtures.
+* -text
+*.pdf binary
+*.png binary
+*.dump binary

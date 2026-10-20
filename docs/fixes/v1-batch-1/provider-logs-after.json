@@ -1,0 +1,38 @@
+{
+  "base": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "revision": "uncommitted Batch 1",
+  "at": "2026-10-20T19:15:36.418Z",
+  "boundary": "Exact GoogleAdsClient code with real Axios and a rejecting in-memory adapter; exact refresh route catch. Scheduler dependency is replaced by the actual client account read; code trace confirms ordinary scheduler lets that error propagate. Access/storage are fixtures. No real credentials, provider, DB, email or production log read.",
+  "results": [
+    {
+      "case": "Provider Axios error logs no bearer or developer token",
+      "status": 500,
+      "requests": 1,
+      "credentialMarkersInLogs": {
+        "accessToken": false,
+        "developerToken": false
+      },
+      "credentialMarkersInResponse": false
+    },
+    {
+      "case": "Denied campaign stops before provider/log",
+      "status": 404,
+      "requests": 0,
+      "credentialMarkersInLogs": {
+        "accessToken": false,
+        "developerToken": false
+      },
+      "credentialMarkersInResponse": false
+    },
+    {
+      "case": "Successful provider fixture logs no credentials",
+      "status": 200,
+      "requests": 1,
+      "credentialMarkersInLogs": {
+        "accessToken": false,
+        "developerToken": false
+      },
+      "credentialMarkersInResponse": false
+    }
+  ]
+}

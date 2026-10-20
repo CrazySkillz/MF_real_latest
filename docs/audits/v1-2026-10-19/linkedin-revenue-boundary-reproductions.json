@@ -1,0 +1,403 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "executedAt": "2026-10-19T23:20:53.408Z",
+  "boundary": "Complete actual LinkedIn revenue utility with fixture storage and fixed clock; actual Ads-route aggregation expressions. No real connection mutation, provider, message or runtime change.",
+  "results": [
+    {
+      "case": "Revenue/source read failures cause current helper to clear a valid connection CV",
+      "actual": {
+        "result": {
+          "hasRevenueTracking": false,
+          "totalRevenue": 0,
+          "conversionValue": 0,
+          "conversionValueSource": "none",
+          "importedRevenueToDate": 0,
+          "windowStartDate": "2026-09-19",
+          "windowEndDate": "2026-10-18",
+          "webhookEventCount": 0,
+          "webhookRevenueUsed": false
+        },
+        "calls": [
+          {
+            "method": "revenueRange",
+            "args": [
+              "fixture",
+              "1900-01-01",
+              "2026-10-19",
+              "linkedin"
+            ]
+          },
+          {
+            "method": "events",
+            "args": [
+              "fixture",
+              "2026-09-19T00:00:00.000Z",
+              "2026-10-18T23:59:59.999Z"
+            ]
+          }
+        ],
+        "writes": [
+          [
+            "fixture",
+            {
+              "conversionValue": null
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "case": "Configured actual-revenue source measured0 loses precedence to legacy connection CV50",
+      "actual": {
+        "result": {
+          "hasRevenueTracking": true,
+          "totalRevenue": 500,
+          "conversionValue": 50,
+          "conversionValueSource": "connection",
+          "importedRevenueToDate": 0,
+          "windowStartDate": "2026-09-19",
+          "windowEndDate": "2026-10-18",
+          "webhookEventCount": 0,
+          "webhookRevenueUsed": false
+        },
+        "calls": [
+          {
+            "method": "revenueRange",
+            "args": [
+              "fixture",
+              "1900-01-01",
+              "2026-10-19",
+              "linkedin"
+            ]
+          },
+          {
+            "method": "events",
+            "args": [
+              "fixture",
+              "2026-09-19T00:00:00.000Z",
+              "2026-10-18T23:59:59.999Z"
+            ]
+          }
+        ],
+        "writes": []
+      }
+    },
+    {
+      "case": "Conditional negative actual-revenue total also loses precedence to legacy CV",
+      "actual": {
+        "result": {
+          "hasRevenueTracking": true,
+          "totalRevenue": 500,
+          "conversionValue": 50,
+          "conversionValueSource": "connection",
+          "importedRevenueToDate": -10,
+          "windowStartDate": "2026-09-19",
+          "windowEndDate": "2026-10-18",
+          "webhookEventCount": 0,
+          "webhookRevenueUsed": false
+        },
+        "calls": [
+          {
+            "method": "revenueRange",
+            "args": [
+              "fixture",
+              "1900-01-01",
+              "2026-10-19",
+              "linkedin"
+            ]
+          },
+          {
+            "method": "events",
+            "args": [
+              "fixture",
+              "2026-09-19T00:00:00.000Z",
+              "2026-10-18T23:59:59.999Z"
+            ]
+          }
+        ],
+        "writes": []
+      },
+      "boundary": "Successful negative storage reply; not a claim all provider import paths currently accept refunds"
+    },
+    {
+      "case": "No sources: self-heal clears connection CV but retained session CV still supplies Revenue500",
+      "actual": {
+        "result": {
+          "hasRevenueTracking": true,
+          "totalRevenue": 500,
+          "conversionValue": 50,
+          "conversionValueSource": "session",
+          "importedRevenueToDate": 0,
+          "windowStartDate": "2026-09-19",
+          "windowEndDate": "2026-10-18",
+          "webhookEventCount": 0,
+          "webhookRevenueUsed": false
+        },
+        "calls": [
+          {
+            "method": "revenueRange",
+            "args": [
+              "fixture",
+              "1900-01-01",
+              "2026-10-19",
+              "linkedin"
+            ]
+          },
+          {
+            "method": "events",
+            "args": [
+              "fixture",
+              "2026-09-19T00:00:00.000Z",
+              "2026-10-18T23:59:59.999Z"
+            ]
+          }
+        ],
+        "writes": [
+          [
+            "fixture",
+            {
+              "conversionValue": null
+            }
+          ]
+        ]
+      },
+      "boundary": "Persisted legacy session scenario, not a full source-delete route test"
+    },
+    {
+      "case": "Control: positive actual Revenue ignores legacy CV and preserves123.45 exactly",
+      "actual": {
+        "result": {
+          "hasRevenueTracking": true,
+          "totalRevenue": 123.45,
+          "conversionValue": 12.35,
+          "conversionValueSource": "derived",
+          "importedRevenueToDate": 123.45,
+          "windowStartDate": "2026-09-19",
+          "windowEndDate": "2026-10-18",
+          "webhookEventCount": 0,
+          "webhookRevenueUsed": false
+        },
+        "calls": [
+          {
+            "method": "revenueRange",
+            "args": [
+              "fixture",
+              "1900-01-01",
+              "2026-10-19",
+              "linkedin"
+            ]
+          },
+          {
+            "method": "events",
+            "args": [
+              "fixture",
+              "2026-09-19T00:00:00.000Z",
+              "2026-10-18T23:59:59.999Z"
+            ]
+          }
+        ],
+        "writes": []
+      }
+    },
+    {
+      "case": "Control: explicit configured conversion-value mode produces500 for10conversions",
+      "actual": {
+        "result": {
+          "hasRevenueTracking": true,
+          "totalRevenue": 500,
+          "conversionValue": 50,
+          "conversionValueSource": "connection",
+          "importedRevenueToDate": 0,
+          "windowStartDate": "2026-09-19",
+          "windowEndDate": "2026-10-18",
+          "webhookEventCount": 0,
+          "webhookRevenueUsed": false
+        },
+        "calls": [
+          {
+            "method": "revenueRange",
+            "args": [
+              "fixture",
+              "1900-01-01",
+              "2026-10-19",
+              "linkedin"
+            ]
+          },
+          {
+            "method": "events",
+            "args": [
+              "fixture",
+              "2026-09-19T00:00:00.000Z",
+              "2026-10-18T23:59:59.999Z"
+            ]
+          }
+        ],
+        "writes": []
+      }
+    },
+    {
+      "case": "Configured measured0 with no legacy CV becomes tracking unavailable",
+      "actual": {
+        "result": {
+          "hasRevenueTracking": false,
+          "totalRevenue": 0,
+          "conversionValue": 0,
+          "conversionValueSource": "none",
+          "importedRevenueToDate": 0,
+          "windowStartDate": "2026-09-19",
+          "windowEndDate": "2026-10-18",
+          "webhookEventCount": 0,
+          "webhookRevenueUsed": false
+        },
+        "calls": [
+          {
+            "method": "revenueRange",
+            "args": [
+              "fixture",
+              "1900-01-01",
+              "2026-10-19",
+              "linkedin"
+            ]
+          },
+          {
+            "method": "events",
+            "args": [
+              "fixture",
+              "2026-09-19T00:00:00.000Z",
+              "2026-10-18T23:59:59.999Z"
+            ]
+          }
+        ],
+        "writes": []
+      }
+    },
+    {
+      "case": "Missing Shopify order-count/AOV metadata assumes one order for conversion value",
+      "actual": {
+        "result": {
+          "hasRevenueTracking": true,
+          "totalRevenue": 1000,
+          "conversionValue": 1000,
+          "conversionValueSource": "derived",
+          "importedRevenueToDate": 1000,
+          "windowStartDate": "2026-09-19",
+          "windowEndDate": "2026-10-18",
+          "webhookEventCount": 0,
+          "webhookRevenueUsed": false
+        },
+        "calls": [
+          {
+            "method": "revenueRange",
+            "args": [
+              "fixture",
+              "1900-01-01",
+              "2026-10-19",
+              "linkedin"
+            ]
+          },
+          {
+            "method": "events",
+            "args": [
+              "fixture",
+              "2026-09-19T00:00:00.000Z",
+              "2026-10-18T23:59:59.999Z"
+            ]
+          }
+        ],
+        "writes": []
+      },
+      "boundary": "Amount is real fixture Revenue1000; derived per-order1000 has no evidenced order count. Total Revenue remains1000."
+    },
+    {
+      "case": "Helper reports30-completed-day window but imported Revenue query uses all-history through today",
+      "query": {
+        "method": "revenueRange",
+        "args": [
+          "fixture",
+          "1900-01-01",
+          "2026-10-19",
+          "linkedin"
+        ]
+      },
+      "declaredWindow": [
+        "2026-09-19",
+        "2026-10-18"
+      ]
+    },
+    {
+      "case": "Webhook highest-priority Revenue sums USD/EUR and purchase/lead values without contract guard",
+      "actual": {
+        "result": {
+          "hasRevenueTracking": true,
+          "totalRevenue": 300,
+          "conversionValue": 10,
+          "conversionValueSource": "webhook_events",
+          "importedRevenueToDate": 100,
+          "windowStartDate": "2026-09-19",
+          "windowEndDate": "2026-10-18",
+          "webhookEventCount": 2,
+          "webhookRevenueUsed": true
+        },
+        "calls": [
+          {
+            "method": "revenueRange",
+            "args": [
+              "fixture",
+              "1900-01-01",
+              "2026-10-19",
+              "linkedin"
+            ]
+          },
+          {
+            "method": "events",
+            "args": [
+              "fixture",
+              "2026-09-19T00:00:00.000Z",
+              "2026-10-18T23:59:59.999Z"
+            ]
+          }
+        ],
+        "writes": []
+      },
+      "boundary": "Current storage schema permits these fields; same campaign fixture. No cross-tenant or live occurrence claim."
+    },
+    {
+      "case": "Actual Ads expressions allocate webhook totals by conversion share without Estimated flag",
+      "ads": [
+        {
+          "id": "ad-a",
+          "conversions": 1,
+          "spend": 10,
+          "revenue": "75.00",
+          "roas": "7.50",
+          "roi": "650.00",
+          "profit": "65.00",
+          "profitMargin": "86.67",
+          "_computed": {
+            "conversionValue": 10,
+            "importedRevenueToDate": 100,
+            "conversionValueSource": "explicit",
+            "revenueIsEstimated": false
+          }
+        },
+        {
+          "id": "ad-b",
+          "conversions": 3,
+          "spend": 30,
+          "revenue": "225.00",
+          "roas": "7.50",
+          "roi": "650.00",
+          "profit": "195.00",
+          "profitMargin": "86.67",
+          "_computed": {
+            "conversionValue": 10,
+            "importedRevenueToDate": 100,
+            "conversionValueSource": "explicit",
+            "revenueIsEstimated": false
+          }
+        }
+      ],
+      "boundary": "No ad identity exists in supplied events; actual declaration/map expressions, not the complete route/storage/auth journey"
+    }
+  ]
+}

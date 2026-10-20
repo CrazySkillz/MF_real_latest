@@ -1,0 +1,46 @@
+{
+  "capturedAt": "2026-10-19T19:15:18.004Z",
+  "publicStatus": "healthy",
+  "reportScheduler": {
+    "totalChecks": 480,
+    "totalSent": 0,
+    "totalFailed": 0,
+    "lastScheduledReportsFound": 3,
+    "lastDueReportsFound": 3,
+    "lastRefreshDeferredReports": 0,
+    "lastCheckTime": "2026-10-19T19:15:00.009Z"
+  },
+  "ga4Daily": {
+    "config": {
+      "reportingTimeZone": "Europe/Amsterdam",
+      "hour": 8,
+      "hours": [
+        8,
+        14,
+        20
+      ],
+      "minute": 0,
+      "runOnStartup": false
+    },
+    "lastRunStatus": "failed",
+    "lastRunStartedAt": "2026-10-19T18:00:00.006Z",
+    "lastRunFinishedAt": "2026-10-19T18:16:29.338Z",
+    "lastRunTrigger": "scheduled"
+  },
+  "autoRefresh": {
+    "lastRunStatus": "failed",
+    "lastRunStartedAt": "2026-10-19T18:03:51.810Z",
+    "lastRunFinishedAt": "2026-10-19T18:16:29.337Z",
+    "lastRunSummary": {
+      "campaignsScanned": 49,
+      "providerJobsAttempted": 14,
+      "providerJobsSucceeded": 9,
+      "providerJobsRetained": 0,
+      "providerJobsSkipped": 284,
+      "campaignErrors": 0,
+      "recomputeFailed": false,
+      "linkedInRefreshFailed": false
+    }
+  },
+  "alignedCampaignCount": 8
+}

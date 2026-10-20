@@ -1,0 +1,1040 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "executedAt": "2026-10-19T22:58:06.835Z",
+  "boundary": "19 exact GET registrations with actual campaign/actor validation and registered ID middleware;19 owner plus57 anonymous/foreign/missing-parent cases. Clerk identity/storage/config and Shopify date helper inputs are isolated fixtures. Configured, unexpired connections only; no real credential, provider, DB, full HTTP stack or error-redaction certificate. Custom Integration bearer returned only to authorized owner is expected setup behavior.",
+  "auditCorrection": "Initial common fixture incorrectly added OAuth credential columns to Custom Integration, whose actual schema740 has only the setup bearer. Replaced that fixture with the declared Custom Integration shape before accepting results; no application defect inferred from the artificial fields.",
+  "results": [
+    {
+      "case": "owner: /api/ga4/check-connection/:campaignId",
+      "status": 200,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign",
+        "getGA4Connections"
+      ],
+      "responseKeys": [
+        "connected",
+        "validationReadOnly",
+        "primaryPropertyId",
+        "totalConnections",
+        "unsupportedLookbackConnectionCount",
+        "connections",
+        "primaryPropertyName",
+        "primaryDisplayName",
+        "primaryConnectedAt",
+        "hasValidToken",
+        "method"
+      ]
+    },
+    {
+      "case": "anonymous: /api/ga4/check-connection/:campaignId",
+      "status": 401,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "foreign: /api/ga4/check-connection/:campaignId",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "missing-parent: /api/ga4/check-connection/:campaignId",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "owner: /api/campaigns/:id/ga4-connections",
+      "status": 200,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign",
+        "getGA4Connections"
+      ],
+      "responseKeys": [
+        "success",
+        "validationReadOnly",
+        "unsupportedLookbackConnectionCount",
+        "connections"
+      ]
+    },
+    {
+      "case": "anonymous: /api/campaigns/:id/ga4-connections",
+      "status": 401,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "foreign: /api/campaigns/:id/ga4-connections",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "missing-parent: /api/campaigns/:id/ga4-connections",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "owner: /api/google-sheets/check-connection/:campaignId",
+      "status": 200,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign",
+        "getGoogleSheetsConnections"
+      ],
+      "responseKeys": [
+        "connected",
+        "totalConnections",
+        "spreadsheetId",
+        "spreadsheetName"
+      ]
+    },
+    {
+      "case": "anonymous: /api/google-sheets/check-connection/:campaignId",
+      "status": 401,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "foreign: /api/google-sheets/check-connection/:campaignId",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "missing-parent: /api/google-sheets/check-connection/:campaignId",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "owner: /api/campaigns/:id/google-sheets-connections",
+      "status": 200,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign",
+        "getGoogleSheetsConnections"
+      ],
+      "responseKeys": [
+        "success",
+        "connections"
+      ]
+    },
+    {
+      "case": "anonymous: /api/campaigns/:id/google-sheets-connections",
+      "status": 401,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "foreign: /api/campaigns/:id/google-sheets-connections",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "missing-parent: /api/campaigns/:id/google-sheets-connections",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "owner: /api/hubspot/:campaignId/status",
+      "status": 200,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign",
+        "getHubspotConnection"
+      ],
+      "responseKeys": [
+        "connected",
+        "connectionId",
+        "portalId",
+        "portalName"
+      ]
+    },
+    {
+      "case": "anonymous: /api/hubspot/:campaignId/status",
+      "status": 401,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "foreign: /api/hubspot/:campaignId/status",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "missing-parent: /api/hubspot/:campaignId/status",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "owner: /api/salesforce/:campaignId/connection",
+      "status": 200,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign",
+        "getSalesforceConnections"
+      ],
+      "responseKeys": [
+        "success",
+        "connection"
+      ]
+    },
+    {
+      "case": "anonymous: /api/salesforce/:campaignId/connection",
+      "status": 401,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "foreign: /api/salesforce/:campaignId/connection",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "missing-parent: /api/salesforce/:campaignId/connection",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "owner: /api/salesforce/:campaignId/status",
+      "status": 200,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign",
+        "getSalesforceConnection"
+      ],
+      "responseKeys": [
+        "connected",
+        "connectionId",
+        "orgId",
+        "orgName",
+        "instanceUrl"
+      ]
+    },
+    {
+      "case": "anonymous: /api/salesforce/:campaignId/status",
+      "status": 401,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "foreign: /api/salesforce/:campaignId/status",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "missing-parent: /api/salesforce/:campaignId/status",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "owner: /api/campaigns/:campaignId/meta/connection",
+      "status": 200,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign",
+        "getMetaConnection"
+      ],
+      "responseKeys": [
+        "connected",
+        "adAccountId",
+        "adAccountName",
+        "expiresAt",
+        "isExpired"
+      ]
+    },
+    {
+      "case": "anonymous: /api/campaigns/:campaignId/meta/connection",
+      "status": 401,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "foreign: /api/campaigns/:campaignId/meta/connection",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "missing-parent: /api/campaigns/:campaignId/meta/connection",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "owner: /api/meta/:campaignId/connection",
+      "status": 200,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign",
+        "getMetaConnection"
+      ],
+      "responseKeys": [
+        "connected",
+        "adAccountId",
+        "adAccountName",
+        "method"
+      ]
+    },
+    {
+      "case": "anonymous: /api/meta/:campaignId/connection",
+      "status": 401,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "foreign: /api/meta/:campaignId/connection",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "missing-parent: /api/meta/:campaignId/connection",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "owner: /api/instagram/:campaignId/connection",
+      "status": 200,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign",
+        "getInstagramConnection"
+      ],
+      "responseKeys": [
+        "connected",
+        "adAccountId",
+        "adAccountName",
+        "method",
+        "selectedCampaignIds",
+        "publisherPlatformFilter",
+        "sourceContractVersion",
+        "lastRefreshAt",
+        "spendOnly"
+      ]
+    },
+    {
+      "case": "anonymous: /api/instagram/:campaignId/connection",
+      "status": 401,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "foreign: /api/instagram/:campaignId/connection",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "missing-parent: /api/instagram/:campaignId/connection",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "owner: /api/tiktok/:campaignId/connection",
+      "status": 200,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign",
+        "getTikTokConnection"
+      ],
+      "responseKeys": [
+        "connected",
+        "advertiserId",
+        "advertiserName",
+        "method",
+        "selectedCampaignIds",
+        "selectedCampaignMetadata",
+        "reportingDimensions",
+        "reportingMetrics",
+        "sourceContractVersion",
+        "lastRefreshAt",
+        "lastError",
+        "spendOnly"
+      ]
+    },
+    {
+      "case": "anonymous: /api/tiktok/:campaignId/connection",
+      "status": 401,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "foreign: /api/tiktok/:campaignId/connection",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "missing-parent: /api/tiktok/:campaignId/connection",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "owner: /api/google-ads/:campaignId/connection",
+      "status": 200,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign",
+        "getGoogleAdsConnection"
+      ],
+      "responseKeys": [
+        "connected",
+        "customerId",
+        "customerName",
+        "method",
+        "lastRefreshAt"
+      ]
+    },
+    {
+      "case": "anonymous: /api/google-ads/:campaignId/connection",
+      "status": 401,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "foreign: /api/google-ads/:campaignId/connection",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "missing-parent: /api/google-ads/:campaignId/connection",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "owner: /api/linkedin/check-connection/:campaignId",
+      "status": 200,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign",
+        "getLinkedInConnection"
+      ],
+      "responseKeys": [
+        "connected",
+        "connection"
+      ]
+    },
+    {
+      "case": "anonymous: /api/linkedin/check-connection/:campaignId",
+      "status": 401,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "foreign: /api/linkedin/check-connection/:campaignId",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "missing-parent: /api/linkedin/check-connection/:campaignId",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "owner: /api/shopify/:campaignId/status",
+      "status": 200,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign",
+        "getShopifyConnection"
+      ],
+      "responseKeys": [
+        "connected",
+        "shopDomain",
+        "shopName",
+        "authType",
+        "oauthAvailable",
+        "orderWindow"
+      ]
+    },
+    {
+      "case": "anonymous: /api/shopify/:campaignId/status",
+      "status": 401,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "foreign: /api/shopify/:campaignId/status",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "missing-parent: /api/shopify/:campaignId/status",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "owner: /api/campaigns/:id/ga4-service-account/status",
+      "status": 200,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "enabled",
+        "email"
+      ]
+    },
+    {
+      "case": "anonymous: /api/campaigns/:id/ga4-service-account/status",
+      "status": 401,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "foreign: /api/campaigns/:id/ga4-service-account/status",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "missing-parent: /api/campaigns/:id/ga4-service-account/status",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "owner: /api/campaigns/:id/google-sheets-service-account/status",
+      "status": 200,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "enabled",
+        "email"
+      ]
+    },
+    {
+      "case": "anonymous: /api/campaigns/:id/google-sheets-service-account/status",
+      "status": 401,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "foreign: /api/campaigns/:id/google-sheets-service-account/status",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "missing-parent: /api/campaigns/:id/google-sheets-service-account/status",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "owner: /api/campaigns/:id/google-ads-service-account/status",
+      "status": 200,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "enabled",
+        "email"
+      ]
+    },
+    {
+      "case": "anonymous: /api/campaigns/:id/google-ads-service-account/status",
+      "status": 401,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "foreign: /api/campaigns/:id/google-ads-service-account/status",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "missing-parent: /api/campaigns/:id/google-ads-service-account/status",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "owner: /api/custom-integration-by-id/:id",
+      "status": 200,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": true,
+      "reads": [
+        "getCustomIntegrationById",
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "id",
+        "campaignId",
+        "email",
+        "webhookToken",
+        "allowedEmailAddresses",
+        "connectedAt",
+        "createdAt",
+        "campaign_id"
+      ]
+    },
+    {
+      "case": "anonymous: /api/custom-integration-by-id/:id",
+      "status": 401,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCustomIntegrationById"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "foreign: /api/custom-integration-by-id/:id",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCustomIntegrationById",
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "missing-parent: /api/custom-integration-by-id/:id",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCustomIntegrationById",
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "owner: /api/custom-integration/:campaignId",
+      "status": 200,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": true,
+      "reads": [
+        "getCampaign",
+        "getCustomIntegration",
+        "getLatestCustomIntegrationMetrics"
+      ],
+      "responseKeys": [
+        "id",
+        "campaignId",
+        "email",
+        "webhookToken",
+        "allowedEmailAddresses",
+        "connectedAt",
+        "createdAt",
+        "metrics"
+      ]
+    },
+    {
+      "case": "anonymous: /api/custom-integration/:campaignId",
+      "status": 401,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "foreign: /api/custom-integration/:campaignId",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    },
+    {
+      "case": "missing-parent: /api/custom-integration/:campaignId",
+      "status": 404,
+      "privateMarkersReturned": false,
+      "ownerWebhookTokenReturned": false,
+      "reads": [
+        "getCampaign"
+      ],
+      "responseKeys": [
+        "success",
+        "message"
+      ]
+    }
+  ]
+}

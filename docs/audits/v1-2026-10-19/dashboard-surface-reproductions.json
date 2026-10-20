@@ -1,0 +1,75 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "at": "2026-10-20T08:38:14.914Z",
+  "boundary": "Current component SSR with fixture query/UI primitives and selected client; exact integration handlers/storage with synthetic DB builder. No browser authentication, real database, network, token or provider. Date-selector propagation separately confirmed in current JSX; no full browser gesture certificate.",
+  "results": [
+    {
+      "case": "Failed Metrics query renders zero cards including USD Spend and 0% change",
+      "queries": [
+        [
+          "/api/metrics"
+        ]
+      ]
+    },
+    {
+      "case": "Loading Metrics control retains skeleton rather than zero value"
+    },
+    {
+      "case": "Configured global metric value and change are rendered verbatim",
+      "queries": [
+        [
+          "/api/metrics"
+        ]
+      ]
+    },
+    {
+      "case": "Selected-client table relabels EUR values USD; displays zero-denominator CTR and paused row under Active Campaigns",
+      "queries": [
+        [
+          "/api/campaigns",
+          {
+            "clientId": "client-a"
+          }
+        ]
+      ],
+      "unboundButtons": 1
+    },
+    {
+      "case": "Chart combines different-client EUR/USD Spend into one platform amount without selected-client query",
+      "queries": [
+        [
+          "/api/campaigns"
+        ]
+      ],
+      "chartRows": [
+        {
+          "name": "GA4",
+          "value": 200
+        }
+      ]
+    },
+    {
+      "case": "Failed performance query instructs user to connect platforms, indistinguishable from empty data",
+      "queries": [
+        [
+          "/api/performance"
+        ]
+      ]
+    },
+    {
+      "case": "Dashboard Export button has no click handler; date selector state is not passed to any data component",
+      "unboundExportButtons": 1
+    },
+    {
+      "case": "Anonymous exact POST and storage persist plaintext credential JSON with connected=true without provider validation",
+      "status": 200,
+      "plaintextCredentialPreserved": true,
+      "providerCalls": 0
+    },
+    {
+      "case": "Anonymous exact GET and storage return synthetic provider token field",
+      "status": 200,
+      "syntheticCredentialReturned": true
+    }
+  ]
+}

@@ -1,0 +1,477 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "inventory": [
+    {
+      "field": "impressions",
+      "parserKind": "sum",
+      "input": "100",
+      "parsed": 100,
+      "normalized": 100,
+      "currentOptionSupported": true,
+      "label": "Impressions",
+      "unit": "",
+      "displayed": "100",
+      "scheduledValue": 100,
+      "aliases": [
+        "impressions",
+        "impression"
+      ]
+    },
+    {
+      "field": "reach",
+      "parserKind": "sum",
+      "input": "100",
+      "parsed": 100,
+      "normalized": 100,
+      "currentOptionSupported": false,
+      "label": null,
+      "unit": "",
+      "displayed": null,
+      "scheduledValue": null,
+      "aliases": [
+        "reach"
+      ]
+    },
+    {
+      "field": "clicks",
+      "parserKind": "sum",
+      "input": "100",
+      "parsed": 100,
+      "normalized": 100,
+      "currentOptionSupported": true,
+      "label": "Clicks",
+      "unit": "",
+      "displayed": "100",
+      "scheduledValue": 100,
+      "aliases": [
+        "clicks",
+        "click"
+      ]
+    },
+    {
+      "field": "engagements",
+      "parserKind": "sum",
+      "input": "100",
+      "parsed": 100,
+      "normalized": 100,
+      "currentOptionSupported": false,
+      "label": null,
+      "unit": "",
+      "displayed": null,
+      "scheduledValue": null,
+      "aliases": [
+        "engagements",
+        "engagement"
+      ]
+    },
+    {
+      "field": "spend",
+      "parserKind": "sum",
+      "input": "100",
+      "parsed": 100,
+      "normalized": "100",
+      "currentOptionSupported": true,
+      "label": "Total Spend",
+      "unit": "$",
+      "displayed": "$100.00",
+      "scheduledValue": 100,
+      "aliases": [
+        "spend",
+        "ad spend",
+        "cost",
+        "amount"
+      ]
+    },
+    {
+      "field": "conversions",
+      "parserKind": "sum",
+      "input": "100",
+      "parsed": 100,
+      "normalized": 100,
+      "currentOptionSupported": true,
+      "label": "Conversions",
+      "unit": "",
+      "displayed": "100",
+      "scheduledValue": 100,
+      "aliases": [
+        "conversions",
+        "conversion"
+      ]
+    },
+    {
+      "field": "leads",
+      "parserKind": "sum",
+      "input": "100",
+      "parsed": 100,
+      "normalized": 100,
+      "currentOptionSupported": true,
+      "label": "Leads",
+      "unit": "",
+      "displayed": "100",
+      "scheduledValue": 100,
+      "aliases": [
+        "leads",
+        "lead"
+      ]
+    },
+    {
+      "field": "videoViews",
+      "parserKind": "sum",
+      "input": "100",
+      "parsed": 100,
+      "normalized": 100,
+      "currentOptionSupported": false,
+      "label": null,
+      "unit": "",
+      "displayed": null,
+      "scheduledValue": null,
+      "aliases": [
+        "video views",
+        "video view",
+        "views"
+      ]
+    },
+    {
+      "field": "viralImpressions",
+      "parserKind": "sum",
+      "input": "100",
+      "parsed": 100,
+      "normalized": 100,
+      "currentOptionSupported": false,
+      "label": null,
+      "unit": "",
+      "displayed": null,
+      "scheduledValue": null,
+      "aliases": [
+        "viral impressions",
+        "organic impressions"
+      ]
+    },
+    {
+      "field": "users",
+      "parserKind": "sum",
+      "input": "100",
+      "parsed": 100,
+      "normalized": 100,
+      "currentOptionSupported": true,
+      "label": "Users",
+      "unit": "",
+      "displayed": "100",
+      "scheduledValue": 100,
+      "aliases": [
+        "users",
+        "unique users",
+        "visitors",
+        "unique visitors"
+      ]
+    },
+    {
+      "field": "sessions",
+      "parserKind": "sum",
+      "input": "100",
+      "parsed": 100,
+      "normalized": 100,
+      "currentOptionSupported": true,
+      "label": "Sessions",
+      "unit": "",
+      "displayed": "100",
+      "scheduledValue": 100,
+      "aliases": [
+        "sessions",
+        "visits"
+      ]
+    },
+    {
+      "field": "pageviews",
+      "parserKind": "sum",
+      "input": "100",
+      "parsed": 100,
+      "normalized": 100,
+      "currentOptionSupported": true,
+      "label": "Pageviews",
+      "unit": "",
+      "displayed": "100",
+      "scheduledValue": 100,
+      "aliases": [
+        "pageviews",
+        "page views",
+        "pages viewed"
+      ]
+    },
+    {
+      "field": "avgSessionDuration",
+      "parserKind": "duration",
+      "input": "00:02:38",
+      "parsed": "00:02:38",
+      "normalized": "00:02:38",
+      "currentOptionSupported": false,
+      "label": null,
+      "unit": "",
+      "displayed": null,
+      "scheduledValue": null,
+      "aliases": [
+        "avg session duration",
+        "average session duration",
+        "avg time on site",
+        "average time"
+      ]
+    },
+    {
+      "field": "pagesPerSession",
+      "parserKind": "single",
+      "input": "12.5",
+      "parsed": 12.5,
+      "normalized": "12.5",
+      "currentOptionSupported": true,
+      "label": "Pages / Session",
+      "unit": "",
+      "displayed": "12.5",
+      "scheduledValue": 12.5,
+      "aliases": [
+        "pages/session",
+        "pages per session",
+        "pages per visit"
+      ]
+    },
+    {
+      "field": "bounceRate",
+      "parserKind": "single",
+      "input": "12.5",
+      "parsed": 12.5,
+      "normalized": "12.5",
+      "currentOptionSupported": true,
+      "label": "Bounce Rate",
+      "unit": "%",
+      "displayed": "12.50%",
+      "scheduledValue": 12.5,
+      "aliases": [
+        "bounce rate",
+        "exit rate"
+      ]
+    },
+    {
+      "field": "organicSearchShare",
+      "parserKind": "single",
+      "input": "12.5",
+      "parsed": 12.5,
+      "normalized": "12.5",
+      "currentOptionSupported": true,
+      "label": "Organic Search",
+      "unit": "%",
+      "displayed": "12.50%",
+      "scheduledValue": 12.5,
+      "aliases": [
+        "organic search",
+        "organic traffic",
+        "search engines"
+      ]
+    },
+    {
+      "field": "directBrandedShare",
+      "parserKind": "single",
+      "input": "12.5",
+      "parsed": 12.5,
+      "normalized": "12.5",
+      "currentOptionSupported": true,
+      "label": "Direct / Branded",
+      "unit": "%",
+      "displayed": "12.50%",
+      "scheduledValue": 12.5,
+      "aliases": [
+        "direct/branded",
+        "direct branded",
+        "direct traffic",
+        "direct"
+      ]
+    },
+    {
+      "field": "emailShare",
+      "parserKind": "single",
+      "input": "12.5",
+      "parsed": 12.5,
+      "normalized": "12.5",
+      "currentOptionSupported": true,
+      "label": "Email Traffic",
+      "unit": "%",
+      "displayed": "12.50%",
+      "scheduledValue": 12.5,
+      "aliases": [
+        "email traffic",
+        "email share",
+        "email"
+      ]
+    },
+    {
+      "field": "referralShare",
+      "parserKind": "single",
+      "input": "12.5",
+      "parsed": 12.5,
+      "normalized": "12.5",
+      "currentOptionSupported": true,
+      "label": "Referral / Partners",
+      "unit": "%",
+      "displayed": "12.50%",
+      "scheduledValue": 12.5,
+      "aliases": [
+        "referral/partners",
+        "referral partners",
+        "referral traffic",
+        "referrals"
+      ]
+    },
+    {
+      "field": "paidShare",
+      "parserKind": "single",
+      "input": "12.5",
+      "parsed": 12.5,
+      "normalized": "12.5",
+      "currentOptionSupported": true,
+      "label": "Paid Traffic",
+      "unit": "%",
+      "displayed": "12.50%",
+      "scheduledValue": 12.5,
+      "aliases": [
+        "paid display/search",
+        "paid advertising",
+        "paid traffic",
+        "paid"
+      ]
+    },
+    {
+      "field": "socialShare",
+      "parserKind": "single",
+      "input": "12.5",
+      "parsed": 12.5,
+      "normalized": "12.5",
+      "currentOptionSupported": true,
+      "label": "Social Traffic",
+      "unit": "%",
+      "displayed": "12.50%",
+      "scheduledValue": 12.5,
+      "aliases": [
+        "social media",
+        "social traffic",
+        "social"
+      ]
+    },
+    {
+      "field": "emailsDelivered",
+      "parserKind": "sum",
+      "input": "100",
+      "parsed": 100,
+      "normalized": 100,
+      "currentOptionSupported": true,
+      "label": "Emails Delivered",
+      "unit": "",
+      "displayed": "100",
+      "scheduledValue": 100,
+      "aliases": [
+        "emails delivered",
+        "emails sent",
+        "delivered"
+      ]
+    },
+    {
+      "field": "openRate",
+      "parserKind": "single",
+      "input": "12.5",
+      "parsed": 12.5,
+      "normalized": "12.5",
+      "currentOptionSupported": true,
+      "label": "Email Open Rate",
+      "unit": "%",
+      "displayed": "12.50%",
+      "scheduledValue": 12.5,
+      "aliases": [
+        "open rate",
+        "opens"
+      ]
+    },
+    {
+      "field": "clickThroughRate",
+      "parserKind": "single",
+      "input": "12.5",
+      "parsed": 12.5,
+      "normalized": "12.5",
+      "currentOptionSupported": true,
+      "label": "Email CTR",
+      "unit": "%",
+      "displayed": "12.50%",
+      "scheduledValue": 12.5,
+      "aliases": [
+        "click-through rate",
+        "click through rate",
+        "click rate",
+        "ctr"
+      ]
+    },
+    {
+      "field": "clickToOpenRate",
+      "parserKind": "single",
+      "input": "12.5",
+      "parsed": 12.5,
+      "normalized": "12.5",
+      "currentOptionSupported": true,
+      "label": "Email CTOR",
+      "unit": "%",
+      "displayed": "12.50%",
+      "scheduledValue": 12.5,
+      "aliases": [
+        "click-to-open",
+        "click to open",
+        "ctor"
+      ]
+    },
+    {
+      "field": "hardBounces",
+      "parserKind": "single",
+      "input": "12.5",
+      "parsed": 12.5,
+      "normalized": "12.5",
+      "currentOptionSupported": false,
+      "label": null,
+      "unit": "",
+      "displayed": null,
+      "scheduledValue": null,
+      "aliases": [
+        "hard bounces",
+        "bounces"
+      ]
+    },
+    {
+      "field": "spamComplaints",
+      "parserKind": "single",
+      "input": "12.5",
+      "parsed": 12.5,
+      "normalized": "12.5",
+      "currentOptionSupported": false,
+      "label": null,
+      "unit": "",
+      "displayed": null,
+      "scheduledValue": null,
+      "aliases": [
+        "spam complaints",
+        "complaints"
+      ]
+    },
+    {
+      "field": "listGrowth",
+      "parserKind": "sum",
+      "input": "100",
+      "parsed": 100,
+      "normalized": 100,
+      "currentOptionSupported": true,
+      "label": "List Growth",
+      "unit": "",
+      "displayed": "100",
+      "scheduledValue": 100,
+      "aliases": [
+        "list growth",
+        "net subscribers",
+        "subscriber growth",
+        "new subscribers"
+      ]
+    }
+  ],
+  "boundary": "All28 parser fields mapped individually through canonical CSV parse, normalized DTO, current option resolver/formatter and scheduled resolver. PDF/XLSX/provider/database/lifecycle acceptance not inherited."
+}

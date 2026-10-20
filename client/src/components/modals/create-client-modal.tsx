@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useClient } from "@/lib/clientContext";
 import { Building2 } from "lucide-react";
@@ -16,6 +16,7 @@ interface CreateClientModalProps {
 }
 
 export default function CreateClientModal({ isOpen, onClose }: CreateClientModalProps) {
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const { toast } = useToast();
   const { setSelectedClientId } = useClient();

@@ -1,0 +1,15 @@
+const fs=require('node:fs'),ts=require('typescript'),assert=require('node:assert/strict');
+function load(file){const e={};new Function('exports',ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText)(e);return e;}
+const {buildTrendAnalysisAggregate}=load('server/utils/trend-analysis-aggregate.ts');
+const {buildPerformanceSummaryAggregate}=load('server/utils/performance-summary-aggregate.ts');
+const source=(id,category,metrics)=>({id,label:id,category,connected:true,capabilities:Object.keys(metrics),includedMetrics:Object.keys(metrics),excludedMetrics:[],dailyRows:[{date:'2026-10-18',metrics}]});
+const base={campaignId:'fixture',dateRange:'7days',startDate:'2026-10-12',endDate:'2026-10-18'};
+const results=[];
+const mixed=buildTrendAnalysisAggregate({...base,sources:[source('ga4','web_analytics',{sessions:100,conversions:10,revenue:100}),source('meta','paid_media',{clicks:20,impressions:200,spend:10,conversions:5})]});
+const overview=buildPerformanceSummaryAggregate({campaignId:'fixture',dateRange:'7days',webAnalytics:{connected:true,available:true,provider:'ga4',sessions:100,conversions:10},ga4:{connected:true,sessions:100,conversions:10},platforms:{meta:{connected:true,clicks:20,impressions:200,spend:10,conversions:5}}});
+assert.equal(mixed.dailyTotals[0].metrics.conversions,15);assert.equal(mixed.dailyTotals[0].metrics.cvr,75);assert.equal(overview.totals.conversions.value,10);assert.equal(overview.totals.cvr.value,10);
+results.push({case:'Mixed web/paid conversion and denominator diverge between Trend and Performance helpers',trend:mixed.dailyTotals[0],performance:{conversions:overview.totals.conversions,cvr:overview.totals.cvr},boundary:'Exact current helpers, same fixture inputs; route constructs both sources. Current GA4 cumulative UI branch uses separately verified GA4 rows; retained aggregate/UI branch remains affected.'});
+const zero=buildTrendAnalysisAggregate({...base,sources:[source('ga4','web_analytics',{revenue:100,sessions:100,conversions:10})],financialDailyRows:[{date:'2026-10-18',spend:10,revenue:0}]});
+const positive=buildTrendAnalysisAggregate({...base,sources:[source('ga4','web_analytics',{revenue:100,sessions:100,conversions:10})],financialDailyRows:[{date:'2026-10-18',spend:10,revenue:20}]});
+assert.equal(zero.dailyTotals[0].metrics.revenue,100);assert.equal(positive.dailyTotals[0].metrics.revenue,20);results.push({case:'Trend financial override is truthy: zero retains100 native, positive20 replaces100 native',zero:zero.dailyTotals[0],positive:positive.dailyTotals[0],boundary:'Exact helper; illustrates inconsistent override, not a claim every input combination should be summed. Required source classification/availability/window policy is absent in this contract.'});
+fs.writeFileSync('docs/audits/v1-2026-10-19/diagnostic-reproductions.json',JSON.stringify({head:'777aae6f6353e998d60b635d3e66b413093117c2',results},null,2)+'\n');console.log(`${results.length} diagnostic cases executed`);

@@ -1,6 +1,10 @@
 import { readFileSync } from "fs";
 import { resolve } from "path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+const authorize = vi.hoisted(() => vi.fn(async () => ({ access_token: "fixture-ga4-token", expiry_date: Date.now() + 3600000 })));
+const grant = vi.hoisted(() => vi.fn(async () => {}));
+vi.mock("google-auth-library", () => ({ JWT: class { authorize = authorize; } }));
+vi.mock("./storage", () => ({ storage: { assertServiceAccountResourceAccess: grant } }));
 import {
   assertGA4ServiceAccountPropertyAllowed,
   getGA4ServiceAccountPublicStatus,
@@ -13,6 +17,7 @@ const originalJson = process.env.GA4_SERVICE_ACCOUNT_JSON;
 const originalAllowed = process.env.GA4_SERVICE_ACCOUNT_ALLOWED_PROPERTY_IDS;
 
 afterEach(() => {
+  authorize.mockClear(); grant.mockReset().mockResolvedValue(undefined);
   if (originalJson === undefined) delete process.env.GA4_SERVICE_ACCOUNT_JSON;
   else process.env.GA4_SERVICE_ACCOUNT_JSON = originalJson;
   if (originalAllowed === undefined) delete process.env.GA4_SERVICE_ACCOUNT_ALLOWED_PROPERTY_IDS;
@@ -68,5 +73,15 @@ describe("temporary GA4 service-account boundary", () => {
       method: "service_account",
       propertyId: "987654321",
     })).rejects.toThrow(/not approved/i);
+  });
+  it("checks a current customer grant before issuing or reusing a shared token", async () => {
+    process.env.GA4_SERVICE_ACCOUNT_JSON = JSON.stringify({ type: "service_account", client_email: "fixture@example.invalid", private_key: "fixture" });
+    process.env.GA4_SERVICE_ACCOUNT_ALLOWED_PROPERTY_IDS = "123456789";
+    const connection = { campaignId: "campaign-a", method: "service_account", propertyId: "123456789" };
+    expect((await hydrateGA4ServiceAccountConnection(connection)).accessToken).toBe("fixture-ga4-token");
+    expect(grant).toHaveBeenCalledWith("campaign-a", "ga4", "123456789");
+    authorize.mockClear(); grant.mockRejectedValueOnce(new Error("Resource not granted"));
+    await expect(hydrateGA4ServiceAccountConnection(connection)).rejects.toThrow("not granted");
+    expect(authorize).not.toHaveBeenCalled();
   });
 });

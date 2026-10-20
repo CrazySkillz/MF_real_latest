@@ -1,0 +1,110 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "results": [
+    {
+      "case": "LinkedIn connection accepts foreign replacement campaignId after checking only original owner",
+      "checked": [
+        "owned"
+      ],
+      "writes": [
+        {
+          "id": "owned",
+          "updates": {
+            "campaignId": "foreign"
+          }
+        }
+      ],
+      "response": {
+        "success": true,
+        "connection": {
+          "id": "owned",
+          "campaignId": "foreign"
+        },
+        "message": "LinkedIn connection updated successfully"
+      },
+      "boundary": "Exact current route and real shared validation schema where used; fixture access helper denies foreign IDs if called. Storage capture proves unsafe write argument; real storage .set behavior separately traced, no DB mutation."
+    },
+    {
+      "case": "legacy Meta KPI accepts foreign replacement campaignId after checking only original owner",
+      "checked": [
+        "owned"
+      ],
+      "writes": [
+        {
+          "id": "fixture-row",
+          "updates": {
+            "campaignId": "foreign"
+          }
+        }
+      ],
+      "response": {
+        "kpi": {
+          "id": "fixture-row",
+          "campaignId": "foreign"
+        }
+      },
+      "boundary": "Exact current route and real shared validation schema where used; fixture access helper denies foreign IDs if called. Storage capture proves unsafe write argument; real storage .set behavior separately traced, no DB mutation."
+    },
+    {
+      "case": "legacy Meta Benchmark accepts foreign replacement campaignId after checking only original owner",
+      "checked": [
+        "owned"
+      ],
+      "writes": [
+        {
+          "id": "fixture-row",
+          "updates": {
+            "campaignId": "foreign"
+          }
+        }
+      ],
+      "response": {
+        "benchmark": {
+          "id": "fixture-row",
+          "campaignId": "foreign"
+        }
+      },
+      "boundary": "Exact current route and real shared validation schema where used; fixture access helper denies foreign IDs if called. Storage capture proves unsafe write argument; real storage .set behavior separately traced, no DB mutation."
+    },
+    {
+      "case": "Retained ad-platform Spend imports all stored campaigns and labels EUR campaign money USD",
+      "sources": [
+        {
+          "campaignId": "fixture",
+          "sourceType": "ad_platforms",
+          "platformContext": "google_ads",
+          "displayName": "Google Ads",
+          "currency": "USD",
+          "mappingConfig": null,
+          "isActive": true
+        }
+      ],
+      "records": [
+        {
+          "campaignId": "fixture",
+          "spendSourceId": "source",
+          "date": "2026-10-18",
+          "spend": "100.00",
+          "currency": "USD",
+          "sourceType": "ad_platforms"
+        }
+      ],
+      "campaignUpdates": [
+        [
+          "fixture",
+          {
+            "spend": "0.00"
+          }
+        ]
+      ],
+      "response": {
+        "success": true,
+        "totalSpend": 100,
+        "daysImported": 1,
+        "sourceId": "source",
+        "displayName": "Google Ads"
+      },
+      "boundary": "Exact handler; no connection/selected-ID lookup for Google Ads/Meta/LinkedIn, unlike TikTok. Storage fixtures only; campaign total uses default GA4 scope separately."
+    }
+  ]
+}

@@ -1,0 +1,813 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "method": "Installed drizzle-kit API generateDrizzleJson and generateMigration from empty to exact current shared/schema.ts. Generates artifacts only; does not connect to any database.",
+  "statements": [
+    "CREATE TABLE \"clients\" (\n\t\"id\" text PRIMARY KEY NOT NULL,\n\t\"owner_id\" text NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"campaigns\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"owner_id\" text,\n\t\"client_id\" text,\n\t\"name\" text NOT NULL,\n\t\"client_website\" text,\n\t\"label\" text,\n\t\"budget\" numeric(10, 2),\n\t\"currency\" text DEFAULT 'USD' NOT NULL,\n\t\"conversion_value\" numeric(10, 2),\n\t\"ga4_campaign_filter\" text,\n\t\"reporting_time_zone\" text DEFAULT 'UTC' NOT NULL,\n\t\"type\" text,\n\t\"platform\" text,\n\t\"impressions\" integer DEFAULT 0 NOT NULL,\n\t\"clicks\" integer DEFAULT 0 NOT NULL,\n\t\"spend\" numeric(10, 2) DEFAULT '0' NOT NULL,\n\t\"status\" text DEFAULT 'active' NOT NULL,\n\t\"industry\" text,\n\t\"trend_keywords\" text[],\n\t\"start_date\" timestamp,\n\t\"end_date\" timestamp,\n\t\"pacing_start_date\" text,\n\t\"pacing_end_date\" text,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"metrics\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"value\" text NOT NULL,\n\t\"change\" text NOT NULL,\n\t\"icon\" text NOT NULL,\n\t\"date\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"integrations\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"platform\" text NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"connected\" boolean DEFAULT false NOT NULL,\n\t\"credentials\" text,\n\t\"last_sync\" timestamp,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"performance_data\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"date\" text NOT NULL,\n\t\"impressions\" integer NOT NULL,\n\t\"clicks\" integer NOT NULL,\n\t\"conversions\" integer NOT NULL\n);\n",
+    "CREATE TABLE \"ga4_connections\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"property_id\" text NOT NULL,\n\t\"access_token\" text,\n\t\"refresh_token\" text,\n\t\"service_account_key\" text,\n\t\"method\" text NOT NULL,\n\t\"property_name\" text,\n\t\"website_url\" text,\n\t\"display_name\" text,\n\t\"is_primary\" boolean DEFAULT false NOT NULL,\n\t\"is_active\" boolean DEFAULT true NOT NULL,\n\t\"client_id\" text,\n\t\"client_secret\" text,\n\t\"import_start_date\" text,\n\t\"encrypted_tokens\" jsonb,\n\t\"lookback_days\" integer DEFAULT 90 NOT NULL,\n\t\"expires_at\" timestamp,\n\t\"connected_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"ga4_connection_lifecycle_events\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"connection_id\" text NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"property_id\" text,\n\t\"action\" text NOT NULL,\n\t\"actor\" text NOT NULL,\n\t\"reason\" text NOT NULL,\n\t\"changed_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"ga4_refresh_work\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"due_at\" timestamp with time zone NOT NULL,\n\t\"reporting_date\" text NOT NULL,\n\t\"scope_hash\" text NOT NULL,\n\t\"scope\" jsonb NOT NULL,\n\t\"status\" text DEFAULT 'pending' NOT NULL,\n\t\"lease_token\" text,\n\t\"lease_expires_at\" timestamp with time zone,\n\t\"started_at\" timestamp with time zone,\n\t\"completed_at\" timestamp with time zone,\n\t\"attempt_count\" integer DEFAULT 0 NOT NULL,\n\t\"next_attempt_at\" timestamp with time zone,\n\t\"suppress_alerts\" boolean DEFAULT false NOT NULL,\n\t\"retryable\" boolean DEFAULT true NOT NULL,\n\t\"last_error\" text,\n\t\"updated_at\" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\tCONSTRAINT \"ga4_refresh_work_state\" CHECK ((\"ga4_refresh_work\".\"status\" = 'pending' AND \"ga4_refresh_work\".\"lease_token\" IS NULL AND \"ga4_refresh_work\".\"lease_expires_at\" IS NULL AND \"ga4_refresh_work\".\"completed_at\" IS NULL)\n    OR (\"ga4_refresh_work\".\"status\" = 'running' AND \"ga4_refresh_work\".\"lease_token\" IS NOT NULL AND \"ga4_refresh_work\".\"lease_expires_at\" IS NOT NULL AND \"ga4_refresh_work\".\"started_at\" IS NOT NULL AND \"ga4_refresh_work\".\"completed_at\" IS NULL)\n    OR (\"ga4_refresh_work\".\"status\" = 'completed' AND \"ga4_refresh_work\".\"lease_token\" IS NULL AND \"ga4_refresh_work\".\"lease_expires_at\" IS NULL AND \"ga4_refresh_work\".\"completed_at\" IS NOT NULL))\n);\n",
+    "CREATE TABLE \"ga4_daily_metrics\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"property_id\" text NOT NULL,\n\t\"date\" text NOT NULL,\n\t\"users\" integer DEFAULT 0 NOT NULL,\n\t\"sessions\" integer DEFAULT 0 NOT NULL,\n\t\"engaged_sessions\" integer,\n\t\"pageviews\" integer DEFAULT 0 NOT NULL,\n\t\"conversions\" integer DEFAULT 0 NOT NULL,\n\t\"revenue\" numeric(15, 2) DEFAULT '0' NOT NULL,\n\t\"engagement_rate\" numeric(7, 4) DEFAULT '0',\n\t\"revenue_metric\" text,\n\t\"is_simulated\" boolean DEFAULT false NOT NULL,\n\t\"updated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"ga4_overview_snapshots\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"property_id\" text NOT NULL,\n\t\"window_start\" text NOT NULL,\n\t\"window_end\" text NOT NULL,\n\t\"campaign_breakdown\" jsonb NOT NULL,\n\t\"landing_pages\" jsonb NOT NULL,\n\t\"conversion_events\" jsonb NOT NULL,\n\t\"updated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"spend_sources\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"source_type\" text NOT NULL,\n\t\"platform_context\" text,\n\t\"display_name\" text,\n\t\"currency\" text,\n\t\"mapping_config\" text,\n\t\"is_active\" boolean DEFAULT true NOT NULL,\n\t\"connected_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"spend_records\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"spend_source_id\" text NOT NULL,\n\t\"date\" text NOT NULL,\n\t\"spend\" numeric(12, 2) NOT NULL,\n\t\"currency\" text,\n\t\"source_type\" varchar(50),\n\t\"sub_campaign_urn\" text,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"revenue_sources\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"source_type\" text NOT NULL,\n\t\"platform_context\" text,\n\t\"display_name\" text,\n\t\"currency\" text,\n\t\"mapping_config\" text,\n\t\"is_active\" boolean DEFAULT true NOT NULL,\n\t\"connected_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"revenue_records\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"revenue_source_id\" text NOT NULL,\n\t\"date\" text NOT NULL,\n\t\"revenue\" numeric(12, 2) NOT NULL,\n\t\"currency\" text,\n\t\"external_id\" text,\n\t\"source_type\" varchar(50),\n\t\"sub_campaign_urn\" text,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"notifications\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"title\" text NOT NULL,\n\t\"message\" text NOT NULL,\n\t\"type\" text NOT NULL,\n\t\"campaign_id\" text,\n\t\"campaign_name\" text,\n\t\"read\" boolean DEFAULT false NOT NULL,\n\t\"priority\" text DEFAULT 'normal' NOT NULL,\n\t\"metadata\" text,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"email_alert_events\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"kind\" text DEFAULT 'generic' NOT NULL,\n\t\"entity_type\" text,\n\t\"entity_id\" text,\n\t\"dedupe_key\" text,\n\t\"campaign_id\" text,\n\t\"campaign_name\" text,\n\t\"to\" text NOT NULL,\n\t\"subject\" text NOT NULL,\n\t\"provider\" text,\n\t\"success\" boolean DEFAULT false NOT NULL,\n\t\"delivery_status\" text DEFAULT 'pending' NOT NULL,\n\t\"provider_response_id\" text,\n\t\"attempt_count\" integer DEFAULT 0 NOT NULL,\n\t\"last_attempt_at\" timestamp,\n\t\"next_attempt_at\" timestamp,\n\t\"delivered_at\" timestamp,\n\t\"failed_at\" timestamp,\n\t\"error\" text,\n\t\"metadata\" text,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"google_sheets_connections\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"spreadsheet_id\" text NOT NULL,\n\t\"spreadsheet_name\" text,\n\t\"sheet_name\" text,\n\t\"purpose\" text,\n\t\"method\" text DEFAULT 'access_token' NOT NULL,\n\t\"access_token\" text,\n\t\"refresh_token\" text,\n\t\"client_id\" text,\n\t\"client_secret\" text,\n\t\"encrypted_tokens\" jsonb,\n\t\"expires_at\" timestamp,\n\t\"is_primary\" boolean DEFAULT false NOT NULL,\n\t\"is_active\" boolean DEFAULT true NOT NULL,\n\t\"column_mappings\" text,\n\t\"platforms\" text,\n\t\"cached_data\" jsonb,\n\t\"last_data_refresh_at\" timestamp,\n\t\"connected_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"hubspot_connections\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"portal_id\" text,\n\t\"portal_name\" text,\n\t\"access_token\" text,\n\t\"refresh_token\" text,\n\t\"client_id\" text,\n\t\"client_secret\" text,\n\t\"encrypted_tokens\" jsonb,\n\t\"expires_at\" timestamp,\n\t\"is_active\" boolean DEFAULT true NOT NULL,\n\t\"mapping_config\" text,\n\t\"connected_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"salesforce_connections\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"org_id\" text,\n\t\"org_name\" text,\n\t\"instance_url\" text,\n\t\"access_token\" text,\n\t\"refresh_token\" text,\n\t\"client_id\" text,\n\t\"client_secret\" text,\n\t\"encrypted_tokens\" jsonb,\n\t\"expires_at\" timestamp,\n\t\"is_active\" boolean DEFAULT true NOT NULL,\n\t\"mapping_config\" text,\n\t\"connected_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"shopify_connections\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"shop_domain\" text NOT NULL,\n\t\"shop_name\" text,\n\t\"access_token\" text,\n\t\"encrypted_tokens\" jsonb,\n\t\"is_active\" boolean DEFAULT true NOT NULL,\n\t\"mapping_config\" text,\n\t\"connected_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"mapping_templates\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"description\" text,\n\t\"platform\" text NOT NULL,\n\t\"column_structure\" text NOT NULL,\n\t\"mappings\" text NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"last_used_at\" timestamp,\n\t\"usage_count\" integer DEFAULT 0,\n\t\"created_by\" text,\n\t\"is_shared\" boolean DEFAULT false\n);\n",
+    "CREATE TABLE \"linkedin_connections\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"ad_account_id\" text NOT NULL,\n\t\"ad_account_name\" text,\n\t\"access_token\" text,\n\t\"refresh_token\" text,\n\t\"client_id\" text,\n\t\"client_secret\" text,\n\t\"method\" text NOT NULL,\n\t\"encrypted_tokens\" jsonb,\n\t\"conversion_value\" numeric(10, 2),\n\t\"campaign_utm_map\" text,\n\t\"last_refresh_at\" timestamp,\n\t\"spend_only\" boolean DEFAULT false,\n\t\"expires_at\" timestamp,\n\t\"connected_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"meta_connections\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"ad_account_id\" text NOT NULL,\n\t\"ad_account_name\" text,\n\t\"access_token\" text,\n\t\"refresh_token\" text,\n\t\"encrypted_tokens\" jsonb,\n\t\"method\" text NOT NULL,\n\t\"conversion_value\" numeric(10, 2),\n\t\"selected_campaign_ids\" text,\n\t\"campaign_utm_map\" text,\n\t\"spend_only\" boolean DEFAULT false,\n\t\"expires_at\" timestamp,\n\t\"connected_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"instagram_connections\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"ad_account_id\" text NOT NULL,\n\t\"ad_account_name\" text,\n\t\"access_token\" text,\n\t\"refresh_token\" text,\n\t\"encrypted_tokens\" jsonb,\n\t\"method\" text NOT NULL,\n\t\"selected_campaign_ids\" text,\n\t\"campaign_utm_map\" text,\n\t\"publisher_platform_filter\" text DEFAULT 'instagram' NOT NULL,\n\t\"source_contract_version\" text DEFAULT 'instagram_publisher_platform_v1' NOT NULL,\n\t\"last_refresh_at\" timestamp,\n\t\"spend_only\" boolean DEFAULT false,\n\t\"expires_at\" timestamp,\n\t\"connected_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"tiktok_connections\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"advertiser_id\" text NOT NULL,\n\t\"advertiser_name\" text,\n\t\"access_token\" text,\n\t\"refresh_token\" text,\n\t\"encrypted_tokens\" jsonb,\n\t\"method\" text NOT NULL,\n\t\"selected_campaign_ids\" text,\n\t\"selected_campaign_metadata\" text,\n\t\"reporting_dimensions\" text,\n\t\"reporting_metrics\" text,\n\t\"source_contract_version\" text DEFAULT 'tiktok_campaign_daily_v1' NOT NULL,\n\t\"last_refresh_at\" timestamp,\n\t\"last_error\" text,\n\t\"spend_only\" boolean DEFAULT false,\n\t\"expires_at\" timestamp,\n\t\"connected_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"updated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"google_ads_connections\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"customer_id\" text NOT NULL,\n\t\"customer_name\" text,\n\t\"manager_account_id\" text,\n\t\"access_token\" text,\n\t\"refresh_token\" text,\n\t\"client_id\" text,\n\t\"client_secret\" text,\n\t\"developer_token\" text,\n\t\"encrypted_tokens\" jsonb,\n\t\"method\" text NOT NULL,\n\t\"conversion_value\" numeric(10, 2),\n\t\"selected_campaign_ids\" text,\n\t\"campaign_utm_map\" text,\n\t\"last_refresh_at\" timestamp,\n\t\"spend_only\" boolean DEFAULT false,\n\t\"expires_at\" timestamp,\n\t\"connected_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"google_ads_daily_metrics\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"google_campaign_id\" text NOT NULL,\n\t\"google_campaign_name\" text,\n\t\"date\" text NOT NULL,\n\t\"impressions\" integer DEFAULT 0 NOT NULL,\n\t\"clicks\" integer DEFAULT 0 NOT NULL,\n\t\"spend\" numeric(10, 2) DEFAULT 0 NOT NULL,\n\t\"conversions\" numeric(10, 2) DEFAULT 0 NOT NULL,\n\t\"conversion_value\" numeric(10, 2) DEFAULT 0 NOT NULL,\n\t\"ctr\" numeric(8, 4),\n\t\"cpc\" numeric(10, 2),\n\t\"cpm\" numeric(10, 2),\n\t\"interaction_rate\" numeric(5, 2),\n\t\"video_views\" integer DEFAULT 0 NOT NULL,\n\t\"search_impression_share\" numeric(5, 2),\n\t\"cost_per_conversion\" numeric(10, 2),\n\t\"conversion_rate\" numeric(5, 2),\n\t\"ga4_revenue\" numeric(15, 2),\n\t\"ga4_utm_name\" text,\n\t\"imported_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"meta_kpis\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"metric_type\" text NOT NULL,\n\t\"target_value\" numeric(15, 2) NOT NULL,\n\t\"current_value\" numeric(15, 2),\n\t\"status\" text DEFAULT 'pending' NOT NULL,\n\t\"progress\" numeric(5, 2),\n\t\"start_date\" timestamp NOT NULL,\n\t\"end_date\" timestamp,\n\t\"frequency\" text DEFAULT 'daily' NOT NULL,\n\t\"alert_enabled\" boolean DEFAULT false NOT NULL,\n\t\"alert_threshold\" numeric(5, 2),\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"updated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"meta_benchmarks\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"metric_type\" text NOT NULL,\n\t\"benchmark_value\" numeric(15, 2) NOT NULL,\n\t\"current_value\" numeric(15, 2),\n\t\"industry\" text,\n\t\"source\" text DEFAULT 'custom' NOT NULL,\n\t\"comparison_type\" text DEFAULT 'greater_than' NOT NULL,\n\t\"status\" text,\n\t\"percentage_diff\" numeric(5, 2),\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"updated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"meta_reports\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"template\" text NOT NULL,\n\t\"frequency\" text NOT NULL,\n\t\"schedule\" text,\n\t\"recipients\" text[] NOT NULL,\n\t\"format\" text DEFAULT 'pdf' NOT NULL,\n\t\"include_charts\" boolean DEFAULT true NOT NULL,\n\t\"include_demographics\" boolean DEFAULT true NOT NULL,\n\t\"include_geographics\" boolean DEFAULT true NOT NULL,\n\t\"include_placements\" boolean DEFAULT true NOT NULL,\n\t\"date_range\" text DEFAULT 'last_30_days' NOT NULL,\n\t\"custom_start_date\" timestamp,\n\t\"custom_end_date\" timestamp,\n\t\"enabled\" boolean DEFAULT true NOT NULL,\n\t\"last_sent\" timestamp,\n\t\"next_scheduled\" timestamp,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"updated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"meta_daily_metrics\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"meta_campaign_id\" text NOT NULL,\n\t\"date\" text NOT NULL,\n\t\"impressions\" integer DEFAULT 0 NOT NULL,\n\t\"reach\" integer DEFAULT 0 NOT NULL,\n\t\"clicks\" integer DEFAULT 0 NOT NULL,\n\t\"spend\" numeric(10, 2) DEFAULT 0 NOT NULL,\n\t\"conversions\" integer DEFAULT 0 NOT NULL,\n\t\"video_views\" integer DEFAULT 0 NOT NULL,\n\t\"post_engagement\" integer DEFAULT 0 NOT NULL,\n\t\"link_clicks\" integer DEFAULT 0 NOT NULL,\n\t\"ctr\" numeric(5, 2),\n\t\"cpc\" numeric(10, 2),\n\t\"cpm\" numeric(10, 2),\n\t\"cpp\" numeric(10, 2),\n\t\"frequency\" numeric(5, 2),\n\t\"cost_per_conversion\" numeric(10, 2),\n\t\"conversion_rate\" numeric(5, 2),\n\t\"revenue\" numeric(10, 2),\n\t\"roas\" numeric(5, 2),\n\t\"meta_campaign_name\" text,\n\t\"ga4_revenue\" numeric(15, 2),\n\t\"ga4_utm_name\" text,\n\t\"imported_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"instagram_daily_metrics\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"instagram_campaign_id\" text NOT NULL,\n\t\"instagram_campaign_name\" text,\n\t\"date\" text NOT NULL,\n\t\"publisher_platform\" text DEFAULT 'instagram' NOT NULL,\n\t\"platform_position\" text DEFAULT 'unknown' NOT NULL,\n\t\"impressions\" integer DEFAULT 0 NOT NULL,\n\t\"clicks\" integer DEFAULT 0 NOT NULL,\n\t\"spend\" numeric(10, 2) DEFAULT 0 NOT NULL,\n\t\"conversions\" numeric(10, 2) DEFAULT 0 NOT NULL,\n\t\"video_views\" integer DEFAULT 0 NOT NULL,\n\t\"actions\" jsonb,\n\t\"ctr\" numeric(5, 2),\n\t\"cpc\" numeric(10, 2),\n\t\"cpm\" numeric(10, 2),\n\t\"cost_per_conversion\" numeric(10, 2),\n\t\"conversion_rate\" numeric(5, 2),\n\t\"ga4_revenue\" numeric(15, 2),\n\t\"ga4_utm_name\" text,\n\t\"imported_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"tiktok_daily_metrics\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"advertiser_id\" text NOT NULL,\n\t\"tiktok_campaign_id\" text NOT NULL,\n\t\"tiktok_campaign_name\" text,\n\t\"date\" text NOT NULL,\n\t\"impressions\" integer DEFAULT 0 NOT NULL,\n\t\"clicks\" integer DEFAULT 0 NOT NULL,\n\t\"spend\" numeric(10, 2) DEFAULT 0 NOT NULL,\n\t\"currency\" text,\n\t\"conversions\" numeric(10, 2) DEFAULT 0 NOT NULL,\n\t\"video_views\" integer DEFAULT 0 NOT NULL,\n\t\"engagements\" integer DEFAULT 0 NOT NULL,\n\t\"ctr\" numeric(5, 2),\n\t\"cpc\" numeric(10, 2),\n\t\"cpm\" numeric(10, 2),\n\t\"cost_per_conversion\" numeric(10, 2),\n\t\"conversion_rate\" numeric(5, 2),\n\t\"raw_metrics\" jsonb,\n\t\"metric_availability\" jsonb,\n\t\"is_estimated\" boolean DEFAULT false NOT NULL,\n\t\"source_contract_version\" text DEFAULT 'tiktok_campaign_daily_v1' NOT NULL,\n\t\"is_simulated\" boolean DEFAULT false NOT NULL,\n\t\"last_synced_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"updated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"linkedin_import_sessions\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"ad_account_id\" text NOT NULL,\n\t\"ad_account_name\" text,\n\t\"selected_campaigns_count\" integer DEFAULT 0 NOT NULL,\n\t\"selected_metrics_count\" integer DEFAULT 0 NOT NULL,\n\t\"selected_metric_keys\" text[],\n\t\"conversion_value\" numeric(10, 2),\n\t\"imported_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"linkedin_import_metrics\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"session_id\" text NOT NULL,\n\t\"campaign_urn\" text NOT NULL,\n\t\"campaign_name\" text NOT NULL,\n\t\"campaign_status\" text DEFAULT 'active' NOT NULL,\n\t\"metric_key\" text NOT NULL,\n\t\"metric_value\" numeric(15, 2) NOT NULL,\n\t\"imported_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"linkedin_daily_metrics\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"date\" text NOT NULL,\n\t\"impressions\" integer DEFAULT 0 NOT NULL,\n\t\"clicks\" integer DEFAULT 0 NOT NULL,\n\t\"reach\" integer DEFAULT 0 NOT NULL,\n\t\"engagements\" integer DEFAULT 0 NOT NULL,\n\t\"conversions\" integer DEFAULT 0 NOT NULL,\n\t\"leads\" integer DEFAULT 0 NOT NULL,\n\t\"spend\" numeric(15, 2) DEFAULT '0' NOT NULL,\n\t\"video_views\" integer DEFAULT 0 NOT NULL,\n\t\"viral_impressions\" integer DEFAULT 0 NOT NULL,\n\t\"linkedin_campaign_id\" text,\n\t\"linkedin_campaign_name\" text,\n\t\"ga4_revenue\" numeric(15, 2),\n\t\"ga4_utm_name\" text,\n\t\"updated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"linkedin_ad_performance\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"session_id\" text NOT NULL,\n\t\"ad_id\" text NOT NULL,\n\t\"ad_name\" text NOT NULL,\n\t\"campaign_urn\" text NOT NULL,\n\t\"campaign_name\" text NOT NULL,\n\t\"campaign_selected_metrics\" text[],\n\t\"impressions\" integer DEFAULT 0 NOT NULL,\n\t\"reach\" integer DEFAULT 0 NOT NULL,\n\t\"clicks\" integer DEFAULT 0 NOT NULL,\n\t\"engagements\" integer DEFAULT 0 NOT NULL,\n\t\"spend\" numeric(10, 2) DEFAULT '0' NOT NULL,\n\t\"conversions\" integer DEFAULT 0 NOT NULL,\n\t\"leads\" integer DEFAULT 0 NOT NULL,\n\t\"video_views\" integer DEFAULT 0 NOT NULL,\n\t\"viral_impressions\" integer DEFAULT 0 NOT NULL,\n\t\"ctr\" numeric(5, 2) DEFAULT '0' NOT NULL,\n\t\"cpc\" numeric(10, 2) DEFAULT '0' NOT NULL,\n\t\"cpm\" numeric(10, 2) DEFAULT '0' NOT NULL,\n\t\"cvr\" numeric(5, 2) DEFAULT '0' NOT NULL,\n\t\"cpa\" numeric(10, 2) DEFAULT '0' NOT NULL,\n\t\"cpl\" numeric(10, 2) DEFAULT '0' NOT NULL,\n\t\"er\" numeric(5, 2) DEFAULT '0' NOT NULL,\n\t\"roi\" numeric(10, 2) DEFAULT '0' NOT NULL,\n\t\"roas\" numeric(10, 2) DEFAULT '0' NOT NULL,\n\t\"revenue\" numeric(10, 2) DEFAULT '0',\n\t\"conversion_rate\" numeric(5, 2) DEFAULT '0' NOT NULL,\n\t\"imported_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"custom_integrations\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"email\" text,\n\t\"webhook_token\" text NOT NULL,\n\t\"allowed_email_addresses\" text[],\n\t\"connected_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"conversion_events\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"conversion_id\" text,\n\t\"value\" numeric(10, 2) NOT NULL,\n\t\"currency\" text DEFAULT 'USD' NOT NULL,\n\t\"conversion_type\" text,\n\t\"source\" text NOT NULL,\n\t\"metadata\" jsonb,\n\t\"occurred_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"received_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"custom_integration_metrics\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"impressions\" integer DEFAULT 0,\n\t\"reach\" integer DEFAULT 0,\n\t\"clicks\" integer DEFAULT 0,\n\t\"engagements\" integer DEFAULT 0,\n\t\"spend\" numeric(10, 2) DEFAULT '0',\n\t\"conversions\" integer DEFAULT 0,\n\t\"leads\" integer DEFAULT 0,\n\t\"video_views\" integer DEFAULT 0,\n\t\"viral_impressions\" integer DEFAULT 0,\n\t\"users\" integer DEFAULT 0,\n\t\"sessions\" integer DEFAULT 0,\n\t\"pageviews\" integer DEFAULT 0,\n\t\"avg_session_duration\" text,\n\t\"pages_per_session\" numeric(5, 2) DEFAULT '0',\n\t\"bounce_rate\" numeric(5, 2) DEFAULT '0',\n\t\"organic_search_share\" numeric(5, 2) DEFAULT '0',\n\t\"direct_branded_share\" numeric(5, 2) DEFAULT '0',\n\t\"email_share\" numeric(5, 2) DEFAULT '0',\n\t\"referral_share\" numeric(5, 2) DEFAULT '0',\n\t\"paid_share\" numeric(5, 2) DEFAULT '0',\n\t\"social_share\" numeric(5, 2) DEFAULT '0',\n\t\"emails_delivered\" integer DEFAULT 0,\n\t\"open_rate\" numeric(5, 2) DEFAULT '0',\n\t\"click_through_rate\" numeric(5, 2) DEFAULT '0',\n\t\"click_to_open_rate\" numeric(5, 2) DEFAULT '0',\n\t\"hard_bounces\" numeric(5, 2) DEFAULT '0',\n\t\"spam_complaints\" numeric(5, 2) DEFAULT '0',\n\t\"list_growth\" integer DEFAULT 0,\n\t\"pdf_file_name\" text,\n\t\"email_subject\" text,\n\t\"email_id\" text,\n\t\"previous_metrics\" text,\n\t\"previous_update_at\" timestamp,\n\t\"parser_metadata\" jsonb,\n\t\"uploaded_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"kpis\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text,\n\t\"platform_type\" text,\n\t\"category\" text DEFAULT 'performance' NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"metric\" text,\n\t\"source_type\" text DEFAULT 'manual',\n\t\"metric_key\" text,\n\t\"aggregation_method\" text,\n\t\"calculation_config\" jsonb,\n\t\"target_value\" numeric(18, 2) NOT NULL,\n\t\"current_value\" numeric(18, 2) DEFAULT '0',\n\t\"last_computed_value\" numeric(18, 2),\n\t\"unit\" text NOT NULL,\n\t\"description\" text,\n\t\"priority\" text DEFAULT 'medium' NOT NULL,\n\t\"status\" text DEFAULT 'tracking' NOT NULL,\n\t\"timeframe\" text DEFAULT 'monthly' NOT NULL,\n\t\"tracking_period\" integer DEFAULT 30 NOT NULL,\n\t\"rolling_average\" text DEFAULT '7day' NOT NULL,\n\t\"target_date\" timestamp,\n\t\"alert_threshold\" numeric(18, 2),\n\t\"alert_condition\" text DEFAULT 'below',\n\t\"alerts_enabled\" boolean DEFAULT true NOT NULL,\n\t\"email_notifications\" boolean DEFAULT false NOT NULL,\n\t\"email_recipients\" text,\n\t\"slack_notifications\" boolean DEFAULT false NOT NULL,\n\t\"alert_frequency\" text DEFAULT 'daily' NOT NULL,\n\t\"last_alert_sent\" timestamp,\n\t\"apply_to\" text DEFAULT 'all',\n\t\"specific_campaign_id\" text,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"updated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"kpi_periods\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"kpi_id\" text NOT NULL,\n\t\"period_start\" timestamp NOT NULL,\n\t\"period_end\" timestamp NOT NULL,\n\t\"period_type\" text NOT NULL,\n\t\"period_label\" text NOT NULL,\n\t\"final_value\" numeric(10, 2) NOT NULL,\n\t\"target_value\" numeric(10, 2) NOT NULL,\n\t\"unit\" text NOT NULL,\n\t\"target_achieved\" boolean NOT NULL,\n\t\"performance_percentage\" numeric(5, 2),\n\t\"performance_level\" text,\n\t\"previous_period_value\" numeric(10, 2),\n\t\"change_amount\" numeric(10, 2),\n\t\"change_percentage\" numeric(5, 2),\n\t\"trend_direction\" text,\n\t\"notes\" text,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"updated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"kpi_progress\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"kpi_id\" text NOT NULL,\n\t\"value\" numeric(18, 2) NOT NULL,\n\t\"rolling_average_7d\" numeric(18, 2),\n\t\"rolling_average_30d\" numeric(18, 2),\n\t\"trend_direction\" text DEFAULT 'neutral',\n\t\"recorded_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"notes\" text\n);\n",
+    "CREATE TABLE \"kpi_alerts\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"kpi_id\" text NOT NULL,\n\t\"alert_type\" text NOT NULL,\n\t\"severity\" text DEFAULT 'medium' NOT NULL,\n\t\"message\" text NOT NULL,\n\t\"current_value\" numeric(18, 2),\n\t\"target_value\" numeric(18, 2),\n\t\"threshold_value\" numeric(18, 2),\n\t\"is_active\" boolean DEFAULT true NOT NULL,\n\t\"acknowledged_at\" timestamp,\n\t\"resolved_at\" timestamp,\n\t\"email_sent\" boolean DEFAULT false NOT NULL,\n\t\"slack_sent\" boolean DEFAULT false NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"updated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"benchmarks\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text,\n\t\"platform_type\" text NOT NULL,\n\t\"category\" text NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"metric\" text,\n\t\"description\" text,\n\t\"benchmark_value\" numeric(18, 2) NOT NULL,\n\t\"current_value\" numeric(18, 2) DEFAULT '0',\n\t\"unit\" text NOT NULL,\n\t\"benchmark_type\" text DEFAULT 'industry' NOT NULL,\n\t\"competitor_name\" text,\n\t\"source\" text,\n\t\"calculation_config\" jsonb,\n\t\"industry\" text,\n\t\"geo_location\" text,\n\t\"period\" text DEFAULT 'monthly' NOT NULL,\n\t\"status\" text DEFAULT 'active' NOT NULL,\n\t\"variance\" numeric(10, 2),\n\t\"confidence_level\" text DEFAULT 'medium',\n\t\"apply_to\" text DEFAULT 'all' NOT NULL,\n\t\"specific_campaign_id\" text,\n\t\"linkedin_campaign_name\" text,\n\t\"alert_threshold\" numeric(18, 2),\n\t\"alert_condition\" text DEFAULT 'below',\n\t\"alerts_enabled\" boolean DEFAULT false NOT NULL,\n\t\"email_notifications\" boolean DEFAULT false NOT NULL,\n\t\"email_recipients\" text,\n\t\"alert_frequency\" text DEFAULT 'daily' NOT NULL,\n\t\"last_alert_sent\" timestamp,\n\t\"last_updated\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"updated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"benchmark_history\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"benchmark_id\" text NOT NULL,\n\t\"current_value\" numeric(18, 2) NOT NULL,\n\t\"benchmark_value\" numeric(18, 2) NOT NULL,\n\t\"variance\" numeric(10, 2) NOT NULL,\n\t\"performance_rating\" text DEFAULT 'average' NOT NULL,\n\t\"recorded_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"notes\" text\n);\n",
+    "CREATE TABLE \"metric_snapshots\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"total_impressions\" integer DEFAULT 0 NOT NULL,\n\t\"total_engagements\" integer DEFAULT 0 NOT NULL,\n\t\"total_clicks\" integer DEFAULT 0 NOT NULL,\n\t\"total_conversions\" integer DEFAULT 0 NOT NULL,\n\t\"total_leads\" integer DEFAULT 0 NOT NULL,\n\t\"total_spend\" numeric(10, 2) DEFAULT '0' NOT NULL,\n\t\"metrics\" jsonb,\n\t\"snapshot_type\" text DEFAULT 'automatic' NOT NULL,\n\t\"reporting_date\" text,\n\t\"recorded_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"notes\" text\n);\n",
+    "CREATE TABLE \"ga4_google_ads_spend_connections\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"customer_id\" text NOT NULL,\n\t\"customer_name\" text,\n\t\"manager_account_id\" text,\n\t\"access_token\" text,\n\t\"refresh_token\" text,\n\t\"client_id\" text,\n\t\"client_secret\" text,\n\t\"developer_token\" text,\n\t\"encrypted_tokens\" jsonb,\n\t\"method\" text NOT NULL,\n\t\"spend_only\" boolean DEFAULT true NOT NULL,\n\t\"last_refresh_at\" timestamp,\n\t\"expires_at\" timestamp,\n\t\"connected_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"ga4_google_ads_spend_daily_metrics\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"google_campaign_id\" text NOT NULL,\n\t\"google_campaign_name\" text,\n\t\"date\" text NOT NULL,\n\t\"impressions\" integer DEFAULT 0 NOT NULL,\n\t\"clicks\" integer DEFAULT 0 NOT NULL,\n\t\"spend\" numeric(12, 2) DEFAULT 0 NOT NULL,\n\t\"imported_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"ab_tests\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"description\" text,\n\t\"hypothesis\" text,\n\t\"objective\" text NOT NULL,\n\t\"traffic_split\" numeric(5, 2) DEFAULT '50.00' NOT NULL,\n\t\"status\" text DEFAULT 'draft' NOT NULL,\n\t\"start_date\" timestamp,\n\t\"end_date\" timestamp,\n\t\"min_sample_size\" integer DEFAULT 100,\n\t\"confidence_level\" numeric(3, 2) DEFAULT '95.00',\n\t\"significance\" boolean DEFAULT false,\n\t\"winner_variant\" text,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"updated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"ab_test_variants\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"test_id\" text NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"description\" text,\n\t\"content\" text,\n\t\"traffic_percentage\" numeric(5, 2) NOT NULL,\n\t\"is_control\" boolean DEFAULT false NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"ab_test_results\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"test_id\" text NOT NULL,\n\t\"variant_id\" text NOT NULL,\n\t\"impressions\" integer DEFAULT 0 NOT NULL,\n\t\"clicks\" integer DEFAULT 0 NOT NULL,\n\t\"conversions\" integer DEFAULT 0 NOT NULL,\n\t\"revenue\" numeric(10, 2) DEFAULT '0.00' NOT NULL,\n\t\"conversion_rate\" numeric(5, 2) DEFAULT '0.00',\n\t\"click_through_rate\" numeric(5, 2) DEFAULT '0.00',\n\t\"revenue_per_visitor\" numeric(10, 2) DEFAULT '0.00',\n\t\"cost_per_conversion\" numeric(10, 2) DEFAULT '0.00',\n\t\"recorded_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"updated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"ab_test_events\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"test_id\" text NOT NULL,\n\t\"variant_id\" text NOT NULL,\n\t\"event_type\" text NOT NULL,\n\t\"event_value\" numeric(10, 2),\n\t\"user_id\" text,\n\t\"session_id\" text,\n\t\"metadata\" text,\n\t\"occurred_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"attribution_models\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"type\" text NOT NULL,\n\t\"description\" text,\n\t\"configuration\" text,\n\t\"is_default\" boolean DEFAULT false NOT NULL,\n\t\"is_active\" boolean DEFAULT true NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"updated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"customer_journeys\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"customer_id\" text NOT NULL,\n\t\"session_id\" text,\n\t\"device_id\" text,\n\t\"user_id\" text,\n\t\"journey_start\" timestamp NOT NULL,\n\t\"journey_end\" timestamp,\n\t\"total_touchpoints\" integer DEFAULT 0 NOT NULL,\n\t\"conversion_value\" numeric(10, 2),\n\t\"conversion_type\" text,\n\t\"status\" text DEFAULT 'active' NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"updated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"touchpoints\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"journey_id\" text NOT NULL,\n\t\"campaign_id\" text,\n\t\"channel\" text NOT NULL,\n\t\"platform\" text,\n\t\"medium\" text,\n\t\"source\" text,\n\t\"campaign\" text,\n\t\"content\" text,\n\t\"term\" text,\n\t\"touchpoint_type\" text NOT NULL,\n\t\"position\" integer NOT NULL,\n\t\"timestamp\" timestamp NOT NULL,\n\t\"device_type\" text,\n\t\"user_agent\" text,\n\t\"ip_address\" text,\n\t\"referrer\" text,\n\t\"landing_page\" text,\n\t\"event_value\" numeric(10, 2),\n\t\"metadata\" text,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"attribution_results\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"journey_id\" text NOT NULL,\n\t\"attribution_model_id\" text NOT NULL,\n\t\"touchpoint_id\" text NOT NULL,\n\t\"campaign_id\" text,\n\t\"channel\" text NOT NULL,\n\t\"attribution_credit\" numeric(10, 4) NOT NULL,\n\t\"attributed_value\" numeric(10, 2),\n\t\"calculated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"attribution_insights\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"attribution_model_id\" text NOT NULL,\n\t\"campaign_id\" text,\n\t\"channel\" text NOT NULL,\n\t\"period\" text NOT NULL,\n\t\"start_date\" timestamp NOT NULL,\n\t\"end_date\" timestamp NOT NULL,\n\t\"total_attributed_value\" numeric(10, 2) NOT NULL,\n\t\"total_touchpoints\" integer NOT NULL,\n\t\"total_conversions\" integer NOT NULL,\n\t\"average_attribution_credit\" numeric(10, 4),\n\t\"conversion_rate\" numeric(5, 2),\n\t\"cost_per_attribution\" numeric(10, 2),\n\t\"return_on_ad_spend\" numeric(10, 2),\n\t\"assisted_conversions\" integer,\n\t\"last_click_conversions\" integer,\n\t\"first_click_conversions\" integer,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"updated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"linkedin_reports\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text,\n\t\"name\" text NOT NULL,\n\t\"description\" text,\n\t\"platform_type\" text DEFAULT 'linkedin' NOT NULL,\n\t\"report_type\" text NOT NULL,\n\t\"configuration\" text,\n\t\"schedule_enabled\" boolean DEFAULT false NOT NULL,\n\t\"schedule_frequency\" text,\n\t\"schedule_day_of_week\" integer,\n\t\"schedule_day_of_month\" integer,\n\t\"schedule_time\" text,\n\t\"schedule_time_zone\" text,\n\t\"quarter_timing\" text,\n\t\"schedule_recipients\" text[],\n\t\"last_sent_at\" timestamp,\n\t\"next_scheduled_at\" timestamp,\n\t\"status\" text DEFAULT 'active' NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"updated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"report_snapshots\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"report_id\" text NOT NULL,\n\t\"campaign_id\" text,\n\t\"platform_type\" text DEFAULT 'linkedin' NOT NULL,\n\t\"report_type\" text NOT NULL,\n\t\"window_start\" text,\n\t\"window_end\" text,\n\t\"snapshot_json\" text NOT NULL,\n\t\"has_estimated\" boolean DEFAULT false NOT NULL,\n\t\"generated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"report_send_events\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"report_id\" text NOT NULL,\n\t\"snapshot_id\" text,\n\t\"scheduled_key\" text NOT NULL,\n\t\"time_zone\" text,\n\t\"recipients\" text[],\n\t\"status\" text DEFAULT 'pending' NOT NULL,\n\t\"error\" text,\n\t\"sent_at\" timestamp,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE TABLE \"kpi_reports\" (\n\t\"id\" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"campaign_id\" text NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"description\" text,\n\t\"report_type\" text DEFAULT 'kpis' NOT NULL,\n\t\"schedule_enabled\" boolean DEFAULT false NOT NULL,\n\t\"schedule_frequency\" text,\n\t\"schedule_day_of_week\" integer,\n\t\"schedule_day_of_month\" integer,\n\t\"schedule_time\" text,\n\t\"schedule_recipients\" text[],\n\t\"last_sent_at\" timestamp,\n\t\"next_scheduled_at\" timestamp,\n\t\"status\" text DEFAULT 'active' NOT NULL,\n\t\"created_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,\n\t\"updated_at\" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n",
+    "CREATE UNIQUE INDEX \"ga4_refresh_work_identity\" ON \"ga4_refresh_work\" USING btree (\"campaign_id\",\"due_at\",\"reporting_date\",\"scope_hash\");",
+    "CREATE UNIQUE INDEX \"ga4_refresh_work_running_campaign\" ON \"ga4_refresh_work\" USING btree (\"campaign_id\") WHERE \"ga4_refresh_work\".\"status\" = 'running';",
+    "CREATE UNIQUE INDEX \"ga4_overview_snapshots_campaign_property_unique\" ON \"ga4_overview_snapshots\" USING btree (\"campaign_id\",\"property_id\");",
+    "CREATE UNIQUE INDEX \"email_alert_events_dedupe_key_unique\" ON \"email_alert_events\" USING btree (\"dedupe_key\");",
+    "CREATE UNIQUE INDEX \"metric_snapshots_financial_day_unique\" ON \"metric_snapshots\" USING btree (\"campaign_id\",\"reporting_date\") WHERE \"metric_snapshots\".\"snapshot_type\" = 'financial_daily' AND \"metric_snapshots\".\"reporting_date\" IS NOT NULL;",
+    "CREATE UNIQUE INDEX \"metric_snapshots_executive_summary_day_unique\" ON \"metric_snapshots\" USING btree (\"campaign_id\",\"reporting_date\") WHERE \"metric_snapshots\".\"snapshot_type\" = 'executive_summary_daily' AND \"metric_snapshots\".\"reporting_date\" IS NOT NULL;",
+    "CREATE UNIQUE INDEX \"ga4_google_ads_spend_connections_campaign_unique\" ON \"ga4_google_ads_spend_connections\" USING btree (\"campaign_id\");",
+    "CREATE UNIQUE INDEX \"ga4_google_ads_spend_daily_metrics_campaign_day_unique\" ON \"ga4_google_ads_spend_daily_metrics\" USING btree (\"campaign_id\",\"google_campaign_id\",\"date\");"
+  ],
+  "tables": [
+    {
+      "name": "clients",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "campaigns",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "metrics",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "integrations",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "performance_data",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "ga4_connections",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "ga4_connection_lifecycle_events",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "ga4_refresh_work",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {
+        "ga4_refresh_work_identity": {
+          "name": "ga4_refresh_work_identity",
+          "columns": [
+            {
+              "expression": "campaign_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "due_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "reporting_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "scope_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "ga4_refresh_work_running_campaign": {
+          "name": "ga4_refresh_work_running_campaign",
+          "columns": [
+            {
+              "expression": "campaign_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"ga4_refresh_work\".\"status\" = 'running'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "ga4_daily_metrics",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "ga4_overview_snapshots",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {
+        "ga4_overview_snapshots_campaign_property_unique": {
+          "name": "ga4_overview_snapshots_campaign_property_unique",
+          "columns": [
+            {
+              "expression": "campaign_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "property_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "spend_sources",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "spend_records",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "revenue_sources",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "revenue_records",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "notifications",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "email_alert_events",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {
+        "email_alert_events_dedupe_key_unique": {
+          "name": "email_alert_events_dedupe_key_unique",
+          "columns": [
+            {
+              "expression": "dedupe_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "google_sheets_connections",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "hubspot_connections",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "salesforce_connections",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "shopify_connections",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "mapping_templates",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "linkedin_connections",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "meta_connections",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "instagram_connections",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "tiktok_connections",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "google_ads_connections",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "google_ads_daily_metrics",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "meta_kpis",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "meta_benchmarks",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "meta_reports",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "meta_daily_metrics",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "instagram_daily_metrics",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "tiktok_daily_metrics",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "linkedin_import_sessions",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "linkedin_import_metrics",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "linkedin_daily_metrics",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "linkedin_ad_performance",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "custom_integrations",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "conversion_events",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "custom_integration_metrics",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "kpis",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "kpi_periods",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "kpi_progress",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "kpi_alerts",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "benchmarks",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "benchmark_history",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "metric_snapshots",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {
+        "metric_snapshots_financial_day_unique": {
+          "name": "metric_snapshots_financial_day_unique",
+          "columns": [
+            {
+              "expression": "campaign_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "reporting_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"metric_snapshots\".\"snapshot_type\" = 'financial_daily' AND \"metric_snapshots\".\"reporting_date\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "metric_snapshots_executive_summary_day_unique": {
+          "name": "metric_snapshots_executive_summary_day_unique",
+          "columns": [
+            {
+              "expression": "campaign_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "reporting_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"metric_snapshots\".\"snapshot_type\" = 'executive_summary_daily' AND \"metric_snapshots\".\"reporting_date\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "ga4_google_ads_spend_connections",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {
+        "ga4_google_ads_spend_connections_campaign_unique": {
+          "name": "ga4_google_ads_spend_connections_campaign_unique",
+          "columns": [
+            {
+              "expression": "campaign_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "ga4_google_ads_spend_daily_metrics",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {
+        "ga4_google_ads_spend_daily_metrics_campaign_day_unique": {
+          "name": "ga4_google_ads_spend_daily_metrics_campaign_day_unique",
+          "columns": [
+            {
+              "expression": "campaign_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "google_campaign_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "ab_tests",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "ab_test_variants",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "ab_test_results",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "ab_test_events",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "attribution_models",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "customer_journeys",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "touchpoints",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "attribution_results",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "attribution_insights",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "linkedin_reports",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "report_snapshots",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "report_send_events",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    },
+    {
+      "name": "kpi_reports",
+      "primaryKeyColumns": [
+        "id"
+      ],
+      "indexes": {},
+      "uniqueConstraints": {},
+      "foreignKeys": {}
+    }
+  ]
+}

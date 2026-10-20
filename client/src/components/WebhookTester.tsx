@@ -142,8 +142,7 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
             Webhook URL (For Production Setup)
           </CardTitle>
           <CardDescription>
-            <strong>How it works:</strong> Copy this URL and configure it in your external system (Shopify, WooCommerce, Stripe, etc.) 
-            <strong> once</strong>. After that, conversion values are sent automatically - no manual entry needed!
+            <strong>How it works:</strong> Your external system sends conversion events using this URL and your campaign's Custom Integration webhook token.
             <br />
             <strong>For testing:</strong> Use the form below to simulate what external systems would send automatically.
           </CardDescription>
@@ -171,12 +170,12 @@ export function WebhookTester({ campaignId, campaignName }: WebhookTesterProps) 
             </p>
             <ol className="text-xs text-blue-800 dark:text-blue-300 space-y-1 list-decimal list-inside">
               <li>Copy the webhook URL above</li>
-              <li>Go to your e-commerce platform (Shopify, WooCommerce, etc.)</li>
-              <li>Configure webhook to send to this URL (or use Zapier/Make.com)</li>
-              <li>Done! Conversion values will be sent automatically forever</li>
+              <li>Connect Custom Integration for this campaign and obtain its webhook token</li>
+              <li>Configure your sender to include the token in the x-campaign-webhook-token header</li>
+              <li>Send values in the campaign currency with a unique conversionId for retry protection</li>
             </ol>
             <p className="text-xs text-blue-700 dark:text-blue-400 mt-2">
-              💡 <strong>No manual data entry needed after setup!</strong> External systems send conversion values automatically.
+              The form below uses your signed-in account. External sends require the campaign token; rotating or disconnecting that integration revokes access.
             </p>
           </div>
         </CardContent>

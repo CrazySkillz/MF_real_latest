@@ -1,0 +1,146 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact GA4 service methods, synthetic provider responses, fixture storage and transport. Flags demonstrate missing metadata handling, not occurrence in a live account. Threshold-subject/other-row flags do not by themselves prove every returned value wrong. Publication/downstream behavior is separately traced, not executed here.",
+  "results": [
+    {
+      "case": "Totals accepts sampled report without returning quality metadata",
+      "providerMetadata": {
+        "samplingMetadatas": [
+          {
+            "samplesReadCount": "10",
+            "samplingSpaceSize": "100"
+          }
+        ]
+      },
+      "requestCount": 3,
+      "returnedRevenue": 100,
+      "returnedKeys": [
+        "revenueMetric",
+        "currencyCode",
+        "reportingTimeZone",
+        "totals"
+      ],
+      "qualityRetained": false
+    },
+    {
+      "case": "Totals accepts other-row data loss without returning quality metadata",
+      "providerMetadata": {
+        "dataLossFromOtherRow": true
+      },
+      "requestCount": 3,
+      "returnedRevenue": 100,
+      "returnedKeys": [
+        "revenueMetric",
+        "currencyCode",
+        "reportingTimeZone",
+        "totals"
+      ],
+      "qualityRetained": false
+    },
+    {
+      "case": "Totals accepts threshold-subject report without returning quality metadata",
+      "providerMetadata": {
+        "subjectToThresholding": true
+      },
+      "requestCount": 3,
+      "returnedRevenue": 100,
+      "returnedKeys": [
+        "revenueMetric",
+        "currencyCode",
+        "reportingTimeZone",
+        "totals"
+      ],
+      "qualityRetained": false
+    },
+    {
+      "case": "Totals accepts active Revenue restriction without returning quality metadata",
+      "providerMetadata": {
+        "schemaRestrictionResponse": {
+          "activeMetricRestrictions": [
+            {
+              "metricName": "totalRevenue",
+              "restrictedMetricTypes": [
+                "REVENUE_DATA"
+              ]
+            }
+          ]
+        }
+      },
+      "requestCount": 3,
+      "returnedRevenue": 0,
+      "returnedKeys": [
+        "revenueMetric",
+        "currencyCode",
+        "reportingTimeZone",
+        "totals"
+      ],
+      "qualityRetained": false
+    },
+    {
+      "case": "Totals accepts date-range truncation without returning quality metadata",
+      "providerMetadata": {
+        "dataTruncationReasons": [
+          {
+            "dataTruncationType": "DATA_TRUNCATION_TYPE_DATE_RANGE",
+            "dataTruncationMessage": "Fixture range is incomplete",
+            "dataTruncationDate": "2026-10-18"
+          }
+        ]
+      },
+      "requestCount": 3,
+      "returnedRevenue": 100,
+      "returnedKeys": [
+        "revenueMetric",
+        "currencyCode",
+        "reportingTimeZone",
+        "totals"
+      ],
+      "qualityRetained": false
+    },
+    {
+      "case": "Totals accepts provider empty reason without returning quality metadata",
+      "providerMetadata": {
+        "emptyReason": "fixture-provider-empty-reason"
+      },
+      "requestCount": 2,
+      "returnedRevenue": 0,
+      "returnedKeys": [
+        "revenueMetric",
+        "currencyCode",
+        "reportingTimeZone",
+        "totals"
+      ],
+      "qualityRetained": false
+    },
+    {
+      "case": "acquisition accepts rows but discards sampling/other-row metadata",
+      "providerMetadata": {
+        "dataLossFromOtherRow": true,
+        "samplingMetadatas": [
+          {
+            "samplesReadCount": "10",
+            "samplingSpaceSize": "100"
+          }
+        ]
+      },
+      "requestCount": 1,
+      "returnedRows": 1,
+      "qualityRetained": false
+    },
+    {
+      "case": "daily accepts rows but discards sampling/other-row metadata",
+      "providerMetadata": {
+        "dataLossFromOtherRow": true,
+        "samplingMetadatas": [
+          {
+            "samplesReadCount": "10",
+            "samplingSpaceSize": "100"
+          }
+        ]
+      },
+      "requestCount": 1,
+      "returnedRows": 1,
+      "qualityRetained": false
+    }
+  ]
+}

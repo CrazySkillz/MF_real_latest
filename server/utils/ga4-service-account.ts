@@ -102,6 +102,8 @@ export async function getGA4ServiceAccountAccessToken(): Promise<{ accessToken: 
 export async function hydrateGA4ServiceAccountConnection<T extends Record<string, any>>(connection: T): Promise<T> {
   if (String(connection?.method || "").trim().toLowerCase() !== GA4_SERVICE_ACCOUNT_METHOD) return connection;
   assertGA4ServiceAccountPropertyAllowed(connection?.propertyId);
+  const { storage } = await import("../storage");
+  await storage.assertServiceAccountResourceAccess(connection.campaignId, "ga4", normalizeGA4ServiceAccountPropertyId(connection.propertyId));
   const credentials = await getGA4ServiceAccountAccessToken();
   return {
     ...connection,

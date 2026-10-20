@@ -1,0 +1,448 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "at": "2026-10-20T08:13:55.861Z",
+  "boundary": "Disposable PostgreSQL18 loopback55443/notifications_test with v1_audit fixture role; DATABASE_URL empty; generated current schema; real SQL; no application startup, customer data, provider or email.",
+  "results": [
+    {
+      "case": "Every retained migration file, two lexicographic passes on declared schema plus successful current startup",
+      "files": 27,
+      "executions": 54,
+      "failures": [
+        {
+          "file": "0003_add_kpi_periods_and_notifications_metadata.sql",
+          "sha256": "07071de9b9d3046890618aa6b6226f6d55e5af5679ce2f0b73a3da302304381b",
+          "pass": 1,
+          "result": "failed",
+          "code": "42704",
+          "message": "data type text has no default operator class for access method \"gin\"",
+          "elapsedMs": 9
+        },
+        {
+          "file": "0003_add_kpi_periods_and_notifications_metadata.sql",
+          "sha256": "07071de9b9d3046890618aa6b6226f6d55e5af5679ce2f0b73a3da302304381b",
+          "pass": 2,
+          "result": "failed",
+          "code": "42704",
+          "message": "data type text has no default operator class for access method \"gin\"",
+          "elapsedMs": 5
+        }
+      ],
+      "selectedColumnTypes": [
+        {
+          "table_name": "kpi_periods",
+          "column_name": "id",
+          "data_type": "character varying"
+        },
+        {
+          "table_name": "notifications",
+          "column_name": "metadata",
+          "data_type": "text"
+        }
+      ],
+      "caveat": "This explicit order is a compatibility diagnostic, not an approved production migration order. Empty fixture tables do not prove historical data migration safety."
+    },
+    {
+      "case": "Two current startup migration callbacks start together against one declared schema",
+      "workers": [
+        {
+          "worker": "A",
+          "sqlErrors": [],
+          "seedInvocations": 1,
+          "schedulerStartInvocations": 13
+        },
+        {
+          "worker": "B",
+          "sqlErrors": [],
+          "seedInvocations": 1,
+          "schedulerStartInvocations": 13
+        }
+      ],
+      "caveat": "Exact migration SQL; workers and seed are recorded stubs. One bounded contention run, no historical production fixture, load, HTTP, provider or scheduler execution."
+    }
+  ],
+  "catalog": [
+    {
+      "file": "0002_add_benchmark_scope_fields.sql",
+      "sha256": "6eb5110ea2b4160d9578c48f6221f0c3c5edf0454160adcc25ea0380f03e101a",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 6
+    },
+    {
+      "file": "0002_add_kpi_campaign_scope.sql",
+      "sha256": "78083d8c94000587878fcbb321394ba1ec8f76a4f7bf26c47ccaeec298a809f0",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 0
+    },
+    {
+      "file": "0003_add_kpi_periods_and_notifications_metadata.sql",
+      "sha256": "07071de9b9d3046890618aa6b6226f6d55e5af5679ce2f0b73a3da302304381b",
+      "pass": 1,
+      "result": "failed",
+      "code": "42704",
+      "message": "data type text has no default operator class for access method \"gin\"",
+      "elapsedMs": 9
+    },
+    {
+      "file": "0003_add_linkedin_campaign_name.sql",
+      "sha256": "6cc557de57b751dfb02c2437e9c3b36080fe4ad06d7fe3118054c8ffe17811a4",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 46
+    },
+    {
+      "file": "0004_add_kpi_calculation_config.sql",
+      "sha256": "df33410ae4116d2f25ffcea147800ede50b4ec9d0734b1ba83dec9844054c792",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0005_add_benchmark_calculation_config.sql",
+      "sha256": "9bf32fcab488e66d58d41b333a502b5c45429b600c08b4c1ddfc33e2ade2ad62",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0006_add_daily_spend_revenue_granularity.sql",
+      "sha256": "58697d614f9a32aa211803a1defefd0ed8fc20dac955ee4e7b6a0b75ac7c7574",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 86
+    },
+    {
+      "file": "0007_add_instagram_connected_platform_foundation.sql",
+      "sha256": "3012d80ec96cb05b3173986db4d7c9ef5dd99ce907a334ed870b341f3b43667a",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0008_add_custom_integration_parser_metadata.sql",
+      "sha256": "a78c359421b6e7fb50f42e3742a10874c70f7b1980b4a3f21c4bb919d5cdbdd4",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0009_delete_ga4_daily_metrics_orphan_revenue_records.sql",
+      "sha256": "e7f365f9e68a89aff88e6e0ce36f4614b584ddf9d2cb263bd13de5a1230d413a",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 7
+    },
+    {
+      "file": "0010_widen_alert_benchmark_numeric_fields.sql",
+      "sha256": "d14cc136c38518a58ebdae2e89f8193ddec443c4a246902ef5215dcecf3f4448",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 5
+    },
+    {
+      "file": "0011_add_alert_email_audit_state.sql",
+      "sha256": "ca4c50e70b9b12093d7c0ef406f8c906040cc02c62ec7302a1f71e54187ea73a",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0012_add_ga4_daily_engaged_sessions.sql",
+      "sha256": "ca7071774bf11dbaf0f53f9c0292ccdb2a836e25814ba479af898163405a3982",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0013_add_campaign_pacing_dates.sql",
+      "sha256": "9599fbffd706c66a7449aaf8c0e04a2374491107d5fba9e7dd7200cf61f00e5c",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0014_add_financial_daily_snapshot_identity.sql",
+      "sha256": "b9ce02825f78166138a2d366114576ec7a2b691070c772f6392f8db634f53c58",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0015_add_executive_summary_daily_snapshot_identity.sql",
+      "sha256": "d9b204e9ad76780025c06a5a15ea021f962650b068d3bcdfbad52956b7eae2b9",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 0
+    },
+    {
+      "file": "0016_remove_shopify_refresh_failure_notifications.sql",
+      "sha256": "b73d6eeb26276bd2c28ec5622c8542ec785833b64819df10e6768e29c2b99997",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 2
+    },
+    {
+      "file": "0017_add_ga4_google_ads_spend_storage.sql",
+      "sha256": "6a53b96d5ca57019fa66a7d2cfcf38c2772bd1e0f5cd4e7c08467941c3dc2901",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0018_add_ga4_overview_scheduler_snapshots.sql",
+      "sha256": "715e41f30c0eb9e92a7d1d0db23d77053b5a4658f4e8b6699039d0d3c2f5da06",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0019_add_ga4_connection_lifecycle_audit.sql",
+      "sha256": "4635eb4482e78db04ebd348ef14fff1ecaa4dc81a0fcbdbac7da841b7b013cc3",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 2
+    },
+    {
+      "file": "0020_add_ga4_refresh_work.sql",
+      "sha256": "95936a37edd85dc4013539b41b4e053939f4cddfa849435d47fc7b0f63816872",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 2
+    },
+    {
+      "file": "0021_add_ga4_refresh_recovery.sql",
+      "sha256": "646566ff75f71c60733099bfa072196dadecd54ff95f175c95c6552ae48ac36f",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 2
+    },
+    {
+      "file": "add_conversion_value.sql",
+      "sha256": "6453538bb25bfff5e0a63d0a51a33ade775757bd96f57493bb1d17a7aa0c2103",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "add_meta_connections.sql",
+      "sha256": "12e1cf3b519b4c18caa33de2915e356e972162c90a49c7c586f194872723d67c",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 3
+    },
+    {
+      "file": "add_sheet_name_column.sql",
+      "sha256": "472a01d182d3b5f703a731c789b3d59bca35e202280f0cc52d08743f2fe2ca11",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "apply-kpi-migration.sql",
+      "sha256": "3e255ef175534a1375dd62395a7ae7a0826737f1e5bf38031322dd29315d9ca3",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 4
+    },
+    {
+      "file": "make_custom_integration_email_nullable.sql",
+      "sha256": "59019c725ff68d08a1996842cb8e540e1ea52763c674918393a86236383a2f0b",
+      "pass": 1,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0002_add_benchmark_scope_fields.sql",
+      "sha256": "6eb5110ea2b4160d9578c48f6221f0c3c5edf0454160adcc25ea0380f03e101a",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0002_add_kpi_campaign_scope.sql",
+      "sha256": "78083d8c94000587878fcbb321394ba1ec8f76a4f7bf26c47ccaeec298a809f0",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 2
+    },
+    {
+      "file": "0003_add_kpi_periods_and_notifications_metadata.sql",
+      "sha256": "07071de9b9d3046890618aa6b6226f6d55e5af5679ce2f0b73a3da302304381b",
+      "pass": 2,
+      "result": "failed",
+      "code": "42704",
+      "message": "data type text has no default operator class for access method \"gin\"",
+      "elapsedMs": 5
+    },
+    {
+      "file": "0003_add_linkedin_campaign_name.sql",
+      "sha256": "6cc557de57b751dfb02c2437e9c3b36080fe4ad06d7fe3118054c8ffe17811a4",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 46
+    },
+    {
+      "file": "0004_add_kpi_calculation_config.sql",
+      "sha256": "df33410ae4116d2f25ffcea147800ede50b4ec9d0734b1ba83dec9844054c792",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0005_add_benchmark_calculation_config.sql",
+      "sha256": "9bf32fcab488e66d58d41b333a502b5c45429b600c08b4c1ddfc33e2ade2ad62",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0006_add_daily_spend_revenue_granularity.sql",
+      "sha256": "58697d614f9a32aa211803a1defefd0ed8fc20dac955ee4e7b6a0b75ac7c7574",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 72
+    },
+    {
+      "file": "0007_add_instagram_connected_platform_foundation.sql",
+      "sha256": "3012d80ec96cb05b3173986db4d7c9ef5dd99ce907a334ed870b341f3b43667a",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0008_add_custom_integration_parser_metadata.sql",
+      "sha256": "a78c359421b6e7fb50f42e3742a10874c70f7b1980b4a3f21c4bb919d5cdbdd4",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0009_delete_ga4_daily_metrics_orphan_revenue_records.sql",
+      "sha256": "e7f365f9e68a89aff88e6e0ce36f4614b584ddf9d2cb263bd13de5a1230d413a",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 2
+    },
+    {
+      "file": "0010_widen_alert_benchmark_numeric_fields.sql",
+      "sha256": "d14cc136c38518a58ebdae2e89f8193ddec443c4a246902ef5215dcecf3f4448",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 13
+    },
+    {
+      "file": "0011_add_alert_email_audit_state.sql",
+      "sha256": "ca4c50e70b9b12093d7c0ef406f8c906040cc02c62ec7302a1f71e54187ea73a",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 2
+    },
+    {
+      "file": "0012_add_ga4_daily_engaged_sessions.sql",
+      "sha256": "ca7071774bf11dbaf0f53f9c0292ccdb2a836e25814ba479af898163405a3982",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0013_add_campaign_pacing_dates.sql",
+      "sha256": "9599fbffd706c66a7449aaf8c0e04a2374491107d5fba9e7dd7200cf61f00e5c",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0014_add_financial_daily_snapshot_identity.sql",
+      "sha256": "b9ce02825f78166138a2d366114576ec7a2b691070c772f6392f8db634f53c58",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0015_add_executive_summary_daily_snapshot_identity.sql",
+      "sha256": "d9b204e9ad76780025c06a5a15ea021f962650b068d3bcdfbad52956b7eae2b9",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 0
+    },
+    {
+      "file": "0016_remove_shopify_refresh_failure_notifications.sql",
+      "sha256": "b73d6eeb26276bd2c28ec5622c8542ec785833b64819df10e6768e29c2b99997",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 3
+    },
+    {
+      "file": "0017_add_ga4_google_ads_spend_storage.sql",
+      "sha256": "6a53b96d5ca57019fa66a7d2cfcf38c2772bd1e0f5cd4e7c08467941c3dc2901",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0018_add_ga4_overview_scheduler_snapshots.sql",
+      "sha256": "715e41f30c0eb9e92a7d1d0db23d77053b5a4658f4e8b6699039d0d3c2f5da06",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "0019_add_ga4_connection_lifecycle_audit.sql",
+      "sha256": "4635eb4482e78db04ebd348ef14fff1ecaa4dc81a0fcbdbac7da841b7b013cc3",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 3
+    },
+    {
+      "file": "0020_add_ga4_refresh_work.sql",
+      "sha256": "95936a37edd85dc4013539b41b4e053939f4cddfa849435d47fc7b0f63816872",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 0
+    },
+    {
+      "file": "0021_add_ga4_refresh_recovery.sql",
+      "sha256": "646566ff75f71c60733099bfa072196dadecd54ff95f175c95c6552ae48ac36f",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 0
+    },
+    {
+      "file": "add_conversion_value.sql",
+      "sha256": "6453538bb25bfff5e0a63d0a51a33ade775757bd96f57493bb1d17a7aa0c2103",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "add_meta_connections.sql",
+      "sha256": "12e1cf3b519b4c18caa33de2915e356e972162c90a49c7c586f194872723d67c",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "add_sheet_name_column.sql",
+      "sha256": "472a01d182d3b5f703a731c789b3d59bca35e202280f0cc52d08743f2fe2ca11",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 1
+    },
+    {
+      "file": "apply-kpi-migration.sql",
+      "sha256": "3e255ef175534a1375dd62395a7ae7a0826737f1e5bf38031322dd29315d9ca3",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 4
+    },
+    {
+      "file": "make_custom_integration_email_nullable.sql",
+      "sha256": "59019c725ff68d08a1996842cb8e540e1ea52763c674918393a86236383a2f0b",
+      "pass": 2,
+      "result": "executed",
+      "elapsedMs": 1
+    }
+  ],
+  "remainingFixtureSchemas": 0
+}

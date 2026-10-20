@@ -1,0 +1,193 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "executedAt": "2026-10-19T23:24:55.402Z",
+  "boundary": "Two actual registered routes and shared access/artifact helpers. Synthetic identity/storage/database. Existing PDF bytes used only to test immutable byte retrieval. No provider, email, runtime mutation or full HTTP/browser journey.",
+  "results": [
+    {
+      "case": "/api/report-snapshots/:snapshotId: owner",
+      "status": 200,
+      "calls": [
+        "snapshot",
+        "report",
+        "parent"
+      ],
+      "byteIdenticalStoredArtifact": false,
+      "boundary": "Valid real PDF bytes are fixture content under a GA4 platform row, solely testing retrieval/identity. No metric/platform artifact parity claim."
+    },
+    {
+      "case": "/api/report-snapshots/:snapshotId: anonymous",
+      "status": 401,
+      "calls": [],
+      "byteIdenticalStoredArtifact": false
+    },
+    {
+      "case": "/api/report-snapshots/:snapshotId: foreign",
+      "status": 404,
+      "calls": [
+        "snapshot",
+        "report",
+        "parent"
+      ],
+      "byteIdenticalStoredArtifact": false
+    },
+    {
+      "case": "/api/report-snapshots/:snapshotId: missing-parent",
+      "status": 404,
+      "calls": [
+        "snapshot",
+        "report",
+        "parent"
+      ],
+      "byteIdenticalStoredArtifact": false
+    },
+    {
+      "case": "/api/report-snapshots/:snapshotId: missing-report",
+      "status": 404,
+      "calls": [
+        "snapshot",
+        "report"
+      ],
+      "byteIdenticalStoredArtifact": false
+    },
+    {
+      "case": "/api/report-snapshots/:snapshotId: wrong-campaign",
+      "status": 404,
+      "calls": [
+        "snapshot",
+        "report",
+        "parent"
+      ],
+      "byteIdenticalStoredArtifact": false
+    },
+    {
+      "case": "/api/report-snapshots/:snapshotId: wrong-platform",
+      "status": 404,
+      "calls": [
+        "snapshot",
+        "report",
+        "parent"
+      ],
+      "byteIdenticalStoredArtifact": false
+    },
+    {
+      "case": "/api/report-snapshots/:snapshotId: report-type-edited",
+      "status": 200,
+      "calls": [
+        "snapshot",
+        "report",
+        "parent"
+      ],
+      "byteIdenticalStoredArtifact": false,
+      "boundary": "Only current reportType changes overview to insights; persisted snapshot/owner/campaign/platform/artifact remain unchanged. JSON works, PDF404."
+    },
+    {
+      "case": "/api/report-snapshots/:snapshotId: missing-artifact",
+      "status": 200,
+      "calls": [
+        "snapshot",
+        "report",
+        "parent"
+      ],
+      "byteIdenticalStoredArtifact": false
+    },
+    {
+      "case": "/api/report-snapshots/:snapshotId: invalid-id",
+      "status": 400,
+      "calls": [],
+      "byteIdenticalStoredArtifact": false
+    },
+    {
+      "case": "/api/report-snapshots/:snapshotId/pdf: owner",
+      "status": 200,
+      "calls": [
+        "snapshot",
+        "report",
+        "parent"
+      ],
+      "byteIdenticalStoredArtifact": true,
+      "boundary": "Valid real PDF bytes are fixture content under a GA4 platform row, solely testing retrieval/identity. No metric/platform artifact parity claim."
+    },
+    {
+      "case": "/api/report-snapshots/:snapshotId/pdf: anonymous",
+      "status": 401,
+      "calls": [],
+      "byteIdenticalStoredArtifact": false
+    },
+    {
+      "case": "/api/report-snapshots/:snapshotId/pdf: foreign",
+      "status": 404,
+      "calls": [
+        "snapshot",
+        "report",
+        "parent"
+      ],
+      "byteIdenticalStoredArtifact": false
+    },
+    {
+      "case": "/api/report-snapshots/:snapshotId/pdf: missing-parent",
+      "status": 404,
+      "calls": [
+        "snapshot",
+        "report",
+        "parent"
+      ],
+      "byteIdenticalStoredArtifact": false
+    },
+    {
+      "case": "/api/report-snapshots/:snapshotId/pdf: missing-report",
+      "status": 404,
+      "calls": [
+        "snapshot",
+        "report"
+      ],
+      "byteIdenticalStoredArtifact": false
+    },
+    {
+      "case": "/api/report-snapshots/:snapshotId/pdf: wrong-campaign",
+      "status": 404,
+      "calls": [
+        "snapshot",
+        "report",
+        "parent"
+      ],
+      "byteIdenticalStoredArtifact": false
+    },
+    {
+      "case": "/api/report-snapshots/:snapshotId/pdf: wrong-platform",
+      "status": 404,
+      "calls": [
+        "snapshot",
+        "report",
+        "parent"
+      ],
+      "byteIdenticalStoredArtifact": false
+    },
+    {
+      "case": "/api/report-snapshots/:snapshotId/pdf: report-type-edited",
+      "status": 404,
+      "calls": [
+        "snapshot",
+        "report",
+        "parent"
+      ],
+      "byteIdenticalStoredArtifact": false,
+      "boundary": "Only current reportType changes overview to insights; persisted snapshot/owner/campaign/platform/artifact remain unchanged. JSON works, PDF404."
+    },
+    {
+      "case": "/api/report-snapshots/:snapshotId/pdf: missing-artifact",
+      "status": 422,
+      "calls": [
+        "snapshot",
+        "report",
+        "parent"
+      ],
+      "byteIdenticalStoredArtifact": false
+    },
+    {
+      "case": "/api/report-snapshots/:snapshotId/pdf: invalid-id",
+      "status": 400,
+      "calls": [],
+      "byteIdenticalStoredArtifact": false
+    }
+  ]
+}

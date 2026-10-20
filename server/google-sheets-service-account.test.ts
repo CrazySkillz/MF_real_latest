@@ -12,6 +12,8 @@ vi.mock("google-auth-library", () => ({
     authorize = authorize;
   },
 }));
+const grant = vi.hoisted(() => vi.fn(async () => {}));
+vi.mock("./storage", () => ({ storage: { assertServiceAccountResourceAccess: grant } }));
 
 import {
   getGoogleSheetsServiceAccountPublicStatus,
@@ -28,6 +30,7 @@ afterEach(() => {
   if (originalGa4Json === undefined) delete process.env.GA4_SERVICE_ACCOUNT_JSON;
   else process.env.GA4_SERVICE_ACCOUNT_JSON = originalGa4Json;
   authorize.mockClear();
+  grant.mockReset().mockResolvedValue(undefined);
 });
 
 describe("temporary Google Sheets service-account boundary", () => {
@@ -77,6 +80,8 @@ describe("temporary Google Sheets service-account boundary", () => {
     });
 
     const hydrated = await hydrateGoogleSheetsServiceAccountConnection({
+      campaignId: "fixture-campaign",
+      spreadsheetId: "fixture-sheet",
       method: "service_account",
       accessToken: null,
       refreshToken: "must-not-survive",
@@ -89,6 +94,13 @@ describe("temporary Google Sheets service-account boundary", () => {
     expect(hydrated.clientId).toBeNull();
     expect(hydrated.clientSecret).toBeNull();
     expect(authorize).toHaveBeenCalledTimes(1);
+    expect(grant).toHaveBeenCalledWith("fixture-campaign", "google_sheets", "fixture-sheet");
+  });
+
+  it("checks current customer grants before using cached credentials", async () => {
+    grant.mockRejectedValueOnce(new Error("Resource not granted"));
+    await expect(hydrateGoogleSheetsServiceAccountConnection({ campaignId: "foreign-campaign", spreadsheetId: "fixture-sheet", method: "service_account" })).rejects.toThrow("not granted");
+    expect(authorize).not.toHaveBeenCalled();
   });
 
   it("keeps service-account credentials out of saved Google Sheets rows", () => {

@@ -1,0 +1,51 @@
+{
+  "at": "2026-10-20T09:09:43.392Z",
+  "boundary": "Existing parent; pre-work-table compatibility branch; no lease/publication proof",
+  "records": [
+    {
+      "sourceFile": "server/csv-revenue-transaction.test.ts",
+      "sourceHash": "d810c518d5f56ae8036a05507b0f9ee50e3d21193d7334fa53e5aaa6ec7e6c46",
+      "target": "docs/audits/v1-2026-10-19/csv-revenue-transaction.transaction-diagnostic.test.ts"
+    },
+    {
+      "sourceFile": "server/ga4-overview-spend-transaction.test.ts",
+      "sourceHash": "653d22f33e457c43637e41b739508c30a9d03b3f16b5aff0d4358761b5cdce0e",
+      "target": "docs/audits/v1-2026-10-19/ga4-overview-spend-transaction.transaction-diagnostic.test.ts"
+    },
+    {
+      "sourceFile": "server/revenue-source-delete-transaction.test.ts",
+      "sourceHash": "7ba083f015d92f9eedcc0b6f766cf4dfd7624ff227e384523970e997573376f2",
+      "target": "docs/audits/v1-2026-10-19/revenue-source-delete-transaction.transaction-diagnostic.test.ts"
+    },
+    {
+      "sourceFile": "server/google-ads-ga4-spend-disconnect-transaction.test.ts",
+      "sourceHash": "bdefb077d978fc921e567d92b6f75513317ff9d63d81f8661033b525388be6ba",
+      "target": "docs/audits/v1-2026-10-19/google-ads-ga4-spend-disconnect-transaction.transaction-diagnostic.test.ts"
+    },
+    {
+      "sourceFile": "server/google-sheets-ga4-disconnect-transaction.test.ts",
+      "sourceHash": "5a6bde22425a8d6d92aaf850d87ce23007fac335fd6a3f29385d7ec00a527ed5",
+      "target": "docs/audits/v1-2026-10-19/google-sheets-ga4-disconnect-transaction.transaction-diagnostic.test.ts"
+    },
+    {
+      "sourceFile": "server/google-sheets-ga4-spend-disconnect-transaction.test.ts",
+      "sourceHash": "7094861b5f91d813a144ddf9b80bed8096a3ae5d4d8ae3443bb9e9f8e5ec055f",
+      "target": "docs/audits/v1-2026-10-19/google-sheets-ga4-spend-disconnect-transaction.transaction-diagnostic.test.ts"
+    },
+    {
+      "sourceFile": "server/ga4-kpi-persistence-destructive-safety.test.ts",
+      "sourceHash": "9436fbd7c1f5fa7592479053063282398db8270deb20bffface0746f42723826",
+      "target": "docs/audits/v1-2026-10-19/ga4-kpi-persistence-destructive-safety.transaction-diagnostic.test.ts"
+    },
+    {
+      "sourceFile": "server/ga4-benchmark-persistence-destructive-safety.test.ts",
+      "sourceHash": "8101bc265efb26853a0cadac34a010b73e53071e676b80f840fbfc0c359972c3",
+      "target": "docs/audits/v1-2026-10-19/ga4-benchmark-persistence-destructive-safety.transaction-diagnostic.test.ts"
+    },
+    {
+      "sourceFile": "server/ga4-benchmark-history-idempotency.test.ts",
+      "sourceHash": "21c17ab0ed49c45663d4b4374f8dd4b93ed27ad59d1428dc381aca34cd23140b",
+      "target": "docs/audits/v1-2026-10-19/ga4-benchmark-history-idempotency.transaction-diagnostic.test.ts"
+    }
+  ]
+}

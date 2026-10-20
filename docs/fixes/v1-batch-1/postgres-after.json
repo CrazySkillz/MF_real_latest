@@ -1,0 +1,99 @@
+{
+  "at": "2026-10-20T19:03:16.470Z",
+  "base": "777aae6f",
+  "boundary": "Exact current storage methods, real PostgreSQL isolated schema; no provider calls or production state",
+  "results": [
+    {
+      "name": "0022 upgrade and repeated application preserve unowned rows",
+      "result": "PASS"
+    },
+    {
+      "name": "global entries enforce query ownership and redact encrypted credentials",
+      "result": "PASS"
+    },
+    {
+      "name": "whitelist changes persist, explicit empty clears and omitted preserves",
+      "result": "PASS"
+    },
+    {
+      "name": "concurrent replay writes once; receipts survive new storage instances and metric deletion",
+      "result": "PASS"
+    },
+    {
+      "name": "removed senders, rotated tokens and missing parents cannot publish",
+      "result": "PASS"
+    },
+    {
+      "name": "conversion zero, duplicate concurrency, currency filtering and atomic average",
+      "result": "PASS"
+    },
+    {
+      "name": "connector source/records commit atomically and foreign source/currency are rejected",
+      "result": "PASS"
+    },
+    {
+      "name": "shared resource grants bind owner, client, provider and resource and revoke immediately",
+      "result": "PASS"
+    },
+    {
+      "name": "legacy updates preserve campaign and row identity while saving allowed fields",
+      "result": "PASS"
+    },
+    {
+      "name": "attribution persists across instances, scopes owners and keeps calculated rows durable",
+      "result": "PASS"
+    },
+    {
+      "name": "attribution calculation/deletion races cannot leave orphaned results or touchpoints",
+      "result": "PASS"
+    },
+    {
+      "name": "campaign touchpoint reads exclude inconsistent persisted journey ownership",
+      "result": "PASS"
+    },
+    {
+      "name": "getGoogleSheetsConnections: concurrent renewal survives lazy encryption CAS",
+      "result": "PASS"
+    },
+    {
+      "name": "getHubspotConnections: concurrent renewal survives lazy encryption CAS",
+      "result": "PASS"
+    },
+    {
+      "name": "getHubspotConnection: concurrent renewal survives lazy encryption CAS",
+      "result": "PASS"
+    },
+    {
+      "name": "getSalesforceConnections: concurrent renewal survives lazy encryption CAS",
+      "result": "PASS"
+    },
+    {
+      "name": "getSalesforceConnection: concurrent renewal survives lazy encryption CAS",
+      "result": "PASS"
+    },
+    {
+      "name": "getShopifyConnections: concurrent renewal survives lazy encryption CAS",
+      "result": "PASS"
+    },
+    {
+      "name": "getShopifyConnection: concurrent renewal survives lazy encryption CAS",
+      "result": "PASS"
+    },
+    {
+      "name": "getLinkedInConnection: concurrent renewal survives lazy encryption CAS",
+      "result": "PASS"
+    },
+    {
+      "name": "getMetaConnection: concurrent renewal survives lazy encryption CAS",
+      "result": "PASS"
+    },
+    {
+      "name": "getGoogleAdsConnection: concurrent renewal survives lazy encryption CAS",
+      "result": "PASS"
+    },
+    {
+      "name": "fresh current schema and repeated 0022 migration agree on ownership indexes and durable receipts",
+      "result": "PASS"
+    }
+  ]
+}

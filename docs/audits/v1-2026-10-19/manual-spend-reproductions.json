@@ -1,0 +1,74 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact current manual Spend handler and helpers, owner/storage/recompute fixtures; no file, provider or database touched.",
+  "results": [
+    {
+      "case": "GA4 manual rejection control",
+      "response": {
+        "success": false,
+        "error": "Manual Spend is not supported for GA4."
+      },
+      "status": 400,
+      "writes": []
+    },
+    {
+      "case": "GA4 manual amount accepted when relabeled CSV",
+      "response": {
+        "success": true,
+        "sourceId": "fixture-source",
+        "spendToDate": 100,
+        "currency": "USD",
+        "platformContext": "ga4",
+        "derivedValuesUpdated": true
+      },
+      "status": 200,
+      "writes": [
+        {
+          "source": {
+            "campaignId": "fixture",
+            "sourceType": "csv",
+            "platformContext": "ga4",
+            "displayName": "Manual spend – ga4",
+            "currency": "USD",
+            "mappingConfig": "{\"amount\":100,\"currency\":\"USD\",\"mode\":\"spend_to_date\",\"subCampaignUrn\":null}",
+            "isActive": true
+          },
+          "records": [
+            {
+              "campaignId": "fixture",
+              "date": "2026-10-19",
+              "spend": "100.00",
+              "currency": "USD",
+              "sourceType": "csv",
+              "subCampaignUrn": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "Non-GA4 record insertion failure still returns success",
+      "response": {
+        "success": true,
+        "sourceId": "fixture-source",
+        "spendToDate": 100,
+        "currency": "USD",
+        "platformContext": "linkedin"
+      },
+      "status": 200,
+      "writes": [
+        {
+          "source": {
+            "campaignId": "fixture",
+            "sourceType": "manual",
+            "platformContext": "linkedin",
+            "displayName": "Manual spend – linkedin",
+            "currency": "USD",
+            "mappingConfig": "{\"amount\":100,\"currency\":\"USD\",\"mode\":\"spend_to_date\",\"subCampaignUrn\":null}",
+            "isActive": true
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -105,6 +105,8 @@ export async function getGoogleAdsServiceAccountAccessToken(): Promise<{ accessT
 export async function hydrateGoogleAdsServiceAccountConnection<T extends Record<string, any>>(connection: T): Promise<T> {
   if (String(connection?.method || "").trim().toLowerCase() !== GOOGLE_ADS_SERVICE_ACCOUNT_METHOD) return connection;
   assertGoogleAdsServiceAccountCustomerAllowed(connection?.customerId);
+  const { storage } = await import("../storage");
+  await storage.assertServiceAccountResourceAccess(connection.campaignId, "google_ads", normalizeGoogleAdsCustomerId(connection.customerId));
   const credentials = await getGoogleAdsServiceAccountAccessToken();
   return {
     ...connection,

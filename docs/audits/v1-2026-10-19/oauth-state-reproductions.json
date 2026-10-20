@@ -1,0 +1,82 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact current sign/verify closures and tokenVault secret resolver with synthetic environment, clock and ephemeral fixture keys. No actual environment secret collection, browser, network, DB or provider calls.",
+  "results": [
+    {
+      "case": "GA4 state controls",
+      "valid": true,
+      "tamperRejected": true,
+      "expiredRejected": true,
+      "repeatedVerifierAcceptance": true,
+      "limitation": "Verifier does not consume nonce; repeated verification is not proof of repeated provider code exchange or unauthorized callback write."
+    },
+    {
+      "case": "GoogleSheets state controls",
+      "valid": true,
+      "tamperRejected": true,
+      "expiredRejected": true,
+      "repeatedVerifierAcceptance": true,
+      "limitation": "Verifier does not consume nonce; repeated verification is not proof of repeated provider code exchange or unauthorized callback write."
+    },
+    {
+      "case": "HubSpot state controls",
+      "valid": true,
+      "tamperRejected": true,
+      "expiredRejected": true,
+      "repeatedVerifierAcceptance": true,
+      "limitation": "Verifier does not consume nonce; repeated verification is not proof of repeated provider code exchange or unauthorized callback write."
+    },
+    {
+      "case": "LinkedIn state controls",
+      "valid": true,
+      "tamperRejected": true,
+      "expiredRejected": true,
+      "repeatedVerifierAcceptance": true,
+      "limitation": "Verifier does not consume nonce; repeated verification is not proof of repeated provider code exchange or unauthorized callback write."
+    },
+    {
+      "case": "Meta state controls",
+      "valid": true,
+      "tamperRejected": true,
+      "expiredRejected": true,
+      "repeatedVerifierAcceptance": true,
+      "limitation": "Verifier does not consume nonce; repeated verification is not proof of repeated provider code exchange or unauthorized callback write."
+    },
+    {
+      "case": "GoogleAds state controls",
+      "valid": true,
+      "tamperRejected": true,
+      "expiredRejected": true,
+      "repeatedVerifierAcceptance": true,
+      "limitation": "Verifier does not consume nonce; repeated verification is not proof of repeated provider code exchange or unauthorized callback write."
+    },
+    {
+      "case": "GA4 production missing-secret control",
+      "signingRejected": true
+    },
+    {
+      "case": "GoogleSheets production missing-secret control",
+      "signingRejected": true
+    },
+    {
+      "case": "HubSpot production missing-secret control",
+      "signingRejected": true
+    },
+    {
+      "case": "GoogleAds production missing-secret control",
+      "signingRejected": true
+    },
+    {
+      "case": "LinkedIn production missing-secret accepts publicly derivable state",
+      "forgedStateAccepted": true,
+      "spendOnly": true,
+      "limitation": "Callback retains campaign-owner check. Live secret configuration and provider exchange not inspected/executed."
+    },
+    {
+      "case": "Meta production missing-secret accepts publicly derivable state",
+      "forgedStateAccepted": true,
+      "spendOnly": true,
+      "limitation": "Callback retains campaign-owner check. Live secret configuration and provider exchange not inspected/executed."
+    }
+  ]
+}

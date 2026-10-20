@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-20T09:06:44.957Z",
+  "records": [
+    {
+      "sourceFile": "server/ga4-published-reader.test.ts",
+      "sourceHash": "57df4a0bb240f312c8b2e4bc7824a40ef2971769436fa2939fa021ef4c23c2a6",
+      "target": "docs/audits/v1-2026-10-19/ga4-published-reader.binding-diagnostic.test.ts",
+      "change": "Bind the actual internal-request authentication helper missing from the extracted-handler test."
+    },
+    {
+      "sourceFile": "server/hubspot-pipeline-automation-ui.test.ts",
+      "sourceHash": "8efc021aea591c1b6f7ea6466663f90fcf46c77916e4c0f31be42ce5bb123693",
+      "target": "docs/audits/v1-2026-10-19/hubspot-pipeline-automation-ui.binding-diagnostic.test.ts",
+      "change": "Give the intended eligible synthetic campaign its required active status."
+    },
+    {
+      "sourceFile": "server/salesforce-pipeline-automation-ui.test.ts",
+      "sourceHash": "d1c44e1c56874012058db5036e087cdd596700505c06911e315097661d3482fc",
+      "target": "docs/audits/v1-2026-10-19/salesforce-pipeline-automation-ui.binding-diagnostic.test.ts",
+      "change": "Give the intended eligible synthetic campaign its required active status."
+    }
+  ]
+}

@@ -1,0 +1,239 @@
+{
+  "boundary": "Exact handler extraction, fixture storage and no outer Clerk middleware; source review separately establishes no requireAuth enforcement. No live requests, database or email.",
+  "results": [
+    {
+      "case": "Unauthenticated global metric read",
+      "status": 200,
+      "payload": [
+        {
+          "name": "private metric"
+        }
+      ],
+      "writes": [],
+      "reads": [
+        {
+          "name": "getMetrics",
+          "args": []
+        }
+      ],
+      "sent": []
+    },
+    {
+      "case": "Unauthenticated global metric write",
+      "status": 200,
+      "payload": {
+        "name": "fixture",
+        "value": "123"
+      },
+      "writes": [
+        {
+          "name": "createMetric",
+          "args": [
+            {
+              "name": "fixture",
+              "value": "123"
+            }
+          ]
+        }
+      ],
+      "reads": [],
+      "sent": []
+    },
+    {
+      "case": "LinkedIn campaign labels read without owner check",
+      "status": 200,
+      "payload": {
+        "campaigns": [
+          {
+            "urn": "private-urn",
+            "name": "Private campaign",
+            "status": "active"
+          }
+        ]
+      },
+      "writes": [],
+      "reads": [
+        {
+          "name": "getLatestLinkedInImportSession",
+          "args": [
+            "other-owner-campaign"
+          ]
+        },
+        {
+          "name": "getLinkedInImportMetrics",
+          "args": [
+            "private-session"
+          ]
+        }
+      ],
+      "sent": []
+    },
+    {
+      "case": "LinkedIn financial totals read without owner check",
+      "status": 200,
+      "payload": {
+        "breakdown": [],
+        "totalRevenue": 123,
+        "hasSubCampaignData": false
+      },
+      "writes": [],
+      "reads": [
+        {
+          "name": "getRevenueTotalForRange",
+          "args": [
+            "other-owner-campaign",
+            "2000-01-01",
+            "2099-12-31",
+            "linkedin"
+          ]
+        },
+        {
+          "name": "getHubspotConnection",
+          "args": [
+            "other-owner-campaign"
+          ]
+        },
+        {
+          "name": "getShopifyConnection",
+          "args": [
+            "other-owner-campaign"
+          ]
+        },
+        {
+          "name": "getSalesforceConnection",
+          "args": [
+            "other-owner-campaign"
+          ]
+        }
+      ],
+      "sent": []
+    },
+    {
+      "case": "Unsigned conversion write and mixed-currency average",
+      "status": 200,
+      "payload": {
+        "success": true,
+        "event": {
+          "id": "fixture",
+          "value": "100.00",
+          "currency": "USD",
+          "occurredAt": "2026-10-19T19:26:58.558Z"
+        },
+        "message": "Conversion event recorded successfully"
+      },
+      "writes": [
+        {
+          "name": "createConversionEvent",
+          "args": [
+            {
+              "campaignId": "other-owner-campaign",
+              "conversionId": "same-id",
+              "value": "100.00",
+              "currency": "USD",
+              "conversionType": null,
+              "source": "webhook",
+              "metadata": null,
+              "occurredAt": "2026-10-19T19:26:58.558Z"
+            }
+          ]
+        },
+        {
+          "name": "updateCampaign",
+          "args": [
+            "other-owner-campaign",
+            {
+              "conversionValue": "150.00"
+            }
+          ]
+        }
+      ],
+      "reads": [
+        {
+          "name": "getCampaign",
+          "args": [
+            "other-owner-campaign"
+          ]
+        },
+        {
+          "name": "getConversionEvents",
+          "args": [
+            "other-owner-campaign",
+            "2026-09-19T19:26:58.558Z"
+          ]
+        }
+      ],
+      "sent": []
+    },
+    {
+      "case": "Numeric zero conversion rejected",
+      "status": 400,
+      "payload": {
+        "success": false,
+        "error": "Invalid or missing 'value' field. Must be a number."
+      },
+      "writes": [],
+      "reads": [
+        {
+          "name": "getCampaign",
+          "args": [
+            "other-owner-campaign"
+          ]
+        }
+      ],
+      "sent": []
+    },
+    {
+      "case": "Missing Mailgun signature accepted past verification even with configured key",
+      "status": 404,
+      "payload": {
+        "error": "Campaign not found for this email address"
+      },
+      "writes": [],
+      "reads": [
+        {
+          "name": "getCustomIntegrationByEmail",
+          "args": [
+            "fixture@example.invalid"
+          ]
+        }
+      ],
+      "sent": []
+    },
+    {
+      "case": "Unauthenticated email route reaches mocked transport",
+      "status": 200,
+      "mockedTransportCalls": 1
+    },
+    {
+      "case": "Empty global metrics trigger startup fabrication and activation",
+      "seedWriteCount": 16,
+      "query": "\n      UPDATE campaigns SET\n        impressions = CASE\n          WHEN platform = 'facebook' THEN 85240\n          WHEN platform = 'linkedin' THEN 42180\n          ELSE 65430\n        END,\n        clicks = CASE\n          WHEN platform = 'facebook' THEN 3842\n          WHEN platform = 'linkedin' THEN 1915\n          ELSE 2937\n        END,\n        spend = CASE\n          WHEN platform = 'facebook' THEN '5200'\n          WHEN platform = 'linkedin' THEN '7800'\n          ELSE '4800'\n        END,\n        conversions = CASE\n          WHEN platform = 'facebook' THEN 280\n          WHEN platform = 'linkedin' THEN 145\n          ELSE 195\n        END,\n        revenue = CASE\n          WHEN platform = 'facebook' THEN '14500'\n          WHEN platform = 'linkedin' THEN '22300'\n          ELSE '12600'\n        END,\n        health = 'good',\n        status = 'active'\n      WHERE (impressions = 0 OR impressions IS NULL)\n        AND (clicks = 0 OR clicks IS NULL);\n    ",
+      "boundary": "Query captured only; no database execution"
+    },
+    {
+      "case": "Two scheduled-report invocations both pass stale-event retry claim",
+      "enteredAfterClaim": 2,
+      "retryWrites": [
+        {
+          "status": "pending",
+          "error": null,
+          "recipients": []
+        },
+        {
+          "status": "pending",
+          "error": null,
+          "recipients": []
+        },
+        {
+          "status": "skipped",
+          "error": "Fixture stops before artifact/email"
+        },
+        {
+          "status": "skipped",
+          "error": "Fixture stops before artifact/email"
+        }
+      ],
+      "boundary": "Exact scheduler function with fixture database. Stops at first scope check before artifacts/email; does not prove actual duplicate live delivery."
+    }
+  ]
+}

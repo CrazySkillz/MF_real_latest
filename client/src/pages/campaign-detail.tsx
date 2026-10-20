@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useRoute, useSearch } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings, Target, FileText, PieChart, TrendingUp, TrendingDown, Copy, Share2, Filter, CheckCircle2, Clock, AlertCircle, Briefcase, Send, MessageCircle, Bot, User, Award, Plus, Edit2, Trash2, Pencil, Star, X, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
@@ -157,6 +157,7 @@ const parseFormattedNumber = (value: string): number => {
 
 // Campaign KPIs Component
 function CampaignKPIs({ campaign }: { campaign: Campaign }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const search = useSearch();
   const { data: kpis = [], isLoading } = useQuery<any[]>({
@@ -2507,6 +2508,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
 // Campaign Benchmarks Component
 function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const search = useSearch();
   const refreshNotificationQueries = async () => {
@@ -4257,6 +4259,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
 }
 
 export default function CampaignDetail() {
+  const queryClient = useQueryClient();
   const [, params] = useRoute("/campaigns/:id");
   const campaignId = params?.id;
   const { toast: toastHook } = useToast();

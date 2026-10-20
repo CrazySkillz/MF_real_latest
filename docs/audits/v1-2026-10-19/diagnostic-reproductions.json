@@ -1,0 +1,82 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "results": [
+    {
+      "case": "Mixed web/paid conversion and denominator diverge between Trend and Performance helpers",
+      "trend": {
+        "date": "2026-10-18",
+        "metrics": {
+          "spend": 10,
+          "revenue": 100,
+          "sessions": 100,
+          "conversions": 15,
+          "clicks": 20,
+          "impressions": 200,
+          "cpc": 0.5,
+          "cpm": 50,
+          "cpa": 0.67,
+          "roas": 10,
+          "roi": 900,
+          "ctr": 10,
+          "cvr": 75
+        }
+      },
+      "performance": {
+        "conversions": {
+          "value": 10,
+          "available": true,
+          "sources": [
+            "ga4"
+          ],
+          "unavailableReasons": []
+        },
+        "cvr": {
+          "value": 10,
+          "available": true,
+          "sources": [
+            "conversions",
+            "sessions"
+          ],
+          "unavailableReasons": []
+        }
+      },
+      "boundary": "Exact current helpers, same fixture inputs; route constructs both sources. Current GA4 cumulative UI branch uses separately verified GA4 rows; retained aggregate/UI branch remains affected."
+    },
+    {
+      "case": "Trend financial override is truthy: zero retains100 native, positive20 replaces100 native",
+      "zero": {
+        "date": "2026-10-18",
+        "metrics": {
+          "spend": 10,
+          "revenue": 100,
+          "sessions": 100,
+          "conversions": 10,
+          "cpc": null,
+          "cpm": null,
+          "cpa": 1,
+          "roas": 10,
+          "roi": 900,
+          "ctr": null,
+          "cvr": 10
+        }
+      },
+      "positive": {
+        "date": "2026-10-18",
+        "metrics": {
+          "spend": 10,
+          "revenue": 20,
+          "sessions": 100,
+          "conversions": 10,
+          "cpc": null,
+          "cpm": null,
+          "cpa": 1,
+          "roas": 2,
+          "roi": 100,
+          "ctr": null,
+          "cvr": 10
+        }
+      },
+      "boundary": "Exact helper; illustrates inconsistent override, not a claim every input combination should be summed. Required source classification/availability/window policy is absent in this contract."
+    }
+  ]
+}

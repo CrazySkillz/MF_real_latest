@@ -19,7 +19,9 @@ import { sql } from "drizzle-orm";
 import { clerkMiddleware } from "@clerk/express";
 import { storage } from "./storage";
 import { getFinancialDailySnapshotObservationStatus } from "./utils/financial-daily-snapshot-observation";
+import { assertProductionTokenEncryptionConfigured } from "./utils/tokenVault";
 
+assertProductionTokenEncryptionConfigured();
 const app = express();
 
 // Set Express environment mode based on NODE_ENV
@@ -167,21 +169,10 @@ async function seedDashboardData() {
 // API routes middleware - ensure all API routes are handled first
 app.use('/api', (req, res, next) => {
   const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
+  const path = req.path.replace(/^(\/(?:webhook\/custom-integration|email\/inbound)\/)[^/]+/, "$1[redacted]");
   res.on("finish", () => {
     const duration = Date.now() - start;
     let logLine = `${req.method} /api${path} ${res.statusCode} in ${duration}ms`;
-    if (capturedJsonResponse) {
-      logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-    }
 
     if (logLine.length > 80) {
       logLine = logLine.slice(0, 79) + "…";

@@ -1,0 +1,11 @@
+{
+  "sourceFile": "server/notification-alert-postgres-concurrency.test.ts",
+  "sourceSHA256": "130711620442c229ebc9d63d79f3db2deb9da3b019c22ce8c2b01fd7cbc5ef82",
+  "changes": [
+    "Resolve unchanged production modules from audit fixture location.",
+    "Add missing getGA4PublicationVersion mock returning zero.",
+    "Add missing writeGA4DerivedChange mock using the isolated database transaction; production publication-version fencing is NOT under test.",
+    "Require explicit loopback port55442 in addition to existing isolated database name."
+  ],
+  "boundary": "Real competing PostgreSQL notification transactions and current notification modules; campaign/current-value/publication identity are fixture inputs. Original full-suite failure remains unresolved."
+}

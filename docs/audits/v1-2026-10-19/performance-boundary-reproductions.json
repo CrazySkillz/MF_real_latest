@@ -1,0 +1,221 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact current page state expressions/card helpers and imported recommendation/health/traffic modules. API payloads are explicit synthetic fixtures; no browser, server, provider, database or report. These cases do not prove upstream publication truth or real occurrence.",
+  "results": [
+    {
+      "case": "Fresh aligned inputs",
+      "states": {
+        "traffic": "ready",
+        "revenue": "ready",
+        "conversions": "ready",
+        "spend": "ready"
+      },
+      "headline": {
+        "available": true,
+        "value": 300,
+        "sources": [
+          "GA4 native revenue"
+        ],
+        "unavailableReasons": []
+      },
+      "actions": [
+        {
+          "type": "success",
+          "priority": 8,
+          "severity": 50,
+          "category": "kpi-revenue",
+          "title": "Revenue on target",
+          "message": "Verified $300.00 from connected-source financial inputs versus the $200.00 KPI target. No corrective action is indicated by this target; continue monitoring."
+        }
+      ]
+    },
+    {
+      "case": "GA4 refresh explicitly stale",
+      "states": {
+        "traffic": "stale",
+        "revenue": "ready",
+        "conversions": "ready",
+        "spend": "ready"
+      },
+      "headline": {
+        "available": false,
+        "value": null,
+        "sources": [],
+        "unavailableReasons": [
+          "GA4 revenue data is stale"
+        ]
+      },
+      "actions": [
+        {
+          "type": "success",
+          "priority": 8,
+          "severity": 50,
+          "category": "kpi-revenue",
+          "title": "Revenue on target",
+          "message": "Verified $300.00 from connected-source financial inputs versus the $200.00 KPI target. No corrective action is indicated by this target; continue monitoring."
+        }
+      ]
+    },
+    {
+      "case": "Revenue read error with retained data",
+      "states": {
+        "traffic": "ready",
+        "revenue": "stale",
+        "conversions": "stale",
+        "spend": "ready"
+      },
+      "headline": {
+        "available": false,
+        "value": null,
+        "sources": [],
+        "unavailableReasons": [
+          "GA4 revenue data is stale"
+        ]
+      },
+      "actions": [
+        {
+          "type": "info",
+          "priority": 0,
+          "category": "blocked-targets",
+          "title": "Recommendation inputs unavailable",
+          "message": "KPI Revenue cannot be evaluated from fresh, sufficient source data. No action is recommended for those metrics."
+        }
+      ]
+    },
+    {
+      "case": "Spend read error with retained data",
+      "states": {
+        "traffic": "ready",
+        "revenue": "ready",
+        "conversions": "ready",
+        "spend": "stale"
+      },
+      "headline": {
+        "available": true,
+        "value": 300,
+        "sources": [
+          "GA4 native revenue"
+        ],
+        "unavailableReasons": []
+      },
+      "actions": [
+        {
+          "type": "success",
+          "priority": 8,
+          "severity": 50,
+          "category": "kpi-revenue",
+          "title": "Revenue on target",
+          "message": "Verified $300.00 from connected-source financial inputs versus the $200.00 KPI target. No corrective action is indicated by this target; continue monitoring."
+        }
+      ]
+    },
+    {
+      "case": "Summary transport error with retained data",
+      "states": {
+        "traffic": "stale",
+        "revenue": "unavailable",
+        "conversions": "stale",
+        "spend": "unavailable"
+      },
+      "headline": {
+        "available": false,
+        "value": null,
+        "sources": [],
+        "unavailableReasons": [
+          "GA4 revenue data is stale"
+        ]
+      },
+      "actions": [
+        {
+          "type": "info",
+          "priority": 0,
+          "category": "blocked-targets",
+          "title": "Recommendation inputs unavailable",
+          "message": "KPI Revenue cannot be evaluated from fresh, sufficient source data. No action is recommended for those metrics."
+        }
+      ]
+    },
+    {
+      "case": "Performance Total Users preserves daily sum without the GA4 Overview grain explanation",
+      "dailyUsers": [
+        1,
+        1
+      ],
+      "summaryTotal": 2,
+      "metric": {
+        "available": true,
+        "value": 2,
+        "sources": [
+          "Google Analytics"
+        ],
+        "unavailableReasons": []
+      },
+      "cardHasGrainExplanation": false,
+      "ga4OverviewExplainsGrain": true,
+      "limitation": "No claim that these synthetic daily counts represent two distinct people. Deduplication cannot be recovered from aggregate rows."
+    },
+    {
+      "case": "No configured targets",
+      "input": {
+        "configuredKpiCount": 0,
+        "configuredBenchmarkCount": 0,
+        "scoredKpiCount": 0,
+        "scoredBenchmarkCount": 0,
+        "kpisOnTrack": 0,
+        "benchmarksOnTrack": 0
+      },
+      "value": {
+        "configuredMetricCount": 0,
+        "verifiedMetricCount": 0,
+        "excludedMetricCount": 0,
+        "totalOnTrackMetrics": 0,
+        "healthScore": null
+      }
+    },
+    {
+      "case": "One unavailable target suppresses health score",
+      "input": {
+        "configuredKpiCount": 2,
+        "configuredBenchmarkCount": 0,
+        "scoredKpiCount": 1,
+        "scoredBenchmarkCount": 0,
+        "kpisOnTrack": 1,
+        "benchmarksOnTrack": 0
+      },
+      "value": {
+        "configuredMetricCount": 2,
+        "verifiedMetricCount": 1,
+        "excludedMetricCount": 1,
+        "totalOnTrackMetrics": 1,
+        "healthScore": null
+      }
+    },
+    {
+      "case": "Verified mixed health rounds ratio",
+      "input": {
+        "configuredKpiCount": 2,
+        "configuredBenchmarkCount": 1,
+        "scoredKpiCount": 2,
+        "scoredBenchmarkCount": 1,
+        "kpisOnTrack": 1,
+        "benchmarksOnTrack": 1
+      },
+      "value": {
+        "configuredMetricCount": 3,
+        "verifiedMetricCount": 3,
+        "excludedMetricCount": 0,
+        "totalOnTrackMetrics": 2,
+        "healthScore": 67
+      }
+    },
+    {
+      "case": "Legacy weekly metadata retains intended absolute target semantics",
+      "value": {
+        "comparable": true,
+        "currentWindow": "Initial import through latest completed reporting day",
+        "configuredPeriod": "weekly",
+        "reason": null
+      }
+    }
+  ]
+}

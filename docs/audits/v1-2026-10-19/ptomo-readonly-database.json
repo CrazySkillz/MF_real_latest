@@ -1,0 +1,437 @@
+{
+  "observedAt": "2026-10-19T23:54:08.266Z",
+  "boundary": "Repository-configured database only; its binding to the current deployment is unverified. Parameterized SELECT for exact Ptomo name in a READ ONLY transaction. No application/provider methods, token migration, refresh, email or customer mutation.",
+  "checks": [
+    {
+      "check": "ga4-connection-metadata-only",
+      "count": 1,
+      "rows": [
+        {
+          "method": "service_account",
+          "is_primary": true,
+          "is_active": true,
+          "lookback_days": 30,
+          "import_start_date": "2026-09-04",
+          "property_selected": true,
+          "encrypted_credentials_present": true,
+          "legacy_access_token_present": false,
+          "legacy_refresh_token_present": false,
+          "legacy_service_account_key_present": false,
+          "expires_at": null,
+          "connected_at": "2026-10-04 21:26:01.282063"
+        }
+      ]
+    },
+    {
+      "check": "financial-source-family-counts",
+      "rows": []
+    },
+    {
+      "check": "native-daily-coverage-metadata",
+      "rows": [
+        {
+          "rows": 45,
+          "first_date": "2026-09-04",
+          "last_date": "2026-10-18",
+          "distinct_dates": 45,
+          "property_count": 1,
+          "simulated_rows": 0,
+          "latest_updated_at": "2026-10-19 18:14:53.927",
+          "rows_without_active_property": 0
+        }
+      ]
+    },
+    {
+      "check": "overview-snapshot-window-metadata",
+      "rows": [
+        {
+          "window_start": "2026-09-04",
+          "window_end": "2026-10-18",
+          "updated_at": "2026-10-19 18:14:54.105",
+          "matches_active_property": true,
+          "campaign_payload_type": "object",
+          "landing_payload_type": "object",
+          "events_payload_type": "object"
+        }
+      ]
+    },
+    {
+      "check": "persisted-native-detail-to-daily-reconciliation",
+      "rows": [
+        {
+          "window_start": "2026-09-04",
+          "window_end": "2026-10-18",
+          "currency_matches_campaign": true,
+          "daily_rows_in_snapshot_window": 45,
+          "distinct_daily_dates": 45,
+          "expected_calendar_dates": 45,
+          "sessions_reconcile": true,
+          "conversions_reconcile": true,
+          "revenue_reconciles_with_daily_cent_tolerance": true,
+          "event_conversions_reconcile": true
+        }
+      ],
+      "boundary": "Independent read-only SQL comparison follows current scheduler reconciliation identities/tolerance. Matching persisted outputs do not independently verify provider truth, attribution or every consumer."
+    },
+    {
+      "check": "latest-five-native-work-statuses",
+      "rows": [
+        {
+          "status": "completed",
+          "due_at": "2026-10-19T18:00:00.000Z",
+          "reporting_date": "2026-10-18",
+          "started_at": "2026-10-19T18:14:00.219Z",
+          "completed_at": "2026-10-19T18:16:16.449Z",
+          "attempt_count": 1,
+          "next_attempt_at": null,
+          "suppress_alerts": false,
+          "retryable": true,
+          "lease_expires_at": null,
+          "error_present": false,
+          "invalidated": false,
+          "initial_import": null
+        },
+        {
+          "status": "completed",
+          "due_at": "2026-10-19T12:00:00.000Z",
+          "reporting_date": "2026-10-18",
+          "started_at": "2026-10-19T12:13:54.803Z",
+          "completed_at": "2026-10-19T12:16:02.165Z",
+          "attempt_count": 1,
+          "next_attempt_at": null,
+          "suppress_alerts": false,
+          "retryable": true,
+          "lease_expires_at": null,
+          "error_present": false,
+          "invalidated": false,
+          "initial_import": null
+        },
+        {
+          "status": "completed",
+          "due_at": "2026-10-19T06:00:00.000Z",
+          "reporting_date": "2026-10-18",
+          "started_at": "2026-10-19T06:12:56.898Z",
+          "completed_at": "2026-10-19T06:15:06.499Z",
+          "attempt_count": 1,
+          "next_attempt_at": null,
+          "suppress_alerts": false,
+          "retryable": true,
+          "lease_expires_at": null,
+          "error_present": false,
+          "invalidated": false,
+          "initial_import": null
+        },
+        {
+          "status": "completed",
+          "due_at": "2026-10-18T18:00:00.000Z",
+          "reporting_date": "2026-10-17",
+          "started_at": "2026-10-18T18:13:24.473Z",
+          "completed_at": "2026-10-18T18:15:32.322Z",
+          "attempt_count": 1,
+          "next_attempt_at": null,
+          "suppress_alerts": false,
+          "retryable": true,
+          "lease_expires_at": null,
+          "error_present": false,
+          "invalidated": false,
+          "initial_import": null
+        }
+      ]
+    },
+    {
+      "check": "snapshot-type-coverage-metadata",
+      "rows": [
+        {
+          "snapshot_type": "executive_summary_daily",
+          "rows": 15,
+          "first_reporting_date": "2026-10-04",
+          "last_reporting_date": "2026-10-18",
+          "latest_recorded_at": "2026-10-19 18:15:56.965502",
+          "alignment_markers": 15,
+          "publication_receipts": 0
+        },
+        {
+          "snapshot_type": "financial_daily",
+          "rows": 15,
+          "first_reporting_date": "2026-10-04",
+          "last_reporting_date": "2026-10-18",
+          "latest_recorded_at": "2026-10-19 18:15:29.802658",
+          "alignment_markers": 0,
+          "publication_receipts": 0
+        },
+        {
+          "snapshot_type": "platform_sync",
+          "rows": 42,
+          "first_reporting_date": null,
+          "last_reporting_date": null,
+          "latest_recorded_at": "2026-10-19 18:15:42.853783",
+          "alignment_markers": 0,
+          "publication_receipts": 0
+        }
+      ]
+    },
+    {
+      "check": "other-connection-counts-for-ptomo-only",
+      "rows": [
+        {
+          "source_table": "linkedin_connections",
+          "count": 0
+        },
+        {
+          "source_table": "meta_connections",
+          "count": 0
+        },
+        {
+          "source_table": "instagram_connections",
+          "count": 0
+        },
+        {
+          "source_table": "tiktok_connections",
+          "count": 0
+        },
+        {
+          "source_table": "google_ads_connections",
+          "count": 0
+        },
+        {
+          "source_table": "ga4_google_ads_spend_connections",
+          "count": 0
+        },
+        {
+          "source_table": "google_sheets_connections",
+          "count": 0
+        },
+        {
+          "source_table": "hubspot_connections",
+          "count": 0
+        },
+        {
+          "source_table": "salesforce_connections",
+          "count": 0
+        },
+        {
+          "source_table": "shopify_connections",
+          "count": 0
+        },
+        {
+          "source_table": "custom_integrations",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "check": "selected-schema-index-metadata-only",
+      "rows": [
+        {
+          "table_name": "ga4_daily_metrics",
+          "index_name": "ga4_daily_metrics_campaign_id_property_id_date_key",
+          "is_unique": true,
+          "is_valid": true,
+          "definition": "CREATE UNIQUE INDEX ga4_daily_metrics_campaign_id_property_id_date_key ON public.ga4_daily_metrics USING btree (campaign_id, property_id, date)"
+        },
+        {
+          "table_name": "ga4_daily_metrics",
+          "index_name": "ga4_daily_metrics_pkey",
+          "is_unique": true,
+          "is_valid": true,
+          "definition": "CREATE UNIQUE INDEX ga4_daily_metrics_pkey ON public.ga4_daily_metrics USING btree (id)"
+        },
+        {
+          "table_name": "ga4_daily_metrics",
+          "index_name": "idx_ga4_daily_metrics_campaign_date",
+          "is_unique": false,
+          "is_valid": true,
+          "definition": "CREATE INDEX idx_ga4_daily_metrics_campaign_date ON public.ga4_daily_metrics USING btree (campaign_id, date)"
+        },
+        {
+          "table_name": "ga4_overview_snapshots",
+          "index_name": "ga4_overview_snapshots_campaign_property_unique",
+          "is_unique": true,
+          "is_valid": true,
+          "definition": "CREATE UNIQUE INDEX ga4_overview_snapshots_campaign_property_unique ON public.ga4_overview_snapshots USING btree (campaign_id, property_id)"
+        },
+        {
+          "table_name": "ga4_overview_snapshots",
+          "index_name": "ga4_overview_snapshots_pkey",
+          "is_unique": true,
+          "is_valid": true,
+          "definition": "CREATE UNIQUE INDEX ga4_overview_snapshots_pkey ON public.ga4_overview_snapshots USING btree (id)"
+        },
+        {
+          "table_name": "ga4_refresh_work",
+          "index_name": "ga4_refresh_work_identity",
+          "is_unique": true,
+          "is_valid": true,
+          "definition": "CREATE UNIQUE INDEX ga4_refresh_work_identity ON public.ga4_refresh_work USING btree (campaign_id, due_at, reporting_date, scope_hash)"
+        },
+        {
+          "table_name": "ga4_refresh_work",
+          "index_name": "ga4_refresh_work_pkey",
+          "is_unique": true,
+          "is_valid": true,
+          "definition": "CREATE UNIQUE INDEX ga4_refresh_work_pkey ON public.ga4_refresh_work USING btree (id)"
+        },
+        {
+          "table_name": "ga4_refresh_work",
+          "index_name": "ga4_refresh_work_running_campaign",
+          "is_unique": true,
+          "is_valid": true,
+          "definition": "CREATE UNIQUE INDEX ga4_refresh_work_running_campaign ON public.ga4_refresh_work USING btree (campaign_id) WHERE (status = 'running'::text)"
+        },
+        {
+          "table_name": "google_ads_daily_metrics",
+          "index_name": "google_ads_daily_metrics_campaign_id_google_campaign_id_dat_key",
+          "is_unique": true,
+          "is_valid": true,
+          "definition": "CREATE UNIQUE INDEX google_ads_daily_metrics_campaign_id_google_campaign_id_dat_key ON public.google_ads_daily_metrics USING btree (campaign_id, google_campaign_id, date)"
+        },
+        {
+          "table_name": "google_ads_daily_metrics",
+          "index_name": "google_ads_daily_metrics_pkey",
+          "is_unique": true,
+          "is_valid": true,
+          "definition": "CREATE UNIQUE INDEX google_ads_daily_metrics_pkey ON public.google_ads_daily_metrics USING btree (id)"
+        },
+        {
+          "table_name": "linkedin_daily_metrics",
+          "index_name": "idx_linkedin_daily_metrics_campaign_date",
+          "is_unique": false,
+          "is_valid": true,
+          "definition": "CREATE INDEX idx_linkedin_daily_metrics_campaign_date ON public.linkedin_daily_metrics USING btree (campaign_id, date)"
+        },
+        {
+          "table_name": "linkedin_daily_metrics",
+          "index_name": "linkedin_daily_metrics_campaign_id_date_key",
+          "is_unique": true,
+          "is_valid": true,
+          "definition": "CREATE UNIQUE INDEX linkedin_daily_metrics_campaign_id_date_key ON public.linkedin_daily_metrics USING btree (campaign_id, date)"
+        },
+        {
+          "table_name": "linkedin_daily_metrics",
+          "index_name": "linkedin_daily_metrics_pkey",
+          "is_unique": true,
+          "is_valid": true,
+          "definition": "CREATE UNIQUE INDEX linkedin_daily_metrics_pkey ON public.linkedin_daily_metrics USING btree (id)"
+        },
+        {
+          "table_name": "meta_daily_metrics",
+          "index_name": "meta_daily_metrics_campaign_meta_date_idx",
+          "is_unique": true,
+          "is_valid": true,
+          "definition": "CREATE UNIQUE INDEX meta_daily_metrics_campaign_meta_date_idx ON public.meta_daily_metrics USING btree (campaign_id, meta_campaign_id, date)"
+        },
+        {
+          "table_name": "meta_daily_metrics",
+          "index_name": "meta_daily_metrics_pkey",
+          "is_unique": true,
+          "is_valid": true,
+          "definition": "CREATE UNIQUE INDEX meta_daily_metrics_pkey ON public.meta_daily_metrics USING btree (id)"
+        },
+        {
+          "table_name": "metric_snapshots",
+          "index_name": "metric_snapshots_executive_summary_day_unique",
+          "is_unique": true,
+          "is_valid": true,
+          "definition": "CREATE UNIQUE INDEX metric_snapshots_executive_summary_day_unique ON public.metric_snapshots USING btree (campaign_id, reporting_date) WHERE ((snapshot_type = 'executive_summary_daily'::text) AND (reporting_date IS NOT NULL))"
+        },
+        {
+          "table_name": "metric_snapshots",
+          "index_name": "metric_snapshots_financial_day_unique",
+          "is_unique": true,
+          "is_valid": true,
+          "definition": "CREATE UNIQUE INDEX metric_snapshots_financial_day_unique ON public.metric_snapshots USING btree (campaign_id, reporting_date) WHERE ((snapshot_type = 'financial_daily'::text) AND (reporting_date IS NOT NULL))"
+        },
+        {
+          "table_name": "metric_snapshots",
+          "index_name": "metric_snapshots_pkey",
+          "is_unique": true,
+          "is_valid": true,
+          "definition": "CREATE UNIQUE INDEX metric_snapshots_pkey ON public.metric_snapshots USING btree (id)"
+        }
+      ],
+      "boundary": "Catalog metadata only, no other campaign data; does not validate full schema/migration history, constraints against dirty upgrades, backups or deployment binding."
+    },
+    {
+      "check": "goal-metric-and-alert-setting-counts",
+      "rows": [
+        {
+          "kind": "kpi",
+          "platform_type": "google_analytics",
+          "metric": "Total Sessions",
+          "count": 1,
+          "alerts_enabled": 1,
+          "email_enabled": 0
+        }
+      ]
+    },
+    {
+      "check": "existing-native-sessions-kpi-persisted-comparison",
+      "rows": [
+        {
+          "apply_to": "all",
+          "specific_scope_present": false,
+          "window_start": "2026-09-04",
+          "window_end": "2026-10-18",
+          "current_matches_saved_window_sessions": true,
+          "latest_progress_at": "2026-10-18 23:59:59",
+          "latest_progress_matches_current": true
+        }
+      ],
+      "boundary": "Native sessions alias and saved Overview window only. Specific-source configuration, all alert conditions, real UI/API output and provider truth not inferred from equality."
+    },
+    {
+      "check": "generic-report-library-and-schedule-counts",
+      "rows": []
+    },
+    {
+      "check": "report-snapshot-presence-counts",
+      "rows": []
+    },
+    {
+      "check": "report-send-bookkeeping-counts",
+      "rows": [],
+      "boundary": "Stored bookkeeping only; no provider acceptance or inbox receipt inferred."
+    },
+    {
+      "check": "email-audit-status-counts",
+      "rows": [],
+      "boundary": "No addresses, subjects, messages or provider response IDs selected; database audit status is not independent inbox evidence."
+    },
+    {
+      "check": "notification-presence-counts",
+      "rows": [
+        {
+          "type": "performance-alert",
+          "read": true,
+          "count": 1
+        }
+      ],
+      "boundary": "No messages/metadata selected. Counts do not establish active, dismissed, resolved or correctly scoped UI episodes."
+    }
+  ],
+  "readOnlyEnforced": true,
+  "timestampWithoutTimeZonePolicy": "Raw database strings; no assumed UTC or property timezone. timestamptz fields retain explicit UTC instants.",
+  "databaseClock": {
+    "observed_at": "2026-10-19T23:54:08.851Z",
+    "session_time_zone": "UTC",
+    "server_version": "17.9 (Debian 17.9-1.pgdg12+1)"
+  },
+  "matchCount": 1,
+  "matchCountCappedAt": 3,
+  "campaigns": [
+    {
+      "name": "Ptomo",
+      "currency": "EUR",
+      "reporting_time_zone": "Europe/Amsterdam",
+      "platform": "google-analytics",
+      "status": "active",
+      "owner_present": true,
+      "client_assigned": true,
+      "client_exists": true,
+      "client_owner_matches": true,
+      "ga4_filter_present": true,
+      "campaignIdSha256": "b85505d40a0a14398f36838d19d8d51e47037d32837d5a16464f4f1fc3601710"
+    }
+  ],
+  "status": "READ_ONLY_METADATA_OBSERVED"
+}

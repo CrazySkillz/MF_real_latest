@@ -1,0 +1,236 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "literalPaths": 349,
+  "unsupported": [],
+  "overlaps": [
+    {
+      "method": "PATCH",
+      "first": {
+        "path": "/api/notifications/mark-all-read",
+        "line": 7608
+      },
+      "later": {
+        "path": "/api/notifications/:id",
+        "line": 7723
+      },
+      "boundary": "Potential same-request match in declaration order; predicates, next(), parameter constraints and actual registration must be read."
+    },
+    {
+      "method": "GET",
+      "first": {
+        "path": "/api/linkedin/insights/:sessionId",
+        "line": 7866
+      },
+      "later": {
+        "path": "/api/linkedin/:campaignId/daily-metrics",
+        "line": 27449
+      },
+      "boundary": "Potential same-request match in declaration order; predicates, next(), parameter constraints and actual registration must be read."
+    },
+    {
+      "method": "GET",
+      "first": {
+        "path": "/api/google-sheets/:campaignId/spreadsheets",
+        "line": 12097
+      },
+      "later": {
+        "path": "/api/google-sheets/check-connection/:campaignId",
+        "line": 18025
+      },
+      "boundary": "Potential same-request match in declaration order; predicates, next(), parameter constraints and actual registration must be read."
+    },
+    {
+      "method": "GET",
+      "first": {
+        "path": "/api/google-sheets/:spreadsheetId/sheets",
+        "line": 16847
+      },
+      "later": {
+        "path": "/api/google-sheets/check-connection/:campaignId",
+        "line": 18025
+      },
+      "boundary": "Potential same-request match in declaration order; predicates, next(), parameter constraints and actual registration must be read."
+    },
+    {
+      "method": "DELETE",
+      "first": {
+        "path": "/api/linkedin/:campaignId/connection",
+        "line": 23918
+      },
+      "later": {
+        "path": "/api/linkedin/disconnect/:campaignId",
+        "line": 28596
+      },
+      "boundary": "Potential same-request match in declaration order; predicates, next(), parameter constraints and actual registration must be read."
+    },
+    {
+      "method": "DELETE",
+      "first": {
+        "path": "/api/linkedin/:campaignId/connection",
+        "line": 23918
+      },
+      "later": {
+        "path": "/api/linkedin/reports/:id",
+        "line": 32773
+      },
+      "boundary": "Potential same-request match in declaration order; predicates, next(), parameter constraints and actual registration must be read."
+    },
+    {
+      "method": "DELETE",
+      "first": {
+        "path": "/api/meta/:campaignId/connection",
+        "line": 24513
+      },
+      "later": {
+        "path": "/api/meta/reports/:reportId",
+        "line": 27770
+      },
+      "boundary": "Potential same-request match in declaration order; predicates, next(), parameter constraints and actual registration must be read."
+    },
+    {
+      "method": "POST",
+      "first": {
+        "path": "/api/platforms/meta/kpis",
+        "line": 26464
+      },
+      "later": {
+        "path": "/api/platforms/:platformType/kpis",
+        "line": 28780
+      },
+      "boundary": "Potential same-request match in declaration order; predicates, next(), parameter constraints and actual registration must be read."
+    },
+    {
+      "method": "PATCH",
+      "first": {
+        "path": "/api/platforms/meta/kpis/:kpiId",
+        "line": 26509
+      },
+      "later": {
+        "path": "/api/platforms/:platformType/kpis/:kpiId",
+        "line": 28857
+      },
+      "boundary": "Potential same-request match in declaration order; predicates, next(), parameter constraints and actual registration must be read."
+    },
+    {
+      "method": "DELETE",
+      "first": {
+        "path": "/api/platforms/meta/kpis/:kpiId",
+        "line": 26564
+      },
+      "later": {
+        "path": "/api/platforms/:platformType/kpis/:kpiId",
+        "line": 28968
+      },
+      "boundary": "Potential same-request match in declaration order; predicates, next(), parameter constraints and actual registration must be read."
+    },
+    {
+      "method": "GET",
+      "first": {
+        "path": "/api/linkedin/:campaignId/daily-metrics",
+        "line": 27449
+      },
+      "later": {
+        "path": "/api/linkedin/check-connection/:campaignId",
+        "line": 28568
+      },
+      "boundary": "Potential same-request match in declaration order; predicates, next(), parameter constraints and actual registration must be read."
+    },
+    {
+      "method": "GET",
+      "first": {
+        "path": "/api/linkedin/:campaignId/daily-metrics",
+        "line": 27449
+      },
+      "later": {
+        "path": "/api/linkedin/import-sessions/:campaignId",
+        "line": 31830
+      },
+      "boundary": "Potential same-request match in declaration order; predicates, next(), parameter constraints and actual registration must be read."
+    },
+    {
+      "method": "GET",
+      "first": {
+        "path": "/api/linkedin/:campaignId/daily-metrics",
+        "line": 27449
+      },
+      "later": {
+        "path": "/api/linkedin/metrics/:campaignId",
+        "line": 31847
+      },
+      "boundary": "Potential same-request match in declaration order; predicates, next(), parameter constraints and actual registration must be read."
+    },
+    {
+      "method": "GET",
+      "first": {
+        "path": "/api/linkedin/:campaignId/daily-metrics",
+        "line": 27449
+      },
+      "later": {
+        "path": "/api/linkedin/imports/:sessionId",
+        "line": 32196
+      },
+      "boundary": "Potential same-request match in declaration order; predicates, next(), parameter constraints and actual registration must be read."
+    },
+    {
+      "method": "GET",
+      "first": {
+        "path": "/api/linkedin/:campaignId/daily-metrics",
+        "line": 27449
+      },
+      "later": {
+        "path": "/api/linkedin/reports/:id",
+        "line": 32682
+      },
+      "boundary": "Potential same-request match in declaration order; predicates, next(), parameter constraints and actual registration must be read."
+    },
+    {
+      "method": "PATCH",
+      "first": {
+        "path": "/api/meta/:campaignId/selected-campaigns",
+        "line": 27507
+      },
+      "later": {
+        "path": "/api/meta/reports/:reportId",
+        "line": 27739
+      },
+      "boundary": "Potential same-request match in declaration order; predicates, next(), parameter constraints and actual registration must be read."
+    },
+    {
+      "method": "GET",
+      "first": {
+        "path": "/api/campaigns/:id/benchmarks/evaluated",
+        "line": 27540
+      },
+      "later": {
+        "path": "/api/campaigns/:id/benchmarks/evaluated",
+        "line": 29160
+      },
+      "boundary": "Potential same-request match in declaration order; predicates, next(), parameter constraints and actual registration must be read."
+    },
+    {
+      "method": "POST",
+      "first": {
+        "path": "/api/campaigns/:id/benchmarks",
+        "line": 27568
+      },
+      "later": {
+        "path": "/api/campaigns/:id/benchmarks",
+        "line": 29378
+      },
+      "boundary": "Potential same-request match in declaration order; predicates, next(), parameter constraints and actual registration must be read."
+    },
+    {
+      "method": "DELETE",
+      "first": {
+        "path": "/api/benchmarks/:benchmarkId",
+        "line": 27641
+      },
+      "later": {
+        "path": "/api/benchmarks/:id",
+        "line": 30606
+      },
+      "boundary": "Potential same-request match in declaration order; predicates, next(), parameter constraints and actual registration must be read."
+    }
+  ],
+  "limitation": "Same-file literal path/segment analysis; not a complete Express routing proof, regex/wildcards or dynamic registration analysis."
+}

@@ -1,0 +1,177 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "executedAt": "2026-10-19T23:39:49.358Z",
+  "boundary": "Safe-exclusion audit only. Actual handlers/access helpers and selected scheduler functions with fixture storage, production environment object and mock flags false; no credentials. No live campaign, network, database, email or runtime change.",
+  "results": [
+    {
+      "case": "meta connect-test: owner",
+      "status": 200,
+      "events": [
+        "delete-connection",
+        "create-connection",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator",
+        "dispatch-meta-generator"
+      ],
+      "method": "test_mode",
+      "generatedInstagramRows": 0,
+      "generatedTikTokRows": 0,
+      "boundary": "Actual route dispatches generator30 times; generator itself stubbed. Access/connection storage fixtures; no real data write."
+    },
+    {
+      "case": "meta connect-test: anonymous",
+      "status": 401,
+      "events": [],
+      "method": null,
+      "generatedInstagramRows": 0,
+      "generatedTikTokRows": 0,
+      "boundary": "Actual route dispatches generator30 times; generator itself stubbed. Access/connection storage fixtures; no real data write."
+    },
+    {
+      "case": "meta connect-test: foreign",
+      "status": 404,
+      "events": [],
+      "method": null,
+      "generatedInstagramRows": 0,
+      "generatedTikTokRows": 0,
+      "boundary": "Actual route dispatches generator30 times; generator itself stubbed. Access/connection storage fixtures; no real data write."
+    },
+    {
+      "case": "meta connect-test: missing-parent",
+      "status": 404,
+      "events": [],
+      "method": null,
+      "generatedInstagramRows": 0,
+      "generatedTikTokRows": 0,
+      "boundary": "Actual route dispatches generator30 times; generator itself stubbed. Access/connection storage fixtures; no real data write."
+    },
+    {
+      "case": "instagram connect-test: owner",
+      "status": 200,
+      "events": [
+        "delete-connection",
+        "create-connection",
+        "write-instagram-metrics",
+        "update-connection"
+      ],
+      "method": "test_mode",
+      "generatedInstagramRows": 1,
+      "generatedTikTokRows": 0,
+      "boundary": "Actual route and actual campaign owner helper; synthetic identity/storage, no middleware/browser/provider certificate."
+    },
+    {
+      "case": "instagram connect-test: anonymous",
+      "status": 401,
+      "events": [],
+      "method": null,
+      "generatedInstagramRows": 0,
+      "generatedTikTokRows": 0,
+      "boundary": "Actual route and actual campaign owner helper; synthetic identity/storage, no middleware/browser/provider certificate."
+    },
+    {
+      "case": "instagram connect-test: foreign",
+      "status": 404,
+      "events": [],
+      "method": null,
+      "generatedInstagramRows": 0,
+      "generatedTikTokRows": 0,
+      "boundary": "Actual route and actual campaign owner helper; synthetic identity/storage, no middleware/browser/provider certificate."
+    },
+    {
+      "case": "instagram connect-test: missing-parent",
+      "status": 404,
+      "events": [],
+      "method": null,
+      "generatedInstagramRows": 0,
+      "generatedTikTokRows": 0,
+      "boundary": "Actual route and actual campaign owner helper; synthetic identity/storage, no middleware/browser/provider certificate."
+    },
+    {
+      "case": "tiktok connect-test: owner",
+      "status": 200,
+      "events": [
+        "delete-connection",
+        "create-connection",
+        "write-tiktok-metrics",
+        "update-connection"
+      ],
+      "method": "test_mode",
+      "generatedInstagramRows": 0,
+      "generatedTikTokRows": 1,
+      "boundary": "Actual route plus actual TikTok refresh function create simulated row with fixture storage; no live job/provider."
+    },
+    {
+      "case": "tiktok connect-test: anonymous",
+      "status": 401,
+      "events": [],
+      "method": null,
+      "generatedInstagramRows": 0,
+      "generatedTikTokRows": 0,
+      "boundary": "Actual route and actual campaign owner helper; synthetic identity/storage, no middleware/browser/provider certificate."
+    },
+    {
+      "case": "tiktok connect-test: foreign",
+      "status": 404,
+      "events": [],
+      "method": null,
+      "generatedInstagramRows": 0,
+      "generatedTikTokRows": 0,
+      "boundary": "Actual route and actual campaign owner helper; synthetic identity/storage, no middleware/browser/provider certificate."
+    },
+    {
+      "case": "tiktok connect-test: missing-parent",
+      "status": 404,
+      "events": [],
+      "method": null,
+      "generatedInstagramRows": 0,
+      "generatedTikTokRows": 0,
+      "boundary": "Actual route and actual campaign owner helper; synthetic identity/storage, no middleware/browser/provider certificate."
+    },
+    {
+      "case": "instagram: no stored connection skips refresh",
+      "result": {
+        "refreshed": false,
+        "reason": "missing_connection",
+        "upserted": 0
+      },
+      "boundary": "Positive actual-function control; production connection inventory is unknown."
+    },
+    {
+      "case": "tiktok: no stored connection skips refresh",
+      "result": {
+        "refreshed": false,
+        "reason": "missing_connection",
+        "upserted": 0,
+        "selectedCampaignIds": []
+      },
+      "boundary": "Positive actual-function control; production connection inventory is unknown."
+    }
+  ]
+}

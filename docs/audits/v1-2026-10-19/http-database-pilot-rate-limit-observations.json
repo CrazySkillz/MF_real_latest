@@ -1,0 +1,132 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "at": "2026-10-20T08:45:27.565Z",
+  "boundary": "Actual registerRoutes, Express JSON/multipart handling, rate limit middleware and DatabaseStorage with real disposable PostgreSQL18. Five synthetic Clerk identities,25 campaigns,45 days each of two financial record families. No frontend, Clerk verification, index startup, background workers, provider or email. CSV preview is parsed, not saved. Local timings do not certify hosted capacity.",
+  "forbiddenRequests": [],
+  "observations": [
+    {
+      "case": "Actual HTTP/DB owner/anonymous/foreign/client filters",
+      "statuses": [
+        200,
+        404,
+        401,
+        200,
+        404
+      ]
+    },
+    {
+      "case": "5000-row CSV preview actor0",
+      "status": 200,
+      "rows": 5000,
+      "intentionalRowLimit": false
+    },
+    {
+      "case": "10000-row CSV preview actor0",
+      "status": 413,
+      "intentionalRowLimit": true
+    },
+    {
+      "case": "5000-row CSV preview actor3",
+      "status": 200,
+      "rows": 5000,
+      "intentionalRowLimit": false
+    },
+    {
+      "case": "5000-row CSV preview actor2",
+      "status": 200,
+      "rows": 5000,
+      "intentionalRowLimit": false
+    },
+    {
+      "case": "10000-row CSV preview actor3",
+      "status": 429,
+      "intentionalRowLimit": true
+    },
+    {
+      "case": "5000-row CSV preview actor1",
+      "status": 200,
+      "rows": 5000,
+      "intentionalRowLimit": false
+    },
+    {
+      "case": "10000-row CSV preview actor2",
+      "status": 429,
+      "intentionalRowLimit": true
+    },
+    {
+      "case": "10000-row CSV preview actor1",
+      "status": 429,
+      "intentionalRowLimit": true
+    },
+    {
+      "case": "5000-row CSV preview actor4",
+      "status": 429,
+      "intentionalRowLimit": false
+    },
+    {
+      "case": "10000-row CSV preview actor4",
+      "status": 429,
+      "intentionalRowLimit": true
+    },
+    {
+      "case": "Five-user actual HTTP/DB workload",
+      "users": 5,
+      "campaigns": 25,
+      "requests": 210,
+      "readRequests": 200,
+      "csvPreviewRequests": 10,
+      "elapsedMs": 1150.4085999999998,
+      "p95Ms": 54.495600000000195,
+      "maxMs": 98.45800000000054,
+      "eventLoopP95Ms": 28.639231,
+      "failures": [
+        {
+          "path": "csv-preview",
+          "requestedRows": 10000,
+          "status": 429,
+          "body": {
+            "error": "Too many import operations. Please wait before importing more data.",
+            "retryAfter": 300
+          }
+        },
+        {
+          "path": "csv-preview",
+          "requestedRows": 10000,
+          "status": 429,
+          "body": {
+            "error": "Too many import operations. Please wait before importing more data.",
+            "retryAfter": 300
+          }
+        },
+        {
+          "path": "csv-preview",
+          "requestedRows": 10000,
+          "status": 429,
+          "body": {
+            "error": "Too many import operations. Please wait before importing more data.",
+            "retryAfter": 300
+          }
+        },
+        {
+          "path": "csv-preview",
+          "requestedRows": 5000,
+          "status": 429,
+          "body": {
+            "error": "Too many import operations. Please wait before importing more data.",
+            "retryAfter": 300
+          }
+        },
+        {
+          "path": "csv-preview",
+          "requestedRows": 10000,
+          "status": 429,
+          "body": {
+            "error": "Too many import operations. Please wait before importing more data.",
+            "retryAfter": 300
+          }
+        }
+      ]
+    }
+  ],
+  "fixtureSchemaRemoved": true
+}

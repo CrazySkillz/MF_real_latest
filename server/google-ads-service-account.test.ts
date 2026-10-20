@@ -12,6 +12,8 @@ vi.mock("google-auth-library", () => ({
     authorize = authorize;
   },
 }));
+const grant = vi.hoisted(() => vi.fn(async () => {}));
+vi.mock("./storage", () => ({ storage: { assertServiceAccountResourceAccess: grant } }));
 
 import {
   assertGoogleAdsServiceAccountCustomerAllowed,
@@ -36,6 +38,7 @@ afterEach(() => {
   if (originalLoginCustomer === undefined) delete process.env.GOOGLE_ADS_SERVICE_ACCOUNT_LOGIN_CUSTOMER_ID;
   else process.env.GOOGLE_ADS_SERVICE_ACCOUNT_LOGIN_CUSTOMER_ID = originalLoginCustomer;
   authorize.mockClear();
+  grant.mockReset().mockResolvedValue(undefined);
 });
 
 describe("temporary Google Ads Spend service-account boundary", () => {
@@ -75,6 +78,7 @@ describe("temporary Google Ads Spend service-account boundary", () => {
     process.env.GOOGLE_ADS_SERVICE_ACCOUNT_LOGIN_CUSTOMER_ID = "999-999-9999";
 
     const hydrated = await hydrateGoogleAdsServiceAccountConnection({
+      campaignId: "fixture-campaign",
       method: "service_account",
       customerId: "123-456-7890",
       accessToken: null,
@@ -93,6 +97,15 @@ describe("temporary Google Ads Spend service-account boundary", () => {
       managerAccountId: "9999999999",
     });
     expect(authorize).toHaveBeenCalledTimes(1);
+    expect(grant).toHaveBeenCalledWith("fixture-campaign", "google_ads", "1234567890");
+  });
+
+  it("checks current customer grants before using cached credentials", async () => {
+    process.env.GOOGLE_ADS_SERVICE_ACCOUNT_JSON = JSON.stringify({ type: "service_account", client_email: "fixture@example.invalid", private_key: "fixture" });
+    process.env.GOOGLE_ADS_SERVICE_ACCOUNT_ALLOWED_CUSTOMER_IDS = "1234567890";
+    grant.mockRejectedValueOnce(new Error("Resource not granted"));
+    await expect(hydrateGoogleAdsServiceAccountConnection({ campaignId: "foreign-campaign", customerId: "1234567890", method: "service_account" })).rejects.toThrow("not granted");
+    expect(authorize).not.toHaveBeenCalled();
   });
 
   it("keeps the temporary route campaign-scoped and credentials out of dedicated storage", () => {

@@ -1,0 +1,491 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "results": [
+    {
+      "case": "HubSpot missing results accepted as zero",
+      "queries": [
+        {
+          "filterGroups": [
+            {
+              "filters": [
+                {
+                  "propertyName": "campaign",
+                  "operator": "IN",
+                  "values": [
+                    "selected"
+                  ]
+                },
+                {
+                  "propertyName": "dealstage",
+                  "operator": "IN",
+                  "values": [
+                    "closedwon"
+                  ]
+                },
+                {
+                  "propertyName": "closedate",
+                  "operator": "GTE",
+                  "value": "1784665879329"
+                }
+              ]
+            }
+          ],
+          "properties": [
+            "campaign",
+            "amount",
+            "hs_currency",
+            "dealname",
+            "dealstage",
+            "closedate",
+            "hs_lastmodifieddate",
+            "createdate"
+          ],
+          "limit": 100
+        }
+      ],
+      "response": {
+        "success": true,
+        "totalRevenue": 0,
+        "currency": null
+      },
+      "persisted": {
+        "source": {
+          "campaignId": "fixture",
+          "sourceType": "hubspot",
+          "platformContext": "ga4",
+          "displayName": "HubSpot (Deals)",
+          "currency": "USD",
+          "mappingConfig": "{\"provider\":\"hubspot\",\"platformContext\":\"ga4\",\"mode\":\"revenue_to_date\",\"valueSource\":\"revenue\",\"campaignProperty\":\"campaign\",\"selectedValues\":[\"selected\"],\"revenueProperty\":\"amount\",\"conversionValueProperty\":null,\"days\":90,\"stageIds\":[\"closedwon\"],\"pipelineEnabled\":false,\"pipelineStageId\":null,\"pipelineStageLabel\":null,\"dateField\":\"closedate\",\"dailyMaterialization\":null,\"currency\":\"USD\",\"lastTotalRevenue\":0,\"lastSyncedAt\":\"2026-10-19T20:31:19.330Z\",\"campaignValueRevenueTotals\":[],\"allocationMethod\":\"ga4_campaign_exact_match_v1\"}",
+          "isActive": true
+        },
+        "records": [
+          {
+            "campaignId": "fixture",
+            "date": "2026-10-18",
+            "revenue": "0.00",
+            "currency": "USD",
+            "sourceType": "hubspot"
+          }
+        ]
+      },
+      "boundary": "Exact current save handler/search/number/date/currency logic; owner check, provider transport, storage and recomputation are fixtures. No provider/DB called."
+    },
+    {
+      "case": "HubSpot nonnumeric amount accepted as zero",
+      "queries": [
+        {
+          "filterGroups": [
+            {
+              "filters": [
+                {
+                  "propertyName": "campaign",
+                  "operator": "IN",
+                  "values": [
+                    "selected"
+                  ]
+                },
+                {
+                  "propertyName": "dealstage",
+                  "operator": "IN",
+                  "values": [
+                    "closedwon"
+                  ]
+                },
+                {
+                  "propertyName": "closedate",
+                  "operator": "GTE",
+                  "value": "1784665879465"
+                }
+              ]
+            }
+          ],
+          "properties": [
+            "campaign",
+            "amount",
+            "hs_currency",
+            "dealname",
+            "dealstage",
+            "closedate",
+            "hs_lastmodifieddate",
+            "createdate"
+          ],
+          "limit": 100
+        }
+      ],
+      "response": {
+        "success": true,
+        "totalRevenue": 0,
+        "currency": "USD"
+      },
+      "persisted": {
+        "source": {
+          "campaignId": "fixture",
+          "sourceType": "hubspot",
+          "platformContext": "ga4",
+          "displayName": "HubSpot (Deals)",
+          "currency": "USD",
+          "mappingConfig": "{\"provider\":\"hubspot\",\"platformContext\":\"ga4\",\"mode\":\"revenue_to_date\",\"valueSource\":\"revenue\",\"campaignProperty\":\"campaign\",\"selectedValues\":[\"selected\"],\"revenueProperty\":\"amount\",\"conversionValueProperty\":null,\"days\":90,\"stageIds\":[\"closedwon\"],\"pipelineEnabled\":false,\"pipelineStageId\":null,\"pipelineStageLabel\":null,\"dateField\":\"closedate\",\"dailyMaterialization\":\"selected_date_field_v1\",\"currency\":\"USD\",\"lastTotalRevenue\":0,\"lastSyncedAt\":\"2026-10-19T20:31:19.466Z\",\"campaignValueRevenueTotals\":[{\"campaignValue\":\"selected\",\"revenue\":0}],\"allocationMethod\":\"ga4_campaign_exact_match_v1\"}",
+          "isActive": true
+        },
+        "records": [
+          {
+            "campaignId": "fixture",
+            "date": "2026-10-18",
+            "revenue": "0.00",
+            "currency": "USD",
+            "sourceType": "hubspot"
+          }
+        ]
+      },
+      "boundary": "Exact current save handler/search/number/date/currency logic; owner check, provider transport, storage and recomputation are fixtures. No provider/DB called."
+    },
+    {
+      "case": "HubSpot malformed amount accepted",
+      "queries": [
+        {
+          "filterGroups": [
+            {
+              "filters": [
+                {
+                  "propertyName": "campaign",
+                  "operator": "IN",
+                  "values": [
+                    "selected"
+                  ]
+                },
+                {
+                  "propertyName": "dealstage",
+                  "operator": "IN",
+                  "values": [
+                    "closedwon"
+                  ]
+                },
+                {
+                  "propertyName": "closedate",
+                  "operator": "GTE",
+                  "value": "1784665879561"
+                }
+              ]
+            }
+          ],
+          "properties": [
+            "campaign",
+            "amount",
+            "hs_currency",
+            "dealname",
+            "dealstage",
+            "closedate",
+            "hs_lastmodifieddate",
+            "createdate"
+          ],
+          "limit": 100
+        }
+      ],
+      "response": {
+        "success": true,
+        "totalRevenue": 12,
+        "currency": "USD"
+      },
+      "persisted": {
+        "source": {
+          "campaignId": "fixture",
+          "sourceType": "hubspot",
+          "platformContext": "ga4",
+          "displayName": "HubSpot (Deals)",
+          "currency": "USD",
+          "mappingConfig": "{\"provider\":\"hubspot\",\"platformContext\":\"ga4\",\"mode\":\"revenue_to_date\",\"valueSource\":\"revenue\",\"campaignProperty\":\"campaign\",\"selectedValues\":[\"selected\"],\"revenueProperty\":\"amount\",\"conversionValueProperty\":null,\"days\":90,\"stageIds\":[\"closedwon\"],\"pipelineEnabled\":false,\"pipelineStageId\":null,\"pipelineStageLabel\":null,\"dateField\":\"closedate\",\"dailyMaterialization\":\"selected_date_field_v1\",\"currency\":\"USD\",\"lastTotalRevenue\":12,\"lastSyncedAt\":\"2026-10-19T20:31:19.563Z\",\"campaignValueRevenueTotals\":[{\"campaignValue\":\"selected\",\"revenue\":12}],\"allocationMethod\":\"ga4_campaign_exact_match_v1\"}",
+          "isActive": true
+        },
+        "records": [
+          {
+            "campaignId": "fixture",
+            "date": "2026-10-18",
+            "revenue": "12.00",
+            "currency": "USD",
+            "sourceType": "hubspot"
+          }
+        ]
+      },
+      "boundary": "Exact current save handler/search/number/date/currency logic; owner check, provider transport, storage and recomputation are fixtures. No provider/DB called."
+    },
+    {
+      "case": "HubSpot repeated deal ID across pages counted twice",
+      "queries": [
+        {
+          "filterGroups": [
+            {
+              "filters": [
+                {
+                  "propertyName": "campaign",
+                  "operator": "IN",
+                  "values": [
+                    "selected"
+                  ]
+                },
+                {
+                  "propertyName": "dealstage",
+                  "operator": "IN",
+                  "values": [
+                    "closedwon"
+                  ]
+                },
+                {
+                  "propertyName": "closedate",
+                  "operator": "GTE",
+                  "value": "1784665879653"
+                }
+              ]
+            }
+          ],
+          "properties": [
+            "campaign",
+            "amount",
+            "hs_currency",
+            "dealname",
+            "dealstage",
+            "closedate",
+            "hs_lastmodifieddate",
+            "createdate"
+          ],
+          "limit": 100
+        },
+        {
+          "filterGroups": [
+            {
+              "filters": [
+                {
+                  "propertyName": "campaign",
+                  "operator": "IN",
+                  "values": [
+                    "selected"
+                  ]
+                },
+                {
+                  "propertyName": "dealstage",
+                  "operator": "IN",
+                  "values": [
+                    "closedwon"
+                  ]
+                },
+                {
+                  "propertyName": "closedate",
+                  "operator": "GTE",
+                  "value": "1784665879653"
+                }
+              ]
+            }
+          ],
+          "properties": [
+            "campaign",
+            "amount",
+            "hs_currency",
+            "dealname",
+            "dealstage",
+            "closedate",
+            "hs_lastmodifieddate",
+            "createdate"
+          ],
+          "limit": 100,
+          "after": "next"
+        }
+      ],
+      "response": {
+        "success": true,
+        "totalRevenue": 20,
+        "currency": "USD"
+      },
+      "persisted": {
+        "source": {
+          "campaignId": "fixture",
+          "sourceType": "hubspot",
+          "platformContext": "ga4",
+          "displayName": "HubSpot (Deals)",
+          "currency": "USD",
+          "mappingConfig": "{\"provider\":\"hubspot\",\"platformContext\":\"ga4\",\"mode\":\"revenue_to_date\",\"valueSource\":\"revenue\",\"campaignProperty\":\"campaign\",\"selectedValues\":[\"selected\"],\"revenueProperty\":\"amount\",\"conversionValueProperty\":null,\"days\":90,\"stageIds\":[\"closedwon\"],\"pipelineEnabled\":false,\"pipelineStageId\":null,\"pipelineStageLabel\":null,\"dateField\":\"closedate\",\"dailyMaterialization\":\"selected_date_field_v1\",\"currency\":\"USD\",\"lastTotalRevenue\":20,\"lastSyncedAt\":\"2026-10-19T20:31:19.654Z\",\"campaignValueRevenueTotals\":[{\"campaignValue\":\"selected\",\"revenue\":20}],\"allocationMethod\":\"ga4_campaign_exact_match_v1\"}",
+          "isActive": true
+        },
+        "records": [
+          {
+            "campaignId": "fixture",
+            "date": "2026-10-18",
+            "revenue": "20.00",
+            "currency": "USD",
+            "sourceType": "hubspot"
+          }
+        ]
+      },
+      "boundary": "Exact current save handler/search/number/date/currency logic; owner check, provider transport, storage and recomputation are fixtures. No provider/DB called."
+    },
+    {
+      "case": "HubSpot open stage allowed as confirmed revenue",
+      "queries": [
+        {
+          "filterGroups": [
+            {
+              "filters": [
+                {
+                  "propertyName": "campaign",
+                  "operator": "IN",
+                  "values": [
+                    "selected"
+                  ]
+                },
+                {
+                  "propertyName": "dealstage",
+                  "operator": "IN",
+                  "values": [
+                    "open-stage"
+                  ]
+                },
+                {
+                  "propertyName": "closedate",
+                  "operator": "GTE",
+                  "value": "1784665879736"
+                }
+              ]
+            }
+          ],
+          "properties": [
+            "campaign",
+            "amount",
+            "hs_currency",
+            "dealname",
+            "dealstage",
+            "closedate",
+            "hs_lastmodifieddate",
+            "createdate"
+          ],
+          "limit": 100
+        }
+      ],
+      "response": {
+        "success": true,
+        "totalRevenue": 10,
+        "currency": "USD"
+      },
+      "persisted": {
+        "source": {
+          "campaignId": "fixture",
+          "sourceType": "hubspot",
+          "platformContext": "ga4",
+          "displayName": "HubSpot (Deals)",
+          "currency": "USD",
+          "mappingConfig": "{\"provider\":\"hubspot\",\"platformContext\":\"ga4\",\"mode\":\"revenue_to_date\",\"valueSource\":\"revenue\",\"campaignProperty\":\"campaign\",\"selectedValues\":[\"selected\"],\"revenueProperty\":\"amount\",\"conversionValueProperty\":null,\"days\":90,\"stageIds\":[\"open-stage\"],\"pipelineEnabled\":false,\"pipelineStageId\":null,\"pipelineStageLabel\":null,\"dateField\":\"closedate\",\"dailyMaterialization\":\"selected_date_field_v1\",\"currency\":\"USD\",\"lastTotalRevenue\":10,\"lastSyncedAt\":\"2026-10-19T20:31:19.736Z\",\"campaignValueRevenueTotals\":[{\"campaignValue\":\"selected\",\"revenue\":10}],\"allocationMethod\":\"ga4_campaign_exact_match_v1\"}",
+          "isActive": true
+        },
+        "records": [
+          {
+            "campaignId": "fixture",
+            "date": "2026-10-18",
+            "revenue": "10.00",
+            "currency": "USD",
+            "sourceType": "hubspot"
+          }
+        ]
+      },
+      "boundary": "Exact current save handler/search/number/date/currency logic; owner check, provider transport, storage and recomputation are fixtures. No provider/DB called."
+    },
+    {
+      "case": "HubSpot explicit empty results zero control",
+      "queries": [
+        {
+          "filterGroups": [
+            {
+              "filters": [
+                {
+                  "propertyName": "campaign",
+                  "operator": "IN",
+                  "values": [
+                    "selected"
+                  ]
+                },
+                {
+                  "propertyName": "dealstage",
+                  "operator": "IN",
+                  "values": [
+                    "closedwon"
+                  ]
+                },
+                {
+                  "propertyName": "closedate",
+                  "operator": "GTE",
+                  "value": "1784665879807"
+                }
+              ]
+            }
+          ],
+          "properties": [
+            "campaign",
+            "amount",
+            "hs_currency",
+            "dealname",
+            "dealstage",
+            "closedate",
+            "hs_lastmodifieddate",
+            "createdate"
+          ],
+          "limit": 100
+        }
+      ],
+      "response": {
+        "success": true,
+        "totalRevenue": 0,
+        "currency": null
+      },
+      "persisted": {
+        "source": {
+          "campaignId": "fixture",
+          "sourceType": "hubspot",
+          "platformContext": "ga4",
+          "displayName": "HubSpot (Deals)",
+          "currency": "USD",
+          "mappingConfig": "{\"provider\":\"hubspot\",\"platformContext\":\"ga4\",\"mode\":\"revenue_to_date\",\"valueSource\":\"revenue\",\"campaignProperty\":\"campaign\",\"selectedValues\":[\"selected\"],\"revenueProperty\":\"amount\",\"conversionValueProperty\":null,\"days\":90,\"stageIds\":[\"closedwon\"],\"pipelineEnabled\":false,\"pipelineStageId\":null,\"pipelineStageLabel\":null,\"dateField\":\"closedate\",\"dailyMaterialization\":null,\"currency\":\"USD\",\"lastTotalRevenue\":0,\"lastSyncedAt\":\"2026-10-19T20:31:19.807Z\",\"campaignValueRevenueTotals\":[],\"allocationMethod\":\"ga4_campaign_exact_match_v1\"}",
+          "isActive": true
+        },
+        "records": [
+          {
+            "campaignId": "fixture",
+            "date": "2026-10-18",
+            "revenue": "0.00",
+            "currency": "USD",
+            "sourceType": "hubspot"
+          }
+        ]
+      },
+      "boundary": "Exact current save handler/search/number/date/currency logic; owner check, provider transport, storage and recomputation are fixtures. No provider/DB called."
+    },
+    {
+      "case": "Salesforce incomplete response accepted as complete empty rows",
+      "payload": {},
+      "rows": [],
+      "boundary": "Exact query helper, fixture fetch only; downstream materialization traced in source, not exercised here."
+    },
+    {
+      "case": "Salesforce incomplete response accepted as complete empty rows",
+      "payload": {
+        "totalSize": 10,
+        "done": true,
+        "records": []
+      },
+      "rows": [],
+      "boundary": "Exact query helper, fixture fetch only; downstream materialization traced in source, not exercised here."
+    },
+    {
+      "case": "Shopify malformed money",
+      "amount": "12oops",
+      "actual": {
+        "shopAmount": 12,
+        "shopCurrency": "USD",
+        "presentmentAmount": null,
+        "presentmentCurrency": null
+      },
+      "boundary": "Exact money helper only; nonnumeric becomes zero then omitted order, malformed 12oops becomes12."
+    },
+    {
+      "case": "Shopify malformed money",
+      "amount": "not available",
+      "actual": null,
+      "boundary": "Exact money helper only; nonnumeric becomes zero then omitted order, malformed 12oops becomes12."
+    }
+  ]
+}

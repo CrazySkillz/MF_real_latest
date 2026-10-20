@@ -1,0 +1,33 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "results": [
+    {
+      "case": "Current singleton query cache returns prior identity data without refetch",
+      "fetched": 0,
+      "result": [
+        {
+          "id": "owner-a-client",
+          "name": "Owner A fixture"
+        }
+      ],
+      "boundary": "Exact current QueryClient configuration and real installed TanStack library. Simulates identity change using the same key; does not execute Clerk signout/switch or prove live leakage. App/ClientProvider have no identity-key/reset path."
+    },
+    {
+      "case": "Caller-controlled test flag bypasses three limiters",
+      "limiters": [
+        "oauthRateLimiter",
+        "linkedInApiRateLimiter",
+        "importRateLimiter"
+      ],
+      "productionGuardPresent": false,
+      "boundary": "Exact limiter definitions with rateLimit factory replaced to inspect/execute configured skip functions; no HTTP traffic."
+    },
+    {
+      "case": "Standalone Sheets refresh caches fixed1000-row range as refreshed dataset",
+      "range": "'Tab'!A1:Z1000",
+      "cachedRows": 999,
+      "updatedFreshness": true,
+      "boundary": "Exact refresh function; provider fixture returns the requested first999 data rows. No completeness metadata request is made; larger sheet remainder cannot be certified."
+    }
+  ]
+}

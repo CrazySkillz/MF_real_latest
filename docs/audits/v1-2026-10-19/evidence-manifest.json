@@ -1,0 +1,2988 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "generatedAt": "2026-10-20T17:35:22.916Z",
+  "runtimeSourceFiles": [
+    {
+      "file": "client/src/App.tsx",
+      "bytes": 9582,
+      "sha256": "e7f8f494bc2affe4f9226eb056f983ef0e799c2bcc831bf2be2a8e0ce5e379e7"
+    },
+    {
+      "file": "client/src/components/AddRevenueWizardModal.tsx",
+      "bytes": 169575,
+      "sha256": "31042a1468e27c511ea54a91a0fc5133070ed4b7c71ae481edfd1d762f929c7c"
+    },
+    {
+      "file": "client/src/components/AddSpendWizardModal.tsx",
+      "bytes": 168539,
+      "sha256": "ee9d5705c3f46eb7026644b19daf469add903f721f23ef7b4ab72579aee0ae17"
+    },
+    {
+      "file": "client/src/components/AttributionDashboard.tsx",
+      "bytes": 20254,
+      "sha256": "b55c68b04076c6a8e8abf8fd630b21a317d4d903529e88842995079354d9d324"
+    },
+    {
+      "file": "client/src/components/ColumnMappingInterface.tsx",
+      "bytes": 37136,
+      "sha256": "115a9fdee8ea48d2914b6c878b2f924a81a0aa587b58c3e0c5a87e6cba9b6fbb"
+    },
+    {
+      "file": "client/src/components/DataSourcesTab.tsx",
+      "bytes": 25633,
+      "sha256": "02fd1316eb38fb2cdbec6f12c6c31aa7cab8f8244c543e6f0be32842eafec8de"
+    },
+    {
+      "file": "client/src/components/ErrorBoundary.tsx",
+      "bytes": 3422,
+      "sha256": "6aa29a48ff82f2a8674cb33d3f788b0bdd119bfef26eebbb389ed761d3a6313e"
+    },
+    {
+      "file": "client/src/components/GA4AuthModal.tsx",
+      "bytes": 5372,
+      "sha256": "56c20f7cb66c3fdd181cfcedb0204583b3376033afb80566f89ad23f5448bf95"
+    },
+    {
+      "file": "client/src/components/GA4ConnectionFlow.tsx",
+      "bytes": 26593,
+      "sha256": "7e0bb9c9e3dd55169763b7df6698843f6446cd782a6c47b331aeb99a893b7244"
+    },
+    {
+      "file": "client/src/components/GoogleAdsConnectionFlow.tsx",
+      "bytes": 15265,
+      "sha256": "cf717fd19340bc372f2e67b4113972f9dfe51dca3ae40319e2a3784bbe8d3b62"
+    },
+    {
+      "file": "client/src/components/GoogleSheetsConnectionFlow.tsx",
+      "bytes": 19416,
+      "sha256": "070575aec339821100778523b6accf78eb3281de2f5b4c89310f4ad43a52bc67"
+    },
+    {
+      "file": "client/src/components/GoogleSheetsDatasetsView.tsx",
+      "bytes": 21937,
+      "sha256": "9e94dd406e95aa5d20665ba520b770ff5bc8d09a1234df9107688a12b769237d"
+    },
+    {
+      "file": "client/src/components/GuidedColumnMapping.tsx",
+      "bytes": 68354,
+      "sha256": "b0eb0f913c9c741fc05be52d74a2a23aa874164e060e504bed87e29b5958bc13"
+    },
+    {
+      "file": "client/src/components/HubSpotRevenueWizard.tsx",
+      "bytes": 70664,
+      "sha256": "560e1c951a7701841bbf73298f751d516b37e38f040db7cd13c645b34caebc35"
+    },
+    {
+      "file": "client/src/components/IntegratedGA4Auth.tsx",
+      "bytes": 10452,
+      "sha256": "acd69939ae2439ec020494a58dd295bddba6ccf497c181bc5152918ccd13000f"
+    },
+    {
+      "file": "client/src/components/InteractiveWorldMap.tsx",
+      "bytes": 13220,
+      "sha256": "94cc3f4e2f8f563bb445659442e87e276eae3dc17204998fb48fb05373705606"
+    },
+    {
+      "file": "client/src/components/LinkedInConnectionFlow.tsx",
+      "bytes": 34981,
+      "sha256": "bd14f8276f80cd816009d56a796764e81f456541e55a857e5709675c3d91fa46"
+    },
+    {
+      "file": "client/src/components/LinkedInUiStates.tsx",
+      "bytes": 4658,
+      "sha256": "54cf65877d40b729261397644e23df52c679f1ed7b5f6fac54bbe0a481310ddc"
+    },
+    {
+      "file": "client/src/components/ProfessionalGA4Auth.tsx",
+      "bytes": 8670,
+      "sha256": "8b9d78a8a1d87974a40b8fecf0e034cdcbec7b533f7a2d4eafd1e2921522c74c"
+    },
+    {
+      "file": "client/src/components/SalesforceDataViewerModal.tsx",
+      "bytes": 11800,
+      "sha256": "31700e28b1bf77ea3c5d15d005b021c5d0e5f014ec5fed0116947ba91213b3d4"
+    },
+    {
+      "file": "client/src/components/SalesforceRevenueWizard.tsx",
+      "bytes": 83694,
+      "sha256": "802f3f5665aecff1d8766e8c7bb802aa8ac83981f143618759ca9fb31414576e"
+    },
+    {
+      "file": "client/src/components/SeamlessGA4Auth.tsx",
+      "bytes": 4693,
+      "sha256": "e0c90d19c55d909f0aa59b6b89d143b79baaf88df17382ab0b6fade5627b121d"
+    },
+    {
+      "file": "client/src/components/ShopifyDataViewerModal.tsx",
+      "bytes": 8805,
+      "sha256": "497380af665ffc2d147add49ae0766592cee7336a1c9759a244f5deae3ae2f24"
+    },
+    {
+      "file": "client/src/components/ShopifyRevenueWizard.tsx",
+      "bytes": 54247,
+      "sha256": "4f4383510977ee9ae5aef0973f8777c1538df7fae3b1164df306bf7e64c63619"
+    },
+    {
+      "file": "client/src/components/SimpleGA4Auth.tsx",
+      "bytes": 7275,
+      "sha256": "b31dd6072202df06b74b6e84e880f9109686b9c3d6f782ac1e31c6a1378549ef"
+    },
+    {
+      "file": "client/src/components/SimpleGeographicMap.tsx",
+      "bytes": 6637,
+      "sha256": "7bb0ab4cff8845dc0e13b478b4e2f4101b9ed4a9356b00677ef2a93ea7699a29"
+    },
+    {
+      "file": "client/src/components/SimpleGoogleSheetsAuth.tsx",
+      "bytes": 26702,
+      "sha256": "ef19f9633089ef21424c87fad75dc9e25d8a2d993d57cf3cd0c8a01eaeeaa7c1"
+    },
+    {
+      "file": "client/src/components/SimpleMetaAuth.tsx",
+      "bytes": 12396,
+      "sha256": "4096ec9944283ce515563b5d23e15aa0d085056f80a298e1be43fadd86bdf214"
+    },
+    {
+      "file": "client/src/components/SupermetricsStyleAuth.tsx",
+      "bytes": 8461,
+      "sha256": "d40d2009fda238e4471392def8581c504ba631bb6e5996555225e40a449dbf3c"
+    },
+    {
+      "file": "client/src/components/TokenExpiryWarning.tsx",
+      "bytes": 1851,
+      "sha256": "23b2d7d8998316815be0148feb3610c51eea40364a6653820175489d6ca473fc"
+    },
+    {
+      "file": "client/src/components/UploadAdditionalDataModal.tsx",
+      "bytes": 51105,
+      "sha256": "3f7e880fc29c8d837e7dde1b9688b50bcd3e323b450eaff526fa3377476dd10c"
+    },
+    {
+      "file": "client/src/components/WebhookTester.tsx",
+      "bytes": 17614,
+      "sha256": "fcacf7229d661e41bd999edc078c60c38a392de8e3cabd0d699c06259d9a60c6"
+    },
+    {
+      "file": "client/src/components/WorldMapSVG.tsx",
+      "bytes": 8563,
+      "sha256": "4149da63ecc345b8cf65ab843de8bda6a575fd98693dc36b0472c38374331ced"
+    },
+    {
+      "file": "client/src/components/dashboard/campaign-chart.tsx",
+      "bytes": 3197,
+      "sha256": "2aae0a0688582b5b3a89bbd39730d3998ee768ccdcb19ea629f50c5960947a29"
+    },
+    {
+      "file": "client/src/components/dashboard/campaign-table.tsx",
+      "bytes": 7396,
+      "sha256": "89e316956b5227e2798cd867c875d08e57b0bb0f236ad8c99e2669599073be70"
+    },
+    {
+      "file": "client/src/components/dashboard/integration-panel.tsx",
+      "bytes": 4377,
+      "sha256": "32ef184b53ac6c61270ee291314758cdeef89884dc19f08099e6278690b24868"
+    },
+    {
+      "file": "client/src/components/dashboard/metrics-cards.tsx",
+      "bytes": 4231,
+      "sha256": "11b89457059a807de672140462132a2cb4d1367f38212d339311f66e0f488e1e"
+    },
+    {
+      "file": "client/src/components/dashboard/performance-chart.tsx",
+      "bytes": 4166,
+      "sha256": "394a69517fa27c696fcdb955cea67cc175083befc22a68a2c08cdfd1d1971309"
+    },
+    {
+      "file": "client/src/components/layout/navigation.tsx",
+      "bytes": 3148,
+      "sha256": "cb7713539444f4c253a396954d7d959182e5f550464fb38c852df2941199e273"
+    },
+    {
+      "file": "client/src/components/layout/sidebar.tsx",
+      "bytes": 4159,
+      "sha256": "8af246092adb74cbcea5f5bdd39fd7a18fcc0377f2c229d244cae8b051e05507"
+    },
+    {
+      "file": "client/src/components/modals/create-client-modal.tsx",
+      "bytes": 3870,
+      "sha256": "4c3cd8027ae1a7a4117180248c35787770fac119625856f3db4168caf09f9e47"
+    },
+    {
+      "file": "client/src/components/modals/integration-modal.tsx",
+      "bytes": 7216,
+      "sha256": "95359ce026bac72390a63aac347c6d8900863df32a2ab70375e7928e42ce0722"
+    },
+    {
+      "file": "client/src/components/ui/accordion.tsx",
+      "bytes": 2033,
+      "sha256": "ec30822a5aa2e45d1e249a99f473fa12a35b2c466993d571239466f622062eff"
+    },
+    {
+      "file": "client/src/components/ui/alert-dialog.tsx",
+      "bytes": 4578,
+      "sha256": "eaf24f8ccc1faa6ae744a673029d31bfa39315234899dd4d1451e8ea1f9113b1"
+    },
+    {
+      "file": "client/src/components/ui/alert.tsx",
+      "bytes": 1643,
+      "sha256": "1aaba23c7a1095f7abea7c9f6ce12a43c22bb8f97e957c9cae222666e0c8be83"
+    },
+    {
+      "file": "client/src/components/ui/aspect-ratio.tsx",
+      "bytes": 145,
+      "sha256": "62f29cd87c19f52d403dc2d17823849db2c8cbd541c9f96de20ef13e58d379db"
+    },
+    {
+      "file": "client/src/components/ui/avatar.tsx",
+      "bytes": 1469,
+      "sha256": "4ee6fbff6d693bf5b76f1b30e4cd55de6c6343c46a51e636c3e3b8a911fa7ec0"
+    },
+    {
+      "file": "client/src/components/ui/badge.tsx",
+      "bytes": 1164,
+      "sha256": "563824ae3f6b0a5de408c13e58fe2a195808ff57cb09698fcaf2e875434bfb98"
+    },
+    {
+      "file": "client/src/components/ui/breadcrumb.tsx",
+      "bytes": 2827,
+      "sha256": "76807d2c1be3d1e5e0e055ffbecd8451acfc71db6a7aa3c8660631d7603d517f"
+    },
+    {
+      "file": "client/src/components/ui/button.tsx",
+      "bytes": 1993,
+      "sha256": "70fbc1f0bcd932a2e25a4ac805fc87405b7d205f020f61557c8662250393214e"
+    },
+    {
+      "file": "client/src/components/ui/calendar.tsx",
+      "bytes": 2763,
+      "sha256": "bd9df47ec3903c7b91e83ba2a759a4eab014aef7c11c5908b952391d976d1275"
+    },
+    {
+      "file": "client/src/components/ui/card.tsx",
+      "bytes": 2012,
+      "sha256": "2d2d24d03ed3d2bf01f1166f9c041fbab054bcce1dd053a000d94381caa0c9d2"
+    },
+    {
+      "file": "client/src/components/ui/carousel.tsx",
+      "bytes": 6470,
+      "sha256": "d48a52f0bc5161c47ee818c88bebedea98c14742a1e4d3c76639a612ddbb376a"
+    },
+    {
+      "file": "client/src/components/ui/chart.tsx",
+      "bytes": 10846,
+      "sha256": "eab9c3a74a9e97aad44af978604e018cb2ff3a79445347aca4f2af40d48aac19"
+    },
+    {
+      "file": "client/src/components/ui/checkbox.tsx",
+      "bytes": 1084,
+      "sha256": "8fe06fca3f25a01e2ecf407f258a730580ffd07515efa30acbbe0ffbe4571383"
+    },
+    {
+      "file": "client/src/components/ui/collapsible.tsx",
+      "bytes": 340,
+      "sha256": "bc854800960ef4129d4679a7c4a6b5091e7038adc03698e4529d0c9b5af0d831"
+    },
+    {
+      "file": "client/src/components/ui/command.tsx",
+      "bytes": 5036,
+      "sha256": "78592bb671847c7b42ee1cba37998602c84d2188845c7bdc8fbdccd2d36ac29b"
+    },
+    {
+      "file": "client/src/components/ui/context-menu.tsx",
+      "bytes": 7626,
+      "sha256": "4859019ad56c4d450f7daebb7e947867495539a194502acb9cef023c7de90184"
+    },
+    {
+      "file": "client/src/components/ui/dialog.tsx",
+      "bytes": 3990,
+      "sha256": "84d6668c797260ac61ba179a1f4647fc0b9f57e558518a7bc1a662efe0ed9bf2"
+    },
+    {
+      "file": "client/src/components/ui/drawer.tsx",
+      "bytes": 3139,
+      "sha256": "98895f2b716a0a0b60e372811640b3b3b48295e0a67aebbd01de9843a391f6e1"
+    },
+    {
+      "file": "client/src/components/ui/dropdown-menu.tsx",
+      "bytes": 7841,
+      "sha256": "edba5d188a429fb816f3f1b16901a4b1a641ca196f20362dbfe16704d52aa60e"
+    },
+    {
+      "file": "client/src/components/ui/form.tsx",
+      "bytes": 4298,
+      "sha256": "a80b39038485dff70cd9a7c2287676d8122a033784e851d958dee2020fc54efc"
+    },
+    {
+      "file": "client/src/components/ui/hover-card.tsx",
+      "bytes": 1280,
+      "sha256": "7605fd8868dd43b6400f274f4e36d02af46476a37423b6781814070cf839c8bf"
+    },
+    {
+      "file": "client/src/components/ui/input-otp.tsx",
+      "bytes": 2223,
+      "sha256": "2ee885a5810101b04bcf296775ba3607dd1b22a4ba03ea2a9bc9e809134b3f77"
+    },
+    {
+      "file": "client/src/components/ui/input.tsx",
+      "bytes": 841,
+      "sha256": "93e18e34248e08352bc7e6b273e4f55720bc31732f433302616a231bbea947f4"
+    },
+    {
+      "file": "client/src/components/ui/label.tsx",
+      "bytes": 734,
+      "sha256": "ece819598d95360af8aedf36d90be41a93af49797240a6d6a69181180b095a76"
+    },
+    {
+      "file": "client/src/components/ui/menubar.tsx",
+      "bytes": 8861,
+      "sha256": "9aac3cf4f2d0fae4119eea157d99213d688211662859bcbf6d8af95803d06f1a"
+    },
+    {
+      "file": "client/src/components/ui/navigation-menu.tsx",
+      "bytes": 5256,
+      "sha256": "e604019198acde672086f0b79a894486fa52e684c4a25959a29806227dcdab25"
+    },
+    {
+      "file": "client/src/components/ui/pagination.tsx",
+      "bytes": 2868,
+      "sha256": "7f9821730c7eea34c32da11aa82185d3db1d36f9d476fa9d5ae14765c35a6fc8"
+    },
+    {
+      "file": "client/src/components/ui/popover.tsx",
+      "bytes": 1326,
+      "sha256": "220f57a48bf9b47906d8f0b08b92f365a3b0dc73e12fecac3ce48ba2f2ac7991"
+    },
+    {
+      "file": "client/src/components/ui/progress.tsx",
+      "bytes": 943,
+      "sha256": "6bd55051b9d2b913a13e102e48d010f713e2a85668294141ff520fafa373a36b"
+    },
+    {
+      "file": "client/src/components/ui/radio-group.tsx",
+      "bytes": 1509,
+      "sha256": "e67b5ffbd1727e873ca9b2593a7e798328b1d4ef20f507d8379aea3fe69abe93"
+    },
+    {
+      "file": "client/src/components/ui/resizable.tsx",
+      "bytes": 1768,
+      "sha256": "bbb236cf580525f2f1f7e40404d34c03cf806c02eee8404891f72fcf5034ec31"
+    },
+    {
+      "file": "client/src/components/ui/scroll-area.tsx",
+      "bytes": 1688,
+      "sha256": "5bbf2efc963f2a62d9f9d41fdf2a96f798ad409ee2a1fdb1fe51da947d882dc7"
+    },
+    {
+      "file": "client/src/components/ui/select.tsx",
+      "bytes": 6136,
+      "sha256": "fe7948d9e677bb67c4f6a0299121fa0c2738669d8faf9498c6c6f7e716f3155a"
+    },
+    {
+      "file": "client/src/components/ui/separator.tsx",
+      "bytes": 785,
+      "sha256": "1e2f9c2eab409bf25614f4e0b495b9a67646e92a0a7d1a033afaada64fdb1b78"
+    },
+    {
+      "file": "client/src/components/ui/sheet.tsx",
+      "bytes": 4421,
+      "sha256": "c02a18d6c73b21078ca394465b819b4cebeef60778c3bdcd3e1f818522981f0f"
+    },
+    {
+      "file": "client/src/components/ui/sidebar.tsx",
+      "bytes": 23307,
+      "sha256": "7b92507b72a548b76e02493217df87c282d324768b8bda2ac48a8b2d48ba6e54"
+    },
+    {
+      "file": "client/src/components/ui/skeleton.tsx",
+      "bytes": 276,
+      "sha256": "90badf0dcd440128b81554c06d56c4f01b1ccf03748ca3adf7e4a41d611acddd"
+    },
+    {
+      "file": "client/src/components/ui/slider.tsx",
+      "bytes": 1103,
+      "sha256": "234d9a3e9b62ce0266d580ce885d59b0b0648c6b833604a8fd7dd389ade95329"
+    },
+    {
+      "file": "client/src/components/ui/switch.tsx",
+      "bytes": 1166,
+      "sha256": "9d3d144eb219caccadd9da0eab64f463f4f38fcc05f49f3d9b1438222ddce70f"
+    },
+    {
+      "file": "client/src/components/ui/table.tsx",
+      "bytes": 2882,
+      "sha256": "54bfa4489e6dc84dceb294b63023bb352c6c446c019c67230ce6f1dac76e3713"
+    },
+    {
+      "file": "client/src/components/ui/tabs.tsx",
+      "bytes": 1949,
+      "sha256": "785d29713a1c49e20032ae78206779a3d227dc65e2168b48db5fe48f36d0afb1"
+    },
+    {
+      "file": "client/src/components/ui/textarea.tsx",
+      "bytes": 711,
+      "sha256": "f05dce17b28f0fc4a10bc54231937f682f459f174d69c918b5540047901dd5dd"
+    },
+    {
+      "file": "client/src/components/ui/toast.tsx",
+      "bytes": 4972,
+      "sha256": "2da684420d53b7826485853a5f433bc794eb8a3fa3ca99db7cabb59974dfff38"
+    },
+    {
+      "file": "client/src/components/ui/toaster.tsx",
+      "bytes": 805,
+      "sha256": "d336e69dc56f72df1da448f1f39eedddb3b7e0dd0e5a69ca5be8db7acb32b7e4"
+    },
+    {
+      "file": "client/src/components/ui/toggle-group.tsx",
+      "bytes": 1814,
+      "sha256": "04c1ac2983a3b790295fae9a0c475b32c61d6c49954e65eb38b54fa9af09f9dc"
+    },
+    {
+      "file": "client/src/components/ui/toggle.tsx",
+      "bytes": 1570,
+      "sha256": "7d517849023df8ee638f36fab0a9fad885afdfe130a6c43f9bc6a2d957c0d8b0"
+    },
+    {
+      "file": "client/src/components/ui/tooltip.tsx",
+      "bytes": 1266,
+      "sha256": "695b5281b96defe957c9d2b2e0af4bbf1e1cbcd9269c55b39155ea4fe568a7b2"
+    },
+    {
+      "file": "client/src/hooks/use-mobile.tsx",
+      "bytes": 584,
+      "sha256": "d2377fbad5ad2bdf7fa896a68c36ac8bf4aa74a974b2061f77b41ae58d623001"
+    },
+    {
+      "file": "client/src/hooks/use-toast.ts",
+      "bytes": 4086,
+      "sha256": "52580e80b7d8e7dfc0eee27f3bc8dfa209e32fe8dc96b8e3e79ed61666348dd7"
+    },
+    {
+      "file": "client/src/lib/clientContext.tsx",
+      "bytes": 1864,
+      "sha256": "05e9487e49903eaf590fe1c5fefed8d5225417e4cfe31ae107e1b05575b0848e"
+    },
+    {
+      "file": "client/src/lib/financial-executive-actions.ts",
+      "bytes": 11018,
+      "sha256": "3569a00e8389ae92b8e6dd88aa5e9ee983b64dafc0031e60605236b87552cd0a"
+    },
+    {
+      "file": "client/src/lib/ga4-alert-highlight.ts",
+      "bytes": 814,
+      "sha256": "36d12b4b808746ebf1d3ed0d8b41893ce319668ca969291f4604de6f3d0fcdbc"
+    },
+    {
+      "file": "client/src/lib/ga4-campaign-selection.ts",
+      "bytes": 305,
+      "sha256": "4bac86e304bef58e7e432f28c95908ec67db0a69891a390aa3c9bc9ecc52a2b8"
+    },
+    {
+      "file": "client/src/lib/ga4-client.ts",
+      "bytes": 5676,
+      "sha256": "62330870928aa29ed0ea8025de618716335f06de061d28674f01f0927d03c676"
+    },
+    {
+      "file": "client/src/lib/ga4-insights-executive-financials.ts",
+      "bytes": 4515,
+      "sha256": "bc3f87845a598282b0fc5af84e14daa4e17788fd4c0de41798ab888e6a2f6ddc"
+    },
+    {
+      "file": "client/src/lib/notification-alert-visibility.ts",
+      "bytes": 248,
+      "sha256": "08e016b2785703829685be4845947ae602e52f46f0752df0e06541a9c6c3f3c1"
+    },
+    {
+      "file": "client/src/lib/pdfExport.ts",
+      "bytes": 5832,
+      "sha256": "47a68d0a5b12adf466bf803fc1d31aabf3a0b03a58c353b6628f47f7e1b5c3bd"
+    },
+    {
+      "file": "client/src/lib/performance-financial-source-dates.ts",
+      "bytes": 3121,
+      "sha256": "1021c8192ffd3d4a26a0382bc4147c1e5d20ad770df626b37cf3a6edb2553aec"
+    },
+    {
+      "file": "client/src/lib/performance-recommended-actions.ts",
+      "bytes": 15794,
+      "sha256": "9e6f2208a8c2c2f1b405b472ae9da80850bc040bd94d7938d9f87e841bfa87c4"
+    },
+    {
+      "file": "client/src/lib/queryClient.ts",
+      "bytes": 1780,
+      "sha256": "ac20547063954ec7118da8d36d9e877d0bdaf096ecc466a0b2d9a02af659e20b"
+    },
+    {
+      "file": "client/src/lib/reportStorage.ts",
+      "bytes": 3073,
+      "sha256": "70198b14b59d93db0b11b4555d006a6f53f1b9bdfd617f9228345ad2dc7f1f5f"
+    },
+    {
+      "file": "client/src/lib/trend-analysis-cumulative.ts",
+      "bytes": 16035,
+      "sha256": "830afb0d7dc0e3cc986ec67f696248a2fe091fd1cbb32451c7dc621ac882cf68"
+    },
+    {
+      "file": "client/src/lib/utils.ts",
+      "bytes": 1223,
+      "sha256": "0f51627ab12838036196b242b365039b1d12333d903c321e622ec7fa3b6f3c88"
+    },
+    {
+      "file": "client/src/main.tsx",
+      "bytes": 1894,
+      "sha256": "d2fc9ce36335f196483150807233281ee972c4fb92754023be508a319d0bf522"
+    },
+    {
+      "file": "client/src/pages/analytics.tsx",
+      "bytes": 56206,
+      "sha256": "1dca591d0c7a9ed127d09d140b58f643b3d71392f8099b8015abcc11bf4fb65d"
+    },
+    {
+      "file": "client/src/pages/audiences.tsx",
+      "bytes": 20703,
+      "sha256": "753bb98d71575bf3282c4f280f96f4fd58d950892584bf7235255b7fb26f3dc5"
+    },
+    {
+      "file": "client/src/pages/auth/google-callback.tsx",
+      "bytes": 2795,
+      "sha256": "f9c6339168de97d0f787ce7dcc0099cf241f22dfb40ccf40277cf6aba8fa1f30"
+    },
+    {
+      "file": "client/src/pages/campaign-detail.tsx",
+      "bytes": 346282,
+      "sha256": "46e7a48f6a56c4d09247a7597bc93eaeb017c70f4a04153c2cebeef04a4a2142"
+    },
+    {
+      "file": "client/src/pages/campaign-performance.tsx",
+      "bytes": 110986,
+      "sha256": "55961a613a450473273e532107d32e5f02fa04c7a75068814c81161b5453e115"
+    },
+    {
+      "file": "client/src/pages/campaigns.tsx",
+      "bytes": 109099,
+      "sha256": "d80bc798e307f6738d72cab9095f267b665bc498ce5f606eee0c82b6af0c8d39"
+    },
+    {
+      "file": "client/src/pages/clients.tsx",
+      "bytes": 3758,
+      "sha256": "95a5b3f7b48d63bd106c26ad669995ff722834273766d88e79894aa560d4df86"
+    },
+    {
+      "file": "client/src/pages/coming-soon.tsx",
+      "bytes": 3514,
+      "sha256": "3fccc1a2d7943b35e0c22ff0c301ec07ee0da3197e8c6479e86082c3afa228c6"
+    },
+    {
+      "file": "client/src/pages/custom-integration-analytics.tsx",
+      "bytes": 309289,
+      "sha256": "e78bd41eb44261c99dc454ee48254b0ffdb6b151edc849c44ff21aba9dcede9a"
+    },
+    {
+      "file": "client/src/pages/dashboard.tsx",
+      "bytes": 3600,
+      "sha256": "4776b8d2176feb44f4889af09295cc98c11b8bb21894804d4b4b8217295c8eef"
+    },
+    {
+      "file": "client/src/pages/executive-summary.tsx",
+      "bytes": 59109,
+      "sha256": "f0d1e765c01441950b5a98fb4c549c034531334e97cfb8c36bf8054daca3f432"
+    },
+    {
+      "file": "client/src/pages/financial-analysis.tsx",
+      "bytes": 159177,
+      "sha256": "8b9c3402697eadf890475b0f0b0fa7dbb107eb63dcd144d16f465c438139ebdf"
+    },
+    {
+      "file": "client/src/pages/ga4-ad-comparison.tsx",
+      "bytes": 21132,
+      "sha256": "03dfe3878b903e49d60691102636c2da2787239130615013481749db67755566"
+    },
+    {
+      "file": "client/src/pages/ga4-metrics.tsx",
+      "bytes": 691447,
+      "sha256": "20881271273d5fcd493dd6c5ec471683ee422a10f85c4035ba20a2e19cf59693"
+    },
+    {
+      "file": "client/src/pages/google-ads-analytics.tsx",
+      "bytes": 184001,
+      "sha256": "bc676b13016ecbdca9cb63b62d4e70d5ed2baa0c68ad9d930d325d8cab87618c"
+    },
+    {
+      "file": "client/src/pages/google-ads-analytics/GoogleAdsBenchmarkModal.tsx",
+      "bytes": 28162,
+      "sha256": "2778db4edb3a2e2506d0321b041c1833f0d06a09579c197025bc41f95005643a"
+    },
+    {
+      "file": "client/src/pages/google-ads-analytics/GoogleAdsKpiModal.tsx",
+      "bytes": 21652,
+      "sha256": "9dfebcd57d1f347b903af6480ad67b2f628b2c146312eeec4b397698bea219b1"
+    },
+    {
+      "file": "client/src/pages/google-ads-analytics/GoogleAdsReportModal.tsx",
+      "bytes": 59379,
+      "sha256": "4af845ef2852e67e0870d67dac96ea6f9d838947df865f20def83c0a820122c0"
+    },
+    {
+      "file": "client/src/pages/google-sheets-analytics/GoogleSheetsBenchmarkModal.tsx",
+      "bytes": 14477,
+      "sha256": "d199b318b4021fb64721e8abfb620bdff6b6f749d381c3ac0acfed2ff03195f4"
+    },
+    {
+      "file": "client/src/pages/google-sheets-analytics/GoogleSheetsKpiModal.tsx",
+      "bytes": 15220,
+      "sha256": "80317bf69647a547ee8403e772e3d23799e5a68a9107126a00fcad9cf3cc384e"
+    },
+    {
+      "file": "client/src/pages/google-sheets-analytics/GoogleSheetsReportModal.tsx",
+      "bytes": 38424,
+      "sha256": "f310110484452238c73aa29aa391c7556999b03a332a60e9f88ebbb0b211d0c3"
+    },
+    {
+      "file": "client/src/pages/google-sheets-data.tsx",
+      "bytes": 234977,
+      "sha256": "fe785749a73db48c770a100142bddb28cb9bb84125881940cfc8721242d8ee94"
+    },
+    {
+      "file": "client/src/pages/home.tsx",
+      "bytes": 7600,
+      "sha256": "8ad8c1c9767898df219c7b77a58496533d61f3c536d45c4f83adc8fb380d0aa1"
+    },
+    {
+      "file": "client/src/pages/instagram-analytics.tsx",
+      "bytes": 148051,
+      "sha256": "f72fdf6e877bd959d5c00a2e6ca8e567cbb60b24f133fa3398db588e91033217"
+    },
+    {
+      "file": "client/src/pages/kpis.tsx",
+      "bytes": 51250,
+      "sha256": "63b014f2a20a45129bf53313878d2edbd4d3edd154735df8ad15bfa0bce2ca41"
+    },
+    {
+      "file": "client/src/pages/linkedin-analytics.tsx",
+      "bytes": 449859,
+      "sha256": "e23346a7b21708b86cb848ec2260f9a12b9f6645ea1dd0ac615bcf8534256375"
+    },
+    {
+      "file": "client/src/pages/linkedin-analytics/LinkedInBenchmarkModal.tsx",
+      "bytes": 42562,
+      "sha256": "c3334253839e40406faff97948a163e9214e4aee816d487d706af4b42ec95f3b"
+    },
+    {
+      "file": "client/src/pages/linkedin-analytics/LinkedInCampaignDetailsModal.tsx",
+      "bytes": 18698,
+      "sha256": "dbbad7aa7982013d57d276485d43bb28a00535d2b36734dda1ec4b8040cffdaf"
+    },
+    {
+      "file": "client/src/pages/linkedin-analytics/LinkedInKpiModal.tsx",
+      "bytes": 48244,
+      "sha256": "5fcf55ba9d2f193e0240f000764c2e077dae0ec8ed27f97b519a4aaf7e8e8c27"
+    },
+    {
+      "file": "client/src/pages/linkedin-analytics/LinkedInReportModal.tsx",
+      "bytes": 68201,
+      "sha256": "03a18a081e03c3652403d29ae4413b187cc5c0193450d30cc827c67cefecea9a"
+    },
+    {
+      "file": "client/src/pages/linkedin-analytics/linkedinReportPdf.ts",
+      "bytes": 29708,
+      "sha256": "bd64a8add704e822294da1896a6a1d5b8ea42a788039dc09777bd4664e323667"
+    },
+    {
+      "file": "client/src/pages/meta-analytics.tsx",
+      "bytes": 195487,
+      "sha256": "2327f653b9ba49bbc764f5cd50379d9d95bb9616180ab0bcbd67e10e6eeef37a"
+    },
+    {
+      "file": "client/src/pages/meta-analytics/MetaBenchmarkModal.tsx",
+      "bytes": 40434,
+      "sha256": "03cdbe5ff122d36ab2e7eac0c28796d4e4c79fc05782dde2d09b4416a4dff3ec"
+    },
+    {
+      "file": "client/src/pages/meta-analytics/MetaKpiModal.tsx",
+      "bytes": 34875,
+      "sha256": "b0341661e2744e953c79f302b31b108e08b51a8d7bb3dbb927b870ed86c5964c"
+    },
+    {
+      "file": "client/src/pages/meta-analytics/MetaReportModal.tsx",
+      "bytes": 65214,
+      "sha256": "3fa613143243cd987b46ce90db4f3eb124012de6415ccece926a3d49562291a2"
+    },
+    {
+      "file": "client/src/pages/not-found.tsx",
+      "bytes": 732,
+      "sha256": "d6ce1dabff2cb0630606c8502200a8bb531b7aebb7c864d8863ef896df350dac"
+    },
+    {
+      "file": "client/src/pages/notifications.tsx",
+      "bytes": 34852,
+      "sha256": "875ec6a87bdf91c0f149eb6ef9dddd64f3ff5065ef6af14de3e9f8404773f91b"
+    },
+    {
+      "file": "client/src/pages/platform-comparison.tsx",
+      "bytes": 86690,
+      "sha256": "ab50cfdddea4b17bf4d88f9f1edc16d490e32c22f1497230afa489f2a9d88d45"
+    },
+    {
+      "file": "client/src/pages/platform-kpis.tsx",
+      "bytes": 25872,
+      "sha256": "f265bd4079966455841331bfce1a55b83f0024a07bca9c2785249bc65c1cc325"
+    },
+    {
+      "file": "client/src/pages/privacy.tsx",
+      "bytes": 10735,
+      "sha256": "bf3cc6b63dfce9244a09b640fe500e9439f5405baef8efbbc5f2f40eb415870e"
+    },
+    {
+      "file": "client/src/pages/reports.tsx",
+      "bytes": 168920,
+      "sha256": "c2af0b2dfafc06648a7919c915bc96db26df252a95852b65cbd68c39fad4b8e7"
+    },
+    {
+      "file": "client/src/pages/talk-to-your-data.tsx",
+      "bytes": 537,
+      "sha256": "b87e8cadaaa5501e88fcba7087ec0e8c276a3cc4977b338b85e01dda2cd0fe87"
+    },
+    {
+      "file": "client/src/pages/tiktok-analytics.tsx",
+      "bytes": 150587,
+      "sha256": "85806037ac2ae2e609040c9e4bc59829d7476d53b7b94bf6e95abf5623fabaf3"
+    },
+    {
+      "file": "client/src/pages/trend-analysis.tsx",
+      "bytes": 164346,
+      "sha256": "372407dc512ad5437a0976be5fc0edc33772c470d1e116cef353b653e5040a03"
+    },
+    {
+      "file": "client/src/pages/welcome.tsx",
+      "bytes": 2878,
+      "sha256": "0f052a86658990833305c8fddbbcc7ffdb5888d64074655ae2a9c0dc6580095d"
+    },
+    {
+      "file": "server/alert-email-scheduler.ts",
+      "bytes": 2937,
+      "sha256": "c50fd4a29441238a34929b2f88c5cbcb0032571af81f6a4cb0dbe9d71a4caa1b"
+    },
+    {
+      "file": "server/analytics.ts",
+      "bytes": 180429,
+      "sha256": "e0976c6eebc4d528d743a45b5f3c6ccbb2c121433ba0ea0cb8c01498a4a52319"
+    },
+    {
+      "file": "server/auto-refresh-scheduler.ts",
+      "bytes": 88149,
+      "sha256": "9f1cb1e7ea24a1c3282b0c910413d0861b2c703d67780509451b6c19631afc96"
+    },
+    {
+      "file": "server/benchmark-notifications.ts",
+      "bytes": 18048,
+      "sha256": "d4a9efd2a3b6090798dd5c4229acce918093fb01ee8e3580c489822467adf961"
+    },
+    {
+      "file": "server/data/industry-benchmarks.mock.ts",
+      "bytes": 3886,
+      "sha256": "196bbeed74cf5121daf2d67a9071f269280d0aeef707232f68705cf02c28c937"
+    },
+    {
+      "file": "server/data/industry-benchmarks.ts",
+      "bytes": 42106,
+      "sha256": "55688997c0dbdaa2439be6923a8cfdeb44ef7043d24a1eb26663e82b75477bdb"
+    },
+    {
+      "file": "server/db.ts",
+      "bytes": 952,
+      "sha256": "e5122f98d5fd22f5f68552f686e0f7c55f92f015bf416f006b2e5064a2f70321"
+    },
+    {
+      "file": "server/executive-summary-snapshot-scheduler.ts",
+      "bytes": 3280,
+      "sha256": "262c1e1ee85b3972f797db5c760535d83e3aeac50477908d7e993c712a049f38"
+    },
+    {
+      "file": "server/ga4-ad-comparison-certification-gate.ts",
+      "bytes": 11524,
+      "sha256": "7e0a99c75d5252ae690ae955347ef0a3df9f31b99347358f6c5b24e817ffec4d"
+    },
+    {
+      "file": "server/ga4-daily-scheduler.ts",
+      "bytes": 79829,
+      "sha256": "13ac834a68373e62bb2b3cbbedcb4865e7b89c21e61e07d2784c9f2aa462d073"
+    },
+    {
+      "file": "server/ga4-google-ads-spend.ts",
+      "bytes": 2894,
+      "sha256": "206bef86d70371883bbc4d8cb2aee1424cce0e849ea844083e20fa78ee74ce87"
+    },
+    {
+      "file": "server/ga4-insights-certification-gate.ts",
+      "bytes": 12707,
+      "sha256": "cc4da08d24a8be27f2f343c238d64eb02a6108103776c2f0ebe43e504ae26ff7"
+    },
+    {
+      "file": "server/ga4-kpi-benchmark-jobs.ts",
+      "bytes": 37772,
+      "sha256": "9b3573236b5326278cd1e7b9b018ffd3b8fd9b3d07f6f00684606193866a8ff0"
+    },
+    {
+      "file": "server/ga4-kpi-certification-gate.ts",
+      "bytes": 13070,
+      "sha256": "ac18d7a6d46613f44498a88a0707510b2566bff85ef8b3581c2db994f8498180"
+    },
+    {
+      "file": "server/ga4-kpi-damaged-data-cleanup.ts",
+      "bytes": 24481,
+      "sha256": "bdd773804fe8a9771e932c3a772fbfb76024142f56b2b3ab2d8afacee2d978fb"
+    },
+    {
+      "file": "server/ga4-overview-certification-gate.ts",
+      "bytes": 14461,
+      "sha256": "7f54a9d60de4b004faa0576015467932647539a93b837e63edee0ab87fd075cb"
+    },
+    {
+      "file": "server/ga4-reports-certification-gate.ts",
+      "bytes": 10491,
+      "sha256": "9fbb03cf53883cbeda80f6c72098bb0e2f03942ec19f54c5ef9a73ba0c624ccd"
+    },
+    {
+      "file": "server/ga4-roas-persisted-cleanup.ts",
+      "bytes": 14560,
+      "sha256": "2a780eea4ab829a3989a8bfe038f47837244ff6448e784a266c47a8526b9d411"
+    },
+    {
+      "file": "server/ga4-scheduled-report-pdf.ts",
+      "bytes": 92464,
+      "sha256": "79bbebfd57042307794421a5aff46979530903d4a7335a9769528846d7aac0cc"
+    },
+    {
+      "file": "server/google-ads-oauth-authorization.ts",
+      "bytes": 2699,
+      "sha256": "d4336fbc7c6bbe9d35c7b7c6488b1b903277b9e8ebd985974645718ff4a99a3c"
+    },
+    {
+      "file": "server/google-ads-scheduler.ts",
+      "bytes": 25415,
+      "sha256": "73d5f9aa5c07bdefe32efe582a1ee53ef998fe1b52da31ffebf92aba49ba3d30"
+    },
+    {
+      "file": "server/google-auth.ts",
+      "bytes": 5610,
+      "sha256": "ef92e397e6f777d1df20f942d40c354e8d57c5c72bbed7f4534dcef022dc8ffe"
+    },
+    {
+      "file": "server/google-sheets-token-scheduler.ts",
+      "bytes": 9282,
+      "sha256": "5766abea4dfebe6ebda7fdb706f663572afb7966936bba14b971c9134fae58f8"
+    },
+    {
+      "file": "server/google-trends-api.d.ts",
+      "bytes": 36,
+      "sha256": "6cf5fc299a9d123526d7b1fb4d310d09490d27fb7008489d2fa662bdee44bd7a"
+    },
+    {
+      "file": "server/googleAdsClient.ts",
+      "bytes": 11180,
+      "sha256": "b6311c827c3e7e68ec6360989862197bc416953fcdc2617db8cfd708dd76b03c"
+    },
+    {
+      "file": "server/index.ts",
+      "bytes": 57250,
+      "sha256": "c43f17eb9004d7dbe9fd81d50e0ce45c6f35a3b61141416314bf0f97b145bab9"
+    },
+    {
+      "file": "server/instagram-scheduler.ts",
+      "bytes": 5318,
+      "sha256": "71ea0827e958ac0225bfd11175722bfa796eadb88106aa8ad45e323537f2be1c"
+    },
+    {
+      "file": "server/integrated-ga4-auth.ts",
+      "bytes": 5671,
+      "sha256": "61ea0448a64de479c0301942e88fbc62377974ff36544a5baaee17c8aead827c"
+    },
+    {
+      "file": "server/internal-request-auth.ts",
+      "bytes": 1779,
+      "sha256": "f980f0dce54d399a0711831880112a9807f6f73b83cff2e2f196ee0572c6dc54"
+    },
+    {
+      "file": "server/kpi-notifications.ts",
+      "bytes": 17553,
+      "sha256": "3e372309dafc8e2d5ed22e71b31a7044c1b966d8b168ab721e25d14bfadb7268"
+    },
+    {
+      "file": "server/kpi-scheduler.ts",
+      "bytes": 19670,
+      "sha256": "b49b516f8bf2b2cf0b5af4c4b78473e35da60e41ee70d25bdc942565a3e3ad6f"
+    },
+    {
+      "file": "server/linkedin-daily-metrics.ts",
+      "bytes": 4980,
+      "sha256": "e40f9f1791f2f28bf12c3b93ff0a8de3acc4273d66c8360cfbf13141e0965efb"
+    },
+    {
+      "file": "server/linkedin-insights-engine.ts",
+      "bytes": 18298,
+      "sha256": "9ab7e4530afb921851bde866b08ce4794c6155bb58f79863e20509ecabc780ae"
+    },
+    {
+      "file": "server/linkedin-scheduler.ts",
+      "bytes": 35214,
+      "sha256": "4b77038498c9bb054b58cef6676cd40ec9da70220187b8a162a9d0ae9bdf0881"
+    },
+    {
+      "file": "server/linkedinClient.ts",
+      "bytes": 9105,
+      "sha256": "da42dfd7392e8aed976a42644551d73f09b202ea22bdbb3e2fe2884a4e21b295"
+    },
+    {
+      "file": "server/meta-scheduler.ts",
+      "bytes": 18420,
+      "sha256": "38a2f98bd060d01d685e765d2104205e9d9d44b596c5c9144b527f2cadb8e08f"
+    },
+    {
+      "file": "server/middleware/rateLimiter.ts",
+      "bytes": 3017,
+      "sha256": "9c76d0127ba28a799deb575e33d70c9f4ebc5737c20b5ded77c56553bfbc0541"
+    },
+    {
+      "file": "server/professional-ga4-auth.ts",
+      "bytes": 3164,
+      "sha256": "364137cbe575ba70ed704ce5ae3c8050bb14d255b795d6e87fd5655bf00d1b7f"
+    },
+    {
+      "file": "server/real-ga4-client.ts",
+      "bytes": 19841,
+      "sha256": "469081cfb7c206594b96df6f37761154b4193ee24c953f56a397c7ec954cddbc"
+    },
+    {
+      "file": "server/report-scheduler.ts",
+      "bytes": 294635,
+      "sha256": "022159340a44b2542bfad2c31370b4927f84dd50517797d844d85a968d1c7293"
+    },
+    {
+      "file": "server/routes-oauth.ts",
+      "bytes": 1801096,
+      "sha256": "bec6931c90c6e1dcf9eeddb4c039a34751c7d1cc61b325b9ce8d565320b4f4a5"
+    },
+    {
+      "file": "server/scheduler.ts",
+      "bytes": 43221,
+      "sha256": "9ebd5a4e949473bb21e3294880611c80e5ce339d4d6bfd33dc606cd54d3c2ee8"
+    },
+    {
+      "file": "server/services/alert-monitoring.ts",
+      "bytes": 28883,
+      "sha256": "359c9a322ed86079f5132e009421ab3efaa7e33e07a36fc46581cf3439b1ad2b"
+    },
+    {
+      "file": "server/services/custom-integration-file-parser.ts",
+      "bytes": 19789,
+      "sha256": "821dd7697e8d46e94370de67eaef76ed165ebf621497efd9159be4864db147f9"
+    },
+    {
+      "file": "server/services/email-service.ts",
+      "bytes": 22822,
+      "sha256": "618edf0ec2d70831977e83fd03b2ccb13e13254dc1aa856f99a65cfe326ef2de"
+    },
+    {
+      "file": "server/services/meta-graph-api.ts",
+      "bytes": 19294,
+      "sha256": "480e94818c6447070fd883e38fc532c26d7444ca2980087ccebff03fd7c45bdc"
+    },
+    {
+      "file": "server/services/pdf-parser.ts",
+      "bytes": 14222,
+      "sha256": "bbf2fe8fe2604bca734cb16cf927bbf417e0dbf9762527fe6a41e219ac866133"
+    },
+    {
+      "file": "server/storage.ts",
+      "bytes": 388523,
+      "sha256": "d39c89104a19140dff1d31017110710bff0dd9d0a02b289946d1399a5b840e81"
+    },
+    {
+      "file": "server/test-pdf-parser.ts",
+      "bytes": 1179,
+      "sha256": "d41c1d5398499efc0891dac649b15bd64984c8468aaaf437cb84c3e2eb4b3131"
+    },
+    {
+      "file": "server/test-support/ga4-recovery-process-worker.ts",
+      "bytes": 7994,
+      "sha256": "c1ddae9f6affe73e8b9b8d53f299fd8b3ef29637213cd2769eefbf317ac25d20"
+    },
+    {
+      "file": "server/tiktok-scheduler.ts",
+      "bytes": 6053,
+      "sha256": "670ad0d1940c9dbb200ad97f947d265ec6cf2182633810bdc71409af4a8efdce"
+    },
+    {
+      "file": "server/utils/alert-decision.ts",
+      "bytes": 1457,
+      "sha256": "3b1ae1d1283aa30c9cd13a76c72f7113616a241a27931587d90e0fccc7126577"
+    },
+    {
+      "file": "server/utils/alert-email-audit.ts",
+      "bytes": 14028,
+      "sha256": "94d1bc8148ac0661fa2e4ca120967fad33b65494e8c8ec6dda5637255afeabe5"
+    },
+    {
+      "file": "server/utils/alert-evaluation.ts",
+      "bytes": 1599,
+      "sha256": "1ba84a2a5644ba2972fa6518e7d12079bb96c6d6987d3411fd62854f92c7ad40"
+    },
+    {
+      "file": "server/utils/auto-mapping.ts",
+      "bytes": 10387,
+      "sha256": "f8278dda32f082e04ed205f172c0362c9911ff82ab06b16ffbea6eacd30a15ee"
+    },
+    {
+      "file": "server/utils/campaign-cumulative-financials.ts",
+      "bytes": 4797,
+      "sha256": "6d8af3352a6159a0228b7db6696fdafd6c65ab9494592ab8d7c61b7eaf1d2816"
+    },
+    {
+      "file": "server/utils/campaign-current-values.ts",
+      "bytes": 28410,
+      "sha256": "e8b1d64ede6205abdcbefc41b71995bd691104252f99805f899e61698b9c9b58"
+    },
+    {
+      "file": "server/utils/campaign-scheduler-eligibility.ts",
+      "bytes": 380,
+      "sha256": "89d0ddd66396d0f53b485a721698a9f0ddbc7732e0c301f152f6a26f06d144d6"
+    },
+    {
+      "file": "server/utils/campaignNameMatch.ts",
+      "bytes": 1463,
+      "sha256": "18d284570dc930e00d1f9bfebf9e4da089976af3ef3252d97664431a7562a25c"
+    },
+    {
+      "file": "server/utils/canonical-format.ts",
+      "bytes": 6819,
+      "sha256": "42e19b57c0070182d1d482f619315356877538d19d2a173f1a39d08c8b7b70c4"
+    },
+    {
+      "file": "server/utils/column-detection.ts",
+      "bytes": 6669,
+      "sha256": "284001bd6e7352b6ac795a6bb2d8d1534e3fa9634d60b2ca7f990a7a34312605"
+    },
+    {
+      "file": "server/utils/csv-revenue-damage-inventory.ts",
+      "bytes": 8527,
+      "sha256": "4e5fc26751d901f1e122f7e9bd8691d337dea3341ea7c1ddce1f103ac1e06a3c"
+    },
+    {
+      "file": "server/utils/csv.ts",
+      "bytes": 16210,
+      "sha256": "e321ba85f6962cb48dd16049f092afbe317c7d863ce29c70bba2b0011edd961a"
+    },
+    {
+      "file": "server/utils/data-enrichment.ts",
+      "bytes": 4365,
+      "sha256": "1b30c10b0a1fddcde436bfbddd683067e12cd0fafdef1d19ce114c80222be3e2"
+    },
+    {
+      "file": "server/utils/data-transformation.ts",
+      "bytes": 16771,
+      "sha256": "b3963210fd94fad338df649c576142032051583e18b9e78d429a393e60499541"
+    },
+    {
+      "file": "server/utils/email-generator.ts",
+      "bytes": 2109,
+      "sha256": "58683c16b4cebc8e27fa65badce931777429d502b798e405ced1c16839077680"
+    },
+    {
+      "file": "server/utils/executive-summary-daily-snapshot.ts",
+      "bytes": 13035,
+      "sha256": "a39442d65f234cd229acc8faec5b843d5124865acdf80bcca6bb8fc31028bcce"
+    },
+    {
+      "file": "server/utils/executive-summary-helpers.ts",
+      "bytes": 18333,
+      "sha256": "dd73fdcd79afd7ab926a09f1987c07d9351bc5386958144ccc197977602f6585"
+    },
+    {
+      "file": "server/utils/executive-summary-target-eligibility.ts",
+      "bytes": 316,
+      "sha256": "74cc23c77fd07e81486221f8f53365491580ec12e753e8785955e8445152114e"
+    },
+    {
+      "file": "server/utils/field-definitions.ts",
+      "bytes": 6086,
+      "sha256": "5c68dc86b2f394f7a7fbf223e37df4cd91205aadc7b3f47f94dd573550d5794f"
+    },
+    {
+      "file": "server/utils/financial-daily-comparison.ts",
+      "bytes": 7033,
+      "sha256": "f142af25c1e4ea57a9b25188a46c6abb790dc205cd65006d59500c7a6030d3b4"
+    },
+    {
+      "file": "server/utils/financial-daily-snapshot-observation.ts",
+      "bytes": 4354,
+      "sha256": "16ce43f001e24dd0ee4eb70075bd7ce9568c93ae479d1d419e7f84d42533b279"
+    },
+    {
+      "file": "server/utils/financial-daily-snapshot-readiness.ts",
+      "bytes": 4435,
+      "sha256": "10354a5ed643d686a6576fa4ddb9581e801af38bc8ebf69413d986b77c5d8154"
+    },
+    {
+      "file": "server/utils/financial-daily-snapshot-writer.ts",
+      "bytes": 9792,
+      "sha256": "718f4d9755d63d70d6ff1ae8366ccfbfefe5a43bc8ff8f9b682654b11c740062"
+    },
+    {
+      "file": "server/utils/ga4-alert-current-value.ts",
+      "bytes": 21846,
+      "sha256": "c3b31ecc44ff368c642685c1c4ca109d5d407159ffa4e72d8368f46dc70644a6"
+    },
+    {
+      "file": "server/utils/ga4-kpi-alert-dedupe.ts",
+      "bytes": 2484,
+      "sha256": "6734bc3a2b9ab0d7bb547d7029c4114952d5b38fa91a88c2f8a2514959efb9fb"
+    },
+    {
+      "file": "server/utils/ga4-kpi-create-guard.ts",
+      "bytes": 9820,
+      "sha256": "acecb3a529398c0d6931b3304dfacb717dc694fa5172f643fc116d6f58d97037"
+    },
+    {
+      "file": "server/utils/ga4-service-account.ts",
+      "bytes": 4830,
+      "sha256": "57f2959231dc0e201e2ad5f4b0f49d95f7b0de10769474337518e35062b74ff9"
+    },
+    {
+      "file": "server/utils/ga4RevenueEnrichment.ts",
+      "bytes": 5172,
+      "sha256": "27904881d0abe439573f2fed73634c3f777e3b042de6711c953d3906f582641d"
+    },
+    {
+      "file": "server/utils/google-ads-service-account.ts",
+      "bytes": 5473,
+      "sha256": "568a41869cab538bd614d63bb8e0f63e56e450ad869597052b21d5dd70f2f969"
+    },
+    {
+      "file": "server/utils/google-sheets-aggregate-source.ts",
+      "bytes": 6878,
+      "sha256": "cd8e3a584761bf7345e35da00dece13410f9d4029a4770a99b8e89d1bf8a2686"
+    },
+    {
+      "file": "server/utils/google-sheets-revenue-amount.ts",
+      "bytes": 1852,
+      "sha256": "a5ce4b31d2ebd2771cd62741e7ba84758fa1dc72cfbf04d02b1d49c96af1bbf6"
+    },
+    {
+      "file": "server/utils/google-sheets-revenue-damage-inventory.ts",
+      "bytes": 16160,
+      "sha256": "6fc2b4b2c71ffcdfa648b6409f9cb3babcb9d73da9d3c657e65618f8533cd76c"
+    },
+    {
+      "file": "server/utils/google-sheets-revenue-preview.ts",
+      "bytes": 1224,
+      "sha256": "42e30ecc9686c3cfc1c772d5740a0f60dbc309f46c089689966e0c360f468450"
+    },
+    {
+      "file": "server/utils/google-sheets-revenue-ranges.ts",
+      "bytes": 1884,
+      "sha256": "b89429942c19a6356079639f93088f63ccb02566fae4eaf0d8b4935c41493de7"
+    },
+    {
+      "file": "server/utils/google-sheets-service-account.ts",
+      "bytes": 3827,
+      "sha256": "52753c57de4f8429ce5e5f32afbb0631e93dd938f247a29f5e2ed737e907ce6b"
+    },
+    {
+      "file": "server/utils/googleSheetsSelection.ts",
+      "bytes": 4857,
+      "sha256": "1ced3e5569a60c48c9a96d663d5b43aa70c577893af826f8957027a2d4c1fa51"
+    },
+    {
+      "file": "server/utils/hubspot-currency.ts",
+      "bytes": 668,
+      "sha256": "1c24a568f5aa4a4f32484078880d65bb140ea668cdbf91e53f538c887872cfa8"
+    },
+    {
+      "file": "server/utils/hubspot-pagination.ts",
+      "bytes": 954,
+      "sha256": "5018dac15d5ec2263e3b646cc96d3c1f40a6a00548ae187fb12bb2f2ce4e4ce5"
+    },
+    {
+      "file": "server/utils/hubspot-revenue-damage-inventory.ts",
+      "bytes": 10536,
+      "sha256": "4a859e6688ed37a728c6c6b1492b7ffe6416f21b8a63b9405fddd39e1bd17b44"
+    },
+    {
+      "file": "server/utils/kpi-refresh.ts",
+      "bytes": 29357,
+      "sha256": "f28036e7b2339fe4e330f206d514eff9b555a88fc21a360f6ebdc280aebb6f0b"
+    },
+    {
+      "file": "server/utils/linkedin-revenue.ts",
+      "bytes": 11882,
+      "sha256": "58c156b951e55831dc1b4070b5c1eaa0713079bc6b083cac0c0abf018a773785"
+    },
+    {
+      "file": "server/utils/mailgun-delivery.ts",
+      "bytes": 3023,
+      "sha256": "e35f44bd4a6bd481c40c4009f83cdefb3c650e2e1442bc757611c22622e42da6"
+    },
+    {
+      "file": "server/utils/meta-revenue.ts",
+      "bytes": 9738,
+      "sha256": "5dd16778afd975d76554ad66bb720dc52138e7e4319ab7fb40a4cd2d071915a5"
+    },
+    {
+      "file": "server/utils/metaMockData.ts",
+      "bytes": 13668,
+      "sha256": "697b33ce2503cb7fdd592474f3694184a355e38f1c4a2b8fad105ddaa4ff58e4"
+    },
+    {
+      "file": "server/utils/performance-summary-aggregate.ts",
+      "bytes": 21465,
+      "sha256": "3ebfe2f60e7321ada545cd04d5a6c6f56fea3e6a6bbd36a68f392dbc8db4b150"
+    },
+    {
+      "file": "server/utils/report-pdf-artifact.ts",
+      "bytes": 1251,
+      "sha256": "1be0631bcd2ac836ed7dd9822f36f6194ce46eec0559332479254b5b9183fb95"
+    },
+    {
+      "file": "server/utils/reporting-timezone.ts",
+      "bytes": 12013,
+      "sha256": "30f2f41c96efd7cf43d60896127845c8a616471be7ec97ebb8d9a875d968c7e4"
+    },
+    {
+      "file": "server/utils/retry.ts",
+      "bytes": 6484,
+      "sha256": "679c7940eb1f671c0fa482c1d066d56118e24717eddf7692533a98f326a753c1"
+    },
+    {
+      "file": "server/utils/revenue-record-total.ts",
+      "bytes": 2323,
+      "sha256": "3c53eac66cc02031a8ff20ac3a10a8b892ab9059eaf032c95288dadf39337f48"
+    },
+    {
+      "file": "server/utils/salesforce-authorized-fetch.ts",
+      "bytes": 1080,
+      "sha256": "20a7c140e35404aa54570d8b605228f2974aa465058136311162ddd2f4d2adf1"
+    },
+    {
+      "file": "server/utils/salesforce-pagination.ts",
+      "bytes": 2838,
+      "sha256": "b0003922afb29ccaf93098319006af647a087074b19bda8bbed2ab80b71b1c8d"
+    },
+    {
+      "file": "server/utils/salesforce-query.ts",
+      "bytes": 505,
+      "sha256": "9b580181b2e1cfe7b866ea5853d9dd2078472930f325675ff68eefe4b5d80cc6"
+    },
+    {
+      "file": "server/utils/salesforceCurrency.ts",
+      "bytes": 14948,
+      "sha256": "a3e7adb3d37d99cd13f7e0126a905a722a50475f5541aedea7f87cc25c1ea7c0"
+    },
+    {
+      "file": "server/utils/schema-discovery.ts",
+      "bytes": 10216,
+      "sha256": "76f25c37e35517ce90bc69ce2d207024f1d557d2059b7ead9c1a83b6f5911d98"
+    },
+    {
+      "file": "server/utils/shopify-provider.ts",
+      "bytes": 16968,
+      "sha256": "64bd14489ba02094ad561b3dedc83ab33bf85894a086fb4b2dbf4d95019ad1fe"
+    },
+    {
+      "file": "server/utils/shopify-refresh-notification.ts",
+      "bytes": 1194,
+      "sha256": "d186c26e957d317770a667107e39a57e50560f1ffd6667a7991bee1117270569"
+    },
+    {
+      "file": "server/utils/shopify-refresh-state.ts",
+      "bytes": 3023,
+      "sha256": "8560094564b3ced0f57bf32651c6aaaccff83cc4933e2fac92f04121af4732fc"
+    },
+    {
+      "file": "server/utils/shopify-revenue-damage-inventory.ts",
+      "bytes": 27852,
+      "sha256": "8e4ba506b45e7ca5b2aff2055af34b18461d011f0cb82ae4364379a39e1753c6"
+    },
+    {
+      "file": "server/utils/shopify-revenue.ts",
+      "bytes": 10831,
+      "sha256": "2c63338bd8607e18c07fda37505205b2207705f76c5b78a3db7b3ce755acbec5"
+    },
+    {
+      "file": "server/utils/tokenVault.ts",
+      "bytes": 5905,
+      "sha256": "98c327ef731cb8aa28d2ee7f4df75cd5491792c8874e9c079f1d38c865262b22"
+    },
+    {
+      "file": "server/utils/trend-analysis-aggregate.ts",
+      "bytes": 8376,
+      "sha256": "989d453f890866b7e906753579c8653f931d2d851a9b8fb91293e58adc61a285"
+    },
+    {
+      "file": "server/validation/linkedin-metrics.ts",
+      "bytes": 9648,
+      "sha256": "3f05be9e3bf90cffd9848960533bdda3d3ab5023972b0c8097e66ff12c9a7900"
+    },
+    {
+      "file": "server/vite.ts",
+      "bytes": 4365,
+      "sha256": "15ee2a177edfbb0863158ad85ddbd997e8698e538a368dec2e30d95bca5f88f1"
+    },
+    {
+      "file": "shared/currency.ts",
+      "bytes": 7799,
+      "sha256": "0c0ad305290966887ea29502af95cabdf774d055d05fc89a62fd8d94a4c43bdb"
+    },
+    {
+      "file": "shared/ga4-ad-comparison-cards.ts",
+      "bytes": 1848,
+      "sha256": "c4f6c7d94dc050ddc1bf0b6f001a4ae6fe43759320410e6f96136a42e40bdfd9"
+    },
+    {
+      "file": "shared/ga4-campaign-breakdown.ts",
+      "bytes": 5073,
+      "sha256": "c998b3d365d9c710873ae62f17ed56e49a82bc4ccb58cb71903987b6a7121dcb"
+    },
+    {
+      "file": "shared/ga4-financial-source.ts",
+      "bytes": 3350,
+      "sha256": "74b19510d8a599a2f29ae1414b338e156c5c529538bc43d1002ae18b66f530ef"
+    },
+    {
+      "file": "shared/ga4-insights.ts",
+      "bytes": 19396,
+      "sha256": "af826770e3bff7a82f1819e93546a4c7cef179f91ac10e6d82f3454f37b7f90d"
+    },
+    {
+      "file": "shared/ga4-kpi-consumer-state.ts",
+      "bytes": 4655,
+      "sha256": "b06faec350a3243f8354fa09b362856e6e7e6a355101c37adad9cc9b5092ed80"
+    },
+    {
+      "file": "shared/ga4-kpi-live-value.ts",
+      "bytes": 1610,
+      "sha256": "9337580cd890d877925f14c4802adf55620407270158417f582df169b7744580"
+    },
+    {
+      "file": "shared/ga4-kpi-metric-identity.ts",
+      "bytes": 2333,
+      "sha256": "87e0a03d94db184b6e4347530cc8655d277f4a9596e4226e9aed179621713f88"
+    },
+    {
+      "file": "shared/ga4-traffic-window.ts",
+      "bytes": 4284,
+      "sha256": "f45cc656ae0d5a25af86df2ae7827a75d0a350a7d3c184cb8d38a32ed471f2a3"
+    },
+    {
+      "file": "shared/kpi-math.ts",
+      "bytes": 15398,
+      "sha256": "597223f92eea4ab9a1128dc02028342541428aa391b058c9f06795a6bd82e75e"
+    },
+    {
+      "file": "shared/linkedin-metrics-math.ts",
+      "bytes": 1818,
+      "sha256": "482ea7c226a647083b33e67a35e7fa9c1660ebf997bb2f5121009ca28e46d78d"
+    },
+    {
+      "file": "shared/metric-math.ts",
+      "bytes": 3010,
+      "sha256": "56ce2a96b3202369591ce1f63006d0d9c4577616d988e22c8af3647b3b8c4ee6"
+    },
+    {
+      "file": "shared/schema.ts",
+      "bytes": 107020,
+      "sha256": "202d634f89322c87efece9782f275e1b7624e2a7693e5f3f3c56da63ee77743e"
+    }
+  ],
+  "auditArtifacts": [
+    {
+      "file": "docs/V1_RELEASE_READINESS.md",
+      "bytes": 104098,
+      "sha256": "4eab4089f92246d38132bf866d3677ca6bbfcaf3d9fc0349fb310c9264ddfaac"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ACCOUNT_SHEETS_AND_RETAINED_WRITES.md",
+      "bytes": 8777,
+      "sha256": "c1240eb9114b2518abffb6ba8a9c382b4e461ee9719b0b8be63e763e68b408dd"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ADDITIONAL_TEST_ROOT_CAUSES.md",
+      "bytes": 4719,
+      "sha256": "cf98c11853d03f1f505f8da1b8c0aea017f352ff38c27f09653db38d48c33168"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/AUTHORIZATION_BOUNDARY_TRACE.md",
+      "bytes": 15953,
+      "sha256": "7e1d8b61e7eaad605250e69d819755c303bddb94ac9a93b239cbfe185aea18ec"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/CAMPAIGN_CURRENCY_EDIT.md",
+      "bytes": 4211,
+      "sha256": "af3d563fa6f9cbf56edeaef8442b34778c019d12b9129b28af7b99f7b604eeff"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/CAMPAIGN_WIZARD_BROWSER.md",
+      "bytes": 6543,
+      "sha256": "bc281df91af9608135c5bac81cf5a75a295e974ee9daf288bfecb62700f00189"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/CONFIGURATION_AND_RECOVERY.md",
+      "bytes": 11706,
+      "sha256": "4f558ae47e237087f6a7a3ec68ea6499db8bb977903e49659ea207eca2056603"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/CONFIGURATION_CATALOG.md",
+      "bytes": 23234,
+      "sha256": "2e70456efd37722e574b062ac7bd8f64f4cfa3514229fc7a8056f6f3800701f0"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/CRM_AND_SHOPIFY_TRACE.md",
+      "bytes": 11266,
+      "sha256": "5b5f2edd9edb57b3eb57f4fe006c6755c81c39f5d154535d8440cabefba2bd4d"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/CSV_REVENUE_AND_PARENT_WRITE_TRACE.md",
+      "bytes": 6317,
+      "sha256": "50d691b25d51bd87b0eac009cde5b7657e0404ebc71cfa4cadbd9d02808cbd5b"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/CUSTOM_IMPORT_AND_PUBLIC_ENTRYPOINTS.md",
+      "bytes": 17504,
+      "sha256": "029deed8c5a530c882e2ebb407a4ebb38b789466db47ebd3125bd32a3db09341"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ENTRY_PAGES_AND_DASHBOARD_VALUES.md",
+      "bytes": 6995,
+      "sha256": "303d302402c253a3ff741ac65ca4b128e4b2147fee1c98afbf133c9d4d91a666"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/EXECUTIVE_SUMMARY_VALUE_INVENTORY.md",
+      "bytes": 12798,
+      "sha256": "51ba45107d5aadf5c1c13db621808a385fcb9f4af6d3f8cf467bf89e0e729e27"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/FINAL_AUDIT_DISPOSITION.md",
+      "bytes": 18948,
+      "sha256": "87089fa3af92e35e906204c1ea167a61878ef041b3c26a11b46a54506eb7a4bd"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/FINANCIAL_ANALYSIS_VALUE_INVENTORY.md",
+      "bytes": 11374,
+      "sha256": "fde13a488b6a2be5cb976bf267fad03404ba486152b501febda2af058eee7e4e"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/FINANCIAL_CONTRACT_AND_ONBOARDING_TRACE.md",
+      "bytes": 14508,
+      "sha256": "9d3ed8bf3026662d6c171f7591bfdbb51a29654abd5d13361d46a4f395dea799"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md",
+      "bytes": 19819,
+      "sha256": "4e3e6581a34e166e244bcd8f1218aef767acc1f1955950c7c2fbe5b4e7ff1e11"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/GA4_AD_COMPARISON_AND_CONSUMERS.md",
+      "bytes": 6446,
+      "sha256": "5f3116c0c29a88a69224a292f76e6f9ddaba788fe99160416df7ee85e5ae3a91"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/GA4_FAILED_TEST_ROOT_CAUSES.md",
+      "bytes": 4832,
+      "sha256": "c6da5485fd53dc896b4774feef05f919c4c77ab98fd65109cbdc72b293e12a27"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/GA4_INSIGHTS_CALENDAR_AND_FINDINGS.md",
+      "bytes": 9892,
+      "sha256": "2e843ad77e703f622af25345d2281ba808977fe786c7271e2872bb4826bcec40"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/GA4_OVERVIEW_VALUE_INVENTORY.md",
+      "bytes": 12182,
+      "sha256": "fe5519a36481a609e4ce97f063e1706ffd18d0466732a6b77fd873ecad47fd5c"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/GA4_PROVIDER_PRECISION_AND_SCOPE.md",
+      "bytes": 4845,
+      "sha256": "347c6996947ae159675be472792b8587a68971153b4d8e6dad7e3e0364c768e9"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/GA4_QUERY_AND_VALUE_TRACE.md",
+      "bytes": 19421,
+      "sha256": "052bee8bed042eee8c85af6e22cfdcaf1a054c3034dda27ee23f9a238e9d0ab9"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/GOOGLE_ADS_CURRENT_VALUES.md",
+      "bytes": 12094,
+      "sha256": "d2e9d89f7cdc1d4c4a55888165ed32bed27776f0f34fb00af533698eb6d3abc7"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/HTTP_DATABASE_PILOT.md",
+      "bytes": 5414,
+      "sha256": "c4e562259207f7bfef1c3c178f4d8bc998d62e3d1c5709021607398eef7868ae"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/INVENTORY.md",
+      "bytes": 134387,
+      "sha256": "ccf1c32823e610946ab30cd334c5b7bf63d322e601b9f3fef35f8be9a1cdc03e"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/JOURNEY_RETAINED_SURFACES_AND_SHEETS.md",
+      "bytes": 14256,
+      "sha256": "736f29078b09d12cf02f799aa3a4bd700e6e67dd639ade040fe7d7f9303bb11e"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/KPI_AND_DIAGNOSTIC_VALUE_TRACE.md",
+      "bytes": 14127,
+      "sha256": "04b87315d70a434a59768a3471fb6fdcfca9a0d0c5e091fbd44f580c0f968006"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/LINKEDIN_REVENUE_VALUE_BOUNDARIES.md",
+      "bytes": 6700,
+      "sha256": "bd22725d7370ce99e0350993004ca0d118e5f5818c3992cbc400329b13a174c4"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/NOTIFICATION_VISIBILITY_LIFECYCLE.md",
+      "bytes": 6898,
+      "sha256": "8687c678ff9a15093a870ac893f7e3ceed57e74ec3065a077a57e64aac5167c7"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/OAUTH_AND_CREDENTIAL_BOUNDARIES.md",
+      "bytes": 12359,
+      "sha256": "13083ef4fa8d978e3f70d54d7b793f9115123abcc88030ac2a0f397822df890d"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/OPERATIONS_ALERTS_REPORTS_TRACE.md",
+      "bytes": 14588,
+      "sha256": "0bba583941339789ae6a6b0bf41250312aa1a214712126e1c261882bb9bc89be"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/OPERATIONS_AND_TEMPLATE.md",
+      "bytes": 27931,
+      "sha256": "458fbc77003980d2df92d7de3e253cade2d28d974492608dbe30dc7a41069d09"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/PAID_MEDIA_TRACE.md",
+      "bytes": 10752,
+      "sha256": "ac2cd96af7b16f849c2da6bdfea1ce6b2ea08c2cf0fff538794c89d4dee9bd24"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/PERFORMANCE_SUMMARY_VALUE_INVENTORY.md",
+      "bytes": 11177,
+      "sha256": "b11d19fd7db4bdbe32706ec118325690d185c6c583f401243b4ddbd560d9c366"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/PILOT_LOAD_CHARACTERIZATION.md",
+      "bytes": 4444,
+      "sha256": "6c2670a5f950f3215d48aa8f8766b8c6061e7da9e784feb1a606f300f8a119ec"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/PROVIDER_VERSION_SUPPORT.md",
+      "bytes": 4696,
+      "sha256": "70d6f6bd4c37ead7ba6f276b10767d3ff856abf9c8c44eea5a0863528428cc92"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/PTOMO_READ_ONLY_EVIDENCE.md",
+      "bytes": 9128,
+      "sha256": "0dca389502d6ff914120f85d6c86fdf17c945b6d8e5e9c401dfb716776092b8e"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/RELEASE_GATE_DISPOSITION.md",
+      "bytes": 11351,
+      "sha256": "9861638cd386d754919bd868daec920740a14788c230a4a76492dbd3f061b0e1"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/REPORT_PDF_RENDER_AND_FINDINGS.md",
+      "bytes": 6955,
+      "sha256": "768ea1524eb79999b358412590be9e473468a0f679413b24f16bef2400fa55a5"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/REPORT_SNAPSHOT_ACCESS_LIFECYCLE.md",
+      "bytes": 4195,
+      "sha256": "e0b93bf14e68428931a55ba63f65d597e39712e56c320862ecf002a32870b98d"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/RETAINED_COMPARISON_AUDIENCE_KPI_VALUES.md",
+      "bytes": 11114,
+      "sha256": "d8ef4ff53ee6de075aa9aab9a6e0a253257ebe1fe86c8f5682d480507c91dfd7"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/RETAINED_PAID_VALUE_BOUNDARIES.md",
+      "bytes": 10179,
+      "sha256": "9a10ac42115ba0352ecbb6f6bb5dd4af06f6e98ec616f91f45c3b96b81b228e8"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ROUTE_ENTRY_COVERAGE.md",
+      "bytes": 3477,
+      "sha256": "8a913c3676d08f031a6601a4bfa360a346769a2e25db3adee6f6f41aa20a4708"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/SCOPE_AND_VALUES.md",
+      "bytes": 42400,
+      "sha256": "a67411c70942dae2787de6b25b5258f290164d91c060e065ca14fcbcf0b6f8e0"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/SERVICE_ACCOUNT_CUSTOMER_BOUNDARY.md",
+      "bytes": 5141,
+      "sha256": "fd4854b3b1280da1fe763a6aa86b96f21b551a414da890ee287a8547e8029f3e"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/SHEETS_CUSTOM_VALUE_PROPAGATION.md",
+      "bytes": 12100,
+      "sha256": "fde5d6ac37b460c028e652de92854416a0d175f2d8bd57114263fb4c040f4ace"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/STARTUP_SCHEMA_AND_MIGRATIONS.md",
+      "bytes": 9237,
+      "sha256": "b7ee2ba52ead62e9c5e60e2ff216b0062174b8580ee909ed317b4a35f7cd757e"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/TREND_ANALYSIS_VALUE_INVENTORY.md",
+      "bytes": 11509,
+      "sha256": "741ba04e792dd4c57754743d7a8e0b623803459a0c1fc15217917d386374f120"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/UNCONFIGURED_SOURCES_AND_PTOMO.md",
+      "bytes": 9853,
+      "sha256": "4c7a96c7e8d8ec040e6e45f92ecec4b51dad1e1f032e466818e8eac6a688b80f"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/VALIDATION.md",
+      "bytes": 132504,
+      "sha256": "116f767f72823ee24b31d05a811036256b4ba45a5c29f13ffd584412ef28cb89"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/additional-test-root-causes.json",
+      "bytes": 34883,
+      "sha256": "c3ead7cfbfb798346a804e1a295272b03ffd8f607862366d50bafc0c960081ff"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/audit-record-check.json",
+      "bytes": 6030,
+      "sha256": "ed8815c52455792028add167c2690f629a1b3214a97bd80dbcd18d0cc0ce1477"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/authorization-reproductions.cjs",
+      "bytes": 6105,
+      "sha256": "1ac96bca238951f1dd494a39acc6731975a4294eb7cbb48f2d12661f86bd2a0e"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/authorization-reproductions.json",
+      "bytes": 3644,
+      "sha256": "82b73daa9288a43b7123ff0fb7bdf6567d31aba0b97de2c97c216db058539f0f"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/backup-restore-fixture.cjs",
+      "bytes": 7649,
+      "sha256": "2c124ac58e5aaea4e51b7a97cd96cb33f1dffbbbc1035f49f89906809c602088"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/backup-restore-fixture.json",
+      "bytes": 1132,
+      "sha256": "e7ebfb5901bb96e15ddf035efd344ffea3b72820514b35b3cbbafa825a9fba71"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/binding-fixture-preparation.json",
+      "bytes": 1161,
+      "sha256": "1a2ef286b5460e42dafb0a9a82d4a9328d6b8bf81dde3e6699a59176c9f8796e"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/binding-fixture-results.json",
+      "bytes": 15019,
+      "sha256": "3f4a11887648f29a0239302e9f91d81946f0445217a4a8d6e33490da0b0b2cc3"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/binding-fixture.log",
+      "bytes": 234,
+      "sha256": "bdd1fc620faf18fe83d0a22267eda0cf16e0504d45c007f587a8e9423142a38b"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/binding-fixture.vitest.config.ts",
+      "bytes": 396,
+      "sha256": "53945ea34af76a0d8d2a72dea4205b432796d064bb484c95b0458e8bc3d399cd"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/browser-smoke.cjs",
+      "bytes": 1663,
+      "sha256": "473ed7c642e68c631ce4e32aeb95e39a63522840b47a67561acc966d2760349d"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/browser-smoke.json",
+      "bytes": 8477,
+      "sha256": "a77dca610d64dd1cd8382ac109a51219c142f15330a0e47742106505f92713bf"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/build.log",
+      "bytes": 12164,
+      "sha256": "5d48573db4bf5a3bd6de692c423f784f5141a10c48f02c11757ea7e01b933552"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/cache-sheets-limiter-reproductions.cjs",
+      "bytes": 3554,
+      "sha256": "bd10fe7fa62b1c4df17b9a65d82c3140fc70b4221fc3e2ac85168b286d12bdbe"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/cache-sheets-limiter-reproductions.json",
+      "bytes": 1337,
+      "sha256": "f50cbaf7a11b80a51f7c322f56232e4622cac28f95c1a5e97bb69b47858da874"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/campaign-currency-reproductions.cjs",
+      "bytes": 6955,
+      "sha256": "c4a1f2804a393d5f6c2fdfd23467aeb037927fc15ad91e452b7f68b6bc23d893"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/campaign-currency-reproductions.json",
+      "bytes": 1153,
+      "sha256": "a0a31c27993a2cfc87e1eb0d69c7e4f1293efa7977849741543b2bbce90e6ca7"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/campaign-wizard-browser-reproductions.json",
+      "bytes": 16018,
+      "sha256": "7c46890a5a1caff45850da1d2fa81294a0641ff8de73d576074da9cf86c8e8d0"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/campaign-wizard-browser.cjs",
+      "bytes": 11490,
+      "sha256": "38c83de683961320c3829810e4e9562a6bf4fcda68fb64296437a1544158d818"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/campaign-wizard-fixture.tsx",
+      "bytes": 784,
+      "sha256": "7a6deb7fc188294f8f6c04344661e65d3e0d6fe6ab93f6ce411457a19eeb7121"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/check-audit-record.cjs",
+      "bytes": 8163,
+      "sha256": "8c1c859d2eea41e62e3b39401762b2eea4b1dbb305e1db39143f4c8b8e44058c"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/classify-failure-scope.cjs",
+      "bytes": 3886,
+      "sha256": "1b89d25879b8bccccd176c09789eaa612d2d732b5889cbca25615edb215b1c93"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/classify-tests.cjs",
+      "bytes": 10027,
+      "sha256": "18841c9c1d56f2611e8818ca39a11d21f5dd666cf646995a99e94d5320cee35e"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/client-delete-race.cjs",
+      "bytes": 3783,
+      "sha256": "5974fb7591b2dd2ca5ab67cae78c169b24a4bf0750c5e502bcdcee551d7e7d7b"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/client-delete-race.json",
+      "bytes": 543,
+      "sha256": "cda23c3c9d7266c7a47f1c168b4a24ecc491a89aefa9dfcaf0f31dc6c0f0a24c"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/connection-response-reproductions.cjs",
+      "bytes": 8468,
+      "sha256": "4bf00ea61f88c616e09c51dd035bcf2d8657347942b213919d2220ed75782dcf"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/connection-response-reproductions.json",
+      "bytes": 25416,
+      "sha256": "e9552d8dea3e401d270c8126538cee0daa4fdaefc5a6c45d0595d1e14383174d"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/csv-revenue-reproductions.cjs",
+      "bytes": 5688,
+      "sha256": "073c83f2cd4dd30858820c70aef23741dd7ee14747d7368b0eaf0e29b082263c"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/csv-revenue-reproductions.json",
+      "bytes": 2961,
+      "sha256": "9f043e8ec2d7b38b92cdf615fcb3a90f8f98fdc58c3250db3569a22df462edc8"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/csv-revenue-transaction.transaction-diagnostic.test.ts",
+      "bytes": 7731,
+      "sha256": "46f283c9cf0b05cbed1f061c99b6030cdb586efc21f0b7b72e05e181ada0df36"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/custom-lifecycle-reproductions.cjs",
+      "bytes": 7261,
+      "sha256": "7a4d9dd372b8a57b9c6628fbc72d808d4089f327b3664f9bbb7fbdf26262c2fa"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/custom-lifecycle-reproductions.json",
+      "bytes": 2892,
+      "sha256": "a278755a5b6fd2fa8cf07bec6b31104f4a1715a4e66e5e6e5f44a04e5a72a468"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/custom-value-inventory-reproductions.cjs",
+      "bytes": 8904,
+      "sha256": "2b83926a506405769343979e67d4405e0b81914acadfaee03633b5f6490a3a12"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/custom-value-inventory-reproductions.json",
+      "bytes": 6182,
+      "sha256": "ac372fcaed076b6ac7a28e65a3950764f6e51ae3a014633550316dbb1313edbd"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/custom-value-inventory.json",
+      "bytes": 10823,
+      "sha256": "1066271e2a3ad4dd08c176a1ebf3bd3394911211a65d9b8ffa973603c392c1da"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/dashboard-surface-reproductions.cjs",
+      "bytes": 7839,
+      "sha256": "71aa387b4e849c8dae3627d2627a66f960d1e7544e04181a168e3542fb9a4925"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/dashboard-surface-reproductions.json",
+      "bytes": 2245,
+      "sha256": "8111480bb76f0ad8b3f01811f72ca9dbe241d6aa3a2a588ff899b53a098e7dac"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/deployed-health.json",
+      "bytes": 120,
+      "sha256": "aaf3611200384d45cd7685ba9292b43ff52447b91170f08bd1644c8fe0dbb1db"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/deployed-public-final-2026-10-20.json",
+      "bytes": 1739,
+      "sha256": "8ecfac6a30587e646a823b7fd8eab88be1aeeaba308ba6bf8c6935c51afa66dd"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/deployed-public-recheck-2026-10-20.json",
+      "bytes": 1739,
+      "sha256": "0130f67ec2d6f530ee7d77353ca0c8a71ab453d9fefbec1f7e8cd24869e299a2"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/deployed-scheduler-summary.json",
+      "bytes": 1187,
+      "sha256": "62139f6ad0a9f10cba81ddab19d2f811e3bab7e03c877425ec74ae840518c682"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/diagnostic-reproductions.cjs",
+      "bytes": 3045,
+      "sha256": "fadb24500a3d5d7e012162df2a595bc7142a249a816c0989eedc8527c0c3f501"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/diagnostic-reproductions.json",
+      "bytes": 2229,
+      "sha256": "b551d2ae823771366ab51e4d9c0cc20945a5976227a9217623306c2f8a145b19"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/executive-boundary-reproductions.cjs",
+      "bytes": 8979,
+      "sha256": "5814519ab67d0a9cfeeda628cd3d1f19af1f7104e46cb18742d2ca7345dfd985"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/executive-boundary-reproductions.json",
+      "bytes": 7011,
+      "sha256": "13dacbec93204c8e549e2751f276671383e48649cbe67f7772975e174aee18a1"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/extended-reproductions.cjs",
+      "bytes": 5930,
+      "sha256": "56cb2107817eddf3c0f9b2b70ed28d75537c14fc24ef19c7af7bc3196e782b9c"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/extended-reproductions.json",
+      "bytes": 2972,
+      "sha256": "014cc81123c6b1eb117f49799ce9b0ff3336d077056291ff71e26c95205297ba"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/final-boundary-reproductions.cjs",
+      "bytes": 10336,
+      "sha256": "3f4b27d3d1987f92f21296659b5ea716992b8ffd72a2dd2fb93243871fff4f36"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/final-boundary-reproductions.json",
+      "bytes": 3958,
+      "sha256": "f8a1136cdd67fa086e2b7ce861c45663fc0a5037f8f85494148bcd1fadfa4cac"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/financial-boundary-reproductions.cjs",
+      "bytes": 7863,
+      "sha256": "497eae20f55b9e638843b995433ea6eafc63138a70836b6f9f7c1dd74f91a7cb"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/financial-boundary-reproductions.json",
+      "bytes": 8235,
+      "sha256": "d2f6e038d948656a1c014cd6d4bc6401be4ef96ad4df49739d9f8c5e9ac21aed"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/financial-contract-reproductions.cjs",
+      "bytes": 4380,
+      "sha256": "93673cdae06eabb635bc56e509cbc9a4c36e9adb4d490de28a1b80d83e45a530"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/financial-contract-reproductions.json",
+      "bytes": 1683,
+      "sha256": "706ceeb12974ee2231d544c5181cfb001fb31779a3ece407c4354f22468a83b9"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/foreign-owner-entry-boundaries.cjs",
+      "bytes": 10523,
+      "sha256": "6cb7c160c5a41a49b28dcc7ea885667513217d9f3bf129cc2bc2188a57632325"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/foreign-owner-entry-boundaries.json",
+      "bytes": 140536,
+      "sha256": "08302388103a8bd1e25795eb5b7c77b7eaab97f96582e1f36f8b924ceeed40c3"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/foreign-owner-entry-boundaries.log",
+      "bytes": 279576,
+      "sha256": "bac9a055c8573efc78705e9896769a0f64db608965cd62eef68e212f51a759bd"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-aggregate-saved-overview.fixture-acceptance.test.ts",
+      "bytes": 14266,
+      "sha256": "fcea723322bf730a525775cc3fdb17153e2f5fde4f726ca672258cf87f8095c5"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-aggregate-saved-overview.fixture-diagnostic.test.ts",
+      "bytes": 14268,
+      "sha256": "c48ebc9911d56e5b85f201c43dbe3730d2b95bdc423ee4fa2ea66517ecf81ce6"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-benchmark-history-idempotency.transaction-diagnostic.test.ts",
+      "bytes": 11696,
+      "sha256": "4a49cc88cfe323d4c2000f0c4d1dca9b04e05b6a907a158d1c79091cf758ef73"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-benchmark-persistence-destructive-safety.transaction-diagnostic.test.ts",
+      "bytes": 6451,
+      "sha256": "78dac79926d802b5662733dcb32c418def0c7416ee7af0ee8877add59ac0860b"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-campaign-discovery-reproductions.cjs",
+      "bytes": 3053,
+      "sha256": "af86e67988ec30240808a69acfc3547ff55bed0f8aa71735b5508b912b4c053d"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-campaign-discovery-reproductions.json",
+      "bytes": 928,
+      "sha256": "77aa9038097e6962d9dd905df826cfcd21b1accca1c4e9c27ba94a4763daf1db"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-concurrency-reproductions.cjs",
+      "bytes": 3596,
+      "sha256": "297e1fbd4953574b0e25ee84201d23956f56c37db7bbb41731c2e8cef4e22fb9"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-concurrency-reproductions.json",
+      "bytes": 1180,
+      "sha256": "a876fc482031fd8e0d09002e74993aa16329fc54a93bd269fbb55857eaab4666"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-conversion-precision-reproductions.cjs",
+      "bytes": 2897,
+      "sha256": "9d16802cbf64e4892ed6414c8b52a5389f1b8903ce68bb38ecb093a40f6d0040"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-conversion-precision-reproductions.json",
+      "bytes": 2657,
+      "sha256": "10a6b59c57e44d712730a01743021409d7900995190e30dbe03a4a046b5afc7b"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-failed-test-root-causes.json",
+      "bytes": 28202,
+      "sha256": "847bc050b9111a73da019a36227f9acccc19d3bb249a8579a7fe8cdf79fe4c0f"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-fixture-acceptance-preparation.json",
+      "bytes": 3607,
+      "sha256": "7d3254c47ec17a8014974e4e427a04d7c2619edaa916b3f76f2c94839f80b375"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-fixture-acceptance-results.json",
+      "bytes": 42415,
+      "sha256": "0fca734ce0d1c738e4bbe0d8934e14adac203faf4b2871c2b66800b18b06b1de"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-fixture-acceptance.log",
+      "bytes": 1202,
+      "sha256": "6b96a466ad9beb8338d7836a2b4327fc9e30581238e79a46c889459568fc75c0"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-fixture-diagnostics-preparation.json",
+      "bytes": 2916,
+      "sha256": "43d9795741bfab39e71589024d135f75b1d357a1d56ddd89e10ce1a1ede83013"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-fixture-diagnostics-results.json",
+      "bytes": 51777,
+      "sha256": "6cdbf7be8053fe4ad3a05b4eb6c26f74962f5b58dbb641d5d60fbacfa5fba716"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-fixture-diagnostics.log",
+      "bytes": 1204,
+      "sha256": "aeace640ba0e94841933f0348dfdf4ca5c307661cfeac2a2de80dbbd919f3854"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-fixture-diagnostics.vitest.config.ts",
+      "bytes": 461,
+      "sha256": "7c3de5e4020f31d209d1bb0beba787bf1353349d59100db5193541688eb50feb"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-kpi-custom-preservation-regression.fixture-acceptance.test.ts",
+      "bytes": 13172,
+      "sha256": "719523363c357c985191e1142732f0503b27171350ae3998b0e1af7466a26a71"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-kpi-custom-preservation-regression.fixture-diagnostic.test.ts",
+      "bytes": 13111,
+      "sha256": "aa1a7d2e9e13731dc6011df191bbf3f7b293ddbff4debcd1e5143fdb37aba702"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-kpi-financial-window-regression.fixture-acceptance.test.ts",
+      "bytes": 12643,
+      "sha256": "de22694d9aeb7ea9ddd3501e0026a47823db65d51820a8f14cdd72fcf63893d9"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-kpi-financial-window-regression.fixture-diagnostic.test.ts",
+      "bytes": 11952,
+      "sha256": "dfa2271d9ded6206756f7ae31b3dda406d6f87147f1d9fd8c6f9e2ea373d958c"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-kpi-persistence-destructive-safety.transaction-diagnostic.test.ts",
+      "bytes": 8934,
+      "sha256": "39e52cab133a1da169c0ac88b1e8789eacb2bcca7e4c727f59fa850b299d73a9"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-kpi-real-path-parity-regression.fixture-acceptance.test.ts",
+      "bytes": 69784,
+      "sha256": "6e9122ee2f65d4b81d2c2c9cd4a95a7e7cb476106f955ab964ac3c674f22ab60"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-kpi-real-path-parity-regression.fixture-diagnostic.test.ts",
+      "bytes": 69786,
+      "sha256": "5d23fbbd2ab0100323515a0a3292e3fa35196bf52c0a5a3da0eff3648d30a6ba"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-kpi-reporting-window-regression.fixture-acceptance.test.ts",
+      "bytes": 9121,
+      "sha256": "7a3c3131a68c0f68ac382a4cbc855d06cb36485bb62031f83972599a459d070d"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-kpi-reporting-window-regression.fixture-diagnostic.test.ts",
+      "bytes": 8682,
+      "sha256": "e780516a55246883778c22cbc56e968f5f7d59e61d6d8bdf74be0d7631ed3898"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-onboarding-reproductions.cjs",
+      "bytes": 5521,
+      "sha256": "cec7dd3d97329c5c7fffd4cbc3775fec538ba59da86ee474e427371911701ae8"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-onboarding-reproductions.json",
+      "bytes": 3045,
+      "sha256": "518d0b98faf3f55270e047db62512a8c4920d12c1c5ef8345f4d725f21cb2482"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-overview-boundary-reproductions.cjs",
+      "bytes": 10698,
+      "sha256": "e91775605550824e35029c94963f79c86df043e6f04966b886c0b8a150428ddd"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-overview-boundary-reproductions.json",
+      "bytes": 5483,
+      "sha256": "d81064cbc1a39c5fad626a944418dccb988c029aca65a9116296e9c440f38ab4"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-overview-spend-transaction.transaction-diagnostic.test.ts",
+      "bytes": 7521,
+      "sha256": "d1dd57fc3f8115a79c2c5f52807c45e8f51ae1b8a85231382598a9651f82007f"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-parent-delete-race.cjs",
+      "bytes": 4571,
+      "sha256": "df4fa6777b9af3e42f2688fbf6baeaec5e27863452f510748d5aed1081ee9352"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-parent-delete-race.json",
+      "bytes": 725,
+      "sha256": "3a436942fecba691b26742544e335a20398681dac18d641e6189c2da6b955024"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-published-reader.binding-diagnostic.test.ts",
+      "bytes": 12861,
+      "sha256": "e17c7f9374f32964c037558dbb95d0b391717531b1bcb1400c6a5a80dbfbec2c"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-quality-metadata-reproductions.cjs",
+      "bytes": 5142,
+      "sha256": "d72802e0c2126d58d48a880dee9569cb86a407c606879c63bfdbf9890e965830"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-quality-metadata-reproductions.json",
+      "bytes": 4103,
+      "sha256": "4c1c6a9e2c4ac7e7e86faf1c5c4ac963eff6e96ee985539cea55cb331c2ed365"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-query-reproductions.cjs",
+      "bytes": 5233,
+      "sha256": "5c3c43c4890b46b87ab31651cf32db8b96dddb4f702d9c1f52db0dd8052e0563"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ga4-query-reproductions.json",
+      "bytes": 3615,
+      "sha256": "2418de870e4237d73bf30267d635f69439185123765ea2fc776b1df13a91add1"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/gate-ad-comparison.log",
+      "bytes": 150,
+      "sha256": "78aab694be8e5ed71d4f8039c960a368ca452ab107dcb67e178360a676349dfc"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/gate-insights.log",
+      "bytes": 140,
+      "sha256": "6053aadb0bf2b86877c2ce07602a3b745317f07b9bf4e058ff26799c792e31bf"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/gate-kpi.log",
+      "bytes": 146,
+      "sha256": "68b480a765546e917c41cd528c67282d6c71fd3377a9b5ad72d3d61a690121b4"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/gate-overview.log",
+      "bytes": 156,
+      "sha256": "ae85041eec34a0c6ab759b8adbac2eb424d0425aa78b2ad1526eca7d4835509f"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/gate-reports.log",
+      "bytes": 154,
+      "sha256": "e0124bd95fa0b4876ca95917c1b60011e5ed1508a2d77717ed7862484d9c83a7"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/generated-schema.sql",
+      "bytes": 38987,
+      "sha256": "33fb33c3bb821c7e85ae7b6f87f787986062414afd8479bfa0a0d477d910ee1d"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/google-ads-ga4-spend-disconnect-transaction.transaction-diagnostic.test.ts",
+      "bytes": 10475,
+      "sha256": "abb46e468a11d856e9ac73ece9df775813f9977d438f9c36415933383cc98061"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/google-ads-insight-rule-catalog.json",
+      "bytes": 54990,
+      "sha256": "7b1890ccabbbeef488e7fe21bc7e0414b599499615ac7d2b0a587f61d85f6ae9"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/google-ads-value-reproductions.cjs",
+      "bytes": 5687,
+      "sha256": "741ebae3b734adf99017bc8e17efaf056568b0c10ebbd376c167103075fc5096"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/google-ads-value-reproductions.json",
+      "bytes": 2369,
+      "sha256": "a9a8a96f4364a9e15d8aa66f1189b950b72f793779a4ba8af0cce36301991902"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/google-sheets-ga4-disconnect-transaction.transaction-diagnostic.test.ts",
+      "bytes": 9467,
+      "sha256": "09af71376b00586dcce25e407911ba8016fde4cd6867a50e9a9b5cd81047c34b"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/google-sheets-ga4-spend-disconnect-transaction.transaction-diagnostic.test.ts",
+      "bytes": 10791,
+      "sha256": "cbc63e090044116cedbab26d1f2d7b59a0230a78c02fa9f9b58f798dc2c2aeb4"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/head.txt",
+      "bytes": 86,
+      "sha256": "bd4b3f509ca6072377e67f52b926fe9a06a888b77fc3310e99c4220f5fad048b"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/http-database-pilot-10000-observations.json",
+      "bytes": 2607,
+      "sha256": "ba2a56d85411afa296fbd88fcf03367f6360484305f8ba730aa1e10810ddc9a2"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/http-database-pilot-10000-results.json",
+      "bytes": 1589,
+      "sha256": "b03582460713efce265039180a68cbf282c7d214f1c4df9903402175de5a2465"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/http-database-pilot-observations.json",
+      "bytes": 2638,
+      "sha256": "9c5c5cbc52b83ccecf7d1bb334f4b617ff937dc35b395c46d11368a74e05a622"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/http-database-pilot-rate-limit-observations.json",
+      "bytes": 3672,
+      "sha256": "76fc2854f2c862860ba406e77dd41eeb34f85a98c218ee3d097b039c913ad669"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/http-database-pilot-rate-limit-results.json",
+      "bytes": 1621,
+      "sha256": "eefbef456dc278e07de36b37217954ff8dddb8403d9dc3b7026a940dc0ac3e05"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/http-database-pilot-results.json",
+      "bytes": 1807,
+      "sha256": "aeb0814a8aef8f0b09fd1b143beb6612d780cd55eee947b9c6c2478a6045a65c"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/http-database-pilot.log",
+      "bytes": 242,
+      "sha256": "ac89b65c1041d7a9130b5b80a7e1477613c7bfce616f2ad21ef2456478a524d3"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/http-database-pilot.test.ts",
+      "bytes": 11904,
+      "sha256": "52ef6005b42eac90962575a3908b1cb572471c893dca42aad0242d040f3abe0e"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/http-database-pilot.vitest.config.ts",
+      "bytes": 348,
+      "sha256": "0cc7618b3caa66b327bc1e3c773cad774bdea9df3f080328599bb21fea1b0f7c"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/hubspot-pipeline-automation-ui.binding-diagnostic.test.ts",
+      "bytes": 13411,
+      "sha256": "79e5ca9dbf8eb326602cef7ae107f9cd07d02c4e320cb7e5a9dd83ba4464141c"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/insights-calendar-reproductions.cjs",
+      "bytes": 6159,
+      "sha256": "a8a73b95fee6b6a7e921af8d4281e2172e84286aa5924622beeec1778251d674"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/insights-calendar-reproductions.json",
+      "bytes": 1668,
+      "sha256": "0b5d25ea4110dfaa9f034eb0f20554ca1e537020d1ae571616319bbc845bde63"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/inventory.cjs",
+      "bytes": 8030,
+      "sha256": "44c066efd3b4d0a30dd96197f06a5f3e63e7bbcbf9cf0aa4f0ae2c98b1625f34"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/inventory.json",
+      "bytes": 3013799,
+      "sha256": "efa9da737a7129137ea5f5f0a919f36f061d0df1c8049d9a430e76ee0e674ea3"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/linkedin-revenue-boundary-reproductions.cjs",
+      "bytes": 8218,
+      "sha256": "f8a6df9bdc71846baea98e9be78262cf273f161e9c21c9b7298a23f0a3b28fc9"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/linkedin-revenue-boundary-reproductions.json",
+      "bytes": 11335,
+      "sha256": "3ec31c0a33847f23508b0e2ab4a770bdf56353754cae456bb4e21494224032f5"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/manual-spend-reproductions.cjs",
+      "bytes": 2813,
+      "sha256": "d13a9f8b0efda1cb0e3c22bfd06cebd47338d638ab0a7c305a442e7e6dfcf0fb"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/manual-spend-reproductions.json",
+      "bytes": 2162,
+      "sha256": "9ab9ff8ec91d51125a33d48ab410d5aef585c250da598d5503b13453f7910bc6"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/migration-catalog-postgres.cjs",
+      "bytes": 7282,
+      "sha256": "cfed0a75d3deea71b7e14010a1e66f71ab84551d7109676ca5c3a1035696a5d5"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/migration-catalog-postgres.json",
+      "bytes": 14576,
+      "sha256": "771ed061962f96518e072158d767494670f86946153b407beb19bfbbbda785e0"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/notification-contention-fixture.json",
+      "bytes": 771,
+      "sha256": "6ce993b4a21401c375ee3bb6c6f2de6e4f5ae055c8376fbea9ee00fd3adbe40a"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/notification-contention-postgres.json",
+      "bytes": 1539,
+      "sha256": "cee1443b674530d383422b2630125f4c967145727f646ecedc2fbae5fff5bad8"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/notification-contention.audit.test.ts",
+      "bytes": 7580,
+      "sha256": "597536d1f23649c58c2ce83fe9f9163db94e9de5220d6708b065f1d607d7da58"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/notification-contention.vitest.config.ts",
+      "bytes": 412,
+      "sha256": "06f5b75913a915b93cf916b741576dba0369641f7188486f914d8e1758c2048f"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/notification-visibility-reproductions.cjs",
+      "bytes": 9093,
+      "sha256": "226595b02445ae553ac6b4907f93f4daa608172f6aeb2fe0833b63449a3eab68"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/notification-visibility-reproductions.json",
+      "bytes": 5748,
+      "sha256": "eb4288a6128de962b1e98b311722b4c220d1ce86030fe157cf9512304a4d0605"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/oauth-popup-reproductions.cjs",
+      "bytes": 3822,
+      "sha256": "ac40267190b29b10fb8ac744acfeaad8ab206d0b76e7c92a14a756764ab218bd"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/oauth-popup-reproductions.json",
+      "bytes": 1869,
+      "sha256": "6186975837f8e62923a413c9fed0c6553d46eb2cdfc017e1fd2be3fa05d9e393"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/oauth-state-reproductions.cjs",
+      "bytes": 3789,
+      "sha256": "a73a9123d7c2982e92e54403599087caec105094aec127543a18a1bbd1134968"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/oauth-state-reproductions.json",
+      "bytes": 3296,
+      "sha256": "ed1f58912dcd89cf95cc3b82d0d1e7e209dcd7ce572b627fb69ac134a2f36602"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/paid-media-reproductions.cjs",
+      "bytes": 6967,
+      "sha256": "0a6968af13ee22309ae3b518ae680d43ac823abd031cca4ddf56637c5eade8eb"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/paid-media-reproductions.json",
+      "bytes": 5590,
+      "sha256": "cb2cec5e406b75ae7ad10373b24cc316bb8d06ddc938cc40b65a1f669dda5fcf"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/pdf-insights-rate-fixture-page-1.png",
+      "bytes": 92988,
+      "sha256": "0fcf612941d2155d857e2e39ed6f61b51083b2ea104c2056a34b38cb5b691e74"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/pdf-insights-rate-fixture-page-2.png",
+      "bytes": 76372,
+      "sha256": "82931caf9ee051f347d45f816787a7870dc5e33681924d81357bbafcc538e14c"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/pdf-insights-rate-fixture-page-3.png",
+      "bytes": 32225,
+      "sha256": "5124b84b7543faf85ca01abb38a982b591e01c844927adae2033ae39b933997a"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/pdf-insights-rate-fixture.pdf",
+      "bytes": 51524,
+      "sha256": "c3e9680d9753ec032bc3f003921716fdf0e6227beb3334037546c79bb59a20e5"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/pdf-insights-six-days-fixture-page-1.png",
+      "bytes": 94005,
+      "sha256": "84a1a099bed7303ac8195e1269405950b1087912a91fa8f60701222bb548afde"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/pdf-insights-six-days-fixture-page-2.png",
+      "bytes": 79269,
+      "sha256": "3bc8b3eac4e5be5957a82439a32f4348b59d0fab6ec300a2f7d70b63b612a2bf"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/pdf-insights-six-days-fixture.pdf",
+      "bytes": 45283,
+      "sha256": "fb37c415570b15b416a6240402547c6a99ca7697bc3c1abfdce29eda540ad8d3"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/pdf-overview-long-fixture-page-1.png",
+      "bytes": 74741,
+      "sha256": "6e3d3cfec4a191e76f2c397c7d95ca2d366d4f6a4f86f2ec92f1eb8f0ee99c2b"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/pdf-overview-long-fixture-page-2.png",
+      "bytes": 119719,
+      "sha256": "30c28a7e6b5f321cd1ea39fc357a81485a7bbe5971fe88b3913b295c7ed11041"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/pdf-overview-long-fixture-page-3.png",
+      "bytes": 97001,
+      "sha256": "8af37a6f6fa17d511a9efcb1e75e4317cdee8d286ed2ca08a551d8f9b8a7de85"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/pdf-overview-long-fixture.pdf",
+      "bytes": 66708,
+      "sha256": "78048ae69c27808204b600ccc0f406a86a3f01376c08ac25effd272e1f031520"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/pdf-render-check.json",
+      "bytes": 8527,
+      "sha256": "206a6d93943afd3a5e2b24caa8e6b66193e381c66b5b46c7eebb010537fd6331"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/performance-boundary-reproductions.cjs",
+      "bytes": 7672,
+      "sha256": "3039c91196ee3d34aac9ecb74e69b35853aca8513a54936c935372f9f1718bbe"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/performance-boundary-reproductions.json",
+      "bytes": 6411,
+      "sha256": "1585a8d92d02b032a77218449ba7e72cec42beeb437525786afe79d49d075639"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/pilot-load-local.cjs",
+      "bytes": 9807,
+      "sha256": "f2a695b6c4972a79e95885e33f7cb91fb58f693118bd34b06d5173104bdac865"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/pilot-load-local.json",
+      "bytes": 2358,
+      "sha256": "1aa1131df8026c438b922733d66dfb4000e6cb87b6f61b0621025990c667f3c5"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/postgres-http-pilot.log",
+      "bytes": 1227,
+      "sha256": "616b036e9c8760b8c096dd162efdb9d28917a9ca98a28f0592d00380755af661"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/postgres-init.log",
+      "bytes": 1906,
+      "sha256": "7856eb78e24fbc23a125fad6f23effe307b0e0bb2dcb7fe4ab9fde66228a5225"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/postgres-migration-init.log",
+      "bytes": 1934,
+      "sha256": "d9df28fc761c042d5f35a519d619d5dd11d023159bbf314971c08c1ddc3cf4e6"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/postgres-migration-review-new.log",
+      "bytes": 7051,
+      "sha256": "3693465de704456d5423e5531ca272af14f160188824977d00fc9e7d2fd8b707"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/postgres-migration-review.log",
+      "bytes": 1370,
+      "sha256": "6927535aaba0b35a54e7bf5083f394c18d8c3ddd62f59c3e01127ad622c0a6b2"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/prepare-binding-fixture-diagnostics.cjs",
+      "bytes": 1976,
+      "sha256": "ad70d48ffaa8ba2a86a6ba288dcbe7d01797395af99ed9d340b6933add02ce44"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/prepare-foreign-owner-audit.cjs",
+      "bytes": 4969,
+      "sha256": "a419b7b0ca59af4130bda893c3c5f67197fa5b690d07cedcff38e83ebf33c102"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/prepare-ga4-fixture-diagnostics.cjs",
+      "bytes": 3480,
+      "sha256": "cba5ff4ecdc387cc20d323a63fa8dd43478ff5fee04238dccff4f357169a18d2"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/prepare-notification-contention.cjs",
+      "bytes": 2305,
+      "sha256": "b0972837d5f7087424d1f786a0fbbfb97ae95f404675430497a78e9105092f3b"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/prepare-transaction-fixture-diagnostics.cjs",
+      "bytes": 3376,
+      "sha256": "533aab5017bdf9d2824ad1d3ffdbf5acafc555e9a9a440c1e732392d641ddcec"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/provider-access-boundary.json",
+      "bytes": 728,
+      "sha256": "5f2a77857103d57c20f6c7b2ad46e2bc85b0df2a8a392bb5dbeee9658cb7ad1c"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/provider-contract-reproductions.cjs",
+      "bytes": 6287,
+      "sha256": "8c90ef9468d5d74d1fb74bce84bad0a334e01ceb77dd173e8bf9d39d60814553"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/provider-contract-reproductions.json",
+      "bytes": 17358,
+      "sha256": "514860bee87cf059887e1f29b35749ffc9b766db24986be42623f9b103f4c81d"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/provider-error-log-reproductions.cjs",
+      "bytes": 4444,
+      "sha256": "abaeb2583bf282c1d542c24d4882626cc3e63c36dc0445dfa13341f0513373e1"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/provider-error-log-reproductions.json",
+      "bytes": 1266,
+      "sha256": "92ee82fcf55ec43fc585f302010eab5c378eaf9121561fa45dddc1a3e744b40d"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ptomo-readonly-database.cjs",
+      "bytes": 15691,
+      "sha256": "e4fae01a818a8d0433f869b3b16566f150e6d76b64cb283d7fa1e2a7a06b1b1e"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/ptomo-readonly-database.json",
+      "bytes": 16046,
+      "sha256": "7970e2fa1aa914dce9ab143c502778a511f10c85eb7e784722d44d61617e80a4"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/public-health-final.cjs",
+      "bytes": 1797,
+      "sha256": "209516021d6c38448ffc9958ac20fcf01ed469e87720872ca017000e592e033c"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/public-health-recheck.cjs",
+      "bytes": 1799,
+      "sha256": "4b009020943fb53ad76f5d2a5d6f5207e2a2bc5f64aeeb1ad2f56da8b1efc1dd"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/public-smoke.cjs",
+      "bytes": 1401,
+      "sha256": "35348683692cabf81ec70ebeadaedb65d3cb5958f68207372cd283320f320d94"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/public-smoke.json",
+      "bytes": 11215,
+      "sha256": "cd96c8d1fb72559e0d5dfcc7e0f95d4f954fd0fdd036989868738092817f5138"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/reconcile-additional-test-diagnostics.cjs",
+      "bytes": 1864,
+      "sha256": "b4f2968b8d50c71ebe2c2b001bbf42d345a46bbf77d8eabf4c459c85305380cd"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/reconcile-coverage-records.cjs",
+      "bytes": 3078,
+      "sha256": "f02f8181ca040cfc46df78d22671d81fbc34dc6444eace7d742e30cd1a1152e0"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/reconcile-current-audit.cjs",
+      "bytes": 4804,
+      "sha256": "bccaaa4aa7d6e6b26f7ae3cc4e1a47b9f50722221808e47fc82d49db90829351"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/reconcile-route-disposition.cjs",
+      "bytes": 5633,
+      "sha256": "ed3c3bd3b8544f6e25d94483591e56fd02014da37d4e60b3445d047ead5fb6e1"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/release-fix-queue.cjs",
+      "bytes": 4376,
+      "sha256": "90b8d7552ed36c6bbea52b720b399d5f172552036ad102840adc1c0eca231380"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/release-fix-queue.json",
+      "bytes": 98485,
+      "sha256": "bc2edbe9c2d8d9d18503625afd6e534140ac13fd14a50c61d079a57b4c4c63ec"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/render-pdf-fixtures.py",
+      "bytes": 1448,
+      "sha256": "c0a86d40188a4df7bafb965ca76462ca2f2bb5f06e17d3f50f45b3539bceb6ad"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/report-delivery-reproductions.cjs",
+      "bytes": 2944,
+      "sha256": "2c75614c5f7f31ef47f9cf6dfa274310e3373d960d5fb7cac680b78c5c79b0f3"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/report-delivery-reproductions.json",
+      "bytes": 2843,
+      "sha256": "f3d0ffe8181f984a56d9ab191d470d41e3dc590c661ceece1f43a91d0b2060b1"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/report-pdf-reproductions.cjs",
+      "bytes": 9748,
+      "sha256": "3be25c7fd504fb70f37860ac06b083dabd7f418f807df6cf092ea8a98bbc72e1"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/report-pdf-reproductions.json",
+      "bytes": 16523,
+      "sha256": "1bfb997877663fc17d8c2ca49fbaf1e3146de53cbde306ea136a2739219973d6"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/report-snapshot-access-reproductions.cjs",
+      "bytes": 5678,
+      "sha256": "d581e3ef5ec47171f40135075700fce1a2a5062ff707792a770f8b496fe9e49e"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/report-snapshot-access-reproductions.json",
+      "bytes": 5246,
+      "sha256": "02851cdbdfd8d45f3ac91be70e3fcbdc26311e751c32860cbcfab0d8fb5bf909"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/reproduce.cjs",
+      "bytes": 8411,
+      "sha256": "10000f89d3c4630b8fb8005228f0af35b12c5e8cc085c303d3c916fb1585342c"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/reproductions.json",
+      "bytes": 6691,
+      "sha256": "84e70d277bd652e398077ffeb880fa416f90ea8605e09124627ed4f8ed47719b"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/response-field-candidates.json",
+      "bytes": 74138,
+      "sha256": "268734f485eb0003a5fe526239e305eaebc6399153e70a5ea06092194efae1ce"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/retained-lifecycle-reproductions.cjs",
+      "bytes": 4889,
+      "sha256": "a2227f1537bbd8365886713cb12d4fd97ac8c46dec939d3f3ced3617d4ead4b8"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/retained-lifecycle-reproductions.json",
+      "bytes": 1825,
+      "sha256": "d16dd1cc3d5e46493ffbd5a0e70e18d24c93d5acdafd5656019423fd89b35a8e"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/retained-mutation-reproductions.cjs",
+      "bytes": 4106,
+      "sha256": "9acd6659fad1ade3f41a10a23abee1cb319f0a02b88d568588467bf211478192"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/retained-mutation-reproductions.json",
+      "bytes": 3367,
+      "sha256": "a8e1b423fb5a4310664acd03b19cbd29f31d99faa5e0887561acb1a295e1c469"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/retained-private-read-reproductions.cjs",
+      "bytes": 4109,
+      "sha256": "e854468dc5de765c9ee703c85d81d1e66c7af854b3cccced2b7107f7ab0246e4"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/retained-private-read-reproductions.json",
+      "bytes": 10712,
+      "sha256": "dc6b092faa94bc71a443822d85e5542ef83f659296734da237a388f098af776f"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/retained-surface-reproductions.json",
+      "bytes": 1880,
+      "sha256": "53a8b63fa1986f922745f1725e1fc4ed10e04db2f2e49bc86e3a4fe2274bdbfe"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/retained-surfaces-results.json",
+      "bytes": 3642,
+      "sha256": "5ba07f1957f99d22eb4b6862a3a8fc8bca6c6c4aedd5a84a03073106f04111f4"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/retained-surfaces.log",
+      "bytes": 238,
+      "sha256": "0b67fc2a507cdf2c19eca9a73b1938bdad875f2501b781f022ad667093fdefa7"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/retained-surfaces.test.ts",
+      "bytes": 8351,
+      "sha256": "94ee5387ffc8c94cf896e97efa24240559ee80b7644cdf271b88b39837a7e5b2"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/retained-surfaces.vitest.config.ts",
+      "bytes": 349,
+      "sha256": "6cd9ba1de6812f9537bb75e0017a08b236367aea4c1b44ce5b8e94e6fe70cf5c"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/retained-ui-reproductions.cjs",
+      "bytes": 4025,
+      "sha256": "8228ccbb9aab7a33593bd0695ed30a5d54597233fda24f5bb6e68ad04c31c808"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/retained-ui-reproductions.json",
+      "bytes": 2653,
+      "sha256": "c759b84219603a9fd4a4896073d33a2ea2c72ede93d3799c76a5e2f160255349"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/retained-value-boundary-reproductions.cjs",
+      "bytes": 10167,
+      "sha256": "81fcad4a657c91176f4365dc4dd1f0d7dba007dd1380138d943276d336a15546"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/retained-value-boundary-reproductions.json",
+      "bytes": 8650,
+      "sha256": "eadcd224c26c6e70974f3c26c4a3ee4c8ed64ac01223654d613832b378b6bfb7"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/revenue-source-delete-transaction.transaction-diagnostic.test.ts",
+      "bytes": 5496,
+      "sha256": "2f463638d02ece3140085b80484b2dc9509f10598cf1e53b44ca4cebea5203c0"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/route-audit-disposition.json",
+      "bytes": 431279,
+      "sha256": "8dfe565f6d510ff7f20f49831d163bda6ac35a3bccb1b6b35c39ffbf40ead215"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/route-entry-boundaries.cjs",
+      "bytes": 9753,
+      "sha256": "51c75efe6c88d2ae253d298ec059cc0c60b4e759312f5f4c9ff0f3829b5111d7"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/route-entry-boundaries.json",
+      "bytes": 100929,
+      "sha256": "1c79400ffae5c20e7f155572af38fd32fed5468b822f44f168946455503807ef"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/route-registration-overlap.cjs",
+      "bytes": 1580,
+      "sha256": "530ec4a77c945ecd4dd2213d2da230781b5de39be53186dba111b468fdd6e8db"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/route-registration-overlap.json",
+      "bytes": 7738,
+      "sha256": "9a953724a0c232f8c07043ba17d0a93ecb67eb40626f90c504d6b424ddbee307"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/salesforce-pipeline-automation-ui.binding-diagnostic.test.ts",
+      "bytes": 18204,
+      "sha256": "e0e44b72844b14778e7c37da3e78f74431f17e26b76d721fc6540a924f5091b9"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/scheduler-configuration-reproductions.cjs",
+      "bytes": 4450,
+      "sha256": "0d740b596d9d95fb5431dc25780208a784800205ef5e82a85502ddeaaeea7111"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/scheduler-configuration-reproductions.json",
+      "bytes": 6127,
+      "sha256": "1a857b36ea9267c10b40220662f96c6b51211735c1ca33f13ab293aca7783179"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/scheduler-eligibility-reproductions.cjs",
+      "bytes": 3330,
+      "sha256": "dd1a70b5b32806c51d5e4aa9a5cdfe1505a1d508ee5202227d8a958c8e9b4feb"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/scheduler-eligibility-reproductions.json",
+      "bytes": 1005,
+      "sha256": "cda01b4bac768b789cee165b7a77e2935e5dc843b6e1442d88c376110a08993b"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/schema-generation.cjs",
+      "bytes": 1526,
+      "sha256": "d398494fe5e1b4d886478ff380fbc6a8c044b476e5282ffcb612fc0ba4b49564"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/schema-generation.json",
+      "bytes": 59983,
+      "sha256": "db8bd897c99140ddab1d389ec75a5a68c1b1eae9739916fe25e7ec78cc6f2d65"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/service-account-tenant-reproductions.cjs",
+      "bytes": 8804,
+      "sha256": "e257a854a868f14a2908ea2937a414716e23e104412a01e5fec9c68274413ce0"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/service-account-tenant-reproductions.json",
+      "bytes": 6450,
+      "sha256": "d161f5ebfc546b94cc356321722c0a51cbf6b9c6d8a76f47b5459886c18e2846"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/sheets-cpc-browser-fixture-page-1.png",
+      "bytes": 27967,
+      "sha256": "f71a8e8074b1c0b985aa8e674cc72d8360c98cd4082d70ea5747ef575b53262b"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/sheets-cpc-browser-fixture.pdf",
+      "bytes": 3918,
+      "sha256": "6c06407b4384fb307b678d606e6d660e237c7e93b06931b504277c00669ff022"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/sheets-custom-financial-reproductions.cjs",
+      "bytes": 10246,
+      "sha256": "3be4a26485cb9ae488d66ea306c94c63263c4ce33d9b305d2775104df81b9df9"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/sheets-custom-financial-reproductions.json",
+      "bytes": 11731,
+      "sha256": "6a11c3693d10f28b2799c23ac9edc62ea498a39fbd46a028c6697d64d8a29503"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/sheets-refresh-reproductions.cjs",
+      "bytes": 2921,
+      "sha256": "c61e8dfc4862774f51e3e6335c4274d002abed028af73eac92db6d2a566e46f5"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/sheets-refresh-reproductions.json",
+      "bytes": 1342,
+      "sha256": "60c6ce3d652553e507c340f5ef1f6da88ca310bde073b42b4940d16c56b6656f"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/sheets-revenue-reproductions.cjs",
+      "bytes": 4347,
+      "sha256": "1ca22a65b6dceb159b0c54ba4570e4b44ea13da7ee9b81b830411248aa99f650"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/sheets-revenue-reproductions.json",
+      "bytes": 3247,
+      "sha256": "e53ec867cccf06cff88d7c14d0477efd80c95ab9213bf16860e6cc75c034fb48"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/sheets-selected-scope-fixture-page-1.png",
+      "bytes": 34965,
+      "sha256": "d03484e2f77e3534f7a7f51c020a2f6feda3e6b943909d16399b35cc2f307024"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/sheets-selected-scope-fixture.pdf",
+      "bytes": 3950,
+      "sha256": "721067aaf020a229e594d9edb522f387b739090c81d726864fc87420953742aa"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/sheets-summary-report-reproductions.cjs",
+      "bytes": 9007,
+      "sha256": "506051343cf30978cb95f85a4c7af754f8ce837d689066f8b788517a2eb02671"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/sheets-summary-report-reproductions.json",
+      "bytes": 3503,
+      "sha256": "508d4bf3489ce57c2564442407e70b71394a483341e6091b71f94f203553874a"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/shopify-downstream-content-regression.fixture-acceptance.test.ts",
+      "bytes": 34044,
+      "sha256": "0a4e9dcef7826227531fa7005a1bfde43286ffe5f82970adacd74c0beba4ea45"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/shopify-downstream-content-regression.fixture-diagnostic.test.ts",
+      "bytes": 33922,
+      "sha256": "535286d8872de92d97a5157c9d4649c770cb16c7c9b6e691c1adabe146caceda"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/source-goal-alert-reproductions.cjs",
+      "bytes": 6864,
+      "sha256": "646075da59bbb62645b483dd1173551e89fa89cc7698b86a82e28584460f36f8"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/source-goal-alert-reproductions.json",
+      "bytes": 7623,
+      "sha256": "71ed12ad66fa76cea2bc860e6d27eda843421c8457fe6b239e0149abd44e2d67"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/spend-import-reproductions.cjs",
+      "bytes": 5269,
+      "sha256": "b389f39cf1d5325f625b49e43c51f3b9564da2a181640150d15d63d4c291a85c"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/spend-import-reproductions.json",
+      "bytes": 4043,
+      "sha256": "90fdd58fa9339cc15dfcc93a1a5c6eb767e2e1f29da59ac465793643c99fe419"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/startup-migrations-postgres.cjs",
+      "bytes": 8074,
+      "sha256": "e62bf19a1fac57f4ffaa061bf83410a1ae6bed18f272cd114f482c6158a12d82"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/startup-migrations-postgres.json",
+      "bytes": 5200,
+      "sha256": "d13410af5a75b55fa53d2d1aec32dbdda3da7dc40b23ee32f23441a385e25ae4"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/synthetic-backup-restore.dump",
+      "bytes": 180184,
+      "sha256": "db3819825304849d72f375ff5e2803c33a6c4f3eca70411cd9cfc5d686b2a1dc"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/test-failure-scope.json",
+      "bytes": 106795,
+      "sha256": "b5858a2eb80e5c8edcb9864f576ace7008ee0adae2e2fd78d9e4eba8d74bf538"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/test-failures.json",
+      "bytes": 144428,
+      "sha256": "f643e1ec9c98a432c98669dbfc11068788a858ae385a93a0879f670ad8d6b0c7"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/tests-controlled.json",
+      "bytes": 1638704,
+      "sha256": "dba8fc657e65bbcb3a3f4d726fb895e249295ead70f62dd853e24274c67d5562"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/tests-notification-diagnostic.json",
+      "bytes": 2225,
+      "sha256": "e7beb0f7d3f70b044e01c45bbf6f65dcae4f64a2de059371ff5da49df1548532"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/tests-notification-diagnostic.log",
+      "bytes": 246,
+      "sha256": "a210cf8642bd29747948b8046c8aaaa210f2f0ea6142cc50ee3f3756fbde81cf"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/tests-postgres.json",
+      "bytes": 258926,
+      "sha256": "cc9dfc40f3a8ef305d8b51130cdbe0b052622869e7eafc569216246dfe5bb37d"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/tests-postgres.log",
+      "bytes": 216,
+      "sha256": "5bc32dbb580b2298dffcac600f3b4379aa06f68851c5decf5806070d6bee0cf8"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/token-backfill-reproductions.cjs",
+      "bytes": 4901,
+      "sha256": "184d93367807448678d33a7c332e428ed5c6295f4e48744b054a54b2d5d56dd1"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/token-backfill-reproductions.json",
+      "bytes": 3970,
+      "sha256": "0bb3d3bcea19a2dc102b83838a84bb2c85c0b581f8893df5f92c89a1a28849d8"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/tracked-files.txt",
+      "bytes": 321858,
+      "sha256": "24915b8449115556647c09651080b1fcab8dba2faad0e3276a0405b26a110788"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/transaction-fixture-preparation.json",
+      "bytes": 2760,
+      "sha256": "d705989e53a2ba849c728cfc8752eb91b78b8eb0d2d5f3e3527c05db454d4dca"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/transaction-fixture-results.json",
+      "bytes": 21732,
+      "sha256": "43213a915e5ecd3c7c5261730b962ed57325decf960fca17afee4966d63b9592"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/transaction-fixture.log",
+      "bytes": 242,
+      "sha256": "0d65fbd5401faba144ebab66d27d5a8e27484b235d3eb7ed75b80f0d9d31de12"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/transaction-fixture.vitest.config.ts",
+      "bytes": 400,
+      "sha256": "0c8b74b8c54b21572154ec9037ec897263d760c0bf3aafb0cbcaa788fd323abd"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/trend-boundary-reproductions.cjs",
+      "bytes": 6648,
+      "sha256": "917d8ec748fb3794bd0e2e0d0712bef1ecd5283e2eae0b4c229e368f03c36221"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/trend-boundary-reproductions.json",
+      "bytes": 5267,
+      "sha256": "6224d75c38e064ffeb4eb974bf85b7ccb81c4ef2fd44be832ba220dc5c7f3fed"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/typecheck.log",
+      "bytes": 80,
+      "sha256": "b4bf8cd2d56000e582d6d9ba9f6eabfd7288ef883c8667f126be91cdcfbba25a"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/unconfigured-source-boundary-reproductions.cjs",
+      "bytes": 7244,
+      "sha256": "e779c492b611ad770641079e5a96724e24754f42858d9dbc8c0bcb95ba196ed5"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/unconfigured-source-boundary-reproductions.json",
+      "bytes": 6362,
+      "sha256": "ad2c6b3a59143261e62de084776f3cd941a380c968b51eec48163e3dc387fd75"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/wizard-confirmation-fixture.png",
+      "bytes": 67466,
+      "sha256": "2683fc2007f178513d4b2d07ee161a5f396bae0f83dedc8b070f9f7df6f6d520"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/xlsx-boundary-reproductions.cjs",
+      "bytes": 8501,
+      "sha256": "0e5d2d90d8a3f7734d345a4b45a0cea2703f8e1485138a538e01fb4c867313b6"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/xlsx-boundary-reproductions.json",
+      "bytes": 3135,
+      "sha256": "dc44b543ffc4f0f4d93b439c18fb36ab2d73c4b494503717170fbf9258622f7a"
+    }
+  ],
+  "notes": [
+    "Hashes bind evidence to audited bytes, not provider truth.",
+    "Temporary PostgreSQL was stopped after all isolated database cases, including GA4 parent writes and startup/migration scenarios.",
+    "No tracked runtime/test files changed. Manifest excludes itself."
+  ]
+}

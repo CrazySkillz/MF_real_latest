@@ -1,0 +1,69 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact extracted current UI functions and route; fixture objects, no provider, live browser or database. ALLOW_MOCK_DATA production configuration is not asserted enabled on deployment.",
+  "results": [
+    {
+      "case": "Retained Platform Comparison reports 0% ROI for verified zero revenue and100 spend",
+      "row": {
+        "platform": "Meta",
+        "impressions": 100,
+        "clicks": 10,
+        "conversions": 0,
+        "sessions": 0,
+        "users": 0,
+        "spend": 100,
+        "revenue": 0,
+        "ctr": 10,
+        "cpc": 10,
+        "conversionRate": 0,
+        "roas": 0,
+        "roi": 0,
+        "qualityScore": 0,
+        "reach": 0,
+        "engagement": 10,
+        "includedMetrics": [
+          "spend",
+          "revenue",
+          "clicks",
+          "impressions",
+          "conversions"
+        ],
+        "color": "#1877f2",
+        "isAnalyticsOnly": false
+      },
+      "expectedRoi": -100
+    },
+    {
+      "case": "Production mock-disabled control rejects write",
+      "status": 403,
+      "writeCount": 0,
+      "campaignIds": []
+    },
+    {
+      "case": "Production ALLOW_MOCK_DATA permits anonymous foreign campaign overwrite",
+      "status": 200,
+      "writeCount": 2,
+      "campaignIds": [
+        "foreign-owner-fixture"
+      ]
+    },
+    {
+      "case": "Retained KPI export pdf",
+      "filename": "Fixture_KPI_Report_fixture-date.txt",
+      "mimeType": "text/plain",
+      "content": "Campaign KPI Report: Fixture\n\nGenerated: fixture-date\nDate Range: 30d\n\nTotal KPIs: 1\n\nKPI Details:\n==================================================\n\n1. A \"quoted\" KPI\n   Current Value: 10\n   Target Value: 5\n   Progress: 200.0%\n   Status: active\n   Priority: Medium\n\n"
+    },
+    {
+      "case": "Retained KPI export xlsx",
+      "filename": "Fixture_KPI_Report_fixture-date.json",
+      "mimeType": "application/json",
+      "content": "{\n  \"campaign\": \"Fixture\",\n  \"generatedAt\": \"2026-10-19T20:50:28.359Z\",\n  \"kpis\": [\n    {\n      \"name\": \"A \\\"quoted\\\" KPI\",\n      \"currentValue\": \"10\",\n      \"targetValue\": \"5\",\n      \"progress\": \"200.0%\",\n      \"status\": \"active\",\n      \"priority\": \"Medium\",\n      \"description\": \"\"\n    }\n  ]\n}"
+    },
+    {
+      "case": "Retained KPI export csv",
+      "filename": "Fixture_KPI_Report_fixture-date.csv",
+      "mimeType": "text/csv",
+      "content": "KPI Name,Current Value,Target Value,Progress %,Status,Priority,Description\n\"A \"quoted\" KPI\",\"10\",\"5\",\"200.0\",\"active\",\"Medium\",\"\"\n"
+    }
+  ]
+}

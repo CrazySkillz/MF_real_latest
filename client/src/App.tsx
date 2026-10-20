@@ -1,6 +1,6 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useMemo } from "react";
 import { Switch, Route, Redirect, useLocation } from "wouter";
-import { queryClient } from "./lib/queryClient";
+import { createAppQueryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +12,7 @@ import {
   SignUp,
   ClerkLoaded,
   ClerkLoading,
+  useAuth,
 } from "@clerk/clerk-react";
 import { ClientProvider, useClient } from "@/lib/clientContext";
 import Dashboard from "@/pages/dashboard";
@@ -171,9 +172,15 @@ function ProtectedRouter() {
 }
 
 function App() {
+  const { userId } = useAuth();
+  const queryClient = useMemo(() => createAppQueryClient(), [userId]);
+  useEffect(() => () => {
+    void queryClient.cancelQueries();
+    queryClient.clear();
+  }, [queryClient]);
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
+      <QueryClientProvider key={userId || "signed-out"} client={queryClient}>
         <TooltipProvider>
           <Toaster />
 

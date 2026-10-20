@@ -1,0 +1,129 @@
+2026-10-20 10:13:40.241 CEST [37732] LOG:  starting PostgreSQL 18.0 on x86_64-windows, compiled by msvc-19.44.35215, 64-bit
+2026-10-20 10:13:40.243 CEST [37732] LOG:  listening on IPv4 address "127.0.0.1", port 55443
+2026-10-20 10:13:40.319 CEST [31896] LOG:  database system was shut down at 2026-10-20 10:13:25 CEST
+2026-10-20 10:13:40.330 CEST [37732] LOG:  database system is ready to accept connections
+2026-10-20 10:13:53.935 CEST [22728] ERROR:  data type text has no default operator class for access method "gin"
+2026-10-20 10:13:53.935 CEST [22728] HINT:  You must specify an operator class for the index or define a default operator class for the data type.
+2026-10-20 10:13:53.935 CEST [22728] STATEMENT:  -- KPI Period Tracking and Notifications Enhancement
+	-- This migration adds period tracking for KPIs and metadata support for notifications
+	
+	-- 1. Create KPI Periods table for historical tracking
+	CREATE TABLE IF NOT EXISTS kpi_periods (
+	  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+	  kpi_id TEXT NOT NULL,
+	  
+	  -- Period information
+	  period_start DATE NOT NULL,
+	  period_end DATE NOT NULL,
+	  period_type TEXT NOT NULL, -- 'daily', 'weekly', 'monthly', 'quarterly', 'yearly'
+	  period_label TEXT NOT NULL, -- 'March 2024', 'Q1 2024', 'Week 12 2024'
+	  
+	  -- Snapshot values at end of period
+	  final_value DECIMAL(10, 2) NOT NULL,
+	  target_value DECIMAL(10, 2) NOT NULL,
+	  unit TEXT NOT NULL,
+	  
+	  -- Performance metrics
+	  target_achieved BOOLEAN NOT NULL,
+	  performance_percentage DECIMAL(5, 2), -- e.g., 104% = exceeded by 4%
+	  performance_level TEXT, -- 'excellent', 'good', 'fair', 'poor'
+	  
+	  -- Comparison with previous period
+	  previous_period_value DECIMAL(10, 2),
+	  change_amount DECIMAL(10, 2),
+	  change_percentage DECIMAL(5, 2),
+	  trend_direction TEXT, -- 'up', 'down', 'stable'
+	  
+	  -- Metadata
+	  notes TEXT,
+	  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);
+	
+	-- 2. Add indexes for fast lookups
+	CREATE INDEX IF NOT EXISTS idx_kpi_periods_kpi_id ON kpi_periods(kpi_id);
+	CREATE INDEX IF NOT EXISTS idx_kpi_periods_dates ON kpi_periods(period_start, period_end);
+	CREATE INDEX IF NOT EXISTS idx_kpi_periods_type ON kpi_periods(period_type);
+	
+	-- 3. Add metadata column to notifications for KPI action URLs
+	ALTER TABLE notifications 
+	ADD COLUMN IF NOT EXISTS metadata JSONB;
+	
+	-- 4. Add index for metadata queries
+	CREATE INDEX IF NOT EXISTS idx_notifications_metadata ON notifications USING GIN (metadata);
+	
+	-- 5. Add comments for documentation
+	COMMENT ON TABLE kpi_periods IS 'Historical snapshots of KPI performance by period';
+	COMMENT ON COLUMN kpi_periods.period_label IS 'Human-readable period label (e.g., March 2024)';
+	COMMENT ON COLUMN kpi_periods.performance_percentage IS 'Percentage of target achieved (e.g., 104 = 4% over target)';
+	COMMENT ON COLUMN kpi_periods.change_percentage IS 'Percentage change from previous period';
+	COMMENT ON COLUMN notifications.metadata IS 'JSON metadata for action URLs and additional context';
+	
+	
+2026-10-20 10:13:54.117 CEST [3692] ERROR:  data type text has no default operator class for access method "gin"
+2026-10-20 10:13:54.117 CEST [3692] HINT:  You must specify an operator class for the index or define a default operator class for the data type.
+2026-10-20 10:13:54.117 CEST [3692] STATEMENT:  -- KPI Period Tracking and Notifications Enhancement
+	-- This migration adds period tracking for KPIs and metadata support for notifications
+	
+	-- 1. Create KPI Periods table for historical tracking
+	CREATE TABLE IF NOT EXISTS kpi_periods (
+	  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+	  kpi_id TEXT NOT NULL,
+	  
+	  -- Period information
+	  period_start DATE NOT NULL,
+	  period_end DATE NOT NULL,
+	  period_type TEXT NOT NULL, -- 'daily', 'weekly', 'monthly', 'quarterly', 'yearly'
+	  period_label TEXT NOT NULL, -- 'March 2024', 'Q1 2024', 'Week 12 2024'
+	  
+	  -- Snapshot values at end of period
+	  final_value DECIMAL(10, 2) NOT NULL,
+	  target_value DECIMAL(10, 2) NOT NULL,
+	  unit TEXT NOT NULL,
+	  
+	  -- Performance metrics
+	  target_achieved BOOLEAN NOT NULL,
+	  performance_percentage DECIMAL(5, 2), -- e.g., 104% = exceeded by 4%
+	  performance_level TEXT, -- 'excellent', 'good', 'fair', 'poor'
+	  
+	  -- Comparison with previous period
+	  previous_period_value DECIMAL(10, 2),
+	  change_amount DECIMAL(10, 2),
+	  change_percentage DECIMAL(5, 2),
+	  trend_direction TEXT, -- 'up', 'down', 'stable'
+	  
+	  -- Metadata
+	  notes TEXT,
+	  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);
+	
+	-- 2. Add indexes for fast lookups
+	CREATE INDEX IF NOT EXISTS idx_kpi_periods_kpi_id ON kpi_periods(kpi_id);
+	CREATE INDEX IF NOT EXISTS idx_kpi_periods_dates ON kpi_periods(period_start, period_end);
+	CREATE INDEX IF NOT EXISTS idx_kpi_periods_type ON kpi_periods(period_type);
+	
+	-- 3. Add metadata column to notifications for KPI action URLs
+	ALTER TABLE notifications 
+	ADD COLUMN IF NOT EXISTS metadata JSONB;
+	
+	-- 4. Add index for metadata queries
+	CREATE INDEX IF NOT EXISTS idx_notifications_metadata ON notifications USING GIN (metadata);
+	
+	-- 5. Add comments for documentation
+	COMMENT ON TABLE kpi_periods IS 'Historical snapshots of KPI performance by period';
+	COMMENT ON COLUMN kpi_periods.period_label IS 'Human-readable period label (e.g., March 2024)';
+	COMMENT ON COLUMN kpi_periods.performance_percentage IS 'Percentage of target achieved (e.g., 104 = 4% over target)';
+	COMMENT ON COLUMN kpi_periods.change_percentage IS 'Percentage change from previous period';
+	COMMENT ON COLUMN notifications.metadata IS 'JSON metadata for action URLs and additional context';
+	
+	
+2026-10-20 10:18:40.309 CEST [35760] LOG:  checkpoint starting: time
+2026-10-20 10:20:14.359 CEST [37732] LOG:  received fast shutdown request
+2026-10-20 10:20:14.362 CEST [37732] LOG:  aborting any active transactions
+2026-10-20 10:20:14.371 CEST [37732] LOG:  background worker "logical replication launcher" (PID 31292) exited with exit code 1
+2026-10-20 10:20:15.353 CEST [35760] LOG:  checkpoint complete: wrote 1152 buffers (7.0%), wrote 3 SLRU buffers; 0 WAL file(s) added, 0 removed, 1 recycled; write=91.694 s, sync=0.633 s, total=95.045 s; sync files=1639, longest=0.002 s, average=0.001 s; distance=10469 kB, estimate=10469 kB; lsn=0/29FFC30, redo lsn=0/222A608
+2026-10-20 10:20:15.403 CEST [35760] LOG:  shutting down
+2026-10-20 10:20:15.406 CEST [35760] LOG:  checkpoint starting: shutdown immediate
+2026-10-20 10:20:15.790 CEST [35760] LOG:  checkpoint complete: wrote 488 buffers (3.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.047 s, sync=0.051 s, total=0.387 s; sync files=46, longest=0.004 s, average=0.002 s; distance=8021 kB, estimate=10224 kB; lsn=0/29FFCA8, redo lsn=0/29FFCA8
+2026-10-20 10:20:15.948 CEST [37732] LOG:  database system is shut down

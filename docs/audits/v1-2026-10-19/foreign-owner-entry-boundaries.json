@@ -1,0 +1,5382 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "at": "2026-10-20T16:42:27.144Z",
+  "boundary": "Exact noncallback campaign/child registrations with authenticated fixture-owner-a and fixture-owner-b parent/child lookups. Actual actor/campaign/child guard helpers; parser/rate limiter passthrough fixtures. All nonidentity storage/network effects throw. A denial is bounded to the recorded input, not all payload/child/platform branches, full Express precedence, Clerk sessions, provider resource grants or final-write races. Actor-owned global lists and callbacks have separate evidence.",
+  "markedRegistrations": 304,
+  "excluded": [
+    {
+      "method": "GET",
+      "path": "\"/api/ga4-overview/retained-source-inventory\"",
+      "file": "server/routes-oauth.ts",
+      "line": 2233,
+      "reason": "Callback capability/state or actor-owned global list: separate contract; not this foreign-parent lookup test."
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/ga4-overview/shopify/source-damage-inventory\"",
+      "file": "server/routes-oauth.ts",
+      "line": 2326,
+      "reason": "Callback capability/state or actor-owned global list: separate contract; not this foreign-parent lookup test."
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/ga4-overview/shopify/disconnected-test-data/cleanup\"",
+      "file": "server/routes-oauth.ts",
+      "line": 2434,
+      "reason": "Callback capability/state or actor-owned global list: separate contract; not this foreign-parent lookup test."
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/notifications\"",
+      "file": "server/routes-oauth.ts",
+      "line": 7493,
+      "reason": "Callback capability/state or actor-owned global list: separate contract; not this foreign-parent lookup test."
+    },
+    {
+      "method": "PATCH",
+      "path": "\"/api/notifications/mark-all-read\"",
+      "file": "server/routes-oauth.ts",
+      "line": 7608,
+      "reason": "Callback capability/state or actor-owned global list: separate contract; not this foreign-parent lookup test."
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/notifications/all/clear\"",
+      "file": "server/routes-oauth.ts",
+      "line": 7646,
+      "reason": "Callback capability/state or actor-owned global list: separate contract; not this foreign-parent lookup test."
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/clients\"",
+      "file": "server/routes-oauth.ts",
+      "line": 8936,
+      "reason": "Callback capability/state or actor-owned global list: separate contract; not this foreign-parent lookup test."
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/clients\"",
+      "file": "server/routes-oauth.ts",
+      "line": 8949,
+      "reason": "Callback capability/state or actor-owned global list: separate contract; not this foreign-parent lookup test."
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/clients/:id\"",
+      "file": "server/routes-oauth.ts",
+      "line": 8966,
+      "reason": "Callback capability/state or actor-owned global list: separate contract; not this foreign-parent lookup test."
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns\"",
+      "file": "server/routes-oauth.ts",
+      "line": 8983,
+      "reason": "Callback capability/state or actor-owned global list: separate contract; not this foreign-parent lookup test."
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns\"",
+      "file": "server/routes-oauth.ts",
+      "line": 9037,
+      "reason": "Callback capability/state or actor-owned global list: separate contract; not this foreign-parent lookup test."
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/seed-yesop-campaigns\"",
+      "file": "server/routes-oauth.ts",
+      "line": 10403,
+      "reason": "Callback capability/state or actor-owned global list: separate contract; not this foreign-parent lookup test."
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/auth/google-sheets/callback\"",
+      "file": "server/routes-oauth.ts",
+      "line": 10932,
+      "reason": "Callback capability/state or actor-owned global list: separate contract; not this foreign-parent lookup test."
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/auth/salesforce/callback\"",
+      "file": "server/routes-oauth.ts",
+      "line": 11506,
+      "reason": "Callback capability/state or actor-owned global list: separate contract; not this foreign-parent lookup test."
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/auth/hubspot/callback\"",
+      "file": "server/routes-oauth.ts",
+      "line": 11922,
+      "reason": "Callback capability/state or actor-owned global list: separate contract; not this foreign-parent lookup test."
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/auth/google/callback\"",
+      "file": "server/routes-oauth.ts",
+      "line": 12794,
+      "reason": "Callback capability/state or actor-owned global list: separate contract; not this foreign-parent lookup test."
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/auth/google/callback\"",
+      "file": "server/routes-oauth.ts",
+      "line": 14173,
+      "reason": "Callback capability/state or actor-owned global list: separate contract; not this foreign-parent lookup test."
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/auth/linkedin/callback\"",
+      "file": "server/routes-oauth.ts",
+      "line": 23517,
+      "reason": "Callback capability/state or actor-owned global list: separate contract; not this foreign-parent lookup test."
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/auth/meta/callback\"",
+      "file": "server/routes-oauth.ts",
+      "line": 24073,
+      "reason": "Callback capability/state or actor-owned global list: separate contract; not this foreign-parent lookup test."
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/auth/google-ads/callback\"",
+      "file": "server/routes-oauth.ts",
+      "line": 26827,
+      "reason": "Callback capability/state or actor-owned global list: separate contract; not this foreign-parent lookup test."
+    }
+  ],
+  "results": [
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/spend-sources\"",
+      "file": "server/routes-oauth.ts",
+      "line": 1535,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/ga4-overview/source-damage-inventory\"",
+      "file": "server/routes-oauth.ts",
+      "line": 1787,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/spend-sources/google-sheets-duplicates\"",
+      "file": "server/routes-oauth.ts",
+      "line": 2504,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/spend-sources/google-sheets-duplicates/cleanup\"",
+      "file": "server/routes-oauth.ts",
+      "line": 2520,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/spend-sources/google-sheets-duplicates/purge-inactive\"",
+      "file": "server/routes-oauth.ts",
+      "line": 2550,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/campaigns/:id/spend-sources\"",
+      "file": "server/routes-oauth.ts",
+      "line": 2578,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "'/api/campaigns/:id/ga4/google-sheets-spend/disconnect'",
+      "file": "server/routes-oauth.ts",
+      "line": 2601,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "'/api/campaigns/:id/ga4/google-ads-spend/disconnect'",
+      "file": "server/routes-oauth.ts",
+      "line": 2616,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/spend-totals\"",
+      "file": "server/routes-oauth.ts",
+      "line": 2634,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/spend-to-date\"",
+      "file": "server/routes-oauth.ts",
+      "line": 2688,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/daily-financials\"",
+      "file": "server/routes-oauth.ts",
+      "line": 2751,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/trend-analysis\"",
+      "file": "server/routes-oauth.ts",
+      "line": 2846,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/revenue-to-date\"",
+      "file": "server/routes-oauth.ts",
+      "line": 3512,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/revenue-breakdown\"",
+      "file": "server/routes-oauth.ts",
+      "line": 3548,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/spend-breakdown\"",
+      "file": "server/routes-oauth.ts",
+      "line": 3578,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/spend-daily\"",
+      "file": "server/routes-oauth.ts",
+      "line": 3607,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/revenue-daily\"",
+      "file": "server/routes-oauth.ts",
+      "line": 3644,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/revenue-sources\"",
+      "file": "server/routes-oauth.ts",
+      "line": 3679,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/all-data-sources\"",
+      "file": "server/routes-oauth.ts",
+      "line": 3741,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/campaigns/:id/linkedin/revenue-source\"",
+      "file": "server/routes-oauth.ts",
+      "line": 3801,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/campaigns/:id/revenue-sources\"",
+      "file": "server/routes-oauth.ts",
+      "line": 3904,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "'/api/campaigns/:id/ga4/hubspot/disconnect'",
+      "file": "server/routes-oauth.ts",
+      "line": 3928,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "'/api/campaigns/:id/ga4/shopify/disconnect'",
+      "file": "server/routes-oauth.ts",
+      "line": 3952,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "'/api/campaigns/:id/ga4/google-sheets/disconnect'",
+      "file": "server/routes-oauth.ts",
+      "line": 3987,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/campaigns/:id/revenue-sources/:sourceId/pipeline-proxy\"",
+      "file": "server/routes-oauth.ts",
+      "line": 4009,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/campaigns/:id/revenue-sources/:sourceId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 4081,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/campaigns/:id/spend-sources/:sourceId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 4223,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/revenue-totals\"",
+      "file": "server/routes-oauth.ts",
+      "line": 4277,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/revenue/process/manual\"",
+      "file": "server/routes-oauth.ts",
+      "line": 4540,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/revenue/csv/preview\"",
+      "file": "server/routes-oauth.ts",
+      "line": 4698,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "importRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/revenue/csv/process\"",
+      "file": "server/routes-oauth.ts",
+      "line": 4735,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "importRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/revenue/sheets/preview\"",
+      "file": "server/routes-oauth.ts",
+      "line": 5277,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "googleSheetsRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/revenue/sheets/process\"",
+      "file": "server/routes-oauth.ts",
+      "line": 5442,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "importRateLimiter",
+        "googleSheetsRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/spend/process/manual\"",
+      "file": "server/routes-oauth.ts",
+      "line": 6010,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/spend/linkedin/preview\"",
+      "file": "server/routes-oauth.ts",
+      "line": 6231,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/spend/linkedin/process\"",
+      "file": "server/routes-oauth.ts",
+      "line": 6298,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/spend/meta/preview\"",
+      "file": "server/routes-oauth.ts",
+      "line": 6453,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/spend/csv/preview\"",
+      "file": "server/routes-oauth.ts",
+      "line": 6480,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "importRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/spend/csv/process\"",
+      "file": "server/routes-oauth.ts",
+      "line": 6506,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "importRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/spend/sheets/preview\"",
+      "file": "server/routes-oauth.ts",
+      "line": 6765,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/spend/sheets/process\"",
+      "file": "server/routes-oauth.ts",
+      "line": 6905,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/notifications/:id\"",
+      "file": "server/routes-oauth.ts",
+      "line": 7689,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "db.identity-lookup",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [
+        "./db",
+        "../shared/schema",
+        "drizzle-orm"
+      ],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "\"/api/notifications/:id\"",
+      "file": "server/routes-oauth.ts",
+      "line": 7723,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "db.identity-lookup",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [
+        "./db",
+        "../shared/schema",
+        "drizzle-orm"
+      ],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/linkedin-daily\"",
+      "file": "server/routes-oauth.ts",
+      "line": 7840,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/linkedin/insights/:sessionId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 7866,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getLinkedInImportSession",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/linkedin/coverage\"",
+      "file": "server/routes-oauth.ts",
+      "line": 8173,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/linkedin/refresh\"",
+      "file": "server/routes-oauth.ts",
+      "line": 8298,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/ga4/refresh\"",
+      "file": "server/routes-oauth.ts",
+      "line": 8320,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "\"/api/campaigns/:id\"",
+      "file": "server/routes-oauth.ts",
+      "line": 9137,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id\"",
+      "file": "server/routes-oauth.ts",
+      "line": 9245,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/campaigns/:id\"",
+      "file": "server/routes-oauth.ts",
+      "line": 9261,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/ga4-daily-scheduler/run-now\"",
+      "file": "server/routes-oauth.ts",
+      "line": 9288,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/ga4-notifications/reconcile\"",
+      "file": "server/routes-oauth.ts",
+      "line": 9319,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/ga4-daily\"",
+      "file": "server/routes-oauth.ts",
+      "line": 9350,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/ga4-insights-trends-coverage\"",
+      "file": "server/routes-oauth.ts",
+      "line": 9627,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/ga4-to-date\"",
+      "file": "server/routes-oauth.ts",
+      "line": 9770,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/ga4-benchmark-provider-validation\"",
+      "file": "server/routes-oauth.ts",
+      "line": 10009,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/ga4-metrics\"",
+      "file": "server/routes-oauth.ts",
+      "line": 10556,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/ga4-diagnostics\"",
+      "file": "server/routes-oauth.ts",
+      "line": 10695,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/auth/google/integrated-connect\"",
+      "file": "server/routes-oauth.ts",
+      "line": 10795,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/auth/google-sheets/connect\"",
+      "file": "server/routes-oauth.ts",
+      "line": 10885,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "oauthRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/auth/hubspot/connect\"",
+      "file": "server/routes-oauth.ts",
+      "line": 11347,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "oauthRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/auth/salesforce/connect\"",
+      "file": "server/routes-oauth.ts",
+      "line": 11392,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "oauthRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/auth/shopify/connect\"",
+      "file": "server/routes-oauth.ts",
+      "line": 11445,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "oauthRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/google-sheets/:campaignId/spreadsheets\"",
+      "file": "server/routes-oauth.ts",
+      "line": 12097,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "googleSheetsRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/google-sheets/:campaignId/connection\"",
+      "file": "server/routes-oauth.ts",
+      "line": 12257,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/hubspot/:campaignId/connection\"",
+      "file": "server/routes-oauth.ts",
+      "line": 12445,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/salesforce/:campaignId/connection\"",
+      "file": "server/routes-oauth.ts",
+      "line": 12580,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/shopify/:campaignId/connection\"",
+      "file": "server/routes-oauth.ts",
+      "line": 12713,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/google-sheets/:campaignId/select-spreadsheet\"",
+      "file": "server/routes-oauth.ts",
+      "line": 12749,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/ga4-connection-status\"",
+      "file": "server/routes-oauth.ts",
+      "line": 12891,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/ga4-property\"",
+      "file": "server/routes-oauth.ts",
+      "line": 13002,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/ga4-timeseries\"",
+      "file": "server/routes-oauth.ts",
+      "line": 13114,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/ga4-campaign-values\"",
+      "file": "server/routes-oauth.ts",
+      "line": 13223,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/ga4-landing-pages\"",
+      "file": "server/routes-oauth.ts",
+      "line": 13321,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/ga4-conversion-events\"",
+      "file": "server/routes-oauth.ts",
+      "line": 13458,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/ga4-breakdown\"",
+      "file": "server/routes-oauth.ts",
+      "line": 13592,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "'/api/campaigns/:id/ga4-geographic'",
+      "file": "server/routes-oauth.ts",
+      "line": 13814,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/auth/google/url\"",
+      "file": "server/routes-oauth.ts",
+      "line": 14124,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/ga4/check-connection/:campaignId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 14297,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/connected-platforms\"",
+      "file": "server/routes-oauth.ts",
+      "line": 14381,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/google-ads-campaign-revenue\"",
+      "file": "server/routes-oauth.ts",
+      "line": 14692,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/meta-campaign-revenue\"",
+      "file": "server/routes-oauth.ts",
+      "line": 14807,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/outcome-totals\"",
+      "file": "server/routes-oauth.ts",
+      "line": 14926,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/ga4-connections\"",
+      "file": "server/routes-oauth.ts",
+      "line": 16018,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "\"/api/campaigns/:id/ga4-connections/:connectionId/primary\"",
+      "file": "server/routes-oauth.ts",
+      "line": 16056,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/ga4-connections/:connectionId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 16075,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "db.identity-lookup",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/ga4-service-account/status\"",
+      "file": "server/routes-oauth.ts",
+      "line": 16101,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/ga4-service-account/connect\"",
+      "file": "server/routes-oauth.ts",
+      "line": 16111,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "oauthRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/ga4/select-property\"",
+      "file": "server/routes-oauth.ts",
+      "line": 16181,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/auth/ga4/connect\"",
+      "file": "server/routes-oauth.ts",
+      "line": 16356,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "oauthRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/ga4/oauth-exchange\"",
+      "file": "server/routes-oauth.ts",
+      "line": 16398,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/google-sheets-service-account/status\"",
+      "file": "server/routes-oauth.ts",
+      "line": 16599,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/google-sheets-service-account/connect\"",
+      "file": "server/routes-oauth.ts",
+      "line": 16607,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "googleSheetsRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/google-sheets/oauth-exchange\"",
+      "file": "server/routes-oauth.ts",
+      "line": 16688,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/google-sheets/:spreadsheetId/sheets\"",
+      "file": "server/routes-oauth.ts",
+      "line": 16847,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/google-sheets/select-spreadsheet\"",
+      "file": "server/routes-oauth.ts",
+      "line": 16939,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/google-sheets/select-spreadsheet-multiple\"",
+      "file": "server/routes-oauth.ts",
+      "line": 17044,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/google-sheets-connections\"",
+      "file": "server/routes-oauth.ts",
+      "line": 17364,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/connected-data-sources\"",
+      "file": "server/routes-oauth.ts",
+      "line": 17470,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/connected-data-sources/:sourceId/preview\"",
+      "file": "server/routes-oauth.ts",
+      "line": 17739,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/google-sheets-connections/:connectionId/set-primary\"",
+      "file": "server/routes-oauth.ts",
+      "line": 18009,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/google-sheets/check-connection/:campaignId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 18025,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/hubspot/:campaignId/status\"",
+      "file": "server/routes-oauth.ts",
+      "line": 18058,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/salesforce/:campaignId/connection\"",
+      "file": "server/routes-oauth.ts",
+      "line": 18130,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/salesforce/:campaignId/status\"",
+      "file": "server/routes-oauth.ts",
+      "line": 18171,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/salesforce/:campaignId/opportunities/fields\"",
+      "file": "server/routes-oauth.ts",
+      "line": 18251,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/salesforce/:campaignId/opportunities/stages\"",
+      "file": "server/routes-oauth.ts",
+      "line": 18303,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/salesforce/:campaignId/opportunities/unique-values\"",
+      "file": "server/routes-oauth.ts",
+      "line": 18322,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/salesforce/:campaignId/opportunities/preview\"",
+      "file": "server/routes-oauth.ts",
+      "line": 18460,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/salesforce/save-mappings\"",
+      "file": "server/routes-oauth.ts",
+      "line": 18670,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "importRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/salesforce/:campaignId/pipeline-proxy\"",
+      "file": "server/routes-oauth.ts",
+      "line": 19328,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/hubspot/:campaignId/deals/properties\"",
+      "file": "server/routes-oauth.ts",
+      "line": 19631,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/hubspot/:campaignId/deals/pipelines\"",
+      "file": "server/routes-oauth.ts",
+      "line": 19673,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/hubspot/:campaignId/pipeline-proxy\"",
+      "file": "server/routes-oauth.ts",
+      "line": 19698,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/hubspot/:campaignId/pipeline-proxy\"",
+      "file": "server/routes-oauth.ts",
+      "line": 19897,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/hubspot/:campaignId/deals/unique-values\"",
+      "file": "server/routes-oauth.ts",
+      "line": 19993,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/hubspot/save-mappings\"",
+      "file": "server/routes-oauth.ts",
+      "line": 20083,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "importRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/google-sheets-data\"",
+      "file": "server/routes-oauth.ts",
+      "line": 21785,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "googleSheetsRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/google-sheets-refresh\"",
+      "file": "server/routes-oauth.ts",
+      "line": 23145,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "googleSheetsRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/revenue-sources/:sourceId/hubspot-refresh/run-now\"",
+      "file": "server/routes-oauth.ts",
+      "line": 23157,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "importRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/revenue-sources/:sourceId/shopify-refresh/run-now\"",
+      "file": "server/routes-oauth.ts",
+      "line": 23187,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "importRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/revenue-sources/:sourceId/google-sheets-refresh/run-now\"",
+      "file": "server/routes-oauth.ts",
+      "line": 23217,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "googleSheetsRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/spend-sources/:sourceId/google-sheets-refresh/run-now\"",
+      "file": "server/routes-oauth.ts",
+      "line": 23261,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "googleSheetsRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/auth/linkedin/connect\"",
+      "file": "server/routes-oauth.ts",
+      "line": 23460,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "oauthRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/linkedin/ad-accounts\"",
+      "file": "server/routes-oauth.ts",
+      "line": 23735,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/linkedin/:campaignId/select-ad-account\"",
+      "file": "server/routes-oauth.ts",
+      "line": 23781,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/linkedin/campaigns\"",
+      "file": "server/routes-oauth.ts",
+      "line": 23848,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "linkedInApiRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/linkedin/:campaignId/connection\"",
+      "file": "server/routes-oauth.ts",
+      "line": 23918,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/auth/meta/connect\"",
+      "file": "server/routes-oauth.ts",
+      "line": 24016,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "oauthRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:campaignId/meta/connection\"",
+      "file": "server/routes-oauth.ts",
+      "line": 24345,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/campaigns/:campaignId/meta/connection\"",
+      "file": "server/routes-oauth.ts",
+      "line": 24383,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/kpis/test-alerts\"",
+      "file": "server/routes-oauth.ts",
+      "line": 24420,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "PRODUCTION_ONLY_TEST_ROUTE_DISABLED",
+      "response": {
+        "success": false,
+        "message": "Not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/meta/:campaignId/connect-test\"",
+      "file": "server/routes-oauth.ts",
+      "line": 24438,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/meta/:campaignId/connection\"",
+      "file": "server/routes-oauth.ts",
+      "line": 24487,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/meta/:campaignId/connection\"",
+      "file": "server/routes-oauth.ts",
+      "line": 24513,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/instagram/:campaignId/connection\"",
+      "file": "server/routes-oauth.ts",
+      "line": 24536,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/instagram/:campaignId/connect-test\"",
+      "file": "server/routes-oauth.ts",
+      "line": 24581,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "\"/api/instagram/:campaignId/selected-campaigns\"",
+      "file": "server/routes-oauth.ts",
+      "line": 24665,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/instagram/:campaignId/connection\"",
+      "file": "server/routes-oauth.ts",
+      "line": 24724,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/instagram/:campaignId/campaigns\"",
+      "file": "server/routes-oauth.ts",
+      "line": 24755,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/tiktok/:campaignId/connection\"",
+      "file": "server/routes-oauth.ts",
+      "line": 24803,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/tiktok/:campaignId/connect-test\"",
+      "file": "server/routes-oauth.ts",
+      "line": 24851,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "\"/api/tiktok/:campaignId/selected-campaigns\"",
+      "file": "server/routes-oauth.ts",
+      "line": 24908,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/tiktok/:campaignId/connection\"",
+      "file": "server/routes-oauth.ts",
+      "line": 24970,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/tiktok/:campaignId/campaigns\"",
+      "file": "server/routes-oauth.ts",
+      "line": 25001,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/tiktok/:campaignId/refresh-test\"",
+      "file": "server/routes-oauth.ts",
+      "line": 25061,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/tiktok/:campaignId/refresh\"",
+      "file": "server/routes-oauth.ts",
+      "line": 25147,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/tiktok/:campaignId/daily-metrics\"",
+      "file": "server/routes-oauth.ts",
+      "line": 25180,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/instagram/:campaignId/overview-summary\"",
+      "file": "server/routes-oauth.ts",
+      "line": 25270,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/instagram/:campaignId/daily-metrics\"",
+      "file": "server/routes-oauth.ts",
+      "line": 25338,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/meta/transfer-connection\"",
+      "file": "server/routes-oauth.ts",
+      "line": 25443,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/instagram/:campaignId/refresh-test\"",
+      "file": "server/routes-oauth.ts",
+      "line": 25485,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/instagram/:campaignId/refresh\"",
+      "file": "server/routes-oauth.ts",
+      "line": 25563,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/meta/:campaignId/analytics\"",
+      "file": "server/routes-oauth.ts",
+      "line": 25652,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/meta/:campaignId/summary\"",
+      "file": "server/routes-oauth.ts",
+      "line": 25963,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/meta/:campaignId/campaigns\"",
+      "file": "server/routes-oauth.ts",
+      "line": 26008,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/meta/:campaignId/insights/daily\"",
+      "file": "server/routes-oauth.ts",
+      "line": 26057,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/meta/:campaignId/demographics\"",
+      "file": "server/routes-oauth.ts",
+      "line": 26124,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/meta/:campaignId/geographics\"",
+      "file": "server/routes-oauth.ts",
+      "line": 26165,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/meta/:campaignId/placements\"",
+      "file": "server/routes-oauth.ts",
+      "line": 26206,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/meta/:campaignId/adsets\"",
+      "file": "server/routes-oauth.ts",
+      "line": 26247,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/meta/:campaignId/ads\"",
+      "file": "server/routes-oauth.ts",
+      "line": 26284,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/meta/:campaignId/ad-insights\"",
+      "file": "server/routes-oauth.ts",
+      "line": 26321,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/meta/:campaignId/refresh\"",
+      "file": "server/routes-oauth.ts",
+      "line": 26359,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/meta/:campaignId/verify-token\"",
+      "file": "server/routes-oauth.ts",
+      "line": 26401,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/platforms/meta/kpis/:campaignId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 26442,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/platforms/meta/kpis\"",
+      "file": "server/routes-oauth.ts",
+      "line": 26464,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "\"/api/platforms/meta/kpis/:kpiId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 26509,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getKPI",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/platforms/meta/kpis/:kpiId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 26564,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getKPI",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/google-ads-service-account/status\"",
+      "file": "server/routes-oauth.ts",
+      "line": 26677,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/google-ads-service-account/connect\"",
+      "file": "server/routes-oauth.ts",
+      "line": 26687,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "oauthRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/auth/google-ads/connect\"",
+      "file": "server/routes-oauth.ts",
+      "line": 26777,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "oauthRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/google-ads/:campaignId/select-customer\"",
+      "file": "server/routes-oauth.ts",
+      "line": 26928,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/google-ads/:campaignId/connect-test\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27022,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/google-ads/:campaignId/connection\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27064,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/google-ads/:campaignId/connection\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27089,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/google-ads/:campaignId/daily-metrics\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27112,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/google-ads/:campaignId/refresh\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27154,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/google-ads/:campaignId/campaigns\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27178,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "\"/api/google-ads/:campaignId/selected-campaigns\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27245,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/google-ads/:campaignId/enrich-ga4-revenue\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27285,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/meta/:campaignId/daily-metrics\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27304,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/spend/ad-platform/import\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27328,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/linkedin/:campaignId/daily-metrics\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27449,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/meta/:campaignId/enrich-ga4-revenue\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27469,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/linkedin/:campaignId/enrich-ga4-revenue\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27488,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "\"/api/meta/:campaignId/selected-campaigns\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27507,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/benchmarks/evaluated\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27540,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/benchmarks\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27568,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "\"/api/benchmarks/:benchmarkId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27599,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getMetaBenchmarkById",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/benchmarks/:benchmarkId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27641,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getMetaBenchmarkById",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/meta/reports\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27689,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/meta/reports\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27716,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "\"/api/meta/reports/:reportId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27739,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getMetaReportById",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/meta/reports/:reportId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27770,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getMetaReportById",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/meta/reports/:reportId/send\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27794,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getMetaReportById",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/meta/reports/:reportId/preview\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27819,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getMetaReportById",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/meta/:campaignId/revenue/manual\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27845,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/meta/:campaignId/revenue/csv\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27907,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/meta/:campaignId/revenue/summary\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27932,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/custom-integration/connect\"",
+      "file": "server/routes-oauth.ts",
+      "line": 27998,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/custom-integration-by-id/:id\"",
+      "file": "server/routes-oauth.ts",
+      "line": 28071,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCustomIntegrationById",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/custom-integration/:campaignId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 28089,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/custom-integration/:campaignId/changes\"",
+      "file": "server/routes-oauth.ts",
+      "line": 28111,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/custom-integration/:campaignId/metrics\"",
+      "file": "server/routes-oauth.ts",
+      "line": 28168,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/custom-integration/:campaignId/upload-pdf\"",
+      "file": "server/routes-oauth.ts",
+      "line": 28187,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/linkedin/check-connection/:campaignId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 28568,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/linkedin/disconnect/:campaignId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 28596,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "\"/api/linkedin/update/:campaignId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 28633,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/kpis\"",
+      "file": "server/routes-oauth.ts",
+      "line": 28713,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/kpis/:kpiId/latest-period\"",
+      "file": "server/routes-oauth.ts",
+      "line": 28728,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getKPI",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/platforms/:platformType/kpis\"",
+      "file": "server/routes-oauth.ts",
+      "line": 28743,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/platforms/:platformType/kpis\"",
+      "file": "server/routes-oauth.ts",
+      "line": 28780,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "\"/api/platforms/:platformType/kpis/:kpiId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 28857,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getKPI",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/platforms/:platformType/kpis/:kpiId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 28968,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getKPI",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/kpis\"",
+      "file": "server/routes-oauth.ts",
+      "line": 28995,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "\"/api/campaigns/:id/kpis/:kpiId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 29040,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getKPI",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/campaigns/:id/kpis/:kpiId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 29115,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getKPI",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/benchmarks\"",
+      "file": "server/routes-oauth.ts",
+      "line": 29145,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/benchmarks/evaluated\"",
+      "file": "server/routes-oauth.ts",
+      "line": 29160,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/benchmarks\"",
+      "file": "server/routes-oauth.ts",
+      "line": 29378,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "\"/api/campaigns/:campaignId/benchmarks/:benchmarkId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 29416,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getBenchmark",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/campaigns/:campaignId/benchmarks/:benchmarkId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 29475,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getBenchmark",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/kpis/:id/analytics\"",
+      "file": "server/routes-oauth.ts",
+      "line": 29502,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getKPI",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/kpis/:id/progress\"",
+      "file": "server/routes-oauth.ts",
+      "line": 29554,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getKPI",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/platforms/:platformType/benchmarks\"",
+      "file": "server/routes-oauth.ts",
+      "line": 29605,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/platforms/:platformType/benchmarks\"",
+      "file": "server/routes-oauth.ts",
+      "line": 29627,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "\"/api/platforms/:platformType/benchmarks/:benchmarkId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 29690,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getBenchmark",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/platforms/:platformType/benchmarks/:benchmarkId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 29759,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getBenchmark",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/custom-report-pdf\"",
+      "file": "server/routes-oauth.ts",
+      "line": 29786,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/platforms/:platformType/reports\"",
+      "file": "server/routes-oauth.ts",
+      "line": 29854,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/platforms/:platformType/reports\"",
+      "file": "server/routes-oauth.ts",
+      "line": 29870,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "\"/api/platforms/:platformType/reports/:reportId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 30029,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getLinkedInReport",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/platforms/:platformType/reports/:reportId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 30163,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getLinkedInReport",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/platforms/:platformType/reports/:reportId/send-test\"",
+      "file": "server/routes-oauth.ts",
+      "line": 30185,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getLinkedInReport",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/platforms/:platformType/reports/:reportId/send-events\"",
+      "file": "server/routes-oauth.ts",
+      "line": 30224,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getLinkedInReport",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/platforms/:platformType/reports/:reportId/snapshots\"",
+      "file": "server/routes-oauth.ts",
+      "line": 30292,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getLinkedInReport",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/platforms/:platformType/reports/:reportId/snapshots\"",
+      "file": "server/routes-oauth.ts",
+      "line": 30317,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getLinkedInReport",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/report-snapshots/:snapshotId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 30404,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "db.identity-lookup",
+        "storage.getLinkedInReport",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [
+        "./db",
+        "../shared/schema",
+        "drizzle-orm"
+      ],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/report-snapshots/:snapshotId/pdf\"",
+      "file": "server/routes-oauth.ts",
+      "line": 30437,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "db.identity-lookup",
+        "storage.getLinkedInReport",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [
+        "./db",
+        "../shared/schema",
+        "drizzle-orm"
+      ],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/benchmarks/:id\"",
+      "file": "server/routes-oauth.ts",
+      "line": 30508,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getBenchmark",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/benchmarks\"",
+      "file": "server/routes-oauth.ts",
+      "line": 30521,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "\"/api/benchmarks/:id\"",
+      "file": "server/routes-oauth.ts",
+      "line": 30559,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getBenchmark",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/benchmarks/:id\"",
+      "file": "server/routes-oauth.ts",
+      "line": 30606,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getBenchmark",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/benchmarks/:id/history\"",
+      "file": "server/routes-oauth.ts",
+      "line": 30626,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getBenchmark",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/benchmarks/:id/alert-email-delivery-validation\"",
+      "file": "server/routes-oauth.ts",
+      "line": 30640,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getBenchmark",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/benchmarks/:id/history\"",
+      "file": "server/routes-oauth.ts",
+      "line": 30736,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getBenchmark",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/benchmarks/:id/analytics\"",
+      "file": "server/routes-oauth.ts",
+      "line": 30768,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getBenchmark",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/linkedin/imports\"",
+      "file": "server/routes-oauth.ts",
+      "line": 31476,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/linkedin/import-sessions/:campaignId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 31830,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/linkedin/metrics/:campaignId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 31847,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/snapshots\"",
+      "file": "server/routes-oauth.ts",
+      "line": 32034,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/executive-summary/trajectory\"",
+      "file": "server/routes-oauth.ts",
+      "line": 32064,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/financial-daily-snapshot\"",
+      "file": "server/routes-oauth.ts",
+      "line": 32100,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/snapshots/comparison\"",
+      "file": "server/routes-oauth.ts",
+      "line": 32118,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/snapshots\"",
+      "file": "server/routes-oauth.ts",
+      "line": 32167,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/linkedin/imports/:sessionId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 32196,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getLinkedInImportSession",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/linkedin/imports/:sessionId/ads\"",
+      "file": "server/routes-oauth.ts",
+      "line": 32526,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getLinkedInImportSession",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/linkedin/reports\"",
+      "file": "server/routes-oauth.ts",
+      "line": 32665,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/linkedin/reports/:id\"",
+      "file": "server/routes-oauth.ts",
+      "line": 32682,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getLinkedInReport",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/linkedin/reports\"",
+      "file": "server/routes-oauth.ts",
+      "line": 32699,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "\"/api/linkedin/reports/:id\"",
+      "file": "server/routes-oauth.ts",
+      "line": 32717,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getLinkedInReport",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "\"/api/linkedin/reports/:id\"",
+      "file": "server/routes-oauth.ts",
+      "line": 32745,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getLinkedInReport",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/linkedin/reports/:id\"",
+      "file": "server/routes-oauth.ts",
+      "line": 32773,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getLinkedInReport",
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/executive-summary\"",
+      "file": "server/routes-oauth.ts",
+      "line": 32795,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [
+        "./utils/executive-summary-helpers"
+      ],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/ga4/transfer-connection\"",
+      "file": "server/routes-oauth.ts",
+      "line": 33549,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/google-sheets/transfer-connection\"",
+      "file": "server/routes-oauth.ts",
+      "line": 33626,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/linkedin/transfer-connection\"",
+      "file": "server/routes-oauth.ts",
+      "line": 33667,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/custom-integration/:campaignId/connect\"",
+      "file": "server/routes-oauth.ts",
+      "line": 33729,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "\"/api/custom-integration/:campaignId\"",
+      "file": "server/routes-oauth.ts",
+      "line": 33786,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/custom-integration/transfer\"",
+      "file": "server/routes-oauth.ts",
+      "line": 34100,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/google-sheets/detect-columns\"",
+      "file": "server/routes-oauth.ts",
+      "line": 34410,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/google-sheets/unique-values\"",
+      "file": "server/routes-oauth.ts",
+      "line": 34627,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/google-sheets/auto-map\"",
+      "file": "server/routes-oauth.ts",
+      "line": 34733,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/google-sheets/save-mappings\"",
+      "file": "server/routes-oauth.ts",
+      "line": 34765,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "\"/api/google-sheets/:campaignId/connection/:connectionId/platforms\"",
+      "file": "server/routes-oauth.ts",
+      "line": 35338,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/campaigns/:id/google-sheets/mappings\"",
+      "file": "server/routes-oauth.ts",
+      "line": 35371,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/shopify/connect\"",
+      "file": "server/routes-oauth.ts",
+      "line": 35831,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/shopify/:campaignId/status\"",
+      "file": "server/routes-oauth.ts",
+      "line": 35885,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/shopify/:campaignId/debug\"",
+      "file": "server/routes-oauth.ts",
+      "line": 35946,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/shopify/:campaignId/orders/preview\"",
+      "file": "server/routes-oauth.ts",
+      "line": 36042,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "\"/api/shopify/:campaignId/orders/unique-values\"",
+      "file": "server/routes-oauth.ts",
+      "line": 36122,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "\"/api/campaigns/:id/shopify/save-mappings\"",
+      "file": "server/routes-oauth.ts",
+      "line": 36224,
+      "status": 404,
+      "effects": [],
+      "lookupReads": [
+        "storage.getCampaign"
+      ],
+      "moduleFixtures": [],
+      "middlewareReached": [
+        "importRateLimiter"
+      ],
+      "classification": "FOREIGN_PARENT_DENIED",
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      }
+    }
+  ]
+}

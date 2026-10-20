@@ -1,0 +1,28 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact current analytics service with deterministic provider responses; no Google API, database or browser. Current guarded route wraps these results in success:true; reconnect picker trace separately shows manual entry only when list empty.",
+  "results": [
+    {
+      "case": "All campaign-discovery queries fail429 but service returns ordinary empty list",
+      "response": {
+        "propertyId": "123",
+        "campaigns": []
+      },
+      "requestCount": 7,
+      "allRequestsWithoutSignal": true
+    },
+    {
+      "case": "Campaign-discovery rowCount201 is ignored after top200; no pagination/completeness marker",
+      "returnedCount": 200,
+      "requestCount": 2,
+      "requestDimensions": [
+        "sessionCampaignName",
+        "pageLocation"
+      ],
+      "responseKeys": [
+        "propertyId",
+        "campaigns"
+      ]
+    }
+  ]
+}

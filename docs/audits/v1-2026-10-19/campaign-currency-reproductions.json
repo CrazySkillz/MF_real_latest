@@ -1,0 +1,29 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact current campaign PATCH, updateCampaign write, real schema/timezone helpers, final native daily response block and client money formatter. Fixture owner/storage/transaction wrapper/freshness decoration. Control invalidation method is a fixture; actual storage deletion lines719–720 are separately traced. No DB/provider/network mutation; complete React render and live currency conversion not executed.",
+  "results": [
+    {
+      "case": "Currency edit retains native daily history",
+      "invalidationCalls": 0,
+      "ordinaryCalls": 1,
+      "originalNativeCurrency": "USD",
+      "newCampaignCurrency": "EUR",
+      "dailyRevenue": 100,
+      "responseCurrency": null,
+      "formattedRevenue": "€100.00",
+      "dailySuccess": true
+    },
+    {
+      "case": "Campaign-filter edit invalidates native history",
+      "invalidationCalls": 1,
+      "ordinaryCalls": 0,
+      "remainingRows": 0
+    },
+    {
+      "case": "Reporting-timezone edit invalidates native history",
+      "invalidationCalls": 1,
+      "ordinaryCalls": 0,
+      "remainingRows": 0
+    }
+  ]
+}

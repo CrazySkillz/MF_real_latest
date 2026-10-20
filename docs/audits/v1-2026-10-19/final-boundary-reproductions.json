@@ -1,0 +1,115 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "at": "2026-10-20T16:44:23.439Z",
+  "boundary": "Exact handlers/access/recompute helpers and actual schema. Fixture identities/storage/worker results; no database/provider/network/email. Child-storage filtering is asserted as a call contract, not simulated SQL enforcement. Recompute rejection does not imply callers return failure, background retries survive restart or every consumer withholds stale data.",
+  "results": [
+    {
+      "case": "Client create replaces spoofed owner and ignores caller ID",
+      "status": 201
+    },
+    {
+      "case": "Client list passes authenticated owner to persistence",
+      "status": 200
+    },
+    {
+      "case": "Campaign list excludes foreign/orphan rows and scopes import status",
+      "includeInitialImports": false,
+      "visibleCount": 1
+    },
+    {
+      "case": "Campaign list excludes foreign/orphan rows and scopes import status",
+      "includeInitialImports": true,
+      "visibleCount": 2
+    },
+    {
+      "case": "GET /api/campaigns rejects foreign Client before campaign read/write",
+      "status": 404
+    },
+    {
+      "case": "POST /api/campaigns rejects foreign Client before campaign read/write",
+      "status": 404
+    },
+    {
+      "case": "PATCH /api/campaigns/:id rejects foreign Client before campaign read/write",
+      "status": 404
+    },
+    {
+      "case": "Campaign update strips owner and row identity using actual schema",
+      "status": 200
+    },
+    {
+      "case": "DELETE /api/campaigns/:id/revenue-sources/:sourceId rejects absent child or different platform",
+      "requestedPlatform": null,
+      "status": 404
+    },
+    {
+      "case": "DELETE /api/campaigns/:id/revenue-sources/:sourceId rejects absent child or different platform",
+      "requestedPlatform": "ga4",
+      "status": 404
+    },
+    {
+      "case": "DELETE /api/campaigns/:id/spend-sources/:sourceId rejects absent child or different platform",
+      "requestedPlatform": null,
+      "status": 404
+    },
+    {
+      "case": "DELETE /api/campaigns/:id/revenue-sources/:sourceId/pipeline-proxy rejects absent child or different platform",
+      "requestedPlatform": "google_ads",
+      "status": 400
+    },
+    {
+      "case": "PATCH campaign KPI rejects owned sibling or platform child",
+      "childCampaign": "owned-sibling",
+      "childPlatform": null,
+      "status": 404
+    },
+    {
+      "case": "PATCH campaign KPI rejects owned sibling or platform child",
+      "childCampaign": "owned-campaign",
+      "childPlatform": "google_analytics",
+      "status": 404
+    },
+    {
+      "case": "DELETE campaign KPI rejects owned sibling or platform child",
+      "childCampaign": "owned-sibling",
+      "childPlatform": null,
+      "status": 404
+    },
+    {
+      "case": "DELETE campaign KPI rejects owned sibling or platform child",
+      "childCampaign": "owned-campaign",
+      "childPlatform": "google_analytics",
+      "status": 404
+    },
+    {
+      "case": "Post-source shared recompute: All goals and alert reconciliation completed",
+      "acceptsComplete": true,
+      "alignmentInvalidatedBeforeJobs": true
+    },
+    {
+      "case": "Post-source shared recompute: No campaign processed",
+      "acceptsComplete": false,
+      "alignmentInvalidatedBeforeJobs": true
+    },
+    {
+      "case": "Post-source shared recompute: Target campaign failed",
+      "acceptsComplete": false,
+      "alignmentInvalidatedBeforeJobs": true
+    },
+    {
+      "case": "Post-source shared recompute: KPI unavailable/skipped",
+      "acceptsComplete": false,
+      "alignmentInvalidatedBeforeJobs": true
+    },
+    {
+      "case": "Post-source shared recompute: Benchmark failed",
+      "acceptsComplete": false,
+      "alignmentInvalidatedBeforeJobs": true
+    },
+    {
+      "case": "Post-source shared recompute: Alert reconciliation failed",
+      "acceptsComplete": false,
+      "alignmentInvalidatedBeforeJobs": true
+    }
+  ]
+}

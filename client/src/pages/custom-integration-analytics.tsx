@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { formatTimeAgo } from "@/lib/utils";
 import { formatPct } from "@shared/metric-math";
 import { computeAttainmentFillPct, computeAttainmentPct, computeEffectiveDeltaPct, classifyKpiBand, isLowerIsBetterKpi } from "@shared/kpi-math";
@@ -425,6 +425,7 @@ function calculateExpectedProgress(timeframe: string): number {
 }
 
 export default function CustomIntegrationAnalytics() {
+  const queryClient = useQueryClient();
   const [matchCampaignRoute, campaignParams] = useRoute("/campaigns/:id/custom-integration-analytics");
   const [matchIntegrationRoute, integrationParams] = useRoute("/integrations/:id/analytics");
   const [location, setLocation] = useLocation();

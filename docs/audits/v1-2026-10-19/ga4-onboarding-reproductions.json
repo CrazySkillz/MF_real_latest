@@ -1,0 +1,108 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "results": [
+    {
+      "case": "OAuth reconnect replaces previous selected connection with unselected pending row; ignores discovery next-page tokens",
+      "calls": [
+        {
+          "method": "create",
+          "propertyId": ""
+        },
+        {
+          "method": "promote",
+          "id": "new-fixture"
+        },
+        {
+          "method": "delete",
+          "id": "old-fixture"
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://oauth2.googleapis.com/token",
+          "hasSignal": false
+        },
+        {
+          "url": "https://analyticsadmin.googleapis.com/v1alpha/accounts",
+          "hasSignal": false
+        },
+        {
+          "url": "https://analyticsadmin.googleapis.com/v1beta/properties?filter=parent:accounts/1",
+          "hasSignal": false
+        }
+      ],
+      "remaining": [
+        {
+          "id": "new-fixture",
+          "propertyId": ""
+        }
+      ],
+      "successPopup": true,
+      "boundary": "Exact callback with authenticated owner, verified state and fake Google responses. No real token exchange or database."
+    },
+    {
+      "case": "OAuth reconnect deletes previous selected connection even when property discovery fails",
+      "calls": [
+        {
+          "method": "create",
+          "propertyId": ""
+        },
+        {
+          "method": "promote",
+          "id": "new-fixture"
+        },
+        {
+          "method": "delete",
+          "id": "old-fixture"
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://oauth2.googleapis.com/token",
+          "hasSignal": false
+        },
+        {
+          "url": "https://analyticsadmin.googleapis.com/v1alpha/accounts",
+          "hasSignal": false
+        }
+      ],
+      "remaining": [
+        {
+          "id": "new-fixture",
+          "propertyId": ""
+        }
+      ],
+      "successPopup": true,
+      "boundary": "Exact callback with authenticated owner, verified state and fake Google responses. No real token exchange or database."
+    },
+    {
+      "case": "Status prioritizes memory and labels fabricated property fallback as real without checking persisted connection",
+      "dbReads": 0,
+      "response": {
+        "connected": true,
+        "propertyId": "",
+        "properties": [
+          {
+            "id": "123456789",
+            "name": "Main Website"
+          },
+          {
+            "id": "987654321",
+            "name": "Marketing Landing Page"
+          },
+          {
+            "id": "456789123",
+            "name": "E-commerce Store"
+          },
+          {
+            "id": "789123456",
+            "name": "Blog & Content Hub"
+          }
+        ],
+        "isRealOAuth": true,
+        "dataSource": "Real Google Analytics API"
+      },
+      "boundary": "Exact getProperties method and status handler; in-memory fixture present, DB empty. Code trace confirms delete route does not clear these maps; no claim of an observed production disconnect."
+    }
+  ]
+}

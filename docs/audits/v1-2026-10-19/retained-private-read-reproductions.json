@@ -1,0 +1,382 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact current GET handlers and static field definitions. All private data, identities and provider replies are synthetic. No HTTP app/middleware/provider/database access; unauthorized handler access and provider dispatch proven, not live data exposure.",
+  "results": [
+    {
+      "case": "/api/campaigns/:id/google-trends",
+      "actor": "anonymous",
+      "status": 200,
+      "accessChecks": 0,
+      "reads": [
+        {
+          "method": "getCampaign",
+          "id": "foreign-fixture"
+        }
+      ],
+      "providerCalls": [
+        {
+          "provider": "google-trends",
+          "keywords": [
+            "private-fixture-keyword"
+          ]
+        }
+      ],
+      "response": {
+        "industry": "private-fixture-industry",
+        "keywords": [
+          "private-fixture-keyword"
+        ],
+        "trends": [
+          {
+            "keyword": "private-fixture-keyword",
+            "data": [
+              {
+                "time": 1,
+                "formattedTime": "",
+                "formattedAxisTime": "",
+                "value": [
+                  7
+                ],
+                "formattedValue": [
+                  "7"
+                ]
+              }
+            ],
+            "success": true
+          }
+        ],
+        "timeframe": "Last 90 days",
+        "meta": {
+          "totalKeywords": 1,
+          "successful": 1,
+          "failed": 0,
+          "source": "google-trends-api"
+        }
+      }
+    },
+    {
+      "case": "/api/campaigns/:campaignId/attribution",
+      "actor": "anonymous",
+      "status": 200,
+      "accessChecks": 0,
+      "reads": [
+        {
+          "method": "getCampaignTouchpoints",
+          "id": "foreign-fixture"
+        },
+        {
+          "method": "getCampaignAttributionInsights",
+          "id": "foreign-fixture"
+        }
+      ],
+      "providerCalls": [],
+      "response": {
+        "touchpoints": [
+          {
+            "id": "private-fixture-event",
+            "campaignId": "foreign-fixture",
+            "eventValue": "42",
+            "channel": "private-fixture-channel"
+          }
+        ],
+        "insights": [
+          {
+            "campaignId": "foreign-fixture",
+            "fixturePrivateInsight": true
+          }
+        ],
+        "summary": {
+          "totalAttributedValue": 42,
+          "totalTouchpoints": 1,
+          "channelBreakdown": {
+            "private-fixture-channel": 1
+          }
+        }
+      }
+    },
+    {
+      "case": "/api/platforms/:platform/fields",
+      "actor": "anonymous",
+      "status": 200,
+      "accessChecks": 0,
+      "reads": [
+        {
+          "method": "getLinkedInConnection",
+          "id": "foreign-fixture"
+        },
+        {
+          "method": "getGoogleSheetsConnections",
+          "id": "foreign-fixture"
+        }
+      ],
+      "providerCalls": [
+        {
+          "provider": "google-sheets",
+          "url": "https://sheets.googleapis.com/v4/spreadsheets/fixture-private-sheet?includeGridData=false"
+        },
+        {
+          "provider": "google-sheets",
+          "url": "https://sheets.googleapis.com/v4/spreadsheets/fixture-private-sheet/values/Sheet1!1:1"
+        }
+      ],
+      "response": {
+        "success": true,
+        "platform": "linkedin",
+        "fields": [
+          {
+            "id": "campaign_name",
+            "name": "Campaign Name",
+            "type": "text",
+            "required": true,
+            "category": "identifiers",
+            "description": "Name of the advertising campaign"
+          },
+          {
+            "id": "campaign_id",
+            "name": "Campaign ID",
+            "type": "text",
+            "required": false,
+            "category": "identifiers",
+            "description": "Numeric campaign identifier (or URN). Optional; if present it will be used for more reliable matching."
+          },
+          {
+            "id": "platform",
+            "name": "Platform",
+            "type": "text",
+            "required": true,
+            "category": "identifiers",
+            "description": "Advertising platform (e.g., LinkedIn, Facebook, Google Ads)"
+          },
+          {
+            "id": "impressions",
+            "name": "Impressions",
+            "type": "number",
+            "required": false,
+            "category": "metrics",
+            "description": "Number of times the ad was shown"
+          },
+          {
+            "id": "clicks",
+            "name": "Clicks",
+            "type": "number",
+            "required": false,
+            "category": "metrics",
+            "description": "Number of clicks on the ad"
+          },
+          {
+            "id": "spend",
+            "name": "Spend (USD)",
+            "type": "currency",
+            "required": false,
+            "category": "metrics",
+            "description": "Total amount spent on advertising"
+          },
+          {
+            "id": "conversions",
+            "name": "Conversions",
+            "type": "number",
+            "required": false,
+            "category": "metrics",
+            "description": "Number of conversions"
+          },
+          {
+            "id": "revenue",
+            "name": "Revenue",
+            "type": "currency",
+            "required": true,
+            "category": "metrics",
+            "description": "Total revenue generated (required for conversion value calculation when LinkedIn API is connected)"
+          }
+        ]
+      }
+    },
+    {
+      "case": "/api/campaigns/:id/google-trends",
+      "actor": "unrelated-owner",
+      "status": 200,
+      "accessChecks": 0,
+      "reads": [
+        {
+          "method": "getCampaign",
+          "id": "foreign-fixture"
+        }
+      ],
+      "providerCalls": [
+        {
+          "provider": "google-trends",
+          "keywords": [
+            "private-fixture-keyword"
+          ]
+        }
+      ],
+      "response": {
+        "industry": "private-fixture-industry",
+        "keywords": [
+          "private-fixture-keyword"
+        ],
+        "trends": [
+          {
+            "keyword": "private-fixture-keyword",
+            "data": [
+              {
+                "time": 1,
+                "formattedTime": "",
+                "formattedAxisTime": "",
+                "value": [
+                  7
+                ],
+                "formattedValue": [
+                  "7"
+                ]
+              }
+            ],
+            "success": true
+          }
+        ],
+        "timeframe": "Last 90 days",
+        "meta": {
+          "totalKeywords": 1,
+          "successful": 1,
+          "failed": 0,
+          "source": "google-trends-api"
+        }
+      }
+    },
+    {
+      "case": "/api/campaigns/:campaignId/attribution",
+      "actor": "unrelated-owner",
+      "status": 200,
+      "accessChecks": 0,
+      "reads": [
+        {
+          "method": "getCampaignTouchpoints",
+          "id": "foreign-fixture"
+        },
+        {
+          "method": "getCampaignAttributionInsights",
+          "id": "foreign-fixture"
+        }
+      ],
+      "providerCalls": [],
+      "response": {
+        "touchpoints": [
+          {
+            "id": "private-fixture-event",
+            "campaignId": "foreign-fixture",
+            "eventValue": "42",
+            "channel": "private-fixture-channel"
+          }
+        ],
+        "insights": [
+          {
+            "campaignId": "foreign-fixture",
+            "fixturePrivateInsight": true
+          }
+        ],
+        "summary": {
+          "totalAttributedValue": 42,
+          "totalTouchpoints": 1,
+          "channelBreakdown": {
+            "private-fixture-channel": 1
+          }
+        }
+      }
+    },
+    {
+      "case": "/api/platforms/:platform/fields",
+      "actor": "unrelated-owner",
+      "status": 200,
+      "accessChecks": 0,
+      "reads": [
+        {
+          "method": "getLinkedInConnection",
+          "id": "foreign-fixture"
+        },
+        {
+          "method": "getGoogleSheetsConnections",
+          "id": "foreign-fixture"
+        }
+      ],
+      "providerCalls": [
+        {
+          "provider": "google-sheets",
+          "url": "https://sheets.googleapis.com/v4/spreadsheets/fixture-private-sheet?includeGridData=false"
+        },
+        {
+          "provider": "google-sheets",
+          "url": "https://sheets.googleapis.com/v4/spreadsheets/fixture-private-sheet/values/Sheet1!1:1"
+        }
+      ],
+      "response": {
+        "success": true,
+        "platform": "linkedin",
+        "fields": [
+          {
+            "id": "campaign_name",
+            "name": "Campaign Name",
+            "type": "text",
+            "required": true,
+            "category": "identifiers",
+            "description": "Name of the advertising campaign"
+          },
+          {
+            "id": "campaign_id",
+            "name": "Campaign ID",
+            "type": "text",
+            "required": false,
+            "category": "identifiers",
+            "description": "Numeric campaign identifier (or URN). Optional; if present it will be used for more reliable matching."
+          },
+          {
+            "id": "platform",
+            "name": "Platform",
+            "type": "text",
+            "required": true,
+            "category": "identifiers",
+            "description": "Advertising platform (e.g., LinkedIn, Facebook, Google Ads)"
+          },
+          {
+            "id": "impressions",
+            "name": "Impressions",
+            "type": "number",
+            "required": false,
+            "category": "metrics",
+            "description": "Number of times the ad was shown"
+          },
+          {
+            "id": "clicks",
+            "name": "Clicks",
+            "type": "number",
+            "required": false,
+            "category": "metrics",
+            "description": "Number of clicks on the ad"
+          },
+          {
+            "id": "spend",
+            "name": "Spend (USD)",
+            "type": "currency",
+            "required": false,
+            "category": "metrics",
+            "description": "Total amount spent on advertising"
+          },
+          {
+            "id": "conversions",
+            "name": "Conversions",
+            "type": "number",
+            "required": false,
+            "category": "metrics",
+            "description": "Number of conversions"
+          },
+          {
+            "id": "revenue",
+            "name": "Revenue",
+            "type": "currency",
+            "required": true,
+            "category": "metrics",
+            "description": "Total revenue generated (required for conversion value calculation when LinkedIn API is connected)"
+          }
+        ]
+      }
+    }
+  ]
+}

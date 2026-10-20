@@ -1,0 +1,82 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "at": "2026-10-20T08:53:47.901Z",
+  "boundary": "Exact current page declarations with synthetic metrics and immediate useMemo. No UI framework state, live provider, storage, email or production.",
+  "results": [
+    {
+      "case": "Fourteen observations over27 calendar dates enable two seven-row comparisons",
+      "availableDays": 14,
+      "last7": {
+        "impressions": 7000,
+        "clicks": 70,
+        "conversions": 14,
+        "spend": 350,
+        "conversionValue": 700,
+        "ctr": 1,
+        "cpc": 5,
+        "cpm": 50,
+        "conversionRate": 20,
+        "costPerConversion": 25,
+        "roas": 2,
+        "startDate": "2026-09-15",
+        "endDate": "2026-09-27",
+        "days": 7
+      },
+      "prior7": {
+        "impressions": 7000,
+        "clicks": 70,
+        "conversions": 14,
+        "spend": 350,
+        "conversionValue": 700,
+        "ctr": 1,
+        "cpc": 5,
+        "cpm": 50,
+        "conversionRate": 20,
+        "costPerConversion": 25,
+        "roas": 2,
+        "startDate": "2026-09-01",
+        "endDate": "2026-09-13",
+        "days": 7
+      },
+      "calendarSpanOfLast7": 13
+    },
+    {
+      "case": "Contiguous-date control aligns seven rows with seven calendar dates",
+      "last7Start": "2026-09-08",
+      "last7End": "2026-09-14"
+    },
+    {
+      "case": "Partial latest period versus absent prior generates100% deltas before narrative volume gates",
+      "days": 1,
+      "priorDays": 0,
+      "delta": 100,
+      "limit": "This does not prove WoW narratives render; they separately require14 observations."
+    },
+    {
+      "case": "Spend100/no clicks becomes CPC0 and infinite on-track progress",
+      "current": 0,
+      "target": 2,
+      "pct": "Infinity",
+      "status": "on_track"
+    },
+    {
+      "case": "No attributed Revenue source becomes numeric0 for target scoring",
+      "current": 0,
+      "availabilityReturned": false
+    },
+    {
+      "case": "Zero-target control returns unknown; tracker maps all other non-on-track/non-attention statuses to behind",
+      "result": {
+        "pct": 0,
+        "status": "unknown"
+      }
+    },
+    {
+      "case": "Finite cost denominator control produces expected lower-is-better score",
+      "result": {
+        "pct": 200,
+        "status": "on_track"
+      }
+    }
+  ]
+}

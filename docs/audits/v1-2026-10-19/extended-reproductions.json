@@ -1,0 +1,100 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "results": [
+    {
+      "case": "Simulation OAuth state executes inserted script under current CSP",
+      "route": "GET /api/auth/google/simulation-auth",
+      "marker": 731,
+      "boundary": "Exact extracted HTML handler, local about:blank Chromium; all browser network blocked. No deployed attack."
+    },
+    {
+      "case": "Token-authenticated custom webhook accepts loopback URL and persists review-required data without parent check",
+      "requested": [
+        {
+          "url": "http://127.0.0.1:5000/fixture.csv",
+          "optionsProvided": false
+        }
+      ],
+      "writes": [
+        {
+          "campaignId": "deleted-campaign-fixture",
+          "spend": "1",
+          "pdfFileName": "fixture.csv",
+          "emailSubject": null,
+          "emailId": null
+        }
+      ],
+      "response": {
+        "success": true,
+        "message": "Report processed but requires manual review (Confidence: 20%)",
+        "campaignId": "deleted-campaign-fixture",
+        "metricsId": "metrics-fixture",
+        "metrics": {
+          "spend": 1,
+          "_confidence": 20,
+          "_requiresReview": true
+        },
+        "confidence": 20,
+        "requiresReview": true,
+        "warnings": [],
+        "reviewUrl": "/campaigns/deleted-campaign-fixture/review-import/metrics-fixture"
+      },
+      "boundary": "Fetch/storage/parser/recording are mocked; no HTTP/database/email. Parser review flag deliberately supplied to exercise exact handler branch."
+    },
+    {
+      "case": "Custom CSV silently truncates 5001 data rows to 4999 and claims full confidence",
+      "inputRows": 5001,
+      "expectedSpend": 5001,
+      "actual": {
+        "spend": 4999,
+        "_extractedFields": 1,
+        "_confidence": 100,
+        "_warnings": [],
+        "_requiresReview": false
+      },
+      "note": "Non-strict parser limit includes the header; first diagnostic expected5000 and exposed actual4999. Runtime code unchanged."
+    },
+    {
+      "case": "Custom CSV malformed amount",
+      "parsed": {
+        "spend": 12,
+        "_extractedFields": 1,
+        "_confidence": 100,
+        "_warnings": [],
+        "_requiresReview": false
+      }
+    },
+    {
+      "case": "Custom CSV mixed currency",
+      "parsed": {
+        "spend": 30,
+        "_extractedFields": 1,
+        "_confidence": 100,
+        "_warnings": [],
+        "_requiresReview": false
+      }
+    },
+    {
+      "case": "Custom CSV European decimal",
+      "parsed": {
+        "spend": 1.23,
+        "_extractedFields": 1,
+        "_confidence": 100,
+        "_warnings": [],
+        "_requiresReview": false
+      }
+    },
+    {
+      "case": "Control: zero metrics preserved by parser",
+      "parsed": {
+        "impressions": 0,
+        "clicks": 0,
+        "spend": 0,
+        "_extractedFields": 3,
+        "_confidence": 100,
+        "_warnings": [],
+        "_requiresReview": false
+      }
+    }
+  ]
+}

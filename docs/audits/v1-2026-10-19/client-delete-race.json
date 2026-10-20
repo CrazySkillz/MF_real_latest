@@ -1,0 +1,14 @@
+{
+  "case": "Concurrent campaign creation between client child enumeration and transaction leaves orphan",
+  "method": "server/storage.ts:6742 deleteClientCascade (exact extraction)",
+  "schemaBoundary": "Minimal fixture tables reflecting absent client foreign key in shared/schema.ts; no application database",
+  "reportedSuccess": true,
+  "remainingClients": [],
+  "remainingCampaigns": [
+    {
+      "id": "concurrent-campaign",
+      "client_id": "client-fixture"
+    }
+  ],
+  "productionImpact": "Not inspected; no production mutation"
+}

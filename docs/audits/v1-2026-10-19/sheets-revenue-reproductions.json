@@ -1,0 +1,105 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact current GA4 Sheets Revenue handler, Zod mapping, amount and CSV aggregation helpers; deterministic complete-sheet fixture, owner/storage/recompute mocked. No Google request or database mutation.",
+  "results": [
+    {
+      "case": "Duplicate revenue headers overwrite first amount",
+      "input": [
+        [
+          "Revenue",
+          "Revenue"
+        ],
+        [
+          "100",
+          "7"
+        ]
+      ],
+      "response": {
+        "success": true,
+        "mode": "revenue_to_date",
+        "sourceId": "fixture-source",
+        "currency": "USD",
+        "rowCount": 1,
+        "keptRows": 1,
+        "date": "2026-10-18",
+        "totalRevenue": 7,
+        "importedRowsTotalRevenue": 7
+      },
+      "persisted": {
+        "source": {
+          "campaignId": "fixture",
+          "sourceType": "google_sheets",
+          "platformContext": "ga4",
+          "displayName": "Google Sheets revenue",
+          "currency": "USD",
+          "mappingConfig": "{\"revenueColumn\":\"Revenue\",\"currency\":\"USD\",\"mode\":\"revenue_to_date\",\"connectionId\":\"fixture-connection\",\"spreadsheetId\":\"fixture-sheet\",\"sheetName\":\"Fixture\",\"campaignValueRevenueTotals\":null,\"allocationMethod\":null,\"lastSyncedAt\":\"2026-10-19T20:51:55.711Z\"}",
+          "isActive": true
+        },
+        "records": [
+          {
+            "campaignId": "fixture",
+            "date": "2026-10-18",
+            "revenue": "7.00",
+            "currency": "USD"
+          }
+        ]
+      }
+    },
+    {
+      "case": "Dollar-prefixed value is relabeled EUR",
+      "input": [
+        [
+          "Revenue"
+        ],
+        [
+          "$100"
+        ]
+      ],
+      "response": {
+        "success": true,
+        "mode": "revenue_to_date",
+        "sourceId": "fixture-source",
+        "currency": "EUR",
+        "rowCount": 1,
+        "keptRows": 1,
+        "date": "2026-10-18",
+        "totalRevenue": 100,
+        "importedRowsTotalRevenue": 100
+      },
+      "persisted": {
+        "source": {
+          "campaignId": "fixture",
+          "sourceType": "google_sheets",
+          "platformContext": "ga4",
+          "displayName": "Google Sheets revenue",
+          "currency": "EUR",
+          "mappingConfig": "{\"revenueColumn\":\"Revenue\",\"currency\":\"EUR\",\"mode\":\"revenue_to_date\",\"connectionId\":\"fixture-connection\",\"spreadsheetId\":\"fixture-sheet\",\"sheetName\":\"Fixture\",\"campaignValueRevenueTotals\":null,\"allocationMethod\":null,\"lastSyncedAt\":\"2026-10-19T20:51:55.746Z\"}",
+          "isActive": true
+        },
+        "records": [
+          {
+            "campaignId": "fixture",
+            "date": "2026-10-18",
+            "revenue": "100.00",
+            "currency": "EUR"
+          }
+        ]
+      }
+    },
+    {
+      "case": "Strict malformed amount control rejects input",
+      "input": [
+        [
+          "Revenue"
+        ],
+        [
+          "12oops"
+        ]
+      ],
+      "response": {
+        "success": false,
+        "error": "Selected revenue rows contain unsupported amount formatting. Use plain numbers or US-style separators (for example 1234.56 or 1,234.56)."
+      }
+    }
+  ]
+}

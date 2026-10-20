@@ -1,0 +1,1386 @@
+[
+  {
+    "route": "app.post /api/integrations",
+    "line": 839,
+    "response": "integration"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-overview/source-damage-inventory",
+    "line": 2109,
+    "response": "{\r\n        success: true,\r\n        readonly: true,\r\n        campaignId,\r\n        checkedAt: new Date().toISOString(),\r\n        overallPass,\r\n        summary: {\r\n          revenueSourceCount: (allRevenueSources as any[]).length,\r\n          activeRevenueSourceCount: (allRevenueSources as any[]).filter((source) => source?.isActive !== false).length,\r\n          inactiveRevenueSourceCount: (allRevenueSources as any[]).filter((source) => source?.isActive === false).length,\r\n          revenueRecordCount: (allRevenueRecords as any[]).length,\r\n          spendSourceCount: (allSpendSources as any[]).length,\r\n          activeSpendSourceCount: (allSpendSources as any[]).filter((source) => source?.isActive !== false).length,\r\n          inactiveSpendSourceCount: (allSpendSources as any[]).filter((source) => source?.isActive === false).length,\r\n          spendRecordCount: (allSpendRecords as any[]).leng"
+  },
+  {
+    "route": "app.delete /api/campaigns/:id/ga4/google-sheets-spend/disconnect",
+    "line": 2607,
+    "response": "{ success: true, removedSourceIds: result.sourceIds, removedConnectionIds: result.connectionIds }"
+  },
+  {
+    "route": "app.delete /api/campaigns/:id/ga4/google-ads-spend/disconnect",
+    "line": 2622,
+    "response": "{ success: true, removedSourceIds: result.sourceIds, connectionRemoved: result.connectionRemoved }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/all-data-sources",
+    "line": 3786,
+    "response": "{\r\n        success: true,\r\n        revenueSources,\r\n        spendSources,\r\n        crmConnections: {\r\n          hubspot: hubspotConn ? { connected: true, mappingConfig: parseCfg((hubspotConn as any)?.mappingConfig) } : null,\r\n          salesforce: sfConn ? { connected: true, mappingConfig: parseCfg((sfConn as any)?.mappingConfig) } : null,\r\n          shopify: shopifyConn ? { connected: true, mappingConfig: parseCfg((shopifyConn as any)?.mappingConfig) } : null,\r\n        },\r\n      }"
+  },
+  {
+    "route": "app.delete /api/campaigns/:id/linkedin/revenue-source",
+    "line": 3898,
+    "response": "{ success: true, removedRevenueSources: true, deactivatedConnections: linkedInRevenueConns.map((c: any) => c.id) }"
+  },
+  {
+    "route": "app.delete /api/campaigns/:id/ga4/google-sheets/disconnect",
+    "line": 3998,
+    "response": "{ success: true, removedSourceIds: result.sourceIds, removedConnectionIds: result.connectionIds }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/revenue/sheets/preview",
+    "line": 5299,
+    "response": "{ success: false, error: \"Google Sheets connection not found\" }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/revenue/sheets/preview",
+    "line": 5426,
+    "response": "{\r\n        success: true,\r\n        connectionId,\r\n        spreadsheetId: conn.spreadsheetId,\r\n        spreadsheetName: conn.spreadsheetName,\r\n        sheetName: conn.sheetName,\r\n        headers,\r\n        sampleRows: previewSelection.sampleRows,\r\n        rowCount: rows.length,\r\n      }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/revenue/sheets/process",
+    "line": 5504,
+    "response": "{ success: false, error: \"Google Sheets connection not found\" }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/spend/process/manual",
+    "line": 6054,
+    "response": "{ success: false, error: \"Google Ads spend connection is unavailable\" }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/spend/linkedin/preview",
+    "line": 6250,
+    "response": "{ success: true, campaigns: [], totalSpend: 0, currency: \"USD\", adAccountName: connection.adAccountName || connection.adAccountId }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/spend/linkedin/preview",
+    "line": 6282,
+    "response": "{\r\n        success: true,\r\n        adAccountId: connection.adAccountId,\r\n        adAccountName: connection.adAccountName || connection.adAccountId,\r\n        campaigns: campaignsWithSpend,\r\n        totalSpend: Number(totalSpend.toFixed(2)),\r\n        currency: (await storage.getCampaign(campaignId) as any)?.currency || \"USD\",\r\n        dateRange: `${startDate.toISOString().split(\"T\")[0]} to ${endDate.toISOString().split(\"T\")[0]}`,\r\n      }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/spend/meta/preview",
+    "line": 6465,
+    "response": "{\r\n        success: true,\r\n        connected: true,\r\n        testMode: connection.method === \"test_mode\",\r\n        adAccountId: connection.adAccountId,\r\n        adAccountName: connection.adAccountName,\r\n        message: connection.method === \"test_mode\"\r\n          ? \"Meta Ads is in test mode. Full API spend import is coming soon.\"\r\n          : \"Meta Ads spend import is coming soon.\",\r\n      }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/spend/meta/preview",
+    "line": 6476,
+    "response": "{ success: false, error: e?.message || \"Failed to check Meta connection\" }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/spend/sheets/preview",
+    "line": 6769,
+    "response": "{ success: false, error: \"connectionId is required\" }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/spend/sheets/preview",
+    "line": 6778,
+    "response": "{ success: false, error: \"Google Sheets connection not found\" }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/spend/sheets/preview",
+    "line": 6890,
+    "response": "{\r\n        success: true,\r\n        connectionId,\r\n        spreadsheetId: conn.spreadsheetId,\r\n        spreadsheetName: conn.spreadsheetName,\r\n        sheetName: conn.sheetName,\r\n        headers,\r\n        sampleRows: rows.slice(0, 25),\r\n        rowCount: rows.length,\r\n      }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/spend/sheets/process",
+    "line": 6911,
+    "response": "{ success: false, error: \"connectionId is required\" }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/spend/sheets/process",
+    "line": 6945,
+    "response": "{ success: false, error: \"Google Sheets connection not found\" }"
+  },
+  {
+    "line": 8848,
+    "response": "{ success: false, message: \"LinkedIn connection not found\" }"
+  },
+  {
+    "route": "app.get /api/campaigns",
+    "line": 9021,
+    "response": "visible.map((c: any) => withReportingTimeZone({\r\n          ...c,\r\n          ownerId: c.ownerId,\r\n          ...(initialImports.has(c.id) ? { initialImport: initialImports.get(c.id) } : {}),\r\n          // TODO: Calculate real values from platform connections and KPIs\r\n          conversions: c.conversions || 0,\r\n          revenue: c.revenue || 0,\r\n          health: c.health || null, // Will be calculated based on KPI/benchmark performance\r\n        }))"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-daily",
+    "line": 9371,
+    "response": "{ success: false, error: \"NO_GA4_CONNECTION\" }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-daily",
+    "line": 9517,
+    "response": "{\r\n          success: false,\r\n          error: \"NO_GA4_CONNECTION\",\r\n          message: \"No GA4 connection found for this campaign. Please connect Google Analytics first.\",\r\n        }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-daily",
+    "line": 9528,
+    "response": "{\r\n          success: false,\r\n          error: \"GA4_CONNECTION_METHOD_UNSUPPORTED\",\r\n          message: \"GA4 connection method not supported for daily metrics fetch\",\r\n          method: selectedConnection?.method,\r\n        }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-daily",
+    "line": 9581,
+    "response": "{\r\n        success: true,\r\n        propertyId: selectedConnection.propertyId,\r\n        propertyName: selectedConnection.propertyName,\r\n        displayName: selectedConnection.displayName,\r\n        startDate,\r\n        endDate,\r\n        dataThroughDate,\r\n        days,\r\n        reportingTimeZone,\r\n        historyDataThroughDate,\r\n        data: stored.map(addDerivedEngagedSessions),\r\n        validationReadOnly: readOnly,\r\n        overviewStartDate,\r\n        overviewTotals,\r\n        providerRefreshAttempted,\r\n        providerRefreshOutcome,\r\n        providerRefreshRowCount,\r\n        schedulerCoverageComplete: storedCoverageComplete,\r\n        ...buildFreshness(lastUpdated, latestStoredDailyDate, providerRefreshWarning, providerCoverageThroughDate, new Date(), getGA4DailyRefreshAttempt(campaign, selectedConnection)),\r\n        lastCompletedRefreshAt,\r\n        lastUpdated,\r\n      }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-insights-trends-coverage",
+    "line": 9636,
+    "response": "{ success: false, error: \"NO_GA4_CONNECTION\" }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-insights-trends-coverage",
+    "line": 9639,
+    "response": "{ success: false, error: \"GA4_CONNECTION_UNAVAILABLE\" }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-to-date",
+    "line": 9885,
+    "response": "{ success: false, error: \"No usable GA4 connection found for this property/campaign.\" }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-to-date",
+    "line": 9896,
+    "response": "{\r\n          success: true,\r\n          propertyId: String(connection.propertyId),\r\n          startDate: startDateUsed,\r\n          endDate: endDateUsed,\r\n          revenueMetric: \"\",\r\n          currencyCode: campaignCurrency,\r\n          noCompletedWindow: true,\r\n          ...(validationReadOnly ? { validationReadOnly: true } : {}),\r\n          message: \"No completed GA4 reporting day is available for this campaign yet.\",\r\n          totals: {\r\n            sessions: 0,\r\n            users: 0,\r\n            conversions: 0,\r\n            pageviews: 0,\r\n            revenue: 0,\r\n            engagedSessions: 0,\r\n            engagementRate: 0,\r\n          },\r\n        }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-to-date",
+    "line": 9928,
+    "response": "{ success: true, propertyId: String(connection.propertyId), startDate: startDateUsed, endDate: endDateUsed,\r\n            revenueMetric: String((saved.campaignBreakdown as any)?.meta?.revenueMetric || \"\"), currencyCode, totals,\r\n            ...(validationReadOnly ? { validationReadOnly: true } : {}) }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-to-date",
+    "line": 9933,
+    "response": "{ success: false, error: \"No usable GA4 connection found for this property/campaign.\" }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-to-date",
+    "line": 9951,
+    "response": "{ success: true, propertyId: String(connection.propertyId), startDate: startDateUsed, endDate: endDateUsed, ...(validationReadOnly ? { validationReadOnly: true } : {}), ...result }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-to-date",
+    "line": 9982,
+    "response": "{ success: true, propertyId: String(connection.propertyId), startDate: startDateUsed, endDate: endDateUsed, ...(validationReadOnly ? { validationReadOnly: true } : {}), ...result }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-benchmark-provider-validation",
+    "line": 10049,
+    "response": "{ success: false, error: \"NO_GA4_CONNECTION\", message: \"No GA4 connection found for this campaign/property.\" }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-metrics",
+    "line": 10600,
+    "response": "{\r\n          error: \"No GA4 connection found for this campaign. Please connect your Google Analytics first.\"\r\n        }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-metrics",
+    "line": 10631,
+    "response": "{ error: \"No GA4 connection found for this campaign.\" }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-metrics",
+    "line": 10635,
+    "response": "{\r\n          success: false,\r\n          error: \"GA4 connection method not supported for metrics fetch\",\r\n          method: selectedConnection.method\r\n        }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-metrics",
+    "line": 10650,
+    "response": "{\r\n        success: true,\r\n        metrics,\r\n        propertyId: selectedConnection.propertyId,\r\n        propertyName: selectedConnection.propertyName,\r\n        displayName: selectedConnection.displayName,\r\n        totalProperties: connections.length,\r\n        properties: connections.map((conn: any) => ({\r\n          id: conn.id,\r\n          propertyId: conn.propertyId,\r\n          propertyName: conn.propertyName,\r\n          displayName: conn.displayName,\r\n          isPrimary: conn.isPrimary\r\n        })),\r\n        lastUpdated: new Date().toISOString()\r\n      }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-diagnostics",
+    "line": 10730,
+    "response": "{\r\n          success: false,\r\n          error: 'NO_GA4_CONNECTION',\r\n          message: 'No GA4 connection found for this campaign.',\r\n        }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-diagnostics",
+    "line": 10759,
+    "response": "{\r\n        success: true,\r\n        campaignId,\r\n        dateRange,\r\n        ga4DateRange,\r\n        campaignFilter: campaignFilter || null,\r\n        connection: {\r\n          propertyId: selectedConnection?.propertyId,\r\n          propertyName: selectedConnection?.propertyName,\r\n          displayName: selectedConnection?.displayName,\r\n          isPrimary: Boolean(selectedConnection?.isPrimary),\r\n          totalConnections: (connections as any[]).length,\r\n        },\r\n        breakdown: {\r\n          totals,\r\n          meta: breakdown?.meta || null,\r\n        },\r\n        warnings,\r\n        lastUpdated: new Date().toISOString(),\r\n      }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-diagnostics",
+    "line": 10782,
+    "response": "{ success: false, error: 'NO_GA4_CONNECTION' }"
+  },
+  {
+    "route": "app.get /api/auth/google-sheets/callback",
+    "line": 11251,
+    "response": "{\r\n            error: error.message,\r\n            errorCode: 'CONNECTION_LIMIT_REACHED'\r\n          }"
+  },
+  {
+    "route": "app.get /api/google-sheets/:campaignId/spreadsheets",
+    "line": 12121,
+    "response": "{ error: 'No Google Sheets connection found' }"
+  },
+  {
+    "route": "app.get /api/google-sheets/:campaignId/spreadsheets",
+    "line": 12136,
+    "response": "{\r\n          success: true,\r\n          connectionMethod: GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD,\r\n          spreadsheets: Array.from(uniqueSpreadsheets.values()),\r\n        }"
+  },
+  {
+    "route": "app.delete /api/google-sheets/:campaignId/connection",
+    "line": 12294,
+    "response": "{ error: 'Google Sheets connection not found' }"
+  },
+  {
+    "route": "app.delete /api/google-sheets/:campaignId/connection",
+    "line": 12301,
+    "response": "{ error: 'Google Sheets connection not found' }"
+  },
+  {
+    "route": "app.delete /api/google-sheets/:campaignId/connection",
+    "line": 12430,
+    "response": "{\r\n        success: true,\r\n        message: 'Connection deleted',\r\n        conversionValueCleared,\r\n        deletedWasRevenueTracking,\r\n        remainingRevenueTrackingConnections: remainingRevenueTrackingSheets.length + remainingRevenueTrackingHubspot.length + remainingRevenueTrackingSalesforce.length,\r\n        hasActiveConnections,\r\n      }"
+  },
+  {
+    "route": "app.delete /api/google-sheets/:campaignId/connection",
+    "line": 12440,
+    "response": "{ error: error.message || 'Failed to delete connection' }"
+  },
+  {
+    "route": "app.delete /api/hubspot/:campaignId/connection",
+    "line": 12470,
+    "response": "{ error: 'No HubSpot connection found' }"
+  },
+  {
+    "route": "app.delete /api/hubspot/:campaignId/connection",
+    "line": 12476,
+    "response": "{ error: 'HubSpot connection not found' }"
+  },
+  {
+    "route": "app.delete /api/hubspot/:campaignId/connection",
+    "line": 12566,
+    "response": "{\r\n        success: true,\r\n        message: 'Connection deleted',\r\n        deletedWasRevenueTracking,\r\n        conversionValueCleared,\r\n        remainingRevenueTrackingConnections: remainingRevenueSheets.length + remainingRevenueHubspot.length + remainingRevenueSalesforce.length,\r\n      }"
+  },
+  {
+    "route": "app.delete /api/hubspot/:campaignId/connection",
+    "line": 12575,
+    "response": "{ error: error.message || 'Failed to delete connection' }"
+  },
+  {
+    "route": "app.delete /api/salesforce/:campaignId/connection",
+    "line": 12605,
+    "response": "{ error: 'No Salesforce connection found' }"
+  },
+  {
+    "route": "app.delete /api/salesforce/:campaignId/connection",
+    "line": 12611,
+    "response": "{ error: 'Salesforce connection not found' }"
+  },
+  {
+    "route": "app.delete /api/salesforce/:campaignId/connection",
+    "line": 12699,
+    "response": "{\r\n        success: true,\r\n        message: 'Connection deleted',\r\n        deletedWasRevenueTracking,\r\n        conversionValueCleared,\r\n        remainingRevenueTrackingConnections: remainingRevenueSheets.length + remainingRevenueHubspot.length + remainingRevenueSalesforce.length,\r\n      }"
+  },
+  {
+    "route": "app.delete /api/salesforce/:campaignId/connection",
+    "line": 12708,
+    "response": "{ error: error.message || 'Failed to delete connection' }"
+  },
+  {
+    "route": "app.delete /api/shopify/:campaignId/connection",
+    "line": 12726,
+    "response": "{ error: 'No Shopify connection found' }"
+  },
+  {
+    "route": "app.delete /api/shopify/:campaignId/connection",
+    "line": 12732,
+    "response": "{ error: 'Shopify connection not found' }"
+  },
+  {
+    "route": "app.delete /api/shopify/:campaignId/connection",
+    "line": 12738,
+    "response": "{\r\n        success: true,\r\n        message: 'Shopify connection deleted',\r\n      }"
+  },
+  {
+    "route": "app.delete /api/shopify/:campaignId/connection",
+    "line": 12744,
+    "response": "{ error: error.message || 'Failed to delete connection' }"
+  },
+  {
+    "route": "app.post /api/google-sheets/:campaignId/select-spreadsheet",
+    "line": 12773,
+    "response": "{ error: 'No Google Sheets connection found. Please connect Google Sheets first.' }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-connection-status",
+    "line": 12902,
+    "response": "{\r\n          connected: true,\r\n          email: connection?.email,\r\n          propertyId: connection?.propertyId,\r\n          properties: properties || [],\r\n          isRealOAuth: !!process.env.GOOGLE_CLIENT_ID,\r\n          dataSource: 'Real Google Analytics API'\r\n        }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-connection-status",
+    "line": 12916,
+    "response": "{\r\n          connected: true,\r\n          propertyId: oauthData.selectedPropertyId || '',\r\n          properties: oauthData.properties || [],\r\n          isRealOAuth: true,\r\n          dataSource: 'OAuth Connection'\r\n        }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-connection-status",
+    "line": 12985,
+    "response": "{\r\n          connected: true,\r\n          propertyId: dbConn.propertyId || '',\r\n          properties: dbProperties,\r\n          isRealOAuth: dbConn.method !== GA4_SERVICE_ACCOUNT_METHOD,\r\n          dataSource: dbConn.method === GA4_SERVICE_ACCOUNT_METHOD ? 'Temporary Service Account' : 'Database Connection'\r\n        }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-connection-status",
+    "line": 12997,
+    "response": "{ message: \"Failed to check connection status\" }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-timeseries",
+    "line": 13155,
+    "response": "{\r\n          success: false,\r\n          error: \"No GA4 connection found for this campaign. Please connect your Google Analytics first.\"\r\n        }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-timeseries",
+    "line": 13165,
+    "response": "{\r\n          success: false,\r\n          error: \"No GA4 access-token connection found for this campaign.\"\r\n        }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-timeseries",
+    "line": 13189,
+    "response": "{\r\n        success: true,\r\n        data: timeSeriesData,\r\n        propertyId: selectedConnection.propertyId,\r\n        propertyName: selectedConnection.propertyName,\r\n        displayName: selectedConnection.displayName,\r\n        lastUpdated: new Date().toISOString()\r\n      }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-campaign-values",
+    "line": 13311,
+    "response": "{ success: false, error: 'NO_GA4_CONNECTION' }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-landing-pages",
+    "line": 13348,
+    "response": "{ success: false, error: 'NO_GA4_CONNECTION' }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-landing-pages",
+    "line": 13448,
+    "response": "{ success: false, error: 'NO_GA4_CONNECTION' }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-conversion-events",
+    "line": 13489,
+    "response": "{ success: false, error: 'NO_GA4_CONNECTION' }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-conversion-events",
+    "line": 13582,
+    "response": "{ success: false, error: 'NO_GA4_CONNECTION' }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-breakdown",
+    "line": 13629,
+    "response": "{ success: false, error: 'NO_GA4_CONNECTION' }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-breakdown",
+    "line": 13787,
+    "response": "{\r\n          success: false,\r\n          error: 'NO_GA4_CONNECTION',\r\n          message: 'No GA4 connection found for this campaign. Please connect Google Analytics.',\r\n        }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-geographic",
+    "line": 13983,
+    "response": "{\r\n          ...simulated,\r\n          isSimulated: true,\r\n          simulationReason: 'Forced mock mode (?mock=1) for UI testing (no GA4 connection required).',\r\n          propertyId: requestedPropertyId || 'mock',\r\n          propertyName: requestedPropertyId ? 'Requested property (mock)' : 'Mock property',\r\n          displayName: requestedPropertyId ? `Mock ${requestedPropertyId}` : 'Mock GA4 Property',\r\n          totalProperties: 0,\r\n          sourceProperty: requestedPropertyId\r\n            ? { id: 'mock', propertyId: requestedPropertyId, displayName: `Mock ${requestedPropertyId}` }\r\n            : { id: 'mock', propertyId: 'mock', displayName: 'Mock GA4 Property' },\r\n          lastUpdated: new Date().toISOString()\r\n        }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-geographic",
+    "line": 14008,
+    "response": "{ success: false, error: 'GA4 connection not found' }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-geographic",
+    "line": 14014,
+    "response": "{\r\n          success: false,\r\n          error: 'GA4 access token missing',\r\n          requiresConnection: true\r\n        }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-geographic",
+    "line": 14091,
+    "response": "{\r\n        success: true,\r\n        ...geographicData,\r\n        propertyId: primaryConnection.propertyId,\r\n        propertyName: primaryConnection.propertyName,\r\n        displayName: primaryConnection.displayName,\r\n        totalProperties: connections.length,\r\n        sourceProperty: {\r\n          id: primaryConnection.id,\r\n          propertyId: primaryConnection.propertyId,\r\n          displayName: primaryConnection.displayName || primaryConnection.propertyName\r\n        },\r\n        lastUpdated: new Date().toISOString()\r\n      }"
+  },
+  {
+    "route": "app.post /api/auth/google/url",
+    "line": 14138,
+    "response": "{\r\n          error: \"Google OAuth credentials not configured. Please add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your environment variables.\"\r\n        }"
+  },
+  {
+    "route": "app.get /api/ga4/check-connection/:campaignId",
+    "line": 14321,
+    "response": "{\r\n          connected: true,\r\n          ...(validationReadOnly ? { validationReadOnly: true } : {}),\r\n          primaryPropertyId: primaryConnection.propertyId,\r\n          totalConnections: usableGA4Connections.length,\r\n          unsupportedLookbackConnectionCount,\r\n          connections: usableGA4Connections.map(conn => ({\r\n            id: conn.id,\r\n            propertyId: conn.propertyId,\r\n            propertyName: conn.propertyName,\r\n            displayName: conn.displayName,\r\n            websiteUrl: conn.websiteUrl,\r\n            isPrimary: conn.isPrimary,\r\n            isActive: conn.isActive,\r\n            connectedAt: conn.connectedAt,\r\n            method: conn.method,\r\n            lookbackDays: 30,\r\n            hasRefreshCredential: Boolean(conn.refreshToken),\r\n            tokenExpiresAt: conn.expiresAt || null\r\n          })),\r\n          primaryPropertyName: primaryConnection.prope"
+  },
+  {
+    "route": "app.get /api/ga4/check-connection/:campaignId",
+    "line": 14350,
+    "response": "{\r\n          connected: false,\r\n          ...(validationReadOnly ? { validationReadOnly: true } : {}),\r\n          totalConnections: 0,\r\n          connections: [],\r\n          unsupportedLookback: true,\r\n          unsupportedLookbackConnectionCount,\r\n          message: \"This saved GA4 connection uses a lookback that is not supported in this release.\",\r\n        }"
+  },
+  {
+    "route": "app.get /api/ga4/check-connection/:campaignId",
+    "line": 14365,
+    "response": "{\r\n          connected: true,\r\n          ...(validationReadOnly ? { validationReadOnly: true } : {}),\r\n          properties: connection.properties || [],\r\n          user: connection.userInfo\r\n        }"
+  },
+  {
+    "route": "app.get /api/ga4/check-connection/:campaignId",
+    "line": 14373,
+    "response": "{ connected: false, totalConnections: 0, connections: [], ...(validationReadOnly ? { validationReadOnly: true } : {}) }"
+  },
+  {
+    "route": "app.get /api/ga4/check-connection/:campaignId",
+    "line": 14376,
+    "response": "{ error: 'Failed to check connection status' }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/outcome-totals",
+    "line": 14941,
+    "response": "{\r\n          success: true,\r\n          campaignId,\r\n          dateRange,\r\n          demo: true,\r\n          ga4: {\r\n            connected: true,\r\n            revenue: 11800,\r\n            conversions: 107,\r\n            sessions: 3200,\r\n            users: 2100,\r\n          },\r\n          webAnalytics: { connected: true, revenue: 11800, conversions: 107, sessions: 3200, users: 2100 },\r\n          spend: {\r\n            persistedSpend: 9150,\r\n            unifiedSpend: 9150,\r\n            spendSource: \"demo\",\r\n            startDate: null,\r\n            endDate: null,\r\n          },\r\n          platforms: {\r\n            linkedin: {\r\n              connected: true,\r\n              spend: 4250,\r\n              clicks: 890,\r\n              impressions: 12500,\r\n              conversions: 45,\r\n              leads: 18,\r\n              attributedRevenue: 8200,\r\n            },\r\n            meta: {\r\n              co"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/outcome-totals",
+    "line": 15949,
+    "response": "{\r\n        success: true,\r\n        campaignId,\r\n        dateRange,\r\n        ga4: ga4Totals,\r\n        webAnalytics,\r\n        spend: {\r\n          persistedSpend,\r\n          unifiedSpend,\r\n          spendSource,\r\n          startDate,\r\n          endDate,\r\n          ...(spendTotals || {}),\r\n        },\r\n        platforms: {\r\n          linkedin: linkedIn,\r\n          meta,\r\n          googleAds,\r\n          instagram,\r\n          tiktok,\r\n          customIntegration: custom,\r\n        },\r\n        revenue: {\r\n          onsiteRevenue,\r\n          offsiteRevenue: parseFloat(offsiteRevenueTotal.toFixed(2)),\r\n          totalRevenue: totalRevenueUnified,\r\n        },\r\n        financials,\r\n        revenueSources,\r\n        financialInputs,\r\n        budgetPacing,\r\n        financialDecisionContext,\r\n        performanceSummary,\r\n      }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-connections",
+    "line": 16032,
+    "response": "{\r\n        success: true,\r\n        ...(validationReadOnly ? { validationReadOnly: true } : {}),\r\n        unsupportedLookbackConnectionCount,\r\n        connections: usableConnections.map(conn => ({\r\n          id: conn.id,\r\n          propertyId: conn.propertyId,\r\n          propertyName: conn.propertyName,\r\n          displayName: conn.displayName,\r\n          websiteUrl: conn.websiteUrl,\r\n          isPrimary: conn.isPrimary,\r\n          isActive: conn.isActive,\r\n          connectedAt: conn.connectedAt,\r\n          method: conn.method,\r\n          lookbackDays: 30\r\n        }))\r\n      }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/ga4-connections",
+    "line": 16051,
+    "response": "{ error: 'Failed to fetch GA4 connections' }"
+  },
+  {
+    "route": "app.put /api/campaigns/:id/ga4-connections/:connectionId/primary",
+    "line": 16064,
+    "response": "{ success: true, message: 'Primary connection updated' }"
+  },
+  {
+    "route": "app.put /api/campaigns/:id/ga4-connections/:connectionId/primary",
+    "line": 16066,
+    "response": "{ error: 'Connection not found' }"
+  },
+  {
+    "route": "app.put /api/campaigns/:id/ga4-connections/:connectionId/primary",
+    "line": 16070,
+    "response": "{ error: 'Failed to set primary connection' }"
+  },
+  {
+    "route": "app.delete /api/ga4-connections/:connectionId",
+    "line": 16085,
+    "response": "{ error: \"Connection not found\" }"
+  },
+  {
+    "route": "app.delete /api/ga4-connections/:connectionId",
+    "line": 16091,
+    "response": "{ success: true, message: 'Connection deleted successfully' }"
+  },
+  {
+    "route": "app.delete /api/ga4-connections/:connectionId",
+    "line": 16093,
+    "response": "{ error: 'Connection not found' }"
+  },
+  {
+    "route": "app.delete /api/ga4-connections/:connectionId",
+    "line": 16097,
+    "response": "{ error: 'Failed to delete connection' }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/ga4-service-account/connect",
+    "line": 16141,
+    "response": "{ success: false, error: \"GA4_OAUTH_CONNECTION_EXISTS\", message: \"This campaign already has a Google OAuth connection. Use a new test campaign for temporary service-account access.\" }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/ga4-service-account/connect",
+    "line": 16176,
+    "response": "{ success: false, error: code || \"GA4_SERVICE_ACCOUNT_CONNECT_FAILED\", message: error?.message || \"Temporary GA4 connection failed\" }"
+  },
+  {
+    "route": "app.post /api/auth/ga4/connect",
+    "line": 16366,
+    "response": "{\r\n          message: \"Google OAuth not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.\",\r\n          setupRequired: true,\r\n        }"
+  },
+  {
+    "route": "app.post /api/ga4/oauth-exchange",
+    "line": 16410,
+    "response": "{\r\n          success: false,\r\n          error: \"Missing required fields: campaignId, authCode, clientId, clientSecret, redirectUri\"\r\n        }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/google-sheets-service-account/connect",
+    "line": 16629,
+    "response": "{ error: \"This campaign already has a Google OAuth Sheets connection. Use a new test campaign for temporary service-account access.\" }"
+  },
+  {
+    "route": "app.post /api/google-sheets/oauth-exchange",
+    "line": 16693,
+    "response": "{\r\n          success: false,\r\n          error: \"Missing required fields: campaignId, authCode, clientId, clientSecret, redirectUri\"\r\n        }"
+  },
+  {
+    "route": "app.get /api/google-sheets/:spreadsheetId/sheets",
+    "line": 16876,
+    "response": "{ error: 'No Google Sheets connection found for this campaign' }"
+  },
+  {
+    "route": "app.post /api/google-sheets/select-spreadsheet",
+    "line": 16977,
+    "response": "{ error: 'No Google Sheets connection found. Please reconnect Google Sheets.' }"
+  },
+  {
+    "route": "app.post /api/google-sheets/select-spreadsheet",
+    "line": 16980,
+    "response": "{ error: 'No Google Sheets connection found. Please connect Google Sheets first.' }"
+  },
+  {
+    "route": "app.post /api/google-sheets/select-spreadsheet",
+    "line": 16983,
+    "response": "{ error: 'No Google Sheets connection found. Please connect Google Sheets first.' }"
+  },
+  {
+    "route": "app.post /api/google-sheets/select-spreadsheet",
+    "line": 17028,
+    "response": "{\r\n        success: true,\r\n        connectionId: dbConnection.id,\r\n        selectedSpreadsheet: {\r\n          id: spreadsheetId,\r\n          name: spreadsheetName\r\n        },\r\n        sheetName: sheetName || null\r\n      }"
+  },
+  {
+    "route": "app.post /api/google-sheets/select-spreadsheet-multiple",
+    "line": 17070,
+    "response": "{ error: 'Revenue connections support 1 tab only. Please select a single tab.' }"
+  },
+  {
+    "route": "app.post /api/google-sheets/select-spreadsheet-multiple",
+    "line": 17080,
+    "response": "{\r\n          error: `Maximum of ${MAX_GOOGLE_SHEETS_CONNECTIONS} Google Sheets connections reached for this campaign. Please remove unused connections first.`,\r\n          maxConnections: MAX_GOOGLE_SHEETS_CONNECTIONS,\r\n          existingConnections: existingCount\r\n        }"
+  },
+  {
+    "route": "app.post /api/google-sheets/select-spreadsheet-multiple",
+    "line": 17110,
+    "response": "{\r\n          error: `No available slots to add new Google Sheets connections (max ${MAX_GOOGLE_SHEETS_CONNECTIONS}).`,\r\n          maxConnections: MAX_GOOGLE_SHEETS_CONNECTIONS,\r\n          existingConnections: existingCount\r\n        }"
+  },
+  {
+    "route": "app.post /api/google-sheets/select-spreadsheet-multiple",
+    "line": 17170,
+    "response": "{ error: 'No Google Sheets connection found. Please connect Google Sheets first.' }"
+  },
+  {
+    "route": "app.post /api/google-sheets/select-spreadsheet-multiple",
+    "line": 17345,
+    "response": "{\r\n        success: true,\r\n        connectionIds,\r\n        selectedSpreadsheet: {\r\n          id: spreadsheetId,\r\n          name: spreadsheetName\r\n        },\r\n        sheetsConnected: connectedSheetNames.length,\r\n        // Echo back the exact tab names we connected so the UI can scope detection/mapping reliably\r\n        sheetNames: connectedSheetNames\r\n      }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/google-sheets-connections",
+    "line": 17432,
+    "response": "{\r\n        success: true,\r\n        connections: connections.map(conn => {\r\n          // Derive a stable \"tab order index\" within a spreadsheet group (based on server response order).\r\n          const group = bySpreadsheetId.get(String(conn.spreadsheetId || '')) || [];\r\n          const tabIndex = group.findIndex((c: any) => c.id === (conn as any).id);\r\n          const titles = spreadsheetTabTitles.get(String(conn.spreadsheetId || ''));\r\n          const derivedSheetName =\r\n            (conn as any).sheetName ||\r\n            (titles && tabIndex >= 0 && tabIndex < titles.length ? titles[tabIndex] : null);\r\n\r\n          return ({\r\n            id: conn.id,\r\n            spreadsheetId: conn.spreadsheetId,\r\n            spreadsheetName: conn.spreadsheetName,\r\n            sheetName: derivedSheetName,\r\n            isPrimary: conn.isPrimary,\r\n            isActive: conn.isActive,\r\n            columnMap"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/google-sheets-connections",
+    "line": 17459,
+    "response": "{\r\n        error: error.message || 'Failed to list connections',\r\n        details: process.env.NODE_ENV === 'development' ? error.stack : undefined\r\n      }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/connected-data-sources/:sourceId/preview",
+    "line": 17971,
+    "response": "{\r\n          error: 'Missing Google Sheets tab name for this connection',\r\n          details: 'This connection is missing a sheet/tab name (likely created via Back/cancel flow). Please refresh connections or reconnect the sheet.',\r\n        }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/google-sheets-connections/:connectionId/set-primary",
+    "line": 18015,
+    "response": "{ error: 'Connection not found' }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/google-sheets-connections/:connectionId/set-primary",
+    "line": 18018,
+    "response": "{ success: true, message: 'Primary connection updated' }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/google-sheets-connections/:connectionId/set-primary",
+    "line": 18021,
+    "response": "{ error: error.message || 'Failed to set primary connection' }"
+  },
+  {
+    "route": "app.get /api/google-sheets/check-connection/:campaignId",
+    "line": 18042,
+    "response": "{ connected: false, totalConnections: connections.length }"
+  },
+  {
+    "route": "app.get /api/google-sheets/check-connection/:campaignId",
+    "line": 18045,
+    "response": "{\r\n        connected: true,\r\n        totalConnections: connections.length,\r\n        spreadsheetId: primaryConnection.spreadsheetId,\r\n        spreadsheetName: primaryConnection.spreadsheetName\r\n      }"
+  },
+  {
+    "route": "app.get /api/google-sheets/check-connection/:campaignId",
+    "line": 18053,
+    "response": "{ error: 'Failed to check Google Sheets connection' }"
+  },
+  {
+    "route": "app.get /api/hubspot/:campaignId/status",
+    "line": 18117,
+    "response": "{\r\n        connected: true,\r\n        connectionId: conn.id,\r\n        portalId: hydrated.portalId,\r\n        portalName: hydrated.portalName,\r\n      }"
+  },
+  {
+    "route": "app.get /api/salesforce/:campaignId/connection",
+    "line": 18144,
+    "response": "{ error: \"Salesforce connection not found\" }"
+  },
+  {
+    "route": "app.get /api/salesforce/:campaignId/connection",
+    "line": 18153,
+    "response": "{\r\n        success: true,\r\n        connection: {\r\n          id: (selected as any).id,\r\n          orgId: (selected as any).orgId || null,\r\n          orgName: (selected as any).orgName || null,\r\n          isActive: (selected as any).isActive !== false,\r\n          mappingConfig,\r\n          connectedAt: (selected as any).connectedAt || null,\r\n        },\r\n      }"
+  },
+  {
+    "route": "app.get /api/salesforce/:campaignId/connection",
+    "line": 18166,
+    "response": "{ error: error.message || \"Failed to load Salesforce connection\" }"
+  },
+  {
+    "route": "app.get /api/salesforce/:campaignId/status",
+    "line": 18178,
+    "response": "{\r\n          connected: false,\r\n          connectionId: conn?.id || null,\r\n          orgId: conn?.orgId || null,\r\n          orgName: conn?.orgName || null,\r\n          instanceUrl: conn?.instanceUrl || null,\r\n        }"
+  },
+  {
+    "route": "app.get /api/salesforce/:campaignId/status",
+    "line": 18192,
+    "response": "{\r\n              connected: false,\r\n              connectionId: conn.id,\r\n              orgId: conn.orgId,\r\n              orgName: conn.orgName,\r\n              instanceUrl: conn.instanceUrl,\r\n            }"
+  },
+  {
+    "route": "app.get /api/salesforce/:campaignId/status",
+    "line": 18201,
+    "response": "{\r\n            connected: false,\r\n            connectionId: conn.id,\r\n            orgId: conn.orgId,\r\n            orgName: conn.orgName,\r\n            instanceUrl: conn.instanceUrl,\r\n          }"
+  },
+  {
+    "route": "app.get /api/salesforce/:campaignId/status",
+    "line": 18218,
+    "response": "{\r\n              connected: false,\r\n              connectionId: conn.id,\r\n              orgId: conn.orgId,\r\n              orgName: conn.orgName,\r\n              instanceUrl: conn.instanceUrl,\r\n            }"
+  },
+  {
+    "route": "app.get /api/salesforce/:campaignId/status",
+    "line": 18228,
+    "response": "{\r\n            connected: false,\r\n            connectionId: conn.id,\r\n            orgId: conn.orgId,\r\n            orgName: conn.orgName,\r\n            instanceUrl: conn.instanceUrl,\r\n          }"
+  },
+  {
+    "route": "app.get /api/salesforce/:campaignId/status",
+    "line": 18237,
+    "response": "{\r\n        connected: true,\r\n        connectionId: conn.id,\r\n        orgId: conn.orgId,\r\n        orgName: conn.orgName,\r\n        instanceUrl: conn.instanceUrl,\r\n      }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/salesforce/save-mappings",
+    "line": 19266,
+    "response": "{ error: 'Salesforce connection not found.' }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/google-sheets-data",
+    "line": 21867,
+    "response": "{\r\n          success: false,\r\n          error: \"Google Sheets connection exists but no spreadsheet is selected. Please select a spreadsheet in the connection settings.\",\r\n          requiresReauthorization: false,\r\n          missingSpreadsheet: true\r\n        }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/google-sheets-data",
+    "line": 21890,
+    "response": "{\r\n              success: false,\r\n              error: refreshError.message === 'REFRESH_TOKEN_EXPIRED' ? 'REFRESH_TOKEN_EXPIRED' : 'ACCESS_TOKEN_EXPIRED',\r\n              message: 'Connection expired. Please reconnect your Google Sheets account.',\r\n              requiresReauthorization: true\r\n            }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/google-sheets-data",
+    "line": 21901,
+    "response": "{\r\n            success: false,\r\n            error: 'ACCESS_TOKEN_EXPIRED',\r\n            message: 'Connection expired. Please reconnect your Google Sheets account.',\r\n            requiresReauthorization: true\r\n          }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/google-sheets-data",
+    "line": 22056,
+    "response": "{\r\n            error: 'REFRESH_TOKEN_EXPIRED',\r\n            message: 'Connection expired. Please reconnect your Google Sheets account.',\r\n            requiresReauthorization: true,\r\n            campaignId: campaignId\r\n          }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/google-sheets-data",
+    "line": 22100,
+    "response": "{\r\n                  success: false,\r\n                  error: 'ACCESS_TOKEN_EXPIRED',\r\n                  message: 'Connection expired. Please reconnect your Google Sheets account.',\r\n                  requiresReauthorization: true,\r\n                  campaignId: campaignId\r\n                }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/google-sheets-data",
+    "line": 22111,
+    "response": "{\r\n                success: false,\r\n                error: refreshErr.message === 'REFRESH_TOKEN_EXPIRED' ? 'REFRESH_TOKEN_EXPIRED' : 'ACCESS_TOKEN_EXPIRED',\r\n                message: 'Connection expired. Please reconnect your Google Sheets account.',\r\n                requiresReauthorization: true,\r\n                campaignId: campaignId\r\n              }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/google-sheets-data",
+    "line": 22122,
+    "response": "{\r\n              success: false,\r\n              error: 'ACCESS_TOKEN_EXPIRED',\r\n              message: 'Connection expired. Please reconnect your Google Sheets account.',\r\n              requiresReauthorization: true,\r\n              campaignId: campaignId\r\n            }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/google-sheets-data",
+    "line": 23086,
+    "response": "{\r\n        success: true,\r\n        spreadsheetName: connection.spreadsheetName || connection.spreadsheetId,\r\n        sheetName: connection.sheetName || null,\r\n        spreadsheetId: connection.spreadsheetId,\r\n        totalRows: campaignData.totalRows,\r\n        filteredRows: campaignData.filteredRows,\r\n        headers: campaignData.headers,\r\n        data: campaignData.data,\r\n        summary: {\r\n          metrics: campaignData.metrics,\r\n          detectedColumns: campaignData.detectedColumns,\r\n          categoricalColumns: categoricalColumns,\r\n          // Legacy fields for backward compatibility\r\n          totalImpressions: campaignData.metrics['Impressions'] || campaignData.metrics['impressions'] || 0,\r\n          totalClicks: campaignData.metrics['Clicks'] || campaignData.metrics['clicks'] || 0,\r\n          totalSpend: campaignData.metrics['Spend (USD)'] || campaignData.metrics['Budget'] "
+  },
+  {
+    "route": "app.post /api/auth/linkedin/connect",
+    "line": 23479,
+    "response": "{\r\n          message: \"LinkedIn OAuth not configured. Please add LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET to environment variables.\",\r\n          setupRequired: true\r\n        }"
+  },
+  {
+    "route": "app.delete /api/linkedin/:campaignId/connection",
+    "line": 23927,
+    "response": "{ success: false, error: \"LinkedIn connection not found\" }"
+  },
+  {
+    "route": "app.delete /api/linkedin/:campaignId/connection",
+    "line": 23933,
+    "response": "{ success: false, error: \"LinkedIn connection not found\" }"
+  },
+  {
+    "route": "app.delete /api/linkedin/:campaignId/connection",
+    "line": 23937,
+    "response": "{ success: true, message: 'Connection deleted' }"
+  },
+  {
+    "route": "app.delete /api/linkedin/:campaignId/connection",
+    "line": 23940,
+    "response": "{ error: error.message || 'Failed to delete connection' }"
+  },
+  {
+    "route": "app.post /api/auth/meta/connect",
+    "line": 24035,
+    "response": "{\r\n          message: \"Meta OAuth not configured. Please add META_APP_ID and META_APP_SECRET to environment variables.\",\r\n          setupRequired: true\r\n        }"
+  },
+  {
+    "route": "app.get /api/campaigns/:campaignId/meta/connection",
+    "line": 24367,
+    "response": "{\r\n        connected: true,\r\n        adAccountId: connection.adAccountId,\r\n        adAccountName: connection.adAccountName,\r\n        expiresAt: connection.expiresAt,\r\n        isExpired,\r\n      }"
+  },
+  {
+    "route": "app.get /api/campaigns/:campaignId/meta/connection",
+    "line": 24376,
+    "response": "{ error: error.message || 'Failed to get connection status' }"
+  },
+  {
+    "route": "app.delete /api/campaigns/:campaignId/meta/connection",
+    "line": 24396,
+    "response": "{ error: \"Meta connection not found\" }"
+  },
+  {
+    "route": "app.delete /api/campaigns/:campaignId/meta/connection",
+    "line": 24400,
+    "response": "{ success: true, message: 'Connection deleted' }"
+  },
+  {
+    "route": "app.delete /api/campaigns/:campaignId/meta/connection",
+    "line": 24403,
+    "response": "{ error: error.message || 'Failed to delete connection' }"
+  },
+  {
+    "route": "app.get /api/meta/:campaignId/connection",
+    "line": 24498,
+    "response": "{\r\n        connected: true,\r\n        adAccountId: connection.adAccountId,\r\n        adAccountName: connection.adAccountName,\r\n        method: connection.method,\r\n      }"
+  },
+  {
+    "route": "app.get /api/meta/:campaignId/connection",
+    "line": 24506,
+    "response": "{ error: error.message || 'Failed to get connection status' }"
+  },
+  {
+    "route": "app.delete /api/meta/:campaignId/connection",
+    "line": 24522,
+    "response": "{ error: \"Meta connection not found\" }"
+  },
+  {
+    "route": "app.delete /api/meta/:campaignId/connection",
+    "line": 24526,
+    "response": "{ success: true, message: 'Connection deleted' }"
+  },
+  {
+    "route": "app.delete /api/meta/:campaignId/connection",
+    "line": 24529,
+    "response": "{ error: error.message || 'Failed to delete connection' }"
+  },
+  {
+    "route": "app.get /api/instagram/:campaignId/connection",
+    "line": 24561,
+    "response": "{\r\n        connected: true,\r\n        adAccountId: connection.adAccountId,\r\n        adAccountName: connection.adAccountName,\r\n        method: connection.method,\r\n        selectedCampaignIds,\r\n        publisherPlatformFilter: connection.publisherPlatformFilter,\r\n        sourceContractVersion: connection.sourceContractVersion,\r\n        lastRefreshAt: connection.lastRefreshAt,\r\n        spendOnly: connection.spendOnly,\r\n      }"
+  },
+  {
+    "route": "app.get /api/instagram/:campaignId/connection",
+    "line": 24574,
+    "response": "{ error: error.message || 'Failed to get connection status' }"
+  },
+  {
+    "route": "app.patch /api/instagram/:campaignId/selected-campaigns",
+    "line": 24678,
+    "response": "{ error: \"Instagram connection not found\" }"
+  },
+  {
+    "route": "app.delete /api/instagram/:campaignId/connection",
+    "line": 24737,
+    "response": "{ error: \"Instagram connection not found\" }"
+  },
+  {
+    "route": "app.delete /api/instagram/:campaignId/connection",
+    "line": 24742,
+    "response": "{ error: \"Instagram connection not found\" }"
+  },
+  {
+    "route": "app.delete /api/instagram/:campaignId/connection",
+    "line": 24745,
+    "response": "{ success: true, message: \"Instagram connection deleted\" }"
+  },
+  {
+    "route": "app.delete /api/instagram/:campaignId/connection",
+    "line": 24748,
+    "response": "{ error: error.message || 'Failed to delete Instagram connection' }"
+  },
+  {
+    "route": "app.get /api/instagram/:campaignId/campaigns",
+    "line": 24768,
+    "response": "{ error: \"Instagram connection not found\" }"
+  },
+  {
+    "route": "app.get /api/instagram/:campaignId/campaigns",
+    "line": 24787,
+    "response": "{\r\n        success: true,\r\n        campaigns,\r\n        selectedCampaignIds,\r\n        publisherPlatformFilter: connection.publisherPlatformFilter,\r\n        sourceContractVersion: connection.sourceContractVersion,\r\n      }"
+  },
+  {
+    "route": "app.get /api/tiktok/:campaignId/connection",
+    "line": 24828,
+    "response": "{\r\n        connected: selectedCampaignIds.length > 0,\r\n        advertiserId: connection.advertiserId,\r\n        advertiserName: connection.advertiserName,\r\n        method: connection.method,\r\n        selectedCampaignIds,\r\n        selectedCampaignMetadata: connection.selectedCampaignMetadata,\r\n        reportingDimensions: connection.reportingDimensions,\r\n        reportingMetrics: connection.reportingMetrics,\r\n        sourceContractVersion: connection.sourceContractVersion,\r\n        lastRefreshAt: connection.lastRefreshAt,\r\n        lastError: connection.lastError,\r\n        spendOnly: connection.spendOnly,\r\n      }"
+  },
+  {
+    "route": "app.get /api/tiktok/:campaignId/connection",
+    "line": 24844,
+    "response": "{ error: error.message || 'Failed to get TikTok connection status' }"
+  },
+  {
+    "route": "app.patch /api/tiktok/:campaignId/selected-campaigns",
+    "line": 24921,
+    "response": "{ error: \"TikTok connection not found\" }"
+  },
+  {
+    "route": "app.delete /api/tiktok/:campaignId/connection",
+    "line": 24983,
+    "response": "{ error: \"TikTok connection not found\" }"
+  },
+  {
+    "route": "app.delete /api/tiktok/:campaignId/connection",
+    "line": 24988,
+    "response": "{ error: \"TikTok connection not found\" }"
+  },
+  {
+    "route": "app.delete /api/tiktok/:campaignId/connection",
+    "line": 24991,
+    "response": "{ success: true, message: \"TikTok connection deleted\" }"
+  },
+  {
+    "route": "app.delete /api/tiktok/:campaignId/connection",
+    "line": 24994,
+    "response": "{ error: error.message || 'Failed to delete TikTok connection' }"
+  },
+  {
+    "route": "app.get /api/tiktok/:campaignId/campaigns",
+    "line": 25014,
+    "response": "{ error: \"TikTok connection not found\" }"
+  },
+  {
+    "route": "app.get /api/tiktok/:campaignId/campaigns",
+    "line": 25045,
+    "response": "{\r\n        success: true,\r\n        campaigns,\r\n        selectedCampaignIds,\r\n        advertiserId: connection.advertiserId,\r\n        sourceContractVersion: connection.sourceContractVersion,\r\n      }"
+  },
+  {
+    "route": "app.post /api/tiktok/:campaignId/refresh-test",
+    "line": 25074,
+    "response": "{ error: \"TikTok connection not found\" }"
+  },
+  {
+    "route": "app.post /api/tiktok/:campaignId/refresh-test",
+    "line": 25077,
+    "response": "{ error: \"TikTok test refresh is available only for test-mode connections\" }"
+  },
+  {
+    "route": "app.post /api/tiktok/:campaignId/refresh",
+    "line": 25160,
+    "response": "{ error: \"TikTok connection not found\" }"
+  },
+  {
+    "route": "app.get /api/tiktok/:campaignId/daily-metrics",
+    "line": 25193,
+    "response": "{ error: \"TikTok connection not found\" }"
+  },
+  {
+    "route": "app.get /api/instagram/:campaignId/daily-metrics",
+    "line": 25351,
+    "response": "{ error: \"Instagram connection not found\" }"
+  },
+  {
+    "route": "app.post /api/meta/transfer-connection",
+    "line": 25457,
+    "response": "{ success: true, message: 'No connection to transfer' }"
+  },
+  {
+    "route": "app.post /api/meta/transfer-connection",
+    "line": 25475,
+    "response": "{ success: true, message: 'Meta connection transferred' }"
+  },
+  {
+    "route": "app.post /api/meta/transfer-connection",
+    "line": 25478,
+    "response": "{ error: error.message || 'Failed to transfer connection' }"
+  },
+  {
+    "route": "app.post /api/instagram/:campaignId/refresh-test",
+    "line": 25498,
+    "response": "{ error: \"Instagram connection not found\" }"
+  },
+  {
+    "route": "app.post /api/instagram/:campaignId/refresh-test",
+    "line": 25501,
+    "response": "{ error: \"Instagram test refresh is available only for test-mode connections\" }"
+  },
+  {
+    "route": "app.post /api/instagram/:campaignId/refresh",
+    "line": 25576,
+    "response": "{ error: \"Instagram connection not found\" }"
+  },
+  {
+    "route": "app.post /api/instagram/:campaignId/refresh",
+    "line": 25579,
+    "response": "{ error: \"Use /api/instagram/:campaignId/refresh-test for test-mode connections\" }"
+  },
+  {
+    "route": "app.post /api/instagram/:campaignId/refresh",
+    "line": 25582,
+    "response": "{ error: \"Instagram connection requires reauthorization\" }"
+  },
+  {
+    "route": "app.get /api/meta/:campaignId/analytics",
+    "line": 25664,
+    "response": "{ error: \"Meta connection not found for this campaign\" }"
+  },
+  {
+    "route": "app.get /api/meta/:campaignId/analytics",
+    "line": 25823,
+    "response": "{\r\n          adAccountId: connection.adAccountId,\r\n          adAccountName: connection.adAccountName,\r\n          campaigns: campaignData,\r\n          summary: summarizeCampaignData(campaignData),\r\n          selectedCampaignIds,\r\n        }"
+  },
+  {
+    "route": "app.get /api/meta/:campaignId/analytics",
+    "line": 25946,
+    "response": "{\r\n        adAccountId: connection.adAccountId,\r\n        adAccountName: connection.adAccountName,\r\n        campaigns: campaignData,\r\n        summary,\r\n        selectedCampaignIds,\r\n      }"
+  },
+  {
+    "route": "app.get /api/meta/:campaignId/summary",
+    "line": 25973,
+    "response": "{ error: \"Meta connection not found for this campaign\" }"
+  },
+  {
+    "route": "app.get /api/meta/:campaignId/campaigns",
+    "line": 26021,
+    "response": "{ error: \"Meta connection not found\" }"
+  },
+  {
+    "route": "app.get /api/meta/:campaignId/campaigns",
+    "line": 26034,
+    "response": "{ campaigns, selectedCampaignIds, adAccountName: connection.adAccountName }"
+  },
+  {
+    "route": "app.get /api/meta/:campaignId/campaigns",
+    "line": 26047,
+    "response": "{ campaigns, selectedCampaignIds, adAccountName: connection.adAccountName }"
+  },
+  {
+    "route": "app.get /api/meta/:campaignId/insights/daily",
+    "line": 26076,
+    "response": "{ error: \"Meta connection not found\" }"
+  },
+  {
+    "route": "app.get /api/meta/:campaignId/demographics",
+    "line": 26143,
+    "response": "{ error: \"Meta connection not found\" }"
+  },
+  {
+    "route": "app.get /api/meta/:campaignId/geographics",
+    "line": 26184,
+    "response": "{ error: \"Meta connection not found\" }"
+  },
+  {
+    "route": "app.get /api/meta/:campaignId/placements",
+    "line": 26225,
+    "response": "{ error: \"Meta connection not found\" }"
+  },
+  {
+    "route": "app.get /api/meta/:campaignId/adsets",
+    "line": 26266,
+    "response": "{ error: \"Meta connection not found\" }"
+  },
+  {
+    "route": "app.get /api/meta/:campaignId/ads",
+    "line": 26303,
+    "response": "{ error: \"Meta connection not found\" }"
+  },
+  {
+    "route": "app.get /api/meta/:campaignId/ad-insights",
+    "line": 26340,
+    "response": "{ error: \"Meta connection not found\" }"
+  },
+  {
+    "route": "app.post /api/meta/:campaignId/refresh",
+    "line": 26373,
+    "response": "{ error: \"Meta connection not found\" }"
+  },
+  {
+    "route": "app.get /api/meta/:campaignId/verify-token",
+    "line": 26415,
+    "response": "{ error: \"Meta connection not found\" }"
+  },
+  {
+    "route": "app.get /api/meta/:campaignId/verify-token",
+    "line": 26423,
+    "response": "{\r\n        isValid: tokenInfo.isValid,\r\n        expiresAt: tokenInfo.expiresAt,\r\n        scopes: tokenInfo.scopes,\r\n        storedExpiresAt: connection.expiresAt,\r\n      }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/google-ads-service-account/connect",
+    "line": 26696,
+    "response": "{ success: false, error: \"GOOGLE_ADS_OAUTH_CONNECTION_EXISTS\", message: \"This campaign already has a Google Ads OAuth Spend connection. Use a new test campaign for temporary service-account access.\" }"
+  },
+  {
+    "route": "app.post /api/auth/google-ads/connect",
+    "line": 26791,
+    "response": "{\r\n          message: spendOnly\r\n            ? \"Google Ads OAuth is not configured for this app.\"\r\n            : \"Google Ads OAuth not configured. Set GOOGLE_ADS_CLIENT_ID, GOOGLE_ADS_CLIENT_SECRET, and GOOGLE_ADS_DEVELOPER_TOKEN.\",\r\n          setupRequired: true,\r\n        }"
+  },
+  {
+    "route": "app.get /api/google-ads/:campaignId/connection",
+    "line": 27074,
+    "response": "{\r\n        connected: true,\r\n        customerId: connection.customerId,\r\n        customerName: connection.customerName,\r\n        method: connection.method,\r\n        lastRefreshAt: connection.lastRefreshAt,\r\n      }"
+  },
+  {
+    "route": "app.get /api/google-ads/:campaignId/connection",
+    "line": 27082,
+    "response": "{ error: error.message || 'Failed to get connection status' }"
+  },
+  {
+    "route": "app.delete /api/google-ads/:campaignId/connection",
+    "line": 27096,
+    "response": "{ error: \"Google Ads connection not found\" }"
+  },
+  {
+    "route": "app.delete /api/google-ads/:campaignId/connection",
+    "line": 27101,
+    "response": "{ error: \"Google Ads connection not found\" }"
+  },
+  {
+    "route": "app.delete /api/google-ads/:campaignId/connection",
+    "line": 27103,
+    "response": "{ success: true, message: 'Google Ads connection deleted' }"
+  },
+  {
+    "route": "app.delete /api/google-ads/:campaignId/connection",
+    "line": 27105,
+    "response": "{ error: error.message || 'Failed to delete connection' }"
+  },
+  {
+    "route": "app.post /api/google-ads/:campaignId/refresh",
+    "line": 27163,
+    "response": "{ error: 'No Google Ads connection found' }"
+  },
+  {
+    "route": "app.get /api/google-ads/:campaignId/campaigns",
+    "line": 27184,
+    "response": "{ error: 'No Google Ads connection found' }"
+  },
+  {
+    "route": "app.patch /api/google-ads/:campaignId/selected-campaigns",
+    "line": 27254,
+    "response": "{ error: 'No Google Ads connection found' }"
+  },
+  {
+    "route": "app.post /api/google-ads/:campaignId/enrich-ga4-revenue",
+    "line": 27291,
+    "response": "{ error: 'No Google Ads connection found' }"
+  },
+  {
+    "route": "app.post /api/meta/:campaignId/enrich-ga4-revenue",
+    "line": 27475,
+    "response": "{ error: 'No Meta connection found' }"
+  },
+  {
+    "route": "app.post /api/linkedin/:campaignId/enrich-ga4-revenue",
+    "line": 27494,
+    "response": "{ error: 'No LinkedIn connection found' }"
+  },
+  {
+    "route": "app.patch /api/meta/:campaignId/selected-campaigns",
+    "line": 27517,
+    "response": "{ error: 'No Meta connection found' }"
+  },
+  {
+    "route": "app.post /api/custom-integration/connect",
+    "line": 28064,
+    "response": "{\r\n        success: false,\r\n        error: \"Failed to connect custom integration\"\r\n      }"
+  },
+  {
+    "route": "app.get /api/custom-integration-by-id/:id",
+    "line": 28075,
+    "response": "{ message: \"Custom integration not found\" }"
+  },
+  {
+    "route": "app.get /api/custom-integration-by-id/:id",
+    "line": 28080,
+    "response": "{\r\n        ...customIntegration,\r\n        campaign_id: customIntegration.campaignId,\r\n      }"
+  },
+  {
+    "route": "app.get /api/custom-integration-by-id/:id",
+    "line": 28085,
+    "response": "{ message: \"Failed to fetch custom integration\" }"
+  },
+  {
+    "route": "app.get /api/custom-integration/:campaignId",
+    "line": 28095,
+    "response": "{ message: \"Custom integration not found\" }"
+  },
+  {
+    "route": "app.get /api/custom-integration/:campaignId",
+    "line": 28101,
+    "response": "{\r\n        ...customIntegration,\r\n        metrics: metrics || null\r\n      }"
+  },
+  {
+    "route": "app.get /api/custom-integration/:campaignId",
+    "line": 28106,
+    "response": "{ message: \"Failed to fetch custom integration\" }"
+  },
+  {
+    "route": "app.post /api/custom-integration/:campaignId/upload-pdf",
+    "line": 28192,
+    "response": "{\r\n          success: false,\r\n          error: `No ${supportedCustomIntegrationFileDescription()} file provided`\r\n        }"
+  },
+  {
+    "route": "app.post /api/webhook/custom-integration/:token",
+    "line": 28302,
+    "response": "{\r\n          success: false,\r\n          error: `No ${supportedCustomIntegrationFileDescription()} file or file URL provided. Send either a file upload or provide 'fileUrl' in the request body.`\r\n        }"
+  },
+  {
+    "route": "app.post /api/email/inbound/:token",
+    "line": 28423,
+    "response": "{\r\n          success: false,\r\n          error: `No ${supportedCustomIntegrationFileDescription()} attachment found in email`\r\n        }"
+  },
+  {
+    "route": "app.post /api/email/inbound/:token",
+    "line": 28509,
+    "response": "{\r\n        success: true,\r\n        message: \"Email report processed successfully\",\r\n        campaignId: integration.campaignId,\r\n        metricsId: metrics.id,\r\n        metrics: parsedMetrics,\r\n        uploadedAt: metrics.uploadedAt,\r\n      }"
+  },
+  {
+    "route": "app.post /api/linkedin/connect",
+    "line": 28539,
+    "response": "{\r\n        success: true,\r\n        connection: {\r\n          id: connection.id,\r\n          campaignId: connection.campaignId,\r\n          adAccountId: connection.adAccountId,\r\n          adAccountName: connection.adAccountName,\r\n          method: connection.method,\r\n          connectedAt: connection.connectedAt\r\n        },\r\n        message: 'LinkedIn connection created successfully'\r\n      }"
+  },
+  {
+    "route": "app.post /api/linkedin/connect",
+    "line": 28554,
+    "response": "{\r\n          success: false,\r\n          error: \"Invalid LinkedIn connection data\",\r\n          details: error.errors\r\n        }"
+  },
+  {
+    "route": "app.post /api/linkedin/connect",
+    "line": 28560,
+    "response": "{\r\n        success: false,\r\n        error: 'Failed to create LinkedIn connection'\r\n      }"
+  },
+  {
+    "route": "app.get /api/linkedin/check-connection/:campaignId",
+    "line": 28579,
+    "response": "{\r\n        connected: true,\r\n        connection: {\r\n          id: connection.id,\r\n          adAccountId: connection.adAccountId,\r\n          adAccountName: connection.adAccountName,\r\n          method: connection.method,\r\n          connectedAt: connection.connectedAt\r\n        }\r\n      }"
+  },
+  {
+    "route": "app.delete /api/linkedin/disconnect/:campaignId",
+    "line": 28603,
+    "response": "{\r\n          success: false,\r\n          error: \"LinkedIn connection not found\"\r\n        }"
+  },
+  {
+    "route": "app.delete /api/linkedin/disconnect/:campaignId",
+    "line": 28613,
+    "response": "{\r\n          success: false,\r\n          error: \"LinkedIn connection not found\"\r\n        }"
+  },
+  {
+    "route": "app.delete /api/linkedin/disconnect/:campaignId",
+    "line": 28619,
+    "response": "{\r\n        success: true,\r\n        message: 'LinkedIn connection deleted successfully'\r\n      }"
+  },
+  {
+    "route": "app.delete /api/linkedin/disconnect/:campaignId",
+    "line": 28625,
+    "response": "{\r\n        success: false,\r\n        error: 'Failed to delete LinkedIn connection'\r\n      }"
+  },
+  {
+    "route": "app.patch /api/linkedin/update/:campaignId",
+    "line": 28654,
+    "response": "{\r\n          success: false,\r\n          error: \"LinkedIn connection not found\"\r\n        }"
+  },
+  {
+    "route": "app.patch /api/linkedin/update/:campaignId",
+    "line": 28660,
+    "response": "{\r\n        success: true,\r\n        connection: {\r\n          id: updatedConnection.id,\r\n          campaignId: updatedConnection.campaignId,\r\n          adAccountId: updatedConnection.adAccountId,\r\n          adAccountName: updatedConnection.adAccountName,\r\n          method: updatedConnection.method,\r\n          connectedAt: updatedConnection.connectedAt\r\n        },\r\n        message: 'LinkedIn connection updated successfully'\r\n      }"
+  },
+  {
+    "route": "app.patch /api/linkedin/update/:campaignId",
+    "line": 28675,
+    "response": "{\r\n          success: false,\r\n          error: \"Invalid LinkedIn connection data\",\r\n          details: error.errors\r\n        }"
+  },
+  {
+    "route": "app.patch /api/linkedin/update/:campaignId",
+    "line": 28681,
+    "response": "{\r\n        success: false,\r\n        error: 'Failed to update LinkedIn connection'\r\n      }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/executive-summary",
+    "line": 32822,
+    "response": "{\r\n          health: { grade: \"A\", score: 82, trajectory: \"accelerating\" },\r\n          ceoSummary: `${campaign.name}: Current connected-source metrics show ROI is 93.2% and ROAS is 1.9x. Risk level is low. 7-day snapshot trajectory is accelerating.`,\r\n          metrics: {\r\n            totalImpressions: 21000, advertisingImpressions: 12500, websitePageviews: 8500,\r\n            totalClicks: 1310, advertisingClicks: 890, websiteClicks: 420,\r\n            totalConversions: 73, totalSpend: 6050, totalRevenue: 11690,\r\n            roas: 1.93, roi: 93.2, ctr: 6.24, cvr: 5.57,\r\n            clickThroughCvr: 5.57, totalCvr: 5.57, cpc: 4.62,\r\n          },\r\n          platforms: [\r\n            { name: \"LinkedIn Ads\", spend: 4250, revenue: 8190, conversions: 45, roas: 1.93, roi: 92.7, spendShare: 70.2, hasData: true, websiteAnalytics: null },\r\n            { name: \"Meta/Facebook\", spend: 1200, revenue: 2"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/executive-summary",
+    "line": 33479,
+    "response": "{\r\n        campaign: {\r\n          id: campaign.id,\r\n          name: campaign.name,\r\n          objective: campaign.type || 'Drive conversions and revenue',\r\n        },\r\n        metrics: {\r\n          totalRevenue, totalSpend, totalConversions, totalClicks, totalImpressions, totalEngagements,\r\n          roi, roas, ctr, cvr, clickThroughCvr, totalCvr, clickThroughConversions, cpc, cpa,\r\n          advertisingImpressions, websitePageviews, advertisingClicks, websiteClicks,\r\n        },\r\n        health: {\r\n          score: healthResult.score,\r\n          grade: healthResult.grade,\r\n          factors: healthResult.factors,\r\n          ...(hasHistoricalData && { trajectory: growthTrajectory, trendPercentage }),\r\n        },\r\n        risk: {\r\n          level: risk.riskLevel,\r\n          explanation: risk.riskExplanation,\r\n          factors: risk.riskFactors,\r\n          checkedInputs: risk.checkedInputs"
+  },
+  {
+    "route": "app.post /api/ga4/transfer-connection",
+    "line": 33573,
+    "response": "{\r\n          success: false,\r\n          error: \"No GA4 connection found for source campaign\"\r\n        }"
+  },
+  {
+    "route": "app.post /api/ga4/transfer-connection",
+    "line": 33611,
+    "response": "{\r\n        success: true,\r\n        message: 'GA4 connection transferred successfully',\r\n        connectionId: newConnection.id\r\n      }"
+  },
+  {
+    "route": "app.post /api/ga4/transfer-connection",
+    "line": 33618,
+    "response": "{\r\n        success: false,\r\n        error: 'Failed to transfer GA4 connection'\r\n      }"
+  },
+  {
+    "route": "app.post /api/google-sheets/transfer-connection",
+    "line": 33639,
+    "response": "{\r\n          success: false,\r\n          error: \"No Google Sheets connection found\"\r\n        }"
+  },
+  {
+    "route": "app.post /api/google-sheets/transfer-connection",
+    "line": 33659,
+    "response": "{ success: true, message: 'Google Sheets connection transferred' }"
+  },
+  {
+    "route": "app.post /api/linkedin/transfer-connection",
+    "line": 33680,
+    "response": "{\r\n          success: false,\r\n          error: \"No LinkedIn connection found\"\r\n        }"
+  },
+  {
+    "route": "app.post /api/linkedin/transfer-connection",
+    "line": 33714,
+    "response": "{ success: true, message: 'LinkedIn connection and import sessions transferred' }"
+  },
+  {
+    "route": "app.post /api/custom-integration/:campaignId/connect",
+    "line": 33771,
+    "response": "{\r\n        success: true,\r\n        integration,\r\n        campaignEmail,  // Return email for UI display\r\n        webhookUrl: `${req.protocol}://${req.get('host')}/api/mailgun/inbound`\r\n      }"
+  },
+  {
+    "route": "app.post /api/custom-integration/:campaignId/connect",
+    "line": 33779,
+    "response": "{ error: error.message || 'Failed to connect custom integration' }"
+  },
+  {
+    "route": "app.delete /api/custom-integration/:campaignId",
+    "line": 33794,
+    "response": "{ success: true, message: 'Custom integration disconnected' }"
+  },
+  {
+    "route": "app.delete /api/custom-integration/:campaignId",
+    "line": 33796,
+    "response": "{ error: 'Custom integration not found' }"
+  },
+  {
+    "route": "app.delete /api/custom-integration/:campaignId",
+    "line": 33800,
+    "response": "{ error: error.message || 'Failed to delete custom integration' }"
+  },
+  {
+    "route": "app.post /api/sendgrid/inbound",
+    "line": 33895,
+    "response": "{ error: `No ${supportedCustomIntegrationFileDescription()} attachment found` }"
+  },
+  {
+    "route": "app.post /api/mailgun/inbound",
+    "line": 34057,
+    "response": "{ error: `No ${supportedCustomIntegrationFileDescription()} attachment found` }"
+  },
+  {
+    "route": "app.post /api/mailgun/inbound",
+    "line": 34066,
+    "response": "{ error: `No ${supportedCustomIntegrationFileDescription()} attachment found` }"
+  },
+  {
+    "route": "app.post /api/custom-integration/transfer",
+    "line": 34114,
+    "response": "{\r\n          success: false,\r\n          error: \"No custom integration found\"\r\n        }"
+  },
+  {
+    "route": "app.post /api/custom-integration/transfer",
+    "line": 34200,
+    "response": "{ success: true, message: 'Custom integration and metrics transferred' }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/google-sheets/detect-columns",
+    "line": 34431,
+    "response": "{ error: 'No Google Sheets connection found' }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/google-sheets/detect-columns",
+    "line": 34451,
+    "response": "{ error: 'No Google Sheets connection found' }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/google-sheets/detect-columns",
+    "line": 34516,
+    "response": "{ error: 'No Google Sheets connection found' }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/google-sheets/detect-columns",
+    "line": 34611,
+    "response": "{\r\n        success: true,\r\n        columns: detectedColumns,\r\n        totalRows: totalRowsAcrossSheets,\r\n        sheetsAnalyzed: connections.length,\r\n        sheetNamesRequested,\r\n        sheetNamesFetched,\r\n        sheetNamesFailed\r\n      }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/google-sheets/unique-values",
+    "line": 34648,
+    "response": "{ error: 'No Google Sheets connection with access token found' }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/google-sheets/save-mappings",
+    "line": 34784,
+    "response": "{ error: 'connectionId and mappings array are required' }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/google-sheets/save-mappings",
+    "line": 34792,
+    "response": "{ error: 'Connection not found' }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/google-sheets/save-mappings",
+    "line": 34891,
+    "response": "{ error: 'Connection not found after update' }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/google-sheets/save-mappings",
+    "line": 35324,
+    "response": "{\r\n        success: true,\r\n        message: 'Mappings saved successfully',\r\n        connectionId: connectionId,\r\n        conversionValue: finalConversionValue,\r\n        conversionValueCalculated: !!finalConversionValue\r\n      }"
+  },
+  {
+    "route": "app.patch /api/google-sheets/:campaignId/connection/:connectionId/platforms",
+    "line": 35352,
+    "response": "{ error: 'Connection not found' }"
+  },
+  {
+    "route": "app.patch /api/google-sheets/:campaignId/connection/:connectionId/platforms",
+    "line": 35360,
+    "response": "{ error: 'Connection not found' }"
+  },
+  {
+    "route": "app.get /api/campaigns/:id/google-sheets/mappings",
+    "line": 35392,
+    "response": "{ error: 'Connection not found' }"
+  },
+  {
+    "route": "app.post /api/shopify/connect",
+    "line": 35839,
+    "response": "{ error: \"accessToken is required\" }"
+  },
+  {
+    "route": "app.get /api/shopify/:campaignId/status",
+    "line": 35935,
+    "response": "{ error: error.message || \"Failed to check Shopify connection\" }"
+  },
+  {
+    "route": "app.post /api/campaigns/:id/shopify/save-mappings",
+    "line": 36513,
+    "response": "{\r\n          code: 'SHOPIFY_REPAIR_PREVIEW_CHANGED',\r\n          error: 'Shopify source, connection, mapping, or orders changed since preview. Review the refreshed preview before repairing.',\r\n        }"
+  }
+]

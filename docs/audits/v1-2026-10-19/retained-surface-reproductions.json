@@ -1,0 +1,51 @@
+{
+  "at": "2026-10-20T09:13:35.768Z",
+  "boundary": "Exact current schema/helpers/routes with synthetic inputs. No database, browser session, provider, email or production request.",
+  "results": [
+    {
+      "case": "Campaign progress form requires kpiId which its defaults, fields and selection handler never populate",
+      "finding": "V1-129",
+      "positiveControl": "Same values with kpiId parse"
+    },
+    {
+      "case": "CPA preset target25/current50 yields100%; current10 yields40%; malformed values becomeNaN",
+      "finding": "V1-130"
+    },
+    {
+      "case": "Negative ROI progress is rejected by the unconditional nonnegative form rule",
+      "finding": "V1-130"
+    },
+    {
+      "case": "Exact platform GET without campaignId returns empty before access/storage",
+      "finding": "V1-129"
+    },
+    {
+      "case": "Exact platform POST rejects the visible page payload without campaignId",
+      "finding": "V1-129"
+    },
+    {
+      "case": "Aggregate unavailable: Custom measured revenue0 replaced with5conversions times assumedAOV50 =>250",
+      "finding": "V1-062"
+    },
+    {
+      "case": "Separate GA4 metrics data alone does not create a platform row after aggregate failure",
+      "finding": "V1-062"
+    },
+    {
+      "case": "Canonical row revenue0/spend100 gets ROI0 while table total formula gives-100",
+      "finding": "V1-062"
+    },
+    {
+      "case": "Connected unavailable source carrying stale metrics and included names still scores200%ROI",
+      "finding": "V1-062",
+      "boundary": "Consumer input contract fixture, not evidence that every current producer emits this shape"
+    },
+    {
+      "case": "Measured revenue300/spend100 positive control givesROI200 andROAS3"
+    },
+    {
+      "case": "All customers see fixed4segments/65,390reach/7.4%unweightedCVR with no data query",
+      "finding": "V1-061"
+    }
+  ]
+}

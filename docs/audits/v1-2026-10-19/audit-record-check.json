@@ -1,0 +1,271 @@
+{
+  "at": "2026-10-20T17:35:22.492Z",
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "trackedFilesUnchanged": true,
+  "findings": 130,
+  "severities": {
+    "P0": 7,
+    "P1": 115,
+    "P2": 8
+  },
+  "isolatedCases": 531,
+  "packets": [
+    {
+      "file": "authorization-reproductions.json",
+      "cases": 17
+    },
+    {
+      "file": "cache-sheets-limiter-reproductions.json",
+      "cases": 3
+    },
+    {
+      "file": "campaign-currency-reproductions.json",
+      "cases": 3
+    },
+    {
+      "file": "campaign-wizard-browser-reproductions.json",
+      "cases": 5
+    },
+    {
+      "file": "connection-response-reproductions.json",
+      "cases": 76
+    },
+    {
+      "file": "csv-revenue-reproductions.json",
+      "cases": 6
+    },
+    {
+      "file": "custom-lifecycle-reproductions.json",
+      "cases": 5
+    },
+    {
+      "file": "custom-value-inventory-reproductions.json",
+      "cases": 7
+    },
+    {
+      "file": "dashboard-surface-reproductions.json",
+      "cases": 9
+    },
+    {
+      "file": "diagnostic-reproductions.json",
+      "cases": 2
+    },
+    {
+      "file": "executive-boundary-reproductions.json",
+      "cases": 13
+    },
+    {
+      "file": "extended-reproductions.json",
+      "cases": 7
+    },
+    {
+      "file": "final-boundary-reproductions.json",
+      "cases": 22
+    },
+    {
+      "file": "financial-boundary-reproductions.json",
+      "cases": 13
+    },
+    {
+      "file": "financial-contract-reproductions.json",
+      "cases": 3
+    },
+    {
+      "file": "ga4-campaign-discovery-reproductions.json",
+      "cases": 2
+    },
+    {
+      "file": "ga4-concurrency-reproductions.json",
+      "cases": 3
+    },
+    {
+      "file": "ga4-conversion-precision-reproductions.json",
+      "cases": 4
+    },
+    {
+      "file": "ga4-onboarding-reproductions.json",
+      "cases": 3
+    },
+    {
+      "file": "ga4-overview-boundary-reproductions.json",
+      "cases": 14
+    },
+    {
+      "file": "ga4-quality-metadata-reproductions.json",
+      "cases": 8
+    },
+    {
+      "file": "ga4-query-reproductions.json",
+      "cases": 3
+    },
+    {
+      "file": "google-ads-value-reproductions.json",
+      "cases": 7
+    },
+    {
+      "file": "insights-calendar-reproductions.json",
+      "cases": 3
+    },
+    {
+      "file": "linkedin-revenue-boundary-reproductions.json",
+      "cases": 11
+    },
+    {
+      "file": "manual-spend-reproductions.json",
+      "cases": 3
+    },
+    {
+      "file": "notification-visibility-reproductions.json",
+      "cases": 15
+    },
+    {
+      "file": "oauth-popup-reproductions.json",
+      "cases": 6
+    },
+    {
+      "file": "oauth-state-reproductions.json",
+      "cases": 12
+    },
+    {
+      "file": "paid-media-reproductions.json",
+      "cases": 6
+    },
+    {
+      "file": "performance-boundary-reproductions.json",
+      "cases": 10
+    },
+    {
+      "file": "provider-contract-reproductions.json",
+      "cases": 10
+    },
+    {
+      "file": "provider-error-log-reproductions.json",
+      "cases": 3
+    },
+    {
+      "file": "report-delivery-reproductions.json",
+      "cases": 4
+    },
+    {
+      "file": "report-pdf-reproductions.json",
+      "cases": 4
+    },
+    {
+      "file": "report-snapshot-access-reproductions.json",
+      "cases": 20
+    },
+    {
+      "file": "reproductions.json",
+      "cases": 10
+    },
+    {
+      "file": "retained-lifecycle-reproductions.json",
+      "cases": 4
+    },
+    {
+      "file": "retained-mutation-reproductions.json",
+      "cases": 4
+    },
+    {
+      "file": "retained-private-read-reproductions.json",
+      "cases": 6
+    },
+    {
+      "file": "retained-surface-reproductions.json",
+      "cases": 11
+    },
+    {
+      "file": "retained-ui-reproductions.json",
+      "cases": 6
+    },
+    {
+      "file": "retained-value-boundary-reproductions.json",
+      "cases": 14
+    },
+    {
+      "file": "scheduler-configuration-reproductions.json",
+      "cases": 18
+    },
+    {
+      "file": "scheduler-eligibility-reproductions.json",
+      "cases": 4
+    },
+    {
+      "file": "service-account-tenant-reproductions.json",
+      "cases": 15
+    },
+    {
+      "file": "sheets-custom-financial-reproductions.json",
+      "cases": 15
+    },
+    {
+      "file": "sheets-refresh-reproductions.json",
+      "cases": 2
+    },
+    {
+      "file": "sheets-revenue-reproductions.json",
+      "cases": 3
+    },
+    {
+      "file": "sheets-summary-report-reproductions.json",
+      "cases": 8
+    },
+    {
+      "file": "source-goal-alert-reproductions.json",
+      "cases": 18
+    },
+    {
+      "file": "spend-import-reproductions.json",
+      "cases": 5
+    },
+    {
+      "file": "token-backfill-reproductions.json",
+      "cases": 11
+    },
+    {
+      "file": "trend-boundary-reproductions.json",
+      "cases": 14
+    },
+    {
+      "file": "unconfigured-source-boundary-reproductions.json",
+      "cases": 14
+    },
+    {
+      "file": "xlsx-boundary-reproductions.json",
+      "cases": 7
+    }
+  ],
+  "realPostgresRaceCases": 3,
+  "realPostgresMigrationCases": 3,
+  "realPostgresCases": 11,
+  "endpointDeclarations": 349,
+  "routeDeclarations": 37,
+  "tableDeclarations": 62,
+  "controls": 926,
+  "jobSites": 64,
+  "documentsChecked": 51,
+  "brokenLinks": [],
+  "fullSuite": {
+    "total": 3971,
+    "passed": 3789,
+    "failed": 182,
+    "skipped": 0
+  },
+  "limitation": "Artifact/link/count integrity only; unresolved semantic, lifecycle and external gates still prevent certification.",
+  "realPostgresNotificationCases": 2,
+  "retainedMigrationCatalogScenarios": 2,
+  "syntheticBackupRestoreScenarios": 1,
+  "actualHttpDatabaseAuditTests": 4,
+  "anonymousEntryProbes": 296,
+  "authenticatedForeignParentEntryCases": 284,
+  "endpointDispositions": 349,
+  "finalBoundaryCasesIncludedInReproductionPackets": 22,
+  "supplementalFixtureRepairAssertions": 108,
+  "additionalDiagnosticAssertions": {
+    "passed": 89,
+    "failed": 1
+  },
+  "originalFixtureBindingFailuresWithPassingDiagnostics": 98,
+  "findingsAssignedToFixBatches": 130,
+  "configurationNames": 119
+}

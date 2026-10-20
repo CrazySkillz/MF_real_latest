@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-20T19:27:58.668Z",
+  "boundary": "Repository-configured database; binding to Render is not established. Metadata-only READ ONLY transaction; no customer records, credentials or configuration values returned.",
+  "readOnly": true,
+  "verifiedTlsConnection": true,
+  "ownerColumns": [
+    {
+      "table_name": "attribution_models",
+      "present": false
+    },
+    {
+      "table_name": "customer_journeys",
+      "present": false
+    },
+    {
+      "table_name": "integrations",
+      "present": false
+    },
+    {
+      "table_name": "metrics",
+      "present": false
+    },
+    {
+      "table_name": "performance_data",
+      "present": false
+    }
+  ],
+  "receiptsTablePresent": false,
+  "migration0022Present": false
+}

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useQuery, keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Activity, Users, Target, DollarSign, Clock } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { buildPerformanceRecommendedActions, resolvePerformanceHealthCoverage, resolvePerformanceLiveMetricValue, resolvePerformancePriorityRank } from "@/lib/performance-recommended-actions";
 import { datedFinancialSourceIds, datedFinancialSourceSetsCompatible, datedNativeRevenueResponsesCompatible } from "@/lib/performance-financial-source-dates";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -74,6 +74,7 @@ const formatCompletedReportingDate = (date: string) => {
 };
 
 export default function CampaignPerformanceSummary() {
+  const queryClient = useQueryClient();
   const [, params] = useRoute("/campaigns/:id/performance");
   const campaignId = params?.id;
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('24h');

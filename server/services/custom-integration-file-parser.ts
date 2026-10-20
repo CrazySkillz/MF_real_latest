@@ -1,6 +1,63 @@
 import { inflateRawSync } from "zlib";
 import { parseCsvText } from "../utils/csv";
 import { parsePDFMetrics, type ParsedMetrics } from "./pdf-parser";
+import { lookup } from "node:dns/promises";
+import { BlockList, isIP } from "node:net";
+import { request } from "node:https";
+
+const privateReportDestinations = new BlockList();
+for (const [address, prefix] of [
+  ["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8],
+  ["169.254.0.0", 16], ["172.16.0.0", 12], ["192.0.0.0", 24], ["192.0.2.0", 24],
+  ["192.168.0.0", 16], ["198.18.0.0", 15], ["198.51.100.0", 24], ["203.0.113.0", 24],
+  ["224.0.0.0", 4], ["240.0.0.0", 4],
+] as const) privateReportDestinations.addSubnet(address, prefix, "ipv4");
+for (const [address, prefix] of [["2001::", 23], ["2001:db8::", 32], ["2002::", 16], ["3fff::", 20]] as const)
+  privateReportDestinations.addSubnet(address, prefix, "ipv6");
+
+export async function downloadCustomIntegrationReport(rawUrl: string): Promise<{ buffer: Buffer; contentType: string | null; fileName: string }> {
+  const signal = AbortSignal.timeout(15_000);
+  let url = new URL(rawUrl);
+  for (let redirects = 0; redirects <= 3; redirects++) {
+    signal.throwIfAborted();
+    if (url.protocol !== "https:" || url.username || url.password || (url.port && url.port !== "443")) throw new Error("Report URL must use public HTTPS");
+    const hostname = url.hostname.replace(/^\[|\]$/g, "");
+    const addresses = isIP(hostname) ? [{ address: hostname, family: isIP(hostname) }] : await Promise.race([
+      lookup(hostname, { all: true }),
+      new Promise<never>((_, reject) => signal.addEventListener("abort", () => reject(new Error("Report download timed out")), { once: true })),
+    ]);
+    signal.throwIfAborted();
+    if (!addresses.length || addresses.some(({ address, family }) =>
+      family === 6 ? !/^[23][0-9a-f]{3}:/i.test(address) || privateReportDestinations.check(address, "ipv6")
+        : privateReportDestinations.check(address, "ipv4"))) throw new Error("Report URL is not a public destination");
+    const pinned = addresses[0];
+    const response = await new Promise<import("node:http").IncomingMessage>((resolve, reject) => {
+      const req = request(url, { signal, agent: false, lookup: (_host, options, callback: any) =>
+        options.all ? callback(null, [pinned]) : callback(null, pinned.address, pinned.family) }, resolve);
+      req.on("error", () => reject(new Error("Report download failed")));
+      req.end();
+    });
+    if ([301, 302, 303, 307, 308].includes(response.statusCode || 0)) {
+      response.destroy();
+      if (!response.headers.location || redirects === 3) throw new Error("Report redirect limit exceeded");
+      url = new URL(response.headers.location, url);
+      continue;
+    }
+    const maxBytes = 10 * 1024 * 1024;
+    if (response.statusCode !== 200 || Number(response.headers["content-length"] || 0) > maxBytes) {
+      response.destroy(); throw new Error("Report response is unavailable or too large");
+    }
+    const chunks: Buffer[] = [];
+    let bytes = 0;
+    for await (const chunk of response) {
+      bytes += chunk.length;
+      if (bytes > maxBytes) { response.destroy(); throw new Error("Report exceeds 10MB"); }
+      chunks.push(Buffer.from(chunk));
+    }
+    return { buffer: Buffer.concat(chunks), contentType: response.headers["content-type"] || null, fileName: url.pathname.split("/").pop() || "downloaded-report" };
+  }
+  throw new Error("Report redirect limit exceeded");
+}
 
 type MetricKind = "sum" | "single" | "duration";
 

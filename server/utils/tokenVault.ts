@@ -24,6 +24,7 @@ function deriveKeyFromSecret(secret: string): Buffer {
 }
 
 function getKey(): Buffer {
+  assertProductionTokenEncryptionConfigured();
   // Preferred: explicit 32-byte key, base64 or hex. Fallback: derive from SESSION_SECRET/APP_SECRET.
   const raw =
     process.env.TOKEN_ENCRYPTION_KEY ||

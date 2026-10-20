@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-20T09:24:29.274Z",
+  "settings": [
+    {
+      "name": "GA4_SERVICE_ACCOUNT_JSON",
+      "inDotEnv": false,
+      "inInheritedEnvironment": false
+    },
+    {
+      "name": "GA4_SERVICE_ACCOUNT_ALLOWED_PROPERTY_IDS",
+      "inDotEnv": false,
+      "inInheritedEnvironment": false
+    }
+  ],
+  "boundary": "Presence booleans only; no secret contents retained. Ptomo saved method service_account; current hydrator requires global service-account configuration. No provider request attempted or credential decrypted.",
+  "runtimePaths": [
+    "server/utils/ga4-service-account.ts:23",
+    "server/utils/ga4-service-account.ts:63",
+    "server/utils/ga4-service-account.ts:106",
+    "server/storage.ts:983"
+  ]
+}

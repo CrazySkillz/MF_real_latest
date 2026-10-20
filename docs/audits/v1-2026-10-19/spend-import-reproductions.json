@@ -1,0 +1,136 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "results": [
+    {
+      "case": "GA4 CSV Spend 50,000 data rows",
+      "response": {
+        "success": true,
+        "sourceId": "fixture-source",
+        "currency": "USD",
+        "rowCount": 49999,
+        "keptRows": 49999,
+        "spendToDate": 49999,
+        "importedRowsTotalSpend": 49999
+      },
+      "persistedRecords": [
+        {
+          "campaignId": "fixture",
+          "date": "2026-10-18",
+          "spend": "49999.00",
+          "currency": "USD",
+          "sourceType": "csv"
+        }
+      ],
+      "boundary": "Exact handler and CSV/date helpers; owner middleware, storage and recomputation mocked. No filesystem customer input or DB."
+    },
+    {
+      "case": "GA4 CSV Spend malformed amount",
+      "response": {
+        "success": true,
+        "sourceId": "fixture-source",
+        "currency": "USD",
+        "rowCount": 1,
+        "keptRows": 1,
+        "spendToDate": 12,
+        "importedRowsTotalSpend": 12
+      },
+      "persistedRecords": [
+        {
+          "campaignId": "fixture",
+          "date": "2026-10-18",
+          "spend": "12.00",
+          "currency": "USD",
+          "sourceType": "csv"
+        }
+      ],
+      "boundary": "Exact handler and CSV/date helpers; owner middleware, storage and recomputation mocked. No filesystem customer input or DB."
+    },
+    {
+      "case": "GA4 Sheets Spend bounded sheet omits later rows",
+      "inputDataRows": 5001,
+      "requests": [
+        {
+          "url": "https://sheets.googleapis.com/v4/spreadsheets/sheet-fixture/values/'Fixture'!A1%3AZZ5000",
+          "hasSignal": false
+        }
+      ],
+      "response": {
+        "success": true,
+        "sourceId": "fixture-source",
+        "currency": "USD",
+        "rowCount": 4999,
+        "keptRows": 4999,
+        "spendToDate": 4999,
+        "importedRowsTotalSpend": 4999
+      },
+      "persistedRecords": [
+        {
+          "campaignId": "fixture",
+          "date": "2026-10-18",
+          "spend": "4999",
+          "currency": "USD",
+          "sourceType": "google_sheets"
+        }
+      ],
+      "boundary": "Exact handler and number/date helpers; bounded deterministic sheet fixture follows requested A1 range. No Google/DB call."
+    },
+    {
+      "case": "GA4 Sheets Spend malformed amount accepted",
+      "inputDataRows": 1,
+      "requests": [
+        {
+          "url": "https://sheets.googleapis.com/v4/spreadsheets/sheet-fixture/values/'Fixture'!A1%3AZZ5000",
+          "hasSignal": false
+        }
+      ],
+      "response": {
+        "success": true,
+        "sourceId": "fixture-source",
+        "currency": "USD",
+        "rowCount": 1,
+        "keptRows": 1,
+        "spendToDate": 12,
+        "importedRowsTotalSpend": 12
+      },
+      "persistedRecords": [
+        {
+          "campaignId": "fixture",
+          "date": "2026-10-18",
+          "spend": "12",
+          "currency": "USD",
+          "sourceType": "google_sheets"
+        }
+      ],
+      "boundary": "Exact handler and number/date helpers; bounded deterministic sheet fixture follows requested A1 range. No Google/DB call."
+    },
+    {
+      "case": "GA4 Sheets Spend non-numeric amount becomes measured zero",
+      "inputDataRows": 1,
+      "requests": [
+        {
+          "url": "https://sheets.googleapis.com/v4/spreadsheets/sheet-fixture/values/'Fixture'!A1%3AZZ5000",
+          "hasSignal": false
+        }
+      ],
+      "response": {
+        "success": true,
+        "sourceId": "fixture-source",
+        "currency": "USD",
+        "rowCount": 1,
+        "keptRows": 0,
+        "spendToDate": 0,
+        "importedRowsTotalSpend": 0
+      },
+      "persistedRecords": [
+        {
+          "campaignId": "fixture",
+          "date": "2026-10-18",
+          "spend": "0.00",
+          "currency": "USD",
+          "sourceType": "google_sheets"
+        }
+      ],
+      "boundary": "Exact handler and number/date helpers; bounded deterministic sheet fixture follows requested A1 range. No Google/DB call."
+    }
+  ]
+}

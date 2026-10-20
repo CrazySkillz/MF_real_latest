@@ -1,0 +1,33 @@
+const fs=require('node:fs'),ts=require('typescript'),assert=require('node:assert/strict');
+const dir='docs/audits/v1-2026-10-19';
+const compile=s=>ts.transpileModule(s,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
+const load=file=>{const ex={};new Function('exports',compile(fs.readFileSync(file,'utf8')))(ex);return ex;};
+const helpers=load('client/src/lib/trend-analysis-cumulative.ts'),math=load('shared/metric-math.ts');
+const sf=ts.createSourceFile('page.tsx',fs.readFileSync('client/src/pages/trend-analysis.tsx','utf8'),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);let headlineExpression;
+function walk(n){if(ts.isPropertyAssignment(n)&&n.name.getText(sf)==='value'&&n.initializer.getText(sf).includes('formatPct(normalizeRateToPercent(authoritativeHeadlineCurrent.engagementRate))'))headlineExpression=n.initializer.getText(sf);ts.forEachChild(n,walk);}walk(sf);assert.ok(headlineExpression);
+const headline=new Function('authoritativeHeadlineCurrent','formatPct','normalizeRateToPercent',compile('return ('+headlineExpression+');'));
+const response=totals=>({success:true,propertyId:'fixture',dataThroughDate:'2026-10-18',overviewStartDate:'2026-10-01',startDate:'2026-10-17',endDate:'2026-10-18',overviewTotals:totals,data:[{date:'2026-10-17',users:0,sessions:0,conversions:0,engagedSessions:0},{date:'2026-10-18',users:0,sessions:0,conversions:0,engagedSessions:0}]});
+const results=[];
+for(const [engaged,expected] of [[0,'0%'],[50,'50%'],[100,'100%'],[101,'1%'],[5000,'50%']]){
+ const exact=helpers.deriveExactCumulativeGA4Traffic(response({users:5000,sessions:10000,conversions:100,engagedSessions:engaged}),'2026-10-16');assert.ok(exact);
+ const actual=headline(exact.current,math.formatPct,math.normalizeRateToPercent);assert.equal(actual,expected);
+ results.push({case:'Headline engagement at '+engaged+'/10000 engaged sessions',sessions:10000,engagedSessions:engaged,computedPercent:exact.current.engagementRate,headline:actual,websiteSummaryUsingPercentDirectly:math.formatPct(exact.current.engagementRate),boundary:'Actual cumulative helper then exact current headline expression; no stored rate mutation.'});
+}
+const zero=helpers.deriveExactCumulativeGA4Traffic(response({users:0,sessions:0,conversions:0,engagedSessions:0}),'2026-10-16');assert.ok(zero);assert.equal(zero.current.cvr,0);assert.equal(zero.current.engagementRate,0);
+const zeroFinance=helpers.deriveTrendFinancialRatios({spend:0,revenue:0,conversions:0});assert.deepEqual(zeroFinance,{roas:null,roi:null,cpa:null});
+results.push({case:'No sessions produces headline rate0 while financial zero-denominator rates are unavailable',traffic:zero.current,headlineCvr:math.formatPct(zero.current.cvr),headlineEngagement:headline(zero.current,math.formatPct,math.normalizeRateToPercent),financialControl:zeroFinance,limitation:'No full page render; exact computed values and actual headline formatter. Daily-chart no-activity null handling is separately traced in code.'});
+const server=ts.createSourceFile('report-scheduler.ts',fs.readFileSync('server/report-scheduler.ts','utf8'),ts.ScriptTarget.Latest,true),zeroRateExpressions=[];
+function serverWalk(n){if(ts.isConditionalExpression(n)&&n.getText(server)==='sessions > 0 ? (engagedSessions / sessions) * 100 : 0')zeroRateExpressions.push({line:server.getLineAndCharacterOfPosition(n.getStart(server)).line+1,expression:n.getText(server)});ts.forEachChild(n,serverWalk);}serverWalk(server);assert.equal(zeroRateExpressions.length,2);
+const serverZero=zeroRateExpressions.map(x=>({...x,result:new Function('sessions','engagedSessions',compile('return ('+x.expression+');'))(0,0)}));assert.ok(serverZero.every(x=>x.result===0));results.push({case:'Both current server Trend website-summary branches also compute rate0 with no sessions',expressions:serverZero,limitation:'Exact numeric expressions only; no generated Trend PDF in this packet.'});
+const daily={success:true,validationReadOnly:true,providerRefreshAttempted:false,providerRefreshOutcome:'read_only',schedulerCoverageComplete:true,lastCompletedRefreshAt:'2026-10-19T03:00:00.000Z',propertyId:'fixture',reportingTimeZone:'UTC',overviewStartDate:'2026-10-01',startDate:'2026-10-16',dataThroughDate:'2026-10-18',endDate:'2026-10-18',data:[16,17,18].map(d=>({date:'2026-10-'+d,users:1,sessions:2,conversions:.25,engagedSessions:1,engagementRate:.5}))};
+for(const [label,mutate,expected] of [
+ ['Complete scheduler daily history preserves fractional values',r=>r,true],
+ ['Missing calendar date is rejected',r=>({...r,data:r.data.filter(x=>x.date!=='2026-10-17')}),false],
+ ['Duplicate calendar date is rejected',r=>({...r,data:[...r.data,r.data[0]]}),false],
+ ['Wrong property is rejected',r=>({...r,propertyId:'foreign'}),false],
+ ['Unverified scheduler coverage is rejected',r=>({...r,schedulerCoverageComplete:false}),false],
+]){const rows=helpers.resolveVerifiedTrendGA4DailyRows({dailyResponse:mutate(daily),propertyId:'fixture',selectedStartDate:'2026-10-16'});assert.equal(rows!==null,expected);if(rows)assert.equal(rows.reduce((n,r)=>n+r.conversions,0),.75);results.push({case:label,accepted:rows!==null,rows});}
+const dates=['2026-03-30','2026-10-26'].map(date=>({end:date,start:helpers.resolveTrendComparisonDate(date,7),expanded:helpers.expandTrendRowsToCalendarWindow([],date,7).map(r=>r.date)}));assert.ok(dates.every(x=>x.expanded.length===7));results.push({case:'UTC calendar cutoffs remain seven dates across Amsterdam DST changes',dates});
+const summary={campaignId:'fixture',version:'performance_summary_aggregate_v3',sources:[{id:'ga4',category:'web_analytics',connected:true},{id:'csv-spend',category:'financial',connected:true}]};
+assert.equal(helpers.resolveTrendConsumerMode({outcomeTotalsFetched:true,performanceSummary:summary,campaignId:'fixture'}),'cumulative_ga4');assert.equal(helpers.resolveTrendConsumerMode({outcomeTotalsFetched:true,performanceSummary:{...summary,sources:[...summary.sources,{id:'meta',category:'paid_media',connected:true}]},campaignId:'fixture'}),'aggregate');results.push({case:'Financial child source preserves GA4 mode; second main source selects separate aggregate mode',financialChild:'cumulative_ga4',secondMain:'aggregate'});
+fs.writeFileSync(dir+'/trend-boundary-reproductions.json',JSON.stringify({head:'777aae6f6353e998d60b635d3e66b413093117c2',boundary:'Exact current pure helpers and AST-selected active headline formatter with synthetic daily/summary contracts. No browser/database/provider/report; upstream data completeness is not inferred.',results},null,2)+'\n');console.log(JSON.stringify({cases:results.length,allAssertionsPassed:true}));

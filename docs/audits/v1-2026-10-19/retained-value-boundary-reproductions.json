@@ -1,0 +1,283 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "executedAt": "2026-10-19T22:53:07.680Z",
+  "boundary": "Current AST-extracted handlers/page expressions. Fixture storage/provider state only. No app server, live requests, customer data or runtime modifications.",
+  "results": [
+    {
+      "case": "instagram: all-history source amount overrides bounded revenue total",
+      "suppliedBoundedRevenue": 100,
+      "spendInMetricsWindow": 100,
+      "allHistorySourceRevenue": 900,
+      "actual": {
+        "available": true,
+        "revenue": 900,
+        "profit": 800,
+        "roas": 9,
+        "roi": 800
+      },
+      "boundary": "Exact page expressions, synthetic source/totals/summary objects; not a browser or provider test."
+    },
+    {
+      "case": "google-ads: all-history source amount overrides bounded revenue total",
+      "suppliedBoundedRevenue": 100,
+      "spendInMetricsWindow": 100,
+      "allHistorySourceRevenue": 900,
+      "actual": {
+        "available": true,
+        "revenue": 900,
+        "profit": 800,
+        "roas": 9,
+        "roi": 800
+      },
+      "boundary": "Exact page expressions, synthetic source/totals/summary objects; not a browser or provider test."
+    },
+    {
+      "case": "meta: all-history source amount overrides bounded revenue total",
+      "suppliedBoundedRevenue": 100,
+      "spendInMetricsWindow": 100,
+      "allHistorySourceRevenue": 900,
+      "actual": {
+        "available": true,
+        "revenue": 900,
+        "profit": 800,
+        "roas": 9,
+        "roi": 800
+      },
+      "boundary": "Exact page expressions, synthetic source/totals/summary objects; not a browser or provider test."
+    },
+    {
+      "case": "Non-GA4 source-list API requests all history",
+      "ranges": [
+        [
+          "1900-01-01",
+          "2999-12-31"
+        ],
+        [
+          "1900-01-01",
+          "2999-12-31"
+        ]
+      ],
+      "response": {
+        "success": true,
+        "sources": [
+          {
+            "id": "source",
+            "currency": "EUR",
+            "lastTotalRevenue": 900
+          }
+        ]
+      }
+    },
+    {
+      "case": "Currency-integrity read errors are replaced by mapping totals and summed by Instagram",
+      "response": {
+        "success": true,
+        "sources": [
+          {
+            "id": "usd",
+            "currency": "USD",
+            "mappingConfig": "{\"lastTotalRevenue\":100}",
+            "lastTotalRevenue": 100
+          },
+          {
+            "id": "eur",
+            "currency": "EUR",
+            "mappingConfig": "{\"lastTotalRevenue\":200}",
+            "lastTotalRevenue": 200
+          }
+        ]
+      },
+      "actual": {
+        "available": true,
+        "revenue": 300,
+        "profit": 200,
+        "roas": 3,
+        "roi": 200
+      },
+      "boundary": "Actual source-list handler/page expressions; storage throws its actual error text. No claim mixed rows currently exist in production."
+    },
+    {
+      "case": "instagram: DB failure returns successful empty read",
+      "response": {
+        "success": true,
+        "connected": true,
+        "dateRange": "30days",
+        "startDate": "2026-09-20",
+        "endDate": "2026-10-19",
+        "selectedCampaignIds": [
+          "selected"
+        ],
+        "rowCount": 0,
+        "rows": []
+      },
+      "boundary": "Actual handler; actor/schema/storage fixture inputs, no DB or authentication certificate."
+    },
+    {
+      "case": "tiktok: DB failure returns successful empty read",
+      "response": {
+        "success": true,
+        "connected": true,
+        "dateRange": "30days",
+        "startDate": "2026-09-20",
+        "endDate": "2026-10-19",
+        "selectedCampaignIds": [
+          "selected"
+        ],
+        "rowCount": 0,
+        "rows": [],
+        "financialSummary": {
+          "hasAttributedRevenue": false,
+          "attributedRevenue": null,
+          "currency": "EUR",
+          "sourceIds": [
+            "measured-zero"
+          ],
+          "unavailableReason": "Requires TikTok-scoped attributed revenue."
+        },
+        "unavailableReason": "No persisted TikTok metric rows exist for the selected campaigns and date range."
+      },
+      "boundary": "Actual handler; actor/schema/storage fixture inputs, no DB or authentication certificate."
+    },
+    {
+      "case": "TikTok uses all-history Revenue for selected metric window and hides measured zero",
+      "metricStart": "2026-09-20",
+      "revenueRead": [
+        "fixture",
+        "1900-01-01",
+        "2026-10-19",
+        "tiktok"
+      ],
+      "suppliedRevenue": {
+        "totalRevenue": 0,
+        "currency": "EUR",
+        "sourceIds": [
+          "measured-zero"
+        ]
+      },
+      "financialSummary": {
+        "hasAttributedRevenue": false,
+        "attributedRevenue": null,
+        "currency": "EUR",
+        "sourceIds": [
+          "measured-zero"
+        ],
+        "unavailableReason": "Requires TikTok-scoped attributed revenue."
+      }
+    },
+    {
+      "case": "google-ads: current monetary formatter has no currency input",
+      "sourceCurrency": "EUR",
+      "amount": 100,
+      "formatted": "$100.00",
+      "boundary": "Exact formatter; EUR is fixture provenance, not an argument the formatter accepts. Current caller/source currency propagation traced separately."
+    },
+    {
+      "case": "meta: current monetary formatter has no currency input",
+      "sourceCurrency": "EUR",
+      "amount": 100,
+      "formatted": "$100.00",
+      "boundary": "Exact formatter; EUR is fixture provenance, not an argument the formatter accepts. Current caller/source currency propagation traced separately."
+    },
+    {
+      "case": "tiktok: current monetary formatter has no currency input",
+      "sourceCurrency": "EUR",
+      "amount": 100,
+      "formatted": "$100.00",
+      "boundary": "Exact formatter; EUR is fixture provenance, not an argument the formatter accepts. Current caller/source currency propagation traced separately."
+    },
+    {
+      "case": "Instagram KPI currency formatter hardcodes dollar",
+      "sourceCurrency": "EUR",
+      "amount": 100,
+      "formatted": "$100.00",
+      "boundary": "Exact formatter; metric lookup supplies its actual declared Spend unit."
+    },
+    {
+      "case": "Google Ads daily CTR and Search Impression Share average row rates",
+      "metrics": [
+        {
+          "date": "2026-10-01",
+          "impressions": 1000,
+          "clicks": 10,
+          "spend": "100",
+          "ctr": "1",
+          "searchImpressionShare": "50"
+        },
+        {
+          "date": "2026-10-01",
+          "impressions": 10,
+          "clicks": 10,
+          "spend": "10",
+          "ctr": "100",
+          "searchImpressionShare": "100"
+        }
+      ],
+      "actualSummary": {
+        "impressions": 1010,
+        "clicks": 20,
+        "spend": 110,
+        "conversions": 0,
+        "conversionValue": 0,
+        "videoViews": 0,
+        "searchImpressionShareSum": 150,
+        "searchImpressionShareCount": 2,
+        "ctr": 1.9801980198019802,
+        "cpc": 5.5,
+        "cpm": 108.91089108910892,
+        "convRate": 0,
+        "costPerConv": 0,
+        "searchImpressionShare": 75,
+        "roas": 0,
+        "roi": -100
+      },
+      "actualChart": [
+        {
+          "date": "2026-10-01",
+          "impressions": 1010,
+          "clicks": 20,
+          "spend": 110,
+          "conversions": 0,
+          "conversionValue": 0,
+          "videoViews": 0,
+          "ctr": 50.5,
+          "cpc": 5.5,
+          "cpm": 108.91089108910892,
+          "conversionRate": 0,
+          "searchImpressionShare": 75,
+          "_count": 2,
+          "roas": 0
+        }
+      ],
+      "exactSyntheticEligibleShare": 50.24875621890548,
+      "boundary": "CTR denominator exactly known. Eligible-share example assumes disjoint exact synthetic Search rows; not a recipe to infer real eligibility from rounded/censored provider shares."
+    },
+    {
+      "case": "Control: Instagram/TikTok overview rate denominators withhold undefined ratios",
+      "instagram": {
+        "impressions": 0,
+        "clicks": 0,
+        "spend": 0,
+        "conversions": 0,
+        "videoViews": 0,
+        "ctr": null,
+        "cpc": null,
+        "cpm": null,
+        "costPerConversion": null,
+        "conversionRate": null
+      },
+      "tiktok": {
+        "impressions": 0,
+        "clicks": 0,
+        "spend": 0,
+        "conversions": 0,
+        "videoViews": 0,
+        "engagements": 0,
+        "ctr": null,
+        "cpc": null,
+        "cpm": null,
+        "costPerConversion": null,
+        "conversionRate": null
+      }
+    }
+  ]
+}

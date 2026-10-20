@@ -1,0 +1,204 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "results": [
+    {
+      "case": "Meta campaign page cursor ignored",
+      "campaigns": [
+        {
+          "id": "first",
+          "name": "First"
+        }
+      ],
+      "requests": [
+        "/act_fixture/campaigns"
+      ],
+      "next": "https://graph.facebook.com/fixture-next"
+    },
+    {
+      "case": "Instagram placement conversion aliases added and next page ignored",
+      "placements": [
+        {
+          "publisherPlatform": "instagram",
+          "platformPosition": "feed",
+          "impressions": 0,
+          "clicks": 0,
+          "spend": 0,
+          "conversions": 9,
+          "actions": [
+            {
+              "action_type": "purchase",
+              "value": "3"
+            },
+            {
+              "action_type": "omni_purchase",
+              "value": "3"
+            },
+            {
+              "action_type": "offsite_conversion.fb_pixel_purchase",
+              "value": "3"
+            }
+          ],
+          "dateStart": "2026-10-18"
+        }
+      ],
+      "requests": 1,
+      "inputActions": [
+        {
+          "action_type": "purchase",
+          "value": "3"
+        },
+        {
+          "action_type": "omni_purchase",
+          "value": "3"
+        },
+        {
+          "action_type": "offsite_conversion.fb_pixel_purchase",
+          "value": "3"
+        }
+      ],
+      "boundary": "Exact service sums all three action labels; provider alias overlap requires independent validation, not assumed three distinct conversions."
+    },
+    {
+      "case": "Meta failed batch request becomes all-zero insights",
+      "result": {
+        "impressions": 0,
+        "reach": 0,
+        "clicks": 0,
+        "spend": 0,
+        "conversions": 0,
+        "actions": [],
+        "videoViews": 0,
+        "frequency": 0,
+        "cpm": 0,
+        "cpp": 0,
+        "ctr": 0,
+        "cpc": 0,
+        "dateStart": "",
+        "dateStop": ""
+      }
+    },
+    {
+      "case": "Meta all selected campaign requests fail yet lastRefreshAt updated",
+      "freshnessWrites": [
+        [
+          "fixture",
+          {
+            "lastRefreshAt": "2026-10-19T20:34:27.572Z"
+          }
+        ]
+      ],
+      "boundary": "Exact current fetchRealMetaData; no stored metrics written; provider class/storage are fixtures."
+    },
+    {
+      "case": "LinkedIn repeated campaign per prior metric and fabricated creative revenue fallback",
+      "sessions": [
+        {
+          "campaignId": "fixture",
+          "adAccountId": "fixture",
+          "adAccountName": "",
+          "selectedCampaignsCount": 2,
+          "selectedMetricsCount": 4,
+          "selectedMetricKeys": [
+            "impressions",
+            "clicks"
+          ],
+          "conversionValue": null
+        }
+      ],
+      "metrics": [
+        {
+          "sessionId": "new",
+          "campaignUrn": "123",
+          "campaignName": "Selected",
+          "campaignStatus": "active",
+          "metricKey": "impressions",
+          "metricValue": "10"
+        },
+        {
+          "sessionId": "new",
+          "campaignUrn": "123",
+          "campaignName": "Selected",
+          "campaignStatus": "active",
+          "metricKey": "clicks",
+          "metricValue": "2"
+        },
+        {
+          "sessionId": "new",
+          "campaignUrn": "123",
+          "campaignName": "Selected",
+          "campaignStatus": "active",
+          "metricKey": "impressions",
+          "metricValue": "10"
+        },
+        {
+          "sessionId": "new",
+          "campaignUrn": "123",
+          "campaignName": "Selected",
+          "campaignStatus": "active",
+          "metricKey": "clicks",
+          "metricValue": "2"
+        }
+      ],
+      "ads": [
+        {
+          "sessionId": "new",
+          "adId": "creative",
+          "adName": "Creative creative",
+          "campaignUrn": "123",
+          "campaignName": "Selected",
+          "campaignSelectedMetrics": [
+            "impressions",
+            "clicks"
+          ],
+          "impressions": 0,
+          "clicks": 0,
+          "spend": "0",
+          "conversions": 1,
+          "revenue": "150",
+          "ctr": "0",
+          "cpc": "0",
+          "conversionRate": "0"
+        },
+        {
+          "sessionId": "new",
+          "adId": "creative",
+          "adName": "Creative creative",
+          "campaignUrn": "123",
+          "campaignName": "Selected",
+          "campaignSelectedMetrics": [
+            "impressions",
+            "clicks"
+          ],
+          "impressions": 0,
+          "clicks": 0,
+          "spend": "0",
+          "conversions": 1,
+          "revenue": "150",
+          "ctr": "0",
+          "cpc": "0",
+          "conversionRate": "0"
+        }
+      ],
+      "boundary": "Exact real refresh function; two prior metric rows for one campaign become two campaign iterations; missing conversion value defaults150. Provider/storage mocked."
+    },
+    {
+      "case": "GA4 enrichment duplicates one100 revenue pool across two normalized matches",
+      "updates": [
+        {
+          "platformCampaignId": "a",
+          "date": "2026-10-01",
+          "ga4Revenue": "100.00",
+          "ga4UtmName": "spring"
+        },
+        {
+          "platformCampaignId": "b",
+          "date": "2026-10-02",
+          "ga4Revenue": "100.00",
+          "ga4UtmName": "spring"
+        }
+      ],
+      "sourceRevenue": 100,
+      "boundary": "Exact enrichment and name matcher; assigns90-day aggregate by spend weights instead of source dates, without unique attribution partition."
+    }
+  ]
+}

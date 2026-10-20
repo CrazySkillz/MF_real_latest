@@ -1,0 +1,353 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "executedAt": "2026-10-19T23:13:53.973Z",
+  "boundary": "Actual current page AST query functions, transforms and formatters. Synthetic replies, immediate useMemo, no DOM/provider/database. Does not certify full retained pages or all financial consumers.",
+  "results": [
+    {
+      "case": "Custom revenue HTTP failure becomes confirmed0 and loss100%",
+      "query": {
+        "success": false,
+        "totalRevenue": 0
+      },
+      "actual": {
+        "revenueAvailable": true,
+        "revenue": 0,
+        "spendAvailable": true,
+        "spend": 100,
+        "roas": 0,
+        "roi": -100
+      }
+    },
+    {
+      "case": "Custom malformed successful JSON also becomes confirmed0",
+      "query": {
+        "success": false,
+        "totalRevenue": 0
+      }
+    },
+    {
+      "case": "Custom external Spend failure leaves imported100 as complete total and ROAS2",
+      "actual": {
+        "revenueAvailable": true,
+        "revenue": 200,
+        "spendAvailable": true,
+        "spend": 100,
+        "roas": 2,
+        "roi": 100
+      },
+      "boundary": "Existing imported Spend supplies availability; external amount is unknown, not asserted to be a specific number"
+    },
+    {
+      "case": "Control: actual Custom measured0 revenue with100Spend correctly computes loss100%",
+      "actual": {
+        "revenueAvailable": true,
+        "revenue": 0,
+        "spendAvailable": true,
+        "spend": 100,
+        "roas": 0,
+        "roi": -100
+      }
+    },
+    {
+      "case": "Sheets successful financial totals Revenue0/Spend100 lose zero/negative availability",
+      "actual": {
+        "revenueAvailable": false,
+        "spendAvailable": true,
+        "roi": null,
+        "options": [
+          {
+            "key": "overview.total_revenue",
+            "label": "Total Revenue",
+            "type": "currency",
+            "unit": "$",
+            "currentValue": null,
+            "available": false,
+            "reason": "Requires confirmed Google Sheets revenue",
+            "sourceLabel": "Overview financial metrics",
+            "sourceKind": "confirmed_financial"
+          },
+          {
+            "key": "overview.total_spend",
+            "label": "Total Spend",
+            "type": "currency",
+            "unit": "$",
+            "currentValue": 100,
+            "available": true,
+            "reason": "",
+            "sourceLabel": "Overview financial metrics",
+            "sourceKind": "confirmed_financial"
+          },
+          {
+            "key": "overview.roas",
+            "label": "ROAS",
+            "type": "decimal",
+            "unit": "ratio",
+            "currentValue": null,
+            "available": false,
+            "reason": "Requires confirmed Google Sheets revenue and spend",
+            "sourceLabel": "Overview financial metrics",
+            "sourceKind": "confirmed_financial"
+          },
+          {
+            "key": "overview.roi",
+            "label": "ROI",
+            "type": "decimal",
+            "unit": "%",
+            "currentValue": null,
+            "available": false,
+            "reason": "Requires confirmed Google Sheets revenue and spend",
+            "sourceLabel": "Overview financial metrics",
+            "sourceKind": "confirmed_financial"
+          }
+        ]
+      },
+      "boundary": "Successful exact responses with existing source IDs; cards render Not connected for unavailable amounts"
+    },
+    {
+      "case": "Sheets successful financial totals Revenue100/Spend0 lose zero/negative availability",
+      "actual": {
+        "revenueAvailable": true,
+        "spendAvailable": false,
+        "roi": null,
+        "options": [
+          {
+            "key": "overview.total_revenue",
+            "label": "Total Revenue",
+            "type": "currency",
+            "unit": "$",
+            "currentValue": 100,
+            "available": true,
+            "reason": "",
+            "sourceLabel": "Overview financial metrics",
+            "sourceKind": "confirmed_financial"
+          },
+          {
+            "key": "overview.total_spend",
+            "label": "Total Spend",
+            "type": "currency",
+            "unit": "$",
+            "currentValue": null,
+            "available": false,
+            "reason": "Requires confirmed Google Sheets spend",
+            "sourceLabel": "Overview financial metrics",
+            "sourceKind": "confirmed_financial"
+          },
+          {
+            "key": "overview.roas",
+            "label": "ROAS",
+            "type": "decimal",
+            "unit": "ratio",
+            "currentValue": null,
+            "available": false,
+            "reason": "Requires confirmed Google Sheets revenue and spend",
+            "sourceLabel": "Overview financial metrics",
+            "sourceKind": "confirmed_financial"
+          },
+          {
+            "key": "overview.roi",
+            "label": "ROI",
+            "type": "decimal",
+            "unit": "%",
+            "currentValue": null,
+            "available": false,
+            "reason": "Requires confirmed Google Sheets revenue and spend",
+            "sourceLabel": "Overview financial metrics",
+            "sourceKind": "confirmed_financial"
+          }
+        ]
+      },
+      "boundary": "Successful exact responses with existing source IDs; cards render Not connected for unavailable amounts"
+    },
+    {
+      "case": "Sheets successful financial totals Revenue0/Spend0 lose zero/negative availability",
+      "actual": {
+        "revenueAvailable": false,
+        "spendAvailable": false,
+        "roi": null,
+        "options": [
+          {
+            "key": "overview.total_revenue",
+            "label": "Total Revenue",
+            "type": "currency",
+            "unit": "$",
+            "currentValue": null,
+            "available": false,
+            "reason": "Requires confirmed Google Sheets revenue",
+            "sourceLabel": "Overview financial metrics",
+            "sourceKind": "confirmed_financial"
+          },
+          {
+            "key": "overview.total_spend",
+            "label": "Total Spend",
+            "type": "currency",
+            "unit": "$",
+            "currentValue": null,
+            "available": false,
+            "reason": "Requires confirmed Google Sheets spend",
+            "sourceLabel": "Overview financial metrics",
+            "sourceKind": "confirmed_financial"
+          },
+          {
+            "key": "overview.roas",
+            "label": "ROAS",
+            "type": "decimal",
+            "unit": "ratio",
+            "currentValue": null,
+            "available": false,
+            "reason": "Requires confirmed Google Sheets revenue and spend",
+            "sourceLabel": "Overview financial metrics",
+            "sourceKind": "confirmed_financial"
+          },
+          {
+            "key": "overview.roi",
+            "label": "ROI",
+            "type": "decimal",
+            "unit": "%",
+            "currentValue": null,
+            "available": false,
+            "reason": "Requires confirmed Google Sheets revenue and spend",
+            "sourceLabel": "Overview financial metrics",
+            "sourceKind": "confirmed_financial"
+          }
+        ]
+      },
+      "boundary": "Successful exact responses with existing source IDs; cards render Not connected for unavailable amounts"
+    },
+    {
+      "case": "Sheets successful financial totals Revenue-10/Spend100 lose zero/negative availability",
+      "actual": {
+        "revenueAvailable": false,
+        "spendAvailable": true,
+        "roi": null,
+        "options": [
+          {
+            "key": "overview.total_revenue",
+            "label": "Total Revenue",
+            "type": "currency",
+            "unit": "$",
+            "currentValue": null,
+            "available": false,
+            "reason": "Requires confirmed Google Sheets revenue",
+            "sourceLabel": "Overview financial metrics",
+            "sourceKind": "confirmed_financial"
+          },
+          {
+            "key": "overview.total_spend",
+            "label": "Total Spend",
+            "type": "currency",
+            "unit": "$",
+            "currentValue": 100,
+            "available": true,
+            "reason": "",
+            "sourceLabel": "Overview financial metrics",
+            "sourceKind": "confirmed_financial"
+          },
+          {
+            "key": "overview.roas",
+            "label": "ROAS",
+            "type": "decimal",
+            "unit": "ratio",
+            "currentValue": null,
+            "available": false,
+            "reason": "Requires confirmed Google Sheets revenue and spend",
+            "sourceLabel": "Overview financial metrics",
+            "sourceKind": "confirmed_financial"
+          },
+          {
+            "key": "overview.roi",
+            "label": "ROI",
+            "type": "decimal",
+            "unit": "%",
+            "currentValue": null,
+            "available": false,
+            "reason": "Requires confirmed Google Sheets revenue and spend",
+            "sourceLabel": "Overview financial metrics",
+            "sourceKind": "confirmed_financial"
+          }
+        ]
+      },
+      "boundary": "Conditional successful negative response; provider/import acceptance policies vary"
+    },
+    {
+      "case": "Control: positive Sheets200/100 yields ROAS2/ROI100%",
+      "roas": 2,
+      "roi": 100
+    },
+    {
+      "case": "Sheets financial HTTP failure is normal returned data rather than thrown query error",
+      "actual": {
+        "success": false,
+        "totalRevenue": 0
+      },
+      "boundary": "Amounts subsequently show Not connected because positive-value guard fails; no measured-zero display claim for Sheets"
+    },
+    {
+      "case": "Custom Pipeline HTTP failure displays old mapping100 without warning/freshness fields",
+      "entries": [
+        {
+          "sourceId": "proxy-a",
+          "providerLabel": "HubSpot",
+          "pipelineStageLabel": "open",
+          "totalToDate": 100,
+          "campaignValues": [
+            "A"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "Control: Custom Pipeline successful0 preserves0 instead of old100",
+      "entries": [
+        {
+          "sourceId": "proxy-a",
+          "providerLabel": "HubSpot",
+          "pipelineStageLabel": "open",
+          "totalToDate": 0,
+          "campaignValues": []
+        }
+      ]
+    },
+    {
+      "case": "Sheets Pipeline HTTP failure displays old mapping100 without warning/freshness fields",
+      "entries": [
+        {
+          "sourceId": "proxy-a",
+          "providerLabel": "HubSpot",
+          "pipelineStageLabel": "open",
+          "totalToDate": 100,
+          "campaignValues": [
+            "A"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "Control: Sheets Pipeline successful0 preserves0 instead of old100",
+      "entries": [
+        {
+          "sourceId": "proxy-a",
+          "providerLabel": "HubSpot",
+          "pipelineStageLabel": "open",
+          "totalToDate": 0,
+          "campaignValues": []
+        }
+      ]
+    },
+    {
+      "case": "Sheets currency-aware Overview and fixed-dollar financial metric-option contract differ",
+      "overviewEur100": "€100.00",
+      "metricOption": {
+        "key": "overview.total_revenue",
+        "label": "Total Revenue",
+        "type": "currency",
+        "unit": "$",
+        "currentValue": 200,
+        "available": true,
+        "reason": "",
+        "sourceLabel": "Overview financial metrics",
+        "sourceKind": "confirmed_financial"
+      },
+      "boundary": "Option propagation to saved KPI/report currency requires independent validation; existing field contract proven, no live saved record asserted"
+    }
+  ]
+}

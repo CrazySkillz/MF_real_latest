@@ -1,0 +1,96 @@
+{
+  "at": "2026-10-19T19:22:02.569Z",
+  "boundary": "Fresh signed-out context. All non-read requests blocked. No authentication, campaign data, form submission, provider connection or email.",
+  "results": [
+    {
+      "path": "/sign-in",
+      "finalUrl": "https://marketforensics.onrender.com/sign-in",
+      "text": "Sign in to mimosaas\n\nWelcome back! Please sign in to continue\n\nEmail address\nPassword\nContinue\nDon’t have an account?\nSign up\nPrivacy Policy",
+      "links": [
+        {
+          "text": "Sign up",
+          "url": "https://marketforensics.onrender.com/sign-up"
+        },
+        {
+          "text": "Privacy Policy",
+          "url": "https://marketforensics.onrender.com/privacy"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "path": "/sign-up",
+      "finalUrl": "https://marketforensics.onrender.com/sign-up",
+      "text": "Create your account\n\nWelcome! Please fill in the details to get started.\n\nEmail address\nPassword\nContinue\nAlready have an account?\nSign in\nPrivacy Policy",
+      "links": [
+        {
+          "text": "Sign in",
+          "url": "https://marketforensics.onrender.com/sign-up"
+        },
+        {
+          "text": "Privacy Policy",
+          "url": "https://marketforensics.onrender.com/privacy"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "path": "/privacy",
+      "finalUrl": "https://marketforensics.onrender.com/privacy",
+      "text": "MimoSaaS\nPrivacy Policy\n\nEffective date: September 29, 2026\n\n1. About this policy\n\nMimoSaaS is a marketing analytics service that lets organisations connect marketing and business data, monitor campaign performance, create reports, and receive performance alerts. This policy explains how MimoSaaS (\"we\", \"us\", or \"our\") collects, uses, stores, and shares information when you use mimosaas.app and its related services.\n\n2. Information we collect\nAccount information: your name, email address, user identifier, and authentication information provided through our identity provider.\nWorkspace information: client names, campaign details, budgets, targets, benchmarks, reports, alert settings, and information you upload or enter.\nConnected-service information: account and property identifiers, campaign data, analytics metrics, advertising metrics, ecommerce or CRM data, and spreadsheet data that you authorise us to access.\nTechnical information: IP address, browser and device information, session data, security events, and application logs.\nCommunications: support requests, report recipients, alert recipients, and messages you submit through service features.\n3. Google user data\n\nWhen you connect a Google account, MimoSaaS requests the access needed for the feature you select. Google Analytics and Google Sheets use read-only access. For Google Analytics, this includes your Google account email address, accessible Analytics accounts and properties, and GA4 reporting data such as sessions, users, conversions, engagement, campaign attribution, and revenue metrics. For Google Sheets, this may include spreadsheet and file metadata and the contents of sheets you select. Google Ads uses Google's advertising API scope to list accessible accounts and retrieve reporting data for the accounts and campaigns you select.\n\nWe use Google user data to connect the source you requested, import and refresh campaign metrics, calculate campaign performance, display dashboards, evaluate KPIs and benchmarks, create alerts, and generate reports. We store OAuth credentials, selected-source settings, imported metrics, and derived analytics for as long as needed to maintain the connection and provide these features.\n\nGoogle user data is visible only to authorised users of the relevant MimoSaaS workspace and to service providers that process data for us as necessary to operate the service. MimoSaaS does not sell Google user data or use it for advertising.\n\nMimoSaaS's use and transfer of information received from Google APIs adheres to the Google API Services User Data Policy, including its Limited Use requirements.\n\n4. How we use information\nProvide, maintain, secure, and troubleshoot MimoSaaS.\nAuthenticate users and enforce workspace and campaign access.\nImport, organise, analyse, and present connected campaign data.\nGenerate dashboards, reports, and notifications.\nSend service messages, scheduled reports, and alerts configured by users.\nPrevent misuse, comply with legal obligations, and protect our users and service.\n5. How we share information\n\nWe may share information only in these circumstances:\n\nWith authorised members of your organisation or workspace.\nWith vendors that provide authentication, hosting, database, email delivery, security, and support services on our behalf.\nWith connected platforms when you direct MimoSaaS to authenticate, retrieve, refresh, or send data.\nWhen required by law or necessary to protect rights, safety, and service integrity.\nAs part of a merger, acquisition, financing, or sale, subject to appropriate confidentiality and notice requirements.\n\nWe do not sell personal information or connected-source data.\n\n6. Retention and deletion\n\nWe retain information while your account, campaign, or source connection is active and as needed to provide the service. We may retain limited security, audit, delivery, backup, and legal records for legitimate operational or legal purposes. You can disconnect a source to stop future access, delete campaigns or clients using available product controls, or contact us to request deletion of your account and associated personal data. We will process verified deletion requests subject to legal and security retention needs.\n\n7. Your choices and rights\n\nDepending on where you live, you may have rights to access, correct, delete, restrict, object to, or receive a copy of your personal data, and to withdraw consent. You can revoke MimoSaaS's Google access from your Google Account permissions. Revoking access stops future Google API access but does not automatically delete data already imported into MimoSaaS; contact us or use the available deletion controls for deletion requests.\n\n8. Security and international processing\n\nWe use administrative, technical, and organisational safeguards designed to protect information. No online service can guarantee absolute security. MimoSaaS and its service providers may process information in countries other than your own, using legally required safeguards where applicable.\n\n9. Children\n\nMimoSaaS is a business service and is not directed to children under 16. We do not knowingly collect personal information from children under 16.\n\n10. Changes to this policy\n\nWe may update this policy when our service or legal obligations change. We will update the effective date and provide additional notice when required.\n\n11. Contact us\n\nFor privacy questions, rights requests, or deletion requests, email alerts@mimosaas.app.",
+      "links": [
+        {
+          "text": "MimoSaaS",
+          "url": "https://marketforensics.onrender.com/sign-in"
+        },
+        {
+          "text": "Google API Services User Data Policy",
+          "url": "https://developers.google.com/terms/api-services-user-data-policy"
+        },
+        {
+          "text": "Google Account permissions",
+          "url": "https://myaccount.google.com/permissions"
+        },
+        {
+          "text": "alerts@mimosaas.app",
+          "url": "mailto:alerts@mimosaas.app"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "path": "/campaigns",
+      "finalUrl": "https://marketforensics.onrender.com/sign-in",
+      "text": "Sign in to mimosaas\n\nWelcome back! Please sign in to continue\n\nEmail address\nPassword\nContinue\nDon’t have an account?\nSign up\nPrivacy Policy",
+      "links": [
+        {
+          "text": "Sign up",
+          "url": "https://marketforensics.onrender.com/sign-up"
+        },
+        {
+          "text": "Privacy Policy",
+          "url": "https://marketforensics.onrender.com/privacy"
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "blocked": [
+    {
+      "method": "POST",
+      "host": "frank-peacock-20.clerk.accounts.dev"
+    },
+    {
+      "method": "POST",
+      "host": "frank-peacock-20.clerk.accounts.dev"
+    },
+    {
+      "method": "POST",
+      "host": "frank-peacock-20.clerk.accounts.dev"
+    },
+    {
+      "method": "POST",
+      "host": "frank-peacock-20.clerk.accounts.dev"
+    }
+  ]
+}

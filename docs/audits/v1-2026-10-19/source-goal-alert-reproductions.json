@@ -1,0 +1,193 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "executedAt": "2026-10-19T23:41:07.748Z",
+  "boundary": "Actual current page resolvers, server campaign/GA4 decision functions and threshold evaluator. Fixture current source/storage values; no database mutation, scheduler execution, notification insertion or email. No claim that a real recipient received an incorrect message.",
+  "unexpectedSourceReads": 0,
+  "results": [
+    {
+      "case": "custom_integration/kpi/latest-lower",
+      "storedValue": 100,
+      "currentUiValue": 10,
+      "currentUiAvailable": true,
+      "serverDecisionValue": 100,
+      "serverBreached": true,
+      "currentUiBreached": false,
+      "serverEligibilityBlocked": false,
+      "boundary": "Actual page source-identity guard and native metric resolver; current import and connection are fixtures."
+    },
+    {
+      "case": "custom_integration/kpi/latest-higher",
+      "storedValue": 10,
+      "currentUiValue": 100,
+      "currentUiAvailable": true,
+      "serverDecisionValue": 10,
+      "serverBreached": false,
+      "currentUiBreached": true,
+      "serverEligibilityBlocked": false,
+      "boundary": "Actual page source-identity guard and native metric resolver; current import and connection are fixtures."
+    },
+    {
+      "case": "custom_integration/kpi/latest-zero",
+      "storedValue": 100,
+      "currentUiValue": 0,
+      "currentUiAvailable": true,
+      "serverDecisionValue": 100,
+      "serverBreached": true,
+      "currentUiBreached": false,
+      "serverEligibilityBlocked": false,
+      "boundary": "Actual page source-identity guard and native metric resolver; current import and connection are fixtures."
+    },
+    {
+      "case": "custom_integration/kpi/source-unavailable",
+      "storedValue": 100,
+      "currentUiValue": null,
+      "currentUiAvailable": false,
+      "serverDecisionValue": 100,
+      "serverBreached": true,
+      "currentUiBreached": null,
+      "serverEligibilityBlocked": false,
+      "boundary": "Actual page source-identity guard and native metric resolver; current import and connection are fixtures."
+    },
+    {
+      "case": "custom_integration/benchmark/latest-lower",
+      "storedValue": 100,
+      "currentUiValue": 10,
+      "currentUiAvailable": true,
+      "serverDecisionValue": 100,
+      "serverBreached": true,
+      "currentUiBreached": false,
+      "serverEligibilityBlocked": false,
+      "boundary": "Actual page source-identity guard and native metric resolver; current import and connection are fixtures."
+    },
+    {
+      "case": "custom_integration/benchmark/latest-higher",
+      "storedValue": 10,
+      "currentUiValue": 100,
+      "currentUiAvailable": true,
+      "serverDecisionValue": 10,
+      "serverBreached": false,
+      "currentUiBreached": true,
+      "serverEligibilityBlocked": false,
+      "boundary": "Actual page source-identity guard and native metric resolver; current import and connection are fixtures."
+    },
+    {
+      "case": "custom_integration/benchmark/latest-zero",
+      "storedValue": 100,
+      "currentUiValue": 0,
+      "currentUiAvailable": true,
+      "serverDecisionValue": 100,
+      "serverBreached": true,
+      "currentUiBreached": false,
+      "serverEligibilityBlocked": false,
+      "boundary": "Actual page source-identity guard and native metric resolver; current import and connection are fixtures."
+    },
+    {
+      "case": "custom_integration/benchmark/source-unavailable",
+      "storedValue": 100,
+      "currentUiValue": null,
+      "currentUiAvailable": false,
+      "serverDecisionValue": 100,
+      "serverBreached": true,
+      "currentUiBreached": null,
+      "serverEligibilityBlocked": false,
+      "boundary": "Actual page source-identity guard and native metric resolver; current import and connection are fixtures."
+    },
+    {
+      "case": "google_sheets/kpi/latest-lower",
+      "storedValue": 100,
+      "currentUiValue": 10,
+      "currentUiAvailable": true,
+      "serverDecisionValue": 100,
+      "serverBreached": true,
+      "currentUiBreached": false,
+      "serverEligibilityBlocked": false,
+      "boundary": "Actual page goal resolver with pre-resolved saved-source options fixture; upstream Sheets query/scope matching separately audited."
+    },
+    {
+      "case": "google_sheets/kpi/latest-higher",
+      "storedValue": 10,
+      "currentUiValue": 100,
+      "currentUiAvailable": true,
+      "serverDecisionValue": 10,
+      "serverBreached": false,
+      "currentUiBreached": true,
+      "serverEligibilityBlocked": false,
+      "boundary": "Actual page goal resolver with pre-resolved saved-source options fixture; upstream Sheets query/scope matching separately audited."
+    },
+    {
+      "case": "google_sheets/kpi/latest-zero",
+      "storedValue": 100,
+      "currentUiValue": 0,
+      "currentUiAvailable": true,
+      "serverDecisionValue": 100,
+      "serverBreached": true,
+      "currentUiBreached": false,
+      "serverEligibilityBlocked": false,
+      "boundary": "Actual page goal resolver with pre-resolved saved-source options fixture; upstream Sheets query/scope matching separately audited."
+    },
+    {
+      "case": "google_sheets/kpi/source-unavailable",
+      "storedValue": 100,
+      "currentUiValue": null,
+      "currentUiAvailable": false,
+      "serverDecisionValue": 100,
+      "serverBreached": true,
+      "currentUiBreached": null,
+      "serverEligibilityBlocked": false,
+      "boundary": "Actual page goal resolver with pre-resolved saved-source options fixture; upstream Sheets query/scope matching separately audited."
+    },
+    {
+      "case": "google_sheets/benchmark/latest-lower",
+      "storedValue": 100,
+      "currentUiValue": 10,
+      "currentUiAvailable": true,
+      "serverDecisionValue": 100,
+      "serverBreached": true,
+      "currentUiBreached": false,
+      "serverEligibilityBlocked": false,
+      "boundary": "Actual page goal resolver with pre-resolved saved-source options fixture; upstream Sheets query/scope matching separately audited."
+    },
+    {
+      "case": "google_sheets/benchmark/latest-higher",
+      "storedValue": 10,
+      "currentUiValue": 100,
+      "currentUiAvailable": true,
+      "serverDecisionValue": 10,
+      "serverBreached": false,
+      "currentUiBreached": true,
+      "serverEligibilityBlocked": false,
+      "boundary": "Actual page goal resolver with pre-resolved saved-source options fixture; upstream Sheets query/scope matching separately audited."
+    },
+    {
+      "case": "google_sheets/benchmark/latest-zero",
+      "storedValue": 100,
+      "currentUiValue": 0,
+      "currentUiAvailable": true,
+      "serverDecisionValue": 100,
+      "serverBreached": true,
+      "currentUiBreached": false,
+      "serverEligibilityBlocked": false,
+      "boundary": "Actual page goal resolver with pre-resolved saved-source options fixture; upstream Sheets query/scope matching separately audited."
+    },
+    {
+      "case": "google_sheets/benchmark/source-unavailable",
+      "storedValue": 100,
+      "currentUiValue": null,
+      "currentUiAvailable": false,
+      "serverDecisionValue": 100,
+      "serverBreached": true,
+      "currentUiBreached": null,
+      "serverEligibilityBlocked": false,
+      "boundary": "Actual page goal resolver with pre-resolved saved-source options fixture; upstream Sheets query/scope matching separately audited."
+    },
+    {
+      "case": "Manual custom-value control intentionally uses persisted100",
+      "currentUiValue": 100,
+      "serverBreached": true
+    },
+    {
+      "case": "Alerts-disabled control does not breach",
+      "serverBreached": false
+    }
+  ]
+}

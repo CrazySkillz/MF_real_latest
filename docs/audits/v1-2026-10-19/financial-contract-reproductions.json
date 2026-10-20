@@ -1,0 +1,53 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "results": [
+    {
+      "case": "All-date revenue fallback cannot recognize sourceId returned by its breakdown helper",
+      "breakdown": [
+        {
+          "sourceId": "source-fixture",
+          "displayName": "Fixture",
+          "sourceType": "csv",
+          "revenue": 100,
+          "currency": "USD"
+        }
+      ],
+      "failure": {
+        "code": "GA4_REVENUE_MATERIALIZATION_INCOMPLETE",
+        "message": "Active GA4 revenue source has no materialized revenue record",
+        "sourceIds": [
+          "source-fixture"
+        ]
+      },
+      "boundary": "Exact storage method and completeness helper; SQL predicates mocked, date-filtered result empty, actual breakdown contract supplied. Control with revenueSourceId passes."
+    },
+    {
+      "case": "Valid negative native revenue is accepted upstream but rejected by cumulative financial publication",
+      "upstreamCandidateAccepted": true,
+      "revenue": -10,
+      "error": "Available cumulative revenue requires a non-negative value and authoritative sources",
+      "boundary": "Actual financial helpers and shared Zod schema; no storage or provider."
+    },
+    {
+      "case": "Control: measured zero revenue remains available with ROI -100%",
+      "financials": {
+        "nativeRevenue": 0,
+        "importedRevenue": 0,
+        "totalRevenue": 0,
+        "spend": 100,
+        "conversions": 2,
+        "profit": -100,
+        "roas": 0,
+        "roi": -100,
+        "cpa": 50
+      },
+      "snapshotRevenue": {
+        "value": "0.00",
+        "available": true,
+        "sources": [
+          "ga4"
+        ]
+      }
+    }
+  ]
+}

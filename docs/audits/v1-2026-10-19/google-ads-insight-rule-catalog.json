@@ -1,0 +1,327 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "file": "client/src/pages/google-ads-analytics.tsx",
+  "boundary": "Exact current enclosing branch conditions/output expressions, including else negation. Loop continue/early-return and sibling-flag effects require the complete expression retained here. Source inventory, not rendered/provider narrative certification.",
+  "completeExpression": "(() => {\r\n    type InsightItem = { id: string; title: string; description: string; severity: 'high' | 'medium' | 'low'; recommendation: string; group: 'integrity' | 'performance'; reliability: 'high' | 'medium' | 'low'; evidence?: string[]; confidence?: 'high' | 'medium' | 'low' };\r\n    const all: InsightItem[] = [];\r\n    const d = insightsRollups.deltas;\r\n    const l7 = insightsRollups.last7;\r\n    const p7 = insightsRollups.prior7;\r\n    const avail = insightsRollups.availableDays;\r\n    const hasWoW = avail >= GADS_THRESHOLDS.minDaysForWoW;\r\n\r\n    // Mutual exclusion flags\r\n    let firedQualityScoreDecline = false;\r\n    let firedLandingPageRegression = false;\r\n    let firedCampaignCtrOutlier = false;\r\n\r\n    // ─── TIER 1: DATA INTEGRITY ───────────────────────────────────────\r\n\r\n    // Rule 1: Spend with zero conversions\r\n    if (summary.spend > 0 && summary.conversions === 0) {\r\n      all.push({\r\n        id: 'integrity:no-conversions', severity: 'high', group: 'integrity', reliability: 'high',\r\n        title: 'Spend recorded but zero conversions',\r\n        description: `${fmtCurrency(summary.spend)} spent across ${campaignBreakdown.length} campaign(s) with 0 conversions. This may indicate broken conversion tracking, not poor performance.`,\r\n        recommendation: 'Verify conversion actions are properly configured in Google Ads. Check: (1) Global site tag / Google Tag is installed, (2) Conversion actions are active and not recently edited, (3) Attribution window has not expired. If tracking is confirmed correct, pause underperforming campaigns.',\r\n        evidence: [fmtCurrency(summary.spend) + ' total spend', fmt(summary.impressions) + ' impressions', fmt(summary.clicks) + ' clicks', '0 conversions'],\r\n      });\r\n    }\r\n\r\n    // Rule 2: Conversions exist but value is $0\r\n    if (summary.conversions > 0 && summary.conversionValue === 0) {\r\n      all.push({\r\n        id: 'integrity:conv-value-zero', severity: 'high', group: 'integrity', reliability: 'high',\r\n        title: 'Conversions tracked but conversion value is $0',\r\n        description: `${Math.round(summary.conversions)} conversions recorded, but native Google Ads conversion value is $0. Conversion-value ROAS (${summary.roas.toFixed(2)}x) and conversion-value ROI (${summary.roi.toFixed(1)}%) cannot be trusted until values are assigned in Google Ads.`,\r\n        recommendation: 'Assign conversion values in Google Ads > Goals > Conversions > Settings. For e-commerce, use dynamic values from your checkout. For lead gen, assign estimated values per lead type. Imported Google Ads attributed revenue remains separate when connected.',\r\n        evidence: [Math.round(summary.conversions) + ' conversions', '$0 conversion value', 'Conversion-value ROAS: ' + summary.roas.toFixed(2) + 'x (unreliable)'],\r\n      });\r\n    }\r\n\r\n    // Rule 3: Impressions but zero clicks\r\n    if (summary.impressions > 0 && summary.clicks === 0) {\r\n      all.push({\r\n        id: 'integrity:impressions-no-clicks', severity: 'high', group: 'integrity', reliability: 'high',\r\n        title: 'Ads showing but nobody clicking',\r\n        description: `${fmt(summary.impressions)} impressions with 0 clicks (0.00% CTR). Ads are being served but generating zero engagement.`,\r\n        recommendation: 'Check: (1) Ad relevance and Quality Score in the Google Ads UI, (2) Keyword-to-ad alignment, (3) Whether ads are showing for intended search terms via Search Terms report. Consider pausing campaigns until ads are revised.',\r\n        evidence: [fmt(summary.impressions) + ' impressions', '0 clicks', '0.00% CTR'],\r\n      });\r\n    }\r\n\r\n    // Rule 4: Zero spend across all campaigns\r\n    if (summary.spend === 0 && summary.impressions === 0 && campaignBreakdown.length > 0) {\r\n      all.push({\r\n        id: 'integrity:zero-spend', severity: 'medium', group: 'integrity', reliability: 'high',\r\n        title: 'Campaigns exist but no spend or impressions recorded',\r\n        description: `${campaignBreakdown.length} campaign(s) found but $0 spend and 0 impressions in the reporting window. Campaigns may be paused, budgets exhausted, or ads disapproved.`,\r\n        recommendation: 'Check campaign status in the Google Ads UI. Verify: (1) Campaigns are not paused/removed, (2) Daily budgets are set, (3) Ads are approved, (4) Billing is active.',\r\n        evidence: [campaignBreakdown.length + ' campaigns', '$0 spend', '0 impressions'],\r\n      });\r\n    }\r\n\r\n    // ─── TIER 2: FINANCIAL PERFORMANCE ────────────────────────────────\r\n\r\n    const insightsRevenueValue = hasGoogleAdsAttributedRevenue ? googleAdsAttributedRevenue : summary.conversionValue;\r\n    const insightsRoasValue = hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoas : summary.roas;\r\n    const insightsRoiValue = hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoi : summary.roi;\r\n    const insightsRevenueLabel = hasGoogleAdsAttributedRevenue ? 'imported Google Ads attributed revenue' : 'native Google Ads conversion value';\r\n    const insightsRevenueEvidenceLabel = hasGoogleAdsAttributedRevenue ? 'Imported revenue' : 'Conversion value';\r\n    const insightsRoasTitlePrefix = hasGoogleAdsAttributedRevenue ? 'Attributed-revenue' : 'Conversion-value';\r\n    const insightsRevenueRecommendation = hasGoogleAdsAttributedRevenue\r\n      ? 'This uses imported Google Ads attributed revenue, not native Google Ads conversion value.'\r\n      : 'This is conversion-value efficiency, not business revenue. Connect a Google Ads attributed revenue source before using ROI/ROAS as business revenue metrics.';\r\n\r\n    // Rule 5: Negative ROI\r\n    if (insightsRevenueValue > 0 && summary.spend > 0 && insightsRoiValue < 0 && summary.conversions >= 5) {\r\n      all.push({\r\n        id: 'financial:negative-roi', severity: insightsRoiValue <= -20 ? 'high' : 'medium', group: 'performance', reliability: computeGadsReliability('roi'),\r\n        title: `${insightsRoasTitlePrefix} ROI is ${insightsRoiValue.toFixed(1)}%`,\r\n        description: `Spend of ${fmtCurrency(summary.spend)} is higher than ${fmtCurrency(insightsRevenueValue)} in ${insightsRevenueLabel} (ROI: ${insightsRoiValue.toFixed(1)}%).`,\r\n        recommendation: `${insightsRevenueRecommendation} Review the ${campaignBreakdown.length} active campaign(s). Consider pausing campaigns with CPA above target and reallocating budget to campaigns with the strongest efficiency.`,\r\n        evidence: ['Spend: ' + fmtCurrency(summary.spend), insightsRevenueEvidenceLabel + ': ' + fmtCurrency(insightsRevenueValue), 'ROI: ' + insightsRoiValue.toFixed(1) + '%'],\r\n      });\r\n    }\r\n\r\n    // Rule 6: ROAS below breakeven\r\n    if (insightsRevenueValue > 0 && summary.spend > 0 && insightsRoasValue > 0 && insightsRoasValue < 1 && summary.conversions >= 5) {\r\n      all.push({\r\n        id: 'financial:roas-below-1', severity: insightsRoasValue < 0.5 ? 'high' : 'medium', group: 'performance', reliability: computeGadsReliability('roas'),\r\n        title: `${insightsRoasTitlePrefix} ROAS is ${insightsRoasValue.toFixed(2)}x`,\r\n        description: `Every $1 spent returns ${fmtCurrency(insightsRoasValue)} in ${insightsRevenueLabel}. This is below a 1.0x value-to-spend ratio.`,\r\n        recommendation: `${insightsRevenueRecommendation} Audit campaign-level efficiency in the Ad Comparison tab. For underperforming campaigns, review keyword match types, negative keywords, audience segments, and bid strategy.`,\r\n        evidence: ['ROAS: ' + insightsRoasValue.toFixed(2) + 'x', 'Spend: ' + fmtCurrency(summary.spend), insightsRevenueEvidenceLabel + ': ' + fmtCurrency(insightsRevenueValue)],\r\n      });\r\n    }\r\n\r\n    // Rule 7: Diminishing returns — spend up but conversions flat\r\n    if (hasWoW && d.spend7 >= 20 && Math.abs(d.conversions7) < 10 && l7.spend >= GADS_THRESHOLDS.minSpend7d && p7.conversions >= GADS_THRESHOLDS.minConversions7d) {\r\n      all.push({\r\n        id: 'financial:diminishing-returns', severity: d.spend7 >= 40 ? 'high' : 'medium', group: 'performance', reliability: computeGadsReliability('conversions'),\r\n        title: `Spend up ${d.spend7.toFixed(0)}% WoW but conversions flat`,\r\n        description: `Week-over-week spend increased from ${fmtCurrency(p7.spend)} to ${fmtCurrency(l7.spend)} (+${d.spend7.toFixed(1)}%), but conversions moved only ${d.conversions7 >= 0 ? '+' : ''}${d.conversions7.toFixed(1)}% (${Math.round(p7.conversions)} to ${Math.round(l7.conversions)}). This suggests diminishing returns on incremental spend.`,\r\n        recommendation: 'You may be hitting audience saturation or bidding into less efficient auction segments. Review: (1) Search Impression Share — are you already capturing most available demand? (2) Audience overlap across campaigns, (3) Whether new spend is going to existing or new keywords.',\r\n        evidence: ['Spend: ' + fmtCurrency(p7.spend) + ' → ' + fmtCurrency(l7.spend), 'Conversions: ' + Math.round(p7.conversions) + ' → ' + Math.round(l7.conversions), 'Spend delta: +' + d.spend7.toFixed(1) + '%', 'Conv delta: ' + (d.conversions7 >= 0 ? '+' : '') + d.conversions7.toFixed(1) + '%'],\r\n      });\r\n    }\r\n\r\n    // ─── TIER 3: WEEK-OVER-WEEK ANOMALY DETECTION ─────────────────────\r\n\r\n    if (hasWoW) {\r\n      // Rule 8: Quality Score decline signal — CPC spike + CTR drop\r\n      if (d.cpc7 >= GADS_THRESHOLDS.cpcSpikePct && d.ctr7 <= -GADS_THRESHOLDS.ctrDropPct && p7.clicks >= GADS_THRESHOLDS.minClicks7d && p7.impressions >= GADS_THRESHOLDS.minImpressions7d) {\r\n        firedQualityScoreDecline = true;\r\n        all.push({\r\n          id: 'anomaly:quality-score-decline', severity: 'high', group: 'performance', reliability: computeGadsReliability('cpc'),\r\n          title: `Quality Score may be declining: CPC up ${d.cpc7.toFixed(0)}%, CTR down ${Math.abs(d.ctr7).toFixed(0)}%`,\r\n          description: `CPC increased from ${fmtCurrency(p7.cpc)} to ${fmtCurrency(l7.cpc)} (+${d.cpc7.toFixed(1)}%) while CTR dropped from ${fmtPct(p7.ctr)} to ${fmtPct(l7.ctr)} (${d.ctr7.toFixed(1)}%). In Google Ads, this combination is a strong signal that Quality Score is declining, causing you to pay more for lower ad positions.`,\r\n          recommendation: 'Check Quality Score in the Google Ads UI (Keywords tab > add Quality Score column). Focus on: (1) Ad relevance — ensure ad copy tightly matches keyword intent, (2) Landing page experience — speed, mobile-friendliness, relevance, (3) Expected CTR — test new ad variations. Improving Quality Score reduces CPC and improves ad position.',\r\n          evidence: ['CPC: ' + fmtCurrency(p7.cpc) + ' → ' + fmtCurrency(l7.cpc), 'CTR: ' + fmtPct(p7.ctr) + ' → ' + fmtPct(l7.ctr), 'Period: ' + l7.startDate + ' to ' + l7.endDate],\r\n        });\r\n      }\r\n\r\n      // Rule 9: Landing page regression — CVR drop with stable CTR\r\n      if (d.conversionRate7 <= -GADS_THRESHOLDS.cvrDropPct && Math.abs(d.ctr7) <= GADS_THRESHOLDS.stableBandPct && p7.clicks >= GADS_THRESHOLDS.minClicks7d && p7.conversions >= GADS_THRESHOLDS.minConversions7d) {\r\n        firedLandingPageRegression = true;\r\n        all.push({\r\n          id: 'anomaly:landing-page-regression', severity: 'high', group: 'performance', reliability: computeGadsReliability('conversionrate'),\r\n          title: `Landing page regression: CVR down ${Math.abs(d.conversionRate7).toFixed(0)}%, CTR stable`,\r\n          description: `Conversion rate dropped from ${fmtPct(p7.conversionRate)} to ${fmtPct(l7.conversionRate)} (${d.conversionRate7.toFixed(1)}%) while CTR remained stable at ~${fmtPct(l7.ctr)}. People are clicking your ads at the same rate but converting less — this points to a post-click issue, not an ad issue.`,\r\n          recommendation: 'Investigate post-click experience: (1) Check for landing page changes or errors, (2) Test page load speed (Google PageSpeed Insights), (3) Verify form/checkout flows, (4) Check if mobile vs desktop conversion rates diverged, (5) Review the Search Terms report for new irrelevant queries consuming clicks.',\r\n          evidence: ['CVR: ' + fmtPct(p7.conversionRate) + ' → ' + fmtPct(l7.conversionRate), 'CTR: ' + fmtPct(p7.ctr) + ' → ' + fmtPct(l7.ctr) + ' (stable)', 'Conversions: ' + Math.round(p7.conversions) + ' → ' + Math.round(l7.conversions)],\r\n        });\r\n      }\r\n\r\n      // Rule 10: General CVR drop (CTR not stable) — only if Rule 9 didn't fire\r\n      if (!firedLandingPageRegression && d.conversionRate7 <= -GADS_THRESHOLDS.cvrDropPct && p7.clicks >= GADS_THRESHOLDS.minClicks7d && p7.conversions >= GADS_THRESHOLDS.minConversions7d) {\r\n        all.push({\r\n          id: 'anomaly:cvr-drop', severity: Math.abs(d.conversionRate7) >= 40 ? 'high' : 'medium', group: 'performance', reliability: computeGadsReliability('conversionrate'),\r\n          title: `Conversion rate dropped ${Math.abs(d.conversionRate7).toFixed(0)}% week-over-week`,\r\n          description: `CVR went from ${fmtPct(p7.conversionRate)} to ${fmtPct(l7.conversionRate)} (${d.conversionRate7.toFixed(1)}%). CTR also shifted (${d.ctr7 >= 0 ? '+' : ''}${d.ctr7.toFixed(1)}%), suggesting a broader targeting or competitive shift rather than an isolated landing page issue.`,\r\n          recommendation: 'Multiple factors may be contributing. Check: (1) Search Terms report for query drift, (2) Audience segment performance, (3) Competitor activity via Auction Insights, (4) Landing page experience. If using Smart Bidding, check the Strategy report for learning period alerts.',\r\n          evidence: ['CVR: ' + fmtPct(p7.conversionRate) + ' → ' + fmtPct(l7.conversionRate), 'CTR: ' + fmtPct(p7.ctr) + ' → ' + fmtPct(l7.ctr), 'Clicks: ' + fmt(p7.clicks) + ' → ' + fmt(l7.clicks)],\r\n        });\r\n      }\r\n\r\n      // Rule 11: CPC spike (standalone) — only if Rule 8 didn't fire\r\n      if (!firedQualityScoreDecline && d.cpc7 >= GADS_THRESHOLDS.cpcSpikePct && p7.clicks >= GADS_THRESHOLDS.minClicks7d) {\r\n        all.push({\r\n          id: 'anomaly:cpc-spike', severity: d.cpc7 >= 40 ? 'high' : 'medium', group: 'performance', reliability: computeGadsReliability('cpc'),\r\n          title: `CPC spiked ${d.cpc7.toFixed(0)}% week-over-week`,\r\n          description: `Cost-per-click rose from ${fmtCurrency(p7.cpc)} to ${fmtCurrency(l7.cpc)} (+${d.cpc7.toFixed(1)}%). This could indicate increased auction competition, keyword match type broadening, or bid strategy adjustments taking effect.`,\r\n          recommendation: 'Check Auction Insights for new competitors. Review: (1) Bid strategy changes in the last 7 days, (2) Keyword match type settings (broad match can cause CPC variance), (3) Whether new high-CPC keywords were added. If using Target CPA/ROAS, verify the target has not been changed.',\r\n          evidence: ['CPC: ' + fmtCurrency(p7.cpc) + ' → ' + fmtCurrency(l7.cpc), 'Spend: ' + fmtCurrency(p7.spend) + ' → ' + fmtCurrency(l7.spend), 'Clicks: ' + fmt(p7.clicks) + ' → ' + fmt(l7.clicks)],\r\n        });\r\n      }\r\n\r\n      // Rule 12: Impression decay\r\n      if (d.impressions7 <= -GADS_THRESHOLDS.impressionDecayPct && p7.impressions >= GADS_THRESHOLDS.minImpressions7d) {\r\n        const sisNote = summary.searchImpressionShare > 0 ? ` Current Search Impression Share is ${fmtPct(summary.searchImpressionShare)}.` : '';\r\n        const sisRec = summary.searchImpressionShare > 0 && summary.searchImpressionShare < 50 ? ` With Search Impression Share at ${fmtPct(summary.searchImpressionShare)}, there is significant room to capture more demand.` : '';\r\n        all.push({\r\n          id: 'anomaly:impression-decay', severity: Math.abs(d.impressions7) >= 40 ? 'high' : 'medium', group: 'performance', reliability: computeGadsReliability('impressions'),\r\n          title: `Impressions dropped ${Math.abs(d.impressions7).toFixed(0)}% week-over-week`,\r\n          description: `Impressions fell from ${fmt(p7.impressions)} to ${fmt(l7.impressions)} (${d.impressions7.toFixed(1)}%).${sisNote} Reduced reach means fewer opportunities to convert.`,\r\n          recommendation: `Investigate: (1) Budget exhaustion — check if campaigns are 'Limited by budget', (2) Bid competitiveness — you may be losing auctions, (3) Search demand changes (seasonal?), (4) Ad Schedule / geo restrictions narrowing delivery.${sisRec}`,\r\n          evidence: ['Impressions: ' + fmt(p7.impressions) + ' → ' + fmt(l7.impressions), 'Delta: ' + d.impressions7.toFixed(1) + '%', summary.searchImpressionShare > 0 ? 'Search Imp. Share: ' + fmtPct(summary.searchImpressionShare) : 'Search Imp. Share: N/A'],\r\n        });\r\n      }\r\n\r\n      // Rule 13: CPM surge\r\n      if (d.cpm7 >= GADS_THRESHOLDS.cpmSpikePct && p7.impressions >= GADS_THRESHOLDS.minImpressions7d) {\r\n        all.push({\r\n          id: 'anomaly:cpm-surge', severity: 'medium', group: 'performance', reliability: computeGadsReliability('cpm'),\r\n          title: `CPM up ${d.cpm7.toFixed(0)}% — auction costs rising`,\r\n          description: `Cost per thousand impressions rose from ${fmtCurrency(p7.cpm)} to ${fmtCurrency(l7.cpm)} (+${d.cpm7.toFixed(1)}%). Higher CPM means you're paying more for the same audience reach, which can erode overall campaign efficiency.`,\r\n          recommendation: 'Rising CPMs often reflect increased competition for your target audience. Consider: (1) Reviewing audience overlap across campaigns, (2) Exploring different audience segments with less competition, (3) Adjusting bid strategy ceilings, (4) Checking if Display/Video campaigns are driving up the average.',\r\n          evidence: ['CPM: ' + fmtCurrency(p7.cpm) + ' → ' + fmtCurrency(l7.cpm), 'Impressions: ' + fmt(p7.impressions) + ' → ' + fmt(l7.impressions)],\r\n        });\r\n      }\r\n\r\n      // Rule 14: ROAS deterioration WoW\r\n      if (d.roas7 <= -GADS_THRESHOLDS.roasDropPct && p7.roas > 0 && p7.conversions >= GADS_THRESHOLDS.minConversions7d && p7.spend >= GADS_THRESHOLDS.minSpend7d) {\r\n        all.push({\r\n          id: 'anomaly:roas-drop', severity: l7.roas < 1 ? 'high' : 'medium', group: 'performance', reliability: computeGadsReliability('roas'),\r\n          title: `Conversion-value ROAS declined ${Math.abs(d.roas7).toFixed(0)}% week-over-week`,\r\n          description: `ROAS dropped from ${p7.roas.toFixed(2)}x to ${l7.roas.toFixed(2)}x (${d.roas7.toFixed(1)}%). Each dollar of ad spend is now returning ${fmtCurrency(l7.roas)} in conversion value, down from ${fmtCurrency(p7.roas)}.`,\r\n          recommendation: 'Decompose the ROAS decline: Is conversion volume down, conversion value per conversion down, or CPC up? Use the Ad Comparison tab to identify which campaigns\\' ROAS degraded most and prioritize those for review.',\r\n          evidence: ['ROAS: ' + p7.roas.toFixed(2) + 'x → ' + l7.roas.toFixed(2) + 'x', 'Spend: ' + fmtCurrency(p7.spend) + ' → ' + fmtCurrency(l7.spend), 'Conv value: ' + fmtCurrency(p7.conversionValue) + ' → ' + fmtCurrency(l7.conversionValue)],\r\n        });\r\n      }\r\n    }\r\n\r\n    // ─── TIER 4: CAMPAIGN PORTFOLIO ANALYSIS ──────────────────────────\r\n\r\n    // Rule 15: Spend concentration risk\r\n    if (campaignBreakdown.length >= 2 && summary.spend >= 100) {\r\n      const topCampaign = [...campaignBreakdown].sort((a, b) => b.spend - a.spend)[0];\r\n      const concentration = (topCampaign.spend / summary.spend) * 100;\r\n      if (concentration >= GADS_THRESHOLDS.spendConcentrationPct) {\r\n        all.push({\r\n          id: 'portfolio:spend-concentration', severity: concentration >= 90 ? 'high' : 'medium', group: 'performance', reliability: 'high',\r\n          title: `${concentration.toFixed(0)}% of spend in one campaign`,\r\n          description: `\"${topCampaign.name}\" accounts for ${fmtCurrency(topCampaign.spend)} of your ${fmtCurrency(summary.spend)} total spend (${concentration.toFixed(1)}%). This concentration creates risk — if this one campaign underperforms, overall results collapse.`,\r\n          recommendation: 'Consider diversifying your campaign portfolio. Test additional campaigns for different audience segments, keyword themes, or funnel stages. This reduces single-point-of-failure risk and can reveal new high-performing opportunities.',\r\n          evidence: ['Top: \"' + topCampaign.name + '\" — ' + fmtCurrency(topCampaign.spend), 'Total spend: ' + fmtCurrency(summary.spend), 'Concentration: ' + concentration.toFixed(1) + '%'],\r\n        });\r\n      }\r\n    }\r\n\r\n    // Rule 16: Low-CTR campaign outlier\r\n    if (campaignBreakdown.length >= 2 && summary.ctr >= 1.5) {\r\n      const worstCtr = [...campaignBreakdown].filter(c => c.impressions >= 1000).sort((a, b) => a.ctr - b.ctr)[0];\r\n      if (worstCtr && worstCtr.ctr < 1.0) {\r\n        firedCampaignCtrOutlier = true;\r\n        all.push({\r\n          id: 'portfolio:low-ctr-campaign', severity: worstCtr.ctr < 0.5 ? 'high' : 'medium', group: 'performance', reliability: worstCtr.impressions >= 5000 ? 'high' : 'medium',\r\n          title: `Campaign \"${worstCtr.name}\" has ${fmtPct(worstCtr.ctr)} CTR`,\r\n          description: `While your overall CTR is ${fmtPct(summary.ctr)}, \"${worstCtr.name}\" is at only ${fmtPct(worstCtr.ctr)} across ${fmt(worstCtr.impressions)} impressions. This campaign is dragging down your account-level Quality Score and wasting budget on impressions that don't convert to clicks.`,\r\n          recommendation: `Review \"${worstCtr.name}\": (1) Check keyword relevance, (2) Refresh ad copy, (3) Review Search Terms for irrelevant matches, (4) Consider pausing if no improvement path is viable.`,\r\n          evidence: ['Campaign CTR: ' + fmtPct(worstCtr.ctr), 'Account CTR: ' + fmtPct(summary.ctr), 'Impressions: ' + fmt(worstCtr.impressions)],\r\n        });\r\n      }\r\n    }\r\n\r\n    // Rule 17: Low Search Impression Share\r\n    if (summary.searchImpressionShare > 0 && summary.searchImpressionShare < 40 && summary.spend > 0 && summary.impressions >= 1000) {\r\n      all.push({\r\n        id: 'portfolio:search-imp-share-low', severity: summary.searchImpressionShare < 20 ? 'high' : 'medium', group: 'performance', reliability: 'high',\r\n        title: `Search Impression Share is only ${fmtPct(summary.searchImpressionShare)}`,\r\n        description: `You're capturing only ${fmtPct(summary.searchImpressionShare)} of available search impressions. This means ~${fmtPct(100 - summary.searchImpressionShare)} of eligible searches are being won by competitors or lost due to budget/rank constraints.`,\r\n        recommendation: 'Lost impression share has two causes: (1) Budget — campaigns hit daily limits and stop showing. Fix: increase budgets or narrow targeting. (2) Ad Rank — competitors outbid you. Fix: improve Quality Score or increase bids. Check the \"Competitive metrics\" columns in Google Ads for Search IS Lost (Budget) vs Search IS Lost (Rank).',\r\n        evidence: ['Search Imp. Share: ' + fmtPct(summary.searchImpressionShare), 'Lost to competitors: ~' + fmtPct(100 - summary.searchImpressionShare), 'Impressions: ' + fmt(summary.impressions)],\r\n      });\r\n    }\r\n\r\n    // ─── TIER 5: KPI & BENCHMARK EVALUATION ───────────────────────────\r\n\r\n    // Rules 18-19: KPI performance\r\n    const kpis = Array.isArray(kpisData) ? kpisData : [];\r\n    kpis.forEach((kpi: any) => {\r\n      const metricKey = kpi.metric || kpi.metricKey || '';\r\n      const current = getLiveMetricValue(metricKey);\r\n      const target = parseFloat(kpi.targetValue || '0');\r\n      const p = computeProgress(current, target, metricKey);\r\n      const def = getGoogleAdsMetricDef(metricKey);\r\n      const trendKey = (metricKey + '7') as keyof typeof d;\r\n      const wowTrend = hasWoW && d[trendKey] !== undefined ? ` Week-over-week trend: ${(d[trendKey] as number) >= 0 ? '+' : ''}${(d[trendKey] as number).toFixed(1)}%.` : '';\r\n\r\n      if (p.status === 'behind') {\r\n        all.push({\r\n          id: `kpi:behind:${kpi.id}`, severity: 'high', group: 'performance', reliability: computeGadsReliability(metricKey),\r\n          title: `KPI behind: ${kpi.name} at ${def.format(current)} vs ${def.format(target)} target`,\r\n          description: `${def.label} is at ${def.format(current)}, which is ${Math.min(p.pct, 200).toFixed(0)}% of your ${def.format(target)} target.${wowTrend}`,\r\n          recommendation: `Focus optimization efforts on ${def.label}. Use the Ad Comparison tab to identify which campaigns are contributing least to this KPI and reallocate budget accordingly.`,\r\n          evidence: ['Current: ' + def.format(current), 'Target: ' + def.format(target), 'Progress: ' + Math.min(p.pct, 200).toFixed(0) + '%'],\r\n        });\r\n      } else if (p.status === 'needs_attention') {\r\n        all.push({\r\n          id: `kpi:attention:${kpi.id}`, severity: 'medium', group: 'performance', reliability: computeGadsReliability(metricKey),\r\n          title: `KPI near target: ${kpi.name} at ${Math.min(p.pct, 200).toFixed(0)}%`,\r\n          description: `${def.label} is at ${def.format(current)} vs target ${def.format(target)} (${Math.min(p.pct, 200).toFixed(0)}% progress). Close but not yet on track.${wowTrend}`,\r\n          recommendation: `Monitor ${def.label} over the next 7 days. Small optimizations (ad copy tests, bid adjustments, negative keywords) may close the remaining gap.`,\r\n          evidence: ['Current: ' + def.format(current), 'Target: ' + def.format(target), 'Progress: ' + Math.min(p.pct, 200).toFixed(0) + '%'],\r\n        });\r\n      }\r\n    });\r\n\r\n    // Rules 20-21: Benchmark performance\r\n    const benchmarks = Array.isArray(benchmarksData) ? benchmarksData : [];\r\n    benchmarks.forEach((b: any) => {\r\n      const metricKey = b.metric || '';\r\n      const current = getLiveMetricValue(metricKey);\r\n      const benchVal = parseFloat(b.benchmarkValue || b.targetValue || '0');\r\n      const p = computeProgress(current, benchVal, metricKey);\r\n      const def = getGoogleAdsMetricDef(metricKey);\r\n\r\n      if (p.status === 'behind') {\r\n        all.push({\r\n          id: `bench:behind:${b.id}`, severity: 'high', group: 'performance', reliability: computeGadsReliability(metricKey),\r\n          title: `Below benchmark: ${b.name} (${def.format(current)} vs ${def.format(benchVal)})`,\r\n          description: `Your ${def.label} of ${def.format(current)} is significantly below the benchmark of ${def.format(benchVal)}. This suggests structural campaign issues rather than normal variance.`,\r\n          recommendation: 'Benchmark gaps this large typically require strategic changes — not just bid/budget tweaks. Review: campaign structure, keyword strategy, ad creative, and landing page alignment against industry best practices.',\r\n          evidence: ['Current: ' + def.format(current), 'Benchmark: ' + def.format(benchVal), 'Progress: ' + Math.min(p.pct, 200).toFixed(0) + '%'],\r\n        });\r\n      } else if (p.status === 'needs_attention') {\r\n        all.push({\r\n          id: `bench:attention:${b.id}`, severity: 'medium', group: 'performance', reliability: computeGadsReliability(metricKey),\r\n          title: `Near benchmark: ${b.name}`,\r\n          description: `${def.label} is at ${def.format(current)} vs benchmark ${def.format(benchVal)}. Approaching but not yet meeting the benchmark.`,\r\n          recommendation: `Close to benchmark — targeted optimizations may get you there. Focus on the campaign(s) with the most room for improvement in the Ad Comparison tab.`,\r\n          evidence: ['Current: ' + def.format(current), 'Benchmark: ' + def.format(benchVal)],\r\n        });\r\n      }\r\n    });\r\n\r\n    // Rule 22: Low CTR across account — only if no campaign-level CTR outlier fired\r\n    if (!firedCampaignCtrOutlier && summary.ctr > 0 && summary.ctr < 1.0 && summary.impressions >= 5000) {\r\n      all.push({\r\n        id: 'performance:low-ctr-account', severity: summary.ctr < 0.5 ? 'high' : 'medium', group: 'performance',\r\n        reliability: summary.impressions >= 10000 ? 'high' : 'medium',\r\n        title: `Account-wide CTR is ${fmtPct(summary.ctr)} — below Google Ads average`,\r\n        description: `Average CTR across all ${campaignBreakdown.length} campaigns is ${fmtPct(summary.ctr)}, below the typical 1-2% threshold for most Google Ads verticals. Low CTR drives up CPC (currently ${fmtCurrency(summary.cpc)}) and signals poor ad-to-query relevance.`,\r\n        recommendation: 'Broad fixes: (1) Tighten keyword match types (phrase/exact over broad), (2) Add negative keywords from Search Terms report, (3) Write more specific ad copy with clear CTAs, (4) Use responsive search ads with diverse headlines, (5) Check ad extensions are enabled.',\r\n        evidence: ['CTR: ' + fmtPct(summary.ctr), 'CPC: ' + fmtCurrency(summary.cpc), 'Impressions: ' + fmt(summary.impressions)],\r\n      });\r\n    }\r\n\r\n    // ─── SORT: Integrity first, then by severity ──────────────────────\r\n    const severityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };\r\n    const groupOrder: Record<string, number> = { integrity: 0, performance: 1 };\r\n    all.sort((a, b) => {\r\n      const gDiff = groupOrder[a.group] - groupOrder[b.group];\r\n      if (gDiff !== 0) return gDiff;\r\n      return severityOrder[a.severity] - severityOrder[b.severity];\r\n    });\r\n\r\n    return all;\r\n  })()",
+  "rules": [
+    {
+      "line": 885,
+      "conditions": [
+        "summary.spend > 0 && summary.conversions === 0"
+      ],
+      "id": "'integrity:no-conversions'",
+      "severity": "'high'",
+      "group": "'integrity'",
+      "reliability": "'high'",
+      "title": "'Spend recorded but zero conversions'",
+      "description": "`${fmtCurrency(summary.spend)} spent across ${campaignBreakdown.length} campaign(s) with 0 conversions. This may indicate broken conversion tracking, not poor performance.`",
+      "recommendation": "'Verify conversion actions are properly configured in Google Ads. Check: (1) Global site tag / Google Tag is installed, (2) Conversion actions are active and not recently edited, (3) Attribution window has not expired. If tracking is confirmed correct, pause underperforming campaigns.'",
+      "evidence": "[fmtCurrency(summary.spend) + ' total spend', fmt(summary.impressions) + ' impressions', fmt(summary.clicks) + ' clicks', '0 conversions']"
+    },
+    {
+      "line": 896,
+      "conditions": [
+        "summary.conversions > 0 && summary.conversionValue === 0"
+      ],
+      "id": "'integrity:conv-value-zero'",
+      "severity": "'high'",
+      "group": "'integrity'",
+      "reliability": "'high'",
+      "title": "'Conversions tracked but conversion value is $0'",
+      "description": "`${Math.round(summary.conversions)} conversions recorded, but native Google Ads conversion value is $0. Conversion-value ROAS (${summary.roas.toFixed(2)}x) and conversion-value ROI (${summary.roi.toFixed(1)}%) cannot be trusted until values are assigned in Google Ads.`",
+      "recommendation": "'Assign conversion values in Google Ads > Goals > Conversions > Settings. For e-commerce, use dynamic values from your checkout. For lead gen, assign estimated values per lead type. Imported Google Ads attributed revenue remains separate when connected.'",
+      "evidence": "[Math.round(summary.conversions) + ' conversions', '$0 conversion value', 'Conversion-value ROAS: ' + summary.roas.toFixed(2) + 'x (unreliable)']"
+    },
+    {
+      "line": 907,
+      "conditions": [
+        "summary.impressions > 0 && summary.clicks === 0"
+      ],
+      "id": "'integrity:impressions-no-clicks'",
+      "severity": "'high'",
+      "group": "'integrity'",
+      "reliability": "'high'",
+      "title": "'Ads showing but nobody clicking'",
+      "description": "`${fmt(summary.impressions)} impressions with 0 clicks (0.00% CTR). Ads are being served but generating zero engagement.`",
+      "recommendation": "'Check: (1) Ad relevance and Quality Score in the Google Ads UI, (2) Keyword-to-ad alignment, (3) Whether ads are showing for intended search terms via Search Terms report. Consider pausing campaigns until ads are revised.'",
+      "evidence": "[fmt(summary.impressions) + ' impressions', '0 clicks', '0.00% CTR']"
+    },
+    {
+      "line": 918,
+      "conditions": [
+        "summary.spend === 0 && summary.impressions === 0 && campaignBreakdown.length > 0"
+      ],
+      "id": "'integrity:zero-spend'",
+      "severity": "'medium'",
+      "group": "'integrity'",
+      "reliability": "'high'",
+      "title": "'Campaigns exist but no spend or impressions recorded'",
+      "description": "`${campaignBreakdown.length} campaign(s) found but $0 spend and 0 impressions in the reporting window. Campaigns may be paused, budgets exhausted, or ads disapproved.`",
+      "recommendation": "'Check campaign status in the Google Ads UI. Verify: (1) Campaigns are not paused/removed, (2) Daily budgets are set, (3) Ads are approved, (4) Billing is active.'",
+      "evidence": "[campaignBreakdown.length + ' campaigns', '$0 spend', '0 impressions']"
+    },
+    {
+      "line": 941,
+      "conditions": [
+        "insightsRevenueValue > 0 && summary.spend > 0 && insightsRoiValue < 0 && summary.conversions >= 5"
+      ],
+      "id": "'financial:negative-roi'",
+      "severity": "insightsRoiValue <= -20 ? 'high' : 'medium'",
+      "group": "'performance'",
+      "reliability": "computeGadsReliability('roi')",
+      "title": "`${insightsRoasTitlePrefix} ROI is ${insightsRoiValue.toFixed(1)}%`",
+      "description": "`Spend of ${fmtCurrency(summary.spend)} is higher than ${fmtCurrency(insightsRevenueValue)} in ${insightsRevenueLabel} (ROI: ${insightsRoiValue.toFixed(1)}%).`",
+      "recommendation": "`${insightsRevenueRecommendation} Review the ${campaignBreakdown.length} active campaign(s). Consider pausing campaigns with CPA above target and reallocating budget to campaigns with the strongest efficiency.`",
+      "evidence": "['Spend: ' + fmtCurrency(summary.spend), insightsRevenueEvidenceLabel + ': ' + fmtCurrency(insightsRevenueValue), 'ROI: ' + insightsRoiValue.toFixed(1) + '%']"
+    },
+    {
+      "line": 952,
+      "conditions": [
+        "insightsRevenueValue > 0 && summary.spend > 0 && insightsRoasValue > 0 && insightsRoasValue < 1 && summary.conversions >= 5"
+      ],
+      "id": "'financial:roas-below-1'",
+      "severity": "insightsRoasValue < 0.5 ? 'high' : 'medium'",
+      "group": "'performance'",
+      "reliability": "computeGadsReliability('roas')",
+      "title": "`${insightsRoasTitlePrefix} ROAS is ${insightsRoasValue.toFixed(2)}x`",
+      "description": "`Every $1 spent returns ${fmtCurrency(insightsRoasValue)} in ${insightsRevenueLabel}. This is below a 1.0x value-to-spend ratio.`",
+      "recommendation": "`${insightsRevenueRecommendation} Audit campaign-level efficiency in the Ad Comparison tab. For underperforming campaigns, review keyword match types, negative keywords, audience segments, and bid strategy.`",
+      "evidence": "['ROAS: ' + insightsRoasValue.toFixed(2) + 'x', 'Spend: ' + fmtCurrency(summary.spend), insightsRevenueEvidenceLabel + ': ' + fmtCurrency(insightsRevenueValue)]"
+    },
+    {
+      "line": 963,
+      "conditions": [
+        "hasWoW && d.spend7 >= 20 && Math.abs(d.conversions7) < 10 && l7.spend >= GADS_THRESHOLDS.minSpend7d && p7.conversions >= GADS_THRESHOLDS.minConversions7d"
+      ],
+      "id": "'financial:diminishing-returns'",
+      "severity": "d.spend7 >= 40 ? 'high' : 'medium'",
+      "group": "'performance'",
+      "reliability": "computeGadsReliability('conversions')",
+      "title": "`Spend up ${d.spend7.toFixed(0)}% WoW but conversions flat`",
+      "description": "`Week-over-week spend increased from ${fmtCurrency(p7.spend)} to ${fmtCurrency(l7.spend)} (+${d.spend7.toFixed(1)}%), but conversions moved only ${d.conversions7 >= 0 ? '+' : ''}${d.conversions7.toFixed(1)}% (${Math.round(p7.conversions)} to ${Math.round(l7.conversions)}). This suggests diminishing returns on incremental spend.`",
+      "recommendation": "'You may be hitting audience saturation or bidding into less efficient auction segments. Review: (1) Search Impression Share — are you already capturing most available demand? (2) Audience overlap across campaigns, (3) Whether new spend is going to existing or new keywords.'",
+      "evidence": "['Spend: ' + fmtCurrency(p7.spend) + ' → ' + fmtCurrency(l7.spend), 'Conversions: ' + Math.round(p7.conversions) + ' → ' + Math.round(l7.conversions), 'Spend delta: +' + d.spend7.toFixed(1) + '%', 'Conv delta: ' + (d.conversions7 >= 0 ? '+' : '') + d.conversions7.toFixed(1) + '%']"
+    },
+    {
+      "line": 978,
+      "conditions": [
+        "hasWoW",
+        "d.cpc7 >= GADS_THRESHOLDS.cpcSpikePct && d.ctr7 <= -GADS_THRESHOLDS.ctrDropPct && p7.clicks >= GADS_THRESHOLDS.minClicks7d && p7.impressions >= GADS_THRESHOLDS.minImpressions7d"
+      ],
+      "id": "'anomaly:quality-score-decline'",
+      "severity": "'high'",
+      "group": "'performance'",
+      "reliability": "computeGadsReliability('cpc')",
+      "title": "`Quality Score may be declining: CPC up ${d.cpc7.toFixed(0)}%, CTR down ${Math.abs(d.ctr7).toFixed(0)}%`",
+      "description": "`CPC increased from ${fmtCurrency(p7.cpc)} to ${fmtCurrency(l7.cpc)} (+${d.cpc7.toFixed(1)}%) while CTR dropped from ${fmtPct(p7.ctr)} to ${fmtPct(l7.ctr)} (${d.ctr7.toFixed(1)}%). In Google Ads, this combination is a strong signal that Quality Score is declining, causing you to pay more for lower ad positions.`",
+      "recommendation": "'Check Quality Score in the Google Ads UI (Keywords tab > add Quality Score column). Focus on: (1) Ad relevance — ensure ad copy tightly matches keyword intent, (2) Landing page experience — speed, mobile-friendliness, relevance, (3) Expected CTR — test new ad variations. Improving Quality Score reduces CPC and improves ad position.'",
+      "evidence": "['CPC: ' + fmtCurrency(p7.cpc) + ' → ' + fmtCurrency(l7.cpc), 'CTR: ' + fmtPct(p7.ctr) + ' → ' + fmtPct(l7.ctr), 'Period: ' + l7.startDate + ' to ' + l7.endDate]"
+    },
+    {
+      "line": 990,
+      "conditions": [
+        "hasWoW",
+        "d.conversionRate7 <= -GADS_THRESHOLDS.cvrDropPct && Math.abs(d.ctr7) <= GADS_THRESHOLDS.stableBandPct && p7.clicks >= GADS_THRESHOLDS.minClicks7d && p7.conversions >= GADS_THRESHOLDS.minConversions7d"
+      ],
+      "id": "'anomaly:landing-page-regression'",
+      "severity": "'high'",
+      "group": "'performance'",
+      "reliability": "computeGadsReliability('conversionrate')",
+      "title": "`Landing page regression: CVR down ${Math.abs(d.conversionRate7).toFixed(0)}%, CTR stable`",
+      "description": "`Conversion rate dropped from ${fmtPct(p7.conversionRate)} to ${fmtPct(l7.conversionRate)} (${d.conversionRate7.toFixed(1)}%) while CTR remained stable at ~${fmtPct(l7.ctr)}. People are clicking your ads at the same rate but converting less — this points to a post-click issue, not an ad issue.`",
+      "recommendation": "'Investigate post-click experience: (1) Check for landing page changes or errors, (2) Test page load speed (Google PageSpeed Insights), (3) Verify form/checkout flows, (4) Check if mobile vs desktop conversion rates diverged, (5) Review the Search Terms report for new irrelevant queries consuming clicks.'",
+      "evidence": "['CVR: ' + fmtPct(p7.conversionRate) + ' → ' + fmtPct(l7.conversionRate), 'CTR: ' + fmtPct(p7.ctr) + ' → ' + fmtPct(l7.ctr) + ' (stable)', 'Conversions: ' + Math.round(p7.conversions) + ' → ' + Math.round(l7.conversions)]"
+    },
+    {
+      "line": 1001,
+      "conditions": [
+        "hasWoW",
+        "!firedLandingPageRegression && d.conversionRate7 <= -GADS_THRESHOLDS.cvrDropPct && p7.clicks >= GADS_THRESHOLDS.minClicks7d && p7.conversions >= GADS_THRESHOLDS.minConversions7d"
+      ],
+      "id": "'anomaly:cvr-drop'",
+      "severity": "Math.abs(d.conversionRate7) >= 40 ? 'high' : 'medium'",
+      "group": "'performance'",
+      "reliability": "computeGadsReliability('conversionrate')",
+      "title": "`Conversion rate dropped ${Math.abs(d.conversionRate7).toFixed(0)}% week-over-week`",
+      "description": "`CVR went from ${fmtPct(p7.conversionRate)} to ${fmtPct(l7.conversionRate)} (${d.conversionRate7.toFixed(1)}%). CTR also shifted (${d.ctr7 >= 0 ? '+' : ''}${d.ctr7.toFixed(1)}%), suggesting a broader targeting or competitive shift rather than an isolated landing page issue.`",
+      "recommendation": "'Multiple factors may be contributing. Check: (1) Search Terms report for query drift, (2) Audience segment performance, (3) Competitor activity via Auction Insights, (4) Landing page experience. If using Smart Bidding, check the Strategy report for learning period alerts.'",
+      "evidence": "['CVR: ' + fmtPct(p7.conversionRate) + ' → ' + fmtPct(l7.conversionRate), 'CTR: ' + fmtPct(p7.ctr) + ' → ' + fmtPct(l7.ctr), 'Clicks: ' + fmt(p7.clicks) + ' → ' + fmt(l7.clicks)]"
+    },
+    {
+      "line": 1012,
+      "conditions": [
+        "hasWoW",
+        "!firedQualityScoreDecline && d.cpc7 >= GADS_THRESHOLDS.cpcSpikePct && p7.clicks >= GADS_THRESHOLDS.minClicks7d"
+      ],
+      "id": "'anomaly:cpc-spike'",
+      "severity": "d.cpc7 >= 40 ? 'high' : 'medium'",
+      "group": "'performance'",
+      "reliability": "computeGadsReliability('cpc')",
+      "title": "`CPC spiked ${d.cpc7.toFixed(0)}% week-over-week`",
+      "description": "`Cost-per-click rose from ${fmtCurrency(p7.cpc)} to ${fmtCurrency(l7.cpc)} (+${d.cpc7.toFixed(1)}%). This could indicate increased auction competition, keyword match type broadening, or bid strategy adjustments taking effect.`",
+      "recommendation": "'Check Auction Insights for new competitors. Review: (1) Bid strategy changes in the last 7 days, (2) Keyword match type settings (broad match can cause CPC variance), (3) Whether new high-CPC keywords were added. If using Target CPA/ROAS, verify the target has not been changed.'",
+      "evidence": "['CPC: ' + fmtCurrency(p7.cpc) + ' → ' + fmtCurrency(l7.cpc), 'Spend: ' + fmtCurrency(p7.spend) + ' → ' + fmtCurrency(l7.spend), 'Clicks: ' + fmt(p7.clicks) + ' → ' + fmt(l7.clicks)]"
+    },
+    {
+      "line": 1025,
+      "conditions": [
+        "hasWoW",
+        "d.impressions7 <= -GADS_THRESHOLDS.impressionDecayPct && p7.impressions >= GADS_THRESHOLDS.minImpressions7d"
+      ],
+      "id": "'anomaly:impression-decay'",
+      "severity": "Math.abs(d.impressions7) >= 40 ? 'high' : 'medium'",
+      "group": "'performance'",
+      "reliability": "computeGadsReliability('impressions')",
+      "title": "`Impressions dropped ${Math.abs(d.impressions7).toFixed(0)}% week-over-week`",
+      "description": "`Impressions fell from ${fmt(p7.impressions)} to ${fmt(l7.impressions)} (${d.impressions7.toFixed(1)}%).${sisNote} Reduced reach means fewer opportunities to convert.`",
+      "recommendation": "`Investigate: (1) Budget exhaustion — check if campaigns are 'Limited by budget', (2) Bid competitiveness — you may be losing auctions, (3) Search demand changes (seasonal?), (4) Ad Schedule / geo restrictions narrowing delivery.${sisRec}`",
+      "evidence": "['Impressions: ' + fmt(p7.impressions) + ' → ' + fmt(l7.impressions), 'Delta: ' + d.impressions7.toFixed(1) + '%', summary.searchImpressionShare > 0 ? 'Search Imp. Share: ' + fmtPct(summary.searchImpressionShare) : 'Search Imp. Share: N/A']"
+    },
+    {
+      "line": 1036,
+      "conditions": [
+        "hasWoW",
+        "d.cpm7 >= GADS_THRESHOLDS.cpmSpikePct && p7.impressions >= GADS_THRESHOLDS.minImpressions7d"
+      ],
+      "id": "'anomaly:cpm-surge'",
+      "severity": "'medium'",
+      "group": "'performance'",
+      "reliability": "computeGadsReliability('cpm')",
+      "title": "`CPM up ${d.cpm7.toFixed(0)}% — auction costs rising`",
+      "description": "`Cost per thousand impressions rose from ${fmtCurrency(p7.cpm)} to ${fmtCurrency(l7.cpm)} (+${d.cpm7.toFixed(1)}%). Higher CPM means you're paying more for the same audience reach, which can erode overall campaign efficiency.`",
+      "recommendation": "'Rising CPMs often reflect increased competition for your target audience. Consider: (1) Reviewing audience overlap across campaigns, (2) Exploring different audience segments with less competition, (3) Adjusting bid strategy ceilings, (4) Checking if Display/Video campaigns are driving up the average.'",
+      "evidence": "['CPM: ' + fmtCurrency(p7.cpm) + ' → ' + fmtCurrency(l7.cpm), 'Impressions: ' + fmt(p7.impressions) + ' → ' + fmt(l7.impressions)]"
+    },
+    {
+      "line": 1047,
+      "conditions": [
+        "hasWoW",
+        "d.roas7 <= -GADS_THRESHOLDS.roasDropPct && p7.roas > 0 && p7.conversions >= GADS_THRESHOLDS.minConversions7d && p7.spend >= GADS_THRESHOLDS.minSpend7d"
+      ],
+      "id": "'anomaly:roas-drop'",
+      "severity": "l7.roas < 1 ? 'high' : 'medium'",
+      "group": "'performance'",
+      "reliability": "computeGadsReliability('roas')",
+      "title": "`Conversion-value ROAS declined ${Math.abs(d.roas7).toFixed(0)}% week-over-week`",
+      "description": "`ROAS dropped from ${p7.roas.toFixed(2)}x to ${l7.roas.toFixed(2)}x (${d.roas7.toFixed(1)}%). Each dollar of ad spend is now returning ${fmtCurrency(l7.roas)} in conversion value, down from ${fmtCurrency(p7.roas)}.`",
+      "recommendation": "'Decompose the ROAS decline: Is conversion volume down, conversion value per conversion down, or CPC up? Use the Ad Comparison tab to identify which campaigns\\' ROAS degraded most and prioritize those for review.'",
+      "evidence": "['ROAS: ' + p7.roas.toFixed(2) + 'x → ' + l7.roas.toFixed(2) + 'x', 'Spend: ' + fmtCurrency(p7.spend) + ' → ' + fmtCurrency(l7.spend), 'Conv value: ' + fmtCurrency(p7.conversionValue) + ' → ' + fmtCurrency(l7.conversionValue)]"
+    },
+    {
+      "line": 1064,
+      "conditions": [
+        "campaignBreakdown.length >= 2 && summary.spend >= 100",
+        "concentration >= GADS_THRESHOLDS.spendConcentrationPct"
+      ],
+      "id": "'portfolio:spend-concentration'",
+      "severity": "concentration >= 90 ? 'high' : 'medium'",
+      "group": "'performance'",
+      "reliability": "'high'",
+      "title": "`${concentration.toFixed(0)}% of spend in one campaign`",
+      "description": "`\"${topCampaign.name}\" accounts for ${fmtCurrency(topCampaign.spend)} of your ${fmtCurrency(summary.spend)} total spend (${concentration.toFixed(1)}%). This concentration creates risk — if this one campaign underperforms, overall results collapse.`",
+      "recommendation": "'Consider diversifying your campaign portfolio. Test additional campaigns for different audience segments, keyword themes, or funnel stages. This reduces single-point-of-failure risk and can reveal new high-performing opportunities.'",
+      "evidence": "['Top: \"' + topCampaign.name + '\" — ' + fmtCurrency(topCampaign.spend), 'Total spend: ' + fmtCurrency(summary.spend), 'Concentration: ' + concentration.toFixed(1) + '%']"
+    },
+    {
+      "line": 1079,
+      "conditions": [
+        "campaignBreakdown.length >= 2 && summary.ctr >= 1.5",
+        "worstCtr && worstCtr.ctr < 1.0"
+      ],
+      "id": "'portfolio:low-ctr-campaign'",
+      "severity": "worstCtr.ctr < 0.5 ? 'high' : 'medium'",
+      "group": "'performance'",
+      "reliability": "worstCtr.impressions >= 5000 ? 'high' : 'medium'",
+      "title": "`Campaign \"${worstCtr.name}\" has ${fmtPct(worstCtr.ctr)} CTR`",
+      "description": "`While your overall CTR is ${fmtPct(summary.ctr)}, \"${worstCtr.name}\" is at only ${fmtPct(worstCtr.ctr)} across ${fmt(worstCtr.impressions)} impressions. This campaign is dragging down your account-level Quality Score and wasting budget on impressions that don't convert to clicks.`",
+      "recommendation": "`Review \"${worstCtr.name}\": (1) Check keyword relevance, (2) Refresh ad copy, (3) Review Search Terms for irrelevant matches, (4) Consider pausing if no improvement path is viable.`",
+      "evidence": "['Campaign CTR: ' + fmtPct(worstCtr.ctr), 'Account CTR: ' + fmtPct(summary.ctr), 'Impressions: ' + fmt(worstCtr.impressions)]"
+    },
+    {
+      "line": 1091,
+      "conditions": [
+        "summary.searchImpressionShare > 0 && summary.searchImpressionShare < 40 && summary.spend > 0 && summary.impressions >= 1000"
+      ],
+      "id": "'portfolio:search-imp-share-low'",
+      "severity": "summary.searchImpressionShare < 20 ? 'high' : 'medium'",
+      "group": "'performance'",
+      "reliability": "'high'",
+      "title": "`Search Impression Share is only ${fmtPct(summary.searchImpressionShare)}`",
+      "description": "`You're capturing only ${fmtPct(summary.searchImpressionShare)} of available search impressions. This means ~${fmtPct(100 - summary.searchImpressionShare)} of eligible searches are being won by competitors or lost due to budget/rank constraints.`",
+      "recommendation": "'Lost impression share has two causes: (1) Budget — campaigns hit daily limits and stop showing. Fix: increase budgets or narrow targeting. (2) Ad Rank — competitors outbid you. Fix: improve Quality Score or increase bids. Check the \"Competitive metrics\" columns in Google Ads for Search IS Lost (Budget) vs Search IS Lost (Rank).'",
+      "evidence": "['Search Imp. Share: ' + fmtPct(summary.searchImpressionShare), 'Lost to competitors: ~' + fmtPct(100 - summary.searchImpressionShare), 'Impressions: ' + fmt(summary.impressions)]"
+    },
+    {
+      "line": 1114,
+      "conditions": [
+        "p.status === 'behind'"
+      ],
+      "id": "`kpi:behind:${kpi.id}`",
+      "severity": "'high'",
+      "group": "'performance'",
+      "reliability": "computeGadsReliability(metricKey)",
+      "title": "`KPI behind: ${kpi.name} at ${def.format(current)} vs ${def.format(target)} target`",
+      "description": "`${def.label} is at ${def.format(current)}, which is ${Math.min(p.pct, 200).toFixed(0)}% of your ${def.format(target)} target.${wowTrend}`",
+      "recommendation": "`Focus optimization efforts on ${def.label}. Use the Ad Comparison tab to identify which campaigns are contributing least to this KPI and reallocate budget accordingly.`",
+      "evidence": "['Current: ' + def.format(current), 'Target: ' + def.format(target), 'Progress: ' + Math.min(p.pct, 200).toFixed(0) + '%']"
+    },
+    {
+      "line": 1122,
+      "conditions": [
+        "!(p.status === 'behind')",
+        "p.status === 'needs_attention'"
+      ],
+      "id": "`kpi:attention:${kpi.id}`",
+      "severity": "'medium'",
+      "group": "'performance'",
+      "reliability": "computeGadsReliability(metricKey)",
+      "title": "`KPI near target: ${kpi.name} at ${Math.min(p.pct, 200).toFixed(0)}%`",
+      "description": "`${def.label} is at ${def.format(current)} vs target ${def.format(target)} (${Math.min(p.pct, 200).toFixed(0)}% progress). Close but not yet on track.${wowTrend}`",
+      "recommendation": "`Monitor ${def.label} over the next 7 days. Small optimizations (ad copy tests, bid adjustments, negative keywords) may close the remaining gap.`",
+      "evidence": "['Current: ' + def.format(current), 'Target: ' + def.format(target), 'Progress: ' + Math.min(p.pct, 200).toFixed(0) + '%']"
+    },
+    {
+      "line": 1142,
+      "conditions": [
+        "p.status === 'behind'"
+      ],
+      "id": "`bench:behind:${b.id}`",
+      "severity": "'high'",
+      "group": "'performance'",
+      "reliability": "computeGadsReliability(metricKey)",
+      "title": "`Below benchmark: ${b.name} (${def.format(current)} vs ${def.format(benchVal)})`",
+      "description": "`Your ${def.label} of ${def.format(current)} is significantly below the benchmark of ${def.format(benchVal)}. This suggests structural campaign issues rather than normal variance.`",
+      "recommendation": "'Benchmark gaps this large typically require strategic changes — not just bid/budget tweaks. Review: campaign structure, keyword strategy, ad creative, and landing page alignment against industry best practices.'",
+      "evidence": "['Current: ' + def.format(current), 'Benchmark: ' + def.format(benchVal), 'Progress: ' + Math.min(p.pct, 200).toFixed(0) + '%']"
+    },
+    {
+      "line": 1150,
+      "conditions": [
+        "!(p.status === 'behind')",
+        "p.status === 'needs_attention'"
+      ],
+      "id": "`bench:attention:${b.id}`",
+      "severity": "'medium'",
+      "group": "'performance'",
+      "reliability": "computeGadsReliability(metricKey)",
+      "title": "`Near benchmark: ${b.name}`",
+      "description": "`${def.label} is at ${def.format(current)} vs benchmark ${def.format(benchVal)}. Approaching but not yet meeting the benchmark.`",
+      "recommendation": "`Close to benchmark — targeted optimizations may get you there. Focus on the campaign(s) with the most room for improvement in the Ad Comparison tab.`",
+      "evidence": "['Current: ' + def.format(current), 'Benchmark: ' + def.format(benchVal)]"
+    },
+    {
+      "line": 1162,
+      "conditions": [
+        "!firedCampaignCtrOutlier && summary.ctr > 0 && summary.ctr < 1.0 && summary.impressions >= 5000"
+      ],
+      "id": "'performance:low-ctr-account'",
+      "severity": "summary.ctr < 0.5 ? 'high' : 'medium'",
+      "group": "'performance'",
+      "reliability": "summary.impressions >= 10000 ? 'high' : 'medium'",
+      "title": "`Account-wide CTR is ${fmtPct(summary.ctr)} — below Google Ads average`",
+      "description": "`Average CTR across all ${campaignBreakdown.length} campaigns is ${fmtPct(summary.ctr)}, below the typical 1-2% threshold for most Google Ads verticals. Low CTR drives up CPC (currently ${fmtCurrency(summary.cpc)}) and signals poor ad-to-query relevance.`",
+      "recommendation": "'Broad fixes: (1) Tighten keyword match types (phrase/exact over broad), (2) Add negative keywords from Search Terms report, (3) Write more specific ad copy with clear CTAs, (4) Use responsive search ads with diverse headlines, (5) Check ad extensions are enabled.'",
+      "evidence": "['CTR: ' + fmtPct(summary.ctr), 'CPC: ' + fmtCurrency(summary.cpc), 'Impressions: ' + fmt(summary.impressions)]"
+    }
+  ]
+}

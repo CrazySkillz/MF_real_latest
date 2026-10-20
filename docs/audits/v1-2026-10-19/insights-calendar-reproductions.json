@@ -1,0 +1,56 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact final real-data daily-handler block, exact client calendar derivation and shared rollup/monthly helpers. Storage and freshness-metadata decoration are fixtures; normal auth/provider selection and full React render not executed. No DB/provider/network mutation.",
+  "results": [
+    {
+      "case": "First daily-window read fails but route returns success and client creates complete zero windows",
+      "readCount": 2,
+      "api": {
+        "success": true,
+        "dataRows": 0,
+        "schedulerCoverageComplete": false,
+        "overviewSessions": 100
+      },
+      "client": {
+        "rows": 18,
+        "last7Sessions": 0,
+        "last7Complete": true
+      }
+    },
+    {
+      "case": "Missing two dates become zero and a complete seven-day decline signal",
+      "inputRows": 12,
+      "filledRows": 14,
+      "last7": 500,
+      "prior7": 700,
+      "deltaPct": -28.57142857142857,
+      "complete": true
+    },
+    {
+      "case": "Sixty-day response padded back to campaign creation creates apparently complete older zero months",
+      "responseWindow": {
+        "start": "2026-08-20",
+        "end": "2026-10-18",
+        "rows": 60
+      },
+      "campaignCreated": "2026-01-01",
+      "filledRows": 291,
+      "july": {
+        "month": "2026-07",
+        "value": 0,
+        "days": 31,
+        "expectedDays": 31,
+        "calendarDays": 31,
+        "partial": false
+      },
+      "august": {
+        "month": "2026-08",
+        "value": 1200,
+        "days": 31,
+        "expectedDays": 31,
+        "calendarDays": 31,
+        "partial": false
+      }
+    }
+  ]
+}

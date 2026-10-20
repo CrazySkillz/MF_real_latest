@@ -1,0 +1,128 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact current confirmation/query helpers with fixture database and provider. No email, provider request or database mutation. Latest-audit fixture proves missing attempt/slot correlation, not a live misattribution.",
+  "results": [
+    {
+      "case": "Missing email audit is treated as sent",
+      "result": {
+        "sent": true,
+        "status": "sent",
+        "error": ""
+      },
+      "filters": [
+        [
+          {
+            "field": "kind",
+            "value": "report"
+          },
+          {
+            "field": "entityType",
+            "value": "report"
+          },
+          {
+            "field": "entityId",
+            "value": "fixture-report"
+          },
+          {
+            "field": "success",
+            "value": true
+          }
+        ]
+      ],
+      "deliveryProbes": []
+    },
+    {
+      "case": "Email audit read failure is treated as sent",
+      "result": {
+        "sent": true,
+        "status": "sent",
+        "error": ""
+      },
+      "filters": [
+        [
+          {
+            "field": "kind",
+            "value": "report"
+          },
+          {
+            "field": "entityType",
+            "value": "report"
+          },
+          {
+            "field": "entityId",
+            "value": "fixture-report"
+          },
+          {
+            "field": "success",
+            "value": true
+          }
+        ]
+      ],
+      "deliveryProbes": []
+    },
+    {
+      "case": "SMTP acceptance is treated as sent without delivery evidence",
+      "result": {
+        "sent": true,
+        "status": "sent",
+        "error": ""
+      },
+      "filters": [
+        [
+          {
+            "field": "kind",
+            "value": "report"
+          },
+          {
+            "field": "entityType",
+            "value": "report"
+          },
+          {
+            "field": "entityId",
+            "value": "fixture-report"
+          },
+          {
+            "field": "success",
+            "value": true
+          }
+        ]
+      ],
+      "deliveryProbes": []
+    },
+    {
+      "case": "Mailgun confirmation uses latest report audit without send-slot identity",
+      "result": {
+        "sent": true,
+        "status": "sent",
+        "error": ""
+      },
+      "filters": [
+        [
+          {
+            "field": "kind",
+            "value": "report"
+          },
+          {
+            "field": "entityType",
+            "value": "report"
+          },
+          {
+            "field": "entityId",
+            "value": "fixture-report"
+          },
+          {
+            "field": "success",
+            "value": true
+          }
+        ],
+        {
+          "field": "id",
+          "value": "old-attempt"
+        }
+      ],
+      "deliveryProbes": [
+        "older-message"
+      ]
+    }
+  ]
+}

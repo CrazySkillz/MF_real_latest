@@ -1,0 +1,135 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "results": [
+    {
+      "case": "Acquisition accepts a full bounded page with absent provider rowCount",
+      "requestedLimit": 1,
+      "requestCount": 1,
+      "returnedMeta": {
+        "propertyId": "123",
+        "revenueMetric": "totalRevenue",
+        "dimensions": [
+          "date",
+          "sessionDefaultChannelGroup",
+          "sessionSource",
+          "sessionMedium",
+          "sessionCampaignName",
+          "deviceCategory",
+          "country"
+        ],
+        "rowCount": 1,
+        "sessionsDerivedFromUsers": false,
+        "currencyCode": "USD"
+      },
+      "boundary": "Exact service with provider fixture; proves no completeness rejection, not occurrence on real Google response."
+    },
+    {
+      "case": "Insights UTM prefix collision selects 60 sessions from 40 actual landing sessions",
+      "actualLandingSessions": 40,
+      "returnedSessions": 60,
+      "filters": [
+        [
+          {
+            "matchType": "CONTAINS",
+            "value": "utm_source=google",
+            "caseSensitive": false
+          },
+          {
+            "matchType": "CONTAINS",
+            "value": "utm_medium=cpc",
+            "caseSensitive": false
+          }
+        ],
+        [
+          {
+            "matchType": "CONTAINS",
+            "value": "utm_source=google_ads",
+            "caseSensitive": false
+          },
+          {
+            "matchType": "CONTAINS",
+            "value": "utm_medium=cpc",
+            "caseSensitive": false
+          }
+        ]
+      ],
+      "rows": [
+        {
+          "date": "2026-10-18",
+          "channel": "",
+          "source": "google",
+          "medium": "cpc",
+          "campaign": "fixture",
+          "device": "",
+          "country": "",
+          "sessions": 40,
+          "sessionsRaw": 40,
+          "users": 40,
+          "conversions": 0,
+          "revenue": 0,
+          "engagedSessions": 20
+        },
+        {
+          "date": "2026-10-18",
+          "channel": "",
+          "source": "google_ads",
+          "medium": "cpc",
+          "campaign": "fixture",
+          "device": "",
+          "country": "",
+          "sessions": 20,
+          "sessionsRaw": 20,
+          "users": 20,
+          "conversions": 0,
+          "revenue": 0,
+          "engagedSessions": 10
+        }
+      ],
+      "coverage": {
+        "attempted": true,
+        "selected": true,
+        "reason": "selected",
+        "standardSessions": 10,
+        "landingSessions": 40,
+        "rowSessions": 60,
+        "standardConversions": 0,
+        "rowConversions": 0,
+        "standardRevenue": 0,
+        "rowRevenue": 0
+      },
+      "boundary": "Exact service; deterministic provider fixture applies generated CONTAINS predicates to two fixture URLs. No real provider call."
+    },
+    {
+      "case": "GA4 total and supplemental daily queries bypass request deadline/cancellation",
+      "requests": [
+        {
+          "hasSignal": false,
+          "metrics": [
+            "sessions",
+            "totalUsers",
+            "conversions",
+            "screenPageViews",
+            "totalRevenue",
+            "engagedSessions",
+            "engagementRate"
+          ]
+        },
+        {
+          "hasSignal": false,
+          "metrics": [
+            "conversions",
+            "totalRevenue"
+          ]
+        },
+        {
+          "hasSignal": false,
+          "metrics": [
+            "conversions",
+            "totalRevenue"
+          ]
+        }
+      ],
+      "boundary": "Exact service, fetch mocked; no hanging request or network."
+    }
+  ]
+}

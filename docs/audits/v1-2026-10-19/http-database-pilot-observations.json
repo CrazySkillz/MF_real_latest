@@ -1,0 +1,94 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "at": "2026-10-20T08:47:13.467Z",
+  "boundary": "Actual registerRoutes, Express JSON/multipart handling, rate limit middleware and DatabaseStorage with real disposable PostgreSQL18. Five synthetic Clerk identities,25 campaigns,45 days each of two financial record families. No frontend, Clerk verification, index startup, background workers, provider or email. CSV preview is parsed, not saved. Local timings do not certify hosted capacity.",
+  "forbiddenRequests": [],
+  "observations": [
+    {
+      "case": "Actual HTTP/DB owner/anonymous/foreign/client filters",
+      "statuses": [
+        200,
+        404,
+        401,
+        200,
+        404
+      ]
+    },
+    {
+      "case": "5000-row CSV preview actor0",
+      "status": 200,
+      "rows": 5000,
+      "intentionalRowLimit": false
+    },
+    {
+      "case": "5000-row CSV preview actor3",
+      "status": 200,
+      "rows": 5000,
+      "intentionalRowLimit": false
+    },
+    {
+      "case": "5000-row CSV preview actor1",
+      "status": 200,
+      "rows": 5000,
+      "intentionalRowLimit": false
+    },
+    {
+      "case": "5000-row CSV preview actor4",
+      "status": 200,
+      "rows": 5000,
+      "intentionalRowLimit": false
+    },
+    {
+      "case": "5000-row CSV preview actor2",
+      "status": 200,
+      "rows": 5000,
+      "intentionalRowLimit": false
+    },
+    {
+      "case": "Five-user actual HTTP/DB workload",
+      "users": 5,
+      "campaigns": 25,
+      "requests": 205,
+      "readRequests": 200,
+      "csvPreviewRequests": 5,
+      "elapsedMs": 1195.0684,
+      "p95Ms": 52.99459999999999,
+      "maxMs": 205.95579999999973,
+      "eventLoopP95Ms": 26.918911,
+      "failures": []
+    },
+    {
+      "case": "V1-126 shared-IP five-user onboarding fails after five successful previews",
+      "outcomes": [
+        {
+          "status": 429,
+          "retryAfter": 300
+        },
+        {
+          "status": 429,
+          "retryAfter": 300
+        },
+        {
+          "status": 429,
+          "retryAfter": 300
+        },
+        {
+          "status": 429,
+          "retryAfter": 300
+        },
+        {
+          "status": 429,
+          "retryAfter": 300
+        }
+      ],
+      "newSources": 0,
+      "releaseDisposition": "FAIL for simultaneous five-user imports behind the same IP; passing test means defect reproduced, not release acceptance"
+    },
+    {
+      "case": "10000-row negative control with a fresh isolated limiter window",
+      "status": 413,
+      "error": "CSV too large. Please reduce rows (max 5,000 data rows)."
+    }
+  ],
+  "fixtureSchemaRemoved": true
+}

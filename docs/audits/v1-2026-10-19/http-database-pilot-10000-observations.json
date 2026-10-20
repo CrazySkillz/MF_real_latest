@@ -1,0 +1,93 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "at": "2026-10-20T08:43:54.549Z",
+  "boundary": "Actual registerRoutes, Express JSON/multipart handling, rate limit middleware and DatabaseStorage with real disposable PostgreSQL18. Five synthetic Clerk identities,25 campaigns,45 days each of two financial record families. No frontend, Clerk verification, index startup, background workers, provider or email. CSV preview is parsed, not saved. Local timings do not certify hosted capacity.",
+  "forbiddenRequests": [],
+  "observations": [
+    {
+      "case": "Actual HTTP/DB owner/anonymous/foreign/client filters",
+      "statuses": [
+        200,
+        404,
+        401,
+        200,
+        404
+      ]
+    },
+    {
+      "case": "10000-row CSV preview actor0",
+      "status": 413
+    },
+    {
+      "case": "10000-row CSV preview actor2",
+      "status": 413
+    },
+    {
+      "case": "10000-row CSV preview actor1",
+      "status": 413
+    },
+    {
+      "case": "10000-row CSV preview actor3",
+      "status": 413
+    },
+    {
+      "case": "10000-row CSV preview actor4",
+      "status": 413
+    },
+    {
+      "case": "Five-user actual HTTP/DB workload",
+      "users": 5,
+      "campaigns": 25,
+      "requests": 205,
+      "readRequests": 200,
+      "csvPreviewRequests": 5,
+      "elapsedMs": 1161.8071,
+      "p95Ms": 60.34169999999904,
+      "maxMs": 95.84189999999944,
+      "eventLoopP95Ms": 27.312127,
+      "failures": [
+        {
+          "path": "csv-preview",
+          "status": 413,
+          "body": {
+            "success": false,
+            "error": "CSV too large. Please reduce rows (max 5,000 data rows)."
+          }
+        },
+        {
+          "path": "csv-preview",
+          "status": 413,
+          "body": {
+            "success": false,
+            "error": "CSV too large. Please reduce rows (max 5,000 data rows)."
+          }
+        },
+        {
+          "path": "csv-preview",
+          "status": 413,
+          "body": {
+            "success": false,
+            "error": "CSV too large. Please reduce rows (max 5,000 data rows)."
+          }
+        },
+        {
+          "path": "csv-preview",
+          "status": 413,
+          "body": {
+            "success": false,
+            "error": "CSV too large. Please reduce rows (max 5,000 data rows)."
+          }
+        },
+        {
+          "path": "csv-preview",
+          "status": 413,
+          "body": {
+            "success": false,
+            "error": "CSV too large. Please reduce rows (max 5,000 data rows)."
+          }
+        }
+      ]
+    }
+  ],
+  "fixtureSchemaRemoved": true
+}

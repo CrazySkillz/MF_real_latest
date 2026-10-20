@@ -1,0 +1,46 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact current GET callback error handlers and existing popup serializer in local Chromium with current CSP and all browser network blocked. No deployed attack, provider, database or credential access. Middleware not executed; error branches precede state/owner checks.",
+  "results": [
+    {
+      "case": "salesforce callback error output",
+      "path": "/api/auth/salesforce/callback",
+      "queryField": "error",
+      "markerExecuted": true,
+      "expected": "Confirmed unescaped error branch before authorization/state verification"
+    },
+    {
+      "case": "salesforce callback error_description output",
+      "path": "/api/auth/salesforce/callback",
+      "queryField": "error_description",
+      "markerExecuted": true,
+      "expected": "Confirmed unescaped error branch before authorization/state verification"
+    },
+    {
+      "case": "linkedin callback error_description output",
+      "path": "/api/auth/linkedin/callback",
+      "queryField": "error_description",
+      "markerExecuted": true,
+      "expected": "Confirmed unescaped error branch before authorization/state verification"
+    },
+    {
+      "case": "meta callback error_description output",
+      "path": "/api/auth/meta/callback",
+      "queryField": "error_description",
+      "markerExecuted": true,
+      "expected": "Confirmed unescaped error branch before authorization/state verification"
+    },
+    {
+      "case": "google callback error output",
+      "path": "/api/auth/google/callback",
+      "queryField": "error",
+      "markerExecuted": false,
+      "expected": "Control: Google error branch uses fixed text"
+    },
+    {
+      "case": "Existing serializeOAuthPopupJson helper preserves string without script execution",
+      "markerExecuted": false,
+      "roundTripPreserved": true
+    }
+  ]
+}

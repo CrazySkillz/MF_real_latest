@@ -1,0 +1,96 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "results": [
+    {
+      "case": "Existing custom integration update drops replacement sender whitelist",
+      "requestedWhitelist": [
+        "new@example.invalid"
+      ],
+      "writtenFields": [
+        "email",
+        "webhookToken",
+        "connectedAt"
+      ],
+      "boundary": "Exact extracted storage method with mock DB; no persisted user data."
+    },
+    {
+      "case": "Custom UI metric resolver exposes review-required metric",
+      "result": {
+        "available": true,
+        "currentValue": 12,
+        "unit": "",
+        "option": {
+          "key": "clicks",
+          "label": "Clicks",
+          "unit": "",
+          "type": "count"
+        },
+        "sourceLabel": "Fixture import",
+        "reason": ""
+      },
+      "boundary": "Exact resolver; metric metadata accessors are mocks. UI warning badge exists separately; this does not claim warnings are hidden."
+    },
+    {
+      "case": "Custom report turns failed revenue read into available zero",
+      "result": {
+        "available": true,
+        "value": 0,
+        "label": "Total Revenue",
+        "unit": "$",
+        "type": "currency",
+        "reason": ""
+      },
+      "boundary": "Exact financial report builder with active source and failed total-read fixture."
+    },
+    {
+      "case": "Same-source transfer deletes connection and metrics but reports success; copy drops review metadata and import timestamp",
+      "response": {
+        "success": true,
+        "message": "Custom integration and metrics transferred"
+      },
+      "remainingMetrics": 0,
+      "copiedFields": [
+        "campaignId",
+        "impressions",
+        "reach",
+        "clicks",
+        "engagements",
+        "spend",
+        "conversions",
+        "leads",
+        "videoViews",
+        "viralImpressions",
+        "users",
+        "sessions",
+        "pageviews",
+        "avgSessionDuration",
+        "pagesPerSession",
+        "bounceRate",
+        "organicSearchShare",
+        "directBrandedShare",
+        "emailShare",
+        "referralShare",
+        "paidShare",
+        "socialShare",
+        "emailsDelivered",
+        "openRate",
+        "clickThroughRate",
+        "clickToOpenRate",
+        "hardBounces",
+        "spamComplaints",
+        "listGrowth",
+        "pdfFileName",
+        "emailSubject",
+        "emailId"
+      ],
+      "boundary": "Exact retained API handler with mock storage and successful owner guards. No current frontend caller found; no database/customer mutation."
+    },
+    {
+      "case": "Magic temporary campaign ID bypasses custom connect actor/owner guard",
+      "guardCalls": 0,
+      "writtenCampaignId": "temp-campaign-setup",
+      "success": true,
+      "boundary": "Exact retained handler with mocked email-name generation, randomness and storage. No network, email or user data."
+    }
+  ]
+}

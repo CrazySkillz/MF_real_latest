@@ -16,7 +16,7 @@ export const oauthRateLimiter = rateLimit({
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   // Skip rate limiting for test mode
   skip: (req) => {
-    return req.body?.isTestMode === true;
+    return process.env.NODE_ENV === 'test' && req.body?.isTestMode === true;
   }
 });
 
@@ -35,7 +35,7 @@ export const linkedInApiRateLimiter = rateLimit({
   legacyHeaders: false,
   // Skip rate limiting for test mode
   skip: (req) => {
-    return req.body?.isTestMode === true;
+    return process.env.NODE_ENV === 'test' && req.body?.isTestMode === true;
   }
 });
 
@@ -54,7 +54,7 @@ export const importRateLimiter = rateLimit({
   legacyHeaders: false,
   // Skip rate limiting for test mode
   skip: (req) => {
-    return req.body?.isTestMode === true || isInternalAutoRefreshRequest(req);
+    return (process.env.NODE_ENV === 'test' && req.body?.isTestMode === true) || isInternalAutoRefreshRequest(req);
   }
 });
 

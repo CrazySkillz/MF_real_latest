@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { Building2, ChevronRight, Plus, Trash2 } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import CreateClientModal from "@/components/modals/create-client-modal";
 import { useClient } from "@/lib/clientContext";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import type { Client } from "@shared/schema";
 
 export default function HomePage() {
+  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const { clients, selectedClientId, setSelectedClientId } = useClient();

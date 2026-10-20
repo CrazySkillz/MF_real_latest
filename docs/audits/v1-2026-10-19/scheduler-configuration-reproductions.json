@@ -1,0 +1,285 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "at": "2026-10-20T08:32:31.043Z",
+  "boundary": "Exact current startup functions/class with synthetic environment and intercepted timers/refreshes. Node timer normalization checked using immediately cleared no-effect timers. No real jobs, DB, provider, messages or application process started.",
+  "normalization": [
+    {
+      "input": "NaN",
+      "actualNodeTimeoutMs": 1
+    },
+    {
+      "input": "undefined",
+      "actualNodeTimeoutMs": 1
+    },
+    {
+      "input": "0",
+      "actualNodeTimeoutMs": 1
+    },
+    {
+      "input": "-1",
+      "actualNodeTimeoutMs": 1
+    },
+    {
+      "input": "3600000000",
+      "actualNodeTimeoutMs": 1
+    }
+  ],
+  "results": [
+    {
+      "family": "ads",
+      "configured": "(unset)",
+      "starts": 1,
+      "intervalCount": 1,
+      "delays": [
+        14400000
+      ],
+      "effectiveNodeDelayMs": [
+        14400000
+      ],
+      "initialFixtureRefreshes": 0,
+      "source": "server/google-ads-scheduler.ts"
+    },
+    {
+      "family": "ads",
+      "configured": "0",
+      "starts": 1,
+      "intervalCount": 1,
+      "delays": [
+        0
+      ],
+      "effectiveNodeDelayMs": [
+        1
+      ],
+      "initialFixtureRefreshes": 0,
+      "source": "server/google-ads-scheduler.ts"
+    },
+    {
+      "family": "ads",
+      "configured": "-1",
+      "starts": 1,
+      "intervalCount": 1,
+      "delays": [
+        -3600000
+      ],
+      "effectiveNodeDelayMs": [
+        1
+      ],
+      "initialFixtureRefreshes": 0,
+      "source": "server/google-ads-scheduler.ts"
+    },
+    {
+      "family": "ads",
+      "configured": "invalid",
+      "starts": 1,
+      "intervalCount": 1,
+      "delays": [
+        "NaN"
+      ],
+      "effectiveNodeDelayMs": [
+        1
+      ],
+      "initialFixtureRefreshes": 0,
+      "source": "server/google-ads-scheduler.ts"
+    },
+    {
+      "family": "ads",
+      "configured": "1000",
+      "starts": 1,
+      "intervalCount": 1,
+      "delays": [
+        3600000000
+      ],
+      "effectiveNodeDelayMs": [
+        1
+      ],
+      "initialFixtureRefreshes": 0,
+      "source": "server/google-ads-scheduler.ts"
+    },
+    {
+      "family": "sheets",
+      "configured": "(unset)",
+      "starts": 1,
+      "intervalCount": 1,
+      "delays": [
+        86400000
+      ],
+      "effectiveNodeDelayMs": [
+        86400000
+      ],
+      "initialFixtureRefreshes": 2,
+      "source": "server/google-sheets-token-scheduler.ts"
+    },
+    {
+      "family": "sheets",
+      "configured": "0",
+      "starts": 1,
+      "intervalCount": 1,
+      "delays": [
+        0
+      ],
+      "effectiveNodeDelayMs": [
+        1
+      ],
+      "initialFixtureRefreshes": 2,
+      "source": "server/google-sheets-token-scheduler.ts"
+    },
+    {
+      "family": "sheets",
+      "configured": "-1",
+      "starts": 1,
+      "intervalCount": 1,
+      "delays": [
+        -3600000
+      ],
+      "effectiveNodeDelayMs": [
+        1
+      ],
+      "initialFixtureRefreshes": 2,
+      "source": "server/google-sheets-token-scheduler.ts"
+    },
+    {
+      "family": "sheets",
+      "configured": "invalid",
+      "starts": 1,
+      "intervalCount": 1,
+      "delays": [
+        "NaN"
+      ],
+      "effectiveNodeDelayMs": [
+        1
+      ],
+      "initialFixtureRefreshes": 2,
+      "source": "server/google-sheets-token-scheduler.ts"
+    },
+    {
+      "family": "sheets",
+      "configured": "1000",
+      "starts": 1,
+      "intervalCount": 1,
+      "delays": [
+        3600000000
+      ],
+      "effectiveNodeDelayMs": [
+        1
+      ],
+      "initialFixtureRefreshes": 2,
+      "source": "server/google-sheets-token-scheduler.ts"
+    },
+    {
+      "family": "snapshots",
+      "configured": "(unset)",
+      "starts": 1,
+      "intervalCount": 1,
+      "delays": [
+        86400000
+      ],
+      "effectiveNodeDelayMs": [
+        86400000
+      ],
+      "initialFixtureRefreshes": 0,
+      "source": "server/scheduler.ts"
+    },
+    {
+      "family": "snapshots",
+      "configured": "hourly",
+      "starts": 1,
+      "intervalCount": 1,
+      "delays": [
+        3600000
+      ],
+      "effectiveNodeDelayMs": [
+        3600000
+      ],
+      "initialFixtureRefreshes": 0,
+      "source": "server/scheduler.ts"
+    },
+    {
+      "family": "snapshots",
+      "configured": "daily",
+      "starts": 1,
+      "intervalCount": 1,
+      "delays": [
+        86400000
+      ],
+      "effectiveNodeDelayMs": [
+        86400000
+      ],
+      "initialFixtureRefreshes": 0,
+      "source": "server/scheduler.ts"
+    },
+    {
+      "family": "snapshots",
+      "configured": "weekly",
+      "starts": 1,
+      "intervalCount": 1,
+      "delays": [
+        604800000
+      ],
+      "effectiveNodeDelayMs": [
+        604800000
+      ],
+      "initialFixtureRefreshes": 0,
+      "source": "server/scheduler.ts"
+    },
+    {
+      "family": "snapshots",
+      "configured": "invalid",
+      "starts": 1,
+      "intervalCount": 1,
+      "delays": [
+        "undefined"
+      ],
+      "effectiveNodeDelayMs": [
+        1
+      ],
+      "initialFixtureRefreshes": 0,
+      "source": "server/scheduler.ts"
+    },
+    {
+      "family": "ads",
+      "configured": "(unset)",
+      "starts": 2,
+      "intervalCount": 2,
+      "delays": [
+        14400000,
+        14400000
+      ],
+      "effectiveNodeDelayMs": [
+        14400000,
+        14400000
+      ],
+      "initialFixtureRefreshes": 0,
+      "source": "server/google-ads-scheduler.ts"
+    },
+    {
+      "family": "sheets",
+      "configured": "(unset)",
+      "starts": 2,
+      "intervalCount": 2,
+      "delays": [
+        86400000,
+        86400000
+      ],
+      "effectiveNodeDelayMs": [
+        86400000,
+        86400000
+      ],
+      "initialFixtureRefreshes": 4,
+      "source": "server/google-sheets-token-scheduler.ts"
+    },
+    {
+      "family": "snapshots",
+      "configured": "(unset)",
+      "starts": 2,
+      "intervalCount": 1,
+      "delays": [
+        86400000
+      ],
+      "effectiveNodeDelayMs": [
+        86400000
+      ],
+      "initialFixtureRefreshes": 0,
+      "source": "server/scheduler.ts"
+    }
+  ]
+}

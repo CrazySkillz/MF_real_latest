@@ -1,0 +1,102 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "executedAt": "2026-10-19T22:49:06.920Z",
+  "boundary": "Actual parser/CSV modules; zlib delegates to actual bounded inflate and counts output. Synthetic local ZIPs only. No HTTP, app startup, DB, provider or file extraction.",
+  "results": [
+    {
+      "case": "Control: visible sheet first in ZIP",
+      "metrics": {
+        "spend": 10,
+        "_extractedFields": 1,
+        "_confidence": 100,
+        "_warnings": [],
+        "_requiresReview": false
+      },
+      "workbookSheetOrder": [
+        "Visible report",
+        "Hidden prior report"
+      ],
+      "hiddenFirstInZip": false
+    },
+    {
+      "case": "Hidden sheet first in ZIP is silently selected over first visible workbook sheet",
+      "metrics": {
+        "spend": 200,
+        "_extractedFields": 1,
+        "_confidence": 100,
+        "_warnings": [],
+        "_requiresReview": false
+      },
+      "workbookSheetOrder": [
+        "Visible report",
+        "Hidden prior report"
+      ],
+      "hiddenFirstInZip": true
+    },
+    {
+      "case": "Bounded archive expands unused data beyond multipart per-file limit",
+      "compressedBytes": 14046,
+      "expandedBytes": 12584919,
+      "boundedPaddingBytes": 12582912,
+      "metrics": {
+        "spend": 10,
+        "_extractedFields": 1,
+        "_confidence": 100,
+        "_warnings": [],
+        "_requiresReview": false
+      },
+      "limitation": "Only 12MiB synthetic padding; no exhaustion, production request, timing SLA or crash assertion."
+    },
+    {
+      "case": "Duplicate CSV headers discard first value and count last value twice without warning",
+      "inputValues": [
+        100,
+        7
+      ],
+      "metrics": {
+        "spend": 14,
+        "_extractedFields": 1,
+        "_confidence": 100,
+        "_warnings": [],
+        "_requiresReview": false
+      },
+      "auditCorrection": "Initial fixture expected7 after object overwrite; actual header iteration adds surviving7 twice. Assertion corrected after tracing applyHeaderRows; runtime unchanged."
+    },
+    {
+      "case": "Duplicate XLSX headers discard first value and count last value twice without warning",
+      "inputValues": [
+        100,
+        7
+      ],
+      "metrics": {
+        "spend": 14,
+        "_extractedFields": 1,
+        "_confidence": 100,
+        "_warnings": [],
+        "_requiresReview": false
+      },
+      "auditCorrection": "Initial fixture expected7 after object overwrite; actual header iteration adds surviving7 twice. Assertion corrected after tracing applyHeaderRows; runtime unchanged."
+    },
+    {
+      "case": "Control: no worksheet is marked review required",
+      "metrics": {
+        "_confidence": 0,
+        "_warnings": [
+          "No worksheet found in XLSX"
+        ],
+        "_extractedFields": 0,
+        "_requiresReview": true
+      }
+    },
+    {
+      "case": "Control: shared string header and explicit zero preserved",
+      "metrics": {
+        "spend": 0,
+        "_extractedFields": 1,
+        "_confidence": 100,
+        "_warnings": [],
+        "_requiresReview": false
+      }
+    }
+  ]
+}

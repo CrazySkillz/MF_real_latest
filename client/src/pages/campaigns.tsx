@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, type FocusEvent } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { queryClient } from "@/lib/queryClient";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
@@ -210,6 +209,7 @@ const SIMULATED_TIKTOK_CAMPAIGNS = [
 ];
 
 export default function Campaigns() {
+  const queryClient = useQueryClient();
   const { selectedClientId } = useClient();
   const [, setLocation] = useLocation();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);

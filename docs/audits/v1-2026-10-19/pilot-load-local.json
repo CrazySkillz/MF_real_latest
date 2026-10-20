@@ -1,0 +1,76 @@
+{
+  "at": "2026-10-19T22:32:07.951Z",
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact six current storage methods and CSV parser/Spend aggregator; real isolated PostgreSQL, current four-table generated schema. No app HTTP/auth/browser/scheduler/provider/report or import persistence/recompute path. Fixture owner filtering is an assertion, not an authorization test.",
+  "baseline": {
+    "simultaneousReaders": 5,
+    "owners": 5,
+    "campaigns": 25,
+    "days": 90,
+    "spendSourcesPerCampaign": 4,
+    "importRows": 10000,
+    "readerBatches": 100,
+    "imports": 5,
+    "thinkTimeMs": 200
+  },
+  "counts": {
+    "clients": 5,
+    "campaigns": 25,
+    "sources": 100,
+    "records": 9000
+  },
+  "node": "v22.17.1",
+  "databaseVersion": "18.0",
+  "poolMax": 10,
+  "elapsedMs": 4638.06,
+  "queryCount": 700,
+  "readBatches": {
+    "n": 100,
+    "minMs": 7.75,
+    "p50Ms": 16.9,
+    "p95Ms": 64.66,
+    "maxMs": 171.09
+  },
+  "firstBatches": {
+    "n": 5,
+    "minMs": 116.9,
+    "p50Ms": 131.2,
+    "p95Ms": 171.09,
+    "maxMs": 171.09
+  },
+  "csvParseAndAggregate": {
+    "n": 5,
+    "minMs": 20.14,
+    "p50Ms": 32.38,
+    "p95Ms": 39.51,
+    "maxMs": 39.51
+  },
+  "eventLoopDelay": {
+    "p95Ms": 22.48,
+    "maxMs": 55.28
+  },
+  "processOnly": {
+    "cpuUserMs": 1422,
+    "cpuSystemMs": 171,
+    "rssBeforeBytes": 154988544,
+    "rssAfterBytes": 160571392,
+    "heapBeforeBytes": 91229272,
+    "heapAfterBytes": 85260048
+  },
+  "pool": {
+    "maxWaitingObserved": 13,
+    "maxConnectionsObserved": 10
+  },
+  "errors": [],
+  "localAcceptance": {
+    "criteria": "Zero incorrect totals/errors and p95 component read batch under1000ms; each10k-row parse/aggregate under1000ms. Provisional local characterization threshold, not deployed SLA.",
+    "pass": true
+  },
+  "limitations": [
+    "Short warm-up/bounded run, not a sustained load or saturation test.",
+    "Database and Node run on same workstation; no HTTP/network/browser/Clerk/provider latency.",
+    "Only Spend read subset and CSV computation; missing Revenue, GA4 publication, actual import transaction/recompute, exports, reports and competing jobs.",
+    "All rows synthetic. Database query plan/resource usage and Render capacity are not inferred.",
+    "Pool queue sampling can miss sub5ms spikes; process memory/CPU excludes PostgreSQL and Chromium."
+  ]
+}

@@ -1,0 +1,172 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact current pure helpers and AST-selected active headline formatter with synthetic daily/summary contracts. No browser/database/provider/report; upstream data completeness is not inferred.",
+  "results": [
+    {
+      "case": "Headline engagement at 0/10000 engaged sessions",
+      "sessions": 10000,
+      "engagedSessions": 0,
+      "computedPercent": 0,
+      "headline": "0%",
+      "websiteSummaryUsingPercentDirectly": "0%",
+      "boundary": "Actual cumulative helper then exact current headline expression; no stored rate mutation."
+    },
+    {
+      "case": "Headline engagement at 50/10000 engaged sessions",
+      "sessions": 10000,
+      "engagedSessions": 50,
+      "computedPercent": 0.5,
+      "headline": "50%",
+      "websiteSummaryUsingPercentDirectly": "0.5%",
+      "boundary": "Actual cumulative helper then exact current headline expression; no stored rate mutation."
+    },
+    {
+      "case": "Headline engagement at 100/10000 engaged sessions",
+      "sessions": 10000,
+      "engagedSessions": 100,
+      "computedPercent": 1,
+      "headline": "100%",
+      "websiteSummaryUsingPercentDirectly": "1%",
+      "boundary": "Actual cumulative helper then exact current headline expression; no stored rate mutation."
+    },
+    {
+      "case": "Headline engagement at 101/10000 engaged sessions",
+      "sessions": 10000,
+      "engagedSessions": 101,
+      "computedPercent": 1.01,
+      "headline": "1%",
+      "websiteSummaryUsingPercentDirectly": "1%",
+      "boundary": "Actual cumulative helper then exact current headline expression; no stored rate mutation."
+    },
+    {
+      "case": "Headline engagement at 5000/10000 engaged sessions",
+      "sessions": 10000,
+      "engagedSessions": 5000,
+      "computedPercent": 50,
+      "headline": "50%",
+      "websiteSummaryUsingPercentDirectly": "50%",
+      "boundary": "Actual cumulative helper then exact current headline expression; no stored rate mutation."
+    },
+    {
+      "case": "No sessions produces headline rate0 while financial zero-denominator rates are unavailable",
+      "traffic": {
+        "users": 0,
+        "sessions": 0,
+        "conversions": 0,
+        "engagedSessions": 0,
+        "engagementRate": 0,
+        "cvr": 0
+      },
+      "headlineCvr": "0%",
+      "headlineEngagement": "0%",
+      "financialControl": {
+        "roas": null,
+        "roi": null,
+        "cpa": null
+      },
+      "limitation": "No full page render; exact computed values and actual headline formatter. Daily-chart no-activity null handling is separately traced in code."
+    },
+    {
+      "case": "Both current server Trend website-summary branches also compute rate0 with no sessions",
+      "expressions": [
+        {
+          "line": 2097,
+          "expression": "sessions > 0 ? (engagedSessions / sessions) * 100 : 0",
+          "result": 0
+        },
+        {
+          "line": 2900,
+          "expression": "sessions > 0 ? (engagedSessions / sessions) * 100 : 0",
+          "result": 0
+        }
+      ],
+      "limitation": "Exact numeric expressions only; no generated Trend PDF in this packet."
+    },
+    {
+      "case": "Complete scheduler daily history preserves fractional values",
+      "accepted": true,
+      "rows": [
+        {
+          "date": "2026-10-16",
+          "users": 1,
+          "sessions": 2,
+          "conversions": 0.25,
+          "engagedSessions": 1,
+          "engagementRate": 0.5
+        },
+        {
+          "date": "2026-10-17",
+          "users": 1,
+          "sessions": 2,
+          "conversions": 0.25,
+          "engagedSessions": 1,
+          "engagementRate": 0.5
+        },
+        {
+          "date": "2026-10-18",
+          "users": 1,
+          "sessions": 2,
+          "conversions": 0.25,
+          "engagedSessions": 1,
+          "engagementRate": 0.5
+        }
+      ]
+    },
+    {
+      "case": "Missing calendar date is rejected",
+      "accepted": false,
+      "rows": null
+    },
+    {
+      "case": "Duplicate calendar date is rejected",
+      "accepted": false,
+      "rows": null
+    },
+    {
+      "case": "Wrong property is rejected",
+      "accepted": false,
+      "rows": null
+    },
+    {
+      "case": "Unverified scheduler coverage is rejected",
+      "accepted": false,
+      "rows": null
+    },
+    {
+      "case": "UTC calendar cutoffs remain seven dates across Amsterdam DST changes",
+      "dates": [
+        {
+          "end": "2026-03-30",
+          "start": "2026-03-23",
+          "expanded": [
+            "2026-03-24",
+            "2026-03-25",
+            "2026-03-26",
+            "2026-03-27",
+            "2026-03-28",
+            "2026-03-29",
+            "2026-03-30"
+          ]
+        },
+        {
+          "end": "2026-10-26",
+          "start": "2026-10-19",
+          "expanded": [
+            "2026-10-20",
+            "2026-10-21",
+            "2026-10-22",
+            "2026-10-23",
+            "2026-10-24",
+            "2026-10-25",
+            "2026-10-26"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "Financial child source preserves GA4 mode; second main source selects separate aggregate mode",
+      "financialChild": "cumulative_ga4",
+      "secondMain": "aggregate"
+    }
+  ]
+}

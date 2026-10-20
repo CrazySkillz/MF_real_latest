@@ -1,0 +1,207 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "executedAt": "2026-10-19T23:28:17.444Z",
+  "boundary": "Actual CSV/parser/normalization/client/server functions; all28-field state checks grouped by scenario. No real import, database, provider, message or runtime change.",
+  "results": [
+    {
+      "case": "All28 canonical CSV fields pass through actual normalization and client/server option resolution",
+      "fields": 28,
+      "supportedOptions": 21,
+      "boundary": "No database insert; normalized DTO and resolver parity only. Current financial source overlay tested separately."
+    },
+    {
+      "case": "All28 explicit zero inputs remain present through normalization",
+      "values": {
+        "impressions": 0,
+        "reach": 0,
+        "clicks": 0,
+        "engagements": 0,
+        "spend": "0",
+        "conversions": 0,
+        "leads": 0,
+        "videoViews": 0,
+        "viralImpressions": 0,
+        "users": 0,
+        "sessions": 0,
+        "pageviews": 0,
+        "avgSessionDuration": "00:00:00",
+        "pagesPerSession": "0",
+        "bounceRate": "0",
+        "organicSearchShare": "0",
+        "directBrandedShare": "0",
+        "emailShare": "0",
+        "referralShare": "0",
+        "paidShare": "0",
+        "socialShare": "0",
+        "emailsDelivered": 0,
+        "openRate": "0",
+        "clickThroughRate": "0",
+        "clickToOpenRate": "0",
+        "hardBounces": "0",
+        "spamComplaints": "0",
+        "listGrowth": 0,
+        "parserMetadata": {
+          "confidence": 100,
+          "warnings": [],
+          "extractedFields": 28,
+          "requiresReview": false
+        }
+      }
+    },
+    {
+      "case": "All28 absent inputs normalize to null rather than schema defaults",
+      "values": {
+        "impressions": null,
+        "reach": null,
+        "clicks": null,
+        "engagements": null,
+        "spend": null,
+        "conversions": null,
+        "leads": null,
+        "videoViews": null,
+        "viralImpressions": null,
+        "users": null,
+        "sessions": null,
+        "pageviews": null,
+        "avgSessionDuration": null,
+        "pagesPerSession": null,
+        "bounceRate": null,
+        "organicSearchShare": null,
+        "directBrandedShare": null,
+        "emailShare": null,
+        "referralShare": null,
+        "paidShare": null,
+        "socialShare": null,
+        "emailsDelivered": null,
+        "openRate": null,
+        "clickThroughRate": null,
+        "clickToOpenRate": null,
+        "hardBounces": null,
+        "spamComplaints": null,
+        "listGrowth": null,
+        "parserMetadata": {
+          "confidence": 0,
+          "warnings": [
+            "No metrics extracted from CSV"
+          ],
+          "extractedFields": 0,
+          "requiresReview": true
+        }
+      },
+      "boundary": "Current normalized DTO contains explicit nulls; this is not an isolated PostgreSQL precision/default test"
+    },
+    {
+      "case": "Seven parsed/persisted fields are not offered in current metric option catalogs",
+      "fields": [
+        "reach",
+        "engagements",
+        "videoViews",
+        "viralImpressions",
+        "avgSessionDuration",
+        "hardBounces",
+        "spamComplaints"
+      ],
+      "boundary": "Not a finding by itself. Current option-based Overview/Summary/KPI/Benchmark/report coverage differs from parser/schema; raw API still returns fields."
+    },
+    {
+      "case": "Different source meanings are silently relabelled delivered/open-rate/bounce-rate/net-growth",
+      "input": {
+        "emailsSent": 1000,
+        "opensCount": 50,
+        "exitRate": 20,
+        "newSubscribers": 30
+      },
+      "actual": {
+        "bounceRate": 20,
+        "emailsDelivered": 1000,
+        "openRate": 50,
+        "listGrowth": 30,
+        "_extractedFields": 4,
+        "_confidence": 100,
+        "_warnings": [],
+        "_requiresReview": false
+      },
+      "displayedOpenRate": "50.00%",
+      "boundary": "Header aliases do not establish delivery, rate denominator, bounce definition or net subscriber delta. No provider-specific definition is assumed equivalent."
+    },
+    {
+      "case": "Control: native metric resolver distinguishes measured0 from absent value",
+      "zero": {
+        "available": true,
+        "currentValue": 0,
+        "unit": "%",
+        "option": {
+          "key": "openRate",
+          "label": "Email Open Rate",
+          "unit": "%",
+          "type": "percent"
+        },
+        "sourceLabel": "Custom Integration source",
+        "reason": ""
+      },
+      "missing": {
+        "available": false,
+        "currentValue": null,
+        "unit": "%",
+        "option": {
+          "key": "openRate",
+          "label": "Email Open Rate",
+          "unit": "%",
+          "type": "percent"
+        },
+        "sourceLabel": "Custom Integration source",
+        "reason": "Email Open Rate is not available in the selected Custom Integration import."
+      }
+    },
+    {
+      "case": "Actual scheduled Custom financial helper repeats failed Revenue0/Spend100/ROI−100",
+      "metrics": [
+        [
+          "overview.total_revenue",
+          {
+            "available": true,
+            "value": 0,
+            "label": "Total Revenue",
+            "unit": "$",
+            "type": "currency",
+            "reason": ""
+          }
+        ],
+        [
+          "overview.total_spend",
+          {
+            "available": true,
+            "value": 100,
+            "label": "Total Spend",
+            "unit": "$",
+            "type": "currency",
+            "reason": ""
+          }
+        ],
+        [
+          "overview.roas",
+          {
+            "available": true,
+            "value": 0,
+            "label": "ROAS",
+            "unit": "x",
+            "type": "ratio",
+            "reason": ""
+          }
+        ],
+        [
+          "overview.roi",
+          {
+            "available": true,
+            "value": -100,
+            "label": "ROI",
+            "unit": "%",
+            "type": "percent",
+            "reason": ""
+          }
+        ]
+      ],
+      "boundary": "Actual report value builder only; no generated/sent PDF in this case"
+    }
+  ]
+}

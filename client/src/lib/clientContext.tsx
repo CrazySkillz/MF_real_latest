@@ -1,8 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { Client } from "@shared/schema";
-
-const STORAGE_KEY = "selectedClientId";
+import { useAuth } from "@clerk/clerk-react";
 
 interface ClientContextValue {
   clients: Client[];
@@ -14,33 +13,40 @@ interface ClientContextValue {
 const ClientContext = createContext<ClientContextValue | null>(null);
 
 export function ClientProvider({ children }: { children: ReactNode }) {
+  const { userId } = useAuth();
+  const storageKey = `selectedClientId:${userId}`;
   const { data: clients = [], isLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
 
   const [selectedClientId, setSelectedClientIdState] = useState<string | null>(() => {
-    return localStorage.getItem(STORAGE_KEY);
+    return localStorage.getItem(storageKey);
   });
 
   // Auto-select: restore from localStorage if valid, else pick first client
   useEffect(() => {
-    if (isLoading || clients.length === 0) return;
-    const stored = localStorage.getItem(STORAGE_KEY);
+    if (isLoading) return;
+    if (clients.length === 0) {
+      setSelectedClientIdState(null);
+      localStorage.removeItem(storageKey);
+      return;
+    }
+    const stored = localStorage.getItem(storageKey);
     if (stored && clients.some(c => c.id === stored)) {
       setSelectedClientIdState(stored);
     } else {
       const first = clients[0].id;
       setSelectedClientIdState(first);
-      localStorage.setItem(STORAGE_KEY, first);
+      localStorage.setItem(storageKey, first);
     }
-  }, [clients, isLoading]);
+  }, [clients, isLoading, storageKey]);
 
   const setSelectedClientId = (id: string | null) => {
     setSelectedClientIdState(id);
     if (id) {
-      localStorage.setItem(STORAGE_KEY, id);
+      localStorage.setItem(storageKey, id);
     } else {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(storageKey);
     }
   };
 

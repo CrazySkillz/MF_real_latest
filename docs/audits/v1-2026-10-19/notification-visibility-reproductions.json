@@ -1,0 +1,177 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "executedAt": "2026-10-19T23:10:10.847Z",
+  "boundary": "Actual registered route handlers, owner helpers, KPI resolver and email episode method, transpiled with in-memory predicate-evaluating database. Deterministic interleaving, not a PostgreSQL locking/browser/delivery test. No network, provider, real account or runtime changes.",
+  "results": [
+    {
+      "case": "patch /api/notifications/mark-all-read: owner",
+      "status": 200,
+      "writes": 1,
+      "response": {
+        "success": true,
+        "updatedCount": 2
+      },
+      "control": "Foreign and missing-parent rows remain unchanged"
+    },
+    {
+      "case": "patch /api/notifications/mark-all-read: anonymous",
+      "status": 401,
+      "writes": 0,
+      "response": {
+        "success": false,
+        "message": "Your session expired. Please refresh and try again."
+      },
+      "control": "Foreign and missing-parent rows remain unchanged"
+    },
+    {
+      "case": "delete /api/notifications/all/clear: owner",
+      "status": 200,
+      "writes": 2,
+      "response": {
+        "success": true,
+        "message": "Deleted 2 notifications",
+        "deletedCount": 2
+      },
+      "control": "Foreign and missing-parent rows remain unchanged"
+    },
+    {
+      "case": "delete /api/notifications/all/clear: anonymous",
+      "status": 401,
+      "writes": 0,
+      "response": {
+        "success": false,
+        "message": "Your session expired. Please refresh and try again."
+      },
+      "control": "Foreign and missing-parent rows remain unchanged"
+    },
+    {
+      "case": "delete /api/notifications/:id: owner",
+      "status": 200,
+      "writes": 1,
+      "response": {
+        "success": true,
+        "message": "Notification deleted"
+      },
+      "control": "Foreign and missing-parent rows remain unchanged"
+    },
+    {
+      "case": "delete /api/notifications/:id: anonymous",
+      "status": 401,
+      "writes": 0,
+      "response": {
+        "success": false,
+        "message": "Your session expired. Please refresh and try again."
+      },
+      "control": "Foreign and missing-parent rows remain unchanged"
+    },
+    {
+      "case": "delete /api/notifications/:id: foreign",
+      "status": 404,
+      "writes": 0,
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      },
+      "control": "Foreign and missing-parent rows remain unchanged"
+    },
+    {
+      "case": "delete /api/notifications/:id: missing-parent",
+      "status": 404,
+      "writes": 0,
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      },
+      "control": "Foreign and missing-parent rows remain unchanged"
+    },
+    {
+      "case": "patch /api/notifications/:id: owner",
+      "status": 200,
+      "writes": 1,
+      "response": {
+        "success": true,
+        "message": "Notification updated"
+      },
+      "control": "Foreign and missing-parent rows remain unchanged"
+    },
+    {
+      "case": "patch /api/notifications/:id: anonymous",
+      "status": 401,
+      "writes": 0,
+      "response": {
+        "success": false,
+        "message": "Your session expired. Please refresh and try again."
+      },
+      "control": "Foreign and missing-parent rows remain unchanged"
+    },
+    {
+      "case": "patch /api/notifications/:id: foreign",
+      "status": 404,
+      "writes": 0,
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      },
+      "control": "Foreign and missing-parent rows remain unchanged"
+    },
+    {
+      "case": "patch /api/notifications/:id: missing-parent",
+      "status": 404,
+      "writes": 0,
+      "response": {
+        "success": false,
+        "message": "Campaign not found"
+      },
+      "control": "Foreign and missing-parent rows remain unchanged"
+    },
+    {
+      "case": "delete /api/notifications/:id: dismiss stale read overwrites concurrent resolution",
+      "status": 200,
+      "afterResolution": {
+        "metadata": {
+          "kpiId": "kpi-a",
+          "resolved": true,
+          "resolvedAt": "2026-10-19T23:10:10.809Z",
+          "resolvedReason": "cleared"
+        },
+        "episode": "cleared:own:2026-10-19T23:10:10.809Z"
+      },
+      "finalMetadata": {
+        "kpiId": "kpi-a",
+        "dismissedAt": "2026-10-19T23:10:10.809Z",
+        "dismissedBy": "owner",
+        "dismissalReason": "dismissed"
+      },
+      "finalEpisode": "active:own",
+      "consequence": "Current email episode selector treats the dismissed record as active again. No actual email sent; eventual delivery suppression depends on existing claims."
+    },
+    {
+      "case": "delete /api/notifications/all/clear: dismiss stale read overwrites concurrent resolution",
+      "status": 200,
+      "afterResolution": {
+        "metadata": {
+          "kpiId": "kpi-a",
+          "resolved": true,
+          "resolvedAt": "2026-10-19T23:10:10.829Z",
+          "resolvedReason": "cleared"
+        },
+        "episode": "cleared:own:2026-10-19T23:10:10.829Z"
+      },
+      "finalMetadata": {
+        "kpiId": "kpi-a",
+        "dismissedAt": "2026-10-19T23:10:10.829Z",
+        "dismissedBy": "owner",
+        "dismissalReason": "clear_all"
+      },
+      "finalEpisode": "active:own",
+      "consequence": "Current email episode selector treats the dismissed record as active again. No actual email sent; eventual delivery suppression depends on existing claims."
+    },
+    {
+      "case": "Clear-all second-write failure leaves partial soft-hide",
+      "status": 500,
+      "firstHidden": true,
+      "secondHidden": false,
+      "boundary": "Retained API; no current client caller found. Request reports failure, no rollback."
+    }
+  ]
+}

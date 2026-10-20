@@ -1,0 +1,112 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact delayed startup callback with actual DDL/DML in disposable PostgreSQL schemas, installed Drizzle-generated current schema and four exact upsert methods. Seed and scheduler functions stubbed to record invocation. No HTTP server, production DB, outbound provider/email or real scheduler was started.",
+  "results": [
+    {
+      "case": "Empty schema: first migration fails, later groups and all scheduler starts continue",
+      "firstError": {
+        "code": "42P01",
+        "message": "relation \"campaigns\" does not exist"
+      },
+      "schedulerStarts": 13,
+      "seedInvoked": true,
+      "tables": [
+        "ga4_google_ads_spend_connections",
+        "ga4_google_ads_spend_daily_metrics",
+        "ga4_refresh_work"
+      ]
+    },
+    {
+      "case": "Declared62-table schema plus two successful startup migration passes still lacks four upsert constraints",
+      "startupMigrationErrors": 0,
+      "startupPasses": 2,
+      "upserts": [
+        {
+          "method": "upsertGA4DailyMetrics",
+          "errorCode": "42P10",
+          "meaning": "No unique or exclusion constraint matches ON CONFLICT target"
+        },
+        {
+          "method": "upsertLinkedInDailyMetrics",
+          "errorCode": "42P10",
+          "meaning": "No unique or exclusion constraint matches ON CONFLICT target"
+        },
+        {
+          "method": "upsertGoogleAdsDailyMetrics",
+          "errorCode": "42P10",
+          "meaning": "No unique or exclusion constraint matches ON CONFLICT target"
+        },
+        {
+          "method": "upsertMetaDailyMetrics",
+          "errorCode": "42P10",
+          "meaning": "No unique or exclusion constraint matches ON CONFLICT target"
+        }
+      ],
+      "indexRows": [
+        {
+          "table": "ga4_daily_metrics",
+          "definition": "CREATE UNIQUE INDEX ga4_daily_metrics_pkey ON <isolated_schema>.ga4_daily_metrics USING btree (id)"
+        },
+        {
+          "table": "ga4_daily_metrics",
+          "definition": "CREATE INDEX idx_ga4_daily_metrics_campaign_date ON <isolated_schema>.ga4_daily_metrics USING btree (campaign_id, date)"
+        },
+        {
+          "table": "google_ads_daily_metrics",
+          "definition": "CREATE UNIQUE INDEX google_ads_daily_metrics_pkey ON <isolated_schema>.google_ads_daily_metrics USING btree (id)"
+        },
+        {
+          "table": "instagram_daily_metrics",
+          "definition": "CREATE INDEX idx_instagram_daily_metrics_campaign_date ON <isolated_schema>.instagram_daily_metrics USING btree (campaign_id, date DESC)"
+        },
+        {
+          "table": "instagram_daily_metrics",
+          "definition": "CREATE UNIQUE INDEX idx_instagram_daily_metrics_unique ON <isolated_schema>.instagram_daily_metrics USING btree (campaign_id, instagram_campaign_id, date, platform_position)"
+        },
+        {
+          "table": "instagram_daily_metrics",
+          "definition": "CREATE UNIQUE INDEX instagram_daily_metrics_pkey ON <isolated_schema>.instagram_daily_metrics USING btree (id)"
+        },
+        {
+          "table": "linkedin_daily_metrics",
+          "definition": "CREATE INDEX idx_linkedin_daily_metrics_campaign_date ON <isolated_schema>.linkedin_daily_metrics USING btree (campaign_id, date)"
+        },
+        {
+          "table": "linkedin_daily_metrics",
+          "definition": "CREATE UNIQUE INDEX linkedin_daily_metrics_pkey ON <isolated_schema>.linkedin_daily_metrics USING btree (id)"
+        },
+        {
+          "table": "meta_daily_metrics",
+          "definition": "CREATE UNIQUE INDEX meta_daily_metrics_pkey ON <isolated_schema>.meta_daily_metrics USING btree (id)"
+        },
+        {
+          "table": "tiktok_daily_metrics",
+          "definition": "CREATE INDEX idx_tiktok_daily_metrics_campaign_date ON <isolated_schema>.tiktok_daily_metrics USING btree (campaign_id, date DESC)"
+        },
+        {
+          "table": "tiktok_daily_metrics",
+          "definition": "CREATE UNIQUE INDEX idx_tiktok_daily_metrics_unique ON <isolated_schema>.tiktok_daily_metrics USING btree (campaign_id, advertiser_id, tiktok_campaign_id, date, source_contract_version)"
+        },
+        {
+          "table": "tiktok_daily_metrics",
+          "definition": "CREATE UNIQUE INDEX tiktok_daily_metrics_pkey ON <isolated_schema>.tiktok_daily_metrics USING btree (id)"
+        }
+      ],
+      "limitation": "GA4 upsert current route caller is demo seeding; normal native refresh uses transactional replacement. LinkedIn/Ads/Meta upserts have current import/scheduler callers. No deployed schema inference."
+    },
+    {
+      "case": "Explicit legacy0006 execution twice duplicates synthetic financial rows and labels EUR campaign amounts USD",
+      "revenue": {
+        "rows": 2,
+        "total": "200.00",
+        "currency": "USD"
+      },
+      "spend": {
+        "rows": 2,
+        "total": "40.00",
+        "currency": "USD"
+      },
+      "limitation": "Manually executed only in fixture. File is not called by current startup/build/start scripts. Current active-source read filters may exclude these orphan rows; no doubled current UI amount is claimed."
+    }
+  ]
+}

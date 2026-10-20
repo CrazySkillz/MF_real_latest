@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { queryClient } from "@/lib/queryClient";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Plug } from "lucide-react";
@@ -26,6 +25,7 @@ const integrationFormSchema = z.object({
 type IntegrationFormData = z.infer<typeof integrationFormSchema>;
 
 export default function IntegrationModal({ isOpen, onClose, platform }: IntegrationModalProps) {
+  const queryClient = useQueryClient();
   const [isConnecting, setIsConnecting] = useState(false);
   const { toast } = useToast();
 
@@ -42,7 +42,7 @@ export default function IntegrationModal({ isOpen, onClose, platform }: Integrat
       const response = await apiRequest("POST", "/api/integrations", {
         platform: data.platform,
         name: data.name,
-        connected: true,
+        connected: false,
         credentials: data.credentials,
       });
       return response.json();
@@ -50,16 +50,16 @@ export default function IntegrationModal({ isOpen, onClose, platform }: Integrat
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/integrations"] });
       toast({
-        title: "Integration successful",
-        description: `${getPlatformName(platform)} has been connected successfully.`,
+        title: "Integration details saved",
+        description: `Complete ${getPlatformName(platform)} connection from your campaign's data sources to verify access.`,
       });
       onClose();
       form.reset();
     },
     onError: () => {
       toast({
-        title: "Connection failed",
-        description: "Failed to connect to the platform. Please check your credentials and try again.",
+        title: "Save failed",
+        description: "Could not save the integration details. Please try again.",
         variant: "destructive",
       });
     },
@@ -147,10 +147,10 @@ export default function IntegrationModal({ isOpen, onClose, platform }: Integrat
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-3">
             <i className={getPlatformIcon(platform)}></i>
-            <span>Connect {getPlatformName(platform)}</span>
+            <span>Save {getPlatformName(platform)} details</span>
           </DialogTitle>
           <DialogDescription>
-            Enter your credentials to connect your {getPlatformName(platform)} account
+            Save your {getPlatformName(platform)} details, then verify the connection from your campaign's data sources.
           </DialogDescription>
         </DialogHeader>
         
@@ -202,12 +202,12 @@ export default function IntegrationModal({ isOpen, onClose, platform }: Integrat
               {isConnecting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                  Connecting...
+                  Saving...
                 </>
               ) : (
                 <>
                   <Plug className="w-4 h-4 mr-2" />
-                  Connect
+                  Save details
                 </>
               )}
             </Button>

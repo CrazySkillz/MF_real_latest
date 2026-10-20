@@ -1,0 +1,65 @@
+{
+  "at": "2026-10-20T08:01:23.849Z",
+  "records": [
+    {
+      "source": "server/ga4-aggregate-saved-overview.test.ts",
+      "sha256": "f20ef2a28ffddbee28714529968a1aeb9d29c8fb6b616317caf6597fb43518c8",
+      "target": "docs/audits/v1-2026-10-19/ga4-aggregate-saved-overview.fixture-diagnostic.test.ts",
+      "changes": [
+        "Resolve existing imports relative to the audit directory.",
+        "Supply missing getGA4PublicationVersion fixture returning zero.",
+        "No assertion change."
+      ]
+    },
+    {
+      "source": "server/ga4-kpi-custom-preservation-regression.test.ts",
+      "sha256": "6d91abd9c1803e2cbb3c1b10a39c24e2d96f4ff7973d56c150a9c7c844ff263a",
+      "target": "docs/audits/v1-2026-10-19/ga4-kpi-custom-preservation-regression.fixture-diagnostic.test.ts",
+      "changes": [
+        "Resolve existing imports relative to the audit directory.",
+        "Supply missing getGA4PublicationVersion fixture returning zero.",
+        "No assertion change."
+      ]
+    },
+    {
+      "source": "server/ga4-kpi-financial-window-regression.test.ts",
+      "sha256": "8dad4a5c8f482644357d304ff850194e07246fed9b0bf6d0f7f3fbf59852bccc",
+      "target": "docs/audits/v1-2026-10-19/ga4-kpi-financial-window-regression.fixture-diagnostic.test.ts",
+      "changes": [
+        "Resolve existing imports relative to the audit directory.",
+        "Supply missing getGA4PublicationVersion fixture returning zero.",
+        "No assertion change."
+      ]
+    },
+    {
+      "source": "server/ga4-kpi-reporting-window-regression.test.ts",
+      "sha256": "ead98ae771ea5b088392d7c8a8506064014419e79cc60f34e2f6f5ba18cd63cc",
+      "target": "docs/audits/v1-2026-10-19/ga4-kpi-reporting-window-regression.fixture-diagnostic.test.ts",
+      "changes": [
+        "Resolve existing imports relative to the audit directory.",
+        "Supply missing getGA4PublicationVersion fixture returning zero.",
+        "No assertion change."
+      ]
+    },
+    {
+      "source": "server/ga4-kpi-real-path-parity-regression.test.ts",
+      "sha256": "81474f91a31bb5faf97e402dae9eb232914583275ce2cc28015d77b05108833d",
+      "target": "docs/audits/v1-2026-10-19/ga4-kpi-real-path-parity-regression.fixture-diagnostic.test.ts",
+      "changes": [
+        "Resolve existing imports relative to the audit directory.",
+        "Supply missing getGA4PublicationVersion fixture returning zero.",
+        "No assertion change."
+      ]
+    },
+    {
+      "source": "server/shopify-downstream-content-regression.test.ts",
+      "sha256": "383751938a32b51096ddf04dc79b9190f9c78645f5ad46c7cf7feee209766817",
+      "target": "docs/audits/v1-2026-10-19/shopify-downstream-content-regression.fixture-diagnostic.test.ts",
+      "changes": [
+        "Resolve existing imports relative to the audit directory.",
+        "Supply missing getGA4PublicationVersion fixture returning zero.",
+        "No assertion change."
+      ]
+    }
+  ]
+}

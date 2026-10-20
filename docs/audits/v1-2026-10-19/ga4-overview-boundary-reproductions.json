@@ -1,0 +1,170 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "executedAt": "2026-10-19T23:03:31.605Z",
+  "boundary": "Actual current page AST expressions with immediate useMemo/useCallback; real React supplied but no DOM rendering. Synthetic API/config inputs only. No app, database, provider, email or runtime changes.",
+  "results": [
+    {
+      "case": "Revenue exact source ID preserves completed zero versus latest pending100 and mapping",
+      "actual": [
+        {
+          "sourceId": "revenue-a",
+          "revenue": 0,
+          "mappingConfig": "{\"file\":\"a.csv\"}",
+          "materializedRevenueStatus": "available",
+          "boundedRevenueZero": false,
+          "latestRevenue": 100,
+          "pendingCompletedDay": true,
+          "completedDayEndDate": "2026-10-18"
+        }
+      ]
+    },
+    {
+      "case": "Revenue missing materialization remains unavailable",
+      "actual": [
+        {
+          "sourceId": "revenue-a",
+          "sourceType": "csv",
+          "revenue": null,
+          "latestRevenue": null,
+          "mappingConfig": "{\"file\":\"a.csv\"}",
+          "materializedRevenueStatus": "unavailable",
+          "boundedRevenueZero": false,
+          "pendingCompletedDay": true,
+          "completedDayEndDate": "2026-10-18"
+        }
+      ]
+    },
+    {
+      "case": "Spend exact source ID separates completed zero and latest pending100",
+      "actual": [
+        {
+          "sourceId": "spend-a",
+          "spend": 0,
+          "mappingConfig": "{\"file\":\"a.csv\"}",
+          "latestSpend": 100,
+          "completedDaySpend": 0,
+          "pendingCompletedDay": true,
+          "completedDayEndDate": "2026-10-18"
+        }
+      ]
+    },
+    {
+      "case": "Spend missing materialization preserves null latest value",
+      "actual": [
+        {
+          "sourceId": "missing",
+          "displayName": "Unknown",
+          "sourceType": "unknown",
+          "spend": null,
+          "mappingConfig": null,
+          "latestSpend": null,
+          "completedDaySpend": 0,
+          "pendingCompletedDay": false,
+          "completedDayEndDate": null
+        }
+      ]
+    },
+    {
+      "case": "Source provenance join uses identity rather than response order",
+      "idsAndMappings": [
+        {
+          "sourceId": "a",
+          "mappingConfig": "a"
+        },
+        {
+          "sourceId": "b",
+          "mappingConfig": "b"
+        }
+      ]
+    },
+    {
+      "case": "Overview numeric formatter preserves fractional0.75 conversions",
+      "formatted": "0.75"
+    },
+    {
+      "case": "Missing Overview totals are withheld rather than shown as zero",
+      "actual": "Unavailable"
+    },
+    {
+      "case": "Valid zero-session Overview still presents zero derived rates",
+      "sessions": 0,
+      "conversionRate": 0,
+      "engagementRate": 0,
+      "displayedRate": "0.0%",
+      "boundary": "Exact rate and state expressions; extends V1-098. Counts zero remain valid; ratios lack a denominator."
+    },
+    {
+      "case": "Campaign table rate is session key-event rate, distinct from Summary conversions per session",
+      "row": {
+        "name": "A",
+        "sessions": 100,
+        "users": 80,
+        "conversions": 20,
+        "revenue": 10,
+        "sessionKeyEventRateWeighted": 10,
+        "conversionRate": 10,
+        "revenuePerSession": 0.1
+      },
+      "summaryRate": 20,
+      "boundary": "Two explicit current formulas. This is a metric-definition inventory control, not permission to replace the intended table formula."
+    },
+    {
+      "case": "Successful zero Pipeline Proxy is replaced by older positive source mapping",
+      "endpoint": {
+        "success": true,
+        "totalToDate": 0,
+        "pipelineValueRevenueTotals": []
+      },
+      "actual": {
+        "success": true,
+        "totalToDate": 100,
+        "providerLabel": "HubSpot",
+        "pipelineStageLabel": "Open",
+        "pipelineValueRevenueTotals": [
+          {
+            "campaignValue": "A",
+            "revenue": 100
+          }
+        ],
+        "selectedValues": [
+          "A"
+        ],
+        "providerEntries": [
+          {
+            "providerLabel": "HubSpot",
+            "pipelineStageLabel": "Open",
+            "totalToDate": 100,
+            "sourceId": "pipeline-source",
+            "sourceType": "hubspot",
+            "displayName": "HubSpot",
+            "mappingConfig": "{\"pipelineEnabled\":true,\"pipelineStageId\":\"open\",\"pipelineStageLabel\":\"Open\",\"selectedValues\":[\"A\"],\"pipelineTotalToDate\":100,\"pipelineValueRevenueTotals\":[{\"campaignValue\":\"A\",\"revenue\":100}]}",
+            "campaignValues": [
+              "A"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": "Control: positive current Pipeline Proxy takes precedence",
+      "totalToDate": 30
+    },
+    {
+      "case": "First failed Pipeline Proxy read uses warning-marked old mapping without unavailable/last-good state",
+      "totalToDate": 100,
+      "hasPipelineProxy": true,
+      "unavailable": false,
+      "lastGoodWarning": false,
+      "boundary": "Source config cache succeeds, endpoint fails before first data. Full rendered page/live occurrence not asserted."
+    },
+    {
+      "case": "Control: no configured Pipeline Proxy remains absent",
+      "actual": null
+    },
+    {
+      "case": "Financial renderer distinguishes explicitly available zero from unavailable",
+      "availableZero": "$0",
+      "unavailable": "Unavailable"
+    }
+  ]
+}

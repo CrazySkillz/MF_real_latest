@@ -1,0 +1,33 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact GA4 service with requestReport replaced by immediate/local delayed response fixtures. No provider, database or HTTP server. Measures dispatch fan-out only, not live quota consumption, latency, actual 429s or end-to-end tester load. Current requestReport implementation has retries/deadlines but no concurrency queue.",
+  "results": [
+    {
+      "case": "Insights channel fan-out",
+      "channels": 2,
+      "concurrentReaders": 1,
+      "peakConcurrentChannelRequests": 2,
+      "channelRequests": 2,
+      "totalProviderRequests": 4,
+      "requestsAskingForPropertyQuota": 0
+    },
+    {
+      "case": "Insights channel fan-out",
+      "channels": 12,
+      "concurrentReaders": 1,
+      "peakConcurrentChannelRequests": 12,
+      "channelRequests": 12,
+      "totalProviderRequests": 14,
+      "requestsAskingForPropertyQuota": 0
+    },
+    {
+      "case": "Insights channel fan-out",
+      "channels": 12,
+      "concurrentReaders": 2,
+      "peakConcurrentChannelRequests": 24,
+      "channelRequests": 24,
+      "totalProviderRequests": 28,
+      "requestsAskingForPropertyQuota": 0
+    }
+  ]
+}

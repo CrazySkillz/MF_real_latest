@@ -1,0 +1,103 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact current process handler, CSV helpers, mapping/amount/platform validation. Auth middleware, aggregate recomputation and database writes replaced with isolated fixture spies. No live records changed.",
+  "results": [
+    {
+      "case": "GA4 accepted negative adjustment is silently omitted",
+      "response": {
+        "success": true,
+        "sourceId": "new-fixture",
+        "currency": "USD",
+        "rowCount": 2,
+        "keptRows": 1,
+        "date": "2026-10-18",
+        "mode": "revenue_to_date",
+        "totalRevenue": 100,
+        "importedRowsTotalRevenue": 100
+      },
+      "status": 200,
+      "events": [
+        "atomic_replace_called"
+      ],
+      "persistedCount": 1,
+      "persistedSum": 100
+    },
+    {
+      "case": "GA4 duplicate header control rejects before mutation",
+      "response": {
+        "success": false,
+        "error": "CSV headers must be unique."
+      },
+      "status": 400,
+      "events": [],
+      "persistedCount": 1,
+      "persistedSum": 55
+    },
+    {
+      "case": "GA4 dollar-in-EUR control rejects before mutation",
+      "response": {
+        "success": false,
+        "error": "Selected revenue rows contain unsupported or ambiguous amounts (CSV row 2). Use plain numbers or US-style separators with at most two decimal places; use $ only for USD campaigns."
+      },
+      "status": 400,
+      "events": [],
+      "persistedCount": 1,
+      "persistedSum": 55
+    },
+    {
+      "case": "GA4 exact selected campaign control excludes other row",
+      "response": {
+        "success": true,
+        "sourceId": "new-fixture",
+        "currency": "USD",
+        "rowCount": 2,
+        "keptRows": 1,
+        "date": "2026-10-18",
+        "mode": "revenue_to_date",
+        "totalRevenue": 100,
+        "importedRowsTotalRevenue": 100
+      },
+      "status": 200,
+      "events": [
+        "atomic_replace_called"
+      ],
+      "persistedCount": 1,
+      "persistedSum": 100
+    },
+    {
+      "case": "LinkedIn invalid conversion-value edit deletes old materialization before returning400",
+      "response": {
+        "success": false,
+        "error": "No valid conversion values found in selected rows"
+      },
+      "status": 400,
+      "events": [
+        "source_updated",
+        "old_records_deleted"
+      ],
+      "persistedCount": 0,
+      "persistedSum": 0
+    },
+    {
+      "case": "Non-GA4 Revenue CSV silently truncates 50000 data rows",
+      "response": {
+        "success": true,
+        "sourceId": "new-fixture",
+        "currency": "USD",
+        "rowCount": 49999,
+        "keptRows": 49999,
+        "date": "2026-10-18",
+        "mode": "revenue_to_date",
+        "totalRevenue": 49999
+      },
+      "status": 200,
+      "events": [
+        "source_created",
+        "old_records_deleted",
+        "records_inserted"
+      ],
+      "persistedCount": 1,
+      "persistedSum": 49999
+    }
+  ]
+}

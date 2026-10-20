@@ -1,0 +1,13 @@
+2026-10-20 10:10:12.008 CEST [35520] LOG:  starting PostgreSQL 18.0 on x86_64-windows, compiled by msvc-19.44.35215, 64-bit
+2026-10-20 10:10:12.009 CEST [35520] LOG:  listening on IPv4 address "127.0.0.1", port 55442
+2026-10-20 10:10:12.131 CEST [35068] LOG:  database system was shut down at 2026-10-20 00:32:14 CEST
+2026-10-20 10:10:12.172 CEST [35520] LOG:  database system is ready to accept connections
+2026-10-20 10:12:02.288 CEST [15280] FATAL:  role "postgres" does not exist
+2026-10-20 10:12:09.658 CEST [16356] FATAL:  role "me" does not exist
+2026-10-20 10:13:08.499 CEST [35520] LOG:  received fast shutdown request
+2026-10-20 10:13:08.501 CEST [35520] LOG:  aborting any active transactions
+2026-10-20 10:13:08.508 CEST [35520] LOG:  background worker "logical replication launcher" (PID 27260) exited with exit code 1
+2026-10-20 10:13:08.509 CEST [32908] LOG:  shutting down
+2026-10-20 10:13:08.511 CEST [32908] LOG:  checkpoint starting: shutdown immediate
+2026-10-20 10:13:08.639 CEST [32908] LOG:  checkpoint complete: wrote 202 buffers (1.2%), wrote 2 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.035 s, sync=0.080 s, total=0.130 s; sync files=47, longest=0.005 s, average=0.002 s; distance=1565 kB, estimate=1565 kB; lsn=0/53C8AB0, redo lsn=0/53C8AB0
+2026-10-20 10:13:08.811 CEST [35520] LOG:  database system is shut down

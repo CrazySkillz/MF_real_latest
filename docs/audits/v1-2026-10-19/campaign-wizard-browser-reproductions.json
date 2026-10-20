@@ -1,0 +1,550 @@
+{
+  "at": "2026-10-19T22:12:49.899Z",
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Unchanged Campaigns page and imported controls, real React/query/form/browser execution. UserButton stub, all API replies and storage in memory. Every network request intercepted. No server/provider/database or authenticated end-to-end claim.",
+  "bundleSHA256": "a326065eb44a64fee213b0ecec29c5988f471ddf1ddfb54140af974054e2e28f",
+  "results": [
+    {
+      "name": "Back edits show the new name in confirmation but send only budget and currency",
+      "passed": true,
+      "evidence": {
+        "confirmation": "Confirm & Create\n\nReview your campaign details and create.\n\n✓\nDetails\n✓\nPlatform\n✓\nAuth\n✓\nConfigure\n5\nConfirm\nCampaign Name\nChanged Name\nSelected Platforms\nGoogle Analytics\nBack\nCreate Campaign\nClose",
+        "platformReadyText": "Select Platform\n\nConnect to Google Analytics\n\n✓\nDetails\n2\nPlatform\n3\nAuth\n4\nConfigure\n5\nConfirm\nGoogle Analytics\nReady\nBack\nContinue\nClose",
+        "patch": {
+          "method": "PATCH",
+          "path": "/api/campaigns/fixture-draft-1",
+          "body": {
+            "budget": null,
+            "currency": "USD"
+          }
+        },
+        "persistedFixtureName": "Original Name",
+        "positive": "Only GA4 selectable; immediate Back sequence and Ready label observed."
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/api/campaigns?includeInitialImports=1",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/api/clients",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/api/campaigns?clientId=fixture-client&includeInitialImports=1",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/api/campaigns",
+          "body": {
+            "name": "Original Name",
+            "clientId": "fixture-client",
+            "clientWebsite": null,
+            "label": null,
+            "budget": null,
+            "currency": "USD",
+            "conversionValue": null,
+            "ga4CampaignFilter": null,
+            "reportingTimeZone": "UTC",
+            "industry": null,
+            "type": "campaign",
+            "platform": "manual",
+            "impressions": 0,
+            "clicks": 0,
+            "spend": "0",
+            "status": "draft",
+            "startDate": null,
+            "endDate": null
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/campaigns?clientId=fixture-client&includeInitialImports=1",
+          "body": null
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/campaigns/fixture-draft-1",
+          "body": {
+            "budget": null,
+            "currency": "USD"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/campaigns/fixture-draft-1/ga4-service-account/status",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/api/campaigns/fixture-draft-1/ga4-service-account/connect",
+          "body": {
+            "propertyId": "123456789",
+            "lookbackDays": 30
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/campaigns/fixture-draft-1/ga4-connection-status",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/api/campaigns/fixture-draft-1/ga4-property",
+          "body": {
+            "propertyId": "123456789",
+            "lookbackDays": 30
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/campaigns/fixture-draft-1/ga4-campaign-values?dateRange=30days&limit=200&propertyId=123456789",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/api/campaigns/fixture-draft-1/ga4-service-account/status",
+          "body": null
+        }
+      ],
+      "remainingRows": [
+        {
+          "name": "Original Name",
+          "clientId": "fixture-client",
+          "clientWebsite": null,
+          "label": null,
+          "budget": null,
+          "currency": "USD",
+          "conversionValue": null,
+          "ga4CampaignFilter": null,
+          "reportingTimeZone": "UTC",
+          "industry": null,
+          "type": "campaign",
+          "platform": "manual",
+          "impressions": 0,
+          "clicks": 0,
+          "spend": "0",
+          "status": "draft",
+          "startDate": null,
+          "endDate": null,
+          "id": "fixture-draft-1",
+          "createdAt": "2026-10-19T12:00:00Z"
+        }
+      ],
+      "pageErrors": [],
+      "unhandledRequests": []
+    },
+    {
+      "name": "Details Cancel after Back leaves the already-created draft without DELETE",
+      "passed": true,
+      "evidence": {
+        "deleteRequests": 0,
+        "remainingDrafts": 1
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/api/campaigns?includeInitialImports=1",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/api/clients",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/api/campaigns?clientId=fixture-client&includeInitialImports=1",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/api/campaigns",
+          "body": {
+            "name": "Original Name",
+            "clientId": "fixture-client",
+            "clientWebsite": null,
+            "label": null,
+            "budget": null,
+            "currency": "USD",
+            "conversionValue": null,
+            "ga4CampaignFilter": null,
+            "reportingTimeZone": "UTC",
+            "industry": null,
+            "type": "campaign",
+            "platform": "manual",
+            "impressions": 0,
+            "clicks": 0,
+            "spend": "0",
+            "status": "draft",
+            "startDate": null,
+            "endDate": null
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/campaigns?clientId=fixture-client&includeInitialImports=1",
+          "body": null
+        }
+      ],
+      "remainingRows": [
+        {
+          "name": "Original Name",
+          "clientId": "fixture-client",
+          "clientWebsite": null,
+          "label": null,
+          "budget": null,
+          "currency": "USD",
+          "conversionValue": null,
+          "ga4CampaignFilter": null,
+          "reportingTimeZone": "UTC",
+          "industry": null,
+          "type": "campaign",
+          "platform": "manual",
+          "impressions": 0,
+          "clicks": 0,
+          "spend": "0",
+          "status": "draft",
+          "startDate": null,
+          "endDate": null,
+          "id": "fixture-draft-1",
+          "createdAt": "2026-10-19T12:00:00Z"
+        }
+      ],
+      "pageErrors": [],
+      "unhandledRequests": []
+    },
+    {
+      "name": "Positive control: dialog Close on Platform requests draftCleanup and removes draft",
+      "passed": true,
+      "evidence": {
+        "deleteRequests": 1,
+        "remainingDrafts": 0
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/api/campaigns?includeInitialImports=1",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/api/clients",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/api/campaigns?clientId=fixture-client&includeInitialImports=1",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/api/campaigns",
+          "body": {
+            "name": "Original Name",
+            "clientId": "fixture-client",
+            "clientWebsite": null,
+            "label": null,
+            "budget": null,
+            "currency": "USD",
+            "conversionValue": null,
+            "ga4CampaignFilter": null,
+            "reportingTimeZone": "UTC",
+            "industry": null,
+            "type": "campaign",
+            "platform": "manual",
+            "impressions": 0,
+            "clicks": 0,
+            "spend": "0",
+            "status": "draft",
+            "startDate": null,
+            "endDate": null
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/campaigns?clientId=fixture-client&includeInitialImports=1",
+          "body": null
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/campaigns/fixture-draft-1?draftCleanup=1",
+          "body": null
+        }
+      ],
+      "remainingRows": [],
+      "pageErrors": [],
+      "unhandledRequests": []
+    },
+    {
+      "name": "Two Next clicks while creation is pending submit two drafts; Close cleans only one",
+      "passed": true,
+      "evidence": {
+        "createRequests": 2,
+        "deleteRequests": 1,
+        "remainingDrafts": 1
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/api/campaigns?includeInitialImports=1",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/api/clients",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/api/campaigns?clientId=fixture-client&includeInitialImports=1",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/api/campaigns",
+          "body": {
+            "name": "Original Name",
+            "clientId": "fixture-client",
+            "clientWebsite": null,
+            "label": null,
+            "budget": null,
+            "currency": "USD",
+            "conversionValue": null,
+            "ga4CampaignFilter": null,
+            "reportingTimeZone": "UTC",
+            "industry": null,
+            "type": "campaign",
+            "platform": "manual",
+            "impressions": 0,
+            "clicks": 0,
+            "spend": "0",
+            "status": "draft",
+            "startDate": null,
+            "endDate": null
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/campaigns",
+          "body": {
+            "name": "Original Name",
+            "clientId": "fixture-client",
+            "clientWebsite": null,
+            "label": null,
+            "budget": null,
+            "currency": "USD",
+            "conversionValue": null,
+            "ga4CampaignFilter": null,
+            "reportingTimeZone": "UTC",
+            "industry": null,
+            "type": "campaign",
+            "platform": "manual",
+            "impressions": 0,
+            "clicks": 0,
+            "spend": "0",
+            "status": "draft",
+            "startDate": null,
+            "endDate": null
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/campaigns?clientId=fixture-client&includeInitialImports=1",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/api/campaigns?clientId=fixture-client&includeInitialImports=1",
+          "body": null
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/campaigns/fixture-draft-2?draftCleanup=1",
+          "body": null
+        }
+      ],
+      "remainingRows": [
+        {
+          "name": "Original Name",
+          "clientId": "fixture-client",
+          "clientWebsite": null,
+          "label": null,
+          "budget": null,
+          "currency": "USD",
+          "conversionValue": null,
+          "ga4CampaignFilter": null,
+          "reportingTimeZone": "UTC",
+          "industry": null,
+          "type": "campaign",
+          "platform": "manual",
+          "impressions": 0,
+          "clicks": 0,
+          "spend": "0",
+          "status": "draft",
+          "startDate": null,
+          "endDate": null,
+          "id": "fixture-draft-1",
+          "createdAt": "2026-10-19T12:00:00Z"
+        }
+      ],
+      "pageErrors": [],
+      "unhandledRequests": []
+    },
+    {
+      "name": "Lost create response leaves draft; retry issues a new POST without recovery identity",
+      "passed": true,
+      "evidence": {
+        "createRequests": 2,
+        "remainingDrafts": 2
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/notifications",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/api/campaigns?includeInitialImports=1",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/api/clients",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/api/campaigns?clientId=fixture-client&includeInitialImports=1",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/api/campaigns",
+          "body": {
+            "name": "Original Name",
+            "clientId": "fixture-client",
+            "clientWebsite": null,
+            "label": null,
+            "budget": null,
+            "currency": "USD",
+            "conversionValue": null,
+            "ga4CampaignFilter": null,
+            "reportingTimeZone": "UTC",
+            "industry": null,
+            "type": "campaign",
+            "platform": "manual",
+            "impressions": 0,
+            "clicks": 0,
+            "spend": "0",
+            "status": "draft",
+            "startDate": null,
+            "endDate": null
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/campaigns",
+          "body": {
+            "name": "Original Name",
+            "clientId": "fixture-client",
+            "clientWebsite": null,
+            "label": null,
+            "budget": null,
+            "currency": "USD",
+            "conversionValue": null,
+            "ga4CampaignFilter": null,
+            "reportingTimeZone": "UTC",
+            "industry": null,
+            "type": "campaign",
+            "platform": "manual",
+            "impressions": 0,
+            "clicks": 0,
+            "spend": "0",
+            "status": "draft",
+            "startDate": null,
+            "endDate": null
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/campaigns?clientId=fixture-client&includeInitialImports=1",
+          "body": null
+        }
+      ],
+      "remainingRows": [
+        {
+          "name": "Original Name",
+          "clientId": "fixture-client",
+          "clientWebsite": null,
+          "label": null,
+          "budget": null,
+          "currency": "USD",
+          "conversionValue": null,
+          "ga4CampaignFilter": null,
+          "reportingTimeZone": "UTC",
+          "industry": null,
+          "type": "campaign",
+          "platform": "manual",
+          "impressions": 0,
+          "clicks": 0,
+          "spend": "0",
+          "status": "draft",
+          "startDate": null,
+          "endDate": null,
+          "id": "fixture-draft-1",
+          "createdAt": "2026-10-19T12:00:00Z"
+        },
+        {
+          "name": "Original Name",
+          "clientId": "fixture-client",
+          "clientWebsite": null,
+          "label": null,
+          "budget": null,
+          "currency": "USD",
+          "conversionValue": null,
+          "ga4CampaignFilter": null,
+          "reportingTimeZone": "UTC",
+          "industry": null,
+          "type": "campaign",
+          "platform": "manual",
+          "impressions": 0,
+          "clicks": 0,
+          "spend": "0",
+          "status": "draft",
+          "startDate": null,
+          "endDate": null,
+          "id": "fixture-draft-2",
+          "createdAt": "2026-10-19T12:00:00Z"
+        }
+      ],
+      "pageErrors": [],
+      "unhandledRequests": []
+    }
+  ]
+}

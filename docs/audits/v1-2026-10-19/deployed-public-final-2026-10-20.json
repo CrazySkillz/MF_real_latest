@@ -1,0 +1,59 @@
+{
+  "at": "2026-10-20T16:48:30.491Z",
+  "base": "https://marketforensics.onrender.com",
+  "checks": [
+    {
+      "path": "/api/health",
+      "status": 200,
+      "data": {
+        "ok": true,
+        "commit": "777aae6f6353e998d60b635d3e66b413093117c2",
+        "nodeEnv": "production",
+        "ts": "2026-10-20T16:48:27.950Z"
+      }
+    },
+    {
+      "path": "/health/scheduler",
+      "status": 200,
+      "data": {
+        "publicStatus": "healthy",
+        "reportScheduler": {
+          "totalChecks": 1773,
+          "totalSent": 2,
+          "totalFailed": 0,
+          "lastScheduledReportsFound": 3,
+          "lastDueReportsFound": 3,
+          "lastRefreshDeferredReports": 0,
+          "lastCheckTime": "2026-10-20T16:48:00.005Z"
+        },
+        "ga4Daily": {
+          "started": true,
+          "inProgress": false,
+          "lastRunStatus": "failed",
+          "lastRunStartedAt": "2026-10-20T12:00:00.007Z",
+          "lastRunFinishedAt": "2026-10-20T12:17:07.622Z",
+          "lastRunTrigger": "scheduled",
+          "nextRunAt": "2026-10-20T18:00:00.000Z",
+          "totalRuns": 7
+        },
+        "autoRefresh": {
+          "started": true,
+          "inProgress": false,
+          "lastRunStatus": "failed",
+          "lastRunStartedAt": "2026-10-20T12:03:47.611Z",
+          "lastRunFinishedAt": "2026-10-20T12:17:07.622Z",
+          "lastRunSummary": {
+            "campaignsScanned": 49,
+            "providerJobsAttempted": 14,
+            "providerJobsSucceeded": 9,
+            "providerJobsRetained": 0,
+            "providerJobsSkipped": 284,
+            "campaignErrors": 0,
+            "recomputeFailed": false,
+            "linkedInRefreshFailed": false
+          }
+        }
+      }
+    }
+  ]
+}

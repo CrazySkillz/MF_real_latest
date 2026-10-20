@@ -75,6 +75,8 @@ export async function getGoogleSheetsServiceAccountAccessToken(): Promise<{ acce
 
 export async function hydrateGoogleSheetsServiceAccountConnection<T extends Record<string, any>>(connection: T): Promise<T> {
   if (String(connection?.method || "").trim().toLowerCase() !== GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD) return connection;
+  const { storage } = await import("../storage");
+  await storage.assertServiceAccountResourceAccess(connection.campaignId, "google_sheets", String(connection.spreadsheetId || ""));
   const credentials = await getGoogleSheetsServiceAccountAccessToken();
   return {
     ...connection,

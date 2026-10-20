@@ -1,0 +1,137 @@
+{
+  "at": "2026-10-19T19:21:36.948Z",
+  "base": "https://marketforensics.onrender.com",
+  "unauthenticated": true,
+  "results": [
+    {
+      "path": "/api/health",
+      "status": 200,
+      "elapsedMs": 552,
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 118,
+      "keys": [
+        "ok",
+        "commit",
+        "nodeEnv",
+        "ts"
+      ],
+      "commit": "777aae6f6353e998d60b635d3e66b413093117c2",
+      "headers": {
+        "content-security-policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https://*.clerk.accounts.dev https://*.clerk.com; script-src 'self' 'unsafe-inline' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://accounts.google.com https://analyticsdata.googleapis.com https://cdn.jsdelivr.net https://clerk-telemetry.com https://*.clerk-telemetry.com https://img.clerk.com https://*.clerk.accounts.dev https://*.clerk.com https://*.protect.clerk.com:*; frame-src 'self' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com; worker-src 'self' blob:; manifest-src 'self'",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "cache-control": null
+      }
+    },
+    {
+      "path": "/api/metrics",
+      "status": 200,
+      "elapsedMs": 259,
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 618,
+      "rowCount": 4,
+      "headers": {
+        "content-security-policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https://*.clerk.accounts.dev https://*.clerk.com; script-src 'self' 'unsafe-inline' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://accounts.google.com https://analyticsdata.googleapis.com https://cdn.jsdelivr.net https://clerk-telemetry.com https://*.clerk-telemetry.com https://img.clerk.com https://*.clerk.accounts.dev https://*.clerk.com https://*.protect.clerk.com:*; frame-src 'self' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com; worker-src 'self' blob:; manifest-src 'self'",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "cache-control": null
+      }
+    },
+    {
+      "path": "/api/performance",
+      "status": 200,
+      "elapsedMs": 245,
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 777,
+      "rowCount": 7,
+      "headers": {
+        "content-security-policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https://*.clerk.accounts.dev https://*.clerk.com; script-src 'self' 'unsafe-inline' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://accounts.google.com https://analyticsdata.googleapis.com https://cdn.jsdelivr.net https://clerk-telemetry.com https://*.clerk-telemetry.com https://img.clerk.com https://*.clerk.accounts.dev https://*.clerk.com https://*.protect.clerk.com:*; frame-src 'self' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com; worker-src 'self' blob:; manifest-src 'self'",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "cache-control": null
+      }
+    },
+    {
+      "path": "/api/integrations",
+      "status": 200,
+      "elapsedMs": 244,
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 920,
+      "rowCount": 5,
+      "headers": {
+        "content-security-policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https://*.clerk.accounts.dev https://*.clerk.com; script-src 'self' 'unsafe-inline' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://accounts.google.com https://analyticsdata.googleapis.com https://cdn.jsdelivr.net https://clerk-telemetry.com https://*.clerk-telemetry.com https://img.clerk.com https://*.clerk.accounts.dev https://*.clerk.com https://*.protect.clerk.com:*; frame-src 'self' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com; worker-src 'self' blob:; manifest-src 'self'",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "cache-control": null
+      }
+    },
+    {
+      "path": "/api/clients",
+      "status": 401,
+      "elapsedMs": 79,
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 81,
+      "keys": [
+        "success",
+        "message"
+      ],
+      "headers": {
+        "content-security-policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https://*.clerk.accounts.dev https://*.clerk.com; script-src 'self' 'unsafe-inline' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://accounts.google.com https://analyticsdata.googleapis.com https://cdn.jsdelivr.net https://clerk-telemetry.com https://*.clerk-telemetry.com https://img.clerk.com https://*.clerk.accounts.dev https://*.clerk.com https://*.protect.clerk.com:*; frame-src 'self' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com; worker-src 'self' blob:; manifest-src 'self'",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "cache-control": null
+      }
+    },
+    {
+      "path": "/api/campaigns",
+      "status": 401,
+      "elapsedMs": 67,
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 81,
+      "keys": [
+        "success",
+        "message"
+      ],
+      "headers": {
+        "content-security-policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https://*.clerk.accounts.dev https://*.clerk.com; script-src 'self' 'unsafe-inline' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://accounts.google.com https://analyticsdata.googleapis.com https://cdn.jsdelivr.net https://clerk-telemetry.com https://*.clerk-telemetry.com https://img.clerk.com https://*.clerk.accounts.dev https://*.clerk.com https://*.protect.clerk.com:*; frame-src 'self' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com; worker-src 'self' blob:; manifest-src 'self'",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "cache-control": null
+      }
+    },
+    {
+      "path": "/privacy",
+      "status": 200,
+      "elapsedMs": 70,
+      "contentType": "text/html; charset=UTF-8",
+      "bytes": 875,
+      "headers": {
+        "content-security-policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https://*.clerk.accounts.dev https://*.clerk.com; script-src 'self' 'unsafe-inline' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://accounts.google.com https://analyticsdata.googleapis.com https://cdn.jsdelivr.net https://clerk-telemetry.com https://*.clerk-telemetry.com https://img.clerk.com https://*.clerk.accounts.dev https://*.clerk.com https://*.protect.clerk.com:*; frame-src 'self' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com; worker-src 'self' blob:; manifest-src 'self'",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "cache-control": "no-cache, no-store, must-revalidate"
+      }
+    },
+    {
+      "path": "/sign-in",
+      "status": 200,
+      "elapsedMs": 77,
+      "contentType": "text/html; charset=UTF-8",
+      "bytes": 875,
+      "headers": {
+        "content-security-policy": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https://*.clerk.accounts.dev https://*.clerk.com; script-src 'self' 'unsafe-inline' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://accounts.google.com https://analyticsdata.googleapis.com https://cdn.jsdelivr.net https://clerk-telemetry.com https://*.clerk-telemetry.com https://img.clerk.com https://*.clerk.accounts.dev https://*.clerk.com https://*.protect.clerk.com:*; frame-src 'self' https://accounts.google.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://*.protect.clerk.com; worker-src 'self' blob:; manifest-src 'self'",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "cache-control": "no-cache, no-store, must-revalidate"
+      }
+    }
+  ]
+}

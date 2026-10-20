@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, timestamp, boolean, jsonb, uniqueIndex, check } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, timestamp, boolean, jsonb, uniqueIndex, index, check } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -51,30 +51,33 @@ export const campaigns = pgTable("campaigns", {
 
 export const metrics = pgTable("metrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: text("owner_id"),
   name: text("name").notNull(),
   value: text("value").notNull(),
   change: text("change").notNull(),
   icon: text("icon").notNull(),
   date: timestamp("date").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [index("metrics_owner_id_idx").on(table.ownerId)]);
 
 export const integrations = pgTable("integrations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: text("owner_id"),
   platform: text("platform").notNull(),
   name: text("name").notNull(),
   connected: boolean("connected").notNull().default(false),
   credentials: text("credentials"), // JSON string for storing credentials
   lastSync: timestamp("last_sync"),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [index("integrations_owner_id_idx").on(table.ownerId)]);
 
 export const performanceData = pgTable("performance_data", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: text("owner_id"),
   date: text("date").notNull(),
   impressions: integer("impressions").notNull(),
   clicks: integer("clicks").notNull(),
   conversions: integer("conversions").notNull(),
-});
+}, (table) => [index("performance_data_owner_id_idx").on(table.ownerId)]);
 
 export const ga4Connections = pgTable("ga4_connections", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -762,6 +765,13 @@ export const conversionEvents = pgTable("conversion_events", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const inboundWebhookReceipts = pgTable("inbound_webhook_receipts", {
+  id: text("id").primaryKey(),
+  campaignId: text("campaign_id").notNull(),
+  metricsId: text("metrics_id"),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const customIntegrationMetrics = pgTable("custom_integration_metrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id").notNull(),
@@ -1150,6 +1160,7 @@ export const abTestEvents = pgTable("ab_test_events", {
 // Attribution Models and Touchpoint Tracking
 export const attributionModels = pgTable("attribution_models", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: text("owner_id"),
   name: text("name").notNull(), // 'First Touch', 'Last Touch', 'Linear', 'Time Decay', 'Position Based', 'Data Driven'
   type: text("type").notNull(), // 'first_touch', 'last_touch', 'linear', 'time_decay', 'position_based', 'data_driven'
   description: text("description"),
@@ -1158,10 +1169,11 @@ export const attributionModels = pgTable("attribution_models", {
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [index("attribution_models_owner_id_idx").on(table.ownerId)]);
 
 export const customerJourneys = pgTable("customer_journeys", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: text("owner_id"),
   customerId: text("customer_id").notNull(), // External customer identifier
   sessionId: text("session_id"), // Browser session ID
   deviceId: text("device_id"), // Device fingerprint
@@ -1174,7 +1186,7 @@ export const customerJourneys = pgTable("customer_journeys", {
   status: text("status").notNull().default("active"), // 'active', 'converted', 'abandoned'
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [index("customer_journeys_owner_id_idx").on(table.ownerId)]);
 
 export const touchpoints = pgTable("touchpoints", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

@@ -1,0 +1,7 @@
+const fs=require('node:fs'),ts=require('typescript'),assert=require('node:assert/strict');
+(async()=>{const compiled=ts.transpileModule(fs.readFileSync('shared/schema.ts','utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,exportsObject={};new Function('exports','require',compiled)(exportsObject,require);
+ const {generateDrizzleJson,generateMigration}=require('drizzle-kit/api'),empty=generateDrizzleJson({}),current=generateDrizzleJson(exportsObject),statements=await generateMigration(empty,current);
+ const tables=Object.values(current.tables).map(t=>({name:t.name,primaryKeyColumns:Object.values(t.columns).filter(c=>c.primaryKey).map(c=>c.name),indexes:t.indexes,uniqueConstraints:t.uniqueConstraints,foreignKeys:t.foreignKeys}));
+ const dir='docs/audits/v1-2026-10-19/';fs.writeFileSync(dir+'generated-schema.sql',statements.join('\n')+'\n');fs.writeFileSync(dir+'schema-generation.json',JSON.stringify({head:'777aae6f6353e998d60b635d3e66b413093117c2',method:'Installed drizzle-kit API generateDrizzleJson and generateMigration from empty to exact current shared/schema.ts. Generates artifacts only; does not connect to any database.',statements,tables},null,2)+'\n');
+ assert.equal(tables.length,62);console.log(JSON.stringify({tables:tables.length,statements:statements.length,ga4Daily:tables.find(t=>t.name==='ga4_daily_metrics'),publicQualifiedStatements:statements.filter(s=>/"public"\s*\./.test(s)).length}));
+})().catch(e=>{console.error(e);process.exitCode=1});

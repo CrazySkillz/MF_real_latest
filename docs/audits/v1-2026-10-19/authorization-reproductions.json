@@ -1,0 +1,131 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact current helper/handler extraction. Fake actors and storage, actual internal token checker with ephemeral in-memory token (not recorded). No HTTP, provider, email or database mutation. Helper correctness does not establish every caller guard ordering or post-authorization write scope.",
+  "results": [
+    {
+      "case": "Unauthenticated campaign access denied",
+      "status": 401,
+      "allowed": false
+    },
+    {
+      "case": "Missing campaign denied",
+      "status": 404,
+      "allowed": false
+    },
+    {
+      "case": "Ownerless campaign denied",
+      "status": 404,
+      "allowed": false
+    },
+    {
+      "case": "Foreign campaign denied",
+      "status": 404,
+      "allowed": false
+    },
+    {
+      "case": "Owned campaign control allowed",
+      "status": 200,
+      "allowed": true
+    },
+    {
+      "case": "ensureKpiAccess rejects unscoped row",
+      "status": 404
+    },
+    {
+      "case": "ensureBenchmarkAccess rejects unscoped row",
+      "status": 404
+    },
+    {
+      "case": "ensurePlatformReportAccess rejects unscoped row",
+      "status": 404
+    },
+    {
+      "case": "POST /api/alerts/check fails closed in production before storage/provider imports",
+      "status": 404
+    },
+    {
+      "case": "GET /api/alerts/status fails closed in production before storage/provider imports",
+      "status": 404
+    },
+    {
+      "case": "POST /api/linkedin/connect fails closed in production before storage/provider imports",
+      "status": 404
+    },
+    {
+      "case": "PATCH legacy Meta report returns200 after zero-row mutation",
+      "status": 200,
+      "response": {}
+    },
+    {
+      "case": "DELETE legacy Meta report returns200 after zero-row mutation",
+      "status": 200,
+      "response": {
+        "success": true
+      }
+    },
+    {
+      "case": "Internal token remote-address control",
+      "remote": "203.0.113.1",
+      "allowed": false
+    },
+    {
+      "case": "Internal token remote-address control",
+      "remote": "127.0.0.1",
+      "allowed": true
+    },
+    {
+      "case": "Anonymous connector-derived Spend alias mutates foreign campaign and currency",
+      "route": "/api/campaigns/:id/spend/process/connectors",
+      "status": 200,
+      "accessCalls": 0,
+      "writes": [
+        {
+          "operation": "campaign-update",
+          "id": "foreign-fixture",
+          "data": {
+            "spend": "123.00",
+            "currency": "EUR"
+          }
+        },
+        {
+          "operation": "source-create",
+          "data": {
+            "campaignId": "foreign-fixture",
+            "sourceType": "connector_derived",
+            "displayName": "Connector-derived spend",
+            "currency": "EUR",
+            "mappingConfig": null,
+            "isActive": true
+          }
+        }
+      ]
+    },
+    {
+      "case": "Anonymous connector-derived Spend alias mutates foreign campaign and currency",
+      "route": "/api/campaigns/:id/spend/process/ad-platforms",
+      "status": 200,
+      "accessCalls": 0,
+      "writes": [
+        {
+          "operation": "campaign-update",
+          "id": "foreign-fixture",
+          "data": {
+            "spend": "123.00",
+            "currency": "EUR"
+          }
+        },
+        {
+          "operation": "source-create",
+          "data": {
+            "campaignId": "foreign-fixture",
+            "sourceType": "connector_derived",
+            "displayName": "Connector-derived spend",
+            "currency": "EUR",
+            "mappingConfig": null,
+            "isActive": true
+          }
+        }
+      ]
+    }
+  ]
+}

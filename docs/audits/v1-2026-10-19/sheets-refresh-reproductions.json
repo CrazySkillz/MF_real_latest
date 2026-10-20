@@ -1,0 +1,48 @@
+{
+  "head": "777aae6f6353e998d60b635d3e66b413093117c2",
+  "boundary": "Exact scheduled refresh function and parsing/range helpers; two-row Google response and storage fixtures. Save route accepts and preserves singular campaignValue; no provider/database mutation.",
+  "results": [
+    {
+      "case": "Stored singular campaignValue is ignored during refresh",
+      "mapping": {
+        "connectionId": "connection",
+        "revenueColumn": "Revenue",
+        "campaignColumn": "Campaign",
+        "platformContext": "ga4",
+        "currency": "USD",
+        "campaignValue": "selected"
+      },
+      "total": 100,
+      "persisted": [
+        {
+          "campaignId": "fixture",
+          "date": "2026-10-18",
+          "revenue": "100.00",
+          "currency": "USD"
+        }
+      ]
+    },
+    {
+      "case": "Array campaignValues control preserves selected scope",
+      "mapping": {
+        "connectionId": "connection",
+        "revenueColumn": "Revenue",
+        "campaignColumn": "Campaign",
+        "platformContext": "ga4",
+        "currency": "USD",
+        "campaignValues": [
+          "selected"
+        ]
+      },
+      "total": 10,
+      "persisted": [
+        {
+          "campaignId": "fixture",
+          "date": "2026-10-18",
+          "revenue": "10.00",
+          "currency": "USD"
+        }
+      ]
+    }
+  ]
+}

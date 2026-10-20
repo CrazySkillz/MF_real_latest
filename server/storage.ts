@@ -7,7 +7,8 @@ import { filterActiveSchedulerCampaigns } from "./utils/campaign-scheduler-eligi
 import { db, pool } from "./db";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { eq, and, or, isNull, desc, sql, gte, lte, lt, inArray, ne } from "drizzle-orm";
-import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, type EncryptedTokens } from "./utils/tokenVault";
+import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, encryptString, type EncryptedTokens } from "./utils/tokenVault";
+import { inboundWebhookReceipts } from "@shared/schema";
 import { assertGA4ServiceAccountPropertyAllowed, GA4_SERVICE_ACCOUNT_METHOD, hydrateGA4ServiceAccountConnection } from "./utils/ga4-service-account";
 import { GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, hydrateGoogleSheetsServiceAccountConnection } from "./utils/google-sheets-service-account";
 import { GOOGLE_ADS_SERVICE_ACCOUNT_METHOD, hydrateGoogleAdsServiceAccountConnection } from "./utils/google-ads-service-account";
@@ -187,6 +188,7 @@ export type GA4RefreshConnectionWriteInput = GA4RefreshWriteInput & { expectedCo
 export type GA4RefreshGoogleAdsWriteInput = GA4RefreshConnectionWriteInput & { expectedSource?: { id: string; mappingConfig: string | null } };
 
 export interface IStorage {
+  assertServiceAccountResourceAccess(campaignId: string, provider: "ga4" | "google_sheets" | "google_ads", resourceId: string): Promise<void>;
   writeWithGA4RefreshOwnership<T>(scope: GA4RefreshWriteInput["refreshScope"], write: (tx: any) => Promise<T>): Promise<T>;
   getGA4PublicationVersion(campaignId: string): Promise<string | null>;
   isGA4NativeRecoveryEligible(campaignId: string): Promise<boolean>;
@@ -206,18 +208,18 @@ export interface IStorage {
   deleteCampaignCascade(id: string, options?: { expectedDraftOwnerId: string }): Promise<boolean>;
 
   // Metrics
-  getMetrics(): Promise<Metric[]>;
-  createMetric(metric: InsertMetric): Promise<Metric>;
+  getMetrics(ownerId?: string): Promise<Metric[]>;
+  createMetric(metric: InsertMetric, ownerId?: string): Promise<Metric>;
 
   // Integrations
-  getIntegrations(): Promise<Integration[]>;
+  getIntegrations(ownerId?: string): Promise<Integration[]>;
   getIntegration(id: string): Promise<Integration | undefined>;
-  createIntegration(integration: InsertIntegration): Promise<Integration>;
+  createIntegration(integration: InsertIntegration, ownerId?: string): Promise<Integration>;
   updateIntegration(id: string, integration: Partial<InsertIntegration>): Promise<Integration | undefined>;
 
   // Performance Data
-  getPerformanceData(): Promise<PerformanceData[]>;
-  createPerformanceData(data: InsertPerformanceData): Promise<PerformanceData>;
+  getPerformanceData(ownerId?: string): Promise<PerformanceData[]>;
+  createPerformanceData(data: InsertPerformanceData, ownerId?: string): Promise<PerformanceData>;
 
   // GA4 Connections
   getGA4Connections(campaignId: string, options?: { migrateLegacyTokens?: boolean; resolveRuntimeCredentials?: boolean }): Promise<GA4Connection[]>;
@@ -483,12 +485,12 @@ export interface IStorage {
   // Custom Integration Metrics
   getCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics | undefined>;
   getAllCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics[]>;
-  createCustomIntegrationMetrics(metrics: InsertCustomIntegrationMetrics): Promise<CustomIntegrationMetrics>;
+  createCustomIntegrationMetrics(metrics: InsertCustomIntegrationMetrics, access?: { integrationId: string; webhookToken?: string; receipt?: string; senderEmail?: string; recipientEmail?: string }): Promise<CustomIntegrationMetrics & { alreadyProcessed?: boolean }>;
   getLatestCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics | undefined>;
 
   // Conversion Events
   getConversionEvents(campaignId: string, startDate?: Date, endDate?: Date): Promise<ConversionEvent[]>;
-  createConversionEvent(event: InsertConversionEvent): Promise<ConversionEvent>;
+  createConversionEvent(event: InsertConversionEvent, access?: { ownerId: string; webhookToken?: string }): Promise<ConversionEvent>;
   getConversionEventTotalValue(campaignId: string, startDate?: Date, endDate?: Date): Promise<number>;
   getConversionEventCount(campaignId: string, startDate?: Date, endDate?: Date): Promise<number>;
 
@@ -613,17 +615,17 @@ export interface IStorage {
   }>;
 
   // Attribution Models
-  getAttributionModels(): Promise<AttributionModel[]>;
+  getAttributionModels(ownerId?: string): Promise<AttributionModel[]>;
   getAttributionModel(id: string): Promise<AttributionModel | undefined>;
-  createAttributionModel(model: InsertAttributionModel): Promise<AttributionModel>;
+  createAttributionModel(model: InsertAttributionModel, ownerId?: string): Promise<AttributionModel>;
   updateAttributionModel(id: string, model: Partial<InsertAttributionModel>): Promise<AttributionModel | undefined>;
   deleteAttributionModel(id: string): Promise<boolean>;
   setDefaultAttributionModel(id: string): Promise<boolean>;
 
   // Customer Journeys
-  getCustomerJourneys(status?: string): Promise<CustomerJourney[]>;
+  getCustomerJourneys(status?: string, ownerId?: string): Promise<CustomerJourney[]>;
   getCustomerJourney(id: string): Promise<CustomerJourney | undefined>;
-  createCustomerJourney(journey: InsertCustomerJourney): Promise<CustomerJourney>;
+  createCustomerJourney(journey: InsertCustomerJourney, ownerId?: string): Promise<CustomerJourney>;
   updateCustomerJourney(id: string, journey: Partial<InsertCustomerJourney>): Promise<CustomerJourney | undefined>;
   deleteCustomerJourney(id: string): Promise<boolean>;
 
@@ -651,7 +653,7 @@ export interface IStorage {
     modelResults: { model: AttributionModel; results: AttributionResult[] }[];
   }>;
 
-  getChannelPerformanceAttribution(startDate: Date, endDate: Date, modelId?: string): Promise<{
+  getChannelPerformanceAttribution(startDate: Date, endDate: Date, modelId?: string, ownerId?: string): Promise<{
     channel: string;
     totalAttributedValue: number;
     totalTouchpoints: number;
@@ -671,11 +673,17 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  private attributionModels: Map<string, AttributionModel> = new Map();
-  private customerJourneys: Map<string, CustomerJourney> = new Map();
-  private touchpoints: Map<string, Touchpoint> = new Map();
-  private attributionResults: Map<string, AttributionResult> = new Map();
-  private attributionInsights: Map<string, AttributionInsight> = new Map();
+  async assertServiceAccountResourceAccess(campaignId: string, provider: "ga4" | "google_sheets" | "google_ads", resourceId: string): Promise<void> {
+    const [campaign] = await db.select({ ownerId: campaigns.ownerId, clientId: campaigns.clientId, status: campaigns.status })
+      .from(campaigns).innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId))).where(eq(campaigns.id, campaignId));
+    let grants: unknown;
+    try { grants = JSON.parse(process.env.SERVICE_ACCOUNT_RESOURCE_GRANTS || "[]"); } catch { grants = []; }
+    if (!campaign?.ownerId || !campaign.clientId || campaign.status === "deleted" || !resourceId || !Array.isArray(grants) || !grants.some(grant =>
+      grant?.ownerId === campaign.ownerId && grant?.clientId === campaign.clientId &&
+      grant?.provider === provider && grant?.resourceId === resourceId)) {
+      throw Object.assign(new Error("This provider resource is not approved for this customer"), { code: "SERVICE_ACCOUNT_RESOURCE_NOT_GRANTED" });
+    }
+  }
 
   // Campaign methods
   async getCampaigns(): Promise<Campaign[]> {
@@ -860,21 +868,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Metrics methods
-  async getMetrics(): Promise<Metric[]> {
-    return db.select().from(metrics).orderBy(metrics.date);
+  async getMetrics(ownerId?: string): Promise<Metric[]> {
+    return db.select().from(metrics).where(ownerId === undefined ? undefined : eq(metrics.ownerId, ownerId)).orderBy(metrics.date);
   }
 
-  async createMetric(insertMetric: InsertMetric): Promise<Metric> {
+  async createMetric(insertMetric: InsertMetric, ownerId?: string): Promise<Metric> {
     const [metric] = await db
       .insert(metrics)
-      .values(insertMetric)
+      .values({ ...insertMetric, ownerId: ownerId || null })
       .returning();
     return metric;
   }
 
   // Integration methods
-  async getIntegrations(): Promise<Integration[]> {
-    return db.select().from(integrations).orderBy(integrations.createdAt);
+  async getIntegrations(ownerId?: string): Promise<Integration[]> {
+    const rows = await db.select().from(integrations).where(ownerId === undefined ? undefined : eq(integrations.ownerId, ownerId)).orderBy(integrations.createdAt);
+    return rows.map((row: Integration) => ({ ...row, credentials: null }));
   }
 
   async getIntegration(id: string): Promise<Integration | undefined> {
@@ -882,12 +891,13 @@ export class DatabaseStorage implements IStorage {
     return integration || undefined;
   }
 
-  async createIntegration(insertIntegration: InsertIntegration): Promise<Integration> {
+  async createIntegration(insertIntegration: InsertIntegration, ownerId?: string): Promise<Integration> {
     const [integration] = await db
       .insert(integrations)
-      .values(insertIntegration)
+      .values({ ...insertIntegration, ownerId: ownerId || null, connected: false,
+        credentials: insertIntegration.credentials ? JSON.stringify(encryptString(insertIntegration.credentials)) : null })
       .returning();
-    return integration;
+    return { ...integration, credentials: null };
   }
 
   async updateIntegration(id: string, updateData: Partial<InsertIntegration>): Promise<Integration | undefined> {
@@ -900,14 +910,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Performance Data methods
-  async getPerformanceData(): Promise<PerformanceData[]> {
-    return db.select().from(performanceData);
+  async getPerformanceData(ownerId?: string): Promise<PerformanceData[]> {
+    return db.select().from(performanceData).where(ownerId === undefined ? undefined : eq(performanceData.ownerId, ownerId));
   }
 
-  async createPerformanceData(insertData: InsertPerformanceData): Promise<PerformanceData> {
+  async createPerformanceData(insertData: InsertPerformanceData, ownerId?: string): Promise<PerformanceData> {
     const [data] = await db
       .insert(performanceData)
-      .values(insertData)
+      .values({ ...insertData, ownerId: ownerId || null })
       .returning();
     return data;
   }
@@ -1006,6 +1016,7 @@ export class DatabaseStorage implements IStorage {
   async createGA4Connection(connection: InsertGA4Connection): Promise<GA4Connection> {
     if (String(connection.method || "").trim().toLowerCase() === GA4_SERVICE_ACCOUNT_METHOD) {
       assertGA4ServiceAccountPropertyAllowed(connection.propertyId);
+      await this.assertServiceAccountResourceAccess(connection.campaignId, "ga4", connection.propertyId);
     }
     // Check if this is the first connection for this campaign
     const existingConnections = await this.getGA4Connections(connection.campaignId, { resolveRuntimeCredentials: false });
@@ -1048,6 +1059,7 @@ export class DatabaseStorage implements IStorage {
     const nextMethod = String(connection.method ?? existing.method ?? "").trim().toLowerCase();
     if (nextMethod === GA4_SERVICE_ACCOUNT_METHOD) {
       assertGA4ServiceAccountPropertyAllowed(connection.propertyId ?? existing.propertyId);
+      await this.assertServiceAccountResourceAccess(existing.campaignId, "ga4", connection.propertyId ?? existing.propertyId);
     }
 
     const tokenFieldsProvided =
@@ -2122,6 +2134,10 @@ export class DatabaseStorage implements IStorage {
     const guarded = "refreshScope" in options;
     if (guarded && (options.refreshScope?.campaignId !== campaignId || platformContext !== 'ga4' || !existingSourceId || expectedSourceMappingConfig === undefined)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
     const save = async (tx: any) => {
+      if (sourceType === "connector_derived") {
+        const [parent] = await tx.select().from(campaigns).where(eq(campaigns.id, campaignId)).for("update");
+        if (!parent?.ownerId || source.currency !== (parent.currency || "USD") || records.some(r => r.currency !== source.currency)) throw new Error("Spend campaign or currency changed");
+      }
       const contextCondition = platformContext === 'ga4'
         ? or(eq(spendSources.platformContext, 'ga4' as any), isNull(spendSources.platformContext))
         : eq(spendSources.platformContext, platformContext as any);
@@ -3277,7 +3293,10 @@ export class DatabaseStorage implements IStorage {
             await db
               .update(googleSheetsConnections)
               .set({ encryptedTokens: nextEnc as any, accessToken: null, refreshToken: null, clientSecret: null } as any)
-              .where(eq(googleSheetsConnections.id, String(r.id)));
+              .where(and(eq(googleSheetsConnections.id, String(r.id)), isNull(googleSheetsConnections.encryptedTokens),
+                sql`${googleSheetsConnections.accessToken} IS NOT DISTINCT FROM ${r.accessToken ?? null}`,
+                sql`${googleSheetsConnections.refreshToken} IS NOT DISTINCT FROM ${r.refreshToken ?? null}`,
+                sql`${googleSheetsConnections.clientSecret} IS NOT DISTINCT FROM ${r.clientSecret ?? null}`));
           } catch {
             // ignore
           }
@@ -3918,7 +3937,10 @@ export class DatabaseStorage implements IStorage {
           await db
             .update(hubspotConnections)
             .set({ encryptedTokens: nextEnc as any, accessToken: null, refreshToken: null, clientSecret: null } as any)
-            .where(eq(hubspotConnections.id, String(r.id)));
+            .where(and(eq(hubspotConnections.id, String(r.id)), isNull(hubspotConnections.encryptedTokens),
+              sql`${hubspotConnections.accessToken} IS NOT DISTINCT FROM ${r.accessToken ?? null}`,
+              sql`${hubspotConnections.refreshToken} IS NOT DISTINCT FROM ${r.refreshToken ?? null}`,
+              sql`${hubspotConnections.clientSecret} IS NOT DISTINCT FROM ${r.clientSecret ?? null}`));
         } catch {
           // ignore
         }
@@ -3948,7 +3970,10 @@ export class DatabaseStorage implements IStorage {
         await db
           .update(hubspotConnections)
           .set({ encryptedTokens: nextEnc as any, accessToken: null, refreshToken: null, clientSecret: null } as any)
-          .where(eq(hubspotConnections.id, String((latest as any).id)));
+          .where(and(eq(hubspotConnections.id, latest.id), isNull(hubspotConnections.encryptedTokens),
+            sql`${hubspotConnections.accessToken} IS NOT DISTINCT FROM ${latest.accessToken ?? null}`,
+            sql`${hubspotConnections.refreshToken} IS NOT DISTINCT FROM ${latest.refreshToken ?? null}`,
+            sql`${hubspotConnections.clientSecret} IS NOT DISTINCT FROM ${latest.clientSecret ?? null}`));
       } catch {
         // ignore
       }
@@ -4054,7 +4079,10 @@ export class DatabaseStorage implements IStorage {
           await db
             .update(salesforceConnections)
             .set({ encryptedTokens: nextEnc as any, accessToken: null, refreshToken: null, clientSecret: null } as any)
-            .where(eq(salesforceConnections.id, String(r.id)));
+            .where(and(eq(salesforceConnections.id, String(r.id)), isNull(salesforceConnections.encryptedTokens),
+              sql`${salesforceConnections.accessToken} IS NOT DISTINCT FROM ${r.accessToken ?? null}`,
+              sql`${salesforceConnections.refreshToken} IS NOT DISTINCT FROM ${r.refreshToken ?? null}`,
+              sql`${salesforceConnections.clientSecret} IS NOT DISTINCT FROM ${r.clientSecret ?? null}`));
         } catch {
           // ignore
         }
@@ -4084,7 +4112,10 @@ export class DatabaseStorage implements IStorage {
         await db
           .update(salesforceConnections)
           .set({ encryptedTokens: nextEnc as any, accessToken: null, refreshToken: null, clientSecret: null } as any)
-          .where(eq(salesforceConnections.id, String((latest as any).id)));
+          .where(and(eq(salesforceConnections.id, latest.id), isNull(salesforceConnections.encryptedTokens),
+            sql`${salesforceConnections.accessToken} IS NOT DISTINCT FROM ${latest.accessToken ?? null}`,
+            sql`${salesforceConnections.refreshToken} IS NOT DISTINCT FROM ${latest.refreshToken ?? null}`,
+            sql`${salesforceConnections.clientSecret} IS NOT DISTINCT FROM ${latest.clientSecret ?? null}`));
       } catch {
         // ignore
       }
@@ -4187,7 +4218,8 @@ export class DatabaseStorage implements IStorage {
           await db
             .update(shopifyConnections)
             .set({ encryptedTokens: nextEnc as any, accessToken: null } as any)
-            .where(eq(shopifyConnections.id, String(r.id)));
+            .where(and(eq(shopifyConnections.id, String(r.id)), isNull(shopifyConnections.encryptedTokens),
+              sql`${shopifyConnections.accessToken} IS NOT DISTINCT FROM ${r.accessToken ?? null}`));
         } catch {
           // ignore
         }
@@ -4214,7 +4246,8 @@ export class DatabaseStorage implements IStorage {
         await db
           .update(shopifyConnections)
           .set({ encryptedTokens: nextEnc as any, accessToken: null } as any)
-          .where(eq(shopifyConnections.id, String((latest as any).id)));
+          .where(and(eq(shopifyConnections.id, latest.id), isNull(shopifyConnections.encryptedTokens),
+            sql`${shopifyConnections.accessToken} IS NOT DISTINCT FROM ${latest.accessToken ?? null}`));
       } catch {
         // ignore
       }
@@ -4412,7 +4445,10 @@ export class DatabaseStorage implements IStorage {
             refreshToken: null,
             clientSecret: null,
           } as any)
-          .where(eq(linkedinConnections.campaignId, campaignId));
+          .where(and(eq(linkedinConnections.id, connection.id), isNull(linkedinConnections.encryptedTokens),
+            sql`${linkedinConnections.accessToken} IS NOT DISTINCT FROM ${connection.accessToken ?? null}`,
+            sql`${linkedinConnections.refreshToken} IS NOT DISTINCT FROM ${connection.refreshToken ?? null}`,
+            sql`${linkedinConnections.clientSecret} IS NOT DISTINCT FROM ${connection.clientSecret ?? null}`));
       } catch {
         // ignore
       }
@@ -4443,7 +4479,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateLinkedInConnection(campaignId: string, connection: Partial<InsertLinkedInConnection>): Promise<LinkedInConnection | undefined> {
-    return this.writeGA4RefreshInputChange([campaignId, ...(connection.campaignId ? [connection.campaignId] : [])], async db => {
+    return this.writeGA4RefreshInputChange(campaignId, async db => {
     const [existing] = await db.select().from(linkedinConnections).where(eq(linkedinConnections.campaignId, campaignId));
     if (!existing) return undefined;
 
@@ -4453,6 +4489,8 @@ export class DatabaseStorage implements IStorage {
       Object.prototype.hasOwnProperty.call(connection, "clientSecret");
 
     const setObj: any = { ...connection };
+    delete setObj.campaignId;
+    delete setObj.id;
     if (tokenFieldsProvided || (existing as any).encryptedTokens) {
       setObj.encryptedTokens = buildEncryptedTokens({
         accessToken: (connection as any).accessToken,
@@ -4589,7 +4627,9 @@ export class DatabaseStorage implements IStorage {
         await db
           .update(metaConnections)
           .set({ encryptedTokens: nextEnc as any, accessToken: null, refreshToken: null } as any)
-          .where(eq(metaConnections.campaignId, campaignId));
+          .where(and(eq(metaConnections.id, connection.id), isNull(metaConnections.encryptedTokens),
+            sql`${metaConnections.accessToken} IS NOT DISTINCT FROM ${connection.accessToken ?? null}`,
+            sql`${metaConnections.refreshToken} IS NOT DISTINCT FROM ${connection.refreshToken ?? null}`));
       } catch {
         // ignore
       }
@@ -5056,7 +5096,10 @@ export class DatabaseStorage implements IStorage {
         await db
           .update(googleAdsConnections)
           .set({ encryptedTokens: nextEnc as any, accessToken: null, refreshToken: null, clientSecret: null } as any)
-          .where(eq(googleAdsConnections.campaignId, campaignId));
+          .where(and(eq(googleAdsConnections.id, connection.id), isNull(googleAdsConnections.encryptedTokens),
+            sql`${googleAdsConnections.accessToken} IS NOT DISTINCT FROM ${connection.accessToken ?? null}`,
+            sql`${googleAdsConnections.refreshToken} IS NOT DISTINCT FROM ${connection.refreshToken ?? null}`,
+            sql`${googleAdsConnections.clientSecret} IS NOT DISTINCT FROM ${connection.clientSecret ?? null}`));
       } catch {
         // ignore
       }
@@ -5312,7 +5355,7 @@ export class DatabaseStorage implements IStorage {
   async updateMetaKPI(id: string, kpi: Partial<InsertMetaKpi>): Promise<MetaKpi | undefined> {
     const [updated] = await db
       .update(metaKpis)
-      .set({ ...kpi, updatedAt: new Date() })
+      .set({ ...kpi, id: undefined, campaignId: undefined, updatedAt: new Date() })
       .where(eq(metaKpis.id, id))
       .returning();
     return updated || undefined;
@@ -5341,7 +5384,7 @@ export class DatabaseStorage implements IStorage {
   async updateMetaBenchmark(id: string, benchmark: Partial<InsertMetaBenchmark>): Promise<MetaBenchmark | undefined> {
     const [updated] = await db
       .update(metaBenchmarks)
-      .set({ ...benchmark, updatedAt: new Date() })
+      .set({ ...benchmark, id: undefined, campaignId: undefined, updatedAt: new Date() })
       .where(eq(metaBenchmarks.id, id))
       .returning();
     return updated || undefined;
@@ -5714,6 +5757,7 @@ export class DatabaseStorage implements IStorage {
         .set({
           email: integration.email,
           webhookToken: integration.webhookToken,
+          ...(integration.allowedEmailAddresses !== undefined ? { allowedEmailAddresses: integration.allowedEmailAddresses } : {}),
           connectedAt: new Date()
         })
         .where(eq(customIntegrations.id, existing.id))
@@ -5761,12 +5805,35 @@ export class DatabaseStorage implements IStorage {
       .where(eq(customIntegrationMetrics.campaignId, campaignId));
   }
 
-  async createCustomIntegrationMetrics(metricsData: InsertCustomIntegrationMetrics): Promise<CustomIntegrationMetrics> {
-    const [metrics] = await db
+  async createCustomIntegrationMetrics(metricsData: InsertCustomIntegrationMetrics, access?: { integrationId: string; webhookToken?: string; receipt?: string; senderEmail?: string; recipientEmail?: string }): Promise<CustomIntegrationMetrics & { alreadyProcessed?: boolean }> {
+    return db.transaction(async (tx: any) => {
+    const [parent] = await tx.select().from(campaigns).where(eq(campaigns.id, metricsData.campaignId)).for("update");
+    if (!parent?.ownerId || parent.status === "deleted" || access && parent.status === "draft") throw new Error("Campaign unavailable");
+    if (access) {
+      const [integration] = await tx.select().from(customIntegrations).where(and(eq(customIntegrations.id, access.integrationId), eq(customIntegrations.campaignId, parent.id),
+        access.webhookToken ? eq(customIntegrations.webhookToken, access.webhookToken) : undefined)).for("share");
+      if (!integration) throw new Error("Integration access revoked");
+      if (access.recipientEmail && integration.email !== access.recipientEmail) throw new Error("Integration recipient changed");
+      if (access.senderEmail !== undefined && integration.allowedEmailAddresses?.length &&
+        !integration.allowedEmailAddresses.some((email: string) => email.trim().toLowerCase() === access.senderEmail?.trim().toLowerCase())) throw new Error("Sender access revoked");
+    }
+    if (access?.receipt) {
+      const [claimed] = await tx.insert(inboundWebhookReceipts).values({ id: access.receipt, campaignId: parent.id }).onConflictDoNothing().returning();
+      if (!claimed) {
+        const [receipt] = await tx.select().from(inboundWebhookReceipts).where(eq(inboundWebhookReceipts.id, access.receipt));
+        const [existing] = receipt?.campaignId === parent.id && receipt.metricsId
+          ? await tx.select().from(customIntegrationMetrics).where(eq(customIntegrationMetrics.id, receipt.metricsId)) : [];
+        if (!existing) throw new Error("Webhook already processed");
+        return { ...existing, alreadyProcessed: true };
+      }
+    }
+    const [metrics] = await tx
       .insert(customIntegrationMetrics)
       .values(metricsData)
       .returning();
+    if (access?.receipt) await tx.update(inboundWebhookReceipts).set({ metricsId: metrics.id }).where(eq(inboundWebhookReceipts.id, access.receipt));
     return metrics;
+    });
   }
 
   async getLatestCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics | undefined> {
@@ -5799,15 +5866,35 @@ export class DatabaseStorage implements IStorage {
     return filtered.sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
   }
 
-  async createConversionEvent(eventData: InsertConversionEvent): Promise<ConversionEvent> {
-    const [event] = await db
+  async createConversionEvent(eventData: InsertConversionEvent, access?: { ownerId: string; webhookToken?: string }): Promise<ConversionEvent> {
+    return db.transaction(async (tx: any) => {
+    const [campaign] = await tx.select().from(campaigns).where(eq(campaigns.id, eventData.campaignId)).for("update");
+    if (!campaign || !campaign.ownerId || access && campaign.ownerId !== access.ownerId) throw new Error("Campaign unavailable");
+    if (access?.webhookToken) {
+      const [integration] = await tx.select().from(customIntegrations).where(and(eq(customIntegrations.campaignId, campaign.id), eq(customIntegrations.webhookToken, access.webhookToken))).for("share");
+      if (!integration || ["draft", "deleted"].includes(String(campaign.status))) throw new Error("Webhook access revoked");
+    }
+    if (eventData.currency !== (campaign.currency || "USD")) throw new Error("Conversion currency mismatch");
+    if (eventData.conversionId) {
+      const [existing] = await tx.select().from(conversionEvents).where(and(eq(conversionEvents.campaignId, campaign.id), eq(conversionEvents.conversionId, eventData.conversionId))).limit(1);
+      if (existing) {
+        if (existing.value !== eventData.value || existing.currency !== eventData.currency) throw new Error("Conversion ID already has different values");
+        return existing;
+      }
+    }
+    const [event] = await tx
       .insert(conversionEvents)
       .values({
         ...eventData,
         receivedAt: new Date(),
       })
       .returning();
+    const [average] = await tx.select({ value: sql`ROUND(AVG(${conversionEvents.value}), 2)` }).from(conversionEvents)
+      .where(and(eq(conversionEvents.campaignId, campaign.id), eq(conversionEvents.currency, campaign.currency || "USD"),
+        gte(conversionEvents.occurredAt, new Date(Date.now() - 30 * 86400000)), lte(conversionEvents.occurredAt, new Date())));
+    if (average?.value != null) await tx.update(campaigns).set({ conversionValue: String(average.value) }).where(eq(campaigns.id, campaign.id));
     return event;
+    });
   }
 
   async getConversionEventTotalValue(campaignId: string, startDate?: Date, endDate?: Date): Promise<number> {
@@ -7030,20 +7117,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Attribution Model methods
-  async getAttributionModels(): Promise<AttributionModel[]> {
-    return Array.from(this.attributionModels.values()).sort((a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+  async getAttributionModels(ownerId?: string): Promise<AttributionModel[]> {
+    return db.select().from(attributionModels).where(ownerId ? eq(attributionModels.ownerId, ownerId) : undefined).orderBy(desc(attributionModels.createdAt));
   }
 
   async getAttributionModel(id: string): Promise<AttributionModel | undefined> {
-    return this.attributionModels.get(id);
+    const [row] = await db.select().from(attributionModels).where(eq(attributionModels.id, id));
+    return row;
   }
 
-  async createAttributionModel(modelData: InsertAttributionModel): Promise<AttributionModel> {
+  async createAttributionModel(modelData: InsertAttributionModel, ownerId?: string): Promise<AttributionModel> {
     const id = randomUUID();
     const model: AttributionModel = {
       id,
+      ownerId: ownerId || null,
       name: modelData.name,
       type: modelData.type,
       description: modelData.description || null,
@@ -7054,67 +7141,63 @@ export class DatabaseStorage implements IStorage {
       updatedAt: new Date(),
     };
 
-    this.attributionModels.set(id, model);
+    await db.insert(attributionModels).values(model);
     return model;
   }
 
   async updateAttributionModel(id: string, modelData: Partial<InsertAttributionModel>): Promise<AttributionModel | undefined> {
-    const existing = this.attributionModels.get(id);
+    const existing = await this.getAttributionModel(id);
     if (!existing) return undefined;
 
     const updated: AttributionModel = {
       ...existing,
       ...modelData,
+      id: existing.id,
+      ownerId: existing.ownerId,
       updatedAt: new Date(),
     };
 
-    this.attributionModels.set(id, updated);
+    await db.update(attributionModels).set(updated).where(eq(attributionModels.id, id));
     return updated;
   }
 
   async deleteAttributionModel(id: string): Promise<boolean> {
-    return this.attributionModels.delete(id);
+    return db.transaction(async (tx: any) => {
+      const [model] = await tx.select().from(attributionModels).where(eq(attributionModels.id, id)).for("update");
+      if (!model) return false;
+      await tx.delete(attributionResults).where(eq(attributionResults.attributionModelId, id));
+      await tx.delete(attributionInsights).where(eq(attributionInsights.attributionModelId, id));
+      const deleted = await tx.delete(attributionModels).where(eq(attributionModels.id, id)).returning();
+      return deleted.length > 0;
+    });
   }
 
   async setDefaultAttributionModel(id: string): Promise<boolean> {
-    // Remove default from all models
-    this.attributionModels.forEach((model, key) => {
-      if (model.isDefault) {
-        const updated = { ...model, isDefault: false, updatedAt: new Date() };
-        this.attributionModels.set(key, updated);
-      }
+    return db.transaction(async (tx: any) => {
+      const model = await this.getAttributionModel(id);
+      if (!model?.ownerId) return false;
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`attribution-default:${model.ownerId}`}))`);
+      await tx.update(attributionModels).set({ isDefault: false, updatedAt: new Date() }).where(eq(attributionModels.ownerId, model.ownerId));
+      const updated = await tx.update(attributionModels).set({ isDefault: true, updatedAt: new Date() }).where(and(eq(attributionModels.id, id), eq(attributionModels.ownerId, model.ownerId))).returning();
+      return updated.length > 0;
     });
-
-    // Set new default
-    const model = this.attributionModels.get(id);
-    if (!model) return false;
-
-    const updated = { ...model, isDefault: true, updatedAt: new Date() };
-    this.attributionModels.set(id, updated);
-    return true;
   }
 
   // Customer Journey methods
-  async getCustomerJourneys(status?: string): Promise<CustomerJourney[]> {
-    let journeys = Array.from(this.customerJourneys.values());
-
-    if (status) {
-      journeys = journeys.filter(journey => journey.status === status);
-    }
-
-    return journeys.sort((a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+  async getCustomerJourneys(status?: string, ownerId?: string): Promise<CustomerJourney[]> {
+    return db.select().from(customerJourneys).where(and(status ? eq(customerJourneys.status, status) : undefined, ownerId ? eq(customerJourneys.ownerId, ownerId) : undefined)).orderBy(desc(customerJourneys.createdAt));
   }
 
   async getCustomerJourney(id: string): Promise<CustomerJourney | undefined> {
-    return this.customerJourneys.get(id);
+    const [row] = await db.select().from(customerJourneys).where(eq(customerJourneys.id, id));
+    return row;
   }
 
-  async createCustomerJourney(journeyData: InsertCustomerJourney): Promise<CustomerJourney> {
+  async createCustomerJourney(journeyData: InsertCustomerJourney, ownerId?: string): Promise<CustomerJourney> {
     const id = randomUUID();
     const journey: CustomerJourney = {
       id,
+      ownerId: ownerId || null,
       customerId: journeyData.customerId,
       sessionId: journeyData.sessionId || null,
       deviceId: journeyData.deviceId || null,
@@ -7129,49 +7212,59 @@ export class DatabaseStorage implements IStorage {
       updatedAt: new Date(),
     };
 
-    this.customerJourneys.set(id, journey);
+    await db.insert(customerJourneys).values(journey);
     return journey;
   }
 
   async updateCustomerJourney(id: string, journeyData: Partial<InsertCustomerJourney>): Promise<CustomerJourney | undefined> {
-    const existing = this.customerJourneys.get(id);
+    const existing = await this.getCustomerJourney(id);
     if (!existing) return undefined;
 
     const updated: CustomerJourney = {
       ...existing,
       ...journeyData,
+      id: existing.id,
+      ownerId: existing.ownerId,
       updatedAt: new Date(),
     };
 
-    this.customerJourneys.set(id, updated);
+    await db.update(customerJourneys).set(updated).where(eq(customerJourneys.id, id));
     return updated;
   }
 
   async deleteCustomerJourney(id: string): Promise<boolean> {
     // Also delete related touchpoints and attribution results
-    const touchpoints = Array.from(this.touchpoints.values()).filter(t => t.journeyId === id);
-    touchpoints.forEach(t => this.touchpoints.delete(t.id));
-
-    const results = Array.from(this.attributionResults.values()).filter(r => r.journeyId === id);
-    results.forEach(r => this.attributionResults.delete(r.id));
-
-    return this.customerJourneys.delete(id);
+    return db.transaction(async (tx: any) => {
+      const [journey] = await tx.select().from(customerJourneys).where(eq(customerJourneys.id, id)).for("update");
+      if (!journey) return false;
+      await tx.delete(attributionResults).where(eq(attributionResults.journeyId, id));
+      await tx.delete(touchpoints).where(eq(touchpoints.journeyId, id));
+      const deleted = await tx.delete(customerJourneys).where(eq(customerJourneys.id, id)).returning();
+      return deleted.length > 0;
+    });
   }
 
   // Touchpoint methods
   async getJourneyTouchpoints(journeyId: string): Promise<Touchpoint[]> {
-    return Array.from(this.touchpoints.values())
-      .filter(touchpoint => touchpoint.journeyId === journeyId)
-      .sort((a, b) => a.position - b.position);
+    return db.select().from(touchpoints).where(eq(touchpoints.journeyId, journeyId)).orderBy(touchpoints.position, touchpoints.id);
   }
 
   async getCampaignTouchpoints(campaignId: string): Promise<Touchpoint[]> {
-    return Array.from(this.touchpoints.values())
-      .filter(touchpoint => touchpoint.campaignId === campaignId)
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const rows = await db.select({ touchpoint: touchpoints }).from(touchpoints)
+      .innerJoin(customerJourneys, eq(customerJourneys.id, touchpoints.journeyId))
+      .innerJoin(campaigns, and(eq(campaigns.id, touchpoints.campaignId), eq(campaigns.ownerId, customerJourneys.ownerId)))
+      .where(eq(campaigns.id, campaignId)).orderBy(desc(touchpoints.timestamp), touchpoints.id);
+    return rows.map((row: any) => row.touchpoint);
   }
 
   async createTouchpoint(touchpointData: InsertTouchpoint): Promise<Touchpoint> {
+    return db.transaction(async (tx: any) => {
+    const [journey] = await tx.select().from(customerJourneys).where(eq(customerJourneys.id, touchpointData.journeyId)).for("update");
+    if (!journey?.ownerId) throw new Error("Journey unavailable");
+    if (touchpointData.campaignId) {
+      const [campaign] = await tx.select().from(campaigns).where(eq(campaigns.id, touchpointData.campaignId)).for("share");
+      if (!campaign || campaign.ownerId !== journey.ownerId) throw new Error("Campaign unavailable");
+    }
     const id = randomUUID();
     const touchpoint: Touchpoint = {
       id,
@@ -7197,56 +7290,65 @@ export class DatabaseStorage implements IStorage {
       createdAt: new Date(),
     };
 
-    this.touchpoints.set(id, touchpoint);
+    await tx.insert(touchpoints).values(touchpoint);
 
     // Update journey touchpoint count
-    const journey = this.customerJourneys.get(touchpointData.journeyId);
     if (journey) {
       const updated = {
         ...journey,
         totalTouchpoints: journey.totalTouchpoints + 1,
         updatedAt: new Date()
       };
-      this.customerJourneys.set(journey.id, updated);
+      await tx.update(customerJourneys).set(updated).where(eq(customerJourneys.id, journey.id));
     }
 
     return touchpoint;
+    });
   }
 
   async updateTouchpoint(id: string, touchpointData: Partial<InsertTouchpoint>): Promise<Touchpoint | undefined> {
-    const existing = this.touchpoints.get(id);
+    const [existing] = await db.select().from(touchpoints).where(eq(touchpoints.id, id));
     if (!existing) return undefined;
 
     const updated: Touchpoint = {
       ...existing,
       ...touchpointData,
+      id: existing.id,
+      journeyId: existing.journeyId,
+      campaignId: existing.campaignId,
     };
 
-    this.touchpoints.set(id, updated);
+    await db.update(touchpoints).set(updated).where(eq(touchpoints.id, id));
     return updated;
   }
 
   async deleteTouchpoint(id: string): Promise<boolean> {
-    const touchpoint = this.touchpoints.get(id);
-    if (!touchpoint) return false;
+    return db.transaction(async (tx: any) => {
+    const [candidate] = await tx.select().from(touchpoints).where(eq(touchpoints.id, id));
+    if (!candidate) return false;
 
     // Update journey touchpoint count
-    const journey = this.customerJourneys.get(touchpoint.journeyId);
+    const [journey] = await tx.select().from(customerJourneys).where(eq(customerJourneys.id, candidate.journeyId)).for("update");
+    const [touchpoint] = await tx.select().from(touchpoints).where(eq(touchpoints.id, id)).for("update");
+    if (!touchpoint) return false;
     if (journey) {
       const updated = {
         ...journey,
         totalTouchpoints: Math.max(0, journey.totalTouchpoints - 1),
         updatedAt: new Date()
       };
-      this.customerJourneys.set(journey.id, updated);
+      await tx.update(customerJourneys).set(updated).where(eq(customerJourneys.id, journey.id));
     }
 
-    return this.touchpoints.delete(id);
+    await tx.delete(attributionResults).where(eq(attributionResults.touchpointId, id));
+    await tx.delete(touchpoints).where(eq(touchpoints.id, id));
+    return true;
+    });
   }
 
   // Attribution Result methods
   async getAttributionResults(journeyId?: string, modelId?: string): Promise<AttributionResult[]> {
-    let results = Array.from(this.attributionResults.values());
+    let results: AttributionResult[] = await db.select().from(attributionResults).where(and(journeyId ? eq(attributionResults.journeyId, journeyId) : undefined, modelId ? eq(attributionResults.attributionModelId, modelId) : undefined));
 
     if (journeyId) {
       results = results.filter(result => result.journeyId === journeyId);
@@ -7262,25 +7364,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async calculateAttributionResults(journeyId: string, modelId: string): Promise<AttributionResult[]> {
-    const journey = await this.getCustomerJourney(journeyId);
-    const model = await this.getAttributionModel(modelId);
-    const touchpoints = await this.getJourneyTouchpoints(journeyId);
+    return db.transaction(async (tx: any) => {
+    const [model] = await tx.select().from(attributionModels).where(eq(attributionModels.id, modelId)).for("update");
+    const [journey] = await tx.select().from(customerJourneys).where(eq(customerJourneys.id, journeyId)).for("update");
+    const journeyTouchpoints: Touchpoint[] = await tx.select().from(touchpoints).where(eq(touchpoints.journeyId, journeyId)).orderBy(touchpoints.position, touchpoints.id);
 
-    if (!journey || !model || touchpoints.length === 0) {
+    if (!journey?.ownerId || !model || journey.ownerId !== model.ownerId || journeyTouchpoints.length === 0) {
       return [];
     }
 
     // Delete existing results for this journey/model combination
-    const existingResults = Array.from(this.attributionResults.values())
-      .filter(r => r.journeyId === journeyId && r.attributionModelId === modelId);
-    existingResults.forEach(r => this.attributionResults.delete(r.id));
+    await tx.delete(attributionResults).where(and(eq(attributionResults.journeyId, journeyId), eq(attributionResults.attributionModelId, modelId)));
 
     const results: AttributionResult[] = [];
     const conversionValue = parseFloat(journey.conversionValue?.toString() || "0");
 
     // Calculate attribution based on model type
-    for (let i = 0; i < touchpoints.length; i++) {
-      const touchpoint = touchpoints[i];
+    for (let i = 0; i < journeyTouchpoints.length; i++) {
+      const touchpoint = journeyTouchpoints[i];
       let credit = 0;
 
       switch (model.type) {
@@ -7289,11 +7390,11 @@ export class DatabaseStorage implements IStorage {
           break;
 
         case 'last_touch':
-          credit = i === touchpoints.length - 1 ? 1.0 : 0.0;
+          credit = i === journeyTouchpoints.length - 1 ? 1.0 : 0.0;
           break;
 
         case 'linear':
-          credit = 1.0 / touchpoints.length;
+          credit = 1.0 / journeyTouchpoints.length;
           break;
 
         case 'time_decay':
@@ -7307,21 +7408,21 @@ export class DatabaseStorage implements IStorage {
 
         case 'position_based':
           const posConfig = JSON.parse(model.configuration || '{"firstWeight": 0.4, "lastWeight": 0.4, "middleWeight": 0.2}');
-          if (touchpoints.length === 1) {
+          if (journeyTouchpoints.length === 1) {
             credit = 1.0;
-          } else if (touchpoints.length === 2) {
+          } else if (journeyTouchpoints.length === 2) {
             credit = i === 0 ? posConfig.firstWeight + posConfig.middleWeight / 2 : posConfig.lastWeight + posConfig.middleWeight / 2;
           } else {
             if (i === 0) credit = posConfig.firstWeight;
-            else if (i === touchpoints.length - 1) credit = posConfig.lastWeight;
-            else credit = posConfig.middleWeight / (touchpoints.length - 2);
+            else if (i === journeyTouchpoints.length - 1) credit = posConfig.lastWeight;
+            else credit = posConfig.middleWeight / (journeyTouchpoints.length - 2);
           }
           break;
       }
 
       // Normalize time decay credits
-      if (model.type === 'time_decay' && touchpoints.length > 1) {
-        const totalCredits = touchpoints.reduce((sum, tp, idx) => {
+      if (model.type === 'time_decay' && journeyTouchpoints.length > 1) {
+        const totalCredits = journeyTouchpoints.reduce((sum, tp, idx) => {
           const config = JSON.parse(model.configuration || '{"decayRate": 0.5, "halfLife": 7}');
           const daysSinceTouch = Math.max(0,
             (new Date(journey.journeyEnd || new Date()).getTime() - new Date(tp.timestamp).getTime())
@@ -7354,16 +7455,16 @@ export class DatabaseStorage implements IStorage {
         createdAt: new Date(),
       };
 
-      this.attributionResults.set(resultId, result);
+      await tx.insert(attributionResults).values(result);
       results.push(result);
     }
 
     return results;
+    });
   }
 
   async getChannelAttributionResults(channel: string, modelId?: string): Promise<AttributionResult[]> {
-    let results = Array.from(this.attributionResults.values())
-      .filter(result => result.channel === channel);
+    let results: AttributionResult[] = await db.select().from(attributionResults).where(eq(attributionResults.channel, channel));
 
     if (modelId) {
       results = results.filter(result => result.attributionModelId === modelId);
@@ -7376,7 +7477,7 @@ export class DatabaseStorage implements IStorage {
 
   // Attribution Insight methods
   async getAttributionInsights(modelId?: string, period?: string): Promise<AttributionInsight[]> {
-    let insights = Array.from(this.attributionInsights.values());
+    let insights: AttributionInsight[] = await db.select().from(attributionInsights);
 
     if (modelId) {
       insights = insights.filter(insight => insight.attributionModelId === modelId);
@@ -7392,8 +7493,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCampaignAttributionInsights(campaignId: string, modelId?: string): Promise<AttributionInsight[]> {
-    let insights = Array.from(this.attributionInsights.values())
-      .filter(insight => insight.campaignId === campaignId);
+    let insights: AttributionInsight[] = await db.select().from(attributionInsights).where(eq(attributionInsights.campaignId, campaignId));
 
     if (modelId) {
       insights = insights.filter(insight => insight.attributionModelId === modelId);
@@ -7409,7 +7509,7 @@ export class DatabaseStorage implements IStorage {
     if (!model) return [];
 
     // Get all attribution results for the model within the date range
-    const results = Array.from(this.attributionResults.values())
+    const results = (await this.getAttributionResults(undefined, modelId))
       .filter(result => {
         if (result.attributionModelId !== modelId) return false;
         const resultDate = new Date(result.calculatedAt);
@@ -7459,7 +7559,7 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date(),
       };
 
-      this.attributionInsights.set(insightId, insight);
+      await db.insert(attributionInsights).values(insight);
       insights.push(insight);
     }
 
@@ -7473,12 +7573,12 @@ export class DatabaseStorage implements IStorage {
     modelResults: { model: AttributionModel; results: AttributionResult[] }[];
   }> {
     const journey = await this.getCustomerJourney(journeyId);
-    if (!journey) {
+    if (!journey?.ownerId) {
       throw new Error(`Customer journey with ID ${journeyId} not found`);
     }
 
     const touchpoints = await this.getJourneyTouchpoints(journeyId);
-    const models = await this.getAttributionModels();
+    const models = await this.getAttributionModels(journey.ownerId);
 
     const modelResults: { model: AttributionModel; results: AttributionResult[] }[] = [];
 
@@ -7500,7 +7600,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getChannelPerformanceAttribution(startDate: Date, endDate: Date, modelId?: string): Promise<{
+  async getChannelPerformanceAttribution(startDate: Date, endDate: Date, modelId?: string, ownerId?: string): Promise<{
     channel: string;
     totalAttributedValue: number;
     totalTouchpoints: number;
@@ -7509,8 +7609,13 @@ export class DatabaseStorage implements IStorage {
     lastClickConversions: number;
     firstClickConversions: number;
   }[]> {
-    let results = Array.from(this.attributionResults.values())
-      .filter(result => {
+    const ownedModels = ownerId ? await this.getAttributionModels(ownerId) : null;
+    if (ownedModels && !ownedModels.length) return [];
+    let results: AttributionResult[] = (await db.select().from(attributionResults).where(and(
+      modelId ? eq(attributionResults.attributionModelId, modelId) : undefined,
+      ownedModels ? inArray(attributionResults.attributionModelId, ownedModels.map(model => model.id)) : undefined,
+    )))
+      .filter((result: AttributionResult) => {
         const resultDate = new Date(result.calculatedAt);
         return resultDate >= startDate && resultDate <= endDate;
       });

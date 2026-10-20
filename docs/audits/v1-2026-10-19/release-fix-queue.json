@@ -1,0 +1,1221 @@
+{
+  "at": "2026-10-20T19:11:31.787Z",
+  "runtimeChangesAuthorized": true,
+  "authorizedBatches": [
+    1
+  ],
+  "batches": [
+    {
+      "id": 1,
+      "title": "Authorization, ingestion and credential exposure",
+      "count": 20
+    },
+    {
+      "id": 2,
+      "title": "Startup, migrations and account/campaign lifecycle",
+      "count": 14
+    },
+    {
+      "id": 3,
+      "title": "Native GA4 query and financial contracts",
+      "count": 10
+    },
+    {
+      "id": 4,
+      "title": "Files, Sheets and Custom Integration",
+      "count": 24
+    },
+    {
+      "id": 5,
+      "title": "CRM and commerce Revenue",
+      "count": 6
+    },
+    {
+      "id": 6,
+      "title": "Deferred-source isolation and included Ads",
+      "count": 19
+    },
+    {
+      "id": 7,
+      "title": "Diagnostics, goals, retained pages, alerts and reports",
+      "count": 29
+    },
+    {
+      "id": 8,
+      "title": "Release checks and deployed operational acceptance",
+      "count": 8
+    }
+  ],
+  "findings": [
+    {
+      "id": "V1-001",
+      "number": 1,
+      "severity": "P0",
+      "status": "confirmed locally",
+      "detail": "`POST /api/webhook/conversion/:campaignId`, `server/routes-oauth.ts:34209`: campaign existence is the only access check. Caller-provided values create conversion events and update campaign `conversionValue` without authentication/signature. Fixture reproduces writes for a different owner. Also averages currencies together and rejects numeric zero. No production mutation attempted. Blocks every release containing this route.",
+      "batch": 1,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-002",
+      "number": 2,
+      "severity": "P0",
+      "status": "confirmed anonymous credential read/write path",
+      "detail": "`server/routes-oauth.ts:815–840` → `storage.ts:863–913`: Metrics, Performance and Integrations GET/POST lack actor/owner scope. [Exact UI/storage/handler round trip](audits/v1-2026-10-19/ENTRY_PAGES_AND_DASHBOARD_VALUES.md) proves the integration form's credential JSON is stored plaintext and returned anonymously; connected=true needs no provider verification. Earlier anonymous deployed GETs returned4/7/5 rows, without inspecting real credentials. P0 elevation reflects synthetic token-disclosure proof, not a claimed production credential compromise.",
+      "batch": 1,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-003",
+      "number": 3,
+      "severity": "P1",
+      "status": "confirmed locally",
+      "detail": "`server/routes-oauth.ts:14599,14628`: LinkedIn campaign/revenue GETs expose foreign fixture labels/revenue. [Six additional handler cases](audits/v1-2026-10-19/retained-private-read-reproductions.json) confirm anonymous/foreign reads at Google Trends23305 and attribution31437, plus campaign-dependent connection/schema inference and credentialed provider dispatch at platform fields34290. Provider replies/data are synthetic; no live exposure attempted. All retained paths need exact owner guards.",
+      "batch": 1,
+      "scope": "Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred"
+    },
+    {
+      "id": "V1-004",
+      "number": 4,
+      "severity": "P1",
+      "status": "confirmed local signature boundary",
+      "detail": "`/api/mailgun/inbound`, routes 33943: even with a signing key, absent timestamp/token/signature skip verification and reach integration lookup. `/api/sendgrid/inbound` at 33809 uses the same conditional pattern; its body parser is also skipped by `index.ts:71` without a multipart parser on the route. No inbound email sent. Full attachment/provenance/replay paths remain unverified.",
+      "batch": 1,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-005",
+      "number": 5,
+      "severity": "P1",
+      "status": "confirmed local reproduction",
+      "detail": "`POST /api/alerts/test-email`, routes 8698: arbitrary recipient/subject reaches mocked email transport without actor check, production disablement or route limiter. No email sent. Must be guarded or disabled before release.",
+      "batch": 1,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-006",
+      "number": 6,
+      "severity": "P1",
+      "status": "confirmed code",
+      "detail": "Attribution routes 30814–31464 expose unauthenticated mutations/reads. `DatabaseStorage` attribution maps are process memory, not durable multi-tenant storage (`storage.ts:692` onward). Some GETs return hard-coded examples. Compatibility surface cannot be treated as production analytics or safely excluded only by navigation.",
+      "batch": 1,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-007",
+      "number": 7,
+      "severity": "P0",
+      "status": "confirmed code, persisted impact unknown",
+      "detail": "`server/index.ts:84–165,1196`: on empty `metrics`, startup inserts demo metrics and then updates **all** campaigns with zero/null impressions and clicks with fabricated spend/revenue/conversions and `status='active'`. No owner/demo/environment restriction. This can activate drafts or paused zero-traffic campaigns and feed their schedulers. No database seed executed by this audit. Existing affected rows require a separate read-only damage inventory, never a blanket rewrite.",
+      "batch": 2,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-008",
+      "number": 8,
+      "severity": "P1",
+      "status": "confirmed code, deployed configuration unknown",
+      "detail": "`server/utils/tokenVault.ts:25–53,109`: encryption can fall back to a known development secret; the production assertion is used on selected Shopify/Google Ads paths, not uniformly at startup or all GA4/Sheets writes. `server/db.ts:19–21` explicitly sets `rejectUnauthorized:false` for `sslmode=require`. Verify deployed key/TLS configuration and close unsafe configuration paths; no secret values collected.",
+      "batch": 1,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-009",
+      "number": 9,
+      "severity": "P1",
+      "status": "confirmed code",
+      "detail": "`server/index.ts:254–270`: HTTP listener and `/health` become ready before delayed migrations; migration failures are logged and startup can continue. `render.yaml` uses `/health`. Liveness does not prove required schema or schedulers. Fresh install, upgrade, concurrent boot, failed migration and rollback remain required isolated/deployed gates.",
+      "batch": 2,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-010",
+      "number": 10,
+      "severity": "P1",
+      "status": "repeated deployed failure",
+      "detail": "On exact HEAD, `/health/scheduler` reports healthy/200 while latest GA4 daily and auto-refresh runs fail. October19 observed14provider jobs/9succeeded; October20 at09:00 observed14/8. [Final16:48UTC observation](audits/v1-2026-10-19/deployed-public-final-2026-10-20.json) observes14/9 and failed12:00–12:17 cycles. [Ptomo read-only evidence](audits/v1-2026-10-19/PTOMO_READ_ONLY_EVIDENCE.md) separately finds completed native work in the repository-configured DB; deployment binding unknown. Identify/recover failures without assuming redundant campaigns caused them; no other campaign was inspected.",
+      "batch": 8,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-011",
+      "number": 11,
+      "severity": "P1",
+      "status": "bounded implementation, required gate open",
+      "detail": "Durable ownership/restart recovery in `ga4-daily-scheduler.ts:639–712` rejects active external Revenue/Spend sources and external connections. CRM/Sheets/Ads/Shopify campaigns retain ordinary refresh paths. Native-only P5 acceptance does not prove their cross-worker edits, retry, cancellation and restart safety.",
+      "batch": 3,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-012",
+      "number": 12,
+      "severity": "P1",
+      "status": "automated validation not clean",
+      "detail": "Full controlled suite: 3,789 passed /182 failed /zero skipped. [Each failure](audits/v1-2026-10-19/VALIDATION.md) retains a stable ID and OPEN status. All37 incomplete-fixture behavior failures now map to missing publication-version setup;108 audit-copy assertions pass after exact fixture/guard-expectation repair, with runtime unchanged. [Root causes and mapping](audits/v1-2026-10-19/GA4_FAILED_TEST_ROOT_CAUSES.md). Original tests still require agreed corrections and complete rerun. Deferred CI tests remain safety obligations where routes/jobs exist.",
+      "batch": 8,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-013",
+      "number": 13,
+      "severity": "P1",
+      "status": "required external gate",
+      "detail": "No current signed-in end-to-end owner/new-account, client/campaign, real provider selection/import/reconnect/cancel/retry/delete journey has been completed in this audit. Browser control exposes no connected user session. Public signed-out smoke and fixture browser tests are supporting evidence only.",
+      "batch": 8,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-014",
+      "number": 14,
+      "severity": "P1",
+      "status": "required analytics gate",
+      "detail": "No complete current semantic value/source/fallback/propagation certificate covers every included financial family and retained surface. Row labels and route extraction are not that proof. The source/value matrix must retain all unverified cells and test failures until closed.",
+      "batch": 8,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-015",
+      "number": 15,
+      "severity": "P1",
+      "status": "required artifact/delivery gate",
+      "detail": "Browser PDFs, immutable snapshots, scheduled server artifacts and confirmed delivery need current-revision/source-mix parity. Browser `ga4-metrics.tsx:4130` labels source-to-date amounts; scheduled PDF fixtures enforce completed-day amounts. October19 deployed counter had0sent; October20 at09:00 had1 and final16:48 observation has2. Aggregate counters do not identify the artifact/campaign, verify its values or prove delivery. No email was triggered by the audit.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-016",
+      "number": 16,
+      "severity": "P1",
+      "status": "required operational gate",
+      "detail": "Five-user/25-campaign component and actual HTTP/DB checks are recorded; the latter reproduces blocked import saves despite acceptable local read latency. Synthetic DB/key/PDF-byte restore passes. Deployed capacity, actual provider quotas, multi-instance recovery, monitoring receipt, production backup/key recovery and application/schema rollback remain unverified. [HTTP boundary](audits/v1-2026-10-19/HTTP_DATABASE_PILOT.md), [restore boundary](audits/v1-2026-10-19/CONFIGURATION_AND_RECOVERY.md).",
+      "batch": 8,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-017",
+      "number": 17,
+      "severity": "P2",
+      "status": "confirmed browser and code",
+      "detail": "`/sign-up` renders “Sign in” linking back to `/sign-up`; `client/src/App.tsx:74` passes the wrong `signInUrl`. Existing-account recovery from signup loops. Deployed DOM evidence saved.",
+      "batch": 2,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-018",
+      "number": 18,
+      "severity": "P2",
+      "status": "confirmed configuration",
+      "detail": "`playwright.config.ts:17` defaults to a suspended old host and its e2e suite shares a campaign. Do not run destructive deployed tests through this default. Use explicit current target and isolated fixtures.",
+      "batch": 8,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-019",
+      "number": 19,
+      "severity": "P1",
+      "status": "blocked external check",
+      "detail": "Dependency vulnerability lookup was rejected by automatic approval review because it exports package names/versions to npm. User approval remains unresolved. No advisory results or dependency-safety claim. Local lockfile inspection can continue without that request.",
+      "batch": 8,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-020",
+      "number": 20,
+      "severity": "P2",
+      "status": "contradictory historical guidance",
+      "detail": "`GA4/REFRESH_AND_PROCESSING.md` retains descriptions saying durable recovery is not integrated, while current scheduler/storage and backlog implement native-only recovery. Older “current deployed” SHAs and section certificates refer to their historical boundaries. Resolve status navigation through this index without rewriting protected historical evidence.",
+      "batch": 8,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-021",
+      "number": 21,
+      "severity": "P1",
+      "status": "confirmed isolated reproduction",
+      "detail": "`server/report-scheduler.ts:4335-4356,4820`: two workers can both retry a stale pending/failed report slot. Retry update has no compare-and-set owner/lease and does not inspect claimed row count. Exact extracted function with fixture DB lets both invocations pass the claim; stops before any email. This proves nonexclusive claiming, not actual duplicate delivery. Requires an atomic retry claim and multi-worker/expiry/crash regression.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-022",
+      "number": 22,
+      "severity": "P1",
+      "status": "confirmed code, deployed occurrence unknown",
+      "detail": "`server/report-scheduler.ts:4540-4586`: snapshot insertion after confirmed send catches DB errors as an empty result; send event may still become sent with snapshotId=null and lastSentAt advances. Required immutable sent/downloadable artifact can be absent. Test artifact/audit persistence failures and recovery without resending an already confirmed email.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-023",
+      "number": 23,
+      "severity": "P1",
+      "status": "confirmed isolated PostgreSQL reproduction",
+      "detail": "`storage.ts:6742` lists client campaigns before entering the deletion transaction; `routes-oauth.ts:9061-9073` client validation and campaign insert are separate, with no client FK in `shared/schema.ts:27` or tracked migrations found. Concurrent creation between enumeration and transaction survives successful client deletion as an orphan. Exact method reproduced against disposable schema; production data not inspected. Preserve campaign/owner boundary and coordinate creation/deletion in existing storage pattern.",
+      "batch": 2,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-024",
+      "number": 24,
+      "severity": "P1",
+      "status": "code and isolated dispatch evidence, live configuration unknown",
+      "detail": "Instagram18/TikTok70 and LinkedIn672/Ads347 refresh wrappers lack owner/active-status eligibility; Meta303 omits parent lookup. All connection IDs are scheduled by dedicated jobs. Four wrapper fixtures prove Meta dispatch without parent and LinkedIn/Ads dispatch for paused ownerless parents; LinkedIn missing-parent control rejects. These prove dispatch, not DB persistence. TikTok live refresh is deferred while test-mode scheduled writes simulated USD. Require fail-closed eligibility/simulation gating and actual recovery tests.",
+      "batch": 6,
+      "scope": "Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred"
+    },
+    {
+      "id": "V1-025",
+      "number": 25,
+      "severity": "P1",
+      "status": "confirmed timeout gap",
+      "detail": "`googleAdsClient.ts:65-136` Axios client and token calls have no explicit request timeout; `utils/salesforce-pagination.ts:33` fetch has no signal/deadline. **Native GA4** `analytics.ts:1392-1604` total/supplemental queries also bypass requestReport and use direct fetch without signal (exact-service fixture). `auto-refresh-scheduler.ts:231` Promise.race stops waiting without cancelling its promise. A local HTTP timeout does not prove provider work stopped. Trace each caller, add bounded cancellation within existing paths and verify no late stale writes.",
+      "batch": 3,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-026",
+      "number": 26,
+      "severity": "P1",
+      "status": "confirmed isolated URL-fetch boundary",
+      "detail": "`routes-oauth.ts:28246-28369,28372-28524`: bearer-token Custom Integration ingestion accepts arbitrary URL downloads, including loopback, without destination/redirect restrictions, explicit deadline or downloaded-byte limit. Exact fixture proves loopback URL reaches mocked fetch; no actual internal request. Multipart 10MB limit does not bound URL downloads. Logs print the bearer token. Protect request destinations/resources and token secrecy; require current-parent validity through publication.",
+      "batch": 1,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-027",
+      "number": 27,
+      "severity": "P1",
+      "status": "confirmed isolated browser reproductions",
+      "detail": "Simulation callback10821 and real Salesforce11506, LinkedIn23517, Meta24073 callback error branches interpolate unescaped input before state/owner checks. Harmless sentinels execute under current CSP in local blocked-network Chromium. Google fixed-error and existing safe serializer controls pass. Encode each HTML/script context or effectively gate removed flows; no deployed exploit sent.",
+      "batch": 1,
+      "scope": "Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred"
+    },
+    {
+      "id": "V1-028",
+      "number": 28,
+      "severity": "P1",
+      "status": "confirmed parser reproductions",
+      "detail": "`services/custom-integration-file-parser.ts:82-105` uses non-strict 5,000-row CSV limit: 5,001 data rows become 4,999, confidence100, reviewfalse. Permissive numeric parsing accepts malformed amounts, sums mixed currency and misreads decimal-comma values. Duplicate CSV/XLSX Spend headers100/7 become14 through overwrite plus repeated header iteration217–229, also confidence100. Schema765 has no currency/report-period contract; UI/report currency formatting uses USD. Exact fixtures recorded. Separate GA4 financial CSV parser is not implicated by these cases.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-029",
+      "number": 29,
+      "severity": "P1",
+      "status": "confirmed publication and fallback paths",
+      "detail": "Custom imports persist and publish review-required metrics; latest-reader storage5780 has no validation-state filter. UI2806 labels Needs review but creates `latest_validated_import` scope; metric resolver still supplies KPI/Benchmark values. Scheduled report575-729 reads same row without validation gate or imported-period filter. Report financial builder498-538 turns failed revenue total read into an available zero when source exists (fixture). Webhook review URL has no registered page. Prevent unvalidated/failed reads from masquerading as validated period values; validate downstream artifacts.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-030",
+      "number": 30,
+      "severity": "P1",
+      "status": "confirmed isolated update reproduction",
+      "detail": "`storage.ts:5706-5730` drops `allowedEmailAddresses` when updating an existing Custom Integration, despite guarded connect accepting it. Previously allowed sender remains permitted by token-email whitelist. Preserve exact sender boundary and test save/reload/removed-sender rejection.",
+      "batch": 1,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-031",
+      "number": 31,
+      "severity": "P1",
+      "status": "confirmed retained API reproduction",
+      "detail": "`POST /api/custom-integration/transfer`, routes34100-34206: same source/destination deletes connection and metrics yet returns success; ordinary transfer copies without parser metadata/import timestamp and performs copy/delete nonatomically. Exact fixture confirms destructive same-ID outcome and omitted fields. No current frontend caller found, but route remains registered. Validate distinct owner-bound source/destination, atomic failure/retry and metadata preservation before retaining or excluding it.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-032",
+      "number": 32,
+      "severity": "P1",
+      "status": "confirmed GA4 attribution fixture",
+      "detail": "`analytics.ts:2361-2449` Insights landing coverage uses CONTAINS for UTM source/medium. `google` matches `google_ads`; exact-service fixture selects60 sessions from40 actual landing sessions. Route13736 and UI2155 use this branch. UI5135-5143 currently withholds channel analysis when totals differ from daily data; this prevents that fixture's wrong summary but leaves incorrect API output and missing Insights. Native Overview scheduler passes this option false. Require exact parameter matching and no-overlap/total reconciliation tests.",
+      "batch": 3,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-033",
+      "number": 33,
+      "severity": "P1",
+      "status": "confirmed GA4 completeness gap",
+      "detail": "Acquisition `analytics.ts:1839-1883` accepts missing/nonfinite rowCount or rowCount<=first-page size. Exact-service fixture accepts a full bounded page with absent rowCount without another request or incomplete status. Pagination sorts only sessions, with no stable dimension tie-breaker. This is not evidence of an observed truncated Google response; it is a failed completeness guarantee for new/large properties. Validate malformed/full/tied/changed pages through callers and publication.",
+      "batch": 3,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-034",
+      "number": 34,
+      "severity": "P1",
+      "status": "confirmed anonymous temporary-source write",
+      "detail": "`POST /api/custom-integration/:campaignId/connect`, routes33729-33780: magic ID `temp-campaign-setup` bypasses actor/campaign guard and writes/returns a shared temporary connection and bearer token. Exact-handler fixture confirms zero guard calls. Transfer34100 also skips ownership for that source. No current frontend use of the magic ID found. Retained shared staging cannot be treated as tenant-safe merely because ordinary IDs are guarded.",
+      "batch": 1,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-035",
+      "number": 35,
+      "severity": "P1",
+      "status": "confirmed financial contract reproduction",
+      "detail": "`storage.ts:3120-3130` retries revenue completeness against all-date `getRevenueBreakdownBySource`, which returns `sourceId`; `utils/revenue-record-total.ts:20-29` recognizes only `revenueSourceId`. A valid source materialized outside the requested completed-day window still throws incomplete. Exact storage/helper fixture confirms mismatch. Fix exact contract and validate dated zero/pending/current-day data through all consumers, without treating missing records as measured zero.",
+      "batch": 3,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-036",
+      "number": 36,
+      "severity": "P1",
+      "status": "confirmed code/document contradiction",
+      "detail": "`utils/campaign-cumulative-financials.ts:41-126` and shared schema994-1044 reject negative revenue/components, while shared GA4 financial selector accepts them and `GA4/FINANCIAL_SOURCES.md:89` requires valid negative revenue remain authoritative. Outcome route15929 invokes rejecting helper before response/publication. Fixture accepts−10 upstream then throws downstream; zero control passes. Resolve exact negative/refund policy and propagate consistently; do not silently clamp.",
+      "batch": 3,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-037",
+      "number": 37,
+      "severity": "P1",
+      "status": "confirmed reconnect/cancellation reproduction",
+      "detail": "OAuth callback11090-11110 creates empty-property replacement, promotes it and deletes all old connections/snapshots before property selection, including when discovery failed. UI Cancel561 only resets local state. Reselecting same prior property now assigns fresh30-day import start because pending row has empty propertyId (route16181). Exact callback fixtures prove premature deletion; actual provider/browser recovery remains required. Stage/commit renewal safely within current flow and preserve prior scope/history.",
+      "batch": 2,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-038",
+      "number": 38,
+      "severity": "P1",
+      "status": "confirmed discovery pagination gap",
+      "detail": "Primary GA4 callback11046, status12936 and real-ga4-client265 ignore accounts/properties nextPageToken. Exact callback fixture supplies both tokens and confirms no pagination. A new customer's later-page property cannot appear in selector. Independently verify full account/property discovery, permissions, bounded retries and quotas; do not certify only small tester accounts.",
+      "batch": 2,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-039",
+      "number": 39,
+      "severity": "P1",
+      "status": "confirmed status/fallback reproduction",
+      "detail": "`real-ga4-client.ts:198-258` supplies fabricated properties when live discovery empty/fails; status12891 reports those as Real Google Analytics API and connected without consulting DB. Delete16075/storage1166 do not clear corresponding process maps. Exact method/handler fixture confirms fabricated choices and zero DB reads with empty persisted fixture. Current callback populates this cache and current connection flow reads it. Remove false-real fallback and prove disconnect/restart/cache reconciliation.",
+      "batch": 2,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-040",
+      "number": 40,
+      "severity": "P1",
+      "status": "confirmed GA4 CSV Spend corruption",
+      "detail": "`routes-oauth.ts:6545-6553` accepts up to50,005 approximate lines but non-strict parser stops at50,000 including header. Exact route fixture uploads50,000 data rows and persists49,999 with success. Same route's `aggregateCsvSpendRows` accepts malformed `12oops` as12; Revenue CSV's strict validator is absent. Validate whole-file completeness, amount/header/date/currency contract and source/downstream parity; existing damaged imports need read-only inventory.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-041",
+      "number": 41,
+      "severity": "P1",
+      "status": "confirmed GA4 Sheets Spend corruption",
+      "detail": "Routes6765/6905 fetch fixed `A1:ZZ5000` without completeness check; exact processing fixture with5,001 data rows persists4,999 and returns success. Permissive parseNum accepts12oops; entirely nonnumeric selected amounts write measured zero. Fetches lack abort signal. Auto-refresh reuses this route. Independent Revenue chunking safeguards do not cover Spend. Reject partial/invalid data and validate refresh/recovery/source totals.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-042",
+      "number": 42,
+      "severity": "P1",
+      "status": "confirmed amount-validation defects",
+      "detail": "HubSpot save20245, Salesforce save18830 and Shopify `utils/shopify-revenue.ts:145` remove arbitrary characters before numeric conversion. Exact HubSpot handler and Shopify helper fixtures accept12oops as12; nonnumeric HubSpot becomes measured0 and Shopify becomes excluded zero order. Salesforce code retains same digit-stripping behavior despite non-finite checks. Reject invalid provider values before publication; trace existing corruption separately.",
+      "batch": 5,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-043",
+      "number": 43,
+      "severity": "P1",
+      "status": "confirmed incomplete-provider-to-zero contract",
+      "detail": "HubSpot search19976/save20235 substitutes missing results with[]; exact handler persists zero for HTTP-success{}. Salesforce `utils/salesforce-pagination.ts:43` accepts{} and ignores totalSize10 versus empty records, confirmed in exact helper fixtures. GA4 save19251 maps empty rows to zero. Incomplete/unavailable response must not overwrite last-good revenue as measured zero.",
+      "batch": 5,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-044",
+      "number": 44,
+      "severity": "P1",
+      "status": "confirmed HubSpot duplicate counting",
+      "detail": "Save20245 adds each result without deal-ID deduplication. Exact two-page fixture repeats the same10USD deal and persists20USD; cursor changes so pagination guard passes. Query completeness and aggregate/daily self-reconciliation do not detect duplicated provider identity. Require identity/revision policy before financial publication; Salesforce equivalent absence has code evidence, not separate handler fixture.",
+      "batch": 5,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-045",
+      "number": 45,
+      "severity": "P1",
+      "status": "confirmed HubSpot revenue-classification gap",
+      "detail": "Save20169 accepts explicit stageIds without checking closed-won metadata. Fixture supplies known open-stage metadata and shows that stage queried and10USD materialized as confirmed revenue. Default closed-won derivation does not protect caller override. Keep Pipeline Proxy separate and verify stage semantics for each account.",
+      "batch": 5,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-046",
+      "number": 46,
+      "severity": "P1",
+      "status": "confirmed attribution duplication",
+      "detail": "`server/utils/ga4RevenueEnrichment.ts:119-147` applies a whole90-day GA4 revenue pool independently to every normalized name match and allocates it by platform spend dates. Exact fixture turns100 into200 for two matched campaigns. Current retained LinkedIn/Google Ads consumers show ga4Revenue/ROAS. Failed/empty enrichment also leaves old values. Exact source/date/unique allocation needed, or effective exclusion.",
+      "batch": 6,
+      "scope": "Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred"
+    },
+    {
+      "id": "V1-047",
+      "number": 47,
+      "severity": "P1",
+      "status": "confirmed paid-media pagination gap",
+      "detail": "`server/services/meta-graph-api.ts:205,267,387,431,456` reads one page and ignores paging.next. Exact campaign/placement fixtures prove one request despite next link. LinkedIn client84-276 similarly lacks iteration in current code. Selected-source discovery and metrics can be partial; independent provider completeness tests required.",
+      "batch": 6,
+      "scope": "Deferred provider functionality; retained for future enablement, not a V1 provider implementation task"
+    },
+    {
+      "id": "V1-048",
+      "number": 48,
+      "severity": "P1",
+      "status": "confirmed Meta failure/freshness corruption",
+      "detail": "`server/meta-scheduler.ts:233-294` catches selected-campaign request failures then updates lastRefreshAt. Exact fixture proves all requests fail yet freshness advances. Wrapper303 then runs KPI/alerts. `meta-graph-api.ts:590` also substitutes zero insights for failed batch requests, separately reproduced. Preserve last-good state with failure/partial freshness; do not publish failed requests as measured zero.",
+      "batch": 6,
+      "scope": "Deferred provider functionality; retained for future enablement, not a V1 provider implementation task"
+    },
+    {
+      "id": "V1-049",
+      "number": 49,
+      "severity": "P1",
+      "status": "confirmed LinkedIn refresh duplication/fabrication",
+      "detail": "`server/linkedin-scheduler.ts:419` uses Set of newly created objects, so each prior metric repeats a campaign; exact fixture one campaign/two metrics writes four metrics and two creative rows. Creative revenue632 defaults conversionValue150 when absent, also reproduced. Substring identity and missing queried metric fallbacks are additional traced risks. Requires exact campaign identity, no invented revenue, coherent session publication and damage inventory.",
+      "batch": 6,
+      "scope": "Deferred provider functionality; retained for future enablement, not a V1 provider implementation task"
+    },
+    {
+      "id": "V1-050",
+      "number": 50,
+      "severity": "P1",
+      "status": "confirmed conflicting conversion contracts",
+      "detail": "`server/services/meta-graph-api.ts:405-412` sums purchase/lead/conversion action labels, while aggregate513/550 selects first matching label. Exact Instagram-placement fixture produces9 from three labels of3. Whether labels overlap needs provider validation; current code lacks a verified non-overlapping conversion contract. This blocks treating Meta/Instagram values as certified or reusing the definition for future sources.",
+      "batch": 6,
+      "scope": "Deferred provider functionality; retained for future enablement, not a V1 provider implementation task"
+    },
+    {
+      "id": "V1-051",
+      "number": 51,
+      "severity": "P1",
+      "status": "confirmed retained Sheets completeness/scope gap",
+      "detail": "Main GET21785/21987 and `auto-refresh-scheduler.ts:813` read A1:Z1000. Exact refresh fixture caches999 rows as fresh without completeness check; page warns but aggregate consumers sum cached rows. Composite lookup can substitute another tab21834 and summary can broaden unmatched campaign to all rows22330. Scope/date/partial-data contracts must be enforced or effectively excluded.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-052",
+      "number": 52,
+      "severity": "P1",
+      "status": "cache behavior proven, live auth transition unverified",
+      "detail": "`client/src/App.tsx:175`, `lib/queryClient.ts:58`, `lib/clientContext.tsx:16` retain account-independent query keys with infinite freshness outside auth branches and no clear/reset hook. Exact config/real-library fixture returns prior-owner client data without a new fetch. Actual Clerk account switching/signout/reload is an external browser gate; do not claim live leakage was observed.",
+      "batch": 1,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-053",
+      "number": 53,
+      "severity": "P1",
+      "status": "confirmed limiter bypass",
+      "detail": "`server/middleware/rateLimiter.ts:19,39,59` lets caller body.isTestMode=true skip OAuth/LinkedIn/import limits without production restriction. Exact configured skip functions tested; no load traffic sent. Bounded quota/load protections cannot rely on these limiters while this branch is exposed.",
+      "batch": 1,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-054",
+      "number": 54,
+      "severity": "P0",
+      "status": "confirmed unsafe cross-campaign write arguments",
+      "detail": "LinkedIn update28649→storage4445 permits replacement campaignId; legacy Meta KPI26553→storage5312 and Benchmark27630→storage5341 pass raw updates. All authorize only original campaign. Three exact route fixtures pass foreign campaignId to persistence after checking owned parent only. Immutable identity/destination authorization needed; modern shared KPI/Benchmark and Meta report branches have stronger guards and are distinguished in evidence.",
+      "batch": 1,
+      "scope": "Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred"
+    },
+    {
+      "id": "V1-055",
+      "number": 55,
+      "severity": "P1",
+      "status": "confirmed retained Spend scope/currency defect",
+      "detail": "Ad-platform import27325 reads all Google Ads/Meta/LinkedIn daily rows without selected-ID eligibility, labels sources/recordsUSD and updates campaign total from defaultGA4 scope. Exact EUR campaign fixture imports selected10+unselected90 as100USD. Delete/insert is non-atomic. Dedicated GA4 Ads Spend safeguards do not cover this route.",
+      "batch": 6,
+      "scope": "Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred"
+    },
+    {
+      "id": "V1-056",
+      "number": 56,
+      "severity": "P1",
+      "status": "confirmed retained Trend contract divergence",
+      "detail": "`routes-oauth.ts:2966` sums active financial records without canonical currency/context/grain handling. `utils/trend-analysis-aggregate.ts:117-146` uses truthy revenue override, sums web+paid conversions and chooses clicks before sessions. Exact helper fixtures show15/75% versus Performance10/10%, and zero/positive override inconsistency. Current cumulative GA4 UI uses separate verified rows; affected retained API/non-cumulative branch is explicitly distinguished.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-057",
+      "number": 57,
+      "severity": "P1",
+      "status": "confirmed credential logging",
+      "detail": "`routes-oauth.ts:14435,28046,28053,28061` logs Custom webhook bearers;27154–27175 logs raw provider errors. [Real Axios/current-client fixture](audits/v1-2026-10-19/CONFIGURATION_AND_RECOVERY.md) reproduces synthetic Ads bearer/developer-token headers in console error output; denied/success controls pass. No live credentials copied. Remove credential-bearing logging and separately establish exposure/targeted rotation. Truncation is not redaction.",
+      "batch": 1,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-058",
+      "number": 58,
+      "severity": "P1",
+      "status": "confirmed report confirmation fixtures",
+      "detail": "`report-scheduler.ts:80–125` uses latest successful report audit without send-slot/attempt correlation; missing audit/read error/non-Mailgun accepted status all return sent. Four isolated cases prove these helper boundaries. Scheduled delivery/artifact bookkeeping cannot be certified from provider acceptance or another attempt's audit. Test-send non-Mailgun message already distinguishes acceptance and must retain that behavior.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-059",
+      "number": 59,
+      "severity": "P1",
+      "status": "confirmed code recovery gap",
+      "detail": "`report-scheduler.ts:4334–4340,4528–4536,4570` writes pending_delivery but only pending/failed events become retry candidates. No tracked runtime path reconciles later delivery to this exact event/artifact. Requires late-result recovery without resend and original PDF retention; no live email attempted.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-060",
+      "number": 60,
+      "severity": "P1",
+      "status": "confirmed retained snapshot instability",
+      "detail": "`routes-oauth.ts:30488–30500` regenerates non-GA4/non-Diagnostics snapshot PDFs from current report/source data using the historical window. Later import/edit/delete can change a historical download. GA4/Diagnostics return immutable PDF artifacts and are not included in this defect.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-061",
+      "number": 61,
+      "severity": "P1",
+      "status": "confirmed retained fabricated UI",
+      "detail": "Registered Audiences page `audiences.tsx:17–83,134–135` renders hard-coded audience/conversion/demographic data; Create210 has no persistence handler. Treat as nonfunctional/demo and explicitly gate/label it before inclusion; hidden navigation is insufficient.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-062",
+      "number": 62,
+      "severity": "P1",
+      "status": "confirmed comparison value/fallback defects",
+      "detail": "`platform-comparison.tsx:221–222,402–411` returns0% ROI for zero revenue/positive spend while footer gives−100%. Failed aggregate fallback306–355 invents Custom Revenue from conversions×AOV(default50), ignoring measured0; native GA4 may disappear. [Full field/fallback inventory and exact cases](audits/v1-2026-10-19/RETAINED_COMPARISON_AUDIENCE_KPI_VALUES.md). Preserve verified source values, availability, windows and zero semantics; modern GA4 Financial Analysis is a separate path.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-063",
+      "number": 63,
+      "severity": "P0",
+      "status": "confirmed conditional unauthorized write",
+      "detail": "`routes-oauth.ts:8338,8468` LinkedIn mock routes lack actor/owner checks. Production ALLOW_MOCK_DATA=true permits foreign-campaign overwrites; exact first-handler fixture proves anonymous write, false control rejects. Live flag value remains unverified; configuration-dependent exclusion must be enforced and recorded.",
+      "batch": 1,
+      "scope": "Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred"
+    },
+    {
+      "id": "V1-064",
+      "number": 64,
+      "severity": "P1",
+      "status": "confirmed retained export defects",
+      "detail": "`kpis.tsx:329–400`: PDF choice emits TXT, Excel emits JSON, date filter is cosmetic, CSV fails to escape quotes, and progress ignores metric direction/current availability. Exact export fixtures prove format/quote defects; modern GA4 Reports is separate.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-065",
+      "number": 65,
+      "severity": "P1",
+      "status": "confirmed Sheets header data loss",
+      "detail": "`routes-oauth.ts:5609–5620` duplicate headers overwrite earlier values before validation. Exact GA4 Revenue process fixture `[Revenue,Revenue]`/`[100,7]` persists7. Strict CSV Revenue's duplicate-header rejection does not cover Sheets.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-066",
+      "number": 66,
+      "severity": "P1",
+      "status": "confirmed Sheets currency mislabel",
+      "detail": "Sheets Revenue amount helper accepts `$`; process1456 strips it while5719–5731 checks only configured currency. Exact EUR fixture persists `$100` as100EUR without conversion. Malformed12oops control correctly rejects; preserve that existing syntax validation.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-067",
+      "number": 67,
+      "severity": "P1",
+      "status": "confirmed refresh scope expansion",
+      "detail": "`auto-refresh-scheduler.ts:587–626` ignores stored singular campaignValue, although Revenue save5442 accepts and preserves it. Exact refresh fixture changes selected10 into all-rows100; array-selection control stays10. Restore exact saved selection across save/preview/refresh and all downstream values; inventory potentially damaged sources separately.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-068",
+      "number": 68,
+      "severity": "P1",
+      "status": "confirmed retained manual Spend bypass/failure",
+      "detail": "`routes-oauth.ts:5953,6010–6189` accepts caller sourceType; GA4 manual rejection is bypassed with sourceType=csv, persisting100 as CSV without a file. Non-GA4 insert failure is swallowed and returns success. Three exact handler cases include the normal GA4 rejection control. Enforce supported source creation paths and atomic truthful outcomes; do not silently delete existing records.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-069",
+      "number": 69,
+      "severity": "P1",
+      "status": "confirmed retained transfer loss",
+      "detail": "`routes-oauth.ts:33549,33626,33665`: GA4 and LinkedIn same-campaign transfer deletes newly copied and original connections but reports success. Sheets copy omits tab/purpose/auth-method/service-account/mappings/cache; GA4 forces access_token method. Three exact handler fixtures prove deletion/omissions. No current frontend caller found; retained API remains reachable.",
+      "batch": 4,
+      "scope": "Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred"
+    },
+    {
+      "id": "V1-070",
+      "number": 70,
+      "severity": "P1",
+      "status": "confirmed cleanup crosses source context",
+      "detail": "`routes-oauth.ts:1571–1610,2520` groups Sheets Spend duplicates without platform/currency, reads all contexts and deletes all but earliest. Exact fixture deactivates legitimate LinkedIn EUR source beside GA4 USD using same mapping. Non-atomic delete steps and no expected-state check compound risk. Must prove exact damaged boundary before permitting cleanup; no live cleanup performed.",
+      "batch": 4,
+      "scope": "Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred"
+    },
+    {
+      "id": "V1-071",
+      "number": 71,
+      "severity": "P1",
+      "status": "confirmed silent signed-amount omission",
+      "detail": "GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105 and route4998 drop it. Exact handler saves100 from selected100/−10 with success. Define imported adjustment policy explicitly; accept/reconcile or reject unsupported amounts before mutation. Raw mapping retains the negative while records do not; every downstream total can therefore diverge from the uploaded file.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-072",
+      "number": 72,
+      "severity": "P1",
+      "status": "confirmed retained CSV loss/truncation",
+      "detail": "`routes-oauth.ts:4813,5154–5178`: non-GA4 Revenue CSV accepts50,000 rows but saves49,999; LinkedIn conversion-value edit updates source and deletes old records before returning400 for invalid replacement. Both exact-handler fixtures reproduced. Validate before mutation and replace atomically within the existing storage architecture.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-073",
+      "number": 73,
+      "severity": "P1",
+      "status": "confirmed isolated PostgreSQL parent-write gap",
+      "detail": "`storage.ts:1256–1262,2832`: ordinary GA4 input wrapper ignores an empty campaign lock query and commits child writes after parent deletion. Exact methods against isolated schema reproduce zero parents/one source/one record; existing-parent control passes. Current source schema lacks campaign FKs. Durable-table/deployed-schema/other-source variants remain required. Reject vanished parents at final write and verify all caller lifecycles.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-074",
+      "number": 74,
+      "severity": "P2",
+      "status": "confirmed retained API result mismatch",
+      "detail": "Legacy Meta report PATCH27739 returns200 with missing row; DELETE27770 returns success when storage returns false after an authorization/read race. Two exact fixtures reproduced. Current UI uses generic platform report routes, but legacy pair remains registered. Return actual mutation outcome and cover disappearance/retry without removing untraced historical dependencies.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-075",
+      "number": 75,
+      "severity": "P0",
+      "status": "confirmed anonymous financial mutation",
+      "detail": "`routes-oauth.ts:6193–6225`: both connector-derived Spend aliases omit actor/campaign checks, overwrite supplied campaign Spend/currency and create an active source without records. Exact registration fixtures with no actor change foreign fixture USD to EUR and Spend to123.00. No current frontend caller found; API reachability remains. Guard both aliases and enforce parent/source/currency/atomic materialization boundaries.",
+      "batch": 1,
+      "scope": "Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred"
+    },
+    {
+      "id": "V1-076",
+      "number": 76,
+      "severity": "P1",
+      "status": "confirmed GA4 selection incompleteness/failure concealment",
+      "detail": "`analytics.ts:2576–2766` ignores campaign-discovery rowCount after200, and seven429 failures return an ordinary empty list; route13308 labels success. Two exact-service cases. `GA4ConnectionFlow.tsx:382–475` offers manual entry only for an empty list, so missing names cannot be added to a populated truncated list there. Separate from property pagination; verify complete/truthful discovery, failure state and selection in initial setup and reconnect.",
+      "batch": 2,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-077",
+      "number": 77,
+      "severity": "P1",
+      "status": "confirmed unknown history becomes complete zero",
+      "detail": "`routes-oauth.ts:9540` catches a failed daily read as empty; `ga4-metrics.tsx:2115–2125` pads from campaign creation beyond the60-day request, ignoring coverage. Three exact-code cases show failure→complete zero, two absent days→−28.57% complete-window decline, and unrequested July→complete zero month. Findings, coverage text, Trends and browser PDF inherit this boundary. Distinguish verified no-activity from failed/unfetched days before downstream comparisons.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-078",
+      "number": 78,
+      "severity": "P1",
+      "status": "confirmed conditional production signing weakness",
+      "detail": "`routes-oauth.ts:23404–23455,23953–24013`: LinkedIn/Meta state sign/verify use public development fallback when secrets are absent even in production. Exact fixtures accept independently constructed signed states; GA4/Sheets/HubSpot/Ads missing-secret controls reject. Callback campaign-owner checks remain; live secret absence or unauthorized provider connection was not demonstrated. Fail closed for every offered configuration and validate session/replay/denial independently.",
+      "batch": 1,
+      "scope": "Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred"
+    },
+    {
+      "id": "V1-079",
+      "number": 79,
+      "severity": "P1",
+      "status": "confirmed fractional conversion truncation",
+      "detail": "`analytics.ts:106,108,1448,1502,3344,3392`: parseInt discards fractional conversion credit, including campaignName event-scope supplement. Four service/helper cases:0.75→0, integer control preserved. Daily schema is INTEGER; detail paths preserve decimals. Scheduler reconciliation may reject publication, so incorrect saved publication is not inferred. Define and independently validate provider attribution/precision through daily facts, denominators and artifacts.",
+      "batch": 3,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-080",
+      "number": 80,
+      "severity": "P1",
+      "status": "confirmed schema/migration reproducibility failure",
+      "detail": "Generated62-table schema plus two startup passes leave four daily upserts failing42P10; historical repository-configured DB has those indexes. Running all27 retained migration files twice additionally reproduces0003:47 failing42704: GIN index over current TEXT notifications.metadata.52/54 file executions succeed; two concurrent startup callbacks complete on the fixture schema. [Exact results and caller limits](audits/v1-2026-10-19/STARTUP_SCHEMA_AND_MIGRATIONS.md). These are fresh/upgrade reproducibility defects, not proven missing live indexes or a live0003 outage. No blind cleanup/constraint changes.",
+      "batch": 2,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-081",
+      "number": 81,
+      "severity": "P1",
+      "status": "confirmed retained migration replay/currency hazard",
+      "detail": "`migrations/0006_add_daily_spend_revenue_granularity.sql` duplicates synthetic financial rows on rerun and relabels EUR campaign values USD. Real isolated fixture yields Revenue200 from100 and Spend40 from20 after two runs. Not called by current startup; active-source readers may exclude these orphans. Exclude unsafe historical backfill from deployment/restore recipes and inventory any prior damage separately.",
+      "batch": 2,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-082",
+      "number": 82,
+      "severity": "P1",
+      "status": "code plus official provider support evidence",
+      "detail": "`linkedinClient.ts:47` pins202405, officially sunset May15,2025. Real refresh and Spend discovery/process6243/6321 use it, so GA4 child-source configurations also need review. No live provider request performed. Migrate with source-specific permission/query/metric/attribution/pagination tests or effectively restrict affected supported scope.",
+      "batch": 6,
+      "scope": "Deferred provider functionality; retained for future enablement, not a V1 provider implementation task"
+    },
+    {
+      "id": "V1-083",
+      "number": 83,
+      "severity": "P1",
+      "status": "conditional unsupported configuration",
+      "detail": "`utils/shopify-provider.ts:5–20` accepts2025-10, officially retired Oct16,2026; default2026-07 remains supported. Response-version guard258–303 rejects provider fall-forward, preserving semantic safety but causing accepted old configuration to fail. Live override unknown. Restrict the final support manifest and validate any version-list change independently.",
+      "batch": 5,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-084",
+      "number": 84,
+      "severity": "P2",
+      "status": "confirmed currency label mismatch in code",
+      "detail": "`ga4-metrics.tsx:5516,5527` hard-code `$0` in two financial finding titles while descriptions use campaign-currency formatMoney. Non-dollar campaigns get conflicting currency labels; browser PDF reuses findings. Use the same current currency contract and validate zero-value wording/UI/PDF. No monetary arithmetic error is inferred.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-085",
+      "number": 85,
+      "severity": "P1",
+      "status": "confirmed real PDF finding mismatch",
+      "detail": "`ga4-scheduled-report-pdf.ts:289–451,965–1014` omits current client three-day/rate and other finding rules, then calls no finding stable. Complete six-day100% decline and fourteen-day10%→5% conversion-rate fixtures pass saved-publication guards but render “No major anomalies detected”; exact client trend branch finds both. Required Benchmark read-failure control correctly rejects. Align current live/browser/server findings and negative states before report certification.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-086",
+      "number": 86,
+      "severity": "P2",
+      "status": "confirmed rendered text overlap",
+      "detail": "`ga4-scheduled-report-pdf.ts:1219–1229` unwrapped campaign name overlaps timestamp; table1104–1147 character-count truncation lets long Landing Page text overlap Source/Medium. Three real PDFs/eight pages inspected. Zero off-page characters did not detect overlap. Preserve current layout pattern while testing measured label bounds and page transitions.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-087",
+      "number": 87,
+      "severity": "P1",
+      "status": "confirmed currency-edit propagation defect",
+      "detail": "Current Campaigns Edit sends currency415–433; API9167–9172 invalidates daily history for filter/timezone changes but omits currency. Ordinary storage698–708 retains rows, daily response9543–9606 has no currency identity, and Insights Revenue trends use current-currency formatter1502/9636. Fixture USD100 survives EUR edit and formats€100; filter/timezone controls select invalidation. Separate Overview/report currency guards remain. Enforce safe currency-edit/history semantics and test all consumers before release.",
+      "batch": 3,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-088",
+      "number": 88,
+      "severity": "P1",
+      "status": "conditional legacy credential race reproduced",
+      "detail": "`storage.ts:3280,3921,3951,4057,4087,4190,4217,4415,4592,5059` lazy plaintext encryption checks only row/campaign identity, allowing an old reader to overwrite a newly saved token. Ten exact-getter interleavings reproduce stale restoration; GA4923–940 compare-and-set control preserves new token. Live legacy-data occurrence unknown. Guard source-specific migration predicates and validate renewal/reconnect/restart without changing unrelated credential contracts.",
+      "batch": 1,
+      "scope": "Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred"
+    },
+    {
+      "id": "V1-089",
+      "number": 89,
+      "severity": "P1",
+      "status": "confirmed provider dispatch fan-out",
+      "detail": "`analytics.ts:2358` unbounded per-channel Promise.all reaches12 concurrent provider calls for one Insights reader and24 for two in exact-service fixtures. Official Standard GA4 Core limit is10/property; no property queue/quota metadata request found, GA4 HTTP limiter is imported but unmounted. No real quota exhaustion or tester load claimed. Bound shared-property work and validate quota/retry/cancellation/recovery under the agreed load envelope.",
+      "batch": 3,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-090",
+      "number": 90,
+      "severity": "P1",
+      "status": "confirmed provider-quality metadata loss",
+      "detail": "`analytics.ts:1392–1604,1732–2573,3044–3433` accepts flagged provider totals/acquisition/daily fixtures but drops sampling, other-row, truncation, metric-restriction, threshold and empty-reason metadata. Eight cases prove the service boundary; no flagged full publication or live occurrence claimed. Numeric reconciliation alone cannot recover dropped quality evidence. Define exact availability/provenance handling and validate every affected consumer.",
+      "batch": 3,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-091",
+      "number": 91,
+      "severity": "P1",
+      "status": "browser-confirmed draft edit divergence",
+      "detail": "`campaigns.tsx:494–504,656–660,1809–1811`: Back edits update confirmation state but PATCH only budget/currency; changed name/timezone/website/label are unsent. Current browser shows Changed Name while fixture persistence retains Original Name/UTC. [Exact requests and boundary](audits/v1-2026-10-19/CAMPAIGN_WIZARD_BROWSER.md). Preserve every editable field through activation/reload.",
+      "batch": 2,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-092",
+      "number": 92,
+      "severity": "P1",
+      "status": "browser-confirmed cancellation leak",
+      "detail": "`campaigns.tsx:1358–1360` Details Cancel bypasses `883–885` cleanup after Back; fixture records zero DELETEs and one hidden draft. Platform Close is a passing cleanup control. Actual list `routes-oauth.ts:9000–9014` hides ordinary unsubmitted drafts. Cover every exit and retain accepted-import protection; historical cleanup requires a separate exact boundary.",
+      "batch": 2,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-093",
+      "number": 93,
+      "severity": "P1",
+      "status": "browser-confirmed duplicate draft requests",
+      "detail": "`campaigns.tsx:516–547,1365–1369` permits overlapping initial POSTs and loses identity after an accepted request's response fails; two fixtures produce two drafts and only one cleanup target. Actual POST9037/storage690 have no idempotency lookup. Later async-import recovery does not cover this earlier stage. Prove duplicate/lost-response recovery at owner/client scope.",
+      "batch": 2,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-094",
+      "number": 94,
+      "severity": "P2",
+      "status": "confirmed equality wording defects",
+      "detail": "`client/src/pages/financial-analysis.tsx:757–768,1094`; `server/report-scheduler.ts:2005–2009,2661–2665`. Revenue100/Spend100 gives correct ROI0/ROAS1 but is described as Positive financial return in all three expressions; exhaustion exactly on period end is described as before it. [Exact expressions and controls](audits/v1-2026-10-19/FINANCIAL_ANALYSIS_VALUE_INVENTORY.md). Distinguish equality without changing formulas.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-095",
+      "number": 95,
+      "severity": "P1",
+      "status": "conditional freshness propagation defect",
+      "detail": "`client/src/pages/campaign-performance.tsx:537–578,633–649,1408–1416`: explicit GA4 stale metadata with aligned retained finance withholds the Revenue headline but leaves financial recommendation inputs ready. Exact current expressions/helper call Revenue300 versus target200 verified/on target. [Controls and upstream boundary](audits/v1-2026-10-19/PERFORMANCE_SUMMARY_VALUE_INVENTORY.md). Real occurrence and full rendered health remain unverified; preserve source-aware last-good semantics.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-096",
+      "number": 96,
+      "severity": "P2",
+      "status": "confirmed daily-user grain label gap",
+      "detail": "`client/src/pages/campaign-performance.tsx:1471–1479` shows Total Users from daily sums without the explanation present at `ga4-metrics.tsx:6865`. `shared/ga4-traffic-window.ts:14–30` correctly implements the intended daily-sum contract; this is not a calculation-change request. [Helper/card evidence and provider definition](audits/v1-2026-10-19/PERFORMANCE_SUMMARY_VALUE_INVENTORY.md). Make grain/window explicit across included consumers.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-097",
+      "number": 97,
+      "severity": "P1",
+      "status": "confirmed rate display corruption",
+      "detail": "`client/src/pages/trend-analysis.tsx:1590` normalizes an already-percent cumulative Engagement Rate using `shared/metric-math.ts:75–79`. Exact current helper/card cases show0.5%→50%,1%→100%; website summary correctly prints0.5%. [Boundary cases and unit trace](audits/v1-2026-10-19/TREND_ANALYSIS_VALUE_INVENTORY.md). Preserve fraction-based daily chart consumers; no stored-data corruption inferred.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-098",
+      "number": 98,
+      "severity": "P1",
+      "status": "confirmed zero-denominator state defect",
+      "detail": "`client/src/lib/trend-analysis-cumulative.ts:215–229`, `trend-analysis.tsx:516–520,1589–1590,1957–1960` compute/display0 rates when there are0 sessions; daily chart correctly treats no activity as unavailable. Server Trend website-summary expressions2097/2900 also return0. Current GA4 Overview2387/6898/6423 independently shows0% for valid zero-session totals in its [boundary packet](audits/v1-2026-10-19/ga4-overview-boundary-reproductions.json). [Trend cases and propagation limits](audits/v1-2026-10-19/TREND_ANALYSIS_VALUE_INVENTORY.md). Preserve measured zero counts while withholding undefined ratios.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-099",
+      "number": 99,
+      "severity": "P1",
+      "status": "confirmed conversion-rate label mismatch",
+      "detail": "`client/src/pages/executive-summary.tsx:269,653–656` selects Click-Through CVR whenever paid clicks exist, while aggregate CVR retains GA4 conversions/sessions precedence. Exact mixed-source case:100 sessions,10 conversions,20 paid clicks shows10% labelled click-through. [Separate controls and consumer trace](audits/v1-2026-10-19/EXECUTIVE_SUMMARY_VALUE_INVENTORY.md). Bind label to the actual denominator.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-100",
+      "number": 100,
+      "severity": "P1",
+      "status": "confirmed Executive API scope/value defects",
+      "detail": "`server/routes-oauth.ts:32909–32952` picks first rather than primary GA4 connection, defaults all-period provider request to30days, drops native Revenue on success and adds daily pageviews to provider total. Exact branch fixture and failure control reproduce each boundary. [Evidence/consumer limits](audits/v1-2026-10-19/EXECUTIVE_SUMMARY_VALUE_INVENTORY.md). Current page funnel uses separate outcome totals; API/retained report consumption still needs parity checks.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-101",
+      "number": 101,
+      "severity": "P1",
+      "status": "confirmed downstream conversion truncation",
+      "detail": "`client/src/pages/executive-summary.tsx:185–186,496–505` truncates valid0.75 conversions to0 in headline and target formatting. [Exact formatter/control cases](audits/v1-2026-10-19/EXECUTIVE_SUMMARY_VALUE_INVENTORY.md). Independent of upstream V1-079; fixing ingestion alone does not preserve fractional values through executive presentation.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-102",
+      "number": 102,
+      "severity": "P1",
+      "status": "confirmed bounded resource-budget gap",
+      "detail": "`server/services/custom-integration-file-parser.ts:371–399` synchronously inflates all ZIP entries without expanded/aggregate limits. A14,046-byte fixture expands12,584,919 bytes including unused padding and succeeds; no exhaustion was induced. Mailgun33943 parses arbitrary attachment count before signature; manual upload28186 correctly authorizes first. [Boundary and acceptance](audits/v1-2026-10-19/CUSTOM_IMPORT_AND_PUBLIC_ENTRYPOINTS.md). Protect expanded/cell/attachment work independently of compressed per-file size.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-103",
+      "number": 103,
+      "severity": "P1",
+      "status": "confirmed XLSX selection ambiguity",
+      "detail": "`server/services/custom-integration-file-parser.ts:344–367` selects the first archive worksheet, ignoring workbook visible order/hidden state. Identical worksheets/workbook yield Spend10 versus200 solely from ZIP entry order; hidden200 is accepted with confidence100/reviewfalse. [Actual parser cases](audits/v1-2026-10-19/xlsx-boundary-reproductions.json). Define explicit supported worksheet selection and reject ambiguity before downstream publication.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-104",
+      "number": 104,
+      "severity": "P1",
+      "status": "confirmed retained financial-window mismatch",
+      "detail": "Instagram374–382, Google Ads499–508 and Meta658–668 page expressions prefer all-history source totals over bounded Revenue, then divide by period Spend. Three cases900 all-history/100 bounded/100 Spend yield ROAS9. TikTok API25234 separately reads1900-through-today Revenue beside30-day Spend. [Exact boundaries](audits/v1-2026-10-19/RETAINED_PAID_VALUE_BOUNDARIES.md). Match and label numerator/denominator dates through every consumer.",
+      "batch": 6,
+      "scope": "Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred"
+    },
+    {
+      "id": "V1-105",
+      "number": 105,
+      "severity": "P1",
+      "status": "confirmed DB failure-to-empty analytics",
+      "detail": "`routes-oauth.ts:25370,25212` catches Instagram/TikTok daily DB errors as[]; two actual-handler cases return200/success/empty rows, hiding failures from page error controls. Instagram overview25294 has the same catch. [Evidence](audits/v1-2026-10-19/retained-value-boundary-reproductions.json). Preserve failure/stale/empty distinctions; no claim that empty Instagram overview renders measured-zero cards.",
+      "batch": 6,
+      "scope": "Deferred provider functionality; retained for future enablement, not a V1 provider implementation task"
+    },
+    {
+      "id": "V1-106",
+      "number": 106,
+      "severity": "P1",
+      "status": "confirmed conditional currency fallback and labels",
+      "detail": "`routes-oauth.ts:3679–3735` hides breakdown currency errors behind mapping totals; fixture USD100/EUR200 then sums300 in Instagram. Monetary formatters Google Ads699/Meta622/TikTok104/Instagram70 hardcode dollars despite available source currency. [Exact cases and limits](audits/v1-2026-10-19/RETAINED_PAID_VALUE_BOUNDARIES.md). Preserve currency identity/validation through source lists, totals and presentation; live mixed-source occurrence unknown.",
+      "batch": 6,
+      "scope": "Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred"
+    },
+    {
+      "id": "V1-107",
+      "number": 107,
+      "severity": "P1",
+      "status": "confirmed retained ratio aggregation defects",
+      "detail": "`google-ads-analytics.tsx:492,532,536` averages row rates; same-day fixture CTR50.5% conflicts with count-derived1.9802%. Search share also lacks its eligible denominator, and provider306 loses below10% bound semantics. [Fixture/provider contract](audits/v1-2026-10-19/RETAINED_PAID_VALUE_BOUNDARIES.md). Use verified aggregate grains and preserve censoring; do not reconstruct provider eligibility from rounded shares.",
+      "batch": 6,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-108",
+      "number": 108,
+      "severity": "P1",
+      "status": "confirmed measured-zero state loss",
+      "detail": "`routes-oauth.ts:25238–25258`, `tiktok-analytics.tsx:839` require positive Revenue for source availability. Exact case with an existing source and measured0 returns null/source-required. [Paid evidence](audits/v1-2026-10-19/RETAINED_PAID_VALUE_BOUNDARIES.md). Standalone Sheets `google-sheets-data.tsx:979–987,1130,1165` independently shows valid0 Revenue/Spend as Not connected and blocks derived values/options; [four zero/negative cases and positive control](audits/v1-2026-10-19/SHEETS_CUSTOM_VALUE_PROPAGATION.md). Distinguish zero, absent source and failed read before computing loss/zero ROAS.",
+      "batch": 4,
+      "scope": "Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred"
+    },
+    {
+      "id": "V1-109",
+      "number": 109,
+      "severity": "P1",
+      "status": "confirmed Pipeline Proxy fallback defects",
+      "detail": "`ga4-metrics.tsx:2728–2847,3006,3041–3056` replaces successful current0/empty items with mapping100 and can display old warning-marked mapping100 after a first failed endpoint read without unavailable/last-good state. [GA4 exact cases](audits/v1-2026-10-19/GA4_OVERVIEW_VALUE_INVENTORY.md). Custom Integration785–805 and standalone Sheets1063–1092 also display old mapping100 after a failed endpoint read while dropping warning/freshness; their successful-zero controls correctly preserve0. [Independent cases](audits/v1-2026-10-19/SHEETS_CUSTOM_VALUE_PROPAGATION.md). Preserve current zero, verified mode/source/currency/freshness and explicit error state through proxy consumers.",
+      "batch": 5,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-110",
+      "number": 110,
+      "severity": "P1",
+      "status": "confirmed retained notification race",
+      "detail": "`routes-oauth.ts:7646–7720` builds whole dismissal metadata from an earlier read. Two deterministic interleavings with actual `resolveKPIAlerts:344` erase concurrent resolved state; `alert-monitoring.ts:116–142` then selects `active:own` instead of the cleared episode. [Fifteen boundary cases and current UI reachability](audits/v1-2026-10-19/NOTIFICATION_VISIBILITY_LIFECYCLE.md). Preserve concurrent resolution/dismissal history and verify email episode claims through rebreach. No current rendered dismiss/read/clear control; retained API remains registered.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-111",
+      "number": 111,
+      "severity": "P1",
+      "status": "confirmed Custom financial failure-to-value",
+      "detail": "`custom-integration-analytics.tsx:641–672,735–760,3094,3131,3185–3202` converts failed/malformed Revenue totals to0 and derives availability from a separate successful source list. Actual query/transform cases show confirmed Revenue0/Spend100/ROAS0/ROI−100 after a failed Revenue request; failed external Spend can present imported100 as the complete total. [Evidence and zero control](audits/v1-2026-10-19/SHEETS_CUSTOM_VALUE_PROPAGATION.md). Preserve error/partial/stale state through financial cards and source-backed consumers.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-112",
+      "number": 112,
+      "severity": "P1",
+      "status": "confirmed Sheets ratio-consumer divergence",
+      "detail": "`google-sheets-data.tsx:1479–1517` builds KPI/Benchmark options from raw summed metrics, ignoring server summaryValue. Spend190/Clicks110/CPC rows1+9 gives Summary1.72727 but options10 and actual browser PDF$10. Scheduled cached summary `report-scheduler.ts:3474–3522` also sums arbitrary metric/identifier columns. [Exact helpers and rendered artifact](audits/v1-2026-10-19/SHEETS_CUSTOM_VALUE_PROPAGATION.md). Preserve one verified aggregation contract through Summary, goals, Insights and every report; server refresh/alert propagation remains open.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-113",
+      "number": 113,
+      "severity": "P1",
+      "status": "confirmed Sheets scheduled report scope mismatch",
+      "detail": "`auto-refresh-scheduler.ts:865–881` caches unfiltered rows; `report-scheduler.ts:3474–3522,3572–3707` selects a connection but ignores its selected campaign values and report date window. Actual PDF labelled campaignA/October2026 printsSpend100 including campaignB/2020Spend90; mappedA amount is10. [PDF, fixture and scope controls](audits/v1-2026-10-19/SHEETS_CUSTOM_VALUE_PROPAGATION.md). Enforce saved selection and actual date coverage before generation, send or snapshot; do not silently apply an arbitrary date column.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-114",
+      "number": 114,
+      "severity": "P1",
+      "status": "confirmed Sheets summary formula ambiguity",
+      "detail": "`routes-oauth.ts:21722–21781` uses first matching financial header and unweighted rate averages. Actual helper cases choose Budget1000 before actual Spend100 (ROAS0.2 instead of2 for Revenue200), and unequal-impression CTR rows1%/100% produce50.5% instead of count-derived1.9802%. [Exact cases](audits/v1-2026-10-19/SHEETS_CUSTOM_VALUE_PROPAGATION.md). Define explicit metric/denominator mappings, fail closed on ambiguity and preserve bounded/undefined rates; column order must not redefine actual spend.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-115",
+      "number": 115,
+      "severity": "P1",
+      "status": "confirmed read-failure-triggered source mutation",
+      "detail": "`server/utils/linkedin-revenue.ts:74–89,125–135` converts failed Revenue/source reads to0/[] and treats them as proof of a stale connection conversionValue. Complete actual helper fixture then calls `updateLinkedInConnection(campaignId,{conversionValue:null})`. [Evidence/current callers](audits/v1-2026-10-19/LINKEDIN_REVENUE_VALUE_BOUNDARIES.md). Never derive destructive self-heal from failed reads; prove exact stale-data boundary independently and preserve valid configuration.",
+      "batch": 6,
+      "scope": "Deferred provider functionality; retained for future enablement, not a V1 provider implementation task"
+    },
+    {
+      "id": "V1-116",
+      "number": 116,
+      "severity": "P1",
+      "status": "confirmed LinkedIn zero/legacy precedence defect",
+      "detail": "`linkedin-revenue.ts:117–118,191–210,234–266` ignores stored conversionValue only when imported Revenue is positive. Active actual-revenue source measured0 plus legacy CV50/10conversions returns500; source-free legacy session CV can still supply500 after connection self-heal. [Zero/negative/positive/explicit-mode cases](audits/v1-2026-10-19/LINKEDIN_REVENUE_VALUE_BOUNDARIES.md). Preserve current source/mode identity and valid zero; complete source-delete/reconnect/damaged-session propagation before release.",
+      "batch": 6,
+      "scope": "Deferred provider functionality; retained for future enablement, not a V1 provider implementation task"
+    },
+    {
+      "id": "V1-117",
+      "number": 117,
+      "severity": "P1",
+      "status": "confirmed undisclosed ad revenue allocation",
+      "detail": "`routes-oauth.ts:32575–32622` maps webhook-origin Revenue to explicit conversion-value status, then allocates total by ad conversion shares. Exact expressions yield75/225 from campaign-level300 with no ad attribution and `revenueIsEstimated:false`. [Evidence and visible/PDF flag consumers](audits/v1-2026-10-19/LINKEDIN_REVENUE_VALUE_BOUNDARIES.md). Preserve attribution provenance and explicit estimates; campaign actual amounts do not prove actual ad attribution.",
+      "batch": 6,
+      "scope": "Deferred provider functionality; retained for future enablement, not a V1 provider implementation task"
+    },
+    {
+      "id": "V1-118",
+      "number": 118,
+      "severity": "P1",
+      "status": "confirmed invented Shopify denominator in LinkedIn",
+      "detail": "`linkedin-revenue.ts:180–185` assumes one order when Shopify Revenue exists but count/AOV metadata is absent. Complete helper returns conversionValue1000 from Revenue1000 without an order-count source. [Exact case](audits/v1-2026-10-19/LINKEDIN_REVENUE_VALUE_BOUNDARIES.md). Keep total Revenue authoritative while making unsupported per-order value unavailable; exact legacy repair requires real count/provenance.",
+      "batch": 6,
+      "scope": "Deferred provider functionality; retained for future enablement, not a V1 provider implementation task"
+    },
+    {
+      "id": "V1-119",
+      "number": 119,
+      "severity": "P1",
+      "status": "confirmed retained historical-download invalidation",
+      "detail": "`routes-oauth.ts:30460–30465` requires snapshot.reportType equal current report.reportType. Current GA4 edit UI10749–10768 and PATCH30090–30126 permit template changes; fixture changes Overview→Insights while preserving owner/campaign/platform and stored PDF. Old snapshot JSON still returns200, PDF becomes404. [Twenty access/artifact controls and reachability limit](audits/v1-2026-10-19/REPORT_SNAPSHOT_ACCESS_LIFECYCLE.md). Define stable historical report identity/version semantics without weakening owner/campaign/platform validation; current immediate-download callers create new snapshots.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-120",
+      "number": 120,
+      "severity": "P1",
+      "status": "confirmed Custom metric meaning change",
+      "detail": "`server/services/custom-integration-file-parser.ts:28,35–41,217–264` aliases sent→delivered, opens count→open rate, exit rate→bounce rate and new subscribers→list growth. Exact CSV1000/50/20/30 becomes those four fields with confidence100/reviewfalse; client displays opens50 as50.00%. [All28-field evidence and boundaries](audits/v1-2026-10-19/CUSTOM_IMPORT_AND_PUBLIC_ENTRYPOINTS.md). Require supported metric definitions/denominators or reject ambiguous mappings before publication; historical correction needs exact original source evidence.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-121",
+      "number": 121,
+      "severity": "P1",
+      "status": "confirmed incomplete production exclusion",
+      "detail": "`routes-oauth.ts:24438,24581,24851` lets an authenticated campaign owner create Meta/Instagram/TikTok simulated connections without provider credentials or a production/mock gate. Actual Instagram handler writes simulated metrics; Meta dispatches its generator30 times; actual TikTok refresh materializes simulated rows. [Fourteen owner/negative/no-connection cases and shared-consumer trace](audits/v1-2026-10-19/UNCONFIGURED_SOURCES_AND_PTOMO.md). Effective API/job/simulation exclusion remains required for V1; this is not a requirement to implement deferred providers. No live contamination claimed.",
+      "batch": 6,
+      "scope": "Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred"
+    },
+    {
+      "id": "V1-122",
+      "number": 122,
+      "severity": "P1",
+      "status": "confirmed source-backed alert value inconsistency",
+      "detail": "`utils/campaign-current-values.ts:471–477` and `utils/ga4-alert-current-value.ts:121–123` return stored Custom/Sheets goal values without resolving current source scope/data. Current page resolvers use the latest saved-source value instead. [Eighteen KPI/Benchmark decision cases](audits/v1-2026-10-19/SHEETS_CUSTOM_VALUE_PROPAGATION.md) show false positive/negative decisions and unavailable-source eligibility; email/notification callers are traced, no message sent. Resolve the exact source-backed current value and state consistently before decisions, preserving intentional manual values.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-123",
+      "number": 123,
+      "severity": "P0",
+      "status": "confirmed shared-credential tenant gap",
+      "detail": "`routes-oauth.ts:16111,16607,26687` authorizes the destination campaign but binds no customer to the shared service account's provider resource. [Fifteen exact-handler cases](audits/v1-2026-10-19/SERVICE_ACCOUNT_CUSTOMER_BOUNDARY.md) show unrelated owners can attach the same permitted GA4 property/Sheets file/Ads customer; Sheets returns metadata and Ads persists fixture facts. Anonymous, foreign-campaign and provider-denial controls pass. Enforce provider-resource/customer grants or restrict the shared paths before multi-tenant V1; no live cross-tenant access claimed.",
+      "batch": 1,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-124",
+      "number": 124,
+      "severity": "P1",
+      "status": "confirmed scheduler configuration/repeated-start hazards",
+      "detail": "`google-ads-scheduler.ts:398–410`, `google-sheets-token-scheduler.ts:168–207`, `scheduler.ts:862–900`: invalid hour/frequency settings normalize to1ms intervals; duplicate Ads starts and Sheets starts before delayed handle installation register duplicate work. [18 current-function cases plus Node controls](audits/v1-2026-10-19/CONFIGURATION_AND_RECOVERY.md). Defaults/snapshot repeated-start controls pass. Validate settings and reserve handles in existing starts; deployed occurrence unknown.",
+      "batch": 2,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-125",
+      "number": 125,
+      "severity": "P1",
+      "status": "confirmed retained Dashboard scope/value/action defects",
+      "detail": "`dashboard.tsx:18–87`, `components/dashboard/metrics-cards.tsx:7–48`, `campaign-chart.tsx:7–31`, `campaign-table.tsx:15–43,109–190`: date control unused, chart mixes clients/currencies, table relabels money USD, failed cards show zero; Export/create/quick actions unbound. [Nine current-path fixtures and full field inventory](audits/v1-2026-10-19/ENTRY_PAGES_AND_DASHBOARD_VALUES.md). Exclude effectively or independently correct after scope agreement; `/clients` still links here.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-126",
+      "number": 126,
+      "severity": "P1",
+      "status": "confirmed modest-load onboarding blocker",
+      "detail": "`middleware/rateLimiter.ts:44–59` shares five imports/IP/five minutes across preview and save. Revenue wizard1507/1604 needs both; handlers4698/4735 share the bucket. [Actual HTTP/DB five-user fixture](audits/v1-2026-10-19/HTTP_DATABASE_PILOT.md): five valid previews succeed, all five saves429/retryAfter300, no sources written. Preserve abuse limits while accommodating authenticated users/workflow; no production traffic used.",
+      "batch": 4,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-127",
+      "number": 127,
+      "severity": "P1",
+      "status": "confirmed Ads calendar/coverage mismatch",
+      "detail": "`google-ads-analytics.tsx:593–690`: rolling7/30 and prior-period comparisons count observed rows, not calendar days;14 rows enable WoW even across27 dates. [Exact sparse/contiguous/partial controls and22-rule trace](audits/v1-2026-10-19/GOOGLE_ADS_CURRENT_VALUES.md). Preserve provider coverage and align windows through charts, reliability, Insights and reports; no live sparse-property claim.",
+      "batch": 6,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-128",
+      "number": 128,
+      "severity": "P1",
+      "status": "confirmed Ads missing-input goal scoring",
+      "detail": "`google-ads-analytics.tsx:487–491,776–843`: no clicks/conversions becomes zero cost; target/current produces Infinity/on_track, capped200% in trackers. Absent imported Revenue returns numeric0; unknown target statuses count behind. [Exact cases and downstream limits](audits/v1-2026-10-19/GOOGLE_ADS_CURRENT_VALUES.md). Source/denominator availability and finite scoring must survive goals, Insights, reports and alert resolver acceptance.",
+      "batch": 6,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-129",
+      "number": 129,
+      "severity": "P1",
+      "status": "confirmed retained KPI workflow contract failures",
+      "detail": "`kpis.tsx:42–44,277–295,1025–1081` requires kpiId before submit but never populates it; `platform-kpis.tsx:94–108` omits campaignId required by GET/POST at routes28743/28780. [Exact schema/route cases](audits/v1-2026-10-19/RETAINED_COMPARISON_AUDIENCE_KPI_VALUES.md) reproduce hidden validation failure, empty list and400 creation. Restore current scoped form/API contracts or effectively exclude these accessible pages.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    },
+    {
+      "id": "V1-130",
+      "number": 130,
+      "severity": "P1",
+      "status": "confirmed retained KPI scoring/negative-value defects",
+      "detail": "`kpis.tsx:42–44,126–147,921–989` universally scores current/target, despite CPA/CAC presets. Target25/current50 is “Target Achieved”; current10 is40%; negative ROI entry is forbidden and malformed progress yieldsNaN. [Exact controls and lifecycle](audits/v1-2026-10-19/RETAINED_COMPARISON_AUDIENCE_KPI_VALUES.md). Preserve metric direction, units, signed values and unavailable states through card, saved status, report and alert consumers.",
+      "batch": 7,
+      "scope": "V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement"
+    }
+  ]
+}

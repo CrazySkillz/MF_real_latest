@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-20T19:58:29.571Z",
+  "at": "2026-10-20T20:13:03.305Z",
   "baseHead": "777aae6f6353e998d60b635d3e66b413093117c2",
   "revision": "Implementation c1248a875af9c8eea1289a824a0e903e599ab174; not pushed or deployed",
   "scope": {
@@ -113,10 +113,11 @@
     "shared/schema.ts": "b6b81b89a1e7c9a120d709f97ce7f1821aaa5e4469d99f532d2748554396f553"
   },
   "artifactHashes": {
-    "docs/V1_RELEASE_READINESS.md": "5c8d1c16d93d7d7d491bc7a2f5a1a8bb427fe207be7a936f830d195e3c2054ee",
+    "docs/V1_RELEASE_READINESS.md": "9f091cb3d17c8344e8c0d39f327b0d8a02ce66c25c03c1800c4e4d6c25531e26",
     "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md": "4e3e6581a34e166e244bcd8f1218aef767acc1f1955950c7c2fbe5b4e7ff1e11",
     "docs/fixes/v1-batch-1/.gitattributes": "72ef59d9d8255973d9bd4e313ff80ffed3ff620727204a9c627665242476ac82",
-    "docs/fixes/v1-batch-1/README.md": "a92d81a67ffb3d3d6c3357a0285cff19da848622732cc7a1c53ac2d87354f44a",
+    "docs/fixes/v1-batch-1/ONBOARDING_IMPACT.md": "c00ddb1f65a927f1310c88d68ce4ad1af47bb5f0a4a0a42a5fae6a7cddfb33a5",
+    "docs/fixes/v1-batch-1/README.md": "f9e55bc8f61108fa693e900b59aa12bde7e267b2359b2b4e53063632d9c81b61",
     "docs/fixes/v1-batch-1/access-after.json": "99e86065de121ed60be30831871b295053c518a6556bfcc1a94a7c655836c367",
     "docs/fixes/v1-batch-1/access-before.json": "c1ca94ee15738ce15ad310b41a1056d7c6f9722f8b9d79bfd6ebc42a88606241",
     "docs/fixes/v1-batch-1/apply-deployment-migration.cjs": "f7f9a9089cd970d3e2b4f40e2a3cf6e65f72da3d7f7a1142781e21ec7bd39929",

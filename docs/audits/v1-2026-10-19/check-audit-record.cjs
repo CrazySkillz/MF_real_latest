@@ -1,6 +1,86 @@
 // Audit artifact integrity only. This is not an application release gate.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),assert=require('node:assert/strict'),cp=require('node:child_process');
 const dir='docs/audits/v1-2026-10-19',index='docs/V1_RELEASE_READINESS.md';
+// Current documentation layout only: read-only, no subprocesses, artifacts or runtime checks.
+if(process.argv.includes('--docs-only')){
+ const queuePath=dir+'/FIX_QUEUE_ASSIGNMENTS.md';
+ const batchPaths=Array.from({length:8},(_,i)=>`docs/fixes/v1-batch-${i+1}/README.md`);
+ const docs=[index,queuePath,...batchPaths],read=file=>fs.readFileSync(file,'utf8').replace(/\r\n/g,'\n');
+ const baseline=JSON.parse(read(dir+'/release-fix-queue.json'));
+ const queueRows=[...read(queuePath).matchAll(/^\| \[(V1-\d{3})\]\(([^)]+)\) \| (P[012]) \| ([1-8]) \| ([^|]+) \| ([^|]+) \| (.+) \|$/gm)]
+  .map(m=>({id:m[1],link:m[2],severity:m[3],batch:Number(m[4]),fix:m[5].trim(),acceptance:m[6].trim(),scope:m[7]}));
+ assert.equal(queueRows.length,baseline.findings.length,'Every finding must appear in the checklist');
+ assert.equal(new Set(queueRows.map(f=>f.id)).size,queueRows.length,'Duplicate checklist finding');
+ const states=new Set(['OPEN','IN PROGRESS','IMPLEMENTED, VALIDATION PENDING','VERIFIED LOCALLY','EXTERNALLY BLOCKED','DEFERRED','CLOSED']);
+ const detailed=[];
+ for(const [i,file] of batchPaths.entries()){
+  const text=read(file),ids=[...text.matchAll(/^### (V1-\d{3})$/gm)].map(m=>m[1]);
+  const expected=queueRows.filter(f=>f.batch===i+1);
+  assert.deepEqual(ids,expected.map(f=>f.id),`${file}: wrong finding assignment/order`);
+  for(const f of expected){
+   assert.ok(states.has(f.fix),`${f.id}: unknown fix state`);
+   assert.ok(['OPEN','DEFERRED','CLOSED'].includes(f.acceptance),`${f.id}: unknown acceptance`);
+   assert.equal(f.link,`../../fixes/v1-batch-${f.batch}/README.md#${f.id.toLowerCase()}`);
+   const original=baseline.findings.find(x=>x.id===f.id);assert.ok(original,f.id);
+   assert.equal(f.severity,original.severity,`${f.id}: severity changed`);
+   assert.equal(f.batch,original.batch,`${f.id}: batch changed`);
+   assert.equal(f.scope,original.scope,`${f.id}: scope changed`);
+   const block=text.split(`### ${f.id}\n`)[1]?.split(/^### V1-/m)[0];assert.ok(block,f.id);
+   assert.ok(block.includes(`**Severity:** ${f.severity}. **Fix status:** ${f.fix}. **Release acceptance:** ${f.acceptance}.`),`${f.id}: detail/checklist status mismatch`);
+   assert.ok(block.includes(`**V1 applicability:** ${f.scope}.`),`${f.id}: detail scope mismatch`);
+   assert.ok(text.includes(`| [${f.id}](#${f.id.toLowerCase()}) | ${f.severity} | ${f.fix} | ${f.acceptance} |`),`${f.id}: batch checklist mismatch`);
+   assert.equal(f.acceptance==='DEFERRED',original.scope.startsWith('Deferred provider functionality'),`${f.id}: unagreed deferral`);
+   if(f.acceptance==='CLOSED')assert.equal(f.fix,'CLOSED',`${f.id}: closure mismatch`);
+  }
+  detailed.push(...ids);
+ }
+ assert.equal(new Set(detailed).size,detailed.length,'Finding has more than one detailed home');
+ const open=queueRows.filter(f=>f.acceptance==='OPEN').length,deferred=queueRows.filter(f=>f.acceptance==='DEFERRED').length,closed=queueRows.filter(f=>f.acceptance==='CLOSED').length;
+ const main=read(index);
+ assert.ok(main.includes(`${queueRows.length} findings: ${open} unresolved V1 release items, ${deferred} deferred-provider functional items, ${closed} closed for release`),'Index totals disagree');
+ assert.ok(read(queuePath).includes(`${queueRows.length} findings; ${open} V1 release items OPEN, ${deferred} provider-functional items DEFERRED, ${closed} CLOSED`),'Checklist totals disagree');
+ const summaryRows=[...main.matchAll(/^\| B([1-8]) \| \[[^\]]+\]\(([^)]+)\) \| (\d+) \| (\d+) \|/gm)];
+ assert.equal(summaryRows.length,8,'Index must link every batch');
+ for(const m of summaryRows){
+  const batch=Number(m[1]);assert.equal(m[2],`fixes/v1-batch-${batch}/README.md`);
+  assert.equal(Number(m[3]),queueRows.filter(f=>f.batch===batch&&f.acceptance==='OPEN').length);
+  assert.equal(Number(m[4]),queueRows.filter(f=>f.batch===batch&&f.acceptance==='DEFERRED').length);
+ }
+ const anchorsCache=new Map();
+ function anchors(file){
+  if(anchorsCache.has(file))return anchorsCache.get(file);
+  const found=new Set(),counts=new Map();let fence=false;
+  for(const line of read(file).split(/\r?\n/)){
+   if(/^\s*(```|~~~)/.test(line)){fence=!fence;continue;}if(fence)continue;
+   for(const m of line.matchAll(/<a\s+(?:id|name)=["']([^"']+)["']/g))found.add(m[1]);
+   const h=line.match(/^#{1,6}\s+(.+?)(?:\s+#+)?$/);if(!h)continue;
+   const slug=h[1].toLowerCase().replace(/<[^>]+>/g,'').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1')
+    .replace(/[^\p{L}\p{N}\p{M}_\-\s]/gu,'').replace(/\s/g,'-');
+   const n=counts.get(slug)||0;counts.set(slug,n+1);found.add(slug+(n?`-${n}`:''));
+  }
+  anchorsCache.set(file,found);return found;
+ }
+ let links=0,inboundLinks=0;const checked=new Set(docs.map(f=>path.resolve(f)));
+ function checkLinks(file,inboundOnly=false){
+  for(const m of read(file).matchAll(/\[[^\]\n]*\]\(([^)\n]+)\)/g)){
+   const raw=m[1].replace(/^<|>$/g,'');if(/^(?:https?:|app:|mailto:)/.test(raw))continue;
+   const [target,fragment]=raw.split('#');
+   const resolved=target?path.resolve(path.dirname(file),target.replace(/:\d+$/,'')):path.resolve(file);
+   if(inboundOnly&&!checked.has(resolved))continue;
+   assert.ok(fs.existsSync(resolved),`${file}: missing ${raw}`);
+   if(fragment&&resolved.endsWith('.md'))assert.ok(anchors(resolved).has(decodeURIComponent(fragment)),`${file}: missing anchor ${raw}`);
+   if(inboundOnly)inboundLinks++;else links++;
+  }
+ }
+ docs.forEach(f=>checkLinks(f));
+ // Preserve inbound links from the existing audit and implementation records.
+ for(const folder of [dir,...batchPaths.map(f=>path.dirname(f))])for(const name of fs.readdirSync(folder)){
+  const file=path.join(folder,name);if(name.endsWith('.md')&&!checked.has(path.resolve(file)))checkLinks(file,true);
+ }
+ console.log(JSON.stringify({mode:'documentation-only',documents:docs.length,findings:detailed.length,open,deferred,closed,localLinks:links,inboundLinks,checks:'PASS',limitation:'Layout, assignment, status and local-link integrity only; no runtime or release certification.'}));
+ process.exit(0);
+}
+// Historical baseline checker below must run at its recorded audit checkpoint.
 const head=process.env.V1_AUDIT_HEAD||cp.execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
 const trackedChanges=process.env.V1_AUDIT_TRACKED_CHANGES_JSON?JSON.parse(process.env.V1_AUDIT_TRACKED_CHANGES_JSON).join('\n'):cp.execFileSync('git',['diff','--name-only','HEAD'],{encoding:'utf8'}).trim();assert.equal(trackedChanges,'','Tracked files changed during audit');
 const inventory=JSON.parse(fs.readFileSync(dir+'/inventory.json','utf8'));assert.equal(inventory.head,head);

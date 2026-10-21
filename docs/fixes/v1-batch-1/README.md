@@ -1,4 +1,474 @@
-# Batch 1 implementation evidence
+# Batch 1: Authorization, ingestion and credential exposure
+
+[Release index](../../V1_RELEASE_READINESS.md) · [Finding checklist](../../audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md)
+
+This is the detailed home for this batch's assigned findings. Read the required repository references first, then the release index, checklist and this record. Documentation records evidence; verify actual current code before changing behavior. Original audit paths and line numbers describe the recorded baseline, not an assertion that the defect remains unchanged.
+
+## Current Batch 1 status
+
+**IMPLEMENTED AND DEPLOYED; RELEASE ACCEPTANCE OPEN.** All 20 code corrections are implemented and locally validated within the stated boundaries. Batch 1 runtime `4522f834` was deployed and is superseded by Batch 2 runtime `839bf508`. No finding is closed for release.
+
+**Ptomo visual and scheduled-refresh checks: PASSED within their stated boundaries.** The visual check is user-reported. October 21 native/financial publications through October 20 updated at 08:10/08:11 Amsterdam, before Batch 2 deployed at 09:32. The [read-only work record](../v1-batch-2/ptomo-refresh-2026-10-21.json) confirms the exact 08:00 work item completed at 08:11:52.504 on its first attempt without a recorded error. This supersedes the earlier pre-refresh uncertainty. No manual Render setup or repeat freshness wait is required. Other [release acceptance](#remaining-release-acceptance) remains open.
+
+The latest complete test run and remaining shared release gates are maintained in [Batch 8](../v1-batch-8/README.md#latest-validation-and-release-gates). The latest run passes all 114 Batch 1 test-file cases. The prior 141 focused / 34 PostgreSQL follow-up checks and their exact scope remain in [DATABASE_GRANTS.md](DATABASE_GRANTS.md).
+
+## Scope and acceptance
+
+Close anonymous/wrong-owner writes and reads, immutable parent identities, callback encoding, fail-closed signing configuration, signature/replay and bounded URL/file input; remove bearer-token logs, isolate auth caches and prevent legacy migration from overwriting renewed credentials. P0s001/002/054/063/075/123 first, alongside startup fabrication007 in batch2. Confirm every retained route/job and configuration gate. Exposure/damaged-data inventory is read-only before separately targeted cleanup/rotation.
+
+For each included source, cover create/edit/delete/reconnect/refresh/list/totals, negative cases and downstream propagation. Preserve the existing architecture. Historical-data cleanup requires its own read-only inventory and separately reviewed scope. A locally passing fix does not close required deployed/provider acceptance.
+
+## Dependencies
+
+Coordinate with [Batch 2](../v1-batch-2/README.md) for startup/migrations, campaign ownership and customer OAuth. [Batch 4](../v1-batch-4/README.md) owns transfer/import correctness; [Batch 6](../v1-batch-6/README.md) owns deferred-provider isolation; [Batch 7](../v1-batch-7/README.md) owns output/delivery acceptance. [Batch 8](../v1-batch-8/README.md) owns final release gates.
+
+## Reference and evidence entry points
+
+These records retain their own dates and verification limits. Use the current fix evidence above and below when it supersedes an original finding.
+
+- [Authorization boundary trace](../../audits/v1-2026-10-19/AUTHORIZATION_BOUNDARY_TRACE.md)
+- [OAuth and credential boundaries](../../audits/v1-2026-10-19/OAUTH_AND_CREDENTIAL_BOUNDARIES.md)
+- [Shared service-account boundary](../../audits/v1-2026-10-19/SERVICE_ACCOUNT_CUSTOMER_BOUNDARY.md)
+- [Database-grant follow-up and deployment](DATABASE_GRANTS.md)
+
+## Finding checklist
+
+| Finding | Severity | Fix status | Release acceptance |
+|---|---|---|---|
+| [V1-001](#v1-001) | P0 | VERIFIED LOCALLY | OPEN |
+| [V1-002](#v1-002) | P0 | VERIFIED LOCALLY | OPEN |
+| [V1-003](#v1-003) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-004](#v1-004) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-005](#v1-005) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-006](#v1-006) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-008](#v1-008) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-026](#v1-026) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-027](#v1-027) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-030](#v1-030) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-034](#v1-034) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-052](#v1-052) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-053](#v1-053) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-054](#v1-054) | P0 | VERIFIED LOCALLY | OPEN |
+| [V1-057](#v1-057) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-063](#v1-063) | P0 | VERIFIED LOCALLY | OPEN |
+| [V1-075](#v1-075) | P0 | VERIFIED LOCALLY | OPEN |
+| [V1-078](#v1-078) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-088](#v1-088) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-123](#v1-123) | P0 | VERIFIED LOCALLY | OPEN |
+
+## Findings
+
+Original evidence below is retained verbatim except relative link destinations. For implemented findings, use the correction and current-status sections to distinguish fixed forward paths from remaining release acceptance.
+
+### V1-001
+
+**Severity:** P0. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+
+**V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
+
+**Original audit evidence** (baseline `777aae6f`; evidence classification: confirmed locally):
+
+`POST /api/webhook/conversion/:campaignId`, `server/routes-oauth.ts:34209`: campaign existence is the only access check. Caller-provided values create conversion events and update campaign `conversionValue` without authentication/signature. Fixture reproduces writes for a different owner. Also averages currencies together and rejects numeric zero. No production mutation attempted. Blocks every release containing this route.
+
+**Implemented correction and exact files:** Unauthenticated conversion writes, loose amounts and mixed-currency averaging. The [route](../../../server/routes-oauth.ts) now requires owner or exact current campaign Custom Integration token; validates finite amounts including zero, matching currency and nonfuture dates. [Storage](../../../server/storage.ts) locks/rechecks the parent and token, deduplicates supplied conversion IDs, inserts and computes the same-currency 30-day average transactionally. [WebhookTester](../../../client/src/components/WebhookTester.tsx) explains the sender contract.
+
+**Validation and limits:** Route denial/invalid/zero controls; PostgreSQL concurrent duplicate, currency, average and revoked-token checks. No historical events repaired; downstream analytics acceptance remains separate.
+
+**Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
+
+| Fix state | Root cause and changed files | Revision | Validation evidence | Remaining release gate |
+|---|---|---|---|---|
+| VERIFIED LOCALLY (specified boundary) | Conversion route/storage: owner or current token, finite values, matching currency, date and atomic average/idempotency. | `c1248a8` | Handler denial/invalid/zero and PostgreSQL retry/currency/revocation controls. See [B1 evidence](README.md). | Deployed sender acceptance; existing event/data inventory. |
+
+### V1-002
+
+**Severity:** P0. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+
+**V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
+
+**Original audit evidence** (baseline `777aae6f`; evidence classification: confirmed anonymous credential read/write path):
+
+`server/routes-oauth.ts:815–840` → `storage.ts:863–913`: Metrics, Performance and Integrations GET/POST lack actor/owner scope. [Exact UI/storage/handler round trip](../../audits/v1-2026-10-19/ENTRY_PAGES_AND_DASHBOARD_VALUES.md) proves the integration form's credential JSON is stored plaintext and returned anonymously; connected=true needs no provider verification. Earlier anonymous deployed GETs returned4/7/5 rows, without inspecting real credentials. P0 elevation reflects synthetic token-disclosure proof, not a claimed production credential compromise.
+
+**Implemented correction and exact files:** Global metrics/performance/integrations exposed shared rows and credentials. Six [routes](../../../server/routes-oauth.ts) authenticate and pass actor ownership; [storage](../../../server/storage.ts) filters reads, fixes ownership on insert, encrypts new generic credentials and redacts responses. Generic integration creation stays `connected:false`; [modal text](../../../client/src/components/modals/integration-modal.tsx) no longer claims verified connection.
+
+**Validation and limits:** Route controls; real PostgreSQL owner separation, encryption/decryption/redaction; migration upgrade/fresh schema. Unowned rows remain unassigned. Internal no-argument storage reads retain compatibility. Startup demo seeding V1-007 remains Batch 2.
+
+**Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
+
+| Fix state | Root cause and changed files | Revision | Validation evidence | Remaining release gate |
+|---|---|---|---|---|
+| VERIFIED LOCALLY (specified boundary) | Actor-filtered global reads/writes; encrypted/redacted generic credentials; unverified connection state; migration 0022. | `c1248a8` | Real PostgreSQL owner/encryption checks; schema upgrade/reapply/fresh creation. See [B1 evidence](README.md). | Migration 0022 applied/verified on confirmed Render DB; deployed API acceptance and legacy unowned/plaintext inventory remain. |
+
+### V1-003
+
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+
+**V1 applicability:** Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred.
+
+**Original audit evidence** (baseline `777aae6f`; evidence classification: confirmed locally):
+
+`server/routes-oauth.ts:14599,14628`: LinkedIn campaign/revenue GETs expose foreign fixture labels/revenue. [Six additional handler cases](../../audits/v1-2026-10-19/retained-private-read-reproductions.json) confirm anonymous/foreign reads at Google Trends23305 and attribution31437, plus campaign-dependent connection/schema inference and credentialed provider dispatch at platform fields34290. Provider replies/data are synthetic; no live exposure attempted. All retained paths need exact owner guards.
+
+**Implemented correction and exact files:** Retained campaign reads lacked authorization. [LinkedIn campaign/revenue, Trends, campaign attribution and campaign-dependent field-schema routes](../../../server/routes-oauth.ts) now use existing `ensureCampaignAccess`.
+
+**Validation and limits:** Anonymous/foreign denial before effects, owned list response and static-field catalog control. This does not certify provider queries/formulas.
+
+**Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
+
+| Fix state | Root cause and changed files | Revision | Validation evidence | Remaining release gate |
+|---|---|---|---|---|
+| VERIFIED LOCALLY (specified boundary) | Existing campaign guard on retained LinkedIn, Trends, attribution and campaign-dependent field reads. | `c1248a8` | Anonymous/foreign denial; owned list/static-field controls. See [B1 evidence](README.md). | Deployed auth; provider query behavior remains separate. |
+
+### V1-004
+
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+
+**V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
+
+**Original audit evidence** (baseline `777aae6f`; evidence classification: confirmed local signature boundary):
+
+`/api/mailgun/inbound`, routes 33943: even with a signing key, absent timestamp/token/signature skip verification and reach integration lookup. `/api/sendgrid/inbound` at 33809 uses the same conditional pattern; its body parser is also skipped by `index.ts:71` without a multipart parser on the route. No inbound email sent. Full attachment/provenance/replay paths remain unverified.
+
+**Implemented correction and exact files:** Optional/incompatible email verification and non-durable replay protection. [SendGrid](../../../server/routes-oauth.ts) verifies ECDSA over timestamp plus exact raw multipart bytes, with a stable digest of verified body bytes for exact replay identification. Mailgun requires HMAC verification and supports URL-encoded/multipart formats. [Storage](../../../server/storage.ts) claims durable receipts inside metric transactions.
+
+**Validation and limits:** Real loopback HTTP with non-ASCII multipart; valid/absent/altered/expired/unconfigured cases; Mailgun URL-encoded gate; five concurrent database retries and storage-instance/deleted-metric replay. Live retries with regenerated MIME serialization are not certified as the same logical email. Snapshot recovery remains a separate scheduler gate.
+
+**Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
+
+| Fix state | Root cause and changed files | Revision | Validation evidence | Remaining release gate |
+|---|---|---|---|---|
+| VERIFIED LOCALLY (specified boundary) | Mandatory provider signatures/raw multipart; durable transactional replay receipts; bounded ingestion. | `c1248a8` | Loopback valid/invalid signed delivery; concurrent database/restart-instance/deleted-metric replay. See [B1 evidence](README.md). | Real provider retries/formats, snapshot recovery and deployed configuration. |
+
+### V1-005
+
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+
+**V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
+
+**Original audit evidence** (baseline `777aae6f`; evidence classification: confirmed local reproduction):
+
+`POST /api/alerts/test-email`, routes 8698: arbitrary recipient/subject reaches mocked email transport without actor check, production disablement or route limiter. No email sent. Must be guarded or disabled before release.
+
+**Implemented correction and exact files:** Public test-email transport. [Route](../../../server/routes-oauth.ts) returns 404 in production, requires an actor elsewhere and mounts the existing OAuth limiter.
+
+**Validation and limits:** Production and unauthenticated development denial before transport. No real email sent.
+
+**Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
+
+| Fix state | Root cause and changed files | Revision | Validation evidence | Remaining release gate |
+|---|---|---|---|---|
+| VERIFIED LOCALLY (specified boundary) | Test email denied in production, authenticated and rate-limited elsewhere. | `c1248a8` | Production/development denial before transport. See [B1 evidence](README.md). | Deployed production denial. |
+
+### V1-006
+
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+
+**V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
+
+**Original audit evidence** (baseline `777aae6f`; evidence classification: confirmed code):
+
+Attribution routes 30814–31464 expose unauthenticated mutations/reads. `DatabaseStorage` attribution maps are process memory, not durable multi-tenant storage (`storage.ts:692` onward). Some GETs return hard-coded examples. Compatibility surface cannot be treated as production analytics or safely excluded only by navigation.
+
+**Implemented correction and exact files:** Attribution mixed anonymous/global access, sample GET data and process-memory persistence. [Routes](../../../server/routes-oauth.ts) require actor and owned model/journey/campaign parents. [Storage](../../../server/storage.ts) uses existing tables, explicit owners and calculation/deletion transactions. Parent locks prevent overlapping deletion/calculation from recreating orphan results. Campaign touchpoint reads join consistent owner boundaries. Four fabricated GET datasets removed.
+
+**Validation and limits:** Anonymous controls for every attribution route; foreign-parent controls; PostgreSQL owner separation, persistence across storage instances, calculation and three deletion races. Existing formulas, model configuration, pagination, date editing and full downstream acceptance are not certified. No attribution page is registered in current App; retained APIs remain guarded. Lost in-memory history is not fabricated.
+
+**Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
+
+| Fix state | Root cause and changed files | Revision | Validation evidence | Remaining release gate |
+|---|---|---|---|---|
+| VERIFIED LOCALLY (specified boundary) | Owned attribution APIs and existing-table persistence; sample outputs removed; calculation/deletion parent locks. | `c1248a8` | All anonymous routes, foreign parents, real persistence/calculation/deletion races. See [B1 evidence](README.md). | Deployed ownership/restart; analytics/configuration/downstream acceptance remains open. |
+
+### V1-008
+
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+
+**V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
+
+**Original audit evidence** (baseline `777aae6f`; evidence classification: confirmed code, deployed configuration unknown):
+
+`server/utils/tokenVault.ts:25–53,109`: encryption can fall back to a known development secret; the production assertion is used on selected Shopify/Google Ads paths, not uniformly at startup or all GA4/Sheets writes. `server/db.ts:19–21` explicitly sets `rejectUnauthorized:false` for `sslmode=require`. Verify deployed key/TLS configuration and close unsafe configuration paths; no secret values collected.
+
+**Implemented correction and exact files:** Production encryption fallback and unsafe TLS configuration options. [Vault](../../../server/utils/tokenVault.ts) and [startup](../../../server/index.ts) require an explicit production encryption key. [DB](../../../server/db.ts) forces verified TLS and rejects global TLS verification disabling.
+
+**Validation and limits:** Actual vault missing-key/round-trip tests and installed `pg` SSL configuration checks for `disable`, `require` and libpq compatibility. Hosted TLS and existing key compatibility remain external. Baseline nuance below.
+
+**Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
+
+| Fix state | Root cause and changed files | Revision | Validation evidence | Remaining release gate |
+|---|---|---|---|---|
+| VERIFIED LOCALLY (specified boundary) | Explicit production encryption at vault/startup; verified PostgreSQL TLS configuration. | `c1248a8` | Missing-key/round-trip tests; actual pg configuration in three URL modes. See [B1 evidence](README.md). | Direct verified TLS passed; existing TOKEN_ENCRYPTION_KEY presence is user-reported. Deployed decryption/TLS remain unverified. |
+
+### V1-026
+
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+
+**V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
+
+**Original audit evidence** (baseline `777aae6f`; evidence classification: confirmed isolated URL-fetch boundary):
+
+`routes-oauth.ts:28246-28369,28372-28524`: bearer-token Custom Integration ingestion accepts arbitrary URL downloads, including loopback, without destination/redirect restrictions, explicit deadline or downloaded-byte limit. Exact fixture proves loopback URL reaches mocked fetch; no actual internal request. Multipart 10MB limit does not bound URL downloads. Logs print the bearer token. Protect request destinations/resources and token secrecy; require current-parent validity through publication.
+
+**Implemented correction and exact files:** Arbitrary/unbounded URL downloads and stale public-ingestion parents. [Existing parser service](../../../server/services/custom-integration-file-parser.ts) enforces public HTTPS/443, no URL credentials, DNS pinning, redirect revalidation, a total deadline and 10 MB cap. [Routes](../../../server/routes-oauth.ts) bound embedded/multipart input and use existing import limiting. [Storage](../../../server/storage.ts) rechecks parent/integration/token/recipient/current sender list through publication.
+
+**Validation and limits:** Private/mixed DNS, IPv4/IPv6/credential URL rejection, both Node lookup callback modes, redirect and streamed-size controls; database missing-parent/revoked-token/removed-sender controls. Real egress/provider attachment acceptance remains external.
+
+**Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
+
+| Fix state | Root cause and changed files | Revision | Validation evidence | Remaining release gate |
+|---|---|---|---|---|
+| VERIFIED LOCALLY (specified boundary) | Public HTTPS downloads with pinned DNS, validated redirects, deadline/size caps and final parent/token/sender checks. | `c1248a8` | Private/mixed DNS, redirect/stream caps, lookup modes; PostgreSQL stale-parent/token controls. See [B1 evidence](README.md). | Valid deployed provider attachment and egress acceptance. |
+
+### V1-027
+
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+
+**V1 applicability:** Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred.
+
+**Original audit evidence** (baseline `777aae6f`; evidence classification: confirmed isolated browser reproductions):
+
+Simulation callback10821 and real Salesforce11506, LinkedIn23517, Meta24073 callback error branches interpolate unescaped input before state/owner checks. Harmless sentinels execute under current CSP in local blocked-network Chromium. Google fixed-error and existing safe serializer controls pass. Encode each HTML/script context or effectively gate removed flows; no deployed exploit sent.
+
+**Implemented correction and exact files:** Untrusted popup content interpolated into HTML/scripts. Four [paths](../../../server/routes-oauth.ts) reuse existing HTML/JSON serializers; simulation state is URL-encoded.
+
+**Validation and limits:** Handler sentinels and actual Chromium callback execution; normal Google callback control. Live successful OAuth remains external.
+
+**Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
+
+| Fix state | Root cause and changed files | Revision | Validation evidence | Remaining release gate |
+|---|---|---|---|---|
+| VERIFIED LOCALLY (specified boundary) | Existing HTML/script serializers on four vulnerable popup paths. | `c1248a8` | Exact handlers and Chromium sentinel execution with adjacent Google control. See [B1 evidence](README.md). | Successful configured OAuth callbacks. |
+
+### V1-030
+
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+
+**V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
+
+**Original audit evidence** (baseline `777aae6f`; evidence classification: confirmed isolated update reproduction):
+
+`storage.ts:5706-5730` drops `allowedEmailAddresses` when updating an existing Custom Integration, despite guarded connect accepting it. Previously allowed sender remains permitted by token-email whitelist. Preserve exact sender boundary and test save/reload/removed-sender rejection.
+
+**Implemented correction and exact files:** Custom Integration updates ignored edited sender whitelists. [Storage](../../../server/storage.ts) persists explicit lists, clears with `[]`, preserves omission and rechecks current values during public publication.
+
+**Validation and limits:** Real PostgreSQL reload/clear/omission/removed-sender checks. Existing empty-list meaning remains unrestricted senders with otherwise valid delivery credentials.
+
+**Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
+
+| Fix state | Root cause and changed files | Revision | Validation evidence | Remaining release gate |
+|---|---|---|---|---|
+| VERIFIED LOCALLY (specified boundary) | Explicit Custom Integration whitelist edits persist; publication rechecks current list. | `c1248a8` | PostgreSQL save/reload, clear, omission and removed-sender checks. See [B1 evidence](README.md). | Deployed owner edit and signed sender acceptance. |
+
+### V1-034
+
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+
+**V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
+
+**Original audit evidence** (baseline `777aae6f`; evidence classification: confirmed anonymous temporary-source write):
+
+`POST /api/custom-integration/:campaignId/connect`, routes33729-33780: magic ID `temp-campaign-setup` bypasses actor/campaign guard and writes/returns a shared temporary connection and bearer token. Exact-handler fixture confirms zero guard calls. Transfer34100 also skips ownership for that source. No current frontend use of the magic ID found. Retained shared staging cannot be treated as tenant-safe merely because ordinary IDs are guarded.
+
+**Implemented correction and exact files:** Shared temporary-ID authorization exemptions. [Connect and transfer routes](../../../server/routes-oauth.ts) now guard both parents normally.
+
+**Validation and limits:** Ordinary/magic-ID rejection; existing owned draft architecture retained. Separate transfer-copy defects remain Batch 4.
+
+**Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
+
+| Fix state | Root cause and changed files | Revision | Validation evidence | Remaining release gate |
+|---|---|---|---|---|
+| VERIFIED LOCALLY (specified boundary) | Remove shared temporary-ID exemptions; guard connect and both transfer parents. | `c1248a8` | Ordinary/magic-ID denial controls. See [B1 evidence](README.md). | Owned draft/transfer acceptance; Batch 4 transfer defects remain. |
+
+### V1-052
+
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+
+**V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
+
+**Original audit evidence** (baseline `777aae6f`; evidence classification: cache behavior proven, live auth transition unverified):
+
+`client/src/App.tsx:175`, `lib/queryClient.ts:58`, `lib/clientContext.tsx:16` retain account-independent query keys with infinite freshness outside auth branches and no clear/reset hook. Exact config/real-library fixture returns prior-owner client data without a new fetch. Actual Clerk account switching/signout/reload is an external browser gate; do not claim live leakage was observed.
+
+**Implemented correction and exact files:** Global query cache and shared client selection crossed identity changes. [App](../../../client/src/App.tsx) creates/key-mounts a cache per actor and cancels/clears the old cache; [query defaults](../../../client/src/lib/queryClient.ts) consume abort signals. Nine former singleton consumers use the mounted provider. [Client context](../../../client/src/lib/clientContext.tsx) persists selection by actor.
+
+**Validation and limits:** Real query-library and Chromium checks: A→B, late old responses, cancellation, sign-out, returning to A and selection. Clerk identity/API replies are fixtures; actual Clerk acceptance remains external.
+
+**Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
+
+| Fix state | Root cause and changed files | Revision | Validation evidence | Remaining release gate |
+|---|---|---|---|---|
+| VERIFIED LOCALLY (specified boundary) | Per-actor query client; singleton consumers use provider; cancel/clear old cache; per-actor selection. | `c1248a8` | Real query library and Chromium account-switch/late-response/sign-out cases. See [B1 evidence](README.md). | Actual deployed Clerk account switching. |
+
+### V1-053
+
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+
+**V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
+
+**Original audit evidence** (baseline `777aae6f`; evidence classification: confirmed limiter bypass):
+
+`server/middleware/rateLimiter.ts:19,39,59` lets caller body.isTestMode=true skip OAuth/LinkedIn/import limits without production restriction. Exact configured skip functions tested; no load traffic sent. Bounded quota/load protections cannot rely on these limiters while this branch is exposed.
+
+**Implemented correction and exact files:** Caller-controlled test flags bypassed production quotas. [Three limiter skip functions](../../../server/middleware/rateLimiter.ts) restrict that flag to `NODE_ENV=test`.
+
+**Validation and limits:** Production/development/test matrix and authenticated internal-refresh control. Thresholds/distributed limits unchanged.
+
+**Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
+
+| Fix state | Root cause and changed files | Revision | Validation evidence | Remaining release gate |
+|---|---|---|---|---|
+| VERIFIED LOCALLY (specified boundary) | Caller test-flag limiter bypass restricted to NODE_ENV=test. | `c1248a8` | Three limiter functions across environment modes; internal-refresh control. See [B1 evidence](README.md). | Deployed limiter configuration/quotas. |
+
+### V1-054
+
+**Severity:** P0. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+
+**V1 applicability:** Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred.
+
+**Original audit evidence** (baseline `777aae6f`; evidence classification: confirmed unsafe cross-campaign write arguments):
+
+LinkedIn update28649→storage4445 permits replacement campaignId; legacy Meta KPI26553→storage5312 and Benchmark27630→storage5341 pass raw updates. All authorize only original campaign. Three exact route fixtures pass foreign campaignId to persistence after checking owned parent only. Immutable identity/destination authorization needed; modern shared KPI/Benchmark and Meta report branches have stronger guards and are distinguished in evidence.
+
+**Implemented correction and exact files:** LinkedIn connection and legacy Meta KPI/Benchmark updates could reparent records after checking old ownership. [Routes](../../../server/routes-oauth.ts) strip identities and [storage](../../../server/storage.ts) independently preserves them.
+
+**Validation and limits:** Three exact-handler valid-edit/foreign-parent payload checks and direct real-PostgreSQL updates. Modern branches and existing refresh ownership mechanisms retained.
+
+**Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
+
+| Fix state | Root cause and changed files | Revision | Validation evidence | Remaining release gate |
+|---|---|---|---|---|
+| VERIFIED LOCALLY (specified boundary) | Three retained route and storage updates preserve record/campaign identities. | `c1248a8` | Exact valid-edit/foreign-parent payloads and real PostgreSQL identity checks. See [B1 evidence](README.md). | Deployed ownership/adjacent update acceptance. |
+
+### V1-057
+
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+
+**V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
+
+**Original audit evidence** (baseline `777aae6f`; evidence classification: confirmed credential logging):
+
+`routes-oauth.ts:14435,28046,28053,28061` logs Custom webhook bearers;27154–27175 logs raw provider errors. [Real Axios/current-client fixture](../../audits/v1-2026-10-19/CONFIGURATION_AND_RECOVERY.md) reproduces synthetic Ads bearer/developer-token headers in console error output; denied/success controls pass. No live credentials copied. Remove credential-bearing logging and separately establish exposure/targeted rotation. Truncation is not redaction.
+
+**Implemented correction and exact files:** Bearer URLs/response bodies and raw provider errors exposed credentials. [HTTP logging](../../../server/index.ts) omits response bodies and redacts capability paths. [Routes](../../../server/routes-oauth.ts) remove Custom bearer/object logs and restrict Ads errors to safe metadata.
+
+**Validation and limits:** HTTP marker tests plus actual Axios/current Ads client and route with synthetic bearer/developer markers: provider failure, denied campaign and success. Historical exposure inventory/rotation not performed.
+
+**Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
+
+| Fix state | Root cause and changed files | Revision | Validation evidence | Remaining release gate |
+|---|---|---|---|---|
+| VERIFIED LOCALLY (specified boundary) | Remove bearer/body logging; redact capability paths and Ads provider errors. | `c1248a8` | HTTP marker tests and three actual Axios/client/route controls. See [B1 evidence](README.md). | Historical exposure inventory and any separately approved rotation. |
+
+### V1-063
+
+**Severity:** P0. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+
+**V1 applicability:** Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred.
+
+**Original audit evidence** (baseline `777aae6f`; evidence classification: confirmed conditional unauthorized write):
+
+`routes-oauth.ts:8338,8468` LinkedIn mock routes lack actor/owner checks. Production ALLOW_MOCK_DATA=true permits foreign-campaign overwrites; exact first-handler fixture proves anonymous write, false control rejects. Live flag value remains unverified; configuration-dependent exclusion must be enforced and recorded.
+
+**Implemented correction and exact files:** Production mock writes could be enabled by an environment flag. Both [LinkedIn mock routes](../../../server/routes-oauth.ts) now always deny production and require campaign owner elsewhere.
+
+**Validation and limits:** Production flag and development anonymous denial. Deferred-provider simulation functionality not certified.
+
+**Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
+
+| Fix state | Root cause and changed files | Revision | Validation evidence | Remaining release gate |
+|---|---|---|---|---|
+| VERIFIED LOCALLY (specified boundary) | Both production mock endpoints always deny; development requires campaign ownership. | `c1248a8` | Production flag and development anonymous denial. See [B1 evidence](README.md). | Deployed production denial; provider functionality deferred. |
+
+### V1-075
+
+**Severity:** P0. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+
+**V1 applicability:** Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred.
+
+**Original audit evidence** (baseline `777aae6f`; evidence classification: confirmed anonymous financial mutation):
+
+`routes-oauth.ts:6193–6225`: both connector-derived Spend aliases omit actor/campaign checks, overwrite supplied campaign Spend/currency and create an active source without records. Exact registration fixtures with no actor change foreign fixture USD to EUR and Spend to123.00. No current frontend caller found; API reachability remains. Guard both aliases and enforce parent/source/currency/atomic materialization boundaries.
+
+**Implemented correction and exact files:** Two aliases overwrote spend/currency without authorization or dated materialization. [Routes](../../../server/routes-oauth.ts) require owner, matching currency, platform and reconciled dated facts; use existing transactional source replacement plus campaign/GA4 recompute. [Storage](../../../server/storage.ts) rechecks current parent/currency for this source type.
+
+**Validation and limits:** Both aliases' denial/missing-record/positive dispatch checks; PostgreSQL atomic replacement, invalid-record rollback and foreign-source/missing-parent rejection. Full source×mutation×consumer correctness and historical damage remain separate gates.
+
+**Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
+
+| Fix state | Root cause and changed files | Revision | Validation evidence | Remaining release gate |
+|---|---|---|---|---|
+| VERIFIED LOCALLY (specified boundary) | Both spend aliases guard owner; require reconciled dated/platform/currency facts and existing transaction/recompute paths. | `c1248a8` | Route dispatch/denial; PostgreSQL atomic rollback and foreign-source checks. See [B1 evidence](README.md). | Existing damaged-data inventory; full analytics propagation remains open. |
+
+### V1-078
+
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+
+**V1 applicability:** Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred.
+
+**Original audit evidence** (baseline `777aae6f`; evidence classification: confirmed conditional production signing weakness):
+
+`routes-oauth.ts:23404–23455,23953–24013`: LinkedIn/Meta state sign/verify use public development fallback when secrets are absent even in production. Exact fixtures accept independently constructed signed states; GA4/Sheets/HubSpot/Ads missing-secret controls reject. Callback campaign-owner checks remain; live secret absence or unauthorized provider connection was not demonstrated. Fail closed for every offered configuration and validate session/replay/denial independently.
+
+**Implemented correction and exact files:** Predictable production signing fallback. Both [LinkedIn/Meta state pairs](../../../server/routes-oauth.ts) use the existing purpose-specific signing helper and reject invalid/future timestamps.
+
+**Validation and limits:** Exact sign/verify: configured success, missing secret, tampering, expiry and rotation; purpose separation. Existing stateless nonce handling is not a single-use state store. Functional providers stay deferred.
+
+**Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
+
+| Fix state | Root cause and changed files | Revision | Validation evidence | Remaining release gate |
+|---|---|---|---|---|
+| VERIFIED LOCALLY (specified boundary) | LinkedIn/Meta signing uses existing fail-closed provider-purpose secret helper. | `c1248a8` | Exact sign/verify configured/missing/tampered/expired/rotated cases. See [B1 evidence](README.md). | Configured callback/session acceptance; functional providers deferred. |
+
+### V1-088
+
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+
+**V1 applicability:** Mixed: V1 shared/access/job/exclusion and included-source portion; deferred provider-specific functionality remains deferred.
+
+**Original audit evidence** (baseline `777aae6f`; evidence classification: conditional legacy credential race reproduced):
+
+`storage.ts:3280,3921,3951,4057,4087,4190,4217,4415,4592,5059` lazy plaintext encryption checks only row/campaign identity, allowing an old reader to overwrite a newly saved token. Ten exact-getter interleavings reproduce stale restoration; GA4923–940 compare-and-set control preserves new token. Live legacy-data occurrence unknown. Guard source-specific migration predicates and validate renewal/reconnect/restart without changing unrelated credential contracts.
+
+**Implemented correction and exact files:** Ten lazy-encryption readers could overwrite renewed credentials. [Storage](../../../server/storage.ts) conditions each migration on original identity, absent ciphertext and original plaintext values.
+
+**Validation and limits:** Ten real-PostgreSQL interleavings preserve concurrently renewed encrypted tokens. Getters can return their earlier read snapshot; this correction prevents persisted rollback. Live reconnect/legacy inventory remains external.
+
+**Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
+
+| Fix state | Root cause and changed files | Revision | Validation evidence | Remaining release gate |
+|---|---|---|---|---|
+| VERIFIED LOCALLY (specified boundary) | Ten lazy credential migrations compare original identity/plaintext and absent ciphertext. | `c1248a8` | Ten real PostgreSQL renewed-token/stale-reader interleavings. See [B1 evidence](README.md). | Live renewal/reconnect and legacy credential inventory. |
+
+### V1-123
+
+**Severity:** P0. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
+
+**V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
+
+**Original audit evidence** (baseline `777aae6f`; evidence classification: confirmed shared-credential tenant gap):
+
+`routes-oauth.ts:16111,16607,26687` authorizes the destination campaign but binds no customer to the shared service account's provider resource. [Fifteen exact-handler cases](../../audits/v1-2026-10-19/SERVICE_ACCOUNT_CUSTOMER_BOUNDARY.md) show unrelated owners can attach the same permitted GA4 property/Sheets file/Ads customer; Sheets returns metadata and Ads persists fixture facts. Anonymous, foreign-campaign and provider-denial controls pass. Enforce provider-resource/customer grants or restrict the shared paths before multi-tenant V1; no live cross-tenant access claimed.
+
+**Implemented correction and exact files:** Shared service-account resources were not bound to customers. [Storage policy](../../../server/storage.ts) joins consistent campaign/client ownership and checks exact owner/client/provider/resource grants from optional environment configuration or internal operator records. Three [connect routes](../../../server/routes-oauth.ts) check before credential/provider access; GA4 create/update also check. Saved [GA4](../../../server/utils/ga4-service-account.ts), [Sheets](../../../server/utils/google-sheets-service-account.ts) and [Ads](../../../server/utils/google-ads-service-account.ts) hydration checks before cached/new shared-token use. Connect denials return 403.
+
+**Validation and limits:** Fifteen exact-route cases; real-PostgreSQL owner/client/provider/resource/malformed/revocation controls; all three hydration helpers deny revoked grants before token use. Existing provider allowlists remain additional checks. [Database follow-up](DATABASE_GRANTS.md): 34 PostgreSQL checks, 141 focused tests and exact Ptomo database permission applied/verified.
+
+**Recorded implementation checkpoint (October 20; later deployment/current-status evidence above takes precedence):**
+
+| Fix state | Root cause and changed files | Revision | Validation evidence | Remaining release gate |
+|---|---|---|---|---|
+| VERIFIED LOCALLY (specified boundary) | Owner/client/provider/resource grants on connect and saved shared-credential hydration; GA4 save/update guard. Internal reviewed database grants remove manual Render setup. | `c1248a8`, `4550381b`, `4522f834`; [current hashes](database-grants-candidate.json) | 15 route cases, 34 current PostgreSQL checks, 141 focused tests and three provider hydration revocation controls. Exact Ptomo database permission applied/verified. Current full suite retains the same 182 failures. See [current evidence](DATABASE_GRANTS.md). | Package pushed. Customer Google sign-in default needs no shared grants. Google setting presence user-confirmed; live consent, deployed Ptomo continuity and denial checks remain open. |
+
+<a id="corrections-and-evidence-boundaries"></a>
+
+The former corrections table is consolidated into the individual [findings](#findings) above.
+
+## Historical implementation and deployment evidence
+
+The following records preserve their original checkpoints. Old statements such as "pending", "next check", "unpushed" or "deployment hold" are historical, not current instructions. The [current Batch 1 status](#current-batch-1-status) supersedes them; no manual Render grant entry or repeat morning-refresh wait is required.
+
+### Earlier October 20 status
 
 Authorized by the user on 2026-10-20. Base HEAD: `777aae6f6353e998d60b635d3e66b413093117c2`. Local verification was completed before committing; the later commit/deployment preflight is recorded below. The [audit index](../../V1_RELEASE_READINESS.md) controls finding status and release acceptance. Original audit evidence remains historical; it does not validate the changed code.
 
@@ -8,7 +478,7 @@ Scope: V1-001, 002, 003, 004, 005, 006, 008, 026, 027, 030, 034, 052, 053, 054, 
 
 During the implementation phase, no production application/database request, real email, provider activation, campaign modification, deployment, commit or push was performed. Ptomo and redundant campaigns were not modified. All test identities, credentials, reports and database rows are synthetic. The later commit/deployment preflight is recorded below.
 
-## Current Batch 1 status
+### October 20 status checkpoint (superseded)
 
 **IMPLEMENTED AND DEPLOYED; LIVE ACCEPTANCE IN PROGRESS.** All 20 Batch 1 code corrections are deployed. The visual check below has passed, but the batch is not closed for release.
 
@@ -26,33 +496,6 @@ During the implementation phase, no production application/database request, rea
 **Next Ptomo check:** after the **October 21, 2026, 08:00 Europe/Amsterdam** scheduled refresh finishes, inspect the same Overview section. Check both **Last successful update** timestamps and both data-through dates; the expected completed-day cutoff for that run is October 20. Retain the screenshot/result in the [live evidence record](DATABASE_GRANTS.md#post-deployment-user-visual-check). The configured schedule is 08:00, 14:00 and 20:00 Amsterdam time. No completion duration is assumed and no manual import or configuration change is needed for this check. If the timestamps do not advance or an error appears, keep acceptance pending and investigate the actual run.
 
 This status supersedes the earlier environment-only deployment holds in the historical chronology below. The overall V1 release decision remains **NO-GO**.
-
-## Corrections and evidence boundaries
-
-Links point to the working tree. Original finding-register line locations remain evidence for the baseline. The final manifest records exact files/hashes.
-
-| Finding | Root cause and localized correction | Evidence and practical limits |
-|---|---|---|
-| V1-001 | Unauthenticated conversion writes, loose amounts and mixed-currency averaging. The [route](../../../server/routes-oauth.ts) now requires owner or exact current campaign Custom Integration token; validates finite amounts including zero, matching currency and nonfuture dates. [Storage](../../../server/storage.ts) locks/rechecks the parent and token, deduplicates supplied conversion IDs, inserts and computes the same-currency 30-day average transactionally. [WebhookTester](../../../client/src/components/WebhookTester.tsx) explains the sender contract. | Route denial/invalid/zero controls; PostgreSQL concurrent duplicate, currency, average and revoked-token checks. No historical events repaired; downstream analytics acceptance remains separate. |
-| V1-002 | Global metrics/performance/integrations exposed shared rows and credentials. Six [routes](../../../server/routes-oauth.ts) authenticate and pass actor ownership; [storage](../../../server/storage.ts) filters reads, fixes ownership on insert, encrypts new generic credentials and redacts responses. Generic integration creation stays `connected:false`; [modal text](../../../client/src/components/modals/integration-modal.tsx) no longer claims verified connection. | Route controls; real PostgreSQL owner separation, encryption/decryption/redaction; migration upgrade/fresh schema. Unowned rows remain unassigned. Internal no-argument storage reads retain compatibility. Startup demo seeding V1-007 remains Batch 2. |
-| V1-003 | Retained campaign reads lacked authorization. [LinkedIn campaign/revenue, Trends, campaign attribution and campaign-dependent field-schema routes](../../../server/routes-oauth.ts) now use existing `ensureCampaignAccess`. | Anonymous/foreign denial before effects, owned list response and static-field catalog control. This does not certify provider queries/formulas. |
-| V1-004 | Optional/incompatible email verification and non-durable replay protection. [SendGrid](../../../server/routes-oauth.ts) verifies ECDSA over timestamp plus exact raw multipart bytes, with a stable digest of verified body bytes for exact replay identification. Mailgun requires HMAC verification and supports URL-encoded/multipart formats. [Storage](../../../server/storage.ts) claims durable receipts inside metric transactions. | Real loopback HTTP with non-ASCII multipart; valid/absent/altered/expired/unconfigured cases; Mailgun URL-encoded gate; five concurrent database retries and storage-instance/deleted-metric replay. Live retries with regenerated MIME serialization are not certified as the same logical email. Snapshot recovery remains a separate scheduler gate. |
-| V1-005 | Public test-email transport. [Route](../../../server/routes-oauth.ts) returns 404 in production, requires an actor elsewhere and mounts the existing OAuth limiter. | Production and unauthenticated development denial before transport. No real email sent. |
-| V1-006 | Attribution mixed anonymous/global access, sample GET data and process-memory persistence. [Routes](../../../server/routes-oauth.ts) require actor and owned model/journey/campaign parents. [Storage](../../../server/storage.ts) uses existing tables, explicit owners and calculation/deletion transactions. Parent locks prevent overlapping deletion/calculation from recreating orphan results. Campaign touchpoint reads join consistent owner boundaries. Four fabricated GET datasets removed. | Anonymous controls for every attribution route; foreign-parent controls; PostgreSQL owner separation, persistence across storage instances, calculation and three deletion races. Existing formulas, model configuration, pagination, date editing and full downstream acceptance are not certified. No attribution page is registered in current App; retained APIs remain guarded. Lost in-memory history is not fabricated. |
-| V1-008 | Production encryption fallback and unsafe TLS configuration options. [Vault](../../../server/utils/tokenVault.ts) and [startup](../../../server/index.ts) require an explicit production encryption key. [DB](../../../server/db.ts) forces verified TLS and rejects global TLS verification disabling. | Actual vault missing-key/round-trip tests and installed `pg` SSL configuration checks for `disable`, `require` and libpq compatibility. Hosted TLS and existing key compatibility remain external. Baseline nuance below. |
-| V1-026 | Arbitrary/unbounded URL downloads and stale public-ingestion parents. [Existing parser service](../../../server/services/custom-integration-file-parser.ts) enforces public HTTPS/443, no URL credentials, DNS pinning, redirect revalidation, a total deadline and 10 MB cap. [Routes](../../../server/routes-oauth.ts) bound embedded/multipart input and use existing import limiting. [Storage](../../../server/storage.ts) rechecks parent/integration/token/recipient/current sender list through publication. | Private/mixed DNS, IPv4/IPv6/credential URL rejection, both Node lookup callback modes, redirect and streamed-size controls; database missing-parent/revoked-token/removed-sender controls. Real egress/provider attachment acceptance remains external. |
-| V1-027 | Untrusted popup content interpolated into HTML/scripts. Four [paths](../../../server/routes-oauth.ts) reuse existing HTML/JSON serializers; simulation state is URL-encoded. | Handler sentinels and actual Chromium callback execution; normal Google callback control. Live successful OAuth remains external. |
-| V1-030 | Custom Integration updates ignored edited sender whitelists. [Storage](../../../server/storage.ts) persists explicit lists, clears with `[]`, preserves omission and rechecks current values during public publication. | Real PostgreSQL reload/clear/omission/removed-sender checks. Existing empty-list meaning remains unrestricted senders with otherwise valid delivery credentials. |
-| V1-034 | Shared temporary-ID authorization exemptions. [Connect and transfer routes](../../../server/routes-oauth.ts) now guard both parents normally. | Ordinary/magic-ID rejection; existing owned draft architecture retained. Separate transfer-copy defects remain Batch 4. |
-| V1-052 | Global query cache and shared client selection crossed identity changes. [App](../../../client/src/App.tsx) creates/key-mounts a cache per actor and cancels/clears the old cache; [query defaults](../../../client/src/lib/queryClient.ts) consume abort signals. Nine former singleton consumers use the mounted provider. [Client context](../../../client/src/lib/clientContext.tsx) persists selection by actor. | Real query-library and Chromium checks: A→B, late old responses, cancellation, sign-out, returning to A and selection. Clerk identity/API replies are fixtures; actual Clerk acceptance remains external. |
-| V1-053 | Caller-controlled test flags bypassed production quotas. [Three limiter skip functions](../../../server/middleware/rateLimiter.ts) restrict that flag to `NODE_ENV=test`. | Production/development/test matrix and authenticated internal-refresh control. Thresholds/distributed limits unchanged. |
-| V1-054 | LinkedIn connection and legacy Meta KPI/Benchmark updates could reparent records after checking old ownership. [Routes](../../../server/routes-oauth.ts) strip identities and [storage](../../../server/storage.ts) independently preserves them. | Three exact-handler valid-edit/foreign-parent payload checks and direct real-PostgreSQL updates. Modern branches and existing refresh ownership mechanisms retained. |
-| V1-057 | Bearer URLs/response bodies and raw provider errors exposed credentials. [HTTP logging](../../../server/index.ts) omits response bodies and redacts capability paths. [Routes](../../../server/routes-oauth.ts) remove Custom bearer/object logs and restrict Ads errors to safe metadata. | HTTP marker tests plus actual Axios/current Ads client and route with synthetic bearer/developer markers: provider failure, denied campaign and success. Historical exposure inventory/rotation not performed. |
-| V1-063 | Production mock writes could be enabled by an environment flag. Both [LinkedIn mock routes](../../../server/routes-oauth.ts) now always deny production and require campaign owner elsewhere. | Production flag and development anonymous denial. Deferred-provider simulation functionality not certified. |
-| V1-075 | Two aliases overwrote spend/currency without authorization or dated materialization. [Routes](../../../server/routes-oauth.ts) require owner, matching currency, platform and reconciled dated facts; use existing transactional source replacement plus campaign/GA4 recompute. [Storage](../../../server/storage.ts) rechecks current parent/currency for this source type. | Both aliases' denial/missing-record/positive dispatch checks; PostgreSQL atomic replacement, invalid-record rollback and foreign-source/missing-parent rejection. Full source×mutation×consumer correctness and historical damage remain separate gates. |
-| V1-078 | Predictable production signing fallback. Both [LinkedIn/Meta state pairs](../../../server/routes-oauth.ts) use the existing purpose-specific signing helper and reject invalid/future timestamps. | Exact sign/verify: configured success, missing secret, tampering, expiry and rotation; purpose separation. Existing stateless nonce handling is not a single-use state store. Functional providers stay deferred. |
-| V1-088 | Ten lazy-encryption readers could overwrite renewed credentials. [Storage](../../../server/storage.ts) conditions each migration on original identity, absent ciphertext and original plaintext values. | Ten real-PostgreSQL interleavings preserve concurrently renewed encrypted tokens. Getters can return their earlier read snapshot; this correction prevents persisted rollback. Live reconnect/legacy inventory remains external. |
-| V1-123 | Shared service-account resources were not bound to customers. [Storage policy](../../../server/storage.ts) joins consistent campaign/client ownership and checks exact owner/client/provider/resource grants from optional environment configuration or internal operator records. Three [connect routes](../../../server/routes-oauth.ts) check before credential/provider access; GA4 create/update also check. Saved [GA4](../../../server/utils/ga4-service-account.ts), [Sheets](../../../server/utils/google-sheets-service-account.ts) and [Ads](../../../server/utils/google-ads-service-account.ts) hydration checks before cached/new shared-token use. Connect denials return 403. | Fifteen exact-route cases; real-PostgreSQL owner/client/provider/resource/malformed/revocation controls; all three hydration helpers deny revoked grants before token use. Existing provider allowlists remain additional checks. [Database follow-up](DATABASE_GRANTS.md): 34 PostgreSQL checks, 141 focused tests and exact Ptomo database permission applied/verified. |
 
 ## Deployment prerequisites and changed contracts
 
@@ -168,3 +611,25 @@ Provider verification follows [SendGrid Inbound Parse security](https://www.twil
 Required external checks: deployed Clerk owner/foreign-owner/account switching; utility denials/quotas; exact resource grants and revocation in every worker; compatible encryption/TLS; signed valid/invalid/retry email and public attachment acceptance; read-only legacy plaintext, source provenance and log-exposure inventory; migration/restore/rollback; and Ptomo read-only sanity against the final deployed revision. None is completed by mocks.
 
 V1-014's complete analytics lifecycle/downstream matrix, original test failures, transfer/reprocessing defects, snapshot/report recovery and the other seven batches remain release blockers. Batch 1 is not whole-app or future-source certification. Its owner/resource, immutable-parent, signature/replay, transaction, cache and credential-race safeguards are reusable within the existing architecture; each future provider still needs independent permissions, metrics, attribution, dates, pagination and quota validation.
+
+## Historical progress notes moved from the index
+
+These October 20 notes are retained as checkpoints. The current status above and later deployment evidence supersede their next-step instructions.
+
+**Post-deployment Ptomo visual check:** after following Campaign Overview -> Connected Platform -> Google Analytics -> View Detailed Analytics, the user reported **"it looks normal"**. The basic analytics page-load/display check is **PASSED (user-reported)**. [Exact evidence boundary](DATABASE_GRANTS.md#post-deployment-user-visual-check): this does not verify individual values, reporting dates, a new refresh, customer OAuth consent or cross-account isolation. No release finding is closed by this visual check.
+
+**Ptomo freshness follow-up:** the user reported **Oct 20, 2026, 08:14 PM GMT+2** as the GA4 metrics' last successful update. This is before the confirmed Batch 1 deployment at 11:01 PM GMT+2, so a successful refresh with the new runtime remains unverified. The timestamp is not, by itself, a failure. The next live check must follow the deployed **Scheduled refreshes** value shown in Overview. No source or campaign changes were requested for this check.
+
+**Screenshot-confirmed schedule:** the supplied Ptomo image shows **08:00, 14:00, 20:00 Europe/Amsterdam**, native and financial data through **Oct 19**, and respective last successful updates **Oct 20 at 20:14 and 20:15 GMT+2**. The next configured slot after this review is **Oct 21 at 08:00 Amsterdam**. After completion, check the same two publication timestamps and data-through dates. [Evidence and limits](DATABASE_GRANTS.md#post-deployment-user-visual-check) retain post-deployment refresh as pending; no assumed completion duration or readiness claim is made.
+
+**Deployment checkpoint, 2026-10-20:** the complete corrected Batch 1 package was committed and pushed to `origin/main` as **`4522f83486a28ebbf1fe6152f1053fdc83565223`**, independently confirmed by `git ls-remote`. Migration 0023 and the exact Ptomo database grant are applied/verified. The manual Render grant step is removed. [Live health observations](database-grants-live-health.json) confirmed the same runtime SHA with HTTP 200/`ok:true` at 21:01:30 and 21:02:00 UTC. [Five protected anonymous GETs](database-grants-deployed-access.json) subsequently returned HTTP 401. The [deployment record](DATABASE_GRANTS.md) distinguishes the running commit from the later documentation-only `[skip render]` evidence commit. Authenticated Ptomo/provider acceptance remains unverified; the overall decision remains NO-GO.
+
+**Ptomo setup correction, 2026-10-20:** the user rejected the manual Render grant entry. The exact resource guard now also accepts internal operator-reviewed database grants, with no automatic approval of existing connections. Migration 0023 and one exact Ptomo grant were applied and verified through a fresh read-only connection; **no manual Render grant setup is required**. New customer onboarding remains Google OAuth. The current follow-up passes 34 PostgreSQL checks, 141 focused tests, TypeScript and build. The current full suite has **4,089 tests: 3,907 passed, 182 failed, zero skipped**; every failure matches the earlier packet with no new identities or changed first messages. All failures remain open. [Current implementation and evidence](DATABASE_GRANTS.md) supersede the historical environment-only deployment hold below. Commit/push is next; no release item is closed.
+
+**Google configuration update, 2026-10-20:** the user confirmed that both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are listed in Render. App-wide setting presence is therefore user-reported, while secret values, redirect configuration and live Google consent remain unverified. The customer-onboarding correction is committed as `4550381ba32fc4869b219d2e904fa74b86a083aa`; the normal OAuth path requires no per-customer Render grant. Push remains held because the reviewed setting needed to preserve Ptomo's existing shared-account connection has not been confirmed saved. No runtime or production-data change accompanies this status update. See [the current onboarding record](ONBOARDING_IMPACT.md).
+
+**Commit/deployment update, 2026-10-20:** implementation commit `c1248a875af9c8eea1289a824a0e903e599ab174` remains unpushed. The user confirmed Render uses this repository's `DATABASE_URL`. [Migration 0022 was applied and verified](deployment-migration.json), including a [fresh read-only check](deployment-postmigration.json). The [live public health observation](deployment-health-after-migration.json) returned HTTP 200 and revision `777aae6f6353e998d60b635d3e66b413093117c2`. [Ptomo has one active GA4 service-account connection](deployment-ptomo-configuration.json). The user reports `TOKEN_ENCRYPTION_KEY` is present in Render and `SERVICE_ACCOUNT_RESOURCE_GRANTS` is absent. The existing key will remain unchanged. The exact Ptomo grant has been prepared locally; the authorized auto-deploy push is held until that setting is saved. Setting presence is user-reported; secret contents and deployed decryption have not been inspected. See [the deployment record](README.md#confirmed-database-and-migration). **Onboarding correction:** after the user rejected per-customer Render setup, the local candidate now defaults campaign creation to customer Google sign-in and skips shared-account status requests in that mode. The three-line correction passes 13 browser/handler checks, 138 focused tests, TypeScript and build. [Current evidence and limits](ONBOARDING_IMPACT.md) distinguish it from the earlier full-suite packet. Customer OAuth requires no per-customer resource grants; app-wide Google configuration/live consent remain unverified. Existing Ptomo shared access still needs its one reviewed grant or separately authorized reconnect before deployment.
+
+Batch 1 code corrections are IMPLEMENTED; the specified local boundaries are verified. Deployment/configuration/provider acceptance remains outstanding. Its [implementation and validation record](README.md) retains the original failing evidence separately from new regression results. No item is closed for release.
+
+**2026-10-20 Batch 1 handoff:** all 20 code corrections are implemented and committed as `c1248a8`, but remain unpushed and undeployed. Targeted checks **137/137**, PostgreSQL checks **23/23**, browser checks **7/7**, provider-log checks **3/3** and shared-service-account route cases **15/15** pass; TypeScript/build/diff checks pass. The [final full suite](full-suite-final.json) has **4,088 tests: 3,906 pass, 182 fail, zero skipped**. [Every failure is reconciled](failure-reconciliation.json), including two changed assertion messages; none is waived or closed. There are no new failing test identities. This is not a passing release suite. Required migration, configuration, provider, historical-exposure and deployed acceptance remain explicit in each row and the detailed record.

@@ -1,0 +1,78 @@
+{
+  "at": "2026-10-21T07:33:07.462Z",
+  "phase": "after",
+  "expectedCommit": "839bf508bffea4742f992616753dc68eabcfab3e",
+  "boundary": "Public health, anonymous GET authorization checks and Ptomo-only read-only SQL. No owner browser session, provider refresh, record edits or synthetic customer data.",
+  "health": {
+    "status": 200,
+    "ok": true,
+    "commit": "839bf508bffea4742f992616753dc68eabcfab3e"
+  },
+  "anonymous": [
+    {
+      "path": "/api/clients",
+      "status": 401
+    },
+    {
+      "path": "/api/campaigns",
+      "status": 401
+    },
+    {
+      "path": "/api/metrics",
+      "status": 401
+    },
+    {
+      "path": "/api/integrations",
+      "status": 401
+    },
+    {
+      "path": "/api/attribution/models",
+      "status": 401
+    }
+  ],
+  "readOnly": true,
+  "ptomo": {
+    "ownerMatchesClient": true,
+    "configurationSha256": "866f1fa5f5018f8ffc396ddc38ee7d70217d9aeddc960ee63efb38f561711441",
+    "status": "active",
+    "currency": "EUR",
+    "timeZone": "Europe/Amsterdam",
+    "connectionCount": 1,
+    "activeConnectionCount": 1,
+    "connectionConfigurationSha256": "9f23c12e76856a368fae220b5e964ace9fb3b608254c231a882b18ce582faddd",
+    "exactServiceAccountGrantCount": 1,
+    "daily": {
+      "rows": 47,
+      "first_date": "2026-09-04",
+      "last_date": "2026-10-20",
+      "last_update": "2026-10-21 06:10:26.547"
+    },
+    "overview": {
+      "window_start": "2026-09-04",
+      "window_end": "2026-10-20",
+      "updated_at": "2026-10-21 06:10:26.732"
+    },
+    "financial": {
+      "reporting_date": "2026-10-20",
+      "recorded_at": "2026-10-21 06:11:03.368598"
+    },
+    "campaignAndConnectionPreserved": true
+  },
+  "databaseTimeZone": "UTC",
+  "timestampRepresentation": "PostgreSQL timestamp without time zone cast to text; no workstation timezone conversion",
+  "schema": {
+    "creationRequests": true,
+    "indexes": [
+      "campaign_creation_requests_scope_unique",
+      "ga4_daily_metrics_campaign_property_date_unique",
+      "google_ads_daily_metrics_campaign_date_unique",
+      "linkedin_daily_metrics_campaign_date_unique",
+      "meta_daily_metrics_campaign_date_unique"
+    ],
+    "clientForeignKey": {
+      "convalidated": false,
+      "definition": "FOREIGN KEY (client_id) REFERENCES clients(id) NOT VALID"
+    }
+  },
+  "result": "PASS"
+}

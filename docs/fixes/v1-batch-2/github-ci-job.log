@@ -1,0 +1,385 @@
+2026-10-21T07:27:55.5340028Z Current runner version: '2.337.0'
+2026-10-21T07:27:55.5366190Z ##[group]Runner Image Provisioner
+2026-10-21T07:27:55.5367113Z Hosted Compute Agent
+2026-10-21T07:27:55.5368349Z Version: 20261015.610
+2026-10-21T07:27:55.5369089Z Commit: 267fdb4e8bbec4ab5ea31367f3a00d5c480c7656
+2026-10-21T07:27:55.5369937Z Build Date: 2026-10-14T17:06:54Z
+2026-10-21T07:27:55.5370763Z Worker ID: {288e030a-9284-41e1-a1d8-c13cc9eb5043}
+2026-10-21T07:27:55.5371528Z Region: eastus
+2026-10-21T07:27:55.5372167Z Cloud: Azure
+2026-10-21T07:27:55.5372752Z ##[endgroup]
+2026-10-21T07:27:55.5374368Z ##[group]Operating System
+2026-10-21T07:27:55.5375164Z Ubuntu
+2026-10-21T07:27:55.5375748Z 24.04.5
+2026-10-21T07:27:55.5376344Z LTS
+2026-10-21T07:27:55.5376932Z ##[endgroup]
+2026-10-21T07:27:55.5377968Z ##[group]Runner Image
+2026-10-21T07:27:55.5378760Z Image: ubuntu-24.04
+2026-10-21T07:27:55.5379387Z Version: 20261018.339.1
+2026-10-21T07:27:55.5380760Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261018.339/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-21T07:27:55.5382377Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261018.339
+2026-10-21T07:27:55.5383908Z ##[endgroup]
+2026-10-21T07:27:55.5385106Z ##[group]GITHUB_TOKEN Permissions
+2026-10-21T07:27:55.5387655Z Contents: read
+2026-10-21T07:27:55.5388385Z Metadata: read
+2026-10-21T07:27:55.5389090Z ##[endgroup]
+2026-10-21T07:27:55.5391287Z Secret source: Actions
+2026-10-21T07:27:55.5392424Z Cache mode: write
+2026-10-21T07:27:55.5393462Z Prepare workflow directory
+2026-10-21T07:27:55.5738789Z Prepare all required actions
+2026-10-21T07:27:55.5788901Z Getting action download info
+2026-10-21T07:27:55.7953419Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-10-21T07:27:55.9149450Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+2026-10-21T07:27:56.1133192Z Complete job name: unit-tests
+2026-10-21T07:27:56.1951581Z ##[group]Run actions/checkout@v4
+2026-10-21T07:27:56.1952508Z with:
+2026-10-21T07:27:56.1952943Z   fetch-depth: 0
+2026-10-21T07:27:56.1953432Z   repository: CrazySkillz/MF_real_latest
+2026-10-21T07:27:56.1957131Z   token: ***
+2026-10-21T07:27:56.1957793Z   ssh-strict: true
+2026-10-21T07:27:56.1958253Z   ssh-user: git
+2026-10-21T07:27:56.1958711Z   persist-credentials: true
+2026-10-21T07:27:56.1959203Z   clean: true
+2026-10-21T07:27:56.1959647Z   sparse-checkout-cone-mode: true
+2026-10-21T07:27:56.1960164Z   fetch-tags: false
+2026-10-21T07:27:56.1960602Z   show-progress: true
+2026-10-21T07:27:56.1961042Z   lfs: false
+2026-10-21T07:27:56.1961464Z   submodules: false
+2026-10-21T07:27:56.1961912Z   set-safe-directory: true
+2026-10-21T07:27:56.1962416Z   allow-unsafe-pr-checkout: false
+2026-10-21T07:27:56.1963208Z ##[endgroup]
+2026-10-21T07:27:56.3013335Z Syncing repository: CrazySkillz/MF_real_latest
+2026-10-21T07:27:56.3016028Z ##[group]Getting Git version info
+2026-10-21T07:27:56.3017626Z Working directory is '/home/runner/work/MF_real_latest/MF_real_latest'
+2026-10-21T07:27:56.3019408Z [command]/usr/bin/git version
+2026-10-21T07:27:56.3085028Z git version 2.55.0
+2026-10-21T07:27:56.3119096Z ##[endgroup]
+2026-10-21T07:27:56.3126954Z Temporarily overriding HOME='/home/runner/work/_temp/f73ac2b9-ee0c-4d35-82cd-4e15443e3182' before making global git config changes
+2026-10-21T07:27:56.3129643Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-21T07:27:56.3136926Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/MF_real_latest/MF_real_latest
+2026-10-21T07:27:56.3197891Z Deleting the contents of '/home/runner/work/MF_real_latest/MF_real_latest'
+2026-10-21T07:27:56.3203107Z ##[group]Initializing the repository
+2026-10-21T07:27:56.3207883Z [command]/usr/bin/git init /home/runner/work/MF_real_latest/MF_real_latest
+2026-10-21T07:27:56.3323858Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-21T07:27:56.3328207Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-21T07:27:56.3330438Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-21T07:27:56.3331759Z hint: call:
+2026-10-21T07:27:56.3332511Z hint:
+2026-10-21T07:27:56.3333460Z hint: 	git config --global init.defaultBranch <name>
+2026-10-21T07:27:56.3334625Z hint:
+2026-10-21T07:27:56.3335670Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-21T07:27:56.3337484Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-21T07:27:56.3338908Z hint:
+2026-10-21T07:27:56.3340960Z hint: 	git branch -m <name>
+2026-10-21T07:27:56.3341774Z hint:
+2026-10-21T07:27:56.3342836Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-21T07:27:56.3344693Z Initialized empty Git repository in /home/runner/work/MF_real_latest/MF_real_latest/.git/
+2026-10-21T07:27:56.3348056Z [command]/usr/bin/git remote add origin https://github.com/CrazySkillz/MF_real_latest
+2026-10-21T07:27:56.3398065Z ##[endgroup]
+2026-10-21T07:27:56.3399384Z ##[group]Disabling automatic garbage collection
+2026-10-21T07:27:56.3408253Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-21T07:27:56.3440259Z ##[endgroup]
+2026-10-21T07:27:56.3441535Z ##[group]Setting up auth
+2026-10-21T07:27:56.3447865Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-21T07:27:56.3487466Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-21T07:27:56.3883715Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-21T07:27:56.3935849Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-21T07:27:56.4203214Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-21T07:27:56.4247094Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-21T07:27:56.4498696Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-21T07:27:56.4548309Z ##[endgroup]
+2026-10-21T07:27:56.4549305Z ##[group]Fetching the repository
+2026-10-21T07:27:56.4558862Z [command]/usr/bin/git -c protocol.version=2 fetch --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/*
+2026-10-21T07:28:04.6836768Z From https://github.com/CrazySkillz/MF_real_latest
+2026-10-21T07:28:04.6839014Z  * [new branch]        audit/budget-financial-current-main -> origin/audit/budget-financial-current-main
+2026-10-21T07:28:04.6842019Z  * [new branch]        claude/codebase-analysis-018TaKyGKiAG2FoNVkxRHHvq -> origin/claude/codebase-analysis-018TaKyGKiAG2FoNVkxRHHvq
+2026-10-21T07:28:04.6844816Z  * [new branch]        claude/examine-codebase-01H1afCixw7QYpoZLdDftNAc -> origin/claude/examine-codebase-01H1afCixw7QYpoZLdDftNAc
+2026-10-21T07:28:04.6848430Z  * [new branch]        claude/examine-codebase-01Q94YP2HdTtxkRLnUbqFtT4 -> origin/claude/examine-codebase-01Q94YP2HdTtxkRLnUbqFtT4
+2026-10-21T07:28:04.6852603Z  * [new branch]        docs/ga4-insights-findings-certificate-2026-09-18 -> origin/docs/ga4-insights-findings-certificate-2026-09-18
+2026-10-21T07:28:04.6855396Z  * [new branch]        fix/ga4-insights-chart-window -> origin/fix/ga4-insights-chart-window
+2026-10-21T07:28:04.6857512Z  * [new branch]        main       -> origin/main
+2026-10-21T07:28:04.6860930Z [command]/usr/bin/git branch --list --remote origin/main
+2026-10-21T07:28:04.6889662Z   origin/main
+2026-10-21T07:28:04.6901461Z [command]/usr/bin/git rev-parse refs/remotes/origin/main
+2026-10-21T07:28:04.6936400Z 839bf508bffea4742f992616753dc68eabcfab3e
+2026-10-21T07:28:04.6943696Z ##[endgroup]
+2026-10-21T07:28:04.6946691Z ##[group]Determining the checkout info
+2026-10-21T07:28:04.6949843Z ##[endgroup]
+2026-10-21T07:28:04.6951393Z [command]/usr/bin/git sparse-checkout disable
+2026-10-21T07:28:04.7020639Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-21T07:28:04.7062497Z ##[group]Checking out the ref
+2026-10-21T07:28:04.7065468Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-10-21T07:28:05.2554153Z Switched to a new branch 'main'
+2026-10-21T07:28:05.2558399Z branch 'main' set up to track 'origin/main'.
+2026-10-21T07:28:05.2639712Z ##[endgroup]
+2026-10-21T07:28:05.2694244Z [command]/usr/bin/git log -1 --format=%H
+2026-10-21T07:28:05.2730416Z 839bf508bffea4742f992616753dc68eabcfab3e
+2026-10-21T07:28:05.3013545Z ##[group]Run actions/setup-node@v4
+2026-10-21T07:28:05.3013954Z with:
+2026-10-21T07:28:05.3014232Z   node-version: 22
+2026-10-21T07:28:05.3014513Z   always-auth: false
+2026-10-21T07:28:05.3014808Z   check-latest: false
+2026-10-21T07:28:05.3017663Z   token: ***
+2026-10-21T07:28:05.3017990Z ##[endgroup]
+2026-10-21T07:28:05.4532162Z Found in cache @ /opt/hostedtoolcache/node/22.23.3/x64
+2026-10-21T07:28:05.4536087Z (node:2350) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-21T07:28:05.4537933Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-21T07:28:05.4540247Z ##[group]Environment details
+2026-10-21T07:28:07.9752245Z node: v22.23.3
+2026-10-21T07:28:07.9753209Z npm: 10.9.9
+2026-10-21T07:28:07.9753774Z yarn: 1.22.22
+2026-10-21T07:28:07.9754872Z ##[endgroup]
+2026-10-21T07:28:07.9974421Z ##[group]Run npm ci --ignore-scripts
+2026-10-21T07:28:07.9974840Z [36;1mnpm ci --ignore-scripts[0m
+2026-10-21T07:28:08.0221281Z shell: /usr/bin/bash -e {0}
+2026-10-21T07:28:08.0221605Z ##[endgroup]
+2026-10-21T07:28:10.3826874Z npm warn ERESOLVE overriding peer dependency
+2026-10-21T07:28:10.3828090Z npm warn While resolving: vite@7.3.0
+2026-10-21T07:28:10.3828796Z npm warn Found: @types/node@20.16.11
+2026-10-21T07:28:10.3829440Z npm warn node_modules/@types/node
+2026-10-21T07:28:10.3830158Z npm warn   dev @types/node@"20.16.11" from the root project
+2026-10-21T07:28:10.3831054Z npm warn   13 more (@types/body-parser, @types/connect, ...)
+2026-10-21T07:28:10.3831721Z npm warn
+2026-10-21T07:28:10.3832235Z npm warn Could not resolve dependency:
+2026-10-21T07:28:10.3833075Z npm warn peerOptional @types/node@"^20.19.0 || >=22.12.0" from vite@7.3.0
+2026-10-21T07:28:10.3833908Z npm warn node_modules/vitest/node_modules/vite
+2026-10-21T07:28:10.3834693Z npm warn   vite@"^6.0.0 || ^7.0.0" from vitest@4.0.16
+2026-10-21T07:28:10.3835326Z npm warn   node_modules/vitest
+2026-10-21T07:28:10.3835873Z npm warn   1 more (@vitest/mocker)
+2026-10-21T07:28:10.3836323Z npm warn
+2026-10-21T07:28:10.3836911Z npm warn Conflicting peer dependency: @types/node@26.6.5
+2026-10-21T07:28:10.3837868Z npm warn node_modules/@types/node
+2026-10-21T07:28:10.3838670Z npm warn   peerOptional @types/node@"^20.19.0 || >=22.12.0" from vite@7.3.0
+2026-10-21T07:28:10.3839520Z npm warn   node_modules/vitest/node_modules/vite
+2026-10-21T07:28:10.3840261Z npm warn     vite@"^6.0.0 || ^7.0.0" from vitest@4.0.16
+2026-10-21T07:28:10.3840665Z npm warn     node_modules/vitest
+2026-10-21T07:28:10.3841006Z npm warn     1 more (@vitest/mocker)
+2026-10-21T07:28:14.4409847Z npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+2026-10-21T07:28:14.5480020Z npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+2026-10-21T07:28:15.5415357Z npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+2026-10-21T07:30:11.9948114Z 
+2026-10-21T07:30:11.9952795Z added 765 packages, and audited 766 packages in 2m
+2026-10-21T07:30:11.9953451Z 
+2026-10-21T07:30:11.9953984Z 87 packages are looking for funding
+2026-10-21T07:30:11.9954695Z   run `npm fund` for details
+2026-10-21T07:30:12.3304650Z 
+2026-10-21T07:30:12.3305549Z 74 vulnerabilities (3 low, 32 moderate, 33 high, 6 critical)
+2026-10-21T07:30:12.3306615Z 
+2026-10-21T07:30:12.3306935Z To address issues that do not require attention, run:
+2026-10-21T07:30:12.3307778Z   npm audit fix
+2026-10-21T07:30:12.3307957Z 
+2026-10-21T07:30:12.3308295Z To address all issues possible (including breaking changes), run:
+2026-10-21T07:30:12.3308778Z   npm audit fix --force
+2026-10-21T07:30:12.3308958Z 
+2026-10-21T07:30:12.3309192Z Some issues need review, and may require choosing
+2026-10-21T07:30:12.3309598Z a different dependency.
+2026-10-21T07:30:12.3309777Z 
+2026-10-21T07:30:12.3309921Z Run `npm audit` for details.
+2026-10-21T07:30:12.4405311Z ##[group]Run npm run check:ga4-kpi-certification
+2026-10-21T07:30:12.4405803Z [36;1mnpm run check:ga4-kpi-certification[0m
+2026-10-21T07:30:12.4460134Z shell: /usr/bin/bash -e {0}
+2026-10-21T07:30:12.4460410Z ##[endgroup]
+2026-10-21T07:30:12.5544650Z 
+2026-10-21T07:30:12.5545317Z > rest-express@1.0.0 check:ga4-kpi-certification
+2026-10-21T07:30:12.5545953Z > tsx server/ga4-kpi-certification-gate.ts
+2026-10-21T07:30:12.5546247Z 
+2026-10-21T07:30:12.8407102Z [GA4 KPI certification] PASS: current status is internally consistent.
+2026-10-21T07:30:12.8735299Z ##[group]Run npm run test:current-version
+2026-10-21T07:30:12.8735905Z [36;1mnpm run test:current-version[0m
+2026-10-21T07:30:12.8792300Z shell: /usr/bin/bash -e {0}
+2026-10-21T07:30:12.8792586Z ##[endgroup]
+2026-10-21T07:30:12.9832528Z 
+2026-10-21T07:30:12.9833025Z > rest-express@1.0.0 test:current-version
+2026-10-21T07:30:12.9833882Z > tsx scripts/ga4-kpi-current-version-test-boundary.ts current
+2026-10-21T07:30:12.9834265Z 
+2026-10-21T07:30:16.3565894Z Sourcemap for "/home/runner/work/MF_real_latest/MF_real_latest/node_modules/node-cron/dist/esm/node-cron.js" points to missing source files
+2026-10-21T07:31:27.8251347Z JSON report written to /tmp/ga4-kpi-test-boundary-olxWTJ/vitest.json
+2026-10-21T07:31:27.9770269Z [current-version] Full test execution completed.
+2026-10-21T07:31:27.9771675Z [current-version] Total 4154; passed 3285; failed 172.
+2026-10-21T07:31:27.9773006Z [current-version] Blocking current-version failures: 142
+2026-10-21T07:31:27.9775128Z - server/alert-email-immediate-route-regression.test.ts: immediate alert email route durability regression guard awaits durable immediate attempts before campaign KPI create/update routes return
+2026-10-21T07:31:27.9778271Z - server/alert-email-immediate-route-regression.test.ts: immediate alert email route durability regression guard awaits durable immediate attempts before Benchmark create/update routes return
+2026-10-21T07:31:27.9781104Z - server/campaign-cumulative-financials.test.ts: authoritative cumulative campaign financial resolver is shared by the read-only Budget API and scheduler-owned gated writer
+2026-10-21T07:31:27.9783783Z - server/csv-revenue-transaction.test.ts: GA4 CSV revenue transaction rollback retains the last valid source metadata and records when replacement insertion fails
+2026-10-21T07:31:27.9786392Z - server/csv-revenue-transaction.test.ts: GA4 CSV revenue transaction rollback does not retain a newly created source when its record insertion fails
+2026-10-21T07:31:27.9788799Z - server/csv-revenue-transaction.test.ts: GA4 CSV revenue transaction rollback does not delete records when the source update fails
+2026-10-21T07:31:27.9790937Z - server/csv-revenue-transaction.test.ts: GA4 CSV revenue transaction rollback restores source metadata when old-record deletion fails
+2026-10-21T07:31:27.9793072Z - server/csv-revenue-transaction.test.ts: GA4 CSV revenue transaction rollback rejects an overlapping edit before deleting last-good records
+2026-10-21T07:31:27.9795598Z - server/csv-spend-validation.test.ts: GA4 Overview Upload CSV spend validation packet atomically replaces the source and records before campaign recompute
+2026-10-21T07:31:27.9798533Z - server/financial-daily-snapshot-observation.test.ts: financial daily snapshot observation keeps the GET route read-only and connects the gated writer after either refresh
+2026-10-21T07:31:27.9830638Z - server/ga4-aggregate-saved-overview.test.ts: ordered GA4 campaign snapshot saved financial inputs records the same GA4 financial inputs as Overview despite a newer provider response
+2026-10-21T07:31:27.9833481Z - server/ga4-aggregate-saved-overview.test.ts: ordered GA4 campaign snapshot saved financial inputs excludes today's external revenue from the completed-day campaign snapshot
+2026-10-21T07:31:27.9836275Z - server/ga4-aggregate-saved-overview.test.ts: ordered GA4 campaign snapshot saved financial inputs retains the previous campaign snapshot if the final getSpendTotalForRange read fails
+2026-10-21T07:31:27.9839406Z - server/ga4-aggregate-saved-overview.test.ts: ordered GA4 campaign snapshot saved financial inputs retains the previous campaign snapshot if the final getRevenueTotalForRange read fails
+2026-10-21T07:31:27.9842259Z - server/ga4-aggregate-saved-overview.test.ts: ordered GA4 campaign snapshot saved financial inputs retains the previous campaign snapshot if the final getRevenueSources read fails
+2026-10-21T07:31:27.9845593Z - server/ga4-aggregate-saved-overview.test.ts: ordered GA4 campaign snapshot saved financial inputs retains the previous campaign snapshot if the final getRevenueBreakdownBySource read fails
+2026-10-21T07:31:27.9849270Z - server/ga4-aggregate-saved-overview.test.ts: ordered GA4 campaign snapshot saved financial inputs keeps the previous snapshot on failure and records a later coherent revision
+2026-10-21T07:31:27.9852103Z - server/ga4-aggregate-saved-overview.test.ts: ordered GA4 campaign snapshot saved financial inputs preserves genuine zero native revenue and unavailable CPA with zero conversions
+2026-10-21T07:31:27.9854961Z - server/ga4-aggregate-saved-overview.test.ts: ordered GA4 campaign snapshot saved financial inputs keeps financial values cumulative while preserving the existing traffic window
+2026-10-21T07:31:27.9857735Z - server/ga4-aggregate-saved-overview.test.ts: ordered GA4 campaign snapshot saved financial inputs preserves the existing unfiltered aggregate path
+2026-10-21T07:31:27.9860435Z - server/ga4-aggregate-saved-overview.test.ts: ordered GA4 campaign snapshot saved financial inputs preserves the existing simulation aggregate path
+2026-10-21T07:31:27.9862636Z - server/ga4-aggregate-saved-overview.test.ts: ordered GA4 campaign snapshot saved financial inputs keeps ordinary non-GA4 snapshots working and defers ordinary GA4 calls
+2026-10-21T07:31:27.9864290Z - server/ga4-benchmark-history-idempotency.test.ts: GA4 Benchmark automatic history idempotency updates the same automatic entry to 80.00 without changing its identity or date
+2026-10-21T07:31:27.9865857Z - server/ga4-benchmark-history-idempotency.test.ts: GA4 Benchmark automatic history idempotency updates the same automatic entry to 0.00 without changing its identity or date
+2026-10-21T07:31:27.9867861Z - server/ga4-benchmark-history-idempotency.test.ts: GA4 Benchmark automatic history idempotency updates the same automatic entry to 120.00 without changing its identity or date
+2026-10-21T07:31:27.9870873Z - server/ga4-benchmark-history-idempotency.test.ts: GA4 Benchmark automatic history idempotency updates only the exact Benchmark/date/scope and preserves manual history and recordedAt
+2026-10-21T07:31:27.9873513Z - server/ga4-benchmark-history-idempotency.test.ts: GA4 Benchmark automatic history idempotency creates separate automatic entries for other dates, scopes and Benchmarks
+2026-10-21T07:31:27.9875209Z - server/ga4-benchmark-history-idempotency.test.ts: GA4 Benchmark automatic history idempotency uses the revised history in average variance, trend and latest rating
+2026-10-21T07:31:27.9878058Z - server/ga4-benchmark-history-idempotency.test.ts: GA4 Benchmark automatic history idempotency rejects ambiguous duplicate automatic entries without rewriting either
+2026-10-21T07:31:27.9880499Z - server/ga4-benchmark-history-idempotency.test.ts: GA4 Benchmark automatic history idempotency retains the saved entry and reports a failed update on failure
+2026-10-21T07:31:27.9882838Z - server/ga4-benchmark-history-idempotency.test.ts: GA4 Benchmark automatic history idempotency retains the saved entry and reports a failed update on missing row
+2026-10-21T07:31:27.9885959Z - server/ga4-benchmark-history-idempotency.test.ts: GA4 Benchmark automatic history idempotency stores one logical row when concurrent recomputes record the same date and scope with final value 120.00
+2026-10-21T07:31:27.9888610Z - server/ga4-benchmark-history-idempotency.test.ts: GA4 Benchmark automatic history idempotency stores one logical row when concurrent recomputes record the same date and scope with final value 80.00
+2026-10-21T07:31:27.9890093Z - server/ga4-benchmark-history-idempotency.test.ts: GA4 Benchmark automatic history idempotency keeps manually recorded history append-only
+2026-10-21T07:31:27.9891411Z - server/ga4-benchmark-history-idempotency.test.ts: GA4 Benchmark automatic history idempotency fails closed before inserting history for a missing Benchmark
+2026-10-21T07:31:27.9892985Z - server/ga4-benchmark-persistence-destructive-safety.test.ts: GA4 Benchmark persistence and destructive safety atomically hides the exact notification and deletes Benchmark history and parent
+2026-10-21T07:31:27.9894792Z - server/ga4-benchmark-persistence-destructive-safety.test.ts: GA4 Benchmark persistence and destructive safety rolls every change back when the notification stage fails
+2026-10-21T07:31:27.9896323Z - server/ga4-benchmark-persistence-destructive-safety.test.ts: GA4 Benchmark persistence and destructive safety rolls every change back when the history stage fails
+2026-10-21T07:31:27.9898162Z - server/ga4-benchmark-persistence-destructive-safety.test.ts: GA4 Benchmark persistence and destructive safety rolls every change back when the parent stage fails
+2026-10-21T07:31:27.9899748Z - server/ga4-benchmark-persistence-destructive-safety.test.ts: GA4 Benchmark persistence and destructive safety fails closed before mutation when notification campaign scope does not match
+2026-10-21T07:31:27.9901347Z - server/ga4-benchmark-regression.test.ts: GA4 Benchmark regression guard runs benchmark alert checks in the immediate post-refresh path and keeps stored benchmark currentValue fresh on rerun
+2026-10-21T07:31:27.9902779Z - server/ga4-benchmark-safety-regression.test.ts: GA4 Benchmark safety regression guard fails closed for ownerless campaigns across the GA4 Benchmark lifecycle
+2026-10-21T07:31:27.9904164Z - server/ga4-daily-scheduler-regression.test.ts: GA4 daily scheduler timing fetches and persists daily values for the exact saved property and campaign scope
+2026-10-21T07:31:27.9905626Z - server/ga4-insights-auth-scope-regression.test.ts: GA4 Insights authentication and tenant scope imports the initial scoped GA4 metrics before activating a new campaign
+2026-10-21T07:31:27.9908374Z - server/ga4-insights-auth-scope-regression.test.ts: GA4 Insights authentication and tenant scope fails the directly consumed Google Ads OAuth path closed by tenant and production signing configuration
+2026-10-21T07:31:27.9911728Z - server/ga4-insights-production-path.test.ts: GA4 Insights production calendar paths atomically removes absent provider dates inside only the requested campaign/property window
+2026-10-21T07:31:27.9914903Z - server/ga4-kpi-custom-preservation-regression.test.ts: GA4 custom KPI recompute preservation bounds history reads to four and preserves ordered writes and alert completion
+2026-10-21T07:31:27.9917766Z - server/ga4-kpi-custom-preservation-regression.test.ts: GA4 custom KPI recompute preservation keeps a rejected KPI history read isolated to its exact row
+2026-10-21T07:31:27.9920468Z - server/ga4-kpi-custom-preservation-regression.test.ts: GA4 custom KPI recompute preservation preserves Benchmark current-value writes and failure reporting when history fails
+2026-10-21T07:31:27.9923305Z - server/ga4-kpi-custom-preservation-regression.test.ts: GA4 custom KPI recompute preservation does not overwrite custom or unsupported KPI rows during the shared GA4 recompute job
+2026-10-21T07:31:27.9926224Z - server/ga4-kpi-financial-window-regression.test.ts: GA4 KPI persisted financial source window persists KPI financial current values from source totals through the same completed report date
+2026-10-21T07:31:27.9929593Z - server/ga4-kpi-financial-window-regression.test.ts: GA4 KPI persisted financial source window uses the saved GA4 import boundary for financial values when no campaign start is configured
+2026-10-21T07:31:27.9931946Z - server/ga4-kpi-financial-window-regression.test.ts: GA4 KPI persisted financial source window uses the fixed legacy import boundary when no saved import start is available
+2026-10-21T07:31:27.9933498Z - server/ga4-kpi-financial-window-regression.test.ts: GA4 KPI persisted financial source window updates Benchmark current values and the exact requested history date even when a newer entry exists
+2026-10-21T07:31:27.9935059Z - server/ga4-kpi-persistence-destructive-safety.test.ts: GA4 KPI Commit 9 persistence and destructive safety atomically hides the exact notification and deletes every KPI child table
+2026-10-21T07:31:27.9936781Z - server/ga4-kpi-persistence-destructive-safety.test.ts: GA4 KPI Commit 9 persistence and destructive safety rolls notification and earlier child changes back when a child delete fails
+2026-10-21T07:31:27.9938786Z - server/ga4-kpi-persistence-destructive-safety.test.ts: GA4 KPI Commit 9 persistence and destructive safety leaves the KPI and every child row retryable when notification hiding fails
+2026-10-21T07:31:27.9941300Z - server/ga4-kpi-persistence-destructive-safety.test.ts: GA4 KPI Commit 9 persistence and destructive safety rolls all changes back when the parent delete loses a concurrent race
+2026-10-21T07:31:27.9942870Z - server/ga4-kpi-persistence-destructive-safety.test.ts: GA4 KPI Commit 9 persistence and destructive safety fails closed before mutation when notification campaign scope does not match
+2026-10-21T07:31:27.9944424Z - server/ga4-kpi-real-path-parity-regression.test.ts: GA4 KPI real-path cross-consumer parity persists the same fixture through the actual GA4 daily job and exposes it through the KPI API
+2026-10-21T07:31:27.9945943Z - server/ga4-kpi-real-path-parity-regression.test.ts: GA4 KPI real-path cross-consumer parity updates the exact scoped same-date KPI progress row when its source total changes
+2026-10-21T07:31:27.9947625Z - server/ga4-kpi-real-path-parity-regression.test.ts: GA4 KPI real-path cross-consumer parity fails a KPI closed when scoped same-date progress is ambiguous
+2026-10-21T07:31:27.9949128Z - server/ga4-kpi-real-path-parity-regression.test.ts: GA4 KPI real-path cross-consumer parity uses a last-good row for current-value reconciliation without inventing target-day history
+2026-10-21T07:31:27.9950651Z - server/ga4-kpi-real-path-parity-regression.test.ts: GA4 KPI real-path cross-consumer parity keeps date-dimension Engagement Rate authoritative when the dimensionless aggregate differs
+2026-10-21T07:31:27.9952171Z - server/ga4-kpi-real-path-parity-regression.test.ts: GA4 KPI real-path cross-consumer parity exposes scoped running and failed refresh attempts while keeping saved daily values visible
+2026-10-21T07:31:27.9953753Z - server/ga4-kpi-real-path-parity-regression.test.ts: GA4 KPI real-path cross-consumer parity uses provider zero in the job and requires its matching publication before enriching Notifications
+2026-10-21T07:31:27.9955279Z - server/ga4-kpi-real-path-parity-regression.test.ts: GA4 KPI real-path cross-consumer parity preserves last-good financial rows only when their required source read is unavailable
+2026-10-21T07:31:27.9956851Z - server/ga4-kpi-real-path-parity-regression.test.ts: GA4 KPI real-path cross-consumer parity feeds the fixture through the shared direct, test-send, manual, and scheduled report preflight/builder
+2026-10-21T07:31:27.9958668Z - server/ga4-kpi-real-path-parity-regression.test.ts: GA4 KPI real-path cross-consumer parity returns exact failed KPI IDs and blocks every shared report preflight when a selected write fails
+2026-10-21T07:31:27.9960207Z - server/ga4-kpi-real-path-parity-regression.test.ts: GA4 KPI real-path cross-consumer parity returns exact skipped KPI IDs and blocks preserved last-good financial rows from reports
+2026-10-21T07:31:27.9962240Z - server/ga4-kpi-real-path-parity-regression.test.ts: GA4 KPI real-path cross-consumer parity persists every supported Benchmark alias through the actual daily job and preserves custom values
+2026-10-21T07:31:27.9963728Z - server/ga4-kpi-real-path-parity-regression.test.ts: GA4 KPI real-path cross-consumer parity preserves last-good traffic Benchmarks when the reporting-window read fails
+2026-10-21T07:31:27.9965228Z - server/ga4-kpi-real-path-parity-regression.test.ts: GA4 KPI real-path cross-consumer parity returns exact failed Benchmark IDs and blocks report preflight when a selected write fails
+2026-10-21T07:31:27.9967035Z - server/ga4-kpi-real-path-parity-regression.test.ts: GA4 KPI real-path cross-consumer parity includes freshly recomputed Benchmark conclusions in the actual scheduled Insights PDF
+2026-10-21T07:31:27.9969769Z - server/ga4-kpi-regression.test.ts: GA4 KPI regression guard allows GA4 KPI alert reconciliation to consider enabled breaches and disabled stale alerts
+2026-10-21T07:31:27.9972515Z - server/ga4-kpi-reporting-window-regression.test.ts: GA4 KPI authoritative reporting window persists cumulative traffic values while CPA uses import-window financial conversions
+2026-10-21T07:31:27.9975291Z - server/ga4-overview-campaign-breakdown-regression.test.ts: GA4 Overview Campaign Breakdown retains last-good rows and refetches on reload, focus, reconnect, and interval
+2026-10-21T07:31:27.9978429Z - server/ga4-overview-conversion-events-regression.test.ts: GA4 Overview Conversion Events certification boundary refreshes on reload, focus, reconnect, and interval without cross-scope placeholder data
+2026-10-21T07:31:27.9980194Z - server/ga4-overview-landing-pages-regression.test.ts: GA4 Overview Landing Pages certification boundary refreshes on reload, focus, reconnect, and interval without cross-scope placeholder data
+2026-10-21T07:31:27.9981748Z - server/ga4-overview-scheduler-snapshot-regression.test.ts: GA4 Overview scheduler snapshot contract commits daily facts and the complete Overview payload in one transaction
+2026-10-21T07:31:27.9983079Z - server/ga4-overview-spend-transaction.test.ts: GA4 Overview Spend atomic replacement edits CSV in place and replaces only same-campaign records
+2026-10-21T07:31:27.9984320Z - server/ga4-overview-spend-transaction.test.ts: GA4 Overview Spend atomic replacement rolls CSV metadata and last-good records back when insertion fails
+2026-10-21T07:31:27.9985626Z - server/ga4-overview-spend-transaction.test.ts: GA4 Overview Spend atomic replacement edits Google Sheets in place and rolls last-good data back on insertion failure
+2026-10-21T07:31:27.9986967Z - server/ga4-overview-spend-transaction.test.ts: GA4 Overview Spend atomic replacement does not retain a newly added Google Sheets source when record insertion fails
+2026-10-21T07:31:27.9988990Z - server/ga4-publication-browser.test.ts: GA4 publication in the rendered page updates an open page after completion, retains failed data, and pauses hidden polling
+2026-10-21T07:31:27.9990194Z - server/ga4-published-reader.test.ts: published GA4 readers keeps diagnostic totals and provenance on the published values
+2026-10-21T07:31:27.9991295Z - server/ga4-published-reader.test.ts: published GA4 readers keeps native-only GA4 diagnostics on saved figures with persistedOnly=undefined
+2026-10-21T07:31:27.9992406Z - server/ga4-published-reader.test.ts: published GA4 readers keeps native-only GA4 diagnostics on saved figures with persistedOnly=0
+2026-10-21T07:31:27.9993485Z - server/ga4-published-reader.test.ts: published GA4 readers keeps native-only GA4 diagnostics on saved figures with persistedOnly=1
+2026-10-21T07:31:27.9994499Z - server/ga4-published-reader.test.ts: published GA4 readers withholds mixed diagnostic figures: missing publication
+2026-10-21T07:31:27.9995527Z - server/ga4-published-reader.test.ts: published GA4 readers withholds mixed diagnostic figures: new imported revenue
+2026-10-21T07:31:27.9996688Z - server/ga4-published-reader.test.ts: published GA4 readers withholds mixed diagnostic figures: changed publication
+2026-10-21T07:31:27.9998273Z - server/ga4-published-reader.test.ts: published GA4 readers withholds mixed diagnostic figures: failed source read
+2026-10-21T07:31:27.9999536Z - server/ga4-scheduler-observability-regression.test.ts: GA4 scheduler and scheduled report observability keeps the on-demand scheduler trigger owner-guarded and campaign-scoped
+2026-10-21T07:31:28.0001079Z - server/ga4-source-lifecycle-recompute-regression.test.ts: GA4 source lifecycle recompute route guards keeps spend source process recomputes after durable source totals and before responses
+2026-10-21T07:31:28.0002581Z - server/google-ads-ga4-spend-disconnect-transaction.test.ts: GA4 Google Ads Spend disconnect transaction removes only the GA4 Spend source, rows, and dedicated connection
+2026-10-21T07:31:28.0004061Z - server/google-ads-ga4-spend-disconnect-transaction.test.ts: GA4 Google Ads Spend disconnect transaction rolls back source and daily-row removal if connection deletion fails
+2026-10-21T07:31:28.0005690Z - server/google-ads-ga4-spend-disconnect-transaction.test.ts: GA4 Google Ads Spend disconnect transaction disconnects a saved Spend-only OAuth connection before a source exists
+2026-10-21T07:31:28.0007500Z - server/google-ads-ga4-spend-disconnect-transaction.test.ts: GA4 Google Ads Spend disconnect transaction clears dedicated daily rows when a disconnected source has already lost its connection
+2026-10-21T07:31:28.0009162Z - server/google-ads-ga4-spend-disconnect-transaction.test.ts: GA4 Google Ads Spend disconnect transaction removes a legacy Spend-only connection without touching another campaign
+2026-10-21T07:31:28.0011693Z - server/google-ads-production-regression.test.ts: Google Ads production readiness regression guard keeps GA4 Overview Google Ads spend production-only and out of test mode
+2026-10-21T07:31:28.0013100Z - server/google-ads-revenue-scheduler-flow.test.ts: Google Ads revenue scheduler flow includes Google Ads revenue sources in refreshable provider context loops
+2026-10-21T07:31:28.0014398Z - server/google-ads-revenue-scheduler-flow.test.ts: Google Ads revenue scheduler flow keeps Google Ads auto-refresh source-scoped with stable source IDs
+2026-10-21T07:31:28.0015998Z - server/google-ads-spend-lifecycle-downstream.test.ts: Google Ads GA4 Overview spend lifecycle and downstream regression guard feeds GA4 Overview financial values from source-backed spend totals into Profit, ROAS, ROI, and CPA
+2026-10-21T07:31:28.0017958Z - server/google-sheets-aggregate-source.test.ts: Google Sheets aggregate source adapter filters Google Sheets spend totals by google_sheets platformContext for derived financial cards
+2026-10-21T07:31:28.0019415Z - server/google-sheets-ga4-disconnect-transaction.test.ts: GA4 Google Sheets atomic disconnect removes every GA4 Sheets source and connection while preserving other scopes
+2026-10-21T07:31:28.0020744Z - server/google-sheets-ga4-disconnect-transaction.test.ts: GA4 Google Sheets atomic disconnect preserves a connection shared with an active spend source
+2026-10-21T07:31:28.0022409Z - server/google-sheets-ga4-disconnect-transaction.test.ts: GA4 Google Sheets atomic disconnect rolls back every state change when the source boundary fails
+2026-10-21T07:31:28.0024161Z - server/google-sheets-ga4-disconnect-transaction.test.ts: GA4 Google Sheets atomic disconnect rolls back every state change when the records boundary fails
+2026-10-21T07:31:28.0025470Z - server/google-sheets-ga4-disconnect-transaction.test.ts: GA4 Google Sheets atomic disconnect rolls back every state change when the connection boundary fails
+2026-10-21T07:31:28.0027022Z - server/google-sheets-ga4-spend-disconnect-transaction.test.ts: GA4 Google Sheets Spend atomic disconnect removes every GA4 Sheets Spend source and unused connection while preserving other scopes and Revenue
+2026-10-21T07:31:28.0029078Z - server/google-sheets-ga4-spend-disconnect-transaction.test.ts: GA4 Google Sheets Spend atomic disconnect rolls back every state change when the source boundary fails
+2026-10-21T07:31:28.0030698Z - server/google-sheets-ga4-spend-disconnect-transaction.test.ts: GA4 Google Sheets Spend atomic disconnect rolls back every state change when the records boundary fails
+2026-10-21T07:31:28.0032114Z - server/google-sheets-ga4-spend-disconnect-transaction.test.ts: GA4 Google Sheets Spend atomic disconnect rolls back every state change when the connection boundary fails
+2026-10-21T07:31:28.0033667Z - server/google-sheets-revenue-downstream-propagation.test.ts: GA4 Google Sheets revenue downstream propagation refreshes the same source transactionally without appending attribution detail twice
+2026-10-21T07:31:28.0035210Z - server/google-sheets-revenue-validation.test.ts: GA4 Overview Google Sheets revenue deterministic validation feeds the exact materialized source through current GA4 consumers
+2026-10-21T07:31:28.0036690Z - server/hubspot-mapping-downstream-matrix.test.ts: HubSpot GA4 mapping and downstream variant matrix keeps identical add, distinct add, edit, and scheduler source identity explicit
+2026-10-21T07:31:28.0038652Z - server/hubspot-pipeline-automation-ui.test.ts: HubSpot Pipeline Proxy automatic stage transition polls eligible GA4 HubSpot sources and requires a stage only when Pipeline Proxy is enabled
+2026-10-21T07:31:28.0040287Z - server/hubspot-revenue-ga4-overview-regression.test.ts: HubSpot revenue GA4 Overview regression guard scheduler reprocesses saved HubSpot revenue mappings with platform context and stable source IDs
+2026-10-21T07:31:28.0041894Z - server/hubspot-revenue-ga4-overview-regression.test.ts: HubSpot revenue GA4 Overview regression guard keeps HubSpot Pipeline Proxy scoped and separate from confirmed GA4 financial revenue
+2026-10-21T07:31:28.0044225Z - server/hubspot-revenue-ga4-overview-regression.test.ts: HubSpot revenue GA4 Overview regression guard excludes Pipeline Proxy from GA4 report artifacts while retaining its operational Overview card
+2026-10-21T07:31:28.0045979Z - server/hubspot-revenue-ga4-overview-regression.test.ts: HubSpot revenue GA4 Overview regression guard keeps HubSpot-backed GA4 KPI and Benchmark live formulas aligned with Overview financial revenue
+2026-10-21T07:31:28.0048377Z - server/hubspot-revenue-ga4-overview-regression.test.ts: HubSpot revenue GA4 Overview regression guard keeps server GA4 KPI and Benchmark persisted/current-value formulas additive with HubSpot imported revenue
+2026-10-21T07:31:28.0051557Z - server/instagram-connected-platforms-regression.test.ts: Instagram Connected Platforms regression guard renders the Instagram Connected Platforms card shell with guarded analytics exposure
+2026-10-21T07:31:28.0054146Z - server/instagram-create-campaign-flow-regression.test.ts: Instagram Create Campaign flow regression guard connects Instagram only through the test source-contract route
+2026-10-21T07:31:28.0056203Z - server/latest-day-revenue-regression.test.ts: Latest Day Revenue regression guard HubSpot refresh preserves the saved date field
+2026-10-21T07:31:28.0058325Z - server/latest-day-revenue-regression.test.ts: Latest Day Revenue regression guard Shopify revenue supports order tags as an attribution key
+2026-10-21T07:31:28.0060661Z - server/latest-day-revenue-regression.test.ts: Latest Day Revenue regression guard Salesforce refresh updates the saved revenue source instead of creating duplicates
+2026-10-21T07:31:28.0063264Z - server/linkedin-create-campaign-flow-regression.test.ts: LinkedIn Create Campaign flow regression guard refreshes LinkedIn source and aggregate queries after campaign activation
+2026-10-21T07:31:28.0065782Z - server/revenue-source-delete-transaction.test.ts: revenue source delete transaction deactivates the exact source and deletes only its campaign-scoped records
+2026-10-21T07:31:28.0068230Z - server/revenue-source-delete-transaction.test.ts: revenue source delete transaction rolls source deactivation back when record deletion fails
+2026-10-21T07:31:28.0070408Z - server/revenue-source-delete-transaction.test.ts: revenue source delete transaction does not touch records when source deactivation fails
+2026-10-21T07:31:28.0072877Z - server/revenue-source-delete-transaction.test.ts: revenue source delete transaction retains last-good records when an optimistic source replacement conflicts
+2026-10-21T07:31:28.0075104Z - server/salesforce-pagination.test.ts: Salesforce bounded query pagination validates fields and fully escapes Salesforce revenue query literals
+2026-10-21T07:31:28.0077883Z - server/salesforce-pipeline-automation-ui.test.ts: Salesforce Pipeline Proxy automatic refresh and provenance refreshes pipeline-enabled and revenue-only sources while preserving stable IDs
+2026-10-21T07:31:28.0080797Z - server/salesforce-pipeline-automation-ui.test.ts: Salesforce Pipeline Proxy automatic refresh and provenance itemizes only confirmed Salesforce Opportunity totals inside the provider source row
+2026-10-21T07:31:28.0083363Z - server/salesforce-zero-revenue-safety.test.ts: Salesforce GA4 zero-revenue safety preserves zero as available through reload and downstream totals while the card stays hidden
+2026-10-21T07:31:28.0086080Z - server/shopify-downstream-content-regression.test.ts: Shopify downstream value/content regression guard persists GA4 KPI and Benchmark row values from the Shopify imported revenue total
+2026-10-21T07:31:28.0088919Z - server/shopify-revenue-regression.test.ts: Shopify revenue regression guard keeps Shopify refresh out of the UI while exposing a guarded source-scoped scheduler validation trigger
+2026-10-21T07:31:28.0091281Z - server/shopify-revenue-regression.test.ts: Shopify revenue regression guard keeps Shopify save portable across campaign and mapping variants
+2026-10-21T07:31:28.0093249Z - server/shopify-revenue-regression.test.ts: Shopify revenue regression guard shows mapped campaign label under Shopify in GA4 revenue sources modal
+2026-10-21T07:31:28.0095365Z - server/shopify-revenue-regression.test.ts: Shopify revenue regression guard uses renewable expiring offline tokens for Shopify OAuth without changing Admin token connections
+2026-10-21T07:31:28.0096872Z [current-version] Visible non-blocking deferred failures: 30
+2026-10-21T07:31:28.0099005Z - server/google-ads-production-regression.test.ts: Google Ads production readiness regression guard preserves selected Google Ads campaign filtering across UI, API, aggregate, scheduler, and snapshots
+2026-10-21T07:31:28.0101571Z - server/google-ads-production-regression.test.ts: Google Ads production readiness regression guard keeps disconnect and reconnect campaign-scoped so stale Google Ads rows cannot reseed the source
+2026-10-21T07:31:28.0104238Z - server/google-ads-production-regression.test.ts: Google Ads production readiness regression guard routes GA4 Overview Google Ads spend through production OAuth customer selection and provider refresh
+2026-10-21T07:31:28.0106770Z - server/google-ads-report-regression.test.ts: Google Ads report regression guard keeps scheduled Google Ads reports discoverable by the scheduler
+2026-10-21T07:31:28.0109093Z - server/google-ads-revenue-csv-flow.test.ts: Google Ads revenue CSV flow admits Google Ads for CSV revenue processing through the shared platform validator
+2026-10-21T07:31:28.0110852Z - server/google-ads-revenue-csv-flow.test.ts: Google Ads revenue CSV flow passes the Google Ads context and campaign scope from the shared CSV wizard path
+2026-10-21T07:31:28.0112322Z - server/google-ads-revenue-platform-context.test.ts: Google Ads revenue platform context adds Google Ads to storage revenue context filtering without routing non-GA4 totals through LinkedIn
+2026-10-21T07:31:28.0114474Z - server/google-ads-revenue-platform-context.test.ts: Google Ads revenue platform context permits Google Ads on revenue read and manual source endpoints
+2026-10-21T07:31:28.0116336Z - server/google-ads-revenue-sheets-flow.test.ts: Google Ads revenue Google Sheets flow admits Google Ads for Google Sheets revenue routes through the shared platform validator
+2026-10-21T07:31:28.0118196Z - server/google-ads-revenue-sheets-flow.test.ts: Google Ads revenue Google Sheets flow passes Google Ads context, purpose, source identity, campaign scope, and date mapping from the shared wizard
+2026-10-21T07:31:28.0119865Z - server/google-ads-revenue-shopify-flow.test.ts: Google Ads revenue Shopify flow admits Google Ads for Shopify revenue save through the shared platform validator
+2026-10-21T07:31:28.0121128Z - server/google-ads-revenue-shopify-flow.test.ts: Google Ads revenue Shopify flow keeps Google Ads Shopify imports revenue-only and source-scoped
+2026-10-21T07:31:28.0122503Z - server/google-ads-revenue-shopify-flow.test.ts: Google Ads revenue Shopify flow materializes Google Ads Shopify per-campaign revenue for exact IDs or explicit active campaign mappings
+2026-10-21T07:31:28.0123809Z - server/google-ads-revenue-shopify-flow.test.ts: Google Ads revenue Shopify flow fails closed for stale or wrong Shopify revenue source IDs
+2026-10-21T07:31:28.0125174Z - server/google-ads-revenue-shopify-flow.test.ts: Google Ads revenue Shopify flow passes Google Ads context, source identity, attribution boundary, and revenue-only settings from the wizard
+2026-10-21T07:31:28.0126770Z - server/google-ads-revenue-wizard-context.test.ts: Google Ads revenue wizard context lets the shared revenue wizard carry a Google Ads context without changing GA4 defaults
+2026-10-21T07:31:28.0128763Z - server/google-ads-revenue-wizard-context.test.ts: Google Ads revenue wizard context passes Google Ads through provider wizard prop contracts
+2026-10-21T07:31:28.0130042Z - server/google-ads-revenue-wizard-context.test.ts: Google Ads revenue wizard context allows Google Ads revenue Google Sheets purpose and shared write validation
+2026-10-21T07:31:28.0131536Z - server/instagram-connected-platforms-regression.test.ts: Instagram Connected Platforms regression guard keeps Create Campaign Instagram finalization gated by selected test-mode source scope
+2026-10-21T07:31:28.0133178Z - server/instagram-connected-platforms-regression.test.ts: Instagram Connected Platforms regression guard allows Instagram as a validated financial platform context without adding refresh behavior
+2026-10-21T07:31:28.0134796Z - server/instagram-connected-platforms-regression.test.ts: Instagram Connected Platforms regression guard allows Instagram revenue wizards to map only persisted selected Instagram campaigns
+2026-10-21T07:31:28.0136342Z - server/instagram-connected-platforms-regression.test.ts: Instagram Connected Platforms regression guard uses only instagram_api source identity for Instagram-scoped manual spend
+2026-10-21T07:31:28.0138125Z - server/instagram-connected-platforms-regression.test.ts: Instagram Connected Platforms regression guard resolves Instagram Overview revenue only from Instagram-scoped revenue sources
+2026-10-21T07:31:28.0139586Z - server/meta-production-regression.test.ts: Meta production readiness regression guard supports exact Meta campaign mapping for imported revenue sources
+2026-10-21T07:31:28.0140989Z - server/meta-production-regression.test.ts: Meta production readiness regression guard keeps the Create Campaign confirm Back button on platform selection instead of re-entering OAuth
+2026-10-21T07:31:28.0142375Z - server/source-safety-regression.test.ts: source safety regression guards ad-platform spend routes preserve source identity for Meta and Google Ads edits
+2026-10-21T07:31:28.0143675Z - server/source-safety-regression.test.ts: source safety regression guards Google Ads disconnect route is campaign-scoped and fails closed when no row is deleted
+2026-10-21T07:31:28.0145073Z - server/source-safety-regression.test.ts: source safety regression guards Google Ads scheduler fails closed before refreshing missing campaigns or spend-only test-mode connections
+2026-10-21T07:31:28.0146495Z - server/tiktok-create-campaign-regression.test.ts: TikTok Create Campaign source-contract regression guard reads TikTok analytics from selected persisted rows only
+2026-10-21T07:31:28.0148104Z - server/tiktok-create-campaign-regression.test.ts: TikTok Create Campaign source-contract regression guard supports TikTok campaign mapping in shared revenue imports
+2026-10-21T07:31:28.0160986Z ##[error]Process completed with exit code 1.
+2026-10-21T07:31:28.0315636Z Post job cleanup.
+2026-10-21T07:31:28.1267800Z [command]/usr/bin/git version
+2026-10-21T07:31:28.1319706Z git version 2.55.0
+2026-10-21T07:31:28.1365004Z Temporarily overriding HOME='/home/runner/work/_temp/d94061ca-c5f3-4a44-96cd-b8b560107904' before making global git config changes
+2026-10-21T07:31:28.1367547Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-21T07:31:28.1372853Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/MF_real_latest/MF_real_latest
+2026-10-21T07:31:28.1424171Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-21T07:31:28.1469124Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-21T07:31:28.1740987Z fatal: No url found for submodule path 'MetricMind' in .gitmodules
+2026-10-21T07:31:28.1785780Z ##[warning]The process '/usr/bin/git' failed with exit code 128
+2026-10-21T07:31:28.2004281Z Cleaning up orphan processes
+2026-10-21T07:31:28.2363325Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-node@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

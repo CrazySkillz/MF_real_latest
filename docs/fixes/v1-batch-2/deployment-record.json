@@ -1,0 +1,19 @@
+{
+  "implementationCommit": "839bf508bffea4742f992616753dc68eabcfab3e",
+  "pushed": true,
+  "at": "2026-10-21T07:31:01.851Z",
+  "state": "DEPLOYED_BASIC_CHECKS_PASS_FULL_ACCEPTANCE_OPEN",
+  "remoteBranch": "main",
+  "privateBackupCommitted": false,
+  "unrelatedFilesCommitted": false,
+  "pushWarning": "Configured credential-manager-core helper was missing; the existing fallback authenticated successfully and push exited0.",
+  "deployedCommit": "839bf508bffea4742f992616753dc68eabcfab3e",
+  "deployedVerifiedAt": "2026-10-21T07:33:07.462Z",
+  "liveDatabaseCheck": "PASS",
+  "publicSignupNavigation": "PASS",
+  "ptomoPreservation": "PASS",
+  "ciConclusion": "FAIL; same172identities as prior commit; all remain open",
+  "releaseDecision": "NO-GO",
+  "nextConfiguredPtomoRefresh": "2026-10-21 14:00 Europe/Amsterdam; verify after completion",
+  "noProductionDataCleanupPerformed": true
+}

@@ -1,0 +1,256 @@
+{
+  "expectedCommit": "839bf508bffea4742f992616753dc68eabcfab3e",
+  "observations": [
+    {
+      "at": "2026-10-21T07:28:37.257Z",
+      "expectedCommit": "839bf508bffea4742f992616753dc68eabcfab3e",
+      "githubHttp": 200,
+      "github": {
+        "state": "pending",
+        "statuses": []
+      },
+      "healthStatus": 200,
+      "observedCommit": "4522f83486a28ebbf1fe6152f1053fdc83565223",
+      "healthOk": true,
+      "expectedRuntimeLive": false
+    },
+    {
+      "at": "2026-10-21T07:29:08.141Z",
+      "expectedCommit": "839bf508bffea4742f992616753dc68eabcfab3e",
+      "githubHttp": 200,
+      "github": {
+        "state": "pending",
+        "statuses": []
+      },
+      "checkRuns": [
+        {
+          "name": "unit-tests",
+          "status": "in_progress",
+          "conclusion": null,
+          "startedAt": "2026-10-21T07:27:54Z",
+          "completedAt": null,
+          "detailsUrl": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/39562151735/job/119095712385"
+        }
+      ],
+      "deployments": [],
+      "healthStatus": 200,
+      "observedCommit": "4522f83486a28ebbf1fe6152f1053fdc83565223",
+      "healthOk": true,
+      "expectedRuntimeLive": false
+    },
+    {
+      "at": "2026-10-21T07:30:00.587Z",
+      "expectedCommit": "839bf508bffea4742f992616753dc68eabcfab3e",
+      "githubHttp": 200,
+      "github": {
+        "state": "pending",
+        "statuses": []
+      },
+      "checkRuns": [
+        {
+          "name": "unit-tests",
+          "status": "in_progress",
+          "conclusion": null,
+          "startedAt": "2026-10-21T07:27:54Z",
+          "completedAt": null,
+          "detailsUrl": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/39562151735/job/119095712385"
+        }
+      ],
+      "deployments": [],
+      "healthStatus": 200,
+      "observedCommit": "4522f83486a28ebbf1fe6152f1053fdc83565223",
+      "healthOk": true,
+      "expectedRuntimeLive": false
+    },
+    {
+      "at": "2026-10-21T07:31:04.511Z",
+      "expectedCommit": "839bf508bffea4742f992616753dc68eabcfab3e",
+      "githubHttp": 200,
+      "github": {
+        "state": "pending",
+        "statuses": []
+      },
+      "checkRuns": [
+        {
+          "name": "unit-tests",
+          "status": "in_progress",
+          "conclusion": null,
+          "startedAt": "2026-10-21T07:27:54Z",
+          "completedAt": null,
+          "detailsUrl": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/39562151735/job/119095712385"
+        }
+      ],
+      "deployments": [],
+      "healthStatus": 200,
+      "observedCommit": "4522f83486a28ebbf1fe6152f1053fdc83565223",
+      "healthOk": true,
+      "expectedRuntimeLive": false
+    },
+    {
+      "at": "2026-10-21T07:31:39.261Z",
+      "expectedCommit": "839bf508bffea4742f992616753dc68eabcfab3e",
+      "githubHttp": 200,
+      "github": {
+        "state": "pending",
+        "statuses": []
+      },
+      "checkRuns": [
+        {
+          "name": "unit-tests",
+          "status": "in_progress",
+          "conclusion": null,
+          "startedAt": "2026-10-21T07:27:54Z",
+          "completedAt": null,
+          "detailsUrl": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/39562151735/job/119095712385"
+        }
+      ],
+      "deployments": [],
+      "jobs": [
+        {
+          "name": "unit-tests",
+          "status": "completed",
+          "conclusion": "failure",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-node@v4",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm ci --ignore-scripts",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm run check:ga4-kpi-certification",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm run test:current-version",
+              "status": "completed",
+              "conclusion": "failure"
+            },
+            {
+              "name": "Retained deferred-source evidence (non-blocking)",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Post Run actions/setup-node@v4",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ],
+      "healthStatus": 200,
+      "observedCommit": "4522f83486a28ebbf1fe6152f1053fdc83565223",
+      "healthOk": true,
+      "expectedRuntimeLive": false
+    },
+    {
+      "at": "2026-10-21T07:32:48.615Z",
+      "expectedCommit": "839bf508bffea4742f992616753dc68eabcfab3e",
+      "githubHttp": 200,
+      "github": {
+        "state": "pending",
+        "statuses": []
+      },
+      "checkRuns": [
+        {
+          "name": "unit-tests",
+          "status": "completed",
+          "conclusion": "failure",
+          "startedAt": "2026-10-21T07:27:54Z",
+          "completedAt": "2026-10-21T07:31:29Z",
+          "detailsUrl": "https://github.com/CrazySkillz/MF_real_latest/actions/runs/39562151735/job/119095712385"
+        }
+      ],
+      "deployments": [],
+      "jobs": [
+        {
+          "name": "unit-tests",
+          "status": "completed",
+          "conclusion": "failure",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-node@v4",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm ci --ignore-scripts",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm run check:ga4-kpi-certification",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm run test:current-version",
+              "status": "completed",
+              "conclusion": "failure"
+            },
+            {
+              "name": "Retained deferred-source evidence (non-blocking)",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Post Run actions/setup-node@v4",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ],
+      "healthStatus": 200,
+      "observedCommit": "839bf508bffea4742f992616753dc68eabcfab3e",
+      "healthOk": true,
+      "expectedRuntimeLive": true
+    }
+  ]
+}

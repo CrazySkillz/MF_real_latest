@@ -13,10 +13,18 @@
   "newUnresolvedTestFailures": 0,
   "batch2ScratchSchemasRemaining": 0,
   "isolatedPostgresStopped": true,
-  "committed": false,
-  "pushed": false,
-  "deployed": false,
+  "committed": true,
+  "pushed": true,
+  "deployed": true,
   "databaseDeploymentPreflight": "PASS within recorded boundary; Render default timing configuration user-confirmed",
   "databaseDeploymentEvidence": "deployment-preflight-summary.json",
-  "productionCloneRemoved": true
+  "productionCloneRemoved": true,
+  "implementationCommit": "839bf508bffea4742f992616753dc68eabcfab3e",
+  "deployedVerificationAt": "2026-10-21T07:33:07.462Z",
+  "publicSignupNavigation": "PASS",
+  "ptomoCampaignAndConnectionPreserved": true,
+  "liveSchema": "PASS",
+  "remainingLocalAuditFailures": 182,
+  "combinedLocalAndCiOpenFailureIdentities": 183,
+  "newCiFailureIdentitiesVersusPriorCommit": 0
 }

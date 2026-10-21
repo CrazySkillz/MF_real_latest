@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-21T07:33:25.291Z",
+  "expectedCommit": "839bf508bffea4742f992616753dc68eabcfab3e",
+  "boundary": "Anonymous deployed Clerk form navigation only; no customer account/session creation or form submission.",
+  "appWritesBlocked": 0,
+  "signInLinkPath": "/sign-in",
+  "finalPath": "/sign-in",
+  "result": "PASS"
+}

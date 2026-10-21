@@ -1,0 +1,13 @@
+{
+  "backup": {
+    "startedAt": "2026-10-21T06:53:52.586Z",
+    "productionReadOnly": true,
+    "tlsVerification": true,
+    "format": "pg_dump custom archive, AES-256-GCM; key CurrentUser DPAPI; directory user-only ACL; excluded by local .gitignore"
+  },
+  "error": {
+    "mode": "backup",
+    "code": "backup_EXIT_1",
+    "at": "2026-10-21T06:53:53.391Z"
+  }
+}

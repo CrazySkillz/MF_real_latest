@@ -37,6 +37,8 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   const [isTestMode, setIsTestMode] = useState(false);
   const [properties, setProperties] = useState<GA4Property[]>([]);
   const [selectedProperty, setSelectedProperty] = useState('');
+  const [pendingConnectionId, setPendingConnectionId] = useState('');
+  const [isSelectingProperty, setIsSelectingProperty] = useState(false);
 
   // Lookback window — how many days of historical data to import
   const [lookbackDays, setLookbackDays] = useState<number>(30);
@@ -48,7 +50,9 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
   const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(false);
   const [didLoadCampaigns, setDidLoadCampaigns] = useState(false);
   const [manualCampaignInput, setManualCampaignInput] = useState('');
-  const selectableGa4CampaignFilter = getSelectableGA4CampaignFilter(ga4CampaignFilter, availableCampaigns);
+  const [manualCampaignNames, setManualCampaignNames] = useState<string[]>([]);
+  const [campaignDiscoveryError, setCampaignDiscoveryError] = useState('');
+  const selectableGa4CampaignFilter = getSelectableGA4CampaignFilter(ga4CampaignFilter, availableCampaigns, manualCampaignNames);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -71,6 +75,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
         if (!mounted) return;
         // Already authenticated but no property selected — jump to property selector
         if (data.connected && !data.propertyId) {
+          setPendingConnectionId(data.pendingConnectionId || '');
           const validProps = (data.properties || []).filter((p: GA4Property) => p.id);
           console.log('[GA4Flow] Mount: connected but no propertyId, validProps:', validProps.length);
           if (validProps.length > 0) {
@@ -126,13 +131,13 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       const resp = await fetch(`/api/campaigns/${campaignId}/ga4-campaign-values?${params}`);
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json?.success) {
-        console.warn('[GA4] Campaign values fetch failed:', json?.error || resp.status);
-        return;
+        throw new Error('Google Analytics could not load the campaign list. Retry or enter exact UTM campaign names.');
       }
       const rows = Array.isArray(json.campaigns) ? json.campaigns : [];
       setAvailableCampaigns(rows);
+      setCampaignDiscoveryError('');
     } catch (err) {
-      console.warn('[GA4] Campaign values fetch error:', err);
+      setCampaignDiscoveryError('Google Analytics could not load the campaign list. Retry or enter exact UTM campaign names.');
     } finally {
       setIsLoadingCampaigns(false);
     }
@@ -193,6 +198,8 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
     console.log('[GA4Flow] postMessage received:', { type, propertiesCount: (propertyList || []).length, error });
 
     if (type === 'ga4_auth_success') {
+      if (event.data.campaignId !== campaignId) return;
+      setPendingConnectionId(event.data.pendingConnectionId || '');
       const validProperties = (propertyList || []).filter((p: GA4Property) => p.id);
       console.log('[GA4Flow] Auth success! validProperties:', validProperties.length, validProperties.map((p: GA4Property) => p.id));
       if (validProperties.length > 0) {
@@ -290,6 +297,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
 
   // Select property and advance to campaign filter
   const handlePropertySelection = async () => {
+    if (isSelectingProperty) return;
     if (!selectedProperty) {
       toast({ title: 'Property Required', description: 'Please select a GA4 property.', variant: 'destructive' });
       return;
@@ -322,18 +330,20 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
       }
     }
 
+    setIsSelectingProperty(true);
     try {
       console.log('[GA4Flow] Selecting property:', selectedProperty, 'for campaign:', campaignId);
       const response = await fetch('/api/ga4/select-property', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ campaignId, propertyId: selectedProperty, lookbackDays }),
+        body: JSON.stringify({ campaignId, propertyId: selectedProperty, lookbackDays, pendingConnectionId }),
       });
       const data = await response.json();
       console.log('[GA4Flow] select-property response:', JSON.stringify(data));
 
-      if (data.success) {
+      if (response.ok && data.success) {
+        setPendingConnectionId('');
         console.log('[GA4Flow] Property selected! Invalidating queries and advancing to filter step');
         // Invalidate so badge updates to "Connected" immediately
         queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'connected-platforms'] });
@@ -351,10 +361,29 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
         description: error.message || 'Failed to connect property. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      setIsSelectingProperty(false);
     }
   };
 
-  // ==================== FILTER STEP ====================
+  const cancelPropertySelection = async () => {
+    if (isSelectingProperty) return;
+    setIsSelectingProperty(true);
+    try {
+      if (pendingConnectionId) {
+        const response = await fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/ga4-oauth-pending/${encodeURIComponent(pendingConnectionId)}`, { method: 'DELETE', credentials: 'include' });
+        if (!response.ok && response.status !== 404) throw new Error('Could not cancel Google authorization. Please retry.');
+      }
+      setPendingConnectionId('');
+      setProperties([]);
+      setStep('idle');
+    } catch (error: any) {
+      toast({ title: 'Cancellation failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsSelectingProperty(false);
+    }
+  };
+
   if (step === 'filter') {
     return (
       <Card className="w-full max-w-2xl">
@@ -393,7 +422,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                     Clear
                   </Button>
                   <span className="text-xs text-muted-foreground ml-auto">
-                    {selectableGa4CampaignFilter.length} of {availableCampaigns.length} selected
+                    {selectableGa4CampaignFilter.length} selected
                   </span>
                 </div>
                 <div className="max-h-60 overflow-y-auto border rounded-md p-2 space-y-1">
@@ -421,21 +450,10 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                   })}
                 </div>
               </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  No UTM campaigns found in this GA4 property for the last 30 days. You can retry or add campaign names manually.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setDidLoadCampaigns(false);
-                    setAvailableCampaigns([]);
-                  }}
-                >
-                  Retry
-                </Button>
+            ) : !campaignDiscoveryError && !isLoadingCampaigns ? <p className="text-sm text-muted-foreground">No UTM campaigns found for this period.</p> : null}
+            {campaignDiscoveryError && <p role="alert" className="text-sm text-destructive">{campaignDiscoveryError}</p>}
+            <Button variant="outline" size="sm" disabled={isLoadingCampaigns} onClick={() => void loadGa4CampaignValues()}>Retry campaign list</Button>
+            <div className="space-y-3">
                 <div className="space-y-2">
                   <div className="flex gap-2">
                     <Input
@@ -448,6 +466,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                           const name = manualCampaignInput.trim();
                           if (!ga4CampaignFilter.includes(name)) {
                             setGa4CampaignFilter(prev => [...prev, name]);
+                            setManualCampaignNames(prev => Array.from(new Set([...prev, name])));
                           }
                           setManualCampaignInput('');
                         }
@@ -461,6 +480,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                         const name = manualCampaignInput.trim();
                         if (name && !ga4CampaignFilter.includes(name)) {
                           setGa4CampaignFilter(prev => [...prev, name]);
+                          setManualCampaignNames(prev => Array.from(new Set([...prev, name])));
                         }
                         setManualCampaignInput('');
                       }}
@@ -484,7 +504,6 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
                   )}
                 </div>
               </div>
-            )}
           </div>
           <div className="flex gap-2">
             <Button className="flex-1" onClick={saveCampaignFilter} disabled={isSavingFilter || isLoadingCampaigns}>
@@ -554,11 +573,11 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
               <div className="flex gap-2">
                 <Button
                   onClick={handlePropertySelection}
-                  disabled={!selectedProperty}
+                  disabled={!selectedProperty || isSelectingProperty}
                 >
                   Connect Property
                 </Button>
-                <Button variant="ghost" onClick={() => { setStep('idle'); setProperties([]); }}>
+                <Button variant="ghost" disabled={isSelectingProperty} onClick={() => void cancelPropertySelection()}>
                   Cancel
                 </Button>
               </div>
@@ -566,7 +585,7 @@ export function GA4ConnectionFlow({ campaignId, onConnectionSuccess }: GA4Connec
           ) : (
             <div className="text-sm text-muted-foreground">
               <p>No GA4 properties found. Make sure your Google account has access to a GA4 property.</p>
-              <Button variant="ghost" className="mt-2" onClick={() => setStep('idle')}>Back</Button>
+              <Button variant="ghost" className="mt-2" disabled={isSelectingProperty} onClick={() => void cancelPropertySelection()}>Back</Button>
             </div>
           )}
         </CardContent>

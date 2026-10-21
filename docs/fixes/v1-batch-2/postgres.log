@@ -1,0 +1,661 @@
+2026-10-21 00:24:47.705 CEST [34444] LOG:  starting PostgreSQL 18.0 on x86_64-windows, compiled by msvc-19.44.35215, 64-bit
+2026-10-21 00:24:47.707 CEST [34444] LOG:  listening on IPv4 address "127.0.0.1", port 55443
+2026-10-21 00:24:47.886 CEST [22300] LOG:  database system was shut down at 2026-10-20 22:55:57 CEST
+2026-10-21 00:24:47.928 CEST [34444] LOG:  database system is ready to accept connections
+2026-10-21 00:24:55.879 CEST [3792] WARNING:  there is already a transaction in progress
+2026-10-21 00:24:55.936 CEST [3792] WARNING:  there is no transaction in progress
+2026-10-21 00:24:56.086 CEST [3792] WARNING:  there is already a transaction in progress
+2026-10-21 00:24:56.093 CEST [3792] WARNING:  there is no transaction in progress
+2026-10-21 00:24:58.364 CEST [36196] WARNING:  there is already a transaction in progress
+2026-10-21 00:24:58.403 CEST [36196] WARNING:  there is no transaction in progress
+2026-10-21 00:24:58.519 CEST [19184] WARNING:  there is already a transaction in progress
+2026-10-21 00:24:58.543 CEST [19184] WARNING:  there is no transaction in progress
+2026-10-21 00:25:00.629 CEST [41328] WARNING:  there is already a transaction in progress
+2026-10-21 00:25:00.711 CEST [41328] WARNING:  there is no transaction in progress
+2026-10-21 00:25:00.939 CEST [41328] ERROR:  insert or update on table "campaigns" violates foreign key constraint "campaigns_client_id_clients_id_fk"
+2026-10-21 00:25:00.939 CEST [41328] DETAIL:  Key (client_id)=(missing-client) is not present in table "clients".
+2026-10-21 00:25:00.939 CEST [41328] STATEMENT:  INSERT INTO campaigns(name,client_id) VALUES('new orphan','missing-client')
+2026-10-21 00:25:03.053 CEST [23128] WARNING:  there is already a transaction in progress
+2026-10-21 00:25:03.115 CEST [23128] ERROR:  could not create unique index "ga4_daily_metrics_campaign_property_date_unique"
+2026-10-21 00:25:03.115 CEST [23128] DETAIL:  Key (campaign_id, property_id, date)=(duplicate, 123, 2026-10-20) is duplicated.
+2026-10-21 00:25:03.115 CEST [23128] STATEMENT:  -- Additive only. Duplicate business keys fail the transaction; never delete/merge facts here.
+	CREATE UNIQUE INDEX IF NOT EXISTS ga4_daily_metrics_campaign_property_date_unique
+	  ON ga4_daily_metrics (campaign_id, property_id, date);
+	CREATE UNIQUE INDEX IF NOT EXISTS linkedin_daily_metrics_campaign_date_unique
+	  ON linkedin_daily_metrics (campaign_id, date);
+	CREATE UNIQUE INDEX IF NOT EXISTS google_ads_daily_metrics_campaign_date_unique
+	  ON google_ads_daily_metrics (campaign_id, google_campaign_id, date);
+	CREATE UNIQUE INDEX IF NOT EXISTS meta_daily_metrics_campaign_date_unique
+	  ON meta_daily_metrics (campaign_id, meta_campaign_id, date);
+	
+	-- NOT VALID preserves any historical orphans for separately reviewed cleanup while
+	-- enforcing the parent boundary for every new insert/client change and client deletion.
+	DO $$ BEGIN
+	  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+	    WHERE conrelid = 'campaigns'::regclass AND conname = 'campaigns_client_id_clients_id_fk') THEN
+	    ALTER TABLE campaigns ADD CONSTRAINT campaigns_client_id_clients_id_fk
+	      FOREIGN KEY (client_id) REFERENCES clients(id) NOT VALID;
+	  END IF;
+	END $$;
+	
+2026-10-21 00:25:03.120 CEST [23128] WARNING:  there is no transaction in progress
+2026-10-21 00:25:46.100 CEST [20404] ERROR:  insert or update on table "campaigns" violates foreign key constraint "campaigns_client_id_clients_id_fk"
+2026-10-21 00:25:46.100 CEST [20404] DETAIL:  Key (client_id)=(missing-client) is not present in table "clients".
+2026-10-21 00:25:46.100 CEST [20404] STATEMENT:  INSERT INTO campaigns(name,client_id) VALUES('new orphan','missing-client')
+2026-10-21 00:25:48.222 CEST [40612] ERROR:  could not create unique index "ga4_daily_metrics_campaign_property_date_unique"
+2026-10-21 00:25:48.222 CEST [40612] DETAIL:  Key (campaign_id, property_id, date)=(duplicate, 123, 2026-10-20) is duplicated.
+2026-10-21 00:25:48.222 CEST [40612] STATEMENT:  -- Additive only. Duplicate business keys fail the transaction; never delete/merge facts here.
+	CREATE UNIQUE INDEX IF NOT EXISTS ga4_daily_metrics_campaign_property_date_unique
+	  ON ga4_daily_metrics (campaign_id, property_id, date);
+	CREATE UNIQUE INDEX IF NOT EXISTS linkedin_daily_metrics_campaign_date_unique
+	  ON linkedin_daily_metrics (campaign_id, date);
+	CREATE UNIQUE INDEX IF NOT EXISTS google_ads_daily_metrics_campaign_date_unique
+	  ON google_ads_daily_metrics (campaign_id, google_campaign_id, date);
+	CREATE UNIQUE INDEX IF NOT EXISTS meta_daily_metrics_campaign_date_unique
+	  ON meta_daily_metrics (campaign_id, meta_campaign_id, date);
+	
+	-- NOT VALID preserves any historical orphans for separately reviewed cleanup while
+	-- enforcing the parent boundary for every new insert/client change and client deletion.
+	DO $$ BEGIN
+	  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+	    WHERE conrelid = 'campaigns'::regclass AND conname = 'campaigns_client_id_clients_id_fk') THEN
+	    ALTER TABLE campaigns ADD CONSTRAINT campaigns_client_id_clients_id_fk
+	      FOREIGN KEY (client_id) REFERENCES clients(id) NOT VALID;
+	  END IF;
+	END $$;
+	
+2026-10-21 00:29:47.375 CEST [35540] LOG:  checkpoint starting: time
+2026-10-21 00:31:09.478 CEST [35540] LOG:  checkpoint complete: wrote 711 buffers (4.3%), wrote 5 SLRU buffers; 0 WAL file(s) added, 0 removed, 2 recycled; write=77.595 s, sync=2.013 s, total=82.104 s; sync files=2985, longest=0.008 s, average=0.001 s; distance=28145 kB, estimate=28145 kB; lsn=0/B4C4598, redo lsn=0/B4C4508
+2026-10-21 00:39:31.004 CEST [39460] ERROR:  insert or update on table "campaigns" violates foreign key constraint "campaigns_client_id_clients_id_fk"
+2026-10-21 00:39:31.004 CEST [39460] DETAIL:  Key (client_id)=(missing-client) is not present in table "clients".
+2026-10-21 00:39:31.004 CEST [39460] STATEMENT:  INSERT INTO campaigns(name,client_id) VALUES('new orphan','missing-client')
+2026-10-21 00:39:33.084 CEST [31180] ERROR:  could not create unique index "ga4_daily_metrics_campaign_property_date_unique"
+2026-10-21 00:39:33.084 CEST [31180] DETAIL:  Key (campaign_id, property_id, date)=(duplicate, 123, 2026-10-20) is duplicated.
+2026-10-21 00:39:33.084 CEST [31180] STATEMENT:  -- Additive only. Duplicate business keys fail the transaction; never delete/merge facts here.
+	CREATE UNIQUE INDEX IF NOT EXISTS ga4_daily_metrics_campaign_property_date_unique
+	  ON ga4_daily_metrics (campaign_id, property_id, date);
+	CREATE UNIQUE INDEX IF NOT EXISTS linkedin_daily_metrics_campaign_date_unique
+	  ON linkedin_daily_metrics (campaign_id, date);
+	CREATE UNIQUE INDEX IF NOT EXISTS google_ads_daily_metrics_campaign_date_unique
+	  ON google_ads_daily_metrics (campaign_id, google_campaign_id, date);
+	CREATE UNIQUE INDEX IF NOT EXISTS meta_daily_metrics_campaign_date_unique
+	  ON meta_daily_metrics (campaign_id, meta_campaign_id, date);
+	
+	-- NOT VALID preserves any historical orphans for separately reviewed cleanup while
+	-- enforcing the parent boundary for every new insert/client change and client deletion.
+	DO $$ BEGIN
+	  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+	    WHERE conrelid = 'campaigns'::regclass AND conname = 'campaigns_client_id_clients_id_fk') THEN
+	    ALTER TABLE campaigns ADD CONSTRAINT campaigns_client_id_clients_id_fk
+	      FOREIGN KEY (client_id) REFERENCES clients(id) NOT VALID;
+	  END IF;
+	END $$;
+	
+2026-10-21 00:39:47.701 CEST [35540] LOG:  checkpoint starting: time
+2026-10-21 00:42:06.492 CEST [35540] LOG:  checkpoint complete: wrote 808 buffers (4.9%), wrote 4 SLRU buffers; 0 WAL file(s) added, 0 removed, 1 recycled; write=133.601 s, sync=2.472 s, total=138.792 s; sync files=2107, longest=0.022 s, average=0.002 s; distance=19100 kB, estimate=27241 kB; lsn=0/CC8E7F8, redo lsn=0/C76B5F0
+2026-10-21 00:48:00.746 CEST [38428] ERROR:  new row for relation "ga4_refresh_work" violates check constraint "test_claim_failure"
+2026-10-21 00:48:00.746 CEST [38428] DETAIL:  Failing row contains (63338064-c0ac-478b-9829-4a1c0679891d, a, 2026-10-20 23:47:59.038+02, 2026-10-17, 721933d83439d2e95a3d4dedc3942c2fb51a11e98897e78b65c96e993cfd35a6, {"version": 1, "campaign": {"id": "a", "status": "active", "owne..., running, a6f33b02-9982-42a3-8a07-4bfd99ed70c3, 2026-10-21 00:50:00.741237+02, 2026-10-21 00:48:00.741238+02, null, 2026-10-21 00:48:00.741238+02, 1, null, t, null, f).
+2026-10-21 00:48:00.746 CEST [38428] STATEMENT:  update "ga4_refresh_work" set "status" = $1, "lease_token" = $2, "lease_expires_at" = clock_timestamp() + $3 * interval '1 millisecond', "started_at" = clock_timestamp(), "attempt_count" = "ga4_refresh_work"."attempt_count" + 1, "next_attempt_at" = $4, "updated_at" = clock_timestamp() where ("ga4_refresh_work"."id" = $5 and "ga4_refresh_work"."campaign_id" = $6 and "ga4_refresh_work"."status" = $7) returning "id", "campaign_id", "due_at", "reporting_date", "scope_hash", "scope", "status", "lease_token", "lease_expires_at", "started_at", "completed_at", "attempt_count", "next_attempt_at", "suppress_alerts", "retryable", "last_error", "updated_at"
+2026-10-21 00:48:03.852 CEST [38428] ERROR:  new row for relation "ga4_refresh_work" violates check constraint "ga4_refresh_work_state"
+2026-10-21 00:48:03.852 CEST [38428] DETAIL:  Failing row contains (c49166a9-f32e-4a31-a6e1-36b820cc1b4d, a, 2026-10-20 23:47:58.038+02, 2026-10-17, a28cc54c8a2fdbed97bc65a6a1ebd04c4e44eff291dcf7a1737fddd026980dbe, {"version": 1, "campaign": {"id": "a", "status": "active", "owne..., completed, 89e837fe-0e78-4e5b-a6e0-24bfc2bb8c0d, 2026-10-21 00:50:03.834219+02, 2026-10-21 00:48:03.83422+02, null, 2026-10-21 00:48:03.83422+02, 1, null, t, null, f).
+2026-10-21 00:48:03.852 CEST [38428] STATEMENT:  UPDATE ga4_refresh_work SET status='completed' WHERE id=$1
+2026-10-21 00:48:03.862 CEST [39880] ERROR:  duplicate key value violates unique constraint "ga4_refresh_work_running_campaign"
+2026-10-21 00:48:03.862 CEST [39880] DETAIL:  Key (campaign_id)=(a) already exists.
+2026-10-21 00:48:03.862 CEST [39880] STATEMENT:  UPDATE ga4_refresh_work SET status='running',lease_token='other',lease_expires_at=now()+interval '1 minute',started_at=now() WHERE id=$1
+2026-10-21 00:48:23.196 CEST [40784] WARNING:  there is no transaction in progress
+2026-10-21 00:48:24.226 CEST [40784] WARNING:  there is no transaction in progress
+2026-10-21 00:48:24.384 CEST [40784] ERROR:  invalid input syntax for type json
+2026-10-21 00:48:24.384 CEST [40784] DETAIL:  Token "invalid" is invalid.
+2026-10-21 00:48:24.384 CEST [40784] CONTEXT:  JSON data, line 1: invalid...
+2026-10-21 00:48:24.384 CEST [40784] STATEMENT:  update "notifications" set "read" = $1, "metadata" = (COALESCE(NULLIF("notifications"."metadata", '')::jsonb, '{}'::jsonb) || jsonb_build_object('dismissedAt', NOW(), 'dismissedBy', 'system', 'dismissalReason', 'campaign_deleted'))::text where "notifications"."campaign_id" = $2
+2026-10-21 00:48:24.993 CEST [40784] WARNING:  there is no transaction in progress
+2026-10-21 00:48:44.910 CEST [38920] ERROR:  new row for relation "kpis" violates check constraint "reject_current_value"
+2026-10-21 00:48:44.910 CEST [38920] DETAIL:  Failing row contains (kpi-a, a, google_analytics, performance, Sessions, sessions, manual, null, null, null, 100.00, 20.00, null, count, null, medium, tracking, monthly, 30, 7day, null, null, below, t, f, null, f, daily, null, all, null, 2026-10-21 00:48:44.826602, 2026-10-20 22:48:44.908).
+2026-10-21 00:48:44.910 CEST [38920] STATEMENT:  update "kpis" set "current_value" = $1, "updated_at" = $2 where "kpis"."id" = $3
+2026-10-21 00:48:56.387 CEST [32780] ERROR:  fixture overview failure
+2026-10-21 00:48:56.387 CEST [32780] CONTEXT:  PL/pgSQL function reject_overview() line 1 at RAISE
+2026-10-21 00:48:56.387 CEST [32780] STATEMENT:  insert into "ga4_overview_snapshots" ("id", "campaign_id", "property_id", "window_start", "window_end", "campaign_breakdown", "landing_pages", "conversion_events", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default) on conflict ("campaign_id","property_id") do update set "window_start" = $9, "window_end" = $10, "campaign_breakdown" = $11, "landing_pages" = $12, "conversion_events" = $13, "updated_at" = $14
+2026-10-21 00:49:01.829 CEST [22856] ERROR:  invalid input syntax for type numeric: "invalid decimal"
+2026-10-21 00:49:01.829 CEST [22856] CONTEXT:  unnamed portal parameter $4 = '...'
+2026-10-21 00:49:01.829 CEST [22856] STATEMENT:  insert into "spend_records" ("id", "campaign_id", "spend_source_id", "date", "spend", "currency", "source_type", "sub_campaign_urn", "created_at") values (default, $1, $2, $3, $4, $5, $6, default, default)
+2026-10-21 00:49:01.944 CEST [38116] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:49:01.985 CEST [22856] ERROR:  invalid input syntax for type numeric: "invalid decimal"
+2026-10-21 00:49:01.985 CEST [22856] CONTEXT:  unnamed portal parameter $4 = '...'
+2026-10-21 00:49:01.985 CEST [22856] STATEMENT:  insert into "revenue_records" ("id", "campaign_id", "revenue_source_id", "date", "revenue", "currency", "external_id", "source_type", "sub_campaign_urn", "created_at") values (default, $1, $2, $3, $4, $5, default, $6, default, default)
+2026-10-21 00:49:02.599 CEST [22856] WARNING:  there is no transaction in progress
+2026-10-21 00:49:02.818 CEST [22856] WARNING:  there is no transaction in progress
+2026-10-21 00:49:02.991 CEST [22856] WARNING:  there is no transaction in progress
+2026-10-21 00:49:08.095 CEST [28152] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:49:13.980 CEST [22448] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:49:17.167 CEST [22832] ERROR:  new row for relation "ga4_overview_snapshots" violates check constraint "test_rejected_payload"
+2026-10-21 00:49:17.167 CEST [22832] DETAIL:  Failing row contains (09acdd74-de14-425d-a24b-d2f8c7fbd93f, a, property-a, 2026-10-16, 2026-10-16, {"meta": {"dailyHistoryRefresh": {"scope": "new-scope", "version..., {}, {}, 2026-10-20 22:49:17.166, 2026-10-21 00:49:17.15826).
+2026-10-21 00:49:17.167 CEST [22832] STATEMENT:  insert into "ga4_overview_snapshots" ("id", "campaign_id", "property_id", "window_start", "window_end", "campaign_breakdown", "landing_pages", "conversion_events", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default) on conflict ("campaign_id","property_id") do update set "window_start" = $9, "window_end" = $10, "campaign_breakdown" = $11, "landing_pages" = $12, "conversion_events" = $13, "updated_at" = $14
+2026-10-21 00:49:17.624 CEST [22832] ERROR:  duplicate key value violates unique constraint "ga4_daily_metrics_pkey"
+2026-10-21 00:49:17.624 CEST [22832] DETAIL:  Key (id)=(ded91e66-4871-4f69-885d-5f96853459d8) already exists.
+2026-10-21 00:49:17.624 CEST [22832] STATEMENT:  insert into "ga4_daily_metrics" ("id", "campaign_id", "property_id", "date", "users", "sessions", "engaged_sessions", "pageviews", "conversions", "revenue", "engagement_rate", "revenue_metric", "is_simulated", "updated_at", "created_at") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, default)
+2026-10-21 00:49:17.946 CEST [22832] ERROR:  new row for relation "ga4_overview_snapshots" violates check constraint "test_rejected_payload"
+2026-10-21 00:49:17.946 CEST [22832] DETAIL:  Failing row contains (7c3c9f4d-adb1-4cff-8d7d-60431c6742b3, a, property-a, 2025-06-03, 2026-10-16, {"rejectForTest": true}, {}, {}, 2026-10-20 22:49:17.945, 2026-10-21 00:49:17.825259).
+2026-10-21 00:49:17.946 CEST [22832] STATEMENT:  insert into "ga4_overview_snapshots" ("id", "campaign_id", "property_id", "window_start", "window_end", "campaign_breakdown", "landing_pages", "conversion_events", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default) on conflict ("campaign_id","property_id") do update set "window_start" = $9, "window_end" = $10, "campaign_breakdown" = $11, "landing_pages" = $12, "conversion_events" = $13, "updated_at" = $14
+2026-10-21 00:49:18.144 CEST [22832] ERROR:  new row for relation "ga4_overview_snapshots" violates check constraint "test_rejected_payload"
+2026-10-21 00:49:18.144 CEST [22832] DETAIL:  Failing row contains (7ceb56c9-cdb6-401e-a50e-7f94bcb583e9, a, property-a, 2026-10-16, 2026-10-16, {"rejectForTest": true}, {}, {}, 2026-10-20 22:49:18.142, 2026-10-21 00:49:18.131639).
+2026-10-21 00:49:18.144 CEST [22832] STATEMENT:  insert into "ga4_overview_snapshots" ("id", "campaign_id", "property_id", "window_start", "window_end", "campaign_breakdown", "landing_pages", "conversion_events", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default) on conflict ("campaign_id","property_id") do update set "window_start" = $9, "window_end" = $10, "campaign_breakdown" = $11, "landing_pages" = $12, "conversion_events" = $13, "updated_at" = $14
+2026-10-21 00:49:18.472 CEST [41048] FATAL:  terminating connection due to administrator command
+2026-10-21 00:49:18.472 CEST [41048] CONTEXT:  SQL statement "SELECT pg_advisory_xact_lock(55439001)"
+	PL/pgSQL function hold_overview_write() line 1 at PERFORM
+2026-10-21 00:49:18.472 CEST [41048] STATEMENT:  insert into "ga4_overview_snapshots" ("id", "campaign_id", "property_id", "window_start", "window_end", "campaign_breakdown", "landing_pages", "conversion_events", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default) on conflict ("campaign_id","property_id") do update set "window_start" = $9, "window_end" = $10, "campaign_breakdown" = $11, "landing_pages" = $12, "conversion_events" = $13, "updated_at" = $14
+2026-10-21 00:49:23.158 CEST [36520] ERROR:  canceling statement due to statement timeout
+2026-10-21 00:49:23.158 CEST [36520] STATEMENT:  SELECT pg_sleep(2)
+2026-10-21 00:49:36.567 CEST [11664] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:49:36.631 CEST [36904] LOG:  could not receive data from client: An established connection was aborted by the software in your host machine.
+	
+2026-10-21 00:49:36.631 CEST [36904] LOG:  unexpected EOF on client connection with an open transaction
+2026-10-21 00:49:36.785 CEST [32692] ERROR:  canceling statement due to statement timeout
+2026-10-21 00:49:36.785 CEST [32692] STATEMENT:  SELECT pg_sleep(1)
+2026-10-21 00:49:36.988 CEST [32692] FATAL:  terminating connection due to idle-in-transaction timeout
+2026-10-21 00:49:40.003 CEST [13372] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:49:40.003 CEST [13372] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:49:43.098 CEST [21180] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:49:43.522 CEST [36280] ERROR:  null value in column "source_type" of relation "revenue_sources" violates not-null constraint
+2026-10-21 00:49:43.522 CEST [36280] DETAIL:  Failing row contains (c272350d-3114-4ce0-913e-5b486e6b16ff, a, null, ga4, null, null, original, t, 2026-10-21 00:49:43.519301, 2026-10-21 00:49:43.519301).
+2026-10-21 00:49:43.522 CEST [36280] STATEMENT:  insert into "revenue_sources" ("id", "campaign_id", "source_type", "platform_context", "display_name", "currency", "mapping_config", "is_active", "connected_at", "created_at") values (default, $1, $2, $3, default, default, $4, $5, default, default) returning "id", "campaign_id", "source_type", "platform_context", "display_name", "currency", "mapping_config", "is_active", "connected_at", "created_at"
+2026-10-21 00:49:45.550 CEST [36280] ERROR:  column "sheet_name" does not exist at character 67
+2026-10-21 00:49:45.550 CEST [36280] STATEMENT:  select "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "cached_data", "last_data_refresh_at", "connected_at", "created_at" from "google_sheets_connections" where ("google_sheets_connections"."campaign_id" = $1 and "google_sheets_connections"."is_active" = $2) order by "google_sheets_connections"."connected_at"
+2026-10-21 00:49:45.648 CEST [27900] ERROR:  column "sheet_name" of relation "google_sheets_connections" does not exist at character 101
+2026-10-21 00:49:45.648 CEST [27900] STATEMENT:  insert into "google_sheets_connections" ("id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at") values (default, $1, $2, default, default, default, $3, $4, $5, default, $6, $7, default, $8, $9, default, default, default, default, default, default) returning "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at"
+2026-10-21 00:49:45.726 CEST [27900] ERROR:  column "sheet_name" does not exist at character 67
+2026-10-21 00:49:45.726 CEST [27900] STATEMENT:  select "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at" from "google_sheets_connections" where "google_sheets_connections"."id" = $1
+2026-10-21 00:49:45.734 CEST [27900] ERROR:  forced invalidation failure
+2026-10-21 00:49:45.734 CEST [27900] CONTEXT:  PL/pgSQL function reject_legacy_invalidation() line 1 at RAISE
+2026-10-21 00:49:45.734 CEST [27900] STATEMENT:  update "ga4_refresh_work" set "scope_hash" = 'invalidated:' || "ga4_refresh_work"."id", "status" = CASE WHEN "ga4_refresh_work"."status" = 'completed' THEN 'completed' ELSE 'pending' END, "lease_token" = $1, "lease_expires_at" = $2, "updated_at" = clock_timestamp() where "ga4_refresh_work"."campaign_id" in ($3) returning "campaign_id"
+2026-10-21 00:49:45.759 CEST [27900] ERROR:  column "sheet_name" does not exist at character 67
+2026-10-21 00:49:45.759 CEST [27900] STATEMENT:  select "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at" from "google_sheets_connections" where "google_sheets_connections"."id" = $1
+2026-10-21 00:49:45.785 CEST [27900] ERROR:  column "sheet_name" does not exist at character 67
+2026-10-21 00:49:45.785 CEST [27900] STATEMENT:  select "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at" from "google_sheets_connections" where "google_sheets_connections"."id" = $1 limit $2
+2026-10-21 00:49:46.066 CEST [27900] ERROR:  forced invalidation failure
+2026-10-21 00:49:46.066 CEST [27900] CONTEXT:  PL/pgSQL function reject_invalidation() line 1 at RAISE
+2026-10-21 00:49:46.066 CEST [27900] STATEMENT:  update "ga4_refresh_work" set "scope_hash" = 'invalidated:' || "ga4_refresh_work"."id", "status" = CASE WHEN "ga4_refresh_work"."status" = 'completed' THEN 'completed' ELSE 'pending' END, "lease_token" = $1, "lease_expires_at" = $2, "updated_at" = clock_timestamp() where "ga4_refresh_work"."campaign_id" in ($3) returning "campaign_id"
+2026-10-21 00:49:46.506 CEST [41856] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:49:46.506 CEST [41856] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:49:47.550 CEST [35540] LOG:  checkpoint starting: time
+2026-10-21 00:49:49.727 CEST [26088] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:49:52.967 CEST [36196] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:49:52.967 CEST [36196] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:49:56.115 CEST [11424] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:49:59.294 CEST [39252] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:49:59.294 CEST [39252] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:50:02.447 CEST [39004] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:50:05.709 CEST [23152] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:50:05.709 CEST [23152] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:50:08.979 CEST [41652] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:50:12.080 CEST [13320] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:50:12.080 CEST [13320] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:50:13.454 CEST [17264] ERROR:  canceling statement due to lock timeout
+2026-10-21 00:50:13.454 CEST [17264] CONTEXT:  while locking tuple (0,146) in relation "campaigns"
+2026-10-21 00:50:13.454 CEST [17264] STATEMENT:  select "id", "owner_id", "client_id", "name", "client_website", "label", "budget", "currency", "conversion_value", "ga4_campaign_filter", "reporting_time_zone", "type", "platform", "impressions", "clicks", "spend", "status", "industry", "trend_keywords", "start_date", "end_date", "pacing_start_date", "pacing_end_date", "created_at" from "campaigns" where ("campaigns"."id" = $1 and "campaigns"."owner_id" = $2) for update
+2026-10-21 00:50:15.544 CEST [23732] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:50:15.544 CEST [23732] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:50:15.735 CEST [17812] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:50:15.736 CEST [34084] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:50:15.736 CEST [27336] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:50:17.297 CEST [17264] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:50:17.297 CEST [17264] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:50:17.479 CEST [13600] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:50:17.479 CEST [13600] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:50:17.680 CEST [41912] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:50:17.680 CEST [41912] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:50:17.867 CEST [38080] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:50:17.867 CEST [38080] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:50:18.078 CEST [38004] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:50:18.078 CEST [38004] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:50:18.260 CEST [38260] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:50:18.260 CEST [38260] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:50:18.453 CEST [24188] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:50:18.453 CEST [24188] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:50:18.638 CEST [33764] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:50:18.638 CEST [33764] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:50:19.044 CEST [39888] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:50:19.044 CEST [39888] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:50:22.704 CEST [26864] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:50:22.704 CEST [26864] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:50:22.995 CEST [13148] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:50:22.995 CEST [35048] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:50:22.995 CEST [23964] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:50:32.153 CEST [31856] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:50:32.153 CEST [31856] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:50:40.408 CEST [15896] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:50:40.942 CEST [33468] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:50:40.942 CEST [33468] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:50:59.265 CEST [35540] LOG:  checkpoint complete: wrote 541 buffers (3.3%), wrote 10 SLRU buffers; 0 WAL file(s) added, 0 removed, 1 recycled; write=70.145 s, sync=0.804 s, total=71.715 s; sync files=1019, longest=0.008 s, average=0.001 s; distance=22340 kB, estimate=26751 kB; lsn=0/E0AAB30, redo lsn=0/DD3C828
+2026-10-21 00:51:21.602 CEST [32228] ERROR:  insert or update on table "campaigns" violates foreign key constraint "campaigns_client_id_clients_id_fk"
+2026-10-21 00:51:21.602 CEST [32228] DETAIL:  Key (client_id)=(missing-client) is not present in table "clients".
+2026-10-21 00:51:21.602 CEST [32228] STATEMENT:  INSERT INTO campaigns(name,client_id) VALUES('new orphan','missing-client')
+2026-10-21 00:51:23.692 CEST [20348] ERROR:  could not create unique index "ga4_daily_metrics_campaign_property_date_unique"
+2026-10-21 00:51:23.692 CEST [20348] DETAIL:  Key (campaign_id, property_id, date)=(duplicate, 123, 2026-10-20) is duplicated.
+2026-10-21 00:51:23.692 CEST [20348] STATEMENT:  -- Additive only. Duplicate business keys fail the transaction; never delete/merge facts here.
+	CREATE TABLE IF NOT EXISTS campaign_creation_requests (
+	  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+	  owner_id TEXT NOT NULL,
+	  client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+	  request_id TEXT NOT NULL,
+	  created BOOLEAN NOT NULL DEFAULT FALSE,
+	  cancelled BOOLEAN NOT NULL DEFAULT FALSE,
+	  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE UNIQUE INDEX IF NOT EXISTS campaign_creation_requests_scope_unique
+	  ON campaign_creation_requests(owner_id, client_id, request_id);
+	CREATE UNIQUE INDEX IF NOT EXISTS ga4_daily_metrics_campaign_property_date_unique
+	  ON ga4_daily_metrics (campaign_id, property_id, date);
+	CREATE UNIQUE INDEX IF NOT EXISTS linkedin_daily_metrics_campaign_date_unique
+	  ON linkedin_daily_metrics (campaign_id, date);
+	CREATE UNIQUE INDEX IF NOT EXISTS google_ads_daily_metrics_campaign_date_unique
+	  ON google_ads_daily_metrics (campaign_id, google_campaign_id, date);
+	CREATE UNIQUE INDEX IF NOT EXISTS meta_daily_metrics_campaign_date_unique
+	  ON meta_daily_metrics (campaign_id, meta_campaign_id, date);
+	
+	-- NOT VALID preserves any historical orphans for separately reviewed cleanup while
+	-- enforcing the parent boundary for every new insert/client change and client deletion.
+	DO $$ BEGIN
+	  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+	    WHERE conrelid = 'campaigns'::regclass AND conname = 'campaigns_client_id_clients_id_fk') THEN
+	    ALTER TABLE campaigns ADD CONSTRAINT campaigns_client_id_clients_id_fk
+	      FOREIGN KEY (client_id) REFERENCES clients(id) NOT VALID;
+	  END IF;
+	END $$;
+	
+2026-10-21 00:51:31.575 CEST [13764] ERROR:  column "owner_id" of relation "ga4_refresh_work" does not exist at character 42
+2026-10-21 00:51:31.575 CEST [13764] STATEMENT:  INSERT INTO ga4_refresh_work(campaign_id,owner_id,reporting_date,scope,scope_hash) VALUES($1,'owner','2026-10-20','{"kind":"initial_import"}','fixture')
+2026-10-21 00:52:07.003 CEST [40700] ERROR:  insert or update on table "campaigns" violates foreign key constraint "campaigns_client_id_clients_id_fk"
+2026-10-21 00:52:07.003 CEST [40700] DETAIL:  Key (client_id)=(missing-client) is not present in table "clients".
+2026-10-21 00:52:07.003 CEST [40700] STATEMENT:  INSERT INTO campaigns(name,client_id) VALUES('new orphan','missing-client')
+2026-10-21 00:52:09.044 CEST [35344] ERROR:  could not create unique index "ga4_daily_metrics_campaign_property_date_unique"
+2026-10-21 00:52:09.044 CEST [35344] DETAIL:  Key (campaign_id, property_id, date)=(duplicate, 123, 2026-10-20) is duplicated.
+2026-10-21 00:52:09.044 CEST [35344] STATEMENT:  -- Additive only. Duplicate business keys fail the transaction; never delete/merge facts here.
+	CREATE TABLE IF NOT EXISTS campaign_creation_requests (
+	  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+	  owner_id TEXT NOT NULL,
+	  client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+	  request_id TEXT NOT NULL,
+	  created BOOLEAN NOT NULL DEFAULT FALSE,
+	  cancelled BOOLEAN NOT NULL DEFAULT FALSE,
+	  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE UNIQUE INDEX IF NOT EXISTS campaign_creation_requests_scope_unique
+	  ON campaign_creation_requests(owner_id, client_id, request_id);
+	CREATE UNIQUE INDEX IF NOT EXISTS ga4_daily_metrics_campaign_property_date_unique
+	  ON ga4_daily_metrics (campaign_id, property_id, date);
+	CREATE UNIQUE INDEX IF NOT EXISTS linkedin_daily_metrics_campaign_date_unique
+	  ON linkedin_daily_metrics (campaign_id, date);
+	CREATE UNIQUE INDEX IF NOT EXISTS google_ads_daily_metrics_campaign_date_unique
+	  ON google_ads_daily_metrics (campaign_id, google_campaign_id, date);
+	CREATE UNIQUE INDEX IF NOT EXISTS meta_daily_metrics_campaign_date_unique
+	  ON meta_daily_metrics (campaign_id, meta_campaign_id, date);
+	
+	-- NOT VALID preserves any historical orphans for separately reviewed cleanup while
+	-- enforcing the parent boundary for every new insert/client change and client deletion.
+	DO $$ BEGIN
+	  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+	    WHERE conrelid = 'campaigns'::regclass AND conname = 'campaigns_client_id_clients_id_fk') THEN
+	    ALTER TABLE campaigns ADD CONSTRAINT campaigns_client_id_clients_id_fk
+	      FOREIGN KEY (client_id) REFERENCES clients(id) NOT VALID;
+	  END IF;
+	END $$;
+	
+2026-10-21 00:54:22.396 CEST [40596] ERROR:  canceling statement due to statement timeout
+2026-10-21 00:54:22.396 CEST [40596] STATEMENT:  SELECT pg_sleep(2)
+2026-10-21 00:54:35.702 CEST [16356] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:54:39.229 CEST [27792] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:54:39.229 CEST [27792] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:54:42.613 CEST [10752] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:54:45.940 CEST [39572] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:54:45.940 CEST [39572] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:54:47.030 CEST [35540] LOG:  checkpoint starting: time
+2026-10-21 00:54:49.195 CEST [20120] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:54:52.504 CEST [40676] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:54:52.504 CEST [40676] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:54:52.562 CEST [15248] ERROR:  invalid input syntax for type numeric: "invalid decimal"
+2026-10-21 00:54:52.562 CEST [15248] CONTEXT:  unnamed portal parameter $4 = '...'
+2026-10-21 00:54:52.562 CEST [15248] STATEMENT:  insert into "spend_records" ("id", "campaign_id", "spend_source_id", "date", "spend", "currency", "source_type", "sub_campaign_urn", "created_at") values (default, $1, $2, $3, $4, $5, $6, default, default)
+2026-10-21 00:54:52.719 CEST [15248] ERROR:  invalid input syntax for type numeric: "invalid decimal"
+2026-10-21 00:54:52.719 CEST [15248] CONTEXT:  unnamed portal parameter $4 = '...'
+2026-10-21 00:54:52.719 CEST [15248] STATEMENT:  insert into "revenue_records" ("id", "campaign_id", "revenue_source_id", "date", "revenue", "currency", "external_id", "source_type", "sub_campaign_urn", "created_at") values (default, $1, $2, $3, $4, $5, default, $6, default, default)
+2026-10-21 00:54:53.307 CEST [15248] WARNING:  there is no transaction in progress
+2026-10-21 00:54:53.531 CEST [15248] WARNING:  there is no transaction in progress
+2026-10-21 00:54:53.701 CEST [15248] WARNING:  there is no transaction in progress
+2026-10-21 00:54:55.830 CEST [34028] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:54:59.310 CEST [15180] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:54:59.310 CEST [15180] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:55:02.605 CEST [17760] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:55:06.219 CEST [23108] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:55:06.219 CEST [23108] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:55:09.481 CEST [16080] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:55:12.654 CEST [27900] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:55:12.654 CEST [27900] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:55:16.298 CEST [41756] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:55:16.298 CEST [41756] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:55:16.605 CEST [22300] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:55:16.605 CEST [18828] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:55:16.605 CEST [33200] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:55:19.884 CEST [4900] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:55:19.884 CEST [4900] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:55:23.424 CEST [11008] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:55:23.424 CEST [11008] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:55:23.623 CEST [29912] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:55:23.623 CEST [41928] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:55:23.623 CEST [33128] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:55:31.571 CEST [17048] ERROR:  canceling statement due to lock timeout
+2026-10-21 00:55:31.571 CEST [17048] CONTEXT:  while locking tuple (0,174) in relation "campaigns"
+2026-10-21 00:55:31.571 CEST [17048] STATEMENT:  select "id", "owner_id", "client_id", "name", "client_website", "label", "budget", "currency", "conversion_value", "ga4_campaign_filter", "reporting_time_zone", "type", "platform", "impressions", "clicks", "spend", "status", "industry", "trend_keywords", "start_date", "end_date", "pacing_start_date", "pacing_end_date", "created_at" from "campaigns" where ("campaigns"."id" = $1 and "campaigns"."owner_id" = $2) for update
+2026-10-21 00:55:32.315 CEST [19056] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:55:32.315 CEST [19056] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:55:35.507 CEST [17048] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:55:35.507 CEST [17048] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:55:35.674 CEST [31496] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:55:35.674 CEST [31496] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:55:35.883 CEST [39276] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:55:35.883 CEST [39276] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:55:36.187 CEST [36164] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:55:36.187 CEST [36164] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:55:36.427 CEST [34884] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:55:36.427 CEST [34884] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:55:36.617 CEST [19728] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:55:36.617 CEST [19728] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:55:36.811 CEST [25260] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:55:36.811 CEST [25260] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:55:37.020 CEST [16768] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:55:37.020 CEST [16768] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:55:40.697 CEST [24188] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:55:41.260 CEST [32204] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 00:55:41.260 CEST [32204] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 00:55:49.353 CEST [28308] ERROR:  fixture overview failure
+2026-10-21 00:55:49.353 CEST [28308] CONTEXT:  PL/pgSQL function reject_overview() line 1 at RAISE
+2026-10-21 00:55:49.353 CEST [28308] STATEMENT:  insert into "ga4_overview_snapshots" ("id", "campaign_id", "property_id", "window_start", "window_end", "campaign_breakdown", "landing_pages", "conversion_events", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default) on conflict ("campaign_id","property_id") do update set "window_start" = $9, "window_end" = $10, "campaign_breakdown" = $11, "landing_pages" = $12, "conversion_events" = $13, "updated_at" = $14
+2026-10-21 00:55:52.682 CEST [11056] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:55:58.452 CEST [21420] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:56:04.367 CEST [28556] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 00:56:27.775 CEST [38392] LOG:  could not receive data from client: An established connection was aborted by the software in your host machine.
+	
+2026-10-21 00:56:27.775 CEST [38392] LOG:  unexpected EOF on client connection with an open transaction
+2026-10-21 00:56:27.947 CEST [20440] ERROR:  canceling statement due to statement timeout
+2026-10-21 00:56:27.947 CEST [20440] STATEMENT:  SELECT pg_sleep(1)
+2026-10-21 00:56:28.165 CEST [20440] FATAL:  terminating connection due to idle-in-transaction timeout
+2026-10-21 00:56:32.198 CEST [21496] ERROR:  new row for relation "kpis" violates check constraint "reject_current_value"
+2026-10-21 00:56:32.198 CEST [21496] DETAIL:  Failing row contains (kpi-a, a, google_analytics, performance, Sessions, sessions, manual, null, null, null, 100.00, 20.00, null, count, null, medium, tracking, monthly, 30, 7day, null, null, below, t, f, null, f, daily, null, all, null, 2026-10-21 00:56:32.110625, 2026-10-20 22:56:32.196).
+2026-10-21 00:56:32.198 CEST [21496] STATEMENT:  update "kpis" set "current_value" = $1, "updated_at" = $2 where "kpis"."id" = $3
+2026-10-21 00:56:33.067 CEST [13252] ERROR:  new row for relation "ga4_overview_snapshots" violates check constraint "test_rejected_payload"
+2026-10-21 00:56:33.067 CEST [13252] DETAIL:  Failing row contains (87c2d718-7a7a-44c4-9d55-a7f86649fd9d, a, property-a, 2026-10-16, 2026-10-16, {"meta": {"dailyHistoryRefresh": {"scope": "new-scope", "version..., {}, {}, 2026-10-20 22:56:33.066, 2026-10-21 00:56:33.055713).
+2026-10-21 00:56:33.067 CEST [13252] STATEMENT:  insert into "ga4_overview_snapshots" ("id", "campaign_id", "property_id", "window_start", "window_end", "campaign_breakdown", "landing_pages", "conversion_events", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default) on conflict ("campaign_id","property_id") do update set "window_start" = $9, "window_end" = $10, "campaign_breakdown" = $11, "landing_pages" = $12, "conversion_events" = $13, "updated_at" = $14
+2026-10-21 00:56:33.563 CEST [13252] ERROR:  duplicate key value violates unique constraint "ga4_daily_metrics_pkey"
+2026-10-21 00:56:33.563 CEST [13252] DETAIL:  Key (id)=(4a9e81e5-8450-4a82-8d9f-79cc629082f4) already exists.
+2026-10-21 00:56:33.563 CEST [13252] STATEMENT:  insert into "ga4_daily_metrics" ("id", "campaign_id", "property_id", "date", "users", "sessions", "engaged_sessions", "pageviews", "conversions", "revenue", "engagement_rate", "revenue_metric", "is_simulated", "updated_at", "created_at") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, default)
+2026-10-21 00:56:33.922 CEST [13252] ERROR:  new row for relation "ga4_overview_snapshots" violates check constraint "test_rejected_payload"
+2026-10-21 00:56:33.922 CEST [13252] DETAIL:  Failing row contains (137da55d-b7ef-41bb-9853-cdfd03037fa7, a, property-a, 2025-06-03, 2026-10-16, {"rejectForTest": true}, {}, {}, 2026-10-20 22:56:33.92, 2026-10-21 00:56:33.788807).
+2026-10-21 00:56:33.922 CEST [13252] STATEMENT:  insert into "ga4_overview_snapshots" ("id", "campaign_id", "property_id", "window_start", "window_end", "campaign_breakdown", "landing_pages", "conversion_events", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default) on conflict ("campaign_id","property_id") do update set "window_start" = $9, "window_end" = $10, "campaign_breakdown" = $11, "landing_pages" = $12, "conversion_events" = $13, "updated_at" = $14
+2026-10-21 00:56:34.167 CEST [13252] ERROR:  new row for relation "ga4_overview_snapshots" violates check constraint "test_rejected_payload"
+2026-10-21 00:56:34.167 CEST [13252] DETAIL:  Failing row contains (d4209b7b-de70-45fd-967f-14baaaddb373, a, property-a, 2026-10-16, 2026-10-16, {"rejectForTest": true}, {}, {}, 2026-10-20 22:56:34.165, 2026-10-21 00:56:34.155695).
+2026-10-21 00:56:34.167 CEST [13252] STATEMENT:  insert into "ga4_overview_snapshots" ("id", "campaign_id", "property_id", "window_start", "window_end", "campaign_breakdown", "landing_pages", "conversion_events", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default) on conflict ("campaign_id","property_id") do update set "window_start" = $9, "window_end" = $10, "campaign_breakdown" = $11, "landing_pages" = $12, "conversion_events" = $13, "updated_at" = $14
+2026-10-21 00:56:34.490 CEST [22832] FATAL:  terminating connection due to administrator command
+2026-10-21 00:56:34.490 CEST [22832] CONTEXT:  SQL statement "SELECT pg_advisory_xact_lock(55439001)"
+	PL/pgSQL function hold_overview_write() line 1 at PERFORM
+2026-10-21 00:56:34.490 CEST [22832] STATEMENT:  insert into "ga4_overview_snapshots" ("id", "campaign_id", "property_id", "window_start", "window_end", "campaign_breakdown", "landing_pages", "conversion_events", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default) on conflict ("campaign_id","property_id") do update set "window_start" = $9, "window_end" = $10, "campaign_breakdown" = $11, "landing_pages" = $12, "conversion_events" = $13, "updated_at" = $14
+2026-10-21 00:56:41.346 CEST [22936] ERROR:  null value in column "source_type" of relation "revenue_sources" violates not-null constraint
+2026-10-21 00:56:41.346 CEST [22936] DETAIL:  Failing row contains (e647e27d-585e-4428-ba13-98a4bca865b8, a, null, ga4, null, null, original, t, 2026-10-21 00:56:41.341834, 2026-10-21 00:56:41.341834).
+2026-10-21 00:56:41.346 CEST [22936] STATEMENT:  insert into "revenue_sources" ("id", "campaign_id", "source_type", "platform_context", "display_name", "currency", "mapping_config", "is_active", "connected_at", "created_at") values (default, $1, $2, $3, default, default, $4, $5, default, default) returning "id", "campaign_id", "source_type", "platform_context", "display_name", "currency", "mapping_config", "is_active", "connected_at", "created_at"
+2026-10-21 00:56:42.667 CEST [19948] ERROR:  new row for relation "ga4_refresh_work" violates check constraint "test_claim_failure"
+2026-10-21 00:56:42.667 CEST [19948] DETAIL:  Failing row contains (6fbf96c3-0364-492a-bd19-047649f81837, a, 2026-10-20 23:56:41.926+02, 2026-10-17, 10310c93863c09ba5e379b5c1036482b2bcaa3ac7843e4bdfb9f79541bc73598, {"version": 1, "campaign": {"id": "a", "status": "active", "owne..., running, a55332fa-1f93-4072-90f7-dc5693bdae5f, 2026-10-21 00:58:42.667308+02, 2026-10-21 00:56:42.667309+02, null, 2026-10-21 00:56:42.667309+02, 1, null, t, null, f).
+2026-10-21 00:56:42.667 CEST [19948] STATEMENT:  update "ga4_refresh_work" set "status" = $1, "lease_token" = $2, "lease_expires_at" = clock_timestamp() + $3 * interval '1 millisecond', "started_at" = clock_timestamp(), "attempt_count" = "ga4_refresh_work"."attempt_count" + 1, "next_attempt_at" = $4, "updated_at" = clock_timestamp() where ("ga4_refresh_work"."id" = $5 and "ga4_refresh_work"."campaign_id" = $6 and "ga4_refresh_work"."status" = $7) returning "id", "campaign_id", "due_at", "reporting_date", "scope_hash", "scope", "status", "lease_token", "lease_expires_at", "started_at", "completed_at", "attempt_count", "next_attempt_at", "suppress_alerts", "retryable", "last_error", "updated_at"
+2026-10-21 00:56:43.456 CEST [22936] ERROR:  column "sheet_name" does not exist at character 67
+2026-10-21 00:56:43.456 CEST [22936] STATEMENT:  select "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "cached_data", "last_data_refresh_at", "connected_at", "created_at" from "google_sheets_connections" where ("google_sheets_connections"."campaign_id" = $1 and "google_sheets_connections"."is_active" = $2) order by "google_sheets_connections"."connected_at"
+2026-10-21 00:56:43.557 CEST [32260] ERROR:  column "sheet_name" of relation "google_sheets_connections" does not exist at character 101
+2026-10-21 00:56:43.557 CEST [32260] STATEMENT:  insert into "google_sheets_connections" ("id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at") values (default, $1, $2, default, default, default, $3, $4, $5, default, $6, $7, default, $8, $9, default, default, default, default, default, default) returning "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at"
+2026-10-21 00:56:43.632 CEST [32260] ERROR:  column "sheet_name" does not exist at character 67
+2026-10-21 00:56:43.632 CEST [32260] STATEMENT:  select "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at" from "google_sheets_connections" where "google_sheets_connections"."id" = $1
+2026-10-21 00:56:43.639 CEST [32260] ERROR:  forced invalidation failure
+2026-10-21 00:56:43.639 CEST [32260] CONTEXT:  PL/pgSQL function reject_legacy_invalidation() line 1 at RAISE
+2026-10-21 00:56:43.639 CEST [32260] STATEMENT:  update "ga4_refresh_work" set "scope_hash" = 'invalidated:' || "ga4_refresh_work"."id", "status" = CASE WHEN "ga4_refresh_work"."status" = 'completed' THEN 'completed' ELSE 'pending' END, "lease_token" = $1, "lease_expires_at" = $2, "updated_at" = clock_timestamp() where "ga4_refresh_work"."campaign_id" in ($3) returning "campaign_id"
+2026-10-21 00:56:43.666 CEST [32260] ERROR:  column "sheet_name" does not exist at character 67
+2026-10-21 00:56:43.666 CEST [32260] STATEMENT:  select "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at" from "google_sheets_connections" where "google_sheets_connections"."id" = $1
+2026-10-21 00:56:43.698 CEST [32260] ERROR:  column "sheet_name" does not exist at character 67
+2026-10-21 00:56:43.698 CEST [32260] STATEMENT:  select "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at" from "google_sheets_connections" where "google_sheets_connections"."id" = $1 limit $2
+2026-10-21 00:56:43.989 CEST [32260] ERROR:  forced invalidation failure
+2026-10-21 00:56:43.989 CEST [32260] CONTEXT:  PL/pgSQL function reject_invalidation() line 1 at RAISE
+2026-10-21 00:56:43.989 CEST [32260] STATEMENT:  update "ga4_refresh_work" set "scope_hash" = 'invalidated:' || "ga4_refresh_work"."id", "status" = CASE WHEN "ga4_refresh_work"."status" = 'completed' THEN 'completed' ELSE 'pending' END, "lease_token" = $1, "lease_expires_at" = $2, "updated_at" = clock_timestamp() where "ga4_refresh_work"."campaign_id" in ($3) returning "campaign_id"
+2026-10-21 00:56:45.331 CEST [19948] ERROR:  new row for relation "ga4_refresh_work" violates check constraint "ga4_refresh_work_state"
+2026-10-21 00:56:45.331 CEST [19948] DETAIL:  Failing row contains (78b36912-442f-4eb4-85bb-79731f42de0a, a, 2026-10-20 23:56:40.926+02, 2026-10-17, aaa037255cecbcda41f3d2a9033a0ac9373e8df4ec17cbcb4b10c3747c2e9ae6, {"version": 1, "campaign": {"id": "a", "status": "active", "owne..., completed, da80a50b-9430-44a0-85fd-3b7a94b54cec, 2026-10-21 00:58:45.315563+02, 2026-10-21 00:56:45.315563+02, null, 2026-10-21 00:56:45.315563+02, 1, null, t, null, f).
+2026-10-21 00:56:45.331 CEST [19948] STATEMENT:  UPDATE ga4_refresh_work SET status='completed' WHERE id=$1
+2026-10-21 00:56:45.337 CEST [39988] ERROR:  duplicate key value violates unique constraint "ga4_refresh_work_running_campaign"
+2026-10-21 00:56:45.337 CEST [39988] DETAIL:  Key (campaign_id)=(a) already exists.
+2026-10-21 00:56:45.337 CEST [39988] STATEMENT:  UPDATE ga4_refresh_work SET status='running',lease_token='other',lease_expires_at=now()+interval '1 minute',started_at=now() WHERE id=$1
+2026-10-21 00:56:57.923 CEST [4416] WARNING:  there is no transaction in progress
+2026-10-21 00:56:58.780 CEST [4416] WARNING:  there is no transaction in progress
+2026-10-21 00:56:58.941 CEST [4416] ERROR:  invalid input syntax for type json
+2026-10-21 00:56:58.941 CEST [4416] DETAIL:  Token "invalid" is invalid.
+2026-10-21 00:56:58.941 CEST [4416] CONTEXT:  JSON data, line 1: invalid...
+2026-10-21 00:56:58.941 CEST [4416] STATEMENT:  update "notifications" set "read" = $1, "metadata" = (COALESCE(NULLIF("notifications"."metadata", '')::jsonb, '{}'::jsonb) || jsonb_build_object('dismissedAt', NOW(), 'dismissedBy', 'system', 'dismissalReason', 'campaign_deleted'))::text where "notifications"."campaign_id" = $2
+2026-10-21 00:56:59.622 CEST [4416] WARNING:  there is no transaction in progress
+2026-10-21 00:57:16.574 CEST [29020] ERROR:  insert or update on table "campaigns" violates foreign key constraint "campaigns_client_id_clients_id_fk"
+2026-10-21 00:57:16.574 CEST [29020] DETAIL:  Key (client_id)=(missing-client) is not present in table "clients".
+2026-10-21 00:57:16.574 CEST [29020] STATEMENT:  INSERT INTO campaigns(name,client_id) VALUES('new orphan','missing-client')
+2026-10-21 00:57:19.589 CEST [40860] ERROR:  could not create unique index "ga4_daily_metrics_campaign_property_date_unique"
+2026-10-21 00:57:19.589 CEST [40860] DETAIL:  Key (campaign_id, property_id, date)=(duplicate, 123, 2026-10-20) is duplicated.
+2026-10-21 00:57:19.589 CEST [40860] STATEMENT:  -- Additive only. Duplicate business keys fail the transaction; never delete/merge facts here.
+	CREATE TABLE IF NOT EXISTS campaign_creation_requests (
+	  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+	  owner_id TEXT NOT NULL,
+	  client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+	  request_id TEXT NOT NULL,
+	  created BOOLEAN NOT NULL DEFAULT FALSE,
+	  cancelled BOOLEAN NOT NULL DEFAULT FALSE,
+	  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE UNIQUE INDEX IF NOT EXISTS campaign_creation_requests_scope_unique
+	  ON campaign_creation_requests(owner_id, client_id, request_id);
+	CREATE UNIQUE INDEX IF NOT EXISTS ga4_daily_metrics_campaign_property_date_unique
+	  ON ga4_daily_metrics (campaign_id, property_id, date);
+	CREATE UNIQUE INDEX IF NOT EXISTS linkedin_daily_metrics_campaign_date_unique
+	  ON linkedin_daily_metrics (campaign_id, date);
+	CREATE UNIQUE INDEX IF NOT EXISTS google_ads_daily_metrics_campaign_date_unique
+	  ON google_ads_daily_metrics (campaign_id, google_campaign_id, date);
+	CREATE UNIQUE INDEX IF NOT EXISTS meta_daily_metrics_campaign_date_unique
+	  ON meta_daily_metrics (campaign_id, meta_campaign_id, date);
+	
+	-- NOT VALID preserves any historical orphans for separately reviewed cleanup while
+	-- enforcing the parent boundary for every new insert/client change and client deletion.
+	DO $$ BEGIN
+	  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+	    WHERE conrelid = 'campaigns'::regclass AND conname = 'campaigns_client_id_clients_id_fk') THEN
+	    ALTER TABLE campaigns ADD CONSTRAINT campaigns_client_id_clients_id_fk
+	      FOREIGN KEY (client_id) REFERENCES clients(id) NOT VALID;
+	  END IF;
+	END $$;
+	
+2026-10-21 00:57:39.884 CEST [35540] LOG:  checkpoint complete: wrote 1334 buffers (8.1%), wrote 9 SLRU buffers; 0 WAL file(s) added, 0 removed, 3 recycled; write=156.360 s, sync=10.514 s, total=172.854 s; sync files=6985, longest=0.026 s, average=0.002 s; distance=48999 kB, estimate=48999 kB; lsn=0/132B1080, redo lsn=0/10D164D8
+2026-10-21 00:59:47.918 CEST [35540] LOG:  checkpoint starting: time
+2026-10-21 01:01:28.465 CEST [35540] LOG:  checkpoint complete: wrote 883 buffers (5.4%), wrote 4 SLRU buffers; 0 WAL file(s) added, 0 removed, 3 recycled; write=96.148 s, sync=0.942 s, total=100.547 s; sync files=1030, longest=0.007 s, average=0.001 s; distance=39807 kB, estimate=48080 kB; lsn=0/134188D0, redo lsn=0/133F6330
+2026-10-21 01:01:34.584 CEST [15200] ERROR:  canceling statement due to statement timeout
+2026-10-21 01:01:34.584 CEST [15200] STATEMENT:  SELECT pg_sleep(2)
+2026-10-21 01:01:48.491 CEST [34936] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 01:01:52.078 CEST [9224] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 01:01:52.078 CEST [9224] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 01:01:55.329 CEST [35400] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 01:01:56.453 CEST [27920] ERROR:  canceling statement due to lock timeout
+2026-10-21 01:01:56.453 CEST [27920] CONTEXT:  while locking tuple (0,146) in relation "campaigns"
+2026-10-21 01:01:56.453 CEST [27920] STATEMENT:  select "id", "owner_id", "client_id", "name", "client_website", "label", "budget", "currency", "conversion_value", "ga4_campaign_filter", "reporting_time_zone", "type", "platform", "impressions", "clicks", "spend", "status", "industry", "trend_keywords", "start_date", "end_date", "pacing_start_date", "pacing_end_date", "created_at" from "campaigns" where ("campaigns"."id" = $1 and "campaigns"."owner_id" = $2) for update
+2026-10-21 01:01:59.052 CEST [38496] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 01:01:59.052 CEST [38496] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 01:02:00.722 CEST [27920] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 01:02:00.722 CEST [27920] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 01:02:00.922 CEST [29988] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 01:02:00.922 CEST [29988] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 01:02:01.175 CEST [39996] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 01:02:01.175 CEST [39996] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 01:02:01.416 CEST [32212] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 01:02:01.416 CEST [32212] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 01:02:01.688 CEST [18612] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 01:02:01.688 CEST [18612] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 01:02:01.945 CEST [40444] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 01:02:01.945 CEST [40444] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 01:02:02.169 CEST [33184] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 01:02:02.169 CEST [33184] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 01:02:02.388 CEST [12164] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 01:02:02.388 CEST [12164] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 01:02:02.786 CEST [30728] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 01:02:05.874 CEST [24180] ERROR:  invalid input syntax for type numeric: "invalid decimal"
+2026-10-21 01:02:05.874 CEST [24180] CONTEXT:  unnamed portal parameter $4 = '...'
+2026-10-21 01:02:05.874 CEST [24180] STATEMENT:  insert into "spend_records" ("id", "campaign_id", "spend_source_id", "date", "spend", "currency", "source_type", "sub_campaign_urn", "created_at") values (default, $1, $2, $3, $4, $5, $6, default, default)
+2026-10-21 01:02:06.028 CEST [24180] ERROR:  invalid input syntax for type numeric: "invalid decimal"
+2026-10-21 01:02:06.028 CEST [24180] CONTEXT:  unnamed portal parameter $4 = '...'
+2026-10-21 01:02:06.028 CEST [24180] STATEMENT:  insert into "revenue_records" ("id", "campaign_id", "revenue_source_id", "date", "revenue", "currency", "external_id", "source_type", "sub_campaign_urn", "created_at") values (default, $1, $2, $3, $4, $5, default, $6, default, default)
+2026-10-21 01:02:06.478 CEST [17088] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 01:02:06.478 CEST [17088] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 01:02:06.775 CEST [24180] WARNING:  there is no transaction in progress
+2026-10-21 01:02:07.040 CEST [24180] WARNING:  there is no transaction in progress
+2026-10-21 01:02:07.234 CEST [24180] WARNING:  there is no transaction in progress
+2026-10-21 01:02:10.203 CEST [36640] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 01:02:13.969 CEST [29596] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 01:02:13.969 CEST [29596] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 01:02:15.796 CEST [37980] ERROR:  fixture overview failure
+2026-10-21 01:02:15.796 CEST [37980] CONTEXT:  PL/pgSQL function reject_overview() line 1 at RAISE
+2026-10-21 01:02:15.796 CEST [37980] STATEMENT:  insert into "ga4_overview_snapshots" ("id", "campaign_id", "property_id", "window_start", "window_end", "campaign_breakdown", "landing_pages", "conversion_events", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default) on conflict ("campaign_id","property_id") do update set "window_start" = $9, "window_end" = $10, "campaign_breakdown" = $11, "landing_pages" = $12, "conversion_events" = $13, "updated_at" = $14
+2026-10-21 01:02:17.292 CEST [27692] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 01:02:19.334 CEST [30456] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 01:02:20.793 CEST [38188] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 01:02:20.793 CEST [38188] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 01:02:24.314 CEST [33264] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 01:02:25.559 CEST [37904] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 01:02:27.489 CEST [39184] ERROR:  new row for relation "kpis" violates check constraint "reject_current_value"
+2026-10-21 01:02:27.489 CEST [39184] DETAIL:  Failing row contains (kpi-a, a, google_analytics, performance, Sessions, sessions, manual, null, null, null, 100.00, 20.00, null, count, null, medium, tracking, monthly, 30, 7day, null, null, below, t, f, null, f, daily, null, all, null, 2026-10-21 01:02:27.390117, 2026-10-20 23:02:27.487).
+2026-10-21 01:02:27.489 CEST [39184] STATEMENT:  update "kpis" set "current_value" = $1, "updated_at" = $2 where "kpis"."id" = $3
+2026-10-21 01:02:27.723 CEST [33644] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 01:02:27.723 CEST [33644] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 01:02:31.904 CEST [4368] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 01:02:31.904 CEST [4368] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 01:02:32.090 CEST [23308] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 01:02:32.091 CEST [11892] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 01:02:32.091 CEST [39180] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 01:02:32.408 CEST [26668] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 01:02:32.902 CEST [41392] LOG:  could not receive data from client: An established connection was aborted by the software in your host machine.
+	
+2026-10-21 01:02:32.902 CEST [41392] LOG:  unexpected EOF on client connection with an open transaction
+2026-10-21 01:02:33.072 CEST [40360] ERROR:  canceling statement due to statement timeout
+2026-10-21 01:02:33.072 CEST [40360] STATEMENT:  SELECT pg_sleep(1)
+2026-10-21 01:02:33.290 CEST [40360] FATAL:  terminating connection due to idle-in-transaction timeout
+2026-10-21 01:02:35.608 CEST [40188] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 01:02:35.608 CEST [40188] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 01:02:35.701 CEST [32748] ERROR:  new row for relation "ga4_overview_snapshots" violates check constraint "test_rejected_payload"
+2026-10-21 01:02:35.701 CEST [32748] DETAIL:  Failing row contains (c1c111dc-b345-42d0-95e8-25d7b56ddcad, a, property-a, 2026-10-16, 2026-10-16, {"meta": {"dailyHistoryRefresh": {"scope": "new-scope", "version..., {}, {}, 2026-10-20 23:02:35.698, 2026-10-21 01:02:35.687269).
+2026-10-21 01:02:35.701 CEST [32748] STATEMENT:  insert into "ga4_overview_snapshots" ("id", "campaign_id", "property_id", "window_start", "window_end", "campaign_breakdown", "landing_pages", "conversion_events", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default) on conflict ("campaign_id","property_id") do update set "window_start" = $9, "window_end" = $10, "campaign_breakdown" = $11, "landing_pages" = $12, "conversion_events" = $13, "updated_at" = $14
+2026-10-21 01:02:36.226 CEST [32748] ERROR:  duplicate key value violates unique constraint "ga4_daily_metrics_pkey"
+2026-10-21 01:02:36.226 CEST [32748] DETAIL:  Key (id)=(bb5bc930-b194-4488-8e2a-4ba76bd8e77e) already exists.
+2026-10-21 01:02:36.226 CEST [32748] STATEMENT:  insert into "ga4_daily_metrics" ("id", "campaign_id", "property_id", "date", "users", "sessions", "engaged_sessions", "pageviews", "conversions", "revenue", "engagement_rate", "revenue_metric", "is_simulated", "updated_at", "created_at") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, default)
+2026-10-21 01:02:36.592 CEST [32748] ERROR:  new row for relation "ga4_overview_snapshots" violates check constraint "test_rejected_payload"
+2026-10-21 01:02:36.592 CEST [32748] DETAIL:  Failing row contains (d9dd941a-3ec4-4521-802c-16ad559d2e51, a, property-a, 2025-06-03, 2026-10-16, {"rejectForTest": true}, {}, {}, 2026-10-20 23:02:36.59, 2026-10-21 01:02:36.451304).
+2026-10-21 01:02:36.592 CEST [32748] STATEMENT:  insert into "ga4_overview_snapshots" ("id", "campaign_id", "property_id", "window_start", "window_end", "campaign_breakdown", "landing_pages", "conversion_events", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default) on conflict ("campaign_id","property_id") do update set "window_start" = $9, "window_end" = $10, "campaign_breakdown" = $11, "landing_pages" = $12, "conversion_events" = $13, "updated_at" = $14
+2026-10-21 01:02:36.839 CEST [32748] ERROR:  new row for relation "ga4_overview_snapshots" violates check constraint "test_rejected_payload"
+2026-10-21 01:02:36.839 CEST [32748] DETAIL:  Failing row contains (441c2f65-4057-42ae-9d29-a516415225a1, a, property-a, 2026-10-16, 2026-10-16, {"rejectForTest": true}, {}, {}, 2026-10-20 23:02:36.836, 2026-10-21 01:02:36.825444).
+2026-10-21 01:02:36.839 CEST [32748] STATEMENT:  insert into "ga4_overview_snapshots" ("id", "campaign_id", "property_id", "window_start", "window_end", "campaign_breakdown", "landing_pages", "conversion_events", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default) on conflict ("campaign_id","property_id") do update set "window_start" = $9, "window_end" = $10, "campaign_breakdown" = $11, "landing_pages" = $12, "conversion_events" = $13, "updated_at" = $14
+2026-10-21 01:02:37.259 CEST [28084] FATAL:  terminating connection due to administrator command
+2026-10-21 01:02:37.259 CEST [28084] CONTEXT:  SQL statement "SELECT pg_advisory_xact_lock(55439001)"
+	PL/pgSQL function hold_overview_write() line 1 at PERFORM
+2026-10-21 01:02:37.259 CEST [28084] STATEMENT:  insert into "ga4_overview_snapshots" ("id", "campaign_id", "property_id", "window_start", "window_end", "campaign_breakdown", "landing_pages", "conversion_events", "updated_at", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, default) on conflict ("campaign_id","property_id") do update set "window_start" = $9, "window_end" = $10, "campaign_breakdown" = $11, "landing_pages" = $12, "conversion_events" = $13, "updated_at" = $14
+2026-10-21 01:02:39.827 CEST [22596] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 01:02:39.827 CEST [22596] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 01:02:40.070 CEST [33788] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 01:02:40.071 CEST [26552] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 01:02:40.071 CEST [27756] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 01:02:40.689 CEST [19660] ERROR:  null value in column "source_type" of relation "revenue_sources" violates not-null constraint
+2026-10-21 01:02:40.689 CEST [19660] DETAIL:  Failing row contains (98944fd1-0df2-4da5-b7c1-7283fdd02527, a, null, ga4, null, null, original, t, 2026-10-21 01:02:40.687377, 2026-10-21 01:02:40.687377).
+2026-10-21 01:02:40.689 CEST [19660] STATEMENT:  insert into "revenue_sources" ("id", "campaign_id", "source_type", "platform_context", "display_name", "currency", "mapping_config", "is_active", "connected_at", "created_at") values (default, $1, $2, $3, default, default, $4, $5, default, default) returning "id", "campaign_id", "source_type", "platform_context", "display_name", "currency", "mapping_config", "is_active", "connected_at", "created_at"
+2026-10-21 01:02:43.042 CEST [19660] ERROR:  column "sheet_name" does not exist at character 67
+2026-10-21 01:02:43.042 CEST [19660] STATEMENT:  select "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "cached_data", "last_data_refresh_at", "connected_at", "created_at" from "google_sheets_connections" where ("google_sheets_connections"."campaign_id" = $1 and "google_sheets_connections"."is_active" = $2) order by "google_sheets_connections"."connected_at"
+2026-10-21 01:02:43.146 CEST [34044] ERROR:  column "sheet_name" of relation "google_sheets_connections" does not exist at character 101
+2026-10-21 01:02:43.146 CEST [34044] STATEMENT:  insert into "google_sheets_connections" ("id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at") values (default, $1, $2, default, default, default, $3, $4, $5, default, $6, $7, default, $8, $9, default, default, default, default, default, default) returning "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at"
+2026-10-21 01:02:43.225 CEST [34044] ERROR:  column "sheet_name" does not exist at character 67
+2026-10-21 01:02:43.225 CEST [34044] STATEMENT:  select "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at" from "google_sheets_connections" where "google_sheets_connections"."id" = $1
+2026-10-21 01:02:43.234 CEST [34044] ERROR:  forced invalidation failure
+2026-10-21 01:02:43.234 CEST [34044] CONTEXT:  PL/pgSQL function reject_legacy_invalidation() line 1 at RAISE
+2026-10-21 01:02:43.234 CEST [34044] STATEMENT:  update "ga4_refresh_work" set "scope_hash" = 'invalidated:' || "ga4_refresh_work"."id", "status" = CASE WHEN "ga4_refresh_work"."status" = 'completed' THEN 'completed' ELSE 'pending' END, "lease_token" = $1, "lease_expires_at" = $2, "updated_at" = clock_timestamp() where "ga4_refresh_work"."campaign_id" in ($3) returning "campaign_id"
+2026-10-21 01:02:43.261 CEST [34044] ERROR:  column "sheet_name" does not exist at character 67
+2026-10-21 01:02:43.261 CEST [34044] STATEMENT:  select "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at" from "google_sheets_connections" where "google_sheets_connections"."id" = $1
+2026-10-21 01:02:43.294 CEST [34044] ERROR:  column "sheet_name" does not exist at character 67
+2026-10-21 01:02:43.294 CEST [34044] STATEMENT:  select "id", "campaign_id", "spreadsheet_id", "spreadsheet_name", "sheet_name", "purpose", "method", "access_token", "refresh_token", "client_id", "client_secret", "encrypted_tokens", "expires_at", "is_primary", "is_active", "column_mappings", "platforms", "cached_data", "last_data_refresh_at", "connected_at", "created_at" from "google_sheets_connections" where "google_sheets_connections"."id" = $1 limit $2
+2026-10-21 01:02:43.620 CEST [34044] ERROR:  forced invalidation failure
+2026-10-21 01:02:43.620 CEST [34044] CONTEXT:  PL/pgSQL function reject_invalidation() line 1 at RAISE
+2026-10-21 01:02:43.620 CEST [34044] STATEMENT:  update "ga4_refresh_work" set "scope_hash" = 'invalidated:' || "ga4_refresh_work"."id", "status" = CASE WHEN "ga4_refresh_work"."status" = 'completed' THEN 'completed' ELSE 'pending' END, "lease_token" = $1, "lease_expires_at" = $2, "updated_at" = clock_timestamp() where "ga4_refresh_work"."campaign_id" in ($3) returning "campaign_id"
+2026-10-21 01:02:49.054 CEST [41844] ERROR:  new row for relation "ga4_refresh_work" violates check constraint "test_claim_failure"
+2026-10-21 01:02:49.054 CEST [41844] DETAIL:  Failing row contains (2ac7a0c0-ba80-448a-9623-44ed41a83f7a, a, 2026-10-21 00:02:48.006+02, 2026-10-17, 611db3c27ee1a5efac416cc4cfaa065b0af942035d905ea4119b3016416b3ff8, {"version": 1, "campaign": {"id": "a", "status": "active", "owne..., running, e97ddb3b-bc14-406a-9a7e-1b6993462dcd, 2026-10-21 01:04:49.054628+02, 2026-10-21 01:02:49.054629+02, null, 2026-10-21 01:02:49.054629+02, 1, null, t, null, f).
+2026-10-21 01:02:49.054 CEST [41844] STATEMENT:  update "ga4_refresh_work" set "status" = $1, "lease_token" = $2, "lease_expires_at" = clock_timestamp() + $3 * interval '1 millisecond', "started_at" = clock_timestamp(), "attempt_count" = "ga4_refresh_work"."attempt_count" + 1, "next_attempt_at" = $4, "updated_at" = clock_timestamp() where ("ga4_refresh_work"."id" = $5 and "ga4_refresh_work"."campaign_id" = $6 and "ga4_refresh_work"."status" = $7) returning "id", "campaign_id", "due_at", "reporting_date", "scope_hash", "scope", "status", "lease_token", "lease_expires_at", "started_at", "completed_at", "attempt_count", "next_attempt_at", "suppress_alerts", "retryable", "last_error", "updated_at"
+2026-10-21 01:02:49.869 CEST [37100] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 01:02:49.869 CEST [37100] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 01:02:50.712 CEST [39984] WARNING:  there is no transaction in progress
+2026-10-21 01:02:51.693 CEST [39984] WARNING:  there is no transaction in progress
+2026-10-21 01:02:51.876 CEST [39984] ERROR:  invalid input syntax for type json
+2026-10-21 01:02:51.876 CEST [39984] DETAIL:  Token "invalid" is invalid.
+2026-10-21 01:02:51.876 CEST [39984] CONTEXT:  JSON data, line 1: invalid...
+2026-10-21 01:02:51.876 CEST [39984] STATEMENT:  update "notifications" set "read" = $1, "metadata" = (COALESCE(NULLIF("notifications"."metadata", '')::jsonb, '{}'::jsonb) || jsonb_build_object('dismissedAt', NOW(), 'dismissedBy', 'system', 'dismissalReason', 'campaign_deleted'))::text where "notifications"."campaign_id" = $2
+2026-10-21 01:02:52.406 CEST [41844] ERROR:  new row for relation "ga4_refresh_work" violates check constraint "ga4_refresh_work_state"
+2026-10-21 01:02:52.406 CEST [41844] DETAIL:  Failing row contains (ec1ae5c9-cef8-4611-9d9e-3d964ff8b6f1, a, 2026-10-21 00:02:47.006+02, 2026-10-17, 991016ed8daff44f38802b7edc4ba367e13f8e04fcee4b7e17fe42eb0e57ca31, {"version": 1, "campaign": {"id": "a", "status": "active", "owne..., completed, db83ac6a-f367-41ef-ba55-47a34d91198c, 2026-10-21 01:04:52.388392+02, 2026-10-21 01:02:52.388393+02, null, 2026-10-21 01:02:52.388393+02, 1, null, t, null, f).
+2026-10-21 01:02:52.406 CEST [41844] STATEMENT:  UPDATE ga4_refresh_work SET status='completed' WHERE id=$1
+2026-10-21 01:02:52.417 CEST [18652] ERROR:  duplicate key value violates unique constraint "ga4_refresh_work_running_campaign"
+2026-10-21 01:02:52.417 CEST [18652] DETAIL:  Key (campaign_id)=(a) already exists.
+2026-10-21 01:02:52.417 CEST [18652] STATEMENT:  UPDATE ga4_refresh_work SET status='running',lease_token='other',lease_expires_at=now()+interval '1 minute',started_at=now() WHERE id=$1
+2026-10-21 01:02:52.548 CEST [39984] WARNING:  there is no transaction in progress
+2026-10-21 01:03:00.671 CEST [30064] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-10-21 01:03:01.407 CEST [35596] ERROR:  relation "linkedin_connections" does not exist at character 279
+2026-10-21 01:03:01.407 CEST [35596] STATEMENT:  select "id", "campaign_id", "ad_account_id", "ad_account_name", "access_token", "refresh_token", "client_id", "client_secret", "method", "encrypted_tokens", "conversion_value", "campaign_utm_map", "last_refresh_at", "spend_only", "expires_at", "connected_at", "created_at" from "linkedin_connections" where "linkedin_connections"."campaign_id" = $1
+2026-10-21 01:04:47.530 CEST [35540] LOG:  checkpoint starting: time
+2026-10-21 01:05:32.703 CEST [35540] LOG:  checkpoint complete: wrote 399 buffers (2.4%), wrote 13 SLRU buffers; 0 WAL file(s) added, 0 removed, 1 recycled; write=43.575 s, sync=0.761 s, total=45.174 s; sync files=1018, longest=0.006 s, average=0.001 s; distance=19511 kB, estimate=45223 kB; lsn=0/14704058, redo lsn=0/14703FB0
+2026-10-21 01:07:03.297 CEST [34444] LOG:  received fast shutdown request
+2026-10-21 01:07:03.301 CEST [34444] LOG:  aborting any active transactions
+2026-10-21 01:07:03.316 CEST [34444] LOG:  background worker "logical replication launcher" (PID 39008) exited with exit code 1
+2026-10-21 01:07:03.323 CEST [35540] LOG:  shutting down
+2026-10-21 01:07:03.325 CEST [35540] LOG:  checkpoint starting: shutdown immediate
+2026-10-21 01:07:03.351 CEST [35540] LOG:  checkpoint complete: wrote 2 buffers (0.0%), wrote 0 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.005 s, sync=0.002 s, total=0.028 s; sync files=2, longest=0.001 s, average=0.001 s; distance=3 kB, estimate=40701 kB; lsn=0/14704CF0, redo lsn=0/14704CF0
+2026-10-21 01:07:03.419 CEST [34444] LOG:  database system is shut down

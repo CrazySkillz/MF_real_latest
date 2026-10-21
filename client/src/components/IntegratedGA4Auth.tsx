@@ -40,7 +40,7 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError, connectionMo
       const response = await apiRequest("GET", `/api/campaigns/${campaignId}/ga4-connection-status`);
       const data = await response.json();
 
-      if (data.connected) {
+      if (data.connected && (connectionMode === "service-account" || data.pendingConnectionId)) {
         setAuthCompleted(true);
         onSuccess();
       }
@@ -49,7 +49,7 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError, connectionMo
     } finally {
       setIsConnecting(false);
     }
-  }, [campaignId, onSuccess]);
+  }, [campaignId, onSuccess, connectionMode]);
 
   useEffect(() => {
     if (!campaignId || connectionMode !== "service-account") return;
@@ -67,6 +67,7 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError, connectionMo
       if (event.origin !== window.location.origin) return;
 
       if (event.data?.type === "ga4_auth_success" || event.data?.type === "auth_success") {
+        if (event.data.campaignId !== campaignId) return;
         setAuthCompleted(true);
         cleanupPopup();
         onSuccess();
@@ -80,7 +81,7 @@ export function IntegratedGA4Auth({ campaignId, onSuccess, onError, connectionMo
     return () => {
       window.removeEventListener("message", handlePopupMessage);
     };
-  }, [cleanupPopup, onError, onSuccess]);
+  }, [campaignId, cleanupPopup, onError, onSuccess]);
 
   useEffect(() => {
     const interval = setInterval(() => {

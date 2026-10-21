@@ -1,0 +1,18 @@
+{
+  "backup": {
+    "startedAt": "2026-10-21T06:54:53.604Z",
+    "productionReadOnly": true,
+    "tlsVerification": true,
+    "format": "pg_dump custom archive, AES-256-GCM; key CurrentUser DPAPI; directory user-only ACL; excluded by local .gitignore",
+    "completedAt": "2026-10-21T06:58:18.637Z",
+    "encryptedBytes": 317456637,
+    "result": "PASS"
+  },
+  "restore": {
+    "startedAt": "2026-10-21T06:58:44.624Z",
+    "target": "127.0.0.1:55443/v1_batch2_production_clone",
+    "providersAndWorkers": "Not started",
+    "result": "PASS",
+    "completedAt": "2026-10-21T07:02:22.811Z"
+  }
+}

@@ -17,12 +17,21 @@ import { startAlertEmailScheduler } from "./alert-email-scheduler";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { clerkMiddleware } from "@clerk/express";
-import { storage } from "./storage";
 import { getFinancialDailySnapshotObservationStatus } from "./utils/financial-daily-snapshot-observation";
 import { assertProductionTokenEncryptionConfigured } from "./utils/tokenVault";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 assertProductionTokenEncryptionConfigured();
 const app = express();
+let applicationReady = false;
+app.use((_req, res, next) => {
+  if (!applicationReady) {
+    res.setHeader("Retry-After", "5");
+    return res.status(503).json({ status: "initializing" });
+  }
+  next();
+});
 
 // Set Express environment mode based on NODE_ENV
 app.set("env", process.env.NODE_ENV || "development");
@@ -81,90 +90,6 @@ app.use((req, res, next) => {
     express.urlencoded({ extended: false })(req, res, next);
   });
 });
-
-// ── Seed dashboard demo data (idempotent) ──────────────────────────────────
-async function seedDashboardData() {
-  // Only seed if metrics table is empty (first-run indicator)
-  const existingMetrics = await storage.getMetrics();
-  if (existingMetrics.length > 0) return;
-
-  log('Seeding dashboard demo data...');
-
-  // 1. Metrics (KPI cards)
-  const metricsData = [
-    { name: "Total Impressions", value: "284,521", change: "+12.5%", icon: "eye" },
-    { name: "Total Clicks", value: "12,847", change: "+8.3%", icon: "click" },
-    { name: "Click-through Rate", value: "4.51%", change: "+2.1%", icon: "percentage" },
-    { name: "Ad Spend", value: "$18,420", change: "-3.2%", icon: "dollar" },
-  ];
-  for (const m of metricsData) {
-    await storage.createMetric(m);
-  }
-
-  // 2. Performance data (line chart — 7 months)
-  const perfData = [
-    { date: "Jan", impressions: 28000, clicks: 1200, conversions: 85 },
-    { date: "Feb", impressions: 35000, clicks: 1580, conversions: 112 },
-    { date: "Mar", impressions: 42000, clicks: 1890, conversions: 138 },
-    { date: "Apr", impressions: 38000, clicks: 1720, conversions: 125 },
-    { date: "May", impressions: 51000, clicks: 2340, conversions: 165 },
-    { date: "Jun", impressions: 47000, clicks: 2100, conversions: 152 },
-    { date: "Jul", impressions: 55000, clicks: 2510, conversions: 178 },
-  ];
-  for (const p of perfData) {
-    await storage.createPerformanceData(p);
-  }
-
-  // 3. Integrations (platform connections)
-  const integrationsData = [
-    { platform: "facebook", name: "Facebook Ads", connected: false },
-    { platform: "google-analytics", name: "Google Analytics", connected: true },
-    { platform: "linkedin", name: "LinkedIn Ads", connected: false },
-    { platform: "google-ads", name: "Google Ads", connected: false },
-    { platform: "twitter", name: "Twitter Ads", connected: false },
-  ];
-  for (const i of integrationsData) {
-    await storage.createIntegration(i);
-  }
-
-  // 4. Update campaigns that have zero data with realistic values
-  if (db) {
-    await db.execute(sql`
-      UPDATE campaigns SET
-        impressions = CASE
-          WHEN platform = 'facebook' THEN 85240
-          WHEN platform = 'linkedin' THEN 42180
-          ELSE 65430
-        END,
-        clicks = CASE
-          WHEN platform = 'facebook' THEN 3842
-          WHEN platform = 'linkedin' THEN 1915
-          ELSE 2937
-        END,
-        spend = CASE
-          WHEN platform = 'facebook' THEN '5200'
-          WHEN platform = 'linkedin' THEN '7800'
-          ELSE '4800'
-        END,
-        conversions = CASE
-          WHEN platform = 'facebook' THEN 280
-          WHEN platform = 'linkedin' THEN 145
-          ELSE 195
-        END,
-        revenue = CASE
-          WHEN platform = 'facebook' THEN '14500'
-          WHEN platform = 'linkedin' THEN '22300'
-          ELSE '12600'
-        END,
-        health = 'good',
-        status = 'active'
-      WHERE (impressions = 0 OR impressions IS NULL)
-        AND (clicks = 0 OR clicks IS NULL);
-    `);
-  }
-
-  log('✅ Dashboard demo data seeded successfully');
-}
 
 // API routes middleware - ensure all API routes are handled first
 app.use('/api', (req, res, next) => {
@@ -248,14 +173,21 @@ process.on('uncaughtException', (error: Error) => {
     server.listen(port, "0.0.0.0", () => {
       log(`serving on port ${port}`);
 
-      // Run database migrations on startup — delay to let the HTTP server fully initialize
-      // and respond to Render's port scan/health check before running heavy DB operations
+      // Bind for infrastructure discovery; health and application requests remain 503 until ready.
       setTimeout(async () => {
         try {
-          if (!db) {
-            log('No DATABASE_URL configured; skipping database migrations and schedulers.');
-            return;
-          }
+        if (!db) throw new Error('DATABASE_URL is required to initialize the application');
+        await db.transaction(async (migrationDb: any) => {
+        const db = migrationDb;
+        await db.execute(sql`SET LOCAL lock_timeout = '10s'`);
+        await db.execute(sql`SELECT pg_advisory_xact_lock(hashtext('mf_schema_startup_v1'))`);
+        const base = await db.execute(sql`SELECT to_regclass('campaigns') AS name`);
+        if (!base.rows[0]?.name) {
+          const existing = await db.execute(sql`SELECT tablename FROM pg_tables WHERE schemaname = current_schema() LIMIT 1`);
+          if (existing.rows.length) throw new Error('Incomplete database schema; reviewed upgrade required');
+          await db.execute(sql.raw(readFileSync(resolve(process.cwd(), 'migrations/v1-bootstrap.sql'), 'utf8')));
+        }
+        try {
           log('Running database migrations...');
 
           // Migration: Campaign ownership (authorization)
@@ -945,17 +877,17 @@ process.on('uncaughtException', (error: Error) => {
           // Migration 16: Fix seed integrations — only Google Analytics should be connected by default
           await db.execute(sql`
             UPDATE integrations SET connected = false WHERE platform IN ('facebook', 'linkedin') AND connected = true;
-          `).catch(() => null);
+          `);
 
           // Migration 17: Add lookback_days column to ga4_connections
           await db.execute(sql`
             ALTER TABLE ga4_connections ADD COLUMN IF NOT EXISTS lookback_days INTEGER NOT NULL DEFAULT 90;
-          `).catch(() => null);
+          `);
 
           // Migration 17b: Persist the GA4 Overview initial historical-import boundary
           await db.execute(sql`
             ALTER TABLE ga4_connections ADD COLUMN IF NOT EXISTS import_start_date TEXT;
-          `).catch(() => null);
+          `);
 
           // Migration 18: Instagram connected platform foundation
           await db.execute(sql`
@@ -1087,7 +1019,7 @@ process.on('uncaughtException', (error: Error) => {
 
           log('✅ Database migrations completed successfully');
         } catch (error) {
-          console.error('⚠️  Migration warning (may already exist):', error instanceof Error ? error.message : String(error));
+          throw error;
         }
 
         // P5.1 storage foundation only; the scheduler does not yet claim these work records.
@@ -1122,7 +1054,7 @@ process.on('uncaughtException', (error: Error) => {
             ON ga4_refresh_work (campaign_id) WHERE status = 'running';
           `);
         } catch (error) {
-          console.error('GA4 refresh work storage migration failed:', error instanceof Error ? error.message : String(error));
+          throw error;
         }
 
         try {
@@ -1132,7 +1064,7 @@ process.on('uncaughtException', (error: Error) => {
           await db.execute(sql`ALTER TABLE ga4_refresh_work ADD COLUMN IF NOT EXISTS last_error TEXT`);
           await db.execute(sql`ALTER TABLE ga4_refresh_work ADD COLUMN IF NOT EXISTS suppress_alerts BOOLEAN NOT NULL DEFAULT FALSE`);
         } catch (error) {
-          console.error('GA4 refresh recovery migration failed:', error instanceof Error ? error.message : String(error));
+          throw error;
         }
 
         // GA4 Google Ads Spend storage is independent of the existing Connected Platform tables.
@@ -1181,27 +1113,30 @@ process.on('uncaughtException', (error: Error) => {
           `);
           log('GA4 Google Ads Spend storage ready');
         } catch (error) {
-          console.error('GA4 Google Ads Spend storage migration failed:', error instanceof Error ? error.message : String(error));
+          throw error;
         }
 
-        // Seed dashboard dummy data (idempotent — only runs when tables are empty)
-        try {
-          await seedDashboardData();
-        } catch (error) {
-          console.error('⚠️  Dashboard seed warning:', error);
+        // Explicit additive manifest: historical backfill and cleanup scripts are excluded.
+        for (const migration of ['0022_v1_entrypoint_ownership.sql', '0023_service_account_resource_grants.sql', '0024_v1_schema_integrity.sql']) {
+          const statement = readFileSync(resolve(process.cwd(), 'migrations', migration), 'utf8')
+            .replace(/^(?:BEGIN|COMMIT);[ \t]*\r?$/gm, ''); // The enclosing transaction owns commit/rollback.
+          await db.execute(sql.raw(statement));
         }
+        });
 
         // Start automated snapshot scheduler
         try {
           snapshotScheduler.start();
         } catch (error) {
           console.error('Failed to start snapshot scheduler:', error);
+          throw error;
         }
 
         try {
           executiveSummarySnapshotScheduler.start(port);
         } catch (error) {
           console.error('Failed to start Executive Summary snapshot scheduler:', error);
+          throw error;
         }
 
         // Start KPI scheduler
@@ -1209,6 +1144,7 @@ process.on('uncaughtException', (error: Error) => {
           startKPIScheduler();
         } catch (error) {
           console.error('Failed to start KPI scheduler:', error);
+          throw error;
         }
 
         // Start Report scheduler
@@ -1216,6 +1152,7 @@ process.on('uncaughtException', (error: Error) => {
           startReportScheduler();
         } catch (error) {
           console.error('Failed to start report scheduler:', error);
+          throw error;
         }
 
         // Start LinkedIn data refresh scheduler
@@ -1223,6 +1160,7 @@ process.on('uncaughtException', (error: Error) => {
           startLinkedInScheduler();
         } catch (error) {
           console.error('Failed to start LinkedIn scheduler:', error);
+          throw error;
         }
 
         // Start Meta/Facebook data refresh scheduler
@@ -1230,6 +1168,7 @@ process.on('uncaughtException', (error: Error) => {
           startMetaScheduler();
         } catch (error) {
           console.error('Failed to start Meta scheduler:', error);
+          throw error;
         }
 
         // Start Google Sheets token refresh scheduler
@@ -1237,6 +1176,7 @@ process.on('uncaughtException', (error: Error) => {
           startGoogleSheetsTokenScheduler();
         } catch (error) {
           console.error('Failed to start Google Sheets token refresh scheduler:', error);
+          throw error;
         }
 
         // Start daily auto-refresh + auto-process scheduler (LinkedIn refresh + HubSpot/Salesforce/Shopify revenue reprocess)
@@ -1244,6 +1184,7 @@ process.on('uncaughtException', (error: Error) => {
           startDailyAutoRefreshScheduler();
         } catch (error) {
           console.error('Failed to start daily auto-refresh scheduler:', error);
+          throw error;
         }
 
         // Start GA4 daily refresh scheduler (persisted daily facts)
@@ -1251,6 +1192,7 @@ process.on('uncaughtException', (error: Error) => {
           startGA4DailyScheduler(port);
         } catch (error) {
           console.error('Failed to start GA4 daily scheduler:', error);
+          throw error;
         }
 
         // Start Google Ads data refresh scheduler
@@ -1258,6 +1200,7 @@ process.on('uncaughtException', (error: Error) => {
           startGoogleAdsScheduler();
         } catch (error) {
           console.error('Failed to start Google Ads scheduler:', error);
+          throw error;
         }
 
         // Start Instagram data refresh scheduler
@@ -1265,6 +1208,7 @@ process.on('uncaughtException', (error: Error) => {
           startInstagramScheduler();
         } catch (error) {
           console.error('Failed to start Instagram scheduler:', error);
+          throw error;
         }
 
         // Start TikTok data refresh scheduler
@@ -1272,6 +1216,7 @@ process.on('uncaughtException', (error: Error) => {
           startTikTokScheduler();
         } catch (error) {
           console.error('Failed to start TikTok scheduler:', error);
+          throw error;
         }
 
         // Start alert email reminder scheduler
@@ -1279,8 +1224,15 @@ process.on('uncaughtException', (error: Error) => {
           startAlertEmailScheduler();
         } catch (error) {
           console.error('Failed to start alert email scheduler:', error);
+          throw error;
         }
-      }, 5000); // 5 second delay
+        applicationReady = true;
+        } catch (error) {
+          applicationReady = false;
+          console.error('Application initialization failed:', error instanceof Error ? error.message : String(error));
+          process.exit(1);
+        }
+      }, 5000); // Readiness remains false during the delay.
     });
   } catch (error) {
     console.error('Failed to start server:', error);

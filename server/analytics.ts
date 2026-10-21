@@ -2612,27 +2612,46 @@ export class GoogleAnalytics4Service {
       'manualCampaignName',
     ];
 
+    const signal = this.requestAbortSignal();
+    let requestCount = 0;
+    let successfulReports = 0;
+    const runRows = async (accessToken: string, dimensionName: string) => {
+      const rows: any[] = [];
+      const pageSize = Number.isFinite(limit) ? Math.min(Math.max(Math.floor(limit), 1), 200) : 200;
+      let expectedCount: number | undefined;
+      const seenValues = new Set<string>();
+      do {
+        if (++requestCount > 200) throw new Error('GA4_CAMPAIGN_DISCOVERY_LIMIT_REACHED');
+        const resp = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+          method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          signal,
+          body: JSON.stringify({ dateRanges: [{ startDate: dateRange, endDate: 'today' }],
+            dimensions: [{ name: dimensionName }], metrics: [{ name: 'totalUsers' }],
+            orderBys: [{ dimension: { dimensionName, orderType: 'ALPHANUMERIC' } }],
+            limit: pageSize, offset: rows.length }),
+        });
+        if (!resp.ok) throw Object.assign(new Error(`GA4 API Error: ${await resp.text()}`), { status: resp.status });
+        const json = await resp.json();
+        const page = Array.isArray(json?.rows) ? json.rows : [];
+        const count = Number(json?.rowCount ?? (page.length === 0 ? 0 : NaN));
+        if (!Number.isInteger(count) || count < 0 || (expectedCount !== undefined && count !== expectedCount)) throw new Error('GA4_CAMPAIGN_DISCOVERY_INCOMPLETE');
+        expectedCount = count;
+        if (count > 40_000) throw new Error('GA4_CAMPAIGN_DISCOVERY_LIMIT_REACHED');
+        if ((!page.length && rows.length < count) || page.length > pageSize || rows.length + page.length > count) throw new Error('GA4_CAMPAIGN_DISCOVERY_INCOMPLETE');
+        for (const row of page) {
+          const value = row?.dimensionValues?.[0]?.value;
+          const users = Number(row?.metricValues?.[0]?.value);
+          if (typeof value !== 'string' || seenValues.has(value) || !Number.isFinite(users) || users < 0) throw new Error('GA4_CAMPAIGN_DISCOVERY_INCOMPLETE');
+          seenValues.add(value);
+          rows.push(row);
+        }
+      } while (rows.length < expectedCount!);
+      successfulReports++;
+      return rows;
+    };
+
     const run = async (accessToken: string, dimensionName: CampaignDimensionName) => {
-      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          dateRanges: [{ startDate: dateRange, endDate: 'today' }],
-          dimensions: [{ name: dimensionName }],
-          metrics: [{ name: 'totalUsers' }],
-          orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
-          limit: Math.min(Math.max(limit, 1), 200),
-        }),
-      });
-      if (!resp.ok) {
-        const txt = await resp.text();
-        throw new Error(`GA4 API Error: ${txt}`);
-      }
-      const json = await resp.json().catch(() => ({} as any));
-      const rows: any[] = Array.isArray(json?.rows) ? json.rows : [];
+      const rows = await runRows(accessToken, dimensionName);
       const campaigns: Array<{ name: string; users: number }> = [];
       for (const r of rows) {
         const name = String(r?.dimensionValues?.[0]?.value || '').trim();
@@ -2655,26 +2674,7 @@ export class GoogleAnalytics4Service {
     };
 
     const runPageLocationCampaigns = async (accessToken: string) => {
-      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          dateRanges: [{ startDate: dateRange, endDate: 'today' }],
-          dimensions: [{ name: 'pageLocation' }],
-          metrics: [{ name: 'totalUsers' }],
-          orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
-          limit: Math.min(Math.max(limit, 1), 200),
-        }),
-      });
-      if (!resp.ok) {
-        const txt = await resp.text();
-        throw new Error(`GA4 API Error: ${txt}`);
-      }
-      const json = await resp.json().catch(() => ({} as any));
-      const rows: any[] = Array.isArray(json?.rows) ? json.rows : [];
+      const rows = await runRows(accessToken, 'pageLocation');
       const map = new Map<string, number>();
       for (const r of rows) {
         const name = extractUtmCampaign(String(r?.dimensionValues?.[0]?.value || ''));
@@ -2697,8 +2697,7 @@ export class GoogleAnalytics4Service {
       }
       return Array.from(map.entries())
         .map(([name, users]) => ({ name, users }))
-        .sort((a, b) => (b.users || 0) - (a.users || 0))
-        .slice(0, Math.min(Math.max(limit, 1), 200));
+        .sort((a, b) => (b.users || 0) - (a.users || 0));
     };
 
     const isMostlyEmpty = (list: Array<{ name: string; users: number }>) =>
@@ -2708,27 +2707,23 @@ export class GoogleAnalytics4Service {
       accessToken: string,
       errorHandler: (err: any) => Array<{ name: string; users: number }>
     ) => {
+      const reportsBefore = successfulReports;
       const lists: Array<Array<{ name: string; users: number }>> = [];
       for (const dimension of campaignDimensions) {
         const campaigns = await run(accessToken, dimension).catch(errorHandler);
         lists.push(campaigns);
         if (!isMostlyEmpty(campaigns)) break;
       }
-      const campaigns = merge(lists);
       const pageLocationCampaigns = await runPageLocationCampaigns(accessToken).catch(errorHandler);
+      if (successfulReports === reportsBefore) throw new Error('GA4_CAMPAIGN_DISCOVERY_UNAVAILABLE');
       return merge([...lists, pageLocationCampaigns]);
     };
 
-    // Helper: catch non-auth errors only; let auth errors propagate for token refresh
-    const catchNonAuth = (err: any) => {
-      const msg = String(err?.message || '').toLowerCase();
-      if (msg.includes('"code": 401') || msg.includes('unauthenticated') ||
-          msg.includes('invalid authentication credentials') ||
-          msg.includes('request had invalid authentication credentials') ||
-          msg.includes('invalid_grant')) {
-        throw err; // let the outer catch handle token refresh
-      }
-      return [] as Array<{ name: string; users: number }>;
+    // Only an explicitly unsupported dimension permits the existing alternate-dimension fallback.
+    const catchUnsupportedDimension = (err: any) => {
+      const message = String(err?.message || '').toLowerCase();
+      if (err?.status === 400 && /dimension/.test(message) && /not a valid|unknown|unsupported|incompatible/.test(message)) return [];
+      throw err;
     };
 
     try {
@@ -2738,11 +2733,11 @@ export class GoogleAnalytics4Service {
       // - campaignName: legacy/general
       // - firstUserCampaignName: sometimes available earlier for new users
       // - pageLocation fallback: parse utm_campaign from landing URLs if attribution dims are not populated yet
-      const campaigns = await collectCampaignValues(connection.accessToken, catchNonAuth);
+      const campaigns = await collectCampaignValues(connection.accessToken, catchUnsupportedDimension);
       return { propertyId: normalizedPropertyId, campaigns };
     } catch (e: any) {
       const msg = String(e?.message || '');
-      const isAuth =
+      const isAuth = e?.status === 401 ||
         msg.includes('"code": 401') ||
         msg.toLowerCase().includes('unauthenticated') ||
         msg.toLowerCase().includes('invalid authentication credentials') ||
@@ -2759,7 +2754,7 @@ export class GoogleAnalytics4Service {
           refreshToken: connection.refreshToken,
           expiresAt: new Date(Date.now() + (refresh.expires_in * 1000)),
         });
-        const campaigns = await collectCampaignValues(refresh.access_token, () => []);
+        const campaigns = await collectCampaignValues(refresh.access_token, catchUnsupportedDimension);
         return { propertyId: normalizedPropertyId, campaigns };
       }
       throw e;

@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-21T07:02:39.543Z",
+  "target": "127.0.0.1:55443/v1_batch2_production_clone",
+  "boundary": "Actual production backup restored locally; actual startup SQL; provider and worker registration stubbed. Production database not used by this script.",
+  "checks": [],
+  "result": "FAIL",
+  "error": {
+    "code": "ERR_ASSERTION",
+    "message": "Expected values to be strictly equal:\n+ actual - expected\n\n+ '127.0.0.1/32'\n- '127.0.0.1'\n            ^\n"
+  },
+  "completedAt": "2026-10-21T07:02:39.666Z"
+}

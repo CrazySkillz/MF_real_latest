@@ -9136,11 +9136,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Ensure ownerId is always set (even if schema strips it for some reason)
       (validatedData as any).ownerId = actorId;
       console.log('[Campaign Creation] Validated data:', JSON.stringify(validatedData, null, 2));
-      const campaign = await storage.createCampaign(validatedData);
+      const requestId = req.body?.creationRequestId === undefined ? undefined : z.string().uuid().parse(req.body.creationRequestId);
+      const campaign = await storage.createCampaign(validatedData, requestId);
       console.log('[Campaign Creation] Campaign created successfully:', campaign.id);
 
       // AUTO-GENERATE BENCHMARKS IF INDUSTRY IS SELECTED
-      if (validatedData.industry) {
+      if (validatedData.industry && !(campaign as any).__creationReplay) {
         console.log('[Benchmarks] Industry detected:', validatedData.industry);
         try {
           const { getIndustryBenchmarks } = await import('./data/industry-benchmarks.js');
@@ -9189,9 +9190,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('[Benchmarks] No industry specified, skipping benchmark generation');
       }
 
-      res.status(201).json(withReportingTimeZone(campaign as any));
+      res.status(201).json({ ...withReportingTimeZone(campaign as any), ...(requestId ? {
+        initialImport: await storage.getGA4InitialImportStatus(campaign.id, actorId),
+      } : {}) });
     } catch (error) {
       console.error('[Campaign Creation] Error:', error);
+      if (error instanceof Error && error.message === 'CAMPAIGN_CLIENT_NOT_FOUND') {
+        return res.status(404).json({ message: 'Client not found' });
+      }
+      if (error instanceof Error && error.message === 'CAMPAIGN_DRAFT_CANCELLED') {
+        return res.status(409).json({ message: 'This campaign setup was cancelled. Close it and start again.' });
+      }
+      if (error instanceof Error && error.message.startsWith('CAMPAIGN_DRAFT_REQUEST_')) {
+        return res.status(409).json({ message: 'Unable to reuse this campaign creation request.' });
+      }
       if (error instanceof z.ZodError) {
         console.error('[Campaign Creation] Validation errors:', JSON.stringify(error.errors, null, 2));
         return res.status(400).json({ message: "Invalid campaign data", errors: error.errors });
@@ -9329,6 +9341,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/campaigns/:id", async (req, res) => {
     try {
       const campaignId = req.params.id;
+      if (String(req.query.draftCleanup || '') === '1' && typeof req.query.clientId === 'string' && req.query.clientId) {
+        const actorId = getActorId(req as any);
+        if (!actorId) return res.status(401).json({ message: 'Unauthorized' });
+        if (!z.string().uuid().safeParse(campaignId).success) return res.status(400).json({ message: 'Invalid draft identity' });
+        const cancelled = await storage.cancelCampaignCreation(actorId, req.query.clientId, campaignId);
+        return res.status(cancelled ? 200 : 404).json({ success: cancelled });
+      }
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
       const draftCleanup = String(req.query.draftCleanup || "").trim() === "1";
@@ -10998,6 +11017,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Google Sheets OAuth callback
   app.get("/api/auth/google-sheets/callback", async (req, res) => {
+    const popupErrorType = String(req.query.state || '').startsWith('ga4:') ? 'ga4_auth_error' : 'sheets_auth_error';
     try {
       const { code, state, error } = req.query;
 
@@ -11007,10 +11027,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <head><title>Authentication Failed</title></head>
             <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
               <h2>Authentication Failed</h2>
-              <p>Google Sheets authorization was not completed.</p>
+              <p>Google authorization was not completed.</p>
               <script>
                 if (window.opener) {
-                  window.opener.postMessage({ type: 'sheets_auth_error', error: 'Authorization failed' }, window.location.origin);
+                  window.opener.postMessage({ type: '${popupErrorType}', error: 'Authorization failed' }, window.location.origin);
                 }
                 setTimeout(() => window.close(), 2000);
               </script>
@@ -11028,7 +11048,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               <p>Missing authorization code or state parameter.</p>
               <script>
                 if (window.opener) {
-                  window.opener.postMessage({ type: 'sheets_auth_error', error: 'Missing parameters' }, window.location.origin);
+                  window.opener.postMessage({ type: '${popupErrorType}', error: 'Missing parameters' }, window.location.origin);
                 }
                 setTimeout(() => window.close(), 2000);
               </script>
@@ -11110,94 +11130,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           </body></html>`);
         }
 
-        // Fetch GA4 accounts and properties
-        let ga4Properties: Array<{ id: string; name: string; account?: string }> = [];
-        try {
-          const accountsResponse = await fetch('https://analyticsadmin.googleapis.com/v1alpha/accounts', {
-            headers: { 'Authorization': `Bearer ${ga4AccessToken}` },
-          });
-          if (accountsResponse.ok) {
-            const accountsData = await accountsResponse.json();
-            for (const account of accountsData.accounts || []) {
-              const accountId = account.name?.split('/').pop();
-              if (!accountId) continue;
-              for (const endpoint of [
-                `https://analyticsadmin.googleapis.com/v1beta/properties?filter=parent:accounts/${accountId}`,
-                `https://analyticsadmin.googleapis.com/v1alpha/properties?filter=parent:accounts/${accountId}`,
-              ]) {
-                try {
-                  const propertiesResponse = await fetch(endpoint, {
-                    headers: { 'Authorization': `Bearer ${ga4AccessToken}` },
-                  });
-                  if (propertiesResponse.ok) {
-                    const propertiesData = await propertiesResponse.json();
-                    for (const property of propertiesData.properties || []) {
-                      const propId = property.name?.split('/').pop() || '';
-                      if (!propId) continue;
-                      ga4Properties.push({
-                        id: propId,
-                        name: property.displayName || `Property ${propId}`,
-                        account: account.displayName,
-                      });
-                    }
-                    break;
-                  }
-                } catch { /* try next endpoint */ }
-              }
-            }
-          }
-        } catch (error) {
-          console.error('[GA4 OAuth] Failed to fetch properties:', error);
-        }
-
-        const existingGA4Conns = await storage.getGA4Connections(ga4CampaignId);
-
-        // Store and promote the durable replacement before removing any prior connection.
-        const ga4ExpiresAt = new Date(Date.now() + ((ga4Tokens.expires_in || 3600) * 1000));
-        const newGA4Connection = await storage.createGA4Connection({
-          campaignId: ga4CampaignId,
-          accessToken: ga4AccessToken,
-          refreshToken: ga4RefreshToken,
-          propertyId: '',
-          method: 'access_token',
-          propertyName: 'OAuth Connection',
-          clientId: ga4ClientId,
-          clientSecret: ga4ClientSecret,
-          expiresAt: ga4ExpiresAt,
+        // Authorization is staged until an accessible property is explicitly confirmed.
+        const ga4Properties = await realGA4Client.fetchPropertiesFromGoogle(ga4AccessToken);
+        const pendingConnection = await storage.stageGA4OAuthConnection({
+          campaignId: ga4CampaignId, accessToken: ga4AccessToken, refreshToken: ga4RefreshToken,
+          propertyId: '', method: 'access_token', propertyName: 'Pending OAuth',
+          clientId: ga4ClientId, clientSecret: ga4ClientSecret,
+          expiresAt: new Date(Date.now() + ((ga4Tokens.expires_in || 3600) * 1000)),
         });
-        if (existingGA4Conns.length > 0) {
-          const promoted = await storage.setPrimaryGA4Connection(ga4CampaignId, newGA4Connection.id);
-          if (!promoted) {
-            await storage.deleteGA4Connection(newGA4Connection.id);
-            throw new Error('Failed to promote replacement GA4 connection');
-          }
-          for (const old of existingGA4Conns) {
-            await storage.deleteGA4Connection(old.id);
-            console.log(`[GA4 OAuth] Deactivated stale connection ${old.id} for campaign ${ga4CampaignId}`);
-          }
-        }
-
-        (global as any).oauthConnections = (global as any).oauthConnections || new Map();
-        (global as any).oauthConnections.set(ga4CampaignId, {
-          accessToken: ga4AccessToken,
-          refreshToken: ga4RefreshToken,
-          expiresAt: Date.now() + ((ga4Tokens.expires_in || 3600) * 1000),
-          properties: ga4Properties,
-          connectedAt: new Date().toISOString(),
-        });
-
-        // Also store in realGA4Client so both campaign-creation and Connected Platforms flows work
-        realGA4Client.storeManualConnection(ga4CampaignId, {
-          propertyId: '',
-          accessToken: ga4AccessToken,
-          refreshToken: ga4RefreshToken,
-          expiresAt: Date.now() + ((ga4Tokens.expires_in || 3600) * 1000),
-          email: 'oauth-user@google.com',
-          scope: ['https://www.googleapis.com/auth/analytics.readonly'],
-          availableProperties: ga4Properties.map((p: any) => ({ id: p.id, name: p.name, account: p.account })),
-        });
-
-        console.log(`[GA4 OAuth] Successfully connected campaign ${ga4CampaignId}, found ${ga4Properties.length} properties`);
 
         const ga4PropertiesJson = serializeOAuthPopupJson(ga4Properties);
         return res.send(`<html><body style="font-family:Arial;text-align:center;padding:50px;">
@@ -11207,6 +11147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               window.opener.postMessage({
                 type:'ga4_auth_success',
                 campaignId:${JSON.stringify(ga4CampaignId)},
+                pendingConnectionId:${JSON.stringify(pendingConnection.id)},
                 properties:${ga4PropertiesJson}
               },window.location.origin);
             }
@@ -11238,7 +11179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               <p>${message}</p>
               <script>
                 if (window.opener) {
-                  window.opener.postMessage({ type: 'sheets_auth_error', error: ${JSON.stringify(message)} }, window.location.origin);
+                  window.opener.postMessage({ type: '${popupErrorType}', error: ${JSON.stringify(message)} }, window.location.origin);
                 }
                 setTimeout(() => window.close(), 2000);
               </script>
@@ -11349,10 +11290,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           <head><title>Authentication Error</title></head>
           <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
             <h2>Authentication Error</h2>
-            <p>Failed to complete Google Sheets authentication.</p>
+            <p>Failed to complete Google authentication.</p>
             <script>
               if (window.opener) {
-                window.opener.postMessage({ type: 'sheets_auth_error', error: 'Authentication failed' }, window.location.origin);
+                window.opener.postMessage({ type: '${popupErrorType}', error: 'Authentication failed' }, window.location.origin);
               }
               setTimeout(() => window.close(), 2000);
             </script>
@@ -12902,19 +12843,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[Integrated OAuth] Callback result:', result);
 
       if (result.success) {
+        const credentials = realGA4Client.getConnection(callbackCampaignId);
+        if (!credentials?.accessToken || !credentials.refreshToken) throw new Error('GA4_OAUTH_CREDENTIALS_REQUIRED');
+        const pending = await storage.stageGA4OAuthConnection({ campaignId: callbackCampaignId,
+          propertyId: '', method: 'access_token', accessToken: credentials.accessToken,
+          refreshToken: credentials.refreshToken, expiresAt: new Date(credentials.expiresAt),
+          clientId: process.env.GOOGLE_CLIENT_ID, clientSecret: process.env.GOOGLE_CLIENT_SECRET });
+        realGA4Client.disconnect(callbackCampaignId);
         res.send(`
           <html>
             <head><title>Google Analytics Connected</title></head>
             <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
               <h2 style="color: #4285f4;">🎉 Successfully Connected!</h2>
-              <p>Your Google Analytics account is now connected.</p>
-              <p>You can now access real-time metrics and data.</p>
+              <p>Google authorization succeeded.</p>
+              <p>Select a property in the application to confirm the connection.</p>
               <button onclick="closeWindow()" style="background: #4285f4; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Close Window</button>
               <script>
                 function closeWindow() {
                   try {
                     if (window.opener) {
-                      window.opener.postMessage({ type: 'auth_success' }, window.location.origin);
+                      window.opener.postMessage({ type: 'ga4_auth_success', campaignId: ${serializeOAuthPopupJson(callbackCampaignId)}, pendingConnectionId: ${serializeOAuthPopupJson(pending.id)}, properties: ${serializeOAuthPopupJson(credentials.availableProperties || [])} }, window.location.origin);
                     }
                   } catch (e) {}
                   window.close();
@@ -12955,6 +12903,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  const discoverStoredGA4Properties = async (connection: any) => {
+    const version = connection.isActive ? await storage.getGA4PublicationVersion(connection.campaignId) : null;
+    try {
+      return await realGA4Client.fetchPropertiesFromGoogle(String(connection.accessToken || ''));
+    } catch (error: any) {
+      if (error?.status !== 401 || !connection.refreshToken || !connection.isActive) throw error;
+      const refreshed = await ga4Service.refreshAccessToken(connection.refreshToken, connection.clientId || undefined, connection.clientSecret || undefined);
+      const updated = await storage.updateGA4ConnectionTokens(connection.id, {
+        accessToken: refreshed.access_token, refreshToken: connection.refreshToken,
+        expiresAt: new Date(Date.now() + refreshed.expires_in * 1000),
+      }, { publicationVersion: { campaignId: connection.campaignId, version: version! }, expectedConnection: connection });
+      if (!updated) throw new Error('GA4_CONNECTION_CHANGED');
+      Object.assign(connection, updated);
+      return realGA4Client.fetchPropertiesFromGoogle(refreshed.access_token);
+    }
+  };
+
   // Check real GA4 connection status (supports integrated flow)
   app.get("/api/campaigns/:id/ga4-connection-status", async (req, res) => {
     try {
@@ -12962,221 +12927,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
 
-      // 1. Check in-memory realGA4Client first
-      const isConnectedInMemory = realGA4Client.isConnected(campaignId);
-      if (isConnectedInMemory) {
-        const connection = realGA4Client.getConnection(campaignId);
-        const properties = await realGA4Client.getProperties(campaignId);
-        return res.json({
-          connected: true,
-          email: connection?.email,
-          propertyId: connection?.propertyId,
-          properties: properties || [],
-          isRealOAuth: !!process.env.GOOGLE_CLIENT_ID,
-          dataSource: 'Real Google Analytics API'
-        });
+      const pending = await storage.getPendingGA4OAuthConnection(campaignId);
+      const connections = await storage.getGA4Connections(campaignId);
+      const connection = pending || connections.find(c => c.isPrimary) || connections[0];
+      if (!connection) {
+        realGA4Client.disconnect(campaignId);
+        (global as any).oauthConnections?.delete(campaignId);
+        (global as any).realGA4Connections?.delete(campaignId);
+        return res.json({ connected: false });
       }
-
-      // 2. Check global oauthConnections (populated by OAuth callback)
-      const oauthConnections = (global as any).oauthConnections;
-      const oauthData = oauthConnections?.get(campaignId);
-      if (oauthData) {
-        return res.json({
-          connected: true,
-          propertyId: oauthData.selectedPropertyId || '',
-          properties: oauthData.properties || [],
-          isRealOAuth: true,
-          dataSource: 'OAuth Connection'
-        });
+      let properties;
+      if (connection.method === GA4_SERVICE_ACCOUNT_METHOD) {
+        properties = [{ id: normalizeGA4ServiceAccountPropertyId(connection.propertyId), name: connection.propertyName || `Property ${connection.propertyId}` }];
+      } else {
+        // Use persisted credentials; stale process caches cannot resurrect a disconnected source.
+        properties = await discoverStoredGA4Properties(connection);
       }
-
-      // 3. Check database
-      const dbConnections = await storage.getGA4Connections(campaignId);
-      if (dbConnections.length > 0) {
-        const dbConn = dbConnections[0] as any;
-        // Try to fetch properties from Google using stored access token
-        let dbProperties: Array<{ id: string; name: string; account?: string }> = dbConn.method === GA4_SERVICE_ACCOUNT_METHOD
-          ? [{
-              id: normalizeGA4ServiceAccountPropertyId(dbConn.propertyId),
-              name: dbConn.propertyName || `Property ${normalizeGA4ServiceAccountPropertyId(dbConn.propertyId)}`,
-            }]
-          : [];
-        const token = dbConn.accessToken;
-        if (token && dbConn.method !== GA4_SERVICE_ACCOUNT_METHOD) {
-          try {
-            const acctResp = await fetch('https://analyticsadmin.googleapis.com/v1beta/accounts', {
-              headers: { 'Authorization': `Bearer ${token}` },
-            });
-            if (acctResp.ok) {
-              const acctData = await acctResp.json();
-              for (const account of acctData.accounts || []) {
-                const acctId = account.name?.split('/').pop();
-                if (!acctId) continue;
-                for (const ep of [
-                  `https://analyticsadmin.googleapis.com/v1beta/properties?filter=parent:accounts/${acctId}`,
-                  `https://analyticsadmin.googleapis.com/v1alpha/properties?filter=parent:accounts/${acctId}`,
-                ]) {
-                  try {
-                    const propResp = await fetch(ep, { headers: { 'Authorization': `Bearer ${token}` } });
-                    if (propResp.ok) {
-                      const propData = await propResp.json();
-                      for (const p of propData.properties || []) {
-                        const pid = p.name?.split('/').pop() || '';
-                        if (!pid) continue;
-                        dbProperties.push({ id: pid, name: p.displayName || `Property ${pid}`, account: account.displayName });
-                      }
-                      break;
-                    }
-                  } catch { /* try next endpoint */ }
-                }
-              }
-            }
-          } catch (e) {
-            console.error('[GA4 Status] Failed to fetch properties from Google:', e);
-          }
-          // Cache properties in oauthConnections so subsequent calls are fast
-          if (dbProperties.length > 0) {
-            (global as any).oauthConnections = (global as any).oauthConnections || new Map();
-            const existing = (global as any).oauthConnections.get(campaignId);
-            if (existing) {
-              existing.properties = dbProperties;
-            } else {
-              (global as any).oauthConnections.set(campaignId, {
-                accessToken: token,
-                refreshToken: dbConn.refreshToken,
-                properties: dbProperties,
-                connectedAt: dbConn.connectedAt || new Date().toISOString(),
-              });
-            }
-          }
-        }
-        return res.json({
-          connected: true,
-          propertyId: dbConn.propertyId || '',
-          properties: dbProperties,
-          isRealOAuth: dbConn.method !== GA4_SERVICE_ACCOUNT_METHOD,
-          dataSource: dbConn.method === GA4_SERVICE_ACCOUNT_METHOD ? 'Temporary Service Account' : 'Database Connection'
-        });
-      }
-
-      res.json({ connected: false });
+      res.json({ connected: true, propertyId: pending ? '' : connection.propertyId,
+        pendingConnectionId: pending?.id, pending: !!pending, properties,
+        isRealOAuth: connection.method !== GA4_SERVICE_ACCOUNT_METHOD,
+        dataSource: connection.method === GA4_SERVICE_ACCOUNT_METHOD ? 'Temporary Service Account' : 'Database Connection' });
     } catch (error) {
       console.error('[Integrated OAuth] Connection status error:', error);
       res.status(500).json({ message: "Failed to check connection status" });
     }
   });
 
-  // Set GA4 property for campaign (integrated flow)
-  app.post("/api/campaigns/:id/ga4-property", async (req, res) => {
+  app.delete("/api/campaigns/:id/ga4-oauth-pending/:connectionId", async (req, res) => {
+    if (!await ensureCampaignAccess(req as any, res as any, req.params.id)) return;
     try {
-      const campaignId = req.params.id;
-      const { propertyId, lookbackDays: rawLookback } = req.body;
-
-      if (!propertyId) {
-        return res.status(400).json({ message: "Property ID is required" });
-      }
-      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
-      if (!ok) return;
-      if (Number(rawLookback) !== 30) {
-        return res.status(400).json({
-          success: false,
-          error: "UNSUPPORTED_GA4_LOOKBACK",
-          message: "This release supports only a 30-day GA4 lookback.",
-        });
-      }
-      const lookbackDays = 30;
-      const selectionImportStartDate = getGA4HistoricalImportStartDate(
-        new Date(),
-        lookbackDays,
-        (ok as any)?.reportingTimeZone,
-      );
-
-      // Try to update in-memory realGA4Client (may not have it if OAuth went through ga4:connect flow)
-      realGA4Client.setPropertyId(campaignId, propertyId);
-
-      // Resolve property name from any available source
-      let propertyName = `Property ${propertyId}`;
-      const realConn = realGA4Client.getConnection(campaignId);
-      const oauthData = (global as any).oauthConnections?.get(campaignId);
-      if (realConn) {
-        const properties = await realGA4Client.getProperties(campaignId);
-        const found = properties?.find((p: any) => p.id === propertyId);
-        if (found?.name) propertyName = found.name;
-      } else if (oauthData?.properties) {
-        const found = oauthData.properties.find((p: any) => p.id === propertyId);
-        if (found?.name) propertyName = found.name;
-      }
-
-      // Check if connection already exists in database
-      const existingConnections = await storage.getGA4Connections(campaignId);
-      console.log(`[Set Property] Found ${existingConnections.length} existing connections for ${campaignId}`);
-
-      if (existingConnections.length > 0) {
-        // Update existing connection
-        const existingConnection = existingConnections[0];
-        const sameProperty = String((existingConnection as any)?.propertyId || '') === String(propertyId);
-        const importStartDate = sameProperty
-          ? String((existingConnection as any)?.importStartDate || '').trim()
-            || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE
-          : selectionImportStartDate;
-        console.log(`[Set Property] Updating existing connection ${existingConnection.id}`);
-        await storage.updateGA4Connection(existingConnection.id, {
-          propertyId,
-          propertyName,
-          lookbackDays,
-          importStartDate,
-          isPrimary: true,
-          isActive: true
-        } as any);
-        await storage.setPrimaryGA4Connection(campaignId, existingConnection.id);
-        console.log(`[Set Property] Connection updated and set as primary`);
-      } else {
-        // Create new connection in database using tokens from any available source
-        const accessToken = realConn?.accessToken || oauthData?.accessToken || '';
-        const refreshToken = realConn?.refreshToken || oauthData?.refreshToken || '';
-        const expiresAt = realConn?.expiresAt
-          ? new Date(realConn.expiresAt)
-          : oauthData?.expiresAt
-            ? new Date(oauthData.expiresAt)
-            : new Date(Date.now() + 3600000);
-
-        console.log(`[Set Property] Creating new connection for ${campaignId} with property ${propertyId}`);
-        const newConnection = await storage.createGA4Connection({
-          campaignId,
-          propertyId,
-          accessToken,
-          refreshToken,
-          method: 'access_token',
-          propertyName,
-          lookbackDays,
-          importStartDate: selectionImportStartDate,
-          isPrimary: true,
-          isActive: true,
-          clientId: process.env.GOOGLE_CLIENT_ID || undefined,
-          clientSecret: process.env.GOOGLE_CLIENT_SECRET || undefined,
-          expiresAt,
-        } as any);
-        await storage.setPrimaryGA4Connection(campaignId, newConnection.id);
-        console.log(`[Set Property] New connection created: ${newConnection.id}`);
-      }
-
-      // Also store in realGA4Connections for metrics access
-      (global as any).realGA4Connections = (global as any).realGA4Connections || new Map();
-      (global as any).realGA4Connections.set(campaignId, {
-        propertyId,
-        accessToken: realConn?.accessToken || oauthData?.accessToken || existingConnections[0]?.accessToken || '',
-        refreshToken: realConn?.refreshToken || oauthData?.refreshToken || existingConnections[0]?.refreshToken || '',
-        connectedAt: new Date().toISOString(),
-        isReal: true,
-        propertyName
-      });
-
-      res.json({ success: true, message: "Property set successfully" });
-    } catch (error) {
-      console.error('[Integrated OAuth] Set property error:', error);
-      res.status(500).json({ message: "Failed to set property" });
+      const removed = await storage.cancelGA4OAuthConnection(req.params.id, req.params.connectionId);
+      res.status(removed ? 200 : 404).json({ success: removed });
+    } catch {
+      res.status(500).json({ success: false, message: "Could not cancel Google authorization. Please retry." });
     }
   });
+
+  // Both current selectors use the same persisted authorization and property-access checks.
+  const selectGA4Property = async (req: any, res: any) => {
+    try {
+      const campaignId = req.params.id || req.body.campaignId;
+      const { propertyId, pendingConnectionId, lookbackDays } = req.body;
+      if (typeof campaignId !== 'string' || typeof propertyId !== 'string' || !/^\d+$/.test(propertyId)) {
+        return res.status(400).json({ success: false, message: "A valid campaign and GA4 property are required" });
+      }
+      const campaign = await ensureCampaignAccess(req, res, campaignId);
+      if (!campaign) return;
+      if (Number(lookbackDays) !== 30) {
+        return res.status(400).json({ success: false, error: "UNSUPPORTED_GA4_LOOKBACK", message: "This release supports only a 30-day GA4 lookback." });
+      }
+      let pending = await storage.getPendingGA4OAuthConnection(campaignId, pendingConnectionId || undefined);
+      if (!pending && !pendingConnectionId) {
+        const connections = await storage.getGA4Connections(campaignId);
+        const active = connections.find(c => c.isPrimary) || connections[0];
+        if (active?.method === GA4_SERVICE_ACCOUNT_METHOD && active.propertyId === propertyId) {
+          return res.json({ success: true, message: "Property set successfully", selectedProperty: { id: propertyId, name: active.propertyName } });
+        }
+        if (active?.method === 'access_token') {
+          const properties = await discoverStoredGA4Properties(active);
+          if (!properties.some(p => p.id === propertyId)) return res.status(403).json({ success: false, message: "This Google authorization cannot access that property" });
+          pending = await storage.stageGA4OAuthConnection({ campaignId, propertyId: '', method: 'access_token',
+            accessToken: active.accessToken, refreshToken: active.refreshToken, clientId: active.clientId,
+            clientSecret: active.clientSecret, expiresAt: active.expiresAt });
+        }
+      }
+      if (!pending || (pendingConnectionId && pending.id !== pendingConnectionId)) {
+        return res.status(409).json({ success: false, error: "GA4_OAUTH_PENDING_EXPIRED", message: "Google authorization expired. Please reconnect." });
+      }
+      const properties = await realGA4Client.fetchPropertiesFromGoogle(String(pending.accessToken || ''));
+      const selectedProperty = properties.find(p => p.id === propertyId);
+      if (!selectedProperty) return res.status(403).json({ success: false, message: "This Google authorization cannot access that property" });
+      const importStartDate = getGA4HistoricalImportStartDate(new Date(), 30, (campaign as any).reportingTimeZone);
+      if (!importStartDate) throw new Error('GA4_IMPORT_START_INVALID');
+      await storage.commitGA4OAuthConnection(campaignId, pending.id, propertyId, selectedProperty.name, importStartDate);
+      realGA4Client.disconnect(campaignId);
+      (global as any).oauthConnections?.delete(campaignId);
+      (global as any).realGA4Connections?.delete(campaignId);
+      res.json({ success: true, message: "Property set successfully", selectedProperty });
+    } catch (error: any) {
+      const expired = error?.message === 'GA4_OAUTH_PENDING_EXPIRED';
+      res.status(expired ? 409 : 502).json({ success: false, message: expired ? "Google authorization expired. Please reconnect." : "Google Analytics could not confirm the property. Please retry." });
+    }
+  };
+  app.post("/api/campaigns/:id/ga4-property", selectGA4Property);
 
   // Get GA4 time series data for charts
   app.get("/api/campaigns/:id/ga4-timeseries", async (req, res) => {
@@ -16158,6 +15991,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const success = await storage.deleteGA4Connection(connectionId);
 
       if (success) {
+        realGA4Client.disconnect(String(connection.campaignId));
+        (global as any).oauthConnections?.delete(String(connection.campaignId));
+        (global as any).realGA4Connections?.delete(String(connection.campaignId));
         res.json({ success: true, message: 'Connection deleted successfully' });
       } else {
         res.status(404).json({ error: 'Connection not found' });
@@ -16248,102 +16084,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Select GA4 property for campaign
-  app.post("/api/ga4/select-property", async (req, res) => {
-    try {
-      const { campaignId, propertyId, lookbackDays: rawLookback } = req.body;
-
-      if (!campaignId || !propertyId) {
-        return res.status(400).json({ error: 'Campaign ID and Property ID are required' });
-      }
-      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
-      if (!ok) return;
-      if (Number(rawLookback) !== 30) {
-        return res.status(400).json({
-          success: false,
-          error: "UNSUPPORTED_GA4_LOOKBACK",
-          message: "This release supports only a 30-day GA4 lookback.",
-        });
-      }
-      const lookbackDays = 30;
-
-      console.log('[GA4 Select Property] Request:', { campaignId, propertyId, lookbackDays });
-      const selectionImportStartDate = getGA4HistoricalImportStartDate(
-        new Date(),
-        lookbackDays,
-        (ok as any)?.reportingTimeZone,
-      );
-
-      // Look up the GA4 connection from the database by campaignId — use the LATEST connection
-      const ga4Connections = await storage.getGA4Connections(campaignId);
-      const dbConnection = ga4Connections[ga4Connections.length - 1];
-
-      // Also check in-memory OAuth data for property name lookup
-      const oauthConnections = (global as any).oauthConnections;
-      const oauthData = oauthConnections?.get(campaignId);
-      const selectedProperty = oauthData?.properties?.find((p: any) => p.id === propertyId);
-      const propertyName = selectedProperty?.name || `Property ${propertyId}`;
-
-      if (dbConnection) {
-        const sameProperty = String((dbConnection as any)?.propertyId || '') === String(propertyId);
-        const importStartDate = sameProperty
-          ? String((dbConnection as any)?.importStartDate || '').trim()
-            || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE
-          : selectionImportStartDate;
-        // Update the existing DB connection with the selected property — use connection.id, NOT campaignId
-        await storage.updateGA4Connection(dbConnection.id, {
-          propertyId,
-          propertyName,
-          lookbackDays,
-          importStartDate,
-        } as any);
-        console.log('[GA4 Select Property] Updated DB connection:', { connectionId: dbConnection.id, propertyId, propertyName });
-      } else {
-        // No existing connection — create one (fallback if OAuth callback didn't persist)
-        const accessToken = oauthData?.accessToken || '';
-        const refreshToken = oauthData?.refreshToken || '';
-        await storage.createGA4Connection({
-          campaignId,
-          propertyId,
-          propertyName,
-          accessToken,
-          refreshToken,
-          method: 'access_token',
-          clientId: process.env.GOOGLE_CLIENT_ID || '',
-          clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-          lookbackDays,
-          importStartDate: selectionImportStartDate,
-          expiresAt: oauthData?.expiresAt ? new Date(oauthData.expiresAt) : new Date(Date.now() + 3600000),
-        } as any);
-        console.log('[GA4 Select Property] Created new DB connection:', { campaignId, propertyId, propertyName, lookbackDays });
-      }
-
-      // Update in-memory OAuth data
-      if (oauthData) {
-        oauthData.selectedPropertyId = propertyId;
-        oauthData.selectedProperty = selectedProperty;
-      }
-
-      // Store in real GA4 connections for metrics access
-      (global as any).realGA4Connections = (global as any).realGA4Connections || new Map();
-      (global as any).realGA4Connections.set(campaignId, {
-        propertyId,
-        accessToken: oauthData?.accessToken || dbConnection?.accessToken || '',
-        refreshToken: oauthData?.refreshToken || dbConnection?.refreshToken || '',
-        connectedAt: oauthData?.connectedAt || dbConnection?.connectedAt || new Date().toISOString(),
-        isReal: true,
-        propertyName
-      });
-
-      res.json({
-        success: true,
-        selectedProperty: selectedProperty || { id: propertyId, name: propertyName }
-      });
-    } catch (error) {
-      console.error('[GA4 Select Property] Error:', error);
-      res.status(500).json({ error: 'Failed to select property' });
-    }
-  });
+  // Retained selector used by Connected Platforms.
+  app.post("/api/ga4/select-property", selectGA4Property);
   // ====================== GA4 SERVER-SIDE OAUTH ======================
 
   const GA4_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;

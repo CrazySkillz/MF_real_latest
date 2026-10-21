@@ -1,4 +1,5 @@
 import express from "express";
+import { realGA4Client } from "./real-ga4-client";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const pdfTextCalls = vi.hoisted((): string[] => []);
@@ -537,6 +538,8 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
 
   it("signs GA4 and Sheets OAuth state from the mandatory production token key", async () => {
     vi.useRealTimers();
+    // Test state signing independently of provider setup; unconfigured OAuth now fails closed.
+    const authUrl = vi.spyOn(realGA4Client, 'generateAuthUrl').mockImplementation(state => `https://accounts.google.com/o/oauth2/auth?state=${encodeURIComponent(state)}`);
     const previous = {
       nodeEnv: process.env.NODE_ENV,
       session: process.env.SESSION_SECRET,
@@ -571,6 +574,7 @@ describe("GA4 KPI real-path cross-consumer parity", () => {
       expect(sheetsState.startsWith("sheets:")).toBe(true);
       expect(sheetsState.slice(7).split(".")).toHaveLength(2);
     } finally {
+      authUrl.mockRestore();
       if (previous.nodeEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = previous.nodeEnv;
       if (previous.session === undefined) delete process.env.SESSION_SECRET; else process.env.SESSION_SECRET = previous.session;
       if (previous.ga4 === undefined) delete process.env.GA4_OAUTH_STATE_SECRET; else process.env.GA4_OAUTH_STATE_SECRET = previous.ga4;

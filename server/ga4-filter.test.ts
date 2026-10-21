@@ -60,7 +60,7 @@ describe("GA4 campaign value picker", () => {
 
       return {
         ok: true,
-        json: async () => ({ rows }),
+        json: async () => ({ rows, rowCount: rows.length }),
       } as any;
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -99,7 +99,7 @@ describe("GA4 campaign value picker", () => {
 
       return {
         ok: true,
-        json: async () => ({ rows }),
+        json: async () => ({ rows, rowCount: rows.length }),
       } as any;
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -140,7 +140,7 @@ describe("GA4 campaign value picker", () => {
 
       return {
         ok: true,
-        json: async () => ({ rows }),
+        json: async () => ({ rows, rowCount: rows.length }),
       } as any;
     });
     vi.stubGlobal("fetch", fetchMock);

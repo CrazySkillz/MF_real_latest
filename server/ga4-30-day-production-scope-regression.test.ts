@@ -29,30 +29,17 @@ describe("GA4 30-day production scope regression guard", () => {
 
   it("rejects unsupported persistence requests before provider or storage mutation", () => {
     const routes = readServer("routes-oauth.ts");
-    const integratedStart = routes.indexOf('app.post("/api/campaigns/:id/ga4-property"');
-    const integratedEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-timeseries"', integratedStart);
-    const oauthStart = routes.indexOf('app.post("/api/ga4/select-property"');
-    const oauthEnd = routes.indexOf("// Transfer GA4 connection", oauthStart);
-    const integratedRoute = routes.slice(integratedStart, integratedEnd);
-    const oauthRoute = routes.slice(oauthStart, oauthEnd);
-
-    expect(integratedStart).toBeGreaterThan(-1);
-    expect(oauthStart).toBeGreaterThan(-1);
-    for (const route of [integratedRoute, oauthRoute]) {
-      expect(route).toContain("Number(rawLookback) !== 30");
-      expect(route).toContain('error: "UNSUPPORTED_GA4_LOOKBACK"');
-      expect(route).not.toContain("[30, 60, 90].includes(Number(rawLookback))");
+    expect(routes).toContain('app.post("/api/campaigns/:id/ga4-property", selectGA4Property)');
+    expect(routes).toContain('app.post("/api/ga4/select-property", selectGA4Property)');
+    const start = routes.indexOf('const selectGA4Property =');
+    const route = routes.slice(start, routes.indexOf('app.post("/api/campaigns/:id/ga4-property"', start));
+    expect(route).toContain('error: "UNSUPPORTED_GA4_LOOKBACK"');
+    const rejection = route.indexOf('Number(lookbackDays) !== 30');
+    expect(rejection).toBeGreaterThan(-1);
+    for (const operation of ['storage.getPendingGA4OAuthConnection','storage.getGA4Connections','storage.stageGA4OAuthConnection','storage.commitGA4OAuthConnection']) {
+      expect(route.indexOf(operation)).toBeGreaterThan(rejection);
     }
 
-    const integratedRejection = integratedRoute.indexOf("Number(rawLookback) !== 30");
-    expect(integratedRejection).toBeLessThan(integratedRoute.indexOf("realGA4Client.setPropertyId"));
-    expect(integratedRejection).toBeLessThan(integratedRoute.indexOf("storage.getGA4Connections"));
-    expect(integratedRejection).toBeLessThan(integratedRoute.indexOf("storage.updateGA4Connection"));
-
-    const oauthRejection = oauthRoute.indexOf("Number(rawLookback) !== 30");
-    expect(oauthRejection).toBeLessThan(oauthRoute.indexOf("storage.getGA4Connections"));
-    expect(oauthRejection).toBeLessThan(oauthRoute.indexOf("storage.updateGA4Connection"));
-    expect(oauthRejection).toBeLessThan(oauthRoute.indexOf("realGA4Connections.set"));
   });
 
   it("keeps 30-day connections usable and fails closed for saved non-30 connections", () => {

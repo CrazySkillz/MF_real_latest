@@ -1,3 +1,4 @@
+import { retryWithBackoff } from "./utils/retry";
 // Google Analytics integration - would use googleapis in production
 // import { google } from 'googleapis';
 
@@ -68,20 +69,17 @@ export class RealGA4Client {
         this.analyticsData = google.analyticsdata({ version: 'v1beta', auth: this.oauth2Client });
         console.log('Real Google Analytics OAuth configured with googleapis');
       } catch (error) {
-        console.log('googleapis package not available - using simulation mode');
+        console.log('Google OAuth client could not be initialized');
       }
     } else {
-      console.log('Google OAuth credentials not found - using realistic simulation mode');
+      console.log('Google OAuth credentials not configured');
     }
   }
 
   generateAuthUrl(state: string): string {
     const baseUrl = this.getBaseUrl();
 
-    if (!this.oauth2Client) {
-      // Return simulation URL if no real OAuth configured
-      return `${baseUrl}/api/auth/google/simulation-auth?state=${encodeURIComponent(state)}`;
-    }
+    if (!this.oauth2Client) throw new Error('GA4_OAUTH_NOT_CONFIGURED');
 
     const scopes = [
       'https://www.googleapis.com/auth/analytics.readonly',
@@ -98,23 +96,7 @@ export class RealGA4Client {
 
   async handleCallback(code: string, campaignId: string): Promise<{success: boolean, error?: string}> {
     try {
-      console.log(`Processing callback for campaign ${campaignId} with code ${code}`);
-      
-      if (!this.oauth2Client) {
-        // Simulate successful auth for demo
-        console.log('Creating demo connection for campaign:', campaignId);
-        const mockConnection: RealGA4Connection = {
-          propertyId: '',
-          accessToken: 'demo_token_' + Date.now(),
-          refreshToken: 'demo_refresh_' + Date.now(),
-          expiresAt: Date.now() + (3600 * 1000),
-          email: 'demo-user@example.com',
-          scope: ['analytics.readonly']
-        };
-        this.connections.set(campaignId, mockConnection);
-        console.log('Demo connection created successfully');
-        return { success: true };
-      }
+      if (!this.oauth2Client) throw new Error('GA4_OAUTH_NOT_CONFIGURED');
 
       // Exchange code for tokens
       const { tokens } = await this.oauth2Client.getToken(code);
@@ -123,12 +105,8 @@ export class RealGA4Client {
       // Get user info (would use google.oauth2 in production)
       const userInfo = { data: { email: 'authenticated-user@example.com' } };
 
-      let availableProperties: GA4PropertyOption[] | undefined;
-      try {
-        availableProperties = await this.fetchPropertiesFromGoogle(tokens.access_token!);
-      } catch (propertyError: any) {
-        console.error('Failed to fetch GA4 properties during callback:', propertyError);
-      }
+      if (!tokens.access_token || !tokens.refresh_token) throw new Error('GA4_OAUTH_CREDENTIALS_REQUIRED');
+      const availableProperties = await this.fetchPropertiesFromGoogle(tokens.access_token);
 
       const connection: RealGA4Connection = {
         propertyId: '',
@@ -195,140 +173,63 @@ export class RealGA4Client {
 
 
 
-  async getProperties(campaignId: string): Promise<Array<{id: string, name: string}> | null> {
+  async getProperties(campaignId: string): Promise<GA4PropertyOption[] | null> {
     const connection = this.connections.get(campaignId);
     if (!connection) return null;
-
-    try {
-      if (!this.oauth2Client) {
-        // Return mock properties for demo
-        return [
-          { id: '123456789', name: 'Demo Website' },
-          { id: '987654321', name: 'Marketing Site' },
-          { id: '456789123', name: 'E-commerce Store' }
-        ];
-      }
-
-      if (connection.availableProperties && connection.availableProperties.length > 0) {
-        return connection.availableProperties;
-      }
-
-      let properties: GA4PropertyOption[] = [];
-      try {
-        properties = await this.fetchPropertiesFromGoogle(connection.accessToken);
-      } catch (error: any) {
-        console.error('Error fetching GA4 properties with current access token:', error);
-        const needsRefresh =
-          error instanceof Error &&
-          (error.message === 'UNAUTHORIZED' || error.message === 'FORBIDDEN');
-
-        if (needsRefresh && connection.refreshToken) {
-          const refreshed = await this.refreshToken(campaignId);
-          if (refreshed) {
-            const refreshedConnection = this.connections.get(campaignId);
-            if (refreshedConnection) {
-              try {
-                properties = await this.fetchPropertiesFromGoogle(refreshedConnection.accessToken);
-                connection.availableProperties = properties;
-                this.connections.set(campaignId, {
-                  ...refreshedConnection,
-                  availableProperties: properties,
-                });
-                return properties;
-              } catch (retryError: any) {
-                console.error('Failed to fetch GA4 properties after refreshing token:', retryError);
-              }
-            }
-          }
-        }
-      }
-
-      if (properties.length > 0) {
-        connection.availableProperties = properties;
-        this.connections.set(campaignId, connection);
-        return properties;
-      }
-
-      // Fallback demo data if live fetch failed
-      return [
-        { id: '123456789', name: 'Main Website' },
-        { id: '987654321', name: 'Marketing Landing Page' },
-        { id: '456789123', name: 'E-commerce Store' },
-        { id: '789123456', name: 'Blog & Content Hub' }
-      ];
-    } catch (error) {
-      console.error('Error fetching properties:', error);
-      return null;
-    }
+    // Real discovery must never substitute fabricated properties or a stale cache.
+    return this.fetchPropertiesFromGoogle(connection.accessToken);
   }
 
-  private async fetchPropertiesFromGoogle(accessToken: string): Promise<GA4PropertyOption[]> {
-    const properties: GA4PropertyOption[] = [];
-    const authHeader = { Authorization: `Bearer ${accessToken}` };
-
-    const accountsResponse = await fetch('https://analyticsadmin.googleapis.com/v1beta/accounts', {
-      headers: authHeader
-    });
-
-    if (!accountsResponse.ok) {
-      const errorText = await accountsResponse.text();
-      console.error('Failed to fetch GA4 accounts:', accountsResponse.status, errorText);
-      if (accountsResponse.status === 401 || accountsResponse.status === 403) {
-        throw new Error('UNAUTHORIZED');
-      }
-      throw new Error(`Failed to fetch GA4 accounts: ${accountsResponse.status}`);
-    }
-
-    const accountsData = await accountsResponse.json();
-    const accounts = accountsData.accounts || [];
-
-    for (const account of accounts) {
-      const accountId = account.name?.split('/').pop();
-      const accountName = account.displayName || account.name || '';
-
-      if (!accountId) continue;
-
-      const endpoints = [
-        `https://analyticsadmin.googleapis.com/v1beta/properties?filter=parent:accounts/${accountId}`,
-        `https://analyticsadmin.googleapis.com/v1alpha/properties?filter=parent:accounts/${accountId}`
-      ];
-
-      let foundPropertiesForAccount = false;
-
-      for (const endpoint of endpoints) {
-        const propertiesResponse = await fetch(endpoint, {
-          headers: authHeader
+  async fetchPropertiesFromGoogle(accessToken: string): Promise<GA4PropertyOption[]> {
+    if (!accessToken) throw new Error('GA4_DISCOVERY_AUTH_REQUIRED');
+    const signal = AbortSignal.timeout(60_000);
+    let pageCount = 0;
+    const list = async (resource: 'accounts' | 'properties', filter?: string) => {
+      const rows: any[] = [], seen = new Set<string>();
+      let pageToken = '';
+      do {
+        if (++pageCount > 200) throw new Error('GA4_DISCOVERY_LIMIT_REACHED');
+        const url = new URL(`https://analyticsadmin.googleapis.com/v1beta/${resource}`);
+        url.searchParams.set('pageSize', '200');
+        if (filter) url.searchParams.set('filter', filter);
+        if (pageToken) url.searchParams.set('pageToken', pageToken);
+        const response = await retryWithBackoff(async () => {
+          signal.throwIfAborted();
+          const response = await fetch(url.toString(), { headers: { Authorization: `Bearer ${accessToken}` }, signal });
+          if ([429, 500, 502, 503, 504].includes(response.status)) {
+            const header = response.headers.get('retry-after');
+            const retryAfterMs = header === null ? undefined : /^\d+(\.\d+)?$/.test(header.trim())
+              ? Number(header) * 1000 : Math.max(0, Date.parse(header) - Date.now());
+            await response.body?.cancel();
+            throw Object.assign(new Error('GA4_DISCOVERY_TEMPORARY_UNAVAILABLE'), { status: response.status, retryAfterMs });
+          }
+          return response;
+        }, { maxAttempts: 3, initialDelayMs: 1000, maxDelayMs: 2000, signal,
+          shouldRetry: error => [429, 500, 502, 503, 504].includes(error?.status)
+            && (error.retryAfterMs === undefined || (Number.isFinite(error.retryAfterMs) && error.retryAfterMs <= 10_000)),
+          retryDelayMs: error => error?.retryAfterMs,
         });
-
-        if (propertiesResponse.ok) {
-          const propertiesData = await propertiesResponse.json();
-          for (const property of propertiesData.properties || []) {
-            const propertyId = property.name?.split('/').pop();
-            if (!propertyId) continue;
-
-            properties.push({
-              id: propertyId,
-              name: property.displayName || `Property ${propertyId}`,
-              account: accountName
-            });
-          }
-          foundPropertiesForAccount = true;
-          break;
-        } else {
-          const errorBody = await propertiesResponse.text();
-          console.warn(`GA4 properties request failed (${propertiesResponse.status}) for ${endpoint}:`, errorBody);
-          if (propertiesResponse.status === 401 || propertiesResponse.status === 403) {
-            throw new Error('UNAUTHORIZED');
-          }
-        }
-      }
-
-      if (!foundPropertiesForAccount) {
-        console.warn(`No GA4 properties found for account ${accountName} (${accountId})`);
+        if (!response.ok) throw Object.assign(new Error(`GA4_DISCOVERY_FAILED: HTTP ${response.status}`), { status: response.status });
+        const data = await response.json();
+        if (data[resource] !== undefined && !Array.isArray(data[resource])) throw new Error('GA4_DISCOVERY_INVALID_RESPONSE');
+        rows.push(...(data[resource] || []));
+        const next = data.nextPageToken || '';
+        if (typeof next !== 'string' || (next && seen.has(next))) throw new Error('GA4_DISCOVERY_PAGINATION_FAILED');
+        if (next) seen.add(next);
+        pageToken = next;
+      } while (pageToken);
+      return rows;
+    };
+    const properties = new Map<string, GA4PropertyOption>();
+    for (const account of await list('accounts')) {
+      if (!/^accounts\/\d+$/.test(account.name || '')) throw new Error('GA4_DISCOVERY_INVALID_ACCOUNT');
+      for (const property of await list('properties', `parent:${account.name}`)) {
+        const id = /^properties\/(\d+)$/.exec(property.name || '')?.[1];
+        if (!id) throw new Error('GA4_DISCOVERY_INVALID_PROPERTY');
+        properties.set(id, { id, name: property.displayName || `Property ${id}`, account: account.displayName || account.name });
       }
     }
-
-    return properties;
+    return Array.from(properties.values());
   }
 
   async getRealTimeMetrics(campaignId: string, propertyId: string): Promise<GA4RealTimeMetrics | null> {

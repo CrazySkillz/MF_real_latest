@@ -14,6 +14,17 @@ export const clients = pgTable("clients", {
 export type Client = typeof clients.$inferSelect;
 export type InsertClient = typeof clients.$inferInsert;
 
+// Persist retry/cancellation identity independently of a draft that may be deleted.
+export const campaignCreationRequests = pgTable("campaign_creation_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: text("owner_id").notNull(),
+  clientId: text("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+  requestId: text("request_id").notNull(),
+  created: boolean("created").notNull().default(false),
+  cancelled: boolean("cancelled").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, table => [uniqueIndex("campaign_creation_requests_scope_unique").on(table.ownerId, table.clientId, table.requestId)]);
+
 // Operator-reviewed shared-resource permissions; never populated from customer requests.
 export const serviceAccountResourceGrants = pgTable("service_account_resource_grants", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -34,7 +45,7 @@ export const campaigns = pgTable("campaigns", {
   // Authorization: campaigns are owned by the caller identity (mmUserId session).
   // Legacy nulls fail closed and are not claimable through application routes.
   ownerId: text("owner_id"),
-  clientId: text("client_id"), // references clients.id — scopes campaign to a client
+  clientId: text("client_id").references(() => clients.id), // No orphan creation during client deletion.
   name: text("name").notNull(),
   clientWebsite: text("client_website"),
   label: text("label"),
@@ -177,7 +188,7 @@ export const ga4DailyMetrics = pgTable("ga4_daily_metrics", {
   isSimulated: boolean("is_simulated").notNull().default(false),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [uniqueIndex("ga4_daily_metrics_campaign_property_date_unique").on(table.campaignId, table.propertyId, table.date)]);
 
 // One complete Overview payload per campaign/property, published by the GA4 daily scheduler.
 export const ga4OverviewSnapshots = pgTable("ga4_overview_snapshots", {
@@ -528,7 +539,7 @@ export const googleAdsDailyMetrics = pgTable("google_ads_daily_metrics", {
   ga4Revenue: decimal("ga4_revenue", { precision: 15, scale: 2 }), // GA4-attributed revenue for this Google Ads campaign
   ga4UtmName: text("ga4_utm_name"), // matched GA4 UTM campaign name (for transparency)
   importedAt: timestamp("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [uniqueIndex("google_ads_daily_metrics_campaign_date_unique").on(table.campaignId, table.googleCampaignId, table.date)]);
 
 // Meta KPIs - Track performance targets for Meta/Facebook campaigns
 export const metaKpis = pgTable("meta_kpis", {
@@ -617,7 +628,7 @@ export const metaDailyMetrics = pgTable("meta_daily_metrics", {
   ga4Revenue: decimal("ga4_revenue", { precision: 15, scale: 2 }), // GA4-attributed revenue
   ga4UtmName: text("ga4_utm_name"), // matched GA4 UTM campaign name
   importedAt: timestamp("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [uniqueIndex("meta_daily_metrics_campaign_date_unique").on(table.campaignId, table.metaCampaignId, table.date)]);
 
 export const instagramDailyMetrics = pgTable("instagram_daily_metrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -715,7 +726,7 @@ export const linkedinDailyMetrics = pgTable("linkedin_daily_metrics", {
   ga4UtmName: text("ga4_utm_name"), // matched GA4 UTM campaign name
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [uniqueIndex("linkedin_daily_metrics_campaign_date_unique").on(table.campaignId, table.date)]);
 
 export const linkedinAdPerformance = pgTable("linkedin_ad_performance", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

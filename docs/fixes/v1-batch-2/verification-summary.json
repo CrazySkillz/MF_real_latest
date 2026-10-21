@@ -1,0 +1,22 @@
+{
+  "head": "afce1ced06c8ecfcf2178be4a33a9c0148214dc6",
+  "candidateFilesUnchanged": 35,
+  "localDocumentLinks": "PASS",
+  "typecheckExit": 0,
+  "productionBuildExit": 0,
+  "bootstrapStatements": 87,
+  "postgresScenarios": 10,
+  "wizardBrowserScenarios": 8,
+  "ga4FlowBrowserScenarios": 3,
+  "onboardingScenarios": 13,
+  "remainingOpenAuditTestFailures": 182,
+  "newUnresolvedTestFailures": 0,
+  "batch2ScratchSchemasRemaining": 0,
+  "isolatedPostgresStopped": true,
+  "committed": false,
+  "pushed": false,
+  "deployed": false,
+  "databaseDeploymentPreflight": "PASS within recorded boundary; Render default timing configuration user-confirmed",
+  "databaseDeploymentEvidence": "deployment-preflight-summary.json",
+  "productionCloneRemoved": true
+}

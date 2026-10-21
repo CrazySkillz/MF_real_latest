@@ -8,13 +8,13 @@ import { db, pool } from "./db";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { eq, and, or, isNull, desc, sql, gte, lte, lt, inArray, ne } from "drizzle-orm";
 import { assertProductionTokenEncryptionConfigured, buildEncryptedTokens, decryptTokens, encryptString, type EncryptedTokens } from "./utils/tokenVault";
-import { inboundWebhookReceipts, serviceAccountResourceGrants } from "@shared/schema";
+import { inboundWebhookReceipts, serviceAccountResourceGrants, campaignCreationRequests } from "@shared/schema";
 import { assertGA4ServiceAccountPropertyAllowed, GA4_SERVICE_ACCOUNT_METHOD, hydrateGA4ServiceAccountConnection } from "./utils/ga4-service-account";
 import { GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, hydrateGoogleSheetsServiceAccountConnection } from "./utils/google-sheets-service-account";
 import { GOOGLE_ADS_SERVICE_ACCOUNT_METHOD, hydrateGoogleAdsServiceAccountConnection } from "./utils/google-ads-service-account";
 import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness } from "./utils/revenue-record-total";
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
-import { getLatestCompleteReportingDate, getReportingComparisonBoundary, getReportingDateEndAt, isCreatedThroughReportingDate } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getLatestCompleteReportingDate, getReportingComparisonBoundary, getReportingDateEndAt, isCreatedThroughReportingDate } from "./utils/reporting-timezone";
 import { executiveSummaryDailySnapshotInputSchema, type ExecutiveSummaryDailySnapshotInput } from "./utils/executive-summary-daily-snapshot";
 import { createActiveCanonicalGA4KPI, isActiveGA4KPI, updateCanonicalGA4KPI as updateCanonicalGA4KPIWithGuard } from "./utils/ga4-kpi-create-guard";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
@@ -201,11 +201,12 @@ export interface IStorage {
   // Campaigns
   getCampaigns(): Promise<Campaign[]>;
   getCampaign(id: string): Promise<Campaign | undefined>;
-  createCampaign(campaign: InsertCampaign): Promise<Campaign>;
+  createCampaign(campaign: InsertCampaign, requestId?: string): Promise<Campaign>;
   updateCampaign(id: string, campaign: Partial<InsertCampaign>, options?: GA4RefreshWriteInput): Promise<Campaign | undefined>;
   updateCampaignWithGA4DailyInvalidation(id: string, campaign: Partial<InsertCampaign>): Promise<Campaign | undefined>;
   deleteCampaign(id: string): Promise<boolean>;
   deleteCampaignCascade(id: string, options?: { expectedDraftOwnerId: string }): Promise<boolean>;
+  cancelCampaignCreation(ownerId: string, clientId: string, requestId: string): Promise<boolean>;
 
   // Metrics
   getMetrics(ownerId?: string): Promise<Metric[]>;
@@ -226,6 +227,10 @@ export interface IStorage {
   getGA4Connection(campaignId: string, propertyId?: string): Promise<GA4Connection | undefined>;
   getPrimaryGA4Connection(campaignId: string): Promise<GA4Connection | undefined>;
   createGA4Connection(connection: InsertGA4Connection): Promise<GA4Connection>;
+  stageGA4OAuthConnection(connection: InsertGA4Connection): Promise<GA4Connection>;
+  getPendingGA4OAuthConnection(campaignId: string, connectionId?: string): Promise<GA4Connection | undefined>;
+  commitGA4OAuthConnection(campaignId: string, connectionId: string, propertyId: string, propertyName: string, importStartDate: string): Promise<GA4Connection>;
+  cancelGA4OAuthConnection(campaignId: string, connectionId: string): Promise<boolean>;
   updateGA4Connection(connectionId: string, connection: Partial<InsertGA4Connection>): Promise<GA4Connection | undefined>;
   updateGA4ConnectionTokens(connectionId: string, tokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }, options?: GA4RefreshConnectionWriteInput): Promise<GA4Connection | undefined>;
   setPrimaryGA4Connection(campaignId: string, connectionId: string): Promise<boolean>;
@@ -701,12 +706,41 @@ export class DatabaseStorage implements IStorage {
     return campaign || undefined;
   }
 
-  async createCampaign(insertCampaign: InsertCampaign): Promise<Campaign> {
-    const [campaign] = await db
-      .insert(campaigns)
-      .values(insertCampaign)
-      .returning();
-    return campaign;
+  async createCampaign(insertCampaign: InsertCampaign, requestId?: string): Promise<Campaign> {
+    return db.transaction(async (tx: any) => {
+      if (insertCampaign.clientId) {
+        const [client] = await tx.select({ id: clients.id }).from(clients).where(and(
+          eq(clients.id, insertCampaign.clientId), eq(clients.ownerId, String(insertCampaign.ownerId || '')),
+        )).for('key share');
+        if (!client) throw new Error('CAMPAIGN_CLIENT_NOT_FOUND');
+      }
+      if (requestId && (insertCampaign.status !== 'draft' || !insertCampaign.ownerId || !insertCampaign.clientId)) {
+        throw new Error('CAMPAIGN_DRAFT_REQUEST_INVALID');
+      }
+      if (requestId) {
+        const scope = and(eq(campaignCreationRequests.ownerId, insertCampaign.ownerId!), eq(campaignCreationRequests.clientId, insertCampaign.clientId!), eq(campaignCreationRequests.requestId, requestId));
+        await tx.insert(campaignCreationRequests).values({ ownerId: insertCampaign.ownerId, clientId: insertCampaign.clientId, requestId }).onConflictDoNothing();
+        const [request] = await tx.select().from(campaignCreationRequests).where(scope).for('update');
+        if (request.cancelled) throw new Error('CAMPAIGN_DRAFT_CANCELLED');
+        if (request.created) {
+          const [existing] = await tx.select().from(campaigns).where(eq(campaigns.id, requestId));
+          if (!existing || existing.ownerId !== insertCampaign.ownerId || existing.clientId !== insertCampaign.clientId) throw new Error('CAMPAIGN_DRAFT_REQUEST_RETIRED');
+          Object.defineProperty(existing, '__creationReplay', { value: true, enumerable: false });
+          return existing;
+        }
+        await tx.update(campaignCreationRequests).set({ created: true }).where(scope);
+      }
+      const [campaign] = await tx.insert(campaigns)
+        .values({ ...insertCampaign, ...(requestId ? { id: requestId } : {}) })
+        .onConflictDoNothing({ target: campaigns.id }).returning();
+      if (campaign) return campaign;
+      const [existing] = await tx.select().from(campaigns).where(eq(campaigns.id, String(requestId)));
+      if (!existing || existing.ownerId !== insertCampaign.ownerId || existing.clientId !== insertCampaign.clientId) {
+        throw new Error('CAMPAIGN_DRAFT_REQUEST_CONFLICT');
+      }
+      Object.defineProperty(existing, '__creationReplay', { value: true, enumerable: false });
+      return existing;
+    });
   }
 
   async updateCampaign(id: string, updateData: Partial<InsertCampaign>, options: GA4RefreshWriteInput = {}): Promise<Campaign | undefined> {
@@ -873,6 +907,28 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
+  async cancelCampaignCreation(ownerId: string, clientId: string, requestId: string): Promise<boolean> {
+    return db.transaction(async (tx: any) => {
+      const [client] = await tx.select({ id: clients.id }).from(clients).where(and(eq(clients.id, clientId), eq(clients.ownerId, ownerId))).for('key share');
+      if (!client) return false;
+      const scope = and(eq(campaignCreationRequests.ownerId, ownerId), eq(campaignCreationRequests.clientId, clientId), eq(campaignCreationRequests.requestId, requestId));
+      await tx.insert(campaignCreationRequests).values({ ownerId, clientId, requestId }).onConflictDoNothing();
+      await tx.select({ id: campaignCreationRequests.id }).from(campaignCreationRequests).where(scope).for('update');
+      const [campaign] = await tx.select().from(campaigns).where(eq(campaigns.id, requestId)).for('update');
+      if (campaign) {
+        if (campaign.ownerId !== ownerId || campaign.clientId !== clientId) return false;
+        if (campaign.status !== 'draft') throw new Error('CAMPAIGN_NO_LONGER_DRAFT');
+        const [accepted] = await tx.select({ id: ga4RefreshWork.id }).from(ga4RefreshWork)
+          .where(and(eq(ga4RefreshWork.campaignId, requestId), sql`${ga4RefreshWork.scope}->>'kind' = 'initial_import'`)).limit(1);
+        if (accepted) throw new Error('CAMPAIGN_NO_LONGER_DRAFT');
+        await this.deleteCampaignChildren(requestId, tx);
+        await tx.delete(campaigns).where(eq(campaigns.id, requestId));
+      }
+      await tx.update(campaignCreationRequests).set({ cancelled: true }).where(scope);
+      return true;
+    });
+  }
+
   // Metrics methods
   async getMetrics(ownerId?: string): Promise<Metric[]> {
     return db.select().from(metrics).where(ownerId === undefined ? undefined : eq(metrics.ownerId, ownerId)).orderBy(metrics.date);
@@ -1017,6 +1073,63 @@ export class DatabaseStorage implements IStorage {
       .orderBy(ga4Connections.connectedAt)
       .limit(1);
     return first ? (await hydrateGA4ServiceAccountConnection(hydrateDecryptedTokens(first) as any) as any) : undefined;
+  }
+
+  async stageGA4OAuthConnection(connection: InsertGA4Connection): Promise<GA4Connection> {
+    if (!connection.accessToken || !connection.refreshToken) throw new Error('GA4_OAUTH_CREDENTIALS_REQUIRED');
+    return this.withGA4RefreshTransaction(async tx => {
+      const [campaign] = await tx.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, connection.campaignId)).for('update');
+      if (!campaign) throw new Error('CAMPAIGN_NOT_FOUND');
+      // Replace only abandoned pending authorizations; active source facts/configuration stay intact.
+      await tx.delete(ga4Connections).where(and(eq(ga4Connections.campaignId, connection.campaignId),
+        eq(ga4Connections.isActive, false), eq(ga4Connections.propertyId, ''), eq(ga4Connections.propertyName, 'Pending OAuth')));
+      const [saved] = await tx.insert(ga4Connections).values({ ...connection,
+        propertyId: '', propertyName: 'Pending OAuth', method: 'access_token', isPrimary: false, isActive: false,
+        encryptedTokens: buildEncryptedTokens({ accessToken: connection.accessToken, refreshToken: connection.refreshToken, clientSecret: connection.clientSecret }),
+        accessToken: null, refreshToken: null, clientSecret: null,
+      }).returning();
+      return hydrateDecryptedTokens(saved) as GA4Connection;
+    });
+  }
+
+  async getPendingGA4OAuthConnection(campaignId: string, connectionId?: string): Promise<GA4Connection | undefined> {
+    const [pending] = await db.select().from(ga4Connections).where(and(
+      eq(ga4Connections.campaignId, campaignId), eq(ga4Connections.isActive, false),
+      eq(ga4Connections.propertyId, ''), eq(ga4Connections.propertyName, 'Pending OAuth'),
+      connectionId ? eq(ga4Connections.id, connectionId) : undefined,
+      sql`${ga4Connections.connectedAt} > CURRENT_TIMESTAMP - INTERVAL '30 minutes'`,
+    )).orderBy(desc(ga4Connections.connectedAt)).limit(1);
+    return pending ? hydrateDecryptedTokens(pending) as GA4Connection : undefined;
+  }
+
+  async cancelGA4OAuthConnection(campaignId: string, connectionId: string): Promise<boolean> {
+    const removed = await db.delete(ga4Connections).where(and(eq(ga4Connections.campaignId, campaignId),
+      eq(ga4Connections.id, connectionId), eq(ga4Connections.isActive, false), eq(ga4Connections.propertyId, ''),
+      eq(ga4Connections.propertyName, 'Pending OAuth'))).returning({ id: ga4Connections.id });
+    return removed.length === 1;
+  }
+
+  async commitGA4OAuthConnection(campaignId: string, connectionId: string, propertyId: string, propertyName: string, importStartDate: string): Promise<GA4Connection> {
+    return this.writeGA4RefreshInputChange(campaignId, async tx => {
+      const [pending] = await tx.select().from(ga4Connections).where(and(eq(ga4Connections.id, connectionId),
+        eq(ga4Connections.campaignId, campaignId), eq(ga4Connections.isActive, false), eq(ga4Connections.propertyId, ''),
+        eq(ga4Connections.propertyName, 'Pending OAuth'), sql`${ga4Connections.connectedAt} > CURRENT_TIMESTAMP - INTERVAL '30 minutes'`,
+      )).for('update');
+      if (!pending) throw new Error('GA4_OAUTH_PENDING_EXPIRED');
+      const active = await tx.select().from(ga4Connections).where(and(eq(ga4Connections.campaignId, campaignId), eq(ga4Connections.isActive, true))).for('update');
+      const existing = active.find((row: any) => row.propertyId === propertyId) || active.find((row: any) => row.isPrimary) || active[0];
+      const sameProperty = existing?.propertyId === propertyId;
+      const [saved] = await tx.update(ga4Connections).set({
+        propertyId, propertyName, method: 'access_token', isActive: true, isPrimary: true,
+        encryptedTokens: pending.encryptedTokens, accessToken: null, refreshToken: null, clientSecret: null,
+        clientId: pending.clientId, expiresAt: pending.expiresAt, lookbackDays: 30,
+        importStartDate: sameProperty ? existing.importStartDate || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE : importStartDate,
+      }).where(eq(ga4Connections.id, existing?.id || pending.id)).returning();
+      await tx.update(ga4Connections).set({ isPrimary: false }).where(and(eq(ga4Connections.campaignId, campaignId), sql`${ga4Connections.id} <> ${saved.id}`));
+      if (existing) await tx.delete(ga4Connections).where(eq(ga4Connections.id, pending.id));
+      if (existing && !sameProperty) await tx.delete(ga4OverviewSnapshots).where(and(eq(ga4OverviewSnapshots.campaignId, campaignId), eq(ga4OverviewSnapshots.propertyId, existing.propertyId)));
+      return hydrateDecryptedTokens(saved) as GA4Connection;
+    });
   }
 
   async createGA4Connection(connection: InsertGA4Connection): Promise<GA4Connection> {
@@ -6833,13 +6946,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteClientCascade(ownerId: string, clientId: string): Promise<boolean> {
-    const [client] = await db
+    return db.transaction(async (tx: any) => {
+    const [client] = await tx
       .select()
       .from(clients)
-      .where(and(eq(clients.id, clientId), eq(clients.ownerId, ownerId)));
+      .where(and(eq(clients.id, clientId), eq(clients.ownerId, ownerId))).for('update');
     if (!client) return false;
 
-    const foreignCampaigns = await db
+    const foreignCampaigns = await tx
       .select({ id: campaigns.id })
       .from(campaigns)
       .where(and(
@@ -6851,7 +6965,7 @@ export class DatabaseStorage implements IStorage {
       return false;
     }
 
-    const clientCampaigns = await db
+    const clientCampaigns = await tx
       .select({ id: campaigns.id })
       .from(campaigns)
       .where(and(
@@ -6859,7 +6973,6 @@ export class DatabaseStorage implements IStorage {
         or(eq(campaigns.ownerId, ownerId), isNull(campaigns.ownerId)),
       ));
 
-    await db.transaction(async (tx: any) => {
       for (const campaign of clientCampaigns) {
         const [locked] = await tx.select({ id: campaigns.id }).from(campaigns).where(and(
           eq(campaigns.id, String(campaign.id)), eq(campaigns.clientId, clientId),
@@ -6869,10 +6982,9 @@ export class DatabaseStorage implements IStorage {
         await this.deleteCampaignChildren(String(campaign.id), tx);
         await tx.delete(campaigns).where(eq(campaigns.id, String(campaign.id)));
       }
-      await tx.delete(clients).where(and(eq(clients.id, clientId), eq(clients.ownerId, ownerId)));
+      const deleted = await tx.delete(clients).where(and(eq(clients.id, clientId), eq(clients.ownerId, ownerId))).returning({ id: clients.id });
+      return deleted.length === 1;
     });
-
-    return true;
   }
 
   // A/B Test methods

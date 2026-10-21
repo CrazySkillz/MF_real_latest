@@ -1,0 +1,58 @@
+{
+  "at": "2026-10-20T22:57:45.301Z",
+  "boundary": "Current creation JSX/helper/component and exact OAuth/access/state handlers. Synthetic identity, provider, storage and status replies; local Chromium; external requests blocked. Does not certify provider acceptance, full import, persisted PostgreSQL, reconnect history or discovery pagination.",
+  "results": [
+    {
+      "name": "Owned OAuth initiation and fresh credential save for owner-a, without shared grants",
+      "result": "PASS"
+    },
+    {
+      "name": "Owned OAuth initiation and fresh credential save for owner-b, without shared grants",
+      "result": "PASS"
+    },
+    {
+      "name": "OAuth initiation rejects anonymous for draft-a",
+      "result": "PASS"
+    },
+    {
+      "name": "OAuth initiation rejects owner-b for draft-a",
+      "result": "PASS"
+    },
+    {
+      "name": "Foreign callback cannot exchange or persist credentials",
+      "result": "PASS"
+    },
+    {
+      "name": "OAuth token-denied preserves saved connections",
+      "result": "PASS"
+    },
+    {
+      "name": "OAuth missing-refresh preserves saved connections",
+      "result": "PASS"
+    },
+    {
+      "name": "Actual creation screen uses customer Google OAuth and loads a's properties without shared-account requests",
+      "result": "PASS"
+    },
+    {
+      "name": "Actual creation screen uses customer Google OAuth and loads b's properties without shared-account requests",
+      "result": "PASS"
+    },
+    {
+      "name": "Blocked popup reports failure and permits retry",
+      "result": "PASS"
+    },
+    {
+      "name": "Closed incomplete consent stays on authentication step and permits retry",
+      "result": "PASS"
+    },
+    {
+      "name": "OAuth error stays on authentication step and reports the provider error",
+      "result": "PASS"
+    },
+    {
+      "name": "Explicit shared-account mode retains its separate setup route",
+      "result": "PASS"
+    }
+  ]
+}

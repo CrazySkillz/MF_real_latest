@@ -426,7 +426,7 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(route).toContain("refreshToken: durableRefreshToken");
     expect(route).not.toContain("refreshToken: refresh_token || null");
   });
-  it("requires a durable GA4 replacement before removing the prior connection", () => {
+  it("stages durable GA4 authorization without replacing the active connection", () => {
     const routes = routesFile();
     const connectStart = routes.indexOf('app.post("/api/auth/ga4/connect"');
     const callbackStart = routes.indexOf('app.get("/api/auth/google-sheets/callback"');
@@ -441,10 +441,11 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(connectRoute).toContain("prompt=select_account%20consent&");
     expect(callbackRoute).toContain("if (!ga4RefreshToken)");
     expect(callbackRoute).not.toContain("refreshToken: ga4RefreshToken || null");
-    expect(callbackRoute.indexOf("if (!ga4RefreshToken)")).toBeLessThan(callbackRoute.indexOf("const existingGA4Conns"));
-    expect(callbackRoute.indexOf("const newGA4Connection = await storage.createGA4Connection")).toBeLessThan(callbackRoute.indexOf("storage.setPrimaryGA4Connection"));
-    expect(callbackRoute.indexOf("storage.setPrimaryGA4Connection")).toBeLessThan(callbackRoute.indexOf("storage.deleteGA4Connection(old.id)"));
-    expect(callbackRoute).toContain("await storage.deleteGA4Connection(newGA4Connection.id);");
+    expect(callbackRoute.indexOf("if (!ga4RefreshToken)")).toBeLessThan(callbackRoute.indexOf("storage.stageGA4OAuthConnection"));
+    expect(callbackRoute).toContain("await storage.stageGA4OAuthConnection");
+    expect(callbackRoute).not.toContain("storage.deleteGA4Connection");
+    expect(callbackRoute).not.toContain("storage.setPrimaryGA4Connection");
+
   });
   it("does not reuse a rejected Google Sheets refresh token during explicit reconnect", () => {
     const routes = routesFile();

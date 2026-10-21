@@ -41,10 +41,17 @@ CREATE INDEX IF NOT EXISTS idx_kpi_periods_type ON kpi_periods(period_type);
 
 -- 3. Add metadata column to notifications for KPI action URLs
 ALTER TABLE notifications 
-ADD COLUMN IF NOT EXISTS metadata JSONB;
+ADD COLUMN IF NOT EXISTS metadata TEXT;
 
 -- 4. Add index for metadata queries
-CREATE INDEX IF NOT EXISTS idx_notifications_metadata ON notifications USING GIN (metadata);
+-- Current metadata is TEXT; only pre-existing JSONB installations support a GIN index.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_schema = current_schema() AND table_name = 'notifications'
+      AND column_name = 'metadata' AND data_type = 'jsonb') THEN
+    CREATE INDEX IF NOT EXISTS idx_notifications_metadata ON notifications USING GIN (metadata);
+  END IF;
+END $$;
 
 -- 5. Add comments for documentation
 COMMENT ON TABLE kpi_periods IS 'Historical snapshots of KPI performance by period';

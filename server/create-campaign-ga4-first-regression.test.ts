@@ -38,7 +38,7 @@ describe("GA4-first Create Campaign wizard", () => {
     );
     const deleteError = deleteMutation.slice(deleteMutation.indexOf("onError:"));
 
-    expect(campaignsPage).toContain('`/api/campaigns/${draftCampaignId}?draftCleanup=1`');
+    expect(campaignsPage).toContain('`/api/campaigns/${cleanupId}?draftCleanup=1&clientId=');
     expect(deleteError).toContain('queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });');
   });
 });

@@ -179,7 +179,7 @@ describe("GA4 Insights authentication and tenant scope", () => {
     expect(ga4Branch).toContain("await storage.getCampaign(ga4CampaignId)");
     expect(ga4Branch).toContain("trim() !== ga4ActorId");
     expect(ga4Branch.indexOf("const ga4ActorId")).toBeLessThan(ga4Branch.indexOf("https://oauth2.googleapis.com/token"));
-    expect(ga4Branch.indexOf("const ga4ActorId")).toBeLessThan(ga4Branch.indexOf("storage.createGA4Connection"));
+    expect(ga4Branch.indexOf("const ga4ActorId")).toBeLessThan(ga4Branch.indexOf("storage.stageGA4OAuthConnection"));
   });
 
   it("guards every retained GA4 OAuth entry and callback before external or persisted work", () => {

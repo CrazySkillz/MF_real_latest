@@ -4,6 +4,8 @@ The [controlling index](../../V1_RELEASE_READINESS.md) defines the eight practic
 
 Current counts, implementation state, validation evidence and remaining release gates are maintained in [Fix counts and progress tracking](../../V1_RELEASE_READINESS.md#fix-counts-and-progress-tracking). Update that record with each fix; this assignment table does not establish closure.
 
+Batch 2's 14 code corrections are implemented and locally validated; they are uncommitted and not deployed. The October 21 database safety check also passed: encrypted backup/restore, actual production-copy upgrade/repeat/rollback and existing-data preservation. The user confirmed the optional Render timing settings are absent, so the existing defaults apply; the deployment preflight is complete. Historical cleanup and live acceptance remain open. Its finding-by-finding evidence and outstanding deployment checks are in the [Batch 2 progress record](../../V1_RELEASE_READINESS.md#fix-counts-and-progress-tracking). No Batch 2 finding is closed for release.
+
 | Finding | Severity | Primary batch | V1 applicability |
 |---|---|---:|---|
 | V1-001 | P0 | 1 | V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement |

@@ -861,6 +861,7 @@ async function createSnapshotsForAllCampaigns() {
 
 export class SnapshotScheduler {
   private intervalId: NodeJS.Timeout | null = null;
+  private startupTimeout: NodeJS.Timeout | null = null;
   private frequency: 'hourly' | 'daily' | 'weekly' = 'daily';
   
   constructor(frequency?: 'hourly' | 'daily' | 'weekly') {
@@ -882,13 +883,19 @@ export class SnapshotScheduler {
     };
     
     const interval = intervals[this.frequency];
+    if (!Object.prototype.hasOwnProperty.call(intervals, this.frequency)) {
+      throw new Error('SNAPSHOT_FREQUENCY must be hourly, daily or weekly');
+    }
     
     console.log(`\n🕐 Snapshot Scheduler Started`);
     console.log(`   Frequency: ${this.frequency}`);
     console.log(`   Next run: ${new Date(Date.now() + interval).toLocaleString()}\n`);
     
     // Delay first run to let the HTTP server respond to health checks first
-    setTimeout(() => createSnapshotsForAllCampaigns(), 30000);
+    this.startupTimeout = setTimeout(() => {
+      this.startupTimeout = null;
+      void createSnapshotsForAllCampaigns();
+    }, 30000);
 
     // Then schedule regular runs
     this.intervalId = setInterval(() => {
@@ -897,6 +904,10 @@ export class SnapshotScheduler {
   }
   
   stop() {
+    if (this.startupTimeout) {
+      clearTimeout(this.startupTimeout);
+      this.startupTimeout = null;
+    }
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
@@ -905,6 +916,9 @@ export class SnapshotScheduler {
   }
   
   setFrequency(frequency: 'hourly' | 'daily' | 'weekly') {
+    if (!['hourly', 'daily', 'weekly'].includes(frequency)) {
+      throw new Error('SNAPSHOT_FREQUENCY must be hourly, daily or weekly');
+    }
     this.frequency = frequency;
     if (this.intervalId) {
       this.stop();

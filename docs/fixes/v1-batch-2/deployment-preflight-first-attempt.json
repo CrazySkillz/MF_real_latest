@@ -1,0 +1,846 @@
+{
+  "at": "2026-10-21T06:50:45.798Z",
+  "boundary": "User-confirmed production DATABASE_URL; TLS verified, bounded READ ONLY transaction. Aggregate counts/schema only; no data changes.",
+  "candidateHashMismatches": [],
+  "readOnly": true,
+  "serverVersion": "17.9 (Debian 17.9-1.pgdg12+1)",
+  "databaseBytes": "2243319475",
+  "tables": [
+    "ab_test_events",
+    "ab_test_results",
+    "ab_test_variants",
+    "ab_tests",
+    "app_sessions",
+    "attribution_insights",
+    "attribution_models",
+    "attribution_results",
+    "benchmark_history",
+    "benchmarks",
+    "campaigns",
+    "clients",
+    "conversion_events",
+    "custom_integration_metrics",
+    "custom_integrations",
+    "customer_journeys",
+    "email_alert_events",
+    "ga4_connection_lifecycle_events",
+    "ga4_connections",
+    "ga4_daily_metrics",
+    "ga4_google_ads_spend_connections",
+    "ga4_google_ads_spend_daily_metrics",
+    "ga4_overview_snapshots",
+    "ga4_refresh_work",
+    "google_ads_connections",
+    "google_ads_daily_metrics",
+    "google_sheets_connections",
+    "hubspot_connections",
+    "inbound_webhook_receipts",
+    "instagram_connections",
+    "instagram_daily_metrics",
+    "integrations",
+    "kpi_alerts",
+    "kpi_periods",
+    "kpi_progress",
+    "kpi_reports",
+    "kpis",
+    "linkedin_ad_performance",
+    "linkedin_connections",
+    "linkedin_daily_metrics",
+    "linkedin_import_metrics",
+    "linkedin_import_sessions",
+    "linkedin_reports",
+    "mapping_templates",
+    "meta_connections",
+    "meta_daily_metrics",
+    "metric_snapshots",
+    "metrics",
+    "mimosaas_tracking_attributions",
+    "mimosaas_tracking_campaign_mappings",
+    "mimosaas_tracking_configurations",
+    "mimosaas_tracking_daily_metrics",
+    "mimosaas_tracking_daily_snapshots",
+    "mimosaas_tracking_events",
+    "mimosaas_tracking_publication_runs",
+    "mimosaas_website_connections",
+    "notifications",
+    "performance_data",
+    "report_send_events",
+    "report_snapshots",
+    "revenue_records",
+    "revenue_sources",
+    "salesforce_connections",
+    "service_account_resource_grants",
+    "shopify_connections",
+    "spend_records",
+    "spend_sources",
+    "tiktok_connections",
+    "tiktok_daily_metrics",
+    "touchpoints"
+  ],
+  "tableCounts": {
+    "ab_test_events": 0,
+    "ab_test_results": 0,
+    "ab_test_variants": 0,
+    "ab_tests": 0,
+    "app_sessions": 544,
+    "attribution_insights": 0,
+    "attribution_models": 0,
+    "attribution_results": 0,
+    "benchmark_history": 154,
+    "benchmarks": 51,
+    "campaigns": 52,
+    "clients": 10,
+    "conversion_events": 1,
+    "custom_integration_metrics": 76,
+    "custom_integrations": 20,
+    "customer_journeys": 0,
+    "email_alert_events": 1090,
+    "ga4_connection_lifecycle_events": 10,
+    "ga4_connections": 38,
+    "ga4_daily_metrics": 509,
+    "ga4_google_ads_spend_connections": 2,
+    "ga4_google_ads_spend_daily_metrics": 10,
+    "ga4_overview_snapshots": 9,
+    "ga4_refresh_work": 32,
+    "google_ads_connections": 1,
+    "google_ads_daily_metrics": 181,
+    "google_sheets_connections": 222,
+    "hubspot_connections": 12,
+    "inbound_webhook_receipts": 0,
+    "instagram_connections": 2,
+    "instagram_daily_metrics": 3,
+    "integrations": 5,
+    "kpi_alerts": 247,
+    "kpi_periods": 176,
+    "kpi_progress": 135,
+    "kpi_reports": 0,
+    "kpis": 43,
+    "linkedin_ad_performance": 455366,
+    "linkedin_connections": 70,
+    "linkedin_daily_metrics": 12047,
+    "linkedin_import_metrics": 1635507,
+    "linkedin_import_sessions": 66290,
+    "linkedin_reports": 12,
+    "mapping_templates": 0,
+    "meta_connections": 5,
+    "meta_daily_metrics": 1419,
+    "metric_snapshots": 87495,
+    "metrics": 4,
+    "mimosaas_tracking_attributions": 1,
+    "mimosaas_tracking_campaign_mappings": 1,
+    "mimosaas_tracking_configurations": 1,
+    "mimosaas_tracking_daily_metrics": 0,
+    "mimosaas_tracking_daily_snapshots": 0,
+    "mimosaas_tracking_events": 1,
+    "mimosaas_tracking_publication_runs": 0,
+    "mimosaas_website_connections": 2,
+    "notifications": 2273,
+    "performance_data": 7,
+    "report_send_events": 713,
+    "report_snapshots": 526,
+    "revenue_records": 618,
+    "revenue_sources": 95,
+    "salesforce_connections": 17,
+    "service_account_resource_grants": 1,
+    "shopify_connections": 20,
+    "spend_records": 3642717,
+    "spend_sources": 35,
+    "tiktok_connections": 1,
+    "tiktok_daily_metrics": 133,
+    "touchpoints": 0
+  },
+  "indexes": [
+    {
+      "tablename": "ab_test_events",
+      "indexname": "ab_test_events_pkey",
+      "indexdef": "CREATE UNIQUE INDEX ab_test_events_pkey ON public.ab_test_events USING btree (id)"
+    },
+    {
+      "tablename": "ab_test_results",
+      "indexname": "ab_test_results_pkey",
+      "indexdef": "CREATE UNIQUE INDEX ab_test_results_pkey ON public.ab_test_results USING btree (id)"
+    },
+    {
+      "tablename": "ab_test_variants",
+      "indexname": "ab_test_variants_pkey",
+      "indexdef": "CREATE UNIQUE INDEX ab_test_variants_pkey ON public.ab_test_variants USING btree (id)"
+    },
+    {
+      "tablename": "ab_tests",
+      "indexname": "ab_tests_pkey",
+      "indexdef": "CREATE UNIQUE INDEX ab_tests_pkey ON public.ab_tests USING btree (id)"
+    },
+    {
+      "tablename": "app_sessions",
+      "indexname": "IDX_session_expire",
+      "indexdef": "CREATE INDEX \"IDX_session_expire\" ON public.app_sessions USING btree (expire)"
+    },
+    {
+      "tablename": "app_sessions",
+      "indexname": "session_pkey",
+      "indexdef": "CREATE UNIQUE INDEX session_pkey ON public.app_sessions USING btree (sid)"
+    },
+    {
+      "tablename": "attribution_insights",
+      "indexname": "attribution_insights_pkey",
+      "indexdef": "CREATE UNIQUE INDEX attribution_insights_pkey ON public.attribution_insights USING btree (id)"
+    },
+    {
+      "tablename": "attribution_models",
+      "indexname": "attribution_models_owner_id_idx",
+      "indexdef": "CREATE INDEX attribution_models_owner_id_idx ON public.attribution_models USING btree (owner_id)"
+    },
+    {
+      "tablename": "attribution_models",
+      "indexname": "attribution_models_pkey",
+      "indexdef": "CREATE UNIQUE INDEX attribution_models_pkey ON public.attribution_models USING btree (id)"
+    },
+    {
+      "tablename": "attribution_results",
+      "indexname": "attribution_results_pkey",
+      "indexdef": "CREATE UNIQUE INDEX attribution_results_pkey ON public.attribution_results USING btree (id)"
+    },
+    {
+      "tablename": "benchmark_history",
+      "indexname": "benchmark_history_pkey",
+      "indexdef": "CREATE UNIQUE INDEX benchmark_history_pkey ON public.benchmark_history USING btree (id)"
+    },
+    {
+      "tablename": "benchmarks",
+      "indexname": "benchmarks_pkey",
+      "indexdef": "CREATE UNIQUE INDEX benchmarks_pkey ON public.benchmarks USING btree (id)"
+    },
+    {
+      "tablename": "benchmarks",
+      "indexname": "idx_benchmarks_apply_to",
+      "indexdef": "CREATE INDEX idx_benchmarks_apply_to ON public.benchmarks USING btree (apply_to)"
+    },
+    {
+      "tablename": "benchmarks",
+      "indexname": "idx_benchmarks_specific_campaign",
+      "indexdef": "CREATE INDEX idx_benchmarks_specific_campaign ON public.benchmarks USING btree (specific_campaign_id) WHERE (specific_campaign_id IS NOT NULL)"
+    },
+    {
+      "tablename": "campaigns",
+      "indexname": "campaigns_pkey",
+      "indexdef": "CREATE UNIQUE INDEX campaigns_pkey ON public.campaigns USING btree (id)"
+    },
+    {
+      "tablename": "campaigns",
+      "indexname": "idx_campaigns_owner_id",
+      "indexdef": "CREATE INDEX idx_campaigns_owner_id ON public.campaigns USING btree (owner_id)"
+    },
+    {
+      "tablename": "clients",
+      "indexname": "clients_pkey",
+      "indexdef": "CREATE UNIQUE INDEX clients_pkey ON public.clients USING btree (id)"
+    },
+    {
+      "tablename": "conversion_events",
+      "indexname": "conversion_events_pkey",
+      "indexdef": "CREATE UNIQUE INDEX conversion_events_pkey ON public.conversion_events USING btree (id)"
+    },
+    {
+      "tablename": "conversion_events",
+      "indexname": "idx_conversion_events_campaign_id",
+      "indexdef": "CREATE INDEX idx_conversion_events_campaign_id ON public.conversion_events USING btree (campaign_id)"
+    },
+    {
+      "tablename": "conversion_events",
+      "indexname": "idx_conversion_events_occurred_at",
+      "indexdef": "CREATE INDEX idx_conversion_events_occurred_at ON public.conversion_events USING btree (occurred_at)"
+    },
+    {
+      "tablename": "custom_integration_metrics",
+      "indexname": "custom_integration_metrics_pkey",
+      "indexdef": "CREATE UNIQUE INDEX custom_integration_metrics_pkey ON public.custom_integration_metrics USING btree (id)"
+    },
+    {
+      "tablename": "custom_integrations",
+      "indexname": "custom_integrations_pkey",
+      "indexdef": "CREATE UNIQUE INDEX custom_integrations_pkey ON public.custom_integrations USING btree (id)"
+    },
+    {
+      "tablename": "customer_journeys",
+      "indexname": "customer_journeys_owner_id_idx",
+      "indexdef": "CREATE INDEX customer_journeys_owner_id_idx ON public.customer_journeys USING btree (owner_id)"
+    },
+    {
+      "tablename": "customer_journeys",
+      "indexname": "customer_journeys_pkey",
+      "indexdef": "CREATE UNIQUE INDEX customer_journeys_pkey ON public.customer_journeys USING btree (id)"
+    },
+    {
+      "tablename": "email_alert_events",
+      "indexname": "email_alert_events_dedupe_key_unique",
+      "indexdef": "CREATE UNIQUE INDEX email_alert_events_dedupe_key_unique ON public.email_alert_events USING btree (dedupe_key)"
+    },
+    {
+      "tablename": "email_alert_events",
+      "indexname": "email_alert_events_pkey",
+      "indexdef": "CREATE UNIQUE INDEX email_alert_events_pkey ON public.email_alert_events USING btree (id)"
+    },
+    {
+      "tablename": "ga4_connection_lifecycle_events",
+      "indexname": "ga4_connection_lifecycle_events_campaign_changed_idx",
+      "indexdef": "CREATE INDEX ga4_connection_lifecycle_events_campaign_changed_idx ON public.ga4_connection_lifecycle_events USING btree (campaign_id, changed_at DESC)"
+    },
+    {
+      "tablename": "ga4_connection_lifecycle_events",
+      "indexname": "ga4_connection_lifecycle_events_connection_changed_idx",
+      "indexdef": "CREATE INDEX ga4_connection_lifecycle_events_connection_changed_idx ON public.ga4_connection_lifecycle_events USING btree (connection_id, changed_at DESC)"
+    },
+    {
+      "tablename": "ga4_connection_lifecycle_events",
+      "indexname": "ga4_connection_lifecycle_events_pkey",
+      "indexdef": "CREATE UNIQUE INDEX ga4_connection_lifecycle_events_pkey ON public.ga4_connection_lifecycle_events USING btree (id)"
+    },
+    {
+      "tablename": "ga4_connections",
+      "indexname": "ga4_connections_pkey",
+      "indexdef": "CREATE UNIQUE INDEX ga4_connections_pkey ON public.ga4_connections USING btree (id)"
+    },
+    {
+      "tablename": "ga4_daily_metrics",
+      "indexname": "ga4_daily_metrics_campaign_id_property_id_date_key",
+      "indexdef": "CREATE UNIQUE INDEX ga4_daily_metrics_campaign_id_property_id_date_key ON public.ga4_daily_metrics USING btree (campaign_id, property_id, date)"
+    },
+    {
+      "tablename": "ga4_daily_metrics",
+      "indexname": "ga4_daily_metrics_pkey",
+      "indexdef": "CREATE UNIQUE INDEX ga4_daily_metrics_pkey ON public.ga4_daily_metrics USING btree (id)"
+    },
+    {
+      "tablename": "ga4_daily_metrics",
+      "indexname": "idx_ga4_daily_metrics_campaign_date",
+      "indexdef": "CREATE INDEX idx_ga4_daily_metrics_campaign_date ON public.ga4_daily_metrics USING btree (campaign_id, date)"
+    },
+    {
+      "tablename": "ga4_google_ads_spend_connections",
+      "indexname": "ga4_google_ads_spend_connections_campaign_unique",
+      "indexdef": "CREATE UNIQUE INDEX ga4_google_ads_spend_connections_campaign_unique ON public.ga4_google_ads_spend_connections USING btree (campaign_id)"
+    },
+    {
+      "tablename": "ga4_google_ads_spend_connections",
+      "indexname": "ga4_google_ads_spend_connections_pkey",
+      "indexdef": "CREATE UNIQUE INDEX ga4_google_ads_spend_connections_pkey ON public.ga4_google_ads_spend_connections USING btree (id)"
+    },
+    {
+      "tablename": "ga4_google_ads_spend_daily_metrics",
+      "indexname": "ga4_google_ads_spend_daily_metrics_campaign_day_unique",
+      "indexdef": "CREATE UNIQUE INDEX ga4_google_ads_spend_daily_metrics_campaign_day_unique ON public.ga4_google_ads_spend_daily_metrics USING btree (campaign_id, google_campaign_id, date)"
+    },
+    {
+      "tablename": "ga4_google_ads_spend_daily_metrics",
+      "indexname": "ga4_google_ads_spend_daily_metrics_pkey",
+      "indexdef": "CREATE UNIQUE INDEX ga4_google_ads_spend_daily_metrics_pkey ON public.ga4_google_ads_spend_daily_metrics USING btree (id)"
+    },
+    {
+      "tablename": "ga4_overview_snapshots",
+      "indexname": "ga4_overview_snapshots_campaign_property_unique",
+      "indexdef": "CREATE UNIQUE INDEX ga4_overview_snapshots_campaign_property_unique ON public.ga4_overview_snapshots USING btree (campaign_id, property_id)"
+    },
+    {
+      "tablename": "ga4_overview_snapshots",
+      "indexname": "ga4_overview_snapshots_pkey",
+      "indexdef": "CREATE UNIQUE INDEX ga4_overview_snapshots_pkey ON public.ga4_overview_snapshots USING btree (id)"
+    },
+    {
+      "tablename": "ga4_refresh_work",
+      "indexname": "ga4_refresh_work_identity",
+      "indexdef": "CREATE UNIQUE INDEX ga4_refresh_work_identity ON public.ga4_refresh_work USING btree (campaign_id, due_at, reporting_date, scope_hash)"
+    },
+    {
+      "tablename": "ga4_refresh_work",
+      "indexname": "ga4_refresh_work_pkey",
+      "indexdef": "CREATE UNIQUE INDEX ga4_refresh_work_pkey ON public.ga4_refresh_work USING btree (id)"
+    },
+    {
+      "tablename": "ga4_refresh_work",
+      "indexname": "ga4_refresh_work_running_campaign",
+      "indexdef": "CREATE UNIQUE INDEX ga4_refresh_work_running_campaign ON public.ga4_refresh_work USING btree (campaign_id) WHERE (status = 'running'::text)"
+    },
+    {
+      "tablename": "google_ads_connections",
+      "indexname": "google_ads_connections_pkey",
+      "indexdef": "CREATE UNIQUE INDEX google_ads_connections_pkey ON public.google_ads_connections USING btree (id)"
+    },
+    {
+      "tablename": "google_ads_daily_metrics",
+      "indexname": "google_ads_daily_metrics_campaign_id_google_campaign_id_dat_key",
+      "indexdef": "CREATE UNIQUE INDEX google_ads_daily_metrics_campaign_id_google_campaign_id_dat_key ON public.google_ads_daily_metrics USING btree (campaign_id, google_campaign_id, date)"
+    },
+    {
+      "tablename": "google_ads_daily_metrics",
+      "indexname": "google_ads_daily_metrics_pkey",
+      "indexdef": "CREATE UNIQUE INDEX google_ads_daily_metrics_pkey ON public.google_ads_daily_metrics USING btree (id)"
+    },
+    {
+      "tablename": "google_sheets_connections",
+      "indexname": "google_sheets_connections_pkey",
+      "indexdef": "CREATE UNIQUE INDEX google_sheets_connections_pkey ON public.google_sheets_connections USING btree (id)"
+    },
+    {
+      "tablename": "hubspot_connections",
+      "indexname": "hubspot_connections_pkey",
+      "indexdef": "CREATE UNIQUE INDEX hubspot_connections_pkey ON public.hubspot_connections USING btree (id)"
+    },
+    {
+      "tablename": "inbound_webhook_receipts",
+      "indexname": "inbound_webhook_receipts_pkey",
+      "indexdef": "CREATE UNIQUE INDEX inbound_webhook_receipts_pkey ON public.inbound_webhook_receipts USING btree (id)"
+    },
+    {
+      "tablename": "instagram_connections",
+      "indexname": "idx_instagram_connections_campaign_id",
+      "indexdef": "CREATE INDEX idx_instagram_connections_campaign_id ON public.instagram_connections USING btree (campaign_id)"
+    },
+    {
+      "tablename": "instagram_connections",
+      "indexname": "instagram_connections_pkey",
+      "indexdef": "CREATE UNIQUE INDEX instagram_connections_pkey ON public.instagram_connections USING btree (id)"
+    },
+    {
+      "tablename": "instagram_daily_metrics",
+      "indexname": "idx_instagram_daily_metrics_campaign_date",
+      "indexdef": "CREATE INDEX idx_instagram_daily_metrics_campaign_date ON public.instagram_daily_metrics USING btree (campaign_id, date DESC)"
+    },
+    {
+      "tablename": "instagram_daily_metrics",
+      "indexname": "idx_instagram_daily_metrics_unique",
+      "indexdef": "CREATE UNIQUE INDEX idx_instagram_daily_metrics_unique ON public.instagram_daily_metrics USING btree (campaign_id, instagram_campaign_id, date, platform_position)"
+    },
+    {
+      "tablename": "instagram_daily_metrics",
+      "indexname": "instagram_daily_metrics_pkey",
+      "indexdef": "CREATE UNIQUE INDEX instagram_daily_metrics_pkey ON public.instagram_daily_metrics USING btree (id)"
+    },
+    {
+      "tablename": "integrations",
+      "indexname": "integrations_owner_id_idx",
+      "indexdef": "CREATE INDEX integrations_owner_id_idx ON public.integrations USING btree (owner_id)"
+    },
+    {
+      "tablename": "integrations",
+      "indexname": "integrations_pkey",
+      "indexdef": "CREATE UNIQUE INDEX integrations_pkey ON public.integrations USING btree (id)"
+    },
+    {
+      "tablename": "kpi_alerts",
+      "indexname": "kpi_alerts_pkey",
+      "indexdef": "CREATE UNIQUE INDEX kpi_alerts_pkey ON public.kpi_alerts USING btree (id)"
+    },
+    {
+      "tablename": "kpi_periods",
+      "indexname": "idx_kpi_periods_kpi_id",
+      "indexdef": "CREATE INDEX idx_kpi_periods_kpi_id ON public.kpi_periods USING btree (kpi_id)"
+    },
+    {
+      "tablename": "kpi_periods",
+      "indexname": "kpi_periods_pkey",
+      "indexdef": "CREATE UNIQUE INDEX kpi_periods_pkey ON public.kpi_periods USING btree (id)"
+    },
+    {
+      "tablename": "kpi_progress",
+      "indexname": "kpi_progress_pkey",
+      "indexdef": "CREATE UNIQUE INDEX kpi_progress_pkey ON public.kpi_progress USING btree (id)"
+    },
+    {
+      "tablename": "kpi_reports",
+      "indexname": "kpi_reports_pkey",
+      "indexdef": "CREATE UNIQUE INDEX kpi_reports_pkey ON public.kpi_reports USING btree (id)"
+    },
+    {
+      "tablename": "kpis",
+      "indexname": "kpis_pkey",
+      "indexdef": "CREATE UNIQUE INDEX kpis_pkey ON public.kpis USING btree (id)"
+    },
+    {
+      "tablename": "linkedin_ad_performance",
+      "indexname": "linkedin_ad_performance_pkey",
+      "indexdef": "CREATE UNIQUE INDEX linkedin_ad_performance_pkey ON public.linkedin_ad_performance USING btree (id)"
+    },
+    {
+      "tablename": "linkedin_connections",
+      "indexname": "linkedin_connections_pkey",
+      "indexdef": "CREATE UNIQUE INDEX linkedin_connections_pkey ON public.linkedin_connections USING btree (id)"
+    },
+    {
+      "tablename": "linkedin_daily_metrics",
+      "indexname": "idx_linkedin_daily_metrics_campaign_date",
+      "indexdef": "CREATE INDEX idx_linkedin_daily_metrics_campaign_date ON public.linkedin_daily_metrics USING btree (campaign_id, date)"
+    },
+    {
+      "tablename": "linkedin_daily_metrics",
+      "indexname": "linkedin_daily_metrics_campaign_id_date_key",
+      "indexdef": "CREATE UNIQUE INDEX linkedin_daily_metrics_campaign_id_date_key ON public.linkedin_daily_metrics USING btree (campaign_id, date)"
+    },
+    {
+      "tablename": "linkedin_daily_metrics",
+      "indexname": "linkedin_daily_metrics_pkey",
+      "indexdef": "CREATE UNIQUE INDEX linkedin_daily_metrics_pkey ON public.linkedin_daily_metrics USING btree (id)"
+    },
+    {
+      "tablename": "linkedin_import_metrics",
+      "indexname": "linkedin_import_metrics_pkey",
+      "indexdef": "CREATE UNIQUE INDEX linkedin_import_metrics_pkey ON public.linkedin_import_metrics USING btree (id)"
+    },
+    {
+      "tablename": "linkedin_import_sessions",
+      "indexname": "linkedin_import_sessions_pkey",
+      "indexdef": "CREATE UNIQUE INDEX linkedin_import_sessions_pkey ON public.linkedin_import_sessions USING btree (id)"
+    },
+    {
+      "tablename": "linkedin_reports",
+      "indexname": "linkedin_reports_pkey",
+      "indexdef": "CREATE UNIQUE INDEX linkedin_reports_pkey ON public.linkedin_reports USING btree (id)"
+    },
+    {
+      "tablename": "mapping_templates",
+      "indexname": "mapping_templates_pkey",
+      "indexdef": "CREATE UNIQUE INDEX mapping_templates_pkey ON public.mapping_templates USING btree (id)"
+    },
+    {
+      "tablename": "meta_connections",
+      "indexname": "idx_meta_connections_campaign_id",
+      "indexdef": "CREATE INDEX idx_meta_connections_campaign_id ON public.meta_connections USING btree (campaign_id)"
+    },
+    {
+      "tablename": "meta_connections",
+      "indexname": "meta_connections_pkey",
+      "indexdef": "CREATE UNIQUE INDEX meta_connections_pkey ON public.meta_connections USING btree (id)"
+    },
+    {
+      "tablename": "meta_daily_metrics",
+      "indexname": "meta_daily_metrics_campaign_meta_date_idx",
+      "indexdef": "CREATE UNIQUE INDEX meta_daily_metrics_campaign_meta_date_idx ON public.meta_daily_metrics USING btree (campaign_id, meta_campaign_id, date)"
+    },
+    {
+      "tablename": "meta_daily_metrics",
+      "indexname": "meta_daily_metrics_pkey",
+      "indexdef": "CREATE UNIQUE INDEX meta_daily_metrics_pkey ON public.meta_daily_metrics USING btree (id)"
+    },
+    {
+      "tablename": "metric_snapshots",
+      "indexname": "metric_snapshots_executive_summary_day_unique",
+      "indexdef": "CREATE UNIQUE INDEX metric_snapshots_executive_summary_day_unique ON public.metric_snapshots USING btree (campaign_id, reporting_date) WHERE ((snapshot_type = 'executive_summary_daily'::text) AND (reporting_date IS NOT NULL))"
+    },
+    {
+      "tablename": "metric_snapshots",
+      "indexname": "metric_snapshots_financial_day_unique",
+      "indexdef": "CREATE UNIQUE INDEX metric_snapshots_financial_day_unique ON public.metric_snapshots USING btree (campaign_id, reporting_date) WHERE ((snapshot_type = 'financial_daily'::text) AND (reporting_date IS NOT NULL))"
+    },
+    {
+      "tablename": "metric_snapshots",
+      "indexname": "metric_snapshots_pkey",
+      "indexdef": "CREATE UNIQUE INDEX metric_snapshots_pkey ON public.metric_snapshots USING btree (id)"
+    },
+    {
+      "tablename": "metrics",
+      "indexname": "metrics_owner_id_idx",
+      "indexdef": "CREATE INDEX metrics_owner_id_idx ON public.metrics USING btree (owner_id)"
+    },
+    {
+      "tablename": "metrics",
+      "indexname": "metrics_pkey",
+      "indexdef": "CREATE UNIQUE INDEX metrics_pkey ON public.metrics USING btree (id)"
+    },
+    {
+      "tablename": "mimosaas_tracking_attributions",
+      "indexname": "mimosaas_tracking_attributions_campaign_idx",
+      "indexdef": "CREATE INDEX mimosaas_tracking_attributions_campaign_idx ON public.mimosaas_tracking_attributions USING btree (campaign_id)"
+    },
+    {
+      "tablename": "mimosaas_tracking_attributions",
+      "indexname": "mimosaas_tracking_attributions_event_unique",
+      "indexdef": "CREATE UNIQUE INDEX mimosaas_tracking_attributions_event_unique ON public.mimosaas_tracking_attributions USING btree (event_id)"
+    },
+    {
+      "tablename": "mimosaas_tracking_attributions",
+      "indexname": "mimosaas_tracking_attributions_pkey",
+      "indexdef": "CREATE UNIQUE INDEX mimosaas_tracking_attributions_pkey ON public.mimosaas_tracking_attributions USING btree (id)"
+    },
+    {
+      "tablename": "mimosaas_tracking_campaign_mappings",
+      "indexname": "mimosaas_tracking_campaign_mappings_config_idx",
+      "indexdef": "CREATE INDEX mimosaas_tracking_campaign_mappings_config_idx ON public.mimosaas_tracking_campaign_mappings USING btree (tracking_configuration_id)"
+    },
+    {
+      "tablename": "mimosaas_tracking_campaign_mappings",
+      "indexname": "mimosaas_tracking_campaign_mappings_exact_unique",
+      "indexdef": "CREATE UNIQUE INDEX mimosaas_tracking_campaign_mappings_exact_unique ON public.mimosaas_tracking_campaign_mappings USING btree (campaign_id, mapping_type, campaign_value)"
+    },
+    {
+      "tablename": "mimosaas_tracking_campaign_mappings",
+      "indexname": "mimosaas_tracking_campaign_mappings_pkey",
+      "indexdef": "CREATE UNIQUE INDEX mimosaas_tracking_campaign_mappings_pkey ON public.mimosaas_tracking_campaign_mappings USING btree (id)"
+    },
+    {
+      "tablename": "mimosaas_tracking_configurations",
+      "indexname": "mimosaas_tracking_configurations_campaign_unique",
+      "indexdef": "CREATE UNIQUE INDEX mimosaas_tracking_configurations_campaign_unique ON public.mimosaas_tracking_configurations USING btree (campaign_id)"
+    },
+    {
+      "tablename": "mimosaas_tracking_configurations",
+      "indexname": "mimosaas_tracking_configurations_pkey",
+      "indexdef": "CREATE UNIQUE INDEX mimosaas_tracking_configurations_pkey ON public.mimosaas_tracking_configurations USING btree (id)"
+    },
+    {
+      "tablename": "mimosaas_tracking_configurations",
+      "indexname": "mimosaas_tracking_configurations_website_idx",
+      "indexdef": "CREATE INDEX mimosaas_tracking_configurations_website_idx ON public.mimosaas_tracking_configurations USING btree (website_connection_id)"
+    },
+    {
+      "tablename": "mimosaas_tracking_daily_metrics",
+      "indexname": "mimosaas_tracking_daily_metrics_campaign_day_unique",
+      "indexdef": "CREATE UNIQUE INDEX mimosaas_tracking_daily_metrics_campaign_day_unique ON public.mimosaas_tracking_daily_metrics USING btree (campaign_id, reporting_date)"
+    },
+    {
+      "tablename": "mimosaas_tracking_daily_metrics",
+      "indexname": "mimosaas_tracking_daily_metrics_pkey",
+      "indexdef": "CREATE UNIQUE INDEX mimosaas_tracking_daily_metrics_pkey ON public.mimosaas_tracking_daily_metrics USING btree (id)"
+    },
+    {
+      "tablename": "mimosaas_tracking_daily_snapshots",
+      "indexname": "mimosaas_tracking_daily_snapshots_campaign_day_unique",
+      "indexdef": "CREATE UNIQUE INDEX mimosaas_tracking_daily_snapshots_campaign_day_unique ON public.mimosaas_tracking_daily_snapshots USING btree (campaign_id, reporting_date)"
+    },
+    {
+      "tablename": "mimosaas_tracking_daily_snapshots",
+      "indexname": "mimosaas_tracking_daily_snapshots_pkey",
+      "indexdef": "CREATE UNIQUE INDEX mimosaas_tracking_daily_snapshots_pkey ON public.mimosaas_tracking_daily_snapshots USING btree (id)"
+    },
+    {
+      "tablename": "mimosaas_tracking_events",
+      "indexname": "mimosaas_tracking_events_campaign_time_idx",
+      "indexdef": "CREATE INDEX mimosaas_tracking_events_campaign_time_idx ON public.mimosaas_tracking_events USING btree (resolved_campaign_id, event_time)"
+    },
+    {
+      "tablename": "mimosaas_tracking_events",
+      "indexname": "mimosaas_tracking_events_event_id_unique",
+      "indexdef": "CREATE UNIQUE INDEX mimosaas_tracking_events_event_id_unique ON public.mimosaas_tracking_events USING btree (event_id)"
+    },
+    {
+      "tablename": "mimosaas_tracking_events",
+      "indexname": "mimosaas_tracking_events_pkey",
+      "indexdef": "CREATE UNIQUE INDEX mimosaas_tracking_events_pkey ON public.mimosaas_tracking_events USING btree (id)"
+    },
+    {
+      "tablename": "mimosaas_tracking_events",
+      "indexname": "mimosaas_tracking_events_website_time_idx",
+      "indexdef": "CREATE INDEX mimosaas_tracking_events_website_time_idx ON public.mimosaas_tracking_events USING btree (website_connection_id, event_time)"
+    },
+    {
+      "tablename": "mimosaas_tracking_publication_runs",
+      "indexname": "mimosaas_tracking_publication_runs_campaign_day_unique",
+      "indexdef": "CREATE UNIQUE INDEX mimosaas_tracking_publication_runs_campaign_day_unique ON public.mimosaas_tracking_publication_runs USING btree (campaign_id, reporting_date)"
+    },
+    {
+      "tablename": "mimosaas_tracking_publication_runs",
+      "indexname": "mimosaas_tracking_publication_runs_pkey",
+      "indexdef": "CREATE UNIQUE INDEX mimosaas_tracking_publication_runs_pkey ON public.mimosaas_tracking_publication_runs USING btree (id)"
+    },
+    {
+      "tablename": "mimosaas_website_connections",
+      "indexname": "mimosaas_website_connections_client_url_unique",
+      "indexdef": "CREATE UNIQUE INDEX mimosaas_website_connections_client_url_unique ON public.mimosaas_website_connections USING btree (client_id, website_url)"
+    },
+    {
+      "tablename": "mimosaas_website_connections",
+      "indexname": "mimosaas_website_connections_owner_client_idx",
+      "indexdef": "CREATE INDEX mimosaas_website_connections_owner_client_idx ON public.mimosaas_website_connections USING btree (owner_id, client_id)"
+    },
+    {
+      "tablename": "mimosaas_website_connections",
+      "indexname": "mimosaas_website_connections_pkey",
+      "indexdef": "CREATE UNIQUE INDEX mimosaas_website_connections_pkey ON public.mimosaas_website_connections USING btree (id)"
+    },
+    {
+      "tablename": "mimosaas_website_connections",
+      "indexname": "mimosaas_website_connections_tracking_public_id_unique",
+      "indexdef": "CREATE UNIQUE INDEX mimosaas_website_connections_tracking_public_id_unique ON public.mimosaas_website_connections USING btree (tracking_public_id) WHERE (tracking_public_id IS NOT NULL)"
+    },
+    {
+      "tablename": "notifications",
+      "indexname": "notifications_pkey",
+      "indexdef": "CREATE UNIQUE INDEX notifications_pkey ON public.notifications USING btree (id)"
+    },
+    {
+      "tablename": "performance_data",
+      "indexname": "performance_data_owner_id_idx",
+      "indexdef": "CREATE INDEX performance_data_owner_id_idx ON public.performance_data USING btree (owner_id)"
+    },
+    {
+      "tablename": "performance_data",
+      "indexname": "performance_data_pkey",
+      "indexdef": "CREATE UNIQUE INDEX performance_data_pkey ON public.performance_data USING btree (id)"
+    },
+    {
+      "tablename": "report_send_events",
+      "indexname": "report_send_events_pkey",
+      "indexdef": "CREATE UNIQUE INDEX report_send_events_pkey ON public.report_send_events USING btree (id)"
+    },
+    {
+      "tablename": "report_send_events",
+      "indexname": "ux_report_send_events_report_scheduled_key",
+      "indexdef": "CREATE UNIQUE INDEX ux_report_send_events_report_scheduled_key ON public.report_send_events USING btree (report_id, scheduled_key)"
+    },
+    {
+      "tablename": "report_snapshots",
+      "indexname": "report_snapshots_pkey",
+      "indexdef": "CREATE UNIQUE INDEX report_snapshots_pkey ON public.report_snapshots USING btree (id)"
+    },
+    {
+      "tablename": "revenue_records",
+      "indexname": "idx_revenue_records_campaign_date",
+      "indexdef": "CREATE INDEX idx_revenue_records_campaign_date ON public.revenue_records USING btree (campaign_id, date DESC)"
+    },
+    {
+      "tablename": "revenue_records",
+      "indexname": "idx_revenue_records_campaign_id",
+      "indexdef": "CREATE INDEX idx_revenue_records_campaign_id ON public.revenue_records USING btree (campaign_id)"
+    },
+    {
+      "tablename": "revenue_records",
+      "indexname": "idx_revenue_records_date_range",
+      "indexdef": "CREATE INDEX idx_revenue_records_date_range ON public.revenue_records USING btree (campaign_id, date DESC) WHERE ((revenue)::numeric(15,2) > (0)::numeric)"
+    },
+    {
+      "tablename": "revenue_records",
+      "indexname": "idx_revenue_records_source_type",
+      "indexdef": "CREATE INDEX idx_revenue_records_source_type ON public.revenue_records USING btree (source_type)"
+    },
+    {
+      "tablename": "revenue_records",
+      "indexname": "revenue_records_pkey",
+      "indexdef": "CREATE UNIQUE INDEX revenue_records_pkey ON public.revenue_records USING btree (id)"
+    },
+    {
+      "tablename": "revenue_sources",
+      "indexname": "revenue_sources_pkey",
+      "indexdef": "CREATE UNIQUE INDEX revenue_sources_pkey ON public.revenue_sources USING btree (id)"
+    },
+    {
+      "tablename": "salesforce_connections",
+      "indexname": "salesforce_connections_pkey",
+      "indexdef": "CREATE UNIQUE INDEX salesforce_connections_pkey ON public.salesforce_connections USING btree (id)"
+    },
+    {
+      "tablename": "service_account_resource_grants",
+      "indexname": "service_account_resource_grants_pkey",
+      "indexdef": "CREATE UNIQUE INDEX service_account_resource_grants_pkey ON public.service_account_resource_grants USING btree (id)"
+    },
+    {
+      "tablename": "service_account_resource_grants",
+      "indexname": "service_account_resource_grants_scope_idx",
+      "indexdef": "CREATE UNIQUE INDEX service_account_resource_grants_scope_idx ON public.service_account_resource_grants USING btree (owner_id, client_id, provider, resource_id)"
+    },
+    {
+      "tablename": "shopify_connections",
+      "indexname": "shopify_connections_pkey",
+      "indexdef": "CREATE UNIQUE INDEX shopify_connections_pkey ON public.shopify_connections USING btree (id)"
+    },
+    {
+      "tablename": "spend_records",
+      "indexname": "idx_spend_records_campaign_date",
+      "indexdef": "CREATE INDEX idx_spend_records_campaign_date ON public.spend_records USING btree (campaign_id, date DESC)"
+    },
+    {
+      "tablename": "spend_records",
+      "indexname": "idx_spend_records_campaign_id",
+      "indexdef": "CREATE INDEX idx_spend_records_campaign_id ON public.spend_records USING btree (campaign_id)"
+    },
+    {
+      "tablename": "spend_records",
+      "indexname": "idx_spend_records_date_range",
+      "indexdef": "CREATE INDEX idx_spend_records_date_range ON public.spend_records USING btree (campaign_id, date DESC) WHERE ((spend)::numeric(15,2) > (0)::numeric)"
+    },
+    {
+      "tablename": "spend_records",
+      "indexname": "idx_spend_records_source_type",
+      "indexdef": "CREATE INDEX idx_spend_records_source_type ON public.spend_records USING btree (source_type)"
+    },
+    {
+      "tablename": "spend_records",
+      "indexname": "spend_records_pkey",
+      "indexdef": "CREATE UNIQUE INDEX spend_records_pkey ON public.spend_records USING btree (id)"
+    },
+    {
+      "tablename": "spend_sources",
+      "indexname": "spend_sources_pkey",
+      "indexdef": "CREATE UNIQUE INDEX spend_sources_pkey ON public.spend_sources USING btree (id)"
+    },
+    {
+      "tablename": "tiktok_connections",
+      "indexname": "idx_tiktok_connections_campaign_id",
+      "indexdef": "CREATE INDEX idx_tiktok_connections_campaign_id ON public.tiktok_connections USING btree (campaign_id)"
+    },
+    {
+      "tablename": "tiktok_connections",
+      "indexname": "tiktok_connections_pkey",
+      "indexdef": "CREATE UNIQUE INDEX tiktok_connections_pkey ON public.tiktok_connections USING btree (id)"
+    },
+    {
+      "tablename": "tiktok_daily_metrics",
+      "indexname": "idx_tiktok_daily_metrics_campaign_date",
+      "indexdef": "CREATE INDEX idx_tiktok_daily_metrics_campaign_date ON public.tiktok_daily_metrics USING btree (campaign_id, date DESC)"
+    },
+    {
+      "tablename": "tiktok_daily_metrics",
+      "indexname": "idx_tiktok_daily_metrics_unique",
+      "indexdef": "CREATE UNIQUE INDEX idx_tiktok_daily_metrics_unique ON public.tiktok_daily_metrics USING btree (campaign_id, advertiser_id, tiktok_campaign_id, date, source_contract_version)"
+    },
+    {
+      "tablename": "tiktok_daily_metrics",
+      "indexname": "tiktok_daily_metrics_pkey",
+      "indexdef": "CREATE UNIQUE INDEX tiktok_daily_metrics_pkey ON public.tiktok_daily_metrics USING btree (id)"
+    },
+    {
+      "tablename": "touchpoints",
+      "indexname": "touchpoints_pkey",
+      "indexdef": "CREATE UNIQUE INDEX touchpoints_pkey ON public.touchpoints USING btree (id)"
+    }
+  ],
+  "foreignKeys": [
+    {
+      "relation": "service_account_resource_grants",
+      "conname": "service_account_resource_grants_client_id_fkey",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE"
+    }
+  ],
+  "duplicateDailyKeys": [
+    {
+      "table": "ga4_daily_metrics",
+      "groups": 0,
+      "extra_rows": 0
+    },
+    {
+      "table": "linkedin_daily_metrics",
+      "groups": 0,
+      "extra_rows": 0
+    },
+    {
+      "table": "google_ads_daily_metrics",
+      "groups": 0,
+      "extra_rows": 0
+    },
+    {
+      "table": "meta_daily_metrics",
+      "groups": 0,
+      "extra_rows": 0
+    }
+  ],
+  "campaignBoundaries": {
+    "total": 52,
+    "no_client": 34,
+    "orphan_client": 0,
+    "owner_mismatch": 0
+  },
+  "startupDmlCandidates": {
+    "shopifyRefreshNotifications": 0,
+    "sheetsNullFlags": 0,
+    "legacyConnectedIntegrations": 0
+  },
+  "errorCode": "42703"
+}

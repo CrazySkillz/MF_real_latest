@@ -80,54 +80,10 @@ CREATE INDEX IF NOT EXISTS idx_revenue_records_date_range ON revenue_records(cam
 -- 4. BACKFILL LINKEDIN DAILY METRICS (SPEND)
 -- ============================================
 
--- LinkedIn already has daily spend in linkedin_daily_metrics
--- Backfill spend_records from linkedin_daily_metrics (if data exists)
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'linkedin_daily_metrics') THEN
-    INSERT INTO spend_records (campaign_id, date, spend, spend_source_id, source_type, currency)
-    SELECT 
-      campaign_id,
-      date as date,
-      LEAST(spend::DECIMAL(12,2), 9999999999.99) as spend,
-      'linkedin_daily_metrics' as spend_source_id,
-      'linkedin_api' as source_type,
-      'USD' as currency
-    FROM linkedin_daily_metrics
-    WHERE spend IS NOT NULL AND spend::DECIMAL(12,2) > 0
-    ON CONFLICT DO NOTHING;
-    RAISE NOTICE 'Backfilled LinkedIn spend records';
-  ELSE
-    RAISE NOTICE 'Skipped LinkedIn backfill - table does not exist';
-  END IF;
-END $$;
-
--- ============================================
--- 5. BACKFILL GA4 DAILY METRICS (REVENUE)
--- ============================================
-
--- GA4 already has daily revenue in ga4_daily_metrics
--- Backfill revenue_records from ga4_daily_metrics (if data exists)
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ga4_daily_metrics') 
-     AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'ga4_daily_metrics' AND column_name = 'revenue') THEN
-    INSERT INTO revenue_records (campaign_id, date, revenue, revenue_source_id, source_type, currency)
-    SELECT 
-      campaign_id,
-      date as date,
-      LEAST(revenue::DECIMAL(15,2), 9999999999.99) as revenue,
-      'ga4_daily_metrics' as revenue_source_id,
-      'ga4' as source_type,
-      'USD' as currency
-    FROM ga4_daily_metrics
-    WHERE revenue IS NOT NULL AND revenue::DECIMAL(15,2) > 0
-    ON CONFLICT DO NOTHING;
-    RAISE NOTICE 'Backfilled GA4 revenue records';
-  ELSE
-    RAISE NOTICE 'Skipped GA4 backfill - table or column does not exist';
-  END IF;
-END $$;
+-- Retired V1-081: synthetic source IDs and hard-coded USD made these backfills
+-- duplicate values on replay and mislabel currency. Native daily facts stay in
+-- their own tables. No financial rows are created by this historical migration.
+-- Existing historical rows require a separate read-only inventory and exact cleanup.
 
 -- ============================================
 -- 6. BACKFILL LEGACY CUMULATIVE SPEND

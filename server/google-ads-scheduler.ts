@@ -396,20 +396,31 @@ export async function refreshGoogleAdsForCampaign(
  * Runs every 4 hours (similar to Meta scheduler)
  */
 export function startGoogleAdsScheduler(): void {
+  if ((global as any).googleAdsSchedulerInterval) return;
   console.log('[Google Ads Scheduler] Starting Google Ads data refresh scheduler...');
 
-  const refreshIntervalHours = parseInt(process.env.GOOGLE_ADS_REFRESH_INTERVAL_HOURS || '4', 10);
+  const refreshIntervalHours = Number(process.env.GOOGLE_ADS_REFRESH_INTERVAL_HOURS ?? '4');
   const refreshIntervalMs = refreshIntervalHours * 60 * 60 * 1000;
+  if (!Number.isInteger(refreshIntervalHours) || refreshIntervalHours < 1 || refreshIntervalMs > 2147483647) {
+    throw new Error('GOOGLE_ADS_REFRESH_INTERVAL_HOURS must be a whole number from 1 to 596');
+  }
 
   console.log(`[Google Ads Scheduler] Refresh interval: ${refreshIntervalHours} hours`);
 
-  setInterval(() => {
+  (global as any).googleAdsSchedulerInterval = setInterval(() => {
     void refreshAllGoogleAdsMetrics().catch((error: any) => {
       console.error("[Google Ads Scheduler] Scheduled refresh failed:", error?.message || error);
     });
   }, refreshIntervalMs);
 
   console.log('[Google Ads Scheduler] Started successfully');
+}
+
+export function stopGoogleAdsScheduler(): void {
+  if ((global as any).googleAdsSchedulerInterval) {
+    clearInterval((global as any).googleAdsSchedulerInterval);
+    (global as any).googleAdsSchedulerInterval = null;
+  }
 }
 
 /**

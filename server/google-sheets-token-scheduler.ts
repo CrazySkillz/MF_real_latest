@@ -168,14 +168,17 @@ async function refreshAllGoogleSheetsTokens(): Promise<void> {
  */
 export function startGoogleSheetsTokenScheduler(): void {
   // Check if scheduler is already running
-  if ((global as any).googleSheetsTokenSchedulerInterval) {
+  if ((global as any).googleSheetsTokenSchedulerInterval || (global as any).googleSheetsTokenSchedulerTimeout) {
     console.log('[Token Scheduler] Scheduler is already running');
     return;
   }
   
   // Get refresh interval from environment variable (default: 24 hours = daily)
-  const refreshIntervalHours = parseInt(process.env.GOOGLE_SHEETS_TOKEN_REFRESH_INTERVAL_HOURS || '24', 10);
+  const refreshIntervalHours = Number(process.env.GOOGLE_SHEETS_TOKEN_REFRESH_INTERVAL_HOURS ?? '24');
   const refreshIntervalMs = refreshIntervalHours * 60 * 60 * 1000;
+  if (!Number.isInteger(refreshIntervalHours) || refreshIntervalHours < 1 || refreshIntervalMs > 2147483647) {
+    throw new Error('GOOGLE_SHEETS_TOKEN_REFRESH_INTERVAL_HOURS must be a whole number from 1 to 596');
+  }
   
   console.log(`\n🔄 Google Sheets Token Refresh Scheduler Started`);
   console.log(`   Refresh interval: ${refreshIntervalHours} hours`);
@@ -193,12 +196,9 @@ export function startGoogleSheetsTokenScheduler(): void {
   
   const msUntilNextRun = nextRun.getTime() - now.getTime();
   
-  // Run immediately on startup (for testing and immediate refresh of expiring tokens)
-  console.log('[Token Scheduler] Running initial token refresh check...');
-  refreshAllGoogleSheetsTokens();
-  
   // Schedule first run at 2 AM
-  setTimeout(() => {
+  (global as any).googleSheetsTokenSchedulerTimeout = setTimeout(() => {
+    (global as any).googleSheetsTokenSchedulerTimeout = null;
     refreshAllGoogleSheetsTokens();
     
     // Then schedule regular runs every 24 hours
@@ -208,6 +208,10 @@ export function startGoogleSheetsTokenScheduler(): void {
     
     console.log(`[Token Scheduler] Scheduled daily runs at 2 AM`);
   }, msUntilNextRun);
+
+  // Reserve the first timer before starting asynchronous token work.
+  console.log('[Token Scheduler] Running initial token refresh check...');
+  void refreshAllGoogleSheetsTokens();
   
   console.log(`[Token Scheduler] First scheduled run: ${nextRun.toLocaleString()}`);
 }
@@ -216,6 +220,10 @@ export function startGoogleSheetsTokenScheduler(): void {
  * Stop the Google Sheets token refresh scheduler
  */
 export function stopGoogleSheetsTokenScheduler(): void {
+  if ((global as any).googleSheetsTokenSchedulerTimeout) {
+    clearTimeout((global as any).googleSheetsTokenSchedulerTimeout);
+    (global as any).googleSheetsTokenSchedulerTimeout = null;
+  }
   if ((global as any).googleSheetsTokenSchedulerInterval) {
     clearInterval((global as any).googleSheetsTokenSchedulerInterval);
     (global as any).googleSheetsTokenSchedulerInterval = null;

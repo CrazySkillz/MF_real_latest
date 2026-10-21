@@ -71,7 +71,7 @@ function AuthPage() {
     <div className="min-h-screen w-full flex flex-col items-center justify-center gap-6 bg-gray-50 px-4 py-8">
       {isSignUp ? (
         <SignUp
-          signInUrl="/sign-up"
+          signInUrl="/sign-in"
           fallbackRedirectUrl="/"
         />
       ) : (

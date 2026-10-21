@@ -84,8 +84,9 @@ describe("campaign/client delete cascade regression guards", () => {
     expect(method).toContain("eq(clients.ownerId, ownerId)");
     expect(method).toContain("Refusing to delete client");
     expect(method).toContain("COALESCE(${campaigns.ownerId}, '') NOT IN (${ownerId}, '')");
-    expect(method.indexOf("Refusing to delete client")).toBeLessThan(method.indexOf("await db.transaction"));
-    expect(method).toContain("await db.transaction");
+    expect(method.indexOf("return db.transaction")).toBeLessThan(method.indexOf("Refusing to delete client"));
+    expect(method).toContain(".for('update')");
+    expect(method).toContain("return db.transaction");
     expect(method).toContain("await this.deleteCampaignChildren(String(campaign.id), tx)");
     expect(method).toContain("await tx.delete(campaigns).where(eq(campaigns.id, String(campaign.id)))");
     expect(method).toContain("await tx.delete(clients).where(and(eq(clients.id, clientId), eq(clients.ownerId, ownerId)))");

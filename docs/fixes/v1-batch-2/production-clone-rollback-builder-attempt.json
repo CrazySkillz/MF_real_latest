@@ -1,0 +1,412 @@
+{
+  "at": "2026-10-21T07:02:55.691Z",
+  "target": "127.0.0.1:55443/v1_batch2_production_clone",
+  "boundary": "Actual production backup restored locally; actual startup SQL; provider and worker registration stubbed. Production database not used by this script.",
+  "checks": [
+    {
+      "name": "actual upgrade",
+      "result": "PASS",
+      "migrationElapsedMs": 1440,
+      "schemaAndFingerprintElapsedMs": 101280,
+      "unchangedExistingTables": 70
+    },
+    {
+      "name": "repeat upgrade",
+      "result": "PASS",
+      "migrationElapsedMs": 214,
+      "schemaAndFingerprintElapsedMs": 100637,
+      "unchangedExistingTables": 70
+    },
+    {
+      "name": "additive migration rollback and retry on restored production schema",
+      "result": "PASS"
+    }
+  ],
+  "localVersion": "PostgreSQL 18.0 on x86_64-windows, compiled by msvc-19.44.35215, 64-bit",
+  "before": {
+    "ab_test_events": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "ab_test_results": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "ab_test_variants": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "ab_tests": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "app_sessions": {
+      "count": "544",
+      "hash0": "-2739575856909212174",
+      "hash1": "-154264370705324149195"
+    },
+    "attribution_insights": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "attribution_models": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "attribution_results": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "benchmark_history": {
+      "count": "154",
+      "hash0": "2886791217282482674",
+      "hash1": "-6526009336520024279"
+    },
+    "benchmarks": {
+      "count": "51",
+      "hash0": "-7268249820285481174",
+      "hash1": "-15518520535717006525"
+    },
+    "campaigns": {
+      "count": "52",
+      "hash0": "-13588766629075265696",
+      "hash1": "-15331503910772245974"
+    },
+    "clients": {
+      "count": "10",
+      "hash0": "4155049011704859551",
+      "hash1": "-1338712278159702835"
+    },
+    "conversion_events": {
+      "count": "1",
+      "hash0": "5401593615495926701",
+      "hash1": "-8250844830065208677"
+    },
+    "custom_integration_metrics": {
+      "count": "76",
+      "hash0": "-6916861832911596708",
+      "hash1": "-7051226550402617872"
+    },
+    "custom_integrations": {
+      "count": "20",
+      "hash0": "-3450514982340504579",
+      "hash1": "-2696713494066421904"
+    },
+    "customer_journeys": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "email_alert_events": {
+      "count": "1090",
+      "hash0": "-227483660867523413189",
+      "hash1": "-164267936591106249629"
+    },
+    "ga4_connection_lifecycle_events": {
+      "count": "10",
+      "hash0": "-5917819598524723110",
+      "hash1": "-14552438742548692157"
+    },
+    "ga4_connections": {
+      "count": "38",
+      "hash0": "-26411332207959046946",
+      "hash1": "10179531466967709541"
+    },
+    "ga4_daily_metrics": {
+      "count": "509",
+      "hash0": "-105526222479150804277",
+      "hash1": "3198239557893738495"
+    },
+    "ga4_google_ads_spend_connections": {
+      "count": "2",
+      "hash0": "2613596121762617516",
+      "hash1": "-3759356957980260514"
+    },
+    "ga4_google_ads_spend_daily_metrics": {
+      "count": "10",
+      "hash0": "-11551575760586749212",
+      "hash1": "380757344690431088"
+    },
+    "ga4_overview_snapshots": {
+      "count": "9",
+      "hash0": "34305729862046764876",
+      "hash1": "-26829892814913672288"
+    },
+    "ga4_refresh_work": {
+      "count": "32",
+      "hash0": "17772176618516013992",
+      "hash1": "-12479825212019616760"
+    },
+    "google_ads_connections": {
+      "count": "1",
+      "hash0": "-7908924218021292454",
+      "hash1": "-3218834146100577186"
+    },
+    "google_ads_daily_metrics": {
+      "count": "181",
+      "hash0": "201950122044651524730",
+      "hash1": "-23104389338025916519"
+    },
+    "google_sheets_connections": {
+      "count": "222",
+      "hash0": "31518810304776058674",
+      "hash1": "4258033454602565478"
+    },
+    "hubspot_connections": {
+      "count": "12",
+      "hash0": "-7449347998478823145",
+      "hash1": "-13839910727020673355"
+    },
+    "inbound_webhook_receipts": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "instagram_connections": {
+      "count": "2",
+      "hash0": "-5601015933266829679",
+      "hash1": "3514171639120380503"
+    },
+    "instagram_daily_metrics": {
+      "count": "3",
+      "hash0": "-18823064252037681266",
+      "hash1": "-15573668623012715490"
+    },
+    "integrations": {
+      "count": "5",
+      "hash0": "8461590562515592060",
+      "hash1": "-12631806312853082241"
+    },
+    "kpi_alerts": {
+      "count": "247",
+      "hash0": "-95797789480004275316",
+      "hash1": "11967456450920658464"
+    },
+    "kpi_periods": {
+      "count": "176",
+      "hash0": "19779774885518940458",
+      "hash1": "52732109803840233943"
+    },
+    "kpi_progress": {
+      "count": "135",
+      "hash0": "-70455707449621969459",
+      "hash1": "112281057397823999988"
+    },
+    "kpi_reports": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "kpis": {
+      "count": "43",
+      "hash0": "-17902485644605456882",
+      "hash1": "-65456676469508374361"
+    },
+    "linkedin_ad_performance": {
+      "count": "455366",
+      "hash0": "2545346333930190818226",
+      "hash1": "-1542961452588171441619"
+    },
+    "linkedin_connections": {
+      "count": "70",
+      "hash0": "4620895768577690313",
+      "hash1": "-32158557885879661747"
+    },
+    "linkedin_daily_metrics": {
+      "count": "12047",
+      "hash0": "292190298220103314775",
+      "hash1": "-116535253971684983676"
+    },
+    "linkedin_import_metrics": {
+      "count": "1635507",
+      "hash0": "-1682236526721316422499",
+      "hash1": "-1688468186905019819889"
+    },
+    "linkedin_import_sessions": {
+      "count": "66290",
+      "hash0": "-877477858218281199384",
+      "hash1": "-717926919301515165239"
+    },
+    "linkedin_reports": {
+      "count": "12",
+      "hash0": "-10747075455285043940",
+      "hash1": "27650535801846777962"
+    },
+    "mapping_templates": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "meta_connections": {
+      "count": "5",
+      "hash0": "12783981948543276927",
+      "hash1": "-5368337142976476151"
+    },
+    "meta_daily_metrics": {
+      "count": "1419",
+      "hash0": "-79891262524612781065",
+      "hash1": "-109015803545481759259"
+    },
+    "metric_snapshots": {
+      "count": "87495",
+      "hash0": "-842458465869694836711",
+      "hash1": "1490999936394112206629"
+    },
+    "metrics": {
+      "count": "4",
+      "hash0": "-3177975959589946563",
+      "hash1": "2575845943789500496"
+    },
+    "mimosaas_tracking_attributions": {
+      "count": "1",
+      "hash0": "5477251904132881737",
+      "hash1": "4407683592072262890"
+    },
+    "mimosaas_tracking_campaign_mappings": {
+      "count": "1",
+      "hash0": "-1356210586354180062",
+      "hash1": "-2287561852255337129"
+    },
+    "mimosaas_tracking_configurations": {
+      "count": "1",
+      "hash0": "8270872958755511576",
+      "hash1": "-4787052955215821590"
+    },
+    "mimosaas_tracking_daily_metrics": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "mimosaas_tracking_daily_snapshots": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "mimosaas_tracking_events": {
+      "count": "1",
+      "hash0": "7026110971015352123",
+      "hash1": "-5771681179755129155"
+    },
+    "mimosaas_tracking_publication_runs": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "mimosaas_website_connections": {
+      "count": "2",
+      "hash0": "-3056857252006497518",
+      "hash1": "-1011959428544697246"
+    },
+    "notifications": {
+      "count": "2273",
+      "hash0": "-184323717645644829898",
+      "hash1": "9108085669803973152"
+    },
+    "performance_data": {
+      "count": "7",
+      "hash0": "-17141001095945653628",
+      "hash1": "14188407532567294013"
+    },
+    "report_send_events": {
+      "count": "713",
+      "hash0": "111028536299264047476",
+      "hash1": "-137952704372140056740"
+    },
+    "report_snapshots": {
+      "count": "526",
+      "hash0": "120876430521191588866",
+      "hash1": "-209331351449794048902"
+    },
+    "revenue_records": {
+      "count": "618",
+      "hash0": "-68039447646451747172",
+      "hash1": "138508028029302390092"
+    },
+    "revenue_sources": {
+      "count": "95",
+      "hash0": "-87938089073757610506",
+      "hash1": "9032616788874737154"
+    },
+    "salesforce_connections": {
+      "count": "17",
+      "hash0": "-8432527433918697770",
+      "hash1": "-25485705668624030825"
+    },
+    "service_account_resource_grants": {
+      "count": "1",
+      "hash0": "4112215601472814559",
+      "hash1": "-181764888340012765"
+    },
+    "shopify_connections": {
+      "count": "20",
+      "hash0": "-38067903497754928384",
+      "hash1": "29851098577566493154"
+    },
+    "spend_records": {
+      "count": "3642717",
+      "hash0": "1771902778582703903912",
+      "hash1": "6364358509683006364256"
+    },
+    "spend_sources": {
+      "count": "35",
+      "hash0": "29498391125231071455",
+      "hash1": "37202607173722466382"
+    },
+    "tiktok_connections": {
+      "count": "1",
+      "hash0": "-5275896698064621132",
+      "hash1": "-2706060376565958052"
+    },
+    "tiktok_daily_metrics": {
+      "count": "133",
+      "hash0": "-106959372161929027886",
+      "hash1": "18023635636359410750"
+    },
+    "touchpoints": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    }
+  },
+  "totalRows": 5909012,
+  "tablesChecked": 70,
+  "newIndexes": [
+    {
+      "indexname": "campaign_creation_requests_scope_unique",
+      "indexdef": "CREATE UNIQUE INDEX campaign_creation_requests_scope_unique ON public.campaign_creation_requests USING btree (owner_id, client_id, request_id)"
+    },
+    {
+      "indexname": "ga4_daily_metrics_campaign_property_date_unique",
+      "indexdef": "CREATE UNIQUE INDEX ga4_daily_metrics_campaign_property_date_unique ON public.ga4_daily_metrics USING btree (campaign_id, property_id, date)"
+    },
+    {
+      "indexname": "google_ads_daily_metrics_campaign_date_unique",
+      "indexdef": "CREATE UNIQUE INDEX google_ads_daily_metrics_campaign_date_unique ON public.google_ads_daily_metrics USING btree (campaign_id, google_campaign_id, date)"
+    },
+    {
+      "indexname": "linkedin_daily_metrics_campaign_date_unique",
+      "indexdef": "CREATE UNIQUE INDEX linkedin_daily_metrics_campaign_date_unique ON public.linkedin_daily_metrics USING btree (campaign_id, date)"
+    },
+    {
+      "indexname": "meta_daily_metrics_campaign_date_unique",
+      "indexdef": "CREATE UNIQUE INDEX meta_daily_metrics_campaign_date_unique ON public.meta_daily_metrics USING btree (campaign_id, meta_campaign_id, date)"
+    }
+  ],
+  "clientConstraint": {
+    "convalidated": false,
+    "definition": "FOREIGN KEY (client_id) REFERENCES clients(id) NOT VALID"
+  },
+  "result": "FAIL",
+  "error": {
+    "code": "ERR_ASSERTION",
+    "message": "Expected values to be strictly equal:\n\n3 !== 2\n"
+  },
+  "completedAt": "2026-10-21T07:09:36.139Z"
+}

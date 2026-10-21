@@ -219,6 +219,9 @@ export default function Campaigns() {
   const [wizardPlatformConnected, setWizardPlatformConnected] = useState(false);
   const [campaignData, setCampaignData] = useState<CampaignFormData | null>(null);
   const [draftCampaignId, setDraftCampaignId] = useState<string | null>(null);
+  const draftRequestId = useRef<string | null>(null);
+  const savingDraftRef = useRef(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [draftFinalized, setDraftFinalized] = useState(false);
   const [isFinalizingCampaign, setIsFinalizingCampaign] = useState(false);
   const finalizingCampaignRef = useRef(false);
@@ -232,9 +235,11 @@ export default function Campaigns() {
   const [ga4CampaignFilterForNewCampaign, setGa4CampaignFilterForNewCampaign] = useState<string>("");
 
   // GA4 wizard state (for Step 4: Configure)
+  const [pendingGA4ConnectionId, setPendingGA4ConnectionId] = useState('');
   const [ga4Properties, setGA4Properties] = useState<Array<{ id: string; name: string; account?: string }>>([]);
   const [selectedGA4Property, setSelectedGA4Property] = useState<string>('');
   const [isGA4PropertyLoading, setIsGA4PropertyLoading] = useState(false);
+  const [ga4CampaignDiscoveryError, setGA4CampaignDiscoveryError] = useState('');
   const [ga4CampaignValues, setGA4CampaignValues] = useState<Array<{ name: string; users: number }>>([]);
   const [selectedGA4CampaignValues, setSelectedGA4CampaignValues] = useState<string[]>([]);
   const [isGA4CampaignLoading, setIsGA4CampaignLoading] = useState(false);
@@ -302,6 +307,7 @@ export default function Campaigns() {
     void apiRequest("GET", `/api/campaigns/${draftCampaignId}/ga4-connection-status`).then(response => response.json()).then(data => {
       if (cancelled) return;
       const properties = Array.isArray(data.properties) ? data.properties.filter((p: any) => p.id) : [];
+      setPendingGA4ConnectionId(data.pendingConnectionId || '');
       setGA4Properties(properties);
       setSelectedGA4Property(properties[0]?.id || data.propertyId || "");
     }).catch(() => { /* The existing Back action returns to Google connection setup. */ });
@@ -367,6 +373,7 @@ export default function Campaigns() {
       console.log('🔍 [Frontend] selectedClientId:', selectedClientId);
       const payload = {
         name: data.name,
+        creationRequestId: draftRequestId.current || undefined,
         clientId: selectedClientId || null,
         clientWebsite: data.clientWebsite || null,
         label: data.label || null,
@@ -492,6 +499,10 @@ export default function Campaigns() {
   });
 
   const handleSubmit = async (data: CampaignFormData) => {
+    if (savingDraftRef.current) return;
+    savingDraftRef.current = true;
+    setIsSavingDraft(true);
+    try {
     console.log('📋 Form submitted with data:', data);
     console.log('📋 Industry value:', data.industry);
     setCampaignData(data);
@@ -499,13 +510,21 @@ export default function Campaigns() {
     if (draftCampaignId) {
       try {
         await apiRequest("PATCH", `/api/campaigns/${draftCampaignId}`, {
+          name: data.name,
+          clientWebsite: data.clientWebsite || null,
+          label: data.label || null,
           budget: data.budget ? data.budget.replace(/,/g, '') : null,
           currency: data.currency || "USD",
+          reportingTimeZone: data.reportingTimeZone,
+          startDate: data.startDate || null,
+          endDate: data.endDate || null,
+          industry: data.industry || null,
+          conversionValue: data.conversionValue || null,
         });
         setWizardStep(2);
       } catch (error: any) {
         toast({
-          title: "Unable to update campaign budget",
+          title: "Unable to update campaign details",
           description: error?.message || "Please try again.",
           variant: "destructive",
         });
@@ -517,6 +536,10 @@ export default function Campaigns() {
     // This fixes test-mode LinkedIn import failing with "Campaign not found".
     setDraftFinalized(false);
     try {
+      // The same identity survives a lost response, retry, or reload in this tab.
+      const key = `campaign-draft-request:${selectedClientId}`;
+      draftRequestId.current ||= sessionStorage.getItem(key) || crypto.randomUUID();
+      sessionStorage.setItem(key, draftRequestId.current);
       const payload = {
         ...data,
         ga4CampaignFilter: ga4CampaignFilterForNewCampaign || undefined,
@@ -538,7 +561,16 @@ export default function Campaigns() {
 
       const id = String(created?.id || "").trim();
       if (!id) throw new Error("Missing campaign id");
+      if (created.status !== 'draft') { await finishCampaignCreation(id); return; }
+      if (created.initialImport) { reopenInitialImport(created); return; }
       setDraftCampaignId(id);
+      // A recovered POST can contain older Details; save the currently reviewed inputs.
+      await apiRequest("PATCH", `/api/campaigns/${id}`, {
+        name: data.name, clientWebsite: data.clientWebsite || null, label: data.label || null,
+        budget: data.budget ? data.budget.replace(/,/g, '') : null, currency: data.currency || 'USD',
+        reportingTimeZone: data.reportingTimeZone, startDate: data.startDate || null, endDate: data.endDate || null,
+        industry: data.industry || null, conversionValue: data.conversionValue || null,
+      });
       setWizardStep(2);
     } catch (e: any) {
       console.error("Draft campaign create failed:", e);
@@ -546,9 +578,15 @@ export default function Campaigns() {
       setDraftCampaignId(null);
       setWizardStep(1);
     }
+    } finally {
+      savingDraftRef.current = false;
+      setIsSavingDraft(false);
+    }
   };
 
   const finishCampaignCreation = async (createdId: string) => {
+    sessionStorage.removeItem(`campaign-draft-request:${selectedClientId}`);
+    draftRequestId.current = null;
     setDraftFinalized(true);
 
     // Wait for source and aggregate query invalidation to complete before navigating.
@@ -850,6 +888,7 @@ export default function Campaigns() {
     setDraftCampaignId(null);
     setDraftFinalized(false);
     setGa4CampaignFilterForNewCampaign("");
+    setPendingGA4ConnectionId('');
     setGA4Properties([]);
     setSelectedGA4Property('');
     setGA4CampaignValues([]);
@@ -876,15 +915,29 @@ export default function Campaigns() {
     } as any);
   };
 
-  const handleCreateModalChange = (open: boolean) => {
-    if (!open && finalizingCampaignRef.current) return;
-    setIsCreateModalOpen(open);
-    // If the user closes the modal mid-setup, clean up the draft campaign (best-effort).
-    if (!open && draftCampaignId && !draftFinalized && !initialImportRequested) {
-      apiRequest("DELETE", `/api/campaigns/${draftCampaignId}?draftCleanup=1`).catch(() => {
-        // ignore cleanup errors
-      });
+  const handleCreateModalChange = async (open: boolean) => {
+    if (savingDraftRef.current || (!open && finalizingCampaignRef.current)) return;
+    const cleanupId = draftCampaignId || draftRequestId.current || sessionStorage.getItem(`campaign-draft-request:${selectedClientId}`);
+    if (!open && cleanupId && !draftFinalized && !initialImportRequested) {
+      savingDraftRef.current = true;
+      setIsSavingDraft(true);
+      try {
+        await apiRequest("DELETE", `/api/campaigns/${cleanupId}?draftCleanup=1&clientId=${encodeURIComponent(selectedClientId || '')}`);
+      } catch (error: any) {
+        if (error?.status !== 404) {
+          toast({ title: 'Unable to cancel setup', description: 'Your draft has been kept. Please retry or reopen its import status.', variant: 'destructive' });
+          return;
+        }
+      } finally {
+        savingDraftRef.current = false;
+        setIsSavingDraft(false);
+      }
     }
+    if (!open) {
+      sessionStorage.removeItem(`campaign-draft-request:${selectedClientId}`);
+      draftRequestId.current = null;
+    }
+    setIsCreateModalOpen(open);
     resetCreateModalState();
   };
 
@@ -913,6 +966,7 @@ export default function Campaigns() {
       const data = await response.json();
       if (data.connected && Array.isArray(data.properties) && data.properties.length > 0) {
         const validProperties = data.properties.filter((p: { id: string }) => p.id);
+        setPendingGA4ConnectionId(data.pendingConnectionId || '');
         setGA4Properties(validProperties);
         setSelectedGA4Property(validProperties[0]?.id || '');
         setGa4ConfigSubStep('property');
@@ -1096,10 +1150,11 @@ export default function Campaigns() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ propertyId: selectedGA4Property, lookbackDays: wizardLookbackDays })
+        body: JSON.stringify({ propertyId: selectedGA4Property, lookbackDays: wizardLookbackDays, pendingConnectionId: pendingGA4ConnectionId })
       });
       const data = await response.json();
       if (response.ok && data.success) {
+        setPendingGA4ConnectionId('');
         setConnectedPlatformsInDialog(prev => prev.includes('google-analytics') ? prev : [...prev, 'google-analytics']);
         setWizardPlatformConnected(true);
         toast({ title: "GA4 Property Selected", description: "Now select which campaigns to track." });
@@ -1112,12 +1167,14 @@ export default function Campaigns() {
             { credentials: 'include' }
           );
           const valsJson = await valsResp.json().catch(() => null);
+          if (!valsResp.ok || !valsJson?.success) throw new Error('Campaign discovery failed');
+          setGA4CampaignDiscoveryError('');
           const vals = Array.isArray(valsJson?.campaigns) ? valsJson.campaigns : [];
           setGA4CampaignValues(vals);
           setSelectedGA4CampaignValues([]);
           setGa4ConfigSubStep('campaigns');
         } catch (e) {
-          console.warn('Failed to fetch GA4 campaign values:', e);
+          setGA4CampaignDiscoveryError('Google Analytics could not load the campaign list. Go Back to retry, or enter exact UTM campaign names.');
           setGA4CampaignValues([]);
           setSelectedGA4CampaignValues([]);
           setGa4ConfigSubStep('campaigns');
@@ -1355,16 +1412,15 @@ export default function Campaigns() {
                           type="button"
                           variant="outline"
                           className="flex-1"
-                          onClick={() => {
-                            setIsCreateModalOpen(false);
-                            resetCreateModalState();
-                          }}
+                          onClick={() => void handleCreateModalChange(false)}
+                          disabled={isSavingDraft}
                         >
                           Cancel
                         </Button>
                         <Button
                           type="submit"
                           className="flex-1"
+                          disabled={isSavingDraft}
                         >
                           Next
                         </Button>
@@ -1752,7 +1808,7 @@ export default function Campaigns() {
                                 <Button type="button" variant="outline" size="sm" onClick={() => setSelectedGA4CampaignValues(ga4CampaignValues.map(c => c.name))}>Select All</Button>
                                 <Button type="button" variant="outline" size="sm" onClick={() => setSelectedGA4CampaignValues([])}>Clear</Button>
                                 <span className="text-xs text-muted-foreground ml-auto">
-                                  {selectedGA4CampaignValues.length} of {ga4CampaignValues.length} selected
+                                  {selectedGA4CampaignValues.length} selected
                                 </span>
                               </div>
                               <div className="max-h-60 overflow-y-auto border rounded-md p-2 space-y-1">
@@ -1774,7 +1830,8 @@ export default function Campaigns() {
                                 })}
                               </div>
                             </div>
-                          ) : (
+                          ) : null}
+                          {ga4CampaignDiscoveryError && <p role="alert" className="text-sm text-destructive">{ga4CampaignDiscoveryError}</p>}
                             <div className="space-y-2">
                               <Label>GA4 campaignName</Label>
                               <Input
@@ -1789,7 +1846,6 @@ export default function Campaigns() {
                               />
                               <p className="text-xs text-muted-foreground">If GA4 reporting is delayed, enter one or more expected UTM campaign values, separated by commas.</p>
                             </div>
-                          )}
                           <div className="flex gap-2 pt-2">
                             <Button type="button" variant="outline" className="flex-1" onClick={() => setGa4ConfigSubStep('property')}>
                               <ArrowLeft className="w-4 h-4 mr-2" /> Back

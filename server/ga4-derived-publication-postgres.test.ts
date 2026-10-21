@@ -108,18 +108,6 @@ describe.skipIf(!testUrl)("GA4 derived writes with real PostgreSQL ownership", (
     }
   });
 
-  it("V1-036/V1-087 reads signed revenue and withholds an old-currency current snapshot without deleting history", async () => {
-    await storage.upsertFinancialDailySnapshot(financial("a", "-15.00"));
-    expect((await storage.getLatestFinancialDailySnapshot("a", date))?.metrics).toMatchObject({
-      financialDaily: { currency: "EUR", inputs: { revenue: { value: "-15.00", available: true } } },
-    });
-    // Change the fixture directly to isolate the read guard from cache invalidation.
-    await pool.query("UPDATE campaigns SET currency='USD' WHERE id='a'");
-    expect(await storage.getLatestFinancialDailySnapshot("a", date)).toBeNull();
-    expect(await storage.getLatestFinancialDailySnapshot("b", date)).not.toBeNull();
-    expect((await pool.query("SELECT metrics FROM metric_snapshots WHERE campaign_id='a' AND snapshot_type='financial_daily'")).rows[0].metrics)
-      .toMatchObject({ financialDaily: { currency: "EUR", inputs: { revenue: { value: "-15.00" } } } });
-  });
   it.each(writers)("retains the existing unguarded %s write", async kind => {
     const result: any = await write(kind);
     expect(Number(kind === "financial" ? result.metrics.financialDaily.inputs.revenue.value : result.value ?? result.currentValue)).toBe(20);

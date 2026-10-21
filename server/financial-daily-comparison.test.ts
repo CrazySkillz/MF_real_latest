@@ -53,16 +53,6 @@ const dependencies = (overrides: Record<string, unknown> = {}) => ({
 }) as any;
 
 describe("read-only financial daily comparison derivation", () => {
-  it("retains signed refunds in exact-date financial comparison inputs", async () => {
-    const deps = dependencies();
-    const totals = await deps.getCampaignMetricTotalsAtDate();
-    deps.getCampaignMetricTotalsAtDate.mockResolvedValue({ ...totals, revenue: -15, ga4Revenue: -10 });
-    deps.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: -5, currency: "USD", sourceIds: ["revenue-1"] });
-    const result = await deriveFinancialDailyComparisonSnapshot({ campaignId, reportingDate }, deps);
-    expect((result?.metrics as any)?.financialDaily?.inputs.revenue).toEqual({
-      value: "-15.00", available: true, sources: ["ga4", "revenue-source:revenue-1"],
-    });
-  });
   it("derives the exact cumulative snapshot with financial conversion semantics", async () => {
     const deps = dependencies();
 

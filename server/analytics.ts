@@ -58,7 +58,6 @@ export class GoogleAnalytics4Service {
   }
 
   private async requestReport(url: string, options: RequestInit): Promise<Response> {
-    if (!options.signal) options = { ...options, signal: this.requestAbortSignal() };
     if (this.requestSignal) options = { ...options, signal: options.signal
       ? AbortSignal.any([this.requestSignal, options.signal]) : this.requestAbortSignal() };
     return retryWithBackoff(async () => {
@@ -1410,16 +1409,14 @@ export class GoogleAnalytics4Service {
       return observed;
     };
     const ignoreNonCurrencyFailure = (error: any) => {
-      if (this.requestSignal?.aborted) throw error;
-      if (error?.code === 'GA4_CURRENCY_UNVERIFIED' || error?.code === 'GA4_TRANSIENT_ERROR' ||
-          error?.name === 'TimeoutError' || error?.name === 'AbortError') throw error;
+      if (error?.code === 'GA4_CURRENCY_UNVERIFIED') throw error;
       return null;
     };
     const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
     const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
 
     const run = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue', scopeFilter: any = campaignDimensionFilter, endDateOverride: string = endDate) => {
-      const resp = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -1444,7 +1441,7 @@ export class GoogleAnalytics4Service {
         const txt = await resp.text();
         throw new Error(`GA4 API Error: ${txt}`);
       }
-      const json = await resp.json();
+      const json = await resp.json().catch(() => ({} as any));
       const row = (Array.isArray(json?.rows) && json.rows[0]) ? json.rows[0] : null;
       const mv = Array.isArray(row?.metricValues) ? row.metricValues : [];
       const sessions = parseInt(String(mv?.[0]?.value || '0'), 10) || 0;
@@ -1479,7 +1476,7 @@ export class GoogleAnalytics4Service {
     };
 
     const runConversionRevenueTotals = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue', scopeFilter: any) => {
-      const resp = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -1499,7 +1496,7 @@ export class GoogleAnalytics4Service {
         const txt = await resp.text();
         throw new Error(`GA4 Conversion/Revenue API Error: ${txt}`);
       }
-      const json = await resp.json();
+      const json = await resp.json().catch(() => ({} as any));
       verifyResponseCurrency(json);
       const row = (Array.isArray(json?.rows) && json.rows[0]) ? json.rows[0] : null;
       const mv = Array.isArray(row?.metricValues) ? row.metricValues : [];
@@ -1509,7 +1506,7 @@ export class GoogleAnalytics4Service {
     };
 
     const runDailyConversionRevenue = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue', scopeFilter: any) => {
-      const resp = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1522,7 +1519,7 @@ export class GoogleAnalytics4Service {
         }),
       });
       if (!resp.ok) throw new Error(`GA4 Daily Conversion/Revenue API Error: ${await resp.text()}`);
-      const json = await resp.json();
+      const json = await resp.json().catch(() => ({} as any));
       verifyResponseCurrency(json);
       return { revenueMetric, data: json };
     };
@@ -1842,26 +1839,16 @@ export class GoogleAnalytics4Service {
       });
     const completeReportRows = async (firstPage: any, requestBody: any) => {
       verifyResponseCurrency(firstPage);
+      const expectedRows = Number(firstPage?.rowCount);
       const rows = Array.isArray(firstPage?.rows) ? [...firstPage.rows] : [];
-      // Protobuf may omit a zero count, but a nonempty page must carry its total.
-      const count = firstPage?.rowCount;
-      const expectedRows = count === undefined && rows.length === 0 ? 0
-        : typeof count === 'number' || (typeof count === 'string' && count.trim() !== '') ? Number(count) : NaN;
-      if (!Number.isSafeInteger(expectedRows) || expectedRows < rows.length || expectedRows < 0 ||
-          (firstPage?.rows !== undefined && !Array.isArray(firstPage.rows))) {
-        throw incompletePaginationError('invalid rowCount or rows');
+      if (!Number.isFinite(expectedRows) || expectedRows <= rows.length) {
+        return firstPage;
       }
       if (expectedRows > maxCompleteRows) {
         throw incompletePaginationError(
           'rowCount ' + expectedRows + ' exceeds safe maximum ' + maxCompleteRows,
         );
       }
-      const rowKey = (row: any) => {
-        if (row?.dimensionValues !== undefined && !Array.isArray(row.dimensionValues)) throw incompletePaginationError('invalid dimension values');
-        return JSON.stringify((row?.dimensionValues || []).map((value: any) => value?.value ?? ''));
-      };
-      const rowKeys = new Set(rows.map(rowKey));
-      if (rowKeys.size !== rows.length) throw incompletePaginationError('duplicate dimension rows');
       while (rows.length < expectedRows) {
         const response = await this.requestReport(
           `https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`,
@@ -1886,13 +1873,8 @@ export class GoogleAnalytics4Service {
             'provider returned an empty page at offset ' + rows.length,
           );
         }
-        if (Number(page?.rowCount) !== expectedRows) {
+        if (Number.isFinite(Number(page?.rowCount)) && Number(page.rowCount) !== expectedRows) {
           throw incompletePaginationError('rowCount changed during pagination');
-        }
-        for (const row of pageRows) {
-          const key = rowKey(row);
-          if (rowKeys.has(key)) throw incompletePaginationError('duplicate dimension rows');
-          rowKeys.add(key);
         }
         rows.push(...pageRows);
         if (rows.length > expectedRows) {
@@ -1927,8 +1909,7 @@ export class GoogleAnalytics4Service {
           ...(preferOverviewCampaignTotals ? [{ name: 'sessionKeyEventRate' }] : []),
         ],
         metricAggregations: ['TOTAL'],
-        orderBys: [{ metric: { metricName: 'sessions' }, desc: true },
-          ...dimensions.map(({ name }) => ({ dimension: { dimensionName: name, orderType: 'ALPHANUMERIC' }, desc: false }))],
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
         limit: pageSize,
       };
       const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
@@ -2367,11 +2348,10 @@ export class GoogleAnalytics4Service {
         const utmValueExpression = (param: string, value: string) => {
           const encoded = encodeURIComponent(value);
           const plusEncoded = encoded.replace(/%20/g, '+');
-          const escapeRegex = (candidate: string) => candidate.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           const expressions = Array.from(new Set([value, encoded, plusEncoded])).map((candidate) => ({
             filter: {
               fieldName: 'pageLocation',
-              stringFilter: { matchType: 'FULL_REGEXP', value: `.*[?&]utm_${param}=${escapeRegex(candidate)}(?:[&#].*)?$`, caseSensitive: false },
+              stringFilter: { matchType: 'CONTAINS', value: `utm_${param}=${candidate}`, caseSensitive: false },
             },
           }));
           return expressions.length === 1 ? expressions[0] : { orGroup: { expressions } };

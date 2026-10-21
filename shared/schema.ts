@@ -1056,13 +1056,6 @@ const financialSnapshotMoneyInputSchema = z.discriminatedUnion("available", [
   }).strict(),
 ]);
 
-const financialSnapshotRevenueInputSchema = z.discriminatedUnion("available", [
-  financialSnapshotMoneyInputSchema.options[0].extend({
-    value: z.string().regex(/^-?(?:0|[1-9]\d{0,7})(?:\.\d{1,2})?$/),
-  }),
-  financialSnapshotMoneyInputSchema.options[1],
-]);
-
 const financialSnapshotConversionInputSchema = z.discriminatedUnion("available", [
   z.object({
     value: z.number().nonnegative().finite(),
@@ -1090,7 +1083,7 @@ export const financialDailySnapshotInputSchema = z.object({
   }).strict(),
   inputs: z.object({
     spend: financialSnapshotMoneyInputSchema,
-    revenue: financialSnapshotRevenueInputSchema,
+    revenue: financialSnapshotMoneyInputSchema,
     conversions: financialSnapshotConversionInputSchema,
   }).strict(),
 }).strict().superRefine((snapshot, ctx) => {

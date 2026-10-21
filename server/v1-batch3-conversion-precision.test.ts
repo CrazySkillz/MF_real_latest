@@ -21,6 +21,7 @@ describe("V1-079 GA4 conversion credit", () => {
         conversions: credit, totalRevenue: 100, engagedSessions: 5, engagementRate: 0.5 };
       return response([row(query.metrics.map(({ name }: any) => values[name] ?? 0))]);
     });
+    vi.stubGlobal("fetch", (...args: any[]) => (service as any).requestReport(...args));
     const series = await service.getTimeSeriesWithToken("123", "fixture", date, undefined, date, "EUR");
     const totals = await service.getTotalsWithRevenue("123", "fixture", date, date, undefined, "EUR");
     expect(series[0]).toMatchObject({ conversions: credit, sessions: 10, revenue: 100 });
@@ -38,6 +39,7 @@ describe("V1-079 GA4 conversion credit", () => {
         conversions: supplemental ? credit : 0, totalRevenue: supplemental ? 100 : 0, engagedSessions: 5, engagementRate: 0.5 };
       return response([row(query.metrics.map(({ name }: any) => values[name] ?? 0))]);
     });
+    vi.stubGlobal("fetch", (...args: any[]) => (service as any).requestReport(...args));
     expect((await service.getTimeSeriesWithToken("123", "fixture", date, ["sale"], date, "EUR"))[0].conversions).toBe(credit);
     expect((await service.getTotalsWithRevenue("123", "fixture", date, date, ["sale"], "EUR")).totals.conversions).toBe(credit);
     for (const query of queries) expect(query.dimensionFilter.filter).toMatchObject({

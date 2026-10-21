@@ -220,8 +220,8 @@ describe("GA4 UI regression guard", () => {
     expect(landingStart).toBeGreaterThan(-1);
     expect(conversionStart).toBeGreaterThan(landingStart);
     expect(breakdownStart).toBeGreaterThan(conversionStart);
-    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", "import-to-date", selectedGA4PropertyId, ga4OverviewExpectedEndDate, campaignCurrency]');
-    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", "import-to-date", selectedGA4PropertyId, ga4OverviewExpectedEndDate, campaignCurrency]');
+    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", "import-to-date", selectedGA4PropertyId, ga4OverviewExpectedEndDate]');
+    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", "import-to-date", selectedGA4PropertyId, ga4OverviewExpectedEndDate]');
     expect(ga4Metrics.match(/snapshotEndDate: ga4OverviewExpectedEndDate,/g)).toHaveLength(2);
     expect(ga4Metrics).toContain("const GA4_DAILY_LOOKBACK_DAYS = 30;");
     expect(ga4Metrics).toContain("Number(property?.lookbackDays) === 30");
@@ -979,10 +979,10 @@ describe("GA4 UI regression guard", () => {
     expect(handler).toContain('queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics"], exact: false });');
     expect(handler).toContain('queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-breakdown"], exact: false });');
     expect(handler).toContain('queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`], exact: false });');
-    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-daily", GA4_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, campaignCurrency]');
-    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics", dateRange, selectedGA4PropertyId, campaignCurrency]');
-    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", activeTab === "insights" ? dateRange : "import-to-date", selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly, activeTab === "insights" ? "" : ga4OverviewExpectedEndDate, campaignCurrency]');
-    expect(ga4Metrics).toContain('queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, "campaign-currency", insightsValidationReadOnly, campaignCurrency]');
+    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-daily", GA4_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId]');
+    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics", dateRange, selectedGA4PropertyId]');
+    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", activeTab === "insights" ? dateRange : "import-to-date", selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly, activeTab === "insights" ? "" : ga4OverviewExpectedEndDate]');
+    expect(ga4Metrics).toContain('queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, "campaign-currency", insightsValidationReadOnly]');
     expect(ga4Metrics).not.toContain("ga4-to-date?propertyId=${encodeURIComponent(String(selectedGA4PropertyId))}&dateRange=");
   });
 
@@ -990,7 +990,7 @@ describe("GA4 UI regression guard", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
 
     expect(ga4Metrics).not.toContain("const insightsFinancialScope = activeTab === \"insights\";");
-    expect(ga4Metrics).toContain('queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, "campaign-currency", insightsValidationReadOnly, campaignCurrency]');
+    expect(ga4Metrics).toContain('queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, "campaign-currency", insightsValidationReadOnly]');
     expect(ga4Metrics).toContain('&insightsScope=1${insightsValidationReadOnly ? "&readOnly=1" : ""}');
     expect(ga4Metrics).not.toContain('insightsFinancialScope ? "&insightsScope=1" : ""');
   });

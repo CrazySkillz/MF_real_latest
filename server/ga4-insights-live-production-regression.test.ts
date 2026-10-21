@@ -15,7 +15,7 @@ describe("live GA4 Insights production boundary", () => {
     expect(page.match(/insightsValidationReadOnly \? "&readOnly=1" : ""/g)?.length).toBe(2);
     expect(page).toContain('"ga4-breakdown", activeTab === "insights" ? dateRange : "import-to-date", selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly');
     expect(page).toContain('activeTab === "insights" ? `dateRange=${encodeURIComponent(dateRange)}` : "window=import-to-date"');
-    expect(page).toContain('"ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, campaignCurrency]');
+    expect(page).toContain('"ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId]');
     expect(page).toContain('["/api/ga4/check-connection", campaignId, insightsValidationReadOnly]');
     expect(page).toContain('activeTab === "insights"');
     expect(page).toContain('String(data?.propertyId || "") !== String(selectedGA4PropertyId)');

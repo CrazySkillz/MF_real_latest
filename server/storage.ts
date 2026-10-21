@@ -745,17 +745,11 @@ export class DatabaseStorage implements IStorage {
 
   async updateCampaign(id: string, updateData: Partial<InsertCampaign>, options: GA4RefreshWriteInput = {}): Promise<Campaign | undefined> {
     const write = async (db: any) => {
-    const previous = updateData.currency !== undefined
-      ? (await db.select({ currency: campaigns.currency }).from(campaigns).where(eq(campaigns.id, id)))[0] : undefined;
     const [campaign] = await db
       .update(campaigns)
       .set(updateData)
       .where(eq(campaigns.id, id))
       .returning();
-    if (previous && campaign && String(previous.currency || 'USD').trim().toUpperCase() !== String(campaign.currency || 'USD').trim().toUpperCase()) {
-      await db.delete(ga4DailyMetrics).where(eq(ga4DailyMetrics.campaignId, id));
-      await db.delete(ga4OverviewSnapshots).where(eq(ga4OverviewSnapshots.campaignId, id));
-    }
     return campaign || undefined;
     };
     if ("refreshScope" in options && options.refreshScope?.campaignId !== id) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
@@ -6763,8 +6757,6 @@ export class DatabaseStorage implements IStorage {
     )).orderBy(desc(metricSnapshots.reportingDate)).limit(1);
     const financialDaily = (snapshot?.metrics as any)?.financialDaily;
     if (!snapshot || !financialDaily || typeof financialDaily !== 'object' || Array.isArray(financialDaily)) return null;
-    const campaign = await this.getCampaign(campaignId);
-    if (!campaign || financialDaily.currency !== String(campaign.currency || 'USD').trim().toUpperCase()) return null;
     return financialDailySnapshotInputSchema.safeParse({
       ...financialDaily,
       campaignId: snapshot.campaignId,

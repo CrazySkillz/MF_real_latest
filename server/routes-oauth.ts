@@ -9245,8 +9245,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         String((existingCampaign as any)?.status || "").trim().toLowerCase() === "draft" &&
         String((validatedData as any)?.status || "").trim().toLowerCase() === "active";
       const ga4DailyScopeChanged =
-        (Object.prototype.hasOwnProperty.call(validatedData, "currency") &&
-          String(validatedData.currency || "USD").trim().toUpperCase() !== String(existingCampaign.currency || "USD").trim().toUpperCase()) ||
         (Object.prototype.hasOwnProperty.call(validatedData, "ga4CampaignFilter") &&
           JSON.stringify(getGA4CampaignFilterValues((validatedData as any).ga4CampaignFilter).sort()) !==
           JSON.stringify(getGA4CampaignFilterValues((existingCampaign as any).ga4CampaignFilter).sort())) ||

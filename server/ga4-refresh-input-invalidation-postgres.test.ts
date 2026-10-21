@@ -20,7 +20,7 @@ if (testUrl) {
   }
 }
 const schemaName = `ga4_input_it_${randomUUID().replace(/-/g, "")}`;
-const tables = [schema.campaigns, schema.ga4Connections, schema.metricSnapshots, schema.ga4OverviewSnapshots, schema.ga4DailyMetrics,
+const tables = [schema.campaigns, schema.ga4Connections, schema.metricSnapshots, schema.ga4OverviewSnapshots,
   schema.revenueSources, schema.revenueRecords, schema.spendSources, schema.spendRecords,
   schema.kpis, schema.kpiProgress, schema.kpiAlerts, schema.kpiPeriods, schema.benchmarks, schema.benchmarkHistory, schema.notifications,
   schema.googleSheetsConnections, schema.salesforceConnections, schema.hubspotConnections, schema.shopifyConnections,
@@ -74,62 +74,6 @@ describe.skipIf(!testUrl)("GA4 refresh invalidation on ordinary input edits", ()
   const kpi = { campaignId: "a", platformType: "google_analytics", name: "Total Sessions", metric: "sessions", targetValue: "100", unit: "count", alertsEnabled: false };
   const benchmark = { campaignId: "a", platformType: "google_analytics", category: "traffic", name: "Sessions", metric: "sessions", benchmarkValue: "100", unit: "count" };
   const source = { campaignId: "a", sourceType: "google_sheets", platformContext: "ga4", mappingConfig: "original" };
-  it("V1-087 handles an ordinary currency write chosen from a stale API read without invalidating a same-currency edit", async () => {
-    await database.current.insert(schema.ga4DailyMetrics).values({ campaignId: "a", propertyId: "property-a", date, revenue: "100.00" });
-    await storage.updateCampaign("a", { currency: "EUR", name: "Renamed" });
-    expect((await storage.getGA4DailyMetrics("a", "property-a", date, date))).toHaveLength(1);
-    await storage.updateCampaign("a", { currency: "USD" });
-    expect((await storage.getGA4DailyMetrics("a", "property-a", date, date))).toHaveLength(0);
-  });
-  it.each(["0.00", "-10.00", "100.00"])("V1-035 recognizes real out-of-window materialization %s without adding it to dated totals", async (revenue) => {
-    await database.current.insert(schema.revenueSources).values({ id: "source-a", campaignId: "a", sourceType: "csv", platformContext: "ga4",
-      currency: "EUR", isActive: true, createdAt: new Date("2026-10-01T00:00:00Z") });
-    await database.current.insert(schema.revenueRecords).values({ campaignId: "a", revenueSourceId: "source-a", date: "2026-10-18", revenue, currency: "EUR" });
-    expect(await storage.getRevenueTotalForRange("a", "1900-01-01", date, "ga4")).toEqual({ totalRevenue: 0, currency: "EUR", sourceIds: [] });
-    expect(await storage.getRevenueTotalForRange("a", "1900-01-01", "2026-10-18", "ga4"))
-      .toEqual({ totalRevenue: Number(revenue), currency: "EUR", sourceIds: ["source-a"] });
-    expect(await storage.getRevenueTotalForRange("b", "1900-01-01", "2026-10-18", "ga4")).toEqual({ totalRevenue: 0, currency: "EUR", sourceIds: [] });
-  });
-  it("V1-035 rejects missing materialization and cross-campaign records before applying a real future-record fallback", async () => {
-    await database.current.insert(schema.revenueSources).values({ id: "source-a", campaignId: "a", sourceType: "csv", platformContext: "ga4",
-      currency: "EUR", isActive: true, createdAt: new Date("2026-10-01T00:00:00Z") });
-    await database.current.insert(schema.revenueRecords).values({ campaignId: "b", revenueSourceId: "source-a", date: "2026-10-18", revenue: "100.00", currency: "EUR" });
-    await expect(storage.getRevenueTotalForRange("a", "1900-01-01", date, "ga4"))
-      .rejects.toMatchObject({ code: "GA4_REVENUE_MATERIALIZATION_INCOMPLETE" });
-    await database.current.insert(schema.revenueRecords).values({ campaignId: "a", revenueSourceId: "source-a", date: "2026-10-18", revenue: "100.00", currency: "USD" });
-    await expect(storage.getRevenueTotalForRange("a", "1900-01-01", date, "ga4"))
-      .rejects.toMatchObject({ code: "GA4_REVENUE_CURRENCY_INTEGRITY_ERROR" });
-  });
-  it("V1-087 invalidates only the edited campaign's native facts and rejects its old worker", async () => {
-    const scope = await claim();
-    for (const campaignId of ["a", "b"]) {
-      await database.current.insert(schema.ga4DailyMetrics).values({ campaignId, propertyId: `property-${campaignId}`, date, revenue: "100.00" });
-      await database.current.insert(schema.ga4OverviewSnapshots).values({ campaignId, propertyId: `property-${campaignId}`,
-        windowStart: "2026-09-04", windowEnd: date, campaignBreakdown: { totals: { revenue: 100 }, meta: { currencyCode: "EUR" } }, landingPages: {}, conversionEvents: {} });
-      await database.current.insert(schema.metricSnapshots).values({ campaignId, snapshotType: "financial_daily", reportingDate: date,
-        metrics: { financialDaily: { currency: "EUR" } } });
-    }
-    expect(await storage.updateCampaignWithGA4DailyInvalidation("a", { currency: "USD" })).toMatchObject({ id: "a", currency: "USD" });
-    expect((await pool.query("SELECT campaign_id,revenue FROM ga4_daily_metrics")).rows).toEqual([{ campaign_id: "b", revenue: "100.00" }]);
-    expect((await pool.query("SELECT campaign_id FROM ga4_overview_snapshots")).rows).toEqual([{ campaign_id: "b" }]);
-    const retained = (await pool.query("SELECT campaign_id,metrics FROM metric_snapshots ORDER BY campaign_id")).rows;
-    expect(retained).toEqual(["a", "b"].map(campaign_id => ({ campaign_id, metrics: { financialDaily: { currency: "EUR" } } })));
-    expect((await storage.getCampaign("b"))?.currency).toBe("EUR");
-    await expect(accepts(scope)).rejects.toThrow("GA4_REFRESH_WORK_OWNERSHIP_LOST");
-  });
-  it("V1-087 rolls back currency and daily deletion together when Overview invalidation fails", async () => {
-    const scope = await claim();
-    await database.current.insert(schema.ga4DailyMetrics).values({ campaignId: "a", propertyId: "property-a", date, revenue: "100.00" });
-    await database.current.insert(schema.ga4OverviewSnapshots).values({ campaignId: "a", propertyId: "property-a",
-      windowStart: "2026-09-04", windowEnd: date, campaignBreakdown: {}, landingPages: {}, conversionEvents: {} });
-    await pool.query("CREATE FUNCTION reject_currency_invalidation() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'forced currency invalidation failure'; END $$");
-    await pool.query("CREATE TRIGGER reject_currency_invalidation BEFORE DELETE ON ga4_overview_snapshots FOR EACH ROW EXECUTE FUNCTION reject_currency_invalidation()");
-    try { await expect(storage.updateCampaignWithGA4DailyInvalidation("a", { currency: "USD" })).rejects.toThrow("forced currency invalidation failure"); }
-    finally { await pool.query("DROP TRIGGER reject_currency_invalidation ON ga4_overview_snapshots"); await pool.query("DROP FUNCTION reject_currency_invalidation()"); }
-    expect((await storage.getCampaign("a"))?.currency).toBe("EUR");
-    expect((await pool.query("SELECT revenue FROM ga4_daily_metrics WHERE campaign_id='a'")).rows).toEqual([{ revenue: "100.00" }]);
-    expect(await accepts(scope)).toBe(true);
-  });
   it.each(["LinkedIn", "Meta", "Instagram", "TikTok"])("invalidates native work for %s connection create, edit and delete", async platform => {
     const methods = storage as any;
     const payload = { campaignId: "a", method: "manual_token", accessToken: "test", adAccountId: "account", advertiserId: "account" };

@@ -1,5 +1,5 @@
 import { conversionCreditsMatch } from "@shared/metric-math";
-import { useQuery, useMutation, useQueryClient, useQueries, useIsFetching } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData, useQueries, useIsFetching } from "@tanstack/react-query";
 import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useLocation, useRoute, useSearch } from "wouter";
 import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, Pencil, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, AlertCircle, CheckCircle2, Download, FileText, Settings, Activity, Info, Trophy } from "lucide-react";
@@ -1939,10 +1939,9 @@ export default function GA4Metrics() {
     Number(getLiveKpiValue({ metric, name, currentValue })) || 0;
 
   const { data: ga4DailyResp, isLoading: ga4Loading, error: ga4Error, isPlaceholderData: ga4DailyPlaceholder } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-daily", GA4_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, campaignCurrency],
+    queryKey: ["/api/campaigns", campaignId, "ga4-daily", GA4_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
-    placeholderData: (previousData: any, previousQuery: any) => previousQuery?.queryKey?.[1] === campaignId
-      && previousQuery.queryKey[4] === selectedGA4PropertyId && previousQuery.queryKey[5] === campaignCurrency ? previousData : undefined,
+    placeholderData: keepPreviousData,
     staleTime: 0,
     refetchOnWindowFocus: !ga4PublicationStatus || ga4PublicationStatusError,
     refetchOnReconnect: !ga4PublicationStatus || ga4PublicationStatusError,
@@ -1970,7 +1969,7 @@ export default function GA4Metrics() {
     isLoading: ga4InsightsDailyLoading,
     error: ga4InsightsDailyError,
   } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, campaignCurrency],
+    queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId],
     enabled: (activeTab === "insights" || activeTab === "reports") && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: !ga4PublicationStatus || ga4PublicationStatusError,
@@ -2034,11 +2033,10 @@ export default function GA4Metrics() {
   const ga4OverviewExpectedEndDate = String((ga4DailyResp as any)?.latestStoredDailyDate || ga4ReportDate || "").trim();
 
   const { data: financialDailySnapshotResp, isLoading: financialDailySnapshotLoading, isError: financialDailySnapshotError } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "financial-daily-snapshot", ga4OverviewExpectedEndDate, campaignCurrency],
+    queryKey: ["/api/campaigns", campaignId, "financial-daily-snapshot", ga4OverviewExpectedEndDate],
     enabled: !!campaignId && !!ga4OverviewExpectedEndDate,
     placeholderData: (previousData: any, previousQuery: any) => previousQuery?.queryKey?.[1] === campaignId
-      && previousData?.snapshot?.campaignId === campaignId
-      && previousData?.snapshot?.metrics?.financialDaily?.currency === campaignCurrency ? previousData : undefined,
+      && previousData?.snapshot?.campaignId === campaignId ? previousData : undefined,
     staleTime: 0,
     // Financial-only source refreshes can publish without a new GA4 receipt.
     refetchOnWindowFocus: true,
@@ -2080,7 +2078,7 @@ export default function GA4Metrics() {
 
   // Diagnostics (provenance + report shape checks)
   const { data: ga4Diagnostics } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics", dateRange, selectedGA4PropertyId, campaignCurrency],
+    queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics", dateRange, selectedGA4PropertyId],
     enabled: !insightsValidationReadOnly && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: false,
@@ -2141,12 +2139,12 @@ export default function GA4Metrics() {
     isError: breakdownError,
     isPlaceholderData: breakdownPlaceholder,
   } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", activeTab === "insights" ? dateRange : "import-to-date", selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly, activeTab === "insights" ? "" : ga4OverviewExpectedEndDate, campaignCurrency],
+    queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", activeTab === "insights" ? dateRange : "import-to-date", selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly, activeTab === "insights" ? "" : ga4OverviewExpectedEndDate],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId && (activeTab === "insights" || !!ga4OverviewExpectedEndDate),
     placeholderData: (previousData: any, previousQuery: any) => {
       const previousKey = previousQuery?.queryKey;
       const currentWindow = activeTab === "insights" ? dateRange : "import-to-date";
-      return previousKey?.[1] === campaignId && previousKey?.[3] === currentWindow && previousKey?.[4] === selectedGA4PropertyId && previousKey?.[7] === (activeTab === "insights" ? "" : ga4OverviewExpectedEndDate) && previousKey?.[8] === campaignCurrency
+      return previousKey?.[3] === currentWindow && previousKey?.[4] === selectedGA4PropertyId && previousKey?.[7] === (activeTab === "insights" ? "" : ga4OverviewExpectedEndDate)
         ? previousData
         : undefined;
     },
@@ -2175,10 +2173,9 @@ export default function GA4Metrics() {
     isError: adComparisonBreakdownError,
     isPlaceholderData: adComparisonBreakdownPlaceholder,
   } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "ga4-ad-comparison-breakdown", "import-to-date", selectedGA4PropertyId, campaignCurrency],
+    queryKey: ["/api/campaigns", campaignId, "ga4-ad-comparison-breakdown", "import-to-date", selectedGA4PropertyId],
     enabled: (activeTab === "campaigns" || activeTab === "reports") && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
-    placeholderData: (previousData: any, previousQuery: any) => previousQuery?.queryKey?.[1] === campaignId
-      && previousQuery.queryKey[4] === selectedGA4PropertyId && previousQuery.queryKey[5] === campaignCurrency ? previousData : undefined,
+    placeholderData: keepPreviousData,
     staleTime: 0,
     refetchOnWindowFocus: !ga4PublicationStatus || ga4PublicationStatusError,
     refetchOnReconnect: !ga4PublicationStatus || ga4PublicationStatusError,
@@ -2199,11 +2196,11 @@ export default function GA4Metrics() {
   });
 
   const { data: ga4LandingPages, isLoading: landingPagesLoading, isError: landingPagesError } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", "import-to-date", selectedGA4PropertyId, ga4OverviewExpectedEndDate, campaignCurrency],
+    queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", "import-to-date", selectedGA4PropertyId, ga4OverviewExpectedEndDate],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId && !!ga4OverviewExpectedEndDate,
     placeholderData: (previousData: any, previousQuery: any) => {
       const previousKey = previousQuery?.queryKey;
-      return previousKey?.[1] === campaignId && previousKey?.[3] === "import-to-date" && previousKey?.[4] === selectedGA4PropertyId && previousKey?.[5] === ga4OverviewExpectedEndDate && previousKey?.[6] === campaignCurrency
+      return previousKey?.[1] === campaignId && previousKey?.[3] === "import-to-date" && previousKey?.[4] === selectedGA4PropertyId && previousKey?.[5] === ga4OverviewExpectedEndDate
         ? previousData
         : undefined;
     },
@@ -2232,11 +2229,11 @@ export default function GA4Metrics() {
   });
 
   const { data: ga4ConversionEvents, isLoading: conversionEventsLoading, isError: conversionEventsError } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", "import-to-date", selectedGA4PropertyId, ga4OverviewExpectedEndDate, campaignCurrency],
+    queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", "import-to-date", selectedGA4PropertyId, ga4OverviewExpectedEndDate],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId && !!ga4OverviewExpectedEndDate,
     placeholderData: (previousData: any, previousQuery: any) => {
       const previousKey = previousQuery?.queryKey;
-      return previousKey?.[1] === campaignId && previousKey?.[3] === "import-to-date" && previousKey?.[4] === selectedGA4PropertyId && previousKey?.[5] === ga4OverviewExpectedEndDate && previousKey?.[6] === campaignCurrency
+      return previousKey?.[1] === campaignId && previousKey?.[3] === "import-to-date" && previousKey?.[4] === selectedGA4PropertyId && previousKey?.[5] === ga4OverviewExpectedEndDate
         ? previousData
         : undefined;
     },
@@ -2284,7 +2281,7 @@ export default function GA4Metrics() {
   });
 
   const { data: ga4ToDateResp, error: ga4ToDateError, isLoading: ga4ToDateLoading } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, "campaign-currency", insightsValidationReadOnly, campaignCurrency],
+    queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, "campaign-currency", insightsValidationReadOnly],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -3023,8 +3020,7 @@ export default function GA4Metrics() {
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
   const financialROI = computeRoiPercent(financialRevenue, financialSpend);
   const financialCPA = computeCpa(financialSpend, financialConversions);
-  const overviewFinancialSnapshot = (financialDailySnapshotResp as any)?.snapshot?.metrics?.financialDaily?.currency === campaignCurrency
-    ? (financialDailySnapshotResp as any).snapshot : null;
+  const overviewFinancialSnapshot = (financialDailySnapshotResp as any)?.snapshot;
   const overviewFinancialInputs = overviewFinancialSnapshot?.metrics?.financialDaily?.inputs;
   const overviewFinancialReportingDate = String(overviewFinancialSnapshot?.reportingDate || "");
   const overviewFinancialRevenueAvailable = overviewFinancialInputs?.revenue?.available === true;

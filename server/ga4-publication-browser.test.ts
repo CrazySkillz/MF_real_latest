@@ -137,17 +137,6 @@ describe("GA4 publication in the rendered page", () => {
       await page.evaluate(() => (window as any).testFocus(true));
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toContainText("could not refresh");
       await browserExpect(page.getByText("3,100", { exact: true }).first()).toBeVisible();
-      // V1-087: a cached EUR publication cannot become a USD financial card.
-      // The edit invalidates native history; a failed refresh cannot relabel its cache.
-      campaignCurrency = "USD"; failNative = true;
-      await page.evaluate(() => (window as any).testCurrency("USD"));
-      const revenueCard = page.getByText("Total Revenue", { exact: true }).locator("../..");
-      await browserExpect(revenueCard).toContainText("Unavailable");
-      await browserExpect(page.getByText("$68,000.00", { exact: true })).toHaveCount(0);
-      // V1-036: a newly verified signed publication renders as a real refund.
-      financialCurrency = "USD"; financialRevenue = -15; failNative = false; failStatus = false;
-      await page.evaluate(() => (window as any).testRefreshPublication());
-      await browserExpect(revenueCard).toContainText("-$15.00");
       conversionCredit = 0.75;
       await page.evaluate(() => (window as any).testRefreshPublication());
       await browserExpect(page.getByText("0.75", { exact: true }).first()).toBeVisible();

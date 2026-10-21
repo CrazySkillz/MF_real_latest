@@ -1,0 +1,202 @@
+{
+  "at": "2026-10-21T23:11:03.756Z",
+  "boundary": "Adds post-push evidence without altering the pre-push checkpoint",
+  "files": [
+    {
+      "file": "assessment.json",
+      "sha256": "414c1d1180ddc71d03c6d5a6e3492fc9c78ae6e4b441bb7da2f06b8c732e4239"
+    },
+    {
+      "file": "backup-recheck.json",
+      "sha256": "49298ae8e67316b710564bbe52ca47addb77101d949fc4a6eca4d9ea14e99149"
+    },
+    {
+      "file": "cleanup-fixtures.cjs",
+      "sha256": "8fdbaef2e5e4c5511a343b3db8baf86310fc3788553d2c3af3bd14ffc6fbfce2"
+    },
+    {
+      "file": "client-artifact-check.cjs",
+      "sha256": "2f6994f409d17dc72cddc4aa44e6a5dafc6277192e2dbea436445b1d97175faf"
+    },
+    {
+      "file": "client-artifact-check.json",
+      "sha256": "1589fb0083fa1536c7cf8aacb3810642dbba6fe3ad5f40966aa1a79793d1ea8a"
+    },
+    {
+      "file": "deployment-acceptance.json",
+      "sha256": "1da518baddcfcc82bea044f1801746e6e53c5bd1b4285796ed249bd7d83f2bad"
+    },
+    {
+      "file": "deployment-observations.json",
+      "sha256": "05b249be1903f603a5cce02ca82348eb09efe54c7f78a6a8e7828116acef9d7e"
+    },
+    {
+      "file": "evidence-manifest.json",
+      "sha256": "f7a4c12a233522557c71f980099064b1f17e925eb26e812df4c80daf7423acbd"
+    },
+    {
+      "file": "fallback-build-checks.json",
+      "sha256": "5f6129f493b87f524f6c3869112d01d662fa773651843ffb59fca2e44f441416"
+    },
+    {
+      "file": "fallback-client-build.log",
+      "sha256": "9272af31ab6f837ebe8c7a4c9868ff34a03dbcf2840cfd0d1b0ba070f1fb84b3"
+    },
+    {
+      "file": "fallback-composition-initial.json",
+      "sha256": "8e685d6db5cef62f52b20b71f68b6238eaf5f2a0f5e34aa39580090777cf1e41"
+    },
+    {
+      "file": "fallback-composition.json",
+      "sha256": "6f2907e8a9dcf3a58c26560a82717e8cc9bfd7a48d65d84dc894da66d5792bc3"
+    },
+    {
+      "file": "fallback-failure-reconciliation.json",
+      "sha256": "4b1205b9d6b28cba4b906ad452a5b2120eae6897d275302fffb52a1f4615de15"
+    },
+    {
+      "file": "fallback-final-reconciliation.json",
+      "sha256": "855df12b9ae978f5752fc5b15ae724c3696a233c213728cd04f8b0c11c7fc890"
+    },
+    {
+      "file": "fallback-full-checks.json",
+      "sha256": "cc2b9a6e8d8b340e59761939c9b43963e1db522e49890c2b891090f8593b3e76"
+    },
+    {
+      "file": "fallback-full-suite.json",
+      "sha256": "6e6ab35acfe138f7594555e4fa75a6ab2a288734cd34c7911a6568c7c61b7877"
+    },
+    {
+      "file": "fallback-full-suite.log",
+      "sha256": "a45c65f07773ce41725508bcbaafcf3af339957785d3e2e0971222172b9bbe62"
+    },
+    {
+      "file": "fallback-full-suitefinal.json",
+      "sha256": "95cd64755c8352e43e9b2f452faf4334663982a8b1be5d318ad4484b4e590b35"
+    },
+    {
+      "file": "fallback-full-suitefinal.log",
+      "sha256": "c03c8b5f28fc3178e6990a3fc32225e4fdc0d1ed1c1a39a1e1ad637cc6ffc477"
+    },
+    {
+      "file": "fallback-fullfinal-checks.json",
+      "sha256": "19b7fe1c8da859e0c806c03bf1b683b443c77b344960e10f081a86301c80a0d1"
+    },
+    {
+      "file": "fallback-manifest.json",
+      "sha256": "47be5b6422140ef2ebe06932766be218b92fb11fa53309f6e3ec2045a23bf509"
+    },
+    {
+      "file": "fallback-revision.json",
+      "sha256": "f8aeb0d3675863a796026445f79821b0b27abb817bcf994ce5896b0b0f857bb1"
+    },
+    {
+      "file": "fallback-server-build.log",
+      "sha256": "329ec47aebd9432a130f22c87ab2a7bda1f81e95da09ddae7e269c98a1c4bbc1"
+    },
+    {
+      "file": "fallback-startup-checks.json",
+      "sha256": "67161105277c78e273915eb8f68de5e6153072e8131ea91910160ac2d5537d33"
+    },
+    {
+      "file": "fallback-startup-results.json",
+      "sha256": "209b142704d094d326b65234e38c3ea3ff3547040b13f43da37d161c2568d618"
+    },
+    {
+      "file": "fallback-startup.log",
+      "sha256": "f63941209e4542cd706fe1eb9a191d1e590ac562d55a9f3b7f4a1a65da05f873"
+    },
+    {
+      "file": "fallback-targetedcorrected-checks.json",
+      "sha256": "c0d7d66de0a86f537850f502b5d87ecbd6f34493c042f98c45a554630a531c93"
+    },
+    {
+      "file": "fallback-targetedcorrected.log",
+      "sha256": "e10f7c9e6e61d24b03ccb1f650b039094297df50e0f9a7f4685be1820ccfc704"
+    },
+    {
+      "file": "fallback-targetedguarded-checks.json",
+      "sha256": "165f0596cca476dcccbc8cf8d8c29b77738ae58cb72cf4f4a606e175daa62e41"
+    },
+    {
+      "file": "fallback-targetedguarded.json",
+      "sha256": "ee615157ae98248e2b8fd0edae90a90615b95f5e2fa767d2fbf111e0661bc0db"
+    },
+    {
+      "file": "fallback-targetedguarded.log",
+      "sha256": "e1eae0ee083a263cf4a683df0835a838672725727edd15ac51c45c0b8aee05a7"
+    },
+    {
+      "file": "fallback-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fixture-cleanup.json",
+      "sha256": "d6bfc26d4456e09d82710fb9148eaa44d008194139857e1b9366f7910c0caf86"
+    },
+    {
+      "file": "local-network-only.cjs",
+      "sha256": "5e4442282ed63f972ff317133a23e13a6317be2138190b5ece73a6e367e8d62e"
+    },
+    {
+      "file": "monitor-deploy.cjs",
+      "sha256": "0bcc36ba6f3f9836295ed8103210c7df95a7772784e15291d3df7866b61c6cef"
+    },
+    {
+      "file": "prepare-fallback.cjs",
+      "sha256": "d9a5941db8794b7b70bc42b02338f66443e1e4827fd7925da715fad5ac8787d1"
+    },
+    {
+      "file": "production-after.json",
+      "sha256": "dadf783a5aba00d8cdcc6be7fa67546d2949db21da90f99e5c6b9f98945226f2"
+    },
+    {
+      "file": "production-before.json",
+      "sha256": "6acc78d7be46ba402d72955fd2f995034e5043221c6a4cf7ce4f185f17ba12aa"
+    },
+    {
+      "file": "production-initial-preflight.json",
+      "sha256": "8bb936ae9dcf9af08bf271cb34f263652d9022e088d944fc58924cf1e55e1a94"
+    },
+    {
+      "file": "production-preflight.cjs",
+      "sha256": "7a44495984dccd8142af0d1fb0160faac07c9f01163652453a9f6abb21cd04dd"
+    },
+    {
+      "file": "production-preflight.json",
+      "sha256": "24c7f443eb2095fedf30a13b2c422a45e16b33ce6b653003e23d705b5d25f7c6"
+    },
+    {
+      "file": "push-verification.json",
+      "sha256": "139c52f7fd3e51a1d695506559a252a38b6087feec8f8ded915248fd7868e787"
+    },
+    {
+      "file": "reconcile-fallback.cjs",
+      "sha256": "9a2d7e32c9239ac0c9dd21e45ae99cd4f7603ab3c690452da6709116d4d4a6a6"
+    },
+    {
+      "file": "record-manifests.cjs",
+      "sha256": "9dc0aec1eb4538adf7d98d22bd7715235485bfae6bc75199dca538555954fc69"
+    },
+    {
+      "file": "run-checks.cjs",
+      "sha256": "62a116f18866f2f4a5ca66186e0b70b002aa61603dc9c7908a34af52ab14de50"
+    },
+    {
+      "file": "snapshot-growth-check.cjs",
+      "sha256": "0791e6be45831b031c0f0efdf5f7f386723167246371697c6542cc6587b7c9fe"
+    },
+    {
+      "file": "snapshot-growth-check.json",
+      "sha256": "e6bbe46f16ac3bb01a4ee493f6cde8710c2fd40c941a06b2098c1bcbbbf2a9c9"
+    },
+    {
+      "file": "snapshot-growth-observation.json",
+      "sha256": "846dd58f26c17eecc9869c4cf188a8363f8fb3c0c29fc471e417de30233467f9"
+    },
+    {
+      "file": "startup-regression.cjs",
+      "sha256": "39310fe43f947d526c451178e844500b5ff7f260421ecf5f17237099284a5db1"
+    }
+  ]
+}

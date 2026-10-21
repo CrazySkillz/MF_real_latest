@@ -1,0 +1,112 @@
+{
+  "at": "2026-10-21T23:11:03.687Z",
+  "deployedRevision": "5f251e0e6e9df0d9579addea6fe6f717c196cb47",
+  "runtimeContentCommit": "001ddfa87c445a51e63320cde9737b774aa1af0c",
+  "recoveryRevision": "d259bab99c9506fb4b3eb59dc07291ef74455648",
+  "result": "PASS within stated deployment-check scope; whole V1 remains NO-GO",
+  "proven": [
+    "Atomic remote push of main and recovery branch",
+    "Exact deployed SHA and three consecutive healthy observations",
+    "Root/readiness HTTP 200 and unauthenticated campaign list HTTP 401",
+    "All 13 widened columns and finite constraints verified on PostgreSQL 17.9",
+    "Ptomo configuration and complete saved publication summary equal before and after",
+    "Deployed public GA4/shared assets include the fractional formatter",
+    "Observed snapshot growth classified as existing automatic startup work outside Ptomo"
+  ],
+  "transition503Observations": [
+    {
+      "at": "2026-10-21T23:04:19.654Z",
+      "status": 503
+    }
+  ],
+  "fallback": {
+    "precisionTests": 586,
+    "startupCases": 11,
+    "builds": "PASS",
+    "fullSuite": {
+      "total": 4214,
+      "passed": 4043,
+      "failed": 171,
+      "skipped": 0
+    },
+    "newFailingIdentities": 0
+  },
+  "ptomo": {
+    "configurationSha256": "866f1fa5f5018f8ffc396ddc38ee7d70217d9aeddc960ee63efb38f561711441",
+    "connectionConfigurationSha256": "9f23c12e76856a368fae220b5e964ace9fb3b608254c231a882b18ce582faddd",
+    "activeConnectionCount": 1,
+    "configurationPreserved": true,
+    "native": {
+      "windowStart": "2026-09-04",
+      "windowEnd": "2026-10-20",
+      "overviewUpdatedAt": "2026-10-21 18:11:23.161",
+      "dates": 47,
+      "unique_dates": 47,
+      "first_date": "2026-09-04",
+      "last_date": "2026-10-20",
+      "earliest_row_update": "2026-10-21 06:10:26.547",
+      "latest_row_update": "2026-10-21 18:11:22.987",
+      "sessions": 2977,
+      "users": 2978,
+      "conversions": 262,
+      "fractional_rows": 0,
+      "breakdownConversions": 262,
+      "eventsConversions": 262
+    },
+    "financial": {
+      "reportingDate": "2026-10-20",
+      "recordedAt": "2026-10-21 18:11:59.693164",
+      "totalConversions": 262,
+      "currency": "EUR",
+      "currentValueWindow": {
+        "mode": "initial_import_to_latest_completed_day",
+        "endDate": "2026-10-20",
+        "startDate": "2026-09-04",
+        "dataThroughDate": "2026-10-20",
+        "reportingTimeZone": "Europe/Amsterdam"
+      },
+      "revenue": "65659.50",
+      "spendAvailable": false,
+      "conversions": 262
+    },
+    "refresh": [
+      {
+        "reporting_date": "2026-10-20",
+        "due_at": "2026-10-21T18:00:00.000Z",
+        "status": "completed",
+        "attempt_count": 1,
+        "completed_at": "2026-10-21T18:12:49.114Z"
+      },
+      {
+        "reporting_date": "2026-10-20",
+        "due_at": "2026-10-21T12:00:00.000Z",
+        "status": "completed",
+        "attempt_count": 1,
+        "completed_at": "2026-10-21T12:12:44.988Z"
+      },
+      {
+        "reporting_date": "2026-10-20",
+        "due_at": "2026-10-21T06:00:00.000Z",
+        "status": "completed",
+        "attempt_count": 1,
+        "completed_at": "2026-10-21T06:11:52.504Z"
+      }
+    ]
+  },
+  "nextNaturalRefresh": {
+    "utc": "2026-10-22T06:00:00.000Z",
+    "timeZone": "Europe/Amsterdam",
+    "local": "2026-10-22 08:00 Europe/Amsterdam",
+    "dataThroughDate": "2026-10-21",
+    "status": "NOT YET DUE at verification; new-runtime natural publication remains unverified"
+  },
+  "remaining": [
+    "Provider-backed fractional publication and downstream live acceptance",
+    "Authenticated rendered Ptomo UI: no connected browser",
+    "Hosted execution of recovery version, managed backup/PITR/off-machine key recovery",
+    "Four unfinished Batch 3 implementation paths",
+    "Main candidate 181 test failures and whole-V1 required gates"
+  ],
+  "manualProductionActions": "No manual campaign/source changes, refresh, historical repair, deletion or email. Render applied schema migrations and existing background jobs resumed.",
+  "cleanup": "Local fixture schemas/connections cleared; test PostgreSQL stopped; protected backup and fallback worktree retained"
+}

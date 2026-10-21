@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-21T23:02:56.047Z",
+  "atomicPush": "PASS",
+  "remoteMain": "5f251e0e6e9df0d9579addea6fe6f717c196cb47",
+  "remoteFallback": "d259bab99c9506fb4b3eb59dc07291ef74455648",
+  "fallbackBranch": "rollback/batch3-preserve-fractions",
+  "verification": "git ls-remote origin refs/heads/main refs/heads/rollback/batch3-preserve-fractions",
+  "deploymentVerified": false
+}

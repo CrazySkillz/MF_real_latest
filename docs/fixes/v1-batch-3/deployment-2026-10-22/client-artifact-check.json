@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-21T23:06:38.303Z",
+  "result": "PASS",
+  "assets": [
+    {
+      "path": "/assets/index-fBNGqar0.js",
+      "sha256": "36e5250ac68f21b78cbb417a104bbf2f87061a2b8c34a1ca6974a69d2079a8a4",
+      "bytes": 657359,
+      "precisionFormatterPresent": false
+    },
+    {
+      "path": "/assets/metric-math-DPASzpBF.js",
+      "sha256": "79f74edd07b62c475649818f3a1086dab3ac3c1f787be2b1679016c1d7956539",
+      "bytes": 1238,
+      "precisionFormatterPresent": true
+    },
+    {
+      "path": "/assets/ga4-metrics-B-acZgQ1.js",
+      "sha256": "09924112265731a58d5dfdcd14c889d3f5cc8032571dc6196eefea624ac80743",
+      "bytes": 362192,
+      "precisionFormatterPresent": false
+    }
+  ],
+  "boundary": "Deployed entry, GA4 page and observed shared chunk references checked; fractional formatter is present. No owner session or rendered Ptomo UI is available.",
+  "initialCheckCorrection": "Entry-only scan omitted the lazy shared chunk. Followed observed GA4/metric-math references; no application change."
+}

@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-21T23:08:22.751Z",
+  "boundary": "Read-only aggregate classification of snapshot growth after new scheduler startup; no other campaign names/IDs or values retained.",
+  "rows": [
+    {
+      "snapshot_type": "automatic",
+      "rows": 23,
+      "ptomo_rows": 0,
+      "active_campaign_rows": 23,
+      "first_recorded_at": "2026-10-21 23:05:05.680645",
+      "last_recorded_at": "2026-10-21 23:07:40.403673"
+    }
+  ],
+  "source": "server/scheduler.ts:810-902 existing automatic snapshot creation 30 seconds after startup; active ordered-GA4 campaigns are skipped.",
+  "result": "PASS: observed growth is automatic startup snapshots, none for Ptomo",
+  "initialCountAssumptionCorrection": "The first schema check saw five new rows while the existing startup job was still running. A later aggregate observation saw 23; checking for exactly five was an invalid observation-time assumption. Type, active-campaign and Ptomo boundaries are checked instead."
+}

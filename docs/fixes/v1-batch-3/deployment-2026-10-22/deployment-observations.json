@@ -1,0 +1,119 @@
+{
+  "expected": "5f251e0e6e9df0d9579addea6fe6f717c196cb47",
+  "startedAt": "2026-10-21T23:00:37.883Z",
+  "observations": [
+    {
+      "at": "2026-10-21T23:00:37.885Z",
+      "status": 200,
+      "ok": true,
+      "commit": "839bf508bffea4742f992616753dc68eabcfab3e"
+    },
+    {
+      "at": "2026-10-21T23:00:58.201Z",
+      "status": 200,
+      "ok": true,
+      "commit": "839bf508bffea4742f992616753dc68eabcfab3e"
+    },
+    {
+      "at": "2026-10-21T23:01:18.338Z",
+      "status": 200,
+      "ok": true,
+      "commit": "839bf508bffea4742f992616753dc68eabcfab3e"
+    },
+    {
+      "at": "2026-10-21T23:01:38.473Z",
+      "status": 200,
+      "ok": true,
+      "commit": "839bf508bffea4742f992616753dc68eabcfab3e"
+    },
+    {
+      "at": "2026-10-21T23:01:58.588Z",
+      "status": 200,
+      "ok": true,
+      "commit": "839bf508bffea4742f992616753dc68eabcfab3e"
+    },
+    {
+      "at": "2026-10-21T23:02:18.709Z",
+      "status": 200,
+      "ok": true,
+      "commit": "839bf508bffea4742f992616753dc68eabcfab3e"
+    },
+    {
+      "at": "2026-10-21T23:02:38.848Z",
+      "status": 200,
+      "ok": true,
+      "commit": "839bf508bffea4742f992616753dc68eabcfab3e"
+    },
+    {
+      "at": "2026-10-21T23:02:59.077Z",
+      "status": 200,
+      "ok": true,
+      "commit": "839bf508bffea4742f992616753dc68eabcfab3e"
+    },
+    {
+      "at": "2026-10-21T23:03:19.232Z",
+      "status": 200,
+      "ok": true,
+      "commit": "839bf508bffea4742f992616753dc68eabcfab3e"
+    },
+    {
+      "at": "2026-10-21T23:03:39.373Z",
+      "status": 200,
+      "ok": true,
+      "commit": "839bf508bffea4742f992616753dc68eabcfab3e"
+    },
+    {
+      "at": "2026-10-21T23:03:59.536Z",
+      "status": 200,
+      "ok": true,
+      "commit": "839bf508bffea4742f992616753dc68eabcfab3e"
+    },
+    {
+      "at": "2026-10-21T23:04:19.654Z",
+      "status": 503
+    },
+    {
+      "at": "2026-10-21T23:04:39.818Z",
+      "status": 200,
+      "ok": true,
+      "commit": "5f251e0e6e9df0d9579addea6fe6f717c196cb47"
+    },
+    {
+      "at": "2026-10-21T23:04:59.964Z",
+      "status": 200,
+      "ok": true,
+      "commit": "5f251e0e6e9df0d9579addea6fe6f717c196cb47"
+    },
+    {
+      "at": "2026-10-21T23:05:20.092Z",
+      "status": 200,
+      "ok": true,
+      "commit": "5f251e0e6e9df0d9579addea6fe6f717c196cb47"
+    }
+  ],
+  "publicChecks": {
+    "root": 200,
+    "readiness": 200,
+    "unauthenticatedCampaignList": 401
+  },
+  "scheduler": {
+    "httpStatus": 200,
+    "startedAt": "2026-10-21T23:04:32.110Z",
+    "nextRunAt": "2026-10-22T06:00:00.000Z",
+    "nextDataThroughDate": "2026-10-21",
+    "config": {
+      "reportingTimeZone": "Europe/Amsterdam",
+      "hour": 8,
+      "hours": [
+        8,
+        14,
+        20
+      ],
+      "minute": 0,
+      "runOnStartup": false
+    },
+    "lastRunStatus": "idle"
+  },
+  "result": "PASS: exact deployment revision, stable readiness and unauthenticated data denial",
+  "completedAt": "2026-10-21T23:05:20.552Z"
+}

@@ -1,0 +1,12 @@
+const fs=require('node:fs'),assert=require('node:assert/strict'),{parseEnv}=require('node:util'),{Client}=require('pg');
+(async()=>{const u=new URL(parseEnv(fs.readFileSync('.env','utf8')).DATABASE_URL);for(const key of ['sslmode','sslcert','sslkey','sslrootcert','ssl','options'])u.searchParams.delete(key);
+ const c=new Client({connectionString:u.href,ssl:{rejectUnauthorized:true},statement_timeout:10000,query_timeout:12000,connectionTimeoutMillis:10000});await c.connect();
+ try{await c.query('BEGIN READ ONLY');assert.equal((await c.query('SHOW transaction_read_only')).rows[0].transaction_read_only,'on');
+  const rows=(await c.query("SELECT m.snapshot_type,count(*)::int rows,count(*) FILTER(WHERE lower(c.name)='ptomo')::int ptomo_rows,count(*) FILTER(WHERE c.status='active')::int active_campaign_rows,min(m.recorded_at)::text first_recorded_at,max(m.recorded_at)::text last_recorded_at FROM metric_snapshots m LEFT JOIN campaigns c ON c.id=m.campaign_id WHERE m.recorded_at >= TIMESTAMP '2026-10-21 23:04:32' GROUP BY m.snapshot_type ORDER BY m.snapshot_type")).rows;
+  const result={at:new Date().toISOString(),boundary:'Read-only aggregate classification of snapshot growth after new scheduler startup; no other campaign names/IDs or values retained.',rows,source:'server/scheduler.ts:810-902 existing automatic snapshot creation 30 seconds after startup; active ordered-GA4 campaigns are skipped.'};
+  if(!fs.existsSync(__dirname+'/snapshot-growth-observation.json'))fs.writeFileSync(__dirname+'/snapshot-growth-observation.json',JSON.stringify(result,null,2)+'\n');
+  assert.ok(rows.reduce((n,r)=>n+r.rows,0)>=5);assert.ok(rows.every(r=>r.snapshot_type==='automatic'&&r.ptomo_rows===0&&r.rows===r.active_campaign_rows));result.result='PASS: observed growth is automatic startup snapshots, none for Ptomo';
+  result.initialCountAssumptionCorrection='The first schema check saw five new rows while the existing startup job was still running. A later aggregate observation saw 23; checking for exactly five was an invalid observation-time assumption. Type, active-campaign and Ptomo boundaries are checked instead.';
+  fs.writeFileSync(__dirname+'/snapshot-growth-check.json',JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result));await c.query('ROLLBACK');
+ }finally{await c.end();}
+})().catch(e=>{console.error(e.name+': bounded snapshot-growth check failed');process.exitCode=1;});

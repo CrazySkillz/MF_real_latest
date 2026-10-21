@@ -1,0 +1,58 @@
+{
+  "at": "2026-10-21T21:53:31.203Z",
+  "candidate": "001ddfa87c445a51e63320cde9737b774aa1af0c",
+  "files": [
+    {
+      "file": "assessment.json",
+      "sha256": "30144e947b318056d38f3e1aca214bf198f75c1a6e2308a72f1cff13eb201466"
+    },
+    {
+      "file": "backup-protection.json",
+      "sha256": "36ad7bc6be748b1f6bd489add9aed3465d52548ead44af30c072ae7792bc5e6a"
+    },
+    {
+      "file": "backup-rehearsal.cjs",
+      "sha256": "12db0b983233feb2fd817cae4d6c38ca9933a2ec56c5aa30933f10db4c12cd29"
+    },
+    {
+      "file": "backup-restore-results.json",
+      "sha256": "b49a470e254b0a2b32f0a2e94fc808da635faedb45cc2a96883bc100ba23fcf3"
+    },
+    {
+      "file": "cleanup-clone.cjs",
+      "sha256": "0b81cedba30a95a4d71ee475de39032cb38cd36575a09ee08af2c58585121c9f"
+    },
+    {
+      "file": "cleanup.json",
+      "sha256": "60514ad6bc896dcd1b6fec02695b8c7d2e2b5c08a20bcdc22c6b53ba14e3e455"
+    },
+    {
+      "file": "clone-rehearsal.cjs",
+      "sha256": "480c36865a52519a4614a5bdfb77fcec974ddc36c8aafa1b07ae4a8687cc4a24"
+    },
+    {
+      "file": "clone-results.json",
+      "sha256": "3d9bb1d520449bb2763a8a8c3d926dec0273bf351312357e174f9055d66c6f40"
+    },
+    {
+      "file": "production-after.json",
+      "sha256": "a0486c477cd5a1b017ee57a6754817dea75aaa7b0362e1b5cde763f82508f98a"
+    },
+    {
+      "file": "production-preflight.cjs",
+      "sha256": "50f9695b4b6143e0b5035f1b8d0f4bf32004b4d1d4caa649835e6d77c9a56cf0"
+    },
+    {
+      "file": "production-preflight.json",
+      "sha256": "207986817a858a35a4a43bb3cc0e9c99f750f2f5cc6fb228b162d2b379b9ddf3"
+    },
+    {
+      "file": "rollback-runtime-probe.cjs",
+      "sha256": "58978ba10e076835c606929bcee026b9ba244221dcbbb1a6d97ae22f76f9f00a"
+    },
+    {
+      "file": "rollback-runtime-probe.json",
+      "sha256": "f7f1870a2092468cc151e385f211575cb11abedb1c3369ad164bf22ef3e3b323"
+    }
+  ]
+}

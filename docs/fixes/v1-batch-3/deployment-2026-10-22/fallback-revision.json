@@ -1,0 +1,8 @@
+{
+  "revision": "d259bab99c9506fb4b3eb59dc07291ef74455648",
+  "branch": "rollback/batch3-preserve-fractions",
+  "parent": "001ddfa87c445a51e63320cde9737b774aa1af0c",
+  "files": 23,
+  "manifest": "fallback-manifest.json",
+  "pushed": false
+}

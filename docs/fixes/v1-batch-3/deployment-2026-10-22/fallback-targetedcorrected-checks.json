@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-21T22:50:15.620Z",
+  "target": "fallback",
+  "mode": "targeted",
+  "results": [
+    {
+      "label": "targetedcorrected",
+      "exitCode": 1,
+      "error": null
+    }
+  ]
+}

@@ -1,0 +1,247 @@
+{
+  "at": "2026-10-21T21:50:58.704Z",
+  "candidate": "001ddfa87c445a51e63320cde9737b774aa1af0c",
+  "boundary": "Bounded TLS-verified read-only queries against the user-confirmed production DATABASE_URL. Only schema, aggregate counts and configuration hashes are retained.",
+  "manifestMismatches": [],
+  "liveHealth": {
+    "status": 200,
+    "ok": true,
+    "commit": "839bf508bffea4742f992616753dc68eabcfab3e"
+  },
+  "databaseTargetSha256": "073e11d852157bd3f4d53e8321ad28bc5564ff639fd4da814bf15f53575024e0",
+  "readOnly": true,
+  "serverVersion": "17.9 (Debian 17.9-1.pgdg12+1)",
+  "databaseBytes": "2244638387",
+  "columns": [
+    {
+      "table_name": "benchmark_history",
+      "column_name": "current_value",
+      "type": "numeric(10,2)",
+      "not_null": true,
+      "default_value": null,
+      "owner_role_access": true
+    },
+    {
+      "table_name": "benchmarks",
+      "column_name": "current_value",
+      "type": "numeric(10,2)",
+      "not_null": false,
+      "default_value": "'0'::numeric",
+      "owner_role_access": true
+    },
+    {
+      "table_name": "ga4_daily_metrics",
+      "column_name": "conversions",
+      "type": "integer",
+      "not_null": true,
+      "default_value": "0",
+      "owner_role_access": true
+    },
+    {
+      "table_name": "kpi_alerts",
+      "column_name": "current_value",
+      "type": "numeric(10,2)",
+      "not_null": false,
+      "default_value": null,
+      "owner_role_access": true
+    },
+    {
+      "table_name": "kpi_periods",
+      "column_name": "final_value",
+      "type": "numeric(10,2)",
+      "not_null": true,
+      "default_value": null,
+      "owner_role_access": true
+    },
+    {
+      "table_name": "kpi_periods",
+      "column_name": "previous_period_value",
+      "type": "numeric(10,2)",
+      "not_null": false,
+      "default_value": null,
+      "owner_role_access": true
+    },
+    {
+      "table_name": "kpi_periods",
+      "column_name": "change_amount",
+      "type": "numeric(10,2)",
+      "not_null": false,
+      "default_value": null,
+      "owner_role_access": true
+    },
+    {
+      "table_name": "kpi_progress",
+      "column_name": "value",
+      "type": "numeric(18,2)",
+      "not_null": true,
+      "default_value": null,
+      "owner_role_access": true
+    },
+    {
+      "table_name": "kpi_progress",
+      "column_name": "rolling_average_7d",
+      "type": "numeric(18,2)",
+      "not_null": false,
+      "default_value": null,
+      "owner_role_access": true
+    },
+    {
+      "table_name": "kpi_progress",
+      "column_name": "rolling_average_30d",
+      "type": "numeric(18,2)",
+      "not_null": false,
+      "default_value": null,
+      "owner_role_access": true
+    },
+    {
+      "table_name": "kpis",
+      "column_name": "current_value",
+      "type": "numeric(18,2)",
+      "not_null": false,
+      "default_value": "'0'::numeric",
+      "owner_role_access": true
+    },
+    {
+      "table_name": "kpis",
+      "column_name": "last_computed_value",
+      "type": "numeric(18,2)",
+      "not_null": false,
+      "default_value": null,
+      "owner_role_access": true
+    },
+    {
+      "table_name": "metric_snapshots",
+      "column_name": "total_conversions",
+      "type": "integer",
+      "not_null": true,
+      "default_value": "0",
+      "owner_role_access": true
+    }
+  ],
+  "tables": {
+    "ga4_daily_metrics": {
+      "rows": "509",
+      "conversions_nonfinite": 0,
+      "heap_bytes": "122880",
+      "total_bytes": "573440"
+    },
+    "metric_snapshots": {
+      "rows": "87526",
+      "total_conversions_nonfinite": 0,
+      "heap_bytes": "88604672",
+      "total_bytes": "392372224"
+    },
+    "kpis": {
+      "rows": "43",
+      "current_value_nonfinite": 0,
+      "last_computed_value_nonfinite": 0,
+      "heap_bytes": "40960",
+      "total_bytes": "98304"
+    },
+    "kpi_periods": {
+      "rows": "176",
+      "final_value_nonfinite": 0,
+      "previous_period_value_nonfinite": 0,
+      "change_amount_nonfinite": 0,
+      "heap_bytes": "32768",
+      "total_bytes": "98304"
+    },
+    "kpi_progress": {
+      "rows": "135",
+      "value_nonfinite": 0,
+      "rolling_average_7d_nonfinite": 0,
+      "rolling_average_30d_nonfinite": 0,
+      "heap_bytes": "139264",
+      "total_bytes": "303104"
+    },
+    "kpi_alerts": {
+      "rows": "248",
+      "current_value_nonfinite": 0,
+      "heap_bytes": "843776",
+      "total_bytes": "1187840"
+    },
+    "benchmarks": {
+      "rows": "51",
+      "current_value_nonfinite": 0,
+      "heap_bytes": "32768",
+      "total_bytes": "122880"
+    },
+    "benchmark_history": {
+      "rows": "154",
+      "current_value_nonfinite": 0,
+      "heap_bytes": "425984",
+      "total_bytes": "663552"
+    }
+  },
+  "constraints": [
+    {
+      "table_name": "benchmark_history",
+      "conname": "benchmark_history_pkey",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "benchmarks",
+      "conname": "benchmarks_pkey",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "ga4_daily_metrics",
+      "conname": "ga4_daily_metrics_campaign_id_property_id_date_key",
+      "convalidated": true,
+      "definition": "UNIQUE (campaign_id, property_id, date)"
+    },
+    {
+      "table_name": "ga4_daily_metrics",
+      "conname": "ga4_daily_metrics_pkey",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "kpi_alerts",
+      "conname": "kpi_alerts_pkey",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "kpi_periods",
+      "conname": "kpi_periods_pkey",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "kpi_progress",
+      "conname": "kpi_progress_pkey",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "kpis",
+      "conname": "kpis_pkey",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "metric_snapshots",
+      "conname": "metric_snapshots_pkey",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (id)"
+    }
+  ],
+  "dependencies": [],
+  "lockSnapshot": [],
+  "startupDmlCandidates": {
+    "shopifyRefreshNotifications": 0,
+    "sheetsNullFlags": 0,
+    "legacyConnectedIntegrations": 0
+  },
+  "ptomo": {
+    "configurationSha256": "866f1fa5f5018f8ffc396ddc38ee7d70217d9aeddc960ee63efb38f561711441",
+    "connectionConfigurationSha256": "9f23c12e76856a368fae220b5e964ace9fb3b608254c231a882b18ce582faddd",
+    "activeConnectionCount": 1,
+    "configurationPreserved": true
+  },
+  "result": "PASS",
+  "completedAt": "2026-10-21T21:51:06.813Z"
+}

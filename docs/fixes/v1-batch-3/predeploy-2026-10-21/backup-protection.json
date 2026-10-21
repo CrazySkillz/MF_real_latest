@@ -1,0 +1,11 @@
+﻿{
+    "checkedAt":  "2026-10-21T21:43:42.4479694Z",
+    "directoryInheritanceDisabled":  true,
+    "accessRuleCount":  1,
+    "onlyCurrentUser":  true,
+    "encryptedArchiveBytes":  317552836,
+    "encryptedArchiveSha256":  "172ee819d275472c7c3b30b2beca7d2cde35190179b2e857d482e45bd5ddda31",
+    "keyProtection":  "Windows CurrentUser DPAPI; key value not read or emitted by this check",
+    "tracked":  false,
+    "keyRecoveryBoundary":  "Requires this Windows user profile; hosted/off-machine key recovery remains unverified"
+}

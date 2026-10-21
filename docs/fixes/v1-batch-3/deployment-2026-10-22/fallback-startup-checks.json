@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-21T22:44:57.841Z",
+  "target": "fallback",
+  "mode": "startup",
+  "results": [
+    {
+      "label": "startup",
+      "exitCode": 0,
+      "error": null
+    }
+  ]
+}

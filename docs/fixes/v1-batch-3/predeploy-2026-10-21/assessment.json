@@ -1,0 +1,40 @@
+{
+  "at": "2026-10-21T21:53:31.199Z",
+  "candidate": "001ddfa87c445a51e63320cde9737b774aa1af0c",
+  "deployed": "839bf508bffea4742f992616753dc68eabcfab3e",
+  "pushDecision": "HOLD",
+  "releaseDecision": "NO-GO",
+  "scope": "Pre-push production database compatibility, encrypted backup/restore and rollback safety only",
+  "productionPreconditions": "PASS: 13 expected types, owner-role access, zero nonfinite inputs, no dependent views, zero retained startup DML candidates",
+  "backupRestore": "PASS: fresh full logical backup streamed encrypted, authenticated decrypt/restore to localhost",
+  "cloneChecks": {
+    "passed": 8,
+    "failed": 0,
+    "tables": 71,
+    "rows": 5909681,
+    "upgradeMs": 15070,
+    "repeatMs": 1316
+  },
+  "rollback": {
+    "migrationTransaction": "PASS: injected failure and lock contention fail closed with no workers",
+    "previousApplication": "UNSAFE: old startup rounds 0.000075 to 0; old provider merge truncates 0.75 to 0 and old live KPI rounds it to 1",
+    "startupOnlyPatch": "Locally preserves observed types/values, but is not a validated deployable rollback",
+    "requiredNext": "Prepare and validate a whole-application rollback that retains the precision migrations and all affected precision read/write/consumer paths before an auto-deploying push"
+  },
+  "productionAfter": "Same deployed commit, 13 column types and Ptomo configuration hashes; no production writes performed",
+  "runtimeFilesVerifiedUnchanged": 71,
+  "remainingBoundaries": [
+    "Hosted PostgreSQL 17 lock duration and deployment interruption; rehearsal used local PostgreSQL 18",
+    "Managed backup/PITR retention, off-machine encryption-key recovery, hosted restore permissions and complete service restoration",
+    "Provider-backed fractional publication and historical-damage acceptance",
+    "Remaining Batch 3 paths, 181 unresolved suite failures and all other V1 gates"
+  ],
+  "cleanup": "Disposable clone removed; isolated cluster stopped; encrypted archive and CurrentUser DPAPI key retained in user-only ignored directory",
+  "setupNote": "The first local ACL write required sandbox escalation; the user-only ACL was successfully applied and verified before any backup content was written.",
+  "actionsNotPerformed": [
+    "No app runtime changes",
+    "No production migrations or cleanup",
+    "No push, deployment, provider refresh or email send",
+    "No new full application test run; existing exact-file evidence retained"
+  ]
+}

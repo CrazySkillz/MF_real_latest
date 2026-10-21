@@ -1,0 +1,51 @@
+{
+  "at": "2026-10-21T22:59:26.499Z",
+  "runtimeCandidate": "001ddfa87c445a51e63320cde9737b774aa1af0c",
+  "fallback": "d259bab99c9506fb4b3eb59dc07291ef74455648",
+  "decision": "Bounded pre-push checks satisfied; user authorized push after validation. Whole V1 remains NO-GO.",
+  "runtimeChangedDuringThisTask": false,
+  "mainCandidateFilesUnchanged": 71,
+  "fallbackPrecision": {
+    "files": [
+      "server/v1-batch3-conversion-precision.test.ts",
+      "server/v1-batch3-conversion-postgres.test.ts",
+      "server/v1-batch3-conversion-consumers.test.ts",
+      "server/ga4-kpi-saved-overview.test.ts",
+      "server/ga4-shared-daily-traffic.test.ts",
+      "server/ga4-publication-browser.test.ts",
+      "server/ga4-browser-report-publication.test.ts",
+      "server/ga4-report-saved-publication.test.ts",
+      "server/metric-math.test.ts",
+      "server/ga4-derived-publication-postgres.test.ts",
+      "server/ga4-recovery-process-postgres.test.ts",
+      "server/ga4-snapshot-ownership-postgres.test.ts",
+      "server/financial-daily-comparison.test.ts",
+      "server/campaign-cumulative-financials.test.ts",
+      "server/campaign-section-ui-parity-scheduled-pdf.test.ts",
+      "server/executive-summary-scheduled-pdf.test.ts",
+      "server/performance-summary-scheduled-pdf.test.ts"
+    ],
+    "passed": 586,
+    "failed": 0,
+    "pending": 0
+  },
+  "fallbackSuite": {
+    "total": 4214,
+    "passed": 4043,
+    "failed": 171,
+    "pending": 0
+  },
+  "fallbackStartupCases": 11,
+  "builds": "TypeScript/client/server pass",
+  "production": "Read-only schema/preconditions and Ptomo configuration pass; no manual production writes",
+  "backup": "Encrypted archive hash unchanged since successful restore, user-only ACL and DPAPI key retained",
+  "recoveryLimits": "Precision is preserved; nonprecision Batch 3 fixes revert to previous behavior. Use only for an incident within this bounded recovery scope. Hosted recovery is not certified.",
+  "pending": [
+    "Authorized git push and exact deployed revision/schema verification",
+    "Ptomo post-deployment saved-state check",
+    "Authenticated owner UI unavailable: no connected browser",
+    "New natural Ptomo publication and provider-backed fractional acceptance",
+    "Remaining four Batch 3 implementation paths and all open whole-V1 gates"
+  ],
+  "evidenceIssues": "See fallback-final-reconciliation.json for every initial fixture failure, guarded-launch path correction and raw timestamp correction."
+}

@@ -1,0 +1,72 @@
+{
+  "at": "2026-10-21T21:44:34.728Z",
+  "baseline": "839bf508bffea4742f992616753dc68eabcfab3e",
+  "candidate": "001ddfa87c445a51e63320cde9737b774aa1af0c",
+  "boundary": "Actual extracted provider merge and actual shared live KPI modules with their shared dependencies; synthetic inputs only. This is a negative rollback check, not full rollback acceptance.",
+  "revisions": [
+    {
+      "revision": "839bf508bffea4742f992616753dc68eabcfab3e",
+      "sourceSha256": {
+        "server/analytics.ts": "2d2ff2de2c76447fbd5bda89e8642e53794d576e0650c3f0f4218c34ea096d09",
+        "shared/ga4-kpi-live-value.ts": "9337580cd890d877925f14c4802adf55620407270158417f582df169b7744580",
+        "shared/metric-math.ts": "67154807d973606f6ff22244a27bd19aef1bc79deb46ea907ce7abb1b5246b7e",
+        "shared/ga4-kpi-metric-identity.ts": "87e0a03d94db184b6e4347530cc8655d277f4a9596e4226e9aed179621713f88"
+      },
+      "observations": [
+        {
+          "credit": 0,
+          "providerMerge": 0,
+          "liveKpi": 0
+        },
+        {
+          "credit": 0.75,
+          "providerMerge": 0,
+          "liveKpi": 1
+        },
+        {
+          "credit": 0.000075,
+          "providerMerge": 0,
+          "liveKpi": 0
+        },
+        {
+          "credit": 2,
+          "providerMerge": 2,
+          "liveKpi": 2
+        }
+      ]
+    },
+    {
+      "revision": "001ddfa87c445a51e63320cde9737b774aa1af0c",
+      "sourceSha256": {
+        "server/analytics.ts": "56f32871f69c0966f56188d078318ce673b0d8fc90662e8b114e8bc2309eadff",
+        "shared/ga4-kpi-live-value.ts": "3ca00cddc3a1e645b937a2f0994b41ee7ef6dd14e32387efa8378ef04bc0b8e4",
+        "shared/metric-math.ts": "783d1ed70777d1e7de8ec5a13886388c4249975640c6b3bff2f47d8089454013",
+        "shared/ga4-kpi-metric-identity.ts": "87e0a03d94db184b6e4347530cc8655d277f4a9596e4226e9aed179621713f88"
+      },
+      "observations": [
+        {
+          "credit": 0,
+          "providerMerge": 0,
+          "liveKpi": 0
+        },
+        {
+          "credit": 0.75,
+          "providerMerge": 0.75,
+          "liveKpi": 0.75
+        },
+        {
+          "credit": 0.000075,
+          "providerMerge": 0.000075,
+          "liveKpi": 0.000075
+        },
+        {
+          "credit": 2,
+          "providerMerge": 2,
+          "liveKpi": 2
+        }
+      ]
+    }
+  ],
+  "result": "PASS: old runtime precision loss reproduced; candidate preserves tested values",
+  "rollbackAcceptance": "OPEN: startup-only patch is insufficient; retain validated precision read/write/consumer changes in any application rollback."
+}

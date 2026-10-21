@@ -10,7 +10,9 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Latest validation and release gates
 
-**Batch 3 local commit checkpoint:** The completed corrections, migrations and evidence are recorded locally with unchanged validated runtime/test files. No push or deployment occurred. Production database compatibility, backup and compatible rollback checks remain required before an auto-deploying push; this commit closes no release gate.
+**Historical Batch 3 preflight, October 21: push was on HOLD; V1 remains NO-GO.** Candidate `001ddfa8` passed the read-only production column/finite-input checks and fresh encrypted backup/local restore. Eight clone checks preserve 71 tables / 5,909,681 rows, including injected migration failure, lock contention, repeat boot and precision probes. The old deployed runtime demonstrably loses fractional values; a startup-only patch does not correct its provider/read/write rounding. The October 22 fallback validation below supersedes this bounded pre-push hold. [Batch 3 preflight](../v1-batch-3/README.md#deployment-preflight-october-21) owns the exact evidence and local PostgreSQL 18 versus hosted PostgreSQL 17 limits. No live migration, push or deployment occurred.
+
+**Batch 3 local commit checkpoint:** The completed corrections, migrations and evidence are recorded locally with unchanged validated runtime/test files. No push or deployment occurred. The later preflight above satisfies the bounded production-schema and local backup/restore checks; the October 22 fallback validation below satisfies the bounded local recovery check. No release gate is closed.
 
 **Latest Batch 3 downstream-precision checkpoint: V1 remains NO-GO.** 4,300 tests; 4,119 passed, 181 failed, zero skipped, with no new failing identity. [Current assessment](../v1-batch-3/validation-2026-10-21-goal-precision/assessment.json) and [failure reconciliation](../v1-batch-3/validation-2026-10-21-goal-precision/failure-reconciliation.json) identify the local candidate. V1-079 forward precision paths are VERIFIED LOCALLY, with 588 passing coverage tests and 11 startup scenarios; production builds pass. All 181 full-suite failures remain open. CI, provider semantics, production migrations/compatible rollback, historical damage inventory and other required V1 acceptance remain unverified. No deployment or production mutation occurred. Earlier checkpoints below remain historical evidence.
 
@@ -23,6 +25,10 @@ This is the detailed home for this batch's assigned findings. Read the required 
 **Additional deployment evidence for the existing release gates:** the rendered Clerk form visibly says `Development mode`; production authentication configuration remains unverified under V1-013/Batch8. No Clerk keys or settings were changed. The existing GitHub `npm ci` output reports74 dependency advisories (3low,32moderate,33high,6critical), now retained as partial V1-019 evidence. That aggregate includes all installed dependencies and does not identify production reachability or provide an advisory-by-advisory resolution. No new manual npm advisory request or dependency update was performed.
 
 [Batch 2](../v1-batch-2/README.md#latest-validation-and-live-acceptance) contains the isolated onboarding, live schema/Ptomo and public navigation evidence, including the remaining real-customer/provider gates. [Batch 1](../v1-batch-1/README.md#current-batch-1-status) contains the confirmed morning refresh. No further Ptomo freshness wait is required for those completed checks. Hosted capacity, monitoring, managed backup/key restoration, application rollback, natural report/inbox acceptance and full value/lifecycle/downstream acceptance remain unproven.
+
+**October 22 recovery validation:** [Batch 3 fallback evidence](../v1-batch-3/README.md#fallback-validation-october-22) establishes recovery commit `d259bab9`, with 586 passing precision checks, 11 startup scenarios and successful production builds. Startup and precision migrations match the restored-data rehearsal. This resolves the bounded pre-push hold; hosted recovery execution and the broader V1-016 operational gates remain OPEN. Main candidate failures and the whole-app NO-GO are unchanged.
+
+**October 22 Ptomo clarification:** Reconstructing old rounded Ptomo test figures is not a deployment prerequisite. Operational recovery must still preserve correct fractional values in future processing; the unmodified old runtime fails that requirement. The [Batch 3 policy](../v1-batch-3/README.md#ptomo-test-data-policy-october-22) owns this boundary.
 
 ## Scope and acceptance
 
@@ -117,6 +123,8 @@ No complete current semantic value/source/fallback/propagation certificate cover
 **Original audit evidence** (baseline `777aae6f`; evidence classification: required operational gate):
 
 Five-user/25-campaign component and actual HTTP/DB checks are recorded; the latter reproduces blocked import saves despite acceptable local read latency. Synthetic DB/key/PDF-byte restore passes. Deployed capacity, actual provider quotas, multi-instance recovery, monitoring receipt, production backup/key recovery and application/schema rollback remain unverified. [HTTP boundary](../../audits/v1-2026-10-19/HTTP_DATABASE_PILOT.md), [restore boundary](../../audits/v1-2026-10-19/CONFIGURATION_AND_RECOVERY.md).
+
+**Additional bounded evidence, October 21:** [Batch 3 preflight](../v1-batch-3/README.md#deployment-preflight-october-21) verifies an actual fresh production backup restored locally, all-table preservation through candidate migrations, failed-migration rollback, lock timeout and fractional-value restart. It also reproduces unsafe old-application rollback. Managed/PITR retention, off-machine key recovery, hosted restore/lock behavior and a validated whole-application rollback remain OPEN; this is not full operational acceptance.
 
 **Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
 

@@ -1,0 +1,1241 @@
+{
+  "at": "2026-10-21T21:46:22.279Z",
+  "candidate": "001ddfa87c445a51e63320cde9737b774aa1af0c",
+  "target": "127.0.0.1:55443/v1_batch3_production_clone",
+  "boundary": "Fresh encrypted production backup restored locally. Actual startup SQL, stubbed worker/provider bodies. No production writes. PostgreSQL 18 rehearsal does not prove hosted PostgreSQL 17 timing or full runtime rollback.",
+  "checks": [
+    {
+      "name": "injected failure rolls back widening and values; no readiness or workers",
+      "result": "PASS"
+    },
+    {
+      "name": "contended migration fails closed without workers",
+      "result": "PASS",
+      "elapsedMs": 10278
+    },
+    {
+      "name": "candidate upgrade",
+      "result": "PASS",
+      "startupMs": 15070
+    },
+    {
+      "name": "repeat candidate startup",
+      "result": "PASS",
+      "startupMs": 1316
+    },
+    {
+      "name": "old startup demonstrates precision loss",
+      "result": "PASS",
+      "observed": 0,
+      "expected": 0,
+      "localProbeRolledBack": true
+    },
+    {
+      "name": "startup-only compatibility patch preserves precision",
+      "result": "PASS",
+      "observed": 0.000075,
+      "expected": 0.000075,
+      "localProbeRolledBack": true
+    },
+    {
+      "name": "candidate restart preserves precision",
+      "result": "PASS",
+      "observed": 0.000075,
+      "expected": 0.000075,
+      "localProbeRolledBack": true
+    },
+    {
+      "name": "all existing table row counts and two full-row fingerprints preserved",
+      "result": "PASS",
+      "tables": 71
+    }
+  ],
+  "localVersion": "PostgreSQL 18.0 on x86_64-windows, compiled by msvc-19.44.35215, 64-bit",
+  "restoredTableBytes": [
+    {
+      "table_name": "benchmark_history",
+      "heap_bytes": "32768",
+      "total_bytes": "98304"
+    },
+    {
+      "table_name": "benchmarks",
+      "heap_bytes": "16384",
+      "total_bytes": "98304"
+    },
+    {
+      "table_name": "ga4_daily_metrics",
+      "heap_bytes": "131072",
+      "total_bytes": "385024"
+    },
+    {
+      "table_name": "kpi_alerts",
+      "heap_bytes": "57344",
+      "total_bytes": "122880"
+    },
+    {
+      "table_name": "kpi_periods",
+      "heap_bytes": "32768",
+      "total_bytes": "98304"
+    },
+    {
+      "table_name": "kpi_progress",
+      "heap_bytes": "40960",
+      "total_bytes": "90112"
+    },
+    {
+      "table_name": "kpis",
+      "heap_bytes": "16384",
+      "total_bytes": "65536"
+    },
+    {
+      "table_name": "metric_snapshots",
+      "heap_bytes": "67633152",
+      "total_bytes": "317161472"
+    }
+  ],
+  "before": {
+    "ab_test_events": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "ab_test_results": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "ab_test_variants": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "ab_tests": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "app_sessions": {
+      "count": "544",
+      "hash0": "-2739575856909212174",
+      "hash1": "-154264370705324149195"
+    },
+    "attribution_insights": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "attribution_models": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "attribution_results": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "benchmark_history": {
+      "count": "154",
+      "hash0": "2886791217282482674",
+      "hash1": "-6526009336520024279"
+    },
+    "benchmarks": {
+      "count": "51",
+      "hash0": "-12609804742223531521",
+      "hash1": "-7789585703797898551"
+    },
+    "campaign_creation_requests": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "campaigns": {
+      "count": "52",
+      "hash0": "6554381822505049910",
+      "hash1": "-41026466137926412973"
+    },
+    "clients": {
+      "count": "10",
+      "hash0": "4155049011704859551",
+      "hash1": "-1338712278159702835"
+    },
+    "conversion_events": {
+      "count": "1",
+      "hash0": "5401593615495926701",
+      "hash1": "-8250844830065208677"
+    },
+    "custom_integration_metrics": {
+      "count": "76",
+      "hash0": "-6916861832911596708",
+      "hash1": "-7051226550402617872"
+    },
+    "custom_integrations": {
+      "count": "20",
+      "hash0": "-3450514982340504579",
+      "hash1": "-2696713494066421904"
+    },
+    "customer_journeys": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "email_alert_events": {
+      "count": "1093",
+      "hash0": "-226412161539407924399",
+      "hash1": "-162347704202131204253"
+    },
+    "ga4_connection_lifecycle_events": {
+      "count": "10",
+      "hash0": "-5917819598524723110",
+      "hash1": "-14552438742548692157"
+    },
+    "ga4_connections": {
+      "count": "38",
+      "hash0": "-12224732328943181768",
+      "hash1": "10860657557795771375"
+    },
+    "ga4_daily_metrics": {
+      "count": "509",
+      "hash0": "-156709903595586807191",
+      "hash1": "-21837007402702069869"
+    },
+    "ga4_google_ads_spend_connections": {
+      "count": "2",
+      "hash0": "7141875955962975545",
+      "hash1": "10493718916930799329"
+    },
+    "ga4_google_ads_spend_daily_metrics": {
+      "count": "10",
+      "hash0": "-27994926771981326468",
+      "hash1": "-2579833637329835557"
+    },
+    "ga4_overview_snapshots": {
+      "count": "9",
+      "hash0": "15859734432729731059",
+      "hash1": "-11129530062155085155"
+    },
+    "ga4_refresh_work": {
+      "count": "40",
+      "hash0": "15524098427343702545",
+      "hash1": "22987873844482236262"
+    },
+    "google_ads_connections": {
+      "count": "1",
+      "hash0": "-7908924218021292454",
+      "hash1": "-3218834146100577186"
+    },
+    "google_ads_daily_metrics": {
+      "count": "181",
+      "hash0": "201950122044651524730",
+      "hash1": "-23104389338025916519"
+    },
+    "google_sheets_connections": {
+      "count": "222",
+      "hash0": "47392384648418801257",
+      "hash1": "406218426637882078"
+    },
+    "hubspot_connections": {
+      "count": "12",
+      "hash0": "-5712680539875383379",
+      "hash1": "-2369143062903499274"
+    },
+    "inbound_webhook_receipts": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "instagram_connections": {
+      "count": "2",
+      "hash0": "-5601015933266829679",
+      "hash1": "3514171639120380503"
+    },
+    "instagram_daily_metrics": {
+      "count": "3",
+      "hash0": "-18823064252037681266",
+      "hash1": "-15573668623012715490"
+    },
+    "integrations": {
+      "count": "5",
+      "hash0": "8461590562515592060",
+      "hash1": "-12631806312853082241"
+    },
+    "kpi_alerts": {
+      "count": "248",
+      "hash0": "-89178928018345364821",
+      "hash1": "16490158191250865266"
+    },
+    "kpi_periods": {
+      "count": "176",
+      "hash0": "19779774885518940458",
+      "hash1": "52732109803840233943"
+    },
+    "kpi_progress": {
+      "count": "135",
+      "hash0": "-70455707449621969459",
+      "hash1": "112281057397823999988"
+    },
+    "kpi_reports": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "kpis": {
+      "count": "43",
+      "hash0": "21505665969450246256",
+      "hash1": "-29626528950021585926"
+    },
+    "linkedin_ad_performance": {
+      "count": "455495",
+      "hash0": "2667517105032824245048",
+      "hash1": "-1528447747408593513835"
+    },
+    "linkedin_connections": {
+      "count": "70",
+      "hash0": "-10630849780197705242",
+      "hash1": "-35991707312019599912"
+    },
+    "linkedin_daily_metrics": {
+      "count": "12047",
+      "hash0": "316287916917374482333",
+      "hash1": "-120309451346358887990"
+    },
+    "linkedin_import_metrics": {
+      "count": "1635960",
+      "hash0": "-1657018398877096120662",
+      "hash1": "-1710878289946785331761"
+    },
+    "linkedin_import_sessions": {
+      "count": "66329",
+      "hash0": "-890683759199858015169",
+      "hash1": "-692399712366055945334"
+    },
+    "linkedin_reports": {
+      "count": "12",
+      "hash0": "-9298709172079962014",
+      "hash1": "19453096635747448978"
+    },
+    "mapping_templates": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "meta_connections": {
+      "count": "5",
+      "hash0": "12783981948543276927",
+      "hash1": "-5368337142976476151"
+    },
+    "meta_daily_metrics": {
+      "count": "1419",
+      "hash0": "-79891262524612781065",
+      "hash1": "-109015803545481759259"
+    },
+    "metric_snapshots": {
+      "count": "87526",
+      "hash0": "-835788863172041472009",
+      "hash1": "1473750998740733359225"
+    },
+    "metrics": {
+      "count": "4",
+      "hash0": "-3177975959589946563",
+      "hash1": "2575845943789500496"
+    },
+    "mimosaas_tracking_attributions": {
+      "count": "1",
+      "hash0": "5477251904132881737",
+      "hash1": "4407683592072262890"
+    },
+    "mimosaas_tracking_campaign_mappings": {
+      "count": "1",
+      "hash0": "-1356210586354180062",
+      "hash1": "-2287561852255337129"
+    },
+    "mimosaas_tracking_configurations": {
+      "count": "1",
+      "hash0": "8270872958755511576",
+      "hash1": "-4787052955215821590"
+    },
+    "mimosaas_tracking_daily_metrics": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "mimosaas_tracking_daily_snapshots": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "mimosaas_tracking_events": {
+      "count": "1",
+      "hash0": "7026110971015352123",
+      "hash1": "-5771681179755129155"
+    },
+    "mimosaas_tracking_publication_runs": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    },
+    "mimosaas_website_connections": {
+      "count": "2",
+      "hash0": "-3056857252006497518",
+      "hash1": "-1011959428544697246"
+    },
+    "notifications": {
+      "count": "2273",
+      "hash0": "-184323717645644829898",
+      "hash1": "9108085669803973152"
+    },
+    "performance_data": {
+      "count": "7",
+      "hash0": "-17141001095945653628",
+      "hash1": "14188407532567294013"
+    },
+    "report_send_events": {
+      "count": "716",
+      "hash0": "105604614329755519160",
+      "hash1": "-132913192761884509123"
+    },
+    "report_snapshots": {
+      "count": "528",
+      "hash0": "128999118613092874605",
+      "hash1": "-215228680055190001956"
+    },
+    "revenue_records": {
+      "count": "618",
+      "hash0": "-47716693871202154019",
+      "hash1": "101049533841597253831"
+    },
+    "revenue_sources": {
+      "count": "95",
+      "hash0": "-104150537044782529801",
+      "hash1": "-2681885947554418161"
+    },
+    "salesforce_connections": {
+      "count": "17",
+      "hash0": "-12270318875476757228",
+      "hash1": "-12492659221791638249"
+    },
+    "service_account_resource_grants": {
+      "count": "1",
+      "hash0": "4112215601472814559",
+      "hash1": "-181764888340012765"
+    },
+    "shopify_connections": {
+      "count": "20",
+      "hash0": "-40905317018336027977",
+      "hash1": "36346725009644537740"
+    },
+    "spend_records": {
+      "count": "3642717",
+      "hash0": "1739823574429179985721",
+      "hash1": "6399665017960719222224"
+    },
+    "spend_sources": {
+      "count": "35",
+      "hash0": "31653125608119017068",
+      "hash1": "36042332034376758345"
+    },
+    "tiktok_connections": {
+      "count": "1",
+      "hash0": "-5423861037076020116",
+      "hash1": "-8049006242038418627"
+    },
+    "tiktok_daily_metrics": {
+      "count": "133",
+      "hash0": "-103892898454634781868",
+      "hash1": "29783253290233646356"
+    },
+    "touchpoints": {
+      "count": "0",
+      "hash0": "0",
+      "hash1": "0"
+    }
+  },
+  "tablesChecked": 71,
+  "totalRows": 5909681,
+  "afterTypes": [
+    {
+      "relname": "benchmark_history",
+      "attname": "benchmark_id",
+      "type": "text"
+    },
+    {
+      "relname": "benchmark_history",
+      "attname": "benchmark_value",
+      "type": "numeric(10,2)"
+    },
+    {
+      "relname": "benchmark_history",
+      "attname": "current_value",
+      "type": "numeric"
+    },
+    {
+      "relname": "benchmark_history",
+      "attname": "id",
+      "type": "character varying"
+    },
+    {
+      "relname": "benchmark_history",
+      "attname": "notes",
+      "type": "text"
+    },
+    {
+      "relname": "benchmark_history",
+      "attname": "performance_rating",
+      "type": "text"
+    },
+    {
+      "relname": "benchmark_history",
+      "attname": "recorded_at",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "benchmark_history",
+      "attname": "variance",
+      "type": "numeric(10,2)"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "alert_condition",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "alert_frequency",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "alert_threshold",
+      "type": "numeric(10,2)"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "alerts_enabled",
+      "type": "boolean"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "apply_to",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "benchmark_type",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "benchmark_value",
+      "type": "numeric(10,2)"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "calculation_config",
+      "type": "jsonb"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "campaign_id",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "category",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "competitor_name",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "confidence_level",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "created_at",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "current_value",
+      "type": "numeric"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "description",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "email_notifications",
+      "type": "boolean"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "email_recipients",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "geo_location",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "id",
+      "type": "character varying"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "industry",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "last_alert_sent",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "last_updated",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "linkedin_campaign_name",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "metric",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "name",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "period",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "platform_type",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "source",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "specific_campaign_id",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "status",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "unit",
+      "type": "text"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "updated_at",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "benchmarks",
+      "attname": "variance",
+      "type": "numeric(10,2)"
+    },
+    {
+      "relname": "ga4_daily_metrics",
+      "attname": "campaign_id",
+      "type": "text"
+    },
+    {
+      "relname": "ga4_daily_metrics",
+      "attname": "conversions",
+      "type": "double precision"
+    },
+    {
+      "relname": "ga4_daily_metrics",
+      "attname": "created_at",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "ga4_daily_metrics",
+      "attname": "date",
+      "type": "text"
+    },
+    {
+      "relname": "ga4_daily_metrics",
+      "attname": "engaged_sessions",
+      "type": "integer"
+    },
+    {
+      "relname": "ga4_daily_metrics",
+      "attname": "engagement_rate",
+      "type": "numeric(7,4)"
+    },
+    {
+      "relname": "ga4_daily_metrics",
+      "attname": "id",
+      "type": "uuid"
+    },
+    {
+      "relname": "ga4_daily_metrics",
+      "attname": "is_simulated",
+      "type": "boolean"
+    },
+    {
+      "relname": "ga4_daily_metrics",
+      "attname": "pageviews",
+      "type": "integer"
+    },
+    {
+      "relname": "ga4_daily_metrics",
+      "attname": "property_id",
+      "type": "text"
+    },
+    {
+      "relname": "ga4_daily_metrics",
+      "attname": "revenue",
+      "type": "numeric(15,2)"
+    },
+    {
+      "relname": "ga4_daily_metrics",
+      "attname": "revenue_metric",
+      "type": "text"
+    },
+    {
+      "relname": "ga4_daily_metrics",
+      "attname": "sessions",
+      "type": "integer"
+    },
+    {
+      "relname": "ga4_daily_metrics",
+      "attname": "updated_at",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "ga4_daily_metrics",
+      "attname": "users",
+      "type": "integer"
+    },
+    {
+      "relname": "kpi_alerts",
+      "attname": "acknowledged_at",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "kpi_alerts",
+      "attname": "alert_type",
+      "type": "text"
+    },
+    {
+      "relname": "kpi_alerts",
+      "attname": "created_at",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "kpi_alerts",
+      "attname": "current_value",
+      "type": "numeric"
+    },
+    {
+      "relname": "kpi_alerts",
+      "attname": "email_sent",
+      "type": "boolean"
+    },
+    {
+      "relname": "kpi_alerts",
+      "attname": "id",
+      "type": "character varying"
+    },
+    {
+      "relname": "kpi_alerts",
+      "attname": "is_active",
+      "type": "boolean"
+    },
+    {
+      "relname": "kpi_alerts",
+      "attname": "kpi_id",
+      "type": "text"
+    },
+    {
+      "relname": "kpi_alerts",
+      "attname": "message",
+      "type": "text"
+    },
+    {
+      "relname": "kpi_alerts",
+      "attname": "resolved_at",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "kpi_alerts",
+      "attname": "severity",
+      "type": "text"
+    },
+    {
+      "relname": "kpi_alerts",
+      "attname": "slack_sent",
+      "type": "boolean"
+    },
+    {
+      "relname": "kpi_alerts",
+      "attname": "target_value",
+      "type": "numeric(10,2)"
+    },
+    {
+      "relname": "kpi_alerts",
+      "attname": "threshold_value",
+      "type": "numeric(10,2)"
+    },
+    {
+      "relname": "kpi_alerts",
+      "attname": "updated_at",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "kpi_periods",
+      "attname": "change_amount",
+      "type": "numeric"
+    },
+    {
+      "relname": "kpi_periods",
+      "attname": "change_percentage",
+      "type": "numeric(5,2)"
+    },
+    {
+      "relname": "kpi_periods",
+      "attname": "created_at",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "kpi_periods",
+      "attname": "final_value",
+      "type": "numeric"
+    },
+    {
+      "relname": "kpi_periods",
+      "attname": "id",
+      "type": "uuid"
+    },
+    {
+      "relname": "kpi_periods",
+      "attname": "kpi_id",
+      "type": "text"
+    },
+    {
+      "relname": "kpi_periods",
+      "attname": "notes",
+      "type": "text"
+    },
+    {
+      "relname": "kpi_periods",
+      "attname": "performance_level",
+      "type": "text"
+    },
+    {
+      "relname": "kpi_periods",
+      "attname": "performance_percentage",
+      "type": "numeric(5,2)"
+    },
+    {
+      "relname": "kpi_periods",
+      "attname": "period_end",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "kpi_periods",
+      "attname": "period_label",
+      "type": "text"
+    },
+    {
+      "relname": "kpi_periods",
+      "attname": "period_start",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "kpi_periods",
+      "attname": "period_type",
+      "type": "text"
+    },
+    {
+      "relname": "kpi_periods",
+      "attname": "previous_period_value",
+      "type": "numeric"
+    },
+    {
+      "relname": "kpi_periods",
+      "attname": "target_achieved",
+      "type": "boolean"
+    },
+    {
+      "relname": "kpi_periods",
+      "attname": "target_value",
+      "type": "numeric(10,2)"
+    },
+    {
+      "relname": "kpi_periods",
+      "attname": "trend_direction",
+      "type": "text"
+    },
+    {
+      "relname": "kpi_periods",
+      "attname": "unit",
+      "type": "text"
+    },
+    {
+      "relname": "kpi_periods",
+      "attname": "updated_at",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "kpi_progress",
+      "attname": "id",
+      "type": "character varying"
+    },
+    {
+      "relname": "kpi_progress",
+      "attname": "kpi_id",
+      "type": "text"
+    },
+    {
+      "relname": "kpi_progress",
+      "attname": "notes",
+      "type": "text"
+    },
+    {
+      "relname": "kpi_progress",
+      "attname": "recorded_at",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "kpi_progress",
+      "attname": "rolling_average_30d",
+      "type": "numeric"
+    },
+    {
+      "relname": "kpi_progress",
+      "attname": "rolling_average_7d",
+      "type": "numeric"
+    },
+    {
+      "relname": "kpi_progress",
+      "attname": "trend_direction",
+      "type": "text"
+    },
+    {
+      "relname": "kpi_progress",
+      "attname": "value",
+      "type": "numeric"
+    },
+    {
+      "relname": "kpis",
+      "attname": "aggregation_method",
+      "type": "text"
+    },
+    {
+      "relname": "kpis",
+      "attname": "alert_condition",
+      "type": "text"
+    },
+    {
+      "relname": "kpis",
+      "attname": "alert_frequency",
+      "type": "text"
+    },
+    {
+      "relname": "kpis",
+      "attname": "alert_threshold",
+      "type": "numeric(18,2)"
+    },
+    {
+      "relname": "kpis",
+      "attname": "alerts_enabled",
+      "type": "boolean"
+    },
+    {
+      "relname": "kpis",
+      "attname": "apply_to",
+      "type": "text"
+    },
+    {
+      "relname": "kpis",
+      "attname": "calculation_config",
+      "type": "jsonb"
+    },
+    {
+      "relname": "kpis",
+      "attname": "campaign_id",
+      "type": "text"
+    },
+    {
+      "relname": "kpis",
+      "attname": "category",
+      "type": "text"
+    },
+    {
+      "relname": "kpis",
+      "attname": "created_at",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "kpis",
+      "attname": "current_value",
+      "type": "numeric"
+    },
+    {
+      "relname": "kpis",
+      "attname": "description",
+      "type": "text"
+    },
+    {
+      "relname": "kpis",
+      "attname": "email_notifications",
+      "type": "boolean"
+    },
+    {
+      "relname": "kpis",
+      "attname": "email_recipients",
+      "type": "text"
+    },
+    {
+      "relname": "kpis",
+      "attname": "id",
+      "type": "character varying"
+    },
+    {
+      "relname": "kpis",
+      "attname": "last_alert_sent",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "kpis",
+      "attname": "last_computed_value",
+      "type": "numeric"
+    },
+    {
+      "relname": "kpis",
+      "attname": "metric",
+      "type": "text"
+    },
+    {
+      "relname": "kpis",
+      "attname": "metric_key",
+      "type": "text"
+    },
+    {
+      "relname": "kpis",
+      "attname": "name",
+      "type": "text"
+    },
+    {
+      "relname": "kpis",
+      "attname": "platform_type",
+      "type": "text"
+    },
+    {
+      "relname": "kpis",
+      "attname": "priority",
+      "type": "text"
+    },
+    {
+      "relname": "kpis",
+      "attname": "rolling_average",
+      "type": "text"
+    },
+    {
+      "relname": "kpis",
+      "attname": "slack_notifications",
+      "type": "boolean"
+    },
+    {
+      "relname": "kpis",
+      "attname": "source_type",
+      "type": "text"
+    },
+    {
+      "relname": "kpis",
+      "attname": "specific_campaign_id",
+      "type": "text"
+    },
+    {
+      "relname": "kpis",
+      "attname": "status",
+      "type": "text"
+    },
+    {
+      "relname": "kpis",
+      "attname": "target_date",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "kpis",
+      "attname": "target_value",
+      "type": "numeric(18,2)"
+    },
+    {
+      "relname": "kpis",
+      "attname": "timeframe",
+      "type": "text"
+    },
+    {
+      "relname": "kpis",
+      "attname": "tracking_period",
+      "type": "integer"
+    },
+    {
+      "relname": "kpis",
+      "attname": "unit",
+      "type": "text"
+    },
+    {
+      "relname": "kpis",
+      "attname": "updated_at",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "metric_snapshots",
+      "attname": "campaign_id",
+      "type": "text"
+    },
+    {
+      "relname": "metric_snapshots",
+      "attname": "id",
+      "type": "character varying"
+    },
+    {
+      "relname": "metric_snapshots",
+      "attname": "metrics",
+      "type": "jsonb"
+    },
+    {
+      "relname": "metric_snapshots",
+      "attname": "notes",
+      "type": "text"
+    },
+    {
+      "relname": "metric_snapshots",
+      "attname": "recorded_at",
+      "type": "timestamp without time zone"
+    },
+    {
+      "relname": "metric_snapshots",
+      "attname": "reporting_date",
+      "type": "text"
+    },
+    {
+      "relname": "metric_snapshots",
+      "attname": "snapshot_type",
+      "type": "text"
+    },
+    {
+      "relname": "metric_snapshots",
+      "attname": "total_clicks",
+      "type": "integer"
+    },
+    {
+      "relname": "metric_snapshots",
+      "attname": "total_conversions",
+      "type": "double precision"
+    },
+    {
+      "relname": "metric_snapshots",
+      "attname": "total_engagements",
+      "type": "integer"
+    },
+    {
+      "relname": "metric_snapshots",
+      "attname": "total_impressions",
+      "type": "integer"
+    },
+    {
+      "relname": "metric_snapshots",
+      "attname": "total_leads",
+      "type": "integer"
+    },
+    {
+      "relname": "metric_snapshots",
+      "attname": "total_spend",
+      "type": "numeric(10,2)"
+    }
+  ],
+  "finiteConstraints": [
+    {
+      "conname": "benchmark_history_current_value_finite",
+      "convalidated": true
+    },
+    {
+      "conname": "benchmarks_current_value_finite",
+      "convalidated": true
+    },
+    {
+      "conname": "ga4_daily_metrics_conversions_finite",
+      "convalidated": true
+    },
+    {
+      "conname": "kpi_alerts_current_value_finite",
+      "convalidated": true
+    },
+    {
+      "conname": "kpi_periods_change_amount_finite",
+      "convalidated": true
+    },
+    {
+      "conname": "kpi_periods_final_value_finite",
+      "convalidated": true
+    },
+    {
+      "conname": "kpi_periods_previous_period_value_finite",
+      "convalidated": true
+    },
+    {
+      "conname": "kpi_progress_rolling_average_30d_finite",
+      "convalidated": true
+    },
+    {
+      "conname": "kpi_progress_rolling_average_7d_finite",
+      "convalidated": true
+    },
+    {
+      "conname": "kpi_progress_value_finite",
+      "convalidated": true
+    },
+    {
+      "conname": "kpis_current_value_finite",
+      "convalidated": true
+    },
+    {
+      "conname": "kpis_last_computed_value_finite",
+      "convalidated": true
+    },
+    {
+      "conname": "metric_snapshots_total_conversions_finite",
+      "convalidated": true
+    }
+  ],
+  "rollback": {
+    "base": "839bf508bffea4742f992616753dc68eabcfab3e",
+    "startupOnlyArtifactSha256": "d2708587b062dafd9a43a8465b0df388081482a411a6de0a4665a5724ffb1010",
+    "artifact": "audit-temp/v1-batch3-predeploy-private/rollback-startup-only-index.ts",
+    "boundary": "Five startup type changes only; NOT a deployable or validated whole-application rollback. Previous runtime read/write rounding must also be retained from the precision fix.",
+    "deployed": false
+  },
+  "result": "PASS",
+  "pushDecision": "HOLD: old runtime rollback is unsafe; a whole-application precision-compatible rollback is not yet validated.",
+  "completedAt": "2026-10-21T21:51:03.171Z"
+}

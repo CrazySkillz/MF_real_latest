@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-21T22:44:39.216Z",
+  "target": "fallback",
+  "mode": "build",
+  "results": [
+    {
+      "label": "typecheck",
+      "exitCode": 0,
+      "error": null
+    },
+    {
+      "label": "client-build",
+      "exitCode": 0,
+      "error": null
+    },
+    {
+      "label": "server-build",
+      "exitCode": 0,
+      "error": null
+    }
+  ]
+}

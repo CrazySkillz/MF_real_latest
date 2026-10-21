@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-21T22:46:37.905Z",
+  "target": "fallback",
+  "mode": "full",
+  "results": [
+    {
+      "label": "full-suite",
+      "exitCode": 1,
+      "error": null
+    }
+  ]
+}

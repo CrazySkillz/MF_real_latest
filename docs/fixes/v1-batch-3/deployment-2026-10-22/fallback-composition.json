@@ -1,0 +1,750 @@
+{
+  "base": "839bf508bffea4742f992616753dc68eabcfab3e",
+  "candidate": "001ddfa87c445a51e63320cde9737b774aa1af0c",
+  "target": "audit-temp/v1-batch3-fallback-worktree",
+  "manifest": [
+    {
+      "file": "server/analytics.ts",
+      "sha256": "5c2d8c84c135672f5c769711617763da1c6c18a7fba33c4d8cd1792dc03ef9af",
+      "hunks": [
+        {
+          "header": "@@ -0,0 +1 @@",
+          "retained": true
+        },
+        {
+          "header": "@@ -59,0 +61 @@ export class GoogleAnalytics4Service {",
+          "retained": false
+        },
+        {
+          "header": "@@ -106 +108 @@ export class GoogleAnalytics4Service {",
+          "retained": true
+        },
+        {
+          "header": "@@ -108 +110 @@ export class GoogleAnalytics4Service {",
+          "retained": true
+        },
+        {
+          "header": "@@ -792 +794 @@ export class GoogleAnalytics4Service {",
+          "retained": true
+        },
+        {
+          "header": "@@ -796 +798 @@ export class GoogleAnalytics4Service {",
+          "retained": true
+        },
+        {
+          "header": "@@ -800 +802 @@ export class GoogleAnalytics4Service {",
+          "retained": true
+        },
+        {
+          "header": "@@ -831 +833 @@ export class GoogleAnalytics4Service {",
+          "retained": true
+        },
+        {
+          "header": "@@ -909 +911 @@ export class GoogleAnalytics4Service {",
+          "retained": true
+        },
+        {
+          "header": "@@ -995 +997 @@ export class GoogleAnalytics4Service {",
+          "retained": true
+        },
+        {
+          "header": "@@ -1002 +1004 @@ export class GoogleAnalytics4Service {",
+          "retained": true
+        },
+        {
+          "header": "@@ -1132 +1134 @@ export class GoogleAnalytics4Service {",
+          "retained": true
+        },
+        {
+          "header": "@@ -1291 +1293 @@ export class GoogleAnalytics4Service {",
+          "retained": true
+        },
+        {
+          "header": "@@ -1411 +1413,3 @@ export class GoogleAnalytics4Service {",
+          "retained": false
+        },
+        {
+          "header": "@@ -1418 +1422 @@ export class GoogleAnalytics4Service {",
+          "retained": false
+        },
+        {
+          "header": "@@ -1443 +1447 @@ export class GoogleAnalytics4Service {",
+          "retained": false
+        },
+        {
+          "header": "@@ -1448 +1452 @@ export class GoogleAnalytics4Service {",
+          "retained": true
+        },
+        {
+          "header": "@@ -1478 +1482 @@ export class GoogleAnalytics4Service {",
+          "retained": false
+        },
+        {
+          "header": "@@ -1498 +1502 @@ export class GoogleAnalytics4Service {",
+          "retained": false
+        },
+        {
+          "header": "@@ -1502 +1506 @@ export class GoogleAnalytics4Service {",
+          "retained": true
+        },
+        {
+          "header": "@@ -1508 +1512 @@ export class GoogleAnalytics4Service {",
+          "retained": false
+        },
+        {
+          "header": "@@ -1521 +1525 @@ export class GoogleAnalytics4Service {",
+          "retained": false
+        },
+        {
+          "header": "@@ -1841 +1844,0 @@ export class GoogleAnalytics4Service {",
+          "retained": false
+        },
+        {
+          "header": "@@ -1843,2 +1846,7 @@ export class GoogleAnalytics4Service {",
+          "retained": false
+        },
+        {
+          "header": "@@ -1850,0 +1859,6 @@ export class GoogleAnalytics4Service {",
+          "retained": false
+        },
+        {
+          "header": "@@ -1875 +1889 @@ export class GoogleAnalytics4Service {",
+          "retained": false
+        },
+        {
+          "header": "@@ -1877,0 +1892,5 @@ export class GoogleAnalytics4Service {",
+          "retained": false
+        },
+        {
+          "header": "@@ -1911 +1930,2 @@ export class GoogleAnalytics4Service {",
+          "retained": false
+        },
+        {
+          "header": "@@ -2246,2 +2266,2 @@ export class GoogleAnalytics4Service {",
+          "retained": true
+        },
+        {
+          "header": "@@ -2280 +2300 @@ export class GoogleAnalytics4Service {",
+          "retained": true
+        },
+        {
+          "header": "@@ -2296 +2316 @@ export class GoogleAnalytics4Service {",
+          "retained": true
+        },
+        {
+          "header": "@@ -2349,0 +2370 @@ export class GoogleAnalytics4Service {",
+          "retained": false
+        },
+        {
+          "header": "@@ -2353 +2374 @@ export class GoogleAnalytics4Service {",
+          "retained": false
+        },
+        {
+          "header": "@@ -3339 +3360 @@ export class GoogleAnalytics4Service {",
+          "retained": true
+        },
+        {
+          "header": "@@ -3387 +3408 @@ export class GoogleAnalytics4Service {",
+          "retained": true
+        },
+        {
+          "header": "@@ -3706 +3727 @@ export class GoogleAnalytics4Service {",
+          "retained": true
+        }
+      ]
+    },
+    {
+      "file": "client/src/pages/ga4-metrics.tsx",
+      "sha256": "2a773aeb7489cf0421fe8e24bffe94740044f5761545181997f44bc18c02312f",
+      "hunks": [
+        {
+          "header": "@@ -1 +1,2 @@",
+          "retained": false
+        },
+        {
+          "header": "@@ -36 +37 @@ import { useClient } from \"@/lib/clientContext\";",
+          "retained": true
+        },
+        {
+          "header": "@@ -663 +664 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -671,0 +673 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -774 +776 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -1329 +1331 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -1453 +1455 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -1532,0 +1535 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -1626 +1629 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -1939 +1942 @@ export default function GA4Metrics() {",
+          "retained": false
+        },
+        {
+          "header": "@@ -1941 +1944,2 @@ export default function GA4Metrics() {",
+          "retained": false
+        },
+        {
+          "header": "@@ -1969 +1973 @@ export default function GA4Metrics() {",
+          "retained": false
+        },
+        {
+          "header": "@@ -2033 +2037 @@ export default function GA4Metrics() {",
+          "retained": false
+        },
+        {
+          "header": "@@ -2036 +2040,2 @@ export default function GA4Metrics() {",
+          "retained": false
+        },
+        {
+          "header": "@@ -2078 +2083 @@ export default function GA4Metrics() {",
+          "retained": false
+        },
+        {
+          "header": "@@ -2139 +2144 @@ export default function GA4Metrics() {",
+          "retained": false
+        },
+        {
+          "header": "@@ -2144 +2149 @@ export default function GA4Metrics() {",
+          "retained": false
+        },
+        {
+          "header": "@@ -2173 +2178 @@ export default function GA4Metrics() {",
+          "retained": false
+        },
+        {
+          "header": "@@ -2175 +2180,2 @@ export default function GA4Metrics() {",
+          "retained": false
+        },
+        {
+          "header": "@@ -2196 +2202 @@ export default function GA4Metrics() {",
+          "retained": false
+        },
+        {
+          "header": "@@ -2200 +2206 @@ export default function GA4Metrics() {",
+          "retained": false
+        },
+        {
+          "header": "@@ -2229 +2235 @@ export default function GA4Metrics() {",
+          "retained": false
+        },
+        {
+          "header": "@@ -2233 +2239 @@ export default function GA4Metrics() {",
+          "retained": false
+        },
+        {
+          "header": "@@ -2281 +2287 @@ export default function GA4Metrics() {",
+          "retained": false
+        },
+        {
+          "header": "@@ -3020 +3026,2 @@ export default function GA4Metrics() {",
+          "retained": false
+        },
+        {
+          "header": "@@ -3810 +3817 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -3879 +3886 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -3897 +3904 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -3908 +3915 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -3939 +3946 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -4123 +4130 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -4444 +4451 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -4654 +4661 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -4699 +4706 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -5141 +5148 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -5291 +5298 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -5639 +5646 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -5826 +5833 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -5857 +5864 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -5904 +5911 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -5934 +5941 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -5977 +5984 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -6878 +6885 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -7132 +7139 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -7199 +7206 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -7277 +7284 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -8149 +8156 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -8441 +8448 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -8456 +8463 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -8535 +8542 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -9900 +9907 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -10315 +10322 @@ export default function GA4Metrics() {",
+          "retained": true
+        },
+        {
+          "header": "@@ -10385 +10392 @@ export default function GA4Metrics() {",
+          "retained": true
+        }
+      ]
+    },
+    {
+      "file": "server/storage.ts",
+      "sha256": "93cfe7b9afc4f47a93083139242456d05977c261d0bc96733e829c05379b1185",
+      "hunks": [
+        {
+          "header": "@@ -747,0 +748,2 @@ export class DatabaseStorage implements IStorage {",
+          "retained": false
+        },
+        {
+          "header": "@@ -752,0 +755,4 @@ export class DatabaseStorage implements IStorage {",
+          "retained": false
+        },
+        {
+          "header": "@@ -6584 +6590 @@ export class DatabaseStorage implements IStorage {",
+          "retained": true
+        },
+        {
+          "header": "@@ -6620 +6626 @@ export class DatabaseStorage implements IStorage {",
+          "retained": true
+        },
+        {
+          "header": "@@ -6759,0 +6766,2 @@ export class DatabaseStorage implements IStorage {",
+          "retained": false
+        }
+      ]
+    },
+    {
+      "file": "server/routes-oauth.ts",
+      "sha256": "d042be9df3e2a7a06fbad8c53079e8125aa4075b78bc10c2345f0d60ef34ed25",
+      "hunks": [
+        {
+          "header": "@@ -9247,0 +9248,2 @@ export async function registerRoutes(app: Express): Promise<Server> {",
+          "retained": false
+        },
+        {
+          "header": "@@ -10280 +10282 @@ export async function registerRoutes(app: Express): Promise<Server> {",
+          "retained": true
+        },
+        {
+          "header": "@@ -10307 +10309 @@ export async function registerRoutes(app: Express): Promise<Server> {",
+          "retained": true
+        },
+        {
+          "header": "@@ -15071 +15073 @@ export async function registerRoutes(app: Express): Promise<Server> {",
+          "retained": true
+        },
+        {
+          "header": "@@ -15084 +15086 @@ export async function registerRoutes(app: Express): Promise<Server> {",
+          "retained": true
+        }
+      ]
+    },
+    {
+      "file": "shared/schema.ts",
+      "sha256": "fd0be02b4831a700e4b497b0a85805327900e0f26c0edbd860024d36356b2a62",
+      "hunks": [
+        {
+          "header": "@@ -2 +2 @@ import { sql } from \"drizzle-orm\";",
+          "retained": true
+        },
+        {
+          "header": "@@ -184 +184 @@ export const ga4DailyMetrics = pgTable(\"ga4_daily_metrics\", {",
+          "retained": true
+        },
+        {
+          "header": "@@ -191 +191,4 @@ export const ga4DailyMetrics = pgTable(\"ga4_daily_metrics\", {",
+          "retained": true
+        },
+        {
+          "header": "@@ -862,2 +865,2 @@ export const kpis = pgTable(\"kpis\", {",
+          "retained": true
+        },
+        {
+          "header": "@@ -886 +889,4 @@ export const kpis = pgTable(\"kpis\", {",
+          "retained": true
+        },
+        {
+          "header": "@@ -897 +903 @@ export const kpiPeriods = pgTable(\"kpi_periods\", {",
+          "retained": true
+        },
+        {
+          "header": "@@ -905,2 +911,2 @@ export const kpiPeriods = pgTable(\"kpi_periods\", {",
+          "retained": true
+        },
+        {
+          "header": "@@ -913 +919,5 @@ export const kpiPeriods = pgTable(\"kpi_periods\", {",
+          "retained": true
+        },
+        {
+          "header": "@@ -918,3 +928,3 @@ export const kpiProgress = pgTable(\"kpi_progress\", {",
+          "retained": true
+        },
+        {
+          "header": "@@ -924 +934,5 @@ export const kpiProgress = pgTable(\"kpi_progress\", {",
+          "retained": true
+        },
+        {
+          "header": "@@ -932 +946 @@ export const kpiAlerts = pgTable(\"kpi_alerts\", {",
+          "retained": true
+        },
+        {
+          "header": "@@ -942 +956,3 @@ export const kpiAlerts = pgTable(\"kpi_alerts\", {",
+          "retained": true
+        },
+        {
+          "header": "@@ -953 +969 @@ export const benchmarks = pgTable(\"benchmarks\", {",
+          "retained": true
+        },
+        {
+          "header": "@@ -981 +997,3 @@ export const benchmarks = pgTable(\"benchmarks\", {",
+          "retained": true
+        },
+        {
+          "header": "@@ -986 +1004 @@ export const benchmarkHistory = pgTable(\"benchmark_history\", {",
+          "retained": true
+        },
+        {
+          "header": "@@ -992 +1010,3 @@ export const benchmarkHistory = pgTable(\"benchmark_history\", {",
+          "retained": true
+        },
+        {
+          "header": "@@ -1001 +1021 @@ export const metricSnapshots = pgTable(\"metric_snapshots\", {",
+          "retained": true
+        },
+        {
+          "header": "@@ -1014,0 +1035 @@ export const metricSnapshots = pgTable(\"metric_snapshots\", {",
+          "retained": true
+        },
+        {
+          "header": "@@ -1037,0 +1059,7 @@ const financialSnapshotMoneyInputSchema = z.discriminatedUnion(\"available\", [",
+          "retained": false
+        },
+        {
+          "header": "@@ -1065 +1093 @@ export const financialDailySnapshotInputSchema = z.object({",
+          "retained": false
+        }
+      ]
+    },
+    {
+      "file": "server/utils/campaign-cumulative-financials.ts",
+      "sha256": "6d8af3352a6159a0228b7db6696fdafd6c65ab9494592ab8d7c61b7eaf1d2816",
+      "hunks": [
+        {
+          "header": "@@ -1,0 +2 @@ import { financialDailySnapshotInputSchema, type FinancialDailySnapshotInput } f",
+          "retained": false
+        },
+        {
+          "header": "@@ -54,2 +55,2 @@ const resolveFinancialMetric = (",
+          "retained": false
+        },
+        {
+          "header": "@@ -61 +62 @@ const resolveFinancialMetric = (",
+          "retained": false
+        },
+        {
+          "header": "@@ -99,5 +100,4 @@ export function resolveCampaignCumulativeFinancials(input: {",
+          "retained": false
+        },
+        {
+          "header": "@@ -104,0 +105 @@ export function resolveCampaignCumulativeFinancials(input: {",
+          "retained": false
+        }
+      ]
+    },
+    {
+      "file": "server/utils/revenue-record-total.ts",
+      "sha256": "bb47738f3ecc99fb541706dbcf791200a2ba371da9f545864403ba912f79c35d",
+      "hunks": [
+        {
+          "header": "@@ -26 +26 @@ export const assertGa4RevenueMaterializationComplete = (activeSources: any[], ro",
+          "retained": false
+        }
+      ]
+    },
+    {
+      "file": "server/financial-daily-comparison.test.ts",
+      "sha256": "9809cea696c5bcdf411a6412d7af50adfb3d082b078bbe7eafb56c50e6542aee",
+      "hunks": [
+        {
+          "header": "@@ -55,0 +56,10 @@ describe(\"read-only financial daily comparison derivation\", () => {",
+          "retained": false
+        }
+      ]
+    },
+    {
+      "file": "server/ga4-browser-publication-refresh.test.ts",
+      "sha256": "820b4a60120887c7e0ee801d8de447fec51f3077ed745e83ce272127f812dd4d",
+      "hunks": [
+        {
+          "header": "@@ -235,2 +235,2 @@ describe(\"GA4 browser publication coordination\", () => {",
+          "retained": false
+        },
+        {
+          "header": "@@ -239,0 +240 @@ describe(\"GA4 browser publication coordination\", () => {",
+          "retained": false
+        }
+      ]
+    },
+    {
+      "file": "server/ga4-initial-import-route.test.ts",
+      "sha256": "2e0ca273a021b69d7ee250fc8abd96b2b88e684cafd1b508cff4025fcafd232a",
+      "hunks": [
+        {
+          "header": "@@ -105,0 +106,26 @@ describe(\"new campaign initial GA4 import\", () => {",
+          "retained": false
+        }
+      ]
+    },
+    {
+      "file": "server/ga4-refresh-input-invalidation-postgres.test.ts",
+      "sha256": "db60e0402899db9455c20572f27ccb6e87f64a66bc1abca42af09800519bedbe",
+      "hunks": [
+        {
+          "header": "@@ -23 +23 @@ const schemaName = `ga4_input_it_${randomUUID().replace(/-/g, \"\")}`;",
+          "retained": false
+        },
+        {
+          "header": "@@ -76,0 +77,56 @@ describe.skipIf(!testUrl)(\"GA4 refresh invalidation on ordinary input edits\", ()",
+          "retained": false
+        }
+      ]
+    },
+    {
+      "file": "server/ga4-request-timeout.test.ts",
+      "sha256": "c8be988547112f5152a18dd5dfeaeabc9ba631eac01fffc2ee08b2f8fd4618b2",
+      "hunks": [
+        {
+          "header": "@@ -15,0 +16,9 @@ const requestCases = [",
+          "retained": false
+        },
+        {
+          "header": "@@ -120,0 +130,14 @@ describe(\"GA4 native request cancellation\", () => {",
+          "retained": false
+        }
+      ]
+    },
+    {
+      "file": "server/ga4-overview-reporting-note.test.ts",
+      "sha256": "3dcace13ed0a651fe0f7f12ec4549c3e9ed1780302f77c940b258b3b49323191",
+      "hunks": [
+        {
+          "header": "@@ -41 +41 @@ const snapshot = {",
+          "retained": false
+        },
+        {
+          "header": "@@ -46 +46 @@ function render(overrides: Record<string, any> = {}) {",
+          "retained": false
+        },
+        {
+          "header": "@@ -76 +76 @@ describe(\"Overview reporting note uses the displayed data's metadata\", () => {",
+          "retained": false
+        }
+      ]
+    },
+    {
+      "file": "server/ga4-ui-regression.test.ts",
+      "sha256": "9065b5886f2bccc48b2a5067b23bb9085565f928d2074c3d9f91f1534f381fd0",
+      "hunks": [
+        {
+          "header": "@@ -223,2 +223,2 @@ describe(\"GA4 UI regression guard\", () => {",
+          "retained": false
+        },
+        {
+          "header": "@@ -388 +388 @@ describe(\"GA4 UI regression guard\", () => {",
+          "retained": true
+        },
+        {
+          "header": "@@ -982,4 +982,4 @@ describe(\"GA4 UI regression guard\", () => {",
+          "retained": false
+        },
+        {
+          "header": "@@ -993 +993 @@ describe(\"GA4 UI regression guard\", () => {",
+          "retained": false
+        }
+      ]
+    },
+    {
+      "file": "server/financial-daily-snapshot-writer.test.ts",
+      "sha256": "c0b2f21beab46774ccfd2d0e960016470691039fedb154638780c1beb45a3bad",
+      "hunks": [
+        {
+          "header": "@@ -81,0 +82,13 @@ describe(\"gated financial daily snapshot writer\", () => {",
+          "retained": false
+        }
+      ]
+    },
+    {
+      "file": "server/ga4-kpi-snapshot-display.test.ts",
+      "sha256": "8254f586a98e23e9318786b2ec11cc83b82b35888a9ae871de81a5bb0d3f7874",
+      "hunks": [
+        {
+          "header": "@@ -180 +180 @@ it.each([\"overview\", \"kpis\", \"benchmarks\", \"insights\", \"reports\"])(\"loads the sa",
+          "retained": false
+        },
+        {
+          "header": "@@ -182 +182 @@ it.each([\"overview\", \"kpis\", \"benchmarks\", \"insights\", \"reports\"])(\"loads the sa",
+          "retained": false
+        }
+      ]
+    },
+    {
+      "file": "server/ga4-derived-publication-postgres.test.ts",
+      "sha256": "33e05912facd0e5b9cee8a34d25da4f73e29d95852a32db40d11d20625d80e65",
+      "hunks": [
+        {
+          "header": "@@ -110,0 +111,12 @@ describe.skipIf(!testUrl)(\"GA4 derived writes with real PostgreSQL ownership\", (",
+          "retained": false
+        },
+        {
+          "header": "@@ -220 +232 @@ describe.skipIf(!testUrl)(\"GA4 derived writes with real PostgreSQL ownership\", (",
+          "retained": true
+        },
+        {
+          "header": "@@ -252 +264 @@ describe.skipIf(!testUrl)(\"GA4 derived writes with real PostgreSQL ownership\", (",
+          "retained": true
+        },
+        {
+          "header": "@@ -260 +272 @@ describe.skipIf(!testUrl)(\"GA4 derived writes with real PostgreSQL ownership\", (",
+          "retained": true
+        },
+        {
+          "header": "@@ -281 +293 @@ describe.skipIf(!testUrl)(\"GA4 derived writes with real PostgreSQL ownership\", (",
+          "retained": true
+        },
+        {
+          "header": "@@ -283 +295 @@ describe.skipIf(!testUrl)(\"GA4 derived writes with real PostgreSQL ownership\", (",
+          "retained": true
+        },
+        {
+          "header": "@@ -290 +302 @@ describe.skipIf(!testUrl)(\"GA4 derived writes with real PostgreSQL ownership\", (",
+          "retained": true
+        },
+        {
+          "header": "@@ -292 +304 @@ describe.skipIf(!testUrl)(\"GA4 derived writes with real PostgreSQL ownership\", (",
+          "retained": true
+        },
+        {
+          "header": "@@ -303,2 +315,2 @@ describe.skipIf(!testUrl)(\"GA4 derived writes with real PostgreSQL ownership\", (",
+          "retained": true
+        }
+      ]
+    },
+    {
+      "file": "server/ga4-insights-live-production-regression.test.ts",
+      "sha256": "f801d47f76fee4d661c5949fd0ab3d99cf67059e0ba723d51f642018806e92cf",
+      "hunks": [
+        {
+          "header": "@@ -18 +18 @@ describe(\"live GA4 Insights production boundary\", () => {",
+          "retained": false
+        },
+        {
+          "header": "@@ -145 +145 @@ describe(\"live GA4 Insights production boundary\", () => {",
+          "retained": true
+        }
+      ]
+    },
+    {
+      "file": "server/v1-batch3-acquisition.test.ts",
+      "action": "omit tests for reverted nonprecision fixes"
+    },
+    {
+      "file": "server/v1-batch3-revenue-contracts.test.ts",
+      "action": "omit tests for reverted nonprecision fixes"
+    },
+    {
+      "file": "server/ga4-publication-browser.test.ts",
+      "action": "retain fractional scenario and preceding publication checks; omit currency/refund scenario",
+      "sha256": "b7cb5c7c5ce0e20e740e3996cf97a17819e4d0517e110816c9e77a008692faf7"
+    },
+    {
+      "file": "server/v1-batch3-conversion-precision.test.ts",
+      "action": "stub both legacy direct fetch and requestReport transports with the same synthetic responses; assertions unchanged",
+      "sha256": "0e589fec9a611a08eacda97fed61f60d56d5f3d9a03318f4450ccfefad457c1a"
+    }
+  ],
+  "scope": "Old deployed application plus the full fractional conversion correction; other Batch 3 fixes intentionally absent. Emergency recovery only, not V1 certification."
+}

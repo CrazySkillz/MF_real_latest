@@ -1,0 +1,11 @@
+const fs=require('node:fs'),crypto=require('node:crypto'),assert=require('node:assert/strict'),{execFileSync}=require('node:child_process');
+const d=__dirname,read=name=>JSON.parse(fs.readFileSync(d+'/'+name,'utf8').replace(/^\uFEFF/,''));
+const composition=read('fallback-composition.json'),initial=read('fallback-composition-initial.json');
+const runtime=f=>!f.includes('.test.')&&/^(client|server|shared|migrations)\//.test(f);
+for(const f of initial.manifest.filter(e=>runtime(e.file)))assert.equal(composition.manifest.find(e=>e.file===f.file).sha256,f.sha256);
+const candidate=JSON.parse(fs.readFileSync('docs/fixes/v1-batch-3/validation-2026-10-21-goal-precision/candidate-manifest.json','utf8'));
+for(const f of candidate.files)assert.equal(crypto.createHash('sha256').update(fs.readFileSync(f.file,'utf8').replace(/\r\n/g,'\n')).digest('hex'),f.sha256LF,f.file);
+const root='audit-temp/v1-batch3-fallback-worktree/';
+const files=execFileSync('git',['ls-files','client','server','shared','migrations','package.json','package-lock.json','vite.config.ts','vitest.config.ts','render.yaml'],{encoding:'utf8',windowsHide:true}).trim().split('\n').filter(file=>fs.existsSync(root+file));
+fs.writeFileSync(d+'/fallback-manifest.json',JSON.stringify({base:'839bf508bffea4742f992616753dc68eabcfab3e',parent:'001ddfa87c445a51e63320cde9737b774aa1af0c',at:new Date().toISOString(),runtimeUnchangedSincePassingBuildAndStartup:true,mainCandidate71FilesUnchanged:true,files:files.map(file=>({file,sha256LF:crypto.createHash('sha256').update(fs.readFileSync(root+file,'utf8').replace(/\r\n/g,'\n')).digest('hex')}))},null,2)+'\n');
+console.log(JSON.stringify({fallbackTrackedFiles:files.length,mainCandidateUnchanged:true,fallbackRuntimeUnchanged:true}));

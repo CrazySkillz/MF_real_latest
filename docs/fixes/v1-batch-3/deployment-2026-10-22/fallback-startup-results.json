@@ -1,0 +1,52 @@
+{
+  "at": "2026-10-21T22:44:57.805Z",
+  "base": "001ddfa8 isolated precision-preserving fallback; see fallback-composition.json",
+  "boundary": "Actual startup callback and storage methods with real isolated PostgreSQL; all worker/provider calls stubbed, no production requests",
+  "results": [
+    {
+      "name": "Fresh bootstrap, readiness gate, repeated startup and four upsert identities",
+      "result": "PASS"
+    },
+    {
+      "name": "Restart preserves fractional facts, goals and history after all startup DDL",
+      "result": "PASS"
+    },
+    {
+      "name": "Two concurrent fresh boots serialize and leave one consistent schema",
+      "result": "PASS"
+    },
+    {
+      "name": "Historical schema upgrade, TEXT notification replay, retired backfill and historical orphan preservation",
+      "result": "PASS"
+    },
+    {
+      "name": "Duplicate history rejects upgrade atomically without deleting facts or starting workers",
+      "result": "PASS"
+    },
+    {
+      "name": "Incomplete schema fails closed without modifying it",
+      "result": "PASS"
+    },
+    {
+      "name": "Worker registration failure never enables readiness",
+      "result": "PASS"
+    },
+    {
+      "name": "Create/delete ordering, owner isolation, lost-response idempotency and child rollback",
+      "result": "PASS"
+    },
+    {
+      "name": "Cancellation tombstone defeats delayed creation and preserves active/accepted imports",
+      "result": "PASS"
+    },
+    {
+      "name": "Staged GA4 authorization, cancel, restart, expiry, isolation, commit and preserved history",
+      "result": "PASS"
+    },
+    {
+      "name": "Missing database configuration fails closed",
+      "result": "PASS"
+    }
+  ],
+  "metadataCorrection": "Inherited label corrected only; executed assertions and result entries unchanged."
+}

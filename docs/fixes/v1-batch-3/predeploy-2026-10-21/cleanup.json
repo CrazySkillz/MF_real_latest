@@ -1,0 +1,9 @@
+﻿{
+    "at":  "2026-10-21T21:51:56.335Z",
+    "target":  "127.0.0.1:55443/v1_batch3_production_clone",
+    "cloneAbsent":  true,
+    "otherClientConnections":  0,
+    "encryptedBackupRetained":  true,
+    "result":  "PASS",
+    "isolatedPostgresStopped":  true
+}

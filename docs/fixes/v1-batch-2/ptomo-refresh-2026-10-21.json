@@ -1,0 +1,64 @@
+{
+  "checkedAt": "2026-10-21T16:33:51.794Z",
+  "boundary": "Public health and exact Ptomo read-only database checks. No owner session, provider call, refresh trigger, production mutation or other campaign inspection.",
+  "health": {
+    "status": 200,
+    "ok": true,
+    "commit": "839bf508bffea4742f992616753dc68eabcfab3e"
+  },
+  "databaseReadOnly": true,
+  "databaseTimeZone": "UTC",
+  "ptomo": {
+    "ownerMatchesClient": true,
+    "campaignAndConnectionPreserved": true,
+    "activeConnectionCount": 1,
+    "daily": {
+      "rows": 47,
+      "first_date": "2026-09-04",
+      "last_date": "2026-10-20",
+      "last_update": "2026-10-21 12:11:16.999"
+    },
+    "overview": {
+      "window_start": "2026-09-04",
+      "window_end": "2026-10-20",
+      "updated_at": "2026-10-21 12:11:17.172"
+    },
+    "publications": [
+      {
+        "snapshot_type": "executive_summary_daily",
+        "reporting_date": "2026-10-20",
+        "recorded_at": "2026-10-21 12:12:24.248568",
+        "aligned_marker": "ga4_aligned_refresh_v1:2026-10-20:2026-10-21T12:12:44.988Z"
+      },
+      {
+        "snapshot_type": "financial_daily",
+        "reporting_date": "2026-10-20",
+        "recorded_at": "2026-10-21 12:11:55.10414",
+        "aligned_marker": null
+      }
+    ],
+    "refreshWork": [
+      {
+        "due_at": "2026-10-21 12:00:00+00",
+        "reporting_date": "2026-10-20",
+        "status": "completed",
+        "started_at": "2026-10-21 12:10:24.155302+00",
+        "completed_at": "2026-10-21 12:12:44.988+00",
+        "attempt_count": 1,
+        "retryable": true,
+        "has_error": false
+      },
+      {
+        "due_at": "2026-10-21 06:00:00+00",
+        "reporting_date": "2026-10-20",
+        "status": "completed",
+        "started_at": "2026-10-21 06:09:38.826642+00",
+        "completed_at": "2026-10-21 06:11:52.504+00",
+        "attempt_count": 1,
+        "retryable": true,
+        "has_error": false
+      }
+    ]
+  },
+  "result": "READ_ONLY_OBSERVATION_COMPLETE"
+}

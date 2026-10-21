@@ -1,0 +1,218 @@
+{
+  "startedAt": "2026-10-21T17:18:45.603Z",
+  "implementationCommit": "839bf508bffea4742f992616753dc68eabcfab3e",
+  "boundary": "Current implementation; synthetic identities/provider responses, isolated localhost databases and intercepted browser requests. No live Google consent or deployed customer mutation.",
+  "candidateFiles": [
+    {
+      "path": "client/src/App.tsx",
+      "sha256": "3fe1877735cdb866c8f09b3ce993dc15fdaeceff78f82a8c53c76930fdcdce61",
+      "expected": "3fe1877735cdb866c8f09b3ce993dc15fdaeceff78f82a8c53c76930fdcdce61"
+    },
+    {
+      "path": "client/src/components/GA4ConnectionFlow.tsx",
+      "sha256": "034d85d256f0531894496d188b14bd0a851df6aae9989f1428f1d87e8b57f546",
+      "expected": "034d85d256f0531894496d188b14bd0a851df6aae9989f1428f1d87e8b57f546"
+    },
+    {
+      "path": "client/src/components/IntegratedGA4Auth.tsx",
+      "sha256": "7ef022c798bdb914516322a6e97397247d5c55de0319095030a25d7ba1d80c5a",
+      "expected": "7ef022c798bdb914516322a6e97397247d5c55de0319095030a25d7ba1d80c5a"
+    },
+    {
+      "path": "client/src/lib/ga4-campaign-selection.ts",
+      "sha256": "bf7cb94312c0fda504b4e8b219994f7fec9656aaa0abd10ac8aa121ef6231b98",
+      "expected": "bf7cb94312c0fda504b4e8b219994f7fec9656aaa0abd10ac8aa121ef6231b98"
+    },
+    {
+      "path": "client/src/pages/campaigns.tsx",
+      "sha256": "73a01f96a39702e9fb473ef9d7d99149c7187c489f7d5bf202d5df5f01e75257",
+      "expected": "73a01f96a39702e9fb473ef9d7d99149c7187c489f7d5bf202d5df5f01e75257"
+    },
+    {
+      "path": "migrations/0003_add_kpi_periods_and_notifications_metadata.sql",
+      "sha256": "d3a1b0122adec6142e4ee9f6227b9e42b7d32614d4e08ab4568a873813e46293",
+      "expected": "d3a1b0122adec6142e4ee9f6227b9e42b7d32614d4e08ab4568a873813e46293"
+    },
+    {
+      "path": "migrations/0006_add_daily_spend_revenue_granularity.sql",
+      "sha256": "82e87d5723989c17355a6d9f6dd4cc3b203f1a4383742b25a11e4179ee1c7d74",
+      "expected": "82e87d5723989c17355a6d9f6dd4cc3b203f1a4383742b25a11e4179ee1c7d74"
+    },
+    {
+      "path": "migrations/0024_v1_schema_integrity.sql",
+      "sha256": "1969279f6b8e7d9cfb27dfc0c95ecc48ad9bc9b38eb0fec0f30e9a78c43067b5",
+      "expected": "1969279f6b8e7d9cfb27dfc0c95ecc48ad9bc9b38eb0fec0f30e9a78c43067b5"
+    },
+    {
+      "path": "migrations/v1-bootstrap.sql",
+      "sha256": "645ba439742e6cff7e0708d5ef3df187d34b4038cb3d2d67eedf64ac20871ae8",
+      "expected": "645ba439742e6cff7e0708d5ef3df187d34b4038cb3d2d67eedf64ac20871ae8"
+    },
+    {
+      "path": "scripts/generate-v1-bootstrap.cjs",
+      "sha256": "11a0534480cf9da1bc6c9de708d8192470dcad2ee875aedf95c36b2f7ff65007",
+      "expected": "11a0534480cf9da1bc6c9de708d8192470dcad2ee875aedf95c36b2f7ff65007"
+    },
+    {
+      "path": "server/analytics.ts",
+      "sha256": "991714c9de9032cfca30f8f212aa60e03f139ce84229d5f1ef334f274eec3c22",
+      "expected": "991714c9de9032cfca30f8f212aa60e03f139ce84229d5f1ef334f274eec3c22"
+    },
+    {
+      "path": "server/campaign-delete-cascade-regression.test.ts",
+      "sha256": "ceba91b4741679a04ff3671d20bca610f4385904fa57ead727a86057164eacdf",
+      "expected": "ceba91b4741679a04ff3671d20bca610f4385904fa57ead727a86057164eacdf"
+    },
+    {
+      "path": "server/create-campaign-ga4-first-regression.test.ts",
+      "sha256": "99ca3a8b52308d4f14643331f01b0200faa1c85a828347d5e512c050ae366a9f",
+      "expected": "99ca3a8b52308d4f14643331f01b0200faa1c85a828347d5e512c050ae366a9f"
+    },
+    {
+      "path": "server/ga4-30-day-production-scope-regression.test.ts",
+      "sha256": "e8f258ac215a64d4f9a3552cf1e9ec7039fd4a57c2165be160f6fd95c74b293c",
+      "expected": "e8f258ac215a64d4f9a3552cf1e9ec7039fd4a57c2165be160f6fd95c74b293c"
+    },
+    {
+      "path": "server/ga4-auto-refresh-regression.test.ts",
+      "sha256": "dc0d0c9ccd26e418b7afd2309794313b82d14261de475f2fe81aa0dbe44ba831",
+      "expected": "dc0d0c9ccd26e418b7afd2309794313b82d14261de475f2fe81aa0dbe44ba831"
+    },
+    {
+      "path": "server/ga4-filter.test.ts",
+      "sha256": "c89839da5c528f2a44795c27774150fccd3c699039ec8f30ea03e5c9c52a9c4e",
+      "expected": "c89839da5c528f2a44795c27774150fccd3c699039ec8f30ea03e5c9c52a9c4e"
+    },
+    {
+      "path": "server/ga4-insights-auth-scope-regression.test.ts",
+      "sha256": "26391600af8c6a395ddf2b7d49ee5ff9e4774ca5bff48e4cdff9fec0cbb33094",
+      "expected": "26391600af8c6a395ddf2b7d49ee5ff9e4774ca5bff48e4cdff9fec0cbb33094"
+    },
+    {
+      "path": "server/ga4-kpi-real-path-parity-regression.test.ts",
+      "sha256": "b0911d2c30aaacef8971069f3d630733f92606950f1e7bad21bb6a291aeea4e6",
+      "expected": "b0911d2c30aaacef8971069f3d630733f92606950f1e7bad21bb6a291aeea4e6"
+    },
+    {
+      "path": "server/google-ads-scheduler.ts",
+      "sha256": "9d9fb11a18b3071cdb5a3af1eb38bc518f9490e59376653bb748c1771158fd42",
+      "expected": "9d9fb11a18b3071cdb5a3af1eb38bc518f9490e59376653bb748c1771158fd42"
+    },
+    {
+      "path": "server/google-sheets-token-scheduler.ts",
+      "sha256": "cd2df5795ed8e29be0b838a6b66a66819a4cff1ba4d0b24657a25cc9f1a89ede",
+      "expected": "cd2df5795ed8e29be0b838a6b66a66819a4cff1ba4d0b24657a25cc9f1a89ede"
+    },
+    {
+      "path": "server/index.ts",
+      "sha256": "5495a41e1e6eab7b7d291d6ed4c8d1ea0e73323a37e4428a81a82bc3ac448530",
+      "expected": "5495a41e1e6eab7b7d291d6ed4c8d1ea0e73323a37e4428a81a82bc3ac448530"
+    },
+    {
+      "path": "server/real-ga4-client.ts",
+      "sha256": "60b5e43e11a2da1e994aa9c9f51a2325744bb8e30904c139ff05bb6c9e63ac9c",
+      "expected": "60b5e43e11a2da1e994aa9c9f51a2325744bb8e30904c139ff05bb6c9e63ac9c"
+    },
+    {
+      "path": "server/routes-oauth.ts",
+      "sha256": "dd60b459db2d3dfed351c011863155b3f11e98c5379bc85286edb975ce1b3077",
+      "expected": "dd60b459db2d3dfed351c011863155b3f11e98c5379bc85286edb975ce1b3077"
+    },
+    {
+      "path": "server/scheduler.ts",
+      "sha256": "3c529f91a416e4b79eead17fa417c3ac38b6d1dcbaef317a001f02f8955a6706",
+      "expected": "3c529f91a416e4b79eead17fa417c3ac38b6d1dcbaef317a001f02f8955a6706"
+    },
+    {
+      "path": "server/storage.ts",
+      "sha256": "c7d604af2c254e9417d5a28c12fdb8dab9dbcfc24c3c897953c52dcf8af11d08",
+      "expected": "c7d604af2c254e9417d5a28c12fdb8dab9dbcfc24c3c897953c52dcf8af11d08"
+    },
+    {
+      "path": "server/v1-batch2-browser-regression.cjs",
+      "sha256": "d793d6018eb5fc618ff557e73603799bc20a933c4fa89d8d690923eeaf45e826",
+      "expected": "d793d6018eb5fc618ff557e73603799bc20a933c4fa89d8d690923eeaf45e826"
+    },
+    {
+      "path": "server/v1-batch2-campaign-discovery.test.ts",
+      "sha256": "c92b35ba67e3edf1aa54191236f1669c15f48ec156c06422ab088b7c9f9ccf5c",
+      "expected": "c92b35ba67e3edf1aa54191236f1669c15f48ec156c06422ab088b7c9f9ccf5c"
+    },
+    {
+      "path": "server/v1-batch2-campaign-lifecycle-routes.test.ts",
+      "sha256": "106a56acfae3a7b86f7363a1c5a1e652b6fa5bccc85725751ec67c72146c2b0f",
+      "expected": "106a56acfae3a7b86f7363a1c5a1e652b6fa5bccc85725751ec67c72146c2b0f"
+    },
+    {
+      "path": "server/v1-batch2-ga4-discovery.test.ts",
+      "sha256": "d69429d0c362f61452283b8500a0bb39d95b4e712bdab75542f7ed05b841c4bd",
+      "expected": "d69429d0c362f61452283b8500a0bb39d95b4e712bdab75542f7ed05b841c4bd"
+    },
+    {
+      "path": "server/v1-batch2-ga4-flow-browser.cjs",
+      "sha256": "2bc498bf9f00dfee59ca215fe6b09b1c0d9220c6480c811381f4c726d5da12bf",
+      "expected": "2bc498bf9f00dfee59ca215fe6b09b1c0d9220c6480c811381f4c726d5da12bf"
+    },
+    {
+      "path": "server/v1-batch2-ga4-setup-routes.test.ts",
+      "sha256": "9edfa513488f3d0c787dec532e5d87c8f106c485b44ee5f0467ac62ef19415e3",
+      "expected": "9edfa513488f3d0c787dec532e5d87c8f106c485b44ee5f0467ac62ef19415e3"
+    },
+    {
+      "path": "server/v1-batch2-onboarding-regression.cjs",
+      "sha256": "c04a5a539005bbf1aa235d816693183e160733353235cb2ab93ea058e32180bf",
+      "expected": "c04a5a539005bbf1aa235d816693183e160733353235cb2ab93ea058e32180bf"
+    },
+    {
+      "path": "server/v1-batch2-postgres-regression.cjs",
+      "sha256": "8e23681da546c67a814dce206720b86d01b94f7c470d57a6d846fe149f8a9c4c",
+      "expected": "8e23681da546c67a814dce206720b86d01b94f7c470d57a6d846fe149f8a9c4c"
+    },
+    {
+      "path": "server/v1-batch2-scheduler-startup.test.ts",
+      "sha256": "3aa243913da09480b8d5c3572ceafd510e108b81162ee839f15f37923f820c38",
+      "expected": "3aa243913da09480b8d5c3572ceafd510e108b81162ee839f15f37923f820c38"
+    },
+    {
+      "path": "shared/schema.ts",
+      "sha256": "a37a4adf1f9057a843755318cdd767431577d2d16860ec4a27f32647db0d3451",
+      "expected": "a37a4adf1f9057a843755318cdd767431577d2d16860ec4a27f32647db0d3451"
+    }
+  ],
+  "steps": [
+    {
+      "name": "full-suite",
+      "exitCode": 1,
+      "signal": null,
+      "errorCode": null,
+      "elapsedMs": 444413,
+      "log": "docs/fixes/v1-batch-2/acceptance-2026-10-21/completed/full-suite.log"
+    },
+    {
+      "name": "browser",
+      "exitCode": 0,
+      "signal": null,
+      "errorCode": null,
+      "elapsedMs": 23284,
+      "log": "docs/fixes/v1-batch-2/acceptance-2026-10-21/completed/browser.log"
+    },
+    {
+      "name": "onboarding",
+      "exitCode": 0,
+      "signal": null,
+      "errorCode": null,
+      "elapsedMs": 8640,
+      "log": "docs/fixes/v1-batch-2/acceptance-2026-10-21/completed/onboarding.log"
+    },
+    {
+      "name": "ga4-flow-browser",
+      "exitCode": 0,
+      "signal": null,
+      "errorCode": null,
+      "elapsedMs": 5384,
+      "log": "docs/fixes/v1-batch-2/acceptance-2026-10-21/completed/ga4-flow-browser.log"
+    }
+  ],
+  "completedAt": "2026-10-21T17:26:47.416Z",
+  "runtimeFilesUnchanged": true
+}

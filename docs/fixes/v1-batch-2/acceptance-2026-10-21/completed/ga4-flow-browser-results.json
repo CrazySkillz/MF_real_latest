@@ -1,0 +1,98 @@
+{
+  "at": "2026-10-21T17:26:47.316Z",
+  "boundary": "Actual GA4ConnectionFlow and controls; intercepted fixture API, no provider or production access",
+  "results": [
+    {
+      "name": "Failed cancellation retains selection; retry deletes the exact pending authorization",
+      "result": "PASS",
+      "calls": [
+        {
+          "path": "/api/campaigns/campaign/ga4-connection-status",
+          "method": "GET"
+        },
+        {
+          "path": "/api/campaigns/campaign",
+          "method": "GET"
+        },
+        {
+          "path": "/api/campaigns/campaign/ga4-oauth-pending/pending",
+          "method": "DELETE"
+        },
+        {
+          "path": "/api/campaigns/campaign/ga4-oauth-pending/pending",
+          "method": "DELETE"
+        }
+      ]
+    },
+    {
+      "name": "Confirmed property passes its pending ID and supports manual names beside discovery",
+      "result": "PASS",
+      "calls": [
+        {
+          "path": "/api/campaigns/campaign/ga4-connection-status",
+          "method": "GET"
+        },
+        {
+          "path": "/api/campaigns/campaign",
+          "method": "GET"
+        },
+        {
+          "path": "/api/ga4/select-property",
+          "method": "POST",
+          "body": {
+            "campaignId": "campaign",
+            "propertyId": "123",
+            "lookbackDays": 30,
+            "pendingConnectionId": "pending"
+          }
+        },
+        {
+          "path": "/api/campaigns/campaign/ga4-campaign-values",
+          "method": "GET"
+        },
+        {
+          "path": "/api/campaigns/campaign",
+          "method": "PATCH",
+          "body": {
+            "ga4CampaignFilter": "fresh_manual"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Quota failure is visible and does not claim no campaigns; explicit manual entry remains usable",
+      "result": "PASS",
+      "calls": [
+        {
+          "path": "/api/campaigns/campaign/ga4-connection-status",
+          "method": "GET"
+        },
+        {
+          "path": "/api/campaigns/campaign",
+          "method": "GET"
+        },
+        {
+          "path": "/api/ga4/select-property",
+          "method": "POST",
+          "body": {
+            "campaignId": "campaign",
+            "propertyId": "123",
+            "lookbackDays": 30,
+            "pendingConnectionId": "pending"
+          }
+        },
+        {
+          "path": "/api/campaigns/campaign/ga4-campaign-values",
+          "method": "GET"
+        },
+        {
+          "path": "/api/campaigns/campaign",
+          "method": "PATCH",
+          "body": {
+            "ga4CampaignFilter": "known_exact"
+          }
+        }
+      ]
+    }
+  ]
+}

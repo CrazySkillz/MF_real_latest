@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { formatConversionCredit } from "../../shared/metric-math";
 import { db } from "../db";
 import { campaigns, clients, emailAlertEvents } from "../../shared/schema.js";
 import { eq } from "drizzle-orm";
@@ -68,7 +69,7 @@ class EmailService {
       case "seconds":
         return `${num.toFixed(1)}s`;
       case "count":
-        return num.toLocaleString();
+        return formatConversionCredit(num);
       default:
         if (this.isIsoCurrencyCode(normalizedUnit)) {
           try {

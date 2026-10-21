@@ -1,4 +1,5 @@
-import { useQuery, useMutation, useQueryClient, keepPreviousData, useQueries, useIsFetching } from "@tanstack/react-query";
+import { conversionCreditsMatch } from "@shared/metric-math";
+import { useQuery, useMutation, useQueryClient, useQueries, useIsFetching } from "@tanstack/react-query";
 import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useLocation, useRoute, useSearch } from "wouter";
 import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, Pencil, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, AlertCircle, CheckCircle2, Download, FileText, Settings, Activity, Info, Trophy } from "lucide-react";
@@ -33,7 +34,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useClient } from "@/lib/clientContext";
-import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent, normalizeRateToPercent, formatPct } from "@shared/metric-math";
+import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent, normalizeRateToPercent, formatPct, formatConversionCredit } from "@shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
 import { normalizeGA4CampaignAllocationKey, resolveGA4OverviewFinancialRefreshWarning, selectGA4FinancialTotalsSource } from "@shared/ga4-financial-source";
 import { resolveExactGA4CampaignBreakdownRevenue } from "@shared/ga4-campaign-breakdown";
@@ -660,7 +661,7 @@ export default function GA4Metrics() {
 
   const isIsoCurrencyCode = (unit: string) => /^[A-Z]{3}$/.test(String(unit || "").trim());
 
-  const formatNumberByUnit = (raw: string, unit: string) => {
+  const formatNumberByUnit = (raw: string, unit: string, observed = false) => {
     const cleaned = stripNumberFormatting(raw);
     if (!cleaned) return "";
     const n = Number(cleaned);
@@ -669,6 +670,7 @@ export default function GA4Metrics() {
     if (!normalizedUnit || normalizedUnit === SELECT_UNIT) {
       return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
     }
+    if (normalizedUnit === "count" && observed) return formatConversionCredit(n);
     if (normalizedUnit === "count") return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
     if (normalizedUnit === "%" || normalizedUnit === "ratio") {
       // Smart formatting: whole numbers when possible, 1 decimal when needed
@@ -771,7 +773,7 @@ export default function GA4Metrics() {
         case "Revenue":
           return revenue.toFixed(2);
         case "Total Conversions":
-          return String(Math.round(conversions));
+          return String(conversions);
         case "Conversion Rate":
           return sessions > 0 ? ((conversions / sessions) * 100).toFixed(2) : "0.00";
         case "Engagement Rate":
@@ -1326,7 +1328,7 @@ export default function GA4Metrics() {
       benchmarkType: normalizedType,
       unit: benchmark.unit || "",
       benchmarkValue: formatNumberByUnit(String(benchmark.benchmarkValue ?? ""), String(benchmark.unit || "%")),
-      currentValue: formatNumberByUnit(liveCurrentValue, String(benchmark.unit || "%")),
+      currentValue: formatNumberByUnit(liveCurrentValue, String(benchmark.unit || "%"), true),
       metric: metric,
       industry: benchmark.industry || "",
       geoLocation: benchmark.geoLocation || "",
@@ -1450,7 +1452,7 @@ export default function GA4Metrics() {
         benchmarkType: normalizedType,
         unit: editingBenchmark.unit || "",
         benchmarkValue: formatNumberByUnit(String((editingBenchmark as any).benchmarkValue ?? ""), String((editingBenchmark as any).unit || "%")),
-        currentValue: formatNumberByUnit(liveCurrentValue, String((editingBenchmark as any).unit || "%")),
+        currentValue: formatNumberByUnit(liveCurrentValue, String((editingBenchmark as any).unit || "%"), true),
         metric: metric,
         industry: (editingBenchmark as any).industry || "",
         geoLocation: (editingBenchmark as any).geoLocation || "",
@@ -1530,6 +1532,7 @@ export default function GA4Metrics() {
   const formatValue = (value: string, unit: string) => {
     const numValue = parseFloat(value);
     switch (unit) {
+      case "count": return formatConversionCredit(numValue);
       case "%":
         return formatPct(numValue);
       case "$": {
@@ -1623,7 +1626,7 @@ export default function GA4Metrics() {
       case "seconds":
         return `${numValue.toFixed(1)}s`;
       case "count":
-        return numValue.toLocaleString();
+        return formatConversionCredit(numValue);
       default:
         if (isIsoCurrencyCode(unit)) {
           try {
@@ -1936,9 +1939,10 @@ export default function GA4Metrics() {
     Number(getLiveKpiValue({ metric, name, currentValue })) || 0;
 
   const { data: ga4DailyResp, isLoading: ga4Loading, error: ga4Error, isPlaceholderData: ga4DailyPlaceholder } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-daily", GA4_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId],
+    queryKey: ["/api/campaigns", campaignId, "ga4-daily", GA4_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, campaignCurrency],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
-    placeholderData: keepPreviousData,
+    placeholderData: (previousData: any, previousQuery: any) => previousQuery?.queryKey?.[1] === campaignId
+      && previousQuery.queryKey[4] === selectedGA4PropertyId && previousQuery.queryKey[5] === campaignCurrency ? previousData : undefined,
     staleTime: 0,
     refetchOnWindowFocus: !ga4PublicationStatus || ga4PublicationStatusError,
     refetchOnReconnect: !ga4PublicationStatus || ga4PublicationStatusError,
@@ -1966,7 +1970,7 @@ export default function GA4Metrics() {
     isLoading: ga4InsightsDailyLoading,
     error: ga4InsightsDailyError,
   } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId],
+    queryKey: ["/api/campaigns", campaignId, "ga4-insights-daily", GA4_INSIGHTS_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId, campaignCurrency],
     enabled: (activeTab === "insights" || activeTab === "reports") && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: !ga4PublicationStatus || ga4PublicationStatusError,
@@ -2030,10 +2034,11 @@ export default function GA4Metrics() {
   const ga4OverviewExpectedEndDate = String((ga4DailyResp as any)?.latestStoredDailyDate || ga4ReportDate || "").trim();
 
   const { data: financialDailySnapshotResp, isLoading: financialDailySnapshotLoading, isError: financialDailySnapshotError } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "financial-daily-snapshot", ga4OverviewExpectedEndDate],
+    queryKey: ["/api/campaigns", campaignId, "financial-daily-snapshot", ga4OverviewExpectedEndDate, campaignCurrency],
     enabled: !!campaignId && !!ga4OverviewExpectedEndDate,
     placeholderData: (previousData: any, previousQuery: any) => previousQuery?.queryKey?.[1] === campaignId
-      && previousData?.snapshot?.campaignId === campaignId ? previousData : undefined,
+      && previousData?.snapshot?.campaignId === campaignId
+      && previousData?.snapshot?.metrics?.financialDaily?.currency === campaignCurrency ? previousData : undefined,
     staleTime: 0,
     // Financial-only source refreshes can publish without a new GA4 receipt.
     refetchOnWindowFocus: true,
@@ -2075,7 +2080,7 @@ export default function GA4Metrics() {
 
   // Diagnostics (provenance + report shape checks)
   const { data: ga4Diagnostics } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics", dateRange, selectedGA4PropertyId],
+    queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics", dateRange, selectedGA4PropertyId, campaignCurrency],
     enabled: !insightsValidationReadOnly && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: false,
@@ -2136,12 +2141,12 @@ export default function GA4Metrics() {
     isError: breakdownError,
     isPlaceholderData: breakdownPlaceholder,
   } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", activeTab === "insights" ? dateRange : "import-to-date", selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly, activeTab === "insights" ? "" : ga4OverviewExpectedEndDate],
+    queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", activeTab === "insights" ? dateRange : "import-to-date", selectedGA4PropertyId, activeTab === "insights", insightsValidationReadOnly, activeTab === "insights" ? "" : ga4OverviewExpectedEndDate, campaignCurrency],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId && (activeTab === "insights" || !!ga4OverviewExpectedEndDate),
     placeholderData: (previousData: any, previousQuery: any) => {
       const previousKey = previousQuery?.queryKey;
       const currentWindow = activeTab === "insights" ? dateRange : "import-to-date";
-      return previousKey?.[3] === currentWindow && previousKey?.[4] === selectedGA4PropertyId && previousKey?.[7] === (activeTab === "insights" ? "" : ga4OverviewExpectedEndDate)
+      return previousKey?.[1] === campaignId && previousKey?.[3] === currentWindow && previousKey?.[4] === selectedGA4PropertyId && previousKey?.[7] === (activeTab === "insights" ? "" : ga4OverviewExpectedEndDate) && previousKey?.[8] === campaignCurrency
         ? previousData
         : undefined;
     },
@@ -2170,9 +2175,10 @@ export default function GA4Metrics() {
     isError: adComparisonBreakdownError,
     isPlaceholderData: adComparisonBreakdownPlaceholder,
   } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "ga4-ad-comparison-breakdown", "import-to-date", selectedGA4PropertyId],
+    queryKey: ["/api/campaigns", campaignId, "ga4-ad-comparison-breakdown", "import-to-date", selectedGA4PropertyId, campaignCurrency],
     enabled: (activeTab === "campaigns" || activeTab === "reports") && !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
-    placeholderData: keepPreviousData,
+    placeholderData: (previousData: any, previousQuery: any) => previousQuery?.queryKey?.[1] === campaignId
+      && previousQuery.queryKey[4] === selectedGA4PropertyId && previousQuery.queryKey[5] === campaignCurrency ? previousData : undefined,
     staleTime: 0,
     refetchOnWindowFocus: !ga4PublicationStatus || ga4PublicationStatusError,
     refetchOnReconnect: !ga4PublicationStatus || ga4PublicationStatusError,
@@ -2193,11 +2199,11 @@ export default function GA4Metrics() {
   });
 
   const { data: ga4LandingPages, isLoading: landingPagesLoading, isError: landingPagesError } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", "import-to-date", selectedGA4PropertyId, ga4OverviewExpectedEndDate],
+    queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", "import-to-date", selectedGA4PropertyId, ga4OverviewExpectedEndDate, campaignCurrency],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId && !!ga4OverviewExpectedEndDate,
     placeholderData: (previousData: any, previousQuery: any) => {
       const previousKey = previousQuery?.queryKey;
-      return previousKey?.[1] === campaignId && previousKey?.[3] === "import-to-date" && previousKey?.[4] === selectedGA4PropertyId && previousKey?.[5] === ga4OverviewExpectedEndDate
+      return previousKey?.[1] === campaignId && previousKey?.[3] === "import-to-date" && previousKey?.[4] === selectedGA4PropertyId && previousKey?.[5] === ga4OverviewExpectedEndDate && previousKey?.[6] === campaignCurrency
         ? previousData
         : undefined;
     },
@@ -2226,11 +2232,11 @@ export default function GA4Metrics() {
   });
 
   const { data: ga4ConversionEvents, isLoading: conversionEventsLoading, isError: conversionEventsError } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", "import-to-date", selectedGA4PropertyId, ga4OverviewExpectedEndDate],
+    queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", "import-to-date", selectedGA4PropertyId, ga4OverviewExpectedEndDate, campaignCurrency],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId && !!ga4OverviewExpectedEndDate,
     placeholderData: (previousData: any, previousQuery: any) => {
       const previousKey = previousQuery?.queryKey;
-      return previousKey?.[1] === campaignId && previousKey?.[3] === "import-to-date" && previousKey?.[4] === selectedGA4PropertyId && previousKey?.[5] === ga4OverviewExpectedEndDate
+      return previousKey?.[1] === campaignId && previousKey?.[3] === "import-to-date" && previousKey?.[4] === selectedGA4PropertyId && previousKey?.[5] === ga4OverviewExpectedEndDate && previousKey?.[6] === campaignCurrency
         ? previousData
         : undefined;
     },
@@ -2278,7 +2284,7 @@ export default function GA4Metrics() {
   });
 
   const { data: ga4ToDateResp, error: ga4ToDateError, isLoading: ga4ToDateLoading } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, "campaign-currency", insightsValidationReadOnly],
+    queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, "campaign-currency", insightsValidationReadOnly, campaignCurrency],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -3017,7 +3023,8 @@ export default function GA4Metrics() {
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
   const financialROI = computeRoiPercent(financialRevenue, financialSpend);
   const financialCPA = computeCpa(financialSpend, financialConversions);
-  const overviewFinancialSnapshot = (financialDailySnapshotResp as any)?.snapshot;
+  const overviewFinancialSnapshot = (financialDailySnapshotResp as any)?.snapshot?.metrics?.financialDaily?.currency === campaignCurrency
+    ? (financialDailySnapshotResp as any).snapshot : null;
   const overviewFinancialInputs = overviewFinancialSnapshot?.metrics?.financialDaily?.inputs;
   const overviewFinancialReportingDate = String(overviewFinancialSnapshot?.reportingDate || "");
   const overviewFinancialRevenueAvailable = overviewFinancialInputs?.revenue?.available === true;
@@ -3807,7 +3814,7 @@ export default function GA4Metrics() {
         metricCards([
           ["Sessions", fN(sess)],
           ["Users", fN(users)],
-          ["Conversions", fN(conv)],
+          ["Conversions", formatConversionCredit(conv)],
           ["Engagement Rate", fP(engRate)],
           ["Conv. Rate", fP(cr)],
         ], 3);
@@ -3876,7 +3883,7 @@ export default function GA4Metrics() {
             String(c?.name || "(not set)"),
             fN(Number(c?.sessions || 0)),
             fN(Number(c?.users || 0)),
-            fN(Number(c?.conversions || 0)),
+            formatConversionCredit(Number(c?.conversions || 0)),
             fP(Number(c?.conversionRate || 0)),
             fC(Number((Number(c?.revenue || 0) + Number(campaignBreakdownMatchedExternalRevenue.get(String(c?.name || "")) || 0)).toFixed(2))),
           ]),
@@ -3894,7 +3901,7 @@ export default function GA4Metrics() {
           `${String(r?.source || "(not set)")}/${String(r?.medium || "(not set)")}`,
           formatNumber(Number(r?.sessions || 0)),
           formatNumber(Number(r?.users || 0)),
-          formatNumber(Number(r?.conversions || 0)),
+          formatConversionCredit(Number(r?.conversions || 0)),
           formatPercentage(Number(r?.sessions || 0) > 0 ? (Number(r?.conversions || 0) / Number(r?.sessions || 0)) * 100 : 0),
         ]),
         [52, 44, 22, 20, 28, 26]
@@ -3905,7 +3912,7 @@ export default function GA4Metrics() {
         ["EVENT", "CONVERSIONS", "EVENT COUNT", "USERS"],
         (Array.isArray(ga4ConversionEvents?.rows) ? ga4ConversionEvents.rows : []).slice(0, 25).map((r: any) => [
           String(r?.eventName || "(not set)"),
-          Number(r?.conversions || 0).toLocaleString("en-US", { maximumFractionDigits: 20 }),
+          formatConversionCredit(Number(r?.conversions || 0)),
           r?.eventCount == null ? "Unavailable" : fN(Number(r.eventCount)),
           r?.users == null ? "Unavailable" : fN(Number(r.users)),
         ]),
@@ -3936,7 +3943,7 @@ export default function GA4Metrics() {
       const fmtMetricValue = (metric: string, value: number) => {
         if (metric === "revenue") return fC(value);
         if (metric === "conversionRate") return fP(value);
-        if (metric === "conversions") return Number(value || 0).toLocaleString("en-US", { maximumFractionDigits: 15 });
+        if (metric === "conversions") return formatConversionCredit(Number(value || 0));
         return fN(value);
       };
       const fmtCardMetricValue = (metric: string, value: number) => {
@@ -4120,7 +4127,7 @@ export default function GA4Metrics() {
             doc.setTextColor(...C.textSec);
             doc.text(fN(s), colXs[2], y + 4);
             doc.text(fN(u), colXs[3], y + 4);
-            doc.text(fN(cv), colXs[4], y + 4);
+            doc.text(formatConversionCredit(cv), colXs[4], y + 4);
             doc.text(fC(rv), colXs[5], y + 4);
             doc.text(fP(rate), colXs[6], y + 4);
             y += 8;
@@ -4441,7 +4448,7 @@ export default function GA4Metrics() {
         };
         const primaryDataCards: string[][] = [
           ...(breakdownTotals.sessions > 0 ? [["Sessions", formatNumber(breakdownTotals.sessions), "Current GA4 total"] as [string, string, string]] : []),
-          ...(breakdownTotals.conversions > 0 ? [["Conversions", formatNumber(breakdownTotals.conversions), breakdownTotals.sessions > 0 ? `${formatPct((breakdownTotals.conversions / breakdownTotals.sessions) * 100)} conversion rate` : ""] as [string, string, string]] : []),
+          ...(breakdownTotals.conversions > 0 ? [["Conversions", formatConversionCredit(breakdownTotals.conversions), breakdownTotals.sessions > 0 ? `${formatPct((breakdownTotals.conversions / breakdownTotals.sessions) * 100)} conversion rate` : ""] as [string, string, string]] : []),
           ...(financialRevenue > 0 ? [["Revenue", formatMoney(financialRevenue), "Total across revenue sources"] as [string, string, string]] : []),
         ];
         const secondaryDataCards: string[][] = [
@@ -4651,7 +4658,7 @@ export default function GA4Metrics() {
             doc.setTextColor(...C.textSec);
             doc.text(`Window: ${getGA4KpiReportingWindowLabel(k?.metric, k?.name)}`, MX + 8, y + 17, { maxWidth: CW - 16 });
             if (consumerState.code === "stale") {
-              doc.text(`Last-good value (not verified): ${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), String(k?.unit || "%"))}`, MX + 8, y + 22);
+              doc.text(`Last-good value (not verified): ${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), String(k?.unit || "%"), true)}`, MX + 8, y + 22);
             }
             y += stateHeight + 4;
             continue;
@@ -4696,7 +4703,7 @@ export default function GA4Metrics() {
           doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
           doc.text(`CURRENT (${String(k?.unit || "%")})`, MX + 12, boxY + 4);
           doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
-          doc.text(formatNumberByUnit(String(liveVal || "0"), String(k?.unit || "%")), MX + 12, boxY + 10);
+          doc.text(formatNumberByUnit(String(liveVal || "0"), String(k?.unit || "%"), true), MX + 12, boxY + 10);
           // Target
           doc.setFillColor(...C.cardBg);
           doc.roundedRect(MX + 12 + bw, boxY, bw, 12, 2, 2, "F");
@@ -5138,7 +5145,7 @@ export default function GA4Metrics() {
     String((ga4Breakdown as any)?.startDate || "") === String(insightsDataSummaryTotals.startDate || "") &&
     String((ga4Breakdown as any)?.endDate || "") === String(insightsDataSummaryTotals.endDate || "") &&
     channelAnalysis.totalSessions === insightsDataSummaryTotals.sessions &&
-    channelAnalysis.totalConversions === insightsDataSummaryTotals.conversions;
+    conversionCreditsMatch(channelAnalysis.totalConversions, insightsDataSummaryTotals.conversions, Math.max(1, ga4InsightsTimeSeries.length + channelAnalysis.channelCount));
   const dataSummaryChannelAnalysis = insightsChannelBreakdownMatchesDaily ? channelAnalysis : null;
   const recommendationChannelAnalysis = breakdownError ? null : dataSummaryChannelAnalysis;
   const insightsInitialLoading =
@@ -5288,7 +5295,7 @@ export default function GA4Metrics() {
     const findingRollups = findingsRollups;
     const findingChannelAnalysis = recommendationChannelAnalysis &&
       findingRollups.last30.sessions === insightsDataSummaryTotals.sessions &&
-      findingRollups.last30.conversions === insightsDataSummaryTotals.conversions
+      conversionCreditsMatch(findingRollups.last30.conversions, insightsDataSummaryTotals.conversions, Math.max(1, ga4InsightsTimeSeries.length))
       ? recommendationChannelAnalysis : null;
     const hasNativeAndImportedRevenue = revenueKpiInputState === "ready" && ga4HasRevenueMetric && Number(importedRevenueForFinancials || 0) > 0;
 
@@ -5636,7 +5643,7 @@ export default function GA4Metrics() {
           const unit = String((k as any)?.unit || "%");
           const suffix = unit === "%" ? "%" : unit === "$" ? "" : "";
           const prefix = unit === "$" ? "$" : "";
-          const curFmt = `${prefix}${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), unit)}${suffix}`;
+          const curFmt = `${prefix}${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), unit, true)}${suffix}`;
           const tgtFmt = `${prefix}${formatNumberByUnit(String(effectiveTarget), unit)}${suffix}`;
           return `${getKpiInsightPeriodCompatibility(k).currentWindow}: Current ${curFmt} vs target ${tgtFmt} (${formatPct(attPct)} progress).${streakNote}${trendNote}`;
         })(),
@@ -5823,7 +5830,7 @@ export default function GA4Metrics() {
           id: "anomaly:conversions:wow",
           severity: "high",
           title: `Conversions dropped ${Math.abs(convDelta7).toFixed(1)}% week-over-week`,
-          description: `Last 7d: ${formatNumber(findingRollups.last7.conversions)} vs prior 7d: ${formatNumber(findingRollups.prior7.conversions)}.`,
+          description: `Last 7d: ${formatConversionCredit(findingRollups.last7.conversions)} vs prior 7d: ${formatConversionCredit(findingRollups.prior7.conversions)}.`,
           recommendation: "Check conversion event configuration, landing page changes, and traffic quality by source/medium.",
         });
       }
@@ -5854,7 +5861,7 @@ export default function GA4Metrics() {
           id: "positive:conversions:wow",
           severity: "low",
           title: `Conversions up ${convDelta7.toFixed(1)}% week-over-week`,
-          description: `Last 7d: ${formatNumber(findingRollups.last7.conversions)} vs prior 7d: ${formatNumber(findingRollups.prior7.conversions)}.`,
+          description: `Last 7d: ${formatConversionCredit(findingRollups.last7.conversions)} vs prior 7d: ${formatConversionCredit(findingRollups.prior7.conversions)}.`,
           recommendation: "Check which traffic sources and conversion paths contributed before changing campaign delivery.",
         });
       }
@@ -5901,7 +5908,7 @@ export default function GA4Metrics() {
           id: "anomaly:volume:3d",
           severity: "medium",
           title: "Traffic and revenue fell in the latest 3 days",
-          description: `Imported GA4 data for ${findingRollups.last3.startDate} to ${findingRollups.last3.endDate}: ${formatNumber(findingRollups.last3.sessions)} sessions, ${formatNumber(findingRollups.last3.conversions)} conversions, ${formatMoney(findingRollups.last3.revenue)} revenue. Prior ${findingRollups.prior3.startDate} to ${findingRollups.prior3.endDate}: ${formatNumber(findingRollups.prior3.sessions)} sessions, ${formatNumber(findingRollups.prior3.conversions)} conversions, ${formatMoney(findingRollups.prior3.revenue)} revenue. Conversion rate was ${formatPct(crA3)} vs ${formatPct(crB3)}; the newest day had ${formatNumber(latestDay?.sessions || 0)} sessions.${hasNativeAndImportedRevenue ? " These daily revenue amounts exclude separate imported revenue included in Total Revenue." : ""}`,
+          description: `Imported GA4 data for ${findingRollups.last3.startDate} to ${findingRollups.last3.endDate}: ${formatNumber(findingRollups.last3.sessions)} sessions, ${formatConversionCredit(findingRollups.last3.conversions)} conversions, ${formatMoney(findingRollups.last3.revenue)} revenue. Prior ${findingRollups.prior3.startDate} to ${findingRollups.prior3.endDate}: ${formatNumber(findingRollups.prior3.sessions)} sessions, ${formatConversionCredit(findingRollups.prior3.conversions)} conversions, ${formatMoney(findingRollups.prior3.revenue)} revenue. Conversion rate was ${formatPct(crA3)} vs ${formatPct(crB3)}; the newest day had ${formatNumber(latestDay?.sessions || 0)} sessions.${hasNativeAndImportedRevenue ? " These daily revenue amounts exclude separate imported revenue included in Total Revenue." : ""}`,
           recommendation: "Check that the newest day's GA4 import is complete. If it is, compare traffic-source volume and campaign delivery between these periods before changing budgets; conversion rate did not fall.",
         });
       }
@@ -5931,7 +5938,7 @@ export default function GA4Metrics() {
           id: "anomaly:conversions:3d",
           severity: "medium",
           title: `Conversions dropped ${Math.abs(convDelta3).toFixed(1)}% (3-day comparison)`,
-          description: `Last 3d: ${formatNumber(findingRollups.last3.conversions)} vs prior 3d: ${formatNumber(findingRollups.prior3.conversions)}. Short window — monitor for confirmation.`,
+          description: `Last 3d: ${formatConversionCredit(findingRollups.last3.conversions)} vs prior 3d: ${formatConversionCredit(findingRollups.prior3.conversions)}. Short window — monitor for confirmation.`,
           recommendation: "Check conversion event configuration and traffic quality.",
         });
       }
@@ -5974,7 +5981,7 @@ export default function GA4Metrics() {
             const unit = String((k as any)?.unit || "%");
             const suffix = unit === "%" ? "%" : "";
             const prefix = unit === "$" ? "$" : "";
-            const curFmt = `${prefix}${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), unit)}${suffix}`;
+            const curFmt = `${prefix}${formatNumberByUnit(String(getLiveKpiValue(k) || "0"), unit, true)}${suffix}`;
             const tgtFmt = `${prefix}${formatNumberByUnit(String((getKpiEffectiveTarget(k) as any)?.effectiveTarget ?? (k as any)?.targetValue ?? ""), unit)}${suffix}`;
             return `${getKpiInsightPeriodCompatibility(k).currentWindow}: Current ${curFmt} vs target ${tgtFmt}.`;
           })(),
@@ -6875,7 +6882,7 @@ export default function GA4Metrics() {
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-muted-foreground/70">Conversions</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {renderSummaryValue(formatNumber(overviewSummaryTotals.conversions || 0))}
+                              {renderSummaryValue(formatConversionCredit(overviewSummaryTotals.conversions || 0))}
                             </p>
                           </CardContent>
                         </Card>
@@ -7129,7 +7136,7 @@ export default function GA4Metrics() {
                                           <td className="px-2 py-2 truncate" title={c.name}>{c.name}</td>
                                           <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.sessions)}</td>
                                           <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.users)}</td>
-                                          <td className="px-2 py-2 text-right tabular-nums">{formatNumber(c.conversions)}</td>
+                                          <td className="px-2 py-2 text-right tabular-nums">{formatConversionCredit(c.conversions)}</td>
                                           <td className="px-2 py-2 text-right tabular-nums">{formatPct(c.conversionRate)}</td>
                                           <td className="px-2 py-2 text-right tabular-nums">{formatMoney(revenue)}</td>
                                         </tr>
@@ -7196,7 +7203,7 @@ export default function GA4Metrics() {
                                           {String(r?.eventName || "(not set)")}
                                         </div>
                                       </td>
-                                      <td className="p-3 text-right">{Number(r?.conversions || 0).toLocaleString("en-US", { maximumFractionDigits: 20 })}</td>
+                                      <td className="p-3 text-right">{formatConversionCredit(Number(r?.conversions || 0))}</td>
                                       <td className="p-3 text-right">{r?.eventCount == null ? "Unavailable" : formatNumber(Number(r.eventCount))}</td>
                                       <td className="p-3 text-right">{r?.users == null ? "Unavailable" : formatNumber(Number(r.users))}</td>
                                     </tr>
@@ -7274,7 +7281,7 @@ export default function GA4Metrics() {
                                         </td>
                                         <td className="p-3 text-right">{formatNumber(Number(r?.sessions || 0))}</td>
                                         <td className="p-3 text-right">{formatNumber(Number(r?.users || 0))}</td>
-                                        <td className="p-3 text-right">{formatNumber(Number(r?.conversions || 0))}</td>
+                                        <td className="p-3 text-right">{formatConversionCredit(Number(r?.conversions || 0))}</td>
                                         <td className="p-3 text-right">{formatPercentage(cr)}</td>
                                       </tr>
                                     );
@@ -8146,7 +8153,7 @@ export default function GA4Metrics() {
                                                   metric: String(kpi?.metric || kpi?.name || ""),
                                                   description: String(kpi?.description || ""),
                                                   unit: String(kpi?.unit || "%"),
-                                                  currentValue: formatNumberByUnit(String(getLiveKpiValue(kpi) || "0"), String(kpi?.unit || "%")),
+                                                  currentValue: formatNumberByUnit(String(getLiveKpiValue(kpi) || "0"), String(kpi?.unit || "%"), true),
                                                   targetValue: formatNumberByUnit(String(kpi?.targetValue || ""), String(kpi?.unit || "%")),
                                                   priority: (kpi?.priority || "medium") as any,
                                                   alertsEnabled: Boolean(kpi?.alertsEnabled ?? false),
@@ -8438,7 +8445,7 @@ export default function GA4Metrics() {
                                           unit: resolvedUnit,
                                           description: prev.description ? prev.description : defaultDesc,
                                           // Format using the selected metric's unit (important when switching from % -> count).
-                                          currentValue: formatNumberByUnit(String(liveCurrent), String(resolvedUnit || "%")),
+                                          currentValue: formatNumberByUnit(String(liveCurrent), String(resolvedUnit || "%"), true),
                                           // If we're benchmarking against Industry, avoid leaving a stale benchmarkValue
                                           // from the previously selected metric; we'll refetch below.
                                           benchmarkValue: isIndustryType && industry ? "" : prev.benchmarkValue,
@@ -8453,7 +8460,7 @@ export default function GA4Metrics() {
                                             .then((resp) => (resp.ok ? resp.json().catch(() => null) : null))
                                             .then((data) => {
                                               if (data?.targetSourceCertified === true && typeof data.value !== "undefined") {
-                                                const formatted = formatNumberByUnit(String(data.value), String(data.unit || resolvedUnit || "%"));
+                                                const formatted = formatNumberByUnit(String(data.value), String(data.unit || resolvedUnit || "%"), true);
                                                 setNewBenchmark((prev) => ({
                                                   ...prev,
                                                   benchmarkValue: formatted,
@@ -8532,7 +8539,7 @@ export default function GA4Metrics() {
                                   onBlur={(e) =>
                                     setNewBenchmark((prev) => ({
                                       ...prev,
-                                      currentValue: formatNumberByUnit(e.target.value, String(prev.unit || SELECT_UNIT)),
+                                      currentValue: formatNumberByUnit(e.target.value, String(prev.unit || SELECT_UNIT), true),
                                     }))
                                   }
                                   placeholder="Auto-filled from GA4"
@@ -9897,7 +9904,7 @@ export default function GA4Metrics() {
                             {dataSummaryHistoryAvailable && (
                               <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3" data-testid="insights-summary-conversions">
                                 <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Conversions</p>
-                                <p className="text-xl font-bold text-foreground mt-1">{formatNumber(dataSummaryHistoryConversions)}</p>
+                                <p className="text-xl font-bold text-foreground mt-1">{formatConversionCredit(dataSummaryHistoryConversions)}</p>
                                 <p className="text-xs text-muted-foreground/70 mt-0.5">
                                   {dataSummaryHistorySessions > 0
                                     ? `${formatPct((dataSummaryHistoryConversions / dataSummaryHistorySessions) * 100)} conversion rate across imported history`
@@ -10312,7 +10319,7 @@ export default function GA4Metrics() {
                             engagementRate: overviewEngagementRate,
                             spend: Number(financialSpend || 0),
                           });
-                          kpiForm.setValue("currentValue", formatNumberByUnit(liveCurrent, resolvedUnit));
+                          kpiForm.setValue("currentValue", formatNumberByUnit(liveCurrent, resolvedUnit, true));
                         }}
                       >
                         <div className="font-medium text-sm text-foreground">
@@ -10382,7 +10389,7 @@ export default function GA4Metrics() {
                     onChange={(e) =>
                       kpiForm.setValue("currentValue", formatNumberAsYouType(e.target.value, String(kpiForm.getValues().unit || "%")))
                     }
-                    onBlur={(e) => kpiForm.setValue("currentValue", formatNumberByUnit(e.target.value, String(kpiForm.getValues().unit || "%")))}
+                    onBlur={(e) => kpiForm.setValue("currentValue", formatNumberByUnit(e.target.value, String(kpiForm.getValues().unit || "%"), true))}
                   />
                 </div>
                 <div className="space-y-2">

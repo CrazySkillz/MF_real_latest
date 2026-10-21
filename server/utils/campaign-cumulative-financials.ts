@@ -1,4 +1,5 @@
 import { financialDailySnapshotInputSchema, type FinancialDailySnapshotInput } from "../../shared/schema";
+import { parseGA4FinancialNumber } from "../../shared/ga4-financial-source";
 
 type FinancialMetric = {
   value?: unknown;
@@ -51,14 +52,14 @@ const resolveFinancialMetric = (
     throw new Error(`Cumulative ${metricName} availability is missing`);
   }
 
-  const value = Number(metric.value);
-  const hasValue = Number.isFinite(value) && value >= 0;
+  const value = parseGA4FinancialNumber(metric.value);
+  const hasValue = value !== null && (metricName === "revenue" || value >= 0);
   const sources = Array.isArray(metric.sources)
     ? Array.from(new Set(metric.sources.map((source) => String(source).trim()).filter(Boolean)))
     : [];
 
   if (metric.available === true && (!hasValue || sources.length === 0)) {
-    throw new Error(`Available cumulative ${metricName} requires a non-negative value and authoritative sources`);
+    throw new Error(`Available cumulative ${metricName} requires a ${metricName === "revenue" ? "finite" : "non-negative"} value and authoritative sources`);
   }
   if (metric.available === false && sources.length > 0) {
     throw new Error(`Unavailable cumulative ${metricName} must not retain authoritative sources`);
@@ -96,12 +97,12 @@ export function resolveCampaignCumulativeFinancials(input: {
   const spend = resolveFinancialMetric("spend", input.performanceSummary.totals?.spend);
   const revenue = resolveFinancialMetric("revenue", input.performanceSummary.totals?.revenue);
   const conversions = resolveFinancialMetric("conversions", input.financialConversions ?? input.performanceSummary.totals?.conversions);
-  const nativeRevenue = Number(input.nativeRevenue);
-  const importedRevenueValue = Number(input.importedRevenue);
-  const importedRevenue = round2(importedRevenueValue);
-  if (!Number.isFinite(nativeRevenue) || nativeRevenue < 0 || !Number.isFinite(importedRevenueValue) || importedRevenueValue < 0) {
-    throw new Error("Cumulative revenue components must be non-negative numbers");
+  const nativeRevenue = parseGA4FinancialNumber(input.nativeRevenue);
+  const importedRevenueValue = parseGA4FinancialNumber(input.importedRevenue);
+  if (nativeRevenue === null || importedRevenueValue === null) {
+    throw new Error("Cumulative revenue components must be finite numbers");
   }
+  const importedRevenue = round2(importedRevenueValue);
   if (Math.abs(round2(nativeRevenue + importedRevenue) - round2(revenue.value)) >= 0.005) {
     throw new Error("Cumulative revenue components do not match authoritative total revenue");
   }

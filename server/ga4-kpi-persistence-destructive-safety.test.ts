@@ -77,19 +77,22 @@ describe("GA4 KPI Commit 9 persistence and destructive safety", () => {
     mocks.state.deleteIndex = 0;
   });
 
-  it("keeps KPI progress schema and startup migration at numeric(18,2)", () => {
+  it("keeps KPI progress schema and startup migration precise for fractional observations", () => {
     const schema = readFileSync(join(process.cwd(), "shared", "schema.ts"), "utf8");
     const index = readFileSync(join(process.cwd(), "server", "index.ts"), "utf8");
     const progressStart = schema.indexOf('export const kpiProgress = pgTable("kpi_progress"');
     const progressEnd = schema.indexOf('export const kpiAlerts = pgTable("kpi_alerts"', progressStart);
     const progress = schema.slice(progressStart, progressEnd);
 
-    expect(progress.match(/precision: 18, scale: 2/g)).toHaveLength(3);
-    expect(progress).not.toContain("precision: 10, scale: 2");
+    for (const column of ["value", "rolling_average_7d", "rolling_average_30d"]) {
+      expect(progress).toContain(`decimal("${column}")`);
+      expect(progress).toContain(`kpi_progress_${column}_finite`);
+    }
+    expect(progress).not.toContain("scale: 2");
     expect(index).toContain("ALTER TABLE kpi_progress");
-    expect(index).toContain("ALTER COLUMN value TYPE DECIMAL(18, 2)");
-    expect(index).toContain("ALTER COLUMN rolling_average_7d TYPE DECIMAL(18, 2)");
-    expect(index).toContain("ALTER COLUMN rolling_average_30d TYPE DECIMAL(18, 2)");
+    expect(index).toContain("ALTER COLUMN value TYPE NUMERIC");
+    expect(index).toContain("ALTER COLUMN rolling_average_7d TYPE NUMERIC");
+    expect(index).toContain("ALTER COLUMN rolling_average_30d TYPE NUMERIC");
   });
 
   it("atomically hides the exact notification and deletes every KPI child table", async () => {

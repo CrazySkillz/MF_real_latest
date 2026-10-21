@@ -34,7 +34,7 @@ const toInputs = (totals: ReturnType<typeof summarizeGA4TrafficRows>) => ({
   users: Math.round(totals.users || 0),
   sessions: Math.round(totals.sessions || 0),
   pageviews: Math.round(totals.pageviews || 0),
-  conversions: Math.round(totals.conversions || 0),
+  conversions: totals.conversions || 0,
   ga4Revenue: Number((totals.revenue || 0).toFixed(2)),
   engagementRate: Number(totals.engagementRate || 0) || 0,
 });
@@ -333,7 +333,7 @@ export async function resolveAlertCurrentValueForDecision<T extends {
       users: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.users) ?? ga4Inputs.users),
       sessions: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.sessions ?? (selectedFinancialCandidate as any)?.sessionsRaw) ?? ga4Inputs.sessions),
       pageviews: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.pageviews) ?? ga4Inputs.pageviews),
-      conversions: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.conversions) ?? 0),
+      conversions: parseGA4FinancialNumber((selectedFinancialCandidate as any)?.conversions) ?? 0,
       ga4Revenue: Number((parseGA4FinancialNumber((selectedFinancialCandidate as any)?.revenue) ?? 0).toFixed(2)),
       engagementRate: parseGA4FinancialNumber((selectedFinancialCandidate as any)?.engagementRate) ?? ga4Inputs.engagementRate,
     } : null;

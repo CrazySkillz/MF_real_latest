@@ -95,6 +95,13 @@ describe.skipIf(!testUrl)("GA4 aggregate, executive and completion ownership in 
       await storage.markExecutiveSummaryDailySnapshotAligned(id, date, new Date().toISOString());
     }
   });
+  it("V1-079 retains fractional conversion credit in executive and aggregate snapshots", async () => {
+    const savedExecutive = await storage.upsertExecutiveSummaryDailySnapshot(executive("a", 0.75));
+    expect(savedExecutive.totalConversions).toBe(0.75);
+    expect((savedExecutive.metrics as any).executiveSummaryDaily.totals.conversions.value).toBe(0.75);
+    expect((await storage.createMetricSnapshot(aggregate("b", 0.000075))).totalConversions).toBe(0.000075);
+  });
+
   it.each(kinds)("preserves the ordinary %s path", async kind => {
     await write(kind);
   });

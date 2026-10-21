@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { conversionCreditsMatch } from "../shared/metric-math";
 import { join } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
@@ -87,7 +88,7 @@ describe("GA4 Insights findings use scheduler-synchronized campaign daily histor
       (value: unknown) => boolean;
     expect(showChannel({ topSessionChannel: { label: "Email" }, channelCount: 2, topSessionShare: 69 })).toBe(false);
     expect(showChannel({ topSessionChannel: { label: "Email" }, channelCount: 2, topSessionShare: 71 })).toBe(true);
-    const selectedChannel = new Function("recommendationChannelAnalysis", "findingRollups", "insightsDataSummaryTotals", `return (${scopedChannel});`) as
+    const selectedChannel = new Function("conversionCreditsMatch", "ga4InsightsTimeSeries", `return (recommendationChannelAnalysis, findingRollups, insightsDataSummaryTotals) => (${scopedChannel});`)(conversionCreditsMatch, dates) as
       (channel: unknown, findings: unknown, summary: unknown) => unknown;
     const channel = { topSessionChannel: { label: "Email" }, channelCount: 2, topSessionShare: 71 };
     expect(selectedChannel(channel, { last30: { sessions: 100, conversions: 5 } }, { sessions: 100, conversions: 5 })).toBe(channel);

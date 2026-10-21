@@ -3,7 +3,7 @@ import ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
 import { jsPDF } from "jspdf";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
-import { formatPct, normalizeRateToPercent } from "../shared/metric-math";
+import { formatPct, normalizeRateToPercent, formatConversionCredit } from "../shared/metric-math";
 
 const page = readFileSync("client/src/pages/ga4-metrics.tsx", "utf8");
 const start = page.indexOf("const downloadGA4Report = async");
@@ -113,7 +113,7 @@ describe("Browser Overview reports without a Spend source", () => {
       financialConversions: 262, overviewFinancialConversions: 262, financialROAS: 0,
       ga4HasRevenueMetric: true, ga4RevenueForFinancials: 65659.5, spendDisplaySources: [],
       campaignBreakdownAgg: [], campaignBreakdownMatchedExternalRevenue: new Map(),
-      ga4LandingPages: { rows: [] }, ga4ConversionEvents: { rows: [] }, formatPct, normalizeRateToPercent,
+      ga4LandingPages: { rows: [] }, ga4ConversionEvents: { rows: [] }, formatPct, normalizeRateToPercent, formatConversionCredit,
       overviewGA4ReportingDate: "2026-10-16", overviewGA4ReportingStartDate: "2026-09-04",
       overviewGA4ReportingTimeZone: "Europe/Amsterdam", overviewGA4UpdatedAt: "Oct 17, 2026, 09:29 PM GMT+2",
       overviewFinancialReportingTimeZone: "Europe/Amsterdam", overviewFinancialUpdatedAt: "Oct 17, 2026, 09:30 PM GMT+2",
@@ -129,6 +129,13 @@ describe("Browser Overview reports without a Spend source", () => {
     const words = text.mock.calls.map(call => call[0]);
     return Object.assign((label: string) => words[words.indexOf(label.toUpperCase()) + 1], { doc, drawn, words, content: words.flat().join(" ") });
   }
+  it.each([0.75, 0.000075, 2])("prints observed conversion credit %s in a real browser PDF", async conversions => {
+    const pdf = await render({ overviewSummaryTotals: { sessions: 2977, users: 2978, conversions },
+      financialConversions: conversions, overviewFinancialConversions: conversions });
+    expect(pdf("Conversions")).toBe(String(conversions));
+    expect(pdf("Sessions")).toBe("2,977");
+    expect(pdf.doc.output()).toContain(`(${conversions}) Tj`);
+  });
   it("prints the saved reporting window, separate successful times, schedule and provisional explanation", async () => {
     const report = await render({});
     expect(report.content).toContain("Data from Sep 4, 2026 through Oct 16, 2026 (Europe/Amsterdam)");

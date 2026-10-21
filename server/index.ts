@@ -252,17 +252,17 @@ process.on('uncaughtException', (error: Error) => {
           await db.execute(sql`
             ALTER TABLE kpis
             ALTER COLUMN target_value TYPE DECIMAL(18, 2),
-            ALTER COLUMN current_value TYPE DECIMAL(18, 2),
-            ALTER COLUMN last_computed_value TYPE DECIMAL(18, 2),
+            ALTER COLUMN current_value TYPE NUMERIC,
+            ALTER COLUMN last_computed_value TYPE NUMERIC,
             ALTER COLUMN alert_threshold TYPE DECIMAL(18, 2);
           `);
 
           // Migration: Keep KPI progress history at the same enterprise-scale capacity as live KPI values.
           await db.execute(sql`
             ALTER TABLE kpi_progress
-            ALTER COLUMN value TYPE DECIMAL(18, 2),
-            ALTER COLUMN rolling_average_7d TYPE DECIMAL(18, 2),
-            ALTER COLUMN rolling_average_30d TYPE DECIMAL(18, 2);
+            ALTER COLUMN value TYPE NUMERIC,
+            ALTER COLUMN rolling_average_7d TYPE NUMERIC,
+            ALTER COLUMN rolling_average_30d TYPE NUMERIC;
           `);
 
           // Migration 2: Add notifications metadata column
@@ -1117,7 +1117,7 @@ process.on('uncaughtException', (error: Error) => {
         }
 
         // Explicit additive manifest: historical backfill and cleanup scripts are excluded.
-        for (const migration of ['0022_v1_entrypoint_ownership.sql', '0023_service_account_resource_grants.sql', '0024_v1_schema_integrity.sql']) {
+        for (const migration of ['0022_v1_entrypoint_ownership.sql', '0023_service_account_resource_grants.sql', '0024_v1_schema_integrity.sql', '0025_ga4_fractional_conversions.sql', '0026_goal_observed_value_precision.sql']) {
           const statement = readFileSync(resolve(process.cwd(), 'migrations', migration), 'utf8')
             .replace(/^(?:BEGIN|COMMIT);[ \t]*\r?$/gm, ''); // The enclosing transaction owns commit/rollback.
           await db.execute(sql.raw(statement));

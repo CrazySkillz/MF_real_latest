@@ -38,12 +38,12 @@ const daily = {
 };
 const snapshot = {
   reportingDate: "2026-10-16", recordedAt: "2026-10-17T12:11:12.000Z",
-  metrics: { financialDaily: { currentValueWindow: { startDate: "2026-09-04", endDate: "2026-10-16", reportingTimeZone: "Europe/Amsterdam" } } },
+  metrics: { financialDaily: { currency: "EUR", currentValueWindow: { startDate: "2026-09-04", endDate: "2026-10-16", reportingTimeZone: "Europe/Amsterdam" } } },
 };
 function render(overrides: Record<string, any> = {}) {
   const bindings = {
     React, DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE: "UTC", ga4ConnectionUsable: true, ga4DailyPlaceholder: false,
-    selectedGA4PropertyId: daily.propertyId, ga4ReportDate: null, ga4DailyResp: daily,
+    selectedGA4PropertyId: daily.propertyId, ga4ReportDate: null, ga4DailyResp: daily, campaignCurrency: "EUR",
     financialDailySnapshotResp: { snapshot }, pipelineProxyConfigured: false, ...overrides,
   };
   return renderToStaticMarkup(new Function(...Object.keys(bindings), compiled)(...Object.values(bindings)));
@@ -73,7 +73,7 @@ describe("Overview reporting note uses the displayed data's metadata", () => {
   it("shows an earlier financial publication's own dates and timestamp", () => {
     const lines = paragraphs(render({ financialDailySnapshotResp: { snapshot: { ...snapshot,
       reportingDate: "2026-10-15", recordedAt: "2026-10-16T18:06:00.000Z",
-      metrics: { financialDaily: { currentValueWindow: { startDate: "2026-08-01", endDate: "2026-10-15", reportingTimeZone: "UTC" } } },
+      metrics: { financialDaily: { currency: "EUR", currentValueWindow: { startDate: "2026-08-01", endDate: "2026-10-15", reportingTimeZone: "UTC" } } },
     } } }));
     expect(lines[0]).toContain("through Oct 16, 2026");
     expect(lines[1]).toContain("Data through Oct 15, 2026 (UTC)");

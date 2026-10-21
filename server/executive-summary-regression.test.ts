@@ -551,7 +551,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain('if ((metricName === "clicks" || metricName === "impressions") && !aggregateMetricAvailable(metricName)) {');
     expect(page).toContain('return "Unavailable from connected sources";');
     expect(page).toContain("const formatAggregateInteger = (metricName: string) =>");
-    expect(page).toContain("aggregateMetricAvailable(metricName) ? Math.trunc(aggregateMetricValue(metricName)).toLocaleString() : \"Unavailable\";");
+    expect(page).toContain('aggregateMetricAvailable(metricName) ? (metricName === "conversions" ? formatConversionCredit(aggregateMetricValue(metricName)) : Math.trunc(aggregateMetricValue(metricName)).toLocaleString()) : "Unavailable";');
     expect(page).toContain("return `${aggregateMetricValue(metricName).toFixed(2)}x`;");
     expect(page).toContain('? `Through ${currentValueWindow.endDate}`');
     expect(page).toContain('`${executiveWindowDescription}: ${executiveMetricParts.join(", ")}.`');

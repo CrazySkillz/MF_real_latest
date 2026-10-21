@@ -1,3 +1,4 @@
+import { formatConversionCredit } from "../../shared/metric-math";
 /**
  * Helper functions for the Executive Summary endpoint.
  * Extracted to keep routes-oauth.ts manageable.
@@ -353,7 +354,7 @@ export function generateRecommendations(
     const webMetrics: string[] = [];
     if (context.hasUsers === true && Number.isFinite(context.users)) webMetrics.push(`${Math.round(context.users || 0).toLocaleString("en-US")} users`);
     if (context.hasSessions === true && Number.isFinite(context.sessions)) webMetrics.push(`${Math.round(context.sessions || 0).toLocaleString("en-US")} sessions`);
-    if (context.hasConversions === true && Number.isFinite(context.conversions)) webMetrics.push(`${Math.round(context.conversions || 0).toLocaleString("en-US")} conversions`);
+    if (context.hasConversions === true && Number.isFinite(context.conversions)) webMetrics.push(`${formatConversionCredit(context.conversions || 0)} conversions`);
     if (context.hasRevenue === true && Number.isFinite(context.revenue)) webMetrics.push(`$${Math.round(context.revenue || 0).toLocaleString("en-US")} revenue`);
     if (context.hasCvr === true && Number.isFinite(context.cvr)) webMetrics.push(`${(context.cvr || 0).toFixed(1)}% conversion rate`);
     const webMetricSummary = webMetrics.length > 0 ? `Available data: ${webMetrics.join(", ")}. ` : "";

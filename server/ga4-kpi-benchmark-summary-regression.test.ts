@@ -92,8 +92,8 @@ describe("GA4 KPI and Benchmark summary regression guard", () => {
     expect(ga4MetricsFile).toContain("const liveCurrentValue =");
     expect(ga4MetricsFile).toContain('? String(getLiveBenchmarkCurrentValue(metric, (benchmark as any)?.name, (benchmark as any)?.currentValue))');
     expect(ga4MetricsFile).toContain('? String(getLiveBenchmarkCurrentValue(metric, (editingBenchmark as any)?.name, (editingBenchmark as any)?.currentValue))');
-    expect(ga4MetricsFile).toContain("currentValue: formatNumberByUnit(liveCurrentValue, String(benchmark.unit || \"%\")),");
-    expect(ga4MetricsFile).toContain("currentValue: formatNumberByUnit(liveCurrentValue, String((editingBenchmark as any).unit || \"%\")),");
+    expect(ga4MetricsFile).toContain("currentValue: formatNumberByUnit(liveCurrentValue, String(benchmark.unit || \"%\"), true),");
+    expect(ga4MetricsFile).toContain("currentValue: formatNumberByUnit(liveCurrentValue, String((editingBenchmark as any).unit || \"%\"), true),");
   });
 
   it("documents the bounded KPI average and live benchmark edit-current-value behavior", () => {

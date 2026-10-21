@@ -1,7 +1,8 @@
+import { conversionCreditsMatch } from "../shared/metric-math";
 import { ga4Service } from "./analytics";
 import { storage } from "./storage";
 import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getReportingDateWindow, isCreatedThroughReportingDate, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
-import { computeCpa, computeRoiPercent, normalizeRateToPercent, formatPct as formatMetricPct } from "../shared/metric-math";
+import { computeCpa, computeRoiPercent, normalizeRateToPercent, formatPct as formatMetricPct, formatConversionCredit } from "../shared/metric-math";
 import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
 import { normalizeGA4CampaignAllocationKey, selectGA4FinancialTotalsSource } from "../shared/ga4-financial-source";
 import { mergeGA4OverviewCampaignRevenueRows, summarizeGA4TrafficRows } from "../shared/ga4-traffic-window";
@@ -383,7 +384,7 @@ const buildInsightsItems = (payload: any) => {
     items.push({
       severity: "medium",
       title: "Conversions down vs prior 7 days",
-      description: `Last 7d conversions ${payload.formatNumber(rollups.last7.conversions)} vs prior 7d ${payload.formatNumber(rollups.prior7.conversions)}.`,
+      description: `Last 7d conversions ${formatConversionCredit(rollups.last7.conversions)} vs prior 7d ${formatConversionCredit(rollups.prior7.conversions)}.`,
       recommendation: "Review conversion-event firing, landing page changes, and traffic quality.",
       category: "trends",
       dataBasis: "GA4 completed daily history",
@@ -425,7 +426,8 @@ const buildInsightsItems = (payload: any) => {
     if (threshold.status !== "behind" && threshold.status !== "needs_attention") continue;
     const unit = String(benchmark?.unit || "").trim();
     const formatValue = (value: number) =>
-      unit === "%" ? `${Number(value).toFixed(2)}%`
+      resolveGA4KpiMetricIdentity(benchmark?.metric, benchmark?.name) === "conversions" ? formatConversionCredit(value)
+        : unit === "%" ? `${Number(value).toFixed(2)}%`
         : unit === "$" || unit.toUpperCase() === String(payload.currency || "").toUpperCase() ? payload.formatMoney(value)
           : `${Number(value).toFixed(2)}${unit === "ratio" || unit === "x" ? "x" : unit ? ` ${unit}` : ""}`;
     items.push({
@@ -739,7 +741,7 @@ async function buildGA4ReportPayload(report: any) {
       new Set(overviewDailyRows.map((row: any) => String(row.date))).size !== overviewDailyRows.length ||
       overviewDailyRows.some((row: any) => String(row.date) < overviewStartDate || String(row.date) > financialEndDate) ||
       overviewSummedTotals.sessions !== Number((savedOverview!.campaignBreakdown as any)?.totals?.sessions) ||
-      overviewSummedTotals.conversions !== Number((savedOverview!.campaignBreakdown as any)?.totals?.conversions))) {
+      !conversionCreditsMatch(overviewSummedTotals.conversions, Number((savedOverview!.campaignBreakdown as any)?.totals?.conversions), overviewDailyRows.length))) {
     throw new Error("GA4_OVERVIEW_REPORT_INPUT_UNAVAILABLE: Daily publication changed");
   }
 
@@ -1247,7 +1249,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       metricCards([
         ["Sessions", formatNumber(payload.breakdownTotals.sessions)],
         ["Users", formatNumber(payload.breakdownTotals.users)],
-        ["Conversions", formatNumber(payload.breakdownTotals.conversions)],
+        ["Conversions", formatConversionCredit(payload.breakdownTotals.conversions)],
         ["Engagement Rate", formatPct(normalizeRateToPercent(payload.breakdownTotals.engagementRate))],
         ["Conv. Rate", formatPct(payload.breakdownTotals.sessions > 0 ? (payload.breakdownTotals.conversions / payload.breakdownTotals.sessions) * 100 : 0)],
       ], 3);
@@ -1293,7 +1295,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
           String(row?.name || "(not set)"),
           formatNumber(row?.sessions || 0),
           formatNumber(row?.users || 0),
-          formatNumber(row?.conversions || 0),
+          formatConversionCredit(row?.conversions || 0),
           formatPct(Number(row?.conversionRate || 0)),
           formatMoney(Number((Number(row?.revenue || 0) + Number(payload.campaignBreakdownMatchedExternalRevenue.get(String(row?.name || "")) || 0)).toFixed(2))),
         ]),
@@ -1311,7 +1313,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
           `${String(row?.source || "(not set)")}/${String(row?.medium || "(not set)")}`,
           Number(row?.sessions || 0).toLocaleString("en-US"),
           Number(row?.users || 0).toLocaleString("en-US"),
-          Number(row?.conversions || 0).toLocaleString("en-US"),
+          formatConversionCredit(Number(row?.conversions || 0)),
           formatPct(Number(row?.sessions || 0) > 0 ? (Number(row?.conversions || 0) / Number(row?.sessions || 0)) * 100 : 0),
         ]),
         [52, 44, 22, 20, 28, 26],
@@ -1324,7 +1326,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         ["EVENT", "CONVERSIONS", "EVENT COUNT", "USERS"],
         (payload.conversionEvents?.rows || []).slice(0, 25).map((row: any) => [
           String(row?.eventName || "(not set)"),
-          Number(row?.conversions || 0).toLocaleString("en-US", { maximumFractionDigits: 20 }),
+          formatConversionCredit(Number(row?.conversions || 0)),
           row?.eventCount == null ? "Unavailable" : formatNumber(row.eventCount),
           row?.users == null ? "Unavailable" : formatNumber(row.users),
         ]),
@@ -1383,7 +1385,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       ? String(rawCfg.adComparisonMetric)
       : "sessions";
     const metricLabels: Record<string, string> = { sessions: "Sessions", users: "Users", conversions: "Conversions", revenue: "Revenue", conversionRate: "Conversion Rate" };
-    const formatMetricValue = (metric: string, value: number) => metric === "revenue" ? formatMoney(value) : metric === "conversionRate" ? formatMetricPct(value) : metric === "conversions" ? Number(value || 0).toLocaleString("en-US", { maximumFractionDigits: 15 }) : formatNumber(value);
+    const formatMetricValue = (metric: string, value: number) => metric === "revenue" ? formatMoney(value) : metric === "conversionRate" ? formatMetricPct(value) : metric === "conversions" ? formatConversionCredit(Number(value || 0)) : formatNumber(value);
     const chartSummaryByCampaign = new Map<string, any>();
     for (const row of payload.campaignBreakdownAgg) {
       const key = String(row?.name || "").toLocaleLowerCase("en-US");
@@ -1482,7 +1484,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         doc.setTextColor(...COLORS.text); doc.text(String(row?.name || "(not set)").slice(0, 28), colXs[1], y + 4);
         doc.setTextColor(...COLORS.textSec);
         doc.text(formatNumber(sessions), colXs[2], y + 4); doc.text(formatNumber(users), colXs[3], y + 4);
-        doc.text(formatNumber(conversions), colXs[4], y + 4); doc.text(formatMoney(revenue), colXs[5], y + 4);
+        doc.text(formatConversionCredit(conversions), colXs[4], y + 4); doc.text(formatMoney(revenue), colXs[5], y + 4);
         doc.text(formatGA4AdComparisonCardPct(conversionRate).replace(".00%", "%"), colXs[6], y + 4);
         y += 8;
       });
@@ -1574,7 +1576,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
           String(row?.date || ""),
           formatNumber(row?.sessions || 0),
           formatMoney(Number(row?.revenue || 0)),
-          formatNumber(row?.conversions || 0),
+          formatConversionCredit(row?.conversions || 0),
         ]),
         [52, 36, 48, 44],
         COLORS.insights
@@ -1587,7 +1589,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         [
           ["Sessions", formatNumber(payload.breakdownTotals.sessions), "Current GA4 total"],
           ["Users", formatNumber(payload.breakdownTotals.users), ""],
-          ["Conversions", formatNumber(payload.breakdownTotals.conversions), ""],
+          ["Conversions", formatConversionCredit(payload.breakdownTotals.conversions), ""],
           ["Revenue", formatMoney(payload.financialRevenue), "Total across revenue sources"],
           ...(payload.financialSpend > 0 ? [["Total Spend", formatMoney(payload.financialSpend), ""]] : []),
           ...(payload.financialSpend > 0 ? [["Profit", formatMoney(payload.financialRevenue - payload.financialSpend), ""]] : []),

@@ -750,7 +750,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
     totalImpressions: Math.round(aggregateValue("impressions")),
     totalEngagements: Math.round(totalEngagements),
     totalClicks: Math.round(aggregateValue("clicks")),
-    totalConversions: Math.round(aggregateValue("conversions")),
+    totalConversions: aggregateValue("conversions"),
     totalLeads: Math.round(aggregateValue("leads")),
     totalSpend: parseFloat(aggregateValue("spend").toFixed(2)),
     detailedMetrics

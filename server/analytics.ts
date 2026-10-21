@@ -1,3 +1,4 @@
+import { conversionCreditsMatch } from "../shared/metric-math";
 interface GA4Credentials {
   propertyId: string;
   measurementId: string;
@@ -57,6 +58,7 @@ export class GoogleAnalytics4Service {
   }
 
   private async requestReport(url: string, options: RequestInit): Promise<Response> {
+    if (!options.signal) options = { ...options, signal: this.requestAbortSignal() };
     if (this.requestSignal) options = { ...options, signal: options.signal
       ? AbortSignal.any([this.requestSignal, options.signal]) : this.requestAbortSignal() };
     return retryWithBackoff(async () => {
@@ -103,9 +105,9 @@ export class GoogleAnalytics4Service {
     );
     const totals = primaryRows.reduce((result: { conversions: number; revenue: number }, row: any) => {
       const supplement: any = supplementalByDate.get(String(row?.dimensionValues?.[0]?.value || ""));
-      const primaryConversions = parseInt(String(row?.metricValues?.[primaryConversionIndex]?.value || "0"), 10) || 0;
+      const primaryConversions = Number.parseFloat(String(row?.metricValues?.[primaryConversionIndex]?.value || "0")) || 0;
       const primaryRevenue = Number.parseFloat(String(row?.metricValues?.[primaryRevenueIndex]?.value || "0")) || 0;
-      const supplementalConversions = parseInt(String(supplement?.metricValues?.[supplementalConversionIndex]?.value || "0"), 10) || 0;
+      const supplementalConversions = Number.parseFloat(String(supplement?.metricValues?.[supplementalConversionIndex]?.value || "0")) || 0;
       const supplementalRevenue = Number.parseFloat(String(supplement?.metricValues?.[supplementalRevenueIndex]?.value || "0")) || 0;
       result.conversions += primaryConversions !== 0 ? primaryConversions : supplementalConversions;
       result.revenue += Number((primaryRevenue !== 0 ? primaryRevenue : supplementalRevenue).toFixed(2));
@@ -789,15 +791,15 @@ export class GoogleAnalytics4Service {
         const sessionTotal = sessionRows.reduce((sum, row) => sum + row.conversions, 0);
         const pageLocationTotal = pageLocationRows.reduce((sum, row) => sum + row.conversions, 0);
         const campaignTotal = campaignRows.reduce((sum, row) => sum + row.conversions, 0);
-        if (sessionTotal === expected.conversions) {
+        if (conversionCreditsMatch(sessionTotal, expected.conversions, Math.max(1, sessionRows.length))) {
           selectedRows.push(...sessionRows);
           selectedRevenueMetrics.add(sessionDaily.revenueMetric);
           selectedDates.session.push(expected.date);
-        } else if (pageLocationTotal === expected.conversions) {
+        } else if (conversionCreditsMatch(pageLocationTotal, expected.conversions, Math.max(1, pageLocationRows.length))) {
           selectedRows.push(...pageLocationRows);
           selectedRevenueMetrics.add(pageLocationDaily.revenueMetric);
           selectedDates.pageLocation.push(expected.date);
-        } else if (campaignTotal === expected.conversions) {
+        } else if (conversionCreditsMatch(campaignTotal, expected.conversions, Math.max(1, campaignRows.length))) {
           selectedRows.push(...campaignRows);
           selectedRevenueMetrics.add(campaignDaily.revenueMetric);
           selectedDates.campaign.push(expected.date);
@@ -828,7 +830,7 @@ export class GoogleAnalytics4Service {
           const exactResult = conversionRowsOnly(await fetchRows(accessToken, selectedScopeFilter));
           assertUniqueEventRows(exactResult);
           const expectedTotal = expectedEntries.reduce((sum, row) => sum + row.conversions, 0);
-          if (Number(exactResult?.totals?.conversions || 0) === expectedTotal) {
+          if (conversionCreditsMatch(Number(exactResult?.totals?.conversions || 0), expectedTotal, Math.max(1, expectedEntries.length + (exactResult?.rows?.length || 0)))) {
             reconciliationSource = 'scheduler_daily_scope_conversions_with_event_count';
             reconciliationFilter = selectedScopeFilter;
             return exactResult;
@@ -906,7 +908,7 @@ export class GoogleAnalytics4Service {
         users: res?.totals?.users == null ? null : Number(res.totals.users),
       };
       const detailsComplete = returnedTotals.eventCount != null && returnedTotals.users != null;
-      const reconciled = expectedConversions == null || returnedTotals.conversions === expectedConversions;
+      const reconciled = expectedConversions == null || conversionCreditsMatch(returnedTotals.conversions, expectedConversions, Math.max(1, Object.keys(expectedDailyConversions || {}).length + (res?.rows?.length || 0)));
       const validation = {
         status: reconciled && detailsComplete ? 'passed' : 'incomplete',
         provider: 'Google Analytics Data API',
@@ -992,14 +994,14 @@ export class GoogleAnalytics4Service {
       if (expectedDailyConversions) {
         const expectedTotal = Object.values(expectedDailyConversions)
           .reduce((sum, value) => sum + Number(value || 0), 0);
-        if (Number(result?.totals?.conversions || 0) !== expectedTotal) {
+        if (!conversionCreditsMatch(Number(result?.totals?.conversions || 0), expectedTotal, Math.max(1, Object.keys(expectedDailyConversions).length + (result?.rows?.length || 0)))) {
           const pageLocationFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
           if (pageLocationFilter) {
             try {
               const pageLocationResult = await fetchRows(accessToken, pageLocationFilter);
               assertUniqueEventRows(pageLocationResult);
               const exactRows = conversionRowsOnly(pageLocationResult);
-              if (Number(exactRows?.totals?.conversions || 0) === expectedTotal) {
+              if (conversionCreditsMatch(Number(exactRows?.totals?.conversions || 0), expectedTotal, Math.max(1, Object.keys(expectedDailyConversions).length + (exactRows?.rows?.length || 0)))) {
                 reconciliationSource = 'scheduler_page_location_conversions_with_event_count';
                 reconciliationFilter = pageLocationFilter;
                 return exactRows;
@@ -1129,7 +1131,7 @@ export class GoogleAnalytics4Service {
           const base = rangeIdx; // 0=last7, 1=prev7
           const sessions = parseInt(String(mv[0 * 2 + base]?.value || '0'), 10) || 0;
           const users = parseInt(String(mv[1 * 2 + base]?.value || '0'), 10) || 0;
-          const conversions = parseInt(String(mv[2 * 2 + base]?.value || '0'), 10) || 0;
+          const conversions = Number.parseFloat(String(mv[2 * 2 + base]?.value || '0')) || 0;
           const revenue = Number.parseFloat(String(mv[3 * 2 + base]?.value || '0')) || 0;
           return { sessions, users, conversions, revenue: Number(revenue.toFixed(2)) };
         };
@@ -1288,7 +1290,7 @@ export class GoogleAnalytics4Service {
         const mv: any[] = Array.isArray(r?.metricValues) ? r.metricValues : [];
         const readRange = (rangeIdx: 0 | 1) => {
           const base = rangeIdx;
-          const conversions = parseInt(String(mv[0 * 2 + base]?.value || '0'), 10) || 0;
+          const conversions = Number.parseFloat(String(mv[0 * 2 + base]?.value || '0')) || 0;
           const eventCount = parseInt(String(mv[1 * 2 + base]?.value || '0'), 10) || 0;
           const users = parseInt(String(mv[2 * 2 + base]?.value || '0'), 10) || 0;
           const revenue = Number.parseFloat(String(mv[3 * 2 + base]?.value || '0')) || 0;
@@ -1408,14 +1410,16 @@ export class GoogleAnalytics4Service {
       return observed;
     };
     const ignoreNonCurrencyFailure = (error: any) => {
-      if (error?.code === 'GA4_CURRENCY_UNVERIFIED') throw error;
+      if (this.requestSignal?.aborted) throw error;
+      if (error?.code === 'GA4_CURRENCY_UNVERIFIED' || error?.code === 'GA4_TRANSIENT_ERROR' ||
+          error?.name === 'TimeoutError' || error?.name === 'AbortError') throw error;
       return null;
     };
     const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
     const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
 
     const run = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue', scopeFilter: any = campaignDimensionFilter, endDateOverride: string = endDate) => {
-      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+      const resp = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -1440,12 +1444,12 @@ export class GoogleAnalytics4Service {
         const txt = await resp.text();
         throw new Error(`GA4 API Error: ${txt}`);
       }
-      const json = await resp.json().catch(() => ({} as any));
+      const json = await resp.json();
       const row = (Array.isArray(json?.rows) && json.rows[0]) ? json.rows[0] : null;
       const mv = Array.isArray(row?.metricValues) ? row.metricValues : [];
       const sessions = parseInt(String(mv?.[0]?.value || '0'), 10) || 0;
       const users = parseInt(String(mv?.[1]?.value || '0'), 10) || 0;
-      const conversions = parseInt(String(mv?.[2]?.value || '0'), 10) || 0;
+      const conversions = Number.parseFloat(String(mv?.[2]?.value || '0')) || 0;
       const pageviews = parseInt(String(mv?.[3]?.value || '0'), 10) || 0;
       const revenue = Number.parseFloat(String(mv?.[4]?.value || '0')) || 0;
       const engagedSessions = parseInt(String(mv?.[5]?.value || '0'), 10) || 0;
@@ -1475,7 +1479,7 @@ export class GoogleAnalytics4Service {
     };
 
     const runConversionRevenueTotals = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue', scopeFilter: any) => {
-      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+      const resp = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -1495,17 +1499,17 @@ export class GoogleAnalytics4Service {
         const txt = await resp.text();
         throw new Error(`GA4 Conversion/Revenue API Error: ${txt}`);
       }
-      const json = await resp.json().catch(() => ({} as any));
+      const json = await resp.json();
       verifyResponseCurrency(json);
       const row = (Array.isArray(json?.rows) && json.rows[0]) ? json.rows[0] : null;
       const mv = Array.isArray(row?.metricValues) ? row.metricValues : [];
-      const conversions = parseInt(String(mv?.[0]?.value || '0'), 10) || 0;
+      const conversions = Number.parseFloat(String(mv?.[0]?.value || '0')) || 0;
       const revenue = Number.parseFloat(String(mv?.[1]?.value || '0')) || 0;
       return { revenueMetric, totals: { conversions, revenue: Number(revenue.toFixed(2)) } };
     };
 
     const runDailyConversionRevenue = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue', scopeFilter: any) => {
-      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+      const resp = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1518,7 +1522,7 @@ export class GoogleAnalytics4Service {
         }),
       });
       if (!resp.ok) throw new Error(`GA4 Daily Conversion/Revenue API Error: ${await resp.text()}`);
-      const json = await resp.json().catch(() => ({} as any));
+      const json = await resp.json();
       verifyResponseCurrency(json);
       return { revenueMetric, data: json };
     };
@@ -1838,16 +1842,26 @@ export class GoogleAnalytics4Service {
       });
     const completeReportRows = async (firstPage: any, requestBody: any) => {
       verifyResponseCurrency(firstPage);
-      const expectedRows = Number(firstPage?.rowCount);
       const rows = Array.isArray(firstPage?.rows) ? [...firstPage.rows] : [];
-      if (!Number.isFinite(expectedRows) || expectedRows <= rows.length) {
-        return firstPage;
+      // Protobuf may omit a zero count, but a nonempty page must carry its total.
+      const count = firstPage?.rowCount;
+      const expectedRows = count === undefined && rows.length === 0 ? 0
+        : typeof count === 'number' || (typeof count === 'string' && count.trim() !== '') ? Number(count) : NaN;
+      if (!Number.isSafeInteger(expectedRows) || expectedRows < rows.length || expectedRows < 0 ||
+          (firstPage?.rows !== undefined && !Array.isArray(firstPage.rows))) {
+        throw incompletePaginationError('invalid rowCount or rows');
       }
       if (expectedRows > maxCompleteRows) {
         throw incompletePaginationError(
           'rowCount ' + expectedRows + ' exceeds safe maximum ' + maxCompleteRows,
         );
       }
+      const rowKey = (row: any) => {
+        if (row?.dimensionValues !== undefined && !Array.isArray(row.dimensionValues)) throw incompletePaginationError('invalid dimension values');
+        return JSON.stringify((row?.dimensionValues || []).map((value: any) => value?.value ?? ''));
+      };
+      const rowKeys = new Set(rows.map(rowKey));
+      if (rowKeys.size !== rows.length) throw incompletePaginationError('duplicate dimension rows');
       while (rows.length < expectedRows) {
         const response = await this.requestReport(
           `https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`,
@@ -1872,8 +1886,13 @@ export class GoogleAnalytics4Service {
             'provider returned an empty page at offset ' + rows.length,
           );
         }
-        if (Number.isFinite(Number(page?.rowCount)) && Number(page.rowCount) !== expectedRows) {
+        if (Number(page?.rowCount) !== expectedRows) {
           throw incompletePaginationError('rowCount changed during pagination');
+        }
+        for (const row of pageRows) {
+          const key = rowKey(row);
+          if (rowKeys.has(key)) throw incompletePaginationError('duplicate dimension rows');
+          rowKeys.add(key);
         }
         rows.push(...pageRows);
         if (rows.length > expectedRows) {
@@ -1908,7 +1927,8 @@ export class GoogleAnalytics4Service {
           ...(preferOverviewCampaignTotals ? [{ name: 'sessionKeyEventRate' }] : []),
         ],
         metricAggregations: ['TOTAL'],
-        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true },
+          ...dimensions.map(({ name }) => ({ dimension: { dimensionName: name, orderType: 'ALPHANUMERIC' }, desc: false }))],
         limit: pageSize,
       };
       const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
@@ -2243,8 +2263,8 @@ export class GoogleAnalytics4Service {
           ? (Array.isArray(financial.data?.rows) ? financial.data.rows : []).reduce((totals: { conversions: number; revenue: number }, row: any) => {
               const combinedRow: any = combinedPageLocationByDate.get(String(row?.dimensionValues?.[0]?.value || ''));
               if (!combinedRow) return totals;
-              if (!(parseInt(String(combinedRow?.metricValues?.[2]?.value || '0'), 10) || 0)) {
-                totals.conversions += parseInt(String(row?.metricValues?.[2]?.value || '0'), 10) || 0;
+              if (!(Number.parseFloat(String(combinedRow?.metricValues?.[2]?.value || '0')) || 0)) {
+                totals.conversions += Number.parseFloat(String(row?.metricValues?.[2]?.value || '0')) || 0;
               }
               if (!(Number.parseFloat(String(combinedRow?.metricValues?.[3]?.value || '0')) || 0)) {
                 totals.revenue += Number.parseFloat(String(row?.metricValues?.[3]?.value || '0')) || 0;
@@ -2277,7 +2297,7 @@ export class GoogleAnalytics4Service {
       const expectedConversions = expectedSupplementedFinancials?.conversions ?? standardConversions;
       const expectedRevenue = expectedSupplementedFinancials?.revenue ?? standardRevenue;
       const revenueRoundingAdjustment = Number((expectedRevenue - rebuiltTotals[3]).toFixed(2));
-      if (rebuiltTotals[2] === expectedConversions && rebuiltRows.length > 0 && Math.abs(revenueRoundingAdjustment) <= 0.05) {
+      if (conversionCreditsMatch(rebuiltTotals[2], expectedConversions, Math.max(1, rebuiltRows.length)) && rebuiltRows.length > 0 && Math.abs(revenueRoundingAdjustment) <= 0.05) {
         rebuiltRows[0].metricValues[3].value = String(Number(rebuiltRows[0].metricValues[3].value || 0) + revenueRoundingAdjustment);
         rebuiltTotals[3] += revenueRoundingAdjustment;
       }
@@ -2293,7 +2313,7 @@ export class GoogleAnalytics4Service {
       };
       // A verified full-window daily capture remains authoritative if a later report advances.
       if (rebuiltTotals[0] > standardSessions || (capturedTraffic && rebuiltTotals[0] > 0)) {
-        if (rebuiltTotals[2] !== expectedConversions || Math.abs(rebuiltTotals[3] - expectedRevenue) >= 0.01) {
+        if (!conversionCreditsMatch(rebuiltTotals[2], expectedConversions, Math.max(1, rebuiltRows.length)) || Math.abs(rebuiltTotals[3] - expectedRevenue) >= 0.01) {
           throw new Error('GA4_OVERVIEW_CAMPAIGN_ATTRIBUTION_UNVERIFIED');
         }
         data = {
@@ -2347,10 +2367,11 @@ export class GoogleAnalytics4Service {
         const utmValueExpression = (param: string, value: string) => {
           const encoded = encodeURIComponent(value);
           const plusEncoded = encoded.replace(/%20/g, '+');
+          const escapeRegex = (candidate: string) => candidate.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           const expressions = Array.from(new Set([value, encoded, plusEncoded])).map((candidate) => ({
             filter: {
               fieldName: 'pageLocation',
-              stringFilter: { matchType: 'CONTAINS', value: `utm_${param}=${candidate}`, caseSensitive: false },
+              stringFilter: { matchType: 'FULL_REGEXP', value: `.*[?&]utm_${param}=${escapeRegex(candidate)}(?:[&#].*)?$`, caseSensitive: false },
             },
           }));
           return expressions.length === 1 ? expressions[0] : { orGroup: { expressions } };
@@ -3336,7 +3357,7 @@ export class GoogleAnalytics4Service {
             const date = row.dimensionValues[0]?.value || '';
             const sessions = parseInt(row.metricValues[0]?.value || '0');
             const pageviews = parseInt(row.metricValues[1]?.value || '0');
-            const conversions = parseInt(row.metricValues[2]?.value || '0');
+            const conversions = Number.parseFloat(row.metricValues[2]?.value || '0');
             const users = parseInt(row.metricValues[3]?.value || '0');
             const revenue = Number.parseFloat(String(row.metricValues[4]?.value || '0')) || 0;
             const engagedSessions = Number.parseInt(String(row.metricValues[5]?.value || '0'), 10) || 0;
@@ -3384,7 +3405,7 @@ export class GoogleAnalytics4Service {
         for (const row of supplementalRows) {
           const date = formatDate(row?.dimensionValues?.[0]?.value || '').dateISO;
           if (!date) continue;
-          const conversions = parseInt(String(row?.metricValues?.[0]?.value || '0'), 10) || 0;
+          const conversions = Number.parseFloat(String(row?.metricValues?.[0]?.value || '0')) || 0;
           const revenue = Number.parseFloat(String(row?.metricValues?.[1]?.value || '0')) || 0;
           if (conversions !== 0 || revenue !== 0) {
             conversionRevenueByDate.set(date, {
@@ -3703,7 +3724,7 @@ export class GoogleAnalytics4Service {
             const pageviews = parseInt(row.metricValues[1]?.value || '0');
             const bounceRate = parseFloat(row.metricValues[2]?.value || '0');
             const sessionDuration = parseFloat(row.metricValues[3]?.value || '0');
-            const conversions = parseInt(row.metricValues[4]?.value || '0');
+            const conversions = Number.parseFloat(row.metricValues[4]?.value || '0');
             const users = parseInt(row.metricValues[5]?.value || '0');
             const newUsers = parseInt(row.metricValues[6]?.value || '0');
             const engagedSessions = parseInt(row.metricValues[7]?.value || '0');

@@ -63,7 +63,7 @@ describe("GA4 Insights Data Summary accuracy", () => {
       expect(section).not.toContain("/day avg");
     }
     expect(liveSection).toContain("formatNumber(dataSummaryHistorySessions)");
-    expect(liveSection).toContain("formatNumber(dataSummaryHistoryConversions)");
+    expect(liveSection).toContain("formatConversionCredit(dataSummaryHistoryConversions)");
     expect(liveSection).toContain("conversion rate across imported history");
     for (const section of [downloadSection, scheduledSection]) {
       expect(section).toContain("Current GA4 total");

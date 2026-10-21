@@ -5,9 +5,23 @@ import {
   computeProgress,
   computeRoiPercent,
   computeRoasPercent,
+  conversionCreditsMatch,
+  formatConversionCredit,
 } from "../shared/metric-math";
 
 describe("metric math (shared)", () => {
+  it("preserves fractional conversion display and accepts only numeric summation error", () => {
+    expect(formatConversionCredit(0.75)).toBe("0.75");
+    expect(formatConversionCredit(0.000075)).toBe("0.000075");
+    expect(formatConversionCredit(1e-21)).not.toBe("0");
+    expect(formatConversionCredit(2977)).toBe("2,977");
+    expect(formatConversionCredit(NaN)).toBe("Unavailable");
+    expect(conversionCreditsMatch(0.1 + 0.2, 0.3, 2)).toBe(true);
+    for (const [a, b] of [[0, 0.000075], [0.3, 0.300000001], [1, 2], [NaN, NaN], [Infinity, Infinity], [-1, -1]]) {
+      expect(conversionCreditsMatch(a, b, 1000)).toBe(false);
+    }
+    expect(conversionCreditsMatch(0, 0)).toBe(true);
+  });
   it("computes conversion rate (%) safely", () => {
     expect(computeConversionRatePercent(10, 100)).toBeCloseTo(10, 6);
     expect(computeConversionRatePercent(0, 100)).toBeCloseTo(0, 6);

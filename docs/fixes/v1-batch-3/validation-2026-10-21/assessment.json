@@ -1,0 +1,89 @@
+{
+  "at": "2026-10-21T19:27:44.428Z",
+  "baseHead": "aee04e508f0761ac2a9f53724393676a1bda7110",
+  "implementation": "uncommitted; candidate-manifest.json",
+  "deployment": "Not performed; latest previously verified runtime is 839bf508bffea4742f992616753dc68eabcfab3e",
+  "batchStatus": "IN PROGRESS",
+  "releaseDecision": "NO-GO",
+  "locallyCheckedFixes": [
+    "V1-032",
+    "V1-033",
+    "V1-035",
+    "V1-036",
+    "V1-087"
+  ],
+  "partiallyImplemented": [
+    "V1-025 native GA4 total-query deadline and owned cancellation"
+  ],
+  "remainingImplementation": [
+    "V1-011 source-aware durable recovery",
+    "V1-025 diagnostic/provider timeout/cancellation and late writes",
+    "V1-079 fractional conversion precision",
+    "V1-089 shared-property concurrency",
+    "V1-090 provider-quality metadata"
+  ],
+  "targeted": {
+    "total": 546,
+    "passed": 546,
+    "failed": 0,
+    "skipped": 0
+  },
+  "fullSuite": {
+    "total": 4240,
+    "passed": 4059,
+    "failed": 181,
+    "skipped": 0
+  },
+  "newFailedIdentities": 0,
+  "buildChecks": {
+    "at": "2026-10-21T19:26:31.851Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "typecheck.log"
+      },
+      {
+        "name": "client-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "client-build.log"
+      },
+      {
+        "name": "server-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "server-build.log"
+      }
+    ]
+  },
+  "productionOrProviderCalls": false,
+  "applicationEnvironmentLoaded": false,
+  "fixtures": "Synthetic provider responses, actual locally rendered page, isolated 127.0.0.1:55443 PostgreSQL random schemas. DATABASE_URL blank; app credentials removed.",
+  "cleanup": {
+    "at": "2026-10-21T19:27:18.916Z",
+    "databases": [
+      {
+        "name": "ga4_alignment_test",
+        "remainingFixtureSchemas": [],
+        "otherClientConnections": 0
+      },
+      {
+        "name": "notifications_test",
+        "remainingFixtureSchemas": [],
+        "otherClientConnections": 0
+      }
+    ],
+    "isolatedPostgresStopped": true,
+    "stoppedAt": "2026-10-21T19:27:41.962Z"
+  },
+  "limitations": [
+    "No production cleanup",
+    "No complete downstream or provider reconciliation",
+    "No deployed acceptance",
+    "No newly verified CI",
+    "Remaining audit/test failures are not waived"
+  ]
+}

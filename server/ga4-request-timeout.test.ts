@@ -13,6 +13,15 @@ const acquisition = (insights = false) => service.getAcquisitionBreakdown("campa
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
 const empty = () => json({ rows: [], rowCount: 0, metadata: { currencyCode: "EUR" } });
 const requestCases = [
+  { name: "native totals", run: () => service.getTotalsWithRevenue("123", "test-token", date, date, undefined, "EUR"), target: () => true },
+  { name: "native totals UTM fallback", run: () => service.getTotalsWithRevenue("123", "test-token", date, date, "sale", "EUR"),
+    target: (body: any) => JSON.stringify(body.dimensionFilter).includes("pageLocation") },
+  { name: "native totals conversion supplement", run: () => service.getTotalsWithRevenue("123", "test-token", date, date, "sale", "EUR"),
+    target: (body: any) => body.metrics.length === 2,
+    prior: () => json({ metadata: { currencyCode: "EUR" }, rows: [{ metricValues: ["100", "80", "0", "120", "0", "50", "0.5"].map(value => ({ value })) }] }) },
+  { name: "native totals daily reconciliation", run: () => service.getTotalsWithRevenue("123", "test-token", date, date, "sale", "EUR"),
+    target: (body: any) => body.dimensions?.[0]?.name === "date" && JSON.stringify(body.dimensionFilter).includes('"fieldName":"campaignName"'),
+    prior: () => json({ metadata: { currencyCode: "EUR" }, rows: [{ dimensionValues: [{ value: "20261016" }], metricValues: ["100", "80", "1", "120", "10", "50", "0.5"].map(value => ({ value })) }] }) },
   { name: "daily series", run: daily, target: () => true },
   { name: "daily conversion supplement", run: daily, target: (body: any) => body.metrics.length === 2,
     prior: () => json({ rows: [{ dimensionValues: [{ value: "20261016" }], metricValues: ["100", "120", "0", "80", "0", "50", "0.5"].map(value => ({ value })) }], metadata: { currencyCode: "EUR" } }) },
@@ -117,6 +126,20 @@ describe("GA4 native request cancellation", () => {
     expect(await service.getTimeSeriesWithToken("123", "test-token", date, undefined, date, "EUR")).toEqual([]);
     expect(signals[1]).not.toBe(signals[0]);
     expect(signals[1].aborted).toBe(false);
+  });
+  it.each(requestCases.filter(test => test.name.startsWith("native totals")))("preserves the scheduler's plain-Error cancellation in $name", async test => {
+    const controller = new AbortController(); service = ga4Service.withAbortSignal(controller.signal);
+    const reason = new Error("GA4_REFRESH_WORK_STOPPED");
+    let calls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (_url, init) => {
+      const body = JSON.parse(init.body); calls++;
+      if (!test.target(body, calls)) return "prior" in test ? test.prior!(body, calls) : empty();
+      return new Promise((_resolve, reject) => init.signal.addEventListener("abort", () => reject(init.signal.reason), { once: true }));
+    }));
+    const result = test.run().catch(error => error);
+    await vi.advanceTimersByTimeAsync(1);
+    controller.abort(reason);
+    expect(await result).toBe(reason);
   });
   it.each(requestCases.filter(test => !["OAuth renewal", "OAuth credential fallback"].includes(test.name)))
     ("propagates exhausted transient failure in $name without accepting partial or empty data", async test => {

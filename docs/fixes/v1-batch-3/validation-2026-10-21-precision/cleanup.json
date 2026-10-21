@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-21T20:08:37.544Z",
+  "databases": [
+    {
+      "name": "ga4_alignment_test",
+      "remainingFixtureSchemas": [],
+      "otherClientConnections": 0
+    },
+    {
+      "name": "notifications_test",
+      "remainingFixtureSchemas": [],
+      "otherClientConnections": 0
+    }
+  ],
+  "isolatedPostgresStopped": true,
+  "stoppedAt": "2026-10-21T20:10:22.521Z"
+}

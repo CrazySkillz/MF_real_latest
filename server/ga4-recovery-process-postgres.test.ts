@@ -59,8 +59,8 @@ async function verifyPublication() {
   const daily = await storage.getGA4DailyMetrics("a", "123456", date, date);
   expect(daily).toHaveLength(1); expect(daily[0]).toMatchObject({ sessions: 20, conversions: 2, revenue: "100.00" });
   expect((await storage.getGA4OverviewSnapshot("a", "123456"))?.campaignBreakdown).toMatchObject({ totals: { sessions: 20, conversions: 2, revenue: 100 } });
-  expect((await storage.getKPI("kpi-a"))?.currentValue).toBe("20.00");
-  expect((await storage.getBenchmark("benchmark-a"))?.currentValue).toBe("20.00");
+  expect((await storage.getKPI("kpi-a"))?.currentValue).toBe("20");
+  expect((await storage.getBenchmark("benchmark-a"))?.currentValue).toBe("20");
   expect((await pool.query("SELECT * FROM kpi_progress WHERE kpi_id='kpi-a'")).rows).toHaveLength(1);
   expect((await pool.query("SELECT * FROM benchmark_history WHERE benchmark_id='benchmark-a'")).rows).toHaveLength(1);
   const snapshots = (await pool.query("SELECT * FROM metric_snapshots WHERE campaign_id='a'")).rows;
@@ -73,7 +73,7 @@ async function verifyPublication() {
   const alerts = (await pool.query("SELECT * FROM notifications WHERE campaign_id='a' AND type='performance-alert'")).rows;
   expect(alerts).toHaveLength(2);
   expect((await pool.query("SELECT status FROM ga4_refresh_work WHERE campaign_id='a' AND scope_hash NOT LIKE 'invalidated:%'")).rows).toEqual([{ status: "completed" }]);
-  expect((await storage.getKPI("kpi-b"))?.currentValue).toBe("10.00");
+  expect((await storage.getKPI("kpi-b"))?.currentValue).toBe("10");
   expect((await pool.query("SELECT * FROM notifications WHERE campaign_id='b'")).rows).toHaveLength(0);
 }
 

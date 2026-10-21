@@ -1,0 +1,76 @@
+{
+  "at": "2026-10-21T20:50:18.799Z",
+  "baseHead": "aee04e508f0761ac2a9f53724393676a1bda7110",
+  "implementation": "uncommitted, unpushed; no deployment",
+  "finding": "V1-079",
+  "fixStatus": "VERIFIED LOCALLY",
+  "releaseAcceptance": "OPEN",
+  "releaseDecision": "NO-GO",
+  "fullSuite": {
+    "total": 4300,
+    "passed": 4119,
+    "failed": 181,
+    "skipped": 0
+  },
+  "precisionCoverage": {
+    "from": "full-suite-final.json",
+    "passed": 588,
+    "failed": 0,
+    "skipped": 0,
+    "files": [
+      "server/v1-batch3-conversion-precision.test.ts",
+      "server/v1-batch3-conversion-postgres.test.ts",
+      "server/v1-batch3-conversion-consumers.test.ts",
+      "server/ga4-kpi-saved-overview.test.ts",
+      "server/ga4-shared-daily-traffic.test.ts",
+      "server/ga4-publication-browser.test.ts",
+      "server/ga4-browser-report-publication.test.ts",
+      "server/ga4-report-saved-publication.test.ts",
+      "server/metric-math.test.ts",
+      "server/ga4-derived-publication-postgres.test.ts",
+      "server/ga4-recovery-process-postgres.test.ts",
+      "server/ga4-snapshot-ownership-postgres.test.ts",
+      "server/financial-daily-comparison.test.ts",
+      "server/campaign-cumulative-financials.test.ts",
+      "server/campaign-section-ui-parity-scheduled-pdf.test.ts",
+      "server/executive-summary-scheduled-pdf.test.ts",
+      "server/performance-summary-scheduled-pdf.test.ts"
+    ]
+  },
+  "startupScenariosPassed": 11,
+  "newUnresolvedTestFailures": 0,
+  "manifestMatchesCurrentFiles": true,
+  "proven": [
+    "Fractional provider/daily/snapshot inputs retained",
+    "Platform and campaign current values, CPA, history and alert observations preserve credit",
+    "Observed PostgreSQL fields retain fractions through create/edit/read and restart",
+    "Tiny conversion values render in actual cards and browser PDF bytes; scheduled builder output retains them",
+    "Term-count floating-point comparison accepts representational error and rejects true mismatches",
+    "Existing ownership, transactional replacement and process recovery checks pass in the precision packet"
+  ],
+  "externallyRequired": [
+    "Exact production migration locks, existing nonfinite data and compatible rollback/restore",
+    "Live provider attribution and fractional publication reconciliation",
+    "Read-only historical damage inventory and separately reviewed repair scope",
+    "CI and all remaining V1 acceptance gates"
+  ],
+  "otherBatch3ImplementationOpen": [
+    "V1-011",
+    "V1-025 remaining cancellation paths",
+    "V1-089",
+    "V1-090"
+  ],
+  "reportFormattingFollowup": {
+    "passed": 171,
+    "failed": 0,
+    "skipped": 0,
+    "file": "report-unit-contract-verified.json"
+  },
+  "resultsBoundary": "The final full run was followed by the bounded report formatter compatibility check. The only runtime adjustment during that full run preserved the existing shared report count suffix and grouping. The 171-test final report packet and production builds cover the resulting candidate; this is not a further whole-suite run.",
+  "boundaries": [
+    "No production/Ptomo/provider/email mutation",
+    "No historical repair",
+    "No commit/push/deployment",
+    "Existing full-suite failures retained individually and not waived"
+  ]
+}

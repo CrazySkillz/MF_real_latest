@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, timestamp, boolean, jsonb, uniqueIndex, index, check } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, doublePrecision, decimal, timestamp, boolean, jsonb, uniqueIndex, index, check } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -181,14 +181,17 @@ export const ga4DailyMetrics = pgTable("ga4_daily_metrics", {
   sessions: integer("sessions").notNull().default(0),
   engagedSessions: integer("engaged_sessions"),
   pageviews: integer("pageviews").notNull().default(0),
-  conversions: integer("conversions").notNull().default(0),
+  conversions: doublePrecision("conversions").notNull().default(0), // GA4 may return fractional attribution credit; retain the numeric API contract.
   revenue: decimal("revenue", { precision: 15, scale: 2 }).notNull().default("0"),
   engagementRate: decimal("engagement_rate", { precision: 7, scale: 4 }).default("0"),
   revenueMetric: text("revenue_metric"), // 'totalRevenue' | 'purchaseRevenue' (best-effort)
   isSimulated: boolean("is_simulated").notNull().default(false),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-}, (table) => [uniqueIndex("ga4_daily_metrics_campaign_property_date_unique").on(table.campaignId, table.propertyId, table.date)]);
+}, (table) => [
+  uniqueIndex("ga4_daily_metrics_campaign_property_date_unique").on(table.campaignId, table.propertyId, table.date),
+  check("ga4_daily_metrics_conversions_finite", sql`${table.conversions} > '-Infinity'::double precision AND ${table.conversions} < 'Infinity'::double precision`),
+]);
 
 // One complete Overview payload per campaign/property, published by the GA4 daily scheduler.
 export const ga4OverviewSnapshots = pgTable("ga4_overview_snapshots", {
@@ -859,8 +862,8 @@ export const kpis = pgTable("kpis", {
   // Values
   // Use wider numeric fields to support enterprise-scale values (e.g., large revenue) without overflow.
   targetValue: decimal("target_value", { precision: 18, scale: 2 }).notNull(),
-  currentValue: decimal("current_value", { precision: 18, scale: 2 }).default("0"), // Computed at read-time for bound KPIs, manual for sourceType=manual
-  lastComputedValue: decimal("last_computed_value", { precision: 18, scale: 2 }), // Snapshot for reports/exports
+  currentValue: decimal("current_value").default("0"), // Computed at read-time for bound KPIs, manual for sourceType=manual
+  lastComputedValue: decimal("last_computed_value"), // Snapshot for reports/exports
   unit: text("unit").notNull(), // '%', '$', 'ratio', etc.
   description: text("description"),
   priority: text("priority").notNull().default("medium"), // 'low', 'medium', 'high', 'critical'
@@ -883,7 +886,10 @@ export const kpis = pgTable("kpis", {
   specificCampaignId: text("specific_campaign_id"), // LinkedIn campaign name when applyTo is 'specific'
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => ({
+  currentValueFinite: check("kpis_current_value_finite", sql`${table.currentValue} > '-Infinity'::numeric AND ${table.currentValue} < 'Infinity'::numeric`),
+  lastComputedValueFinite: check("kpis_last_computed_value_finite", sql`${table.lastComputedValue} > '-Infinity'::numeric AND ${table.lastComputedValue} < 'Infinity'::numeric`),
+}));
 
 export const kpiPeriods = pgTable("kpi_periods", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -894,7 +900,7 @@ export const kpiPeriods = pgTable("kpi_periods", {
   periodType: text("period_type").notNull(), // 'daily', 'weekly', 'monthly', 'quarterly', 'yearly'
   periodLabel: text("period_label").notNull(), // 'March 2024', 'Q1 2024', 'Week 12 2024'
   // Snapshot values at end of period
-  finalValue: decimal("final_value", { precision: 10, scale: 2 }).notNull(),
+  finalValue: decimal("final_value").notNull(),
   targetValue: decimal("target_value", { precision: 10, scale: 2 }).notNull(),
   unit: text("unit").notNull(),
   // Performance metrics
@@ -902,26 +908,34 @@ export const kpiPeriods = pgTable("kpi_periods", {
   performancePercentage: decimal("performance_percentage", { precision: 5, scale: 2 }),
   performanceLevel: text("performance_level"), // 'excellent', 'good', 'fair', 'poor'
   // Comparison with previous period
-  previousPeriodValue: decimal("previous_period_value", { precision: 10, scale: 2 }),
-  changeAmount: decimal("change_amount", { precision: 10, scale: 2 }),
+  previousPeriodValue: decimal("previous_period_value"),
+  changeAmount: decimal("change_amount"),
   changePercentage: decimal("change_percentage", { precision: 5, scale: 2 }),
   trendDirection: text("trend_direction"), // 'up', 'down', 'stable'
   // Metadata
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => ({
+  finalValueFinite: check("kpi_periods_final_value_finite", sql`${table.finalValue} > '-Infinity'::numeric AND ${table.finalValue} < 'Infinity'::numeric`),
+  previousPeriodValueFinite: check("kpi_periods_previous_period_value_finite", sql`${table.previousPeriodValue} > '-Infinity'::numeric AND ${table.previousPeriodValue} < 'Infinity'::numeric`),
+  changeAmountFinite: check("kpi_periods_change_amount_finite", sql`${table.changeAmount} > '-Infinity'::numeric AND ${table.changeAmount} < 'Infinity'::numeric`),
+}));
 
 export const kpiProgress = pgTable("kpi_progress", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   kpiId: text("kpi_id").notNull(),
-  value: decimal("value", { precision: 18, scale: 2 }).notNull(),
-  rollingAverage7d: decimal("rolling_average_7d", { precision: 18, scale: 2 }), // 7-day rolling average
-  rollingAverage30d: decimal("rolling_average_30d", { precision: 18, scale: 2 }), // 30-day rolling average
+  value: decimal("value").notNull(),
+  rollingAverage7d: decimal("rolling_average_7d"), // 7-day rolling average
+  rollingAverage30d: decimal("rolling_average_30d"), // 30-day rolling average
   trendDirection: text("trend_direction").default("neutral"), // 'up', 'down', 'neutral'
   recordedAt: timestamp("recorded_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   notes: text("notes"),
-});
+}, (table) => ({
+  valueFinite: check("kpi_progress_value_finite", sql`${table.value} > '-Infinity'::numeric AND ${table.value} < 'Infinity'::numeric`),
+  rollingAverage7dFinite: check("kpi_progress_rolling_average_7d_finite", sql`${table.rollingAverage7d} > '-Infinity'::numeric AND ${table.rollingAverage7d} < 'Infinity'::numeric`),
+  rollingAverage30dFinite: check("kpi_progress_rolling_average_30d_finite", sql`${table.rollingAverage30d} > '-Infinity'::numeric AND ${table.rollingAverage30d} < 'Infinity'::numeric`),
+}));
 
 export const kpiAlerts = pgTable("kpi_alerts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -929,7 +943,7 @@ export const kpiAlerts = pgTable("kpi_alerts", {
   alertType: text("alert_type").notNull(), // 'threshold_breach', 'target_missed', 'trend_negative', 'deadline_approaching'
   severity: text("severity").notNull().default("medium"), // 'low', 'medium', 'high', 'critical'
   message: text("message").notNull(),
-  currentValue: decimal("current_value", { precision: 18, scale: 2 }),
+  currentValue: decimal("current_value"),
   targetValue: decimal("target_value", { precision: 18, scale: 2 }),
   thresholdValue: decimal("threshold_value", { precision: 18, scale: 2 }),
   isActive: boolean("is_active").notNull().default(true),
@@ -939,7 +953,9 @@ export const kpiAlerts = pgTable("kpi_alerts", {
   slackSent: boolean("slack_sent").notNull().default(false),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => ({
+  currentValueFinite: check("kpi_alerts_current_value_finite", sql`${table.currentValue} > '-Infinity'::numeric AND ${table.currentValue} < 'Infinity'::numeric`),
+}));
 
 export const benchmarks = pgTable("benchmarks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -950,7 +966,7 @@ export const benchmarks = pgTable("benchmarks", {
   metric: text("metric"), // Metric source: 'users', 'sessions', 'pageviews', 'bounceRate', etc.
   description: text("description"),
   benchmarkValue: decimal("benchmark_value", { precision: 18, scale: 2 }).notNull(),
-  currentValue: decimal("current_value", { precision: 18, scale: 2 }).default("0"),
+  currentValue: decimal("current_value").default("0"),
   unit: text("unit").notNull(), // '%', '$', 'ratio', 'count', etc.
   benchmarkType: text("benchmark_type").notNull().default("industry"), // 'industry', 'competitor', 'historical', 'goal'
   competitorName: text("competitor_name"), // Name of competitor (when benchmarkType is 'competitor')
@@ -978,18 +994,22 @@ export const benchmarks = pgTable("benchmarks", {
   lastUpdated: timestamp("last_updated").notNull().default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => ({
+  currentValueFinite: check("benchmarks_current_value_finite", sql`${table.currentValue} > '-Infinity'::numeric AND ${table.currentValue} < 'Infinity'::numeric`),
+}));
 
 export const benchmarkHistory = pgTable("benchmark_history", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   benchmarkId: text("benchmark_id").notNull(),
-  currentValue: decimal("current_value", { precision: 18, scale: 2 }).notNull(),
+  currentValue: decimal("current_value").notNull(),
   benchmarkValue: decimal("benchmark_value", { precision: 18, scale: 2 }).notNull(),
   variance: decimal("variance", { precision: 10, scale: 2 }).notNull(),
   performanceRating: text("performance_rating").notNull().default("average"), // 'excellent', 'good', 'average', 'below_average', 'poor'
   recordedAt: timestamp("recorded_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   notes: text("notes"),
-});
+}, (table) => ({
+  currentValueFinite: check("benchmark_history_current_value_finite", sql`${table.currentValue} > '-Infinity'::numeric AND ${table.currentValue} < 'Infinity'::numeric`),
+}));
 
 export const metricSnapshots = pgTable("metric_snapshots", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -998,7 +1018,7 @@ export const metricSnapshots = pgTable("metric_snapshots", {
   totalImpressions: integer("total_impressions").notNull().default(0),
   totalEngagements: integer("total_engagements").notNull().default(0),
   totalClicks: integer("total_clicks").notNull().default(0),
-  totalConversions: integer("total_conversions").notNull().default(0),
+  totalConversions: doublePrecision("total_conversions").notNull().default(0),
   totalLeads: integer("total_leads").notNull().default(0),
   totalSpend: decimal("total_spend", { precision: 10, scale: 2 }).notNull().default("0"),
   // Detailed metrics from all sources (LinkedIn + Custom Integration)
@@ -1012,6 +1032,7 @@ export const metricSnapshots = pgTable("metric_snapshots", {
   financialDailyReportingDateUnique: uniqueIndex("metric_snapshots_financial_day_unique")
     .on(table.campaignId, table.reportingDate)
     .where(sql`${table.snapshotType} = 'financial_daily' AND ${table.reportingDate} IS NOT NULL`),
+  totalConversionsFinite: check("metric_snapshots_total_conversions_finite", sql`${table.totalConversions} > '-Infinity'::double precision AND ${table.totalConversions} < 'Infinity'::double precision`),
   executiveSummaryDailyReportingDateUnique: uniqueIndex("metric_snapshots_executive_summary_day_unique")
     .on(table.campaignId, table.reportingDate)
     .where(sql`${table.snapshotType} = 'executive_summary_daily' AND ${table.reportingDate} IS NOT NULL`),
@@ -1033,6 +1054,13 @@ const financialSnapshotMoneyInputSchema = z.discriminatedUnion("available", [
     available: z.literal(false),
     sources: z.array(z.never()).length(0),
   }).strict(),
+]);
+
+const financialSnapshotRevenueInputSchema = z.discriminatedUnion("available", [
+  financialSnapshotMoneyInputSchema.options[0].extend({
+    value: z.string().regex(/^-?(?:0|[1-9]\d{0,7})(?:\.\d{1,2})?$/),
+  }),
+  financialSnapshotMoneyInputSchema.options[1],
 ]);
 
 const financialSnapshotConversionInputSchema = z.discriminatedUnion("available", [
@@ -1062,7 +1090,7 @@ export const financialDailySnapshotInputSchema = z.object({
   }).strict(),
   inputs: z.object({
     spend: financialSnapshotMoneyInputSchema,
-    revenue: financialSnapshotMoneyInputSchema,
+    revenue: financialSnapshotRevenueInputSchema,
     conversions: financialSnapshotConversionInputSchema,
   }).strict(),
 }).strict().superRefine((snapshot, ctx) => {

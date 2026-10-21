@@ -22,7 +22,7 @@ describe("GA4 Insights Data Summary history window", () => {
     expect(end).toBeGreaterThan(start);
     expect(page).toContain("const dataSummaryHistoryTotals = (ga4InsightsDailyResp as any)?.overviewTotals;");
     expect(section).toContain("formatNumber(dataSummaryHistorySessions)");
-    expect(section).toContain("formatNumber(dataSummaryHistoryConversions)");
+    expect(section).toContain("formatConversionCredit(dataSummaryHistoryConversions)");
     expect(section).not.toContain("Top Channel");
     expect(section).not.toContain("Channel Breakdown");
     expect(section).not.toContain("insights-data-summary-channel-unavailable");

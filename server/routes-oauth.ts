@@ -9245,6 +9245,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         String((existingCampaign as any)?.status || "").trim().toLowerCase() === "draft" &&
         String((validatedData as any)?.status || "").trim().toLowerCase() === "active";
       const ga4DailyScopeChanged =
+        (Object.prototype.hasOwnProperty.call(validatedData, "currency") &&
+          String(validatedData.currency || "USD").trim().toUpperCase() !== String(existingCampaign.currency || "USD").trim().toUpperCase()) ||
         (Object.prototype.hasOwnProperty.call(validatedData, "ga4CampaignFilter") &&
           JSON.stringify(getGA4CampaignFilterValues((validatedData as any).ga4CampaignFilter).sort()) !==
           JSON.stringify(getGA4CampaignFilterValues((existingCampaign as any).ga4CampaignFilter).sort())) ||
@@ -10277,7 +10279,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         users: Math.round(Number(result.totals.users || 0) || 0),
         sessions: Math.round(Number(result.totals.sessions || 0) || 0),
         pageviews: Math.round(Number(result.totals.pageviews || 0) || 0),
-        conversions: Math.round(Number(result.totals.conversions || 0) || 0),
+        conversions: Number(result.totals.conversions || 0) || 0,
         ga4Revenue: round2Local(Number(result.totals.revenue || 0) || 0),
         engagedSessions: Math.round(Number(result.totals.engagedSessions || 0) || 0),
         engagementRate: Number(result.totals.engagementRate || 0) || 0,
@@ -10304,7 +10306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         users: Math.round(Number(totals.users || 0) || 0),
         sessions: Math.round(Number(totals.sessions || 0) || 0),
         pageviews: Math.round(Number(totals.pageviews || 0) || 0),
-        conversions: Math.round(Number(totals.conversions || 0) || 0),
+        conversions: Number(totals.conversions || 0) || 0,
         ga4Revenue: round2Local(Number(totals.ga4Revenue || 0) || 0),
         engagedSessions: Math.round(Number(totals.engagedSessions || 0) || 0),
         importedRevenue,
@@ -15068,7 +15070,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (isYesopMockProperty(persistedPropertyId) && (persistedGA4.users > 0 || persistedGA4.sessions > 0 || persistedGA4.conversions > 0 || persistedGA4.revenue > 0)) {
               ga4Totals.users = Math.round(parseNum(ga4Totals.users) + persistedGA4.users);
               ga4Totals.sessions = Math.round(parseNum(ga4Totals.sessions) + persistedGA4.sessions);
-              ga4Totals.conversions = Math.round(parseNum(ga4Totals.conversions) + persistedGA4.conversions);
+              ga4Totals.conversions = parseNum(ga4Totals.conversions) + persistedGA4.conversions;
               ga4Totals.revenue = Number((parseNum(ga4Totals.revenue) + persistedGA4.revenue).toFixed(2));
               ga4Totals.mergedSource = "ga4_daily_metrics";
               usedPersistedGA4 = true;
@@ -15081,7 +15083,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               usedPersistedGA4 = true;
             }
             if (parseNum(ga4Totals.conversions) <= 0 && persistedGA4.conversions > 0) {
-              ga4Totals.conversions = Math.round(persistedGA4.conversions);
+              ga4Totals.conversions = persistedGA4.conversions;
               usedPersistedGA4 = true;
             }
             if (parseNum(ga4Totals.revenue) <= 0 && persistedGA4.revenue > 0) {

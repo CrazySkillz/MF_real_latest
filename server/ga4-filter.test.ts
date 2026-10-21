@@ -747,6 +747,7 @@ describe("GA4 campaign value picker", () => {
       return {
         ok: true,
         json: async () => ({
+          rowCount: isPageLocationFallback ? 1 : 0,
           rows: isPageLocationFallback
             ? [{
                 dimensionValues: [
@@ -809,6 +810,7 @@ describe("GA4 campaign value picker", () => {
       return {
         ok: true,
         json: async () => ({
+          rowCount: isChannelUtm ? 1 : isLandingUtm ? 6 : standardRows.length,
           rows: isChannelUtm
             ? [{
                 dimensionValues: [{ value: "20260708" }],
@@ -1040,7 +1042,7 @@ describe("GA4 campaign value picker", () => {
         ok: true,
         json: async () => ({
           metadata: { currencyCode: 'USD' },
-          rowCount: dimensions.length > 0 ? 1 : 0,
+          rowCount: dimensions.length > 1 ? 1 : dimensions[0] === 'date' ? dailyRows.length : 0,
           rows: dimensions.length > 1 ? [{
               dimensionValues: ['20260618', 'Email', 'newsletter', 'email', 'yesop_email_nurture', 'desktop', 'NL']
                 .map((value) => ({ value })),

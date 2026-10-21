@@ -38,6 +38,7 @@ describe("GA4 shared daily traffic during provider revisions", () => {
   let purchaseOnly: boolean;
   let utmFinancials: boolean;
   let primaryBreakdown: boolean;
+  let conversionScale: number;
   const connection = () => ({
     id: "connection-a", campaignId: campaign.id, propertyId: "542352127", isActive: true,
     method: "access_token", accessToken: "test-token", importStartDate: start,
@@ -53,6 +54,7 @@ describe("GA4 shared daily traffic during provider revisions", () => {
   beforeEach(() => {
     vi.resetAllMocks(); requests = []; revision = 1; financialRevision = 0; primary = "empty"; malformed = ""; currency = "EUR";
     empty = false; purchaseOnly = false; utmFinancials = true; primaryBreakdown = false;
+    conversionScale = 1;
     vi.stubEnv("GA4_DAILY_LOOKBACK_DAYS", "90");
     persisted.getCampaign.mockResolvedValue(campaign); persisted.getCampaigns.mockResolvedValue([campaign]);
     persisted.getGA4PublicationVersion.mockResolvedValue(null);
@@ -80,31 +82,40 @@ describe("GA4 shared daily traffic during provider revisions", () => {
       const legacyFinancials = !utmFinancials && scope?.includes('"campaignName"') && dimensions.length > 1;
       if (!empty && (isUtm || scope?.includes('"campaignName"') && dimensions.length === 1 || legacyFinancials ||
           isPrimary && (primary !== "empty" && isDaily || primaryBreakdown && dimensions.length > 1))) {
-        rows = selected.flatMap(name => daily(name, !isDaily)).filter(row => {
+        rows = selected.flatMap(name => daily(name, !isDaily).map(row => ({ ...row, campaign: name }))).filter(row => {
           const date = row.date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3");
           return date >= body.dateRanges[0].startDate && date <= body.dateRanges[0].endDate &&
             !(isPrimary && primary === "partial" && row.date === "20261016");
         }).map(row => ({
-          dimensionValues: dimensions.map((d: string) => ({ value: d === "date" ? row.date : selected[0] })),
+          dimensionValues: dimensions.map((d: string) => ({ value: d === "date" ? row.date : /campaign/i.test(d) ? row.campaign : selected[0] })),
           metricValues: metrics.map((m: string) => ({ value: String(
             legacyFinancials && ["sessions", "totalUsers", "engagedSessions"].includes(m) ? 0 :
               !utmFinancials && isUtm && ["conversions", "totalRevenue", "purchaseRevenue"].includes(m) ? 0 :
-              m === "engagementRate" ? row.engagedSessions / row.sessions : (row as any)[m === "purchaseRevenue" ? "totalRevenue" : m] ?? 0,
+              m === "engagementRate" ? row.engagedSessions / row.sessions : m === "conversions" ? row.conversions * conversionScale : (row as any)[m === "purchaseRevenue" ? "totalRevenue" : m] ?? 0,
           ) })),
         }));
       }
       // GA4 returns one row per requested dimension tuple, including one row per
       // date when several selected campaigns share that date.
-      if (isDaily && isPrimary && rows.length) {
+      if (rows.length) {
         const grouped = new Map<string, any>();
         for (const row of rows) {
-          const key = row.dimensionValues[0].value;
+          const key = JSON.stringify(row.dimensionValues);
           const existing = grouped.get(key);
           if (!existing) grouped.set(key, structuredClone(row));
-          else for (let i = 0; i < 6; i++) existing.metricValues[i].value = String(Number(existing.metricValues[i].value) + Number(row.metricValues[i].value));
+          else {
+            const sessions = metrics.indexOf("sessions");
+            const previousWeight = Number(existing.metricValues[sessions]?.value || 0);
+            const nextWeight = Number(row.metricValues[sessions]?.value || 0);
+            for (let i = 0; i < metrics.length; i++) {
+              const previous = Number(existing.metricValues[i].value), next = Number(row.metricValues[i].value);
+              existing.metricValues[i].value = String(["engagementRate", "sessionKeyEventRate"].includes(metrics[i])
+                ? (previousWeight + nextWeight > 0 ? (previous * previousWeight + next * nextWeight) / (previousWeight + nextWeight) : 0)
+                : previous + next);
+            }
+          }
         }
         rows = Array.from(grouped.values());
-        for (const row of rows) row.metricValues[6].value = String(Number(row.metricValues[5].value) / Number(row.metricValues[0].value));
       }
       if (captureRequest && malformed === "duplicate" && rows.length) rows.push(structuredClone(rows[0]));
       if (captureRequest && malformed === "date" && rows.length) rows[0].dimensionValues[0].value = "20270101";
@@ -154,6 +165,27 @@ describe("GA4 shared daily traffic during provider revisions", () => {
     const dailyRequests = requests.filter(r => r.metrics.some((m: any) => m.name === "screenPageViews") && r.metrics.some((m: any) => m.name === "conversions"));
     expect(dailyRequests).toHaveLength(5); // One primary request and two date chunks for each of two campaigns.
     expect(dailyRequests.filter(r => r.metrics.some((m: any) => m.name === "sessionKeyEventRate"))).toHaveLength(4);
+  });
+
+  it.each([true, false])("V1-079 publishes fractional daily and acquisition credit with UTM financials %s", async exactUtmFinancials => {
+    conversionScale = 0.125; utmFinancials = exactUtmFinancials;
+    vi.mocked(ga4Service.getConversionEventsReport).mockResolvedValue({ rows: [], totals: { conversions: 31.5 } } as any);
+    const result = await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T06:10:00Z"));
+    expect(result.campaignIdsFailed).toEqual([]);
+    expect(persisted.replaceGA4DailyMetricsWindow).toHaveBeenCalledTimes(1);
+    const [, , , , rows, overview] = persisted.replaceGA4DailyMetricsWindow.mock.calls[0];
+    expect(rows.reduce((sum: number, row: any) => sum + row.conversions, 0)).toBe(31.5);
+    expect(rows.find((row: any) => row.date === end).conversions).toBe(0.5);
+    expect(overview.campaignBreakdown.totals.conversions).toBe(31.5);
+    expect(overview.campaignBreakdown.rows.map((row: any) => row.conversions)).toEqual([26.5, 5]);
+  });
+
+  it.each([0, 0.000001])("reconciles arbitrary decimal credit but rejects a real mismatch %s", async mismatch => {
+    conversionScale = 0.1;
+    vi.mocked(ga4Service.getConversionEventsReport).mockResolvedValue({ rows: [], totals: { conversions: 25.2 + mismatch } } as any);
+    const result = await refreshAllGA4DailyMetrics({ campaignId: campaign.id }, new Date("2026-10-17T06:10:00Z"));
+    expect(result.campaignIdsFailed).toEqual(mismatch ? [campaign.id] : []);
+    expect(persisted.replaceGA4DailyMetricsWindow).toHaveBeenCalledTimes(mismatch ? 0 : 1);
   });
 
   it("uses the full daily capture if primary attribution becomes available during the later report", async () => {

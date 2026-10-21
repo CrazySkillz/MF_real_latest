@@ -1,0 +1,152 @@
+{
+  "baseHead": "aee04e508f0761ac2a9f53724393676a1bda7110",
+  "implementation": "uncommitted",
+  "at": "2026-10-21T19:57:50.342Z",
+  "files": [
+    {
+      "file": "client/src/pages/ga4-metrics.tsx",
+      "sha256": "203372c531cc74f4399e629d458114d36181e995ddf7247bf0897470b0ead982",
+      "sha256LF": "cf112a3b4467c9a4a4427434f6da53ccca76bc2cef23762a9875349be8b5fda6"
+    },
+    {
+      "file": "migrations/0025_ga4_fractional_conversions.sql",
+      "sha256": "c05aa50415e1957ff57caa7093e223d414f9fc1c92960d22d8f4f9af1a64e92e",
+      "sha256LF": "c05aa50415e1957ff57caa7093e223d414f9fc1c92960d22d8f4f9af1a64e92e"
+    },
+    {
+      "file": "server/analytics.ts",
+      "sha256": "87b8d16af1f96690e2e5eef995c0f646f08821e22086b462dbec91c797982e27",
+      "sha256LF": "6199d5e4a20fbfa735db9077a6aa1b5c0da85ed2ce11b439d8dffc612fcc764c"
+    },
+    {
+      "file": "server/campaign-cumulative-financials.test.ts",
+      "sha256": "e918b8139720ab1d922ffa4fa09e6a49a0a9e93e86d70915e4a06a7607674728",
+      "sha256LF": "e918b8139720ab1d922ffa4fa09e6a49a0a9e93e86d70915e4a06a7607674728"
+    },
+    {
+      "file": "server/financial-daily-comparison.test.ts",
+      "sha256": "92591853e64afa714300726d6d2556c14178999750d4714f73f2f171b5644553",
+      "sha256LF": "92591853e64afa714300726d6d2556c14178999750d4714f73f2f171b5644553"
+    },
+    {
+      "file": "server/financial-daily-snapshot-writer.test.ts",
+      "sha256": "eac24dea77593ff3144f80202e7bec9f4dcc3cd28eedcefc4ac12aeb327c89dc",
+      "sha256LF": "7b8ed0fe0845ed40f4bc1df325ba15355861f7d8218b0b3fe7d27fd940812b2d"
+    },
+    {
+      "file": "server/ga4-browser-publication-refresh.test.ts",
+      "sha256": "af7263cc5e9243dae12e9b64506ae4ba23e495a556675fc5d1d8f70ebc6feea5",
+      "sha256LF": "af7263cc5e9243dae12e9b64506ae4ba23e495a556675fc5d1d8f70ebc6feea5"
+    },
+    {
+      "file": "server/ga4-derived-publication-postgres.test.ts",
+      "sha256": "9c7a3f7f32917c4eebca43c3d0cbad9eac263158a3d15ac31865463963e5c4d0",
+      "sha256LF": "9c7a3f7f32917c4eebca43c3d0cbad9eac263158a3d15ac31865463963e5c4d0"
+    },
+    {
+      "file": "server/ga4-filter.test.ts",
+      "sha256": "035acf7f404990fc842f366bdb13a034ed6b0dd99ae1334de42908087495ec63",
+      "sha256LF": "6badad5ca3bd08580243c9e29bd019276a652f21425c50540b812c243607e0b4"
+    },
+    {
+      "file": "server/ga4-initial-import-route.test.ts",
+      "sha256": "e4d82d2a991343f7bd48924a766493693b6d200c74643992ecc6a6c53034131a",
+      "sha256LF": "fdaa99e1b316621e2ed206d10db71a740df550e4cc915a734e49fcda00d8df9a"
+    },
+    {
+      "file": "server/ga4-insights-live-production-regression.test.ts",
+      "sha256": "603abdacc34c7aa9b6a568ba60976b4a05bd5d5a40ae225273a6ee80f6b55903",
+      "sha256LF": "353678ab4353cf9f93695d646d34b9b5690b3c041c2911a98059b1436753988f"
+    },
+    {
+      "file": "server/ga4-kpi-snapshot-display.test.ts",
+      "sha256": "a05fcf6e0a574892c061bf1c885bd408ab088816419a7217ccd725d19301ec96",
+      "sha256LF": "a05fcf6e0a574892c061bf1c885bd408ab088816419a7217ccd725d19301ec96"
+    },
+    {
+      "file": "server/ga4-overview-reporting-note.test.ts",
+      "sha256": "25fcd2b3c48de9bda6e799b154b6d54ea67e2cf1eac158f3c0c649a0b088f1fe",
+      "sha256LF": "25fcd2b3c48de9bda6e799b154b6d54ea67e2cf1eac158f3c0c649a0b088f1fe"
+    },
+    {
+      "file": "server/ga4-publication-browser.test.ts",
+      "sha256": "4dfe68fc57a111011e4b94b4981b70ae50aea3c3669087dff1d7aaa18cae33db",
+      "sha256LF": "4dfe68fc57a111011e4b94b4981b70ae50aea3c3669087dff1d7aaa18cae33db"
+    },
+    {
+      "file": "server/ga4-refresh-input-invalidation-postgres.test.ts",
+      "sha256": "29f4af8714ccc2f42f5f9a6338c9382eea9265461786bae2f31f20db9f45cac0",
+      "sha256LF": "29f4af8714ccc2f42f5f9a6338c9382eea9265461786bae2f31f20db9f45cac0"
+    },
+    {
+      "file": "server/ga4-request-timeout.test.ts",
+      "sha256": "ae629a78ffb0b24ff3b49c2ac255ddce07e634f7d8ad3976ba4c6a8c49117f1a",
+      "sha256LF": "17332f03e06401da293b3dc1079fdbecdaf8a95226eae11b21054d8b3c3caa58"
+    },
+    {
+      "file": "server/ga4-shared-daily-traffic.test.ts",
+      "sha256": "87158b20b6cb41ba27b8e3d82a5b223e1d34627e7d356662166787929d9a09cb",
+      "sha256LF": "87158b20b6cb41ba27b8e3d82a5b223e1d34627e7d356662166787929d9a09cb"
+    },
+    {
+      "file": "server/ga4-snapshot-ownership-postgres.test.ts",
+      "sha256": "4385ce64729d27fa0cf2a7c4ce86af78c216c404292073184a135af9016bb519",
+      "sha256LF": "4385ce64729d27fa0cf2a7c4ce86af78c216c404292073184a135af9016bb519"
+    },
+    {
+      "file": "server/ga4-ui-regression.test.ts",
+      "sha256": "a265b3f1f5af3b0f49393945b83fed4ed5cf0b8ee345076d5332d6559193feb3",
+      "sha256LF": "63388eb07e13e6b408ee84cd7e3fc34a228b1b21931ed33d4f84eef93410bbff"
+    },
+    {
+      "file": "server/index.ts",
+      "sha256": "e4acaab8388e9a93e9b2ad635627d1382ffce53046f9a7033be6ddc04aa2bcc3",
+      "sha256LF": "004efce83672f335af8cb7a23f4c1e555a6e9f2d367fc01b7445ff96b4f6e57d"
+    },
+    {
+      "file": "server/routes-oauth.ts",
+      "sha256": "c004be5b022e140730fa3b60e9fc438e18902efd78b016cb5c9dedd0b09d93c5",
+      "sha256LF": "1ecd4d0e797cc69c36ba0e86f227a88c3b38832f9348f797d847c0fbaeb4158e"
+    },
+    {
+      "file": "server/storage.ts",
+      "sha256": "347f26d7793508da5ffc1f0d9bd0f9281401e7f36c1bfc9901a8121ec146a483",
+      "sha256LF": "347f26d7793508da5ffc1f0d9bd0f9281401e7f36c1bfc9901a8121ec146a483"
+    },
+    {
+      "file": "server/utils/campaign-cumulative-financials.ts",
+      "sha256": "933d81c5ade9d210d99bcef16f3344a4ca39e6507e5116241f89a8c6edc70f78",
+      "sha256LF": "933d81c5ade9d210d99bcef16f3344a4ca39e6507e5116241f89a8c6edc70f78"
+    },
+    {
+      "file": "server/utils/revenue-record-total.ts",
+      "sha256": "cc26975f72a563b9fbf575b96acb3a5f8f172758cd793ef94cfcd223ef88393d",
+      "sha256LF": "c9d839c33b4025500aafb2adfc38089722877b2ab55a5f7da116f54ca485621b"
+    },
+    {
+      "file": "server/v1-batch3-acquisition.test.ts",
+      "sha256": "4d7d7396258e917546d03b56747f59a911fdb8cc2e3a693ab9308b52eb137ba5",
+      "sha256LF": "4d7d7396258e917546d03b56747f59a911fdb8cc2e3a693ab9308b52eb137ba5"
+    },
+    {
+      "file": "server/v1-batch3-conversion-postgres.test.ts",
+      "sha256": "e8e3710521371dce70a6a3b432e435a8df74a2106c3fa1a027fa7e56c6bf482b",
+      "sha256LF": "e8e3710521371dce70a6a3b432e435a8df74a2106c3fa1a027fa7e56c6bf482b"
+    },
+    {
+      "file": "server/v1-batch3-conversion-precision.test.ts",
+      "sha256": "e798df66b16d79c9d42439e63c877abd70556dedef3acd3bde6cdf8b17e5084d",
+      "sha256LF": "e798df66b16d79c9d42439e63c877abd70556dedef3acd3bde6cdf8b17e5084d"
+    },
+    {
+      "file": "server/v1-batch3-revenue-contracts.test.ts",
+      "sha256": "2b643843c224ad84e8889d0bd3d9d83e45cd62dabc1bdba6c6b2d8e10d2a81aa",
+      "sha256LF": "2b643843c224ad84e8889d0bd3d9d83e45cd62dabc1bdba6c6b2d8e10d2a81aa"
+    },
+    {
+      "file": "shared/schema.ts",
+      "sha256": "8aca1109299f1a9a0b7deae4b51a9e4b40554acd7f77a0b79d1a895f8f6ec73e",
+      "sha256LF": "d74b7f2a087e6406b205cb822d2a48c878a5e3e205d98fd519d1b26a034e4bac"
+    }
+  ]
+}

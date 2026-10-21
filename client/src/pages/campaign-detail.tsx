@@ -1,3 +1,4 @@
+import { formatConversionCredit } from "@shared/metric-math";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useRoute, useSearch } from "wouter";
@@ -900,6 +901,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     const integer = (n: number) =>
       n.toLocaleString('en-US', { maximumFractionDigits: 0 });
 
+    if (u === 'count') return formatConversionCredit(value);
     if (u === '$') return `$${fixed2(value)}`;
     if (u === '%') return formatPct(value);
     if (u === 'x' || u === 'ratio') return `${fixed2(value)}x`;
@@ -999,7 +1001,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
     switch (String(key || '')) {
       case 'total-conversions':
-        return { value: formatNumber(totalConversions), unit: 'count', category: 'Performance' };
+        return { value: formatConversionCredit(totalConversions), unit: 'count', category: 'Performance' };
       case 'ga4-revenue':
         return { value: formatNumber(onsiteRevenue), unit: '$', category: 'Revenue' };
       case 'offsite-revenue':
@@ -3394,7 +3396,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       category: benchmark.category || 'performance',
       unit,
       benchmarkValue: formatBenchmarkFormValue(benchmark.benchmarkValue, unit),
-      currentValue: formatBenchmarkFormValue(benchmark.currentValue, unit),
+      currentValue: formatBenchmarkFormValue(benchmark.currentValue, unit, true),
       benchmarkType: (benchmark.benchmarkType === 'custom' ? 'custom' : 'industry'),
       industry: benchmark.industry || '',
       description: benchmark.description || '',
@@ -3550,20 +3552,21 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
   const formatBenchmarkDisplayValue = (value: any, unit: any): string => {
     const num = parseNumSafe(value);
     const u = String(unit || '').trim().toLowerCase();
+    if (u === 'count') return formatConversionCredit(num);
     if (u === '$') return `$${formatNumber(num)}`;
     if (u === '%') return `${formatNumber(num)}%`;
     if (u === 'x' || u === 'ratio') return `${formatNumber(num)}x`;
     return formatNumber(num);
   };
 
-  const formatBenchmarkFormValue = (value: any, unit: any): string => {
+  const formatBenchmarkFormValue = (value: any, unit: any, observed = false): string => {
     const raw = String(value ?? '').trim();
     if (!raw) return '';
     const normalizedUnit = String(unit || '').trim().toLowerCase();
     if (normalizedUnit === '$') return formatInputNumber(raw);
     if (normalizedUnit !== 'count') return raw;
     const num = parseFloat(raw.replace(/,/g, ''));
-    return Number.isFinite(num) ? formatNumber(Math.round(num)) : raw;
+    return Number.isFinite(num) ? (observed ? formatConversionCredit(num) : formatNumber(Math.round(num))) : raw;
   };
 
   if (isLoading) {

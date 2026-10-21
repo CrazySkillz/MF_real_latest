@@ -9,10 +9,10 @@ describe("campaign Benchmark UI regression guard", () => {
       "utf-8"
     );
 
-    expect(campaignDetail).toContain("const formatBenchmarkFormValue = (value: any, unit: any): string => {");
+    expect(campaignDetail).toContain("const formatBenchmarkFormValue = (value: any, unit: any, observed = false): string => {");
     expect(campaignDetail).toContain("if (normalizedUnit !== 'count') return raw;");
     expect(campaignDetail).toContain("benchmarkValue: formatBenchmarkFormValue(benchmark.benchmarkValue, unit),");
-    expect(campaignDetail).toContain("currentValue: formatBenchmarkFormValue(benchmark.currentValue, unit),");
+    expect(campaignDetail).toContain("currentValue: formatBenchmarkFormValue(benchmark.currentValue, unit, true),");
   });
 
   it("formats currency benchmark edit values with thousands separators", () => {

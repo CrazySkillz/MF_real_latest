@@ -29,6 +29,14 @@ const resolve = (summary: any = performanceSummary) => resolveCampaignCumulative
 });
 
 describe("authoritative cumulative campaign financial resolver", () => {
+  it.each([0.75, 0.000075, 2])("retains conversion credit %s in CPA and the financial snapshot", conversions => {
+    const result = resolve({ ...performanceSummary, totals: { ...performanceSummary.totals,
+      conversions: { value: conversions, available: true, sources: ["ga4"] } } });
+    expect(result.financials.conversions).toBe(conversions);
+    expect(result.snapshot.inputs.conversions.value).toBe(conversions);
+    expect(result.financials.cpa).toBe(2699.75 / conversions);
+  });
+
   it("uses one compatible cumulative source for live financials and the future snapshot", () => {
     const result = resolve();
 
@@ -124,7 +132,8 @@ describe("authoritative cumulative campaign financial resolver", () => {
     expect(scheduler).not.toContain("resolveCampaignCumulativeFinancials");
     expect(scheduler).not.toContain(".upsertFinancialDailySnapshot(");
     expect(writer).toContain("resolveCampaignCumulativeFinancials({");
-    expect(writer).toContain("upsertFinancialDailySnapshot(cumulative.snapshot)");
-    expect(ga4Scheduler).toContain("writeFinancialDailySnapshotIfReady({ campaignId: processedCampaignId, reportingDate })");
+    expect(writer).toContain("upsertFinancialDailySnapshot({ ...cumulative.snapshot,");
+    expect(writer).toContain("...writeInput,");
+    expect(ga4Scheduler).toContain("writeFinancialDailySnapshotIfReady({ campaignId: processedCampaignId, reportingDate, ...writeInputFor(processedCampaignId) })");
   });
 });

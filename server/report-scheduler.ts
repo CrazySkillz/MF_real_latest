@@ -1,3 +1,4 @@
+import { formatConversionCredit } from "../shared/metric-math";
 import { db } from "./db";
 import { emailService } from "./services/email-service";
 import { storage } from "./storage";
@@ -218,7 +219,8 @@ function formatNumberLike(v: any): string {
 }
 
 function formatWithUnit(value: any, unit: any): string {
-  const v = formatNumberLike(value);
+  const v = String(unit || "").trim() === "count" && value !== null && value !== undefined && String(value).trim()
+    ? formatConversionCredit(Number(value)).replace(/,/g, "") : formatNumberLike(value);
   const u = String(unit || "").trim();
   if (!v) return u ? `0${u}` : "0";
   if (!u) return v;
@@ -1180,6 +1182,7 @@ function formatCampaignDeepDiveMetricValue(key: string, value: unknown, currency
     return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 2 }).format(n);
   }
   if (["ctr", "cvr", "roi", "engagementRate"].includes(key)) return `${n.toFixed(1)}%`;
+  if (key === "conversions") return formatConversionCredit(n);
   if (key === "roas") return `${n.toFixed(1)}x`;
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
 }
@@ -1197,7 +1200,7 @@ function formatCampaignDeepDiveRecordValue(record: any, value: unknown): string 
   if (unit === "$" || /^[A-Z]{3}$/.test(unit)) {
     return new Intl.NumberFormat("en-US", { style: "currency", currency: unit === "$" ? "USD" : unit, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
   }
-  if (unit === "count") return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  if (unit === "count") return formatConversionCredit(n);
   for (const candidate of [record?.metricKey, record?.metric, record?.metricType, record?.name]) {
     const key = campaignDeepDiveMetricAliases[normalizeCampaignDeepDiveMetricKey(candidate)];
     if (key) return formatCampaignDeepDiveMetricValue(key, n);
@@ -2406,7 +2409,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         const evidence = [
           executiveMetricAvailable("users") ? `${executiveMetricNumber("users").toLocaleString()} users` : "",
           executiveMetricAvailable("sessions") ? `${executiveMetricNumber("sessions").toLocaleString()} sessions` : "",
-          executiveMetricAvailable("conversions") ? `${executiveMetricNumber("conversions").toLocaleString()} conversions` : "",
+          executiveMetricAvailable("conversions") ? `${formatConversionCredit(executiveMetricNumber("conversions"))} conversions` : "",
           executiveMetricAvailable("revenue") ? `${executiveMetricValue("revenue")} total connected revenue` : "",
           executiveMetricAvailable("cvr") ? `${executiveMetricNumber("cvr").toFixed(2)}% conversion rate` : "",
         ].filter(Boolean);
@@ -3287,7 +3290,7 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         const evidence = [
           executiveMetricAvailable("users") ? `${executiveMetricNumber("users").toLocaleString()} users` : "",
           executiveMetricAvailable("sessions") ? `${executiveMetricNumber("sessions").toLocaleString()} sessions` : "",
-          executiveMetricAvailable("conversions") ? `${executiveMetricNumber("conversions").toLocaleString()} conversions` : "",
+          executiveMetricAvailable("conversions") ? `${formatConversionCredit(executiveMetricNumber("conversions"))} conversions` : "",
           executiveMetricAvailable("revenue") ? `${executiveMetricValue("revenue")} total connected revenue` : "",
           executiveMetricAvailable("cvr") ? `${executiveMetricNumber("cvr").toFixed(2)}% conversion rate` : "",
         ].filter(Boolean);

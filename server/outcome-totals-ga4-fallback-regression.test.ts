@@ -35,7 +35,7 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("isSimulated: true");
     expect(route).toContain("isYesopMockProperty(persistedPropertyId)");
     expect(route).toContain("ga4Totals.sessions = Math.round(parseNum(ga4Totals.sessions) + persistedGA4.sessions);");
-    expect(route).toContain("ga4Totals.conversions = Math.round(parseNum(ga4Totals.conversions) + persistedGA4.conversions);");
+    expect(route).toContain("ga4Totals.conversions = parseNum(ga4Totals.conversions) + persistedGA4.conversions;");
     expect(route).toContain('ga4Totals.mergedSource = "ga4_daily_metrics";');
     expect(route).toContain("resolveGA4ImportToDateWindow((persistedPrimaryGA4 as any)?.importStartDate");
     expect(route).toContain('mode: "initial_import_to_latest_completed_day" as const');

@@ -23,7 +23,7 @@ export const assertGa4RevenueMaterializationComplete = (activeSources: any[], ro
         const value = row?.revenue ?? row?.revenueRecords?.revenue;
         return value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value));
       })
-      .map((row) => String(row?.revenueSourceId ?? row?.revenueRecords?.revenueSourceId ?? '').trim())
+      .map((row) => String(row?.revenueSourceId ?? row?.revenueRecords?.revenueSourceId ?? row?.sourceId ?? '').trim())
       .filter(Boolean),
   );
   const missingSourceIds = activeSources

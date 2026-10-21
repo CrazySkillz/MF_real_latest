@@ -1,3 +1,4 @@
+import { formatConversionCredit } from "@shared/metric-math";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useQuery, keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
@@ -826,7 +827,7 @@ export default function CampaignPerformanceSummary() {
         priority: 5,
         category: 'summary',
         title: 'Campaign Summary',
-        message: `Tracking ${totalImpressions.toLocaleString()} total impressions, ${totalEngagements.toLocaleString()} engagements, and ${totalConversions.toLocaleString()} conversions from $${totalSpend.toLocaleString()} spend across connected platforms.`
+        message: `Tracking ${totalImpressions.toLocaleString()} total impressions, ${totalEngagements.toLocaleString()} engagements, and ${formatConversionCredit(totalConversions)} conversions from $${totalSpend.toLocaleString()} spend across connected platforms.`
       });
       return finalizeInsights();
     }
@@ -875,7 +876,7 @@ export default function CampaignPerformanceSummary() {
         priority: 4,
         category: 'paid-efficiency',
         title: `${source.label} Paid Performance`,
-        message: `${source.label} generated ${formatNumberValue(source.conversions)} conversions from ${formatCurrencyValue(source.spend)} spend at ${formatCurrencyValue(source.cpa!)} CPA. Use this as the current paid-source efficiency baseline.`
+        message: `${source.label} generated ${formatConversionCredit(source.conversions)} conversions from ${formatCurrencyValue(source.spend)} spend at ${formatCurrencyValue(source.cpa!)} CPA. Use this as the current paid-source efficiency baseline.`
       });
     }
 
@@ -906,7 +907,7 @@ export default function CampaignPerformanceSummary() {
           priority: 3,
           category: 'conversion-efficiency',
           title: 'Key Events per Session',
-          message: `${formatPct(cvr)}: ${formatNumberValue(aggregateMetricValue('conversions'))} key events across ${formatNumberValue(aggregateMetricValue('sessions'))} sessions. ${targetGuidance}`
+          message: `${formatPct(cvr)}: ${formatConversionCredit(aggregateMetricValue('conversions'))} key events across ${formatNumberValue(aggregateMetricValue('sessions'))} sessions. ${targetGuidance}`
         });
       }
     }
@@ -917,7 +918,7 @@ export default function CampaignPerformanceSummary() {
         priority: 3,
         category: 'conversion-efficiency',
         title: 'Cost Per Acquisition',
-        message: `Aggregate CPA is ${formatCurrencyValue(aggregateMetricValue('cpa'))} from ${formatCurrencyValue(aggregateMetricValue('spend'))} spend and ${formatNumberValue(aggregateMetricValue('conversions'))} conversions. Track this against your GA4 KPI or Benchmark before scaling spend.`
+        message: `Aggregate CPA is ${formatCurrencyValue(aggregateMetricValue('cpa'))} from ${formatCurrencyValue(aggregateMetricValue('spend'))} spend and ${formatConversionCredit(aggregateMetricValue('conversions'))} conversions. Track this against your GA4 KPI or Benchmark before scaling spend.`
       });
     }
 
@@ -962,7 +963,7 @@ export default function CampaignPerformanceSummary() {
       const sourceLabels = webSources.map((source: any) => source?.label || source?.id).filter(Boolean).join(', ');
       const sessionText = `${formatNumberValue(aggregateMetricValue('sessions'))} sessions`;
       const userText = aggregateMetricAvailable('users') ? ` and ${formatNumberValue(aggregateMetricValue('users'))} users` : '';
-      const conversionText = aggregateMetricAvailable('conversions') ? ` with ${formatNumberValue(aggregateMetricValue('conversions'))} conversions` : '';
+      const conversionText = aggregateMetricAvailable('conversions') ? ` with ${formatConversionCredit(aggregateMetricValue('conversions'))} conversions` : '';
       pushInsight({
         type: 'info',
         priority: 3,
@@ -1504,7 +1505,7 @@ export default function CampaignPerformanceSummary() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {formatOverviewValue(overviewConversions, (value) => value.toLocaleString())}
+                      {formatOverviewValue(overviewConversions, formatConversionCredit)}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {overviewSourceLabel(overviewConversions, `LinkedIn: ${linkedinConversions.toLocaleString()} | CI: ${ciConversions.toLocaleString()}`)}
@@ -1723,7 +1724,7 @@ export default function CampaignPerformanceSummary() {
                               <div className="text-sm font-medium text-muted-foreground/70 mb-1">{item.metric}</div>
                               <div className="flex items-baseline space-x-2">
                                 <span className="text-2xl font-bold text-foreground">
-                                  {item.isCurrency ? formatRecentMovementCurrencyValue(item.current) : item.current.toLocaleString()}
+                                  {item.isCurrency ? formatRecentMovementCurrencyValue(item.current) : item.metric === "Conversions" ? formatConversionCredit(item.current) : item.current.toLocaleString()}
                                 </span>
                               </div>
                               <div className="flex items-center mt-2 space-x-2">

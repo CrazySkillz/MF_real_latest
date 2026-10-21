@@ -13,7 +13,7 @@ export const resolveGA4KpiLiveValue = (args: {
   const { kpi, breakdownTotals, overviewEngagementRate, financialRevenue, financialSpend, financialROI, financialCPA } = args;
   const metric = resolveGA4KpiMetricIdentity(kpi?.metric, kpi?.name);
   if (metric === "revenue") return Number(financialRevenue || 0).toFixed(2);
-  if (metric === "conversions") return String(Math.round(Number(breakdownTotals.conversions || 0)));
+  if (metric === "conversions") return String(Number(breakdownTotals.conversions || 0));
   if (metric === "conversion_rate") return computeConversionRatePercent(Number(breakdownTotals.conversions || 0), Number(breakdownTotals.sessions || 0)).toFixed(2);
   if (metric === "engagement_rate") return normalizeRateToPercent(overviewEngagementRate).toFixed(2);
   if (metric === "users") return String(Math.round(Number(breakdownTotals.users || 0)));

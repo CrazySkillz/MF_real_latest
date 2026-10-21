@@ -1,3 +1,4 @@
+import { formatConversionCredit } from "../shared/metric-math";
 import { db } from "./db";
 import { linkedinDailyMetrics, notifications, kpis } from "../shared/schema";
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
@@ -31,7 +32,7 @@ function formatAlertDisplayValue(input: unknown, unit: unknown): string {
     case "seconds":
       return `${num.toFixed(1)}s`;
     case "count":
-      return num.toLocaleString();
+      return formatConversionCredit(num);
     default:
       if (isIsoCurrencyCode(normalizedUnit)) {
         try {

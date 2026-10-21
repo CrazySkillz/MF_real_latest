@@ -1,3 +1,4 @@
+import { formatConversionCredit } from "@shared/metric-math";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
@@ -135,6 +136,7 @@ function formatValue(value: string | number, unit: string): string {
   const num = typeof value === 'string' ? parseFloat(value) : value;
   
   switch (unit) {
+    case 'count': return formatConversionCredit(num);
     case '%':
       return `${num.toFixed(1)}%`;
     case '$':

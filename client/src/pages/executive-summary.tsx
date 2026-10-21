@@ -1,3 +1,4 @@
+import { formatConversionCredit } from "@shared/metric-math";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Briefcase, TrendingUp, TrendingDown, Target, Users, DollarSign, Award, AlertTriangle, CheckCircle, Zap, Eye, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Brain, Activity, ChevronDown, Percent } from "lucide-react";
@@ -183,7 +184,7 @@ export default function ExecutiveSummary() {
     return Array.isArray(sources) && sources.length > 0 ? `Sources: ${sources.join(", ")}` : aggregateMetricReason(metricName);
   };
   const formatAggregateInteger = (metricName: string) =>
-    aggregateMetricAvailable(metricName) ? Math.trunc(aggregateMetricValue(metricName)).toLocaleString() : "Unavailable";
+    aggregateMetricAvailable(metricName) ? (metricName === "conversions" ? formatConversionCredit(aggregateMetricValue(metricName)) : Math.trunc(aggregateMetricValue(metricName)).toLocaleString()) : "Unavailable";
   const formatAggregateCurrency = (metricName: string, showCents: boolean = true) =>
     aggregateMetricAvailable(metricName) ? formatCurrency(aggregateMetricValue(metricName), showCents) : "Unavailable";
   const formatAggregatePercent = (metricName: string) =>
@@ -496,6 +497,7 @@ export default function ExecutiveSummary() {
   const formatKpiValue = (metricName: string | null, value: number, unit: string = "") => {
     if (metricName && ["revenue", "spend", "cpa", "cpc", "cpm"].includes(metricName)) return formatCurrency(value, true);
     if (metricName && ["roi", "ctr", "cvr"].includes(metricName)) return `${value.toFixed(2)}%`;
+    if (metricName === "conversions") return formatConversionCredit(value);
     if (metricName === "roas") return `${value.toFixed(2)}x`;
     if (metricName && ["users", "sessions", "conversions", "clicks", "impressions"].includes(metricName)) return Math.trunc(value).toLocaleString();
     if (unit === "$" || /^[A-Z]{3}$/.test(unit)) return formatCurrency(value, true);

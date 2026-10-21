@@ -108,6 +108,18 @@ describe.skipIf(!testUrl)("GA4 derived writes with real PostgreSQL ownership", (
     }
   });
 
+  it("V1-036/V1-087 reads signed revenue and withholds an old-currency current snapshot without deleting history", async () => {
+    await storage.upsertFinancialDailySnapshot(financial("a", "-15.00"));
+    expect((await storage.getLatestFinancialDailySnapshot("a", date))?.metrics).toMatchObject({
+      financialDaily: { currency: "EUR", inputs: { revenue: { value: "-15.00", available: true } } },
+    });
+    // Change the fixture directly to isolate the read guard from cache invalidation.
+    await pool.query("UPDATE campaigns SET currency='USD' WHERE id='a'");
+    expect(await storage.getLatestFinancialDailySnapshot("a", date)).toBeNull();
+    expect(await storage.getLatestFinancialDailySnapshot("b", date)).not.toBeNull();
+    expect((await pool.query("SELECT metrics FROM metric_snapshots WHERE campaign_id='a' AND snapshot_type='financial_daily'")).rows[0].metrics)
+      .toMatchObject({ financialDaily: { currency: "EUR", inputs: { revenue: { value: "-15.00" } } } });
+  });
   it.each(writers)("retains the existing unguarded %s write", async kind => {
     const result: any = await write(kind);
     expect(Number(kind === "financial" ? result.metrics.financialDaily.inputs.revenue.value : result.value ?? result.currentValue)).toBe(20);
@@ -217,7 +229,7 @@ describe.skipIf(!testUrl)("GA4 derived writes with real PostgreSQL ownership", (
   it.each(["kpi", "benchmark"] as const)("preserves campaign-level %s current-value support", async kind => {
     const scope = await claim();
     await pool.query(kind === "kpi" ? "UPDATE kpis SET platform_type='campaign' WHERE id='kpi-a'" : "UPDATE benchmarks SET platform_type='campaign' WHERE id='benchmark-a'");
-    expect(await write(kind, scope)).toMatchObject({ currentValue: "20.00", platformType: "campaign" });
+    expect(await write(kind, scope)).toMatchObject({ currentValue: "20", platformType: "campaign" });
   });
   it.each(["progress update", "progress insert", "history"] as const)("rejects wrong-date %s input", async kind => {
     const scope = await claim(); const before = await saved();
@@ -249,7 +261,7 @@ describe.skipIf(!testUrl)("GA4 derived writes with real PostgreSQL ownership", (
     const scope = await claim();
     const first = await write("history", scope);
     const revised = await write("history", scope, "a", "30");
-    expect(revised).toMatchObject({ id: first.id, currentValue: "30.00", recordedAt: first.recordedAt });
+    expect(revised).toMatchObject({ id: first.id, currentValue: "30", recordedAt: first.recordedAt });
     expect((await pool.query("SELECT * FROM benchmark_history WHERE benchmark_id='benchmark-a'")).rows).toHaveLength(1);
   });
   it("keeps one automatic KPI progress entry when a replacement repeats the same date and scope", async () => {
@@ -257,7 +269,7 @@ describe.skipIf(!testUrl)("GA4 derived writes with real PostgreSQL ownership", (
     const first = await write("progress insert", scope); await expire(scope);
     const next = (await storage.claimGA4RefreshWork("a", "owner-a", scope.work.id, 120_000))!;
     const revised = await write("progress insert", { ...scope, work: { id: next.id, leaseToken: next.leaseToken! } }, "a", "30");
-    expect(revised).toMatchObject({ id: first.id, value: "30.00" });
+    expect(revised).toMatchObject({ id: first.id, value: "30" });
     expect((await pool.query("SELECT * FROM kpi_progress WHERE kpi_id='kpi-a'")).rows).toHaveLength(1);
   });
   it("does not rewrite ambiguous existing KPI progress", async () => {
@@ -278,18 +290,18 @@ describe.skipIf(!testUrl)("GA4 derived writes with real PostgreSQL ownership", (
   });
   it("preserves ordinary KPI/Benchmark definition edits and missing-row results", async () => {
     expect(await storage.updateKPI("kpi-a", { name: "Edited KPI", targetValue: "200", alertsEnabled: false }))
-      .toMatchObject({ name: "Edited KPI", targetValue: "200.00", alertsEnabled: false, currentValue: "10.00" });
+      .toMatchObject({ name: "Edited KPI", targetValue: "200.00", alertsEnabled: false, currentValue: "10" });
     expect(await storage.updateBenchmark("benchmark-a", { name: "Edited Benchmark", benchmarkValue: "200", alertsEnabled: true }))
-      .toMatchObject({ name: "Edited Benchmark", benchmarkValue: "200.00", alertsEnabled: true, currentValue: "10.00" });
+      .toMatchObject({ name: "Edited Benchmark", benchmarkValue: "200.00", alertsEnabled: true, currentValue: "10" });
     expect(await storage.updateKPI("missing", { currentValue: "20" })).toBeUndefined();
     expect(await storage.updateBenchmark("missing", { currentValue: "20" })).toBeUndefined();
     expect(await storage.updateKPIProgress("missing", { value: "20" })).toBeUndefined();
   });
   it("preserves ordinary manual history and missing-parent errors", async () => {
     const point = await storage.recordKPIProgress({ kpiId: "kpi-a", value: "25", notes: "manual" });
-    expect(point).toMatchObject({ value: "25.00", notes: "manual" });
+    expect(point).toMatchObject({ value: "25", notes: "manual" });
     expect(point.recordedAt).toBeInstanceOf(Date);
-    expect((await pool.query("SELECT current_value FROM kpis WHERE id='kpi-a'")).rows[0].current_value).toBe("25.00");
+    expect((await pool.query("SELECT current_value FROM kpis WHERE id='kpi-a'")).rows[0].current_value).toBe("25");
     const first = await storage.recordBenchmarkHistory({ ...history(), notes: "manual" });
     const second = await storage.recordBenchmarkHistory({ ...history(), notes: "manual" });
     expect(first.id).not.toBe(second.id);
@@ -300,8 +312,8 @@ describe.skipIf(!testUrl)("GA4 derived writes with real PostgreSQL ownership", (
     const scope = await claim();
     await write(kind, scope, "a", "27");
     const table = kind === "history" ? "benchmarks" : "kpis";
-    expect((await pool.query(`SELECT current_value FROM ${table} WHERE campaign_id='a'`)).rows[0].current_value).toBe("27.00");
-    expect((await pool.query(`SELECT current_value FROM ${table} WHERE campaign_id='b'`)).rows[0].current_value).toBe("10.00");
+    expect((await pool.query(`SELECT current_value FROM ${table} WHERE campaign_id='a'`)).rows[0].current_value).toBe("27");
+    expect((await pool.query(`SELECT current_value FROM ${table} WHERE campaign_id='b'`)).rows[0].current_value).toBe("10");
   });
   it("rejects a changed Benchmark target without writing its value or history", async () => {
     const scope = await claim(); await storage.updateBenchmark("benchmark-a", { benchmarkValue: "200" });

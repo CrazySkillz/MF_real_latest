@@ -1,5 +1,22 @@
 export type ProgressStatus = "on_track" | "needs_attention" | "behind";
 
+/** Conversion credit is fractional; display the JS number without count rounding. */
+export function formatConversionCredit(value: number): string {
+  if (!Number.isFinite(value)) return "Unavailable";
+  // Significant digits also preserve tiny nonzero credits (fraction-digit limits do not).
+  return value.toLocaleString("en-US", { maximumSignificantDigits: 21 });
+}
+
+/** Compare independently summed nonnegative credits within floating-point error only. */
+export function conversionCreditsMatch(left: number, right: number, terms = 1): boolean {
+  if (!Number.isFinite(left) || !Number.isFinite(right) || left < 0 || right < 0) return false;
+  if (left === right) return true;
+  if (left === 0 || right === 0 || !Number.isSafeInteger(terms) || terms < 1) return false;
+  const error = 2 * terms * Number.EPSILON;
+  if (error >= 1) return false;
+  return Math.abs(left - right) <= (error / (1 - error)) * Math.max(left, right);
+}
+
 /** Format a percentage: whole numbers when possible (54%), 1 decimal when needed (59.3%). */
 export function formatPct(value: number): string {
   const rounded = Math.round(value * 10) / 10;

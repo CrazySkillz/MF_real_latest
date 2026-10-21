@@ -177,9 +177,9 @@ describe.each(["Kpi", "Benchmark"])("GA4 %s saved financial display", (kind) => 
 it.each(["overview", "kpis", "benchmarks", "insights", "reports"])("loads the saved financial update on direct entry to %s", (activeTab) => {
   const query = declarations.find((node) => node.name.getText(file).includes("financialDailySnapshotResp"))!;
   const options = (query.initializer as ts.CallExpression).arguments[0].getText(file);
-  const result = new Function("activeTab", "campaignId", "ga4OverviewExpectedEndDate", compile(`return (${options});`))(activeTab, "campaign-a", "2026-10-15");
+  const result = new Function("activeTab", "campaignId", "ga4OverviewExpectedEndDate", "campaignCurrency", compile(`return (${options});`))(activeTab, "campaign-a", "2026-10-15", "EUR");
   expect(result.enabled).toBe(true);
-  expect(result.queryKey).toEqual(["/api/campaigns", "campaign-a", "financial-daily-snapshot", "2026-10-15"]);
+  expect(result.queryKey).toEqual(["/api/campaigns", "campaign-a", "financial-daily-snapshot", "2026-10-15", "EUR"]);
 });
 
 it.each(["kpiTracker", "benchmarkTracker"])("updates %s scoring when only the saved financial response changes", (name) => {

@@ -1,0 +1,25 @@
+{
+  "from": "full-suite-final.json",
+  "passed": 588,
+  "failed": 0,
+  "skipped": 0,
+  "files": [
+    "server/v1-batch3-conversion-precision.test.ts",
+    "server/v1-batch3-conversion-postgres.test.ts",
+    "server/v1-batch3-conversion-consumers.test.ts",
+    "server/ga4-kpi-saved-overview.test.ts",
+    "server/ga4-shared-daily-traffic.test.ts",
+    "server/ga4-publication-browser.test.ts",
+    "server/ga4-browser-report-publication.test.ts",
+    "server/ga4-report-saved-publication.test.ts",
+    "server/metric-math.test.ts",
+    "server/ga4-derived-publication-postgres.test.ts",
+    "server/ga4-recovery-process-postgres.test.ts",
+    "server/ga4-snapshot-ownership-postgres.test.ts",
+    "server/financial-daily-comparison.test.ts",
+    "server/campaign-cumulative-financials.test.ts",
+    "server/campaign-section-ui-parity-scheduled-pdf.test.ts",
+    "server/executive-summary-scheduled-pdf.test.ts",
+    "server/performance-summary-scheduled-pdf.test.ts"
+  ]
+}

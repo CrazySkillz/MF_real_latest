@@ -59,6 +59,28 @@ describe("GA4 report saved publication", () => {
   });
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
+  it.each([0.75, 0.000075, 2])("prints credit %s consistently in scheduled Summary, details, goals and CPA", async credit => {
+    const saved = overview();
+    saved.campaignBreakdown.totals.conversions = credit;
+    saved.campaignBreakdown.rows[0].conversions = credit;
+    saved.landingPages.rows[0].conversions = credit;
+    saved.conversionEvents.rows[0].conversions = credit;
+    saved.conversionEvents.totals.conversions = credit;
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(saved);
+    const daily = await storageMock.getGA4DailyMetrics();
+    storageMock.getGA4DailyMetrics.mockResolvedValue(daily.map((row: any, i: number) => ({ ...row, conversions: i === 0 ? 0 : credit })));
+    const financial = snapshot(); financial.metrics.financialDaily.inputs.conversions.value = credit;
+    storageMock.getLatestFinancialDailySnapshot.mockResolvedValue(financial);
+    storageMock.getPlatformKPIs.mockResolvedValue([{ id: "k", name: "Conversion goal", metric: "conversions", currentValue: "999", unit: "count", targetValue: "10" }]);
+    storageMock.getPlatformBenchmarks.mockResolvedValue([{ id: "b", name: "Conversion reference", metric: "conversions", currentValue: "999", unit: "count", benchmarkValue: "10" }]);
+    await build("custom", JSON.stringify({ sections: { overview: true, kpis: true, benchmarks: true },
+      subsections: { overview: { summary: true, performance: true, campaignBreakdown: true, landingPages: true, conversionEvents: true }, kpis: { items: true }, benchmarks: { items: true } }, selectedKpiIds: ["k"], selectedBenchmarkIds: ["b"] }));
+    expect(printed.filter(text => text === String(credit)).length).toBeGreaterThanOrEqual(6);
+    expect(printed).toContain(`EUR ${(20 / credit).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+    expect(printed).not.toContain("999");
+    for (const mock of Object.values(provider)) expect(mock).not.toHaveBeenCalled();
+  });
+
   it("renders saved tables and exact published Revenue/Spend/CPA without querying GA4", async () => {
     expect((await build())?.length).toBeGreaterThan(100);
     const text = printed.join("\n");

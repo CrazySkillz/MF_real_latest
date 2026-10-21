@@ -52,7 +52,7 @@ describe("GA4 Overview Performance readiness contract", () => {
     expect(route).toContain("campaignFilter");
     expect(route).toContain("campaignCurrency");
     expect(provider).toContain("{ name: 'conversions' }");
-    expect(provider).toContain("const conversions = parseInt(String(mv?.[2]?.value || '0'), 10) || 0;");
+    expect(provider).toContain("const conversions = Number.parseFloat(String(mv?.[2]?.value || '0')) || 0;");
     expect(overviewFinancials).toContain("const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);");
     expect(overviewFinancials).not.toContain("overviewSummaryTotals.conversions");
     expect(performance).toContain("const scoringFinancialConversions = demoMode");

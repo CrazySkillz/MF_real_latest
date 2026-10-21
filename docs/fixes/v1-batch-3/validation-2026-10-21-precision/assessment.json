@@ -1,0 +1,110 @@
+{
+  "at": "2026-10-21T20:10:22.568Z",
+  "baseHead": "aee04e508f0761ac2a9f53724393676a1bda7110",
+  "implementation": "uncommitted, unpushed; no deployment",
+  "finding": "V1-079",
+  "fixStatus": "IN PROGRESS",
+  "releaseAcceptance": "OPEN",
+  "releaseDecision": "NO-GO",
+  "changedThisContinuation": [
+    "migrations/0025_ga4_fractional_conversions.sql",
+    "server/analytics.ts",
+    "server/campaign-cumulative-financials.test.ts",
+    "server/ga4-overview-performance-readiness.test.ts",
+    "server/ga4-publication-browser.test.ts",
+    "server/ga4-shared-daily-traffic.test.ts",
+    "server/ga4-snapshot-ownership-postgres.test.ts",
+    "server/index.ts",
+    "server/storage.ts",
+    "server/v1-batch3-conversion-postgres.test.ts",
+    "server/v1-batch3-conversion-precision.test.ts",
+    "shared/schema.ts"
+  ],
+  "manifestMatchesCurrentFiles": true,
+  "proven": [
+    "Provider conversion parsing and date merge retain fractional numbers; integer controls and query scope retained",
+    "Actual isolated daily PostgreSQL upsert/read/window replacement and JSON preserve fractional credit; failure rollback and neighboring campaign/property controls pass",
+    "Financial and executive snapshot conversion columns preserve JSON input precision; cumulative financial resolver retains fractional CPA denominator",
+    "Actual scheduler publishes the tested binary-exact fractions through UTM and event-supplement branches",
+    "Actual intercepted Overview page renders 0.75; existing freshness/currency/refund checks still pass",
+    "Migration preserves existing integer values and supports repeat/rollback; finite constraints reject Infinity, -Infinity and NaN",
+    "10 actual-startup fixture scenarios and production-mode type/client/server builds pass"
+  ],
+  "partialOrOpen": [
+    "KPI/benchmark live/current/history/target/alert precision and fixed-scale persistence",
+    "Outcome totals, aggregate scheduler and report/PDF/executive formatting rounding",
+    "Arbitrary-decimal ordering reconciliation and actual provider attribution semantics",
+    "Historical damage inventory, exact-source repair scope, production migration locks/rollback",
+    "V1-011 recovery; remaining V1-025 cancellation; V1-089 concurrency; V1-090 provider metadata"
+  ],
+  "fullSuite": {
+    "total": 4268,
+    "passed": 4086,
+    "failed": 182,
+    "skipped": 0
+  },
+  "targeted": {
+    "total": 553,
+    "passed": 552,
+    "failed": 1,
+    "skipped": 0
+  },
+  "followup": {
+    "total": 17,
+    "passed": 17,
+    "failed": 0,
+    "skipped": 0
+  },
+  "currentUnresolvedTestFailures": 181,
+  "newUnresolvedTestFailures": 0,
+  "resultsBoundary": "The full run loaded the old integer-parser source assertion before its edit. Only that test file and the provider precision tests were rerun afterward: 17 passed. Current unresolved failures combine those results; this is not another whole-suite pass. Runtime files were unchanged after the final full-run start.",
+  "allFailuresRemainRequiredGates": true,
+  "buildChecks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "typecheck.log"
+    },
+    {
+      "name": "client-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "client-build.log"
+    },
+    {
+      "name": "server-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "server-build.log"
+    }
+  ],
+  "startupScenarios": 10,
+  "externalActions": {
+    "productionReads": false,
+    "productionWrites": false,
+    "providerRequests": false,
+    "productionMigrations": false,
+    "historicalCleanup": false,
+    "commit": false,
+    "push": false,
+    "deploy": false
+  },
+  "cleanup": {
+    "at": "2026-10-21T20:08:37.544Z",
+    "databases": [
+      {
+        "name": "ga4_alignment_test",
+        "remainingFixtureSchemas": [],
+        "otherClientConnections": 0
+      },
+      {
+        "name": "notifications_test",
+        "remainingFixtureSchemas": [],
+        "otherClientConnections": 0
+      }
+    ],
+    "isolatedPostgresStopped": true,
+    "stoppedAt": "2026-10-21T20:10:22.521Z"
+  }
+}

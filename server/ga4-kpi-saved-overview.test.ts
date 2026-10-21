@@ -96,6 +96,45 @@ describe("scheduled KPI and Benchmark saved Overview inputs", () => {
     expect(storageMock.getSpendTotalForRange).toHaveBeenLastCalledWith(campaignId, "1900-01-01", date, "ga4");
   });
 
+  it.each([0.75, 0.000075, 2])("V1-079 preserves conversion credit %s through goals, history, CPA and alert decisions", async credit => {
+    const daily = rows().map((row, index) => ({ ...row, conversions: index === 0 ? 0 : credit }));
+    storageMock.getGA4DailyMetrics.mockImplementation(async (_id, _property, start, end) => daily.filter(row => row.date >= start && row.date <= end));
+    storageMock.getLatestGA4DailyMetric.mockResolvedValue(daily[1]);
+    const saved = overview(); saved.campaignBreakdown.totals.conversions = credit;
+    storageMock.getGA4OverviewSnapshot.mockResolvedValue(saved);
+    const financial = financialSnapshot(); financial.metrics.financialDaily.inputs.conversions.value = credit;
+    storageMock.getLatestFinancialDailySnapshot.mockResolvedValue(financial);
+    const calculationConfig = { metric: "conversions", inputs: { conversions: ["total_conversions"] } };
+    storageMock.getCampaignKPIs.mockResolvedValue([{ id: "campaign-conversions", platformType: "campaign", currentValue: "999", calculationConfig }]);
+    storageMock.getCampaignBenchmarks.mockResolvedValue([{ id: "campaign-conversions", platformType: "campaign", currentValue: "999", calculationConfig }]);
+    const result = await run();
+    expect(result.campaignIdsFailed).toEqual([]);
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-Conversions", { currentValue: String(credit), publicationVersion });
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-Conversions", { currentValue: String(credit), publicationVersion });
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("campaign-conversions", { currentValue: String(credit), publicationVersion });
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("campaign-conversions", { currentValue: String(credit), publicationVersion });
+    const progress = storageMock.recordKPIProgress.mock.calls.find(([row]) => row.kpiId === "kpi-Conversions")![0];
+    expect(Number(progress.value)).toBe(credit);
+    expect(Number(progress.rollingAverage7d)).toBe(credit);
+    expect(Number(progress.rollingAverage30d)).toBe(credit);
+    expect(storageMock.recordBenchmarkHistory).toHaveBeenCalledWith(expect.objectContaining({ benchmarkId: "benchmark-Conversions", currentValue: String(credit) }));
+    expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-CPA", { currentValue: String(Number((20 / credit).toFixed(2))), publicationVersion });
+    const decision = await resolveAlertCurrentValueForDecision({ id: "kpi-Conversions", campaignId, platformType: "google_analytics", metric: "conversions", currentValue: "999" } as any, new Map(), { useSavedOverview: true });
+    expect(Number(decision.currentValue)).toBe(credit);
+    expect(provider.getTotalsWithRevenue).not.toHaveBeenCalled();
+    const history = storageMock.recordBenchmarkHistory.mock.calls.map(([row]) => ({ ...row, id: `history-${row.benchmarkId}` }));
+    storageMock.getKPIProgress.mockImplementation(async id => id === "kpi-Conversions" ? [{ ...progress, id: "progress-fraction" }] : []);
+    storageMock.getBenchmarkHistory.mockImplementation(async id => history.filter(row => row.benchmarkId === id));
+    storageMock.recordBenchmarkHistory.mockClear();
+    const revised = credit / 2;
+    daily[1].conversions = revised;
+    saved.campaignBreakdown.totals.conversions = revised;
+    financial.metrics.financialDaily.inputs.conversions.value = revised;
+    expect((await run()).campaignIdsFailed).toEqual([]);
+    expect(storageMock.updateKPIProgress).toHaveBeenCalledWith("progress-fraction", expect.objectContaining({ value: String(revised), rollingAverage7d: String(revised) }));
+    expect(storageMock.recordBenchmarkHistory).toHaveBeenCalledWith(expect.objectContaining({ benchmarkId: "benchmark-Conversions", currentValue: String(revised) }));
+  });
+
   it("keeps report preflight on the same saved GA4 values as the ordered refresh", async () => {
     const result = await preflightGA4ReportKPIConsumers({ campaignId, platformType: "google_analytics", reportType: "kpis" }, date, { suppressAlerts: true });
     expect(result.ok).toBe(true);

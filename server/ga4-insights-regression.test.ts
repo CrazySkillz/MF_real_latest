@@ -288,7 +288,7 @@ describe("GA4 Insights regression guard", () => {
     expect(content).toContain("const insightsChannelBreakdownMatchesDaily =");
     expect(content).toContain('activeTab === "insights" ? "&insightsChannelAttribution=1" : `&overviewCampaignBreakdown=1&snapshotEndDate=${encodeURIComponent(ga4OverviewExpectedEndDate)}`');
     expect(content).toContain("channelAnalysis.totalSessions === insightsDataSummaryTotals.sessions");
-    expect(content).toContain("channelAnalysis.totalConversions === insightsDataSummaryTotals.conversions");
+    expect(content).toContain("conversionCreditsMatch(channelAnalysis.totalConversions, insightsDataSummaryTotals.conversions, Math.max(1, ga4InsightsTimeSeries.length + channelAnalysis.channelCount))");
     expect(content).toContain("const dataSummaryChannelAnalysis = insightsChannelBreakdownMatchesDaily ? channelAnalysis : null;");
     expect(content).toContain("const recommendationChannelAnalysis = breakdownError ? null : dataSummaryChannelAnalysis;");
     expect(content).not.toContain("dataSummaryHistoryChannelAnalysis");

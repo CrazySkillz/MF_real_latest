@@ -1,3 +1,4 @@
+import { formatConversionCredit } from "@shared/metric-math";
 /**
  * GA4 Ad Comparison Tab
  * Extracted component for comparing campaign performance metrics.
@@ -146,7 +147,7 @@ function GA4AdComparison({
   const fmtMetricValue = (metric: string, value: number) => {
     if (metric === "revenue") return formatMoney(value);
     if (metric === "conversionRate") return `${formatPct(value)}`;
-    if (metric === "conversions") return value.toLocaleString("en-US", { maximumFractionDigits: 15 });
+    if (metric === "conversions") return formatConversionCredit(value);
     return formatNumber(value);
   };
 

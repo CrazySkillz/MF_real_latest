@@ -1,3 +1,4 @@
+import { conversionCreditsMatch } from "../shared/metric-math";
 import { storage, type GA4RefreshWriteInput } from "./storage";
 import { GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION, ga4Service, type GA4DailyTrafficCapture } from "./analytics";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
@@ -516,9 +517,9 @@ export async function refreshAllGA4DailyMetrics(opts: GA4DailyRefreshPipelineOpt
               .replace(/[^a-z0-9_]/gi, "_");
             const reconciliationMismatches = [
               Number(breakdownTotals.sessions || 0) !== expected.sessions ? "breakdown_sessions" : "",
-              Number(breakdownTotals.conversions || 0) !== expected.conversions ? "breakdown_conversions" : "",
+              !conversionCreditsMatch(Number(breakdownTotals.conversions || 0), expected.conversions, Math.max(1, overviewRows.length + (campaignBreakdown?.rows?.length || 0))) ? "breakdown_conversions" : "",
               Math.abs(Number(breakdownTotals.revenue || 0) - expected.revenue) > revenueRoundingTolerance ? "breakdown_revenue" : "",
-              eventConversionTotal !== expected.conversions
+              !conversionCreditsMatch(eventConversionTotal, expected.conversions, Math.max(1, overviewRows.length + (conversionEvents?.rows?.length || 0)))
                 ? `event_conversions_${eventConversionSource}_${eventConversionTotal < expected.conversions ? "low" : "high"}`
                 : "",
             ].filter(Boolean);

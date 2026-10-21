@@ -1,3 +1,4 @@
+import { formatConversionCredit } from "@shared/metric-math";
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Navigation from "@/components/layout/navigation";
@@ -204,6 +205,7 @@ const formatCustomReportMetricValue = (key: string, value: unknown): string => {
     return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(numericValue);
   }
   if (["ctr", "cvr", "roi"].includes(key)) return `${numericValue.toFixed(1)}%`;
+  if (key === "conversions") return formatConversionCredit(numericValue);
   if (key === "roas") return `${numericValue.toFixed(1)}x`;
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(numericValue);
 };
@@ -221,7 +223,7 @@ const formatCustomReportRecordValue = (record: any, value: unknown): string => {
   if (unit === "$" || /^[A-Z]{3}$/.test(unit)) {
     return new Intl.NumberFormat("en-US", { style: "currency", currency: unit === "$" ? "USD" : unit, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numericValue);
   }
-  if (unit === "count") return numericValue.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  if (unit === "count") return formatConversionCredit(numericValue);
   for (const candidate of [record?.metricKey, record?.metric, record?.metricType, record?.name]) {
     const metricKey = customReportMetricAliases[customReportNormalizeMetricKey(candidate)];
     if (metricKey) return formatCustomReportMetricValue(metricKey, numericValue);
@@ -1636,7 +1638,7 @@ export default function Reports() {
       const webMetrics: string[] = [];
       if (metricAvailable("users")) webMetrics.push(`${Math.round(metricNumber("users")).toLocaleString()} users`);
       if (metricAvailable("sessions")) webMetrics.push(`${Math.round(metricNumber("sessions")).toLocaleString()} sessions`);
-      if (metricAvailable("conversions")) webMetrics.push(`${Math.round(metricNumber("conversions")).toLocaleString()} conversions`);
+      if (metricAvailable("conversions")) webMetrics.push(`${formatConversionCredit(metricNumber("conversions"))} conversions`);
       if (metricAvailable("revenue")) webMetrics.push(executiveMetricValue("revenue"));
       if (metricAvailable("cvr")) webMetrics.push(`${metricNumber("cvr").toFixed(1)}% conversion rate`);
       const targetMetrics = new Set([...executiveKpiRows, ...executiveBenchmarkRows]
@@ -1644,7 +1646,7 @@ export default function Reports() {
         .filter((key: string) => ["cvr", "revenue", "conversions"].includes(key)));
       return [
         webMetrics.length > 0 ? `Available data: ${webMetrics.join(", ")}.` : "",
-        metricAvailable("revenue") && metricAvailable("conversions") ? `Revenue is ${executiveMetricValue("revenue")} from ${Math.round(metricNumber("conversions")).toLocaleString()} conversions.` : "",
+        metricAvailable("revenue") && metricAvailable("conversions") ? `Revenue is ${executiveMetricValue("revenue")} from ${formatConversionCredit(metricNumber("conversions"))} conversions.` : "",
         metricAvailable("cvr") ? `Conversion rate is ${metricNumber("cvr").toFixed(1)}%.` : "",
         targetMetrics.size > 0
           ? `KPI or Benchmark targets exist for ${Array.from(targetMetrics).map((key) => customReportMetricLabels[key] || key).join(", ")}; compare against those targets before judging quality.`

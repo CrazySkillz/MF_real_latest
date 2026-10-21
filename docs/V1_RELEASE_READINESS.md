@@ -1,6 +1,6 @@
 # V1 release-readiness audit
 
-**Audit deliverable: COMPLETE. Application: NOT PRODUCTION-READY. Release decision: NO-GO.** Assessment completed October 20, 2026; latest validation October 21. This documentation reorganization changes no runtime behavior, finding severity, release scope or acceptance decision.
+**Audit deliverable: COMPLETE. Application: NOT PRODUCTION-READY. Release decision: NO-GO.** Assessment completed October 20, 2026; latest validation October 21. Batch 3 implementation is in progress; the current local commit checkpoint and its exact verification limits are recorded below.
 
 This is the controlling release index. Use the [finding checklist](audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md) for all finding IDs/statuses and the linked batch records for detailed evidence. Earlier certificates are supporting evidence for their recorded boundaries, never whole-app certification.
 
@@ -12,13 +12,13 @@ Each finding has one detailed home in its assigned batch. Cross-batch consumers 
 
 ## Fix counts and progress tracking
 
-**130 findings: 120 unresolved V1 release items, 10 deferred-provider functional items, 0 closed for release.** Severity remains 7 P0, 115 P1 and 8 P2; all ten exclusively deferred findings are P1. Findings include code corrections and required verification; they are not 130 independent code patches. The 182 local test failures are tracked evidence, not 182 additional independent fixes.
+**130 findings: 120 unresolved V1 release items, 10 deferred-provider functional items, 0 closed for release.** Severity remains 7 P0, 115 P1 and 8 P2; all ten exclusively deferred findings are P1. Findings include code corrections and required verification; they are not 130 independent code patches. The original 182 local test failures are tracked evidence; 181 still fail in the current Batch 3 run. They are not additional independent code fixes.
 
 | Batch | Area / detailed record | Unresolved V1 | Deferred | Implementation / acceptance |
 |---|---|---:|---:|---|
 | B1 | [Authorization, ingestion and credential exposure](fixes/v1-batch-1/README.md) | 20 | 0 | Implemented, locally checked and deployed; release acceptance OPEN |
 | B2 | [Startup, migrations and account/campaign lifecycle](fixes/v1-batch-2/README.md) | 14 | 0 | Implemented, locally checked and deployed; release acceptance OPEN |
-| B3 | [Native GA4 query and financial contracts](fixes/v1-batch-3/README.md) | 10 | 0 | Queued; release acceptance OPEN |
+| B3 | [Native GA4 query and financial contracts](fixes/v1-batch-3/README.md) | 10 | 0 | In progress: six corrections verified locally, including fractional conversions; four implementation paths remain; release acceptance OPEN |
 | B4 | [Files, Sheets and Custom Integration](fixes/v1-batch-4/README.md) | 24 | 0 | Queued; release acceptance OPEN |
 | B5 | [CRM and commerce Revenue](fixes/v1-batch-5/README.md) | 6 | 0 | Queued; release acceptance OPEN |
 | B6 | [Deferred-source isolation and included Ads](fixes/v1-batch-6/README.md) | 9 | 10 | Queued; release acceptance OPEN |
@@ -26,7 +26,7 @@ Each finding has one detailed home in its assigned batch. Cross-batch consumers 
 | B8 | [Release checks and deployed operational acceptance](fixes/v1-batch-8/README.md) | 8 | 0 | Queued; release acceptance OPEN |
 | **Total** | | **120** | **10** | **0 closed for release** |
 
-**Next implementation: Batch 3.** Batch 1 and Batch 2 Ptomo scheduled-refresh checks passed at their documented boundaries; no repeat freshness wait is required. Real customer Google consent/reconnect/cancel, complete customer lifecycle and other required acceptance remain open. See [Batch 1 current status](fixes/v1-batch-1/README.md#current-batch-1-status) and [Batch 2 live acceptance](fixes/v1-batch-2/README.md#latest-validation-and-live-acceptance).
+**Current implementation: Batch 3.** Its local commit checkpoint corrects revenue source identity, signed refund inputs, exact UTM source/medium matching, acquisition pagination, currency-edit history/cache invalidation and native GA4 total-query cancellation. The latest continuation preserves fractional conversions through GA4 reads, storage, KPI/Benchmark current values and history, diagnostics, alerts and reports. [V1-079](fixes/v1-batch-3/README.md#v1-079) is VERIFIED LOCALLY for those forward paths, including migrations, restart and decimal reconciliation; deployed/provider and historical-data acceptance remains OPEN. The other remaining paths are source-aware recovery, diagnostic/provider cancellation, shared-property concurrency and provider-quality metadata. Batch 3 is not complete or deployed; see its record for exact evidence and limits. Batch 1 and Batch 2 Ptomo scheduled-refresh checks passed at their documented boundaries; no repeat freshness wait is required. Real customer Google consent/reconnect/cancel, complete customer lifecycle and other required acceptance remain open. See [Batch 1 current status](fixes/v1-batch-1/README.md#current-batch-1-status) and [Batch 2 live acceptance](fixes/v1-batch-2/README.md#latest-validation-and-live-acceptance).
 
 <a id="fix-progress-log"></a>
 
@@ -41,7 +41,8 @@ Validate documentation with `node docs/audits/v1-2026-10-19/check-audit-record.c
 ## Revision and evidence boundary
 
 - Original audit baseline: `777aae6f6353e998d60b635d3e66b413093117c2`. Its [inventory and original observation boundaries](fixes/v1-batch-8/README.md#original-audit-disposition-october-1920) are historical.
-- Latest independently verified runtime: **`839bf508bffea4742f992616753dc68eabcfab3e`** at [marketforensics.onrender.com](https://marketforensics.onrender.com/). [Saved deployment evidence](fixes/v1-batch-2/acceptance-2026-10-21/live-deployment-after.json) binds health, schema and Ptomo checks to that runtime. No fresh deployment check was performed for this documentation reorganization.
+- Latest independently verified runtime: **`839bf508bffea4742f992616753dc68eabcfab3e`** at [marketforensics.onrender.com](https://marketforensics.onrender.com/). [Saved deployment evidence](fixes/v1-batch-2/acceptance-2026-10-21/live-deployment-after.json) binds health, schema and Ptomo checks to that runtime. No fresh deployment check or production change was performed for this Batch 3 candidate.
+- Batch 3 local commit checkpoint is based on **`aee04e508f0761ac2a9f53724393676a1bda7110`**, the pushed documentation reorganization. Its 71 runtime/test/migration files match the [validated candidate manifest](fixes/v1-batch-3/validation-2026-10-21-goal-precision/candidate-manifest.json). The checkpoint includes the completed corrections and evidence; Batch 3 remains in progress. No Batch 3 push or deployment is claimed. Production database compatibility, backup and a compatible rollback must be checked before an auto-deploying push.
 - Documentation checkpoint before reorganization: `5598c62f070238e84d9fdd2d2bacc6b17c5f3c18`, pushed with `[skip render]` / `[skip ci]`. This is separate from the deployed application revision. Recheck HEAD, working tree and live revision independently for future runtime work.
 - Public health proves reported revision/reachability, not provider truth, complete schema/configuration, customer isolation or analytics correctness.
 
@@ -49,12 +50,12 @@ Validate documentation with `node docs/audits/v1-2026-10-19/check-audit-record.c
 
 | Classification | Current boundary |
 |---|---|
-| Proven within stated checks | Batches 1/2 local corrections; deployed Batch 2 schema/public denials; Ptomo configuration preservation, morning/afternoon publication freshness and user-confirmed disappearance of the updating message. Exact evidence and limits remain in those batch records. |
+| Proven within stated checks | Batches 1/2 local corrections; deployed Batch 2 schema/public denials; Ptomo configuration preservation, morning/afternoon publication freshness and user-confirmed disappearance of the updating message. Batch 3's six bounded corrections and native total-query cancellation pass isolated local checks; no deployed Batch 3 acceptance. Exact evidence and limits remain in those batch records. |
 | Partially reviewed | Source/value/lifecycle/downstream matrices and provider contracts have findings and bounded fixtures; not every composition or customer configuration has acceptance evidence. |
 | Unreviewed or incompletely verified | Remaining authenticated child/platform/payload paths, source-mutation-to-every-output combinations, complete rendered/server artifacts and source-specific refresh/recovery. V1-014/016 and the assigned defects remain open. |
 | Externally blocked / required live acceptance | Real customer Google consent and complete deployed lifecycle; independent provider reconciliation; production Clerk configuration; natural report/inbox acceptance; hosted load, monitoring, backup/key restoration and application rollback. Local fixtures do not close these gates. |
 
-Latest full suite: **4,154 tests; 3,972 passed, 182 failed, 0 skipped**. No failure is waived. A separate CI-only failure makes 183 combined local/CI open test identities. [Batch 8](fixes/v1-batch-8/README.md#latest-validation-and-release-gates) owns detailed failure reconciliation, Clerk Development mode and partial dependency-advisory evidence.
+Latest local full suite: **4,300 tests; 4,119 passed, 181 failed, zero skipped**, with **no newly failing identity**. [Current reconciliation](fixes/v1-batch-3/validation-2026-10-21-goal-precision/failure-reconciliation.json) retains every failure and its release impact. The precision coverage subset has 588 passing tests; TypeScript, production builds and 11 isolated startup scenarios pass. No failure is waived. CI and deployed acceptance have not rerun for this candidate. [Batch 8](fixes/v1-batch-8/README.md#latest-validation-and-release-gates) retains those required gates.
 
 ## Scope decision
 

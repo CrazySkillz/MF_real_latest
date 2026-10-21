@@ -79,6 +79,19 @@ describe("gated financial daily snapshot writer", () => {
     beginFinancialDailySnapshotRefreshObservation("financial_sources");
     beginFinancialDailySnapshotRefreshObservation("ga4_daily");
   });
+  it("publishes signed native and imported refunds through the same readiness and ownership gates", async () => {
+    successfulEvidence();
+    const deps = dependencies();
+    const totals = await deps.getCampaignMetricTotals();
+    deps.getCampaignMetricTotals.mockResolvedValue({ ...totals, ga4Revenue: -10, revenue: -15 });
+    deps.getGA4OverviewSnapshot.mockResolvedValue(overviewSnapshot(-10));
+    deps.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: -5, currency: "USD", sourceIds: ["revenue-1"] });
+    const result = await writeFinancialDailySnapshotIfReady({ campaignId, reportingDate }, deps);
+    expect(result.status).toBe("written");
+    expect(deps.upsertFinancialDailySnapshot).toHaveBeenCalledWith(expect.objectContaining({
+      inputs: expect.objectContaining({ revenue: { value: "-15.00", available: true, sources: ["ga4", "revenue-source:revenue-1"] } }),
+    }));
+  });
   it("carries ownership to storage without exposing it in the returned snapshot", async () => {
     successfulEvidence(); const deps = dependencies();
     const refreshScope = { campaignId, ownerId: "owner-1", reportingDate, work: { id: "work", leaseToken: "lease" } };

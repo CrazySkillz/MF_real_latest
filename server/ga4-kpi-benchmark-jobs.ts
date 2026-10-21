@@ -1,3 +1,4 @@
+import { conversionCreditsMatch } from "../shared/metric-math";
 import { storage, type GA4RefreshWriteInput } from "./storage";
 import { ga4Service } from "./analytics";
 import { computeCpa, computeConversionRatePercent, computeRoiPercent, normalizeRateToPercent } from "../shared/metric-math";
@@ -166,7 +167,7 @@ export function computeKpiValue(metricOrName: string, inputs: {
   const revenue = inputs.ga4Revenue + inputs.importedRevenue;
 
   if (m === "revenue") return round2(revenue);
-  if (m === "conversions") return Math.round(inputs.conversions || 0);
+  if (m === "conversions") return inputs.conversions || 0;
   if (m === "sessions") return Math.round(inputs.sessions || 0);
   if (m === "users") return Math.round(inputs.users || 0);
   if (m === "pageviews") return Math.round(inputs.pageviews || 0);
@@ -180,7 +181,7 @@ export function computeKpiValue(metricOrName: string, inputs: {
   return 0;
 }
 
-function computeRollingAverage(existing: Array<{ value: number; recordedAt: Date }>, days: number, newPoint: { value: number; recordedAt: Date }) {
+function computeRollingAverage(existing: Array<{ value: number; recordedAt: Date }>, days: number, newPoint: { value: number; recordedAt: Date }, metric?: string) {
   const cutoff = new Date(newPoint.recordedAt);
   cutoff.setUTCDate(cutoff.getUTCDate() - (days - 1));
   cutoff.setUTCHours(0, 0, 0, 0);
@@ -192,7 +193,7 @@ function computeRollingAverage(existing: Array<{ value: number; recordedAt: Date
     .map((p) => p.value);
   values.push(newPoint.value);
   const avg = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : newPoint.value;
-  return round2(avg);
+  return metric === "conversions" ? avg : round2(avg);
 }
 
 function computeTrendDirection(prevValue: number | null, nextValue: number) {
@@ -403,7 +404,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         try {
           const saved = await getCampaignMetricTotals(campaignId, true, true);
           if (hasExactDailyRow && saved?.ga4FinancialSource === "persisted_overview" &&
-              saved.sessions === trafficTotals.sessions && saved.conversions === trafficTotals.conversions) {
+              saved.sessions === trafficTotals.sessions && conversionCreditsMatch(saved.conversions, trafficTotals.conversions, Math.max(1, toDateRows.length))) {
             savedFinancialCandidate = { revenue: saved.ga4Revenue, conversions: saved.financialConversions };
           }
         } catch {
@@ -480,7 +481,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         users: Math.round(trafficTotals.users || 0),
         sessions: Math.round(trafficTotals.sessions || 0),
         pageviews: Math.round(trafficTotals.pageviews || 0),
-        conversions: Math.round(trafficTotals.conversions || 0),
+        conversions: trafficTotals.conversions || 0,
         ga4Revenue: round2(trafficTotals.revenue || 0),
         importedRevenue: round2(importedRevenueValue ?? 0),
         spend: round2(spendValue ?? 0),
@@ -498,7 +499,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         users: Math.round(usersToDate || 0),
         sessions: Math.round(sessionsToDate || 0),
         pageviews: Math.round(pageviewsToDate || 0),
-        conversions: Math.round(conversionsToDate || 0),
+        conversions: conversionsToDate || 0,
         revenue: round2(ga4RevenueToDate || 0),
       } : null;
       const selectedFinancialCandidate = selectGA4FinancialTotalsSource(
@@ -511,7 +512,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         users: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.users) ?? inputs.users),
         sessions: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.sessions ?? (selectedFinancialCandidate as any)?.sessionsRaw) ?? inputs.sessions),
         pageviews: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.pageviews) ?? inputs.pageviews),
-        conversions: Math.round(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.conversions) ?? 0),
+        conversions: parseGA4FinancialNumber((selectedFinancialCandidate as any)?.conversions) ?? 0,
         ga4Revenue: round2(parseGA4FinancialNumber((selectedFinancialCandidate as any)?.revenue) ?? 0),
         importedRevenue: round2(importedRevenueValue ?? 0),
         spend: round2(spendValue ?? 0),
@@ -576,9 +577,9 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
             const newPoint = { value: valueNum, recordedAt };
             return {
               kpiId,
-              value: String(round2(valueNum)),
-              rollingAverage7d: String(round2(computeRollingAverage(otherDatePts, 7, newPoint))),
-              rollingAverage30d: String(round2(computeRollingAverage(otherDatePts, 30, newPoint))),
+              value: String(valueNum),
+              rollingAverage7d: String(computeRollingAverage(otherDatePts, 7, newPoint, metricOrName)),
+              rollingAverage30d: String(computeRollingAverage(otherDatePts, 30, newPoint, metricOrName)),
               trendDirection: computeTrendDirection(prev, valueNum),
               recordedAt,
               notes: `auto:ga4_daily:${date};${historyScopeMarker}`,
@@ -587,7 +588,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
 
           // A row is reported updated only after its current value and applicable daily progress write succeed.
           if (!("refreshScope" in refreshWriteInput) || !progressData) {
-            const updated = await storage.updateKPI(kpiId, { currentValue: String(round2(valueNum)), ...refreshWriteInput } as any);
+            const updated = await storage.updateKPI(kpiId, { currentValue: String(valueNum), ...refreshWriteInput } as any);
             if (!updated) throw new Error("KPI current-value update did not change a row");
           }
 
@@ -630,7 +631,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         // and refresh the exact automatic history entry for the same reporting date.
         try {
           if (!("refreshScope" in refreshWriteInput) || !hasExactDailyRow) {
-            const updated = await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)), ...refreshWriteInput } as any);
+            const updated = await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(currentValue), ...refreshWriteInput } as any);
             if (!updated) throw new Error("Benchmark current-value update did not change a row");
           }
 
@@ -647,7 +648,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
 
             await benchmarkStorage.recordBenchmarkHistory({
               benchmarkId,
-              currentValue: String(round2(currentValue)),
+              currentValue: String(currentValue),
               benchmarkValue: String(round2(benchmarkValue)),
               variance: String(round2(variance)),
               performanceRating: rating,

@@ -121,7 +121,7 @@ describe("GA4 KPI regression guard", () => {
 
     expect(valuesStart).toBeGreaterThan(-1);
     expect(valuesEnd).toBeGreaterThan(valuesStart);
-    expect(valuesSection).toContain("currentValue: formatNumberByUnit(e.target.value, String(prev.unit || SELECT_UNIT))");
+    expect(valuesSection).toContain("currentValue: formatNumberByUnit(e.target.value, String(prev.unit || SELECT_UNIT), true)");
     expect(valuesSection).toContain("benchmarkValue: formatNumberWhileTyping(e.target.value, String(newBenchmark.unit || SELECT_UNIT))");
     expect(valuesSection).toContain("benchmarkValue: formatNumberByUnit(e.target.value, String(prev.unit || SELECT_UNIT))");
     expect(valuesSection).not.toContain('String(prev.unit || "%")');
@@ -168,7 +168,7 @@ describe("GA4 KPI regression guard", () => {
       join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
       "utf-8"
     );
-    const formatStart = ga4MetricsFile.indexOf("const formatNumberByUnit = (raw: string, unit: string) => {");
+    const formatStart = ga4MetricsFile.indexOf("const formatNumberByUnit = (raw: string, unit: string, observed = false) => {");
     const formatEnd = ga4MetricsFile.indexOf("// UX-friendly formatting", formatStart);
     const formatSection = ga4MetricsFile.slice(formatStart, formatEnd);
 

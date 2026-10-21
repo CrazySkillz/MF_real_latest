@@ -1,3 +1,4 @@
+import { formatConversionCredit } from "@shared/metric-math";
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const hasNonNegativeMetric = (value: any) => value !== null && typeof value !== "undefined" && value !== ""
   && Number.isFinite(Number(value)) && Number(value) >= 0;
@@ -73,9 +74,7 @@ export const resolveTrendComparisonDate = (dataThroughDate: string, comparisonDa
   return date.toISOString().slice(0, 10);
 };
 
-export const formatExactTrendCount = (value: number) => Number(value).toLocaleString("en-US", {
-  maximumFractionDigits: Number.isInteger(Number(value)) ? 0 : 2,
-});
+export const formatExactTrendCount = (value: number) => formatConversionCredit(Number(value));
 
 export const formatTrendComparison = (args: {
   current: number;

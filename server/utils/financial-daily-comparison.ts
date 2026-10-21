@@ -125,7 +125,7 @@ export async function deriveFinancialDailyComparisonSnapshot(
     totalImpressions: 0,
     totalEngagements: 0,
     totalClicks: 0,
-    totalConversions: Math.round(totals.financialConversions),
+    totalConversions: totals.financialConversions,
     totalLeads: 0,
     totalSpend: totals.spend.toFixed(2),
     metrics: { financialDaily: snapshot },

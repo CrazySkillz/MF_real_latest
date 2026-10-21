@@ -103,6 +103,32 @@ describe("new campaign initial GA4 import", () => {
 
   afterAll(async () => new Promise<void>((resolve, reject) => server.close((error: any) => error ? reject(error) : resolve())));
 
+  it.each([
+    { body: { currency: "EUR" }, invalidates: true },
+    { body: { currency: "USD" }, invalidates: false },
+    { body: { name: "Renamed campaign" }, invalidates: false },
+  ])("V1-087 currency edit $body preserves the exact invalidation boundary", async ({ body, invalidates }) => {
+    storageMock.getCampaign.mockResolvedValue({ id: campaignId, ownerId: "owner-1", status: "active", currency: "USD", reportingTimeZone: "UTC" });
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaignId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    expect(response.status).toBe(200);
+    expect(storageMock.updateCampaignWithGA4DailyInvalidation).toHaveBeenCalledTimes(invalidates ? 1 : 0);
+    expect(storageMock.updateCampaign).toHaveBeenCalledTimes(invalidates ? 0 : 1);
+    expect(schedulerMock.refreshAllGA4DailyMetrics).not.toHaveBeenCalled();
+    if (invalidates) expect(storageMock.updateCampaignWithGA4DailyInvalidation).toHaveBeenCalledWith(campaignId, body);
+  });
+
+  it("V1-087 refuses another customer's currency edit before invalidating anything", async () => {
+    storageMock.getCampaign.mockResolvedValue({ id: campaignId, ownerId: "owner-2", status: "active", currency: "USD" });
+    const response = await fetch(`${baseUrl}/api/campaigns/${campaignId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currency: "EUR" }),
+    });
+    expect(response.status).toBe(404);
+    expect(storageMock.updateCampaignWithGA4DailyInvalidation).not.toHaveBeenCalled();
+    expect(storageMock.updateCampaign).not.toHaveBeenCalled();
+  });
+
   const activate = (platform = "google-analytics, google-ads", ga4CampaignFilter: string | null = "selected_campaign") =>
     fetch(`${baseUrl}/api/campaigns/${campaignId}`, {
       method: "PATCH",

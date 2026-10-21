@@ -232,11 +232,12 @@ describe("GA4 browser publication coordination", () => {
   it("retains only the same campaign's financial placeholder on reporting-date change", () => {
     const start = page.indexOf("placeholderData:", page.indexOf("data: financialDailySnapshotResp"));
     const end = page.indexOf("staleTime:", start);
-    const placeholder = compile("return " + page.slice(start + "placeholderData:".length, end).trim().replace(/,$/, ""), { campaignId: "a" });
-    const previous = { snapshot: { campaignId: "a", reportingDate: "2026-10-17" } };
+    const placeholder = compile("return " + page.slice(start + "placeholderData:".length, end).trim().replace(/,$/, ""), { campaignId: "a", campaignCurrency: "EUR" });
+    const previous = { snapshot: { campaignId: "a", reportingDate: "2026-10-17", metrics: { financialDaily: { currency: "EUR" } } } };
     expect(placeholder(previous, { queryKey: ["/api/campaigns", "a", "financial-daily-snapshot", "2026-10-17"] })).toBe(previous);
     expect(placeholder(previous, { queryKey: ["/api/campaigns", "other", "financial-daily-snapshot", "2026-10-17"] })).toBeUndefined();
     expect(placeholder({ snapshot: { campaignId: "other" } }, { queryKey: ["/api/campaigns", "a"] })).toBeUndefined();
+    expect(placeholder({ snapshot: { ...previous.snapshot, metrics: { financialDaily: { currency: "USD" } } } }, { queryKey: ["/api/campaigns", "a"] })).toBeUndefined();
   });
   it("disables independent saved-data timers when status checks work, retaining fallback intervals on failure", () => {
     const tree = ts.createSourceFile("page.tsx", page, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);

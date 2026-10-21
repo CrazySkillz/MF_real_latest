@@ -1,3 +1,4 @@
+import { conversionCreditsMatch } from "../../shared/metric-math";
 import { storage, type GA4RefreshWriteInput } from "../storage";
 import { ga4Service } from "../analytics";
 import { isGA4FinancialTotalsCandidate, parseGA4FinancialNumber, selectGA4FinancialTotalsSource } from "../../shared/ga4-financial-source";
@@ -228,7 +229,7 @@ async function getCampaignMetricTotalsForEndDate(
       if (!overview || overview.campaignId !== campaignId || overview.propertyId !== propertyId ||
           overview.windowStart !== startDate || overview.windowEnd !== endDate ||
           !/^[A-Z]{3}$/.test(currency) || String((overview.campaignBreakdown as any)?.meta?.currencyCode || "").trim().toUpperCase() !== currency ||
-          savedRevenue === null || savedRevenue < 0 || savedConversions === null || savedConversions < 0 || !Number.isInteger(savedConversions) ||
+          savedRevenue === null || savedRevenue < 0 || savedConversions === null || savedConversions < 0 ||
           savedSessions === null || savedSessions < 0 || !Number.isInteger(savedSessions)) return null;
       const expectedDays = (Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`)) / 86400000 + 1;
       if (rows.length !== expectedDays || new Set(rows.map((row: any) => row.date)).size !== expectedDays ||
@@ -237,8 +238,8 @@ async function getCampaignMetricTotalsForEndDate(
             !Number.isFinite(Date.parse(`${row.date}T00:00:00Z`)) || new Date(`${row.date}T00:00:00Z`).toISOString().slice(0, 10) !== row.date ||
             ["sessions", "conversions", "revenue"].some((field) => {
               const value = parseGA4FinancialNumber(row[field]);
-              return value === null || value < 0 || (field !== "revenue" && !Number.isInteger(value));
-            })) || savedConversions !== conversions || savedSessions !== sessions ||
+              return value === null || value < 0 || (field === "sessions" && !Number.isInteger(value));
+            })) || !conversionCreditsMatch(savedConversions, conversions, rows.length) || savedSessions !== sessions ||
           Math.abs(savedRevenue - ga4Revenue) > rows.length * 0.005 + 1e-9) return null;
       ga4Revenue = savedRevenue;
       financialConversions = savedConversions;
@@ -350,8 +351,8 @@ async function getCampaignMetricTotalsForEndDate(
     revenue: round2(ga4Revenue + parseNum((revenueTotals as any)?.totalRevenue)),
     ga4Revenue: round2(ga4Revenue),
     spend: round2(parseNum((spendTotals as any)?.totalSpend)),
-    conversions: Math.round(conversions),
-    financialConversions: Math.round(financialConversions),
+    conversions,
+    financialConversions,
     users: Math.round(users),
     sessions: Math.round(sessions),
     engagementRate: round2(engagementRate),
@@ -432,7 +433,7 @@ export function computeCampaignCurrentValueFromConfig(rawConfig: unknown, totals
   if (["revenue", "spend", "conversions", "users", "sessions", "engagementRate"].includes(metric)) {
     const value = sumSelected(metric, cfg?.inputs?.[metric], totals);
     if (value === null) return null;
-    return ["conversions", "users", "sessions"].includes(metric) ? Math.round(value) : round2(value);
+    return metric === "conversions" ? value : ["users", "sessions"].includes(metric) ? Math.round(value) : round2(value);
   }
   if (metric === "conversion-rate-website") {
     const conv = sumSelected("conversions", cfg?.inputs?.conversions, totals);
@@ -527,9 +528,9 @@ export async function refreshCampaignCurrentValuesForCampaign(campaignId: string
     if (!isCampaignLevel(kpi) || !(kpi as any)?.calculationConfig) continue;
     const currentValue = computeCampaignCurrentValueFromConfig((kpi as any).calculationConfig, totals);
     if (currentValue === null || !Number.isFinite(currentValue)) continue;
-    const previous = (kpi as any)?.currentValue === null || typeof (kpi as any)?.currentValue === "undefined" ? null : round2(parseNum((kpi as any).currentValue));
-    if (previous !== null && previous === round2(currentValue)) continue;
-    await storage.updateKPI(String((kpi as any).id), { currentValue: String(round2(currentValue)), ...options } as any);
+    const previous = (kpi as any)?.currentValue === null || typeof (kpi as any)?.currentValue === "undefined" ? null : parseNum((kpi as any).currentValue);
+    if (previous !== null && previous === currentValue) continue;
+    await storage.updateKPI(String((kpi as any).id), { currentValue: String(currentValue), ...options } as any);
     kpisUpdated += 1;
   }
 
@@ -538,9 +539,9 @@ export async function refreshCampaignCurrentValuesForCampaign(campaignId: string
     if (!isCampaignLevel(benchmark) || !(benchmark as any)?.calculationConfig) continue;
     const currentValue = computeCampaignCurrentValueFromConfig((benchmark as any).calculationConfig, totals);
     if (currentValue === null || !Number.isFinite(currentValue)) continue;
-    const previous = (benchmark as any)?.currentValue === null || typeof (benchmark as any)?.currentValue === "undefined" ? null : round2(parseNum((benchmark as any).currentValue));
-    if (previous !== null && previous === round2(currentValue)) continue;
-    await storage.updateBenchmark(String((benchmark as any).id), { currentValue: String(round2(currentValue)), ...options } as any);
+    const previous = (benchmark as any)?.currentValue === null || typeof (benchmark as any)?.currentValue === "undefined" ? null : parseNum((benchmark as any).currentValue);
+    if (previous !== null && previous === currentValue) continue;
+    await storage.updateBenchmark(String((benchmark as any).id), { currentValue: String(currentValue), ...options } as any);
     benchmarksUpdated += 1;
   }
 

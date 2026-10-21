@@ -13,14 +13,14 @@ describe("alert numeric capacity regression guard", () => {
     const schema = schemaSource();
 
     expect(schema).toContain('targetValue: decimal("target_value", { precision: 18, scale: 2 }).notNull(),');
-    expect(schema).toContain('currentValue: decimal("current_value", { precision: 18, scale: 2 }).default("0"),');
-    expect(schema).toContain('lastComputedValue: decimal("last_computed_value", { precision: 18, scale: 2 }),');
+    expect(schema).toContain('currentValue: decimal("current_value").default("0"),');
+    expect(schema).toContain('lastComputedValue: decimal("last_computed_value"),');
     expect(schema).toContain('alertThreshold: decimal("alert_threshold", { precision: 18, scale: 2 }),');
 
     const kpiAlertsStart = schema.indexOf('export const kpiAlerts = pgTable("kpi_alerts"');
     const benchmarksStart = schema.indexOf('export const benchmarks = pgTable("benchmarks"');
     const kpiAlertsSection = schema.slice(kpiAlertsStart, benchmarksStart);
-    expect(kpiAlertsSection).toContain('currentValue: decimal("current_value", { precision: 18, scale: 2 }),');
+    expect(kpiAlertsSection).toContain('currentValue: decimal("current_value"),');
     expect(kpiAlertsSection).toContain('targetValue: decimal("target_value", { precision: 18, scale: 2 }),');
     expect(kpiAlertsSection).toContain('thresholdValue: decimal("threshold_value", { precision: 18, scale: 2 }),');
   });
@@ -35,10 +35,10 @@ describe("alert numeric capacity regression guard", () => {
     const benchmarkHistorySection = schema.slice(benchmarkHistoryStart, metricSnapshotsStart);
 
     expect(benchmarksSection).toContain('benchmarkValue: decimal("benchmark_value", { precision: 18, scale: 2 }).notNull(),');
-    expect(benchmarksSection).toContain('currentValue: decimal("current_value", { precision: 18, scale: 2 }).default("0"),');
+    expect(benchmarksSection).toContain('currentValue: decimal("current_value").default("0"),');
     expect(benchmarksSection).toContain('alertThreshold: decimal("alert_threshold", { precision: 18, scale: 2 }),');
     expect(benchmarksSection).toContain('variance: decimal("variance", { precision: 10, scale: 2 }),');
-    expect(benchmarkHistorySection).toContain('currentValue: decimal("current_value", { precision: 18, scale: 2 }).notNull(),');
+    expect(benchmarkHistorySection).toContain('currentValue: decimal("current_value").notNull(),');
     expect(benchmarkHistorySection).toContain('benchmarkValue: decimal("benchmark_value", { precision: 18, scale: 2 }).notNull(),');
     expect(benchmarkHistorySection).toContain('variance: decimal("variance", { precision: 10, scale: 2 }).notNull(),');
   });

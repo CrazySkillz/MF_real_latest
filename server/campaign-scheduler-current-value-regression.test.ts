@@ -17,9 +17,9 @@ describe("campaign scheduler current-value regression guard", () => {
     expect(resolver).toContain("storage.getCampaignKPIs(id)");
     expect(resolver).toContain("storage.getCampaignBenchmarks(id)");
     expect(resolver).toContain("computeCampaignCurrentValueFromConfig((kpi as any).calculationConfig, totals)");
-    expect(resolver).toContain("await storage.updateKPI(String((kpi as any).id), { currentValue: String(round2(currentValue)), ...options } as any);");
+    expect(resolver).toContain("await storage.updateKPI(String((kpi as any).id), { currentValue: String(currentValue), ...options } as any);");
     expect(resolver).toContain("computeCampaignCurrentValueFromConfig((benchmark as any).calculationConfig, totals)");
-    expect(resolver).toContain("await storage.updateBenchmark(String((benchmark as any).id), { currentValue: String(round2(currentValue)), ...options } as any);");
+    expect(resolver).toContain("await storage.updateBenchmark(String((benchmark as any).id), { currentValue: String(currentValue), ...options } as any);");
   });
 
   it("keeps revenue and spend source-refresh jobs on the shared scheduler recompute hook", () => {

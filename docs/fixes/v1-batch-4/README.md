@@ -6,7 +6,11 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 4 status
 
-**IN PROGRESS.** Seven corrections are VERIFIED LOCALLY: V1-040/065/066/067/071/073/126. Seventeen findings still need implementation; all 24 release acceptances remain OPEN. The first four are deployed in `44132830` (runtime commit `c3806282`); the three October 23 Sheets Revenue corrections are uncommitted on that HEAD and are not deployed. No provider call or production-data cleanup was performed.
+**IN PROGRESS.** Seven corrections are VERIFIED LOCALLY: V1-040/065/066/067/071/073/126. Seventeen findings still need implementation; all 24 release acceptances remain OPEN. The first four are deployed in `44132830` (runtime commit `c3806282`); the three October 23 Sheets Revenue corrections are committed in `ace32e7b`, based on that HEAD, with deployment verification pending. No provider call or production-data cleanup was performed.
+
+## Sheets Revenue commit checkpoint (October 23)
+
+The requested fixes, tests and documentation are committed in `ace32e7bd9521c451fe12ba2a05f1445c0001a63`. [Commit verification](validation-2026-10-23-sheets-revenue/commit-checkpoint.json) confirms all five committed runtime/test files match the validated candidate. No schema, dependency or environment-setting change is included. The dated validation manifests retain their original pre-commit state. Deployment verification and required release acceptance remain open.
 
 ## Sheets Revenue correction checkpoint (October 23)
 
@@ -30,7 +34,7 @@ The authorized next group, V1-065/066/067, is implemented and verified locally. 
 
 At 21:53 UTC, three read-only checks independently confirmed live revision `44132830b668283d37d40cb874687c2c5861ad0e`, `nodeEnv=production` and successful readiness. The homepage and `/health` returned 200; signed-out `/api/campaigns` returned 401. The GA4 scheduler is registered with 08:00/14:00/20:00 Europe/Amsterdam and `runOnStartup=false`. Its next run is October 23 at 08:00 Amsterdam, through October 22; no natural run has completed since this deployment. [Recorded public evidence](deployment-2026-10-22/public-verification.json) and [read-only checker](deployment-2026-10-22/verify-public.cjs).
 
-This confirms deployment and the listed public checks only. It does not validate authenticated imports, Google provider values, the next refresh, hosted load or recovery. No campaign mutation, upload, manual refresh, provider failure or cleanup was triggered. All 24 release acceptances remain open. Next implementation: Sheets Revenue V1-065/066/067; this work does not depend on waiting for the next scheduled refresh.
+This confirms deployment and the listed public checks only. It does not validate authenticated imports, Google provider values, the next refresh, hosted load or recovery. No campaign mutation, upload, manual refresh, provider failure or cleanup was triggered. All 24 release acceptances remain open. At this October 22 checkpoint, Sheets Revenue V1-065/066/067 was next; the October 23 correction checkpoint above supersedes that implementation status.
 
 ## Commit checkpoint (October 22)
 
@@ -206,7 +210,7 @@ Main GET21785/21987 and `auto-refresh-scheduler.ts:813` read A1:Z1000. Exact ref
 
 `routes-oauth.ts:5609–5620` duplicate headers overwrite earlier values before validation. Exact GA4 Revenue process fixture `[Revenue,Revenue]`/`[100,7]` persists7. Strict CSV Revenue's duplicate-header rejection does not cover Sheets.
 
-**Implementation / validation:** Forward correction verified locally in the [October 23 Sheets Revenue checkpoint](#sheets-revenue-correction-checkpoint-october-23). Uncommitted on `44132830`; not deployed. See the exact root cause, changed paths, failing/fixed/neighbor/persistence tests and remaining lifecycle/provider/historical-data limits there. Release acceptance remains OPEN.
+**Implementation / validation:** Forward correction verified locally in the [October 23 Sheets Revenue checkpoint](#sheets-revenue-correction-checkpoint-october-23). Committed in `ace32e7b`, based on `44132830`; deployment verification pending. See the exact root cause, changed paths, failing/fixed/neighbor/persistence tests and remaining lifecycle/provider/historical-data limits there. Release acceptance remains OPEN.
 
 ### V1-066
 
@@ -218,7 +222,7 @@ Main GET21785/21987 and `auto-refresh-scheduler.ts:813` read A1:Z1000. Exact ref
 
 Sheets Revenue amount helper accepts `$`; process1456 strips it while5719–5731 checks only configured currency. Exact EUR fixture persists `$100` as100EUR without conversion. Malformed12oops control correctly rejects; preserve that existing syntax validation.
 
-**Implementation / validation:** Forward correction verified locally in the [October 23 Sheets Revenue checkpoint](#sheets-revenue-correction-checkpoint-october-23). Uncommitted on `44132830`; not deployed. See the exact root cause, changed paths, failing/fixed/neighbor/persistence tests and remaining lifecycle/provider/historical-data limits there. Release acceptance remains OPEN.
+**Implementation / validation:** Forward correction verified locally in the [October 23 Sheets Revenue checkpoint](#sheets-revenue-correction-checkpoint-october-23). Committed in `ace32e7b`, based on `44132830`; deployment verification pending. See the exact root cause, changed paths, failing/fixed/neighbor/persistence tests and remaining lifecycle/provider/historical-data limits there. Release acceptance remains OPEN.
 
 ### V1-067
 
@@ -230,7 +234,7 @@ Sheets Revenue amount helper accepts `$`; process1456 strips it while5719–5731
 
 `auto-refresh-scheduler.ts:587–626` ignores stored singular campaignValue, although Revenue save5442 accepts and preserves it. Exact refresh fixture changes selected10 into all-rows100; array-selection control stays10. Restore exact saved selection across save/preview/refresh and all downstream values; inventory potentially damaged sources separately.
 
-**Implementation / validation:** Forward correction verified locally in the [October 23 Sheets Revenue checkpoint](#sheets-revenue-correction-checkpoint-october-23). Uncommitted on `44132830`; not deployed. See the exact root cause, changed paths, failing/fixed/neighbor/persistence tests and remaining lifecycle/provider/historical-data limits there. Release acceptance remains OPEN.
+**Implementation / validation:** Forward correction verified locally in the [October 23 Sheets Revenue checkpoint](#sheets-revenue-correction-checkpoint-october-23). Committed in `ace32e7b`, based on `44132830`; deployment verification pending. See the exact root cause, changed paths, failing/fixed/neighbor/persistence tests and remaining lifecycle/provider/historical-data limits there. Release acceptance remains OPEN.
 
 ### V1-068
 

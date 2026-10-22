@@ -555,7 +555,7 @@ Important meaning:
 - Batch 4 October 23 forward corrections reject duplicate header names after trimming/generated-name normalization in preview, save and refresh; invalid edits/refreshes retain last-good source records
 - GA4 Sheets Revenue validates selected amount currency before parsing: plain numbers use the saved campaign currency, while dollar symbols require USD; no FX conversion is performed
 - refresh applies the same saved campaign selection as save: normalized non-empty `campaignValues` first, otherwise singular `campaignValue`; a mapped campaign column without a selection fails closed
-- these three corrections are verified locally and not yet deployed; [the Batch 4 record](../docs/fixes/v1-batch-4/README.md#sheets-revenue-correction-checkpoint-october-23) owns tests, implementation revision and remaining source-family/provider/historical-data gates
+- these three corrections are verified locally and committed in `ace32e7b`, with deployment verification pending; [the Batch 4 record](../docs/fixes/v1-batch-4/README.md#sheets-revenue-correction-checkpoint-october-23) owns tests, implementation revision and remaining source-family/provider/historical-data gates
 - the preview step is part of the source-selection journey, not a separate admin flow
 - the visible mapping screen should follow the same pattern as Google Sheets spend: value-column dropdown first, optional date column second, then campaign identifier and campaign value controls
 - the mapping screen title should be `Map sheet columns` in new-source mode

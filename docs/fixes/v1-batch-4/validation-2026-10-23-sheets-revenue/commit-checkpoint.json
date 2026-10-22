@@ -1,0 +1,36 @@
+{
+  "at": "2026-10-22T22:24:28.768557+00:00",
+  "runtimeFixCommit": "ace32e7bd9521c451fe12ba2a05f1445c0001a63",
+  "baseHead": "44132830b668283d37d40cb874687c2c5861ad0e",
+  "validatedFiles": [
+    {
+      "file": "server/routes-oauth.ts",
+      "sha256": "f97e5eec20d68f6bb172064d7e91685b52a8296d437f35bde8200b546e818ffb",
+      "lfSha256": "90afb8aa3513ab3fd3e2be9c10b25e9754bab2847075401674268c2c7ee0b0ec"
+    },
+    {
+      "file": "server/auto-refresh-scheduler.ts",
+      "sha256": "b8e49ede84acb7fe952d6ab97b06195bc4a1d69c005f429ac3bd6449fc0c7c57",
+      "lfSha256": "d44e8aa05311c9887d2ee280bf2e10aca2eea22f4cfaa996bb39b09c3ea285a4"
+    },
+    {
+      "file": "server/utils/google-sheets-revenue-amount.ts",
+      "sha256": "489d79174ef4f468478a43dbff15735efc7e57954d1b42ffd52062da76609248",
+      "lfSha256": "d4666f4fdb82ea406e66960b746e1c7457a6f26c0b0d3f4df0a8601b6cfa7c54"
+    },
+    {
+      "file": "server/v1-batch4-sheets-revenue-contract.test.ts",
+      "sha256": "0cfec6d140253e281c86d81b72100a2aa37fc6e04a15cf45f709b0d040ded765",
+      "lfSha256": "0cfec6d140253e281c86d81b72100a2aa37fc6e04a15cf45f709b0d040ded765"
+    },
+    {
+      "file": "server/ga4-auto-refresh-regression.test.ts",
+      "sha256": "14951f170b3588f5bafde90b36c179d51781c0d66f8c50e07b00e010d3f3ba90",
+      "lfSha256": "2e60166ccb3e22f627dc5f78a1740c32fa01bb915636e21550d5077ddcd9a156"
+    }
+  ],
+  "verification": "All 5 committed runtime/test blobs match the validated LF-normalized hashes. No runtime changes after validation.",
+  "validation": "29 new tests pass; targeted packet 398 passed / 9 classified existing failures / 0 skipped; TypeScript and server build pass. Tests not repeated for unchanged content.",
+  "deployment": "Push authorized by user; deployed acceptance remains pending. No schema, dependency or environment change.",
+  "releaseAcceptance": "OPEN; no whole-V1 certification"
+}

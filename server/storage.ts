@@ -803,7 +803,10 @@ export class DatabaseStorage implements IStorage {
     return campaign || undefined;
     };
     if ("refreshScope" in options && options.refreshScope?.campaignId !== id) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
-    return "refreshScope" in options ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : this.writeGA4RefreshInputChange(id, write);
+    return "refreshScope" in options ? this.writeWithGA4RefreshOwnership(options.refreshScope, write) : this.writeGA4RefreshInputChange(id, write).catch(error => {
+      if (error?.message === "GA4_REFRESH_TARGET_SCOPE_CHANGED") return undefined;
+      throw error;
+    });
   }
 
   async updateCampaignWithGA4DailyInvalidation(id: string, updateData: Partial<InsertCampaign>): Promise<Campaign | undefined> {
@@ -817,6 +820,9 @@ export class DatabaseStorage implements IStorage {
       await tx.delete(ga4DailyMetrics).where(eq(ga4DailyMetrics.campaignId, id));
       await tx.delete(ga4OverviewSnapshots).where(eq(ga4OverviewSnapshots.campaignId, id));
       return campaign;
+    }).catch(error => {
+      if (error?.message === "GA4_REFRESH_TARGET_SCOPE_CHANGED") return undefined;
+      throw error;
     });
   }
 
@@ -1437,7 +1443,10 @@ export class DatabaseStorage implements IStorage {
   private async writeGA4RefreshInputChange<T>(campaignId: string | null | undefined | string[], write: (tx: any) => Promise<T>): Promise<T> {
     const campaignIds = Array.from(new Set((Array.isArray(campaignId) ? campaignId : [campaignId]).filter((id): id is string => Boolean(id)))).sort();
     return db.transaction(async (tx: any) => {
-      if (campaignIds.length) await tx.select({ id: campaigns.id }).from(campaigns).where(inArray(campaigns.id, campaignIds)).orderBy(campaigns.id).for("update");
+      if (campaignIds.length) {
+        const parents = await tx.select({ id: campaigns.id }).from(campaigns).where(inArray(campaigns.id, campaignIds)).orderBy(campaigns.id).for("update");
+        if (parents.length !== campaignIds.length) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+      }
       const result = await write(tx);
       if (campaignIds.length && result !== false && result !== undefined) {
         // Ordinary saves also run on installations where durable work has not

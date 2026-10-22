@@ -51,7 +51,8 @@ export const isSupportedGa4CsvRevenueAmount = (value: unknown, campaignCurrency:
   const amount = Number(withoutCurrency.replace(/,/g, ""));
   return GA4_CSV_REVENUE_AMOUNT.test(withoutCurrency)
     && Number.isFinite(amount)
-    && Math.abs(amount) <= GA4_CSV_MAX_REVENUE_TOTAL;
+    && amount >= 0
+    && amount <= GA4_CSV_MAX_REVENUE_TOTAL;
 };
 
 export function findInvalidGa4CsvRevenueAmountRows(

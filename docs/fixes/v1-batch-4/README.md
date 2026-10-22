@@ -6,7 +6,43 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 4 status
 
-**QUEUED.** 24 V1 findings remain open. No implementation or post-fix validation is recorded for this batch.
+**IN PROGRESS.** The first four corrections, V1-040/071/073/126, are implemented and verified locally at the boundaries below. Twenty findings still need implementation. All 24 release acceptances remain OPEN. Changes are uncommitted on `ff3c511513c5c93b2c236ba92c95a274f97c4973`; no Batch 4 deployment, provider call or production-data change was performed.
+
+## First correction checkpoint — October 22
+
+The user authorized Batch 4 while the deployed Batch 3 revision awaits its first natural refresh. Batch 3's pending October 23 08:00 Amsterdam observation remains separate; these tests do not depend on that run.
+
+| Finding | Confirmed current root cause and correction | Exact changed path | Proven local boundary / remaining limit |
+|---|---|---|---|
+| V1-040 | Spend used the non-strict parser, counting the header against the row limit and accepting partial numeric strings. Preview/process now use the existing strict parser; validate mapped headers, selected amounts, deterministic dates, currency symbols and combined numeric bounds before replacement. Uploaded preview metadata comes from the file; selection-only edits retain the stored preview. | `server/routes-oauth.ts`: `POST /api/campaigns/:id/spend/csv/preview` and `/process`; existing helpers in `server/utils/csv.ts` | Actual handlers retain all 50,000 data rows; reject row 50,001, duplicate/blank headers, wrong widths, malformed amounts, negative adjustments, EUR-dollar mismatch, invalid/ambiguous dates and overflow without a write. Exact singular/array campaign filters, USD thousands, valid edits, legacy undated edits, retained unmapped preview columns and neighboring Revenue checks pass. No claim of live UI/deployed acceptance or historical repair. |
+| V1-071 | GA4 Revenue's validator accepted signed amounts that its positive-only materializer omitted. The validator now rejects negative selected amounts; the response explicitly states that negative CSV adjustments are unsupported. Native GA4 refund handling is unchanged. | `server/utils/csv.ts`: `isSupportedGa4CsvRevenueAmount`; `server/routes-oauth.ts`: Revenue CSV process validation error | `100` plus `-10`, `-$10` or `$-10` rejects before source replacement; positive selected Revenue and an unselected negative row retain the correct result. No silently invented allocation/netting. Existing affected sources require a read-only inventory and targeted re-upload/correction plan. |
+| V1-073 | `writeGA4RefreshInputChange` locked campaign rows but ignored a missing result, allowing orphan writes after deletion. It now requires every distinct requested campaign to survive the transaction's parent lock before invoking the writer. Ordinary campaign updates preserve their existing `undefined` result when cancellation/deletion wins; owned-refresh errors remain errors. | `server/storage.ts`: `writeGA4RefreshInputChange`, `updateCampaign`, `updateCampaignWithGA4DailyInvalidation` | Real local PostgreSQL proves rejection with and without the durable-work table, multi-parent all-or-nothing checks, a save waiting behind a committed campaign deletion, no orphan source/record and an unrelated-campaign control. Cancellation/activation races and existing ownership/invalidation/recovery suites pass. No database migration or live orphan cleanup was performed. |
+| V1-126 | One IP's shared five-request budget made five office users' previews consume every save allowance. Verified Clerk users now have separate five-preview/five-save budgets per five minutes; anonymous requests retain the shared IP budget. | `server/middleware/rateLimiter.ts`: `importRateLimiter` | Local HTTP tests prove five same-IP users can preview and save, each sixth preview/save is denied with retry information, and submitted user IDs cannot obtain an authenticated budget. Clerk identity is a fixture; live Clerk/proxy behavior, multiple-instance quota sharing and realistic full-import workload remain acceptance checks. |
+
+**Input policy:** GA4 CSV Revenue and CSV Spend reject selected negative adjustments before any mutation. Plain numbers/US-style separators with at most two decimal places are supported; `$` requires USD. Zero rows beside positive rows preserve the correct total. An all-zero/blank selection still rejects under the existing no-positive-rows contract and is not published as an available zero source. The source reference is updated in [GA4 financial sources](../../../GA4/FINANCIAL_SOURCES.md). No other provider's amount policy is changed.
+
+**Validation evidence:** [runner](validation-2026-10-22/run-tests.cjs), [parent defect reproduction](validation-2026-10-22/parent-before.json), [shared safeguard regression result](validation-2026-10-22/foundation-after.json), [CSV defect reproductions](validation-2026-10-22/csv-before.json), [CSV post-fix result](validation-2026-10-22/csv-final.json), [TypeScript/server build](validation-2026-10-22/checkpoint-build-checks.json). The shared-safeguard run passed 344/344 tests. The initial [foundation run](validation-2026-10-22/foundation-before.json) includes a local fixture-database startup failure; it is not counted as parent-defect proof. The subsequent parent reproduction has 57 passes and three confirmed defect failures. CSV reproduction has four controls passing and 20 defect failures. The CSV intermediate run has 72/73 passes: its one failing transaction assertion still expected a direct `db.transaction` call, although the current wrapper owns that transaction. The assertion was corrected to follow the wrapper and parent guard, retaining source/type/campaign and delete/insert ordering checks; actual PostgreSQL tests verify behavior independently.
+
+**Final focused validation:** [357/357 database/lifecycle/import-budget checks](validation-2026-10-22/parent-final.json) and [73/73 CSV checks](validation-2026-10-22/csv-final.json) pass, together 430 tests. [Final TypeScript and server build](validation-2026-10-22/final-build-checks.json) pass. The first full run exposed two real compatibility regressions in ordinary campaign updates after cancellation: the new parent guard threw instead of returning `undefined`. The two update methods now preserve their documented return contract without running a source writer or recreating a campaign. The original cancellation tests were retained unchanged and pass; the missing-parent currency-update path is also checked. This correction required a second full run, rather than dismissing either failure as a baseline.
+
+**Full regression result:** [4,488 tests: 4,309 passed, 179 failed, zero skipped](validation-2026-10-22/full-suite-final.json). [Failure reconciliation](validation-2026-10-22/failure-reconciliation.json) retains every failed identity, classification and release impact: no new failing identity or suite error remains. One previous failure now passes because the obsolete CSV transaction assertion was corrected and behavior independently checked; the other 179 and the separate CI-only gate remain open. The final full run used the [recorded candidate](validation-2026-10-22/candidate-manifest.json). After it, two catch branches were adjusted solely to preserve the pre-existing `CSV_TOO_LARGE` error-code field, and the route test now asserts that field; [all 73 CSV checks passed again](validation-2026-10-22/csv-response-final.json), followed by [TypeScript/server build](validation-2026-10-22/response-contract-build-checks.json). This is a focused follow-up, not a third whole-suite run. [Final candidate hashes](validation-2026-10-22/response-contract-manifest.json) distinguish the two snapshots.
+
+**Fixture cleanup:** [Both local test databases](validation-2026-10-22/fixture-cleanup.json) have zero remaining fixture schemas, other client connections or advisory locks. Tests used only `127.0.0.1:55443`, stripped application credentials and blocked outbound network. The test-only PostgreSQL cluster was stopped after verification. [Documentation checks](validation-2026-10-22/documentation-check.json) validate the two main records, eight batch records and all 130 unique finding IDs. No application migration or production cleanup was executed.
+
+**Limits and remaining work:** These are forward-path corrections, not whole-source certification. No browser test, deployed upload, provider comparison, existing-damaged-import inventory or production cleanup is claimed. Source delete/reconnect/scheduler/report behavior outside the listed tests is not newly certified. All findings retain release acceptance OPEN.
+
+**Reusable safeguards:** Future imports can reuse the existing strict parser, validation-before-replacement sequence, transaction-held parent lock and authenticated workflow budgets. Reuse the boundary, malformed-input, unrelated-campaign, cancellation-race and retry-limit regression cases. The 50,000-row CSV cap, accepted number/date syntax and positive-only import policy are CSV-specific assumptions, not provider guarantees. Every new provider still needs its own permission, metric, attribution, currency, date, pagination and quota validation; no provider or framework was added here.
+
+| Remaining implementation group | Finding IDs |
+|---|---|
+| Retained non-GA4 Revenue CSV completeness and atomic edits | V1-072 |
+| Sheets Revenue headers, currency and saved selection | V1-065, V1-066, V1-067 |
+| Sheets Spend completeness and exact cleanup | V1-041, V1-070 |
+| Standalone Sheets scope, zero state, formulas and downstream reports | V1-051, V1-108, V1-112, V1-113, V1-114 |
+| Custom Integration parser/publication, transfers, XLSX bounds/selection and metric meaning | V1-028, V1-029, V1-031, V1-102, V1-103, V1-111, V1-120 |
+| Retained manual-Spend and cross-source transfer safeguards | V1-068, V1-069 |
+
+The next implementation group is Sheets Revenue (V1-065/066/067), followed by the remaining groups above. Four-provider functional work remains deferred; shared retained-route safety remains required. No completion estimate or additional exclusion is inferred.
 
 ## Scope and acceptance
 
@@ -35,7 +71,7 @@ These records retain their own dates and verification limits. Use the current fi
 | [V1-028](#v1-028) | P1 | OPEN | OPEN |
 | [V1-029](#v1-029) | P1 | OPEN | OPEN |
 | [V1-031](#v1-031) | P1 | OPEN | OPEN |
-| [V1-040](#v1-040) | P1 | OPEN | OPEN |
+| [V1-040](#v1-040) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-041](#v1-041) | P1 | OPEN | OPEN |
 | [V1-051](#v1-051) | P1 | OPEN | OPEN |
 | [V1-065](#v1-065) | P1 | OPEN | OPEN |
@@ -44,9 +80,9 @@ These records retain their own dates and verification limits. Use the current fi
 | [V1-068](#v1-068) | P1 | OPEN | OPEN |
 | [V1-069](#v1-069) | P1 | OPEN | OPEN |
 | [V1-070](#v1-070) | P1 | OPEN | OPEN |
-| [V1-071](#v1-071) | P1 | OPEN | OPEN |
+| [V1-071](#v1-071) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-072](#v1-072) | P1 | OPEN | OPEN |
-| [V1-073](#v1-073) | P1 | OPEN | OPEN |
+| [V1-073](#v1-073) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-102](#v1-102) | P1 | OPEN | OPEN |
 | [V1-103](#v1-103) | P1 | OPEN | OPEN |
 | [V1-108](#v1-108) | P1 | OPEN | OPEN |
@@ -55,7 +91,7 @@ These records retain their own dates and verification limits. Use the current fi
 | [V1-113](#v1-113) | P1 | OPEN | OPEN |
 | [V1-114](#v1-114) | P1 | OPEN | OPEN |
 | [V1-120](#v1-120) | P1 | OPEN | OPEN |
-| [V1-126](#v1-126) | P1 | OPEN | OPEN |
+| [V1-126](#v1-126) | P1 | VERIFIED LOCALLY | OPEN |
 
 ## Findings
 
@@ -99,7 +135,7 @@ Custom imports persist and publish review-required metrics; latest-reader storag
 
 ### V1-040
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN. See the [current correction checkpoint](#first-correction-checkpoint--october-22).
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -107,7 +143,7 @@ Custom imports persist and publish review-required metrics; latest-reader storag
 
 `routes-oauth.ts:6545-6553` accepts up to50,005 approximate lines but non-strict parser stops at50,000 including header. Exact route fixture uploads50,000 data rows and persists49,999 with success. Same route's `aggregateCsvSpendRows` accepts malformed `12oops` as12; Revenue CSV's strict validator is absent. Validate whole-file completeness, amount/header/date/currency contract and source/downstream parity; existing damaged imports need read-only inventory.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** The uncommitted forward-path correction is VERIFIED LOCALLY in the [October 22 checkpoint](#first-correction-checkpoint--october-22), including exact paths, reproduction, regression evidence and limitations. Deployed/provider, complete downstream lifecycle and historical-data acceptance remain OPEN.
 
 ### V1-041
 
@@ -207,7 +243,7 @@ Sheets Revenue amount helper accepts `$`; process1456 strips it while5719–5731
 
 ### V1-071
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN. See the [current correction checkpoint](#first-correction-checkpoint--october-22).
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -215,7 +251,7 @@ Sheets Revenue amount helper accepts `$`; process1456 strips it while5719–5731
 
 GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105 and route4998 drop it. Exact handler saves100 from selected100/−10 with success. Define imported adjustment policy explicitly; accept/reconcile or reject unsupported amounts before mutation. Raw mapping retains the negative while records do not; every downstream total can therefore diverge from the uploaded file.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** The uncommitted forward-path correction is VERIFIED LOCALLY in the [October 22 checkpoint](#first-correction-checkpoint--october-22), including exact paths, reproduction, regression evidence and limitations. Deployed/provider, complete downstream lifecycle and historical-data acceptance remain OPEN.
 
 ### V1-072
 
@@ -231,7 +267,7 @@ GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105
 
 ### V1-073
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN. See the [current correction checkpoint](#first-correction-checkpoint--october-22).
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -239,7 +275,7 @@ GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105
 
 `storage.ts:1256–1262,2832`: ordinary GA4 input wrapper ignores an empty campaign lock query and commits child writes after parent deletion. Exact methods against isolated schema reproduce zero parents/one source/one record; existing-parent control passes. Current source schema lacks campaign FKs. Durable-table/deployed-schema/other-source variants remain required. Reject vanished parents at final write and verify all caller lifecycles.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** The uncommitted forward-path correction is VERIFIED LOCALLY in the [October 22 checkpoint](#first-correction-checkpoint--october-22), including exact paths, reproduction, regression evidence and limitations. Deployed/provider, complete downstream lifecycle and historical-data acceptance remain OPEN.
 
 ### V1-102
 
@@ -339,7 +375,7 @@ GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105
 
 ### V1-126
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN. See the [current correction checkpoint](#first-correction-checkpoint--october-22).
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -347,4 +383,4 @@ GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105
 
 `middleware/rateLimiter.ts:44–59` shares five imports/IP/five minutes across preview and save. Revenue wizard1507/1604 needs both; handlers4698/4735 share the bucket. [Actual HTTP/DB five-user fixture](../../audits/v1-2026-10-19/HTTP_DATABASE_PILOT.md): five valid previews succeed, all five saves429/retryAfter300, no sources written. Preserve abuse limits while accommodating authenticated users/workflow; no production traffic used.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** The uncommitted forward-path correction is VERIFIED LOCALLY in the [October 22 checkpoint](#first-correction-checkpoint--october-22), including exact paths, reproduction, regression evidence and limitations. Deployed/provider, complete downstream lifecycle and historical-data acceptance remain OPEN.

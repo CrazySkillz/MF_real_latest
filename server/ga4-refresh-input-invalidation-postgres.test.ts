@@ -72,6 +72,41 @@ describe.skipIf(!testUrl)("GA4 refresh invalidation on ordinary input edits", ()
   });
 
   const kpi = { campaignId: "a", platformType: "google_analytics", name: "Total Sessions", metric: "sessions", targetValue: "100", unit: "count", alertsEnabled: false };
+  it.each([true, false])("V1-073 requires a surviving campaign before source replacement (durable table=%s)", async durable => {
+    if (!durable) await pool.query('ALTER TABLE ga4_refresh_work RENAME TO suspended_refresh_work');
+    try {
+      const source = { campaignId: "a", sourceType: "csv", platformContext: "ga4", currency: "EUR", mappingConfig: "{}" } as any;
+      const records = [{ campaignId: "a", date, revenue: "100.00", currency: "EUR" }];
+      await storage.replaceGa4CsvRevenueSourceWithRecords("b", null, { ...source, campaignId: "b" }, records.map(r => ({ ...r, campaignId: "b" })));
+      await pool.query("DELETE FROM campaigns WHERE id='a'");
+      expect(await storage.updateCampaignWithGA4DailyInvalidation("a", { currency: "USD" })).toBeUndefined();
+      await expect(storage.replaceGa4CsvRevenueSourceWithRecords("a", null, source, records)).rejects.toThrow("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+      await expect(storage.replaceSpendSourceWithRecords("a", null, "csv", "ga4", source,
+        [{ campaignId: "a", date, spend: "100.00", currency: "EUR" }])).rejects.toThrow("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+      expect((await pool.query("SELECT count(*)::int n FROM revenue_sources WHERE campaign_id='a'")).rows[0].n).toBe(0);
+      expect((await pool.query("SELECT count(*)::int n FROM spend_sources WHERE campaign_id='a'")).rows[0].n).toBe(0);
+      expect((await pool.query("SELECT count(*)::int n FROM revenue_records WHERE campaign_id='b'")).rows[0].n).toBe(1);
+      const write = vi.fn();
+      await expect((storage as any).writeGA4RefreshInputChange(["b", "a", "b"], write)).rejects.toThrow("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+      expect(write).not.toHaveBeenCalled();
+    } finally { if (!durable) await pool.query('ALTER TABLE suspended_refresh_work RENAME TO ga4_refresh_work'); }
+  });
+  it("V1-073 rejects a save waiting behind a committed campaign deletion", async () => {
+    const deleting = await pool.connect();
+    let save: Promise<unknown> | undefined;
+    try {
+      await deleting.query('BEGIN'); await deleting.query("DELETE FROM campaigns WHERE id='a'");
+      let settled = false;
+      save = storage.replaceGa4CsvRevenueSourceWithRecords("a", null,
+        { campaignId: "a", sourceType: "csv", currency: "EUR", mappingConfig: "{}" },
+        [{ campaignId: "a", date, revenue: "100.00", currency: "EUR" }]).then(
+          value => { settled = true; return value; }, error => { settled = true; return error; });
+      await new Promise(resolve => setTimeout(resolve, 30)); expect(settled).toBe(false);
+      await deleting.query('COMMIT');
+      expect(await save).toMatchObject({ message: "GA4_REFRESH_TARGET_SCOPE_CHANGED" });
+      expect((await pool.query("SELECT count(*)::int n FROM revenue_records WHERE campaign_id='a'")).rows[0].n).toBe(0);
+    } finally { await deleting.query('ROLLBACK'); deleting.release(); await save; }
+  });
   const benchmark = { campaignId: "a", platformType: "google_analytics", category: "traffic", name: "Sessions", metric: "sessions", benchmarkValue: "100", unit: "count" };
   const source = { campaignId: "a", sourceType: "google_sheets", platformContext: "ga4", mappingConfig: "original" };
   it("V1-087 handles an ordinary currency write chosen from a stale API read without invalidating a same-currency edit", async () => {

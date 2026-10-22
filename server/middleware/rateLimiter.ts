@@ -1,4 +1,5 @@
 import rateLimit from 'express-rate-limit';
+import { getAuth } from '@clerk/express';
 import { isInternalAutoRefreshRequest } from '../internal-request-auth';
 
 /**
@@ -45,7 +46,14 @@ export const linkedInApiRateLimiter = rateLimit({
  */
 export const importRateLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 5, // Limit each IP to 5 imports per 5 minutes
+  max: 5, // Five saves and five previews per verified user; anonymous traffic stays IP-limited.
+  keyGenerator: (req) => {
+    try {
+      const userId = getAuth(req).userId;
+      if (userId) return `user:${userId}:${req.path.endsWith('/preview') ? 'preview' : 'save'}`;
+    } catch { /* No verified Clerk identity: retain the anonymous IP limit. */ }
+    return req.ip || req.socket.remoteAddress || 'unknown';
+  },
   message: {
     error: 'Too many import operations. Please wait before importing more data.',
     retryAfter: 5 * 60 // seconds

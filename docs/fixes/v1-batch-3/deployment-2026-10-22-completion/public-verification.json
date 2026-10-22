@@ -1,0 +1,57 @@
+{
+  "startedAt": "2026-10-22T20:45:02.604Z",
+  "expectedRevision": "ff3c511513c5c93b2c236ba92c95a274f97c4973",
+  "runtimeFixCommit": "e7aebef8f841e7ba99879572d3131ec923d9b95f",
+  "observations": [
+    {
+      "at": "2026-10-22T20:45:03.278Z",
+      "status": 200,
+      "ok": true,
+      "commit": "ff3c511513c5c93b2c236ba92c95a274f97c4973",
+      "nodeEnv": "production"
+    },
+    {
+      "at": "2026-10-22T20:45:08.484Z",
+      "status": 200,
+      "ok": true,
+      "commit": "ff3c511513c5c93b2c236ba92c95a274f97c4973",
+      "nodeEnv": "production"
+    },
+    {
+      "at": "2026-10-22T20:45:13.706Z",
+      "status": 200,
+      "ok": true,
+      "commit": "ff3c511513c5c93b2c236ba92c95a274f97c4973",
+      "nodeEnv": "production"
+    }
+  ],
+  "publicChecks": {
+    "/": 200,
+    "/health": 200,
+    "/api/campaigns": 401
+  },
+  "scheduler": {
+    "httpStatus": 200,
+    "status": "healthy",
+    "startedAt": "2026-10-22T20:12:36.050Z",
+    "config": {
+      "reportingTimeZone": "Europe/Amsterdam",
+      "hour": 8,
+      "hours": [
+        8,
+        14,
+        20
+      ],
+      "minute": 0,
+      "runOnStartup": false
+    },
+    "nextRunAt": "2026-10-23T06:00:00.000Z",
+    "nextDataThroughDate": "2026-10-22",
+    "lastRunStatus": "idle",
+    "lastRunStartedAt": null,
+    "lastRunFinishedAt": null
+  },
+  "result": "PASS: expected live revision, readiness, public access denial and scheduler registration",
+  "completedAt": "2026-10-22T20:45:13.959Z",
+  "boundary": "Public checks only. Authenticated Ptomo UI, source/provider values, natural refresh completion, external recovery, hosted quota/load and full V1 acceptance were not tested. No mutation, manual refresh or provider failure was triggered."
+}

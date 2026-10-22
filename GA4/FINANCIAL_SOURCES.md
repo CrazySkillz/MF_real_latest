@@ -833,6 +833,9 @@ The user journey is:
 Important meaning:
 
 - CSV spend is a structured import workflow, not a file attachment
+- Batch 4 input correction (October 22, local validation): CSV spend preview/process use the complete strict parser with a 50,000-data-row limit; duplicate/blank headers, malformed rows, absent mapped columns, ambiguous amounts/dates and totals exceeding 9,999,999,999.99 are rejected before replacement. The campaign currency must match, and `$` is accepted only for USD.
+- GA4 CSV Revenue and CSV Spend do not support negative imported adjustments. A selected negative amount must reject the import before mutation; it must never be silently omitted. This restriction does not change native GA4 revenue/refund handling. Zero rows beside positive rows retain the correct total; an entirely zero/blank selection still follows the existing no-positive-rows rejection, not a measured-zero source claim.
+- New CSV spend uploads derive stored preview headers, rows and row count from the parsed file. Selection-only edits preserve the saved server-side preview, including unmapped columns; client-submitted preview metadata is not authoritative.
 - new GA4 CSV spend sources require a mapped Date column and materialize dated daily spend records; only an already-undated saved source may remain an undated snapshot-style continuity source
 - campaign filtering must consider only the selected campaign values and must sum every selected positive-spend row for snapshot imports
 - when a date column is mapped, every selected positive-spend row must have a valid date; blank or invalid dates must fail before source mutation because the app must not invent a spend date

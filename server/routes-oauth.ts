@@ -4965,7 +4965,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             campaignValues,
           });
           if (invalidAmountRows.length > 0) {
-            return sendBadRequest(res, `Selected revenue rows contain unsupported or ambiguous amounts (CSV row${invalidAmountRows.length === 1 ? "" : "s"} ${invalidAmountRows.slice(0, 10).join(", ")}). Use plain numbers or US-style separators with at most two decimal places; use $ only for USD campaigns.`);
+            return sendBadRequest(res, `Selected revenue rows contain unsupported or ambiguous amounts (CSV row${invalidAmountRows.length === 1 ? "" : "s"} ${invalidAmountRows.slice(0, 10).join(", ")}). Use plain numbers or US-style separators with at most two decimal places; use $ only for USD campaigns. Negative adjustments are not supported for CSV imports.`);
           }
           if (dateCol) {
             const invalidDateRows = findInvalidGa4CsvRevenueDateRows(parsedRows, {
@@ -6541,15 +6541,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!(req as any).file) return res.status(400).json({ success: false, error: "No CSV file provided" });
       const file = (req as any).file as any;
       const csvText = Buffer.from(file.buffer).toString("utf-8");
-      const approxLines = countLinesUpTo(csvText, MAX_CSV_ROWS_PREVIEW + 5);
-      if (approxLines > MAX_CSV_ROWS_PREVIEW + 5) {
-        return res.status(413).json({
-          success: false,
-          error: `CSV too large. Please upload a smaller file (max ~${MAX_CSV_ROWS_PREVIEW.toLocaleString()} rows for preview).`,
-          code: "CSV_TOO_LARGE",
-        });
-      }
-      const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PREVIEW);
+      const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PREVIEW, { strict: true });
       res.json({
         success: true,
         fileName: file.originalname,
@@ -6558,14 +6550,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rowCount: parsed.rows.length,
       });
     } catch (e: any) {
-      res.status(500).json({ success: false, error: e?.message || "Failed to preview CSV" });
+      const status = e?.code === "CSV_TOO_LARGE" ? 413 : e?.code === "CSV_MALFORMED" ? 400 : 500;
+      if (e?.code === "CSV_TOO_LARGE") return res.status(status).json({ success: false, error: e.message, code: "CSV_TOO_LARGE" });
+      res.status(status).json({ success: false, error: e?.message || "Failed to preview CSV" });
     }
   });
 
   app.post("/api/campaigns/:id/spend/csv/process", importRateLimiter, requireCampaignAccessParamId, uploadCsv.single("file"), async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const mapping = (req.body as any)?.mapping ? JSON.parse(String((req.body as any).mapping)) : null;
+      let mapping: any = null;
+      try {
+        mapping = (req.body as any)?.mapping ? JSON.parse(String((req.body as any).mapping)) : null;
+      } catch {
+        return res.status(400).json({ success: false, error: "Invalid mapping JSON" });
+      }
       if (!mapping?.spendColumn) {
         return res.status(400).json({ success: false, error: "spendColumn is required" });
       }
@@ -6598,18 +6597,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const file = (req as any).file as any;
       let parsedRows: Array<Record<string, any>> = [];
       let parsedHeaders: string[] = [];
+      let existingPreviewMapping: any = null;
 
       if (file) {
         const csvText = Buffer.from(file.buffer).toString("utf-8");
-        const approxLines = countLinesUpTo(csvText, MAX_CSV_ROWS_PROCESS + 5);
-        if (approxLines > MAX_CSV_ROWS_PROCESS + 5) {
-          return res.status(413).json({
-            success: false,
-            error: `CSV too large. Please reduce rows (max ~${MAX_CSV_ROWS_PROCESS.toLocaleString()} rows).`,
-            code: "CSV_TOO_LARGE",
-          });
-        }
-        const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PROCESS);
+        const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PROCESS, { strict: true });
         parsedRows = parsed.rows;
         parsedHeaders = parsed.headers;
       } else {
@@ -6635,6 +6627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const storedSpendRows = Array.isArray(existingMapping?.csvStoredSpendRows) ? existingMapping.csvStoredSpendRows : null;
+        existingPreviewMapping = existingMapping;
         const storedSampleRows = Array.isArray(existingMapping?.csvSampleRows) ? existingMapping.csvSampleRows : null;
         const storedRowCount = Number.isFinite(existingMapping?.csvRowCount) ? Number(existingMapping.csvRowCount) : null;
         const canUseSampleRows = !!storedSampleRows && storedSampleRows.length > 0 && storedRowCount !== null && storedRowCount <= storedSampleRows.length;
@@ -6686,6 +6679,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const spendCol = String(mapping.spendColumn);
       const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
+      for (const [column, label] of [[spendCol, "Spend"], [campaignCol, "Campaign"], [dateCol, "Date"]] as const) {
+        if (column && !parsedHeaders.includes(column)) return res.status(400).json({ success: false, error: `${label} column was not found in the CSV.` });
+      }
       if (campaignCol && campaignCol === spendCol) {
         return res.status(400).json({ success: false, error: "Spend and Campaign columns must be different." });
       }
@@ -6728,16 +6724,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       const currency = platformContext === "ga4" ? campaignCurrency : requestedCurrency;
+      const validationMapping = { revenueColumn: spendCol, campaignCurrency: currency, campaignColumn: campaignCol, campaignValue, campaignValues };
+      const invalidAmountRows = findInvalidGa4CsvRevenueAmountRows(parsedRows, validationMapping);
+      if (invalidAmountRows.length > 0) {
+        return res.status(400).json({ success: false, error: `Selected spend rows contain unsupported or ambiguous amounts (CSV rows ${invalidAmountRows.slice(0, 10).join(", ")}). Use plain numbers or US-style separators with at most two decimal places; use $ only for USD campaigns. Negative adjustments are not supported for CSV imports.` });
+      }
+      if (dateCol && findInvalidGa4CsvRevenueDateRows(parsedRows, { ...validationMapping, dateColumn: dateCol }).length > 0) {
+        return res.status(400).json({ success: false, error: "Selected spend rows contain blank, invalid, or ambiguous dates. Use YYYY-MM-DD or an ISO-style timestamp." });
+      }
+      if (totalSpend > GA4_CSV_MAX_REVENUE_TOTAL) {
+        return res.status(400).json({ success: false, error: `Selected CSV spend exceeds the supported total of ${GA4_CSV_MAX_REVENUE_TOTAL.toFixed(2)}.` });
+      }
       const existingSourceId = mapping?.sourceId || null;
-      const previewHeadersForStorage = Array.isArray(mapping?.csvHeaders) && mapping.csvHeaders.length > 0
-        ? mapping.csvHeaders.map((h: any) => String(h ?? ""))
-        : parsedHeaders;
-      const previewRowsForStorage = Array.isArray(mapping?.csvSampleRows) && mapping.csvSampleRows.length > 0
-        ? mapping.csvSampleRows
-        : parsedRows.slice(0, 25);
-      const previewRowCountForStorage = Number.isFinite(mapping?.csvRowCount)
-        ? Number(mapping.csvRowCount)
-        : parsedRows.length;
+      const previewHeadersForStorage = Array.isArray(existingPreviewMapping?.csvHeaders) && existingPreviewMapping.csvHeaders.length > 0
+        ? existingPreviewMapping.csvHeaders : parsedHeaders;
+      const previewRowsForStorage = Array.isArray(existingPreviewMapping?.csvSampleRows) && existingPreviewMapping.csvSampleRows.length > 0
+        ? existingPreviewMapping.csvSampleRows : parsedRows.slice(0, 25);
+      const previewRowCountForStorage = parsedRows.length;
       const normalizedStoredRows = parsedRows.map((row: any) => ({
         campaignKey: campaignCol ? String(row?.[campaignCol] ?? "").trim() : "",
         spendRaw: String(row?.[spendCol] ?? "").trim(),
@@ -6817,7 +6820,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         importedRowsTotalSpend: Number(totalSpend.toFixed(2)),
       });
     } catch (e: any) {
-      res.status(500).json({ success: false, error: e?.message || "Failed to process CSV spend" });
+      const status = e?.code === "CSV_TOO_LARGE" ? 413 : e?.code === "CSV_MALFORMED" ? 400 : 500;
+      if (e?.code === "CSV_TOO_LARGE") return res.status(status).json({ success: false, error: e.message, code: "CSV_TOO_LARGE" });
+      res.status(status).json({ success: false, error: e?.message || "Failed to process CSV spend" });
     }
   });
 

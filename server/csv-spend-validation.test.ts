@@ -230,7 +230,11 @@ describe("GA4 Overview Upload CSV spend validation packet", () => {
 
     expect(methodStart).toBeGreaterThanOrEqual(0);
     expect(methodEnd).toBeGreaterThan(methodStart);
-    expect(method).toContain("return await db.transaction(async (tx: any) => {");
+    expect(method).toContain("this.writeGA4RefreshInputChange.bind(this, campaignId) : db.transaction.bind(db)");
+    expect(method).toContain("return await transaction(async (tx: any) => {");
+    const parentWrite = storageSource.slice(storageSource.indexOf("private async writeGA4RefreshInputChange"), storageSource.indexOf("private async readGA4PublicationVersion"));
+    expect(parentWrite).toContain("return db.transaction(async (tx: any) => {");
+    expect(parentWrite.indexOf('throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED")')).toBeLessThan(parentWrite.indexOf("await write(tx)"));
     expect(method).toContain('eq(spendSources.sourceType, "csv")');
     expect(method).toContain("eq(spendSources.campaignId, campaignId)");
     expect(method.indexOf("await tx.delete(spendRecords)")).toBeLessThan(
@@ -240,6 +244,7 @@ describe("GA4 Overview Upload CSV spend validation packet", () => {
     expect(route.indexOf("await storage.replaceCsvSpendSourceWithRecords")).toBeLessThan(
       route.indexOf("await recalcCampaignSpend(campaignId);"),
     );
-    expect(route).toContain('res.status(500).json({ success: false, error: e?.message || "Failed to process CSV spend" })');
+    expect(route).toContain('e?.code === "CSV_TOO_LARGE" ? 413 : e?.code === "CSV_MALFORMED" ? 400 : 500');
+    expect(route).toContain('res.status(status).json({ success: false, error: e?.message || "Failed to process CSV spend" })');
   });
 });

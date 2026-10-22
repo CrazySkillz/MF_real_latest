@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-22",
+  "baseHead": "ff3c511513c5c93b2c236ba92c95a274f97c4973",
+  "state": "uncommitted; not pushed or deployed",
+  "locallyVerifiedFindings": ["V1-040", "V1-071", "V1-073", "V1-126"],
+  "remainingBatch4Implementations": 20,
+  "batch4ReleaseAcceptancesOpen": 24,
+  "focusedChecks": { "passed": 430, "failed": 0, "skipped": 0 },
+  "fullRegression": { "total": 4488, "passed": 4309, "failed": 179, "skipped": 0, "newFailingIdentities": 0 },
+  "fullRegressionCandidate": "candidate-manifest.json",
+  "finalCandidate": "response-contract-manifest.json",
+  "postFullRunChange": "Preserved CSV_TOO_LARGE in two CSV Spend error responses; added the assertion to the route fixture. All 73 CSV checks and TypeScript/server build reran and passed. No third full-suite run is claimed.",
+  "typeScript": "PASS",
+  "serverBuild": "PASS",
+  "clientCodeChanged": false,
+  "productionDataChanged": false,
+  "providerCallsPerformed": false,
+  "testDatabase": "127.0.0.1:55443; isolated fixture schemas only",
+  "fixtureCleanup": "PASS: zero schemas, other clients and advisory locks in both test databases",
+  "testPostgreSQLStopped": true,
+  "releaseDecision": "NO-GO",
+  "remainingGates": [
+    "179 individually classified test failures and the separate CI-only failure",
+    "Remaining Batch 4 and other batch implementation work",
+    "Deployed authenticated/customer workflow and provider acceptance",
+    "Existing damaged-import/orphan inventory and separately scoped repair where needed",
+    "Complete per-source lifecycle and downstream propagation acceptance",
+    "Batch 8 operational and whole-V1 release gates"
+  ]
+}

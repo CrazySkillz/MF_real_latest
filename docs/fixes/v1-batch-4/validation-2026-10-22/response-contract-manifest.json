@@ -1,0 +1,52 @@
+{
+  "at": "2026-10-22T21:28:08.774Z",
+  "baseHead": "ff3c511513c5c93b2c236ba92c95a274f97c4973",
+  "state": "uncommitted; not pushed or deployed",
+  "files": [
+    {
+      "file": "server/storage.ts",
+      "sha256": "162ff3b729c4a960d4f3ad243e38c47efddaba498f64ed2273fae6ef8902f18a",
+      "lfSha256": "162ff3b729c4a960d4f3ad243e38c47efddaba498f64ed2273fae6ef8902f18a"
+    },
+    {
+      "file": "server/routes-oauth.ts",
+      "sha256": "add2b3e6e0db56d6260d4707adf65b99f76a321154b52e8dcbf45c15d48ee184",
+      "lfSha256": "e7db83b50ab3f63d005e66422793179cc76b56b641e4840f3d6fa8fc711fe0b5"
+    },
+    {
+      "file": "server/middleware/rateLimiter.ts",
+      "sha256": "85f5a60dc46fa0700547e82e2e08b0bdf56555259fcbe626b50ad9f3ae8f453c",
+      "lfSha256": "c019691d93b56c513c0b1412482ca813dd066634f25df2d2411c7159bc79e8c7"
+    },
+    {
+      "file": "server/utils/csv.ts",
+      "sha256": "af38b1e36022b6551c34ef9b65b90bf38e8ab20ccba5171f4d9a16ff3fc465ae",
+      "lfSha256": "47342948f9f08c85614ac86ecfa04bb00f4e34a2594cf4761fde0e660a550535"
+    },
+    {
+      "file": "server/ga4-refresh-input-invalidation-postgres.test.ts",
+      "sha256": "fff39d4b44922913cf49d3e481e48af03fb12e57a9eba54ce69be3924a70b9f4",
+      "lfSha256": "fff39d4b44922913cf49d3e481e48af03fb12e57a9eba54ce69be3924a70b9f4"
+    },
+    {
+      "file": "server/csv-spend-validation.test.ts",
+      "sha256": "6eea8df70e9b5431dbfed4455e220a4e993d115fcc6b21000f81216a743a635a",
+      "lfSha256": "e7f8eb024b593104a4123f6eb395a2d020eee256b17a465bd7c90da49a95806f"
+    },
+    {
+      "file": "server/csv-revenue-certification.test.ts",
+      "sha256": "85e3edf0091ce6819ba66c6b25ab49e50210e81b858e649566cfd55ecb3579ac",
+      "lfSha256": "85e3edf0091ce6819ba66c6b25ab49e50210e81b858e649566cfd55ecb3579ac"
+    },
+    {
+      "file": "server/v1-batch4-import-rate-limit.test.ts",
+      "sha256": "5e996c8c21b692d77912873ee0fcde2fae9b8dc169c041c7064bb8a8e5a7d989",
+      "lfSha256": "5e996c8c21b692d77912873ee0fcde2fae9b8dc169c041c7064bb8a8e5a7d989"
+    },
+    {
+      "file": "server/v1-batch4-csv-input-contract.test.ts",
+      "sha256": "2426b1baaa1f02ef79f17145533fcf05bb3d7e29b531cd881b6fa4e335559610",
+      "lfSha256": "2426b1baaa1f02ef79f17145533fcf05bb3d7e29b531cd881b6fa4e335559610"
+    }
+  ]
+}

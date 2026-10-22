@@ -93,10 +93,10 @@ describe("GA4 CSV Revenue current-main certification guards", () => {
   });
 
   it("accepts canonical amounts and rejects locale-ambiguous or partial numeric text", () => {
-    for (const value of ["1234.56", ".50", "$1,234.56", "-$100", "$-100", "", 25]) {
+    for (const value of ["1234.56", ".50", "$1,234.56", "0", "", 25]) {
       expect(isSupportedGa4CsvRevenueAmount(value, "USD"), String(value)).toBe(true);
     }
-    for (const value of ["1.234,56", "12,34", "1 234.56", "100 USD", "100abc", "1e3", "€100", "1.234"]) {
+    for (const value of ["1.234,56", "12,34", "1 234.56", "100 USD", "100abc", "1e3", "€100", "1.234", "-100", "-$100", "$-100"]) {
       expect(isSupportedGa4CsvRevenueAmount(value, "USD"), value).toBe(false);
     }
     expect(isSupportedGa4CsvRevenueAmount("$100", "EUR")).toBe(false);

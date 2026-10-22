@@ -297,6 +297,7 @@ describe("GA4 external value auto-refresh regression guard", () => {
 
   it("preserves last-good Google Sheets revenue when a selected amount format is unsupported", async () => {
     vi.spyOn(storage, "getCampaigns").mockResolvedValue([{ id: "campaign-1", status: "active" }] as any);
+    vi.spyOn(storage, "getCampaign").mockResolvedValue({ id: "campaign-1", currency: "USD" } as any);
     vi.spyOn(storage, "getRevenueSources").mockResolvedValue([{
       id: "source-1",
       campaignId: "campaign-1",

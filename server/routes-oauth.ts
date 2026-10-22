@@ -5453,6 +5453,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const values = readResult.values;
       const headerRow = values[0] || [];
       const headers = headerRow.map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
+      if (new Set(headers).size !== headers.length) {
+        return sendBadRequest(res, "Google Sheets column names must be unique. Rename duplicate headers before importing.");
+      }
 
       const rows: Array<Record<string, string>> = [];
       for (let i = 1; i < values.length; i++) {
@@ -5656,6 +5659,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const values = readResult.values;
       const headerRow = values[0] || [];
       const headers = headerRow.map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
+      if (new Set(headers).size !== headers.length) {
+        return sendBadRequest(res, "Google Sheets column names must be unique. Rename duplicate headers before importing.");
+      }
 
       const rows: Array<Record<string, string>> = [];
       for (let i = 1; i < values.length; i++) {
@@ -5683,6 +5689,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const revenueCol = revenueColumn ? String(revenueColumn) : "";
       const convCol = conversionValueColumn ? String(conversionValueColumn) : "";
       const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
+      const campaign = await storage.getCampaign(campaignId);
+      const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
+      const requestedCurrency = String(mapping.currency || campaignCurrency).trim().toUpperCase();
+      if (platformContext === "ga4" && requestedCurrency !== campaignCurrency) {
+        return res.status(400).json({
+          success: false,
+          code: "REVENUE_CURRENCY_MISMATCH",
+          error: `Currency mismatch: Google Sheets revenue is in ${requestedCurrency}, but this campaign is set to ${campaignCurrency}.`,
+          sourceCurrency: requestedCurrency,
+          campaignCurrency,
+        });
+      }
+      const currency = platformContext === "ga4" ? campaignCurrency : requestedCurrency;
       if (platformContext === "ga4") {
         if (campaignCol === revenueCol) {
           return sendBadRequest(res, "Revenue column must be different from the Campaign column.");
@@ -5695,9 +5714,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           campaignColumn: campaignCol,
           campaignValue,
           campaignValues,
+          currency,
         });
         if (invalidAmountRows.length > 0) {
-          return sendBadRequest(res, "Selected revenue rows contain unsupported amount formatting. Use plain numbers or US-style separators (for example 1234.56 or 1,234.56).");
+          return sendBadRequest(res, "Selected revenue rows contain unsupported amount formatting. Use plain numbers or US-style separators (for example 1234.56 or 1,234.56). Dollar symbols require USD.");
         }
         const validation = aggregateCsvRevenueRows(rows, {
           revenueColumn: revenueCol,
@@ -5728,7 +5748,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ? await getActiveTikTokCampaignIdSet(campaignId)
             : new Set<string>();
       const campaignMappings = Array.isArray(mapping.campaignMappings) ? mapping.campaignMappings : [];
-      const campaign = await storage.getCampaign(campaignId);
       const fallbackRecordDate = platformContext === "ga4"
         ? getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate
         : yesterdayUTC();
@@ -5776,19 +5795,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const endDate = fallbackRecordDate;
-
-      const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
-      const requestedCurrency = String(mapping.currency || campaignCurrency).trim().toUpperCase();
-      if (platformContext === "ga4" && requestedCurrency !== campaignCurrency) {
-        return res.status(400).json({
-          success: false,
-          code: "REVENUE_CURRENCY_MISMATCH",
-          error: `Currency mismatch: Google Sheets revenue is in ${requestedCurrency}, but this campaign is set to ${campaignCurrency}.`,
-          sourceCurrency: requestedCurrency,
-          campaignCurrency,
-        });
-      }
-      const currency = platformContext === "ga4" ? campaignCurrency : requestedCurrency;
 
       const normalizedMapping = { ...mapping, currency, dateRange: undefined, mode: valueSource === 'conversion_value' ? "conversion_value" : "revenue_to_date" };
       delete (normalizedMapping as any).sourceId;

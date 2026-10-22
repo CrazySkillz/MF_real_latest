@@ -6,11 +6,35 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 4 status
 
-**IN PROGRESS.** The first four corrections, V1-040/071/073/126, are implemented and verified locally at the boundaries below. Twenty findings still need implementation. All 24 release acceptances remain OPEN. Runtime fixes and tests are committed in `c38062825a88c7265f323cb2990f713ddc040e18`, based on `ff3c5115`. Deployment acceptance remains pending; no provider call or production-data cleanup was performed.
+**IN PROGRESS.** Seven corrections are VERIFIED LOCALLY: V1-040/065/066/067/071/073/126. Seventeen findings still need implementation; all 24 release acceptances remain OPEN. The first four are deployed in `44132830` (runtime commit `c3806282`); the three October 23 Sheets Revenue corrections are uncommitted on that HEAD and are not deployed. No provider call or production-data cleanup was performed.
+
+## Sheets Revenue correction checkpoint (October 23)
+
+The authorized next group, V1-065/066/067, is implemented and verified locally. [Assessment and classified failures](validation-2026-10-23-sheets-revenue/assessment.json), [candidate hashes](validation-2026-10-23-sheets-revenue/candidate-manifest.json), [pre-fix reproductions](validation-2026-10-23-sheets-revenue/before.json), [final targeted result](validation-2026-10-23-sheets-revenue/verified-final.json), [TypeScript/server build](validation-2026-10-23-sheets-revenue/final-build-checks.json) and [fixture cleanup](validation-2026-10-23-sheets-revenue/fixture-cleanup.json).
+
+| Finding | Root cause and smallest correction | Exact changed boundary | Local evidence |
+|---|---|---|---|
+| V1-065 | Header-keyed row objects silently overwrite repeated names. Preview/save now reject collisions after trimming and generated `Column N` names, before constructing row objects. Refresh uses the same normalization and rejection. | `server/routes-oauth.ts`: Sheets Revenue preview/process; `server/auto-refresh-scheduler.ts`: `reprocessGoogleSheetsRevenue` | Repeated Revenue/Campaign headers, whitespace collisions and generated-name collisions reject. Valid trimmed/generated headers survive preview, save and refresh. Actual PostgreSQL records remain unchanged on invalid edit/refresh. |
+| V1-066 | Amount syntax allowed `$`, then parsers stripped it without comparing that symbol to currency. Existing currency resolution/mismatch checks now precede amount validation; the existing selected-row validator rejects `$` for any resolved currency except USD. | Both paths above; `server/utils/google-sheets-revenue-amount.ts`: `findInvalidGoogleSheetsRevenueAmountRows` | EUR-dollar edit/refresh rejects before replacement; plain EUR and dollar USD succeed. Malformed numeric rejection and the configured-currency mismatch response remain intact. No FX conversion or relabelling. |
+| V1-067 | Refresh ignored singular `campaignValue`, and its materializer did not normalize stored array values as save/validation did. Refresh now uses normalized non-empty arrays first, otherwise the saved singular value, throughout validation and materialization; a campaign column with no selection fails closed. | `server/auto-refresh-scheduler.ts`: `reprocessGoogleSheetsRevenue`, used by the daily pipeline, Revenue loop and validation entry | Selected 10 stays 10 beside unrelated 90, including singular-only/empty-array fallback, array precedence and whitespace. Invalid unselected rows are excluded. Stable source ID, expected mapping and refresh ownership options remain intact. Actual add/edit/refresh persistence reconciles to source breakdown and total reads. |
+
+**Trace and propagation:** `AddRevenueWizardModal.tsx` opens `/revenue/sheets/preview`, sends mapped columns/currency and both selection forms to `/revenue/sheets/process`, then refreshes source/financial queries. The routes and scheduler fetch exact-tab metadata and existing bounded row ranges; provider, range, token and timeout behavior are unchanged. Normalized rows feed dated or snapshot `revenue_records` and `mappingConfig.campaignValueRevenueTotals`. Existing `replaceRevenueSourceWithRecords` keeps atomic replacement, campaign/type/context/stable-ID checks, expected mapping comparison and surviving-parent/refresh-ownership guards. Storage source-list, breakdown and total consumers retain their contracts. The new PostgreSQL cases execute the actual registered save handler and scheduler body into actual storage, then reconcile the persisted records and source/total reads. Authentication and provider replies are isolated fixtures; the full server middleware/browser/provider journey is not claimed.
+
+**Validation:** 29 new tests pass, including three handler-to-PostgreSQL lifecycle cases. The full targeted packet has **407 tests: 398 passed, nine failed, zero skipped**. Each failure retains its existing stable test ID, classification and release impact in the assessment; none is waived. They are five incomplete disconnect mocks, two Google Ads source-text guards and two downstream source-text guards. Actual persistence/ownership tests provide separate evidence for their tested boundaries, not closure of those failures. The whole 179-failure regression baseline and CI gate remain open; no new whole-suite run is claimed. One neighboring scheduler fixture needed its campaign-currency read stubbed after currency validation moved earlier; its original no-write/warning assertions remain. Initial PostgreSQL setup used an incompatible local fixture and did not execute its database cases; the final packet uses a fresh test-only cluster on `127.0.0.1:55444`. Both fixture databases have zero leftover schemas, connections or advisory locks, and the cluster was stopped. TypeScript and server build pass; no frontend/runtime contract, dependency, schema or environment-setting change was introduced.
+
+**Lifecycle and release limits:** Add, edit, refresh, stable identity, bad-input retention and persisted total/source reads are proven within the fixtures. Existing delete/disconnect, reconnect/OAuth, real scheduled timing, browser flows, quotas and full downstream KPI/Benchmark/Insights/report/alert publication are not newly certified. This corrects the forward path only. A successful future refresh can re-materialize a source with its still-saved exact selection; already-published historical snapshots are not repaired. Duplicate-header or currency-damaged sources require a read-only inventory and source-authoritative correction/re-import plan before cleanup. No production/Ptomo reads or mutations occurred. Existing numeric syntax, positive-row materialization and zero/negative amount policies are otherwise unchanged; these three fixes are not whole-source certification.
+
+**Reusable safeguards:** Validate normalized header identity before object construction, validate currency before permissive numeric parsing, and apply the same saved selection in validation and materialization. Keep atomic stable-source replacement and last-good retention. The sheet's formatted cells, generated column names, USD-only dollar handling and saved singular/array fields are provider/workflow assumptions; future providers still require independent permissions, metric, attribution, date, pagination and quota validation. No new framework was added.
+
+## Deployment verification (October 22)
+
+At 21:53 UTC, three read-only checks independently confirmed live revision `44132830b668283d37d40cb874687c2c5861ad0e`, `nodeEnv=production` and successful readiness. The homepage and `/health` returned 200; signed-out `/api/campaigns` returned 401. The GA4 scheduler is registered with 08:00/14:00/20:00 Europe/Amsterdam and `runOnStartup=false`. Its next run is October 23 at 08:00 Amsterdam, through October 22; no natural run has completed since this deployment. [Recorded public evidence](deployment-2026-10-22/public-verification.json) and [read-only checker](deployment-2026-10-22/verify-public.cjs).
+
+This confirms deployment and the listed public checks only. It does not validate authenticated imports, Google provider values, the next refresh, hosted load or recovery. No campaign mutation, upload, manual refresh, provider failure or cleanup was triggered. All 24 release acceptances remain open. Next implementation: Sheets Revenue V1-065/066/067; this work does not depend on waiting for the next scheduled refresh.
 
 ## Commit checkpoint (October 22)
 
-The user authorized commit and push. [Commit evidence](validation-2026-10-22/commit-checkpoint.json) verifies all nine committed runtime/test files against the validated manifest. Runtime commit: `c38062825a88c7265f323cb2990f713ddc040e18`. No schema, dependency or environment-setting change is included. Validation was not repeated because committed content matches the tested files. Deployment verification and all required release gates remain open. The original dated manifests describe their pre-commit validation state.
+The user authorized commit and push. [Commit evidence](validation-2026-10-22/commit-checkpoint.json) verifies all nine committed runtime/test files against the validated manifest. Runtime commit: `c38062825a88c7265f323cb2990f713ddc040e18`. No schema, dependency or environment-setting change is included. Validation was not repeated because committed content matches the tested files. The subsequent deployment checks above confirm the public boundary; required release acceptance remains open. The original dated manifests describe their pre-commit validation state.
 
 ## First correction checkpoint — October 22
 
@@ -40,13 +64,12 @@ The user authorized Batch 4 while the deployed Batch 3 revision awaits its first
 | Remaining implementation group | Finding IDs |
 |---|---|
 | Retained non-GA4 Revenue CSV completeness and atomic edits | V1-072 |
-| Sheets Revenue headers, currency and saved selection | V1-065, V1-066, V1-067 |
 | Sheets Spend completeness and exact cleanup | V1-041, V1-070 |
 | Standalone Sheets scope, zero state, formulas and downstream reports | V1-051, V1-108, V1-112, V1-113, V1-114 |
 | Custom Integration parser/publication, transfers, XLSX bounds/selection and metric meaning | V1-028, V1-029, V1-031, V1-102, V1-103, V1-111, V1-120 |
 | Retained manual-Spend and cross-source transfer safeguards | V1-068, V1-069 |
 
-The next implementation group is Sheets Revenue (V1-065/066/067), followed by the remaining groups above. Four-provider functional work remains deferred; shared retained-route safety remains required. No completion estimate or additional exclusion is inferred.
+The next implementation group is Sheets Spend (V1-041/070), followed by the remaining groups above. Sheets Revenue V1-065/066/067 is now verified locally, with acceptance still open. Four-provider functional work remains deferred; shared retained-route safety remains required. No completion estimate or additional exclusion is inferred.
 
 ## Scope and acceptance
 
@@ -78,9 +101,9 @@ These records retain their own dates and verification limits. Use the current fi
 | [V1-040](#v1-040) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-041](#v1-041) | P1 | OPEN | OPEN |
 | [V1-051](#v1-051) | P1 | OPEN | OPEN |
-| [V1-065](#v1-065) | P1 | OPEN | OPEN |
-| [V1-066](#v1-066) | P1 | OPEN | OPEN |
-| [V1-067](#v1-067) | P1 | OPEN | OPEN |
+| [V1-065](#v1-065) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-066](#v1-066) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-067](#v1-067) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-068](#v1-068) | P1 | OPEN | OPEN |
 | [V1-069](#v1-069) | P1 | OPEN | OPEN |
 | [V1-070](#v1-070) | P1 | OPEN | OPEN |
@@ -175,7 +198,7 @@ Main GET21785/21987 and `auto-refresh-scheduler.ts:813` read A1:Z1000. Exact ref
 
 ### V1-065
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -183,11 +206,11 @@ Main GET21785/21987 and `auto-refresh-scheduler.ts:813` read A1:Z1000. Exact ref
 
 `routes-oauth.ts:5609–5620` duplicate headers overwrite earlier values before validation. Exact GA4 Revenue process fixture `[Revenue,Revenue]`/`[100,7]` persists7. Strict CSV Revenue's duplicate-header rejection does not cover Sheets.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** Forward correction verified locally in the [October 23 Sheets Revenue checkpoint](#sheets-revenue-correction-checkpoint-october-23). Uncommitted on `44132830`; not deployed. See the exact root cause, changed paths, failing/fixed/neighbor/persistence tests and remaining lifecycle/provider/historical-data limits there. Release acceptance remains OPEN.
 
 ### V1-066
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -195,11 +218,11 @@ Main GET21785/21987 and `auto-refresh-scheduler.ts:813` read A1:Z1000. Exact ref
 
 Sheets Revenue amount helper accepts `$`; process1456 strips it while5719–5731 checks only configured currency. Exact EUR fixture persists `$100` as100EUR without conversion. Malformed12oops control correctly rejects; preserve that existing syntax validation.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** Forward correction verified locally in the [October 23 Sheets Revenue checkpoint](#sheets-revenue-correction-checkpoint-october-23). Uncommitted on `44132830`; not deployed. See the exact root cause, changed paths, failing/fixed/neighbor/persistence tests and remaining lifecycle/provider/historical-data limits there. Release acceptance remains OPEN.
 
 ### V1-067
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -207,7 +230,7 @@ Sheets Revenue amount helper accepts `$`; process1456 strips it while5719–5731
 
 `auto-refresh-scheduler.ts:587–626` ignores stored singular campaignValue, although Revenue save5442 accepts and preserves it. Exact refresh fixture changes selected10 into all-rows100; array-selection control stays10. Restore exact saved selection across save/preview/refresh and all downstream values; inventory potentially damaged sources separately.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** Forward correction verified locally in the [October 23 Sheets Revenue checkpoint](#sheets-revenue-correction-checkpoint-october-23). Uncommitted on `44132830`; not deployed. See the exact root cause, changed paths, failing/fixed/neighbor/persistence tests and remaining lifecycle/provider/historical-data limits there. Release acceptance remains OPEN.
 
 ### V1-068
 

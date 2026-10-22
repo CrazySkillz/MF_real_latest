@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-22T22:17:09.580Z",
+  "databases": [
+    {
+      "database": "ga4_alignment_test",
+      "remainingFixtureSchemas": 0,
+      "otherClientConnections": 0,
+      "remainingAdvisoryLocks": 0
+    },
+    {
+      "database": "notifications_test",
+      "remainingFixtureSchemas": 0,
+      "otherClientConnections": 0,
+      "remainingAdvisoryLocks": 0
+    }
+  ],
+  "result": "PASS"
+}

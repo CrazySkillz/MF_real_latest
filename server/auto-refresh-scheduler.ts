@@ -583,14 +583,21 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
       if (Array.isArray(data.values)) allRows.push(...data.values);
     }
     if (allRows.length < 2) return false;
-    const headers: string[] = allRows[0];
+    const headers: string[] = allRows[0].map((header, index) => String(header || "").trim() || `Column ${index + 1}`);
+    if (new Set(headers).size !== headers.length) {
+      console.warn(`[Auto Refresh] Google Sheets revenue has duplicate column names for campaign ${campaignId}; preserving last-good data`);
+      return false;
+    }
     const dataRows: string[][] = allRows.slice(1);
 
     // Parse rows using stored mapping
     const revenueCol = String(mappingConfig.revenueColumn || "");
     const campaignCol = String(mappingConfig.campaignColumn || "");
-    const campaignValues: string[] = Array.isArray(mappingConfig.campaignValues) ? mappingConfig.campaignValues : [];
-    const campaignValueSet = campaignValues.length > 0 ? new Set(campaignValues) : null;
+    const campaignValue = String(mappingConfig.campaignValue || "").trim();
+    const campaignValues: string[] = Array.isArray(mappingConfig.campaignValues)
+      ? mappingConfig.campaignValues.map((value: any) => String(value ?? "").trim()).filter(Boolean) : [];
+    const campaignValueSet = campaignValues.length > 0 ? new Set(campaignValues) : campaignValue ? new Set([campaignValue]) : null;
+    if (campaignCol && !campaignValueSet) return false;
     const mappedRows = dataRows.map((row) => {
       const rowObj: AnyRecord = {};
       headers.forEach((header, index) => { rowObj[header] = row[index] ?? ""; });
@@ -601,12 +608,19 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
 
     const dateCol = mappingConfig.dateColumn ? String(mappingConfig.dateColumn) : null;
     const platformContext = String(mappingConfig.platformContext || source?.platformContext || "ga4") as any;
+    const campaign = await storage.getCampaign(campaignId);
+    const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
+    const requestedCurrency = String(mappingConfig.currency || source?.currency || campaignCurrency).trim().toUpperCase();
+    if (platformContext === "ga4" && requestedCurrency !== campaignCurrency) return false;
+    const currency = platformContext === "ga4" ? campaignCurrency : requestedCurrency;
     if (platformContext === "ga4") {
       if (campaignCol === revenueCol || (dateCol && (dateCol === revenueCol || dateCol === campaignCol))) return false;
       const invalidAmountRows = findInvalidGoogleSheetsRevenueAmountRows(mappedRows, {
         revenueColumn: revenueCol,
         campaignColumn: campaignCol || null,
+        campaignValue,
         campaignValues,
+        currency,
       });
       if (invalidAmountRows.length > 0) {
         console.warn(`[Auto Refresh] Google Sheets revenue has ${invalidAmountRows.length} selected row(s) with unsupported amount formatting for campaign ${campaignId}; preserving last-good data`);
@@ -619,6 +633,7 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
         revenueColumn: revenueCol,
         dateColumn: dateCol,
         campaignColumn: campaignCol || null,
+        campaignValue,
         campaignValues,
       });
       if (validation.keptRows === 0 || (dateCol && validation.undatedRevenue > 0)) return false;
@@ -658,14 +673,9 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
 
     const total = Number(totalRevenue.toFixed(2));
     const sourceId = String(source.id);
-    const campaign = await storage.getCampaign(campaignId);
     const endDate = platformContext === "ga4"
       ? getLatestCompleteReportingDate((campaign as any)?.reportingTimeZone)
       : new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
-    const requestedCurrency = String(mappingConfig.currency || source?.currency || campaignCurrency).trim().toUpperCase();
-    if (platformContext === "ga4" && requestedCurrency !== campaignCurrency) return false;
-    const currency = platformContext === "ga4" ? campaignCurrency : requestedCurrency;
     const records = total > 0
       ? dateCol && dailyRevenueMap.size > 0
         ? Array.from(dailyRevenueMap.entries()).filter(([, rev]) => rev > 0).map(([date, rev]) => ({ campaignId, date, revenue: Number(rev.toFixed(2)).toFixed(2) as any, currency }))

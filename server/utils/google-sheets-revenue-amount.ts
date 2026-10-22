@@ -3,6 +3,7 @@ type GoogleSheetsRevenueAmountMapping = {
   campaignColumn?: string | null;
   campaignValue?: string | null;
   campaignValues?: readonly unknown[] | null;
+  currency?: string;
 };
 
 const GOOGLE_SHEETS_REVENUE_AMOUNT = /^[+-]?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d*)?|\.\d+)$/;
@@ -40,6 +41,8 @@ export function findInvalidGoogleSheetsRevenueAmountRows(
         return [];
       }
     }
-    return isSupportedGoogleSheetsRevenueAmount(row[mapping.revenueColumn]) ? [] : [index + 2];
+    const value = row[mapping.revenueColumn];
+    const currencyMismatch = mapping.currency && mapping.currency.trim().toUpperCase() !== "USD" && String(value ?? "").includes("$");
+    return !currencyMismatch && isSupportedGoogleSheetsRevenueAmount(value) ? [] : [index + 2];
   });
 }

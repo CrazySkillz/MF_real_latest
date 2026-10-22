@@ -6,11 +6,15 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 4 status
 
-**IN PROGRESS.** Nine corrections are VERIFIED LOCALLY: V1-040/041/065/066/067/070/071/073/126. Fifteen findings still need implementation; all 24 release acceptances remain OPEN. The latest Sheets Spend corrections (V1-041/070) are uncommitted and undeployed. The earlier seven are deployed in `e635fe50`; public deployment checks pass, authenticated import/provider acceptance remains open. No provider call or production-data cleanup was performed.
+**IN PROGRESS.** Nine corrections are VERIFIED LOCALLY: V1-040/041/065/066/067/070/071/073/126. Fifteen findings still need implementation; all 24 release acceptances remain OPEN. The latest Sheets Spend corrections (V1-041/070) are committed in `b650b631`; deployment verification is pending. The earlier seven are deployed in `e635fe50`; public deployment checks pass, authenticated import/provider acceptance remains open. No provider call or production-data cleanup was performed.
+
+## Sheets Spend commit checkpoint (October 23)
+
+The authorized fixes, tests and validation documentation are committed in `b650b63150f2d38522c7f85c1f1fd2bee6d8b610`. [Commit verification](validation-2026-10-23-sheets-spend/commit-checkpoint.json) binds all five runtime/test files to the previously validated candidate. The dated validation manifests retain their original pre-commit state. No schema, dependency or environment-setting change is included. Tests were not repeated because committed content matches the tested files. Deployment verification and full release acceptance remain open.
 
 ## Sheets Spend correction checkpoint (October 23)
 
-V1-041 and V1-070 now have localized forward corrections on base `e635fe50`. The changes are **uncommitted and undeployed**. All 37 new tests pass, including nine real PostgreSQL cases; required release acceptance remains OPEN. No production/Ptomo reads, imports, refreshes or cleanup were performed.
+V1-041 and V1-070 now have localized forward corrections on base `e635fe50`. The changes are **committed in `b650b631`; deployment verification is pending**. All 37 new tests pass, including nine real PostgreSQL cases; required release acceptance remains OPEN. No production/Ptomo reads, imports, refreshes or cleanup were performed.
 
 | Finding | Root cause and correction | Exact changed boundary |
 |---|---|---|
@@ -112,7 +116,7 @@ The user authorized Batch 4 while the deployed Batch 3 revision awaits its first
 | Custom Integration parser/publication, transfers, XLSX bounds/selection and metric meaning | V1-028, V1-029, V1-031, V1-102, V1-103, V1-111, V1-120 |
 | Retained manual-Spend and cross-source transfer safeguards | V1-068, V1-069 |
 
-The next implementation group is retained non-GA4 Revenue CSV completeness and atomic edits (V1-072), followed by the remaining groups above. Sheets Spend V1-041/070 is now verified locally and awaits commit/deployment. Sheets Revenue V1-065/066/067 is now verified locally, with acceptance still open. Four-provider functional work remains deferred; shared retained-route safety remains required. No completion estimate or additional exclusion is inferred.
+The next implementation group is retained non-GA4 Revenue CSV completeness and atomic edits (V1-072), followed by the remaining groups above. Sheets Spend V1-041/070 is now verified locally and committed in `b650b631`; deployment verification remains pending. Sheets Revenue V1-065/066/067 is now verified locally, with acceptance still open. Four-provider functional work remains deferred; shared retained-route safety remains required. No completion estimate or additional exclusion is inferred.
 
 ## Scope and acceptance
 
@@ -225,7 +229,7 @@ Custom imports persist and publish review-required metrics; latest-reader storag
 
 Routes6765/6905 fetch fixed `A1:ZZ5000` without completeness check; exact processing fixture with5,001 data rows persists4,999 and returns success. Permissive parseNum accepts12oops; entirely nonnumeric selected amounts write measured zero. Fetches lack abort signal. Auto-refresh reuses this route. Independent Revenue chunking safeguards do not cover Spend. Reject partial/invalid data and validate refresh/recovery/source totals.
 
-**Implementation / validation:** Forward correction VERIFIED LOCALLY in the [October 23 Sheets Spend checkpoint](#sheets-spend-correction-checkpoint-october-23). Uncommitted and undeployed on base `e635fe50`. See exact changed paths, failing/fixed/neighbor/PostgreSQL checks, intentional maintenance-API change and remaining provider/lifecycle/historical-data gates there. Release acceptance remains OPEN.
+**Implementation / validation:** Forward correction VERIFIED LOCALLY in the [October 23 Sheets Spend checkpoint](#sheets-spend-correction-checkpoint-october-23). Committed in `b650b631` on base `e635fe50`; deployment verification is pending. See exact changed paths, failing/fixed/neighbor/PostgreSQL checks, intentional maintenance-API change and remaining provider/lifecycle/historical-data gates there. Release acceptance remains OPEN.
 
 ### V1-051
 
@@ -309,7 +313,7 @@ Sheets Revenue amount helper accepts `$`; process1456 strips it while5719–5731
 
 `routes-oauth.ts:1571–1610,2520` groups Sheets Spend duplicates without platform/currency, reads all contexts and deletes all but earliest. Exact fixture deactivates legitimate LinkedIn EUR source beside GA4 USD using same mapping. Non-atomic delete steps and no expected-state check compound risk. Must prove exact damaged boundary before permitting cleanup; no live cleanup performed.
 
-**Implementation / validation:** Forward correction VERIFIED LOCALLY in the [October 23 Sheets Spend checkpoint](#sheets-spend-correction-checkpoint-october-23). Uncommitted and undeployed on base `e635fe50`. See exact changed paths, failing/fixed/neighbor/PostgreSQL checks, intentional maintenance-API change and remaining provider/lifecycle/historical-data gates there. Release acceptance remains OPEN.
+**Implementation / validation:** Forward correction VERIFIED LOCALLY in the [October 23 Sheets Spend checkpoint](#sheets-spend-correction-checkpoint-october-23). Committed in `b650b631` on base `e635fe50`; deployment verification is pending. See exact changed paths, failing/fixed/neighbor/PostgreSQL checks, intentional maintenance-API change and remaining provider/lifecycle/historical-data gates there. Release acceptance remains OPEN.
 
 ### V1-071
 

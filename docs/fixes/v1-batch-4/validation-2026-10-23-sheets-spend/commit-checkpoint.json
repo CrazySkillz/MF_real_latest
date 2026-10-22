@@ -1,0 +1,42 @@
+{
+  "at": "2026-10-22T23:25:36.958502+00:00",
+  "runtimeCommit": "b650b63150f2d38522c7f85c1f1fd2bee6d8b610",
+  "baseHead": "e635fe50b6009bd003e8aa2f82d8c3fe84026cc4",
+  "committedFileCount": 45,
+  "validatedFiles": [
+    {
+      "file": "server/routes-oauth.ts",
+      "validatedSha256": "f15ed2ae5050d7113f1b1bb20a141b9c6d16995bf81b584f327c90d7a7bd83e1",
+      "committedBlobSha256": "f15ed2ae5050d7113f1b1bb20a141b9c6d16995bf81b584f327c90d7a7bd83e1",
+      "contentMatchesIgnoringLineEndings": true
+    },
+    {
+      "file": "server/storage.ts",
+      "validatedSha256": "dc613f0c52ee58cf1fbe849b1cbbf7aed3aac4896a420df4661a1ac0ce8555d5",
+      "committedBlobSha256": "dc613f0c52ee58cf1fbe849b1cbbf7aed3aac4896a420df4661a1ac0ce8555d5",
+      "contentMatchesIgnoringLineEndings": true
+    },
+    {
+      "file": "server/v1-batch4-sheets-spend-contract.test.ts",
+      "validatedSha256": "40891c2d0efab93deb11f1caea50ec4e6a85371d5a7145275bef26b854c06ef9",
+      "committedBlobSha256": "40891c2d0efab93deb11f1caea50ec4e6a85371d5a7145275bef26b854c06ef9",
+      "contentMatchesIgnoringLineEndings": true
+    },
+    {
+      "file": "server/ga4-financial-source-ownership-postgres.test.ts",
+      "validatedSha256": "4cc8393e5016dc876c241d7ade73e73e23c9d5a97dfa4aa966a369f7f838919a",
+      "committedBlobSha256": "4cc8393e5016dc876c241d7ade73e73e23c9d5a97dfa4aa966a369f7f838919a",
+      "contentMatchesIgnoringLineEndings": true
+    },
+    {
+      "file": "server/spend-source-additivity.test.ts",
+      "validatedSha256": "3880d49a629ae2f48e3144702499aac0de91528510d9049c8e22daa853912be2",
+      "committedBlobSha256": "3880d49a629ae2f48e3144702499aac0de91528510d9049c8e22daa853912be2",
+      "contentMatchesIgnoringLineEndings": true
+    }
+  ],
+  "testsRerun": false,
+  "reason": "All five runtime/test files match the previously validated candidate; documentation-only checkpoint follows.",
+  "deploymentVerification": "PENDING",
+  "releaseAcceptance": "OPEN"
+}

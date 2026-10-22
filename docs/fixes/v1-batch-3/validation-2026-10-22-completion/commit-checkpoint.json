@@ -1,0 +1,316 @@
+{
+  "at": "2026-10-22T20:08:26.265Z",
+  "runtimeCommit": "e7aebef8f841e7ba99879572d3131ec923d9b95f",
+  "baseCommit": "6b65d9c40e9a2f49b665b06094732a22e1b9f0c4",
+  "committedFileCount": 118,
+  "candidateFiles": [
+    {
+      "file": "server/analytics.ts",
+      "lfSha256": "260103142975588eaf6737aab1c8d56d621b1c38ca720acefc699c50b3eeefd6",
+      "gitBlob": "f418b3e46e451ea783946e5f87f84e0ec8a5e1af"
+    },
+    {
+      "file": "server/auto-refresh-scheduler.ts",
+      "lfSha256": "cc652d469c76814bccf880932cc469547a257c9b8d72967a7b40a14ebfddc1c0",
+      "gitBlob": "49c55b75975ed017b054bbc7e20e5dcf7f2411dd"
+    },
+    {
+      "file": "server/ga4-auto-refresh-regression.test.ts",
+      "lfSha256": "09f7f9a701ab45465699a8abd6ee52a89ff5135ce7d25d130b4319cd1c05eb9b",
+      "gitBlob": "734e9a5028bb9e3bfd0b5d0948990a415f4b2851"
+    },
+    {
+      "file": "server/ga4-daily-scheduler.ts",
+      "lfSha256": "cd4555a754a6b3bb4a82591b497589bf911bcc6f59c26cf8a3eafe7dee8b3b95",
+      "gitBlob": "b01515dc4ea79e81e631d152dfd07c4e045b1e87"
+    },
+    {
+      "file": "server/ga4-filter.test.ts",
+      "lfSha256": "f4c21d64e4801a4a8756a6b149b5ae738f8658a8e6751ff8184ca8145f02e903",
+      "gitBlob": "1c281668b3a5a3cfd40b12b4940d15a43763f6ed"
+    },
+    {
+      "file": "server/ga4-financial-refresh-integration.test.ts",
+      "lfSha256": "603e6ea54924b187e3f7a8e6911680ba49acceab72f7f4175d1a124d0276ccfd",
+      "gitBlob": "c38bbaa64463d5f4a915a5519ab134f899d078cd"
+    },
+    {
+      "file": "server/ga4-financial-source-ownership-postgres.test.ts",
+      "lfSha256": "9cb7bda200b04bc51b8ff0ea6b48d9f5082cea482a2fd090762459ff10dc0430",
+      "gitBlob": "49f0b62c49f50f856ab153f7702dc4eb9f89ddec"
+    },
+    {
+      "file": "server/ga4-overview-conversion-events-regression.test.ts",
+      "lfSha256": "3e91ba4a38314cdcd4f3df3d179610e5c77a9fcfba5c773c5fd85a92172e93db",
+      "gitBlob": "11e1f0d7a7f8948c5a4977bc66e3f6d7de119a60"
+    },
+    {
+      "file": "server/ga4-overview-landing-pages-regression.test.ts",
+      "lfSha256": "6c2279fdd4bc587a0a8efa970d43b68467fd662933f1cdb7a8818a2d35f3da5f",
+      "gitBlob": "3a5197f32541da56f782c59ad41e561c499d6155"
+    },
+    {
+      "file": "server/ga4-recovery-process-postgres.test.ts",
+      "lfSha256": "c783695ce7398cd99ac0425b951cddad9cde4379be04749b67d9a21a3387c40c",
+      "gitBlob": "845d58b6f48ca0c2798e0fb810e84fa690e595cd"
+    },
+    {
+      "file": "server/ga4-refresh-input-invalidation-postgres.test.ts",
+      "lfSha256": "dc8b607991f78a874c932769dc154a210b612e0e216d56e213c728f587795033",
+      "gitBlob": "9f43abd80b265a1fe50f184dae3d4a99e266962c"
+    },
+    {
+      "file": "server/ga4-refresh-pipeline-source-failure.test.ts",
+      "lfSha256": "68c5c08e5a229ded562b84ee41adb858212a0ac0c0aa733bd6415fab9e49e4c3",
+      "gitBlob": "83f364c9c67430e4f887667491c112236ab6480f"
+    },
+    {
+      "file": "server/ga4-shared-daily-traffic.test.ts",
+      "lfSha256": "464b4f928751cd9e591da522d4326619115f73cc965b02f0ed55b2b962fbd441",
+      "gitBlob": "ddc16874004680f7783ab01a4ea21bf0fe17b29b"
+    },
+    {
+      "file": "server/google-ads-scheduler.ts",
+      "lfSha256": "87da0d17962a3fda596bf3b41fa9e8234cad90acf9e6e4da9bccfd2738ee52de",
+      "gitBlob": "31ca2ccdcbd2a6986b4cefd9cd3c9363d2dd8616"
+    },
+    {
+      "file": "server/google-ads-spend-production-path.test.ts",
+      "lfSha256": "8aacefcf6a05f842cdfe99cd3e0ebfc00959e561000aa392a35deb6864641271",
+      "gitBlob": "e81e209d42759684d55c63c265490667531f2c7b"
+    },
+    {
+      "file": "server/googleAdsClient.ts",
+      "lfSha256": "c531bc81160b6ca64fb3af9fa9b043062ed6c134fbbeaa574eeeffc1cf0c0f1e",
+      "gitBlob": "c69f4ffcf18287609af9ddf0aeb36935953c5d27"
+    },
+    {
+      "file": "server/linkedin-daily-metrics.ts",
+      "lfSha256": "e03dea7131c4b07b351cacc489c0e6f70a2ecbaf415d44f321a05db15a936129",
+      "gitBlob": "142662acde6ff441d28c10cdaee68d1b09e3a5fb"
+    },
+    {
+      "file": "server/linkedin-scheduler.ts",
+      "lfSha256": "1765f95896e06d9f547ae0b783badc2a6402107adad0fe3c7fc64fd6338a0910",
+      "gitBlob": "9b649c9c701647a32f7c190b7a7998595e996f50"
+    },
+    {
+      "file": "server/linkedinClient.ts",
+      "lfSha256": "aafbe89b96722a40b60ceb5aa099fa255c584eff66153abb817564cb1a54cbff",
+      "gitBlob": "6fe7d9f5b7fadb7110707583b4e6d082bac4bc6a"
+    },
+    {
+      "file": "server/routes-oauth.ts",
+      "lfSha256": "7a95f35f933838490eccc8e99dcc510930242ee1d7815fe9af141ff4279836cd",
+      "gitBlob": "796f6a0bc4e00453f699f0a130323b4a125fa1bb"
+    },
+    {
+      "file": "server/salesforce-pagination.test.ts",
+      "lfSha256": "d2c8dbe788ec414bee8dbf7fbfee2a82b714355a89259ce5a037b1424c0f3644",
+      "gitBlob": "acbf4cfb3661c4ac7bf75e805a9d87fc09330a70"
+    },
+    {
+      "file": "server/storage.ts",
+      "lfSha256": "e10f3e96e7d177bacd299707f671c20be42b96f7777ecbe563a2b518f1587488",
+      "gitBlob": "c6dbb7d14e9b68e8e56b59f810477ae65dad9aeb"
+    },
+    {
+      "file": "server/test-support/ga4-recovery-process-worker.ts",
+      "lfSha256": "8f9ceb7de1d16a560a3bfa010d6be40928f0ad23737681e4d6f748b569d6c01c",
+      "gitBlob": "dc0be36b2992e12d198a2f4fd6af425cf03d74e1"
+    },
+    {
+      "file": "server/utils/financial-daily-snapshot-observation.ts",
+      "lfSha256": "3bc5383f40e8056fef8f50106cc515c9b7589a0aaf8761dd55f9339f1e5466b3",
+      "gitBlob": "dcc5586d5474731716d3406937109dcabc5ef513"
+    },
+    {
+      "file": "server/utils/salesforce-pagination.ts",
+      "lfSha256": "77480770049553f7ada6a9ad500fc350c833e424f525eca0ab7dec96782f54ee",
+      "gitBlob": "fd7d58f29c0929fc0b11b9b892aebf474a5b63b9"
+    },
+    {
+      "file": "server/v1-batch3-ga4-quality-concurrency.test.ts",
+      "lfSha256": "1775fc4c88c230f84732d9735cbb8aed340ba1e555a5e1b7a676360c6111e7b9",
+      "gitBlob": "15e9605bca712422cdbb19e4578fb4b16e7d69c8"
+    },
+    {
+      "file": "server/v1-batch3-google-ads-timeouts.test.ts",
+      "lfSha256": "3a84f810c9cc398d69da9806a1aea082f3fd32ec48c65fe7414c1de60b264df2",
+      "gitBlob": "3f3a6bf1b7c092b7141870f04617c2df4c7a08c1"
+    },
+    {
+      "file": "server/v1-batch3-property-requests-postgres.test.ts",
+      "lfSha256": "d1ac79b00f891f7b4985acd777fd045951fe512459c540e0fdf40fda7a82d7fb",
+      "gitBlob": "f6cacdc7719538f7ea5a60dbf45b11e2c0523fbb"
+    },
+    {
+      "file": "server/v1-batch3-provider-timeouts.test.ts",
+      "lfSha256": "0030d6f5a0a11ef176fbd0fb4d3c90c2626a59d65879f145afad5c8bd5673237",
+      "gitBlob": "960e24e530ea63b1fb3b6530b463c650b2e909d8"
+    },
+    {
+      "file": "server/v1-batch3-shared-cancellation.test.ts",
+      "lfSha256": "223456c9957245cce9e5d9f790a21331bb67cdd2a4ad0910bb258450dba23868",
+      "gitBlob": "555c7a06a705e60a231fb529aa81af523b47be99"
+    }
+  ],
+  "committedFiles": [
+    "docs/V1_RELEASE_READINESS.md",
+    "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md",
+    "docs/fixes/v1-batch-3/README.md",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/assessment.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/cancellation-after.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/cancellation-after.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/cancellation-before.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/cancellation-before.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/candidate-manifest.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/cleanup-fixtures.cjs",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/evidence-manifest.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/failure-reconciliation.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/final-build-checks.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/final-focused.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/final-focused.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/final-regressions.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/final-regressions.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/final-server-build.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/final-targeted.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/final-targeted.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/final-typecheck.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/financial-reply-before.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/financial-reply-before.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/first-build-checks.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/first-server-build.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/first-typecheck.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/fixture-cleanup.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/full-suite-final.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/full-suite-final.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/full-suite.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/full-suite.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/postgres-stopped.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/process-recovery.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/process-recovery.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/property-postgres.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/property-postgres.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/quality-concurrency-after.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/quality-concurrency-after.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/quality-concurrency-before.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/quality-concurrency-before.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/quality-concurrency-first.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/quality-concurrency-first.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/quality-surfaces.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/quality-surfaces.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/record-evidence.cjs",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/recovery-before.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/recovery-before.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/recovery-first.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/recovery-first.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/recovery-second.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/recovery-second.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/run-build-checks.cjs",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/run-tests.cjs",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/second-build-checks.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/second-server-build.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-completion/second-typecheck.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/adjacent-hubspot-before.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/adjacent-hubspot-before.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/ads-before.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/ads-before.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/assessment.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/before-verified.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/before-verified.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/before.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/build-checks.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/candidate-manifest.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/cleanup-fixtures.cjs",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/client-build.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/evidence-manifest.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/failure-reconciliation.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/final-build-checks.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/final-server-build.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/final-targeted.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/final-targeted.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/final-typecheck.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/first-after.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/first-after.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/fixture-cleanup.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/full-suite.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/full-suite.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/neighboring.json",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/neighboring.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/record-evidence.cjs",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/run-build-checks.cjs",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/run-tests.cjs",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/server-build.log",
+    "docs/fixes/v1-batch-3/validation-2026-10-22-timeouts/typecheck.log",
+    "docs/fixes/v1-batch-8/README.md",
+    "server/analytics.ts",
+    "server/auto-refresh-scheduler.ts",
+    "server/ga4-auto-refresh-regression.test.ts",
+    "server/ga4-daily-scheduler.ts",
+    "server/ga4-filter.test.ts",
+    "server/ga4-financial-refresh-integration.test.ts",
+    "server/ga4-financial-source-ownership-postgres.test.ts",
+    "server/ga4-overview-conversion-events-regression.test.ts",
+    "server/ga4-overview-landing-pages-regression.test.ts",
+    "server/ga4-recovery-process-postgres.test.ts",
+    "server/ga4-refresh-input-invalidation-postgres.test.ts",
+    "server/ga4-refresh-pipeline-source-failure.test.ts",
+    "server/ga4-shared-daily-traffic.test.ts",
+    "server/google-ads-scheduler.ts",
+    "server/google-ads-spend-production-path.test.ts",
+    "server/googleAdsClient.ts",
+    "server/linkedin-daily-metrics.ts",
+    "server/linkedin-scheduler.ts",
+    "server/linkedinClient.ts",
+    "server/routes-oauth.ts",
+    "server/salesforce-pagination.test.ts",
+    "server/storage.ts",
+    "server/test-support/ga4-recovery-process-worker.ts",
+    "server/utils/financial-daily-snapshot-observation.ts",
+    "server/utils/salesforce-pagination.ts",
+    "server/v1-batch3-ga4-quality-concurrency.test.ts",
+    "server/v1-batch3-google-ads-timeouts.test.ts",
+    "server/v1-batch3-property-requests-postgres.test.ts",
+    "server/v1-batch3-provider-timeouts.test.ts",
+    "server/v1-batch3-shared-cancellation.test.ts"
+  ],
+  "unchangedSinceFinalFullSuite": true,
+  "validation": {
+    "total": 4458,
+    "passed": 4278,
+    "failed": 180,
+    "skipped": 0,
+    "newFailingIdentities": 0,
+    "typecheck": "PASS",
+    "serverBuild": "PASS",
+    "rerunForCommit": false
+  },
+  "documentation": [
+    {
+      "file": "docs/V1_RELEASE_READINESS.md",
+      "sha256": "3a748770a2bf2b039bdf37b5870c1454e03cb041addc6b18a4103e673eccd1ed"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md",
+      "sha256": "8d195b638f77bd25ac5b95893c7cc151a2e7375a727be4fa541fb47748b679f6"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/README.md",
+      "sha256": "115dcb8bb8d23295d7c4837079f2a400b5646df7f625b403d9c86d7638480b50"
+    },
+    {
+      "file": "docs/fixes/v1-batch-8/README.md",
+      "sha256": "e2c0ab03be38bd995744d1e6ca1afb3ee2f3d2fcd071a5b267ee982d46e957c4"
+    }
+  ],
+  "pushAuthorization": "User explicitly requested commit and push to main; push follows this documentation checkpoint.",
+  "deploymentVerification": "PENDING",
+  "latestPreviouslyVerifiedLiveRevision": "5f251e0e6e9df0d9579addea6fe6f717c196cb47",
+  "releaseDecision": "NO-GO; all previously required release gates remain open",
+  "notes": [
+    "Historical validation JSON and evidence hashes are retained unchanged. Git normalizes line endings; candidate verification uses LF hashes and Git blob IDs.",
+    "Raw captured logs are intentionally preserved; the whitespace check excludes *.log after identifying one captured trailing blank line. Runtime, tests, scripts and Markdown pass the whitespace check.",
+    "No runtime, schema or environment changes during commit preparation; no manual provider or production data operation."
+  ]
+}

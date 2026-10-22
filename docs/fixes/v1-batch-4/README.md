@@ -6,7 +6,11 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 4 status
 
-**IN PROGRESS.** The first four corrections, V1-040/071/073/126, are implemented and verified locally at the boundaries below. Twenty findings still need implementation. All 24 release acceptances remain OPEN. Changes are uncommitted on `ff3c511513c5c93b2c236ba92c95a274f97c4973`; no Batch 4 deployment, provider call or production-data change was performed.
+**IN PROGRESS.** The first four corrections, V1-040/071/073/126, are implemented and verified locally at the boundaries below. Twenty findings still need implementation. All 24 release acceptances remain OPEN. Runtime fixes and tests are committed in `c38062825a88c7265f323cb2990f713ddc040e18`, based on `ff3c5115`. Deployment acceptance remains pending; no provider call or production-data cleanup was performed.
+
+## Commit checkpoint (October 22)
+
+The user authorized commit and push. [Commit evidence](validation-2026-10-22/commit-checkpoint.json) verifies all nine committed runtime/test files against the validated manifest. Runtime commit: `c38062825a88c7265f323cb2990f713ddc040e18`. No schema, dependency or environment-setting change is included. Validation was not repeated because committed content matches the tested files. Deployment verification and all required release gates remain open. The original dated manifests describe their pre-commit validation state.
 
 ## First correction checkpoint — October 22
 
@@ -143,7 +147,7 @@ Custom imports persist and publish review-required metrics; latest-reader storag
 
 `routes-oauth.ts:6545-6553` accepts up to50,005 approximate lines but non-strict parser stops at50,000 including header. Exact route fixture uploads50,000 data rows and persists49,999 with success. Same route's `aggregateCsvSpendRows` accepts malformed `12oops` as12; Revenue CSV's strict validator is absent. Validate whole-file completeness, amount/header/date/currency contract and source/downstream parity; existing damaged imports need read-only inventory.
 
-**Implementation / validation:** The uncommitted forward-path correction is VERIFIED LOCALLY in the [October 22 checkpoint](#first-correction-checkpoint--october-22), including exact paths, reproduction, regression evidence and limitations. Deployed/provider, complete downstream lifecycle and historical-data acceptance remain OPEN.
+**Implementation / validation:** The forward-path correction in `c3806282` is VERIFIED LOCALLY in the [October 22 checkpoint](#first-correction-checkpoint--october-22), including exact paths, reproduction, regression evidence and limitations. Deployed/provider, complete downstream lifecycle and historical-data acceptance remain OPEN.
 
 ### V1-041
 
@@ -251,7 +255,7 @@ Sheets Revenue amount helper accepts `$`; process1456 strips it while5719–5731
 
 GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105 and route4998 drop it. Exact handler saves100 from selected100/−10 with success. Define imported adjustment policy explicitly; accept/reconcile or reject unsupported amounts before mutation. Raw mapping retains the negative while records do not; every downstream total can therefore diverge from the uploaded file.
 
-**Implementation / validation:** The uncommitted forward-path correction is VERIFIED LOCALLY in the [October 22 checkpoint](#first-correction-checkpoint--october-22), including exact paths, reproduction, regression evidence and limitations. Deployed/provider, complete downstream lifecycle and historical-data acceptance remain OPEN.
+**Implementation / validation:** The forward-path correction in `c3806282` is VERIFIED LOCALLY in the [October 22 checkpoint](#first-correction-checkpoint--october-22), including exact paths, reproduction, regression evidence and limitations. Deployed/provider, complete downstream lifecycle and historical-data acceptance remain OPEN.
 
 ### V1-072
 
@@ -275,7 +279,7 @@ GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105
 
 `storage.ts:1256–1262,2832`: ordinary GA4 input wrapper ignores an empty campaign lock query and commits child writes after parent deletion. Exact methods against isolated schema reproduce zero parents/one source/one record; existing-parent control passes. Current source schema lacks campaign FKs. Durable-table/deployed-schema/other-source variants remain required. Reject vanished parents at final write and verify all caller lifecycles.
 
-**Implementation / validation:** The uncommitted forward-path correction is VERIFIED LOCALLY in the [October 22 checkpoint](#first-correction-checkpoint--october-22), including exact paths, reproduction, regression evidence and limitations. Deployed/provider, complete downstream lifecycle and historical-data acceptance remain OPEN.
+**Implementation / validation:** The forward-path correction in `c3806282` is VERIFIED LOCALLY in the [October 22 checkpoint](#first-correction-checkpoint--october-22), including exact paths, reproduction, regression evidence and limitations. Deployed/provider, complete downstream lifecycle and historical-data acceptance remain OPEN.
 
 ### V1-102
 
@@ -383,4 +387,4 @@ GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105
 
 `middleware/rateLimiter.ts:44–59` shares five imports/IP/five minutes across preview and save. Revenue wizard1507/1604 needs both; handlers4698/4735 share the bucket. [Actual HTTP/DB five-user fixture](../../audits/v1-2026-10-19/HTTP_DATABASE_PILOT.md): five valid previews succeed, all five saves429/retryAfter300, no sources written. Preserve abuse limits while accommodating authenticated users/workflow; no production traffic used.
 
-**Implementation / validation:** The uncommitted forward-path correction is VERIFIED LOCALLY in the [October 22 checkpoint](#first-correction-checkpoint--october-22), including exact paths, reproduction, regression evidence and limitations. Deployed/provider, complete downstream lifecycle and historical-data acceptance remain OPEN.
+**Implementation / validation:** The forward-path correction in `c3806282` is VERIFIED LOCALLY in the [October 22 checkpoint](#first-correction-checkpoint--october-22), including exact paths, reproduction, regression evidence and limitations. Deployed/provider, complete downstream lifecycle and historical-data acceptance remain OPEN.

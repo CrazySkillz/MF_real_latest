@@ -1,0 +1,49 @@
+{
+  "at": "2026-10-22T21:42:25.369822+00:00",
+  "fixCommit": "c38062825a88c7265f323cb2990f713ddc040e18",
+  "baseHead": "ff3c511513c5c93b2c236ba92c95a274f97c4973",
+  "verifiedFiles": [
+    {
+      "file": "server/storage.ts",
+      "lfSha256": "162ff3b729c4a960d4f3ad243e38c47efddaba498f64ed2273fae6ef8902f18a"
+    },
+    {
+      "file": "server/routes-oauth.ts",
+      "lfSha256": "e7db83b50ab3f63d005e66422793179cc76b56b641e4840f3d6fa8fc711fe0b5"
+    },
+    {
+      "file": "server/middleware/rateLimiter.ts",
+      "lfSha256": "c019691d93b56c513c0b1412482ca813dd066634f25df2d2411c7159bc79e8c7"
+    },
+    {
+      "file": "server/utils/csv.ts",
+      "lfSha256": "47342948f9f08c85614ac86ecfa04bb00f4e34a2594cf4761fde0e660a550535"
+    },
+    {
+      "file": "server/ga4-refresh-input-invalidation-postgres.test.ts",
+      "lfSha256": "fff39d4b44922913cf49d3e481e48af03fb12e57a9eba54ce69be3924a70b9f4"
+    },
+    {
+      "file": "server/csv-spend-validation.test.ts",
+      "lfSha256": "e7f8eb024b593104a4123f6eb395a2d020eee256b17a465bd7c90da49a95806f"
+    },
+    {
+      "file": "server/csv-revenue-certification.test.ts",
+      "lfSha256": "85e3edf0091ce6819ba66c6b25ab49e50210e81b858e649566cfd55ecb3579ac"
+    },
+    {
+      "file": "server/v1-batch4-import-rate-limit.test.ts",
+      "lfSha256": "5e996c8c21b692d77912873ee0fcde2fae9b8dc169c041c7064bb8a8e5a7d989"
+    },
+    {
+      "file": "server/v1-batch4-csv-input-contract.test.ts",
+      "lfSha256": "2426b1baaa1f02ef79f17145533fcf05bb3d7e29b531cd881b6fa4e335559610"
+    }
+  ],
+  "localValidation": "430 focused checks and TypeScript/server build pass; full regression 4309 passed / 179 failed / 0 skipped, no new failing identity; final CSV response follow-up passed 73 checks.",
+  "migrationChanges": false,
+  "dependencyChanges": false,
+  "environmentSettingChanges": false,
+  "publication": "User authorized commit and push; deployment acceptance remains pending.",
+  "scope": "V1-040/071/073/126 only; 20 Batch 4 implementations remain, all 24 release acceptances open. No whole-V1 GO."
+}

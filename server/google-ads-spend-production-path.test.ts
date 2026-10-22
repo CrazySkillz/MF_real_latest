@@ -181,6 +181,37 @@ describe("Google Ads GA4 Overview spend production path", () => {
     expect(mocks.storage.replaceSpendRecordsForSource).not.toHaveBeenCalled(); expect(mocks.storage.updateCampaign).not.toHaveBeenCalled(); expect(mocks.runGA4DailyKPIAndBenchmarkJobs).not.toHaveBeenCalled();
   });
 
+  it.each(['ERR_CANCELED', 'ECONNABORTED', 'ETIMEDOUT'])('retains saved facts after token request %s and recovers on the next run', async code => {
+    const connection = { method: 'oauth', spendOnly: true, accessToken: 'fixture-old', refreshToken: 'fixture-refresh',
+      clientId: 'fixture-client', clientSecret: 'fixture-secret', customerId: '123' };
+    const failure = Object.assign(new Error('fixture request stopped'), { code });
+    mocks.refreshAccessToken.mockRejectedValueOnce(failure);
+    await expect(refreshGoogleAdsForCampaign('campaign-1', connection)).rejects.toBe(failure);
+    expect(mocks.getCustomerAccount).not.toHaveBeenCalled();
+    expect(mocks.getDailyMetrics).not.toHaveBeenCalled();
+    expect(mocks.storage.updateGoogleAdsConnection).not.toHaveBeenCalled();
+    expect(mocks.storage.replaceGoogleAdsDailyMetricsForWindow).not.toHaveBeenCalled();
+    expect(mocks.storage.replaceSpendRecordsForSource).not.toHaveBeenCalled();
+    expect(mocks.storage.updateCampaign).not.toHaveBeenCalled();
+    expect(mocks.runGA4DailyKPIAndBenchmarkJobs).not.toHaveBeenCalled();
+    await refreshGoogleAdsForCampaign('campaign-1', connection);
+    expect(mocks.storage.replaceGoogleAdsDailyMetricsForWindow).toHaveBeenCalledOnce();
+    expect(mocks.storage.replaceSpendRecordsForSource).toHaveBeenCalledOnce();
+  });
+
+  it.each(['metadata', 'metrics'])('retains saved financial facts after a cancelled Google Ads %s read', async phase => {
+    const failure = Object.assign(new Error('fixture request stopped'), { code: 'ERR_CANCELED' });
+    (phase === 'metadata' ? mocks.getCustomerAccount : mocks.getDailyMetrics).mockRejectedValueOnce(failure);
+    await expect(refreshGoogleAdsForCampaign('campaign-1', {
+      method: 'oauth', spendOnly: true, accessToken: 'fixture', customerId: '123',
+    })).rejects.toBe(failure);
+    expect(mocks.storage.replaceGoogleAdsDailyMetricsForWindow).not.toHaveBeenCalled();
+    expect(mocks.storage.replaceSpendRecordsForSource).not.toHaveBeenCalled();
+    expect(mocks.storage.updateGoogleAdsConnection).not.toHaveBeenCalled();
+    expect(mocks.storage.updateCampaign).not.toHaveBeenCalled();
+    expect(mocks.runGA4DailyKPIAndBenchmarkJobs).not.toHaveBeenCalled();
+  });
+
   it("rejects a source edit between Google Ads fetch and materialization", async () => {
     const refreshScope = { campaignId: "campaign-1", ownerId: "owner-1", reportingDate: "2026-08-05", work: { id: "work-1", leaseToken: "test-lease" } };
     const source = (await mocks.storage.getSpendSources())[0];

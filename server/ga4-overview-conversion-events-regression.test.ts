@@ -156,7 +156,7 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
       const filter = JSON.stringify(body.dimensionFilter || {});
       const metricNames = (body.metrics || []).map((metric: any) => metric.name);
       if (metricNames.includes("eventCount")) {
-        return { ok: false, text: async () => '{"error":{"code":400,"status":"INVALID_ARGUMENT"}}' } as any;
+        return { ok: false, status: 400, text: async () => '{"error":{"code":400,"status":"INVALID_ARGUMENT"}}' } as any;
       }
       if (filter.includes('"fieldName":"sessionCampaignName"')) {
         return {
@@ -202,7 +202,7 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
       const filter = JSON.stringify(body.dimensionFilter || {});
       const metricNames = (body.metrics || []).map((metric: any) => metric.name);
       if (body.metrics?.[0]?.name === "conversions" || metricNames.includes("eventCount")) {
-        return { ok: false, text: async () => '{"error":{"code":400,"status":"INVALID_ARGUMENT"}}' } as any;
+        return { ok: false, status: 400, text: async () => '{"error":{"code":400,"status":"INVALID_ARGUMENT"}}' } as any;
       }
       const values = filter.includes('"fieldName":"campaignName"')
         ? ["3", "2", "10"]
@@ -472,7 +472,7 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
       request += 1;
       return request === 1
         ? { ok: true, json: async () => ({ rowCount: 0, rows: [] }) }
-        : { ok: false, text: async () => "fallback provider failure" };
+        : { ok: false, status: 403, text: async () => "fallback provider failure" };
     }));
     await expect(ga4Service.getConversionEventsReport(
       "campaign-1", storage, "2026-08-01", "987654", 50, "saved-a", "2026-09-14",
@@ -494,6 +494,7 @@ describe("GA4 Overview Conversion Events certification boundary", () => {
   it("fails read-only requests before OAuth refresh can mutate credentials", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({
       ok: false,
+      status: 401,
       text: async () => '{"error":{"code":401,"message":"Unauthenticated"}}',
     })));
     const updateGA4ConnectionTokens = vi.fn();

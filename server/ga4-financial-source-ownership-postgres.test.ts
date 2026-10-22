@@ -197,6 +197,18 @@ describe.skipIf(!testUrl)("financial source saves with real PostgreSQL refresh o
     if (kind === "spend records") expect(result).toBeUndefined();
     else expect(result.id).toBe(sourceId(kind));
   });
+  for (const provider of ["salesforce", "hubspot"] as const) {
+    it.each(["TimeoutError", "AbortError", "SyntaxError"])(`${provider} retains all saved source facts after provider %s`, async name => {
+      const before = await saved();
+      const error = name === "SyntaxError" ? new SyntaxError("fixture invalid JSON") : new DOMException("fixture interrupted body", name);
+      const fixture = revenueRoute(provider, undefined, async () => { throw error; });
+      const response = await fixture.invoke();
+      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+      expect(fixture.providerRead).toHaveBeenCalled();
+      expect(await saved()).toEqual(before);
+      expect(fixture.recompute).not.toHaveBeenCalled();
+    });
+  }
   it.each(kinds)("accepts the live %s owner and preserves other campaigns", async kind => {
     const scope = await claim(); const before = await saved();
     await write(kind, { refreshScope: scope }); const after = await saved();

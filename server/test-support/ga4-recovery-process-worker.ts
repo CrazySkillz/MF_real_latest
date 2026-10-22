@@ -12,6 +12,19 @@ process.env.NODE_ENV = "test";
 globalThis.fetch = async () => { throw new Error("Unexpected network request in process fixture"); };
 const { storage } = await import("../storage");
 const { pool } = await import("../db");
+if (process.env.GA4_TEST_PAUSE_AT === 'property-slot') {
+  try {
+    await storage.withGA4PropertyRequest('123456', AbortSignal.timeout(20000), async signal => {
+      process.send?.({ type: 'stage', stage: 'property-slot' });
+      await new Promise<void>((resolve, reject) => {
+        process.once('message', () => resolve());
+        signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+      });
+    });
+    process.send?.({ type: 'result', status: 'released' });
+  } finally { await pool!.end(); process.disconnect?.(); }
+  return;
+}
 if (process.env.GA4_TEST_PAUSE_AT === "database") {
   try {
     const client = await pool!.connect();
@@ -54,6 +67,14 @@ try {
     const connection = (await storage.getGA4Connections(campaignId, { migrateLegacyTokens: false }))[0];
     const previous = await storage.getGA4OverviewSnapshot(campaignId, connection.propertyId);
     await checkpoint("provider");
+    const external = process.env.GA4_TEST_EXTERNAL === 'true';
+    if (external) {
+      const source = (await storage.getRevenueSources(campaignId, 'ga4'))[0];
+      await storage.replaceRevenueSourceWithRecords(campaignId, source.id, 'csv', 'ga4',
+        { ...source, mappingConfig: source.mappingConfig } as any,
+        [{ campaignId, date, revenue: '25.00', currency: 'EUR' }], source.mappingConfig, { refreshScope });
+      await checkpoint('external');
+    }
     await storage.replaceGA4DailyMetricsWindow(campaignId, connection.propertyId, date, date, [{
       campaignId, propertyId: connection.propertyId, date, sessions: 20, users: 20, pageviews: 20,
       conversions: 2, engagedSessions: 10, revenue: "100.00", engagementRate: "0.5",
@@ -83,7 +104,7 @@ try {
     const currentValueWindow = { mode: "initial_import_to_latest_completed_day" as const, startDate: date, endDate: date,
       dataThroughDate: date, reportingTimeZone: "Europe/Amsterdam" };
     await storage.upsertFinancialDailySnapshot({ campaignId, reportingDate: date, version: "financial_daily_snapshot_v1", currency: "EUR",
-      currentValueWindow, inputs: { revenue: { value: "100", available: true, sources: ["ga4"] },
+      currentValueWindow, inputs: { revenue: { value: external ? "125" : "100", available: true, sources: external ? ["ga4", "csv"] : ["ga4"] },
         spend: { value: null, available: false, sources: [] }, conversions: { value: 2, available: true, sources: ["ga4"] } }, refreshScope });
     await checkpoint("financial");
     await storage.createMetricSnapshot({ campaignId, snapshotType: "platform_sync", totalConversions: 2, refreshScope });
@@ -93,7 +114,7 @@ try {
       sourceSignature: ["ga4"], currentValueWindow, totals: Object.fromEntries(
         ["users", "sessions", "conversions", "revenue", "spend", "cvr", "cpa", "roas", "roi"].map(name => [name,
           ["spend", "cpa", "roas", "roi"].includes(name) ? { value: null, available: false, sources: [] }
-            : { value: name === "revenue" ? 100 : name === "conversions" ? 2 : 20, available: true, sources: ["ga4"] }])) as any, refreshScope });
+            : { value: name === "revenue" ? (external ? 125 : 100) : name === "conversions" ? 2 : 20, available: true, sources: ["ga4"] }])) as any, refreshScope });
     await checkpoint("executive");
     const { checkGA4PerformanceAlertsForCampaign } = await import("../kpi-scheduler");
     const { checkGA4BenchmarkPerformanceAlertsForCampaign } = await import("../benchmark-notifications");

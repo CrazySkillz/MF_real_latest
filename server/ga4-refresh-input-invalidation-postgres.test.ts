@@ -159,6 +159,25 @@ describe.skipIf(!testUrl)("GA4 refresh invalidation on ordinary input edits", ()
     await storage.updateCampaign("a", { status: "paused" });
     expect(await storage.isGA4NativeRecoveryEligible("a")).toBe(false);
   });
+  it.each(['csv', 'manual', 'custom', 'google_sheets', 'hubspot', 'salesforce', 'shopify'])(
+    'allows explicitly supported financial recovery for %s without weakening the native-only gate', async sourceType => {
+      await pool.query("UPDATE ga4_connections SET property_id='542352127'");
+      await storage.createRevenueSource({ ...source, sourceType });
+      expect(await storage.isGA4NativeRecoveryEligible('a')).toBe(false);
+      expect(await storage.isGA4NativeRecoveryEligible('a', { includeFinancialSources: true } as any)).toBe(true);
+      const scope = await claim();
+      await storage.createSpendSource({ ...source, sourceType: 'csv' });
+      await expect(accepts(scope)).rejects.toThrow('GA4_REFRESH_WORK_OWNERSHIP_LOST');
+    });
+  it('rejects deferred and unknown financial source types during recovery', async () => {
+    await pool.query("UPDATE ga4_connections SET property_id='542352127'");
+    const saved = await storage.createSpendSource({ ...source, sourceType: 'ad_platforms', mappingConfig: JSON.stringify({ platform: 'meta' }) });
+    expect(await storage.isGA4NativeRecoveryEligible('a', { includeFinancialSources: true } as any)).toBe(false);
+    await storage.updateSpendSource(saved.id, { mappingConfig: JSON.stringify({ platform: 'google_ads' }) });
+    expect(await storage.isGA4NativeRecoveryEligible('a', { includeFinancialSources: true } as any)).toBe(true);
+    await storage.updateSpendSource(saved.id, { sourceType: 'future-provider' });
+    expect(await storage.isGA4NativeRecoveryEligible('a', { includeFinancialSources: true } as any)).toBe(false);
+  });
   it("renews an ordinary credential without invalidating itself, but rejects reconnection and edited inputs", async () => {
     await ensure(); await storage.retireGA4RefreshWork("a");
     const version = await storage.getGA4PublicationVersion("a");

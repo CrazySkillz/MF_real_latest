@@ -1,0 +1,57 @@
+{
+  "at": "2026-10-22T09:14:05.710Z",
+  "baseHead": "6b65d9c40e9a2f49b665b06094732a22e1b9f0c4",
+  "state": "uncommitted",
+  "files": [
+    {
+      "file": "server/analytics.ts",
+      "sha256": "4e75662d905214ae6db46ec0052b6fc2ed9099290487c110d6b5615a1d98f8a2",
+      "lfSha256": "eb38a76a8932d664ea5967a7a840c989659a8773c33e438198d1e4a0d857c927"
+    },
+    {
+      "file": "server/googleAdsClient.ts",
+      "sha256": "847c05d0df63088e1d0b5d44789be798c782809c47f96b9aab25874a5effe456",
+      "lfSha256": "c531bc81160b6ca64fb3af9fa9b043062ed6c134fbbeaa574eeeffc1cf0c0f1e"
+    },
+    {
+      "file": "server/google-ads-scheduler.ts",
+      "sha256": "3fa4b92e26c29b5112c83e18892b344d0cb55a629d7020762e40749a954a2db9",
+      "lfSha256": "87da0d17962a3fda596bf3b41fa9e8234cad90acf9e6e4da9bccfd2738ee52de"
+    },
+    {
+      "file": "server/routes-oauth.ts",
+      "sha256": "30c55657a7f4e558688b8b4f39d3012193c9ad9609411b92b312f420272a2bbe",
+      "lfSha256": "8af6e8c44cd08e2517a11ed05a9bb2abe22f593361c58721ff4db18c71d16ca3"
+    },
+    {
+      "file": "server/utils/salesforce-pagination.ts",
+      "sha256": "77480770049553f7ada6a9ad500fc350c833e424f525eca0ab7dec96782f54ee",
+      "lfSha256": "77480770049553f7ada6a9ad500fc350c833e424f525eca0ab7dec96782f54ee"
+    },
+    {
+      "file": "server/v1-batch3-provider-timeouts.test.ts",
+      "sha256": "b30c4bebcf0faa12f93abfc9801226f53e856f365cbc9398e7f5dd2bf88efdea",
+      "lfSha256": "b30c4bebcf0faa12f93abfc9801226f53e856f365cbc9398e7f5dd2bf88efdea"
+    },
+    {
+      "file": "server/v1-batch3-google-ads-timeouts.test.ts",
+      "sha256": "3a84f810c9cc398d69da9806a1aea082f3fd32ec48c65fe7414c1de60b264df2",
+      "lfSha256": "3a84f810c9cc398d69da9806a1aea082f3fd32ec48c65fe7414c1de60b264df2"
+    },
+    {
+      "file": "server/google-ads-spend-production-path.test.ts",
+      "sha256": "289823f21ef5e7627b84849591a774d8e4103655b4e9d4efe34a0354f534edb7",
+      "lfSha256": "8aacefcf6a05f842cdfe99cd3e0ebfc00959e561000aa392a35deb6864641271"
+    },
+    {
+      "file": "server/ga4-financial-source-ownership-postgres.test.ts",
+      "sha256": "9cb7bda200b04bc51b8ff0ea6b48d9f5082cea482a2fd090762459ff10dc0430",
+      "lfSha256": "9cb7bda200b04bc51b8ff0ea6b48d9f5082cea482a2fd090762459ff10dc0430"
+    },
+    {
+      "file": "server/salesforce-pagination.test.ts",
+      "sha256": "d2c8dbe788ec414bee8dbf7fbfee2a82b714355a89259ce5a037b1424c0f3644",
+      "lfSha256": "d2c8dbe788ec414bee8dbf7fbfee2a82b714355a89259ce5a037b1424c0f3644"
+    }
+  ]
+}

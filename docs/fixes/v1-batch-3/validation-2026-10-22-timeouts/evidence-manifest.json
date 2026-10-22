@@ -1,0 +1,127 @@
+{
+  "at": "2026-10-22T09:17:42.619Z",
+  "sourceHashesMatch": true,
+  "sensitivePatternScan": "PASS",
+  "files": [
+    {
+      "file": "adjacent-hubspot-before.json",
+      "sha256": "206c35d01c282400884cdc661c6029ec443459d17026c3c8d85382b9c59e08c2"
+    },
+    {
+      "file": "adjacent-hubspot-before.log",
+      "sha256": "86e5e07cbd29bc3f646e72e67a32280490852fef429dee396e1e5444d0102a0a"
+    },
+    {
+      "file": "ads-before.json",
+      "sha256": "0bfacb202f4cfcc947de795cfe9fe67f385b91c9d389682464fbf2f82b1b33e8"
+    },
+    {
+      "file": "ads-before.log",
+      "sha256": "bc4b5ecccb3d9e2d045d236b9eb673e2ff6f54ae48cd8afeab8d73e94ea58958"
+    },
+    {
+      "file": "assessment.json",
+      "sha256": "241807bc6fa286121eecde7f809d4a6d60f99c0c82d59a7db9dd902b2de572a1"
+    },
+    {
+      "file": "before-verified.json",
+      "sha256": "1ba7fd10d7bb746c81b90d8acdc6a0b400ca1093f8fa83726dfd149606969b42"
+    },
+    {
+      "file": "before-verified.log",
+      "sha256": "409dfee597fc63495fbc7c2502032928c3e1da6b48a77c0fdec11f1a52e46100"
+    },
+    {
+      "file": "before.log",
+      "sha256": "acdce3f2efdcf0decd4766211422507f4e45dd72ceadb394b3e725c7fdfe1dfa"
+    },
+    {
+      "file": "build-checks.json",
+      "sha256": "a6c865f21d47f155b6d620d653ce6798928a86058eeaceb46de030cb3c6a3a45"
+    },
+    {
+      "file": "candidate-manifest.json",
+      "sha256": "5ecc621265e39703e498fec0cbfb933280c6252e74f63950e55ca77fe2d254b2"
+    },
+    {
+      "file": "cleanup-fixtures.cjs",
+      "sha256": "8fdbaef2e5e4c5511a343b3db8baf86310fc3788553d2c3af3bd14ffc6fbfce2"
+    },
+    {
+      "file": "client-build.log",
+      "sha256": "8e6c7ea06381b2bd79949090e206ea7e98c996e73912df260e3c7b0bf2293cde"
+    },
+    {
+      "file": "failure-reconciliation.json",
+      "sha256": "4ba9a1cc5ef62ce4da08ee9fbb39c5dbb31761f7a6a2594f6c5044f3ace7cbd0"
+    },
+    {
+      "file": "final-build-checks.json",
+      "sha256": "563df262f3afc18be9ad729301b193fc8b2a439293295a838f74a259c3331589"
+    },
+    {
+      "file": "final-server-build.log",
+      "sha256": "55021472356eb3611e0bbe50dee5120ee08bdc96b9480b9478535bf782e6df94"
+    },
+    {
+      "file": "final-targeted.json",
+      "sha256": "a123dcaf1379cf22c81d31186e5ed541f360291e9a6387ec44ef21d0f670a7e0"
+    },
+    {
+      "file": "final-targeted.log",
+      "sha256": "435edc988648ece6ab1747c27d566a2f2450f8fa3970968573c828f0e29cabfa"
+    },
+    {
+      "file": "final-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "first-after.json",
+      "sha256": "e01d839d914e519339aab9ec73d848ffcd1a0c5a1b8901224018b12e9995264e"
+    },
+    {
+      "file": "first-after.log",
+      "sha256": "d9fab4b8380a8c9cc05522d4f94786894009be505b91acc04e7a713aeea86a4f"
+    },
+    {
+      "file": "fixture-cleanup.json",
+      "sha256": "f17303e3c994bf89ec09db31cd766a0eafaaf5b00243f6f15654633ee8fa98df"
+    },
+    {
+      "file": "full-suite.json",
+      "sha256": "dda67ac07e97f0a165ea939fdf3fff25d876049e6d893fefa864aa0c0ee65894"
+    },
+    {
+      "file": "full-suite.log",
+      "sha256": "1482a959417a5b74167820bc310ff355f385a58e758d45b8c916903fe3bd3af9"
+    },
+    {
+      "file": "neighboring.json",
+      "sha256": "3acd0f56b2fc5e302592c9834cf1b84b565d9769ef28ebb9b97712d9caf114a2"
+    },
+    {
+      "file": "neighboring.log",
+      "sha256": "da55fb7d5e79c87ca6ca8b9524ed0d2090993194c78ad9cf253318ba0be03dce"
+    },
+    {
+      "file": "record-evidence.cjs",
+      "sha256": "f300676e8e47463e384e26519fead311ec69d15c6e91596d39b42b7f80699bbb"
+    },
+    {
+      "file": "run-build-checks.cjs",
+      "sha256": "9161841426a16ef2f9dd10a6023fbc6cf0bd67467096c7aa57bf637cab7c3615"
+    },
+    {
+      "file": "run-tests.cjs",
+      "sha256": "9ca6131105437c97995a8808e544488fa01a50bbcc2a45786ac358a05636fd45"
+    },
+    {
+      "file": "server-build.log",
+      "sha256": "3675e839430df6569ef2b572e0f2b42daccc009d91aad545ec0f95a7b7982ab3"
+    },
+    {
+      "file": "typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

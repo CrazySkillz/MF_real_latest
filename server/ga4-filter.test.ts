@@ -958,6 +958,7 @@ describe("GA4 campaign value picker", () => {
   it("does not refresh or persist an acquisition token in read-only mode", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({
       ok: false,
+      status: 401,
       text: async () => '{"code":401,"message":"unauthenticated"}',
     })) as any);
     const storage = {
@@ -1158,6 +1159,8 @@ describe("GA4 campaign value picker", () => {
   it('stops Overview candidate retries when GA4 exhausts quota', async () => {
     const fetchMock = vi.fn(async () => ({
       ok: false,
+      status: 429,
+      headers: new Headers({ 'retry-after': '60' }),
       text: async () => '{"code":429,"status":"RESOURCE_EXHAUSTED"}',
     }));
     vi.stubGlobal('fetch', fetchMock);
@@ -1167,7 +1170,7 @@ describe("GA4 campaign value picker", () => {
     await expect(ga4Service.getAcquisitionBreakdown(
       'campaign-1', storage, '2026-06-01', '123', 2000,
       ['yesop_retargeti', 'yesop_email_nurture'], '2026-06-30', true, false, 'USD', true,
-    )).rejects.toThrow('RESOURCE_EXHAUSTED');
+    )).rejects.toMatchObject({ code: 'GA4_TRANSIENT_ERROR', status: 429 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 

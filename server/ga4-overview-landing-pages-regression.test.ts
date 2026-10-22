@@ -200,6 +200,7 @@ describe("GA4 Overview Landing Pages certification boundary", () => {
   it("fails read-only requests closed before OAuth refresh can mutate credentials", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({
       ok: false,
+      status: 401,
       text: async () => '{"error":{"code":401,"message":"Unauthenticated"}}',
     })));
     const updateGA4ConnectionTokens = vi.fn();

@@ -561,7 +561,7 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(content).toContain("AUTO_REFRESH_INTERNAL_TIMEOUT_MS");
     expect(content).toContain("signal: AbortSignal.timeout(timeoutMs)");
     expect(content).toContain("AUTO_REFRESH_LINKEDIN_TIMEOUT_MS");
-    expect(content).toContain('await withTimeout("LinkedIn auto-refresh", refreshAllLinkedInData(), linkedInTimeoutMs);');
+    expect(content).toContain('await withTimeout("LinkedIn auto-refresh", signal => refreshAllLinkedInData(signal), linkedInTimeoutMs);');
     expect(content).toContain("__autoRefreshInProgress");
     expect(content).toContain('console.log("[Auto Refresh] Skipping run (daily refresh already in progress)")');
     expect(content).toContain("=== AUTO-REFRESH COMPLETE");

@@ -163,7 +163,7 @@ async function fetchRealGoogleAdsData(
         : await storage.updateGoogleAdsConnection(campaignId, { accessToken, expiresAt } as any, ...("refreshScope" in refreshWriteInput ? [{ ...refreshWriteInput, expectedConnection: connection }] : []));
       if (refreshWriteInput.refreshScope && renewed) Object.assign(connection, renewed);
     } catch (e: any) {
-      if (refreshWriteInput.refreshScope) throw e;
+      if (refreshWriteInput.refreshScope || ['ERR_CANCELED', 'ECONNABORTED', 'ETIMEDOUT'].includes(e?.code)) throw e;
       console.warn(`[Google Ads] Token refresh failed for campaign ${campaignId}:`, e.message);
     }
   }

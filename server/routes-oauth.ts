@@ -3189,17 +3189,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   const fetchWithTimeout = async (url: string, options: any, timeoutMs = EXTERNAL_API_TIMEOUT_MS) => {
-    if (typeof AbortController !== "undefined") {
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), timeoutMs);
-      try {
-        return await fetch(url, { ...options, signal: controller.signal });
-      } finally {
-        clearTimeout(id);
-      }
-    }
-    // Fallback: no abort support
-    return await fetch(url, options);
+    // Keep the deadline active while the caller reads the body, and retain its cancellation.
+    const timeout = AbortSignal.timeout(timeoutMs);
+    const signal = options?.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
+    return await fetch(url, { ...options, signal });
   };
 
   const readGoogleSheetsRevenueChunks = async (connection: any, initialAccessToken: string, metadataResponse: Response): Promise<
@@ -16028,7 +16021,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const propertyId = assertGA4ServiceAccountPropertyAllowed(req.body?.propertyId);
       await storage.assertServiceAccountResourceAccess(campaignId, "ga4", propertyId);
       const credentials = await getGA4ServiceAccountAccessToken();
-      const validationResponse = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(propertyId)}:runReport`, {
+      const validationResponse = await storage.withGA4PropertyRequest(propertyId, AbortSignal.timeout(15000), async signal => {
+      const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(propertyId)}:runReport`, {
         method: "POST",
         headers: { Authorization: `Bearer ${credentials.accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -16036,7 +16030,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           metrics: [{ name: "sessions" }],
           limit: 1,
         }),
-        signal: AbortSignal.timeout(15000),
+        signal,
+      });
+      await response.body?.cancel();
+      return response;
       });
       if (!validationResponse.ok) {
         const message = validationResponse.status === 403
@@ -19798,7 +19795,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       },
       body: JSON.stringify(body),
     });
-    const json: any = await resp.json().catch(() => ({}));
+    const json: any = await resp.json();
     if (!resp.ok) {
       throw new Error(json?.message || `HubSpot search failed (${resp.status})`);
     }
@@ -20599,43 +20596,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     devLog('🔄 Attempting to refresh Google Sheets access token for campaign:', connection.campaignId);
 
     // Add timeout to token refresh to prevent hanging
-    // Use Promise.race for timeout compatibility with older Node.js versions
-    const fetchWithTimeout = async (url: string, options: any, timeoutMs: number = 15000) => {
-      try {
-        // Check if AbortController is available (Node 18+)
-        if (typeof AbortController !== 'undefined') {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-          try {
-            const response = await fetch(url, {
-              ...options,
-              signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-            return response;
-          } catch (error: any) {
-            clearTimeout(timeoutId);
-            if (error.name === 'AbortError') {
-              throw new Error('Token refresh timeout: OAuth API did not respond within 15 seconds');
-            }
-            throw error;
-          }
-        } else {
-          // Fallback for older Node.js versions using Promise.race
-          const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Token refresh timeout: OAuth API did not respond within 15 seconds')), timeoutMs);
-          });
-
-          const fetchPromise = fetch(url, options);
-          return await Promise.race([fetchPromise, timeoutPromise]) as Response;
-        }
-      } catch (error: any) {
-        if (error.message && error.message.includes('timeout')) {
-          throw error;
-        }
-        throw new Error(`Failed to refresh token: ${error.message || 'Unknown error'}`);
-      }
+    const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs: number = 15000) => {
+      const timeout = AbortSignal.timeout(timeoutMs);
+      return fetch(url, { ...options, signal: options.signal ? AbortSignal.any([options.signal, timeout]) : timeout });
     };
 
     const refreshResponse = await fetchWithTimeout('https://oauth2.googleapis.com/token', {
@@ -21745,43 +21708,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Try to fetch spreadsheet data with timeout
-      // Use Promise.race for timeout compatibility with older Node.js versions
-      const fetchWithTimeout = async (url: string, options: any, timeoutMs: number = 30000) => {
-        try {
-          // Check if AbortController is available (Node 18+)
-          if (typeof AbortController !== 'undefined') {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-            try {
-              const response = await fetch(url, {
-                ...options,
-                signal: controller.signal
-              });
-              clearTimeout(timeoutId);
-              return response;
-            } catch (error: any) {
-              clearTimeout(timeoutId);
-              if (error.name === 'AbortError') {
-                throw new Error('Request timeout: Google Sheets API did not respond within 30 seconds');
-              }
-              throw error;
-            }
-          } else {
-            // Fallback for older Node.js versions using Promise.race
-            const timeoutPromise = new Promise((_, reject) => {
-              setTimeout(() => reject(new Error('Request timeout: Google Sheets API did not respond within 30 seconds')), timeoutMs);
-            });
-
-            const fetchPromise = fetch(url, options);
-            return await Promise.race([fetchPromise, timeoutPromise]) as Response;
-          }
-        } catch (error: any) {
-          if (error.message && error.message.includes('timeout')) {
-            throw error;
-          }
-          throw new Error(`Failed to fetch from Google Sheets API: ${error.message || 'Unknown error'}`);
-        }
+      const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs: number = 30000) => {
+        const timeout = AbortSignal.timeout(timeoutMs);
+        return fetch(url, { ...options, signal: options.signal ? AbortSignal.any([options.signal, timeout]) : timeout });
       };
 
       // Check for fresh cached data before making API call
@@ -21815,42 +21744,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           accessToken = await refreshGoogleSheetsToken(connection);
 
           // Retry the request with new token (using same timeout helper)
-          const fetchWithTimeoutRetry = async (url: string, options: any, timeoutMs: number = 30000) => {
-            try {
-              // Check if AbortController is available (Node 18+)
-              if (typeof AbortController !== 'undefined') {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-                try {
-                  const response = await fetch(url, {
-                    ...options,
-                    signal: controller.signal
-                  });
-                  clearTimeout(timeoutId);
-                  return response;
-                } catch (error: any) {
-                  clearTimeout(timeoutId);
-                  if (error.name === 'AbortError') {
-                    throw new Error('Request timeout: Google Sheets API did not respond within 30 seconds');
-                  }
-                  throw error;
-                }
-              } else {
-                // Fallback for older Node.js versions using Promise.race
-                const timeoutPromise = new Promise((_, reject) => {
-                  setTimeout(() => reject(new Error('Request timeout: Google Sheets API did not respond within 30 seconds')), timeoutMs);
-                });
-
-                const fetchPromise = fetch(url, options);
-                return await Promise.race([fetchPromise, timeoutPromise]) as Response;
-              }
-            } catch (error: any) {
-              if (error.message && error.message.includes('timeout')) {
-                throw error;
-              }
-              throw new Error(`Failed to fetch from Google Sheets API: ${error.message || 'Unknown error'}`);
-            }
+          const fetchWithTimeoutRetry = async (url: string, options: RequestInit, timeoutMs: number = 30000) => {
+            const timeout = AbortSignal.timeout(timeoutMs);
+            return fetch(url, { ...options, signal: options.signal ? AbortSignal.any([options.signal, timeout]) : timeout });
           };
 
           // Build range with sheet name if specified
@@ -21902,7 +21798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const refreshedToken = await refreshGoogleSheetsToken(connection);
               // Retry the request with the refreshed token
               const retryRange = connection.sheetName ? `${toA1SheetPrefix(connection.sheetName)}A1:Z1000` : 'A1:Z1000';
-              const retryResponse = await fetch(
+              const retryResponse = await fetchWithTimeout(
                 `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/${encodeURIComponent(retryRange)}`,
                 { headers: { 'Authorization': `Bearer ${refreshedToken}` } }
               );

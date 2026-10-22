@@ -76,8 +76,8 @@ describe("GA4 shared daily traffic during provider revisions", () => {
       const isPrimary = scope?.includes("sessionCampaignName");
       const isUtm = scope?.includes("pageLocation");
       const captureRequest = isDaily && isUtm && metrics.includes("sessionKeyEventRate");
-      if (purchaseOnly && metrics.includes("totalRevenue")) return { ok: false, text: async () => "Unknown metric totalRevenue" };
-      if (captureRequest && malformed === "provider") return { ok: false, text: async () => "Provider unavailable" };
+      if (purchaseOnly && metrics.includes("totalRevenue")) return { ok: false, status: 400, text: async () => "Unknown metric totalRevenue" };
+      if (captureRequest && malformed === "provider") return { ok: false, status: 403, text: async () => "Provider unavailable" };
       let rows: any[] = [];
       const legacyFinancials = !utmFinancials && scope?.includes('"campaignName"') && dimensions.length > 1;
       if (!empty && (isUtm || scope?.includes('"campaignName"') && dimensions.length === 1 || legacyFinancials ||

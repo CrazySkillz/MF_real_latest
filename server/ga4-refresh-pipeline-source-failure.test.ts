@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   storage: {
+    writeWithGA4RefreshOwnership: vi.fn(),
     getGA4PublicationVersion: vi.fn(), isGA4NativeRecoveryEligible: vi.fn(), retireGA4RefreshWork: vi.fn(), getRecoverableGA4RefreshWork: vi.fn(),
     getCampaign: vi.fn(), getCampaigns: vi.fn(), getGA4Connections: vi.fn(), getGA4Connection: vi.fn(), updateGA4ConnectionTokens: vi.fn(),
     getRevenueSources: vi.fn(), getSpendSources: vi.fn(), getGA4DailyMetrics: vi.fn(),
@@ -88,6 +89,7 @@ describe("GA4 ordered refresh source-discovery failures", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mocks.storage.getGA4PublicationVersion.mockResolvedValue(null);
+    mocks.storage.writeWithGA4RefreshOwnership.mockResolvedValue(undefined);
     mocks.storage.isGA4NativeRecoveryEligible.mockResolvedValue(false);
     mocks.storage.retireGA4RefreshWork.mockResolvedValue(undefined);
     mocks.storage.getRecoverableGA4RefreshWork.mockResolvedValue([]);
@@ -218,6 +220,24 @@ describe("GA4 ordered refresh source-discovery failures", () => {
       expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "release")).toBe(false);
       expect(await getGA4AlignedRefreshState("campaign-a", reportingDate)).not.toBeNull();
     });
+    it('replays saved financial sources under the same owner before native and downstream publication', async () => {
+      mocks.storage.getRevenueSources.mockImplementation(async (id, context) => !context || context === 'ga4' ? [source(id, 'revenue')] : []);
+      mocks.storage.getSpendSources.mockResolvedValue([source('campaign-a', 'spend')]);
+      mocks.storage.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 300, currency: 'EUR', sourceIds: ['campaign-a-revenue'] });
+      mocks.storage.getSpendTotalForRange.mockResolvedValue({ totalSpend: 100, currency: 'EUR', sourceIds: ['campaign-a-spend'] });
+      mocks.totals.mockImplementation(async () => totals());
+      await runGA4DailyRefreshPipelineForTrigger('recovery', options());
+      expect(mocks.storage.writeWithGA4RefreshOwnership).toHaveBeenCalledWith(scope, expect.any(Function));
+      expect(mocks.recompute).toHaveBeenCalledWith(expect.objectContaining({ refreshScope: scope }));
+      expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === 'complete')).toBe(true);
+    });
+    it('does not publish incomplete financial refreshes or manufacture successful source evidence', async () => {
+      mocks.storage.getRevenueSources.mockResolvedValue([{ ...source('campaign-a', 'revenue'), sourceType: 'hubspot', mappingConfig: '{}' }]);
+      await expect(runGA4DailyRefreshPipelineForTrigger('recovery', options())).rejects.toThrow();
+      expect(mocks.provider.getTimeSeriesData).not.toHaveBeenCalled();
+      expect(mocks.recompute).not.toHaveBeenCalled();
+      expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === 'complete')).toBe(false);
+    });
     describe("accepted draft initial imports", () => {
       const initialOptions = () => ({ ...options(), initialImportWorkId: "work-a" });
       beforeEach(() => {
@@ -324,6 +344,18 @@ describe("GA4 ordered refresh source-discovery failures", () => {
       expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "complete_without_alerts")).toBe(true);
       expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === "release")).toBe(false);
     });
+    it.each(['getTimeSeriesData', 'getAcquisitionBreakdown', 'getLandingPagesReport', 'getConversionEventsReport'] as const)(
+      'retains saved figures and blocks all derived publication when %s reports a quality restriction', async method => {
+        await runGA4DailyRefreshPipelineForTrigger('snapshot_bootstrap', options());
+        const previous = structuredClone({ daily: [...daily], overviews: [...overviews], financial: [...saved] });
+        vi.clearAllMocks();
+        mocks.provider[method].mockRejectedValue(Object.assign(new Error('GA4_DATA_QUALITY_UNAVAILABLE: sampling'), { code: 'GA4_DATA_QUALITY_UNAVAILABLE' }));
+        await expect(runGA4DailyRefreshPipelineForTrigger('snapshot_bootstrap', options())).rejects.toThrow('GA4_DATA_QUALITY_UNAVAILABLE');
+        expect({ daily: [...daily], overviews: [...overviews], financial: [...saved] }).toEqual(previous);
+        expect(mocks.recompute).not.toHaveBeenCalled(); expect(mocks.aggregate).not.toHaveBeenCalled(); expect(mocks.executive).not.toHaveBeenCalled();
+        expect(mocks.kpiAlerts).not.toHaveBeenCalled(); expect(mocks.benchmarkAlerts).not.toHaveBeenCalled();
+        expect(mocks.storage.updateGA4RefreshWorkLease.mock.calls.some(call => call[4] === 'complete')).toBe(false);
+      });
     it("carries the owning claim into native credential renewal without read-side backfills", async () => {
       const rows = await mocks.provider.getTimeSeriesData();
       mocks.provider.getTimeSeriesData.mockImplementationOnce(async (_id, providerStorage) => {
@@ -341,7 +373,7 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     it.each(["claim", "completed", "source", "source-read", "no-filter"])("does not touch saved data after %s rejection", async mode => {
       if (mode === "claim") mocks.storage.claimGA4RefreshWork.mockResolvedValue(undefined);
       if (mode === "completed") mocks.storage.ensureGA4RefreshWork.mockResolvedValue({ id: "work-a", status: "completed" });
-      if (mode === "source") mocks.storage.getRevenueSources.mockResolvedValue([source("campaign-a", "revenue")]);
+      if (mode === "source") mocks.storage.isGA4NativeRecoveryEligible.mockResolvedValue(false);
       if (mode === "source-read") mocks.storage.getSpendSources.mockRejectedValue(new Error("read failed"));
       if (mode === "no-filter") campaigns[0].ga4CampaignFilter = "";
       const result = runGA4DailyRefreshPipelineForTrigger("snapshot_bootstrap", options());
@@ -413,7 +445,10 @@ describe("GA4 ordered refresh source-discovery failures", () => {
       if (mode === "lease-loss") { live = false; await vi.advanceTimersByTimeAsync(30_000); }
       if (mode === "deadline") await vi.advanceTimersByTimeAsync(900_000);
       if (mode === "next-day") vi.setSystemTime(new Date("2026-10-17T06:00:00Z"));
-      if (mode === "source-added") mocks.storage.getRevenueSources.mockResolvedValue([source("campaign-a", "revenue")]);
+      if (mode === "source-added") {
+        mocks.storage.getRevenueSources.mockResolvedValue([source("campaign-a", "revenue")]);
+        live = false; // Real ordinary source saves invalidate the persisted lease; PostgreSQL coverage verifies this.
+      }
       release(rows);
       expect(await outcome).toBeInstanceOf(Error);
       expect(mocks.storage.replaceGA4DailyMetricsWindow).not.toHaveBeenCalled();

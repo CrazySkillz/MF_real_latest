@@ -19,7 +19,12 @@ const evidenceByStage: Record<RefreshStage, Map<string, FinancialDailyRefreshEvi
 };
 const observations = new Map<string, Observation>();
 
-export function beginFinancialDailySnapshotRefreshObservation(stage: RefreshStage): void {
+export function beginFinancialDailySnapshotRefreshObservation(stage: RefreshStage, campaignId?: string): void {
+  if (campaignId) {
+    evidenceByStage[stage].delete(campaignId);
+    observations.delete(campaignId);
+    return;
+  }
   evidenceByStage[stage].clear();
   observations.clear();
 }

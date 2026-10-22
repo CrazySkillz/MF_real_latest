@@ -38,10 +38,12 @@ export class LinkedInClient {
   private accessToken: string;
   private api: AxiosInstance;
   
-  constructor(accessToken: string) {
+  constructor(accessToken: string, signal?: AbortSignal) {
     this.accessToken = accessToken;
     this.api = axios.create({
       baseURL: 'https://api.linkedin.com/rest',
+      timeout: 120_000,
+      signal,
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'LinkedIn-Version': '202405',

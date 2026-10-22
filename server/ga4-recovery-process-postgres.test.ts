@@ -29,11 +29,11 @@ const tables = [schema.clients, schema.campaigns, schema.ga4Connections, schema.
   schema.revenueSources, schema.spendSources, schema.revenueRecords, schema.spendRecords];
 const children = new Set<ChildProcess>();
 let admin: Pool, pool: Pool;
-function worker(pauseAt = "", campaignId = "a") {
+function worker(pauseAt = "", campaignId = "a", external = false) {
   const child = fork(fileURLToPath(new URL("./test-support/ga4-recovery-process-worker.ts", import.meta.url)), [], {
     execArgv: ["--import", "tsx"], silent: true, windowsHide: true,
     env: { ...process.env, GA4_TEST_DATABASE_URL: testUrl, GA4_TEST_SCHEMA: schemaName,
-      GA4_TEST_REPORTING_DATE: date, GA4_TEST_DUE_AT: dueAt, GA4_TEST_PAUSE_AT: pauseAt, GA4_TEST_CAMPAIGN: campaignId },
+      GA4_TEST_REPORTING_DATE: date, GA4_TEST_DUE_AT: dueAt, GA4_TEST_PAUSE_AT: pauseAt, GA4_TEST_CAMPAIGN: campaignId, GA4_TEST_EXTERNAL: String(external) },
   });
   children.add(child);
   const messages: any[] = [];
@@ -52,10 +52,10 @@ function worker(pauseAt = "", campaignId = "a") {
     }
     throw new Error(`Worker timeout before ${type}: ${JSON.stringify(messages)}\n${output}`);
   };
-  return { child, until, exited };
+  return { child, until, exited, hasStage: () => messages.some(value => value.type === 'stage') };
 }
 const expire = () => pool.query("UPDATE ga4_refresh_work SET lease_expires_at=clock_timestamp()-interval '1 second' WHERE campaign_id='a' AND status='running'");
-async function verifyPublication() {
+async function verifyPublication(external = false) {
   const daily = await storage.getGA4DailyMetrics("a", "123456", date, date);
   expect(daily).toHaveLength(1); expect(daily[0]).toMatchObject({ sessions: 20, conversions: 2, revenue: "100.00" });
   expect((await storage.getGA4OverviewSnapshot("a", "123456"))?.campaignBreakdown).toMatchObject({ totals: { sessions: 20, conversions: 2, revenue: 100 } });
@@ -66,7 +66,7 @@ async function verifyPublication() {
   const snapshots = (await pool.query("SELECT * FROM metric_snapshots WHERE campaign_id='a'")).rows;
   expect(snapshots).toHaveLength(3);
   const financial = snapshots.find(row => row.snapshot_type === "financial_daily").metrics.financialDaily;
-  expect(financial.inputs.revenue).toMatchObject({ available: true, value: "100" });
+  expect(financial.inputs.revenue).toMatchObject({ available: true, value: external ? "125" : "100" });
   expect(financial.inputs.conversions).toMatchObject({ available: true, value: 2 });
   expect(financial.inputs.spend.available).toBe(false);
   expect(await getGA4AlignedRefreshState("a", date)).toMatchObject({ reportingDate: date });
@@ -78,6 +78,33 @@ async function verifyPublication() {
 }
 
 describe.skipIf(!testUrl)("GA4 publication across real worker termination and restart", () => {
+  it('limits separate application processes and recovers a slot after worker termination', async () => {
+    const workers = Array.from({ length: 6 }, () => worker('property-slot'));
+    try {
+      await vi.waitFor(() => expect(workers.filter(value => value.hasStage())).toHaveLength(5), { timeout: 20000 });
+      await new Promise(resolve => setTimeout(resolve, 150));
+      expect(workers.filter(value => value.hasStage())).toHaveLength(5);
+      const terminated = workers.find(value => value.hasStage())!;
+      terminated.child.kill(); await terminated.exited;
+      await vi.waitFor(() => expect(workers.every(value => value.hasStage())).toBe(true), { timeout: 5000 });
+      for (const value of workers.filter(value => value !== terminated)) value.child.send('continue');
+      await Promise.all(workers.map(value => value.exited));
+    } finally {
+      for (const value of workers) if (value.child.exitCode === null && value.child.signalCode === null) value.child.kill();
+      await Promise.all(workers.map(value => value.exited));
+    }
+  }, 45000);
+  it.each(['external', 'derived', 'complete'])('replays external financial records after termination at %s', async stage => {
+    await storage.createRevenueSource({ id: 'external-a', campaignId: 'a', sourceType: 'csv', platformContext: 'ga4', currency: 'EUR', mappingConfig: '{"selected":"sale"}' });
+    const first = worker(stage, 'a', true);
+    await first.until('stage'); first.child.kill(); await first.exited; await expire();
+    const restarted = worker('', 'a', true);
+    expect(await restarted.until('result')).toMatchObject({ status: stage === 'complete' ? 'already_completed' : 'completed' });
+    await restarted.exited;
+    await verifyPublication(true);
+    expect((await pool.query("SELECT revenue FROM revenue_records WHERE campaign_id='a'")).rows).toEqual([{ revenue: '25.00' }]);
+    expect((await pool.query("SELECT * FROM revenue_records WHERE campaign_id='b'")).rows).toHaveLength(0);
+  }, 90000);
   it("bounds ordinary reads and exhausted checkout using the actual application pool", async () => {
     const process = worker("database");
     const result = await process.until("result"); await process.exited;

@@ -46,6 +46,7 @@ export const GA4_CONVERSION_EVENTS_SNAPSHOT_VERSION = "ga4_conversion_events_val
 const GA4_REQUEST_TIMEOUT_MS = 120_000;
 
 export class GoogleAnalytics4Service {
+  private static readonly propertyRequests = new Map<string, { active: number; waiting: Array<() => void> }>();
   constructor(private readonly requestSignal?: AbortSignal) {}
 
   withAbortSignal(signal: AbortSignal): GoogleAnalytics4Service {
@@ -61,10 +62,46 @@ export class GoogleAnalytics4Service {
     if (!options.signal) options = { ...options, signal: this.requestAbortSignal() };
     if (this.requestSignal) options = { ...options, signal: options.signal
       ? AbortSignal.any([this.requestSignal, options.signal]) : this.requestAbortSignal() };
+    const property = new URL(url).pathname.match(/\/properties\/([^/]+):/)?.[1];
+    if (!property) throw new Error('GA4_PROPERTY_UNVERIFIED');
+    const body = typeof options.body === 'string' ? JSON.parse(options.body) : {};
+    options = { ...options, body: JSON.stringify({ ...body, returnPropertyQuota: true }) };
     return retryWithBackoff(async () => {
+      const signal = options.signal!;
+      signal.throwIfAborted();
+      const state = GoogleAnalytics4Service.propertyRequests.get(property) || { active: 0, waiting: [] };
+      GoogleAnalytics4Service.propertyRequests.set(property, state);
+      await new Promise<void>((resolve, reject) => {
+        const start = () => { signal.removeEventListener('abort', abort); state.active++; resolve(); };
+        const abort = () => { const index = state.waiting.indexOf(start); if (index >= 0) state.waiting.splice(index, 1); reject(signal.reason); };
+        if (state.active < 5) start();
+        else { state.waiting.push(start); signal.addEventListener('abort', abort, { once: true }); }
+      });
       try {
-        options.signal?.throwIfAborted();
-        const response = await fetch(url, options);
+        const operation = async (requestSignal: AbortSignal) => {
+          requestSignal.throwIfAborted();
+          const response = await fetch(url, { ...options, signal: requestSignal });
+          if (!response.ok) {
+            // Consume error bodies too, so a slot is never released at headers.
+            const text = await response.text();
+            return new Response(text, { status: response.status, statusText: response.statusText, headers: response.headers });
+          }
+          const data = await response.json();
+          requestSignal.throwIfAborted();
+          const metadata = data?.metadata;
+          const reasons = [
+            metadata?.samplingMetadatas?.length && 'sampling', metadata?.dataLossFromOtherRow && 'other_row',
+            metadata?.subjectToThresholding && 'thresholding', metadata?.schemaRestrictionResponse?.activeMetricRestrictions?.length && 'restricted',
+            metadata?.dataTruncationReasons?.length && 'truncated', metadata?.emptyReason && 'empty_reason',
+          ].filter(Boolean);
+          if (reasons.length) throw Object.assign(new Error(`GA4_DATA_QUALITY_UNAVAILABLE: ${reasons.join(', ')}`), {
+            code: 'GA4_DATA_QUALITY_UNAVAILABLE', reasons,
+          });
+          return new Response(JSON.stringify(data), { status: response.status, headers: response.headers });
+        };
+        const response = process.env.DATABASE_URL
+          ? await (await import('./storage')).storage.withGA4PropertyRequest(property, signal, operation)
+          : await operation(signal);
         if (![429, 500, 502, 503, 504].includes(response.status)) return response;
         const header = response.headers.get("retry-after");
         const parsed = header === null ? undefined : /^\d+(\.\d+)?$/.test(header.trim())
@@ -79,6 +116,10 @@ export class GoogleAnalytics4Service {
           throw Object.assign(new Error("GA4_TEMPORARY_UNAVAILABLE: connection interrupted"), { code: "GA4_TRANSIENT_ERROR" });
         }
         throw error;
+      } finally {
+        state.active--;
+        state.waiting.shift()?.();
+        if (!state.active && !state.waiting.length) GoogleAnalytics4Service.propertyRequests.delete(property);
       }
     }, {
       maxAttempts: 3, initialDelayMs: 1000, maxDelayMs: 2000,
@@ -1080,7 +1121,7 @@ export class GoogleAnalytics4Service {
     const dims = [{ name: 'landingPagePlusQueryString' }, { name: 'sessionSource' }, { name: 'sessionMedium' }];
 
     const run = async (accessToken: string, revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
-      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+      const resp = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1246,7 +1287,7 @@ export class GoogleAnalytics4Service {
     const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
 
     const run = async (accessToken: string, revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
-      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+      const resp = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1410,6 +1451,7 @@ export class GoogleAnalytics4Service {
       return observed;
     };
     const ignoreNonCurrencyFailure = (error: any) => {
+      if (error?.code === 'GA4_DATA_QUALITY_UNAVAILABLE') throw error;
       if (this.requestSignal?.aborted) throw error;
       if (error?.code === 'GA4_CURRENCY_UNVERIFIED' || error?.code === 'GA4_TRANSIENT_ERROR' ||
           error?.name === 'TimeoutError' || error?.name === 'AbortError') throw error;
@@ -1615,6 +1657,7 @@ export class GoogleAnalytics4Service {
     endDate: string,
     currencyCode?: string,
   ) {
+    const signal = this.requestAbortSignal();
     const connection = await storage.getGA4Connection(campaignId, propertyId);
     if (!connection) throw new Error('NO_GA4_CONNECTION');
     if (!connection.accessToken) {
@@ -1641,8 +1684,9 @@ export class GoogleAnalytics4Service {
 
     const run = async (dimensions: string[], metrics: string[], scopeFilter: any) => {
       try {
-        const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+        const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
           method: 'POST',
+          signal,
           headers: { Authorization: `Bearer ${connection.accessToken}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             dateRanges: [{ startDate: dateRange, endDate }],
@@ -1654,7 +1698,10 @@ export class GoogleAnalytics4Service {
             limit: 1000,
           }),
         });
-        if (!response.ok) return { ok: false, status: response.status };
+        if (!response.ok) {
+          await response.body?.cancel();
+          return { ok: false, status: response.status };
+        }
         const json: any = await response.json();
         const observedCurrency = String(json?.metadata?.currencyCode || '').trim().toUpperCase();
         if (requestedCurrencyCode && observedCurrency !== requestedCurrencyCode) {
@@ -1685,7 +1732,9 @@ export class GoogleAnalytics4Service {
           }, {}),
           rows,
         };
-      } catch {
+      } catch (error: any) {
+        if (error?.code === 'GA4_DATA_QUALITY_UNAVAILABLE') throw error;
+        if (signal.aborted || error?.name === 'TimeoutError' || error?.name === 'AbortError' || error?.code === 'GA4_TRANSIENT_ERROR') throw error;
         return { ok: false, status: 'request-failed' };
       }
     };
@@ -1979,6 +2028,7 @@ export class GoogleAnalytics4Service {
               }
               return completeReportRows(await retry.json(), requestBody);
             } catch (refreshError: any) {
+              if (refreshError?.code === 'GA4_DATA_QUALITY_UNAVAILABLE') throw refreshError;
               if (refreshError?.isPaginationIncomplete || refreshError?.code === 'GA4_TRANSIENT_ERROR' || refreshError?.code === 'GA4_CURRENCY_UNVERIFIED' || refreshError?.name === 'TimeoutError' || refreshError?.name === 'AbortError') {
                 throw refreshError;
               }
@@ -2202,6 +2252,7 @@ export class GoogleAnalytics4Service {
         chosenDims = candidate.dims;
         chosenRevenueMetric = result.revenueMetric;
       } catch (e: any) {
+        if (e?.code === 'GA4_DATA_QUALITY_UNAVAILABLE') throw e;
         if (e?.isPaginationIncomplete || e?.isTokenExpired || e?.isAutoRefreshNeeded || e?.code === 'GA4_TRANSIENT_ERROR' || e?.code === 'GA4_CURRENCY_UNVERIFIED' || e?.name === 'TimeoutError' || e?.name === 'AbortError' ||
             (preferOverviewCampaignTotals && /sessionKeyEventRate|RESOURCE_EXHAUSTED|"code": 429/i.test(String(e?.message || '')))) {
           throw e;
@@ -2465,6 +2516,7 @@ export class GoogleAnalytics4Service {
           insightsLandingCoverage.reason = 'selected';
         }
       } catch (error: any) {
+        if (error?.code === 'GA4_DATA_QUALITY_UNAVAILABLE') throw error;
         if (error?.isPaginationIncomplete || error?.isTokenExpired || error?.isAutoRefreshNeeded || error?.code === 'GA4_TRANSIENT_ERROR' || error?.name === 'TimeoutError' || error?.name === 'AbortError') throw error;
         insightsLandingCoverage = {
           attempted: true,
@@ -2487,6 +2539,7 @@ export class GoogleAnalytics4Service {
             chosenRevenueMetric = result.revenueMetric;
           }
         } catch (error: any) {
+          if (error?.code === 'GA4_DATA_QUALITY_UNAVAILABLE') throw error;
           if (error?.isPaginationIncomplete || error?.isTokenExpired || error?.isAutoRefreshNeeded || error?.code === 'GA4_TRANSIENT_ERROR' || error?.name === 'TimeoutError' || error?.name === 'AbortError') {
             throw error;
           }
@@ -2787,7 +2840,7 @@ export class GoogleAnalytics4Service {
     try {
       const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
       const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
-      const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+      const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -2869,6 +2922,7 @@ export class GoogleAnalytics4Service {
       };
 
     } catch (error) {
+      if ((error as any)?.code === 'GA4_DATA_QUALITY_UNAVAILABLE') throw error;
       console.error('Error fetching GA4 geographic metrics:', error);
       throw new Error(`Failed to fetch GA4 geographic metrics: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -3133,6 +3187,7 @@ export class GoogleAnalytics4Service {
 
         const data = await response.json();
         verifyResponseCurrency(data);
+        if (Number(data?.rowCount) > (data?.rows?.length || 0)) throw Object.assign(new Error('GA4_DATA_QUALITY_UNAVAILABLE: incomplete_daily_rows'), { code: 'GA4_DATA_QUALITY_UNAVAILABLE' });
         if (captureFallbackTraffic) {
           const rows = Array.isArray(data?.rows) ? data.rows : [];
           const dates = rows.map((row: any) => String(row?.dimensionValues?.[0]?.value || ''));
@@ -3207,6 +3262,7 @@ export class GoogleAnalytics4Service {
 
         const data = await response.json();
         verifyResponseCurrency(data);
+        if (Number(data?.rowCount) > (data?.rows?.length || 0)) throw Object.assign(new Error('GA4_DATA_QUALITY_UNAVAILABLE: incomplete_daily_rows'), { code: 'GA4_DATA_QUALITY_UNAVAILABLE' });
         return { data, revenueMetric };
       };
 
@@ -3396,6 +3452,8 @@ export class GoogleAnalytics4Service {
 
       if (hasBaseTraffic && hasMissingConversionRevenue && campaignNameConversionFilter) {
         const supplemental = await runConversionRevenueWithFallback(campaignNameConversionFilter).catch((error) => {
+          if (this.requestSignal?.aborted) throw error;
+          if (error?.code === 'GA4_DATA_QUALITY_UNAVAILABLE') throw error;
           if (error?.code === 'GA4_TRANSIENT_ERROR' || error?.name === 'TimeoutError' || error?.name === 'AbortError') throw error;
           return null;
         });
@@ -3606,7 +3664,7 @@ export class GoogleAnalytics4Service {
       // skip realtime so "active users" doesn't reflect site-wide traffic.
       let realtimeData: any = null;
       if (this.normalizeCampaignFilter(campaignFilter).length === 0) {
-        const realtimeResponse = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runRealtimeReport`, {
+        const realtimeResponse = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runRealtimeReport`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -3636,7 +3694,7 @@ export class GoogleAnalytics4Service {
       // Then get historical data for context
       const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
       const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
-      const runHistorical = async (scopeFilter: any) => fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+      const runHistorical = async (scopeFilter: any) => this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -3676,7 +3734,10 @@ export class GoogleAnalytics4Service {
         (Array.isArray(row?.metricValues) ? row.metricValues : []).some((metric: any) => Number(metric?.value || 0) > 0)
       );
       if (!hasHistoricalMetricData(data) && pageLocationCampaignFilter) {
-        const utmResponse = await runHistorical(pageLocationCampaignFilter).catch(() => null);
+        const utmResponse = await runHistorical(pageLocationCampaignFilter).catch((error) => {
+          if (this.requestSignal?.aborted || error?.code === 'GA4_DATA_QUALITY_UNAVAILABLE' || error?.code === 'GA4_TRANSIENT_ERROR' || error?.name === 'TimeoutError' || error?.name === 'AbortError') throw error;
+          return null;
+        });
         if (utmResponse?.ok) {
           const utmData = await utmResponse.json().catch(() => null);
           if (hasHistoricalMetricData(utmData)) data = utmData;
@@ -3805,6 +3866,7 @@ export class GoogleAnalytics4Service {
         sessionsDerivedFromUsers,
       };
     } catch (error) {
+      if ((error as any)?.code === 'GA4_DATA_QUALITY_UNAVAILABLE') throw error;
       console.error('Error fetching GA4 metrics:', error);
       throw new Error(`Failed to fetch GA4 metrics: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -3812,7 +3874,7 @@ export class GoogleAnalytics4Service {
 
   async testConnection(credentials: GA4Credentials, accessToken: string): Promise<boolean> {
     try {
-      const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${credentials.propertyId}:runReport`, {
+      const response = await this.requestReport(`https://analyticsdata.googleapis.com/v1beta/properties/${this.normalizeGA4PropertyId(credentials.propertyId)}:runReport`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,

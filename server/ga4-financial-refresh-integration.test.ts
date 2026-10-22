@@ -76,8 +76,16 @@ describe("owned financial scheduler integration", () => {
     vi.mocked(storage.getSpendSources).mockResolvedValue([{ id: "ads", sourceType: "ad_platforms", isActive: true, mappingConfig: '{"platform":"google_ads"}' }] as any);
     vi.spyOn(storage, "getGA4GoogleAdsSpendConnection").mockRejectedValue(new Error("database unavailable"));
     const legacy = vi.spyOn(storage, "getGoogleAdsConnection"); const fetch = vi.fn(); vi.stubGlobal("fetch", fetch);
-    expect(await run()).toMatchObject({ providerJobsAttempted: 1, providerJobsSucceeded: 0 });
+    await expect(run()).rejects.toThrow("database unavailable");
     expect(legacy).not.toHaveBeenCalled(); expect(fetch).not.toHaveBeenCalled();
+  });
+  it.each(['', '<html>interrupted</html>', '{}', '{"success":false}'])("rejects an unconfirmed owned financial reply (%s)", async body => {
+    vi.mocked(storage.getRevenueSources).mockResolvedValue([revenue("hubspot"), revenue("shopify")] as any);
+    const fetch = vi.fn(async () => new Response(body, { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    await expect(run()).rejects.toMatchObject({ code: "GA4_FINANCIAL_REFRESH_INCOMPLETE" });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect((global as any).__autoRefreshInProgress).toBe(false);
   });
   it.each([false, true])("carries ownership through direct Sheets Revenue materialization (expires=%s)", async expired => {
     vi.mocked(storage.getRevenueSources).mockResolvedValue([sheet("revenue")] as any);

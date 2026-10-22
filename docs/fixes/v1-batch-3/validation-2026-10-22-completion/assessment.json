@@ -1,0 +1,163 @@
+{
+  "at": "2026-10-22T10:26:59.721Z",
+  "baseHead": "6b65d9c40e9a2f49b665b06094732a22e1b9f0c4",
+  "findings": [
+    "V1-011",
+    "V1-025",
+    "V1-089",
+    "V1-090"
+  ],
+  "fixStatus": "VERIFIED LOCALLY",
+  "releaseAcceptance": "OPEN",
+  "result": "All four remaining Batch 3 corrections implemented and verified within the documented local boundaries. All ten Batch 3 release acceptances and V1 NO-GO remain open.",
+  "runtimeFiles": [
+    "server/analytics.ts",
+    "server/auto-refresh-scheduler.ts",
+    "server/ga4-daily-scheduler.ts",
+    "server/google-ads-scheduler.ts",
+    "server/googleAdsClient.ts",
+    "server/linkedin-daily-metrics.ts",
+    "server/linkedin-scheduler.ts",
+    "server/linkedinClient.ts",
+    "server/routes-oauth.ts",
+    "server/storage.ts",
+    "server/utils/financial-daily-snapshot-observation.ts",
+    "server/utils/salesforce-pagination.ts"
+  ],
+  "testFiles": [
+    "server/ga4-auto-refresh-regression.test.ts",
+    "server/ga4-filter.test.ts",
+    "server/ga4-financial-refresh-integration.test.ts",
+    "server/ga4-financial-source-ownership-postgres.test.ts",
+    "server/ga4-overview-conversion-events-regression.test.ts",
+    "server/ga4-overview-landing-pages-regression.test.ts",
+    "server/ga4-recovery-process-postgres.test.ts",
+    "server/ga4-refresh-input-invalidation-postgres.test.ts",
+    "server/ga4-refresh-pipeline-source-failure.test.ts",
+    "server/ga4-shared-daily-traffic.test.ts",
+    "server/google-ads-spend-production-path.test.ts",
+    "server/salesforce-pagination.test.ts",
+    "server/v1-batch3-ga4-quality-concurrency.test.ts",
+    "server/v1-batch3-google-ads-timeouts.test.ts",
+    "server/v1-batch3-property-requests-postgres.test.ts",
+    "server/v1-batch3-provider-timeouts.test.ts",
+    "server/v1-batch3-shared-cancellation.test.ts"
+  ],
+  "processWorker": "server/test-support/ga4-recovery-process-worker.ts",
+  "reproducedBefore": {
+    "cancellation-before": {
+      "total": 9,
+      "passed": 1,
+      "failed": 8,
+      "skipped": 0
+    },
+    "quality-concurrency-before": {
+      "total": 21,
+      "passed": 1,
+      "failed": 20,
+      "skipped": 0
+    },
+    "recovery-before": {
+      "total": 219,
+      "passed": 210,
+      "failed": 9,
+      "skipped": 0
+    },
+    "financial-reply-before": {
+      "total": 16,
+      "passed": 12,
+      "failed": 4,
+      "skipped": 0
+    }
+  },
+  "focusedCheckpoint": {
+    "total": 731,
+    "passed": 731,
+    "failed": 0,
+    "skipped": 0
+  },
+  "processRecoveryCheckpoint": {
+    "total": 15,
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0
+  },
+  "finalFullSuite": {
+    "total": 4458,
+    "passed": 4278,
+    "failed": 180,
+    "skipped": 0
+  },
+  "changedTestFilesInFinalSuite": {
+    "files": 17,
+    "total": 786,
+    "passed": 784,
+    "failed": 2,
+    "skipped": 0
+  },
+  "unresolvedFailures": 180,
+  "newFailingIdentities": 0,
+  "typecheckAndServerBuild": {
+    "at": "2026-10-22T10:22:45.879Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "final-typecheck.log"
+      },
+      {
+        "name": "server-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "final-server-build.log"
+      }
+    ]
+  },
+  "clientBuild": "No client source edits; passing production client build retained in ../validation-2026-10-22-timeouts/build-checks.json.",
+  "intermediateDiagnostics": [
+    "cancellation-after: one obsolete exact-source assertion updated to require the callback and forwarded signal; behavior tests retained.",
+    "quality-concurrency-first: six metadata errors were retried through acquisition dimension fallback; propagation corrected and all flags now fail closed.",
+    "recovery-first: one actual regression serialized native campaigns; restored two-worker processing. Three fixtures corrected for consistent daily totals, supported-source eligibility and actual source-add invalidation.",
+    "final-focused: three extracted nested Sheets helpers retained CRLF blank lines; normalized extraction only, retaining timeout/body/caller-cancellation assertions.",
+    "first-build-checks: corrected Set iteration for project target and pg query_timeout config typing; final TypeScript passes.",
+    "full-suite intermediate: 11 additional failures corrected as individually listed in failure-reconciliation.json; no safety assertions skipped."
+  ],
+  "localProof": [
+    "Scheduled/manual/recovery dispatch uses existing durable leases for integrated GA4 financial sources; no duplicate ordinary refresh. Exact mapping/credential/source generation checks remain in storage transactions.",
+    "Real process termination at financial, derived and completion boundaries replays one exact CSV record and preserves the other campaign; provider-specific route and PostgreSQL fences tested separately.",
+    "LinkedIn shared timeout propagates cancellation and waits for already-started writes to settle; no later stage/write starts after cancellation. Deferred provider functionality remains deferred.",
+    "Three nested Sheets helpers and retry request retain deadlines through body parsing and caller cancellation.",
+    "One property admits at most five requests through complete response bodies. Twenty-five callers, five Insights readers/60 channel requests, queued aborts, distinct properties, database loss and six separate workers exercised.",
+    "Transaction advisory locks pin checked-out database connections until completion, including transaction-pooled deployments; actual hosted pooler behavior remains a deployment check.",
+    "Six provider quality flags fail closed across twelve current report methods. Flagged native refresh stages preserve previous published data and skip downstream snapshots/goals/alerts; unflagged zero remains zero."
+  ],
+  "remaining": [
+    "Commit/review and deploy this candidate, then verify the deployed revision/configuration.",
+    "Actual provider permissions, quotas, quality flags, reconnect/retry/recovery and full customer UI/output acceptance; new candidate has no live acceptance evidence.",
+    "Inventory existing provider-flagged historical values before any targeted correction; metadata was previously discarded and cannot be reconstructed by guessing.",
+    "180 individually recorded local failures, separate CI-only failure, Batches 4-8 and all whole-app release gates."
+  ],
+  "safety": {
+    "applicationCredentialsRemoved": true,
+    "externalHttpBlockedInTestRunner": true,
+    "onlyLocalhostFixtureDatabases": true,
+    "productionQueries": false,
+    "productionWrites": false,
+    "ptomoChanged": false,
+    "providerAcceptance": false,
+    "uiAcceptance": false,
+    "migrationsAdded": false,
+    "committed": false,
+    "pushed": false,
+    "deployed": false
+  },
+  "limits": [
+    "A provider may continue server-side computation after the local request is aborted.",
+    "An already-started retained LinkedIn database write may finish before cancellation settles; this patch prevents detached continuation, not transactional rollback of that deferred provider job.",
+    "The five-slot limit covers updated app workers sharing this database; older deployed workers and other applications using the property are outside the guard.",
+    "Provider quality flags are conservatively unavailable; threshold/other-row metadata does not prove every returned value is incorrect.",
+    "Initial-import eligibility remains native-only. No deferred platform was enabled, no historical data was rewritten, and no whole-source or V1 certification is claimed."
+  ]
+}

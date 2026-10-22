@@ -46,6 +46,7 @@ export interface GoogleAdsDailyInsight {
 
 const GOOGLE_ADS_API_VERSION = 'v25';
 const GOOGLE_ADS_BASE_URL = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}`;
+const GOOGLE_ADS_REQUEST_TIMEOUT_MS = 120_000;
 
 const searchStreamRows = (data: unknown): any[] => {
   if (!Array.isArray(data)) throw new Error('Invalid Google Ads SearchStream response');
@@ -87,6 +88,7 @@ export class GoogleAdsClient {
     this.api = axios.create({
       baseURL: `${GOOGLE_ADS_BASE_URL}/customers/${this.customerId}`,
       headers,
+      timeout: GOOGLE_ADS_REQUEST_TIMEOUT_MS,
     });
   }
 
@@ -105,7 +107,7 @@ export class GoogleAdsClient {
       client_secret: clientSecret,
       redirect_uri: redirectUri,
       grant_type: 'authorization_code',
-    });
+    }, { timeout: GOOGLE_ADS_REQUEST_TIMEOUT_MS, signal: AbortSignal.timeout(GOOGLE_ADS_REQUEST_TIMEOUT_MS) });
     return response.data;
   }
 
@@ -122,7 +124,7 @@ export class GoogleAdsClient {
       client_id: clientId,
       client_secret: clientSecret,
       grant_type: 'refresh_token',
-    });
+    }, { timeout: GOOGLE_ADS_REQUEST_TIMEOUT_MS, signal: AbortSignal.timeout(GOOGLE_ADS_REQUEST_TIMEOUT_MS) });
     return response.data;
   }
 
@@ -130,10 +132,12 @@ export class GoogleAdsClient {
    * List all customer accounts accessible by the current token
    */
   async getAccessibleCustomers(): Promise<GoogleAdsCustomerAccount[]> {
+    const signal = AbortSignal.timeout(GOOGLE_ADS_REQUEST_TIMEOUT_MS);
     // List accessible customer resource names
     const listResponse = await axios.get(
       `${GOOGLE_ADS_BASE_URL}/customers:listAccessibleCustomers`,
       {
+        timeout: GOOGLE_ADS_REQUEST_TIMEOUT_MS, signal,
         headers: {
           'Authorization': `Bearer ${this.accessToken}`,
           ...(this.developerToken ? { 'developer-token': this.developerToken } : {}),
@@ -145,10 +149,12 @@ export class GoogleAdsClient {
     const customers: GoogleAdsCustomerAccount[] = [];
 
     for (const resourceName of resourceNames) {
+      signal.throwIfAborted();
       try {
         const customerId = resourceName.replace('customers/', '');
         const detailApi = axios.create({
           baseURL: `${GOOGLE_ADS_BASE_URL}/customers/${customerId}`,
+          timeout: GOOGLE_ADS_REQUEST_TIMEOUT_MS,
           headers: {
             'Authorization': `Bearer ${this.accessToken}`,
             ...(this.developerToken ? { 'developer-token': this.developerToken } : {}),
@@ -158,7 +164,7 @@ export class GoogleAdsClient {
 
         const detailResponse = await detailApi.post('/googleAds:searchStream', {
           query: `SELECT customer.id, customer.descriptive_name, customer.resource_name, customer.manager, customer.currency_code, customer.time_zone FROM customer LIMIT 1`,
-        });
+        }, { signal });
 
         const results = searchStreamRows(detailResponse.data);
         if (results.length > 0) {
@@ -172,7 +178,8 @@ export class GoogleAdsClient {
             timeZone: String(customer.timeZone || "").trim(),
           });
         }
-      } catch {
+      } catch (error: any) {
+        if (signal.aborted || ['ERR_CANCELED', 'ECONNABORTED', 'ETIMEDOUT'].includes(error?.code)) throw error;
         // Skip inaccessible accounts
       }
     }
@@ -183,7 +190,7 @@ export class GoogleAdsClient {
   async getCustomerAccount(): Promise<GoogleAdsCustomerAccount> {
     const response = await this.api.post('/googleAds:searchStream', {
       query: `SELECT customer.id, customer.descriptive_name, customer.resource_name, customer.manager, customer.currency_code, customer.time_zone FROM customer LIMIT 1`,
-    });
+    }, { signal: AbortSignal.timeout(GOOGLE_ADS_REQUEST_TIMEOUT_MS) });
     const customer = searchStreamRows(response.data)[0]?.customer;
     if (!customer?.id) throw new Error('Google Ads customer metadata is unavailable');
     return {
@@ -211,7 +218,7 @@ export class GoogleAdsClient {
         WHERE campaign.status != 'REMOVED'
         ORDER BY campaign.name
       `,
-    });
+    }, { signal: AbortSignal.timeout(GOOGLE_ADS_REQUEST_TIMEOUT_MS) });
 
     const results = searchStreamRows(response.data);
     return results.map((r: any) => ({
@@ -258,7 +265,7 @@ export class GoogleAdsClient {
           ${campaignFilter}
         ORDER BY segments.date
       `,
-    });
+    }, { signal: AbortSignal.timeout(GOOGLE_ADS_REQUEST_TIMEOUT_MS) });
 
     const results = searchStreamRows(response.data);
     return results.map((r: any) => ({

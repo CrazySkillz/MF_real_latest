@@ -1,0 +1,8 @@
+server/ga4-daily-scheduler.ts(936,24): error TS2802: Type 'Set<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+server/storage.ts(698,142): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Object literal may only specify known properties, and 'query_timeout' does not exist in type 'QueryConfig<string[]>'.
+server/storage.ts(699,22): error TS2339: Property 'rows' does not exist on type 'Submittable'.
+server/storage.ts(710,109): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Object literal may only specify known properties, and 'query_timeout' does not exist in type 'QueryConfig<string[]>'.

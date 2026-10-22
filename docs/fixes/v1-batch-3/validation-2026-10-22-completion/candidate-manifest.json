@@ -1,0 +1,157 @@
+{
+  "at": "2026-10-22T10:26:59.693Z",
+  "baseHead": "6b65d9c40e9a2f49b665b06094732a22e1b9f0c4",
+  "state": "uncommitted; not pushed or deployed",
+  "files": [
+    {
+      "file": "server/analytics.ts",
+      "sha256": "ac6b4b12051b1ab1f5dbf95f243be39e43d31a01c8e6a0136840434a449f0210",
+      "lfSha256": "260103142975588eaf6737aab1c8d56d621b1c38ca720acefc699c50b3eeefd6"
+    },
+    {
+      "file": "server/auto-refresh-scheduler.ts",
+      "sha256": "743e845172a4f3919deca4e1ff8c28dc058b819529de993574fcd84c1d844431",
+      "lfSha256": "cc652d469c76814bccf880932cc469547a257c9b8d72967a7b40a14ebfddc1c0"
+    },
+    {
+      "file": "server/ga4-auto-refresh-regression.test.ts",
+      "sha256": "3e664d2a654f50f54da3f66cfb1a77ebf64f6d9dde068a26af0ace43aa2aca7d",
+      "lfSha256": "09f7f9a701ab45465699a8abd6ee52a89ff5135ce7d25d130b4319cd1c05eb9b"
+    },
+    {
+      "file": "server/ga4-daily-scheduler.ts",
+      "sha256": "51530d8ce4291197ad3561907127fd0913ad5f94bb14fbb03fc3648741db8981",
+      "lfSha256": "cd4555a754a6b3bb4a82591b497589bf911bcc6f59c26cf8a3eafe7dee8b3b95"
+    },
+    {
+      "file": "server/ga4-filter.test.ts",
+      "sha256": "77474116957779b7e1c65ecd3d974d7987a62d82a7f7db803a3f2fe146ef403e",
+      "lfSha256": "f4c21d64e4801a4a8756a6b149b5ae738f8658a8e6751ff8184ca8145f02e903"
+    },
+    {
+      "file": "server/ga4-financial-refresh-integration.test.ts",
+      "sha256": "603e6ea54924b187e3f7a8e6911680ba49acceab72f7f4175d1a124d0276ccfd",
+      "lfSha256": "603e6ea54924b187e3f7a8e6911680ba49acceab72f7f4175d1a124d0276ccfd"
+    },
+    {
+      "file": "server/ga4-financial-source-ownership-postgres.test.ts",
+      "sha256": "9cb7bda200b04bc51b8ff0ea6b48d9f5082cea482a2fd090762459ff10dc0430",
+      "lfSha256": "9cb7bda200b04bc51b8ff0ea6b48d9f5082cea482a2fd090762459ff10dc0430"
+    },
+    {
+      "file": "server/ga4-overview-conversion-events-regression.test.ts",
+      "sha256": "3e91ba4a38314cdcd4f3df3d179610e5c77a9fcfba5c773c5fd85a92172e93db",
+      "lfSha256": "3e91ba4a38314cdcd4f3df3d179610e5c77a9fcfba5c773c5fd85a92172e93db"
+    },
+    {
+      "file": "server/ga4-overview-landing-pages-regression.test.ts",
+      "sha256": "3aa17b36577519cbb1f36b525fb042ae25961d8fd73c86689c06012a1df2c712",
+      "lfSha256": "6c2279fdd4bc587a0a8efa970d43b68467fd662933f1cdb7a8818a2d35f3da5f"
+    },
+    {
+      "file": "server/ga4-recovery-process-postgres.test.ts",
+      "sha256": "c783695ce7398cd99ac0425b951cddad9cde4379be04749b67d9a21a3387c40c",
+      "lfSha256": "c783695ce7398cd99ac0425b951cddad9cde4379be04749b67d9a21a3387c40c"
+    },
+    {
+      "file": "server/ga4-refresh-input-invalidation-postgres.test.ts",
+      "sha256": "dc8b607991f78a874c932769dc154a210b612e0e216d56e213c728f587795033",
+      "lfSha256": "dc8b607991f78a874c932769dc154a210b612e0e216d56e213c728f587795033"
+    },
+    {
+      "file": "server/ga4-refresh-pipeline-source-failure.test.ts",
+      "sha256": "f1916ad74ee4c8acd4ab337443e6f120877938bbff03fd983fd6fcf33a6a5b5c",
+      "lfSha256": "68c5c08e5a229ded562b84ee41adb858212a0ac0c0aa733bd6415fab9e49e4c3"
+    },
+    {
+      "file": "server/ga4-shared-daily-traffic.test.ts",
+      "sha256": "464b4f928751cd9e591da522d4326619115f73cc965b02f0ed55b2b962fbd441",
+      "lfSha256": "464b4f928751cd9e591da522d4326619115f73cc965b02f0ed55b2b962fbd441"
+    },
+    {
+      "file": "server/google-ads-scheduler.ts",
+      "sha256": "3fa4b92e26c29b5112c83e18892b344d0cb55a629d7020762e40749a954a2db9",
+      "lfSha256": "87da0d17962a3fda596bf3b41fa9e8234cad90acf9e6e4da9bccfd2738ee52de"
+    },
+    {
+      "file": "server/google-ads-spend-production-path.test.ts",
+      "sha256": "289823f21ef5e7627b84849591a774d8e4103655b4e9d4efe34a0354f534edb7",
+      "lfSha256": "8aacefcf6a05f842cdfe99cd3e0ebfc00959e561000aa392a35deb6864641271"
+    },
+    {
+      "file": "server/googleAdsClient.ts",
+      "sha256": "847c05d0df63088e1d0b5d44789be798c782809c47f96b9aab25874a5effe456",
+      "lfSha256": "c531bc81160b6ca64fb3af9fa9b043062ed6c134fbbeaa574eeeffc1cf0c0f1e"
+    },
+    {
+      "file": "server/linkedin-daily-metrics.ts",
+      "sha256": "1102ea2c8658d22415ec338d87e6a46c3e3539556f98b1c15f60a69eac78b6ac",
+      "lfSha256": "e03dea7131c4b07b351cacc489c0e6f70a2ecbaf415d44f321a05db15a936129"
+    },
+    {
+      "file": "server/linkedin-scheduler.ts",
+      "sha256": "dd189c80d9c299dd909a7a93acc2f0e260f2e86cbe86ee6a38a39a8992b9d652",
+      "lfSha256": "1765f95896e06d9f547ae0b783badc2a6402107adad0fe3c7fc64fd6338a0910"
+    },
+    {
+      "file": "server/linkedinClient.ts",
+      "sha256": "58799ad38d5fd11f8c31a59faa30f576fcd2f6c118409970a3700d1489672db0",
+      "lfSha256": "aafbe89b96722a40b60ceb5aa099fa255c584eff66153abb817564cb1a54cbff"
+    },
+    {
+      "file": "server/routes-oauth.ts",
+      "sha256": "0de684a12052f489e912d0ec312749379d5bf4f90d701e0a71099b257c6a7027",
+      "lfSha256": "7a95f35f933838490eccc8e99dcc510930242ee1d7815fe9af141ff4279836cd"
+    },
+    {
+      "file": "server/salesforce-pagination.test.ts",
+      "sha256": "d2c8dbe788ec414bee8dbf7fbfee2a82b714355a89259ce5a037b1424c0f3644",
+      "lfSha256": "d2c8dbe788ec414bee8dbf7fbfee2a82b714355a89259ce5a037b1424c0f3644"
+    },
+    {
+      "file": "server/storage.ts",
+      "sha256": "e10f3e96e7d177bacd299707f671c20be42b96f7777ecbe563a2b518f1587488",
+      "lfSha256": "e10f3e96e7d177bacd299707f671c20be42b96f7777ecbe563a2b518f1587488"
+    },
+    {
+      "file": "server/test-support/ga4-recovery-process-worker.ts",
+      "sha256": "8f9ceb7de1d16a560a3bfa010d6be40928f0ad23737681e4d6f748b569d6c01c",
+      "lfSha256": "8f9ceb7de1d16a560a3bfa010d6be40928f0ad23737681e4d6f748b569d6c01c"
+    },
+    {
+      "file": "server/utils/financial-daily-snapshot-observation.ts",
+      "sha256": "3bc5383f40e8056fef8f50106cc515c9b7589a0aaf8761dd55f9339f1e5466b3",
+      "lfSha256": "3bc5383f40e8056fef8f50106cc515c9b7589a0aaf8761dd55f9339f1e5466b3"
+    },
+    {
+      "file": "server/utils/salesforce-pagination.ts",
+      "sha256": "77480770049553f7ada6a9ad500fc350c833e424f525eca0ab7dec96782f54ee",
+      "lfSha256": "77480770049553f7ada6a9ad500fc350c833e424f525eca0ab7dec96782f54ee"
+    },
+    {
+      "file": "server/v1-batch3-ga4-quality-concurrency.test.ts",
+      "sha256": "1775fc4c88c230f84732d9735cbb8aed340ba1e555a5e1b7a676360c6111e7b9",
+      "lfSha256": "1775fc4c88c230f84732d9735cbb8aed340ba1e555a5e1b7a676360c6111e7b9"
+    },
+    {
+      "file": "server/v1-batch3-google-ads-timeouts.test.ts",
+      "sha256": "3a84f810c9cc398d69da9806a1aea082f3fd32ec48c65fe7414c1de60b264df2",
+      "lfSha256": "3a84f810c9cc398d69da9806a1aea082f3fd32ec48c65fe7414c1de60b264df2"
+    },
+    {
+      "file": "server/v1-batch3-property-requests-postgres.test.ts",
+      "sha256": "d1ac79b00f891f7b4985acd777fd045951fe512459c540e0fdf40fda7a82d7fb",
+      "lfSha256": "d1ac79b00f891f7b4985acd777fd045951fe512459c540e0fdf40fda7a82d7fb"
+    },
+    {
+      "file": "server/v1-batch3-provider-timeouts.test.ts",
+      "sha256": "0030d6f5a0a11ef176fbd0fb4d3c90c2626a59d65879f145afad5c8bd5673237",
+      "lfSha256": "0030d6f5a0a11ef176fbd0fb4d3c90c2626a59d65879f145afad5c8bd5673237"
+    },
+    {
+      "file": "server/v1-batch3-shared-cancellation.test.ts",
+      "sha256": "223456c9957245cce9e5d9f790a21331bb67cdd2a4ad0910bb258450dba23868",
+      "lfSha256": "223456c9957245cce9e5d9f790a21331bb67cdd2a4ad0910bb258450dba23868"
+    }
+  ]
+}

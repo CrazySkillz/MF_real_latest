@@ -1,0 +1,122 @@
+{
+  "at": "2026-10-22T09:14:05.741Z",
+  "finding": "V1-025",
+  "fixStatus": "IN PROGRESS",
+  "releaseAcceptance": "OPEN",
+  "result": "Bounded diagnostic/provider timeout corrections verified locally; Batch 3 remains incomplete.",
+  "runtimeFiles": [
+    "server/analytics.ts",
+    "server/googleAdsClient.ts",
+    "server/google-ads-scheduler.ts",
+    "server/routes-oauth.ts",
+    "server/utils/salesforce-pagination.ts"
+  ],
+  "testFiles": [
+    "server/v1-batch3-provider-timeouts.test.ts",
+    "server/v1-batch3-google-ads-timeouts.test.ts",
+    "server/google-ads-spend-production-path.test.ts",
+    "server/ga4-financial-source-ownership-postgres.test.ts",
+    "server/salesforce-pagination.test.ts"
+  ],
+  "reproducedBefore": {
+    "diagnosticSalesforceAndSharedHelper": {
+      "total": 11,
+      "passed": 1,
+      "failed": 10,
+      "skipped": 0
+    },
+    "googleAds": {
+      "total": 15,
+      "passed": 0,
+      "failed": 15,
+      "skipped": 0
+    },
+    "adjacentHubspot": {
+      "total": 18,
+      "passed": 0,
+      "failed": 1,
+      "skipped": 17
+    },
+    "initialRunnerFailure": "before.log: sandbox compiler spawn EPERM; no application assertions ran."
+  },
+  "fullSuiteCheckpoint": {
+    "total": 4338,
+    "passed": 4158,
+    "failed": 180,
+    "skipped": 0
+  },
+  "finalTargeted": {
+    "total": 591,
+    "passed": 591,
+    "failed": 0,
+    "skipped": 0
+  },
+  "unresolvedFailures": 180,
+  "newFailingIdentities": 0,
+  "typecheckAndServerBuild": {
+    "at": "2026-10-22T09:12:27.215Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "final-typecheck.log"
+      },
+      {
+        "name": "server-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "final-server-build.log"
+      }
+    ]
+  },
+  "initialProductionBuilds": {
+    "at": "2026-10-22T09:08:39.817Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "typecheck.log"
+      },
+      {
+        "name": "client-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "client-build.log"
+      },
+      {
+        "name": "server-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "server-build.log"
+      }
+    ]
+  },
+  "remaining": [
+    "V1-011 external-source durable recovery",
+    "V1-025 retained LinkedIn shared-job cancellation/late writes, remaining nested provider waits, deployed provider acceptance",
+    "V1-089 shared-property concurrency",
+    "V1-090 provider quality metadata",
+    "Full V1 release acceptance and 180 individually recorded test failures"
+  ],
+  "safety": {
+    "applicationCredentialsRemoved": true,
+    "externalHttpBlockedInTestRunner": true,
+    "onlyLocalhostFixtureDatabases": true,
+    "productionWrites": false,
+    "ptomoChanged": false,
+    "providerAcceptance": false,
+    "uiAcceptance": false,
+    "committed": false,
+    "pushed": false,
+    "deployed": false
+  },
+  "limits": [
+    "Timeout rejection is not proof of provider-side computation stopping immediately.",
+    "Per-request provider bounds do not establish every whole-job deadline or cross-worker write fence.",
+    "The full-suite checkpoint and final targeted run have different test inventories; do not add their counts or imply full V1 certification."
+  ]
+}

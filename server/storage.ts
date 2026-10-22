@@ -188,10 +188,11 @@ export type GA4RefreshConnectionWriteInput = GA4RefreshWriteInput & { expectedCo
 export type GA4RefreshGoogleAdsWriteInput = GA4RefreshConnectionWriteInput & { expectedSource?: { id: string; mappingConfig: string | null } };
 
 export interface IStorage {
+  withGA4PropertyRequest<T>(propertyId: string, signal: AbortSignal, operation: (signal: AbortSignal) => Promise<T>): Promise<T>;
   assertServiceAccountResourceAccess(campaignId: string, provider: "ga4" | "google_sheets" | "google_ads", resourceId: string): Promise<void>;
   writeWithGA4RefreshOwnership<T>(scope: GA4RefreshWriteInput["refreshScope"], write: (tx: any) => Promise<T>): Promise<T>;
   getGA4PublicationVersion(campaignId: string): Promise<string | null>;
-  isGA4NativeRecoveryEligible(campaignId: string): Promise<boolean>;
+  isGA4NativeRecoveryEligible(campaignId: string, options?: { includeFinancialSources?: boolean }): Promise<boolean>;
   getRecoverableGA4RefreshWork(): Promise<GA4RefreshWork[]>;
   requestGA4InitialImport(campaignId: string, ownerId: string, updates: Pick<InsertCampaign, "platform" | "ga4CampaignFilter">, retry?: boolean): Promise<GA4RefreshWork | undefined>;
   getGA4InitialImportWork(campaignId: string, ownerId: string, workId?: string): Promise<GA4RefreshWork | undefined>;
@@ -678,6 +679,49 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  async withGA4PropertyRequest<T>(propertyId: string, signal: AbortSignal, operation: (signal: AbortSignal) => Promise<T>): Promise<T> {
+    if (!pool || !/^\d+$/.test(propertyId)) throw new Error('GA4_PROPERTY_UNVERIFIED');
+    // Transaction locks bind all updated workers and pin transaction-pooled connections.
+    // Release the checkout while queued; hold the acquired slot through response-body parsing.
+    while (true) {
+      signal.throwIfAborted();
+      const client = await pool.connect();
+      const disconnected = new AbortController();
+      const onError = (error: Error) => disconnected.abort(error);
+      client.on('error', onError);
+      let key: string | undefined;
+      let destroy = false;
+      try {
+        signal.throwIfAborted();
+        await (client as any).query({ text: 'BEGIN', query_timeout: 5000 });
+        for (let slot = 0; slot < 5; slot++) {
+          const candidate = `ga4_property_request:${propertyId}:${slot}`;
+          const result = await (client as any).query({ text: 'SELECT pg_try_advisory_xact_lock(hashtextextended($1, 0)) AS acquired', values: [candidate], query_timeout: 5000 });
+          if (result.rows[0]?.acquired) { key = candidate; break; }
+          signal.throwIfAborted();
+        }
+        if (key) return await operation(AbortSignal.any([signal, disconnected.signal]));
+      } catch (error) {
+        // A query timeout can leave an unknown lock result. Destroy the checkout.
+        destroy = !key;
+        throw error;
+      } finally {
+        if (!destroy && !disconnected.signal.aborted) {
+          try {
+            await (client as any).query({ text: 'ROLLBACK', query_timeout: 5000 });
+          } catch { destroy = true; }
+        }
+        client.removeListener('error', onError);
+        client.release(destroy || disconnected.signal.aborted);
+      }
+      await new Promise<void>((resolve, reject) => {
+        signal.throwIfAborted();
+        const abort = () => { clearTimeout(timer); reject(signal.reason); };
+        const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); }, 50);
+        signal.addEventListener('abort', abort, { once: true });
+      });
+    }
+  }
   async assertServiceAccountResourceAccess(campaignId: string, provider: "ga4" | "google_sheets" | "google_ads", resourceId: string): Promise<void> {
     const [campaign] = await db.select({ ownerId: campaigns.ownerId, clientId: campaigns.clientId, status: campaigns.status })
       .from(campaigns).innerJoin(clients, and(eq(clients.id, campaigns.clientId), eq(clients.ownerId, campaigns.ownerId))).where(eq(campaigns.id, campaignId));
@@ -1428,7 +1472,7 @@ export class DatabaseStorage implements IStorage {
     return this.withGA4RefreshTransaction(tx => this.readGA4PublicationVersion(tx, campaignId));
   }
 
-  async isGA4NativeRecoveryEligible(campaignId: string): Promise<boolean> {
+  async isGA4NativeRecoveryEligible(campaignId: string, options: { includeFinancialSources?: boolean } = {}): Promise<boolean> {
     return this.withGA4RefreshTransaction(async tx => {
       const [campaign] = await tx.select().from(campaigns).where(eq(campaigns.id, campaignId)).for("share");
       if (!campaign?.ownerId || !filterActiveSchedulerCampaigns([campaign]).length || !campaign.ga4CampaignFilter?.trim()) return false;
@@ -1436,10 +1480,25 @@ export class DatabaseStorage implements IStorage {
       if (!connections.length || connections.some((connection: any) => !/^\d+$/.test(connection.propertyId) ||
         !['access_token', 'service_account'].includes(connection.method))) return false;
       for (const table of [revenueSources, spendSources, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections]) {
+        if (options.includeFinancialSources) {
+          if (table !== revenueSources && table !== spendSources) continue;
+          const sources = await tx.select().from(table).where(and(eq(table.campaignId, campaignId), eq(table.isActive, true)));
+          for (const source of sources) {
+            if ((source.platformContext || 'ga4') !== 'ga4') continue;
+            const types = table === revenueSources ? ['hubspot', 'salesforce', 'shopify', 'google_sheets', 'csv', 'manual', 'custom']
+              : ['google_sheets', 'ad_platforms', 'csv', 'manual', 'custom'];
+            if (!types.includes(source.sourceType)) return false;
+            if (source.sourceType === 'ad_platforms') {
+              try { if (JSON.parse(source.mappingConfig || '{}').platform !== 'google_ads') return false; } catch { return false; }
+            }
+          }
+          continue;
+        }
         const [source] = await tx.select({ id: table.id }).from(table).where(and(eq(table.campaignId, campaignId), eq(table.isActive, true))).limit(1);
         if (source) return false;
       }
       for (const table of [linkedinConnections, metaConnections, instagramConnections, tiktokConnections, googleAdsConnections, ga4GoogleAdsSpendConnections]) {
+        if (options.includeFinancialSources && (table === googleAdsConnections || table === ga4GoogleAdsSpendConnections)) continue;
         const [source] = await tx.select({ id: table.id }).from(table).where(eq(table.campaignId, campaignId)).limit(1);
         if (source) return false;
       }

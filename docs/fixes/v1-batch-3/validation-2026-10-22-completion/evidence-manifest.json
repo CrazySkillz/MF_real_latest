@@ -1,0 +1,231 @@
+{
+  "at": "2026-10-22T10:31:04.005Z",
+  "baseHead": "6b65d9c40e9a2f49b665b06094732a22e1b9f0c4",
+  "candidateUnchangedAfterValidation": true,
+  "files": [
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/assessment.json",
+      "sha256": "a6019f071eadc8cceb273bb8fc9546876474a0901af74fcc92cd75076b0b8e7a"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/cancellation-after.json",
+      "sha256": "bb14332e4d9305ba13830dd01222fa7a15cd9024c3cf93145d034887d871bb09"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/cancellation-after.log",
+      "sha256": "806af6fd8bd54be12eb60ab0b2c16d792d6a2b8fdb528f04484ecad58234d28b"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/cancellation-before.json",
+      "sha256": "1438f10702583379932f52a4c6ac626e2a112fad0d40a7bcb7f6965c30ef0324"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/cancellation-before.log",
+      "sha256": "aa523fc5cbf6675f4cfc3c4edacd77142ade8f45a03777aecfa4fe79eb51d94e"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/candidate-manifest.json",
+      "sha256": "d67778c9c6d1bd6846323fc69de6705ed259b75aa616755279897afbb35d1db2"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/cleanup-fixtures.cjs",
+      "sha256": "c4c83ec4708a7a42c45c9f430b660e1e0ab7222d21d0a1494eba1cbab257f7ff"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/failure-reconciliation.json",
+      "sha256": "602268e423c6bf7e6f926d7640948c0b7c22f5c50231deec92c9e2f66628c7f6"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/final-build-checks.json",
+      "sha256": "3339cf970dd6cf7c4267274c8dfd6233cbea93fe633eb8e2d987c2529baae6af"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/final-focused.json",
+      "sha256": "9a5e6806c56d0443cc9b76221eb972eae79381e4a5d9f8aced973032759162d9"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/final-focused.log",
+      "sha256": "97a6095bd4004f7049874b776e72f8fb9f50fea38a67389077b1119fe12eb7cb"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/final-regressions.json",
+      "sha256": "3c00bd87951ea79b226548553e57b187028f65dce4b5f69bd17336b7cf498a98"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/final-regressions.log",
+      "sha256": "95870207861e5580851ac18842000c6e603e5b8a887dddbce67b7781011fbe50"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/final-server-build.log",
+      "sha256": "6ca2b93db776dbb0a9c3495a8498929bded6910beabaf71bef5b4975757c5125"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/final-targeted.json",
+      "sha256": "13627f3eb5fe585ff43f2de00ff2e4d37a5c2277921873b394bad66c601f36bb"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/final-targeted.log",
+      "sha256": "ddc29bac1e3b4380b774a8302586196e8736b13a2e55b8b8e7ca5310e8b5ab92"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/final-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/financial-reply-before.json",
+      "sha256": "fc6d2f5dab32c03ccb0f39dfede1299214d0599e92745f425fba18bb174d1f61"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/financial-reply-before.log",
+      "sha256": "1a8b2f4a45a50dceb66c503b32f6fa3ea8881404c632b7b415da01a63daa5a65"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/first-build-checks.json",
+      "sha256": "8ad3af3fcc2cda814ae8037a86d5d4b765d11b7e1e239c81e3636e6b722db724"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/first-server-build.log",
+      "sha256": "7052755abf59494a8b44ffa2ab39540b5b48ad03014678ce0a2cf662fdfd2e03"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/first-typecheck.log",
+      "sha256": "981fe4652a4fb0df324bc77c4de9e641d1d60ed79af8a3ef7ed4427b797d0e17"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/fixture-cleanup.json",
+      "sha256": "5605b6795367d4b996aca60a6da69fbcdd57ce629f27ffeb124c2ccf1c4bef80"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/full-suite-final.json",
+      "sha256": "4cea0d68eef8b2165c592da1aa317ed7a5612318c07f18c97b84737f96ef6108"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/full-suite-final.log",
+      "sha256": "ffb3b37563e57164847753f44e21c0cc726cc7efe8ad24eee9dc4f17bb8160cd"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/full-suite.json",
+      "sha256": "8f07d830bcd307db5275478b1716ffc692cd43a3b6e042e71dc7a5b674e33a23"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/full-suite.log",
+      "sha256": "6e54129eeefa11de8da9499814c64f68ba160ca9078b6f23fc620a2bc748ee3e"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/postgres-stopped.json",
+      "sha256": "5bb918eafbe8bc664cf94e5c2b4c878f692355962bfa1ef7e5487ff79abbb0c4"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/process-recovery.json",
+      "sha256": "39acbdb4a6bb0822a973e7a8e60f2c3944484435c1761b9d340cff07a63fe129"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/process-recovery.log",
+      "sha256": "83871a9c14371ed629c253f37df04d8c5a81554e2aa2a12995e70c0f9d489cd0"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/property-postgres.json",
+      "sha256": "4a40b48a5ad51b88e53f1c14aafbcc43dd65cf37a637da4adb399181b7efb77f"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/property-postgres.log",
+      "sha256": "7c1de673f876689ab9352938141c4c571e0205141444d02548c5d48c326e7b4b"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/quality-concurrency-after.json",
+      "sha256": "bd35bff044bee647f485a3a3aeaac49707556c7b7052a51d21fb76bc8b826820"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/quality-concurrency-after.log",
+      "sha256": "256d2cf5e5a8062a7f03f06cc5d90cbf30ca7499c63bfad89e3fd843f660bfe8"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/quality-concurrency-before.json",
+      "sha256": "715e1e7189913125d423995d249c7753202c06ff8517b1b023c0604f1d2e4d93"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/quality-concurrency-before.log",
+      "sha256": "a04b539e6fd3ba69470875b5b3bdf263ee45738ab80da2a6d6a5f1cf1f462d52"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/quality-concurrency-first.json",
+      "sha256": "3c3f382251c1322ca7704fe1cf7cf0f1d5fd3ba480c22bc09db391372cb65e5b"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/quality-concurrency-first.log",
+      "sha256": "4fe206d1b20c038ad2d3623294793e490f8ad9b3e3b9e328832b8bdaf4203b64"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/quality-surfaces.json",
+      "sha256": "889f166722c49dec725dd1a93bdc296dcd2ec8559636e65fcaec0e65b08d2b29"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/quality-surfaces.log",
+      "sha256": "0292b4554b127a502d561b933c70dfedfc5294989b2855236ca8fd4463bc30b1"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/record-evidence.cjs",
+      "sha256": "fb4b1cd9e162e86dc32071e09fc7dc16507e763f1cac485c6830239cb7cd8135"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/recovery-before.json",
+      "sha256": "d627319d34b408ead3a22a4595de095101c779876136ef34bee9f6208aef1b04"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/recovery-before.log",
+      "sha256": "5c64c704a0c3f433f17d0a5ac374c36d77d0e73732b3f99385bd1f9264bc1841"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/recovery-first.json",
+      "sha256": "d68e933f167f4b452df06c2b09cc3fbf77164f4f79d450c8d549c839487086fd"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/recovery-first.log",
+      "sha256": "a187da09cf9184778061c13102beeeef82225273a1259a17eb69ab441a5d1405"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/recovery-second.json",
+      "sha256": "18b81b302ba70540e540eee14cb33b6f681f0377b84e58a520680634cc81dba5"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/recovery-second.log",
+      "sha256": "6a05fbecd53745d147c51eaf48bc99df1bedb3098648efbf35952a6b89efca8f"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/run-build-checks.cjs",
+      "sha256": "9161841426a16ef2f9dd10a6023fbc6cf0bd67467096c7aa57bf637cab7c3615"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/run-tests.cjs",
+      "sha256": "9ca6131105437c97995a8808e544488fa01a50bbcc2a45786ac358a05636fd45"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/second-build-checks.json",
+      "sha256": "d0e830d10e6089af2de1e538d72ea976983daaf81612553b77a43fe9816c0d3b"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/second-server-build.log",
+      "sha256": "5477e90cc42d6eef712d2ecea82a020bbbeac558d598b4adefbe2ba8259b8ac9"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/validation-2026-10-22-completion/second-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "docs/V1_RELEASE_READINESS.md",
+      "sha256": "337972f1e9b2cf6aeba0dde9f5221a71d8aa17bd3e09d943326bc116e08b1a32"
+    },
+    {
+      "file": "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md",
+      "sha256": "0a371dab4965fd42fe393b65011abc75aed95c43cfabc68b873a77ac7e2c5828"
+    },
+    {
+      "file": "docs/fixes/v1-batch-3/README.md",
+      "sha256": "f3d4ededaea4cacefa7109b2c604baa93b65d143c449c058bc027f71707e6a67"
+    },
+    {
+      "file": "docs/fixes/v1-batch-8/README.md",
+      "sha256": "7162a75c48aaabe1c3fb9895c4015e2b766c1ed8e23af9b7dab3edcda54bbb9c"
+    }
+  ]
+}

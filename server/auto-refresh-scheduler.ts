@@ -46,6 +46,7 @@ export type AutoRefreshRunOptions = GA4RefreshWriteInput & {
   deferDownstream?: boolean;
   campaignId?: string;
   campaignConcurrency?: 1 | 2;
+  excludeCampaignIds?: string[];
   onCampaignRefreshed?: (campaignId: string) => Promise<void>;
 };
 type AutoRefreshRunStatus = "idle" | "running" | "success" | "failed" | "skipped";
@@ -193,7 +194,7 @@ async function postJson(path: string, body: AnyRecord, refreshWriteInput: GA4Ref
     body: JSON.stringify(body || {}),
     signal: AbortSignal.timeout(timeoutMs),
   });
-  const text = await resp.text().catch(() => "");
+  const text = await resp.text();
   let json: any = undefined;
   try {
     json = text ? JSON.parse(text) : undefined;
@@ -202,7 +203,12 @@ async function postJson(path: string, body: AnyRecord, refreshWriteInput: GA4Ref
   }
   if (refreshWriteInput.refreshScope) {
     await storage.writeWithGA4RefreshOwnership(refreshWriteInput.refreshScope, async () => {});
-    if (!resp.ok) throw new Error(`GA4 financial refresh request failed (${resp.status})`);
+    if (!resp.ok) throw Object.assign(new Error(`GA4 financial refresh request failed (${resp.status})`), {
+      code: resp.status === 429 || resp.status >= 500 ? "GA4_TRANSIENT_ERROR" : "GA4_FINANCIAL_REFRESH_REJECTED",
+    });
+    if (json?.success !== true) throw Object.assign(new Error("GA4 financial refresh success was not confirmed"), {
+      code: "GA4_FINANCIAL_REFRESH_INCOMPLETE",
+    });
   }
   return { ok: resp.ok, status: resp.status, json, text };
 }
@@ -228,17 +234,16 @@ function isSourceOutsideCampaign(source: any, campaignId: string): boolean {
   return !!sourceCampaignId && sourceCampaignId !== String(campaignId || "").trim();
 }
 
-async function withTimeout<T>(label: string, promise: Promise<T>, timeoutMs: number): Promise<T> {
-  let timeout: NodeJS.Timeout | null = null;
+async function withTimeout<T>(label: string, operation: (signal: AbortSignal) => Promise<T>, timeoutMs: number): Promise<T> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
   try {
-    return await Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        timeout = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
-      }),
-    ]);
+    // Keep the shared stage occupied until in-flight work settles; never detach writes.
+    const result = await operation(controller.signal);
+    controller.signal.throwIfAborted();
+    return result;
   } finally {
-    if (timeout) clearTimeout(timeout);
+    clearTimeout(timeout);
   }
 }
 
@@ -1047,6 +1052,12 @@ export async function runDailyAutoRefreshOnce(
   if (guarded) {
     if (!opts.campaignId || opts.refreshScope?.campaignId !== opts.campaignId || !opts.financialSourcesOnly || !opts.deferDownstream || opts.onCampaignRefreshed) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
     await assertOwnership();
+    const waitStartedAt = Date.now();
+    while ((global as any).__autoRefreshInProgress) {
+      if (Date.now() - waitStartedAt >= 120_000) throw new Error("FINANCIAL_REFRESH_WAIT_TIMEOUT");
+      await new Promise(resolve => setTimeout(resolve, 100));
+      await assertOwnership();
+    }
   }
   // Give the daily job priority without overlapping an interval financial refresh.
   if ((global as any).__autoRefreshInProgress) {
@@ -1059,7 +1070,7 @@ export async function runDailyAutoRefreshOnce(
   }
   // Claim priority before waiting so another interval financial refresh cannot start.
   (global as any).__autoRefreshInProgress = true;
-  beginFinancialDailySnapshotRefreshObservation("financial_sources");
+  beginFinancialDailySnapshotRefreshObservation("financial_sources", guarded ? opts.campaignId : undefined);
   const startedAtDate = new Date();
   const startedAt = Date.now();
   autoRefreshSchedulerStatus.totalRuns += 1;
@@ -1095,7 +1106,7 @@ export async function runDailyAutoRefreshOnce(
         linkedInRefreshFailed = true;
         console.log("[Auto Refresh] Step 1/2: Refreshing LinkedIn data for all campaigns...");
         const linkedInTimeoutMs = Math.max(parseInt(String(process.env.AUTO_REFRESH_LINKEDIN_TIMEOUT_MS || "120000"), 10) || 120000, 10000);
-        await withTimeout("LinkedIn auto-refresh", refreshAllLinkedInData(), linkedInTimeoutMs);
+        await withTimeout("LinkedIn auto-refresh", signal => refreshAllLinkedInData(signal), linkedInTimeoutMs);
         linkedInRefreshFailed = false;
         console.log("[Auto Refresh] ✅ LinkedIn refresh complete");
       }
@@ -1109,7 +1120,7 @@ export async function runDailyAutoRefreshOnce(
     const requestedCampaign = requestedCampaignId ? await storage.getCampaign(requestedCampaignId) : undefined;
     const campaigns = filterActiveSchedulerCampaigns(requestedCampaignId
       ? (requestedCampaign ? [requestedCampaign] : [])
-      : await storage.getCampaigns());
+      : await storage.getCampaigns()).filter(campaign => !opts.excludeCampaignIds?.includes(campaign.id));
     if (guarded && campaigns.length !== 1) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
     campaignsScanned = campaigns.length;
 
@@ -1133,6 +1144,11 @@ export async function runDailyAutoRefreshOnce(
           if (revenueSources.some(source => source.isActive !== false && !["hubspot", "salesforce", "shopify", "google_sheets", "csv", "manual", "custom"].includes(source.sourceType))
             || spendSources.some(source => source.isActive !== false && !["google_sheets", "ad_platforms", "csv", "manual", "custom"].includes(source.sourceType))) throw new Error("GA4_REFRESH_UNSUPPORTED_FINANCIAL_SOURCE");
           if (spendSources.some(source => source.isActive !== false && source.sourceType === "ad_platforms" && safeJsonParse(source.mappingConfig)?.platform !== "google_ads")) throw new Error("GA4_REFRESH_UNSUPPORTED_FINANCIAL_SOURCE");
+          for (const source of [...revenueSources, ...spendSources].filter(source => source.isActive !== false)) {
+            const mapping = safeJsonParse(source.mappingConfig);
+            if (["hubspot", "salesforce", "shopify"].includes(source.sourceType) && !mapping?.selectedValues?.length) throw new Error("GA4_REFRESH_FINANCIAL_MAPPING_INCOMPLETE");
+            if (source.sourceType === "google_sheets" && (!mapping?.connectionId || !mapping?.[revenueSources.includes(source as any) ? "revenueColumn" : "spendColumn"])) throw new Error("GA4_REFRESH_FINANCIAL_MAPPING_INCOMPLETE");
+          }
         }
         // HubSpot revenue sources are the source of truth for saved campaign mappings.
         let hubspotRevenueCount = 0;
@@ -1280,6 +1296,7 @@ export async function runDailyAutoRefreshOnce(
                 succeeded++;
                 anyUpdated = true;
               } catch (error: any) {
+                if (guarded) throw error;
                 console.error(`[Auto Refresh] Google Ads spend alignment failed for campaign ${campaignId}:`, error?.message || error);
               }
               continue;

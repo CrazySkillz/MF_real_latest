@@ -46,7 +46,9 @@ function toNum(n: any): number {
 export async function upsertLinkedInDailyTotals(params: {
   campaignId: string; // MetricMind campaign id
   dailyElements: LinkedInDailyElement[];
+  signal?: AbortSignal;
 }): Promise<{ upserted: number; days: number }> {
+  params.signal?.throwIfAborted();
   const campaignId = String(params.campaignId || "").trim();
   if (!campaignId) return { upserted: 0, days: 0 };
 
@@ -110,6 +112,7 @@ export async function upsertLinkedInDailyTotals(params: {
   const rows = Array.from(map.values()).sort((a, b) => String(a.date).localeCompare(String(b.date)));
   if (rows.length === 0) return { upserted: 0, days: 0 };
 
+  params.signal?.throwIfAborted();
   const result = await storage.upsertLinkedInDailyMetrics(rows);
   const upserted = typeof (result as any)?.upserted === "number" ? (result as any).upserted : rows.length;
   return { upserted, days: rows.length };

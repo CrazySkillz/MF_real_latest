@@ -15,8 +15,11 @@ export async function fetchCompleteSalesforceQuery(args: {
   fetchImpl?: typeof fetch;
   maxResults?: number;
   maxPages?: number;
+  signal?: AbortSignal;
 }): Promise<any[]> {
   const fetchImpl = args.fetchImpl || fetch;
+  const timeout = AbortSignal.timeout(120_000);
+  const signal = args.signal ? AbortSignal.any([args.signal, timeout]) : timeout;
   const maxResults = args.maxResults ?? MAX_SALESFORCE_RESULTS;
   const maxPages = args.maxPages ?? MAX_SALESFORCE_PAGES;
   const instanceOrigin = new URL(args.instanceUrl).origin;
@@ -26,13 +29,15 @@ export async function fetchCompleteSalesforceQuery(args: {
   let pages = 0;
 
   while (nextUrl) {
+    signal.throwIfAborted();
     if (requestedUrls.has(nextUrl)) {
       throw queryError('Salesforce repeated a query locator.', SALESFORCE_PAGINATION_ERROR_CODE);
     }
     requestedUrls.add(nextUrl);
 
-    const response = await fetchImpl(nextUrl, { headers: { Authorization: `Bearer ${args.accessToken}` } });
-    const json: any = await response.json().catch(() => ({}));
+    const response = await fetchImpl(nextUrl, { headers: { Authorization: `Bearer ${args.accessToken}` }, signal });
+    const json: any = await response.json();
+    signal.throwIfAborted();
     if (!response.ok) {
       throw queryError(
         String(json?.[0]?.message || json?.message || 'Failed to load Salesforce opportunities'),

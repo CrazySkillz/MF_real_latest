@@ -6,11 +6,13 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 3 status
 
-**IN PROGRESS — completed corrections deployed as `5f251e0e6e9df0d9579addea6fe6f717c196cb47`, with runtime content from `001ddfa87c445a51e63320cde9737b774aa1af0c`.** Five localized corrections (V1-032/033/035/036/087) and the native GA4 portion of V1-025 pass the [546-check regression packet](validation-2026-10-21/currency-cache-final.json), including real isolated PostgreSQL and an intercepted rendered-browser fixture. The V1-079 precision correction and subsequent deployment evidence are recorded below. All 10 release acceptances remain open; deploying the completed fixes does not finish Batch 3.
+**All ten Batch 3 corrections are VERIFIED LOCALLY for their documented forward paths; release acceptance remains OPEN.** Six corrections were previously deployed in `5f251e0e` (runtime content `001ddfa8`). The final four corrections and the provider-timeout continuation are uncommitted and undeployed. The [completion checkpoint](#completion-checkpoint-october-22) records current evidence and remaining acceptance.
 
 **Precision follow-up: V1-079 is VERIFIED LOCALLY for the documented forward paths.** Fractional credit now survives goals, history, snapshots, diagnostics and report rendering. Release acceptance remains OPEN. The [current candidate manifest](validation-2026-10-21-goal-precision/candidate-manifest.json) and [assessment](validation-2026-10-21-goal-precision/assessment.json) supersede earlier hashes; see [V1-079](#v1-079).
 
-The four remaining implementation paths are source-aware recovery (V1-011), diagnostic/provider timeout/cancellation and late-write safety (the rest of V1-025), shared-property concurrency (V1-089) and provider-quality metadata (V1-090). V1-079 still requires deployed/provider and historical-data acceptance; do not confuse the locally verified forward correction with whole-source certification.
+**October 22 local continuation:** diagnostic, Google Ads and Salesforce request deadlines plus adjacent HubSpot body-error handling are corrected and verified within the [timeout checkpoint](#timeout-continuation-october-22). These changes are uncommitted and are not included in the deployed revision above.
+
+The four previously unfinished paths?source-aware recovery (V1-011), cancellation/late-write safety (V1-025), shared-property concurrency (V1-089) and provider-quality metadata (V1-090)?are now locally verified within the completion checkpoint. No known Batch 3 code correction remains queued in those four findings. Deployed/provider, historical-data and whole-V1 acceptance remain open.
 
 **Local commit boundary:** The 71 runtime/test/migration files match the final validated manifest. This checkpoint includes those fixes, both precision migrations, the four updated audit records and the three dated validation packets. Historical assessments retain their original pre-commit status. Production compatibility, backup and the precision-preserving fallback subsequently passed the bounded pre-push checks recorded below. No additional runtime changes or production actions were made while preparing the commit.
 
@@ -28,9 +30,22 @@ The remaining rollback concern is future processing: the old runtime would reint
 - [Read-only post-deployment verification](deployment-2026-10-22/production-after.json) confirms all 13 widened columns and validated finite constraints on hosted PostgreSQL 17.9, with zero nonfinite values. Ptomo configuration, all 47 saved dates, native/detail/financial conversion totals of 262, Revenue EUR 65,659.50 and their publication timestamps match the pre-deployment evidence. No manual Ptomo refresh, edit or history rewrite occurred.
 - The snapshot table grew during the existing startup job. [Aggregate classification](deployment-2026-10-22/snapshot-growth-check.json) identifies 23 automatic snapshots for active campaigns and zero Ptomo rows; the first schema observation had seen five while that job was still running. The unchanged startup scheduler begins after 30 seconds. Do not describe the whole production database as unchanged.
 - [Public client asset verification](deployment-2026-10-22/client-artifact-check.json) follows the deployed entry, GA4 page and shared metric chunk and confirms the fractional formatter. The initial entry-only check missed the lazy shared chunk; the corrected check passed without an application change. No authenticated rendered UI was available.
-- **Next natural publication:** October 22 at **08:00 Europe/Amsterdam** (`06:00 UTC`), through October 21. At verification, the new scheduler is idle and Ptomo retains its last completed October 21 evening publication through October 20. Unchanged timestamps before the next due run are expected. A new-runtime natural refresh and provider-backed fractional publication remain unverified; zero fractional rows in this saved Ptomo window cannot prove the live provider-fraction case.
+- **Natural publication follow-up:** the October 22 **08:00 Europe/Amsterdam** refresh now has user-supplied Overview evidence: both successful-update labels show **08:10**, with data through October 21. The [morning refresh record](#ptomo-morning-refresh-october-22) closes this bounded UI freshness check. Provider-backed fractional publication remains unverified.
 
 The encrypted backup and tested recovery branch are retained. Local fixture schemas/connections are cleared and the isolated PostgreSQL cluster is stopped. Remaining Batch 3 paths, main-candidate test failures and whole-V1 acceptance remain open. Later documentation-only commits do not change this deployed runtime boundary.
+
+### Ptomo morning refresh, October 22
+
+**PASS for the requested post-deployment Overview freshness check.** The user supplied two screenshots in this conversation after the scheduled 08:00 run. These are user-provided rendered UI evidence, not an independently operated browser or a new provider/database reconciliation. The screenshots show:
+
+- GA4 metrics: September 4 through October 21, 2026, Europe/Amsterdam; last successful update October 22 at **08:10 AM GMT+2**.
+- Financial figures: data through October 21; last successful update October 22 at **08:10 AM GMT+2**. Native financial inputs cover September 4 through October 21.
+- Sessions **3,096**; Users **3,097**; Conversions **276**; Engagement Rate **72.4%**; Conversion Rate **8.9%**.
+- Total Revenue **EUR 69,386.35**, Sources (1); Spend, ROAS, ROI and CPA **Unavailable**; Expected Revenue **Not configured**. No updating banner is visible in the supplied captures.
+
+Both publication labels advanced from October 21 to October 22 and the data cutoff advanced from October 20 to October 21. Changes to Ptomo's test figures are permitted by the policy above; the screenshots do not independently prove every underlying value against Google. A separate read-only public `/api/health` check at **2026-10-22 08:20:32 UTC** returned HTTP 200, `ok: true`, and unchanged deployed revision **`5f251e0e6e9df0d9579addea6fe6f717c196cb47`**. Local HEAD was `6b65d9c40e9a2f49b665b06094732a22e1b9f0c4` before this documentation update; the screenshots themselves do not expose a revision or scheduler run ID.
+
+No additional freshness wait is required for this check. These whole-number conversion totals do not prove provider-backed fractional credit or downstream KPI/Benchmark/history/report parity. The four remaining implementation paths, all 10 Batch 3 release acceptances and whole-V1 NO-GO remain unchanged. This follow-up changes documentation only; no runtime code, campaign configuration, production data, manual refresh or deployment was changed. Earlier dated JSON/manifests remain historical checkpoints and are not overwritten.
 
 ## Fallback validation, October 22
 
@@ -41,7 +56,7 @@ The encrypted backup and tested recovery branch are retained. Local fixture sche
 - **Deployment preconditions:** [current read-only production/Ptomo evidence](deployment-2026-10-22/production-before.json) confirms the old deployed SHA, expected column types, no nonfinite values, no contended target locks at observation time, and unchanged Ptomo configuration. The [encrypted backup recheck](deployment-2026-10-22/backup-recheck.json) confirms the same protected archive successfully restored in the October 21 rehearsal. Raw database timestamp text supersedes the preliminary local-driver timestamp conversions; numerical/configuration observations are unchanged.
 - **Recovery limits:** this fallback deliberately restores the older nonprecision behavior, including the known query/pagination, cancellation, source-identity/refund and currency-edit defects. Use it only for an incident within that recovery scope, not as a general release candidate. Deploy its exact SHA or apply its single recovery commit after checking the deployed runtime still matches `001ddfa8`; retain the widened schema. Never use the unmodified old application or a database downcast. Hosted recovery execution, provider-backed fractional publication and whole-V1 acceptance remain OPEN.
 
-No authenticated browser is connected in this session. Read-only deployed checks can establish revision, schema, access denial, saved Ptomo values and scheduler timing, but cannot certify the rendered owner UI or a future scheduled refresh. The four unfinished Batch 3 implementation paths and all wider release gates remain open.
+At the fallback checkpoint no authenticated browser was connected. The later [user-supplied morning screenshots](#ptomo-morning-refresh-october-22) establish bounded Overview publication freshness; they do not certify the complete owner UI or all scheduler paths. The four unfinished Batch 3 implementation paths and all wider release gates remain open.
 
 ## Deployment preflight, October 21
 
@@ -57,7 +72,20 @@ No authenticated browser is connected in this session. Read-only deployed checks
 
 ## Current validation boundary
 
-**Latest downstream-precision checkpoint: 4,300 tests; 4,119 passed, 181 failed, zero skipped.** No newly failing identity. Every unresolved failure retains its original ID/classification in the [reconciliation](validation-2026-10-21-goal-precision/failure-reconciliation.json); none is waived. [Full results](validation-2026-10-21-goal-precision/full-suite-final.json), [assessment](validation-2026-10-21-goal-precision/assessment.json) and [candidate hashes](validation-2026-10-21-goal-precision/candidate-manifest.json) identify the tested content included in this local commit checkpoint.
+### Timeout continuation, October 22
+
+**Uncommitted changes on `6b65d9c4`; V1-025 remains IN PROGRESS.** [Assessment](validation-2026-10-22-timeouts/assessment.json), [changed-file hashes](validation-2026-10-22-timeouts/candidate-manifest.json) and [failure-by-failure reconciliation](validation-2026-10-22-timeouts/failure-reconciliation.json) identify this bounded continuation. No commit, push, deployment, production query/write, Ptomo refresh, provider request or email was performed during this implementation/validation step.
+
+- **Final focused validation:** [591 checks pass, zero failures/skips](validation-2026-10-22-timeouts/final-targeted.json). These include actual localhost HTTP/Axios cancellation during stalled headers and bodies, diagnostic whole-operation expiry, plain-Error owner cancellation, bounded transient retry/recovery, malformed-versus-valid-empty responses, Google Ads selected scope/fractional values, and downstream write prevention after provider failure. Six new actual-route/PostgreSQL cases verify Salesforce and HubSpot timeout, abort and invalid-JSON failures preserve all saved source facts for both fixture campaigns and trigger no recompute. Existing source lifecycle/ownership and native refresh tests also pass in this packet.
+- **Full-suite checkpoint:** [4,338 tests: 4,158 passed, 180 failed, zero skipped](validation-2026-10-22-timeouts/full-suite.json); zero new failing identities or failed suites without assertions. Every remaining failure retains its stable ID, classification and release impact. `TEST-992002bd4c` now passes after its obsolete source assertion was updated to locate the ownership-aware credential call, explicitly require that call to exist, and retain field-validation-before-credentials ordering. No runtime field validation was weakened. The full run began before the adjacent HubSpot body guard and six new PostgreSQL cases were added; the subsequent 591-check packet validates the final changed paths. These are separate checkpoints, not a second complete full-suite run or a combined passing count.
+- **Reproductions/classification:** [initial diagnostic/Salesforce/helper checks](validation-2026-10-22-timeouts/before-verified.json) reproduce 10 failures with one neighboring success; [Google Ads before](validation-2026-10-22-timeouts/ads-before.json) reproduces all 15 failures. The [additional HubSpot guard reproduction](validation-2026-10-22-timeouts/adjacent-hubspot-before.json) has one failure and 17 intentionally filtered tests; it is not an acceptance run. The initial `before.log` compiler spawn EPERM is an environment/setup failure, resolved by allowing the local compiler process. The initial post-fix packet's one obsolete Salesforce assertion and the wider packet's seven failures are individually classified in the reconciliation; the seven remain open.
+- **Builds and cleanup:** [production builds](validation-2026-10-22-timeouts/build-checks.json) pass; [final TypeScript/server checks](validation-2026-10-22-timeouts/final-build-checks.json) pass after the last HubSpot guard. Client files are unchanged. Existing bundle-size and node-cron sourcemap warnings remain. [Cleanup](validation-2026-10-22-timeouts/fixture-cleanup.json) confirms zero leftover schemas/connections in both localhost fixture databases; the disposable cluster was stopped. Test runners strip credentials and block non-local HTTP. No customer/provider account is used.
+
+**Historical remaining work at the timeout checkpoint:** V1-011/025/089/090 were still unfinished at that point. The later [completion checkpoint](#completion-checkpoint-october-22) supersedes that implementation status. These dated timeout results remain supporting evidence, not the latest full-suite result.
+
+### Earlier downstream-precision checkpoint, October 21
+
+**4,300 tests; 4,119 passed, 181 failed, zero skipped at this earlier checkpoint.** No newly failing identity. Every unresolved failure retains its original ID/classification in the [reconciliation](validation-2026-10-21-goal-precision/failure-reconciliation.json); none is waived. [Full results](validation-2026-10-21-goal-precision/full-suite-final.json), [assessment](validation-2026-10-21-goal-precision/assessment.json) and [candidate hashes](validation-2026-10-21-goal-precision/candidate-manifest.json) identify the tested content included in that local commit checkpoint.
 
 The [precision coverage subset](validation-2026-10-21-goal-precision/precision-coverage.json) has **588 passing tests**, extracted from that full run; this is not an additional run. [Startup](validation-2026-10-21-goal-precision/startup-results.json): 11 scenarios pass, including repeated boot after fractional writes. [TypeScript and production builds](validation-2026-10-21-goal-precision/build-checks.json) pass. [Cleanup](validation-2026-10-21-goal-precision/cleanup.json) confirms zero fixture schemas/connections and the stopped local PostgreSQL process.
 
@@ -110,20 +138,45 @@ These records retain their own dates and verification limits. Use the current fi
 - [Financial source design](../../../GA4/FINANCIAL_SOURCES.md)
 - [Processing/alignment backlog](../../GA4_PROCESSING_AND_ALIGNMENT_BACKLOG.md)
 
+## Completion checkpoint, October 22
+
+**The four remaining Batch 3 corrections are implemented and VERIFIED LOCALLY.** Together with the six earlier corrections, all ten Batch 3 findings now have locally verified forward fixes. All ten release acceptances remain OPEN. The latest changes are uncommitted on `6b65d9c40e9a2f49b665b06094732a22e1b9f0c4`; they are not part of live `5f251e0e`. [Assessment](validation-2026-10-22-completion/assessment.json), [candidate hashes](validation-2026-10-22-completion/candidate-manifest.json) and [failure reconciliation](validation-2026-10-22-completion/failure-reconciliation.json) bind the exact evidence. No production query/write, provider call, Ptomo change, migration, commit, push or deployment occurred in this step.
+
+| Finding | Confirmed cause and current correction | Local evidence and boundary |
+|---|---|---|
+| V1-011 | Ongoing recovery rejected every external source, although source-aware transactional write fences already existed. `storage.isGA4NativeRecoveryEligible` now explicitly admits only integrated GA4 financial families for ongoing refresh. `ga4-daily-scheduler.ts` dispatches those campaigns through their durable work lease, excludes them from the ordinary financial pass, refreshes sources through `auto-refresh-scheduler.ts`, then publishes native/financial/downstream values. Initial imports retain their native-only boundary. | [Pre-fix eligibility/orchestration failures](validation-2026-10-22-completion/recovery-before.json); exact source/mapping/credential-generation invalidation, lease expiry, edit/delete/reconnect and transactional route checks pass in the final suite. [Real worker termination/replay](validation-2026-10-22-completion/process-recovery.json) exercises an external CSV record at financial, derived and completion boundaries: one exact record, no duplicate, other campaign preserved. Provider-specific routes and fences are tested separately; no real CRM/ecommerce recovery was forced. |
+| V1-025 | The shared LinkedIn timeout detached a still-running job; nested Sheets helpers cleared deadlines at headers or replaced caller signals. The callback now receives cancellation and remains awaited until settled; retained LinkedIn requests and subsequent storage stages check that signal. Three existing Sheets helpers plus their retry request retain deadlines through body reads. Earlier GA4/Ads/Salesforce/HubSpot corrections are included. | [Pre-fix cancellation packet](validation-2026-10-22-completion/cancellation-before.json), `v1-batch3-shared-cancellation.test.ts` and `v1-batch3-provider-timeouts.test.ts` pass. An already-started LinkedIn DB write may settle before the timeout returns; no later stage/write starts. This is shared-job safety, not deferred LinkedIn functionality or whole-job transactional rollback. |
+| V1-089 | Per-channel Insights requests had no shared property cap. `analytics.ts:requestReport` now admits at most five requests/property across service instances, holds each slot through response parsing, and removes cancelled waiters. `storage.withGA4PropertyRequest` uses five transaction advisory locks/property across updated app workers, pins the DB connection, rolls back/releases in finally, and aborts the provider on DB loss. Existing Core, realtime and service-account connection probes use the guard. | [Pre-fix fan-out packet](validation-2026-10-22-completion/quality-concurrency-before.json); 25 simultaneous requests; five simultaneous Insights readers with 12 channels each; distinct properties; queue cancellation; provider error; DB-session loss; and six real worker processes pass. Worker termination releases capacity. Actual hosted load/quotas remain external acceptance. |
+| V1-090 | Provider quality metadata was dropped before numbers reached consumers. The shared report helper now rejects sampling, other-row, thresholding, active metric restrictions, truncation and nonempty empty-reason flags with `GA4_DATA_QUALITY_UNAVAILABLE`. Optional fallback branches propagate it. Daily queries also reject incomplete row counts. Existing health/error paths retain the previous successful publication; no replacement zero is invented. | Six flags across twelve currently used public report methods pass in `v1-batch3-ga4-quality-concurrency.test.ts`; unflagged genuine zero remains valid. Pipeline tests inject flagged provider results at four native fetch stages and verify prior daily/Overview/financial state survives, with no goal/snapshot/alert/completion publication. Historical provider flags cannot be reconstructed from discarded metadata. |
+
+The owned financial runner also rejects a malformed/empty HTTP 200 or `success:false` response instead of treating it as completed. Four isolated cases [failed before the guard](validation-2026-10-22-completion/financial-reply-before.json) and pass in the final suite. All four existing internal financial routes return `success:true` on success. Ownership is checked before and after the request. HTTP 429/5xx failures retain retryable classification; a discovery failure cannot fall back to a different Ads connection. Source refresh observations clear only the owned campaign's evidence; two-campaign native concurrency is preserved.
+
+**Final validation:** [4,458 tests: 4,278 passed, 180 failed, zero skipped](validation-2026-10-22-completion/full-suite-final.json). Every runtime/test edit preceded this final full run. No new failing identity or failed suite without assertions remains. The earlier 731-check focused packet and 15-check process packet are supporting checkpoints, not extra tests to add to the full-suite count. The 17 changed test files contain 786 checks: 784 pass and two existing UI structural assertions remain open (`TEST-0619d2cd62`, `TEST-8eb70be184`). Both belong to the same 180-failure ledger; neither is waived or certified by the provider fixtures. The separate CI-only `TEST-f323e48c9f` remains open under Batch 8.
+
+The first full run exposed eleven additional failures. Ten used incomplete HTTP mocks without status codes; the fixtures now supply real 400/401/403/429 statuses, and the quota case verifies a single request with a 60-second Retry-After. One expected the former partial-success summary after owned Ads discovery failed; it now requires rejection and still forbids connection fallback. All eleven pass in the final full run. Earlier intermediate packets also found a real two-campaign serialization regression and quality-error fallback retries; both were corrected. Fixture total/lease-generation mismatches, CRLF source extraction and TypeScript compatibility corrections are individually recorded in the assessment. No safety test was skipped.
+
+[TypeScript and production server build pass](validation-2026-10-22-completion/final-build-checks.json). There are no client source changes; the prior passing production client build remains applicable. Existing node-cron sourcemap/deprecation warnings remain. [Fixture cleanup](validation-2026-10-22-completion/fixture-cleanup.json) verifies zero remaining schemas, other clients and advisory locks in both localhost databases; [the test-only PostgreSQL process is stopped](validation-2026-10-22-completion/postgres-stopped.json). [Evidence hashes](validation-2026-10-22-completion/evidence-manifest.json) retain all checkpoints without overwriting historical packets.
+
+**What still prevents release acceptance:** this candidate must be reviewed/committed/deployed and bound to its actual deployed configuration. Required live checks include the customer lifecycle, source permissions/configuration, provider reconciliation, natural refresh/recovery and downstream UI/report behavior. Hosted pooling and quota/load behavior require deployed evidence. The local process tests are not a production interruption experiment. No repeat Ptomo freshness wait is needed for its already-passed October 22 morning check. Batches 4?8, all 180 local failures, the CI-only failure and whole-V1 operational gates remain open.
+
+**Quality policy and provider-specific assumptions:** Google's [response metadata contract](https://developers.google.com/analytics/devguides/reporting/data/v1/rest/v1beta/ResponseMetaData) defines these flags. The gate is conservative: threshold/other-row metadata does not prove every returned value is wrong, but the app will not publish an uncertain report as exact. No synthetic quality fields are added to numeric responses. Previous good publication remains distinguishable through existing freshness/health behavior. Google's [quota contract](https://developers.google.com/analytics/devguides/reporting/data/v1/quotas) lists ten concurrent Core requests for a Standard property; this app uses five and requests `returnPropertyQuota`. The cap covers updated workers sharing this database, not older deployed workers or other applications using the property. Core and realtime share the conservative local cap even though provider quota categories differ. The unused legacy SDK report method in `real-ga4-client.ts` has no current runtime caller and is not newly certified.
+
+**Reusable source template:** keep the existing UI ? route ? storage ? schema/job flow; carry one cancellation/deadline through page loops and body parsing; retain last-good state on incomplete/provider failures; validate exact source identity and generation inside transactional writes; replay exact materialized facts idempotently; cap shared provider dispatch across processes and release capacity on failure/termination; reject uncertain values before downstream publication. Reuse the cancellation, source edit/delete/reconnect, process termination, concurrency, zero/missing and publication-preservation test cases. Each new provider independently needs permissions, metric semantics, attribution, currency, dates/timezones, pagination, quality flags and quota validation. GA4's property key, five-slot choice, metadata names, reporting windows and metric fallbacks are assumptions to adapt, not a generic provider contract. No new framework or deferred provider implementation was introduced.
+
 ## Finding checklist
 
 | Finding | Severity | Fix status | Release acceptance |
 |---|---|---|---|
-| [V1-011](#v1-011) | P1 | OPEN | OPEN |
-| [V1-025](#v1-025) | P1 | IN PROGRESS | OPEN |
+| [V1-011](#v1-011) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-025](#v1-025) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-032](#v1-032) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-033](#v1-033) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-035](#v1-035) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-036](#v1-036) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-079](#v1-079) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-087](#v1-087) | P1 | VERIFIED LOCALLY | OPEN |
-| [V1-089](#v1-089) | P1 | OPEN | OPEN |
-| [V1-090](#v1-090) | P1 | OPEN | OPEN |
+| [V1-089](#v1-089) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-090](#v1-090) | P1 | VERIFIED LOCALLY | OPEN |
 
 ## Findings
 
@@ -131,7 +184,7 @@ Original evidence below is retained verbatim except relative link destinations. 
 
 ### V1-011
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -139,11 +192,10 @@ Original evidence below is retained verbatim except relative link destinations. 
 
 Durable ownership/restart recovery in `ga4-daily-scheduler.ts:639–712` rejects active external Revenue/Spend sources and external connections. CRM/Sheets/Ads/Shopify campaigns retain ordinary refresh paths. Native-only P5 acceptance does not prove their cross-worker edits, retry, cancellation and restart safety.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
-
+**Implementation / validation:** VERIFIED LOCALLY in the [October 22 completion checkpoint](#completion-checkpoint-october-22), which records exact current paths, root cause, failing/fixed/neighboring tests, changed-file hashes and remaining deployed/provider gates. The original evidence above is historical. Release acceptance remains OPEN.
 ### V1-025
 
-**Severity:** P1. **Fix status:** IN PROGRESS. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -157,7 +209,15 @@ Durable ownership/restart recovery in `ga4-daily-scheduler.ts:639–712` rejects
 
 **Scheduler cancellation correction:** A real scheduler abort uses a plain `Error`, not necessarily an `AbortError`. Three optional native branches still swallowed that reason in the [additional pre-fix packet](validation-2026-10-21/currency-cancel-before.json). The catch now also checks its owning signal's aborted state. All four native branches propagate that cancellation in the [final targeted packet](validation-2026-10-21/currency-cache-final.json); existing native timeout/retry and refresh-ownership checks also pass.
 
-**Still open:** Google Ads Axios calls, Salesforce pagination and the `withTimeout` promise race around LinkedIn in `auto-refresh-scheduler.ts:1098` are not corrected here. Current-code review also confirms direct fetch in native `getOverviewDimensionDiagnostics` (`analytics.ts`, invoked conditionally from the breakdown route at `routes-oauth.ts:13663`); the total-query correction does not cover that diagnostic API path. LinkedIn functionality remains deferred, but retained shared-job late-write safety is still required. Remaining diagnostic/provider cancellation/late-write paths and deployed cancellation need validation. This finding is only partially implemented and cannot be marked fully verified.
+**October 22 correction (uncommitted):** current-code traces confirm three request paths lacked cancellation and the shared route helper cleared its timer at headers while replacing caller signals. `getOverviewDimensionDiagnostics` now uses `requestReport` with one 120-second signal across the complete diagnostic sequence; timeout, owner cancellation and exhausted transient failure stop later dimension requests. The conditional breakdown/debug caller in `routes-oauth.ts` keeps its existing success/error contract and selected campaign/property/currency scope; this is not a new UI action.
+
+`GoogleAdsClient` now gives OAuth exchange/renewal, customer discovery/details, metadata, campaign and daily-data requests 120-second Axios timeouts plus abort signals. Account discovery shares one deadline across its account loop and cannot hide timeout as a partial account list. The scheduler propagates cancelled/expired token requests instead of continuing with the old token. Selected campaign IDs, currency/timezone validation, SearchStream completeness, decimal conversion values and storage paths are unchanged.
+
+`fetchCompleteSalesforceQuery` now has one 120-second query deadline across all pages, retains optional caller cancellation and rejects an interrupted/malformed body before returning records. The existing route `fetchWithTimeout` keeps its configured deadline active through body reads and combines rather than replaces the caller signal. Its current Salesforce wrapper, Sheets Revenue chunk reader and HubSpot search/currency callers were reviewed. Sheets malformed chunks already fail closed; missing HubSpot currency already rejects relevant imports. HubSpot search required the adjacent one-line removal of its empty-object JSON fallback, otherwise the new body deadline could turn an interrupted search into empty successful data. The actual HubSpot/Salesforce route tests confirm existing materialized facts survive these failures. Nested Google Sheets token/data timeout helpers are separate code paths and are not certified by this change.
+
+**Validation / reusable safeguard:** the [October 22 checkpoint](#timeout-continuation-october-22) records failing/fixed/neighboring and actual PostgreSQL tests plus builds. [Axios cancellation](https://axios-http.com/docs/cancellation) supports the request signal used here; actual local adapter/socket tests prove this implementation cancels both stalled phases. Carry the original deadline through pagination, body parsing and retries; propagate cancellation instead of inventing zero or continuing with stale credentials. Provider-side computation stopping instantly is not proven by local socket closure.
+
+**October 22 completion:** the shared LinkedIn callback now propagates cancellation and stays awaited; provider/storage stages stop before subsequent writes. Nested Sheets timeout helpers and the separate retry fetch preserve body deadlines and caller cancellation. V1-025 is VERIFIED LOCALLY for the bounded paths in the [completion checkpoint](#completion-checkpoint-october-22). Provider-side immediate cancellation, hosted failure/recovery and full release acceptance remain unverified; deferred LinkedIn functionality is not certified.
 
 ### V1-032
 
@@ -311,7 +371,7 @@ The next [full-suite run](validation-2026-10-21/full-suite-final.json) exposed 2
 
 ### V1-089
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -319,11 +379,10 @@ The next [full-suite run](validation-2026-10-21/full-suite-final.json) exposed 2
 
 `analytics.ts:2358` unbounded per-channel Promise.all reaches12 concurrent provider calls for one Insights reader and24 for two in exact-service fixtures. Official Standard GA4 Core limit is10/property; no property queue/quota metadata request found, GA4 HTTP limiter is imported but unmounted. No real quota exhaustion or tester load claimed. Bound shared-property work and validate quota/retry/cancellation/recovery under the agreed load envelope.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
-
+**Implementation / validation:** VERIFIED LOCALLY in the [October 22 completion checkpoint](#completion-checkpoint-october-22), which records exact current paths, root cause, failing/fixed/neighboring tests, changed-file hashes and remaining deployed/provider gates. The original evidence above is historical. Release acceptance remains OPEN.
 ### V1-090
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -331,4 +390,4 @@ The next [full-suite run](validation-2026-10-21/full-suite-final.json) exposed 2
 
 `analytics.ts:1392–1604,1732–2573,3044–3433` accepts flagged provider totals/acquisition/daily fixtures but drops sampling, other-row, truncation, metric-restriction, threshold and empty-reason metadata. Eight cases prove the service boundary; no flagged full publication or live occurrence claimed. Numeric reconciliation alone cannot recover dropped quality evidence. Define exact availability/provenance handling and validate every affected consumer.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** VERIFIED LOCALLY in the [October 22 completion checkpoint](#completion-checkpoint-october-22), which records exact current paths, root cause, failing/fixed/neighboring tests, changed-file hashes and remaining deployed/provider gates. The original evidence above is historical. Release acceptance remains OPEN.

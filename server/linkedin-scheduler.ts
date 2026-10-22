@@ -60,8 +60,10 @@ const normalizeLinkedInMetricValue = (metricKey: string, value: any): string => 
 async function generateMockLinkedInData(
   campaignId: string,
   connection: any,
-  opts?: { advanceDay?: boolean }
+  opts?: { advanceDay?: boolean; signal?: AbortSignal }
 ): Promise<boolean> {
+  const signal = opts?.signal;
+  signal?.throwIfAborted();
   console.log(`[LinkedIn Scheduler] TEST MODE: Generating mock data for campaign ${campaignId}`);
 
   // Get the latest import session to reuse selected campaigns and metrics
@@ -174,6 +176,7 @@ async function generateMockLinkedInData(
       });
     }
 
+    signal?.throwIfAborted();
     await storage.upsertLinkedInDailyMetrics(rows as any);
     console.log(`[LinkedIn Scheduler] ✅ Mock daily metrics upserted: ${rows.length} campaigns × 1 day (${date}) for campaign ${campaignId}`);
 
@@ -185,6 +188,7 @@ async function generateMockLinkedInData(
         'li_text_ads': 'yesop_retargeting',
       };
       try {
+        signal?.throwIfAborted();
         await storage.updateLinkedInConnection(campaignId, { campaignUtmMap: JSON.stringify(utmMap) } as any);
         console.log(`[LinkedIn Scheduler] TEST MODE: Written campaignUtmMap for campaign ${campaignId}`);
       } catch { /* ignore */ }
@@ -192,6 +196,7 @@ async function generateMockLinkedInData(
 
     // Persist canonical last refresh timestamp for coverage UI.
     try {
+      signal?.throwIfAborted();
       await storage.updateLinkedInConnection(campaignId, { lastRefreshAt: new Date() } as any);
     } catch {
       // ignore
@@ -226,14 +231,17 @@ async function generateMockLinkedInData(
     };
 
     // Update campaign cumulative spend from daily metrics
+    signal?.throwIfAborted();
     await storage.updateCampaign(campaignId, { spend: Number(sums.spend || 0).toFixed(2) });
     console.log(`[LinkedIn Scheduler] TEST MODE: Updated campaign ${campaignId} spend: ${Number(sums.spend || 0).toFixed(2)}`);
 
   } catch (e: any) {
+    signal?.throwIfAborted();
     console.warn(`[LinkedIn Scheduler] Mock daily metrics upsert failed for ${campaignId}:`, e?.message || e);
   }
 
   // Create a new import session with the same configuration
+  signal?.throwIfAborted();
   const newSession = await storage.createLinkedInImportSession({
     campaignId,
     adAccountId: connection.adAccountId,
@@ -316,6 +324,7 @@ async function generateMockLinkedInData(
     for (const metricKey of selectedMetricKeys) {
       const raw = byKey[String(metricKey)] ?? 0;
       const metricValue = normalizeLinkedInMetricValue(metricKey, raw);
+      signal?.throwIfAborted();
       await storage.createLinkedInImportMetric({
         sessionId: newSession.id,
         campaignUrn: c.urn,
@@ -384,6 +393,7 @@ async function generateMockLinkedInData(
         adData.cpl = (spend / adData.leads).toFixed(2);
       }
 
+      signal?.throwIfAborted();
       await storage.createLinkedInAdPerformance(adData);
     }
   }
@@ -398,8 +408,10 @@ async function generateMockLinkedInData(
  */
 async function fetchRealLinkedInData(
   campaignId: string,
-  connection: any
+  connection: any,
+  signal?: AbortSignal
 ): Promise<boolean> {
+  signal?.throwIfAborted();
   console.log(`[LinkedIn Scheduler] PRODUCTION MODE: Fetching real data for campaign ${campaignId}`);
 
   if (!connection.accessToken) {
@@ -431,10 +443,12 @@ async function fetchRealLinkedInData(
 
     // Import LinkedIn client
     const { LinkedInClient } = await import('./linkedinClient');
-    const linkedInClient = new LinkedInClient(connection.accessToken);
+    signal?.throwIfAborted();
+    const linkedInClient = new LinkedInClient(connection.accessToken, signal);
 
     // Get all campaigns from LinkedIn to match with previous imports
     const allLinkedInCampaigns = await linkedInClient.getCampaigns(connection.adAccountId);
+    signal?.throwIfAborted();
 
     if (!allLinkedInCampaigns || allLinkedInCampaigns.length === 0) {
       console.log(`[LinkedIn Scheduler] No campaigns found for ad account ${connection.adAccountId}`);
@@ -484,6 +498,7 @@ async function fetchRealLinkedInData(
     );
 
     // Fetch DAILY campaign analytics and persist into linkedin_daily_metrics (rolled up per MetricMind campaign per day)
+    signal?.throwIfAborted();
     try {
       const dailyElements = await (linkedInClient as any).getCampaignAnalyticsDaily?.(
         campaignIds,
@@ -491,7 +506,7 @@ async function fetchRealLinkedInData(
         dailyEnd.toISOString().split('T')[0]
       );
       const { upsertLinkedInDailyTotals } = await import("./linkedin-daily-metrics");
-      await upsertLinkedInDailyTotals({ campaignId, dailyElements: Array.isArray(dailyElements) ? dailyElements : [] });
+      await upsertLinkedInDailyTotals({ campaignId, dailyElements: Array.isArray(dailyElements) ? dailyElements : [], signal });
 
       // Update campaign cumulative spend from daily metrics (for cross-platform comparisons)
       const dailyMetrics = await storage.getLinkedInDailyMetrics(
@@ -500,15 +515,18 @@ async function fetchRealLinkedInData(
         dailyEnd.toISOString().split('T')[0]
       );
       const totalSpend = dailyMetrics.reduce((sum, m) => sum + (parseFloat(String(m.spend || 0)) || 0), 0);
+      signal?.throwIfAborted();
       await storage.updateCampaign(campaignId, { spend: totalSpend.toFixed(2) });
       console.log(`[LinkedIn Scheduler] Updated campaign ${campaignId} spend: ${totalSpend}`);
 
     } catch (e: any) {
+      signal?.throwIfAborted();
       console.warn(`[LinkedIn Scheduler] Daily metrics upsert failed for ${campaignId}:`, e?.message || e);
     }
 
     // Fetch creatives (ads) for each campaign
     const creatives = await linkedInClient.getCreatives(campaignIds);
+    signal?.throwIfAborted();
 
     // Fetch creative analytics
     const creativeAnalytics = await linkedInClient.getCreativeAnalytics(
@@ -523,6 +541,7 @@ async function fetchRealLinkedInData(
     );
 
     // Create new import session
+    signal?.throwIfAborted();
     const session = await storage.createLinkedInImportSession({
       campaignId,
       adAccountId: connection.adAccountId,
@@ -597,6 +616,7 @@ async function fetchRealLinkedInData(
 
         const metricValue = normalizeLinkedInMetricValue(metricKey, rawValue);
 
+        signal?.throwIfAborted();
         await storage.createLinkedInImportMetric({
           sessionId: session.id,
           campaignUrn: campaign.id,
@@ -632,6 +652,7 @@ async function fetchRealLinkedInData(
         const cpc = clicks > 0 ? String(parseFloat(spend) / clicks) : '0';
         const conversionRate = clicks > 0 ? String((conversions / clicks) * 100) : '0';
 
+        signal?.throwIfAborted();
         await storage.createLinkedInAdPerformance({
           sessionId: session.id,
           adId: creative.id,
@@ -655,12 +676,14 @@ async function fetchRealLinkedInData(
 
     // Persist canonical last refresh timestamp for coverage UI.
     try {
+      signal?.throwIfAborted();
       await storage.updateLinkedInConnection(campaignId, { lastRefreshAt: new Date() } as any);
     } catch {
       // ignore
     }
     return true;
   } catch (error: any) {
+    signal?.throwIfAborted();
     console.error(`[LinkedIn Scheduler] Error fetching real LinkedIn data for campaign ${campaignId}:`, error);
     // Don't throw - log and continue with other campaigns
     return false;
@@ -673,9 +696,11 @@ async function fetchRealLinkedInData(
 export async function refreshLinkedInDataForCampaign(
   campaignId: string,
   connection?: any,
-  opts?: { advanceTestDay?: boolean }
+  opts?: { advanceTestDay?: boolean; signal?: AbortSignal }
 ): Promise<{ refreshed: boolean }> {
+  const signal = opts?.signal ?? AbortSignal.timeout(120_000);
   try {
+    signal?.throwIfAborted();
     const campaign = await storage.getCampaign(campaignId).catch(() => null);
     if (!campaign) {
       console.log(`[LinkedIn Scheduler] No campaign found for LinkedIn refresh ${campaignId}`);
@@ -703,8 +728,9 @@ export async function refreshLinkedInDataForCampaign(
       token.startsWith('test-');
 
     const refreshed = isTestMode
-      ? await generateMockLinkedInData(campaignId, connection, { advanceDay: Boolean(opts?.advanceTestDay) })
-      : await fetchRealLinkedInData(campaignId, connection);
+      ? await generateMockLinkedInData(campaignId, connection, { advanceDay: Boolean(opts?.advanceTestDay), signal })
+      : await fetchRealLinkedInData(campaignId, connection, signal);
+    signal?.throwIfAborted();
 
     if (!refreshed) {
       console.log(`[LinkedIn Scheduler] Skipping downstream refresh for campaign ${campaignId} because LinkedIn data was not updated`);
@@ -717,18 +743,22 @@ export async function refreshLinkedInDataForCampaign(
 
     // Immediately check for alerts after KPI refresh
     console.log(`[LinkedIn Scheduler] Checking performance alerts for campaign ${campaignId}...`);
+    signal?.throwIfAborted();
     await checkPerformanceAlerts();
 
     // Benchmark alerts are separate from KPI alerts; run them after refresh too.
     try {
+      signal?.throwIfAborted();
       await checkBenchmarkPerformanceAlerts();
     } catch (e: any) {
       console.warn(`[LinkedIn Scheduler] Benchmark alert check failed for campaign ${campaignId}:`, e?.message || e);
     }
 
     console.log(`[LinkedIn Scheduler] ✅ Completed refresh for campaign ${campaignId}`);
+    signal?.throwIfAborted();
     return { refreshed: true };
   } catch (error: any) {
+    signal?.throwIfAborted();
     console.error(`[LinkedIn Scheduler] Error refreshing campaign ${campaignId}:`, error);
     // Don't throw - continue with other campaigns
     return { refreshed: false };
@@ -738,11 +768,13 @@ export async function refreshLinkedInDataForCampaign(
 /**
  * Refresh LinkedIn data for all campaigns with LinkedIn connections
  */
-export async function refreshAllLinkedInData(): Promise<void> {
+export async function refreshAllLinkedInData(signal?: AbortSignal): Promise<void> {
+  signal ??= AbortSignal.timeout(120_000);
   console.log('[LinkedIn Scheduler] Starting scheduled LinkedIn data refresh...');
 
   try {
     // Get all LinkedIn connections from database
+    signal?.throwIfAborted();
     const allConnections = await db.select({ campaignId: linkedinConnections.campaignId }).from(linkedinConnections);
 
     if (!allConnections || allConnections.length === 0) {
@@ -754,15 +786,17 @@ export async function refreshAllLinkedInData(): Promise<void> {
 
     // Refresh data for each campaign
     for (const row of allConnections) {
+      signal?.throwIfAborted();
       const campaignId = String((row as any).campaignId || "").trim();
       if (!campaignId) continue;
       // IMPORTANT: Fetch via storage so tokens are decrypted (and legacy plaintext can be backfilled).
       const connection = await storage.getLinkedInConnection(campaignId);
-      await refreshLinkedInDataForCampaign(campaignId, connection);
+      await refreshLinkedInDataForCampaign(campaignId, connection, { signal });
     }
 
     console.log('[LinkedIn Scheduler] ✅ LinkedIn data refresh completed for all campaigns');
   } catch (error: any) {
+    signal?.throwIfAborted();
     console.error('[LinkedIn Scheduler] Error in scheduled refresh:', error);
   }
 }

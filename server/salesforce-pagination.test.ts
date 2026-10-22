@@ -156,7 +156,9 @@ describe('Salesforce bounded query pagination', () => {
     expect(previewRoute).toContain('!isSafeSalesforceFieldPath(attribField) || !isSafeSalesforceFieldPath(revenue)');
     expect(previewRoute.indexOf('isSafeSalesforceFieldPath(attribField)')).toBeLessThan(previewRoute.indexOf('getSalesforceAccessTokenForCampaign(campaignId)'));
     expect(saveRoute).toContain('convValueField && !isSafeSalesforceFieldPath(convValueField)');
-    expect(saveRoute.indexOf('isSafeSalesforceFieldPath(attribField)')).toBeLessThan(saveRoute.indexOf('getSalesforceAccessTokenForCampaign(campaignId)'));
+    const saveCredentials = saveRoute.indexOf('getSalesforceAccessTokenForCampaign(campaignId, refreshWriteInput)');
+    expect(saveCredentials).toBeGreaterThan(-1);
+    expect(saveRoute.indexOf('isSafeSalesforceFieldPath(attribField)')).toBeLessThan(saveCredentials);
     expect(pipelineRoute).toContain('!isSafeSalesforceFieldPath(attribField) || !isSafeSalesforceFieldPath(revenueField)');
     expect(pipelineRoute.indexOf('isSafeSalesforceFieldPath(attribField)')).toBeLessThan(pipelineRoute.indexOf('getSalesforceAccessTokenForCampaign(campaignId)'));
     expect(`${previewRoute}${saveRoute}${pipelineRoute}`).not.toContain("replace(/'/g");

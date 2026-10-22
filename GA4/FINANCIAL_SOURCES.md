@@ -555,7 +555,7 @@ Important meaning:
 - Batch 4 October 23 forward corrections reject duplicate header names after trimming/generated-name normalization in preview, save and refresh; invalid edits/refreshes retain last-good source records
 - GA4 Sheets Revenue validates selected amount currency before parsing: plain numbers use the saved campaign currency, while dollar symbols require USD; no FX conversion is performed
 - refresh applies the same saved campaign selection as save: normalized non-empty `campaignValues` first, otherwise singular `campaignValue`; a mapped campaign column without a selection fails closed
-- these three corrections are verified locally and committed in `ace32e7b`, with deployment verification pending; [the Batch 4 record](../docs/fixes/v1-batch-4/README.md#sheets-revenue-correction-checkpoint-october-23) owns tests, implementation revision and remaining source-family/provider/historical-data gates
+- these three corrections are verified locally and deployed in `e635fe50` (runtime fixes `ace32e7b`); public deployment checks pass, while authenticated import/provider acceptance remains open; [the Batch 4 record](../docs/fixes/v1-batch-4/README.md#sheets-revenue-correction-checkpoint-october-23) owns tests, implementation revision and remaining source-family/provider/historical-data gates
 - the preview step is part of the source-selection journey, not a separate admin flow
 - the visible mapping screen should follow the same pattern as Google Sheets spend: value-column dropdown first, optional date column second, then campaign identifier and campaign value controls
 - the mapping screen title should be `Map sheet columns` in new-source mode
@@ -761,6 +761,8 @@ Current Commit 3 local validation passed with the focused Google Ads/GA4 spend s
 These commits do not clean-certify Google Ads spend as production-ready. The real provider/customer/import/current-value path has bounded UI evidence, while deployed edit/disconnect behavior, failure and last-good handling, natural four-hour and ordered-daily execution, repeated/concurrent refresh, exact production inventory, and Google Ads report/email value packets remain unproven until captured with Google Ads-specific evidence.
 
 ## Spend Source 2: Google Sheets Journey
+
+**October 23 V1 update:** [Batch 4 V1-041/070](../docs/fixes/v1-batch-4/README.md#sheets-spend-correction-checkpoint-october-23) is verified locally, uncommitted and undeployed. Preview/import/refresh now read every full-width chunk of the selected grid, capped at 50,000 rows including the header, with request/body deadlines and last-good retention on failure. Selected amounts use the existing strict CSV financial syntax and currency bounds; malformed or missing-only selections cannot publish measured zero, while explicit zero keeps its mapped date. Cleanup requires a fresh inspection token, exact platform/currency/mapping/record equivalence and transactional revalidation; inactive purge requires the inspected source to remain empty. No cleanup is automatic. These bounded corrections do not certify the complete source lifecycle, hosted load or downstream publication.
 
 The user journey is:
 

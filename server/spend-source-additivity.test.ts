@@ -72,10 +72,12 @@ describe("Spend source additivity", () => {
     expect(nextRouteStart).toBeGreaterThan(routeStart);
     const route = routesFile.slice(routeStart, nextRouteStart);
 
-    expect(route).toContain('if ((req.body as any)?.confirm !== true)');
-    expect(route).toContain('const duplicates = group.sources.slice(1);');
-    expect(route).toContain('await storage.deleteSpendRecordsBySource(String(source.id));');
-    expect(route).toContain('await storage.deleteSpendSource(String(source.id));');
+    expect(route).toContain('(req.body as any)?.confirm !== true');
+    expect(route).toContain('req.body.inspectionToken !== inspectionToken');
+    expect(route).toContain('g.cleanupEligible');
+    expect(route).toContain('g.sources.slice(1)');
+    expect(route).toContain('await storage.cleanupGoogleSheetsSpendDuplicates(campaignId, state, sourceIds, "deactivate")');
+    expect(route).not.toContain('storage.deleteSpendRecordsBySource(');
     expect(route).toContain('await recalcCampaignSpend(campaignId);');
   });
 
@@ -87,11 +89,10 @@ describe("Spend source additivity", () => {
     expect(nextRouteStart).toBeGreaterThan(routeStart);
     const route = routesFile.slice(routeStart, nextRouteStart);
 
-    expect(route).toContain('if ((req.body as any)?.confirm !== true)');
-    expect(route).toContain('await storage.getInactiveSpendSources(campaignId)');
-    expect(route).toContain('const recordCount = await storage.countSpendRecordsBySource(id);');
-    expect(route).toContain('if (!activeKeys.has(key) || recordCount !== 0)');
-    expect(route).toContain('await storage.hardDeleteInactiveSpendSource(campaignId, id)');
+    expect(route).toContain('(req.body as any)?.confirm !== true');
+    expect(route).toContain('req.body.inspectionToken !== inspectionToken');
+    expect(route).toContain('await storage.cleanupGoogleSheetsSpendDuplicates(campaignId, state, inactiveDuplicateCandidates, "purge")');
+    expect(route).not.toContain('storage.hardDeleteInactiveSpendSource(');
     expect(route).not.toContain('recalcCampaignSpend(campaignId)');
   });
 });

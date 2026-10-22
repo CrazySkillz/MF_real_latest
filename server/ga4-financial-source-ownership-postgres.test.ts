@@ -7,7 +7,8 @@ import { getTableColumns, getTableName, SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 import * as schema from "../shared/schema";
 import ts from "typescript";
-import { normalizeFinancialSourceDateKey } from "./utils/csv";
+import { normalizeFinancialSourceDateKey, isSupportedGa4CsvRevenueAmount, isSupportedGa4CsvRevenueDate, GA4_CSV_MAX_REVENUE_TOTAL } from "./utils/csv";
+import { resolveGoogleSheetsRevenueGrid, buildGoogleSheetsRevenueRowRanges } from "./utils/google-sheets-revenue-ranges";
 import { getInternalAutoRefreshToken, getInternalGA4RefreshWriteInput, isInternalAutoRefreshRequest } from "./internal-request-auth";
 import { z } from "zod";
 import * as sfQuery from "./utils/salesforce-query";
@@ -85,13 +86,18 @@ function sheetsRoute(beforeResponse?: () => Promise<void>, scope?: any) {
   const helperEnd = source.indexOf("// Keep spend totals predictable", helperStart);
   const scopedStorage = Object.create(storage);
   scopedStorage.getGoogleSheetsConnections = vi.fn().mockResolvedValue([{ id: "sheet-a", spreadsheetId: "sheet", accessToken: "fake-provider-token" }]);
-  const fetch = vi.fn(async () => { await beforeResponse?.(); return { ok: true, json: async () => ({ values: [["Date", "Spend", "Campaign"], [date, "20", "old"], [date, "99", "new"]] }) }; });
+  const fetch = vi.fn(async (url: string) => {
+    if (!url.includes("/values/")) return { ok: true, json: async () => ({ sheets: [{ properties: { title: "Spend", index: 0, gridProperties: { rowCount: 3 } } }] }) };
+    await beforeResponse?.(); return { ok: true, json: async () => ({ values: [["Date", "Spend", "Campaign"], [date, "20", "old"], [date, "99", "new"]] }) };
+  });
   const recalc = vi.fn(), recompute = vi.fn(); let handler: any;
-  const names = ["app", "requireCampaignAccessParamId", "storage", "fetch", "isSupportedScopedSpendPlatformContext", "refreshGoogleSheetsToken", "toA1Prefix", "parseNum", "normalizeFinancialSourceDateKey", "getReportingDateWindow", "recalcCampaignSpend", "recomputeGA4SpendBeforeResponse", "getInternalGA4RefreshWriteInput"];
-  new Function(...names, ts.transpileModule(source.slice(helperStart, helperEnd) + source.slice(start, end), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(
+  const readerStart = source.indexOf("const readGoogleSheetsRevenueChunks =");
+  const readerEnd = source.indexOf("// Request validation helpers", readerStart);
+  const names = ["app", "requireCampaignAccessParamId", "storage", "fetchWithTimeout", "isSupportedScopedSpendPlatformContext", "refreshGoogleSheetsToken", "toA1Prefix", "parseNum", "normalizeFinancialSourceDateKey", "getReportingDateWindow", "recalcCampaignSpend", "recomputeGA4SpendBeforeResponse", "getInternalGA4RefreshWriteInput", "resolveGoogleSheetsRevenueGrid", "buildGoogleSheetsRevenueRowRanges", "isSupportedGa4CsvRevenueAmount", "isSupportedGa4CsvRevenueDate", "GA4_CSV_MAX_REVENUE_TOTAL"];
+  new Function(...names, ts.transpileModule(source.slice(helperStart, helperEnd) + source.slice(readerStart, readerEnd) + source.slice(start, end), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(
     { post: (_path: string, _auth: any, fn: any) => { handler = fn; } }, () => {}, scopedStorage, fetch,
     (context: string) => ["ga4", "linkedin"].includes(context), vi.fn(), (value: string) => value, Number,
-    normalizeFinancialSourceDateKey, () => ({ endDate: date }), recalc, recompute, getInternalGA4RefreshWriteInput);
+    normalizeFinancialSourceDateKey, () => ({ endDate: date }), recalc, recompute, getInternalGA4RefreshWriteInput, resolveGoogleSheetsRevenueGrid, buildGoogleSheetsRevenueRowRanges, isSupportedGa4CsvRevenueAmount, isSupportedGa4CsvRevenueDate, GA4_CSV_MAX_REVENUE_TOTAL);
   const body: any = { connectionId: "sheet-a", platformContext: "ga4", mapping: { sourceId: "spend-a", spendColumn: "Spend", dateColumn: "Date", campaignColumn: "Campaign", campaignValues: ["old"], currency: "EUR", platformContext: "ga4" } };
   const invoke = async () => {
     const res: any = { statusCode: 200, status(code: number) { this.statusCode = code; return this; }, json(payload: any) { this.body = payload; return this; } };

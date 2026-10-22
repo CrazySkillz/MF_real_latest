@@ -1,5 +1,8 @@
 # GA4 Overview Spend Production Readiness
 
+> **Current V1 boundary - October 23, 2026:** Full Sheets/CSV Spend readiness remains **UNVERIFIED**. Historical certificates and one-minute polling descriptions below describe earlier revisions/configurations; they do not certify the current application or scheduler. The [V1 Batch 4 Spend checkpoint](../docs/fixes/v1-batch-4/README.md#sheets-spend-correction-checkpoint-october-23) records current-code V1-041/070 corrections, exact local evidence and remaining deployed/provider/downstream gates. Complete guarded reads replace `A1:ZZ5000`; selected invalid/missing-only data cannot become measured zero; explicit zero retains its date. Maintenance cleanup requires a fresh inspection, exact scope/records and atomic revalidation. These changes are uncommitted and undeployed, and no live data cleanup has occurred. The [release index](../docs/V1_RELEASE_READINESS.md) controls release status.
+
+
 ## Mandatory Anti-Overclaim Rule
 
 Apply `AGENTS.md`, `PRODUCTION_READINESS.md`, `GA4/README.md`, `GA4_DEVELOPMENT_WORKFLOW.md`, `GA4/OVERVIEW.md`, `GA4/FINANCIAL_SOURCES.md`, and `GA4/REFRESH_AND_PROCESSING.md` before using this file as readiness evidence.

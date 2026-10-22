@@ -254,6 +254,8 @@ export interface IStorage {
   // Spend (generic)
   getSpendSources(campaignId: string, platformContext?: SpendPlatformContext): Promise<SpendSource[]>;
   getInactiveSpendSources(campaignId: string): Promise<SpendSource[]>;
+  getGoogleSheetsSpendCleanupState(campaignId: string): Promise<{ sources: SpendSource[]; records: SpendRecord[] }>;
+  cleanupGoogleSheetsSpendDuplicates(campaignId: string, expected: { sources: SpendSource[]; records: SpendRecord[] }, sourceIds: string[], mode: 'deactivate' | 'purge'): Promise<string[]>;
   getSpendSource(campaignId: string, sourceId: string, platformContext?: SpendPlatformContext): Promise<SpendSource | undefined>;
   createSpendSource(source: InsertSpendSource): Promise<SpendSource>;
   updateSpendSource(sourceId: string, source: Partial<InsertSpendSource>): Promise<SpendSource | undefined>;
@@ -1440,9 +1442,10 @@ export class DatabaseStorage implements IStorage {
 
   // Serialize an ordinary input edit with owned publication. Invalidating the work
   // identity also rejects edit-then-restore; comparing current field values cannot.
-  private async writeGA4RefreshInputChange<T>(campaignId: string | null | undefined | string[], write: (tx: any) => Promise<T>): Promise<T> {
+  private async writeGA4RefreshInputChange<T>(campaignId: string | null | undefined | string[], write: (tx: any) => Promise<T>, lockTimeoutMs = 0): Promise<T> {
     const campaignIds = Array.from(new Set((Array.isArray(campaignId) ? campaignId : [campaignId]).filter((id): id is string => Boolean(id)))).sort();
     return db.transaction(async (tx: any) => {
+      if (lockTimeoutMs > 0) await tx.execute(sql`SELECT set_config('lock_timeout', ${`${lockTimeoutMs}ms`}, true)`);
       if (campaignIds.length) {
         const parents = await tx.select({ id: campaigns.id }).from(campaigns).where(inArray(campaigns.id, campaignIds)).orderBy(campaigns.id).for("update");
         if (parents.length !== campaignIds.length) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
@@ -2134,6 +2137,37 @@ export class DatabaseStorage implements IStorage {
       .delete(spendSources)
       .where(and(sql`${spendSources.id}::text = ${sourceId}`, eq(spendSources.campaignId, campaignId), eq(spendSources.isActive, false)));
     return (result.rowCount || 0) > 0;
+  }
+
+  async getGoogleSheetsSpendCleanupState(campaignId: string, executor: any = db): Promise<{ sources: SpendSource[]; records: SpendRecord[] }> {
+    const sources = await executor.select().from(spendSources).where(and(eq(spendSources.campaignId, campaignId), eq(spendSources.sourceType, 'google_sheets'))).orderBy(spendSources.id);
+    // Include foreign-campaign records referencing these IDs so corruption cannot be hidden by a filter.
+    const records = sources.length ? await executor.select().from(spendRecords).where(inArray(spendRecords.spendSourceId, sources.map((s: any) => s.id))).orderBy(spendRecords.id) : [];
+    return { sources, records };
+  }
+
+  async cleanupGoogleSheetsSpendDuplicates(campaignId: string, expected: { sources: SpendSource[]; records: SpendRecord[] }, sourceIds: string[], mode: 'deactivate' | 'purge'): Promise<string[]> {
+    if (!sourceIds.length) return [];
+    if (!['deactivate', 'purge'].includes(mode)) throw new Error('Invalid spend cleanup mode');
+    return this.writeGA4RefreshInputChange(campaignId, async (tx: any) => {
+      // This retained maintenance API has no current UI caller. Bound its lock wait and
+      // fence legacy writers too; row locks alone do not prevent new child records.
+      await tx.execute(sql`SET LOCAL statement_timeout = '10s'`);
+      await tx.execute(sql`LOCK TABLE spend_sources, spend_records IN SHARE ROW EXCLUSIVE MODE`);
+      const current = await this.getGoogleSheetsSpendCleanupState(campaignId, tx);
+      if (JSON.stringify(current) !== JSON.stringify(expected)) throw Object.assign(new Error('Spend data changed. Inspect duplicates again.'), { code: 'SPEND_SOURCE_CHANGED' });
+      const targets = current.sources.filter(s => sourceIds.includes(s.id) && s.isActive === (mode === 'deactivate'));
+      if (targets.length !== new Set(sourceIds).size || current.records.some(r => sourceIds.includes(r.spendSourceId) && (r.campaignId !== campaignId || mode === 'purge'))) {
+        throw Object.assign(new Error('Spend cleanup scope changed'), { code: 'SPEND_SOURCE_CHANGED' });
+      }
+      if (mode === 'deactivate') {
+        await tx.update(spendSources).set({ isActive: false }).where(and(eq(spendSources.campaignId, campaignId), eq(spendSources.sourceType, 'google_sheets'), inArray(spendSources.id, sourceIds)));
+        await tx.delete(spendRecords).where(and(eq(spendRecords.campaignId, campaignId), inArray(spendRecords.spendSourceId, sourceIds)));
+      } else {
+        await tx.delete(spendSources).where(and(eq(spendSources.campaignId, campaignId), eq(spendSources.sourceType, 'google_sheets'), eq(spendSources.isActive, false), inArray(spendSources.id, sourceIds)));
+      }
+      return targets.map(s => s.id);
+    }, 3000);
   }
 
   async disconnectGa4GoogleSheetsSpend(campaignId: string): Promise<{ sourceIds: string[]; connectionIds: string[] }> {

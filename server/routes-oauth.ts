@@ -21,7 +21,7 @@ import { parseExecutiveSummaryStoredMetricValue } from './utils/executive-summar
 import { buildGoogleAdsOAuthAuthorization, resolveGoogleAdsOAuthAuthorization } from './google-ads-oauth-authorization';
 import { buildGA4GoogleAdsSpendMaterialization } from './ga4-google-ads-spend';
 import multer from "multer";
-import { aggregateCsvRevenueRows, aggregateCsvSpendRows, findInvalidGa4CsvRevenueAmountRows, findInvalidGa4CsvRevenueDateRows, GA4_CSV_MAX_REVENUE_TOTAL, normalizeFinancialSourceDateKey, parseCsvText } from "./utils/csv";
+import { aggregateCsvRevenueRows, aggregateCsvSpendRows, findInvalidGa4CsvRevenueAmountRows, findInvalidGa4CsvRevenueDateRows, isSupportedGa4CsvRevenueAmount, isSupportedGa4CsvRevenueDate, GA4_CSV_MAX_REVENUE_TOTAL, normalizeFinancialSourceDateKey, parseCsvText } from "./utils/csv";
 import { inspectGa4CsvRevenueDamage } from "./utils/csv-revenue-damage-inventory";
 import { findHubspotConnectionSourceMappingMismatches, inspectGa4HubspotRevenueDamage } from "./utils/hubspot-revenue-damage-inventory";
 import { selectRevenueRecordTotal } from "./utils/revenue-record-total";
@@ -1626,21 +1626,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const getGoogleSheetsSpendDuplicateGroups = async (campaignId: string) => {
-      const sources = (await storage.getSpendSources(campaignId)).filter((s: any) => String(s?.sourceType || "") === "google_sheets");
+      const state = await storage.getGoogleSheetsSpendCleanupState(campaignId);
+      const sources = state.sources.filter((s: any) => s.isActive);
+      const inspectionToken = createHash("sha256").update(JSON.stringify({ campaignId, ...state })).digest("hex");
       const normalizeList = (value: any) => Array.isArray(value)
         ? value.map((v: any) => String(v ?? "").trim()).filter(Boolean).sort()
         : (value ? [String(value).trim()] : []);
       const buildSignature = (source: any) => {
         let cfg: any = {};
         try { cfg = source?.mappingConfig ? JSON.parse(String(source.mappingConfig)) : {}; } catch { cfg = {}; }
+        const selectedValues = normalizeList(Array.isArray(cfg?.campaignValues) && cfg.campaignValues.some((v: any) => String(v ?? "").trim()) ? cfg.campaignValues : cfg?.campaignValue);
         return {
+          platformContext: String(source.platformContext || "ga4").trim().toLowerCase(),
+          currency: String(source.currency || "").trim().toUpperCase(),
           connectionId: String(cfg?.connectionId || ""),
           spreadsheetId: String(cfg?.spreadsheetId || ""),
           sheetName: String(cfg?.sheetName || ""),
           spendColumn: String(cfg?.spendColumn || ""),
           dateColumn: String(cfg?.dateColumn || ""),
           campaignColumn: String(cfg?.campaignColumn || ""),
-          campaignValues: normalizeList(cfg?.campaignValues || cfg?.campaignValue),
+          campaignValues: selectedValues,
+          valid: Boolean(cfg?.connectionId && cfg?.spreadsheetId && cfg?.spendColumn && source.currency
+            && isSupportedScopedSpendPlatformContext(source.platformContext || "ga4")
+            && (!cfg.platformContext || cfg.platformContext === (source.platformContext || "ga4"))
+            && (!cfg.currency || String(cfg.currency).toUpperCase() === String(source.currency).toUpperCase())
+            && (cfg.campaignColumn ? selectedValues.length > 0 : selectedValues.length === 0)),
         };
       };
       const groups = new Map<string, any>();
@@ -1658,11 +1668,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       for (const group of Array.from(groups.values())) {
         group.sources.sort((a: any, b: any) =>
-          new Date(a.createdAt || a.connectedAt || 0).getTime() - new Date(b.createdAt || b.connectedAt || 0).getTime()
+          new Date(a.createdAt || a.connectedAt || 0).getTime() - new Date(b.createdAt || b.connectedAt || 0).getTime() || a.id.localeCompare(b.id)
         );
       }
       const duplicateGroups = Array.from(groups.values()).filter((g: any) => g.sources.length > 1);
-      return { sources, duplicateGroups, buildSignature };
+      const recordSignature = (id: string) => state.records.filter((r: any) => r.spendSourceId === id)
+        .map(({ id: _id, spendSourceId: _sourceId, createdAt: _createdAt, ...record }: any) => JSON.stringify(record)).sort();
+      for (const group of duplicateGroups) {
+        const records = recordSignature(group.sources[0].id);
+        group.cleanupEligible = group.signature.valid && records.length > 0 && group.sources.every((s: any) =>
+          JSON.stringify(recordSignature(s.id)) === JSON.stringify(records)
+          && state.records.filter((r: any) => r.spendSourceId === s.id).every((r: any) => r.campaignId === campaignId && r.currency === group.signature.currency && r.sourceType === "google_sheets"));
+      }
+      const activeKeys = new Set(sources.map((s: any) => JSON.stringify(buildSignature(s))));
+      const inactiveDuplicateCandidates = state.sources.filter((s: any) => !s.isActive && buildSignature(s).valid
+        && activeKeys.has(JSON.stringify(buildSignature(s))) && !state.records.some((r: any) => r.spendSourceId === s.id)).map((s: any) => String(s.id));
+      return { sources, duplicateGroups, state, inspectionToken, inactiveDuplicateCandidates };
   };
 
   const normalizeOverviewInventoryPlatformContext = (value: any) => {
@@ -2559,10 +2580,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   app.get("/api/campaigns/:id/spend-sources/google-sheets-duplicates", requireCampaignAccessParamId, async (req, res) => {
     try {
-      const campaignId = req.params.id;
-      const { sources, duplicateGroups } = await getGoogleSheetsSpendDuplicateGroups(campaignId);
+      const { sources, duplicateGroups, inspectionToken, inactiveDuplicateCandidates } = await getGoogleSheetsSpendDuplicateGroups(req.params.id);
       res.json({
-        success: true,
+        success: true, inspectionToken, inactiveDuplicateCandidates,
         totalGoogleSheetsSpendSources: sources.length,
         duplicateGroupCount: duplicateGroups.length,
         duplicateSourceCount: duplicateGroups.reduce((sum: number, g: any) => sum + Math.max(0, g.sources.length - 1), 0),
@@ -2574,59 +2594,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/campaigns/:id/spend-sources/google-sheets-duplicates/cleanup", requireCampaignAccessParamId, async (req, res) => {
+    let cleanupApplied = false;
     try {
-      if ((req.body as any)?.confirm !== true) {
-        return res.status(400).json({ success: false, error: "Cleanup confirmation is required" });
+      if ((req.body as any)?.confirm !== true || typeof req.body.inspectionToken !== "string") {
+        return res.status(400).json({ success: false, error: "Inspect duplicates first, then confirm with the inspectionToken" });
       }
       const campaignId = req.params.id;
-      const { duplicateGroups } = await getGoogleSheetsSpendDuplicateGroups(campaignId);
-      const deactivatedSourceIds: string[] = [];
-      const skippedGroups: any[] = [];
-      for (const group of duplicateGroups as any[]) {
-        const sig = group.signature || {};
-        if (!sig.connectionId || !sig.spreadsheetId || !sig.spendColumn) {
-          skippedGroups.push({ signature: sig, reason: "missing required duplicate signature fields" });
-          continue;
-        }
-        const duplicates = group.sources.slice(1);
-        for (const source of duplicates) {
-          await storage.deleteSpendRecordsBySource(String(source.id));
-          await storage.deleteSpendSource(String(source.id));
-          deactivatedSourceIds.push(String(source.id));
-        }
+      const { duplicateGroups, state, inspectionToken } = await getGoogleSheetsSpendDuplicateGroups(campaignId);
+      if (req.body.inspectionToken !== inspectionToken) return res.status(409).json({ success: false, code: "SPEND_SOURCE_CHANGED", error: "Spend data changed. Inspect duplicates again." });
+      const skippedGroups = duplicateGroups.filter((g: any) => !g.cleanupEligible).map((g: any) => ({ signature: g.signature, reason: "Exact matching source scope and records could not be proven" }));
+      const sourceIds = duplicateGroups.filter((g: any) => g.cleanupEligible).flatMap((g: any) => g.sources.slice(1).map((s: any) => String(s.id)));
+      const deactivatedSourceIds = await storage.cleanupGoogleSheetsSpendDuplicates(campaignId, state, sourceIds, "deactivate");
+      cleanupApplied = deactivatedSourceIds.length > 0;
+      if (cleanupApplied) {
+        await recalcCampaignSpend(campaignId);
+        await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");
       }
-      await recalcCampaignSpend(campaignId);
-      await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");
       res.json({ success: true, deactivatedSourceIds, deactivatedCount: deactivatedSourceIds.length, skippedGroups });
     } catch (e: any) {
-      res.status(500).json({ success: false, error: e?.message || "Failed to cleanup Google Sheets spend duplicates" });
+      const conflict = ["SPEND_SOURCE_CHANGED", "55P03", "40P01"].includes(String(e?.code || e?.cause?.code || ""));
+      res.status(conflict ? 409 : 500).json({ success: false, cleanupApplied, error: e?.message || "Failed to cleanup Google Sheets spend duplicates" });
     }
   });
 
   app.post("/api/campaigns/:id/spend-sources/google-sheets-duplicates/purge-inactive", requireCampaignAccessParamId, async (req, res) => {
     try {
-      if ((req.body as any)?.confirm !== true) {
-        return res.status(400).json({ success: false, error: "Purge confirmation is required" });
+      if ((req.body as any)?.confirm !== true || typeof req.body.inspectionToken !== "string") {
+        return res.status(400).json({ success: false, error: "Inspect duplicates first, then confirm with the inspectionToken" });
       }
       const campaignId = req.params.id;
-      const { sources, buildSignature } = await getGoogleSheetsSpendDuplicateGroups(campaignId);
-      const activeKeys = new Set((sources as any[]).map((source: any) => JSON.stringify(buildSignature(source))));
-      const inactive = (await storage.getInactiveSpendSources(campaignId)).filter((s: any) => String(s?.sourceType || "") === "google_sheets");
-      const purgedSourceIds: string[] = [];
-      const skipped: any[] = [];
-      for (const source of inactive as any[]) {
-        const id = String(source.id);
-        const key = JSON.stringify(buildSignature(source));
-        const recordCount = await storage.countSpendRecordsBySource(id);
-        if (!activeKeys.has(key) || recordCount !== 0) {
-          skipped.push({ id, reason: !activeKeys.has(key) ? "no active matching signature" : "source still has spend records" });
-          continue;
-        }
-        if (await storage.hardDeleteInactiveSpendSource(campaignId, id)) purgedSourceIds.push(id);
-      }
+      const { state, inspectionToken, inactiveDuplicateCandidates } = await getGoogleSheetsSpendDuplicateGroups(campaignId);
+      if (req.body.inspectionToken !== inspectionToken) return res.status(409).json({ success: false, code: "SPEND_SOURCE_CHANGED", error: "Spend data changed. Inspect duplicates again." });
+      const skipped = state.sources.filter((s: any) => !s.isActive && !inactiveDuplicateCandidates.includes(String(s.id)))
+        .map((s: any) => ({ id: String(s.id), reason: "No proven active matching scope, or source still has spend records" }));
+      const purgedSourceIds = await storage.cleanupGoogleSheetsSpendDuplicates(campaignId, state, inactiveDuplicateCandidates, "purge");
       res.json({ success: true, purgedSourceIds, purgedCount: purgedSourceIds.length, skippedCount: skipped.length, skipped });
     } catch (e: any) {
-      res.status(500).json({ success: false, error: e?.message || "Failed to purge inactive Google Sheets spend duplicates" });
+      const conflict = ["SPEND_SOURCE_CHANGED", "55P03", "40P01"].includes(String(e?.code || e?.cause?.code || ""));
+      res.status(conflict ? 409 : 500).json({ success: false, error: e?.message || "Failed to purge inactive Google Sheets spend duplicates" });
     }
   });
 
@@ -3195,7 +3200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return await fetch(url, { ...options, signal });
   };
 
-  const readGoogleSheetsRevenueChunks = async (connection: any, initialAccessToken: string, metadataResponse: Response): Promise<
+  const readGoogleSheetsRevenueChunks = async (connection: any, initialAccessToken: string, metadataResponse: Response, refreshWriteInput: GA4RefreshWriteInput = {}): Promise<
     | { success: true; values: any[][] }
     | { success: false; status: number; error: string }
   > => {
@@ -3225,7 +3230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let response = await fetchWithTimeout(url, { headers: { "Authorization": `Bearer ${accessToken}` } });
       if (!response.ok && response.status === 401 && connection.refreshToken) {
         try {
-          accessToken = await refreshGoogleSheetsToken(connection);
+          accessToken = await refreshGoogleSheetsToken(connection, refreshWriteInput);
           response = await fetchWithTimeout(url, { headers: { "Authorization": `Bearer ${accessToken}` } });
         } catch {
           // fall through to the fail-closed response below
@@ -6873,17 +6878,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}A1:ZZ5000` : "A1:ZZ5000";
-      let resp = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+      // Inspect the selected grid before reading every bounded row chunk.
+      let resp = await fetchWithTimeout(
+        `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}?fields=sheets(properties(title,index,hidden,gridProperties(rowCount)))`,
         { headers: { "Authorization": `Bearer ${accessToken}` } }
       );
       // If token is invalid/expired, refresh once and retry.
       if (!resp.ok && resp.status === 401 && conn.refreshToken) {
         try {
           accessToken = await refreshGoogleSheetsToken(conn);
-          resp = await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+          resp = await fetchWithTimeout(
+            `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}?fields=sheets(properties(title,index,hidden,gridProperties(rowCount)))`,
             { headers: { "Authorization": `Bearer ${accessToken}` } }
           );
         } catch {
@@ -6898,16 +6903,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let fallbackAccessToken = fallback.accessToken;
           let fallbackResp: any = null;
           if (fallbackAccessToken) {
-            fallbackResp = await fetch(
-              `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+            fallbackResp = await fetchWithTimeout(
+              `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}?fields=sheets(properties(title,index,hidden,gridProperties(rowCount)))`,
               { headers: { "Authorization": `Bearer ${fallbackAccessToken}` } }
             );
           }
           if ((!fallbackResp || (!fallbackResp.ok && fallbackResp.status === 401)) && fallback.refreshToken) {
             try {
               fallbackAccessToken = await refreshGoogleSheetsToken(fallback);
-              fallbackResp = await fetch(
-                `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+              fallbackResp = await fetchWithTimeout(
+                `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}?fields=sheets(properties(title,index,hidden,gridProperties(rowCount)))`,
                 { headers: { "Authorization": `Bearer ${fallbackAccessToken}` } }
               );
             } catch {
@@ -6917,7 +6922,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (fallbackResp?.ok) {
             resp = fallbackResp;
             accessToken = fallbackAccessToken;
-            await storage.updateGoogleSheetsConnection(String(conn.id), {
+            const repairedConnection = await storage.updateGoogleSheetsConnection(String(conn.id), {
               accessToken: fallbackAccessToken,
               refreshToken: fallback.refreshToken || conn.refreshToken || null,
               clientId: fallback.clientId || conn.clientId,
@@ -6925,6 +6930,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               expiresAt: fallback.expiresAt || conn.expiresAt,
               isActive: true as any,
             } as any);
+            if (!repairedConnection) throw new Error("Google Sheets connection changed. Reconnect and try again.");
+            conn = repairedConnection;
             break;
           }
         }
@@ -6943,15 +6950,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const json = await resp.json().catch(() => ({} as any));
-      const values: any[][] = Array.isArray(json?.values) ? json.values : [];
+      const complete = await readGoogleSheetsRevenueChunks(conn, accessToken, resp);
+      if (!complete.success) return res.status(complete.status).json({ success: false, error: complete.error.replace(/Google Sheets revenue/g, "Google Sheets spend") });
+      const values = complete.values;
       const headerRow = values[0] || [];
       const headers = headerRow.map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
+      if (new Set(headers).size !== headers.length) return res.status(400).json({ success: false, error: "Google Sheets column names must be unique after trimming." });
 
       const rows: Array<Record<string, string>> = [];
       for (let i = 1; i < values.length; i++) {
         const r = values[i] || [];
-        if (r.every((v) => String(v || "").trim() === "")) continue;
+        if (r.every((v) => String(v ?? "").trim() === "")) continue;
         const obj: Record<string, string> = {};
         for (let c = 0; c < headers.length; c++) obj[headers[c]] = String(r[c] ?? "").trim();
         rows.push(obj);
@@ -7039,16 +7048,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const range = conn.sheetName ? `${toA1Prefix(conn.sheetName)}A1:ZZ5000` : "A1:ZZ5000";
-      let resp = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+      // Inspect the selected grid before reading every bounded row chunk.
+      let resp = await fetchWithTimeout(
+        `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}?fields=sheets(properties(title,index,hidden,gridProperties(rowCount)))`,
         { headers: { "Authorization": `Bearer ${accessToken}` } }
       );
       if (!resp.ok && resp.status === 401 && conn.refreshToken) {
         try {
           accessToken = await refreshGoogleSheetsToken(conn, refreshWriteInput);
-          resp = await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+          resp = await fetchWithTimeout(
+            `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}?fields=sheets(properties(title,index,hidden,gridProperties(rowCount)))`,
             { headers: { "Authorization": `Bearer ${accessToken}` } }
           );
         } catch {
@@ -7063,16 +7072,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let fallbackAccessToken = fallback.accessToken;
           let fallbackResp: any = null;
           if (fallbackAccessToken) {
-            fallbackResp = await fetch(
-              `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+            fallbackResp = await fetchWithTimeout(
+              `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}?fields=sheets(properties(title,index,hidden,gridProperties(rowCount)))`,
               { headers: { "Authorization": `Bearer ${fallbackAccessToken}` } }
             );
           }
           if ((!fallbackResp || (!fallbackResp.ok && fallbackResp.status === 401)) && fallback.refreshToken) {
             try {
               fallbackAccessToken = await refreshGoogleSheetsToken(fallback, refreshWriteInput);
-              fallbackResp = await fetch(
-                `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+              fallbackResp = await fetchWithTimeout(
+                `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}?fields=sheets(properties(title,index,hidden,gridProperties(rowCount)))`,
                 { headers: { "Authorization": `Bearer ${fallbackAccessToken}` } }
               );
             } catch {
@@ -7082,7 +7091,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (fallbackResp?.ok) {
             resp = fallbackResp;
             accessToken = fallbackAccessToken;
-            await storage.updateGoogleSheetsConnection(String(conn.id), {
+            const repairedConnection = await storage.updateGoogleSheetsConnection(String(conn.id), {
               accessToken: fallbackAccessToken,
               refreshToken: fallback.refreshToken || conn.refreshToken || null,
               clientId: fallback.clientId || conn.clientId,
@@ -7090,6 +7099,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               expiresAt: fallback.expiresAt || conn.expiresAt,
               isActive: true as any,
             } as any, { ...refreshWriteInput, expectedConnection: conn });
+            if (!repairedConnection) throw new Error("Google Sheets connection changed. Reconnect and try again.");
+            conn = repairedConnection;
             break;
           }
         }
@@ -7108,22 +7119,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const json = await resp.json().catch(() => ({} as any));
-      const values: any[][] = Array.isArray(json?.values) ? json.values : [];
+      const complete = await readGoogleSheetsRevenueChunks(conn, accessToken, resp, refreshWriteInput);
+      if (!complete.success) return res.status(complete.status).json({ success: false, error: complete.error.replace(/Google Sheets revenue/g, "Google Sheets spend") });
+      const values = complete.values;
       const headerRow = values[0] || [];
       const headers = headerRow.map((h, idx) => (String(h || "").trim() || `Column ${idx + 1}`));
+      if (new Set(headers).size !== headers.length) return res.status(400).json({ success: false, error: "Google Sheets column names must be unique after trimming." });
 
       const rows: Array<Record<string, string>> = [];
       for (let i = 1; i < values.length; i++) {
         const r = values[i] || [];
-        if (r.every((v) => String(v || "").trim() === "")) continue;
+        if (r.every((v) => String(v ?? "").trim() === "")) continue;
         const obj: Record<string, string> = {};
         for (let c = 0; c < headers.length; c++) obj[headers[c]] = String(r[c] ?? "").trim();
         rows.push(obj);
       }
 
       const campaignCol = mapping.campaignColumn ? String(mapping.campaignColumn) : null;
-      const campaignValue = mapping.campaignValue ? String(mapping.campaignValue) : null;
+      const campaignValue = mapping.campaignValue ? String(mapping.campaignValue).trim() : null;
       const campaignValues: string[] | null = Array.isArray(mapping.campaignValues)
         ? (mapping.campaignValues.map((v: any) => String(v ?? "").trim()).filter((v: string) => !!v))
         : null;
@@ -7150,36 +7163,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: `Mapped Google Sheets column is missing or duplicated: ${unavailableMappedHeaders.join(", ")}. Update the mapping before refreshing.`,
         });
       }
-      let totalSpend = 0;
-      let undatedSpend = 0;
-      const dailySpendMap = new Map<string, number>(); // date -> spend
-
-      for (const row of rows) {
-        if (campaignCol && (campaignValueSet || campaignValue)) {
-          const v = String((row as any)[campaignCol] ?? "").trim();
-          if (campaignValueSet) {
-            if (!campaignValueSet.has(v)) continue;
-          } else if (campaignValue && v !== campaignValue) {
-            continue;
-          }
-        }
-        const spend = parseNum((row as any)[spendCol]);
-        if (!(spend > 0)) continue;
-        kept++;
-        totalSpend += spend;
-
-        // Track daily spend if date column provided
-        if (dateCol) {
-          const date = normalizeFinancialSourceDateKey((row as any)[dateCol]);
-          if (date) dailySpendMap.set(date, (dailySpendMap.get(date) || 0) + spend);
-          else undatedSpend += spend;
-        }
-      }
-
-      if (platformContext === "ga4" && dateCol && undatedSpend > 0) {
-        return res.status(400).json({ success: false, error: "Selected spend rows contain blank or invalid dates. Fix those dates before importing." });
-      }
-
       const campaign = await storage.getCampaign(campaignId);
       const campaignCurrency = String((campaign as any)?.currency || "USD").trim().toUpperCase();
       const requestedCurrency = String(mapping.currency || campaignCurrency).trim().toUpperCase();
@@ -7193,6 +7176,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       const currency = platformContext === "ga4" ? campaignCurrency : requestedCurrency;
+      let totalSpend = 0;
+      let undatedSpend = 0;
+      const dailySpendMap = new Map<string, number>(); // date -> spend
+
+      for (const row of rows) {
+        if (campaignCol && (campaignValueSet || campaignValue)) {
+          const v = String((row as any)[campaignCol] ?? "").trim();
+          if (campaignValueSet) {
+            if (!campaignValueSet.has(v)) continue;
+          } else if (campaignValue && v !== campaignValue) {
+            continue;
+          }
+        }
+        const rawSpend = String(row[spendCol] ?? "").trim();
+        if (!rawSpend) continue;
+        if (!isSupportedGa4CsvRevenueAmount(rawSpend, currency)) {
+          return res.status(400).json({ success: false, error: "Selected spend amounts must be non-negative numbers with at most two decimal places, within the supported currency range. A $ symbol requires USD." });
+        }
+        const spend = parseNum(rawSpend);
+        if (platformContext === "ga4" && dateCol && !isSupportedGa4CsvRevenueDate(row[dateCol])) {
+          return res.status(400).json({ success: false, error: "Selected spend rows contain blank or invalid dates. Fix those dates before importing." });
+        }
+        kept++;
+        totalSpend += spend;
+
+        // Track daily spend if date column provided
+        if (dateCol) {
+          const date = normalizeFinancialSourceDateKey((row as any)[dateCol]);
+          if (date) dailySpendMap.set(date, (dailySpendMap.get(date) || 0) + spend);
+          else undatedSpend += spend;
+        }
+      }
+
+      if (!kept || totalSpend > GA4_CSV_MAX_REVENUE_TOTAL) {
+        return res.status(400).json({ success: false, error: !kept ? "No selected rows contain a spend amount. Enter an explicit 0 for measured zero." : "Selected spend total exceeds the supported amount range." });
+      }
+      if (platformContext === "ga4" && dateCol && undatedSpend > 0) {
+        return res.status(400).json({ success: false, error: "Selected spend rows contain blank or invalid dates. Fix those dates before importing." });
+      }
+
       const existingSourceId = mapping?.sourceId ? String(mapping.sourceId) : null;
 
       const mappingForStorage = {
@@ -7227,7 +7250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (platformContext === 'ga4') {
         const completedDate = getReportingDateWindow(1, (campaign as any)?.reportingTimeZone).endDate;
         const records = dateCol && dailySpendMap.size > 0
-          ? Array.from(dailySpendMap.entries()).filter(([, spend]) => spend > 0).map(([date, spend]) => ({ campaignId, date, spend: String(Number(spend.toFixed(2))), currency, sourceType: 'google_sheets' }))
+          ? Array.from(dailySpendMap.entries()).filter(([, spend]) => spend >= 0).map(([date, spend]) => ({ campaignId, date, spend: String(Number(spend.toFixed(2))), currency, sourceType: 'google_sheets' }))
           : [{ campaignId, date: completedDate, spend: totalSpend.toFixed(2), currency, sourceType: 'google_sheets' }];
         const visibleSpendToDate = Number(records.filter((record: any) => String(record.date) <= completedDate).reduce((sum: number, record: any) => sum + Number(record.spend || 0), 0).toFixed(2));
         const source = await storage.replaceSpendSourceWithRecords(campaignId, existingSourceId, 'google_sheets', 'ga4', {
@@ -7264,7 +7287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Populate spend_records — daily granularity if date column provided, otherwise single record
       if (dateCol && dailySpendMap.size > 0) {
         const spendRecordsToInsert = Array.from(dailySpendMap.entries())
-          .filter(([date, spend]) => spend > 0)
+          .filter(([date, spend]) => spend >= 0)
           .map(([date, spend]) => ({
             campaignId,
             spendSourceId: String((source as any).id),

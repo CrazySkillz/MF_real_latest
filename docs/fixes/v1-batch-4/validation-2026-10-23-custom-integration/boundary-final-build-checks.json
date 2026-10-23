@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-23T12:01:37.103Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "boundary-final-typecheck.log"
+    },
+    {
+      "name": "server-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "boundary-final-server-build.log"
+    }
+  ]
+}

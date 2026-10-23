@@ -1,0 +1,60 @@
+{
+  "at": "2026-10-23T11:25:10.010789+00:00",
+  "revision": "221382da751b453b4d45411df65f15a62750c9b1",
+  "result": "Current primary UI permits Google Analytics only; standalone Sheets onboarding/navigation is hidden, while its route/API and saved-connection reads remain retained.",
+  "sources": [
+    {
+      "file": "client/src/pages/campaigns.tsx",
+      "lines": [
+        183,
+        185,
+        187,
+        623,
+        1433
+      ],
+      "sha256LF": "54a56c191e72de20c14cc1aabc9ba49750c9d20b81b928ed12e5bd77748fd1fd"
+    },
+    {
+      "file": "client/src/pages/campaign-detail.tsx",
+      "lines": [
+        4977,
+        5644,
+        5651,
+        5824,
+        4689
+      ],
+      "sha256LF": "9e592b188071585102a4b7b9665acf74c6ee9de3063cc56cf9164d4caa7b7823"
+    },
+    {
+      "file": "client/src/App.tsx",
+      "lines": [
+        29,
+        151
+      ],
+      "sha256LF": "56197426dd8f3fa6153a03e8ab2598c4383663c7707e010a7d02a9ec3caa880a"
+    },
+    {
+      "file": "server/routes-oauth.ts",
+      "lines": [
+        21432
+      ],
+      "sha256LF": "00b917cec0b319e70ab02625224e7ffea9707d83e9acf66a831bd21fee659e21"
+    }
+  ],
+  "browserInventory": {
+    "apps": [],
+    "browsers": []
+  },
+  "correction": "Do not ask the user to create/connect a standalone Sheets campaign through the ordinary current wizard or find a Sheets platform card. Earlier navigation instructions were invalid. No page was enabled and no test campaign/sheet was created.",
+  "scope": "Hidden is not disabled or excluded. Required retained-route, job, isolation and provider acceptance stays OPEN; local fixture proofs remain valid within their original boundaries.",
+  "nextImplementationGroup": [
+    "V1-028",
+    "V1-029",
+    "V1-031",
+    "V1-102",
+    "V1-103",
+    "V1-111",
+    "V1-120"
+  ],
+  "productionMutation": false
+}

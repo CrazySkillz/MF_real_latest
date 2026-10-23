@@ -329,6 +329,10 @@ function inferColumnType(values: any[]): 'number' | 'text' | 'date' | 'currency'
 }
 
 function normalizeCustomIntegrationMetrics(metrics: ParsedMetrics) {
+  if (metrics._requiresReview !== false || !(Number(metrics._confidence) >= 95) || !Number(metrics._extractedFields)
+    || !Array.isArray(metrics._warnings) || metrics._warnings.length) {
+    throw Object.assign(new Error("Report requires review; upload a supported, unambiguous report. Saved metrics were not changed."), { code: "CUSTOM_REPORT_INVALID" });
+  }
   const metric = (value: any) => {
     if (value === null || typeof value === "undefined") return null;
     return typeof value === "number" && Number.isNaN(value) ? null : value;
@@ -338,6 +342,8 @@ function normalizeCustomIntegrationMetrics(metrics: ParsedMetrics) {
     return normalized === null ? null : String(normalized);
   };
   const parserMetadata = {
+    validationVersion: 2,
+    declaredCurrency: metrics._currency || null,
     confidence: metrics._confidence ?? null,
     warnings: Array.isArray(metrics._warnings) ? metrics._warnings : [],
     extractedFields: metrics._extractedFields ?? null,
@@ -783,7 +789,7 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
-    files: 5,
+    files: 1,
     fields: 40,
     parts: 45,
     fieldSize: 128 * 1024,
@@ -27539,9 +27545,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const existingIntegration = await storage.getCustomIntegration(campaignId);
+      console.log(`[Custom Integration Upload] Processing report for campaign ${campaignId}, file: ${req.file.originalname}, size: ${req.file.size} bytes`);
+
+      // Parse the report file to extract metrics
+      const parsedMetrics = await parseCustomIntegrationFile(req.file.buffer, req.file.originalname, req.file.mimetype);
+      console.log(`[Custom Integration Upload] Parsed metrics:`, parsedMetrics);
+
+      const normalizedMetrics = normalizeCustomIntegrationMetrics(parsedMetrics);
+      let existingIntegration = await storage.getCustomIntegration(campaignId);
       if (!existingIntegration) {
-        await storage.createCustomIntegration({
+        existingIntegration = await storage.createCustomIntegration({
           campaignId,
           email: null,
           webhookToken: randomBytes(32).toString('hex'),
@@ -27549,21 +27562,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      console.log(`[Custom Integration Upload] Processing report for campaign ${campaignId}, file: ${req.file.originalname}, size: ${req.file.size} bytes`);
-
-      // Parse the report file to extract metrics
-      const parsedMetrics = await parseCustomIntegrationFile(req.file.buffer, req.file.originalname, req.file.mimetype);
-      console.log(`[Custom Integration Upload] Parsed metrics:`, parsedMetrics);
-
       // Store the metrics in the database
       const metrics = await storage.createCustomIntegrationMetrics({
         campaignId,
-        ...normalizeCustomIntegrationMetrics(parsedMetrics),
+        ...normalizedMetrics,
         // Metadata
         pdfFileName: req.file.originalname,
         emailSubject: null,
         emailId: null,
-      });
+      }, { integrationId: existingIntegration.id, allowDraft: true });
 
       console.log(`[Custom Integration Upload] Metrics stored successfully:`, metrics.id);
 
@@ -27579,7 +27586,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("[Custom Integration Upload] Error processing report:", { name: (error as any)?.name, code: (error as any)?.code });
-      res.status(500).json({
+      res.status((error as any)?.code === "CUSTOM_REPORT_INVALID" ? 400 : 500).json({
         success: false,
         error: error instanceof Error ? error.message : "Failed to process report"
       });
@@ -27687,16 +27694,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         warnings: parsedMetrics._warnings || [],
       };
 
-      // If confidence is below threshold, include review URL
-      if (parsedMetrics._requiresReview) {
-        response.reviewUrl = `/campaigns/${integration.campaignId}/review-import/${metrics.id}`;
-        response.message += ` (Confidence: ${parsedMetrics._confidence}%)`;
-      }
-
       res.json(response);
     } catch (error) {
       console.error("[Webhook] Error processing report:", { name: (error as any)?.name, code: (error as any)?.code });
-      res.status(500).json({
+      res.status((error as any)?.code === "CUSTOM_REPORT_INVALID" ? 400 : 500).json({
         success: false,
         error: error instanceof Error ? error.message : "Failed to process report"
       });
@@ -27844,7 +27845,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("[Email] Error processing report:", { name: (error as any)?.name, code: (error as any)?.code });
-      res.status(500).json({
+      res.status((error as any)?.code === "CUSTOM_REPORT_INVALID" ? 400 : 500).json({
         success: false,
         error: error instanceof Error ? error.message : "Failed to process email report"
       });
@@ -32833,7 +32834,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error: any) {
       console.error('[SendGrid] Error processing email:', error);
-      res.status(500).json({ error: 'Failed to process email' });
+      res.status((error as any)?.code === "CUSTOM_REPORT_INVALID" ? 400 : 500).json({ error: 'Failed to process email' });
     }
   });
 
@@ -32985,7 +32986,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error: any) {
       console.error('[Mailgun] Error processing email:', error);
-      res.status(500).json({ error: 'Failed to process email' });
+      res.status((error as any)?.code === "CUSTOM_REPORT_INVALID" ? 400 : 500).json({ error: 'Failed to process email' });
     }
   });
 
@@ -32993,99 +32994,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/custom-integration/transfer", async (req, res) => {
     try {
       const { fromCampaignId, toCampaignId } = req.body;
+      if (typeof fromCampaignId !== "string" || typeof toCampaignId !== "string" || fromCampaignId === toCampaignId) {
+        return res.status(400).json({ success: false, error: "Choose two distinct campaigns" });
+      }
+
       console.log(`[Custom Integration Transfer] Transferring from ${fromCampaignId} to ${toCampaignId}`);
       const fromCampaign = await ensureCampaignAccess(req as any, res as any, fromCampaignId);
       if (!fromCampaign) return;
       const toCampaign = await ensureCampaignAccess(req as any, res as any, toCampaignId);
       if (!toCampaign) return;
 
-      const existingIntegration = await storage.getCustomIntegration(fromCampaignId);
-
-      if (!existingIntegration) {
-        return res.status(404).json({
-          success: false,
-          error: "No custom integration found"
-        });
-      }
-
-      // Create new integration connection
-      const newIntegration = await storage.createCustomIntegration({
-        campaignId: toCampaignId,
-        email: existingIntegration.email,
-        webhookToken: existingIntegration.webhookToken,
-        allowedEmailAddresses: existingIntegration.allowedEmailAddresses
-      });
-      console.log(`[Custom Integration Transfer] Created new integration for campaign ${toCampaignId}:`, {
-        id: newIntegration.id,
-        email: newIntegration.email
-      });
-
-      // Transfer metrics data if any exists (but NOT from temp-campaign-setup)
-      // temp-campaign-setup is just a placeholder and may have old test data
-      const shouldTransferMetrics = fromCampaignId !== 'temp-campaign-setup';
-      const existingMetrics = shouldTransferMetrics
-        ? await storage.getAllCustomIntegrationMetrics(fromCampaignId)
-        : [];
-
-      console.log(`[Custom Integration Transfer] Found ${existingMetrics.length} metrics to transfer`);
-      if (fromCampaignId === 'temp-campaign-setup') {
-        console.log(`[Custom Integration Transfer] Skipping metrics transfer from temp campaign (would be old test data)`);
-      }
-
-      if (existingMetrics.length > 0) {
-        for (const metric of existingMetrics) {
-          // Create new metric record for the new campaign
-          await storage.createCustomIntegrationMetrics({
-            campaignId: toCampaignId,
-            impressions: metric.impressions,
-            reach: metric.reach,
-            clicks: metric.clicks,
-            engagements: metric.engagements,
-            spend: metric.spend,
-            conversions: metric.conversions,
-            leads: metric.leads,
-            videoViews: metric.videoViews,
-            viralImpressions: metric.viralImpressions,
-            users: metric.users,
-            sessions: metric.sessions,
-            pageviews: metric.pageviews,
-            avgSessionDuration: metric.avgSessionDuration,
-            pagesPerSession: metric.pagesPerSession,
-            bounceRate: metric.bounceRate,
-            organicSearchShare: metric.organicSearchShare,
-            directBrandedShare: metric.directBrandedShare,
-            emailShare: metric.emailShare,
-            referralShare: metric.referralShare,
-            paidShare: metric.paidShare,
-            socialShare: metric.socialShare,
-            emailsDelivered: metric.emailsDelivered,
-            openRate: metric.openRate,
-            clickThroughRate: metric.clickThroughRate,
-            clickToOpenRate: metric.clickToOpenRate,
-            hardBounces: metric.hardBounces,
-            spamComplaints: metric.spamComplaints,
-            listGrowth: metric.listGrowth,
-            pdfFileName: metric.pdfFileName,
-            emailSubject: metric.emailSubject,
-            emailId: metric.emailId,
-          });
-        }
-        console.log(`[Custom Integration Transfer] Transferred ${existingMetrics.length} metrics`);
-      }
-
-      // Delete old integration and metrics
-      await storage.deleteCustomIntegration(fromCampaignId);
-      console.log(`[Custom Integration Transfer] Deleted old integration from ${fromCampaignId}`);
-
-      // Verify the transfer was successful
-      const verifyIntegration = await storage.getCustomIntegration(toCampaignId);
-      if (verifyIntegration) {
-        console.log(`[Custom Integration Transfer] ✅ VERIFIED: Integration exists for campaign ${toCampaignId}`);
-      } else {
-        console.error(`[Custom Integration Transfer] ❌ VERIFICATION FAILED: Integration NOT found for campaign ${toCampaignId}`);
-      }
-
-      console.log(`[Custom Integration Transfer] Transfer complete`);
+      const transferred = await storage.transferCustomIntegration(fromCampaignId, toCampaignId, fromCampaign.ownerId!);
+      if (!transferred) return res.status(404).json({ success: false, error: "No custom integration found" });
 
       res.json({ success: true, message: 'Custom integration and metrics transferred' });
     } catch (error) {

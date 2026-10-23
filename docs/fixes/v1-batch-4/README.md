@@ -6,11 +6,80 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 4 status
 
-**IN PROGRESS.** Fifteen corrections are VERIFIED LOCALLY within their stated boundaries: V1-040/041/051/065/066/067/070/071/072/073/108/112/113/114/126. The latest five standalone Sheets corrections below are **committed in `5bc33828a6abb738dda75fd09d0196bc82c548e6`**, on base `fb1132a2`; deployment verification is pending. Nine implementation findings remain: seven Custom Integration and two manual-Spend/transfer safeguards. All 24 release acceptances remain OPEN. The earlier selection correction is independently verified deployed in `fb1132a2`; that does not deploy or certify the new work. No production/Ptomo/provider access or historical-data cleanup was performed for this group.
+**IN PROGRESS.** Twenty-two corrections are VERIFIED LOCALLY within their stated boundaries: the fifteen earlier corrections plus V1-028/029/031/102/103/111/120 below. The latest five standalone Sheets corrections below are **committed in `5bc33828a6abb738dda75fd09d0196bc82c548e6`**, on base `fb1132a2`; deployed in `221382da` with public checks passed and authenticated/provider acceptance open. Two implementation findings remain: manual Spend / transfer safeguards V1-068/069. The seven Custom Integration corrections below are uncommitted and not deployed. All 24 release acceptances remain OPEN. The deployment includes the earlier selection correction; public checks do not certify source values or full V1 acceptance. No production/Ptomo/provider access or historical-data cleanup was performed for this group.
+
+## Custom Integration correction checkpoint (October 23)
+
+### Pre-deployment compatibility decision (October 23)
+
+**Check COMPLETE; the compatibility hold is CLEARED by the user's explicit acceptance below.** The user confirmed that the old figures in the two identified Mailgun test campaigns are no longer needed and may become unavailable after deployment. This accepts that exact visibility change only; it does not authorize deletion, rewriting or promotion of unverified data. [Recorded decision and validation summary](validation-2026-10-23-custom-integration/compatibility-decision.json). V1-029 remains open for release, and the two remaining implementation items are V1-068/069. No runtime code, production data or schedules were changed during this check; nothing was committed or pushed.
+
+The [production read-only inventory](validation-2026-10-23-custom-integration/predeploy-compatibility.json) and [surviving campaign dependencies](validation-2026-10-23-custom-integration/predeploy-current-dependencies.json) ran at 14:29-14:31 Europe/Amsterdam. The database target hash matches the user-confirmed production database from Batch 3. Both queries used TLS verification, database-enforced READ ONLY transactions, bounded timeouts and ROLLBACK. The public health endpoint still reports healthy runtime `221382da751b453b4d45411df65f15a62750c9b1`; the new guards are not deployed.
+
+| Existing state | Deployment impact / decision |
+|---|---|
+| Ptomo: zero Custom connections and zero Custom metric rows | No existing Ptomo value depends on the changed Custom validation gate. This does not recertify all Ptomo or GA4 behavior. |
+| Two active, owned Custom campaigns hold three metric rows from November 2025; both latest rows have null parser metadata | Their current Custom figures would become unavailable; the user explicitly accepted this after the campaigns were identified by name. Campaign hashes `44eab1005dca...` and `f2187aa9cfed...` are fully recorded in the dependency evidence. Both lack a client, but `ensureCampaignAccess` checks campaign ownership and permits the owner; the active-campaign scheduler also still selects them. Their disposition is explicit user acceptance, not an assumption that they are inaccessible or redundant. |
+| Those two campaigns have zero KPIs, Benchmarks, saved reports, report snapshots or enabled report/KPI schedules; they have 5,222 and 5,231 metric snapshots | No saved report is being deleted or directly blocked by this check. The current-value aggregate would stop consuming their old Custom metrics; existing metric history remains stored. Complete historical/current downstream reconciliation remains open under the existing Batch 7 gates. |
+| Another surviving Sheets campaign has a Custom connection but zero Custom metrics, one KPI and one enabled report | There is no previously readable Custom metric to suppress for that campaign. Its unrelated KPI/report is not changed or disabled; its full acceptance remains separate. A fourth surviving Custom connection also has no metrics. |
+| Global Custom inventory: 20 connections, including 16 without a campaign; 76 metric rows, including 73 without a campaign; zero Custom saved reports/snapshots/goals and zero inbound receipts | These are existing data-quality observations, not cleanup authorization. The ten latest-import campaign keys in the first inventory include orphaned keys; only two surviving campaigns currently hold imports. No record was deleted, rewritten, reassigned or marked validated. |
+
+**Exact code boundary:** `server/storage.ts:hasValidatedCustomIntegrationMetadata/getLatestCustomIntegrationMetrics` selects the newest row by `uploadedAt DESC, id DESC` and rejects metadata without validation version 2. Current owner-guarded `/api/custom-integration/:campaignId/metrics` returns 404, the retained Custom page withholds its metric sections and leaves Upload Report available, and the scheduled Custom PDF builder returns no artifact. The scheduler's required-source-artifact guard prevents a missing Custom PDF from being emailed. Shared aggregate readers in `server/scheduler.ts` and `server/routes-oauth.ts` also stop receiving those unverified metrics. The unused raw/history getters remain unchanged and have no current runtime callers outside storage. These are deliberate accuracy safeguards; the user accepted their effect on the two identified old campaigns. There is no automatic promotion of old values, and the acceptance does not extend to other customers or future imports.
+
+**Recovery and rollback:** the persisted rows contain parsed values and file/email references, not proof that the original bytes pass the corrected parser. Original-file availability and successful reparse remain unverified. The user's acceptance removes original-file recovery as a pre-push requirement for these two old test campaigns only; any future recovery must use the exact original source through the validated import path. Do not synthesize version-2 metadata from old confidence/values. No schema, dependency or environment change is required, but reverting the code would reopen the known unsafe parsing/read paths and is not a certified rollback.
+
+**Local recovery evidence:** [22/22 PostgreSQL checks pass](validation-2026-10-23-custom-integration/compatibility-recovery.json), including a new null-metadata historical-row case: invalid replacement preserves the exact old row; valid publication restores the latest value while preserving all old fields and unrelated campaign data. This proves storage recovery, not successful reparse of the real archived files. [TypeScript, fixture cleanup and candidate comparison](validation-2026-10-23-custom-integration/compatibility-local-checks.json) pass; both local databases have zero fixture schemas, other clients and advisory locks, and the test cluster was stopped. The [current manifest](validation-2026-10-23-custom-integration/compatibility-manifest.json) changes only the recovery test from the previous 11-file candidate; runtime hashes are unchanged. Earlier 87/87 Custom, 268-pass/six-failure expanded and historical whole-suite evidence retains its original scope; no failure was waived and no whole-suite count was inferred.
+
+Commands: `node .../predeploy-compatibility.cjs`, `node .../predeploy-current-dependencies.cjs`, `node .../run-tests.cjs compatibility-recovery server/v1-batch4-custom-storage-postgres.test.ts --local-pg`, and `node .../compatibility-local-checks.cjs`, where `...` is this batch's `validation-2026-10-23-custom-integration` directory. Evidence scripts output counts/hashes, not credentials, raw customer identifiers, email addresses or imported values. The read-only inventory establishes the current deployment impact; it does not close browser/provider, full downstream, operational or release gates.
+
+**Local forward fixes complete for V1-028/029/031/102/103/111/120. Uncommitted on `221382da751b453b4d45411df65f15a62750c9b1`; not deployed.** [Exact 11-file candidate](validation-2026-10-23-custom-integration/candidate-manifest.json), [assessment and every classified failure](validation-2026-10-23-custom-integration/assessment.json). This changes retained Custom Integration code; it does not enable its hidden campaign wizard/card, change GA4/Ptomo, or certify the source or Batch 4 for release.
+
+| Finding | Confirmed root cause and exact corrected path | Local evidence |
+|---|---|---|
+| V1-028 | `server/services/custom-integration-file-parser.ts` (`parseDelimitedMetrics`, `metricsFromTable`, `applyMetricValues`, `parseMetricNumber`): non-strict capped CSV reads, overwritten duplicate headers, partial numeric parsing and guessed value columns. Complete strict tables now reject overflow, duplicates/competing aliases, missing/invalid values, ambiguous metric/value columns and unsupported precision/ranges before publication. Report-style/headerless formats retain bounded supported parsing. | All 5,000 data rows, rejection at 5,001, malformed/mixed-currency/duplicate inputs, explicit zero, all 28 fields, supported grouped numbers and XLSX duplicates. |
+| V1-029 | `server/routes-oauth.ts: normalizeCustomIntegrationMetrics` and all five ingest callers; `server/storage.ts: createCustomIntegrationMetrics/getLatestCustomIntegrationMetrics`; Custom page and `server/report-scheduler.ts: buildCustomIntegrationScheduledPdfAttachment`. Review warnings previously persisted and propagated as validated data. Validation now precedes publication (and manual connection creation); current-version metadata is required at the shared write/read boundary. Late manual writes retain exact integration identity. | Invalid replacement preserves good rows; missing/old/review-required metadata cannot publish or become the latest validated result. Actual PDF builder rejects unvalidated imports. Browser/scheduled output explicitly identifies latest-import/all-history values, without claiming a calendar-window import total. |
+| V1-031 | `POST /api/custom-integration/transfer` now calls `server/storage.ts: transferCustomIntegration`. The previous copy/delete sequence destroyed a same-ID source and omitted metadata/timestamps. The transaction locks both owned parents in stable order, rejects same/missing/foreign/deleted/occupied/mismatched-currency destinations, and moves original rows plus replay receipts. Related connect/delete writes use the same parent lock. | Actual PostgreSQL same-ID/owner/destination/currency tests, rollback on final write failure, concurrent transfers, late token writes, replay dedupe, unchanged row IDs/timestamps/parser metadata and neighbor preservation. The special `temp-campaign-setup` metric exclusion remains. Repeating a completed transfer fails safely; it does not duplicate data or falsely return success. |
+| V1-102 | `readZipEntries/parseWorksheet` previously inflated arbitrary ZIP entries. Limits now bound compressed input (10 MiB), entries (256), aggregate expanded bytes (10 MiB), rows (5,000 data plus header), columns (200), and cells (1,000,000). Entry boundaries/methods/declared versus actual expanded sizes reject incomplete input; inflate itself is bounded. Existing Custom multer now permits one report, at most 10 MiB, with the existing 40-field/128-KiB-per-field/45-part caps. | Bounded 12-MiB expansion fixture rejected before inflation; excess-entry/input controls; actual Express/multer request accepts one report and rejects a second attachment before the handler. Prior signature/download checks still pass. No exhaustion or production load test was induced. |
+| V1-103 | `parseXlsxMetrics` previously selected by ZIP order. It now follows workbook relationships to the sole visible worksheet; missing metadata, multiple visible sheets, external/invalid targets, duplicate cells, formulas/merged cells and invalid shared strings fail closed. | Identical workbook in reversed archive order returns the same visible value (10), never the hidden value (200); ambiguous workbooks and duplicate headers reject. |
+| V1-111 | Custom page revenue/spend queries and `buildCustomIntegrationFinancialReportMetrics` replaced failed/malformed totals with usable zero and combined partial spend with imported spend. Success/finite-value/read-error gates now control cards, goal/Insight resolvers and browser/scheduled financial output. A failed current read invalidates stale success; source dialogs disclose unavailable totals. | Actual page query/transformation tests: HTTP/JSON/value failures, stale error flags, partial spend, genuine zero, loss, zero denominators and positive ratios. Actual report helper and generated PDF show unavailable values after failed reads; genuine zero retains ROI -100%. |
+| V1-120 | CSV/XLSX aliases and `server/services/pdf-parser.ts` mapped sent to delivered, opens to rate, exits to bounce and new subscribers to net growth. Ambiguous aliases and substring matching are removed; percentage/count/duration semantics are explicit. Distinct users/reach require a single total instead of summing unknown overlap. PDF duplicate/prefix-malformed values reject. | Original ambiguous label controls, PDF controls, all 28 canonical fields/zero states, explicit traffic percentages, non-additive users/reach and integer count constraints. No denominator or historical allocation is invented. |
+
+**Validation:** [Expanded result](validation-2026-10-23-custom-integration/complete.json): **274 tests, 268 passed, six failed, zero skipped**. [Final Custom boundary](validation-2026-10-23-custom-integration/boundary-final.json): **87/87 pass**, including 21 actual PostgreSQL cases, actual page query/transformation execution, a real generated PDF and a real local multipart request. [Final TypeScript/server checks](validation-2026-10-23-custom-integration/boundary-final-build-checks.json) and [client build](validation-2026-10-23-custom-integration/complete-build-checks.json) pass. Commands are preserved in the packet's `run-tests.cjs` / `run-build-checks.cjs`; they strip application credentials, do not load `.env`, and restrict test network access to localhost.
+
+The six failures are **B4-TEST-d6f30a50b0, B4-TEST-1830eb645f, B4-TEST-bd45a0cac4, TEST-1ab264f494, TEST-6f00d61d48 and TEST-c8a51eca27**. They are source-text assertion mismatches in Sheets/Google Ads/manual-Spend tests; their intended behaviors and later unexecuted assertions still require repair/verification under V1-012. None is dismissed as an old baseline or waived. The assessment also records each intermediate fixture, encoding, parameterization, changed-assertion and compile failure and its correction. Historical full-suite counts remain 4,309 pass / 179 fail until another full run; this packet does not certify CI.
+
+**Supported input/compatibility boundary:** CSV/XLSX monetary values are plain amounts in the campaign currency; explicit currency columns/symbols reject instead of conversion. PDF declared currency must match the parent campaign; Custom UI/report currency formatters now use that currency. Custom count storage remains integer-only: unsupported fractional counts reject rather than truncate. GA4's fractional conversions are unchanged. XLSX requires one visible worksheet and explicit values, without formulas or merges. Unknown/ambiguous metrics remain unavailable; unsupported values never become zero. There is no imported reporting-period field: latest validated import values and all-history added financial values are clearly labeled on the page and PDFs; calendar-window Custom import totals are not certified.
+
+**Historical data/recovery:** old rows without `validationVersion=2` remain stored but are excluded from validated reads. An invalid new replacement does not erase a valid current import, and a newer unverified historical row does not silently fall back to older figures. The existing Custom page's Upload Report card remains available with no validated metrics, allowing exact original-source reimport. No historical row was modified/deleted outside disposable fixtures. Original-source inventory and any separately approved cleanup remain required; do not promote old parser confidence alone to proof.
+
+| Lifecycle / downstream | Proven locally | Still open for release |
+|---|---|---|
+| Manual / token / email / Mailgun / SendGrid ingress | Shared current validation/normalization, write/read gate; exact manual integration identity; bounded input; existing signature/download tests | Live authorized browser uploads and real provider acceptance/retries/attachment layouts |
+| Add / reconnect / edit / transfer / disconnect | Parent survival/locking, failed replacement preservation, transfer ownership/rollback/replay, late source-write rejection; same architecture and schemas | Complete deployed lifecycle and historical original-source inventory; broader account/connection acceptance |
+| Latest API / page / source modal / totals | Latest-reader excludes unverified rows; query success/error and zero semantics; recovery upload remains on retained route | Authenticated DOM acceptance; full source-edit-to-all-output comparison |
+| KPIs / Benchmarks / Insights / diagnostics / snapshots | Latest-reader gate applies to existing readers; page financial resolvers share availability; actual imported metric and report guards | Persisted goals/alerts and full downstream matrix [V1-122](../v1-batch-7/README.md#v1-122); diagnostic windows and historical snapshots remain unverified |
+| Browser / scheduled reports | Latest-import versus delivery-window labels, currency formatting, actual scheduled PDF validation/failed-read cases | Browser PDF DOM/download acceptance, real scheduled delivery/inbox and full snapshot parity [V1-060](../v1-batch-7/README.md#v1-060) |
+| Deployment / recovery / operations | No schema/dependency/environment changes; old records retained and safe reimport supported | Exact deployed revision/configuration, provider tests, load/backup/rollback/CI. Reverting these guards would restore known unsafe behavior |
+
+[Fixture cleanup](validation-2026-10-23-custom-integration/fixture-cleanup.json) records empty test schemas/connections/locks and cluster shutdown. No production/Ptomo/provider request, email or data mutation occurred. **Next implementation work: V1-068/069 only.** Then required deployed/provider/full Batch 4 acceptance remains; all 24 release acceptances are OPEN. The earlier checkpoints below are historical within their dated scope.
+
+## Standalone Sheets completion deployment verification (October 23)
+
+At 13:05 Europe/Amsterdam (11:05 UTC), three public `/api/health` responses independently confirmed **`221382da751b453b4d45411df65f15a62750c9b1`**, `ok=true` and `nodeEnv=production`. It contains all five Sheets corrections in `5bc33828`. Homepage and `/health` returned 200; signed-out `/api/campaigns` returned 401. [Recorded results](deployment-2026-10-23-standalone-sheets-completion/public-verification.json) and [read-only checker](deployment-2026-10-23-standalone-sheets-completion/verify-public.cjs).
+
+The scheduler is healthy and registered with unchanged 08:00/14:00/20:00 Amsterdam slots. The current process started at 12:58 Amsterdam; its next run is 14:00, through October 22, with no completed run in that observation. This proves registration, not successful natural refresh. No new Ptomo refresh wait is required before independent Batch 4 work.
+
+**Passed:** expected live revision, basic readiness, homepage availability, signed-out access denial and scheduler registration. **Still open:** authenticated standalone Sheets UI/provider acceptance using an isolated test campaign, full lifecycle/downstream acceptance, natural refresh and remaining V1 gates. This check made no application mutation, authenticated campaign/Ptomo data read, provider request or manual refresh. Local runtime/test hashes remain unchanged. All 24 Batch 4 release acceptances remain OPEN.
+
+**Corrected validation instructions after current-code trace:** standalone Sheets is not offered in the current customer navigation or campaign wizard. `client/src/pages/campaigns.tsx:183-187,623,1433` filters offered/saved platforms to `google-analytics`; `client/src/pages/campaign-detail.tsx:4977,5651` renders only Google Analytics cards. The later Sheets card JSX is unreachable through that filtered list. `docs/CURRENT_APP_SECTIONS.md` agrees. Earlier instructions asking the user to find a Sheets card or create a separate Sheets campaign through this UI were incorrect. Do not repeat them or enable a platform to make those instructions work.
+
+The standalone route remains registered in `client/src/App.tsx:151`, its guarded GET in `server/routes-oauth.ts:21432`, and existing configured connections can still trigger retained reads at `campaign-detail.tsx:4689`. Hidden navigation is not an access control or agreed exclusion. The 129 final local boundary checks and the wider packet remain supporting evidence for those retained paths; they do not become live-provider acceptance. [Exact navigation boundary](deployment-2026-10-23-standalone-sheets-completion/navigation-boundary.json).
+
+**User action now: none for standalone Sheets.** No browser or native app is connected to this session, and no authorized live standalone Sheets fixture has been established. Required authenticated/provider checks remain OPEN and need an isolated developer-controlled setup or a separately agreed and effectively enforced scope decision. They cannot be certified from a GA4 Revenue/Spend screenshot or satisfied by guessing a UI path. Do not ask the user to repeat Ptomo freshness checks. The subsequent seven Custom Integration corrections are now locally verified above; they did not enable hidden onboarding. Current remaining implementation is V1-068/069. No runtime feature, campaign, spreadsheet, exclusion or release status was changed by this correction.
 
 ## Standalone Sheets completion checkpoint (October 23)
 
-**V1-051/108/112/113/114: VERIFIED LOCALLY for the corrections below; release acceptance OPEN.** V1-108's four-provider functional portions remain deferred under the existing scope decision. This completes the five-item implementation group, not whole-source or V1 certification. [Assessment](validation-2026-10-23-standalone-sheets-completion/assessment.json) records candidate hashes, every test failure and remaining boundaries; [candidate manifest](validation-2026-10-23-standalone-sheets-completion/candidate-manifest.json) identifies the originally validated runtime/tests. [Commit verification](validation-2026-10-23-standalone-sheets-completion/commit-checkpoint.json) binds all 16 unchanged runtime/test files to `5bc33828a6abb738dda75fd09d0196bc82c548e6`; dated pre-commit evidence remains unchanged. Deployment verification and source/provider acceptance remain pending.
+**V1-051/108/112/113/114: VERIFIED LOCALLY for the corrections below; release acceptance OPEN.** V1-108's four-provider functional portions remain deferred under the existing scope decision. This completes the five-item implementation group, not whole-source or V1 certification. [Assessment](validation-2026-10-23-standalone-sheets-completion/assessment.json) records candidate hashes, every test failure and remaining boundaries; [candidate manifest](validation-2026-10-23-standalone-sheets-completion/candidate-manifest.json) identifies the originally validated runtime/tests. [Commit verification](validation-2026-10-23-standalone-sheets-completion/commit-checkpoint.json) binds all 16 unchanged runtime/test files to `5bc33828a6abb738dda75fd09d0196bc82c548e6`; dated pre-commit evidence remains unchanged. Public deployment checks pass on `221382da`; authenticated source/provider acceptance remains pending.
 
 | Finding | Confirmed cause and exact changed path | Corrected behavior / local evidence |
 |---|---|---|
@@ -46,7 +115,7 @@ The retained LinkedIn mapping-save conversion branch still has its separate limi
 
 **Reusable safeguards.** Future sources can reuse exact saved-source ownership, complete-or-failed reads, identity-bound atomic cache publication, selected-row calculation contracts, explicit date/zero/unavailable states and the malformed/partial/concurrent/deleted-source regression cases. The Google grid limits, formatted number/date syntax, clicks-based CVR, cache lifetime and OAuth behavior are source-specific assumptions. Each provider still needs independent permissions, attribution, metrics, dates, pagination and quota validation. No new source or framework was introduced.
 
-**Next implementation group:** seven Custom Integration findings, then two retained manual-Spend/transfer findings. Required deployed/provider acceptance remains separate for all 24 Batch 4 findings. The earlier dated checkpoints below retain their original scope; this checkpoint supersedes their outstanding standalone five-item implementation status only.
+**Next at this historical checkpoint:** the seven Custom Integration findings, now locally verified above. Current remaining implementation: V1-068/069. Required deployed/provider acceptance remains separate for all 24 Batch 4 findings. The earlier dated checkpoints below retain their original scope; this checkpoint supersedes their outstanding standalone five-item implementation status only.
 
 ## Standalone Sheets selection deployment verification (October 23)
 
@@ -240,14 +309,13 @@ The user authorized Batch 4 while the deployed Batch 3 revision awaits its first
 
 | Remaining implementation group | Finding IDs |
 |---|---|
-| Custom Integration parser/publication, transfers, XLSX bounds/selection and metric meaning | V1-028, V1-029, V1-031, V1-102, V1-103, V1-111, V1-120 |
 | Retained manual-Spend and cross-source transfer safeguards | V1-068, V1-069 |
 
-**Remaining work: nine findings in two implementation groups, followed by Batch 4 acceptance.** The five standalone Sheets corrections are verified locally at the completion checkpoint above. Custom Integration has seven, and retained manual-Spend/transfer safeguards have two. These are grouped work boundaries, not an estimate of individual edits, commits or elapsed time. Acceptance includes the required deployed/provider, lifecycle and downstream checks for all 24 Batch 4 findings; local fixes alone do not complete the batch.
+**Remaining implementation work: two findings, V1-068/069, followed by Batch 4 acceptance.** The seven Custom Integration corrections are now locally verified at the checkpoint above; the earlier fifteen corrections retain their stated evidence. These are grouped work boundaries, not an estimate of individual edits, commits or elapsed time. Acceptance includes the required deployed/provider, lifecycle and downstream checks for all 24 Batch 4 findings; local fixes alone do not complete the batch.
 
 **Execution method requested October 23:** finish related fixes within each group with fewer handoffs. Reuse isolated fixtures and traced paths; validate each changed behavior and its neighbors, then run the shared regression/build checks at the coherent group checkpoint. Repeat checks only for subsequent changes, failures or unresolved concerns. Update this record and the finding checklist as each item progresses. Consolidate reviewable commits/deployment checkpoints where dependencies permit; do not require a live refresh wait for independent local work or waive any required acceptance gate. No additional source exclusions or runtime changes accompany this scheduling clarification.
 
-The standalone Sheets implementation group is verified locally and committed in `5bc33828`; deployment verification is pending. The next implementation group is Custom Integration (V1-028/029/031/102/103/111/120), followed by manual Spend/transfers (V1-068/069). All 24 release acceptances stay OPEN. Four-provider functional work remains deferred; shared retained-route safety remains required. No completion estimate or additional exclusion is inferred.
+The standalone Sheets implementation group is verified locally and committed in `5bc33828`; deployed in `221382da`; public checks pass and authenticated/provider acceptance remains open. The Custom Integration group is now verified locally and uncommitted. The next implementation group is manual Spend/transfers (V1-068/069). All 24 release acceptances stay OPEN. Four-provider functional work remains deferred; shared retained-route safety remains required. No completion estimate or additional exclusion is inferred.
 
 ## Scope and acceptance
 
@@ -273,9 +341,9 @@ These records retain their own dates and verification limits. Use the current fi
 
 | Finding | Severity | Fix status | Release acceptance |
 |---|---|---|---|
-| [V1-028](#v1-028) | P1 | OPEN | OPEN |
-| [V1-029](#v1-029) | P1 | OPEN | OPEN |
-| [V1-031](#v1-031) | P1 | OPEN | OPEN |
+| [V1-028](#v1-028) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-029](#v1-029) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-031](#v1-031) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-040](#v1-040) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-041](#v1-041) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-051](#v1-051) | P1 | VERIFIED LOCALLY | OPEN |
@@ -288,14 +356,14 @@ These records retain their own dates and verification limits. Use the current fi
 | [V1-071](#v1-071) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-072](#v1-072) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-073](#v1-073) | P1 | VERIFIED LOCALLY | OPEN |
-| [V1-102](#v1-102) | P1 | OPEN | OPEN |
-| [V1-103](#v1-103) | P1 | OPEN | OPEN |
+| [V1-102](#v1-102) | P1 | VERIFIED LOCALLY | OPEN |
+| [V1-103](#v1-103) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-108](#v1-108) | P1 | VERIFIED LOCALLY | OPEN |
-| [V1-111](#v1-111) | P1 | OPEN | OPEN |
+| [V1-111](#v1-111) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-112](#v1-112) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-113](#v1-113) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-114](#v1-114) | P1 | VERIFIED LOCALLY | OPEN |
-| [V1-120](#v1-120) | P1 | OPEN | OPEN |
+| [V1-120](#v1-120) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-126](#v1-126) | P1 | VERIFIED LOCALLY | OPEN |
 
 ## Findings
@@ -304,7 +372,7 @@ Original evidence below is retained verbatim except relative link destinations. 
 
 ### V1-028
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -312,11 +380,11 @@ Original evidence below is retained verbatim except relative link destinations. 
 
 `services/custom-integration-file-parser.ts:82-105` uses non-strict 5,000-row CSV limit: 5,001 data rows become 4,999, confidence100, reviewfalse. Permissive numeric parsing accepts malformed amounts, sums mixed currency and misreads decimal-comma values. Duplicate CSV/XLSX Spend headers100/7 become14 through overwrite plus repeated header iteration217–229, also confidence100. Schema765 has no currency/report-period contract; UI/report currency formatting uses USD. Exact fixtures recorded. Separate GA4 financial CSV parser is not implicated by these cases.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** The [October 23 Custom checkpoint](#custom-integration-correction-checkpoint-october-23) records the exact root cause/path, changed-file manifest, passing boundary tests, remaining failures, compatibility/recovery behavior and lifecycle/downstream limits. Uncommitted on `221382da`; not deployed. Local forward correction is verified within that boundary; full deployed/provider/historical-data acceptance remains OPEN.
 
 ### V1-029
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -324,11 +392,11 @@ Original evidence below is retained verbatim except relative link destinations. 
 
 Custom imports persist and publish review-required metrics; latest-reader storage5780 has no validation-state filter. UI2806 labels Needs review but creates `latest_validated_import` scope; metric resolver still supplies KPI/Benchmark values. Scheduled report575-729 reads same row without validation gate or imported-period filter. Report financial builder498-538 turns failed revenue total read into an available zero when source exists (fixture). Webhook review URL has no registered page. Prevent unvalidated/failed reads from masquerading as validated period values; validate downstream artifacts.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** The [October 23 Custom checkpoint](#custom-integration-correction-checkpoint-october-23) records the exact root cause/path, changed-file manifest, passing boundary tests, remaining failures, compatibility/recovery behavior and lifecycle/downstream limits. Uncommitted on `221382da`; not deployed. Local forward correction is verified within that boundary; full deployed/provider/historical-data acceptance remains OPEN.
 
 ### V1-031
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -336,7 +404,7 @@ Custom imports persist and publish review-required metrics; latest-reader storag
 
 `POST /api/custom-integration/transfer`, routes34100-34206: same source/destination deletes connection and metrics yet returns success; ordinary transfer copies without parser metadata/import timestamp and performs copy/delete nonatomically. Exact fixture confirms destructive same-ID outcome and omitted fields. No current frontend caller found, but route remains registered. Validate distinct owner-bound source/destination, atomic failure/retry and metadata preservation before retaining or excluding it.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** The [October 23 Custom checkpoint](#custom-integration-correction-checkpoint-october-23) records the exact root cause/path, changed-file manifest, passing boundary tests, remaining failures, compatibility/recovery behavior and lifecycle/downstream limits. Uncommitted on `221382da`; not deployed. Local forward correction is verified within that boundary; full deployed/provider/historical-data acceptance remains OPEN.
 
 ### V1-040
 
@@ -372,7 +440,7 @@ Routes6765/6905 fetch fixed `A1:ZZ5000` without completeness check; exact proces
 
 Main GET21785/21987 and `auto-refresh-scheduler.ts:813` read A1:Z1000. Exact refresh fixture caches999 rows as fresh without completeness check; page warns but aggregate consumers sum cached rows. Composite lookup can substitute another tab21834 and summary can broaden unmatched campaign to all rows22330. Scope/date/partial-data contracts must be enforced or effectively excluded.
 
-**Implementation / validation:** Complete bounded main-sheet reads, exact fresh cache, atomic identity/order/parent-guarded publication and selected aggregate inputs are VERIFIED LOCALLY. The earlier selection correction is deployed in fb1132a2; the new completeness/cache changes are committed in `5bc33828`, with deployment verification pending. See the [October 23 completion checkpoint](#standalone-sheets-completion-checkpoint-october-23) for exact paths, files, tests, limits and remaining acceptance. New changes are committed in `5bc33828`; deployment verification is pending and release acceptance remains OPEN.
+**Implementation / validation:** Complete bounded main-sheet reads, exact fresh cache, atomic identity/order/parent-guarded publication and selected aggregate inputs are VERIFIED LOCALLY. The earlier selection correction is deployed in fb1132a2; the new completeness/cache changes are committed in `5bc33828`, now deployed in `221382da` with public checks passed; authenticated/provider acceptance remains open. See the [October 23 completion checkpoint](#standalone-sheets-completion-checkpoint-october-23) for exact paths, files, tests, limits and remaining acceptance. New changes are committed in `5bc33828`; deployed in `221382da` with public checks passed; release acceptance remains OPEN.
 
 ### V1-065
 
@@ -482,7 +550,7 @@ GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105
 
 ### V1-102
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -490,11 +558,11 @@ GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105
 
 `server/services/custom-integration-file-parser.ts:371–399` synchronously inflates all ZIP entries without expanded/aggregate limits. A14,046-byte fixture expands12,584,919 bytes including unused padding and succeeds; no exhaustion was induced. Mailgun33943 parses arbitrary attachment count before signature; manual upload28186 correctly authorizes first. [Boundary and acceptance](../../audits/v1-2026-10-19/CUSTOM_IMPORT_AND_PUBLIC_ENTRYPOINTS.md). Protect expanded/cell/attachment work independently of compressed per-file size.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** The [October 23 Custom checkpoint](#custom-integration-correction-checkpoint-october-23) records the exact root cause/path, changed-file manifest, passing boundary tests, remaining failures, compatibility/recovery behavior and lifecycle/downstream limits. Uncommitted on `221382da`; not deployed. Local forward correction is verified within that boundary; full deployed/provider/historical-data acceptance remains OPEN.
 
 ### V1-103
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -502,7 +570,7 @@ GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105
 
 `server/services/custom-integration-file-parser.ts:344–367` selects the first archive worksheet, ignoring workbook visible order/hidden state. Identical worksheets/workbook yield Spend10 versus200 solely from ZIP entry order; hidden200 is accepted with confidence100/reviewfalse. [Actual parser cases](../../audits/v1-2026-10-19/xlsx-boundary-reproductions.json). Define explicit supported worksheet selection and reject ambiguity before downstream publication.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** The [October 23 Custom checkpoint](#custom-integration-correction-checkpoint-october-23) records the exact root cause/path, changed-file manifest, passing boundary tests, remaining failures, compatibility/recovery behavior and lifecycle/downstream limits. Uncommitted on `221382da`; not deployed. Local forward correction is verified within that boundary; full deployed/provider/historical-data acceptance remains OPEN.
 
 ### V1-108
 
@@ -514,11 +582,11 @@ GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105
 
 `routes-oauth.ts:25238–25258`, `tiktok-analytics.tsx:839` require positive Revenue for source availability. Exact case with an existing source and measured0 returns null/source-required. [Paid evidence](../../audits/v1-2026-10-19/RETAINED_PAID_VALUE_BOUNDARIES.md). Standalone Sheets `google-sheets-data.tsx:979–987,1130,1165` independently shows valid0 Revenue/Spend as Not connected and blocks derived values/options; [four zero/negative cases and positive control](../../audits/v1-2026-10-19/SHEETS_CUSTOM_VALUE_PROPAGATION.md). Distinguish zero, absent source and failed read before computing loss/zero ROAS.
 
-**Implementation / validation:** Standalone Sheets measured zero, loss, absent source and failed/incomplete read distinctions are VERIFIED LOCALLY in the page and scheduled PDFs. The four-provider functional portions remain deferred; no claim is made for those providers. See the [October 23 completion checkpoint](#standalone-sheets-completion-checkpoint-october-23) for exact paths, files, tests, limits and remaining acceptance. New changes are committed in `5bc33828`; deployment verification is pending and release acceptance remains OPEN.
+**Implementation / validation:** Standalone Sheets measured zero, loss, absent source and failed/incomplete read distinctions are VERIFIED LOCALLY in the page and scheduled PDFs. The four-provider functional portions remain deferred; no claim is made for those providers. See the [October 23 completion checkpoint](#standalone-sheets-completion-checkpoint-october-23) for exact paths, files, tests, limits and remaining acceptance. New changes are committed in `5bc33828`; deployed in `221382da` with public checks passed; release acceptance remains OPEN.
 
 ### V1-111
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -526,7 +594,7 @@ GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105
 
 `custom-integration-analytics.tsx:641–672,735–760,3094,3131,3185–3202` converts failed/malformed Revenue totals to0 and derives availability from a separate successful source list. Actual query/transform cases show confirmed Revenue0/Spend100/ROAS0/ROI−100 after a failed Revenue request; failed external Spend can present imported100 as the complete total. [Evidence and zero control](../../audits/v1-2026-10-19/SHEETS_CUSTOM_VALUE_PROPAGATION.md). Preserve error/partial/stale state through financial cards and source-backed consumers.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** The [October 23 Custom checkpoint](#custom-integration-correction-checkpoint-october-23) records the exact root cause/path, changed-file manifest, passing boundary tests, remaining failures, compatibility/recovery behavior and lifecycle/downstream limits. Uncommitted on `221382da`; not deployed. Local forward correction is verified within that boundary; full deployed/provider/historical-data acceptance remains OPEN.
 
 ### V1-112
 
@@ -538,7 +606,7 @@ GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105
 
 `google-sheets-data.tsx:1479–1517` builds KPI/Benchmark options from raw summed metrics, ignoring server summaryValue. Spend190/Clicks110/CPC rows1+9 gives Summary1.72727 but options10 and actual browser PDF$10. Scheduled cached summary `report-scheduler.ts:3474–3522` also sums arbitrary metric/identifier columns. [Exact helpers and rendered artifact](../../audits/v1-2026-10-19/SHEETS_CUSTOM_VALUE_PROPAGATION.md). Preserve one verified aggregation contract through Summary, goals, Insights and every report; server refresh/alert propagation remains open.
 
-**Implementation / validation:** Shared summary values, including unavailable states, now propagate to current goal displays, Insights calculations and actual browser/scheduled PDFs. These corrections are VERIFIED LOCALLY; persisted goal/alert updates remain V1-122 and full artifact parity remains V1-060. See the [October 23 completion checkpoint](#standalone-sheets-completion-checkpoint-october-23) for exact paths, files, tests, limits and remaining acceptance. New changes are committed in `5bc33828`; deployment verification is pending and release acceptance remains OPEN.
+**Implementation / validation:** Shared summary values, including unavailable states, now propagate to current goal displays, Insights calculations and actual browser/scheduled PDFs. These corrections are VERIFIED LOCALLY; persisted goal/alert updates remain V1-122 and full artifact parity remains V1-060. See the [October 23 completion checkpoint](#standalone-sheets-completion-checkpoint-october-23) for exact paths, files, tests, limits and remaining acceptance. New changes are committed in `5bc33828`; deployed in `221382da` with public checks passed; release acceptance remains OPEN.
 
 ### V1-113
 
@@ -550,7 +618,7 @@ GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105
 
 `auto-refresh-scheduler.ts:865–881` caches unfiltered rows; `report-scheduler.ts:3474–3522,3572–3707` selects a connection but ignores its selected campaign values and report date window. Actual PDF labelled campaignA/October2026 printsSpend100 including campaignB/2020Spend90; mappedA amount is10. [PDF, fixture and scope controls](../../audits/v1-2026-10-19/SHEETS_CUSTOM_VALUE_PROPAGATION.md). Enforce saved selection and actual date coverage before generation, send or snapshot; do not silently apply an arbitrary date column.
 
-**Implementation / validation:** Exact saved connection/campaign selection and actual scheduled-report date windows, including confirmed financial reads and no-artifact failure behavior, are VERIFIED LOCALLY. Real scheduled sending/inbox and full snapshot lifecycle remain open. See the [October 23 completion checkpoint](#standalone-sheets-completion-checkpoint-october-23) for exact paths, files, tests, limits and remaining acceptance. New changes are committed in `5bc33828`; deployment verification is pending and release acceptance remains OPEN.
+**Implementation / validation:** Exact saved connection/campaign selection and actual scheduled-report date windows, including confirmed financial reads and no-artifact failure behavior, are VERIFIED LOCALLY. Real scheduled sending/inbox and full snapshot lifecycle remain open. See the [October 23 completion checkpoint](#standalone-sheets-completion-checkpoint-october-23) for exact paths, files, tests, limits and remaining acceptance. New changes are committed in `5bc33828`; deployed in `221382da` with public checks passed; release acceptance remains OPEN.
 
 ### V1-114
 
@@ -562,11 +630,11 @@ GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105
 
 `routes-oauth.ts:21722–21781` uses first matching financial header and unweighted rate averages. Actual helper cases choose Budget1000 before actual Spend100 (ROAS0.2 instead of2 for Revenue200), and unequal-impression CTR rows1%/100% produce50.5% instead of count-derived1.9802%. [Exact cases](../../audits/v1-2026-10-19/SHEETS_CUSTOM_VALUE_PROPAGATION.md). Define explicit metric/denominator mappings, fail closed on ambiguity and preserve bounded/undefined rates; column order must not redefine actual spend.
 
-**Implementation / validation:** Unambiguous mapped/header inputs, denominator-based ratios, weighted CTR, mapped conversion-value strategy and invalid/unavailable handling are VERIFIED LOCALLY. Broader currency propagation remains V1-106; provider/date/metric acceptance is not inferred. See the [October 23 completion checkpoint](#standalone-sheets-completion-checkpoint-october-23) for exact paths, files, tests, limits and remaining acceptance. New changes are committed in `5bc33828`; deployment verification is pending and release acceptance remains OPEN.
+**Implementation / validation:** Unambiguous mapped/header inputs, denominator-based ratios, weighted CTR, mapped conversion-value strategy and invalid/unavailable handling are VERIFIED LOCALLY. Broader currency propagation remains V1-106; provider/date/metric acceptance is not inferred. See the [October 23 completion checkpoint](#standalone-sheets-completion-checkpoint-october-23) for exact paths, files, tests, limits and remaining acceptance. New changes are committed in `5bc33828`; deployed in `221382da` with public checks passed; release acceptance remains OPEN.
 
 ### V1-120
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -574,7 +642,7 @@ GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105
 
 `server/services/custom-integration-file-parser.ts:28,35–41,217–264` aliases sent→delivered, opens count→open rate, exit rate→bounce rate and new subscribers→list growth. Exact CSV1000/50/20/30 becomes those four fields with confidence100/reviewfalse; client displays opens50 as50.00%. [All28-field evidence and boundaries](../../audits/v1-2026-10-19/CUSTOM_IMPORT_AND_PUBLIC_ENTRYPOINTS.md). Require supported metric definitions/denominators or reject ambiguous mappings before publication; historical correction needs exact original source evidence.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** The [October 23 Custom checkpoint](#custom-integration-correction-checkpoint-october-23) records the exact root cause/path, changed-file manifest, passing boundary tests, remaining failures, compatibility/recovery behavior and lifecycle/downstream limits. Uncommitted on `221382da`; not deployed. Local forward correction is verified within that boundary; full deployed/provider/historical-data acceptance remains OPEN.
 
 ### V1-126
 

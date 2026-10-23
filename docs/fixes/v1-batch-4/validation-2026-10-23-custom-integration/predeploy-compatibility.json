@@ -1,0 +1,73 @@
+{
+  "at": "2026-10-23T12:29:34.915Z",
+  "scope": "Existing Custom Integration data/report compatibility only; not release certification",
+  "productionWrites": false,
+  "providerCalls": false,
+  "emailSends": false,
+  "baseHead": "221382da751b453b4d45411df65f15a62750c9b1",
+  "candidateFiles": 11,
+  "manifestMismatches": [],
+  "liveHealth": {
+    "status": 200,
+    "ok": true,
+    "commit": "221382da751b453b4d45411df65f15a62750c9b1"
+  },
+  "databaseTargetSha256": "073e11d852157bd3f4d53e8321ad28bc5564ff639fd4da814bf15f53575024e0",
+  "samePreviouslyVerifiedDatabase": true,
+  "readOnly": true,
+  "missingColumns": [],
+  "connections": {
+    "total": 20,
+    "campaigns": 20,
+    "orphaned": 16,
+    "deleted_parent": 0,
+    "ownerless": 16
+  },
+  "imports": {
+    "total": 76,
+    "campaigns": 10,
+    "orphaned": 73,
+    "no_connection": 9
+  },
+  "latestImports": {
+    "campaigns": 10,
+    "accepted": 0,
+    "wouldBecomeUnavailable": 10
+  },
+  "receipts": {
+    "total": 0
+  },
+  "reports": {
+    "total": 0,
+    "scheduled": 0,
+    "platform_level": 0
+  },
+  "otherReportsMentioningCustom": {
+    "total": 0
+  },
+  "snapshots": {
+    "total": 0
+  },
+  "sendEvents": {
+    "total": 0
+  },
+  "goals": {
+    "kpis": {
+      "custom_platform": 0,
+      "with_import": 0
+    },
+    "benchmarks": {
+      "custom_platform": 0,
+      "with_import": 0
+    }
+  },
+  "ptomo": {
+    "campaigns": 1,
+    "custom_connections": 0,
+    "custom_imports": 0
+  },
+  "transactionEnded": "ROLLBACK",
+  "result": "READ_ONLY_INVENTORY_COMPLETE",
+  "compatibility": "EXISTING_CUSTOM_DEPENDENCIES_REQUIRE_REVIEW",
+  "completedAt": "2026-10-23T12:29:38.901Z"
+}

@@ -501,29 +501,34 @@ function isCustomIntegrationFinancialReportMetric(metricKey: any): boolean {
 }
 
 async function buildCustomIntegrationFinancialReportMetrics(campaignId: string, metrics: any) {
+  const sourceNumber = (value: unknown): number | null => {
+    if (typeof value !== "number" && !(typeof value === "string" && value.trim())) return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  };
   const startDate = "1900-01-01";
   const endDate = "2999-12-31";
   const importedRevenue = parseCustomIntegrationMetricNumber(metrics?.revenue);
   const importedSpend = parseCustomIntegrationMetricNumber(metrics?.spend);
   const [revenueSources, revenueTotal, spendSources, spendBreakdown] = await Promise.all([
-    storage.getRevenueSources(campaignId, "custom_integration").catch(() => [] as any[]),
-    storage.getRevenueTotalForRange(campaignId, startDate, endDate, "custom_integration").catch(() => ({ totalRevenue: 0 })),
-    storage.getSpendSources(campaignId).catch(() => [] as any[]),
-    storage.getSpendBreakdownBySource(campaignId, startDate, endDate).catch(() => [] as any[]),
+    storage.getRevenueSources(campaignId, "custom_integration").catch(() => null),
+    storage.getRevenueTotalForRange(campaignId, startDate, endDate, "custom_integration").catch(() => null),
+    storage.getSpendSources(campaignId).catch(() => null),
+    storage.getSpendBreakdownBySource(campaignId, startDate, endDate).catch(() => null),
   ]);
   const activeRevenueSources = (Array.isArray(revenueSources) ? revenueSources : []).filter((source: any) => source?.isActive !== false);
   const eligibleSpendIds = new Set((Array.isArray(spendSources) ? spendSources : [])
     .filter((source: any) => source?.isActive !== false && String(source?.platformContext || "").trim().toLowerCase() === "custom_integration")
     .map((source: any) => String(source?.id || ""))
     .filter(Boolean));
-  const externalRevenue = Number((revenueTotal as any)?.totalRevenue || 0);
+  const externalRevenue = sourceNumber(revenueTotal?.totalRevenue);
   const externalSpend = (Array.isArray(spendBreakdown) ? spendBreakdown : [])
     .filter((row: any) => eligibleSpendIds.has(String(row?.sourceId || "")))
-    .reduce((sum: number, row: any) => sum + Number(row?.spend || 0), 0);
-  const totalRevenue = externalRevenue + (importedRevenue ?? 0);
+    .reduce((sum: number, row: any) => sum + (sourceNumber(row?.spend) ?? NaN), 0);
+  const totalRevenue = (externalRevenue ?? 0) + (importedRevenue ?? 0);
   const totalSpend = externalSpend + (importedSpend ?? 0);
-  const hasRevenue = importedRevenue !== null || activeRevenueSources.length > 0;
-  const hasSpend = importedSpend !== null || eligibleSpendIds.size > 0;
+  const hasRevenue = Array.isArray(revenueSources) && externalRevenue !== null && (importedRevenue !== null || activeRevenueSources.length > 0);
+  const hasSpend = Array.isArray(spendSources) && Array.isArray(spendBreakdown) && Number.isFinite(externalSpend) && (importedSpend !== null || eligibleSpendIds.size > 0);
   const hasDerived = hasRevenue && hasSpend && totalSpend > 0;
   const values = new Map<string, { available: boolean; value: number | null; label: string; unit: string; type: string; reason: string }>();
   values.set("overview.total_revenue", hasRevenue
@@ -569,9 +574,9 @@ function resolveCustomIntegrationReportMetric(metrics: any, metricKey: any, fina
   return { available: true, value, label: option.label, unit: option.unit, type: option.type, reason: "" };
 }
 
-function formatCustomIntegrationReportMetric(value: number | null, unit: string, type: string): string {
+function formatCustomIntegrationReportMetric(value: number | null, unit: string, type: string, currency = "USD"): string {
   if (value === null || !Number.isFinite(value)) return "Unavailable";
-  if (type === "currency" || unit === "$") return `$${formatNumberLike(value)}`;
+  if (type === "currency" || unit === "$") return `${currency} ${formatNumberLike(value)}`;
   if (type === "percent" || unit === "%") return `${formatNumberLike(value)}%`;
   if (type === "ratio" || unit === "x") return `${formatNumberLike(value)}x`;
   return formatNumberLike(value);
@@ -595,7 +600,8 @@ async function buildCustomIntegrationScheduledPdfAttachment(args: {
     if (String(integration?.id || "").trim() !== sourceIntegrationId) return null;
   }
   const metrics = await storage.getLatestCustomIntegrationMetrics(campaignId).catch(() => null as any);
-  if (!metrics) return null;
+  const validation = metrics?.parserMetadata as any;
+  if (!metrics || validation?.validationVersion !== 2 || validation.requiresReview !== false || validation.warnings?.length !== 0 || !(Number(validation.confidence) >= 95) || !(Number(validation.extractedFields) > 0)) return null;
   const customIntegrationFinancialReportMetrics = await buildCustomIntegrationFinancialReportMetrics(campaignId, metrics);
 
   const { jsPDF } = await import("jspdf");
@@ -622,14 +628,14 @@ async function buildCustomIntegrationScheduledPdfAttachment(args: {
   const addMetric = (metricKey: any) => {
     const resolved = resolveCustomIntegrationReportMetric(metrics, metricKey, customIntegrationFinancialReportMetrics);
     const value = resolved.available
-      ? formatCustomIntegrationReportMetric(resolved.value, resolved.unit, resolved.type)
+      ? formatCustomIntegrationReportMetric(resolved.value, resolved.unit, resolved.type, String(validation.currency || "USD"))
       : `Unavailable - ${resolved.reason}`;
     addText(`- ${resolved.label}: ${value}`, { indent: 4 });
   };
   const formatSavedCustomIntegrationGoal = (value: any, unit: any) => {
     const normalizedUnit = String(unit || "");
     const type = normalizedUnit === "$" ? "currency" : normalizedUnit === "%" ? "percent" : normalizedUnit === "x" ? "ratio" : "count";
-    return formatCustomIntegrationReportMetric(parseCustomIntegrationMetricNumber(value), normalizedUnit, type);
+    return formatCustomIntegrationReportMetric(parseCustomIntegrationMetricNumber(value), normalizedUnit, type, String(validation.currency || "USD"));
   };
   const addKpiRows = async (selectedIds?: Set<string>) => {
     const rows = await storage.getPlatformKPIs("custom-integration", campaignId).catch(() => [] as any[]);
@@ -650,8 +656,8 @@ async function buildCustomIntegrationScheduledPdfAttachment(args: {
         return;
       }
       const resolved = resolveCustomIntegrationReportMetric(metrics, row?.metric || row?.metricKey, customIntegrationFinancialReportMetrics);
-      const current = resolved.available ? formatCustomIntegrationReportMetric(resolved.value, resolved.unit, resolved.type) : `Unavailable - ${resolved.reason}`;
-      const target = formatCustomIntegrationReportMetric(parseCustomIntegrationMetricNumber(row?.targetValue), resolved.unit || row?.unit || "", resolved.type);
+      const current = resolved.available ? formatCustomIntegrationReportMetric(resolved.value, resolved.unit, resolved.type, String(validation.currency || "USD")) : `Unavailable - ${resolved.reason}`;
+      const target = formatCustomIntegrationReportMetric(parseCustomIntegrationMetricNumber(row?.targetValue), resolved.unit || row?.unit || "", resolved.type, String(validation.currency || "USD"));
       addText(`- ${name}: Current ${current}; Target ${target}`, { indent: 4 });
     });
   };
@@ -674,8 +680,8 @@ async function buildCustomIntegrationScheduledPdfAttachment(args: {
         return;
       }
       const resolved = resolveCustomIntegrationReportMetric(metrics, row?.metric || row?.metricKey, customIntegrationFinancialReportMetrics);
-      const current = resolved.available ? formatCustomIntegrationReportMetric(resolved.value, resolved.unit, resolved.type) : `Unavailable - ${resolved.reason}`;
-      const benchmark = formatCustomIntegrationReportMetric(parseCustomIntegrationMetricNumber(row?.benchmarkValue), resolved.unit || row?.unit || "", resolved.type);
+      const current = resolved.available ? formatCustomIntegrationReportMetric(resolved.value, resolved.unit, resolved.type, String(validation.currency || "USD")) : `Unavailable - ${resolved.reason}`;
+      const benchmark = formatCustomIntegrationReportMetric(parseCustomIntegrationMetricNumber(row?.benchmarkValue), resolved.unit || row?.unit || "", resolved.type, String(validation.currency || "USD"));
       addText(`- ${name}: Current ${current}; Benchmark ${benchmark}`, { indent: 4 });
     });
   };
@@ -699,7 +705,8 @@ async function buildCustomIntegrationScheduledPdfAttachment(args: {
   addText(String(report?.name || "Custom Integration Report"), { size: 18, bold: true });
   addText(`Campaign: ${campaignName || "Campaign"}`);
   addText(`Report Type: ${reportType}`);
-  addText(`Window: ${windowStart} to ${windowEnd}`);
+  addText(`Delivery schedule window: ${windowStart} to ${windowEnd}`);
+  addText("Values: latest validated import (source report period unspecified); added financial sources: all history. Values are not restricted to the delivery window.");
   addText(`Source: ${getCustomIntegrationSourceLabel(metrics)}`);
   y += 4;
 

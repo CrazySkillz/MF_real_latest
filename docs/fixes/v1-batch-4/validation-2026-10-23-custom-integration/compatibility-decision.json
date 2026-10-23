@@ -1,0 +1,67 @@
+{
+  "at": "2026-10-23T12:41:00.952071+00:00",
+  "status": "COMPATIBILITY_CHECK_COMPLETE_HOLD_CLEARED",
+  "candidateBase": "221382da751b453b4d45411df65f15a62750c9b1",
+  "runtimeChangedDuringCheck": false,
+  "productionWrites": false,
+  "committed": false,
+  "pushed": false,
+  "acceptedImpact": {
+    "campaignSha256": [
+      "44eab1005dca0e29ecd03f29697f81d22cc25d5c32fb3cde95a1a59ad7a1ffef",
+      "f2187aa9cfede6202ea460b3961731b1a4c9807915634f53804178bebbce8fe3"
+    ],
+    "userDecision": "Yes - those old test figures are no longer needed",
+    "effect": "Existing current Custom values become unavailable; all historical records remain stored",
+    "doesNotAuthorize": [
+      "deletion",
+      "rewriting history",
+      "fabricating validation metadata",
+      "equivalent treatment of other customers"
+    ]
+  },
+  "ptomo": "No Custom Integration connection or metric rows; not affected by this validation gate",
+  "tests": {
+    "total": 22,
+    "passed": 22,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typecheck": {
+    "exitCode": 0,
+    "error": null
+  },
+  "fixtureCleanup": {
+    "databases": [
+      {
+        "database": "ga4_alignment_test",
+        "remainingFixtureSchemas": 0,
+        "otherClientConnections": 0,
+        "remainingAdvisoryLocks": 0
+      },
+      {
+        "database": "notifications_test",
+        "remainingFixtureSchemas": 0,
+        "otherClientConnections": 0,
+        "remainingAdvisoryLocks": 0
+      }
+    ],
+    "clusterStopped": true,
+    "stopExitCode": 0
+  },
+  "currentManifestMatches": true,
+  "wholeAppReleaseDecision": "NO-GO; compatibility acceptance does not close release findings",
+  "remainingBatch4Implementation": [
+    "V1-068",
+    "V1-069"
+  ],
+  "remainingValidation": [
+    "Six unwaived expanded-test failures under V1-012",
+    "Authenticated deployed/provider acceptance",
+    "Full downstream/historical and operational release gates"
+  ],
+  "toolingNotes": [
+    "An initial inline Node result-reader failed because PowerShell removed quotes; the dedicated local-check script read and asserted the results successfully. No application test failed in the 22-case compatibility run.",
+    "Initial rg searches using Windows wildcard path arguments failed; searches were repeated using directory and glob-filter arguments. No files were changed by these search errors."
+  ]
+}

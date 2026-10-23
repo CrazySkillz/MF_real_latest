@@ -69,33 +69,33 @@ type MetricDefinition = {
 
 const METRIC_DEFINITIONS: MetricDefinition[] = [
   { key: "impressions", labels: ["impressions", "impression"], kind: "sum" },
-  { key: "reach", labels: ["reach"], kind: "sum" },
+  { key: "reach", labels: ["reach"], kind: "single" },
   { key: "clicks", labels: ["clicks", "click"], kind: "sum" },
   { key: "engagements", labels: ["engagements", "engagement"], kind: "sum" },
-  { key: "spend", labels: ["spend", "ad spend", "cost", "amount"], kind: "sum" },
+  { key: "spend", labels: ["spend", "ad spend", "cost"], kind: "sum" },
   { key: "conversions", labels: ["conversions", "conversion"], kind: "sum" },
   { key: "leads", labels: ["leads", "lead"], kind: "sum" },
-  { key: "videoViews", labels: ["video views", "video view", "views"], kind: "sum" },
-  { key: "viralImpressions", labels: ["viral impressions", "organic impressions"], kind: "sum" },
-  { key: "users", labels: ["users", "unique users", "visitors", "unique visitors"], kind: "sum" },
+  { key: "videoViews", labels: ["video views", "video view"], kind: "sum" },
+  { key: "viralImpressions", labels: ["viral impressions"], kind: "sum" },
+  { key: "users", labels: ["users", "unique users", "visitors", "unique visitors"], kind: "single" },
   { key: "sessions", labels: ["sessions", "visits"], kind: "sum" },
   { key: "pageviews", labels: ["pageviews", "page views", "pages viewed"], kind: "sum" },
   { key: "avgSessionDuration", labels: ["avg session duration", "average session duration", "avg time on site", "average time"], kind: "duration" },
   { key: "pagesPerSession", labels: ["pages/session", "pages per session", "pages per visit"], kind: "single" },
-  { key: "bounceRate", labels: ["bounce rate", "exit rate"], kind: "single" },
+  { key: "bounceRate", labels: ["bounce rate"], kind: "single" },
   { key: "organicSearchShare", labels: ["organic search", "organic traffic", "search engines"], kind: "single" },
   { key: "directBrandedShare", labels: ["direct/branded", "direct branded", "direct traffic", "direct"], kind: "single" },
   { key: "emailShare", labels: ["email traffic", "email share", "email"], kind: "single" },
   { key: "referralShare", labels: ["referral/partners", "referral partners", "referral traffic", "referrals"], kind: "single" },
   { key: "paidShare", labels: ["paid display/search", "paid advertising", "paid traffic", "paid"], kind: "single" },
   { key: "socialShare", labels: ["social media", "social traffic", "social"], kind: "single" },
-  { key: "emailsDelivered", labels: ["emails delivered", "emails sent", "delivered"], kind: "sum" },
-  { key: "openRate", labels: ["open rate", "opens"], kind: "single" },
+  { key: "emailsDelivered", labels: ["emails delivered", "delivered"], kind: "sum" },
+  { key: "openRate", labels: ["open rate"], kind: "single" },
   { key: "clickThroughRate", labels: ["click-through rate", "click through rate", "click rate", "ctr"], kind: "single" },
   { key: "clickToOpenRate", labels: ["click-to-open", "click to open", "ctor"], kind: "single" },
-  { key: "hardBounces", labels: ["hard bounces", "bounces"], kind: "single" },
-  { key: "spamComplaints", labels: ["spam complaints", "complaints"], kind: "single" },
-  { key: "listGrowth", labels: ["list growth", "net subscribers", "subscriber growth", "new subscribers"], kind: "sum" },
+  { key: "hardBounces", labels: ["hard bounce rate", "hard bounces %"], kind: "single" },
+  { key: "spamComplaints", labels: ["spam complaint rate", "spam complaints %"], kind: "single" },
+  { key: "listGrowth", labels: ["list growth", "net subscribers"], kind: "sum" },
 ];
 
 const SUPPORTED_EXTENSIONS = new Set([".pdf", ".csv", ".xlsx"]);
@@ -118,11 +118,13 @@ export function supportedCustomIntegrationFileDescription(): string {
 }
 
 export async function parseCustomIntegrationFile(buffer: Buffer, fileName?: string | null, mimeType?: string | null): Promise<ParsedMetrics> {
+  try {
+  if (!buffer.length || buffer.length > 10 * 1024 * 1024) throw new Error("Report must contain at most 10MB");
   const ext = fileExtension(fileName);
   const mime = String(mimeType || "").toLowerCase();
 
   if (ext === ".pdf" || mime === "application/pdf") {
-    return parsePDFMetrics(buffer);
+    return await parsePDFMetrics(buffer);
   }
 
   if (ext === ".csv" || mime === "text/csv") {
@@ -134,16 +136,28 @@ export async function parseCustomIntegrationFile(buffer: Buffer, fileName?: stri
   }
 
   throw new Error(`Unsupported file type. Upload ${supportedCustomIntegrationFileDescription()} reports.`);
+  } catch (error) {
+    throw Object.assign(error instanceof Error ? error : new Error("Invalid report"), { code: "CUSTOM_REPORT_INVALID" });
+  }
 }
 
 function parseDelimitedMetrics(text: string, sourceLabel: string): ParsedMetrics {
-  const parsed = parseCsvText(text, 5000);
+  const parsed = parseCsvText(text);
+  if (parsed.headers.some(header => resolveMetricKey(header) || isMetricLabelHeader(header))) {
+    const complete = parseCsvText(text, 5000, { strict: true });
+    return metricsFromTable(complete.headers, complete.rows, sourceLabel);
+  }
+  if (parsed.rows.length > 5000) throw new Error("Report exceeds 5,000 data rows");
   const metrics = metricsFromTable(parsed.headers, parsed.rows, sourceLabel);
   if (Number(metrics._extractedFields || 0) > 0) return metrics;
   return parseDelimitedMetricsWithDetectedHeader(text, sourceLabel) || parseDelimitedMetricPairs(text, sourceLabel) || metrics;
 }
 
 function metricsFromTable(headers: string[], rows: Array<Record<string, string>>, sourceLabel: string): ParsedMetrics {
+  const normalizedHeaders = headers.map(normalizeLabel);
+  if (new Set(normalizedHeaders).size !== headers.length) throw new Error("Report headers must be unique");
+  if (headers.length > 200 || rows.length > 5000 || headers.length * rows.length > 1_000_000) throw new Error("Report table exceeds supported limits");
+  if (normalizedHeaders.some(header => header.includes("currency"))) throw new Error("Currency columns are not supported; use plain amounts in the campaign currency");
   const warnings: string[] = [];
   const metrics: ParsedMetrics = {};
   const metricValue = extractMetricValueRows(headers, rows, warnings);
@@ -163,6 +177,7 @@ function metricsFromTable(headers: string[], rows: Array<Record<string, string>>
 }
 
 function extractMetricValueRows(headers: string[], rows: Array<Record<string, string>>, warnings: string[]): Map<keyof ParsedMetrics, string[]> | null {
+  if (headers.filter(isMetricLabelHeader).length > 1 || headers.some(isMetricLabelHeader) && headers.filter(isMetricValueHeader).length > 1) throw new Error("Ambiguous metric/value columns");
   const metricHeader = headers.find(isMetricLabelHeader);
   const valueHeader = headers.find((header) => header !== metricHeader && isMetricValueHeader(header))
     || (metricHeader ? bestNumericValueHeader(headers, rows, metricHeader) : undefined)
@@ -171,10 +186,13 @@ function extractMetricValueRows(headers: string[], rows: Array<Record<string, st
 
   const values = new Map<keyof ParsedMetrics, string[]>();
   for (const row of rows) {
+    if (normalizeLabel(row[metricHeader]).includes("currency")) throw new Error("Use plain amounts in the campaign currency");
     const key = resolveMetricKey(row[metricHeader]);
     const rawValue = String(row[valueHeader] || "").trim();
-    if (!key || !rawValue) continue;
+    if (!key) continue;
+    if (!rawValue) throw new Error(`Missing value for ${String(key)}`);
     const existing = values.get(key) || [];
+    if (existing.length) throw new Error(`Multiple total rows for ${String(key)}`);
     existing.push(rawValue);
     values.set(key, existing);
   }
@@ -187,25 +205,25 @@ function extractMetricValueRows(headers: string[], rows: Array<Record<string, st
 
 function parseDelimitedMetricsWithDetectedHeader(text: string, sourceLabel: string): ParsedMetrics | null {
   const lines = String(text || "").replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-  let best: ParsedMetrics | null = null;
   const limit = Math.min(lines.length, 50);
 
   for (let index = 1; index < limit; index++) {
     if (!lines[index]?.trim()) continue;
-    const candidate = parseCsvText(lines.slice(index).join("\n"), 5000);
-    if (candidate.headers.length < 2 || candidate.rows.length === 0) continue;
-    const metrics = metricsFromTable(candidate.headers, candidate.rows, sourceLabel);
-    if (Number(metrics._extractedFields || 0) > Number(best?._extractedFields || 0)) {
-      best = metrics;
-    }
+    const candidate = parseCsvText(`${lines[index]}\n0`);
+    if (candidate.headers.length < 2) continue;
+    if (!candidate.headers.some(header => isMetricLabelHeader(header)) && !candidate.headers.every(header => resolveMetricKey(header))) continue;
+    const complete = parseCsvText(lines.slice(index).join("\n"), 5000, { strict: true });
+    const metrics = metricsFromTable(complete.headers, complete.rows, sourceLabel);
+    return metrics;
   }
 
-  return Number(best?._extractedFields || 0) > 0 ? best : null;
+  return null;
 }
 
 function parseDelimitedMetricPairs(text: string, sourceLabel: string): ParsedMetrics | null {
   const values = new Map<keyof ParsedMetrics, string[]>();
   const lines = String(text || "").replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+  if (lines.filter(line => line.trim()).length > 5001) throw new Error("Report exceeds 5,000 data rows");
 
   for (const line of lines) {
     const parsed = parseLooseMetricPair(line);
@@ -236,12 +254,13 @@ function parseLooseMetricPair(line: string): { key: keyof ParsedMetrics; value: 
     ? [[trimmed.slice(0, colonIndex), trimmed.slice(colonIndex + 1)]]
     : [",", ";", "\t", "|"].map((delimiter) => {
       const parts = trimmed.split(delimiter);
-      return parts.length >= 2 ? [parts[0], parts.slice(1).join(delimiter === "," ? "" : delimiter)] : null;
+      return parts.length >= 2 ? [parts[0], parts.slice(1).join(delimiter)] : null;
     }).filter((parts): parts is string[] => Array.isArray(parts));
 
   for (const [label, rawValue] of candidates) {
     const key = resolveMetricKey(label);
-    if (!key || parseMetricNumber(rawValue) === null) continue;
+    if (!key) continue;
+    if (parseMetricNumber(rawValue) === null) throw new Error(`Invalid value for ${label}`);
     return { key, value: rawValue };
   }
   return null;
@@ -252,6 +271,7 @@ function bestNumericValueHeader(headers: string[], rows: Array<Record<string, st
   for (const header of headers) {
     if (header === metricHeader) continue;
     const count = rows.reduce((sum, row) => sum + (parseMetricNumber(String(row[header] || "")) === null ? 0 : 1), 0);
+    if (count > 0 && best) throw new Error("Ambiguous metric value columns");
     if (count > 0 && (!best || count > best.count)) best = { header, count };
   }
   return best?.header;
@@ -276,9 +296,11 @@ function applyHeaderRows(headers: string[], rows: Array<Record<string, string>>,
   for (const header of headers) {
     const key = resolveMetricKey(header);
     if (!key) continue;
+    if (byMetric.has(key)) throw new Error(`Multiple columns map to ${String(key)}`);
     const values = rows
       .map((row) => String(row[header] || "").trim())
       .filter(Boolean);
+    if (values.length !== rows.length) throw new Error(`Missing value for ${String(key)}`);
     if (values.length === 0) continue;
     byMetric.set(key, [...(byMetric.get(key) || []), ...values]);
   }
@@ -289,9 +311,11 @@ function applyMetricValues(valuesByMetric: Map<keyof ParsedMetrics, string[]>, m
   for (const definition of METRIC_DEFINITIONS) {
     const values = valuesByMetric.get(definition.key) || [];
     if (values.length === 0) continue;
+    if (String(definition.key).endsWith("Share") && values.some(value => !value.endsWith("%"))) throw new Error("Traffic shares require explicit percentages");
 
     if (definition.kind === "duration") {
       if (values.length === 1) {
+        if (!/^\d{1,3}:[0-5]\d:[0-5]\d$/.test(values[0])) throw new Error("Duration must be HH:MM:SS");
         (metrics as any)[definition.key] = values[0];
       } else {
         warnings.push(`${definition.labels[0]} has multiple ${sourceLabel} rows and was not imported because duration values require a selected total row.`);
@@ -299,13 +323,18 @@ function applyMetricValues(valuesByMetric: Map<keyof ParsedMetrics, string[]>, m
       continue;
     }
 
-    const numericValues = values
-      .map(parseMetricNumber)
-      .filter((value): value is number => value !== null);
+    const numericValues = values.map(value => {
+      const parsed = parseMetricNumber(value);
+      if (parsed === null || (definition.kind === "sum" && value.includes("%"))) throw new Error(`Invalid ${definition.labels[0]} value`);
+      if ((definition.kind === "sum" && definition.key !== "spend" || ["users", "reach"].includes(String(definition.key))) && !Number.isInteger(parsed)) throw new Error(`Fractional ${definition.labels[0]} is not supported by this import`);
+      if ((definition.key !== "listGrowth" && parsed < 0) || Math.abs(parsed) > (definition.key === "spend" ? 99_999_999.99 : 2_147_483_647)) throw new Error(`Unsupported ${definition.labels[0]} value`);
+      return parsed;
+    });
     if (numericValues.length === 0) continue;
 
     if (definition.kind === "sum") {
       (metrics as any)[definition.key] = Number(numericValues.reduce((sum, value) => sum + value, 0).toFixed(2));
+      if (Math.abs(Number(metrics[definition.key])) > (definition.key === "spend" ? 99_999_999.99 : 2_147_483_647)) throw new Error(`Unsupported ${definition.labels[0]} total`);
       continue;
     }
 
@@ -321,23 +350,9 @@ function applyMetricValues(valuesByMetric: Map<keyof ParsedMetrics, string[]>, m
 
 function parseMetricNumber(value: string): number | null {
   const raw = String(value || "").trim();
-  if (!raw) return null;
-  const negative = /^\(.*\)$/.test(raw);
-  let cleaned = raw
-    .replace(/[$,%\s]/g, "")
-    .replace(/[\u20ac\u00a3\u00a5]/g, "")
-    .replace(/["']/g, "")
-    .replace(/[()]/g, "")
-    .trim();
-  const suffix = cleaned.slice(-1).toLowerCase();
-  let multiplier = 1;
-  if (suffix === "k" || suffix === "m") {
-    multiplier = suffix === "k" ? 1000 : 1000000;
-    cleaned = cleaned.slice(0, -1);
-  }
-  const valueNum = Number.parseFloat(cleaned);
-  if (!Number.isFinite(valueNum)) return null;
-  return Number((negative ? -valueNum : valueNum) * multiplier);
+  if (!/^[+-]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?%?$/.test(raw)) return null;
+  const number = Number(raw.replace(/[,\%]/g, ""));
+  return Number.isFinite(number) ? number : null;
 }
 
 function addRangeWarnings(metrics: ParsedMetrics, warnings: string[]) {
@@ -360,11 +375,7 @@ function resolveMetricKey(label: string): keyof ParsedMetrics | null {
   for (const definition of METRIC_DEFINITIONS) {
     if (definition.labels.map(normalizeLabel).includes(normalized)) return definition.key;
   }
-  const aliases = METRIC_DEFINITIONS
-    .flatMap((definition) => definition.labels.map((alias) => ({ alias: normalizeLabel(alias), key: definition.key })))
-    .sort((a, b) => b.alias.length - a.alias.length);
-  const match = aliases.find(({ alias }) => alias.length >= 4 && normalized.includes(alias));
-  return match?.key || null;
+  return null;
 }
 
 function normalizeLabel(label: string): string {
@@ -400,19 +411,23 @@ function swapUtf16Bytes(buffer: Buffer): Buffer {
 function parseXlsxMetrics(buffer: Buffer): ParsedMetrics {
   const entries = readZipEntries(buffer);
   const sharedStrings = parseSharedStrings(entries.get("xl/sharedStrings.xml")?.toString("utf8") || "");
-  const sheetName = Array.from(entries.keys()).find((name) => /^xl\/worksheets\/sheet\d+\.xml$/i.test(name));
-  if (!sheetName) {
-    return {
-      _confidence: 0,
-      _warnings: ["No worksheet found in XLSX"],
-      _extractedFields: 0,
-      _requiresReview: true,
-    };
-  }
+  const workbook = entries.get("xl/workbook.xml")?.toString("utf8") || "";
+  const relationships = entries.get("xl/_rels/workbook.xml.rels")?.toString("utf8") || "";
+  const attribute = (tag: string, name: string) => new RegExp(`\\b${name}=["']([^"']*)["']`).exec(tag)?.[1];
+  const sheets = (workbook.match(/<sheet\b[^>]*\/?\s*>/g) || []).filter(sheet => !attribute(sheet, "state") || attribute(sheet, "state") === "visible");
+  if (sheets.length !== 1) throw new Error("XLSX requires exactly one visible worksheet");
+  const sheetId = attribute(sheets[0], "r:id");
+  const targets = (relationships.match(/<Relationship\b[^>]*\/?\s*>/g) || []).filter(rel => attribute(rel, "Id") === sheetId);
+  if (!sheetId || targets.length !== 1 || attribute(targets[0], "TargetMode") === "External") throw new Error("Invalid XLSX worksheet relationship");
+  const target = attribute(targets[0], "Target") || "";
+  const sheetName = target.startsWith("/xl/") ? target.slice(1) : `xl/${target}`;
+  if (!/^xl\/worksheets\/[^/]+\.xml$/.test(sheetName) || !entries.has(sheetName)) throw new Error("Invalid XLSX worksheet target");
 
   const rows = parseWorksheet(entries.get(sheetName)?.toString("utf8") || "", sharedStrings);
   const headers = (rows[0] || []).map((value, index) => String(value || "").trim() || `Column ${index + 1}`);
+  if (new Set(headers.map(normalizeLabel)).size !== headers.length) throw new Error("Report headers must be unique");
   const dataRows = rows.slice(1).map((row) => {
+    if (row.length > headers.length) throw new Error("XLSX row exceeds header width");
     const out: Record<string, string> = {};
     headers.forEach((header, index) => {
       out[header] = String(row[index] ?? "").trim();
@@ -430,24 +445,35 @@ function readZipEntries(buffer: Buffer): Map<string, Buffer> {
 
   const entryCount = buffer.readUInt16LE(eocdOffset + 10);
   let offset = buffer.readUInt32LE(eocdOffset + 16);
+  const directoryEnd = offset + buffer.readUInt32LE(eocdOffset + 12);
+  if (entryCount > 256 || directoryEnd !== eocdOffset || buffer.readUInt16LE(eocdOffset + 4) !== 0 || buffer.readUInt16LE(eocdOffset + 6) !== 0) throw new Error("Unsupported XLSX archive");
+  let expandedBytes = 0;
 
   for (let i = 0; i < entryCount; i++) {
-    if (buffer.readUInt32LE(offset) !== 0x02014b50) break;
+    if (offset + 46 > directoryEnd || buffer.readUInt32LE(offset) !== 0x02014b50) throw new Error("Invalid XLSX directory");
     const method = buffer.readUInt16LE(offset + 10);
     const compressedSize = buffer.readUInt32LE(offset + 20);
+    const expandedSize = buffer.readUInt32LE(offset + 24);
+    if (buffer.readUInt16LE(offset + 8) & 1 || ![0, 8].includes(method) || expandedBytes + expandedSize > 10 * 1024 * 1024) throw new Error("XLSX expanded content exceeds limits or is unsupported");
     const fileNameLength = buffer.readUInt16LE(offset + 28);
     const extraLength = buffer.readUInt16LE(offset + 30);
     const commentLength = buffer.readUInt16LE(offset + 32);
     const localHeaderOffset = buffer.readUInt32LE(offset + 42);
+    if (offset + 46 + fileNameLength + extraLength + commentLength > directoryEnd || localHeaderOffset + 30 > buffer.length || buffer.readUInt32LE(localHeaderOffset) !== 0x04034b50) throw new Error("Invalid XLSX entry");
     const fileName = buffer.subarray(offset + 46, offset + 46 + fileNameLength).toString("utf8");
+    if (entries.has(fileName) || fileName.includes("..") || fileName.includes("\\")) throw new Error("Ambiguous XLSX entry");
     const localNameLength = buffer.readUInt16LE(localHeaderOffset + 26);
     const localExtraLength = buffer.readUInt16LE(localHeaderOffset + 28);
     const dataStart = localHeaderOffset + 30 + localNameLength + localExtraLength;
+    if (dataStart + compressedSize > buffer.readUInt32LE(eocdOffset + 16)) throw new Error("Invalid XLSX entry size");
     const compressed = buffer.subarray(dataStart, dataStart + compressedSize);
-    const data = method === 0 ? compressed : method === 8 ? inflateRawSync(compressed) : null;
-    if (data) entries.set(fileName, data);
+    const data = method === 0 ? compressed : inflateRawSync(compressed, { maxOutputLength: Math.max(1, expandedSize) });
+    if (data.length !== expandedSize) throw new Error("Incomplete XLSX entry");
+    expandedBytes += data.length;
+    entries.set(fileName, data);
     offset += 46 + fileNameLength + extraLength + commentLength;
   }
+  if (offset !== directoryEnd) throw new Error("Incomplete XLSX directory");
 
   return entries;
 }
@@ -470,17 +496,24 @@ function parseSharedStrings(xml: string): string[] {
 }
 
 function parseWorksheet(xml: string, sharedStrings: string[]): string[][] {
+  if (/<(?:f|mergeCell)\b/.test(xml)) throw new Error("XLSX formulas and merged cells are unsupported; upload explicit values");
   const rows: string[][] = [];
   const rowMatches = xml.match(/<row[\s\S]*?<\/row>/g) || [];
+  if (rowMatches.length > 5001) throw new Error("Report exceeds 5,000 data rows");
+  let cells = 0;
   for (const rowXml of rowMatches) {
     const row: string[] = [];
     const cellMatches = rowXml.match(/<c\b[\s\S]*?<\/c>/g) || [];
+    cells += cellMatches.length;
+    if (cellMatches.length > 200 || cells > 1_000_000) throw new Error("XLSX cell limit exceeded");
     for (const cellXml of cellMatches) {
       const ref = /r="([A-Z]+)\d+"/.exec(cellXml)?.[1] || "";
       const colIndex = columnIndex(ref);
+      if (!ref || colIndex >= 200 || row[colIndex] !== undefined) throw new Error("Invalid XLSX cell column");
       const type = /t="([^"]+)"/.exec(cellXml)?.[1] || "";
       const raw = /<v>([\s\S]*?)<\/v>/.exec(cellXml)?.[1] || /<t[^>]*>([\s\S]*?)<\/t>/.exec(cellXml)?.[1] || "";
       const value = type === "s" ? sharedStrings[Number(raw)] || "" : decodeXml(raw);
+      if (type === "e" || type === "s" && (!/^\d+$/.test(raw) || sharedStrings[Number(raw)] === undefined)) throw new Error("Invalid XLSX cell value");
       row[colIndex] = value;
     }
     if (row.some((value) => String(value || "").trim())) rows.push(row);

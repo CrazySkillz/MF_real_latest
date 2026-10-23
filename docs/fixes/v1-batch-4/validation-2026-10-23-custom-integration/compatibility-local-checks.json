@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-23T12:35:19.776Z",
+  "databases": [
+    {
+      "database": "ga4_alignment_test",
+      "remainingFixtureSchemas": 0,
+      "otherClientConnections": 0,
+      "remainingAdvisoryLocks": 0
+    },
+    {
+      "database": "notifications_test",
+      "remainingFixtureSchemas": 0,
+      "otherClientConnections": 0,
+      "remainingAdvisoryLocks": 0
+    }
+  ],
+  "tests": {
+    "total": 22,
+    "passed": 22,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typecheck": {
+    "exitCode": 0,
+    "error": null
+  },
+  "changedSincePriorCandidate": [
+    "server/v1-batch4-custom-storage-postgres.test.ts"
+  ],
+  "result": "PASS",
+  "completedAt": "2026-10-23T12:35:38.930Z"
+}

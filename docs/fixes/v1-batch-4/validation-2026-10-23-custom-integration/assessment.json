@@ -1,0 +1,167 @@
+{
+  "at": "2026-10-23T12:04:33.744685+00:00",
+  "baseHead": "221382da751b453b4d45411df65f15a62750c9b1",
+  "scope": [
+    "V1-028",
+    "V1-029",
+    "V1-031",
+    "V1-102",
+    "V1-103",
+    "V1-111",
+    "V1-120"
+  ],
+  "decision": "Local forward corrections only; Batch 4 and V1 release acceptance OPEN / NO-GO.",
+  "expanded": {
+    "total": 274,
+    "passed": 268,
+    "failed": 6,
+    "skipped": 0
+  },
+  "finalCustomBoundary": {
+    "total": 87,
+    "passed": 87,
+    "failed": 0,
+    "skipped": 0
+  },
+  "failures": [
+    {
+      "id": "B4-TEST-d6f30a50b0",
+      "file": "server/source-safety-regression.test.ts",
+      "name": "source safety regression guards Google Sheets main platform feeds Campaign DeepDive aggregate without raw sheet revenue/spend rows",
+      "firstFailure": "AssertionError: expected 'import type { Express } from \"express\u2026' to contain 'import { buildGoogleSheetsPlatformSou\u2026'",
+      "classification": "SOURCE_ASSERTION_MISMATCH",
+      "finding": "V1-012",
+      "reason": "Single-name import assertion no longer matches a combined import containing the same aggregate function. Later assertions did not execute; actual scoped aggregate behavior remains a required check.",
+      "status": "FAILED; OPEN",
+      "waived": false,
+      "releaseImpact": "Whole-suite/CI remains blocked. Repair the test against actual behavior and execute all intended checks."
+    },
+    {
+      "id": "B4-TEST-1830eb645f",
+      "file": "server/source-safety-regression.test.ts",
+      "name": "source safety regression guards Google Sheets KPIs use source-backed mapped metrics without blocking explicit sheet financial columns",
+      "firstFailure": "AssertionError: expected 'import { useQuery, useQueries, useMut\u2026' to contain '/roas|return on/i.test(key)'",
+      "classification": "SOURCE_ASSERTION_MISMATCH",
+      "finding": "V1-012",
+      "reason": "Former inline ROAS regex was replaced by shared metric classification. The whole KPI test and later unexecuted assertions remain required.",
+      "status": "FAILED; OPEN",
+      "waived": false,
+      "releaseImpact": "Whole-suite/CI remains blocked. Repair the test against actual behavior and execute all intended checks."
+    },
+    {
+      "id": "B4-TEST-bd45a0cac4",
+      "file": "server/source-safety-regression.test.ts",
+      "name": "source safety regression guards Google Sheets Reports follow the GA4 Reports template with source-backed output guards",
+      "firstFailure": "AssertionError: expected 'import { formatConversionCredit } fro\u2026' to contain 'String(source?.platformContext || \"\")\u2026'",
+      "classification": "SOURCE_ASSERTION_MISMATCH",
+      "finding": "V1-012",
+      "reason": "Former Sheets financial helper implementation was replaced by scoped total reads and selected date windows. Full report behavior and later assertions remain required.",
+      "status": "FAILED; OPEN",
+      "waived": false,
+      "releaseImpact": "Whole-suite/CI remains blocked. Repair the test against actual behavior and execute all intended checks."
+    },
+    {
+      "id": "TEST-1ab264f494",
+      "file": "server/source-safety-regression.test.ts",
+      "name": "source safety regression guards ad-platform spend routes preserve source identity for Meta and Google Ads edits",
+      "firstFailure": "AssertionError: expected 'app.post(\"/api/campaigns/:id/spend/pr\u2026' to contain 'displayName || \"\").trim() !== effecti\u2026'",
+      "classification": "SOURCE_ASSERTION_MISMATCH",
+      "finding": "V1-012",
+      "reason": "Manual/ad-platform route compares resolvedDisplayName after GA4 Google Ads normalization instead of effectiveDisplayName. Remaining manual Spend/transfer V1-068/069 and all intended safety assertions remain open.",
+      "status": "FAILED; OPEN",
+      "waived": false,
+      "releaseImpact": "Whole-suite/CI remains blocked. Repair the test against actual behavior and execute all intended checks."
+    },
+    {
+      "id": "TEST-6f00d61d48",
+      "file": "server/source-safety-regression.test.ts",
+      "name": "source safety regression guards Google Ads disconnect route is campaign-scoped and fails closed when no row is deleted",
+      "firstFailure": "AssertionError: expected 'app.post(\"/api/google-ads/:campaignId\u2026' to contain 'storage.deleteGoogleAdsDailyMetrics(c\u2026'",
+      "classification": "SOURCE_ASSERTION_MISMATCH",
+      "finding": "V1-012",
+      "reason": "Google Ads selection/test assertion expects direct daily-row deletion; current connection lifecycle uses revised persistence paths. Behavioral disconnect/selection verification remains required; missing source text is not proof of safety.",
+      "status": "FAILED; OPEN",
+      "waived": false,
+      "releaseImpact": "Whole-suite/CI remains blocked. Repair the test against actual behavior and execute all intended checks."
+    },
+    {
+      "id": "TEST-c8a51eca27",
+      "file": "server/source-safety-regression.test.ts",
+      "name": "source safety regression guards Google Ads scheduler fails closed before refreshing missing campaigns or spend-only test-mode connections",
+      "firstFailure": "AssertionError: expected 'export async function refreshGoogleAd\u2026' to contain 'if (isSpendOnly && isTestMode) return;'",
+      "classification": "SOURCE_ASSERTION_MISMATCH",
+      "finding": "V1-012",
+      "reason": "Scheduler now returns providerRefreshed:false/spendMaterialization:null for spend-only test mode instead of a bare return. Whole scheduler and remaining assertion contract remain required.",
+      "status": "FAILED; OPEN",
+      "waived": false,
+      "releaseImpact": "Whole-suite/CI remains blocked. Repair the test against actual behavior and execute all intended checks."
+    }
+  ],
+  "intermediateFailures": [
+    {
+      "run": "storage-initial",
+      "classification": "FIXTURE_TIME_ORDERING",
+      "detail": "A Date.now()+10s fixture did not establish the intended ordering against database timestamps. A deterministic future date proves rejection of the newer unverified row with no older fallback.",
+      "fixed": true
+    },
+    {
+      "run": "values-initial",
+      "classification": "FIXTURE_ENCODING",
+      "detail": "PowerShell pipe converted expected euro text to ?. Explicit Unicode escape restores the intended check; actual EUR output was correct.",
+      "fixed": true
+    },
+    {
+      "run": "combined-initial",
+      "classification": "CHANGED_SOURCE_ASSERTIONS",
+      "detail": "Five Custom assertions referenced old copy/delete transfer logic, formatter arity and null arithmetic. Localized expectations updated; independent actual-storage/function/PDF cases pass.",
+      "fixed": true
+    },
+    {
+      "run": "candidate-typecheck",
+      "classification": "COMPILE_ERROR",
+      "detail": "Untyped PDF extraction result made matchAll entries unknown. Explicit string type corrects this; later typecheck passes.",
+      "fixed": true
+    },
+    {
+      "run": "final",
+      "classification": "FIXTURE_PARAMETERIZATION",
+      "detail": "Vitest expanded array cases into scalar PDF arguments. Object-wrapped cases now execute both malformed/duplicate PDF rejection tests.",
+      "fixed": true
+    }
+  ],
+  "historicalWholeSuite": "4488 tests: 4309 passed / 179 failed / 0 skipped, October 22. No new whole-suite run or inferred reduction.",
+  "proven": [
+    "Complete bounded CSV/XLSX parsing and all 28 zero-valued fields",
+    "Single visible workbook worksheet independent of ZIP order",
+    "Strict numeric/metric/currency input; review-required values rejected before publication",
+    "Atomic owned transfer, rollback, concurrency, IDs/timestamps/metadata/receipt preservation",
+    "Late manual/token writes fail after source deletion or transfer",
+    "Actual client financial query/transform zero/error cases",
+    "Actual scheduled PDF validation gate, currency and truthful period labels",
+    "Actual multipart one-report bound; retained inbound signature/download regressions"
+  ],
+  "notCertified": [
+    "Deployed authenticated browser/import acceptance",
+    "Mailgun/SendGrid provider delivery, retry and real attachment layout coverage",
+    "Complete saved goal/alert/diagnostic/history/snapshot propagation; V1-122/V1-060 remain open",
+    "True calendar-window import totals: no reporting-period contract; latest-import/all-history scope is explicitly labeled",
+    "Historical original-source inventory/reimport and compatible deployment rollback",
+    "Whole application CI, operations, load and release gates"
+  ],
+  "compatibility": [
+    "No schema/dependency/environment changes",
+    "Old records without validationVersion=2 are retained but excluded from validated reads; original-source reimport is recovery, not invented correction",
+    "Upload card remains available without validated metrics on the existing Custom route; hidden primary onboarding stays hidden",
+    "CSV/XLSX plain amounts use campaign currency; currency columns/symbols reject. PDF declared currency must match",
+    "Existing integer Custom count schema retained; fractional counts reject instead of truncating; GA4 fractional values unchanged",
+    "One report per request; XLSX one visible worksheet, no formulas/merges"
+  ],
+  "safety": {
+    "productionAccess": false,
+    "ptomoMutation": false,
+    "providerRequests": false,
+    "emailSends": false,
+    "environmentFilesLoaded": false,
+    "fixtureDatabase": "127.0.0.1:55444/ga4_alignment_test"
+  }
+}

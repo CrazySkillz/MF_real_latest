@@ -85,6 +85,8 @@ function buildXlsxBuffer(rows: string[][]): Buffer {
     return `<row r="${r + 1}">${cells}</row>`;
   }).join("");
   return buildStoredZip({
+    "xl/workbook.xml": '<workbook><sheets><sheet name="Report" sheetId="1" r:id="rId1"/></sheets></workbook>',
+    "xl/_rels/workbook.xml.rels": '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
     "xl/worksheets/sheet1.xml": `<?xml version="1.0" encoding="UTF-8"?><worksheet><sheetData>${sheetRows}</sheetData></worksheet>`,
   });
 }
@@ -242,5 +244,18 @@ describe("Custom Integration PDF parser", () => {
     expect(metrics.pageviews).toBe(287340);
     expect(metrics.openRate).toBe(44.5);
     expect(metrics._confidence).toBe(100);
+  });
+});
+
+
+describe("Batch 4 PDF metric meaning", () => {
+  it("does not turn sent, opens, exits or new subscribers into different metrics", async () => {
+    const metrics = await parsePDFMetrics(buildPdfBuffer(["Emails Sent: 1000", "Opens: 50", "Exit Rate: 20", "New Subscribers: 30"]));
+    expect(metrics.emailsDelivered).toBeUndefined(); expect(metrics.openRate).toBeUndefined();
+    expect(metrics.bounceRate).toBeUndefined(); expect(metrics.listGrowth).toBeUndefined();
+    expect(metrics._requiresReview).toBe(true);
+  });
+  it.each([{lines:["Spend: 10junk"]}, {lines:["Spend: 10", "Spend: 20"]}])("rejects malformed or duplicate PDF figures %j", async ({lines}) => {
+    await expect(parsePDFMetrics(buildPdfBuffer(lines))).rejects.toThrow();
   });
 });

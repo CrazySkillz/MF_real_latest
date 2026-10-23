@@ -1519,9 +1519,9 @@ describe("source safety regression guards", () => {
     expect(readRoutes.indexOf("requireCampaignAccessCampaignIdParam")).toBeLessThan(readRoutes.indexOf("upload.single('pdf')"));
     expect(paramConnectRoute.indexOf("ensureCampaignAccess")).toBeGreaterThan(-1);
     expect(paramConnectRoute.indexOf("ensureCampaignAccess")).toBeLessThan(paramConnectRoute.indexOf("storage.createCustomIntegration"));
-    expect(transferRoute).toContain("fromCampaignId !== 'temp-campaign-setup'");
-    expect(transferRoute.indexOf("ensureCampaignAccess")).toBeLessThan(transferRoute.indexOf("storage.getCustomIntegration(fromCampaignId)"));
-    expect(transferRoute.indexOf("storage.createCustomIntegration")).toBeGreaterThan(transferRoute.indexOf("ensureCampaignAccess"));
+    expect(readStorageSource()).toContain('if (fromCampaignId === "temp-campaign-setup")');
+    expect(transferRoute.indexOf("ensureCampaignAccess")).toBeLessThan(transferRoute.indexOf("storage.transferCustomIntegration"));
+    expect(transferRoute.indexOf("storage.transferCustomIntegration")).toBeGreaterThan(transferRoute.lastIndexOf("ensureCampaignAccess"));
   });
 
   it("Custom Integration by-ID analytics route resolves source before campaign access and keeps client compatibility", () => {
@@ -1680,7 +1680,7 @@ describe("source safety regression guards", () => {
     expect(source).toContain("Source: {resolvedCurrent.sourceLabel || \"Saved Custom Integration source unavailable\"}");
     expect(source).toContain("if (!savedScope || !String(savedScope?.integrationId || '').trim())");
     expect(source).toContain("Saved Custom Integration source scope is missing. Edit and update this row to reconnect it to a source.");
-    expect(source).toContain("formatCustomIntegrationMetricValue(currentVal, displayUnit, resolvedCurrent.option?.type)");
+    expect(source).toContain("formatCustomIntegrationMetricValue(currentVal, displayUnit, resolvedCurrent.option?.type, customIntegrationFinancialCurrencyCode)");
     expect(source).toContain("formatPct(progress.attainmentPct)");
     expect(source).toContain("progress.effectiveDeltaPct > 0");
     expect(source).not.toContain("let status = resolvedCurrent.available ? 'Underperforming' : 'Unavailable';");
@@ -1788,7 +1788,7 @@ describe("source safety regression guards", () => {
     expect(financialBlock).toContain("Pipeline Proxy");
     expect(financialBlock).toContain("ROAS");
     expect(financialBlock).toContain("ROI");
-    expect(financialBlock).toContain("formatCustomIntegrationMetricValue(customIntegrationRoi, '%', 'percent')");
+    expect(financialBlock).toContain("formatCustomIntegrationMetricValue(customIntegrationRoi, '%', 'percent', customIntegrationFinancialCurrencyCode)");
     expect(financialBlock).toContain("Not connected");
     expect(financialBlock).toContain("Not configured");
     expect(financialBlock).toContain("Includes imported report value");
@@ -1893,7 +1893,7 @@ describe("source safety regression guards", () => {
     expect(scheduler).toContain('async function buildCustomIntegrationFinancialReportMetrics');
     expect(scheduler).toContain('storage.getRevenueTotalForRange(campaignId, startDate, endDate, "custom_integration")');
     expect(scheduler).toContain('source?.isActive !== false && String(source?.platformContext || "").trim().toLowerCase() === "custom_integration"');
-    expect(scheduler).toContain('const totalRevenue = externalRevenue + (importedRevenue ?? 0)');
+    expect(scheduler).toContain('const totalRevenue = (externalRevenue ?? 0) + (importedRevenue ?? 0)');
     expect(scheduler).toContain('const totalSpend = externalSpend + (importedSpend ?? 0)');
     expect(scheduler).toContain('resolveCustomIntegrationReportMetric(metrics, row?.metric || row?.metricKey, customIntegrationFinancialReportMetrics)');
     expect(scheduler).toContain('resolveCustomIntegrationReportMetric(metrics, metric.key, customIntegrationFinancialReportMetrics)');
@@ -2043,7 +2043,7 @@ describe("source safety regression guards", () => {
     expect(source).toContain("scheduleTime: to24HourHHMM(nextForm.scheduleTime)");
     expect(source).toContain("scheduleTimeZone: userTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone");
     expect(source).toContain("scheduleDayOfMonth: nextForm.scheduleFrequency === 'monthly' || nextForm.scheduleFrequency === 'quarterly' ? dayOfMonthToNumber(nextForm.scheduleDayOfMonth) : null");
-    expect(source).toContain("formatCustomIntegrationMetricValue(resolved.currentValue, resolved.unit, resolved.option?.type)");
+    expect(source).toContain("formatCustomIntegrationMetricValue(resolved.currentValue, resolved.unit, resolved.option?.type, customIntegrationFinancialCurrencyCode)");
     expect(source).toContain("resolveCustomIntegrationCurrentValue(kpi)");
     expect(source).toContain("resolveCustomIntegrationCurrentValue(benchmark)");
     expect(source).toContain("getCustomIntegrationReportSourceScope(config)");

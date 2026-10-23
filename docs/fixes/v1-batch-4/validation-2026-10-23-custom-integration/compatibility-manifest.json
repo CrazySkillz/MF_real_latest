@@ -1,0 +1,52 @@
+{
+  "at": "2026-10-23T12:35:38.928Z",
+  "baseHead": "221382da751b453b4d45411df65f15a62750c9b1",
+  "state": "UNCOMMITTED; not deployed",
+  "runtimeUnchanged": true,
+  "files": [
+    {
+      "file": "client/src/pages/custom-integration-analytics.tsx",
+      "lfSha256": "c6a3e687f68afce01baa216db868796a472e7596876d968105b543e19afcc304"
+    },
+    {
+      "file": "server/routes-oauth.ts",
+      "lfSha256": "ce51ae34b8d647ced2a23f87ea9aaeb76331dd410625236eafd7f74d04374868"
+    },
+    {
+      "file": "server/storage.ts",
+      "lfSha256": "5c899dc383454f443d83f26ceb8d86046f21c5a8e80312e046e0e3eababe33fc"
+    },
+    {
+      "file": "server/report-scheduler.ts",
+      "lfSha256": "7dc3f5a94ab985abab761c6df07c0d87d24eea6c2e09415b730dbaa33c8b225e"
+    },
+    {
+      "file": "server/services/custom-integration-file-parser.ts",
+      "lfSha256": "bd10647964292cdfa93a54ed8e1adb6227eb45d44b27033bc4e05f755043a25e"
+    },
+    {
+      "file": "server/services/pdf-parser.ts",
+      "lfSha256": "587da899b062b82377ead5360d02e8e435f8ec49a3af4b0a06281ef2e5e58b6e"
+    },
+    {
+      "file": "server/pdf-parser-regression.test.ts",
+      "lfSha256": "3aab3539ff5e822b0ddb8fffb99c6906d0e7bb3c43a31c62ee0dfc680224be52"
+    },
+    {
+      "file": "server/source-safety-regression.test.ts",
+      "lfSha256": "cbb60d8dfceb25f8bf8af653f3ed24e549d2a7c06f68bae5f149e05b8e4b9fb3"
+    },
+    {
+      "file": "server/v1-batch4-custom-import.test.ts",
+      "lfSha256": "9a3d17e3b8dd41840b895d33b7379c9c6651dcd248af631985073290421adff1"
+    },
+    {
+      "file": "server/v1-batch4-custom-storage-postgres.test.ts",
+      "lfSha256": "42a99997f78a0ddb8b47c9b11cb0367d5308ccca96e0e0fe3baf38bbf3c7a019"
+    },
+    {
+      "file": "server/v1-batch4-custom-values.test.ts",
+      "lfSha256": "d837af00b5871c96978e37a857f7a378147ca74a948c0b634e58f8f610ef9835"
+    }
+  ]
+}

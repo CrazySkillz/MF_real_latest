@@ -44,6 +44,7 @@ export interface ParsedMetrics {
   _warnings?: string[]; // Validation warnings
   _extractedFields?: number; // Number of fields successfully extracted
   _requiresReview?: boolean; // True if confidence < 95%
+  _currency?: string;
 }
 
 /**
@@ -54,17 +55,18 @@ export interface ParsedMetrics {
  * - "1.2M" (millions)
  */
 function extractNumber(text: string): number {
+  if (!/^[+-]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?[KM]?$/i.test(text.trim())) throw new Error("Ambiguous PDF number");
   // Remove currency symbols and commas
   let cleaned = text.replace(/[$,]/g, '').trim();
   
   // Handle K (thousands) and M (millions) suffixes
   if (cleaned.endsWith('K') || cleaned.endsWith('k')) {
     const value = parseFloat(cleaned.slice(0, -1));
-    return Math.round(value * 1000);
+    return value * 1000;
   }
   if (cleaned.endsWith('M') || cleaned.endsWith('m')) {
     const value = parseFloat(cleaned.slice(0, -1));
-    return Math.round(value * 1000000);
+    return value * 1000000;
   }
   
   const value = parseFloat(cleaned);
@@ -85,7 +87,7 @@ export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
     const uint8Array = new Uint8Array(buffer);
     const parser = new PDFParse(uint8Array);
     const textResult = await parser.getText();
-    const text = textResult?.text || '';
+    const text: string = String(textResult?.text || '');
     
     console.log('[PDF Parser] Extracted text length:', text.length);
     console.log('[PDF Parser] First 500 chars:', text.substring(0, 500));
@@ -126,11 +128,11 @@ export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
       reach: /reach[:\s|]+([0-9,.KM]+)/i,
       clicks: /clicks?[:\s|]+([0-9,.KM]+)/i,
       engagements: /engagements?[:\s|]+([0-9,.KM]+)/i,
-      spend: /(?:spend|cost|amount)[:\s|]+\$?([0-9,.KM]+)/i,
+      spend: /(?:spend|cost)[:\s|]+\$?([0-9,.KM]+)/i,
       conversions: /conversions?[:\s|]+([0-9,.KM]+)/i,
       leads: /leads?[:\s|]+([0-9,.KM]+)/i,
-      videoViews: /(?:video\s*views?|views?)[:\s|]+([0-9,.KM]+)/i,
-      viralImpressions: /(?:viral\s*impressions?|organic\s*impressions?)[:\s|]+([0-9,.KM]+)/i,
+      videoViews: /(?:video\s*views?)[:\s|]+([0-9,.KM]+)/i,
+      viralImpressions: /(?:viral\s*impressions?)[:\s|]+([0-9,.KM]+)/i,
       
       // Audience & Traffic metrics (GA4 style + William Reed formats)
       users: /(?:users?\s*\(unique\)|users?|unique\s*users?|unique\s*visitors?|visitors?)[:\s|]+([0-9,.KM]+)/i,
@@ -138,31 +140,35 @@ export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
       pageviews: /(?:pageviews?|page\s*views?|pages?\s*viewed)[:\s|]+([0-9,.KM]+)/i,
       avgSessionDuration: /(?:avg\.?\s*session\s*duration|average\s*session\s*duration|avg\.?\s*time\s*on\s*site|average\s*time)[:\s|]+([0-9:]+)/i,
       pagesPerSession: /(?:pages?\s*\/\s*session|pages?\s*per\s*session|pages?\s*per\s*visit)[:\s|]+([0-9,.]+)/i,
-      bounceRate: /(?:bounce\s*rate|exit\s*rate)[:\s|]+([0-9,.]+)%?/i,
+      bounceRate: /(?:bounce\s*rate)[:\s|]+([0-9,.]+)%?/i,
       
       // Traffic sources (percentages) - Enhanced for William Reed
-      organicSearchShare: /(?:organic\s*search|organic\s*traffic|search\s*engines?)[:\s|]+([0-9,.]+)%?/i,
-      directBrandedShare: /(?:direct\s*\/?\s*branded|direct\s*traffic|direct)[:\s|]+([0-9,.]+)%?/i,
-      emailShare: /(?:email\s*\(newsletters?\)|email\s*campaigns?|email\s*traffic|email)[:\s|]+([0-9,.]+)%?/i,
-      referralShare: /(?:referral\s*\/?\s*partners?|referral\s*traffic|referrals?)[:\s|]+([0-9,.]+)%?/i,
-      paidShare: /(?:paid\s*\(display\/search\)|paid\s*advertising|paid\s*traffic|paid)[:\s|]+([0-9,.]+)%?/i,
-      socialShare: /(?:social\s*media|social\s*traffic|social)[:\s|]+([0-9,.]+)%?/i,
+      organicSearchShare: /(?:organic\s*search|organic\s*traffic|search\s*engines?)[:\s|]+([0-9,.]+)%/i,
+      directBrandedShare: /(?:direct\s*\/?\s*branded|direct\s*traffic|direct)[:\s|]+([0-9,.]+)%/i,
+      emailShare: /(?:email\s*\(newsletters?\)|email\s*campaigns?|email\s*traffic|email)[:\s|]+([0-9,.]+)%/i,
+      referralShare: /(?:referral\s*\/?\s*partners?|referral\s*traffic|referrals?)[:\s|]+([0-9,.]+)%/i,
+      paidShare: /(?:paid\s*\(display\/search\)|paid\s*advertising|paid\s*traffic|paid)[:\s|]+([0-9,.]+)%/i,
+      socialShare: /(?:social\s*media|social\s*traffic|social)[:\s|]+([0-9,.]+)%/i,
       
       // Email performance metrics (William Reed newsletter formats)
-      emailsDelivered: /(?:emails?\s*delivered|emails?\s*sent|delivered)[:\s|]+([0-9,.KM]+)/i,
-      openRate: /(?:open\s*rate|opens?)\s*(?:\(unique\))?[:\s|]+([0-9,.]+)%?/i,
+      emailsDelivered: /(?:emails?\s*delivered|delivered)[:\s|]+([0-9,.KM]+)/i,
+      openRate: /(?:open\s*rate)\s*(?:\(unique\))?[:\s|]+([0-9,.]+)%?/i,
       clickThroughRate: /(?:click-through\s*rate|click\s*-\s*through\s*rate|click\s*rate|ctr)\s*(?:\(ctr\))?[:\s|]+([0-9,.]+)%?/i,
       clickToOpenRate: /(?:click-to-open|click\s*-\s*to\s*-\s*open|ctor)\s*(?:\(ctor\))?[:\s|]+([0-9,.]+)%?/i,
-      hardBounces: /(?:hard\s*bounces?|bounces?)[:\s|]+([0-9,.]+)%?/i,
-      spamComplaints: /(?:spam\s*complaints?|complaints?)[:\s|]+([0-9,.]+)%?/i,
-      listGrowth: /(?:list\s*growth\s*(?:\(net\))?|net\s*subscribers?|subscriber\s*growth|new\s*subscribers?)[:\s|]+\+?([0-9,.KM]+)/i,
+      hardBounces: /(?:hard\s*bounce\s*rate|hard\s*bounces?)[:\s|]+([0-9,.]+)%/i,
+      spamComplaints: /(?:spam\s*complaint\s*rate|spam\s*complaints?)[:\s|]+([0-9,.]+)%/i,
+      listGrowth: /(?:list\s*growth\s*(?:\(net\))?|net\s*subscribers?)[:\s|]+\+?([0-9,.KM]+)/i,
     };
     
     // Extract each metric
     let extractedCount = 0;
     for (const [key, pattern] of Object.entries(patterns)) {
-      const match = text.match(pattern);
+      const matches = Array.from(text.matchAll(new RegExp(`(?:^|\\n)[ \\t|]*${pattern.source}`, "gi")));
+      if (matches.length > 1) throw new Error(`Multiple PDF values for ${key}`);
+      const match = matches[0];
       if (match && match[1]) {
+        const next = text[(match.index || 0) + match[0].length];
+        if (next && !/[\s|%]/.test(next)) throw new Error(`Ambiguous PDF value for ${key}`);
         // Special handling for time duration
         if (key === 'avgSessionDuration') {
           (metrics as Record<string, unknown>)[key] = match[1]; // Keep as string "00:02:38"
@@ -175,10 +181,18 @@ export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
     
     // Enterprise validation
     const validation = validateExtractedMetrics(metrics, extractedCount, Object.keys(patterns).length);
+    const currencyCodes = Array.from(text.matchAll(/\bcurrency[:\s|]+([A-Z]{3})\b/gi)).map(match => match[1].toUpperCase());
+    if (new Set(currencyCodes).size > 1) validation.warnings.push("Mixed report currencies are unsupported.");
+    if (currencyCodes.length) metrics._currency = currencyCodes[0];
+    if (metrics.spend !== undefined && /[$\u20ac\u00a3\u00a5]/.test(text)) {
+      if (/[\u20ac\u00a3\u00a5]/.test(text)) validation.warnings.push("Currency is ambiguous; use plain amounts in the campaign currency.");
+      else if (metrics._currency && metrics._currency !== "USD") validation.warnings.push("Currency code and symbol disagree.");
+      else metrics._currency = "USD";
+    }
     metrics._confidence = validation.confidence;
     metrics._warnings = validation.warnings;
     metrics._extractedFields = extractedCount;
-    metrics._requiresReview = validation.confidence < 95; // Enterprise threshold
+    metrics._requiresReview = validation.confidence < 95 || validation.warnings.length > 0;
     
     console.log('[PDF Parser] ✅ Validation complete');
     console.log('[PDF Parser] Confidence:', validation.confidence + '%');

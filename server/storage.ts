@@ -21,6 +21,12 @@ import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
 import { normalizeShopifyDomain, resolveNewestShopifyOauthCredential } from "./utils/shopify-provider";
 
 const isProd = String(process.env.NODE_ENV || "").toLowerCase() === "production";
+function hasValidatedCustomIntegrationMetadata(metrics: any): boolean {
+  const metadata = metrics?.parserMetadata;
+  return metadata?.validationVersion === 2 && metadata.requiresReview === false
+    && Number(metadata.confidence) >= 95 && Number(metadata.extractedFields) > 0
+    && Array.isArray(metadata.warnings) && metadata.warnings.length === 0;
+}
 const devLog = (...args: any[]) => {
   if (!isProd) {
     // eslint-disable-next-line no-console
@@ -493,8 +499,9 @@ export interface IStorage {
   // Custom Integration Metrics
   getCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics | undefined>;
   getAllCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics[]>;
-  createCustomIntegrationMetrics(metrics: InsertCustomIntegrationMetrics, access?: { integrationId: string; webhookToken?: string; receipt?: string; senderEmail?: string; recipientEmail?: string }): Promise<CustomIntegrationMetrics & { alreadyProcessed?: boolean }>;
+  createCustomIntegrationMetrics(metrics: InsertCustomIntegrationMetrics, access?: { integrationId: string; webhookToken?: string; receipt?: string; senderEmail?: string; recipientEmail?: string; allowDraft?: boolean }): Promise<CustomIntegrationMetrics & { alreadyProcessed?: boolean }>;
   getLatestCustomIntegrationMetrics(campaignId: string): Promise<CustomIntegrationMetrics | undefined>;
+  transferCustomIntegration(fromCampaignId: string, toCampaignId: string, ownerId: string): Promise<boolean>;
 
   // Conversion Events
   getConversionEvents(campaignId: string, startDate?: Date, endDate?: Date): Promise<ConversionEvent[]>;
@@ -5993,11 +6000,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCustomIntegration(integration: InsertCustomIntegration): Promise<CustomIntegration> {
+    return db.transaction(async (tx: any) => {
+    const [parent] = await tx.select().from(campaigns).where(eq(campaigns.id, integration.campaignId)).for("update");
+    if (!parent?.ownerId || parent.status === "deleted") throw new Error("Campaign unavailable");
     // Check if integration already exists for this campaign
-    const existing = await this.getCustomIntegration(integration.campaignId);
+    const [existing] = await tx.select().from(customIntegrations).where(eq(customIntegrations.campaignId, integration.campaignId));
     if (existing) {
       // Update existing integration with new email and webhook token
-      const [updated] = await db
+      const [updated] = await tx
         .update(customIntegrations)
         .set({
           email: integration.email,
@@ -6010,15 +6020,45 @@ export class DatabaseStorage implements IStorage {
       return updated;
     }
 
-    const [customIntegration] = await db
+    const [customIntegration] = await tx
       .insert(customIntegrations)
       .values(integration)
       .returning();
     return customIntegration;
+    });
+  }
+
+  async transferCustomIntegration(fromCampaignId: string, toCampaignId: string, ownerId: string): Promise<boolean> {
+    if (!fromCampaignId || !toCampaignId || fromCampaignId === toCampaignId || !ownerId) throw new Error("Distinct owned campaigns required");
+    return db.transaction(async (tx: any) => {
+      const parents = [];
+      for (const id of [fromCampaignId, toCampaignId].sort()) {
+        const [parent] = await tx.select().from(campaigns).where(eq(campaigns.id, id)).for("update");
+        if (!parent || parent.ownerId !== ownerId || parent.status === "deleted") throw new Error("Campaign unavailable");
+        parents.push(parent);
+      }
+      if (parents[0].currency !== parents[1].currency) throw new Error("Campaign currencies must match");
+      const connections = await tx.select().from(customIntegrations).where(inArray(customIntegrations.campaignId, [fromCampaignId, toCampaignId])).for("update");
+      if (connections.some((row: any) => row.campaignId === toCampaignId)) throw new Error("Destination already has an integration");
+      const source = connections.filter((row: any) => row.campaignId === fromCampaignId);
+      if (!source.length) return false;
+      if (source.length !== 1) throw new Error("Ambiguous source integration");
+      const [destinationMetric] = await tx.select({ id: customIntegrationMetrics.id }).from(customIntegrationMetrics).where(eq(customIntegrationMetrics.campaignId, toCampaignId)).limit(1);
+      if (destinationMetric) throw new Error("Destination already has imported data");
+      if (fromCampaignId === "temp-campaign-setup") {
+        await tx.delete(customIntegrationMetrics).where(eq(customIntegrationMetrics.campaignId, fromCampaignId));
+      } else {
+        await tx.update(customIntegrationMetrics).set({ campaignId: toCampaignId }).where(eq(customIntegrationMetrics.campaignId, fromCampaignId));
+      }
+      await tx.update(inboundWebhookReceipts).set({ campaignId: toCampaignId }).where(eq(inboundWebhookReceipts.campaignId, fromCampaignId));
+      await tx.update(customIntegrations).set({ campaignId: toCampaignId }).where(eq(customIntegrations.id, source[0].id));
+      return true;
+    });
   }
 
   async deleteCustomIntegration(campaignId: string): Promise<boolean> {
     return await db.transaction(async (tx: any) => {
+      await tx.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, campaignId)).for("update");
       const [existing] = await tx.select({ id: customIntegrations.id })
         .from(customIntegrations)
         .where(eq(customIntegrations.campaignId, campaignId))
@@ -6050,10 +6090,13 @@ export class DatabaseStorage implements IStorage {
       .where(eq(customIntegrationMetrics.campaignId, campaignId));
   }
 
-  async createCustomIntegrationMetrics(metricsData: InsertCustomIntegrationMetrics, access?: { integrationId: string; webhookToken?: string; receipt?: string; senderEmail?: string; recipientEmail?: string }): Promise<CustomIntegrationMetrics & { alreadyProcessed?: boolean }> {
+  async createCustomIntegrationMetrics(metricsData: InsertCustomIntegrationMetrics, access?: { integrationId: string; webhookToken?: string; receipt?: string; senderEmail?: string; recipientEmail?: string; allowDraft?: boolean }): Promise<CustomIntegrationMetrics & { alreadyProcessed?: boolean }> {
+    if (!hasValidatedCustomIntegrationMetadata(metricsData)) throw new Error("Report requires review; no metrics were published. Upload a supported, unambiguous report.");
     return db.transaction(async (tx: any) => {
     const [parent] = await tx.select().from(campaigns).where(eq(campaigns.id, metricsData.campaignId)).for("update");
-    if (!parent?.ownerId || parent.status === "deleted" || access && parent.status === "draft") throw new Error("Campaign unavailable");
+    if (!parent?.ownerId || parent.status === "deleted" || access && parent.status === "draft" && !access.allowDraft) throw new Error("Campaign unavailable");
+    const declaredCurrency = (metricsData.parserMetadata as any)?.declaredCurrency;
+    if (declaredCurrency && declaredCurrency !== parent.currency) throw new Error("Import currency must match campaign currency");
     if (access) {
       const [integration] = await tx.select().from(customIntegrations).where(and(eq(customIntegrations.id, access.integrationId), eq(customIntegrations.campaignId, parent.id),
         access.webhookToken ? eq(customIntegrations.webhookToken, access.webhookToken) : undefined)).for("share");
@@ -6074,7 +6117,7 @@ export class DatabaseStorage implements IStorage {
     }
     const [metrics] = await tx
       .insert(customIntegrationMetrics)
-      .values(metricsData)
+      .values({ ...metricsData, parserMetadata: { ...(metricsData.parserMetadata as any), currency: parent.currency, period: "source_report_unspecified" } })
       .returning();
     if (access?.receipt) await tx.update(inboundWebhookReceipts).set({ metricsId: metrics.id }).where(eq(inboundWebhookReceipts.id, access.receipt));
     return metrics;
@@ -6085,9 +6128,9 @@ export class DatabaseStorage implements IStorage {
     const [metrics] = await db.select()
       .from(customIntegrationMetrics)
       .where(eq(customIntegrationMetrics.campaignId, campaignId))
-      .orderBy(desc(customIntegrationMetrics.uploadedAt))
+      .orderBy(desc(customIntegrationMetrics.uploadedAt), desc(customIntegrationMetrics.id))
       .limit(1);
-    return metrics || undefined;
+    return hasValidatedCustomIntegrationMetadata(metrics) ? metrics : undefined;
   }
 
   // Conversion Events methods

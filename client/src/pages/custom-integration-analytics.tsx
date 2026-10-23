@@ -349,6 +349,11 @@ function resolveCustomIntegrationMetric(metrics: any, metricKey: any) {
     return { available: false, currentValue: null as number | null, unit: '', option: undefined, sourceLabel, reason: 'Metric is not supported by Custom Integration.' };
   }
 
+  const validation = getCustomIntegrationParserMetadata(metrics);
+  if (validation?.validationVersion !== 2 || validation.requiresReview !== false || validation.warnings?.length !== 0 || !(Number(validation.confidence) >= 95) || !(Number(validation.extractedFields) > 0)) {
+    return { available: false, currentValue: null as number | null, unit: option.unit, option, sourceLabel, reason: 'Import validation is unavailable. Upload a supported report.' };
+  }
+
   const financialKey = normalizeCustomIntegrationFinancialMetricKey(metricKey);
   if (financialKey === 'overview.roi' || financialKey === 'overview.roas') {
     const revenue = parseCustomIntegrationMetricNumber(metrics?.revenue);
@@ -371,10 +376,10 @@ function resolveCustomIntegrationMetric(metrics: any, metricKey: any) {
   return { available: true, currentValue, unit: option.unit, option, sourceLabel, reason: '' };
 }
 
-function formatCustomIntegrationMetricValue(value: number | null, unit: string, type?: CustomIntegrationMetricType): string {
+function formatCustomIntegrationMetricValue(value: number | null, unit: string, type?: CustomIntegrationMetricType, currency = "USD"): string {
   if (value === null || !Number.isFinite(value)) return 'Unavailable';
   if (type === 'currency' || unit === '$') {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(value);
   }
   if (type === 'percent' || unit === '%') return `${value.toFixed(2)}%`;
   if (type === 'ratio' || unit === 'x') return `${value.toFixed(2)}x`;
@@ -597,7 +602,7 @@ export default function CustomIntegrationAnalytics() {
   });
 
   // Fetch latest metrics from database
-  const { data: metricsData, isLoading: metricsLoading, refetch: refetchMetrics, error: metricsError } = useQuery({
+  const { data: rawMetricsData, isLoading: metricsLoading, refetch: refetchMetrics, error: metricsError } = useQuery({
     queryKey: ["/api/custom-integration", campaignId, "metrics"],
     queryFn: async () => {
       console.log('[Metrics Query] Fetching metrics for campaign:', campaignId);
@@ -625,7 +630,7 @@ export default function CustomIntegrationAnalytics() {
     refetchInterval: 10000,
   });
 
-  const { data: customIntegrationRevenueSourcesData, isLoading: customIntegrationRevenueSourcesLoading } = useQuery<{ success: boolean; sources: any[] }>({
+  const { data: customIntegrationRevenueSourcesData, isLoading: customIntegrationRevenueSourcesLoading, isError: customIntegrationRevenueSourcesError } = useQuery<{ success: boolean; sources: any[] }>({
     queryKey: ["/api/campaigns", campaignId, "revenue-sources", "custom_integration"],
     enabled: !!campaignId,
     staleTime: 0,
@@ -635,11 +640,11 @@ export default function CustomIntegrationAnalytics() {
       const response = await fetch(`/api/campaigns/${campaignId}/revenue-sources?platformContext=custom_integration`, { credentials: "include" });
       if (!response.ok) return { success: false, sources: [] };
       const json = await response.json().catch(() => ({}));
-      return { success: !!json?.success, sources: Array.isArray(json?.sources) ? json.sources : [] };
+      return { success: json?.success === true && Array.isArray(json?.sources), sources: Array.isArray(json?.sources) ? json.sources : [] };
     },
   });
 
-  const { data: customIntegrationRevenueTotalsData, isLoading: customIntegrationRevenueTotalsLoading } = useQuery<{ success: boolean; totalRevenue: number; currency?: string }>({
+  const { data: customIntegrationRevenueTotalsData, isLoading: customIntegrationRevenueTotalsLoading, isError: customIntegrationRevenueTotalsError } = useQuery<{ success: boolean; totalRevenue: number; currency?: string }>({
     queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=custom_integration&dateRange=all`],
     enabled: !!campaignId,
     staleTime: 0,
@@ -649,11 +654,11 @@ export default function CustomIntegrationAnalytics() {
       const response = await fetch(`/api/campaigns/${campaignId}/revenue-totals?platformContext=custom_integration&dateRange=all`, { credentials: "include" });
       if (!response.ok) return { success: false, totalRevenue: 0 };
       const json = await response.json().catch(() => ({}));
-      return { success: !!json?.success, totalRevenue: Number(json?.totalRevenue || 0), currency: json?.currency };
+      return { success: json?.success === true, totalRevenue: (typeof json?.totalRevenue === "number" || typeof json?.totalRevenue === "string" && json.totalRevenue.trim() ? Number(json.totalRevenue) : NaN), currency: json?.currency };
     },
   });
 
-  const { data: customIntegrationSpendTotalsData, isLoading: customIntegrationSpendTotalsLoading } = useQuery<{ success: boolean; totalSpend: number; currency?: string; sourceIds?: string[]; sources?: any[] }>({
+  const { data: customIntegrationSpendTotalsData, isLoading: customIntegrationSpendTotalsLoading, isError: customIntegrationSpendTotalsError } = useQuery<{ success: boolean; totalSpend: number; currency?: string; sourceIds?: string[]; sources?: any[] }>({
     queryKey: [`/api/campaigns/${campaignId}/spend-totals?platformContext=custom_integration&dateRange=all`],
     enabled: !!campaignId,
     staleTime: 0,
@@ -664,8 +669,8 @@ export default function CustomIntegrationAnalytics() {
       if (!response.ok) return { success: false, totalSpend: 0, sourceIds: [], sources: [] };
       const json = await response.json().catch(() => ({}));
       return {
-        success: !!json?.success,
-        totalSpend: Number(json?.totalSpend || 0),
+        success: json?.success === true && Array.isArray(json?.sourceIds) && Array.isArray(json?.sources),
+        totalSpend: (typeof json?.totalSpend === "number" || typeof json?.totalSpend === "string" && json.totalSpend.trim() ? Number(json.totalSpend) : NaN),
         currency: json?.currency,
         sourceIds: Array.isArray(json?.sourceIds) ? json.sourceIds.map(String).filter(Boolean) : [],
         sources: Array.isArray(json?.sources) ? json.sources : [],
@@ -729,6 +734,9 @@ export default function CustomIntegrationAnalytics() {
   });
 
   // Use real metrics if available, otherwise show placeholder
+  const importValidation = getCustomIntegrationParserMetadata(rawMetricsData);
+  const metricsData = !metricsError && importValidation?.validationVersion === 2 && importValidation.requiresReview === false
+    && importValidation.warnings?.length === 0 && Number(importValidation.confidence) >= 95 && Number(importValidation.extractedFields) > 0 ? rawMetricsData : undefined;
   const metrics = metricsData || {};
   const activeCustomIntegrationRevenueSources = Array.isArray(customIntegrationRevenueSourcesData?.sources)
     ? customIntegrationRevenueSourcesData.sources.filter((source: any) => source?.isActive !== false)
@@ -737,14 +745,23 @@ export default function CustomIntegrationAnalytics() {
   const customIntegrationImportedSpend = parseCustomIntegrationMetricNumber(metricsData?.spend);
   const customIntegrationExternalRevenue = Number(customIntegrationRevenueTotalsData?.totalRevenue || 0);
   const customIntegrationTotalRevenue = customIntegrationExternalRevenue + (customIntegrationImportedRevenue ?? 0);
-  const hasCustomIntegrationConfirmedRevenue = customIntegrationImportedRevenue !== null || activeCustomIntegrationRevenueSources.length > 0;
+  const customIntegrationRevenueReadSuccessful = !metricsError && !customIntegrationRevenueSourcesError && !customIntegrationRevenueTotalsError
+    && customIntegrationRevenueSourcesData?.success === true && customIntegrationRevenueTotalsData?.success === true
+    && Number.isFinite(customIntegrationRevenueTotalsData.totalRevenue)
+;
+  const hasCustomIntegrationConfirmedRevenue = customIntegrationRevenueReadSuccessful
+    && (customIntegrationImportedRevenue !== null || activeCustomIntegrationRevenueSources.length > 0);
   const customIntegrationExternalSpend = Number(customIntegrationSpendTotalsData?.totalSpend || 0);
   const customIntegrationTotalSpend = customIntegrationExternalSpend + (customIntegrationImportedSpend ?? 0);
   const customIntegrationSpendSourceIds = Array.isArray(customIntegrationSpendTotalsData?.sourceIds) ? customIntegrationSpendTotalsData.sourceIds : [];
   const activeCustomIntegrationSpendSources = Array.isArray(customIntegrationSpendTotalsData?.sources) ? customIntegrationSpendTotalsData.sources : [];
   const customIntegrationRevenueSourceCount = activeCustomIntegrationRevenueSources.length + (customIntegrationImportedRevenue !== null ? 1 : 0);
   const customIntegrationSpendSourceCount = activeCustomIntegrationSpendSources.length + (customIntegrationImportedSpend !== null ? 1 : 0);
-  const hasCustomIntegrationConfirmedSpend = customIntegrationImportedSpend !== null || customIntegrationSpendSourceIds.length > 0;
+  const customIntegrationSpendReadSuccessful = !metricsError && !customIntegrationSpendTotalsError && customIntegrationSpendTotalsData?.success === true
+    && Number.isFinite(customIntegrationSpendTotalsData.totalSpend)
+;
+  const hasCustomIntegrationConfirmedSpend = customIntegrationSpendReadSuccessful
+    && (customIntegrationImportedSpend !== null || customIntegrationSpendSourceIds.length > 0);
   const hasCustomIntegrationDerivedFinancials = hasCustomIntegrationConfirmedRevenue && hasCustomIntegrationConfirmedSpend && customIntegrationTotalSpend > 0;
   const customIntegrationRoas = hasCustomIntegrationDerivedFinancials ? customIntegrationTotalRevenue / customIntegrationTotalSpend : null;
   const customIntegrationRoi = hasCustomIntegrationDerivedFinancials ? ((customIntegrationTotalRevenue - customIntegrationTotalSpend) / customIntegrationTotalSpend) * 100 : null;
@@ -1590,6 +1607,7 @@ export default function CustomIntegrationAnalytics() {
       });
       y += 7;
     };
+    addLine('Value period', 'Latest validated import; source report period unspecified. Added financial sources use all history.');
     const addSectionTitle = (title: string, color: number[] = [99, 102, 241]) => {
       y = addPDFSection(doc, title, y, color);
     };
@@ -1610,7 +1628,7 @@ export default function CustomIntegrationAnalytics() {
         customIntegrationFinancialMetricRows.forEach(({ resolved }: any) => {
           const label = resolved.option?.label || 'Metric';
           const value = resolved.available
-            ? formatCustomIntegrationMetricValue(resolved.currentValue, resolved.unit, resolved.option?.type)
+            ? formatCustomIntegrationMetricValue(resolved.currentValue, resolved.unit, resolved.option?.type, customIntegrationFinancialCurrencyCode)
             : `Unavailable - ${resolved.reason}`;
           addLine(label, value);
         });
@@ -1627,7 +1645,7 @@ export default function CustomIntegrationAnalytics() {
         rows.forEach(({ resolved }: any) => {
           const label = resolved.option?.label || 'Metric';
           const value = resolved.available
-            ? formatCustomIntegrationMetricValue(resolved.currentValue, resolved.unit, resolved.option?.type)
+            ? formatCustomIntegrationMetricValue(resolved.currentValue, resolved.unit, resolved.option?.type, customIntegrationFinancialCurrencyCode)
             : `Unavailable - ${resolved.reason}`;
           addLine(label, value);
         });
@@ -1652,9 +1670,9 @@ export default function CustomIntegrationAnalytics() {
         const unit = resolved.option?.unit || kpi.unit || '';
         const type = resolved.option?.type;
         const current = resolved.available
-          ? formatCustomIntegrationMetricValue(resolved.currentValue, unit, type)
+          ? formatCustomIntegrationMetricValue(resolved.currentValue, unit, type, customIntegrationFinancialCurrencyCode)
           : `Unavailable - ${resolved.reason}`;
-        addLine(String(kpi.name || kpi.metric || 'KPI'), `Current: ${current} | Target: ${formatCustomIntegrationMetricValue(parseCustomIntegrationMetricNumber(kpi.targetValue), unit, type)}`);
+        addLine(String(kpi.name || kpi.metric || 'KPI'), `Current: ${current} | Target: ${formatCustomIntegrationMetricValue(parseCustomIntegrationMetricNumber(kpi.targetValue), unit, type, customIntegrationFinancialCurrencyCode)}`);
       });
     };
     const addBenchmarkSection = (selectedIds?: Set<string>) => {
@@ -1669,9 +1687,9 @@ export default function CustomIntegrationAnalytics() {
         const unit = resolved.option?.unit || benchmark.unit || '';
         const type = resolved.option?.type;
         const current = resolved.available
-          ? formatCustomIntegrationMetricValue(resolved.currentValue, unit, type)
+          ? formatCustomIntegrationMetricValue(resolved.currentValue, unit, type, customIntegrationFinancialCurrencyCode)
           : `Unavailable - ${resolved.reason}`;
-        addLine(String(benchmark.name || benchmark.metric || 'Benchmark'), `Current: ${current} | Benchmark: ${formatCustomIntegrationMetricValue(parseCustomIntegrationMetricNumber(benchmark.benchmarkValue), unit, type)}`);
+        addLine(String(benchmark.name || benchmark.metric || 'Benchmark'), `Current: ${current} | Benchmark: ${formatCustomIntegrationMetricValue(parseCustomIntegrationMetricNumber(benchmark.benchmarkValue), unit, type, customIntegrationFinancialCurrencyCode)}`);
       });
     };
     const addInsightSection = () => {
@@ -1699,7 +1717,7 @@ export default function CustomIntegrationAnalytics() {
         rows.forEach(({ resolved }: any) => {
           const label = resolved.option?.label || 'Metric';
           const value = resolved.available
-            ? formatCustomIntegrationMetricValue(resolved.currentValue, resolved.unit, resolved.option?.type)
+            ? formatCustomIntegrationMetricValue(resolved.currentValue, resolved.unit, resolved.option?.type, customIntegrationFinancialCurrencyCode)
             : `Unavailable - ${resolved.reason}`;
           addLine(label, value);
         });
@@ -2808,8 +2826,8 @@ export default function CustomIntegrationAnalytics() {
   const parserMetadata = getCustomIntegrationParserMetadata(metricsData);
   const parserWarnings = Array.isArray(parserMetadata?.warnings) ? parserMetadata.warnings : [];
   const parserRequiresReview = Boolean(parserMetadata?.requiresReview || parserWarnings.length > 0);
-  const latestImportLabel = metricsData ? getCustomIntegrationSourceLabel(metricsData) : 'No import yet';
-  const latestImportStatus = parserRequiresReview ? 'Needs review' : metricsData ? 'Validated' : 'Waiting for data';
+  const latestImportLabel = metricsData ? getCustomIntegrationSourceLabel(metricsData) : 'No validated import available. Upload a report; previous records are retained.';
+  const latestImportStatus = parserRequiresReview ? 'Needs review' : metricsData ? 'Validated' : rawMetricsData ? 'Import unavailable' : 'Waiting for data';
   const activeCustomIntegrationSourceScope: CustomIntegrationSourceScope | null = customIntegration?.id && campaignId
     ? {
       platform: 'custom_integration',
@@ -2909,7 +2927,7 @@ export default function CustomIntegrationAnalytics() {
   };
   const formatInsightMetric = (metricKey: string, value: number) => {
     const metric = getInsightMetric(metricKey);
-    return formatCustomIntegrationMetricValue(value, metric?.resolved.unit || metric?.unit || '', metric?.resolved.option?.type || metric?.type);
+    return formatCustomIntegrationMetricValue(value, metric?.resolved.unit || metric?.unit || '', metric?.resolved.option?.type || metric?.type, customIntegrationFinancialCurrencyCode);
   };
   const customIntegrationInsights = (() => {
     const performance: any[] = [];
@@ -3092,10 +3110,10 @@ export default function CustomIntegrationAnalytics() {
             </button>
           </div>
           <p className="text-2xl font-bold text-foreground">
-            {customIntegrationRevenueCardLoading ? renderCustomIntegrationCardValuePlaceholder() : hasCustomIntegrationConfirmedRevenue ? formatCustomIntegrationCurrency(customIntegrationTotalRevenue) : "Not connected"}
+            {customIntegrationRevenueCardLoading ? renderCustomIntegrationCardValuePlaceholder() : hasCustomIntegrationConfirmedRevenue ? formatCustomIntegrationCurrency(customIntegrationTotalRevenue) : customIntegrationRevenueReadSuccessful ? "Not connected" : "Unavailable"}
           </p>
           {customIntegrationRevenueCardLoading ? renderCustomIntegrationCardHelperPlaceholder() : !hasCustomIntegrationConfirmedRevenue ? (
-            <p className="text-xs text-muted-foreground mt-1">Import or add revenue</p>
+            <p className="text-xs text-muted-foreground mt-1">{customIntegrationRevenueReadSuccessful ? "Import or add revenue" : "Revenue figures could not be verified. Try again."}</p>
           ) : customIntegrationImportedRevenue !== null ? (
             <p className="text-xs text-muted-foreground mt-1">Includes imported report value</p>
           ) : null}
@@ -3129,10 +3147,10 @@ export default function CustomIntegrationAnalytics() {
             </button>
           </div>
           <p className="text-2xl font-bold text-foreground">
-            {customIntegrationSpendCardLoading ? renderCustomIntegrationCardValuePlaceholder() : hasCustomIntegrationConfirmedSpend ? formatCustomIntegrationCurrency(customIntegrationTotalSpend) : "Not connected"}
+            {customIntegrationSpendCardLoading ? renderCustomIntegrationCardValuePlaceholder() : hasCustomIntegrationConfirmedSpend ? formatCustomIntegrationCurrency(customIntegrationTotalSpend) : customIntegrationSpendReadSuccessful ? "Not connected" : "Unavailable"}
           </p>
           {customIntegrationSpendCardLoading ? renderCustomIntegrationCardHelperPlaceholder() : !hasCustomIntegrationConfirmedSpend ? (
-            <p className="text-xs text-muted-foreground mt-1">Import or add spend</p>
+            <p className="text-xs text-muted-foreground mt-1">{customIntegrationSpendReadSuccessful ? "Import or add spend" : "Spend figures could not be verified. Try again."}</p>
           ) : customIntegrationImportedSpend !== null ? (
             <p className="text-xs text-muted-foreground mt-1">Includes imported report value</p>
           ) : null}
@@ -3200,7 +3218,7 @@ export default function CustomIntegrationAnalytics() {
             <Percent className="w-4 h-4 text-muted-foreground/70" />
           </div>
           <p className={`text-2xl font-bold ${customIntegrationRoi !== null && customIntegrationRoi < 0 ? "text-red-600" : "text-foreground"}`}>
-            {customIntegrationDerivedCardLoading ? renderCustomIntegrationCardValuePlaceholder() : customIntegrationRoi !== null ? formatCustomIntegrationMetricValue(customIntegrationRoi, '%', 'percent') : "Unavailable"}
+            {customIntegrationDerivedCardLoading ? renderCustomIntegrationCardValuePlaceholder() : customIntegrationRoi !== null ? formatCustomIntegrationMetricValue(customIntegrationRoi, '%', 'percent', customIntegrationFinancialCurrencyCode) : "Unavailable"}
           </p>
           {customIntegrationDerivedCardLoading ? renderCustomIntegrationCardHelperPlaceholder() : (
             <p className="text-xs text-muted-foreground mt-1">
@@ -3290,6 +3308,7 @@ export default function CustomIntegrationAnalytics() {
               </div>
             </div>
 
+            <p className="mb-4 text-sm text-muted-foreground">Values use the latest validated import. Its reporting period is unspecified; added Revenue and Spend sources use all history.</p>
             {/* Tabs */}
             <Tabs defaultValue="overview" className="space-y-6">
               <TabsList className="bg-card border border-border">
@@ -3415,8 +3434,7 @@ export default function CustomIntegrationAnalytics() {
                 )}
 
 
-                {hasMetrics && (
-                  <>
+                {customIntegration?.id && (
                     <Card data-testid="custom-integration-imported-data-card">
                       <CardHeader className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                         <div>
@@ -3467,7 +3485,10 @@ export default function CustomIntegrationAnalytics() {
                         </div>
                       </CardContent>
                     </Card>
+                )}
 
+                {hasMetrics && (
+                  <>
                     {renderCustomIntegrationFinancialCards()}
 
                     {resolvedOverviewGroups.map((group) => {
@@ -3495,7 +3516,7 @@ export default function CustomIntegrationAnalytics() {
                                 <CardContent>
                                   <div className="text-2xl font-bold text-foreground" data-testid={`value-${metricKey}`}>
                                     {resolved.available
-                                      ? formatCustomIntegrationMetricValue(resolved.currentValue, resolved.unit, resolved.option?.type)
+                                      ? formatCustomIntegrationMetricValue(resolved.currentValue, resolved.unit, resolved.option?.type, customIntegrationFinancialCurrencyCode)
                                       : 'Unavailable'}
                                   </div>
                                   {!resolved.available && (
@@ -3754,13 +3775,13 @@ export default function CustomIntegrationAnalytics() {
                               <div className="bg-muted rounded-lg p-3">
                                 <div className="text-sm font-medium text-muted-foreground/70 mb-1">Current</div>
                                 <div className="text-xl font-bold text-foreground">
-                                  {resolvedCurrent.available && currentVal !== null ? formatCustomIntegrationMetricValue(currentVal, displayUnit, resolvedCurrent.option?.type) : 'Unavailable'}
+                                  {resolvedCurrent.available && currentVal !== null ? formatCustomIntegrationMetricValue(currentVal, displayUnit, resolvedCurrent.option?.type, customIntegrationFinancialCurrencyCode) : 'Unavailable'}
                                 </div>
                               </div>
                               <div className="bg-muted rounded-lg p-3">
                                 <div className="text-sm font-medium text-muted-foreground/70 mb-1">Target</div>
                                 <div className="text-xl font-bold text-foreground">
-                                  {targetVal !== null ? formatCustomIntegrationMetricValue(targetVal, displayUnit, resolvedCurrent.option?.type) : 'Unavailable'}
+                                  {targetVal !== null ? formatCustomIntegrationMetricValue(targetVal, displayUnit, resolvedCurrent.option?.type, customIntegrationFinancialCurrencyCode) : 'Unavailable'}
                                 </div>
                               </div>
                             </div>
@@ -4074,7 +4095,7 @@ export default function CustomIntegrationAnalytics() {
                                   Current
                                 </div>
                                 <div className="text-xl font-bold text-foreground">
-                                  {currentVal !== null ? formatCustomIntegrationMetricValue(currentVal, displayUnit, resolvedCurrent.option?.type) : 'Unavailable'}
+                                  {currentVal !== null ? formatCustomIntegrationMetricValue(currentVal, displayUnit, resolvedCurrent.option?.type, customIntegrationFinancialCurrencyCode) : 'Unavailable'}
                                 </div>
                               </div>
 
@@ -4083,7 +4104,7 @@ export default function CustomIntegrationAnalytics() {
                                   Benchmark
                                 </div>
                                 <div className="text-xl font-bold text-foreground">
-                                  {benchmarkVal !== null ? formatCustomIntegrationMetricValue(benchmarkVal, displayUnit, resolvedCurrent.option?.type) : 'Unavailable'}
+                                  {benchmarkVal !== null ? formatCustomIntegrationMetricValue(benchmarkVal, displayUnit, resolvedCurrent.option?.type, customIntegrationFinancialCurrencyCode) : 'Unavailable'}
                                 </div>
                               </div>
                             </div>
@@ -4522,7 +4543,7 @@ export default function CustomIntegrationAnalytics() {
           <DialogHeader>
             <DialogTitle className="text-foreground">Custom Integration Revenue Sources</DialogTitle>
             <DialogDescription className="text-muted-foreground/70">
-              Sources contributing to Custom Integration Total Revenue.
+              {customIntegrationRevenueReadSuccessful ? "Sources contributing to Custom Integration Total Revenue." : "Totals unavailable. Source values may be from a previous update."}
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
@@ -4590,7 +4611,7 @@ export default function CustomIntegrationAnalytics() {
           <DialogHeader>
             <DialogTitle className="text-foreground">Custom Integration Spend Sources</DialogTitle>
             <DialogDescription className="text-muted-foreground/70">
-              Sources contributing to Custom Integration Total Spend.
+              {customIntegrationSpendReadSuccessful ? "Sources contributing to Custom Integration Total Spend." : "Totals unavailable. Source values may be from a previous update."}
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">

@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-23T22:03:52.130Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "hubspot-preview-error-final-typecheck.log"
+    }
+  ]
+}

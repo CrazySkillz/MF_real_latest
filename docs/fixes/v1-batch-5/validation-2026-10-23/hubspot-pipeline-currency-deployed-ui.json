@@ -1,0 +1,49 @@
+{
+  "checkpoint": "HubSpot Pipeline Proxy deployed card and source-popup validation",
+  "live": {
+    "at": "2026-10-23T21:48:02.298Z",
+    "url": "https://marketforensics.onrender.com/api/health",
+    "httpStatus": 200,
+    "ok": true,
+    "commit": "9868f1ce27f3bc20248c84be3905cdb10f341285"
+  },
+  "uiEvidence": {
+    "origin": "User-provided screenshot in this conversation, October 23, after the currency-recovery publication",
+    "campaignContext": "V1 Batch 5 Test (conversation context; campaign title is outside the crop)",
+    "currency": "EUR",
+    "totalRevenue": 7653.96,
+    "revenueSources": 2,
+    "totalSpendDisplay": "Unavailable",
+    "pipelineProxyExpectedRevenue": 3200,
+    "pipelineProxySources": 1,
+    "result": "PASS: reported unavailable-card regression is no longer visible; confirmed revenue remains unchanged"
+  },
+  "validationActions": [
+    "Read public health endpoint",
+    "Inspect user screenshot",
+    "Trace existing Sources (1) button to Pipeline Proxy Sources dialog in client/src/pages/ga4-metrics.tsx",
+    "Inspect subsequent user screenshot of Pipeline Proxy Sources and reconcile source amount/stage/selection with the earlier card and test setup"
+  ],
+  "applicationCodeChanged": false,
+  "databaseAccessed": false,
+  "providerAccessed": false,
+  "productionWritesByThisValidation": false,
+  "limits": [
+    "Screenshot is user-provided, not an authenticated browser session inspected by the agent",
+    "No new database or provider read; persisted currency and the precise live recovery mechanism are not independently verified by this checkpoint",
+    "Preview-request error UX, natural scheduled refresh and broader HubSpot/Batch 5 acceptance remain open",
+    "The displayed update timestamp does not prove a natural scheduled refresh or independently verify provider data"
+  ],
+  "nextCheck": "Card and source-popup display checks passed; broader HubSpot acceptance remains open. No repeated screenshot of these same values is required.",
+  "sourcePopupEvidence": {
+    "origin": "Subsequent user-provided Pipeline Proxy Sources screenshot in the same conversation",
+    "provider": "HubSpot",
+    "currency": "EUR",
+    "amount": 3200,
+    "stage": "Contract Sent",
+    "selectedValue": "yesop_prospecting",
+    "lastSuccessfulUpdateAsDisplayed": "23/10/2026, 23:42:54",
+    "result": "PASS: source amount, currency, stage and selected value match the expected test setup and the EUR 3,200.00 dashboard card",
+    "editAndDeleteActions": "Icons visible; actions not exercised by this screenshot"
+  }
+}

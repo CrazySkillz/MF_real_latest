@@ -123,6 +123,9 @@ export function HubSpotRevenueWizard(props: {
   const [reviewPipelineProxyAmount, setReviewPipelineProxyAmount] = useState<number | null>(null);
   const [reviewDealBreakdown, setReviewDealBreakdown] = useState<ReviewDealBreakdownRow[]>([]);
   const [reviewDealBreakdownTotal, setReviewDealBreakdownTotal] = useState<number | null>(null);
+  const [reviewPreviewStatus, setReviewPreviewStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [reviewPreviewError, setReviewPreviewError] = useState<string | null>(null);
+  const [reviewPreviewAttempt, setReviewPreviewAttempt] = useState(0);
 
   // Revenue amount for the review step: prefer saved result, then live preview, then stored config
   const reviewRevenue = useMemo(() => {
@@ -567,25 +570,32 @@ export function HubSpotRevenueWizard(props: {
     return pipelineEnabled ? ("revenue_plus_pipeline" as const) : ("revenue_only" as const);
   }, [pipelineEnabled]);
 
-  const reviewPreviewFiredRef = useRef(false);
   useEffect(() => {
-    reviewPreviewFiredRef.current = false;
+    setReviewPreviewStatus("idle");
+    setReviewPreviewError(null);
     setReviewPreviewRevenue(null);
     setReviewPipelineProxyAmount(null);
     setReviewDealBreakdown([]);
     setReviewDealBreakdownTotal(null);
-  }, [campaignMappings, campaignProperty, selectedValues, revenueProperty, revenueClassification, days, dateField, pipelineEnabled, pipelineStageId, pipelineStageLabel, platformContext, isLinkedIn]);
+  }, [campaignId, sourceId, mode, selectedCampaignMappings, campaignProperty, selectedValues, revenueProperty, revenueClassification, days, dateField, pipelineEnabled, pipelineStageId, pipelineStageLabel, platformContext, isLinkedIn]);
 
   useEffect(() => {
     if (step !== "review") return;
-    if (reviewPreviewFiredRef.current) return;
-    if (!isConnected || !campaignProperty || selectedValues.length === 0 || !revenueProperty) return;
-    reviewPreviewFiredRef.current = true;
+    if (!isConnected || !campaignProperty || selectedValues.length === 0 || !revenueProperty) {
+      setReviewPreviewStatus("error");
+      setReviewPreviewError("Go back to check your HubSpot connection and selected fields, then try again.");
+      return;
+    }
+    const controller = new AbortController();
+    let cancelled = false;
+    setReviewPreviewStatus("loading");
+    setReviewPreviewError(null);
     void (async () => {
       try {
         const resp = await fetch(`/api/campaigns/${campaignId}/hubspot/save-mappings`, {
           method: "POST",
           credentials: "include",
+          signal: controller.signal,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             campaignProperty,
@@ -605,9 +615,14 @@ export function HubSpotRevenueWizard(props: {
           }),
         });
         const json = await resp.json().catch(() => ({}));
+        if (cancelled) return;
         if (!resp.ok) throw new Error(json?.error || "Failed to preview HubSpot revenue");
-        setReviewPreviewRevenue(Number(json?.totalRevenue || 0));
-        setReviewPipelineProxyAmount(json?.pipelinePreviewTotal == null ? null : Number(json.pipelinePreviewTotal || 0));
+        if (json?.success !== true || json?.previewOnly !== true || typeof json.totalRevenue !== "number" || !Number.isFinite(json.totalRevenue)
+          || (pipelineEnabled && (typeof json.pipelinePreviewTotal !== "number" || !Number.isFinite(json.pipelinePreviewTotal)))) {
+          throw new Error("HubSpot returned an incomplete revenue preview. Please retry.");
+        }
+        setReviewPreviewRevenue(json.totalRevenue);
+        setReviewPipelineProxyAmount(pipelineEnabled ? json.pipelinePreviewTotal : null);
         setReviewDealBreakdown(
           Array.isArray(json?.dealBreakdown)
             ? json.dealBreakdown
@@ -622,13 +637,18 @@ export function HubSpotRevenueWizard(props: {
             : []
         );
         setReviewDealBreakdownTotal(Number.isFinite(Number(json?.dealBreakdownTotal)) ? Number(json.dealBreakdownTotal) : null);
-      } catch {
-        // Keep the review usable even if preview fails.
+        setReviewPreviewStatus("success");
+      } catch (err: any) {
+        if (cancelled) return;
+        setReviewPreviewError(err?.message || "Please check your connection and retry.");
+        setReviewPreviewStatus("error");
       }
     })();
-  }, [step, isConnected, campaignId, campaignMappings, campaignProperty, selectedValues, revenueProperty, revenueClassification, days, dateField, pipelineEnabled, pipelineStageId, pipelineStageLabel, platformContext, isLinkedIn]);
+    return () => { cancelled = true; controller.abort(); };
+  }, [step, isConnected, campaignId, sourceId, mode, selectedCampaignMappings, campaignProperty, selectedValues, revenueProperty, revenueClassification, days, dateField, pipelineEnabled, pipelineStageId, pipelineStageLabel, platformContext, isLinkedIn, reviewPreviewAttempt]);
 
   const save = async () => {
+    if (reviewPreviewStatus !== "success" || !isConnected || isSaving || (mode === "edit" && !hasEditChanges)) return;
     setIsSaving(true);
     try {
       const resp = await fetch(`/api/campaigns/${campaignId}/hubspot/save-mappings`, {
@@ -1276,6 +1296,16 @@ export function HubSpotRevenueWizard(props: {
 
             {step === "review" && (
               <div className="space-y-4">
+                {reviewPreviewStatus === "error" && (
+                  <div role="alert" className="rounded-lg border border-destructive/40 p-4 text-sm space-y-2">
+                    <p className="font-medium">Could not load the HubSpot revenue preview.</p>
+                    <p>{reviewPreviewError}</p>
+                    {mode === "edit" && <p>Any saved amounts shown are from the previous import.</p>}
+                    <Button type="button" variant="outline" onClick={() => setReviewPreviewAttempt((attempt) => attempt + 1)}>
+                      Retry preview
+                    </Button>
+                  </div>
+                )}
                 <div className="rounded-lg border border-border bg-muted/40 p-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                     <div className="space-y-3">
@@ -1437,7 +1467,7 @@ export function HubSpotRevenueWizard(props: {
                       step === "pipeline" ? (!pipelineStageId) :
                         step === "revenue" ? (!revenueProperty) :
                           false) ||
-                  (step === "review" && mode === "edit" && !hasEditChanges)
+                  (step === "review" && (reviewPreviewStatus !== "success" || !isConnected || (mode === "edit" && !hasEditChanges)))
                 }
               >
                 {step === "review" ? (isSaving ? "Importing..." : mode === "edit" ? "Update revenue" : "Import revenue") : "Continue"}

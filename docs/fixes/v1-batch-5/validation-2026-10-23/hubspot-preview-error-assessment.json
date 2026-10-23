@@ -1,0 +1,97 @@
+{
+  "at": "2026-10-23T22:05:35.160058+00:00",
+  "localDate": "2026-10-24",
+  "finding": "V1-109-F2",
+  "scope": "HubSpot Review Settings preview failure, retry and save gating; the deployed currency/card correction is a separate prior checkpoint",
+  "baseCommit": "9868f1ce27f3bc20248c84be3905cdb10f341285",
+  "rootCause": [
+    "The review effect swallowed every rejected preview, set a one-shot ref before fetching, and exposed no retry/error state",
+    "Import/update was not gated by successful preview completion",
+    "Missing or invalid HTTP-success totals were coerced to zero; old asynchronous responses had no cleanup guard"
+  ],
+  "trace": [
+    "GA4 Overview Total Revenue + or existing HubSpot source pencil -> AddRevenueWizardModal -> HubSpotRevenueWizard Review Settings; retained LinkedIn caller shares this component",
+    "Preview POST /api/campaigns/:id/hubspot/save-mappings sends previewOnly:true with current campaign/value/revenue/date/pipeline/platform/crosswalk inputs",
+    "Existing import rate limit, campaign-access guards, stage metadata, pagination, amount/date reconciliation and currency checks execute before the preview result",
+    "The previewOnly branch returns totalRevenue, currency, pipelinePreviewTotal and dealBreakdown before normalized revenue/source persistence. Existing token renewal may occur in the backend; no claim that the real endpoint is globally mutation-free",
+    "Confirmed save retains its original request, exact sourceId in edit mode, replaceGa4HubspotRevenueSourceWithRecords transaction and recomputeCampaignDerivedValues propagation",
+    "reprocessHubSpot retains saved sourceId/selection/value/date/pipeline/platform/mappings and does not use this browser preview state"
+  ],
+  "runtimeChanges": [
+    "One runtime file only; explicit idle/loading/success/error state and inline provider error with Retry preview",
+    "Import/update requires a successful finite preview; legitimate zero remains zero and revenue-only mode needs no pipeline amount",
+    "Retry uses the same current selection; Back/input/source/campaign changes abort and ignore the older preview",
+    "Saved edit amounts and settings remain visible, with an explicit saved-amount explanation after a failure; unchanged-edit save guard remains",
+    "No endpoint, storage, scheduler, schema, calculation, auth, currency-conversion or published-card changes"
+  ],
+  "validation": {
+    "before": {
+      "file": "hubspot-preview-error-reproduced.json",
+      "passed": 0,
+      "failed": 2,
+      "intentionallyFiltered": 6,
+      "cause": "Real wizard reproduced swallowed error and enabled import while pending"
+    },
+    "final": {
+      "file": "hubspot-preview-error-final.json",
+      "passed": 51,
+      "failed": 0,
+      "skipped": 0,
+      "wizardBrowserCases": 22,
+      "newWizardBrowserCases": 16,
+      "neighboringChecks": 29
+    },
+    "builds": "hubspot-preview-error-build-checks.json",
+    "finalTypecheck": "hubspot-preview-error-final-build-checks.json",
+    "intermediateClassifications": [
+      "hubspot-preview-error-before.log: sandbox spawn EPERM before tests; rerun with approved local child-process permission and the same credential/network isolation",
+      "hubspot-preview-error-first-after.json: six existing cases passed; two new assertions contained a question mark after PowerShell pipe encoding replaced the euro character; corrected test strings without runtime changes",
+      "hubspot-preview-error-expanded.json: 19 passed, two fixture failures; the parent edit modal requires materializedRevenueStatus:available plus source.revenue, and the radio accessible name includes explanatory text. Corrected fixtures/selectors without weakening the assertions or changing runtime"
+    ],
+    "cases": [
+      "HTTP 401/403/429/502, network failure, malformed JSON, absent totals/proxy and invalid total type show errors and block import",
+      "Retry recovery preserves exact payload and enables only a verified save; zero, EUR/USD/GBP display and save-error behavior remain covered",
+      "Pending preview cannot save; Back/date-change cancels old response and only the new result renders",
+      "Existing-source edit retains saved amounts, no-change guard and stable sourceId when a changed edit is finally saved",
+      "Revenue-only retry accepts an explicit zero with null proxy",
+      "Disconnected edit preserves saved settings and remains blocked without issuing preview/save requests",
+      "Existing GA4 financial card/source-modal calculations and HubSpot currency, pagination, date and transactional-preservation regressions pass"
+    ],
+    "documentationCheck": {
+      "result": "PASS",
+      "documents": 10,
+      "findings": 130,
+      "open": 120,
+      "deferred": 10,
+      "closed": 0,
+      "localLinks": 1153,
+      "scope": "Documentation layout, assignment, status and local-link integrity only"
+    },
+    "finalManifestCheck": "All six runtime/test/dependency hashes match; changed application files limited to one wizard and its browser test."
+  },
+  "fileSha256": {
+    "client/src/components/HubSpotRevenueWizard.tsx": "acb76dc7766f5097d33e29046911c8c4509d4ec6c6fe3b122dd534d83b9787f8",
+    "server/hubspot-review-currency-browser.test.ts": "87fd9fb62910643e687326e498f8bc3fc7bea3a2af53bfaa8da024ce2830acaa",
+    "server/routes-oauth.ts": "4c6d5a2ea54a9166e3daf89cbfd3da756b4f748d0a744bf51dfa5d2ee60c329c",
+    "server/storage.ts": "b422ba041878cafba053224dadb8a24d4289550257286a1d3f67c7058eb67b36",
+    "server/auto-refresh-scheduler.ts": "4370f0abf1384724a19df6ba832bd24b1e3bf055ca78e2eac2c41e6933d63c86",
+    "shared/schema.ts": "a8b1ae661dbab3d566c7589fd37735994faf6203d2f886b347c2d05e4a456a96"
+  },
+  "safety": {
+    "applicationServerStarted": false,
+    "productionDatabaseAccessed": false,
+    "providerAccessed": false,
+    "productionDataWritten": false,
+    "ptomoAccessed": false,
+    "databaseMigration": false,
+    "newEnvironmentSetting": false,
+    "testIsolation": "Real React components in headless Chromium with intercepted synthetic HTTP; other browser hosts blocked; runner strips application credentials and blocks external Node networking"
+  },
+  "remaining": [
+    "Commit/push and deployment of this UI correction are pending",
+    "Actual deployed error/retry and complete provider save/refresh acceptance are not established by synthetic browser checks",
+    "Delete/reconnect, natural scheduler execution, full downstream and historical-data integrity remain outside this bounded UI correction",
+    "Earlier broader unresolved audit failures and all master acceptance counts remain unchanged; V1 remains NO-GO"
+  ],
+  "status": "VERIFIED_LOCALLY_NOT_PUBLISHED"
+}

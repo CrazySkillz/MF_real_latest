@@ -13,7 +13,8 @@ describe("GA4 Insights Google Ads spend production pipeline", () => {
     expect(route.indexOf("buildGA4GoogleAdsSpendMaterialization")).toBeLessThan(route.indexOf("replaceSpendSourceWithRecords"));
     expect(route).toContain("amount = materialized.amount");
     expect(route).toContain("ga4GoogleAdsSpendRecords = materialized.records");
-    expect(route).toContain('const cur = String(platformContext || "").trim().toLowerCase() === "ga4"');
+    expect(route).toContain('const cur = String((campaign as any)?.currency || "USD").trim().toUpperCase()');
+    expect(route).toContain('input.data.currency.trim().toUpperCase() !== cur');
   });
 
   it("uses one campaign window, exact atomic provider replacement, source currency, valid zero, and stale last-good retention", () => {

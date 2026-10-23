@@ -5995,24 +5995,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/spend/process/manual", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      let amount = parseNum((req.body as any)?.amount);
-      const currency = (req.body as any)?.currency ? String((req.body as any).currency) : undefined;
-      const platformContext = (req.body as any)?.platformContext ? String((req.body as any).platformContext) : undefined;
-      const subCampaignUrn = (req.body as any)?.subCampaignUrn ? String((req.body as any).subCampaignUrn) : undefined;
-      const overrideSourceType = (req.body as any)?.sourceType ? String((req.body as any).sourceType) : null;
-      const overrideDisplayName = (req.body as any)?.displayName ? String((req.body as any).displayName) : null;
-      let clientMappingConfig = (req.body as any)?.mappingConfig || null;
-      const existingSourceId = (req.body as any)?.sourceId ? String((req.body as any).sourceId) : null;
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
-      const cur = String(platformContext || "").trim().toLowerCase() === "ga4"
-        ? String((campaign as any)?.currency || "USD")
-        : currency || (campaign as any)?.currency || "USD";
+      const input = z.object({
+        platformContext: z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]),
+        sourceType: z.enum(["manual", "ad_platforms", "linkedin_api", "instagram_api"]).optional(),
+        sourceId: z.string().trim().min(1).optional(), currency: z.string().optional(),
+        displayName: z.string().trim().min(1).optional(), subCampaignUrn: z.string().optional(),
+        mappingConfig: z.record(z.unknown()).nullable().optional(),
+      }).safeParse({ ...req.body, platformContext: typeof req.body?.platformContext === "string" ? req.body.platformContext.trim().toLowerCase() || "ga4" : req.body?.platformContext ?? "ga4" });
+      if (!input.success) return res.status(400).json({ success: false, error: "Invalid manual Spend source or platform configuration" });
+      let amount = parseNum((req.body as any)?.amount);
+      const { platformContext, subCampaignUrn } = input.data;
+      const overrideSourceType = input.data.sourceType || null;
+      const overrideDisplayName = input.data.displayName || null;
+      let clientMappingConfig: any = input.data.mappingConfig || null;
+      const existingSourceId = input.data.sourceId || null;
+      const cur = String((campaign as any)?.currency || "USD").trim().toUpperCase();
+      if (input.data.currency !== undefined && input.data.currency.trim().toUpperCase() !== cur) {
+        return res.status(400).json({ success: false, error: "Currency must match the campaign currency" });
+      }
 
       const effectiveSourceType = spendSourceTypeForPlatformContext(platformContext, overrideSourceType);
       const effectiveDisplayName = overrideDisplayName || (platformContext ? `Manual spend – ${platformContext}` : "Manual entry");
-      if (String(platformContext || 'ga4').trim().toLowerCase() === 'ga4' && effectiveSourceType === 'manual') {
+      if (platformContext === 'ga4' && effectiveSourceType !== 'ad_platforms') {
         return res.status(400).json({ success: false, error: 'Manual Spend is not supported for GA4.' });
+      }
+      if ((overrideSourceType === "instagram_api" && platformContext !== "instagram")
+        || (platformContext === "instagram" && overrideSourceType && !["manual", "instagram_api"].includes(overrideSourceType))
+        || (effectiveSourceType === "linkedin_api" && (clientMappingConfig?.platform !== "linkedin" || clientMappingConfig?.testMode !== true))
+        || (effectiveSourceType === "ad_platforms" && !["google_ads", "meta"].includes(clientMappingConfig?.platform))
+        || (["manual", "instagram_api"].includes(effectiveSourceType) && clientMappingConfig)) {
+        return res.status(400).json({ success: false, error: "Invalid manual Spend source configuration" });
       }
       const isGA4GoogleAdsSpend = String(platformContext || "").trim().toLowerCase() === "ga4" && effectiveSourceType === "ad_platforms";
       let ga4GoogleAdsSpendRecords: any[] | null = null;
@@ -6066,10 +6080,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (error: any) {
           return res.status(400).json({ success: false, error: error?.message || "Google Ads spend data is invalid" });
         }
-      } else if (!(amount > 0)) {
-        return res.status(400).json({ success: false, error: "Amount must be > 0" });
+      } else if (!["string", "number"].includes(typeof req.body?.amount) || !isSupportedGa4CsvRevenueAmount(req.body.amount, cur) || !(amount > 0) || amount > 99_999_999.99) {
+        return res.status(400).json({ success: false, error: "Enter a positive spend amount up to 99,999,999.99 with at most two decimal places. Use plain numbers or US-style separators; use $ only for USD campaigns." });
       }
       const resolvedDisplayName = isGA4GoogleAdsSpend ? "Google Ads" : effectiveDisplayName;
+      if (effectiveSourceType === "ad_platforms" && !isGA4GoogleAdsSpend && resolvedDisplayName !== (clientMappingConfig.platform === "google_ads" ? "Google Ads" : "Meta Ads")) {
+        return res.status(400).json({ success: false, error: "Ad-platform source name must match the selected provider" });
+      }
 
       // Build mappingConfig: use client-provided config if available, otherwise default
       const finalMappingConfig = clientMappingConfig
@@ -6102,64 +6119,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ success: true, sourceId: source.id, spendToDate: Number(amount.toFixed(2)), currency: cur, platformContext, derivedValuesUpdated });
       }
 
-      let source: any;
+      let expectedSourceMappingConfig: string | null | undefined;
       if (existingSourceId) {
         const existingSource = await storage.getSpendSource(campaignId, existingSourceId);
-        if (!existingSource) return res.status(404).json({ success: false, error: "Spend source not found" });
+        if (!existingSource || existingSource.isActive === false) return res.status(404).json({ success: false, error: "Spend source not found" });
         if (!spendSourceMatchesPlatformContext(existingSource, platformContext)) {
           return res.status(404).json({ success: false, error: "Spend source not found" });
         }
-        if (overrideSourceType && String((existingSource as any)?.sourceType || "").trim() !== effectiveSourceType) {
+        if (String((existingSource as any)?.sourceType || "").trim() !== effectiveSourceType) {
           return res.status(404).json({ success: false, error: "Spend source not found" });
         }
         if (effectiveSourceType === "ad_platforms" && overrideDisplayName && String((existingSource as any)?.displayName || "").trim() !== resolvedDisplayName) {
           return res.status(404).json({ success: false, error: `${resolvedDisplayName} spend source not found` });
         }
-        // Update existing source instead of creating a new one
-        source = await storage.updateSpendSource(existingSourceId, {
-          sourceType: effectiveSourceType,
-          platformContext: platformContext || null,
-          displayName: resolvedDisplayName,
-          currency: cur,
-          mappingConfig: finalMappingConfig,
-          isActive: true,
-        } as any);
-        if (!source) {
-          return res.status(404).json({ success: false, error: "Spend source not found" });
-        }
-        // Delete old spend records and create new ones
-        try {
-          await storage.deleteSpendRecordsBySource(existingSourceId);
-        } catch (e: any) {
-          console.warn("[Manual Spend] Failed to delete old spend_records:", e?.message);
-        }
-      } else {
-        source = await storage.createSpendSource({
-          campaignId,
-          sourceType: effectiveSourceType,
-          platformContext: platformContext || null,
-          displayName: resolvedDisplayName,
-          currency: cur,
-          mappingConfig: finalMappingConfig,
-          isActive: true,
-        } as any);
+        expectedSourceMappingConfig = existingSource.mappingConfig;
       }
-
-      // Create a spend_record so spend-breakdown and Latest Day Spend work
-      try {
-        const today = new Date().toISOString().split("T")[0];
-        await storage.createSpendRecords([{
-          campaignId,
-          spendSourceId: String(source.id),
-          date: today,
-          spend: amount.toFixed(2),
-          currency: cur,
-          sourceType: effectiveSourceType,
-          subCampaignUrn: subCampaignUrn || null,
-        }] as any);
-      } catch (e: any) {
-        console.warn("[Manual Spend] Failed to create spend_record:", e?.message);
-      }
+      const today = new Date().toISOString().split("T")[0];
+      const source = await storage.replaceSpendSourceWithRecords(campaignId, existingSourceId, effectiveSourceType, platformContext, {
+        campaignId, sourceType: effectiveSourceType, platformContext, displayName: resolvedDisplayName, currency: cur, mappingConfig: finalMappingConfig, isActive: true,
+      } as any, [{ campaignId, date: today, spend: amount.toFixed(2), currency: cur, sourceType: effectiveSourceType, subCampaignUrn: subCampaignUrn || null }], expectedSourceMappingConfig);
 
       // Recalculate campaign.spend from all active sources
       try {
@@ -6167,11 +6145,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await recomputeGA4SpendBeforeResponse(campaignId);
       } catch (e: any) {
         console.warn("[Manual Spend] Failed to recalculate campaign.spend:", e?.message);
+        return res.status(503).json({ success: false, spendSaved: true, sourceId: source.id, error: "Spend was saved, but financial totals could not be refreshed. Reload before retrying." });
       }
 
       res.json({ success: true, sourceId: source.id, spendToDate: Number(amount.toFixed(2)), currency: cur, platformContext: platformContext || null });
     } catch (e: any) {
-      res.status(500).json({ success: false, error: e?.message || "Failed to process manual spend" });
+      res.status(e?.code === "SPEND_SOURCE_NOT_FOUND" ? 404 : e?.code === "SPEND_SOURCE_CHANGED" ? 409 : 500).json({ success: false, error: e?.message || "Failed to process manual spend" });
     }
   });
 

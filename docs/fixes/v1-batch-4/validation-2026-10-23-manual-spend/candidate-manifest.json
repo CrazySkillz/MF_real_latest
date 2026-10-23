@@ -1,0 +1,38 @@
+{
+  "at": "2026-10-23T13:27:58.127Z",
+  "baseHead": "2af808b148537ce755b2566586c1a69f199cc86c",
+  "files": [
+    {
+      "file": "server/routes-oauth.ts",
+      "sha256": "f2736aad3d1063f3594f27d0bb5457a665af165e32148cd8eade2265c236c8d6"
+    },
+    {
+      "file": "client/src/components/AddSpendWizardModal.tsx",
+      "sha256": "d9279ae248487dd313a35d569729f113ca79750bb4b0a3a1483e30cc5aff59cb"
+    },
+    {
+      "file": "server/v1-batch4-manual-spend.test.ts",
+      "sha256": "bd40f12ba1b0f9045ad0c96f7fdb770b130357807c974779d6a7e4b06aa3ac64"
+    },
+    {
+      "file": "server/ga4-google-ads-spend-pipeline-regression.test.ts",
+      "sha256": "92814effaa099a12e652eb3a9cfdad782ba89c22f7658741a88bb48b68e00a7c"
+    },
+    {
+      "file": "server/ga4-source-lifecycle-recompute-regression.test.ts",
+      "sha256": "41cf3d345e6ad93c8dd87d70dab601d8d1aaba2355833f614b146deef5fcbcd2"
+    },
+    {
+      "file": "server/google-ads-spend-lifecycle-downstream.test.ts",
+      "sha256": "90cd10b27c719d16b77d3c856f2f7e89c56d66da1ebf3ed08e4a429322cfe1cc"
+    },
+    {
+      "file": "server/instagram-connected-platforms-regression.test.ts",
+      "sha256": "e088434904c23114ec2d614c58947177119371f464fcd655cc092d1c810a2dac"
+    },
+    {
+      "file": "server/source-safety-regression.test.ts",
+      "sha256": "9a6564f9e60c3fa6199c12b99e2eb76947d28c191cc88c8ff6f12686109cc0a7"
+    }
+  ]
+}

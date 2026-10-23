@@ -1314,7 +1314,7 @@ describe("source safety regression guards", () => {
 
     expect(manualRoute).toContain("ensureCampaignAccess");
     expect(manualRoute).toContain('sourceType || "").trim() !== effectiveSourceType');
-    expect(manualRoute).toContain('displayName || "").trim() !== effectiveDisplayName');
+    expect(manualRoute).toContain('displayName || "").trim() !== resolvedDisplayName');
     expect(importRoute).toContain("const requestedSourceId");
     expect(importRoute).toContain('platformSourceType = "tiktok_api"');
     expect(importRoute).toContain('platformContext = "tiktok"');

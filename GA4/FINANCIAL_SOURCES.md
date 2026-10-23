@@ -657,6 +657,9 @@ Production direction note:
 - new direct `Manual` spend entry has been removed from the production spend-source picker
 - the reason is data-quality and data-integrity protection: unrestricted manual spend entry creates avoidable provenance, duplication, and audit-risk issues
 - existing stored manual spend sources are unsupported legacy data: creation and editing are blocked, while exact reviewed deletion remains available
+
+October 23 V1-068 correction: the shared Manual Spend API now enforces this GA4 block even when a caller supplies a disguised CSV/Sheets/source label or a noncanonical GA4 context. Its retained non-GA4 manual path validates raw amounts and campaign currency, saves source/records atomically and reports failed saves or post-save refresh failures explicitly. GA4 Google Ads continues to use selected server-held daily values through its existing branch. [Batch 4 evidence and release limits](../docs/fixes/v1-batch-4/README.md#manual-spend-correction-checkpoint-october-23): locally verified, uncommitted/undeployed; no existing records changed. Historical references below to direct Manual updates do not override GA4's current create/edit block.
+
 - `LinkedIn Ads` and `Meta / Facebook` are removed from the new-source Spend chooser for v1
 - existing stored LinkedIn/Meta spend sources and their edit/backend continuity paths remain supported; this chooser change does not delete records, disconnect providers, or certify those source families
 - the deployed Google Ads/Upload CSV chooser evidence after whole-Overview Current Commit 5 is historical; Current Commit 21 restores Google Sheets and requires a new visibility check

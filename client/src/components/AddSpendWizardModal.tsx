@@ -1617,8 +1617,8 @@ export function AddSpendWizardModal(props: {
   }, [props.open, step]);
 
   const processManual = async () => {
-    const amount = parseFloat(String(manualAmount || "").replace(/[$,]/g, "").trim());
-    if (!Number.isFinite(amount) || !(amount > 0)) {
+    const amount = manualAmount.trim();
+    if (!amount) {
       toast({ title: "Invalid amount", description: "Enter a spend amount greater than 0.", variant: "destructive" });
       return;
     }
@@ -2724,25 +2724,7 @@ export function AddSpendWizardModal(props: {
                         type="text"
                         inputMode="decimal"
                         value={manualAmount}
-                        onChange={(e) => {
-                          // Strip everything except digits and decimal point
-                          let raw = e.target.value.replace(/[^0-9.]/g, '');
-                          // Only allow one decimal point
-                          const parts = raw.split('.');
-                          if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('');
-                          // Limit to 2 decimal places
-                          if (parts[1]?.length > 2) raw = parts[0] + '.' + parts[1].slice(0, 2);
-                          // Auto-format with commas on the integer part
-                          const intPart = raw.split('.')[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-                          const decPart = raw.includes('.') ? '.' + raw.split('.')[1] : '';
-                          setManualAmount(intPart + decPart);
-                        }}
-                        onBlur={() => {
-                          const num = parseFloat(String(manualAmount || "").replace(/,/g, "").trim());
-                          if (Number.isFinite(num) && num > 0) {
-                            setManualAmount(num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-                          }
-                        }}
+                        onChange={(e) => setManualAmount(e.target.value)}
                         placeholder="0.00"
                         className="max-w-xs"
                       />
@@ -2751,7 +2733,7 @@ export function AddSpendWizardModal(props: {
                       <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
                       <Button
                         onClick={processManual}
-                        disabled={isProcessing || !manualAmount || isNaN(parseFloat(String(manualAmount).replace(/[$,]/g, ""))) || (isEditing && !hasMeaningfulManualEditChanges)}
+                        disabled={isProcessing || !manualAmount.trim() || (isEditing && !hasMeaningfulManualEditChanges)}
                       >
                         {isProcessing ? "Saving..." : (isEditing ? "Update spend" : "Import spend")}
                       </Button>

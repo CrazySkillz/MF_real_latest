@@ -102,17 +102,16 @@ describe("GA4 source lifecycle recompute route guards", () => {
   });
 
   it("keeps spend source process recomputes after durable source totals and before responses", () => {
-    expect((routes.match(/await recomputeGA4SpendBeforeResponse\(campaignId\);/g) || []).length).toBe(6);
-
     const processRoutes = [
       sliceBetween(routes, 'app.post("/api/campaigns/:id/spend/process/manual"', "const processConnectorDerivedSpend"),
+      sliceBetween(routes, "const processConnectorDerivedSpend", 'app.post("/api/campaigns/:id/spend/process/connectors"'),
       sliceBetween(routes, 'app.post("/api/campaigns/:id/spend/csv/process"', 'app.post("/api/campaigns/:id/spend/sheets/preview"'),
       sliceBetween(routes, 'app.post("/api/campaigns/:id/spend/sheets/process"', "  // Salesforce PKCE support"),
     ];
 
     for (const route of processRoutes) {
-      expect(route.indexOf("await recalcCampaignSpend(campaignId);")).toBeGreaterThanOrEqual(0);
-      expect(route.indexOf("await recalcCampaignSpend(campaignId);")).toBeLessThan(
+      expect(route.indexOf("await recalcCampaignSpend(campaignId")).toBeGreaterThanOrEqual(0);
+      expect(route.indexOf("await recalcCampaignSpend(campaignId")).toBeLessThan(
         route.indexOf("await recomputeGA4SpendBeforeResponse(campaignId);"),
       );
       expect(route).toContain("await recomputeGA4SpendBeforeResponse(campaignId);");
@@ -218,10 +217,10 @@ describe("GA4 source lifecycle recompute route guards", () => {
     );
     const rejection = manualSpendRoute.indexOf("Manual Spend is not supported for GA4.");
     expect(rejection).toBeGreaterThan(-1);
-    expect(manualSpendRoute).toContain("String(platformContext || 'ga4').trim().toLowerCase() === 'ga4'");
+    expect(manualSpendRoute).toContain("platformContext === 'ga4' && effectiveSourceType !== 'ad_platforms'");
     expect(rejection).toBeLessThan(manualSpendRoute.indexOf('replaceSpendSourceWithRecords('));
-    expect(rejection).toBeLessThan(manualSpendRoute.indexOf('storage.updateSpendSource('));
-    expect(rejection).toBeLessThan(manualSpendRoute.indexOf('storage.createSpendSource('));
+    expect(manualSpendRoute).not.toContain('storage.updateSpendSource(');
+    expect(manualSpendRoute).not.toContain('storage.createSpendSource(');
 
     const revenueSourcesModal = sliceBetween(ga4Page, '>Revenue Sources</DialogTitle>', '>Spend Sources</DialogTitle>');
     expect(revenueSourcesModal).toContain('{ga4ConnectionUsable && s.sourceType !== "manual" && (');

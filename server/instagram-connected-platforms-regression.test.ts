@@ -391,7 +391,7 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(route).toContain('sourceType: effectiveSourceType');
     expect(route).toContain('platformContext: platformContext || null');
     expect(route).toContain('sourceType: effectiveSourceType');
-    expect(route).toContain('existingSource as any)?.platformContext');
+    expect(route).toContain('spendSourceMatchesPlatformContext(existingSource, platformContext)');
     expect(route).not.toContain('sourceType: "meta_api"');
     expect(route).not.toContain('sourceType: "google_ads_api"');
     expect(route).not.toContain('sourceType: "linkedin_api"');

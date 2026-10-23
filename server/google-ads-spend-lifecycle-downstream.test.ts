@@ -107,14 +107,14 @@ describe("Google Ads GA4 Overview spend lifecycle and downstream regression guar
     expect(manualRoute).toContain("spendSourceMatchesPlatformContext(existingSource, platformContext)");
     expect(manualRoute).toContain('String((existingSource as any)?.sourceType || "").trim() !== effectiveSourceType');
     expect(manualRoute).toContain('effectiveSourceType === "ad_platforms" && overrideDisplayName');
-    expect(manualRoute).toContain("source = await storage.updateSpendSource(existingSourceId,");
-    expect(manualRoute).toContain("source = await storage.createSpendSource({");
+    expect(manualRoute).toContain("storage.replaceSpendSourceWithRecords(campaignId, existingSourceId, effectiveSourceType, platformContext,");
+    expect(manualRoute).toContain("expectedSourceMappingConfig = existingSource.mappingConfig;");
     expect(manualRoute).toContain("sourceType: effectiveSourceType");
     expect(manualRoute).toContain("platformContext: platformContext || null");
     expect(manualRoute).toContain("displayName: resolvedDisplayName");
     expect(manualRoute).toContain("mappingConfig: finalMappingConfig");
-    expect(manualRoute.indexOf("await storage.deleteSpendRecordsBySource(existingSourceId)")).toBeLessThan(manualRoute.indexOf("await storage.createSpendRecords"));
-    expect(manualRoute).toContain("spendSourceId: String(source.id)");
+    expect(manualRoute).not.toContain("storage.deleteSpendRecordsBySource");
+    expect(manualRoute).not.toContain("storage.createSpendRecords");
     expect(manualRoute.indexOf("await recalcCampaignSpend(campaignId);")).toBeLessThan(manualRoute.indexOf("await recomputeGA4SpendBeforeResponse(campaignId);"));
     expect(manualRoute).toContain("if (!isGA4GoogleAdsSpend) throw error;");
     expect(manualRoute).toContain("derivedValuesUpdated = false;");

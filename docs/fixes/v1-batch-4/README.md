@@ -6,9 +6,40 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 4 status
 
-**IN PROGRESS.** Twenty-two corrections are VERIFIED LOCALLY within their stated boundaries: the fifteen earlier corrections plus V1-028/029/031/102/103/111/120 below. The latest five standalone Sheets corrections below are **committed in `5bc33828a6abb738dda75fd09d0196bc82c548e6`**, on base `fb1132a2`; deployed in `221382da` with public checks passed and authenticated/provider acceptance open. Two implementation findings remain: manual Spend / transfer safeguards V1-068/069. The seven Custom Integration corrections below are committed in `ff5b1752`; deployment verification is pending. All 24 release acceptances remain OPEN. The deployment includes the earlier selection correction; public checks do not certify source values or full V1 acceptance. No production/Ptomo/provider access or historical-data cleanup was performed for this group.
+**IN PROGRESS.** Twenty-three corrections are VERIFIED LOCALLY within their stated boundaries. V1-068 Manual Spend is now corrected and locally checked on base `2af808b1`, **uncommitted and undeployed**. One implementation finding remains: transfer safeguards V1-069. The earlier 22 corrections are deployed: the latest five standalone Sheets corrections in `221382da` and seven Custom Integration corrections in `2af808b1`; public checks pass, with authenticated/provider acceptance open. All 24 release acceptances remain OPEN. Dated checkpoints below preserve earlier counts; this current status supersedes them.
 
-**Commit checkpoint:** `ff5b1752d695511fb116bced861574942c9b11cd` contains the seven corrections, their tests and audit evidence (72 files). All 11 runtime/test files match the validated compatibility manifest. [Commit evidence](validation-2026-10-23-custom-integration/commit-checkpoint.json). Deployment verification and release acceptance remain open; historical validation packets retain their original pre-commit status.
+## Manual Spend correction checkpoint, October 23
+
+**V1-068 VERIFIED LOCALLY; release acceptance OPEN.** Current base `2af808b148537ce755b2566586c1a69f199cc86c`; runtime changes are limited to `server/routes-oauth.ts` and `client/src/components/AddSpendWizardModal.tsx`. [Exact candidate hashes](validation-2026-10-23-manual-spend/candidate-manifest.json), [assessment and every failure classification](validation-2026-10-23-manual-spend/assessment.json).
+
+**Confirmed root causes and correction.** The retained `/api/campaigns/:id/spend/process/manual` handler accepted arbitrary `sourceType`, so a caller could relabel a manual value as CSV and bypass GA4's Manual block. `parseFloat` accepted numeric prefixes, malformed separators and excess precision; the retained form also stripped invalid characters and truncated fractions before sending. Non-GA4 edits changed the source and deleted/inserted records separately, swallowing failures and returning success. The route now validates source/configuration/context, normalizes context once, checks campaign currency, and rejects malformed amounts before mutation. It reuses the existing strict amount validator and `replaceSpendSourceWithRecords` transaction. Exact active campaign/context/type and ad-provider identity remain required; a saved mapping comparison rejects concurrent stale edits. No storage, schema, scheduler or dependency changes were required.
+
+The retained form sends the entered text intact for server validation. Manual amounts must be positive, with at most two decimals and at most `99,999,999.99` (the existing campaign total column limit); plain numbers and US grouping are accepted, with `$` only for USD. Manual zero remains rejected under the existing policy; verified Google Ads zero remains valid. GA4 allows only its existing server-materialized Google Ads branch through this route: browser totals and labels do not override selected stored Google Ads values. Unsupported CSV/Sheets/custom labels must use their own import workflows.
+
+**Save outcomes.** Source/record persistence failures return unsuccessful responses and roll back together. Missing or changed edit targets return 404/409. Totals/derived refresh occurs after commit, as before; if that later work fails, the non-GA4 response is explicitly 503 with `success:false`, `spendSaved:true`, the saved source ID and “Spend was saved, but financial totals could not be refreshed. Reload before retrying.” This is a partial refresh failure, not a rolled-back source. Normal success response fields are preserved. GA4 Google Ads retains its existing `derivedValuesUpdated:false` behavior.
+
+| Lifecycle / value boundary | Current evidence and limit |
+|---|---|
+| Add/edit and access | Actual registered handler tests reject access denial, invalid source labels/configurations, inactive/missing/wrong-context/wrong-type sources and mismatched currency; owner access still uses the unchanged `ensureCampaignAccess`. Real PostgreSQL checks cover exact campaign scope and stale edits. |
+| Persistence and recovery | Nine real PostgreSQL cases prove exact cents, selected sub-campaign ID, source/record rollback on add/edit insert failure and delete failure, stable source identity, another campaign's preservation, mapping-conflict rejection and concurrent replacement serialization. A failed persistence attempt retains last-good data; a post-commit refresh failure is identified separately. |
+| Source display and totals | Trace: form `processManual` → route at `routes-oauth.ts:5995` → existing `storage.ts:2367` transaction → source/list and range totals → `recalcCampaignSpend` → existing GA4 goal recompute. Real reads reconcile `1234.56` in records, source-backed totals and `campaign.spend`. Snapshot date remains today's UTC date; Manual is not a dated import or automatic provider refresh. |
+| Neighboring imports | Actual-handler tests retain server-selected GA4 Google Ads rows, zero, duplicate/missing-connection/selection/stale-source rejection and its partial-derived response; non-GA4 ad/demo contracts and Instagram source classification are bounded compatibility checks. CSV, source additivity, edit entry and scope regressions also run. Deferred providers are not independently certified. |
+| Delete / scheduler / downstream | No delete or scheduler path changed. GA4 Manual create/edit remains blocked; exact existing deletion policy is unchanged. Source-to-campaign total propagation is tested; KPI/Benchmark recompute call ordering is checked, with injected failures. Full rendered KPI/Benchmark/Insights/report/email/provider propagation remains an independent acceptance gate. |
+| Existing damaged data | No production inventory or cleanup was performed. Previously disguised or invalid rows are not silently relabelled, rewritten or deleted; any cleanup needs a separately proven boundary. |
+
+**Validation:** [final packet](validation-2026-10-23-manual-spend/verified.json) records **257 tests: 245 passed, 12 failed, zero skipped**. All **70 new Manual Spend tests pass**, including nine PostgreSQL cases and five actual form-handler cases (not a browser test). The 12 broader failures are individually classified and remain OPEN under V1-012; no failure is waived. Related structural checks were updated only after tracing current currency/source identity, atomic persistence and the optional refresh argument; failed earlier packets remain retained. The initial sandbox compiler failure and one incorrect Google Ads fixture field are also recorded. [TypeScript/client/server builds](validation-2026-10-23-manual-spend/candidate-build-checks.json) pass; [final TypeScript check](validation-2026-10-23-manual-spend/final-build-checks.json) passes after the last test edits. [Fixture cleanup](validation-2026-10-23-manual-spend/fixture-cleanup.json) proves no leftover schemas, clients or advisory locks and successful cluster shutdown.
+
+**UI and deployment limits:** the new-source Manual card is hidden (`AddSpendWizardModal.tsx:1867`); the retained edit form and API still require these safeguards. The separate Revenue wizard contains a spend caller, but `manualSpendAmount` has no input/setter beyond reset in current code. No new Manual UI was enabled and no unconfirmed UI validation instructions are required from the user. Authenticated deployed/browser validation and complete Batch 4 acceptance remain OPEN. Production, Ptomo and providers were not accessed or changed for this correction. **Next implementation: V1-069 only.**
+
+**Commit checkpoint:** `ff5b1752d695511fb116bced861574942c9b11cd` contains the seven corrections, their tests and audit evidence (72 files). All 11 runtime/test files match the validated compatibility manifest. [Commit evidence](validation-2026-10-23-custom-integration/commit-checkpoint.json). Public deployment verification passes at `2af808b1`; authenticated/provider and release acceptance remain open. Historical validation packets retain their original pre-commit status.
+
+## Custom Integration deployment verification (October 23)
+
+**Deployed runtime: `2af808b148537ce755b2566586c1a69f199cc86c`**, containing the seven-fix commit `ff5b1752d695511fb116bced861574942c9b11cd`. Three public checks at 15:02 Europe/Amsterdam return the exact expected revision, production environment and readiness 200. The homepage and `/health` return 200; signed-out `/api/campaigns` returns 401. [Exact evidence](deployment-2026-10-23-custom-integration/public-verification.json), [read-only check script](deployment-2026-10-23-custom-integration/verify-public.cjs).
+
+GA4 scheduler registration is healthy with the unchanged 08:00/14:00/20:00 Amsterdam schedule and startup refresh disabled. This process started at 14:49, after the 14:00 slot; its next scheduled run is 20:00 through October 22. No natural run completed in this process during the observation. No refresh wait is required before independent manual Spend/transfer work.
+
+These checks do not validate authenticated Custom uploads, provider delivery, actual stored-value reconciliation, browser recovery, scheduled artifacts, or full Batch 4/V1 acceptance. The two old Mailgun test campaigns' unavailable-figure effect remains explicitly accepted, with records retained. No campaign data, provider, email, manual refresh or production mutation was used for these public checks. **Next implementation: V1-068 and V1-069; all 24 Batch 4 release acceptances remain OPEN.**
 
 ## Custom Integration correction checkpoint (October 23)
 
@@ -34,7 +65,7 @@ The [production read-only inventory](validation-2026-10-23-custom-integration/pr
 
 Commands: `node .../predeploy-compatibility.cjs`, `node .../predeploy-current-dependencies.cjs`, `node .../run-tests.cjs compatibility-recovery server/v1-batch4-custom-storage-postgres.test.ts --local-pg`, and `node .../compatibility-local-checks.cjs`, where `...` is this batch's `validation-2026-10-23-custom-integration` directory. Evidence scripts output counts/hashes, not credentials, raw customer identifiers, email addresses or imported values. The read-only inventory establishes the current deployment impact; it does not close browser/provider, full downstream, operational or release gates.
 
-**Local forward fixes complete for V1-028/029/031/102/103/111/120. Committed in `ff5b1752d695511fb116bced861574942c9b11cd` on base `221382da751b453b4d45411df65f15a62750c9b1`; deployment verification pending.** [Exact 11-file candidate](validation-2026-10-23-custom-integration/candidate-manifest.json), [assessment and every classified failure](validation-2026-10-23-custom-integration/assessment.json). This changes retained Custom Integration code; it does not enable its hidden campaign wizard/card, change GA4/Ptomo, or certify the source or Batch 4 for release.
+**Local forward fixes complete for V1-028/029/031/102/103/111/120. Committed in `ff5b1752d695511fb116bced861574942c9b11cd` on base `221382da751b453b4d45411df65f15a62750c9b1`; deployed in `2af808b1`, public checks pass, authenticated/provider acceptance open.** [Exact 11-file candidate](validation-2026-10-23-custom-integration/candidate-manifest.json), [assessment and every classified failure](validation-2026-10-23-custom-integration/assessment.json). This changes retained Custom Integration code; it does not enable its hidden campaign wizard/card, change GA4/Ptomo, or certify the source or Batch 4 for release.
 
 | Finding | Confirmed root cause and exact corrected path | Local evidence |
 |---|---|---|
@@ -311,13 +342,13 @@ The user authorized Batch 4 while the deployed Batch 3 revision awaits its first
 
 | Remaining implementation group | Finding IDs |
 |---|---|
-| Retained manual-Spend and cross-source transfer safeguards | V1-068, V1-069 |
+| Retained cross-source transfer safeguards | V1-069 (V1-068 now locally verified above) |
 
-**Remaining implementation work: two findings, V1-068/069, followed by Batch 4 acceptance.** The seven Custom Integration corrections are now locally verified at the checkpoint above; the earlier fifteen corrections retain their stated evidence. These are grouped work boundaries, not an estimate of individual edits, commits or elapsed time. Acceptance includes the required deployed/provider, lifecycle and downstream checks for all 24 Batch 4 findings; local fixes alone do not complete the batch.
+**Remaining implementation work: V1-069, followed by Batch 4 acceptance.** The Manual Spend correction is now locally verified above; the earlier 22 corrections retain their stated evidence. Acceptance includes the required deployed/provider, lifecycle and downstream checks for all 24 Batch 4 findings; local fixes alone do not complete the batch.
 
 **Execution method requested October 23:** finish related fixes within each group with fewer handoffs. Reuse isolated fixtures and traced paths; validate each changed behavior and its neighbors, then run the shared regression/build checks at the coherent group checkpoint. Repeat checks only for subsequent changes, failures or unresolved concerns. Update this record and the finding checklist as each item progresses. Consolidate reviewable commits/deployment checkpoints where dependencies permit; do not require a live refresh wait for independent local work or waive any required acceptance gate. No additional source exclusions or runtime changes accompany this scheduling clarification.
 
-The standalone Sheets implementation group is verified locally and committed in `5bc33828`; deployed in `221382da`; public checks pass and authenticated/provider acceptance remains open. The Custom Integration group is now verified locally and uncommitted. The next implementation group is manual Spend/transfers (V1-068/069). All 24 release acceptances stay OPEN. Four-provider functional work remains deferred; shared retained-route safety remains required. No completion estimate or additional exclusion is inferred.
+The earlier Sheets and Custom Integration implementation groups are locally verified and deployed, with their authenticated/provider acceptance open. Manual Spend V1-068 is locally verified and uncommitted. The next implementation is transfers V1-069. All 24 release acceptances stay OPEN. Four-provider functional work remains deferred; shared retained-route safety remains required. No completion estimate or additional exclusion is inferred.
 
 ## Scope and acceptance
 
@@ -352,7 +383,7 @@ These records retain their own dates and verification limits. Use the current fi
 | [V1-065](#v1-065) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-066](#v1-066) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-067](#v1-067) | P1 | VERIFIED LOCALLY | OPEN |
-| [V1-068](#v1-068) | P1 | OPEN | OPEN |
+| [V1-068](#v1-068) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-069](#v1-069) | P1 | OPEN | OPEN |
 | [V1-070](#v1-070) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-071](#v1-071) | P1 | VERIFIED LOCALLY | OPEN |
@@ -482,7 +513,7 @@ Sheets Revenue amount helper accepts `$`; process1456 strips it while5719–5731
 
 ### V1-068
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -490,7 +521,7 @@ Sheets Revenue amount helper accepts `$`; process1456 strips it while5719–5731
 
 `routes-oauth.ts:5953,6010–6189` accepts caller sourceType; GA4 manual rejection is bypassed with sourceType=csv, persisting100 as CSV without a file. Non-GA4 insert failure is swallowed and returns success. Three exact handler cases include the normal GA4 rejection control. Enforce supported source creation paths and atomic truthful outcomes; do not silently delete existing records.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** See the [Manual Spend checkpoint](#manual-spend-correction-checkpoint-october-23) for the exact current trace, raw-input/configuration guards, atomic source/record publication, truthful failure response, changed files and remaining acceptance. All 70 new tests pass, including nine PostgreSQL and five form-handler cases; broader packet 245 pass / 12 classified open failures / zero skips. TypeScript and both builds pass. Uncommitted on base `2af808b1`; no production/Ptomo/provider access or historical-data cleanup. Deployment/browser/provider/downstream and whole-batch acceptance remain OPEN.
 
 ### V1-069
 

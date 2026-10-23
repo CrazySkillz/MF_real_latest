@@ -1,0 +1,40 @@
+{
+  "at": "2026-10-23T15:30:24.006Z",
+  "implementationCommit": "dc33df48532bd486c76ef8db70979d553c71d9e7",
+  "baseHead": "62ec590bb61b383ea5479cddc26289771a8d976f",
+  "files": [
+    {
+      "file": "server/routes-oauth.ts",
+      "normalizedSha256": "93c7c63a0dbec97cd1bf758d253028906b394acf2168738d108f2c0749284c8b",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/storage.ts",
+      "normalizedSha256": "5665b683a5c150ca1526af59c7b89667b657c530d1e8632ac5fcc7b8d6af2dbe",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/v1-batch4-transfer.test.ts",
+      "normalizedSha256": "400f456a959ee03434883d51c42deedd08df42934f55e964b98765c76d526840",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/v1-batch4-transfer-postgres.test.ts",
+      "normalizedSha256": "fa10b8052d2b3dc7fdc17ca3d3646f2ac628d733be56d26be93c593506f63c0a",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/source-safety-regression.test.ts",
+      "normalizedSha256": "8d31144ba576441d15b9b23606458fc80d0205401cd95887b683055f5c400983",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/legacy-route-reachability-regression.test.ts",
+      "normalizedSha256": "56663c30a9ef883207c0e9a20ca7749f7382fd5b24e4a9b76fc7afb004fb05a4",
+      "matchesValidatedCandidate": true
+    }
+  ],
+  "validation": "121 new tests pass; broader 295 pass / five OPEN failures / zero skips; TypeScript and server build pass",
+  "push": "Pending at this checkpoint; requested by user",
+  "deployment": "Pending; no deployment or whole-release acceptance inferred"
+}

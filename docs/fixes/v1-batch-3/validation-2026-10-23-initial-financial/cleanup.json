@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-23T19:16:04.844Z",
+  "host": "127.0.0.1",
+  "port": 55444,
+  "database": "ga4_alignment_test",
+  "fixtureSchemas": 0,
+  "otherDatabaseSessions": 0,
+  "productionTouched": false,
+  "sqlSchemaCheckPrefixes": [
+    "initial_import_%",
+    "derived_publication_%"
+  ],
+  "derivedSchemaCleanupEvidence": "ga4_derived_it_* removed by the successful awaited afterAll DROP SCHEMA in ga4-derived-publication-postgres.test.ts; not covered by the separate prefix query.",
+  "testClusterStopped": true
+}

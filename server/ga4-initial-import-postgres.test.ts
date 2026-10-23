@@ -57,15 +57,15 @@ function worker(pauseAt = "", campaignId = "a") {
   return { child, until, exited };
 }
 
-async function publish(work: any, propertyId = "123", connectionId = "connection-a") {
+async function publish(work: any, propertyId = "123", connectionId = "connection-a", revenue = 20, conversions = 2) {
   const campaign = (await storage.getCampaign("a"))!;
   const [connection] = (await database.current.select().from(schema.ga4Connections)).filter((c: any) => c.id === connectionId);
   const previous = await storage.getGA4OverviewSnapshot("a", propertyId);
   return storage.replaceGA4DailyMetricsWindow("a", propertyId, date, date, [{
-    campaignId: "a", propertyId, date, sessions: 10, users: 9, pageviews: 15, conversions: 2, revenue: "20", engagedSessions: 5,
+    campaignId: "a", propertyId, date, sessions: 10, users: 9, pageviews: 15, conversions, revenue: String(revenue), engagedSessions: 5,
   }], {
-    windowStart: date, windowEnd: date, campaignBreakdown: { totals: { sessions: 10, conversions: 2, revenue: 20 } },
-    landingPages: { rows: [] }, conversionEvents: { totals: { conversions: 2 } },
+    windowStart: date, windowEnd: date, campaignBreakdown: { totals: { sessions: 10, conversions, revenue }, meta: { currencyCode: "EUR" } },
+    landingPages: { rows: [] }, conversionEvents: { totals: { conversions } },
     refreshScope: { campaign: Object.fromEntries(["ownerId", "clientId", "status", "ga4CampaignFilter", "currency", "reportingTimeZone"].map(key => [key, (campaign as any)[key] ?? null])),
       connection: Object.fromEntries(["id", "propertyId", "importStartDate", "isPrimary"].map(key => [key, connection[key] ?? null])),
       previousUpdatedAt: previous?.updatedAt?.toISOString() ?? null, work: { id: work.id, leaseToken: work.leaseToken },
@@ -90,6 +90,7 @@ describe.skipIf(!testUrl)("durable initial imports with real PostgreSQL", () => 
       await pool.query(`CREATE TABLE "${getTableName(table)}" (${columns.join(", ")})`);
     }
     await pool.query("CREATE UNIQUE INDEX overview_scope ON ga4_overview_snapshots(campaign_id,property_id)");
+    await pool.query("CREATE UNIQUE INDEX initial_financial_day ON metric_snapshots(campaign_id,reporting_date) WHERE snapshot_type='financial_daily' AND reporting_date IS NOT NULL");
     await pool.query(readFileSync(new URL("../migrations/0020_add_ga4_refresh_work.sql", import.meta.url), "utf8"));
     await pool.query(readFileSync(new URL("../migrations/0021_add_ga4_refresh_recovery.sql", import.meta.url), "utf8"));
   });
@@ -138,12 +139,66 @@ describe.skipIf(!testUrl)("durable initial imports with real PostgreSQL", () => 
     await publish(work);
     expect(await finish(work)).toBeUndefined();
     expect((await storage.getCampaign("a"))?.status).toBe("draft");
-    await publish(work, "789", "second");
+    await publish(work, "789", "second", 999);
     expect(await finish(work)).toMatchObject({ status: "completed" });
+    expect(((await storage.getLatestFinancialDailySnapshot("a", date))?.metrics as any)?.financialDaily.inputs.revenue.value).toBe("20.00");
     expect((await storage.getCampaign("a"))?.status).toBe("active");
     expect(await storage.getGA4InitialImportStatus("a", "owner-a")).toMatchObject({ state: "completed", canRetry: false });
     expect(await finish(work)).toBeUndefined();
     expect(await storage.isGA4NativeRecoveryEligible("a")).toBe(true);
+  });
+  it.each([7653.96, 0, -15.25])("publishes initial native revenue %s and fractional conversions before activation", async revenue => {
+    const work = (await claim((await request())!.id))!;
+    await publish(work, "123", "connection-a", revenue, 0.75);
+    expect(await finish(work)).toMatchObject({ status: "completed" });
+    const snapshot = await storage.getLatestFinancialDailySnapshot("a", date);
+    expect((snapshot?.metrics as any)?.financialDaily).toMatchObject({ currency: "EUR", inputs: {
+      revenue: { available: true, value: revenue.toFixed(2), sources: ["ga4"] },
+      conversions: { available: true, value: 0.75, sources: ["ga4"] },
+      spend: { available: false, value: null, sources: [] },
+    }, currentValueWindow: { startDate: date, endDate: date, reportingTimeZone: "Europe/Amsterdam" } });
+    expect((await storage.getCampaign("a"))?.status).toBe("active");
+    expect(await storage.getLatestFinancialDailySnapshot("b", date)).toBeNull();
+    expect(await finish(work)).toBeUndefined();
+    expect((await pool.query("SELECT count(*)::int n FROM metric_snapshots WHERE campaign_id='a' AND snapshot_type='financial_daily'")).rows[0].n).toBe(1);
+  });
+  it.each(["missing-overview", "currency", "missing-currency", "window-start", "window-end", "revenue", "conversions"])("rejects initial financial publication with invalid %s", async invalid => {
+    const work = (await claim((await request())!.id))!;
+    await publish(work);
+    if (invalid === "missing-overview") await pool.query("DELETE FROM ga4_overview_snapshots WHERE campaign_id='a'");
+    else {
+      const saved = await storage.getGA4OverviewSnapshot("a", "123");
+      const breakdown: any = structuredClone(saved!.campaignBreakdown);
+      if (invalid === "currency") breakdown.meta.currencyCode = "USD";
+      if (invalid === "missing-currency") delete breakdown.meta.currencyCode;
+      if (invalid === "revenue") breakdown.totals.revenue = null;
+      if (invalid === "conversions") breakdown.totals.conversions = -1;
+      await pool.query("UPDATE ga4_overview_snapshots SET campaign_breakdown=$1,window_start=$2,window_end=$3 WHERE campaign_id='a'", [JSON.stringify(breakdown), invalid === "window-start" ? "2000-01-01" : date, invalid === "window-end" ? "2000-01-01" : date]);
+    }
+    expect(await finish(work)).toBeUndefined();
+    expect((await storage.getCampaign("a"))?.status).toBe("draft");
+    expect(await storage.getLatestFinancialDailySnapshot("a", date)).toBeNull();
+  });
+  it("rolls initial snapshot, activation and completion back together and permits a clean retry", async () => {
+    const work = (await claim((await request())!.id))!;
+    await publish(work);
+    await pool.query("CREATE FUNCTION reject_initial_activation() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.status='active' THEN RAISE EXCEPTION 'test activation failure'; END IF; RETURN NEW; END $$");
+    await pool.query("CREATE TRIGGER reject_initial_activation BEFORE UPDATE ON campaigns FOR EACH ROW EXECUTE FUNCTION reject_initial_activation()");
+    try { await expect(finish(work)).rejects.toThrow("test activation failure"); }
+    finally { await pool.query("DROP TRIGGER reject_initial_activation ON campaigns"); await pool.query("DROP FUNCTION reject_initial_activation()"); }
+    expect((await storage.getCampaign("a"))?.status).toBe("draft");
+    expect((await storage.getGA4InitialImportWork("a", "owner-a"))?.status).toBe("running");
+    expect(await storage.getLatestFinancialDailySnapshot("a", date)).toBeNull();
+    expect(await finish(work)).toMatchObject({ status: "completed" });
+    expect(await storage.getLatestFinancialDailySnapshot("a", date)).not.toBeNull();
+  });
+  it("refuses native-only financial publication after a source is added", async () => {
+    const work = (await claim((await request())!.id))!;
+    await publish(work);
+    await database.current.insert(schema.revenueSources).values({ campaignId: "a", sourceType: "csv", currency: "EUR", platformContext: "ga4" });
+    expect(await finish(work)).toBeUndefined();
+    expect((await storage.getCampaign("a"))?.status).toBe("draft");
+    expect(await storage.getLatestFinancialDailySnapshot("a", date)).toBeNull();
   });
   it("allows one owner and rejects a worker that resumes after its lease was replaced", async () => {
     const pending = (await request())!;
@@ -271,6 +326,8 @@ describe.skipIf(!testUrl)("durable initial imports with real PostgreSQL", () => 
       expect((await storage.getCampaign("a"))?.status).toBe("active");
       expect((await pool.query("SELECT * FROM ga4_refresh_work WHERE campaign_id='a'")).rowCount).toBe(1);
       expect(await storage.getGA4DailyMetrics("a", "123", date, date)).toHaveLength(1);
+      expect(((await storage.getLatestFinancialDailySnapshot("a", date))?.metrics as any)?.financialDaily.inputs.revenue.value).toBe("100.00");
+      expect((await pool.query("SELECT count(*)::int n FROM metric_snapshots WHERE campaign_id='a' AND snapshot_type='financial_daily'")).rows[0].n).toBe(1);
       expect((await storage.getCampaign("b"))?.status).toBe("draft");
     } finally {
       if (first.child.exitCode === null && first.child.signalCode === null) { first.child.kill(); await first.exited; }

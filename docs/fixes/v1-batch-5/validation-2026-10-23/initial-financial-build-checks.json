@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-23T19:11:50.251Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "initial-financial-typecheck.log"
+    },
+    {
+      "name": "server-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "initial-financial-server-build.log"
+    }
+  ]
+}

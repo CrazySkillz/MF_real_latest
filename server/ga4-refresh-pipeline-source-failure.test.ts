@@ -508,6 +508,23 @@ describe("GA4 ordered refresh source-discovery failures", () => {
     expect(overviews.get("campaign-a")).toEqual(before);
   });
 
+  it("rebuilds a missing first financial publication for an already-active native-only campaign", async () => {
+    campaigns = campaigns.slice(0, 1);
+    mocks.storage.getRevenueSources.mockResolvedValue([]); mocks.storage.getSpendSources.mockResolvedValue([]);
+    mocks.storage.getRevenueTotalForRange.mockResolvedValue({ totalRevenue: 0, sourceIds: [] });
+    mocks.storage.getSpendTotalForRange.mockResolvedValue({ totalSpend: 0, sourceIds: [] });
+    mocks.totals.mockImplementation(async () => ({ ...totals(), revenue: 500, spend: 0 }));
+    await refreshAllGA4DailyMetrics({ campaignId: "campaign-a" });
+    expect(saved.has("campaign-a")).toBe(false);
+    mocks.storage.getLatestGA4DailyMetric.mockImplementation(async id => daily.get(id)?.at(-1));
+    mocks.storage.getFinancialDailyComparisonData.mockImplementation(async id => ({ current: saved.has(id) ? { metrics: { financialDaily: saved.get(id) } } : null, previous: null }));
+    expect(await backfillMissingGA4OverviewSnapshots()).toEqual(["campaign-a"]);
+    expect(saved.get("campaign-a")).toMatchObject({ campaignId: "campaign-a", reportingDate, currency: "EUR", inputs: {
+      revenue: { available: true, value: "500.00", sources: ["ga4"] }, spend: { available: false, value: null },
+    } });
+    expect(saved.has("campaign-b")).toBe(false);
+    expect(campaigns[0].status).toBe("active");
+  });
   it("does not mark startup recovery complete when the campaign alert stage fails", async () => {
     campaigns = campaigns.slice(0, 1);
     await runGA4DailyRefreshPipelineForCampaignNow("campaign-a");

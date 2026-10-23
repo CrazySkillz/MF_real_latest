@@ -1,0 +1,29 @@
+{
+  "observedAt": "2026-10-23T18:11:35.236Z",
+  "endpoint": "https://marketforensics.onrender.com/api/health",
+  "httpStatus": 200,
+  "response": {
+    "ok": true,
+    "commit": "714689994fc55438b47d5386d1d104057c0c28d3",
+    "nodeEnv": "production",
+    "ts": "2026-10-23T18:11:34.919Z"
+  },
+  "expectedCommit": "714689994fc55438b47d5386d1d104057c0c28d3",
+  "revisionMatches": true,
+  "signedOutProxyAccess": [
+    {
+      "path": "/api/hubspot/__v1_readonly_probe__/pipeline-proxy?platformContext=ga4",
+      "status": 401,
+      "expectedStatus": 401,
+      "pass": true
+    },
+    {
+      "path": "/api/salesforce/__v1_readonly_probe__/pipeline-proxy?platformContext=ga4",
+      "status": 401,
+      "expectedStatus": 401,
+      "pass": true
+    }
+  ],
+  "scope": "Public revision/health and signed-out proxy access only; no credentials, authenticated campaign/provider access or mutations.",
+  "acceptance": "OPEN; authenticated UI/provider and full lifecycle/downstream validation remain required"
+}

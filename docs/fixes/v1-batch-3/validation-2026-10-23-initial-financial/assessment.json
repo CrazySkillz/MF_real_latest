@@ -1,0 +1,176 @@
+{
+  "at": "2026-10-23T19:17:19.551140+00:00",
+  "baseHead": "714689994fc55438b47d5386d1d104057c0c28d3",
+  "finding": "V1-011-F1",
+  "parentFinding": "V1-011",
+  "severity": "P1",
+  "candidate": "UNCOMMITTED local fix; not deployed",
+  "fixStatus": "VERIFIED LOCALLY within recorded boundary",
+  "releaseAcceptance": "OPEN",
+  "releaseDecision": "NO-GO",
+  "symptom": "New native-only campaign has a EUR 7,653.96 GA4 source but Total Revenue is unavailable.",
+  "productionEvidence": "diagnosis.json",
+  "rootCause": "Initial import activates through complete_initial_import after native publication without creating financial_daily; the card requires that snapshot while the source modal reads native revenue.",
+  "correction": "Existing storage completion transaction validates current-attempt native receipts and exact primary-property Overview provenance, writes the shared-schema native-only financial snapshot, activates the campaign and completes work atomically. No frontend fallback, schema change, provider query or amount recomputation is added.",
+  "results": {
+    "total": 534,
+    "passed": 533,
+    "failed": 1,
+    "skipped": 0,
+    "realPostgresFiles": {
+      "ga4-initial-import-postgres.test.ts": 34,
+      "ga4-derived-publication-postgres.test.ts": 186
+    },
+    "finalByFile": [
+      {
+        "file": "financial-daily-snapshot-contract.test.ts",
+        "total": 7,
+        "passed": 7,
+        "failed": 0
+      },
+      {
+        "file": "financial-daily-snapshot-observation.test.ts",
+        "total": 5,
+        "passed": 4,
+        "failed": 1
+      },
+      {
+        "file": "financial-daily-snapshot-readiness.test.ts",
+        "total": 6,
+        "passed": 6,
+        "failed": 0
+      },
+      {
+        "file": "financial-daily-snapshot-writer.test.ts",
+        "total": 48,
+        "passed": 48,
+        "failed": 0
+      },
+      {
+        "file": "financial-snapshot-saved-ga4.test.ts",
+        "total": 48,
+        "passed": 48,
+        "failed": 0
+      },
+      {
+        "file": "ga4-derived-publication-postgres.test.ts",
+        "total": 186,
+        "passed": 186,
+        "failed": 0
+      },
+      {
+        "file": "ga4-initial-import-postgres.test.ts",
+        "total": 34,
+        "passed": 34,
+        "failed": 0
+      },
+      {
+        "file": "ga4-initial-import-route.test.ts",
+        "total": 22,
+        "passed": 22,
+        "failed": 0
+      },
+      {
+        "file": "ga4-publication-browser.test.ts",
+        "total": 1,
+        "passed": 1,
+        "failed": 0
+      },
+      {
+        "file": "ga4-refresh-pipeline-source-failure.test.ts",
+        "total": 167,
+        "passed": 167,
+        "failed": 0
+      },
+      {
+        "file": "v1-batch5-ga4-browser.test.ts",
+        "total": 10,
+        "passed": 10,
+        "failed": 0
+      }
+    ],
+    "sourceRuns": [
+      "../../v1-batch-5/validation-2026-10-23/initial-financial-related.json",
+      "../../v1-batch-5/validation-2026-10-23/initial-financial-recovery.json"
+    ]
+  },
+  "beforeFix": {
+    "run": "../../v1-batch-5/validation-2026-10-23/initial-financial-before.json",
+    "failed": 11,
+    "passed": 0,
+    "filteredOut": 22,
+    "classification": "All eleven focused new cases reproduce missing snapshot or missing provenance enforcement. Filtering is intentional; final complete files have zero skips."
+  },
+  "newCoverage": [
+    "Exact initial total, zero, signed revenue and fractional conversion credit",
+    "Primary property selected without summing secondary properties",
+    "Missing snapshot/currency, mismatched currency/date bounds, invalid revenue/conversions block activation",
+    "New external source invalidates native-only activation",
+    "Snapshot/activation/completion rollback together with a clean retry",
+    "Existing real process-kill/replay tests now require exactly one correct financial snapshot",
+    "Existing startup recovery rebuilds an already-active native-only campaign missing financial publication",
+    "Rendered GA4 card stays unavailable without the required publication, then shows its verified amount; source modal stays separate"
+  ],
+  "remainingFailure": {
+    "id": "TEST-559d5113b7",
+    "finding": "V1-012",
+    "file": "server/financial-daily-snapshot-observation.test.ts",
+    "line": 138,
+    "name": "financial daily snapshot observation keeps the GET route read-only and connects the gated writer after either refresh",
+    "classification": "STRUCTURAL_ASSERTION",
+    "reason": "Exact source-string assertion omits the existing ownership/publication argument spread in writeFinancialDailySnapshotIfReady. The assertion and both inspected schedulers are unchanged from HEAD. Neighboring behavioral tests pass, but this failed gate is not waived or marked green.",
+    "status": "FAILED; OPEN",
+    "waived": false,
+    "unchangedFiles": [
+      "server/ga4-daily-scheduler.ts",
+      "server/auto-refresh-scheduler.ts",
+      "server/financial-daily-snapshot-observation.test.ts"
+    ],
+    "evidence": "../validation-2026-10-22-timeouts/failure-reconciliation.json"
+  },
+  "builds": [
+    "../../v1-batch-5/validation-2026-10-23/initial-financial-build-checks.json",
+    "../../v1-batch-5/validation-2026-10-23/initial-financial-final-build-checks.json"
+  ],
+  "existingDataRecovery": "No production mutation. Existing missing-snapshot bootstrap uses the normal scoped pipeline after startup; new isolated regression passes. Exact deployed fixture recovery remains unverified and must be checked after deployment.",
+  "notCertified": [
+    "Deployed new-campaign creation and exact existing-fixture repair",
+    "Real GA4 provider parity beyond observed persisted aggregate",
+    "Whole-app test suite and V1-012 failures",
+    "HubSpot/Salesforce/Shopify provider acceptance, still pending",
+    "Initial-import report/alert readiness beyond the existing separate scheduler lifecycle"
+  ],
+  "isolation": {
+    "productionWrites": 0,
+    "providerCalls": 0,
+    "ptomoChanged": false,
+    "localPostgres": "127.0.0.1:55444/ga4_alignment_test",
+    "testDatabaseStopped": true
+  },
+  "manifest": [
+    {
+      "file": "server/storage.ts",
+      "sha256": "b422ba041878cafba053224dadb8a24d4289550257286a1d3f67c7058eb67b36"
+    },
+    {
+      "file": "server/ga4-initial-import-postgres.test.ts",
+      "sha256": "3307a14492a525cce4dc32d28ae85c9ceae8bb7ffe83eff9f67ebb260398a6ff"
+    },
+    {
+      "file": "server/ga4-publication-browser.test.ts",
+      "sha256": "6084b057ba273f5bd69b6647bd6eebd236f0a68361647ecfb5ba9c49929101ab"
+    },
+    {
+      "file": "server/ga4-refresh-pipeline-source-failure.test.ts",
+      "sha256": "4dd0ec9cb8291ddf4925f560cfd5a4a70213915113d0de79bb4f4649e4daead6"
+    },
+    {
+      "file": "client/src/pages/ga4-metrics.tsx",
+      "sha256": "9d5925937a11ef504691af3254d5b893ef56258c805fc4a6b9e41431519a103c"
+    },
+    {
+      "file": "shared/schema.ts",
+      "sha256": "a8b1ae661dbab3d566c7589fd37735994faf6203d2f886b347c2d05e4a456a96"
+    }
+  ]
+}

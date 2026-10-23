@@ -14,7 +14,7 @@ import { GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD, hydrateGoogleSheetsServiceAccount
 import { GOOGLE_ADS_SERVICE_ACCOUNT_METHOD, hydrateGoogleAdsServiceAccountConnection } from "./utils/google-ads-service-account";
 import { assertGa4RevenueCurrencyIntegrity, assertGa4RevenueMaterializationComplete, requiresGa4RevenueMaterializationCompleteness } from "./utils/revenue-record-total";
 import { normalizeGA4InsightsDailyMetricValues } from "../shared/ga4-insights";
-import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getLatestCompleteReportingDate, getReportingComparisonBoundary, getReportingDateEndAt, isCreatedThroughReportingDate } from "./utils/reporting-timezone";
+import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getLatestCompleteReportingDate, getReportingComparisonBoundary, getReportingDateEndAt, isCreatedThroughReportingDate, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { executiveSummaryDailySnapshotInputSchema, type ExecutiveSummaryDailySnapshotInput } from "./utils/executive-summary-daily-snapshot";
 import { createActiveCanonicalGA4KPI, isActiveGA4KPI, updateCanonicalGA4KPI as updateCanonicalGA4KPIWithGuard } from "./utils/ga4-kpi-create-guard";
 import { resolveGA4KpiMetricIdentity } from "../shared/ga4-kpi-metric-identity";
@@ -1768,7 +1768,34 @@ export class DatabaseStorage implements IStorage {
       if (action === "complete_initial_import") {
         const receipt = createHash("sha256").update(leaseToken).digest("hex");
         if (!scope.scope.connections.every((connection: any) => work.scope?.initialImportPublications?.[connection.id] === receipt)) return undefined;
-        // Activation and completion share the campaign lock and commit together.
+        // Native-only creation must publish the card's financial input in the same activation transaction.
+        const primary = scope.scope.connections.find((connection: any) => connection.isPrimary)
+          || [...scope.scope.connections].sort((a: any, b: any) => new Date(a.connectedAt).getTime() - new Date(b.connectedAt).getTime())[0];
+        const [overview] = await tx.select().from(ga4OverviewSnapshots).where(and(
+          eq(ga4OverviewSnapshots.campaignId, campaignId), eq(ga4OverviewSnapshots.propertyId, primary.propertyId),
+        )).for("share");
+        const totals = overview?.campaignBreakdown?.totals;
+        const currency = String(scope.scope.campaign.currency || "USD").trim().toUpperCase();
+        if (!overview || overview.windowStart !== (primary.importStartDate || GA4_OVERVIEW_LEGACY_IMPORT_START_DATE)
+          || overview.windowEnd !== work.reportingDate || String(overview.campaignBreakdown?.meta?.currencyCode || "").trim().toUpperCase() !== currency
+          || typeof totals?.revenue !== "number" || !Number.isFinite(totals.revenue)
+          || typeof totals?.conversions !== "number" || !Number.isFinite(totals.conversions) || totals.conversions < 0) return undefined;
+        const parsed = financialDailySnapshotInputSchema.safeParse({
+          version: "financial_daily_snapshot_v1", campaignId, reportingDate: work.reportingDate, currency,
+          currentValueWindow: { mode: "initial_import_to_latest_completed_day", startDate: overview.windowStart,
+            endDate: work.reportingDate, dataThroughDate: work.reportingDate, reportingTimeZone: normalizeReportingTimeZone(scope.scope.campaign.reportingTimeZone) },
+          inputs: { revenue: { value: totals.revenue.toFixed(2), available: true, sources: ["ga4"] },
+            conversions: { value: totals.conversions, available: true, sources: ["ga4"] },
+            spend: { value: null, available: false, sources: [] } },
+        });
+        if (!parsed.success) return undefined;
+        const { campaignId: snapshotCampaignId, reportingDate, ...financialDaily } = parsed.data;
+        await tx.insert(metricSnapshots).values({ campaignId: snapshotCampaignId, reportingDate,
+          snapshotType: "financial_daily", totalConversions: totals.conversions, metrics: { financialDaily } })
+          .onConflictDoUpdate({ target: [metricSnapshots.campaignId, metricSnapshots.reportingDate],
+            targetWhere: sql`${metricSnapshots.snapshotType} = 'financial_daily' AND ${metricSnapshots.reportingDate} IS NOT NULL`,
+            set: { totalConversions: totals.conversions, totalSpend: "0", metrics: { financialDaily }, recordedAt: sql`CURRENT_TIMESTAMP` } });
+        // Snapshot, activation and completion share the campaign lock and commit together.
         await tx.update(campaigns).set({ status: "active" }).where(and(eq(campaigns.id, campaignId), eq(campaigns.ownerId, ownerId), eq(campaigns.status, "draft")));
         completedAt = new Date();
       }

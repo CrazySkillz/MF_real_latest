@@ -35,6 +35,7 @@ describe("GA4 publication in the rendered page", () => {
     let day = "2026-10-17";
     let campaignCurrency = "EUR"; let financialCurrency = "EUR"; let financialRevenue: number | undefined; let failNative = false;
     let conversionCredit: number | undefined;
+    let financialPublished = false;
     const updatedAt = () => `${day === "2026-10-17" ? "2026-10-18" : "2026-10-19"}T${generation === 1 ? "06" : "12"}:06:00.000Z`;
     const totals = () => ({ sessions: generation === 1 ? 2977 : 3100, users: generation === 1 ? 2978 : 3101, conversions: conversionCredit ?? (generation === 1 ? 262 : 275), revenue: financialRevenue ?? (generation === 1 ? 65659.50 : 68000), engagedSessions: 2200, engagementRate: 0.724, pageviews: 4100 });
     let releaseFinancial: (() => void) | undefined;
@@ -60,6 +61,7 @@ describe("GA4 publication in the rendered page", () => {
       } else if (url.pathname.endsWith("/financial-daily-snapshot")) {
         if (waitFinancial) await waitFinancial;
         data = { success: true, snapshot: { campaignId: "a", reportingDate: day, recordedAt: updatedAt(), metrics: { financialDaily: { currency: financialCurrency, currentValueWindow: { startDate: "2026-09-04", endDate: day, reportingTimeZone: "Europe/Amsterdam" }, inputs: { revenue: { available: true, value: financialRevenue ?? totals().revenue }, spend: { available: false }, conversions: { available: true, value: totals().conversions } } } } } };
+        if (!financialPublished) data.snapshot = null;
       } else if (url.pathname.endsWith("/ga4-breakdown")) data = { success: true, propertyId: "123", startDate: "2026-09-04", endDate: day, lastUpdated: updatedAt(), totals: totals(), rows: [{ campaign: "search", campaignName: "search", ...totals(), sessionKeyEventRate: 0.088 }], revenueWindow: { source: "ga4", startDate: "2026-09-04", endDate: day }, meta: { currencyCode: "EUR" } };
       else if (url.pathname.endsWith("/ga4-to-date")) data = { success: true, propertyId: "123", startDate: "2026-09-04", endDate: day, currencyCode: "EUR", revenueMetric: "totalRevenue", totals: totals() };
       else if (url.pathname.endsWith("/ga4-conversion-events")) data = { success: true, propertyId: "123", startDate: "2026-09-04", endDate: day, lastUpdated: updatedAt(), rows: [{ eventName: "purchase", conversions: totals().conversions, eventCount: totals().conversions, users: 250 }] };
@@ -82,6 +84,15 @@ describe("GA4 publication in the rendered page", () => {
       await page.goto("http://ga4-fixture.test/campaigns/a/ga4-metrics?readOnly=1");
       await browserExpect(page.getByText("2,977", { exact: true }).first()).toBeVisible();
       await browserExpect(page.getByTestId("ga4-publication-display-status")).toHaveCount(0);
+      // Native source detail alone cannot substitute for the first synchronized financial publication.
+      const initialRevenueCard = page.getByText("Total Revenue", { exact: true }).locator("../..");
+      await browserExpect(initialRevenueCard).toContainText("Unavailable");
+      await initialRevenueCard.getByRole("button", { name: "Sources (1)", exact: true }).click();
+      await browserExpect(page.getByRole("dialog")).toContainText("€65,659.50");
+      await page.keyboard.press("Escape");
+      financialPublished = true;
+      await page.evaluate(() => (window as any).testRefreshPublication());
+      await browserExpect(initialRevenueCard).toContainText("€65,659.50");
       const dailyRequests = () => requests.filter(value => value.includes("/ga4-daily?") && !value.includes("statusOnly")).length;
       const initialDailyRequests = dailyRequests();
       await page.clock.runFor(60_000);

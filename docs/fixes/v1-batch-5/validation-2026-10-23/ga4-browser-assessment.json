@@ -1,0 +1,143 @@
+{
+  "at": "2026-10-23T18:27:55.471407+00:00",
+  "head": "714689994fc55438b47d5386d1d104057c0c28d3",
+  "candidate": "Application/runtime unchanged from deployed HEAD; new test and evidence are local and uncommitted.",
+  "finding": "V1-109",
+  "scope": "Actual GA4 Overview Revenue/Pipeline Proxy cards and source dialogs with synthetic HTTP data; adjacent consumer and page regression checks.",
+  "releaseAcceptance": "OPEN",
+  "releaseDecision": "NO-GO",
+  "results": {
+    "newGa4Browser": {
+      "file": "ga4-browser-corrected.json",
+      "total": 10,
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    "neighbors": {
+      "file": "ga4-browser-neighbors.json",
+      "total": 47,
+      "passed": 47,
+      "failed": 0,
+      "skipped": 0
+    },
+    "totalCurrentChecks": 57,
+    "passed": 57,
+    "failed": 0,
+    "skipped": 0,
+    "browserCases": 12,
+    "calculationCases": 45,
+    "typecheck": "ga4-browser-final-build-checks.json"
+  },
+  "provenLocally": [
+    "Confirmed GA4 + HubSpot + Salesforce + Shopify figures render from their mocked published responses; revenue source itemization matches those responses.",
+    "Positive HubSpot/Salesforce proxy responses render their combined amount and current modal details separately from confirmed Revenue; stale mapping amounts are ignored.",
+    "Explicit complete zero renders as zero.",
+    "Failed provider response, wrong source ID, wrong currency, missing timestamp and unreconciled item totals withhold combined proxy instead of displaying partial or stale amounts.",
+    "Failed refetch hides previously cached proxy, successful retry restores it, and confirmed Revenue stays stable.",
+    "Shopify-only configuration does not request CRM proxy APIs; removing CRM source configuration from mocked inventory removes its displayed proxy despite cached responses.",
+    "Existing GA4 publication/freshness browser, standalone Sheets proxy browser and 45 consumer calculation cases pass."
+  ],
+  "isolation": {
+    "providerCalls": 0,
+    "databaseConnections": 0,
+    "productionMutations": 0,
+    "ptomoTouched": false,
+    "testHost": "batch5-ga4-fixture.test",
+    "browserNetwork": "All requests intercepted. Other hosts and non-GET methods abort and fail the test; unknown APIs fail the test.",
+    "nodeNetwork": "Existing credential-stripped runner; DATABASE_URL empty; local-network-only preload.",
+    "stubs": [
+      "layout/auth navigation",
+      "client context",
+      "GA4/Revenue/Spend setup wizard components"
+    ],
+    "cleanup": "Each fixture closes its browser context in finally; suite closes Chromium. No server/database was started."
+  },
+  "unproven": [
+    "Actual provider permissions, credentials, returned data and pagination/quotas",
+    "Authenticated deployed UI and tenant isolation",
+    "OAuth/create/edit/reconnect/cancel/delete writes and real source cleanup",
+    "Natural scheduled provider refresh and missing-currency Salesforce recovery",
+    "Provider-to-database/reports/alerts/downstream parity and historical-data correctness",
+    "Full Custom page rendering, CSS/visual layout and setup wizard behavior"
+  ],
+  "failureClassification": [
+    {
+      "runs": [
+        {
+          "file": "ga4-browser-first.json",
+          "total": 10,
+          "passed": 0,
+          "failed": 10,
+          "skipped": 0
+        },
+        {
+          "file": "ga4-browser-diagnostic.json",
+          "total": 10,
+          "passed": 0,
+          "failed": 1,
+          "skipped": 9
+        }
+      ],
+      "classification": "Test fixture incomplete",
+      "detail": "Normal GA4 page also reads industry benchmarks, diagnostics and geography. Diagnostic run exposed these missing mocked endpoints; fixture now supplies explicit empty responses. Diagnostic nine skips are the deliberate single-test filter."
+    },
+    {
+      "runs": [
+        {
+          "file": "ga4-browser-modeled.json",
+          "total": 10,
+          "passed": 0,
+          "failed": 1,
+          "skipped": 9
+        }
+      ],
+      "classification": "Test fixture display-label mismatch",
+      "detail": "Fixture supplied lower-case custom display names while assertion expected branded labels. Fixture now supplies HubSpot/Salesforce/Shopify labels. Nine skips are the deliberate single-test filter."
+    }
+  ],
+  "previousEvidence": {
+    "manifest": "compatibility-assessment.json",
+    "all16HashesStillMatch": true,
+    "newBatch5ChecksPreviouslyPassed": 139,
+    "relatedPassed": 452,
+    "relatedFailedStillOpen": 20,
+    "relatedSkipped": 0,
+    "wholeAppFailuresLastRecorded": 179,
+    "wholeSuiteRerunThisStep": false
+  },
+  "manifest": [
+    {
+      "file": "server/v1-batch5-ga4-browser.test.ts",
+      "sha256": "71372cb97dee82cd09681fb790312cc300d6afcd88c066aeb081e3a33adc0f8a"
+    },
+    {
+      "file": "server/v1-batch5-proxy-consumers.test.ts",
+      "sha256": "4855b8e769829d08e226a70485f2b656359333605d2d8b96bed662737064c88a"
+    },
+    {
+      "file": "server/v1-batch5-proxy-browser.test.ts",
+      "sha256": "0fa2edcf2ca6e3ba93e4c99a98a2ff9840ffb160c6444473eff5b6781861f2fb"
+    },
+    {
+      "file": "server/ga4-publication-browser.test.ts",
+      "sha256": "12cf8cfdf90cb2f57aef9fdd65a720c7f911d519da32b4a0e1fb0773c49f35c4"
+    },
+    {
+      "file": "client/src/pages/ga4-metrics.tsx",
+      "sha256": "9d5925937a11ef504691af3254d5b893ef56258c805fc4a6b9e41431519a103c"
+    },
+    {
+      "file": "client/src/lib/queryClient.ts",
+      "sha256": "2d5bcc47eda8f3d162f91be4486c022c67698232a61b3858bbd78be1e08ab100"
+    },
+    {
+      "file": "client/src/pages/google-sheets-data.tsx",
+      "sha256": "ba396fce0300a4af96500571f54cfcc8636f3d659306b7ff7f29b1bbd38bd281"
+    },
+    {
+      "file": "client/src/pages/custom-integration-analytics.tsx",
+      "sha256": "eb1db3324d30ecef468dfc1553ad4f35b356c04a37e3d18360fd27ea56ff043a"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-23T18:26:26.790Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "ga4-browser-final-typecheck.log"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "at": "2026-10-23T06:39:01.891034+00:00",
+  "fixCommit": "9d928eccc18d74343990f6be35d6ecc9378ab565",
+  "files": [
+    {
+      "file": "server/routes-oauth.ts",
+      "normalizedSha256": "bcfea3adf5899443f4755af8fd3be1419f0aadf717a31bfb56e428cf06e39a9e",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/storage.ts",
+      "normalizedSha256": "a938b3e1cec267ce26a36f6fd2141f7bfc4dc789b229da9cdadd12d6f2db0320",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/v1-batch4-retained-csv-revenue.test.ts",
+      "normalizedSha256": "66bb30aeae779a47daad546acaf986de01b36f16de12f654590e238918f153d1",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/google-ads-revenue-csv-flow.test.ts",
+      "normalizedSha256": "30630d7944e5bc7bc1eb19f8ea03e204200f6fa038c57346699752ee13c484b7",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/csv-revenue-validation.test.ts",
+      "normalizedSha256": "88983a02b9dacba1f5b872d6a74732de507fe8bbadf5fe0ab3881bc108c46e95",
+      "matchesValidatedCandidate": true
+    }
+  ],
+  "result": "PASS",
+  "deployment": "Not verified; post-deployment acceptance remains open",
+  "testsRepeated": false,
+  "reason": "Committed runtime/test content matches the validated candidate; only commit status documentation follows."
+}

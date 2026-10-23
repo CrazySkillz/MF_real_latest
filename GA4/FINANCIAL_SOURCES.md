@@ -575,7 +575,7 @@ Important meaning:
 
 ## Revenue Source 5: CSV Journey
 
-October 23 shared-route safety update: [Batch 4 V1-072](../docs/fixes/v1-batch-4/README.md#retained-csv-revenue-correction-checkpoint-october-23) extends the existing complete strict CSV parser to retained non-GA4 contexts and makes their source/record replacement atomic after validation. This fixes silent last-row loss and invalid-edit data loss; it does not enable deferred providers or change GA4 formulas. Verified locally, uncommitted and undeployed; deployed and whole-source acceptance remain open. Older source certificates below retain their historical exact-scope boundary.
+October 23 shared-route safety update: [Batch 4 V1-072](../docs/fixes/v1-batch-4/README.md#retained-csv-revenue-correction-checkpoint-october-23) extends the existing complete strict CSV parser to retained non-GA4 contexts and makes their source/record replacement atomic after validation. This fixes silent last-row loss and invalid-edit data loss; it does not enable deferred providers or change GA4 formulas. Verified locally and committed in `9d928ecc`; deployment verification and whole-source acceptance remain open. Older source certificates below retain their historical exact-scope boundary.
 
 The user journey is:
 

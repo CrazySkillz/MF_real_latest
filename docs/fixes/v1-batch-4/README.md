@@ -6,11 +6,11 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 4 status
 
-**IN PROGRESS.** Ten corrections are VERIFIED LOCALLY: V1-040/041/065/066/067/070/071/072/073/126. Fourteen findings still need implementation; all 24 release acceptances remain OPEN. V1-072 is uncommitted and undeployed. The earlier nine corrections are deployed in `eb3fca00`; public checks pass, with authenticated import/provider acceptance still open. No provider call or production-data cleanup was performed.
+**IN PROGRESS.** Ten corrections are VERIFIED LOCALLY: V1-040/041/065/066/067/070/071/072/073/126. Fourteen findings still need implementation; all 24 release acceptances remain OPEN. V1-072 is committed in `9d928ecc`; deployment verification is pending. The earlier nine corrections are deployed in `eb3fca00`; public checks pass, with authenticated import/provider acceptance still open. No provider call or production-data cleanup was performed.
 
 ## Retained CSV Revenue correction checkpoint (October 23)
 
-**V1-072: VERIFIED LOCALLY; release acceptance OPEN.** The correction is uncommitted on base `eb3fca00f62dd8229b12a972956fc06e026281a2`. This protects the existing shared CSV API; LinkedIn, Instagram, Meta and TikTok provider-functional work remains deferred.
+**V1-072: VERIFIED LOCALLY; release acceptance OPEN.** The correction is committed in `9d928eccc18d74343990f6be35d6ecc9378ab565` on base `eb3fca00`. [Commit verification](validation-2026-10-23-retained-csv/commit-checkpoint.json) confirms all five runtime/test files match the validated candidate. Dated test manifests retain their original pre-commit state; deployment verification remains pending. This protects the existing shared CSV API; LinkedIn, Instagram, Meta and TikTok provider-functional work remains deferred.
 
 **Confirmed root cause:** `POST /api/campaigns/:id/revenue/csv/preview` and `/process` used the non-strict parser outside GA4. Its limit counted the header and stopped parsing, silently dropping data row 50,000; a physical-line precheck also rejected valid multiline fields. The non-GA4 process branch updated/created a source and deleted its records before validating conversion values or inserting replacement records. Invalid conversion edits returned 400 after data loss, and insert failure could leave partial state. The existing shared wizard sends this context and source ID from `client/src/components/AddRevenueWizardModal.tsx:1507,1604`; retained API accessibility is not evidence of configured provider support.
 
@@ -139,7 +139,7 @@ The user authorized Batch 4 while the deployed Batch 3 revision awaits its first
 | Custom Integration parser/publication, transfers, XLSX bounds/selection and metric meaning | V1-028, V1-029, V1-031, V1-102, V1-103, V1-111, V1-120 |
 | Retained manual-Spend and cross-source transfer safeguards | V1-068, V1-069 |
 
-The next implementation group is standalone Sheets (V1-051/108/112/113/114), followed by the remaining groups above. V1-072 is verified locally and awaits commit/deployment. The earlier nine corrections are deployed in `eb3fca00`; acceptance remains open. Four-provider functional work remains deferred; shared retained-route safety remains required. No completion estimate or additional exclusion is inferred.
+The next implementation group is standalone Sheets (V1-051/108/112/113/114), followed by the remaining groups above. V1-072 is verified locally and committed in `9d928ecc`; deployment verification is pending. The earlier nine corrections are deployed in `eb3fca00`; acceptance remains open. Four-provider functional work remains deferred; shared retained-route safety remains required. No completion estimate or additional exclusion is inferred.
 
 ## Scope and acceptance
 

@@ -6,11 +6,62 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 4 status
 
-**IN PROGRESS.** Ten corrections are VERIFIED LOCALLY: V1-040/041/065/066/067/070/071/072/073/126. Fourteen findings still need implementation; all 24 release acceptances remain OPEN. V1-072 is committed in `9d928ecc`; deployment verification is pending. The earlier nine corrections are deployed in `eb3fca00`; public checks pass, with authenticated import/provider acceptance still open. No provider call or production-data cleanup was performed.
+**IN PROGRESS.** Ten corrections are VERIFIED LOCALLY: V1-040/041/065/066/067/070/071/072/073/126. Fourteen findings still need implementation, including the partially corrected V1-051 selection path; all 24 release acceptances remain OPEN. V1-072 is committed in `9d928ecc` and deployed in `841d560e`, including the earlier nine corrections. Public deployment checks pass; authenticated import/provider acceptance remains open. No provider call or production-data cleanup was performed.
+
+## Standalone Sheets selection checkpoint (October 23)
+
+**V1-051: IN PROGRESS; selection correction verified locally, uncommitted and undeployed on base `841d560e`.** This is the next bounded Batch 4 correction. The remaining completeness/cache/aggregate boundaries in V1-051 are still open; the number of fully locally verified findings remains ten, with 14 findings requiring further implementation. All 24 release acceptances remain OPEN.
+
+**Root cause and exact path.** `client/src/pages/google-sheets-data.tsx` resolved a missing URL selection to the primary dataset and retained another dataset's placeholder figures during a switch. Its registered `GET /api/campaigns/:id/google-sheets-data` in `server/routes-oauth.ts` independently substituted spreadsheet-only/primary matches when a composite selection failed. Campaign-name substring matching admitted similarly named campaigns; an empty match reverted to every row. Malformed saved mappings fell back to header detection, and a name selection could be paired with an unrelated ID column. The conversion-value branch then independently read/transformed the original unfiltered rows. An actual-handler fixture selecting Alpha (Revenue 10 / Conversions 2) produced campaign conversion value 166.67 from all three campaigns instead of 5.00.
+
+**Small correction, existing architecture.** Explicit dataset selection now requires one active main/general connection in the campaign: missing selections return 404, ambiguous/non-scalar selectors return 400. Omitted selection retains the primary/first default and empty no-connection response. Selected campaign values remain paired with their own validated column; malformed, moved or duplicate mapped selection headers return a recoverable 400. Explicit selected values are not intersected with unrelated connected-platform labels. Legacy campaign-name matching is exact after existing trim/case normalization; no-match remains empty, including platform-only no-match. Numeric identifier zero is preserved. Summary/table rows, categorical breakdowns, Insights inputs and this route's conversion fallbacks/transformations share the same selected row boundary; empty selections do not overwrite campaign conversion values. The page keeps explicit missing/ambiguous selections for the API to reject, does not show another dataset as selected, and retains placeholder figures only for the same dataset. Its error screen reuses the existing Edit Mappings dialog with cancellation.
+
+**Files changed.** Runtime: `server/routes-oauth.ts`, `client/src/pages/google-sheets-data.tsx`. Regression coverage: `server/v1-batch4-standalone-sheets-scope.test.ts`, `server/v1-batch4-standalone-sheets-browser.test.ts`, and two localized assertions in `server/google-sheets-aggregate-source.test.ts`. No schema, storage, scheduler, source onboarding or financial formula changes. Existing middleware remains registered; storage's `getGoogleSheetsConnections(campaignId)` query remains campaign-scoped. No production/Ptomo/provider access, database fixture, persisted-data cleanup or deployment was performed.
+
+**Validation.** [Assessment and candidate hashes](validation-2026-10-23-standalone-sheets-scope/assessment.json), [initial failing cases](validation-2026-10-23-standalone-sheets-scope/baseline.json), [final results](validation-2026-10-23-standalone-sheets-scope/complete.json), and [build checks](validation-2026-10-23-standalone-sheets-scope/verified-build-checks.json). Final packet: **118 passed, zero failed, zero skipped**: 57 new actual-handler cases, one isolated rendered-page browser scenario, and 60 neighboring assertions. The route uses current AST-extracted handlers/helpers plus actual transformation utilities; Google and storage are fixtures. Both cached/live paths, exact/ambiguous/missing/removed/reconnected selections, mapping edits and malformed columns, zero identifiers, no-match preservation, conversion writes, forced refresh and 403/404/429/500 provider errors are covered. The browser covers the actual page, query/error handling, mapping dialog opening/cancellation and a delayed tab switch without previous-tab figures; the mapping editor body, authentication and provider requests are isolated. It does not validate a real mapping save or Google OAuth. All external browser requests are blocked/fulfilled by fixtures.
+
+The neighboring failure `TEST-6d4794df4c` was an obsolete comment delimiter in the Spend totals source-extraction test, reproduced before this change. Its boundary now uses the next registered route, retaining every platform/source/total assertion; it passes. A stale Summary source-text expectation was updated to the corrected row boundary. The first sandbox test launch failed with child-process `EPERM`; the same isolated runner then executed with child-process permission. The browser initially exposed the real frontend fallback, which was corrected and retested. These are classified evidence, not waived failures. TypeScript and client/server production builds pass. This targeted packet does not replace the October 22 whole-suite result or close V1-012/CI.
+
+**Lifecycle and downstream boundary.**
+
+| Path | Current evidence / remaining gate |
+| --- | --- |
+| Main dataset add, edit/save mappings | Read contract traced from existing connection/mapping fields; next-read selection changes covered. Save transaction, header preview and full onboarding not recertified. |
+| Removed/inactive/child/reconnected dataset | Actual GET rejection and replacement-ID recovery covered with isolated storage fixtures; real delete/reconnect transaction and ownership races remain unverified here. |
+| Cached/fresh/forced read | Same selected rows and provider failure rejection covered. The existing `A1:Z1000` limit, cache freshness/completeness and token lifecycle are not fixed by this checkpoint. |
+| Summary/table/categorical/Insights | Same scoped input rows proven. Numerical semantics and full Insights correctness remain separate gates. |
+| Conversion calculations and campaign write | Cannot escape selected rows; exact fixture writes 5.00 and empty selection preserves the prior value. Cross-platform denominator/formula semantics, save-mappings' separate conversion branch and historical damaged conversion values remain open. |
+| KPIs/Benchmarks/browser reports | Current callers use this GET/saved dataset selection; scoped input correction carries through. Ratio/zero/financial propagation and report output parity remain open under V1-108/112/114. |
+| Scheduler/cache, aggregate, scheduled report | Independent paths remain uncorrected/unverified under V1-051/113; do not infer safety from this GET correction. |
+| Deployed/provider/cleanup | Not run. No existing records rewritten. Inventory exact saved source/configuration before any historical correction; never reconstruct unknown allocations. |
+
+**Documentation contradiction.** The older Google Sheets tracker describes selected-source and downstream normalization as locally covered. The current code and failing fixtures above contradict whole-path safety; its historical milestones do not certify this revision. V1 findings and this bounded checkpoint govern current status.
+
+**Next:** finish V1-051's complete bounded reads and cache/aggregate publication checks, then the remaining standalone Sheets zero/formula/report items. Do not wait for Ptomo's CSV completed-day inclusion to do independent local work. This read-selection fix has no database migration or configuration change; rolling back restores the incorrect fallback behavior and is not an analytics-safe certification. Production/provider acceptance is still required after an authorized commit/push/deployment.
+
+## Retained CSV Revenue deployment verification (October 23)
+
+At 08:48 Europe/Amsterdam (06:48 UTC), three read-only `/api/health` responses independently confirmed `841d560e7b452724129002e9fbec589369297948`, `nodeEnv=production` and successful readiness. This includes V1-072 runtime fix `9d928ecc` and the earlier Batch 4 corrections. The homepage and `/health` returned 200; signed-out `/api/campaigns` returned 401. [Recorded observations](deployment-2026-10-23-retained-csv/public-verification.json) and [read-only checker](deployment-2026-10-23-retained-csv/verify-public.cjs).
+
+The scheduler is healthy and registered with the unchanged 08:00/14:00/20:00 Amsterdam schedule and `runOnStartup=false`. This process started at 08:43, after the morning slot; its next run is October 23 at 14:00 Amsterdam, through October 22. Its idle/no-completed-run status does not establish a missed refresh or describe an earlier process. CSV imports are manual and their UI/API validation does not require waiting for that scheduled run.
+
+**Passed:** exact deployed revision, basic readiness, homepage availability, signed-out campaign-list denial and scheduler registration. **Still open:** authenticated CSV upload/edit UI regression, deployed retained-route failure/rollback checks using isolated fixtures, provider values, natural refresh completion and full source/downstream acceptance. No campaign data, uploads, cleanup, manual refresh, database mutation or provider calls were used. No release gate or finding acceptance is closed by these public checks.
+
+## User-supplied CSV upload screenshots (October 23)
+
+**Partial UI evidence, not completed acceptance.** The screenshots show Total Revenue EUR 72,879.50 and two sources: native GA4 EUR 72,879.50 plus `test_csv.csv` EUR 150.00. The CSV is explicitly pending, with EUR 0.00 included through October 22. The card therefore reconciles to the displayed eligible source values. Current code at `server/routes-oauth.ts:3733` and `server/storage.ts:3340,3412` separately exposes latest imported values and filters completed-day contributions by both source creation time and record date; `client/src/pages/ga4-metrics.tsx:7358,7428` renders that distinction. A new source created after the cutoff can remain pending even when its rows have earlier dates.
+
+The later original-file screenshot shows July 1, 2026 / Alpha / 100, July 2 / Alpha / 50 and July 3 / Beta / 1100. Alpha-only selection totals EUR 150.00; all three rows total EUR 1,250.00. The displayed EUR 150.00 therefore reconciles conditionally to Alpha-only selection, but the saved selection and Date mapping have not been shown or independently read. Campaign identity and the screenshot's exact live revision were not independently captured. Upload/source visibility, invalid-replacement retention and successful valid edit have supporting user evidence as recorded below; completed-day inclusion and corrected non-GA4 route acceptance remain open. This GA4 screenshot does not certify retained non-GA4 paths. No application mutation was performed by the agent while reviewing these screenshots.
+
+**Date/schedule clarification checked against current code:** CSV upload is manual; a scheduled refresh does not reread the user's local file. When Date is mapped, the three dates determine the materialized revenue days, not the configured refresh times. The July dates precede the October 22 cutoff and are not themselves a reason for the pending state. A source created on October 23 is independently excluded by the source-created-through-October-22 rule until the reporting cutoff includes October 23, even when its records are historical. If no Date is mapped, this Revenue route retains its existing completed-day snapshot fallback instead. No mapping or date changes were requested or made.
+
+**Invalid replacement follow-up: user-observed UI check PASSED.** The user screenshots show `abv` in the first Revenue data row and the application's `CSV import failed` error identifying CSV row 2 as an unsupported/ambiguous amount. The subsequent reopened Revenue Sources screenshot still shows `test_csv.csv` and its CSV group at EUR 150.00, with native GA4 EUR 72,879.50 and pending CSV contribution EUR 0.00 through October 22 unchanged. Together these screenshots support visible rejection and retention of the previously displayed source value for this exact test. No database/API capture or reload persistence check was independently performed; this bounded UI pass does not close full V1-072 or Batch 4 acceptance. No further repetition of this same UI check is required absent new changes or contradictory evidence.
+
+**Valid replacement follow-up: user-observed UI check PASSED.** After instructions to change Alpha's 100 to 200, keep its other 50 and save an edit with Alpha only selected, the user supplied a Revenue Sources screenshot showing CSV EUR 250.00 and one visible child entry, named `test_csv.csv.csv`, also at EUR 250.00. That matches the instructed 200 + 50 expectation, with no additional visible CSV source entry. Native GA4 remains EUR 72,879.50 and the CSV contribution through October 22 remains pending at EUR 0.00. The screenshot proves the visible updated value within this manual test; a stable persisted source ID, saved mapping and reload/database persistence were not independently captured. No repeat of this same valid-edit UI check is needed absent new changes or contradictory evidence. Completed-day inclusion, retained non-GA4 route acceptance and full Batch 4 release acceptance remain open.
 
 ## Retained CSV Revenue correction checkpoint (October 23)
 
-**V1-072: VERIFIED LOCALLY; release acceptance OPEN.** The correction is committed in `9d928eccc18d74343990f6be35d6ecc9378ab565` on base `eb3fca00`. [Commit verification](validation-2026-10-23-retained-csv/commit-checkpoint.json) confirms all five runtime/test files match the validated candidate. Dated test manifests retain their original pre-commit state; deployment verification remains pending. This protects the existing shared CSV API; LinkedIn, Instagram, Meta and TikTok provider-functional work remains deferred.
+**V1-072: VERIFIED LOCALLY; release acceptance OPEN.** The correction is committed in `9d928eccc18d74343990f6be35d6ecc9378ab565` on base `eb3fca00`. [Commit verification](validation-2026-10-23-retained-csv/commit-checkpoint.json) confirms all five runtime/test files match the validated candidate. Dated test manifests retain their original pre-commit state. Runtime `841d560e` is independently verified live; the public checks below pass, with authenticated import acceptance still open. This protects the existing shared CSV API; LinkedIn, Instagram, Meta and TikTok provider-functional work remains deferred.
 
 **Confirmed root cause:** `POST /api/campaigns/:id/revenue/csv/preview` and `/process` used the non-strict parser outside GA4. Its limit counted the header and stopped parsing, silently dropping data row 50,000; a physical-line precheck also rejected valid multiline fields. The non-GA4 process branch updated/created a source and deleted its records before validating conversion values or inserting replacement records. Invalid conversion edits returned 400 after data loss, and insert failure could leave partial state. The existing shared wizard sends this context and source ID from `client/src/components/AddRevenueWizardModal.tsx:1507,1604`; retained API accessibility is not evidence of configured provider support.
 
@@ -139,7 +190,7 @@ The user authorized Batch 4 while the deployed Batch 3 revision awaits its first
 | Custom Integration parser/publication, transfers, XLSX bounds/selection and metric meaning | V1-028, V1-029, V1-031, V1-102, V1-103, V1-111, V1-120 |
 | Retained manual-Spend and cross-source transfer safeguards | V1-068, V1-069 |
 
-The next implementation group is standalone Sheets (V1-051/108/112/113/114), followed by the remaining groups above. V1-072 is verified locally and committed in `9d928ecc`; deployment verification is pending. The earlier nine corrections are deployed in `eb3fca00`; acceptance remains open. Four-provider functional work remains deferred; shared retained-route safety remains required. No completion estimate or additional exclusion is inferred.
+The current implementation group is standalone Sheets (V1-051/108/112/113/114). V1-051 selection is locally corrected; complete bounded reads and cache/aggregate publication are next, followed by the other remaining groups above. V1-072 is verified locally, committed in `9d928ecc` and deployed in `841d560e` with the earlier nine corrections; public checks pass and acceptance remains open. Four-provider functional work remains deferred; shared retained-route safety remains required. No completion estimate or additional exclusion is inferred.
 
 ## Scope and acceptance
 
@@ -170,7 +221,7 @@ These records retain their own dates and verification limits. Use the current fi
 | [V1-031](#v1-031) | P1 | OPEN | OPEN |
 | [V1-040](#v1-040) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-041](#v1-041) | P1 | VERIFIED LOCALLY | OPEN |
-| [V1-051](#v1-051) | P1 | OPEN | OPEN |
+| [V1-051](#v1-051) | P1 | IN PROGRESS | OPEN |
 | [V1-065](#v1-065) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-066](#v1-066) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-067](#v1-067) | P1 | VERIFIED LOCALLY | OPEN |
@@ -256,7 +307,7 @@ Routes6765/6905 fetch fixed `A1:ZZ5000` without completeness check; exact proces
 
 ### V1-051
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** IN PROGRESS. **Release acceptance:** OPEN.
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
@@ -264,7 +315,7 @@ Routes6765/6905 fetch fixed `A1:ZZ5000` without completeness check; exact proces
 
 Main GET21785/21987 and `auto-refresh-scheduler.ts:813` read A1:Z1000. Exact refresh fixture caches999 rows as fresh without completeness check; page warns but aggregate consumers sum cached rows. Composite lookup can substitute another tab21834 and summary can broaden unmatched campaign to all rows22330. Scope/date/partial-data contracts must be enforced or effectively excluded.
 
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
+**Implementation / validation:** Selection/read correction VERIFIED LOCALLY within the [October 23 scope checkpoint](#standalone-sheets-selection-checkpoint-october-23): 118 passing targeted checks, including cached/live handler scope and rendered-page error/recovery/tab switching. Uncommitted/undeployed on `841d560e`. Completeness, scheduler/cache/aggregate publication and full source/downstream acceptance remain OPEN; V1-051 is IN PROGRESS, not fully fixed.
 
 ### V1-065
 

@@ -510,11 +510,12 @@ export default function GoogleSheetsData() {
       
       // Verify the selected connection exists
       // identifier can be sheetName or connectionId (for tabs without sheetName)
-      const selectedConn = googleSheetsConnections.find((conn: any) =>
+      const selectedConnections = googleSheetsConnections.filter((conn: any) =>
         conn.spreadsheetId === spreadsheetId &&
         (identifier === null || conn.sheetName === identifier || conn.id === identifier)
       );
-      if (selectedConn) return getGoogleSheetsConnectionValue(selectedConn);
+      if (selectedConnections.length === 1) return getGoogleSheetsConnectionValue(selectedConnections[0]);
+      return selectedSpreadsheetId; // Let the API reject a missing/ambiguous selection; never substitute another tab.
     }
     // Default to primary or first connection
     const defaultConn = primaryConnection || googleSheetsConnections[0];
@@ -606,7 +607,7 @@ export default function GoogleSheetsData() {
     refetchOnWindowFocus: true, // Refresh when user returns to tab
     staleTime: 0, // Always consider data stale - force fresh fetch
     gcTime: 30000, // Keep data in cache for 30 seconds for smooth transitions
-    placeholderData: (previousData) => previousData, // Keep previous data visible during fetch for smooth transition
+    placeholderData: (previousData, previousQuery) => previousQuery?.queryKey[3] === activeSpreadsheetId ? previousData : undefined,
       queryFn: async () => {
         let response: Response;
         try {
@@ -669,7 +670,7 @@ export default function GoogleSheetsData() {
         const errorMessage = errorData.error || errorData.message || `Failed to fetch Google Sheets data (${response.status})`;
         const error = new Error(errorMessage) as any;
         error.status = response.status;
-        error.errorCode = errorData.error;
+        error.errorCode = errorData.code || errorData.error;
         throw error;
       }
       
@@ -2251,6 +2252,7 @@ export default function GoogleSheetsData() {
                           (identifier === null || conn.sheetName === identifier || conn.id === identifier)
                         );
                         if (exists) return activeSpreadsheetId;
+                        return ''; // A removed selection must not display another tab as selected.
                       }
                       // Default to first connection if available
                       const defaultConn = googleSheetsConnections[0];
@@ -2326,6 +2328,14 @@ export default function GoogleSheetsData() {
                     : sheetsError.message || 'Failed to fetch Google Sheets data'}
                 </p>
                 <div className="flex gap-3 justify-center">
+                  {(sheetsError as any)?.errorCode === 'GOOGLE_SHEETS_MAPPING_INVALID' && activeGoogleSheetsConnection && (
+                    <Button onClick={() => {
+                      setMappingConnectionId(activeGoogleSheetsConnection.id);
+                      setShowMappingInterface(true);
+                    }}>
+                      Edit Mappings
+                    </Button>
+                  )}
                   {sheetsError.message.includes('TOKEN_EXPIRED') || sheetsError.message.includes('401') || (sheetsError as any)?.requiresReauthorization ? (
                     <Link href={`/campaigns/${campaignId}`}>
                       <Button>

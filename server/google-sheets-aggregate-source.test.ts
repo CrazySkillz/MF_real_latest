@@ -182,7 +182,7 @@ describe("Google Sheets aggregate source adapter", () => {
     const spendTotalsRoute = sliceBetween(
       routes,
       'app.get("/api/campaigns/:id/spend-totals"',
-      '// Spend across all available mapped records'
+      'app.get("/api/campaigns/:id/spend-to-date"'
     );
 
     expect(spendTotalsRoute).toContain("if (platformContext) {");
@@ -312,7 +312,7 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(routes).toContain("const campaignFilterValueSet = new Set(campaignFilterValues);");
     expect(routes).toContain("const hasMappedCampaignFilter = mappedCampaignColumnIndex >= 0 && mappedCampaignValues.length > 0;");
     expect(routes).toContain("campaignFilterValueSet.has(campaignNameValue)");
-    expect(routes).toContain("const rowsForSummary = hasMappedCampaignFilter");
+    expect(routes).toContain("const rowsForSummary = filteredRowsForSummary;");
     expect(routes).toContain("data: rowsForSummary");
     expect(routes).not.toContain("data: allRows");
     expect(page).toContain("(sheetsData.filteredRows ?? sheetsData.data?.length ?? sheetsData.totalRows).toLocaleString()");

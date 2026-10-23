@@ -1,0 +1,453 @@
+{
+  "at": "2026-10-23T08:57:28.761Z",
+  "baseHead": "841d560e7b452724129002e9fbec589369297948",
+  "state": "Local working-tree candidate; not committed, pushed or deployed",
+  "finding": "V1-051",
+  "fixStatus": "IN PROGRESS",
+  "releaseAcceptance": "OPEN",
+  "scope": "Exact standalone Sheets dataset/campaign read scope, dependent conversion input scope and rendered-page recovery/tab switching",
+  "candidate": [
+    {
+      "file": "server/routes-oauth.ts",
+      "sha256LF": "cb169a355ef5caf120c8074ca7a10c3ae304b492f2d088300ecbcc541b758ea3"
+    },
+    {
+      "file": "client/src/pages/google-sheets-data.tsx",
+      "sha256LF": "0c90b04d03044c9f155ad516b38253d0087ed3d24d46da426f7ce4bca4ed2108"
+    },
+    {
+      "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+      "sha256LF": "e47a401ae21630405a5a5cbf485a85741a524ae36e383bd73e0a5ccb50780a49"
+    },
+    {
+      "file": "server/v1-batch4-standalone-sheets-browser.test.ts",
+      "sha256LF": "5487fa43b6a9887e183ede6243add0412c104e4b60be28d20c597413a030ee1a"
+    },
+    {
+      "file": "server/google-sheets-aggregate-source.test.ts",
+      "sha256LF": "940b2f2bad2e77d3fca0b762a13e51d9d77e8f58066a180e783844ffbb14be88"
+    }
+  ],
+  "runs": [
+    {
+      "label": "baseline",
+      "total": 103,
+      "passed": 62,
+      "failed": 41,
+      "skipped": 0,
+      "failures": [
+        {
+          "file": "server/google-sheets-aggregate-source.test.ts",
+          "name": "Google Sheets aggregate source adapter filters Google Sheets spend totals by google_sheets platformContext for derived financial cards",
+          "firstFailure": "AssertionError: expected -1 to be greater than 151094",
+          "classification": "TEST-6d4794df4c: obsolete comment delimiter; replaced with next registered route, all assertions retained",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=true) does not substitute another dataset for book:missing",
+          "firstFailure": "AssertionError: expected 200 to be 404 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=true) does not substitute another dataset for missing:tab-a",
+          "firstFailure": "AssertionError: expected 200 to be 404 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=true) does not substitute another dataset for missing",
+          "firstFailure": "AssertionError: expected 200 to be 404 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=true) rejects ambiguous legacy spreadsheet-only selection but keeps the default primary",
+          "firstFailure": "AssertionError: expected 200 to be 400 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=true) keeps exact supported selection book:tab-a and exact campaign rows",
+          "firstFailure": "AssertionError: expected [ [ 'Alpha', '10', '2' ], …(1) ] to deeply equal [ [ 'Alpha', '10', '2' ] ]",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=true) keeps exact supported selection book:Main and exact campaign rows",
+          "firstFailure": "AssertionError: expected [ [ 'Alpha', '10', '2' ], …(1) ] to deeply equal [ [ 'Alpha', '10', '2' ] ]",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=true) keeps exact supported selection book and exact campaign rows",
+          "firstFailure": "AssertionError: expected [ [ 'Alpha', '10', '2' ], …(1) ] to deeply equal [ [ 'Alpha', '10', '2' ] ]",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=true) keeps an unmatched campaign empty and does not overwrite its saved conversion value",
+          "firstFailure": "AssertionError: expected [ [ 'Alpha', '10', '2' ], …(2) ] to deeply equal []",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=true) preserves explicit multiple selected values even when the app campaign label differs",
+          "firstFailure": "AssertionError: expected [ [ 'Campaign Name', …(2) ], …(3) ] to deeply equal [ [ 'Campaign Name', …(2) ], …(2) ]",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=true) does not drop explicitly selected rows based on unrelated connected platforms",
+          "firstFailure": "AssertionError: expected undefined to be 10 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=true) does not broaden a platform-only no-match",
+          "firstFailure": "AssertionError: expected [ [ 'Unrelated', '999' ] ] to deeply equal []",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=true) rejects broken saved selection before deriving values: \"bad-json\"",
+          "firstFailure": "AssertionError: expected 200 to be 400 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=true) rejects broken saved selection before deriving values: \"{}\"",
+          "firstFailure": "AssertionError: expected 200 to be 400 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=true) rejects broken saved selection before deriving values: {\"targetFieldId\":\"campaign_name\",\"sourceColumnIndex\":20,\"sourceColumnName\":\"Campaign Name\",\"selectedValues\":[\"Alpha\"]}",
+          "firstFailure": "AssertionError: expected 200 to be 400 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=true) rejects broken saved selection before deriving values: {\"targetFieldId\":\"campaign_name\",\"sourceColumnIndex\":0,\"sourceColumnName\":\"Removed column\",\"selectedValues\":[\"Alpha\"]}",
+          "firstFailure": "AssertionError: expected 200 to be 400 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=true) keeps selected campaign-name values paired with their column when an unselected ID mapping exists",
+          "firstFailure": "AssertionError: expected undefined to be 10 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=true) uses the same selected rows for conversion-value side effects",
+          "firstFailure": "AssertionError: expected \"vi.fn()\" to be called with arguments: [ 'a', { conversionValue: '5.00' } ]\u001b[90m",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=false) does not substitute another dataset for book:missing",
+          "firstFailure": "AssertionError: expected 200 to be 404 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=false) does not substitute another dataset for missing:tab-a",
+          "firstFailure": "AssertionError: expected 200 to be 404 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=false) does not substitute another dataset for missing",
+          "firstFailure": "AssertionError: expected 200 to be 404 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=false) rejects ambiguous legacy spreadsheet-only selection but keeps the default primary",
+          "firstFailure": "AssertionError: expected 200 to be 400 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=false) keeps exact supported selection book:tab-a and exact campaign rows",
+          "firstFailure": "AssertionError: expected [ [ 'Alpha', '10', '2' ], …(1) ] to deeply equal [ [ 'Alpha', '10', '2' ] ]",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=false) keeps exact supported selection book:Main and exact campaign rows",
+          "firstFailure": "AssertionError: expected [ [ 'Alpha', '10', '2' ], …(1) ] to deeply equal [ [ 'Alpha', '10', '2' ] ]",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=false) keeps exact supported selection book and exact campaign rows",
+          "firstFailure": "AssertionError: expected [ [ 'Alpha', '10', '2' ], …(1) ] to deeply equal [ [ 'Alpha', '10', '2' ] ]",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=false) keeps an unmatched campaign empty and does not overwrite its saved conversion value",
+          "firstFailure": "AssertionError: expected [ [ 'Alpha', '10', '2' ], …(2) ] to deeply equal []",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=false) preserves explicit multiple selected values even when the app campaign label differs",
+          "firstFailure": "AssertionError: expected [ [ 'Campaign Name', …(2) ], …(3) ] to deeply equal [ [ 'Campaign Name', …(2) ], …(2) ]",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=false) does not drop explicitly selected rows based on unrelated connected platforms",
+          "firstFailure": "AssertionError: expected undefined to be 10 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=false) does not broaden a platform-only no-match",
+          "firstFailure": "AssertionError: expected [ [ 'Unrelated', '999' ] ] to deeply equal []",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=false) rejects broken saved selection before deriving values: \"bad-json\"",
+          "firstFailure": "AssertionError: expected 200 to be 400 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=false) rejects broken saved selection before deriving values: \"{}\"",
+          "firstFailure": "AssertionError: expected 200 to be 400 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=false) rejects broken saved selection before deriving values: {\"targetFieldId\":\"campaign_name\",\"sourceColumnIndex\":20,\"sourceColumnName\":\"Campaign Name\",\"selectedValues\":[\"Alpha\"]}",
+          "firstFailure": "AssertionError: expected 200 to be 400 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=false) rejects broken saved selection before deriving values: {\"targetFieldId\":\"campaign_name\",\"sourceColumnIndex\":0,\"sourceColumnName\":\"Removed column\",\"selectedValues\":[\"Alpha\"]}",
+          "firstFailure": "AssertionError: expected 200 to be 400 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=false) keeps selected campaign-name values paired with their column when an unselected ID mapping exists",
+          "firstFailure": "AssertionError: expected undefined to be 10 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "V1-051 standalone Sheets selection (cached=false) uses the same selected rows for conversion-value side effects",
+          "firstFailure": "AssertionError: expected \"vi.fn()\" to be called with arguments: [ 'a', { conversionValue: '5.00' } ]\u001b[90m",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "standalone Sheets connection lifecycle boundaries rejects unavailable/child selection: {\"isActive\":false}",
+          "firstFailure": "AssertionError: expected 200 to be 404 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "standalone Sheets connection lifecycle boundaries rejects unavailable/child selection: {\"purpose\":\"revenue\"}",
+          "firstFailure": "AssertionError: expected 200 to be 404 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "standalone Sheets connection lifecycle boundaries rejects unavailable/child selection: {\"purpose\":\"spend\"}",
+          "firstFailure": "AssertionError: expected 200 to be 404 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "standalone Sheets connection lifecycle boundaries rejects unavailable/child selection: {\"spreadsheetId\":\"pending\"}",
+          "firstFailure": "AssertionError: expected 200 to be 404 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "standalone Sheets connection lifecycle boundaries does not reuse a removed connection after reconnect, but accepts the new ID",
+          "firstFailure": "AssertionError: expected 200 to be 404 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+          "name": "standalone Sheets connection lifecycle boundaries keeps scoped ownership lookup and empty default behavior",
+          "firstFailure": "AssertionError: expected 200 to be 404 // Object.is equality",
+          "classification": "Confirmed current route scope/mapping defect; fixed and handler-retested",
+          "waived": false
+        }
+      ]
+    },
+    {
+      "label": "fixed",
+      "total": 103,
+      "passed": 101,
+      "failed": 2,
+      "skipped": 0,
+      "failures": [
+        {
+          "file": "server/google-sheets-aggregate-source.test.ts",
+          "name": "Google Sheets aggregate source adapter filters Google Sheets spend totals by google_sheets platformContext for derived financial cards",
+          "firstFailure": "AssertionError: expected -1 to be greater than 151094",
+          "classification": "TEST-6d4794df4c: obsolete comment delimiter; replaced with next registered route, all assertions retained",
+          "waived": false
+        },
+        {
+          "file": "server/google-sheets-aggregate-source.test.ts",
+          "name": "Google Sheets aggregate source adapter keeps Google Sheets Summary tab values display-safe for identifiers and non-additive metrics",
+          "firstFailure": "AssertionError: expected 'import type { Express } from \"express…' to contain 'const rowsForSummary = hasMappedCampa…'",
+          "classification": "Old source-text assertion for changed row-filter expression; updated alongside behavioral regression tests",
+          "waived": false
+        }
+      ]
+    },
+    {
+      "label": "final",
+      "total": 117,
+      "passed": 116,
+      "failed": 1,
+      "skipped": 0,
+      "failures": [
+        {
+          "file": "server/google-sheets-aggregate-source.test.ts",
+          "name": "Google Sheets aggregate source adapter filters Google Sheets spend totals by google_sheets platformContext for derived financial cards",
+          "firstFailure": "AssertionError: expected -1 to be greater than 151094",
+          "classification": "TEST-6d4794df4c: obsolete comment delimiter; replaced with next registered route, all assertions retained",
+          "waived": false
+        }
+      ]
+    },
+    {
+      "label": "verified",
+      "total": 118,
+      "passed": 117,
+      "failed": 1,
+      "skipped": 0,
+      "failures": [
+        {
+          "file": "server/v1-batch4-standalone-sheets-browser.test.ts",
+          "name": "standalone Sheets selection recovery in the rendered page shows selection errors without other-tab values and opens/cancels the existing mapping dialog",
+          "firstFailure": "Error: expect(locator).toBeVisible() failed",
+          "classification": "Confirmed frontend fallback; fixed and browser-retested",
+          "waived": false
+        }
+      ]
+    },
+    {
+      "label": "browser-recovery",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "failures": []
+    },
+    {
+      "label": "complete",
+      "total": 118,
+      "passed": 118,
+      "failed": 0,
+      "skipped": 0,
+      "failures": []
+    }
+  ],
+  "builds": {
+    "at": "2026-10-23T08:53:52.815Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "verified-typecheck.log"
+      },
+      {
+        "name": "client-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "verified-client-build.log"
+      },
+      {
+        "name": "server-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "verified-server-build.log"
+      }
+    ]
+  },
+  "execution": {
+    "initialStartup": "before.log: sandbox spawn EPERM before any tests; retried with child-process permission using the same isolated runner",
+    "storage": "In-memory fixture boundaries, no database startup or connections",
+    "provider": "Fetch fixtures only; external process networking blocked by local-network-only.cjs; browser routes locally fulfilled/blocked",
+    "productionOrPtomoAccess": false,
+    "credentialsLoaded": false,
+    "schemaOrSchedulerChange": false,
+    "browserBoundary": "Actual page/query/selection/error/placeholder code and dialog opening/cancellation; mapping editor body/auth/setup isolated"
+  },
+  "correctedExistingTest": {
+    "id": "TEST-6d4794df4c",
+    "finding": "V1-012",
+    "status": "PASS in current targeted packet only",
+    "change": "Source slice ends at next registered spend-to-date route instead of removed comment; retains all scope, eligible-source, totals and provenance assertions"
+  },
+  "stillOpen": [
+    "V1-051 complete bounded range reads, cache completeness/freshness and aggregate publication",
+    "V1-108/112/113/114 zero availability, formulas, goal/report parity and scheduled report scope/date windows",
+    "Real save-mappings/delete/reconnect transactions and lifecycle races; separate save-mappings conversion branch",
+    "Provider OAuth, token refresh and deployed authenticated acceptance",
+    "Historical damaged-data inventory/cleanup, whole-suite and CI certification"
+  ],
+  "historicalFullSuite": {
+    "total": 4488,
+    "passed": 4309,
+    "failed": 179,
+    "date": "2026-10-22",
+    "supersededByThisTargetedPacket": false
+  }
+}

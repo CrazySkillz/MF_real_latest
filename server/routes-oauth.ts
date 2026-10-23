@@ -21541,6 +21541,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Otherwise, use the primary connection
       let connection: any;
       if (spreadsheetId) {
+        if (typeof spreadsheetId !== 'string') {
+          return res.status(400).json({ success: false, error: 'Select one Google Sheets dataset.' });
+        }
         const spreadsheetIdStr = spreadsheetId as string;
         // Check if it's a composite value (spreadsheetId:sheetName or spreadsheetId:connectionId)
         if (spreadsheetIdStr.includes(':')) {
@@ -21548,24 +21551,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const identifier = rest.join(':'); // Rejoin in case sheet name itself contains colons
           // Get all connections for this campaign and find the one matching both spreadsheetId and identifier
           const allConnections = await getMainGoogleSheetsConnections();
-          connection = allConnections.find((conn: any) =>
+          const matches = allConnections.filter((conn: any) =>
             conn.spreadsheetId === spreadsheetIdOnly &&
             (conn.sheetName === identifier || conn.id === identifier)
           );
-          // Fallback: match by spreadsheetId only if exact composite lookup failed
-          if (!connection) {
-            console.log(`[Google Sheets Data] Composite lookup failed for ${spreadsheetIdStr}, trying spreadsheetId-only fallback`);
-            connection = allConnections.find((conn: any) => conn.spreadsheetId === spreadsheetIdOnly);
+          if (matches.length > 1) {
+            return res.status(400).json({ success: false, error: 'Google Sheets selection is ambiguous. Select a specific connected tab.' });
           }
-          // Last resort: use primary or first connection
-          if (!connection && allConnections.length > 0) {
-            console.log(`[Google Sheets Data] spreadsheetId fallback also failed, using primary/first connection`);
-            connection = allConnections.find((conn: any) => conn.isPrimary) || allConnections[0];
-          }
+          connection = matches[0];
         } else {
-          // Legacy format - just spreadsheetId (will get first matching connection)
+          // Legacy spreadsheet-only selection is safe only when it identifies one tab.
           const allConnections = await getMainGoogleSheetsConnections();
-          connection = allConnections.find((conn: any) => conn.spreadsheetId === spreadsheetIdStr);
+          const matches = allConnections.filter((conn: any) => conn.spreadsheetId === spreadsheetIdStr);
+          if (matches.length > 1) {
+            return res.status(400).json({ success: false, error: 'Google Sheets selection is ambiguous. Select a specific connected tab.' });
+          }
+          connection = matches[0];
         }
       } else {
         const allConnections = await getMainGoogleSheetsConnections();
@@ -21573,6 +21574,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!connection) {
+        if (spreadsheetId) {
+          return res.status(404).json({ success: false, error: 'Selected Google Sheets dataset is no longer connected. Select a connected tab.' });
+        }
         devLog(`[Google Sheets Data] No connection found for campaign ${campaignId} - returning empty data`);
         // Return empty data structure instead of 404 so frontend can handle it gracefully
         return res.json({
@@ -21858,6 +21862,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (connection.columnMappings) {
         try {
           const mappings = JSON.parse(connection.columnMappings);
+          if (!Array.isArray(mappings)) throw new Error('Invalid saved mappings');
           if (mappings && mappings.length > 0) {
             // Find mapped columns
             const campaignIdMapping = mappings.find((m: any) => m.targetFieldId === 'campaign_id');
@@ -21880,23 +21885,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 });
             };
 
-            if (campaignIdMapping) {
-              mappedCampaignColumnIndex = campaignIdMapping.sourceColumnIndex;
-              mappedCampaignValues = getMappedCampaignValues(campaignIdMapping);
-            }
-            if (campaignNameMapping) {
-              campaignNameColumnIndex = campaignNameMapping.sourceColumnIndex;
-              if (mappedCampaignColumnIndex < 0) mappedCampaignColumnIndex = campaignNameMapping.sourceColumnIndex;
-              if (mappedCampaignValues.length === 0) {
-                mappedCampaignValues = getMappedCampaignValues(campaignNameMapping);
+            for (const mapping of [campaignIdMapping, campaignNameMapping, platformMapping].filter(Boolean)) {
+              const index = mapping.sourceColumnIndex;
+              if (!Number.isInteger(index) || index < 0 || index >= headers.length ||
+                (mapping.sourceColumnName && (String(headers[index]).trim() !== String(mapping.sourceColumnName).trim() ||
+                  headers.filter((header: any) => String(header).trim() === String(mapping.sourceColumnName).trim()).length !== 1))) {
+                throw new Error('Saved selection column changed');
               }
             }
+            // Keep selected values paired with the column that owns them.
+            const selectedMapping = [campaignIdMapping, campaignNameMapping].find(mapping => getMappedCampaignValues(mapping).length > 0)
+              || campaignIdMapping || campaignNameMapping;
+            if (selectedMapping) {
+              mappedCampaignColumnIndex = selectedMapping.sourceColumnIndex;
+              mappedCampaignValues = getMappedCampaignValues(selectedMapping);
+            }
+            if (campaignNameMapping) campaignNameColumnIndex = campaignNameMapping.sourceColumnIndex;
             if (platformMapping) {
               platformColumnIndex = platformMapping.sourceColumnIndex;
             }
           }
         } catch (mappingError) {
-          console.warn('[Google Sheets Summary] Failed to parse mappings, falling back to column detection:', mappingError);
+          return res.status(400).json({ success: false, code: 'GOOGLE_SHEETS_MAPPING_INVALID', error: 'Saved Google Sheets selection is invalid or its columns changed. Review the dataset mappings.' });
         }
       }
 
@@ -21945,21 +21955,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (campaignFilterColumnIndex >= 0 && campaignFilterValue) {
         // Filter by campaign name (and platform if available)
-        if (platformColumnIndex >= 0 && allPlatformKeywords.length > 0) {
+        if (!hasMappedCampaignFilter && platformColumnIndex >= 0 && allPlatformKeywords.length > 0) {
           // Strategy 1: Campaign Name + Platform matching (includes ALL connected platforms)
           filteredRowsForSummary = allRows.filter((row: any[]) => {
             if (!Array.isArray(row) || row.length <= Math.max(platformColumnIndex, campaignFilterColumnIndex)) {
               return false;
             }
             const platformValue = String(row[platformColumnIndex] || '');
-            const campaignNameValue = String(row[campaignFilterColumnIndex] || '').toLowerCase().trim();
+            const campaignNameValue = String(row[campaignFilterColumnIndex] ?? '').toLowerCase().trim();
             if (!campaignNameValue) return false;
             const platformMatches = matchesPlatform(platformValue, allPlatformKeywords);
             const matchesCampaign = hasMappedCampaignFilter
               ? campaignFilterValueSet.has(campaignNameValue)
-              : campaignNameValue === campaignFilterValue ||
-                campaignNameValue.includes(campaignFilterValue) ||
-                campaignFilterValue.includes(campaignNameValue);
+              : campaignNameValue === campaignFilterValue;
             return platformMatches && matchesCampaign;
           });
         } else {
@@ -21968,13 +21976,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (!Array.isArray(row) || row.length <= campaignFilterColumnIndex) {
               return false;
             }
-            const campaignNameValue = String(row[campaignFilterColumnIndex] || '').toLowerCase().trim();
+            const campaignNameValue = String(row[campaignFilterColumnIndex] ?? '').toLowerCase().trim();
             if (!campaignNameValue) return false;
             return hasMappedCampaignFilter
               ? campaignFilterValueSet.has(campaignNameValue)
-              : campaignNameValue === campaignFilterValue ||
-                campaignNameValue.includes(campaignFilterValue) ||
-                campaignFilterValue.includes(campaignNameValue);
+              : campaignNameValue === campaignFilterValue;
           });
         }
       } else if (platformColumnIndex >= 0 && allPlatformKeywords.length > 0) {
@@ -21991,12 +21997,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filteredRowsForSummary = allRows;
       }
 
-      // Use filtered rows for summary if we have a campaign name match, otherwise use all rows
-      const rowsForSummary = hasMappedCampaignFilter
-        ? filteredRowsForSummary
-        : filteredRowsForSummary.length > 0 && campaignFilterColumnIndex >= 0 && campaignFilterValue
-          ? filteredRowsForSummary
-          : allRows;
+      // An empty match stays empty; it must never broaden to unrelated rows.
+      const rowsForSummary = filteredRowsForSummary;
 
       devLog(`[Google Sheets Summary] Using ${rowsForSummary.length} rows for summary (filtered by campaign value "${campaignFilterValues.join(', ') || campaignName}") out of ${allRows.length} total rows`);
 
@@ -22180,7 +22182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaignName: ''
       };
 
-      if (AUTO_CALCULATE_CONVERSION_VALUE) {
+      if (AUTO_CALCULATE_CONVERSION_VALUE && rowsForSummary.length > 0) {
         // Automatic Conversion Value Calculation from Google Sheets
         // NEW: Calculates conversion value for EACH connected platform separately
         // If Revenue and Conversions columns are detected, calculate and save conversion value per platform
@@ -22233,7 +22235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
 
           let filteredRows: any[] = [];
-          let allRows = rows.slice(1); // Skip header row
+          let allRows = rowsForSummary; // Conversion fallbacks cannot escape the selected dataset rows.
           let matchingMethod = 'all_rows'; // Track which method was used
           let matchedCampaigns: string[] = [];
           let unmatchedCampaigns: string[] = [];
@@ -22364,7 +22366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 devLog(`[Auto Conversion Value] Using saved column mappings (${mappings.length} mappings)`);
 
                 // Transform data using mappings
-                const transformationResult = transformData(rows, mappings, campaignPlatform || 'linkedin');
+                const transformationResult = transformData([headers, ...rowsForSummary], mappings, campaignPlatform || 'linkedin');
                 transformedRows = transformationResult.transformedRows;
 
                 if (transformationResult.errors.length > 0) {

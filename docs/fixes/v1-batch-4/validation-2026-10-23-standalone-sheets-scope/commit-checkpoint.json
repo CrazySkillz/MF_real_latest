@@ -1,0 +1,38 @@
+{
+  "at": "2026-10-23T09:03:23.180723+00:00",
+  "runtimeCommit": "9807a9b9fe0715f73dfea30b699bf43a1f526a90",
+  "baseHead": "841d560e7b452724129002e9fbec589369297948",
+  "result": "PASS",
+  "candidate": [
+    {
+      "file": "server/routes-oauth.ts",
+      "sha256LF": "cb169a355ef5caf120c8074ca7a10c3ae304b492f2d088300ecbcc541b758ea3",
+      "matched": true
+    },
+    {
+      "file": "client/src/pages/google-sheets-data.tsx",
+      "sha256LF": "0c90b04d03044c9f155ad516b38253d0087ed3d24d46da426f7ce4bca4ed2108",
+      "matched": true
+    },
+    {
+      "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+      "sha256LF": "e47a401ae21630405a5a5cbf485a85741a524ae36e383bd73e0a5ccb50780a49",
+      "matched": true
+    },
+    {
+      "file": "server/v1-batch4-standalone-sheets-browser.test.ts",
+      "sha256LF": "5487fa43b6a9887e183ede6243add0412c104e4b60be28d20c597413a030ee1a",
+      "matched": true
+    },
+    {
+      "file": "server/google-sheets-aggregate-source.test.ts",
+      "sha256LF": "940b2f2bad2e77d3fca0b762a13e51d9d77e8f58066a180e783844ffbb14be88",
+      "matched": true
+    }
+  ],
+  "validation": "118 targeted tests passed; TypeScript and client/server builds passed. All five runtime/test files match the validated LF-normalized manifest and git diff HEAD is empty for those paths.",
+  "repeatedTests": false,
+  "reason": "No runtime/test change since the recorded validation; commit/docs checks only.",
+  "deploymentStatus": "Awaiting exact-revision Render verification; no deployment acceptance claimed.",
+  "releaseDecision": "NO-GO; V1-051 remains IN PROGRESS and all required acceptance gates remain open."
+}

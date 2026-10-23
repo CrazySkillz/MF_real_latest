@@ -55,7 +55,7 @@ Strict template enforcement rule:
 
 ## Current Status
 
-**October 23, 2026 V1 correction:** the older milestone claims below are historical and do not certify current implementation. Current code reproduced wrong-tab fallback, unmatched-campaign broadening and unscoped conversion transforms. The [V1-051 selection checkpoint](docs/fixes/v1-batch-4/README.md#standalone-sheets-selection-checkpoint-october-23) corrects that bounded read/UI path locally with 118 passing targeted checks, including browser recovery. It is uncommitted and undeployed on `841d560e`. Complete bounded reads/cache/aggregate publication and V1-108/112/113/114 zero/formula/report paths remain open; standalone Sheets is **not production-ready**. No live/provider/data-cleanup validation was performed.
+**October 23, 2026 V1 correction:** the older milestone claims below are historical and do not certify current implementation. Current code reproduced wrong-tab fallback, unmatched-campaign broadening and unscoped conversion transforms. The [V1-051 selection checkpoint](docs/fixes/v1-batch-4/README.md#standalone-sheets-selection-checkpoint-october-23) corrects that bounded read/UI path locally with 118 passing targeted checks, including browser recovery. It is committed in `9807a9b9` on base `841d560e`; Render deployment verification remains pending. Complete bounded reads/cache/aggregate publication and V1-108/112/113/114 zero/formula/report paths remain open; standalone Sheets is **not production-ready**. No live/provider/data-cleanup validation was performed.
 
 Google Sheets already exists in the codebase, but it has not yet been reviewed and hardened as a production-ready connected platform under the reusable section-template contract.
 

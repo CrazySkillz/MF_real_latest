@@ -70,7 +70,7 @@ import { getCampaignMetricTotals, refreshCampaignCurrentValuesForCampaign } from
 import { resolveAlertCurrentValueForDecision } from "./utils/ga4-alert-current-value";
 import { buildExecutiveSummaryDailySnapshotInput, buildExecutiveSummaryFinancialSourceIdentity, evaluateExecutiveSummaryTrajectory, evaluateExecutiveSummaryTrajectoryFromFinancialDaily, hasRefreshedGA4RowsForExecutiveSummarySnapshot } from "./utils/executive-summary-daily-snapshot";
 import { isAlertDecisionBreached } from "./utils/alert-decision";
-import { HUBSPOT_PAGINATION_ERROR_CODE, MAX_HUBSPOT_PAGES, hubspotPaginationError, nextHubspotPageCursor } from "./utils/hubspot-pagination";
+import { HUBSPOT_PAGINATION_ERROR_CODE, MAX_HUBSPOT_PAGES, hubspotPaginationError, nextHubspotPageCursor, validateHubspotSearchPage } from "./utils/hubspot-pagination";
 import { resolveHubspotRevenueCurrency } from "./utils/hubspot-currency";
 import { getShopifyRevenueRefreshFreshness, markShopifyRevenueRefreshAttempt, markShopifyRevenueRefreshFailure, markShopifyRevenueRefreshSuccess, type ShopifyRevenueRefreshEvent } from "./utils/shopify-refresh-state";
 import { fetchCompleteSalesforceQuery, SALESFORCE_PAGINATION_ERROR_CODE, SALESFORCE_RESULT_LIMIT_ERROR_CODE } from "./utils/salesforce-pagination";
@@ -18038,7 +18038,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const fetchOpenSalesforceOpportunityStages = async (accessToken: string, instanceUrl: string, version: string, fetchImpl: typeof fetch) => {
-    const soql = "SELECT MasterLabel FROM OpportunityStage WHERE IsActive = true AND IsClosed = false ORDER BY SortOrder ASC";
+    const soql = "SELECT Id, MasterLabel FROM OpportunityStage WHERE IsActive = true AND IsClosed = false ORDER BY SortOrder ASC";
     const records = await fetchCompleteSalesforceQuery({
       initialUrl: `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`,
       instanceUrl,
@@ -18318,7 +18318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const records = result.records || [];
       const totalRevenue = records.reduce((sum: number, r: any) => {
         const raw = readField(r, revenue);
-        const value = raw === undefined || raw === null ? NaN : Number(String(raw).replace(/[^0-9.\-]/g, ''));
+        const value = parseCrmRevenueAmount(raw, 'Salesforce');
         return Number.isFinite(value) ? sum + value : sum;
       }, 0);
       const rows = records.slice(0, rowLimit).map((r: any) => headers.map((h: string) => String(readField(r, h) ?? '')));
@@ -18357,7 +18357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const pRecords = p.records || [];
           const pipelineTotalToDate = pRecords.reduce((sum: number, record: any) => {
             const raw = readField(record, revenue);
-            const value = raw === undefined || raw === null ? NaN : Number(String(raw).replace(/[^0-9.\-]/g, ''));
+            const value = parseCrmRevenueAmount(raw, 'Salesforce');
             return Number.isFinite(value) ? sum + value : sum;
           }, 0);
           const pRows = pRecords.slice(0, rowLimit).map((r: any) => pHeaders.map((h: string) => String(readField(r, h) ?? '')));
@@ -18579,8 +18579,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const matchedSelectedValues = new Set<string>();
       for (const rec of records) {
         const rRaw = readField(rec, revenue);
-        const normalizedRevenue = rRaw === undefined || rRaw === null ? '' : String(rRaw).replace(/[^0-9.\-]/g, '').trim();
-        const r = normalizedRevenue ? Number(normalizedRevenue) : NaN;
+        const r = parseCrmRevenueAmount(rRaw, 'Salesforce');
         if (!Number.isFinite(r)) invalidRevenueAmountCount += 1;
         if (Number.isFinite(r)) totalRevenue += r;
         const campaignValue = String(readField(rec, attribField) || "").trim();
@@ -18609,7 +18608,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         if (platformCtx === 'linkedin' && effectiveValueSource === 'conversion_value') {
           const cvRaw = readField(rec, convValueField);
-          const cv = cvRaw === undefined || cvRaw === null ? NaN : Number(String(cvRaw).replace(/[^0-9.\-]/g, ''));
+          const cv = cvRaw === undefined || cvRaw === null ? NaN : parseCrmRevenueAmount(cvRaw, 'Salesforce');
           if (Number.isFinite(cv) && cv > 0) conversionValues.push(cv);
         }
         if (includeCurrency) {
@@ -18838,17 +18837,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 accessToken,
                 fetchImpl: salesforceFetch,
               });
+              if (!includeCurrency && recs.length > 0) {
+                const detected = await detectSalesforceCurrency({ accessToken, instanceUrl, apiVersion: version, fetchImpl: salesforceFetch, requireSingleCurrency: true });
+                const validated = validateSalesforceRevenueCurrency({ currencies: detected.detectedCurrencies, campaignCurrency });
+                if (!validated.ok) throw new Error(validated.error);
+                pipelineCurrencies.add(validated.currency);
+              }
               for (const rec of recs) {
                 const rRaw = readField(rec, revenue);
-                const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ""));
+                const amt = parseCrmRevenueAmount(rRaw, 'Salesforce');
                 if (Number.isFinite(amt)) {
                   pipelineToDate += amt;
                   const campaignValue = String(readField(rec, attribField) || "").trim();
                   if (campaignValue) pipelineValueRevenueTotals.set(campaignValue, (pipelineValueRevenueTotals.get(campaignValue) || 0) + amt);
                 }
                 if (includeCurrency) {
-                  const c = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim() : "";
-                  if (c) pipelineCurrencies.add(c);
+                  const c = String(rec?.CurrencyIsoCode || "").trim().toUpperCase();
+                  if (!/^[A-Z]{3}$/.test(c)) throw new Error("Salesforce pipeline currency is unavailable. Saved revenue has not been replaced.");
+                  pipelineCurrencies.add(c);
                 }
               }
             };
@@ -18864,6 +18870,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
 
+            if (pipelineCurrencies.size === 1) {
+              const validated = validateSalesforceRevenueCurrency({ currencies: pipelineCurrencies, campaignCurrency });
+              if (!validated.ok) throw new Error(validated.error);
+            }
             if (pipelineCurrencies.size > 1) {
               mappingConfig.pipelineTotalToDate = 0;
               mappingConfig.pipelineCurrency = null;
@@ -18882,7 +18892,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 revenue: Number(revenue.toFixed(2)),
               }));
             }
-          } catch {
+          } catch (error) {
+            if (platformCtx === 'ga4') throw error;
             mappingConfig.pipelineTotalToDate = 0;
             mappingConfig.pipelineCurrency = null;
             mappingConfig.pipelineLastUpdatedAt = new Date().toISOString();
@@ -19143,11 +19154,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Prefer cached value if present and in correct mode.
-      const cached = Number(cfg.pipelineTotalToDate || 0);
+      const cached = typeof cfg.pipelineTotalToDate === 'number' ? cfg.pipelineTotalToDate : NaN;
       const cachedMode = cfg.pipelineProxyMode ? String(cfg.pipelineProxyMode) : null;
       const cachedValueTotals = Array.isArray(cfg.pipelineValueRevenueTotals) ? cfg.pipelineValueRevenueTotals : [];
       const cachedIsUsable = Number.isFinite(cached) && cached >= 0 && cachedMode === "current_stage"
-        && !!cfg.pipelineLastUpdatedAt && !cfg.pipelineWarning && (cached === 0 || cachedValueTotals.length > 0);
+        && Number.isFinite(Date.parse(cfg.pipelineLastUpdatedAt)) && !cfg.pipelineWarning && Array.isArray(cfg.pipelineValueRevenueTotals)
+        && ((cached === 0 && !cfg.pipelineCurrency) || (Boolean(campaign?.currency) && cfg.pipelineCurrency === campaign?.currency))
+        && cachedValueTotals.every((item: any) => typeof item?.revenue === 'number' && Number.isFinite(item.revenue))
+        && Math.abs(cachedValueTotals.reduce((sum: number, item: any) => sum + item.revenue, 0) - cached) < 0.01;
       if (cachedIsUsable) {
         return res.json({
           success: true,
@@ -19224,7 +19238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       const addPipelineRecord = (rec: any, includeCurrency: boolean): void => {
         const rRaw = readField(rec, revenueField);
-        const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ""));
+        const amt = parseCrmRevenueAmount(rRaw, 'Salesforce');
         if (Number.isFinite(amt)) {
           totalToDate += amt;
           const campaignValue = String(readField(rec, attribField) || "").trim();
@@ -19234,8 +19248,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         if (includeCurrency) {
-          const c = rec?.CurrencyIsoCode ? String(rec.CurrencyIsoCode).trim() : "";
-          if (c) currencies.add(c);
+          const c = String(rec?.CurrencyIsoCode || "").trim().toUpperCase();
+          if (!/^[A-Z]{3}$/.test(c)) throw new Error("Salesforce pipeline currency is unavailable. Saved revenue has not been replaced.");
+          currencies.add(c);
         }
       };
 
@@ -19252,6 +19267,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fetchImpl: salesforceFetch,
         });
         directRecordCount += recs.length;
+        if (!includeCurrency && recs.length > 0) {
+          const detected = await detectSalesforceCurrency({ accessToken, instanceUrl, apiVersion: version, fetchImpl: salesforceFetch, requireSingleCurrency: true });
+          const validated = validateSalesforceRevenueCurrency({ currencies: detected.detectedCurrencies, campaignCurrency: campaign?.currency });
+          if (!validated.ok) throw new Error(validated.error);
+          currencies.add(validated.currency);
+        }
         for (const rec of recs) {
           addPipelineRecord(rec, includeCurrency);
         }
@@ -19268,7 +19289,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       const lastUpdatedAt = new Date().toISOString();
-      let warning: string | null = cfg.pipelineWarning ? String(cfg.pipelineWarning) : null;
+      if (currencies.size === 1) {
+        const validated = validateSalesforceRevenueCurrency({ currencies, campaignCurrency: campaign?.currency });
+        if (!validated.ok) throw new Error(validated.error);
+      }
+      let warning: string | null = null;
       let currency: string | null = currencies.size === 1 ? Array.from(currencies)[0] : null;
       if (currencies.size > 1) {
         // Do not fail the page; omit proxy value when mixed currency.
@@ -19336,7 +19361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               for (const rec of recs) {
                 const campaignValue = String(readField(rec, attribField) || "").trim();
                 const rawRevenue = readField(rec, revenueField);
-                const revenue = rawRevenue === undefined || rawRevenue === null ? NaN : Number(String(rawRevenue).replace(/[^0-9.\-]/g, ""));
+                const revenue = parseCrmRevenueAmount(rawRevenue, 'Salesforce');
                 if (campaignValue && Number.isFinite(revenue)) {
                   confirmedTotals.set(campaignValue, (confirmedTotals.get(campaignValue) || 0) + revenue);
                 }
@@ -19501,22 +19526,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       cfg = selectedPipelineSource.cfg;
       const pipelineSource: any = selectedPipelineSource.source;
-      const requireCompletePipelinePagination = String(
-        cfg?.platformContext || pipelineSource?.platformContext || requestedPlatformContext || 'ga4',
-      ).trim().toLowerCase() === 'ga4';
 
       if (!cfg || cfg.pipelineEnabled !== true || !cfg.pipelineStageId) {
         return res.status(404).json({ success: false, error: "Pipeline proxy is not configured for this campaign." });
       }
 
-      const cached = Number(cfg.pipelineTotalToDate || 0);
+      const cached = typeof cfg.pipelineTotalToDate === 'number' ? cfg.pipelineTotalToDate : NaN;
       const cachedMode = cfg.pipelineProxyMode ? String(cfg.pipelineProxyMode) : null;
       const cachedValueTotals = Array.isArray(cfg.pipelineValueRevenueTotals) ? cfg.pipelineValueRevenueTotals : [];
       const cachedIsUsable = Number.isFinite(cached) && cached >= 0 && cachedMode === 'current_stage'
-        && !!cfg.pipelineLastUpdatedAt && !cfg.pipelineWarning && (cached === 0 || cachedValueTotals.length > 0);
+        && Number.isFinite(Date.parse(cfg.pipelineLastUpdatedAt)) && !cfg.pipelineWarning && Array.isArray(cfg.pipelineValueRevenueTotals)
+        && cachedValueTotals.every((item: any) => typeof item?.revenue === 'number' && Number.isFinite(item.revenue))
+        && Math.abs(cachedValueTotals.reduce((sum: number, item: any) => sum + item.revenue, 0) - cached) < 0.01;
       if (cachedIsUsable) {
         return res.json({
           success: true,
+          sourceId: String(pipelineSource.id),
           pipelineEnabled: true,
           pipelineStageId: String(cfg.pipelineStageId),
           pipelineStageLabel: cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : null,
@@ -19534,12 +19559,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // (stage subset), not "entered stage at some point" (which is confusing and often equals Total Revenue).
       let recomputeFailed = false;
       try {
-        if (!Number.isFinite(cached) || cached <= 0 || cachedMode !== 'current_stage' || !Array.isArray(cfg.pipelineValueRevenueTotals)) {
+        if (!cachedIsUsable) {
           const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
           const campaignProp = String(cfg.campaignProperty || "").trim();
           const pipelineSelectedValues = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v: any) => String(v)) : [];
           const revenueProp = String(cfg.revenueProperty || "amount").trim() || "amount";
           const pipelineStageId = String(cfg.pipelineStageId || "").trim();
+          if (!campaignProp || !pipelineStageId || !pipelineSelectedValues.length) throw new Error('Pipeline Proxy configuration is incomplete.');
 
           let totalToDate = 0;
           const pipelineValueRevenueTotals = new Map<string, number>();
@@ -19552,6 +19578,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             let pages3 = 0;
             let seen3 = 0;
             const requestedPipelineCursors = new Set<string>();
+            const pipelineQueryState = { ids: new Set<string>() };
             while (pages3 < MAX_HUBSPOT_PAGES) {
               const body3: any = {
                 filterGroups: [
@@ -19566,18 +19593,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 limit: 100,
                 after: after3,
               };
-              const json3 = await hubspotSearchDeals(accessToken, body3);
+              const json3 = await hubspotSearchDeals(accessToken, body3, pipelineQueryState);
               pages3 += 1;
               const results3 = Array.isArray(json3?.results) ? json3.results : [];
               seen3 += results3.length;
               if (seen3 > MAX_HUBSPOT_RESULTS) {
-                if (requireCompletePipelinePagination) throw hubspotPaginationError(`result limit ${MAX_HUBSPOT_RESULTS} exceeded`);
-                break;
+                throw hubspotPaginationError(`result limit ${MAX_HUBSPOT_RESULTS} exceeded`);
               }
               for (const d of results3) {
                 const props = d?.properties || {};
                 const rRaw = props[revenueProp];
-                const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
+                const amt = parseCrmRevenueAmount(rRaw, 'HubSpot');
                 if (!Number.isFinite(amt)) continue;
                 const c = props?.hs_currency ? String(props.hs_currency).trim() : '';
                 if (c) currencies.add(c);
@@ -19585,9 +19611,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const campaignValue = String(props?.[campaignProp] || '').trim();
                 if (campaignValue) pipelineValueRevenueTotals.set(campaignValue, (pipelineValueRevenueTotals.get(campaignValue) || 0) + amt);
               }
-              after3 = requireCompletePipelinePagination
-                ? nextHubspotPageCursor(json3?.paging?.next?.after, pages3, requestedPipelineCursors)
-                : json3?.paging?.next?.after ? String(json3.paging.next.after) : undefined;
+              after3 = nextHubspotPageCursor(json3?.paging?.next?.after, pages3, requestedPipelineCursors);
               if (!after3) break;
             }
           }
@@ -19626,8 +19650,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recomputeFailed = true;
       }
 
+      if (recomputeFailed) return res.status(503).json({ success: false, error: 'HubSpot Pipeline Proxy is temporarily unavailable. Saved data has been retained.' });
       res.json({
         success: true,
+        sourceId: String(pipelineSource.id),
         pipelineEnabled: true,
         pipelineStageId: String(cfg.pipelineStageId),
         pipelineStageLabel: cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : null,
@@ -19693,9 +19719,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const md = s?.metadata || {};
         const isClosed = String((md as any)?.isClosed ?? '').toLowerCase() === 'true';
         const probability = Number((md as any)?.probability);
-        const label = String(s?.label || '').toLowerCase();
-        const looksLikeWon = label.includes('closed won') || id.toLowerCase() === 'closedwon';
-        if ((isClosed && probability === 1) || looksLikeWon) {
+        if (isClosed && probability === 1) {
           stageIds.push(id);
         }
       }
@@ -19724,7 +19748,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return Array.from(new Set(stageIds)).slice(0, 200);
   }
 
-  async function hubspotSearchDeals(accessToken: string, body: any): Promise<any> {
+  function parseCrmRevenueAmount(value: unknown, provider: string): number {
+    const valid = typeof value === 'number' || (typeof value === 'string' && /^-?\d+(?:\.\d+)?$/.test(value.trim()));
+    if (!valid || !Number.isFinite(Number(value))) throw new Error(`${provider} returned an invalid revenue amount. Saved revenue has not been replaced.`);
+    return Number(value);
+  }
+
+  async function hubspotSearchDeals(accessToken: string, body: any, queryState?: { total?: number; ids: Set<string> }): Promise<any> {
     const resp = await fetchWithTimeout('https://api.hubapi.com/crm/v3/objects/deals/search', {
       method: 'POST',
       headers: {
@@ -19737,6 +19767,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!resp.ok) {
       throw new Error(json?.message || `HubSpot search failed (${resp.status})`);
     }
+    validateHubspotSearchPage(json, queryState);
     return json;
   }
 
@@ -19915,26 +19946,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dateFieldChoice = body.data.dateField || "closedate";
       const effectiveValueSource: 'revenue' | 'conversion_value' = (platformCtx === 'linkedin' ? parsedValueSource : 'revenue');
 
-      // Determine default stage ids unless caller provides an explicit list.
-      // Confirmed revenue must use closed-won-ish stages; Pipeline Proxy stays separate.
+      // Verify account-specific closed-won metadata before any financial publication.
       let effectiveStageIds: string[] = Array.isArray(stageIds) && stageIds.length > 0 ? stageIds.map((v: any) => String(v)) : ['closedwon'];
       try {
-        const pipelinesResp = await fetch('https://api.hubapi.com/crm/v3/pipelines/deals', {
+        const pipelinesResp = await fetchWithTimeout('https://api.hubapi.com/crm/v3/pipelines/deals', {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         const pipelinesJson: any = await pipelinesResp.json().catch(() => ({}));
-        if (!pipelinesResp.ok && platformCtx === 'ga4' && expectedSourceMappingConfig) {
+        if (!pipelinesResp.ok) {
           throw new Error(pipelinesJson?.message || `HubSpot pipelines request failed (${pipelinesResp.status})`);
         }
         if (pipelinesResp.ok) {
-          const pipelines = Array.isArray(pipelinesJson?.results) ? pipelinesJson.results : [];
+          if (!Array.isArray(pipelinesJson?.results) || pipelinesJson.results.some((p: any) => !Array.isArray(p?.stages))) throw new Error('HubSpot returned incomplete pipeline metadata.');
+          const pipelines = pipelinesJson.results;
           const derived = deriveDefaultClosedWonStageIds(pipelines);
           const hasCallerStageIds = Array.isArray(stageIds) && stageIds.length > 0;
           const isLegacyClosedWonOnly = hasCallerStageIds && effectiveStageIds.length === 1 && effectiveStageIds[0].toLowerCase() === "closedwon";
           if (derived.length > 0 && (!hasCallerStageIds || isLegacyClosedWonOnly)) effectiveStageIds = derived;
+          if (!derived.length || effectiveStageIds.some(id => !derived.includes(id))) throw new Error('Confirmed HubSpot revenue requires verified closed-won stages.');
         }
       } catch (error) {
-        if (platformCtx === 'ga4' && expectedSourceMappingConfig) throw error;
+        throw error;
       }
 
       const startMs = Date.now() - rangeDays * 24 * 60 * 60 * 1000;
@@ -19956,6 +19988,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let missingCurrencyDealCount = 0;
       let invalidConfirmedRevenueDateCount = 0;
       const requestedConfirmedRevenueCursors = new Set<string>();
+      const confirmedQueryState = { ids: new Set<string>() };
       while (pages < MAX_HUBSPOT_PAGES) {
         const body: any = {
           filterGroups: [
@@ -19983,7 +20016,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           after,
         };
 
-        const json = await hubspotSearchDeals(accessToken, body);
+        const json = await hubspotSearchDeals(accessToken, body, confirmedQueryState);
         pages += 1;
         const results = Array.isArray(json?.results) ? json.results : [];
         seen += results.length;
@@ -19996,7 +20029,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const d of results) {
           const props = d?.properties || {};
           const rRaw = props[revenueProp];
-          const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
+          if (!effectiveStageIds.includes(String(props.dealstage || ''))) throw new Error('HubSpot returned a deal outside the verified closed-won stages.');
+          const r = parseCrmRevenueAmount(rRaw, 'HubSpot');
           if (!Number.isFinite(r)) continue;
           importedDealCount += 1;
           totalRevenue += r;
@@ -20038,14 +20072,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           if (convValueProp) {
             const cvRaw = props[convValueProp];
-            const cv = cvRaw === undefined || cvRaw === null ? NaN : Number(String(cvRaw).replace(/[^0-9.\-]/g, ''));
+            const cv = cvRaw === undefined || cvRaw === null ? NaN : parseCrmRevenueAmount(cvRaw, 'HubSpot');
             if (Number.isFinite(cv) && cv > 0) conversionValues.push(cv);
           }
         }
 
-        after = platformCtx === 'ga4'
-          ? nextHubspotPageCursor(json?.paging?.next?.after, pages, requestedConfirmedRevenueCursors)
-          : json?.paging?.next?.after ? String(json.paging.next.after) : undefined;
+        after = nextHubspotPageCursor(json?.paging?.next?.after, pages, requestedConfirmedRevenueCursors);
         if (!after) break;
       }
 
@@ -20118,6 +20150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let afterPipeline: string | undefined;
         let pipelinePages = 0;
         const requestedPipelinePreviewCursors = new Set<string>();
+        const previewQueryState = { ids: new Set<string>() };
         while (pipelinePages < MAX_HUBSPOT_PAGES) {
           const json = await hubspotSearchDeals(accessToken, {
             filterGroups: [{ filters: [
@@ -20127,16 +20160,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             properties: [campaignProp, revenueProp, 'dealstage'],
             limit: 100,
             after: afterPipeline,
-          });
+          }, previewQueryState);
           pipelinePages += 1;
           for (const d of Array.isArray(json?.results) ? json.results : []) {
             const raw = d?.properties?.[revenueProp];
-            const amt = raw === undefined || raw === null ? NaN : Number(String(raw).replace(/[^0-9.\-]/g, ''));
+            const amt = parseCrmRevenueAmount(raw, 'HubSpot');
             if (Number.isFinite(amt)) total += amt;
           }
-          afterPipeline = platformCtx === 'ga4'
-            ? nextHubspotPageCursor(json?.paging?.next?.after, pipelinePages, requestedPipelinePreviewCursors)
-            : json?.paging?.next?.after ? String(json.paging.next.after) : undefined;
+          afterPipeline = nextHubspotPageCursor(json?.paging?.next?.after, pipelinePages, requestedPipelinePreviewCursors);
           if (!afterPipeline) break;
         }
         return Number(total.toFixed(2));
@@ -20200,6 +20231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             let pages3 = 0;
             let seen3 = 0;
             const requestedPipelineSaveCursors = new Set<string>();
+            const savePipelineQueryState = { ids: new Set<string>() };
             while (pages3 < MAX_HUBSPOT_PAGES) {
               const body3: any = {
                 filterGroups: [
@@ -20215,19 +20247,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 after: after3,
               };
 
-              const json3 = await hubspotSearchDeals(accessToken, body3);
+              const json3 = await hubspotSearchDeals(accessToken, body3, savePipelineQueryState);
               pages3 += 1;
               const results3 = Array.isArray(json3?.results) ? json3.results : [];
               seen3 += results3.length;
               if (seen3 > MAX_HUBSPOT_RESULTS) {
-                if (platformCtx === 'ga4') throw hubspotPaginationError(`result limit ${MAX_HUBSPOT_RESULTS} exceeded`);
-                break;
+                throw hubspotPaginationError(`result limit ${MAX_HUBSPOT_RESULTS} exceeded`);
               }
 
               for (const d of results3) {
                 const props = d?.properties || {};
                 const rRaw = props[revenueProp];
-                const amt = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
+                const amt = parseCrmRevenueAmount(rRaw, 'HubSpot');
                 if (!Number.isFinite(amt)) continue;
 
                 const c = props?.hs_currency ? String(props.hs_currency).trim() : '';
@@ -20237,9 +20268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 if (campaignValue) pipelineValueRevenueTotals.set(campaignValue, (pipelineValueRevenueTotals.get(campaignValue) || 0) + amt);
               }
 
-              after3 = platformCtx === 'ga4'
-                ? nextHubspotPageCursor(json3?.paging?.next?.after, pages3, requestedPipelineSaveCursors)
-                : json3?.paging?.next?.after ? String(json3.paging.next.after) : undefined;
+              after3 = nextHubspotPageCursor(json3?.paging?.next?.after, pages3, requestedPipelineSaveCursors);
               if (!after3) break;
             }
 
@@ -20264,7 +20293,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }));
             }
           } catch (error: any) {
-            if (error?.code === HUBSPOT_PAGINATION_ERROR_CODE || (platformCtx === 'ga4' && expectedSourceMappingConfig)) throw error;
+            if (error?.code === HUBSPOT_PAGINATION_ERROR_CODE || platformCtx === 'ga4') throw error;
             // ignore (proxy is optional)
           }
         }

@@ -138,7 +138,7 @@ const parseRequiredMoney = (value: unknown, field: string): number => {
   if (value === null || value === undefined || String(value).trim() === '') {
     throw new Error(`Shopify order is missing ${field}`);
   }
-  const amount = Number(String(value).replace(/[^0-9.\-]/g, ''));
+  const amount = (typeof value === 'number' || typeof value === 'string') && /^\d+(?:\.\d+)?$/.test(String(value).trim()) ? Number(value) : NaN;
   if (!Number.isFinite(amount) || amount < 0) {
     throw new Error(`Shopify order has invalid ${field}`);
   }
@@ -147,8 +147,7 @@ const parseRequiredMoney = (value: unknown, field: string): number => {
 
 const parseOptionalMoney = (value: unknown): number | null => {
   if (value === null || value === undefined || String(value).trim() === '') return null;
-  const amount = Number(String(value).replace(/[^0-9.\-]/g, ''));
-  return Number.isFinite(amount) && amount >= 0 ? amount : null;
+  return parseRequiredMoney(value, 'presentment amount');
 };
 
 export const getShopifyDiscountCodes = (order: any): string[] => {

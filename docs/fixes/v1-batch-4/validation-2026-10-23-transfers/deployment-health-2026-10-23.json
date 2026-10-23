@@ -1,0 +1,15 @@
+{
+  "observedAt": "2026-10-23T15:37:02.031559+00:00",
+  "endpoint": "https://marketforensics.onrender.com/api/health",
+  "httpStatus": 200,
+  "response": {
+    "ok": true,
+    "commit": "67279e8e308959dae80e70b7edb1ca9e4ff684fe",
+    "nodeEnv": "production",
+    "ts": "2026-10-23T15:35:49.905Z"
+  },
+  "expectedCommit": "67279e8e308959dae80e70b7edb1ca9e4ff684fe",
+  "revisionMatches": true,
+  "scope": "Public revision and health only; user reported deployment. No authenticated transfer, provider call or data mutation.",
+  "acceptance": "OPEN; no whole-Batch-4 or V1 certification"
+}

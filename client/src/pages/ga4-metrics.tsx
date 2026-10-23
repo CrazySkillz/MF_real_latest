@@ -2763,65 +2763,35 @@ export default function GA4Metrics() {
       const sorted = [...sources].sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime());
       return sorted.find(sourceMatchesGa4Scope) || null;
     };
-    const normalizeTotal = (data: any) => {
-      if (!data?.success) return data;
-      const dataTotals = Array.isArray(data.pipelineValueRevenueTotals) ? data.pipelineValueRevenueTotals : [];
-      const totalsSum = dataTotals.reduce((sum: number, item: any) => sum + Number(item?.revenue || 0), 0);
-      return { ...data, totalToDate: Number(data.totalToDate || 0) || totalsSum, pipelineValueRevenueTotals: dataTotals };
-    };
-    const getPipelineSourceData = (sourceType: "salesforce" | "hubspot", endpointData: any, label: string) => {
-      const eligible = [...sourceDefs, ...(Array.isArray(revenueDisplaySources) ? revenueDisplaySources : [])].filter((s: any) => {
-        const type = String(s?.sourceType || "").toLowerCase();
-        return s?.isActive !== false && type === sourceType && hasPipelineConfig(s);
-      });
-      const endpointSourceId = sourceType === "salesforce" ? String(endpointData?.sourceId || "").trim() : "";
-      const endpointSource = endpointSourceId
-        ? eligible.find((source: any) => String(source?.id || "") === endpointSourceId) || null
-        : null;
+    const getPipelineSourceData = (sourceType: "salesforce" | "hubspot", endpointData: any, label: string, requestFailed: boolean) => {
+      const eligible = [...sourceDefs, ...(Array.isArray(revenueDisplaySources) ? revenueDisplaySources : [])].filter((s: any) =>
+        s?.isActive !== false && String(s?.sourceType || "").toLowerCase() === sourceType && hasPipelineConfig(s));
+      const endpointSource = eligible.find((source: any) => String(source?.id || "") === String(endpointData?.sourceId || "") && sourceMatchesGa4Scope(source));
       const crmSource = endpointSource || selectPipelineSource(eligible);
       if (!crmSource) return null;
-      const crmCfg = parseMappingConfig(crmSource);
-      const selectedValues = Array.isArray(crmCfg.selectedValues) ? crmCfg.selectedValues.map((v: any) => String(v)).filter(Boolean) : [];
-      const pipelineStageLabel = crmCfg.pipelineStageLabel || crmCfg.pipelineStageName || crmCfg.pipelineStageId || null;
-      const pipelineValueRevenueTotals = Array.isArray(crmCfg.pipelineValueRevenueTotals) ? crmCfg.pipelineValueRevenueTotals : [];
-      const fallback = crmCfg.pipelineEnabled && pipelineStageLabel ? {
-        success: true,
-        totalToDate: Number(crmCfg.pipelineTotalToDate || 0),
-        pipelineStageLabel,
-        pipelineValueRevenueTotals,
-        providerLabel: label,
-        selectedValues: pipelineValueRevenueTotals.length > 0 ? selectedValues : [],
-      } : null;
-      if (endpointData?.success) {
-        const normalized = normalizeTotal(endpointData);
-        return {
-          ...fallback,
-          ...normalized,
-          totalToDate: Number(normalized?.totalToDate || 0) || Number(fallback?.totalToDate || 0),
-          pipelineValueRevenueTotals: Array.isArray(normalized?.pipelineValueRevenueTotals) && normalized.pipelineValueRevenueTotals.length > 0
-            ? normalized.pipelineValueRevenueTotals
-            : fallback?.pipelineValueRevenueTotals || [],
-          providerLabel: label,
-          selectedValues: (Array.isArray(normalized?.pipelineValueRevenueTotals) && normalized.pipelineValueRevenueTotals.length > 0) ? selectedValues : (fallback?.selectedValues || []),
-          sourceId: crmSource?.id ? String(crmSource.id) : null,
-          sourceType: crmSource?.sourceType || sourceType,
-          displayName: crmSource?.displayName || label,
-          mappingConfig: crmSource?.mappingConfig || null,
-        };
-      }
-      return fallback ? {
-        ...fallback,
-        sourceId: crmSource?.id ? String(crmSource.id) : null,
-        sourceType: crmSource?.sourceType || sourceType,
-        displayName: crmSource?.displayName || label,
-        mappingConfig: crmSource?.mappingConfig || null,
-      } : null;
+      const cfg = parseMappingConfig(crmSource);
+      const items = Array.isArray(endpointData?.pipelineValueRevenueTotals) ? endpointData.pipelineValueRevenueTotals : [];
+      const available = !requestFailed && !!endpointSource && endpointData?.success === true && endpointData?.pipelineEnabled === true
+        && endpointData?.mode === "current_stage" && !endpointData?.warning && Number.isFinite(Date.parse(endpointData?.lastUpdatedAt))
+        && typeof endpointData?.totalToDate === "number" && Number.isFinite(endpointData.totalToDate)
+        && (endpointData.currency === campaignCurrency || (endpointData.totalToDate === 0 && !endpointData.currency))
+        && Array.isArray(endpointData.pipelineValueRevenueTotals) && items.every((item: any) => typeof item?.revenue === "number" && Number.isFinite(item.revenue))
+        && Math.abs(items.reduce((sum: number, item: any) => sum + item.revenue, 0) - endpointData.totalToDate) < 0.01;
+      return {
+        success: available, totalToDate: available ? endpointData.totalToDate : null,
+        pipelineValueRevenueTotals: available ? items : [], selectedValues: [],
+        providerLabel: label, pipelineStageLabel: endpointData?.pipelineStageLabel || cfg.pipelineStageLabel || cfg.pipelineStageName || cfg.pipelineStageId,
+        sourceId: String(crmSource.id), sourceType, displayName: crmSource.displayName || label, mappingConfig: crmSource.mappingConfig,
+        lastUpdatedAt: endpointData?.lastUpdatedAt || null, currency: endpointData?.currency || null,
+        warning: available ? null : endpointData?.warning || "Pipeline Proxy is unavailable. Saved revenue is unchanged.",
+      };
     };
     const entries = [
-      getPipelineSourceData("salesforce", salesforcePipelineProxyData, "Salesforce"),
-      getPipelineSourceData("hubspot", hubspotPipelineProxyData, "HubSpot"),
-    ].filter((entry: any) => entry?.success);
+      getPipelineSourceData("salesforce", salesforcePipelineProxyData, "Salesforce", salesforcePipelineProxyError),
+      getPipelineSourceData("hubspot", hubspotPipelineProxyData, "HubSpot", hubspotPipelineProxyError),
+    ].filter((entry): entry is NonNullable<typeof entry> => entry !== null);
     if (entries.length === 0) return null;
+    if (entries.some(entry => !entry?.success)) return { success: false, totalToDate: null, providerEntries: entries };
     const totalsByCampaign = new Map<string, number>();
     for (const entry of entries) {
       for (const item of Array.isArray(entry.pipelineValueRevenueTotals) ? entry.pipelineValueRevenueTotals : []) {
@@ -2845,12 +2815,13 @@ export default function GA4Metrics() {
         sourceType: entry.sourceType || null,
         displayName: entry.displayName || entry.providerLabel,
         mappingConfig: entry.mappingConfig || null,
+        lastUpdatedAt: entry.lastUpdatedAt, currency: entry.currency, warning: entry.warning,
         campaignValues: Array.isArray(entry.pipelineValueRevenueTotals) && entry.pipelineValueRevenueTotals.length > 0
           ? entry.pipelineValueRevenueTotals.map((item: any) => String(item?.campaignValue || "").trim()).filter(Boolean)
           : Array.isArray(entry.selectedValues) ? entry.selectedValues.map((value: any) => String(value || "").trim()).filter(Boolean) : [],
       })),
     };
-  }, [hubspotPipelineProxyData, revenueDisplaySources, revenueSourcesResp, salesforcePipelineProxyData, selectedGa4CampaignFilterList]);
+  }, [hubspotPipelineProxyData, hubspotPipelineProxyError, revenueDisplaySources, revenueSourcesResp, salesforcePipelineProxyData, salesforcePipelineProxyError, selectedGa4CampaignFilterList, campaignCurrency]);
   // Availability flags for UI gating (KPI/Benchmark templates):
   // - Spend is "available" if a spend source exists (even if value is 0).
   // - Revenue is "available" if GA4 has a revenue metric configured OR an imported revenue source exists.
@@ -3009,12 +2980,7 @@ export default function GA4Metrics() {
     revenueSourcesLoading ||
     (configuredPipelineSourceTypes.has("hubspot") && hubspotPipelineProxyLoading) ||
     (configuredPipelineSourceTypes.has("salesforce") && salesforcePipelineProxyLoading);
-  const pipelineProxyUnavailable =
-    (revenueSourcesError && revenueSourcesResp === undefined) ||
-    (pipelineProxyConfigured &&
-      !hasPipelineProxy &&
-      ((configuredPipelineSourceTypes.has("hubspot") && hubspotPipelineProxyError) ||
-        (configuredPipelineSourceTypes.has("salesforce") && salesforcePipelineProxyError)));
+  const pipelineProxyUnavailable = revenueSourcesError || (pipelineProxyConfigured && !pipelineProxyLoading && !hasPipelineProxy);
   const pipelineProxySourceEntries = (Array.isArray(pipelineProxyData?.providerEntries) && pipelineProxyData.providerEntries.length > 0
     ? pipelineProxyData.providerEntries
     : hasPipelineProxy ? [pipelineProxyData] : []
@@ -7624,7 +7590,7 @@ export default function GA4Metrics() {
                             <div className="flex items-center justify-between gap-3">
                               <p className="font-medium text-foreground">{entry?.providerLabel || "Provider"}</p>
                               <div className="flex items-center gap-2">
-                                <p className="font-medium tabular-nums text-foreground">{formatMoney(Number(entry?.totalToDate || 0))}</p>
+                                <p className="font-medium tabular-nums text-foreground">{hasPipelineProxy ? formatMoney(Number(entry?.totalToDate || 0)) : "Unavailable"}</p>
                                 {["hubspot", "salesforce"].includes(String(entry?.sourceType || "").trim().toLowerCase()) && entry?.sourceId && ga4ConnectionUsable && (
                                   <button
                                     onClick={() => {
@@ -7661,6 +7627,8 @@ export default function GA4Metrics() {
                               </div>
                             </div>
                             <div className="mt-1 space-y-0.5 text-xs text-muted-foreground/70">
+                              {entry?.lastUpdatedAt && <p>Last successful update: {new Date(entry.lastUpdatedAt).toLocaleString()}</p>}
+                              {entry?.warning && <p>{entry.warning}</p>}
                               {Array.isArray(entry?.campaignValues) && entry.campaignValues.length > 0
                                 ? entry.campaignValues.map((value: any, valueIdx: number) => (
                                   <p key={`${entry?.providerLabel || "provider"}-${idx}-${valueIdx}`}>

@@ -25,6 +25,8 @@ export async function fetchCompleteSalesforceQuery(args: {
   const instanceOrigin = new URL(args.instanceUrl).origin;
   const requestedUrls = new Set<string>();
   const records: any[] = [];
+  const recordIds = new Set<string>();
+  let expectedTotal: number | undefined;
   let nextUrl: string | undefined = args.initialUrl;
   let pages = 0;
 
@@ -46,7 +48,18 @@ export async function fetchCompleteSalesforceQuery(args: {
       );
     }
 
-    records.push(...(Array.isArray(json?.records) ? json.records : []));
+    if (!Array.isArray(json?.records) || typeof json.done !== 'boolean' || !Number.isSafeInteger(json.totalSize) || json.totalSize < 0
+      || (expectedTotal !== undefined && expectedTotal !== json.totalSize)) {
+      throw queryError('Salesforce returned an invalid or changing query result.', SALESFORCE_PAGINATION_ERROR_CODE);
+    }
+    expectedTotal = json.totalSize;
+    for (const record of json.records) {
+      if (typeof record?.Id !== 'string' || !record.Id.trim() || recordIds.has(record.Id)) {
+        throw queryError('Salesforce returned a missing or repeated record identity.', SALESFORCE_PAGINATION_ERROR_CODE);
+      }
+      recordIds.add(record.Id);
+      records.push(record);
+    }
     if (records.length > maxResults) {
       throw queryError(
         `Too many matching Salesforce opportunities (>${maxResults.toLocaleString()}). Please narrow your filter or reduce the date range.`,
@@ -56,6 +69,10 @@ export async function fetchCompleteSalesforceQuery(args: {
 
     pages += 1;
     const rawNextUrl = String(json?.nextRecordsUrl || '').trim();
+    if (records.length > json.totalSize || (json.done && (rawNextUrl || records.length !== json.totalSize))
+      || (!json.done && (json.records.length === 0 || records.length >= json.totalSize))) {
+      throw queryError('Salesforce query count or completion marker is inconsistent.', SALESFORCE_PAGINATION_ERROR_CODE);
+    }
     if (!rawNextUrl) {
       if (json?.done === false) {
         throw queryError('Salesforce reported incomplete query results without a next page.', SALESFORCE_PAGINATION_ERROR_CODE);

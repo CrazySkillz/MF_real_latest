@@ -678,7 +678,7 @@ export default function CustomIntegrationAnalytics() {
     },
   });
 
-  const { data: customIntegrationHubspotPipelineProxyData, isLoading: customIntegrationHubspotPipelineProxyLoading } = useQuery<any>({
+  const { data: customIntegrationHubspotPipelineProxyData, isLoading: customIntegrationHubspotPipelineProxyLoading, isError: customIntegrationHubspotPipelineProxyError } = useQuery<any>({
     queryKey: ["/api/hubspot", campaignId, "pipeline-proxy", "custom_integration"],
     enabled: !!campaignId,
     staleTime: 0,
@@ -687,12 +687,12 @@ export default function CustomIntegrationAnalytics() {
     retry: false,
     queryFn: async () => {
       const response = await fetch(`/api/hubspot/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=custom_integration`, { credentials: "include" });
-      if (!response.ok) return null;
-      return response.json().catch(() => null);
+      if (!response.ok) throw new Error("Pipeline Proxy is unavailable");
+      return response.json();
     },
   });
 
-  const { data: customIntegrationSalesforcePipelineProxyData, isLoading: customIntegrationSalesforcePipelineProxyLoading } = useQuery<any>({
+  const { data: customIntegrationSalesforcePipelineProxyData, isLoading: customIntegrationSalesforcePipelineProxyLoading, isError: customIntegrationSalesforcePipelineProxyError } = useQuery<any>({
     queryKey: ["/api/salesforce", campaignId, "pipeline-proxy", "custom_integration"],
     enabled: !!campaignId,
     staleTime: 0,
@@ -701,8 +701,8 @@ export default function CustomIntegrationAnalytics() {
     retry: false,
     queryFn: async () => {
       const response = await fetch(`/api/salesforce/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=custom_integration`, { credentials: "include" });
-      if (!response.ok) return null;
-      return response.json().catch(() => null);
+      if (!response.ok) throw new Error("Pipeline Proxy is unavailable");
+      return response.json();
     },
   });
 
@@ -802,25 +802,35 @@ export default function CustomIntegrationAnalytics() {
   };
   const customIntegrationPipelineProxySourceEntries = ["hubspot", "salesforce"].map((provider) => {
     const endpointData = provider === "hubspot" ? customIntegrationHubspotPipelineProxyData : customIntegrationSalesforcePipelineProxyData;
+    const requestFailed = provider === "hubspot" ? customIntegrationHubspotPipelineProxyError : customIntegrationSalesforcePipelineProxyError;
     const source = activeCustomIntegrationRevenueSources
       .filter((item: any) => String(item?.sourceType || "").trim().toLowerCase() === provider)
       .map((item: any) => ({ source: item, cfg: getCustomIntegrationFinancialSourceConfig(item) }))
       .filter(({ cfg }: any) => cfg?.pipelineEnabled === true && !!(cfg?.pipelineStageId || cfg?.pipelineStageName || cfg?.pipelineStageLabel))
       .sort((a: any, b: any) => new Date(b.source?.connectedAt || b.source?.createdAt || 0).getTime() - new Date(a.source?.connectedAt || a.source?.createdAt || 0).getTime())[0];
-    if (!source && !endpointData?.success) return null;
+    if (!source) return null;
     const cfg = source?.cfg || {};
     const pipelineValueRevenueTotals = Array.isArray(endpointData?.pipelineValueRevenueTotals)
       ? endpointData.pipelineValueRevenueTotals
-      : Array.isArray(cfg?.pipelineValueRevenueTotals) ? cfg.pipelineValueRevenueTotals : [];
+      : [];
+    const available = !requestFailed && endpointData?.success === true && endpointData?.pipelineEnabled === true
+      && String(endpointData?.sourceId || "") === String(source.source.id) && endpointData?.mode === "current_stage"
+      && !endpointData?.warning && Number.isFinite(Date.parse(endpointData?.lastUpdatedAt))
+      && typeof endpointData?.totalToDate === "number" && Number.isFinite(endpointData.totalToDate)
+      && (endpointData.currency === customIntegrationFinancialCurrency || (endpointData.totalToDate === 0 && !endpointData.currency))
+      && Array.isArray(endpointData.pipelineValueRevenueTotals) && pipelineValueRevenueTotals.every((item: any) => typeof item?.revenue === "number" && Number.isFinite(item.revenue))
+      && Math.abs(pipelineValueRevenueTotals.reduce((sum: number, item: any) => sum + item.revenue, 0) - endpointData.totalToDate) < 0.01;
     return {
       sourceId: String(source?.source?.id || provider),
       providerLabel: provider === "salesforce" ? "Salesforce" : "HubSpot",
       pipelineStageLabel: endpointData?.pipelineStageLabel || cfg?.pipelineStageLabel || cfg?.pipelineStageName || cfg?.pipelineStageId || "Selected stage",
-      totalToDate: Number(endpointData?.success ? endpointData?.totalToDate || 0 : cfg?.pipelineTotalToDate || 0),
-      campaignValues: pipelineValueRevenueTotals.map((item: any) => String(item?.campaignValue || "").trim()).filter(Boolean),
+      totalToDate: available ? endpointData.totalToDate : null,
+      available, lastUpdatedAt: endpointData?.lastUpdatedAt || null, warning: available ? null : "Pipeline Proxy is unavailable.",
+      campaignValues: available ? pipelineValueRevenueTotals.map((item: any) => String(item?.campaignValue || "").trim()).filter(Boolean) : [],
     };
   }).filter(Boolean) as any[];
   const customIntegrationPipelineProxyTotal = customIntegrationPipelineProxySourceEntries.reduce((sum: number, entry: any) => sum + Number(entry?.totalToDate || 0), 0);
+  const customIntegrationPipelineProxyUnavailable = customIntegrationRevenueSourcesError || customIntegrationPipelineProxySourceEntries.some((entry: any) => !entry.available);
   const resolveCustomIntegrationOverviewMetric = (metricKey: any) => {
     const option = getCustomIntegrationMetricOption(metricKey);
     const sourceLabel = "Custom Integration Overview financial totals";
@@ -3173,7 +3183,7 @@ export default function CustomIntegrationAnalytics() {
             <Target className="w-4 h-4 text-muted-foreground/70" />
           </div>
           <p className="text-2xl font-bold text-foreground">
-            {customIntegrationPipelineProxyInitialLoading ? renderCustomIntegrationCardValuePlaceholder() : customIntegrationPipelineProxySourceEntries.length > 0 ? formatCustomIntegrationCurrency(customIntegrationPipelineProxyTotal) : "Not configured"}
+            {customIntegrationPipelineProxyInitialLoading ? renderCustomIntegrationCardValuePlaceholder() : customIntegrationPipelineProxyUnavailable ? "Unavailable" : customIntegrationPipelineProxySourceEntries.length > 0 ? formatCustomIntegrationCurrency(customIntegrationPipelineProxyTotal) : "Not configured"}
           </p>
           {customIntegrationPipelineProxyInitialLoading ? renderCustomIntegrationCardHelperPlaceholder() : (
             <p className="text-xs text-muted-foreground mt-1">
@@ -4692,9 +4702,11 @@ export default function CustomIntegrationAnalytics() {
               <div key={entry.sourceId} className="rounded-md border border-border p-3 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-medium text-foreground">{entry.providerLabel}</p>
-                  <p className="font-medium tabular-nums text-foreground">{formatCustomIntegrationCurrency(Number(entry.totalToDate || 0))}</p>
+                  <p className="font-medium tabular-nums text-foreground">{entry.available ? formatCustomIntegrationCurrency(entry.totalToDate) : "Unavailable"}</p>
                 </div>
                 <div className="mt-1 space-y-0.5 text-xs text-muted-foreground/70">
+                      {entry.available && entry.lastUpdatedAt && <p>Last successful update: {new Date(entry.lastUpdatedAt).toLocaleString()}</p>}
+                      {entry.warning && <p>{entry.warning}</p>}
                   {Array.isArray(entry.campaignValues) && entry.campaignValues.length > 0 ? (
                     entry.campaignValues.map((value: any, index: number) => (
                       <p key={`${entry.sourceId}-${index}`}>

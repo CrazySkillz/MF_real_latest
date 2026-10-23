@@ -32,22 +32,22 @@ describe('Salesforce bounded query pagination', () => {
 
   it('retrieves a result that crosses the Salesforce 2,000-record page boundary', async () => {
     const batches = [
-      { records: Array.from({ length: 2_000 }, (_, id) => ({ id })), done: false, nextRecordsUrl: '/services/data/v59.0/query/next-1' },
-      { records: [{ id: 2_000 }], done: true },
+      { totalSize: 2001, records: Array.from({ length: 2_000 }, (_, id) => ({ Id: String(id) })), done: false, nextRecordsUrl: '/services/data/v59.0/query/next-1' },
+      { totalSize: 2001, records: [{ Id: '2000' }], done: true },
     ];
     const fetchImpl = (async () => page(batches.shift())) as typeof fetch;
 
     const records = await fetchCompleteSalesforceQuery({ initialUrl, instanceUrl, accessToken: 'token', fetchImpl });
 
     expect(records).toHaveLength(2_001);
-    expect(records.at(-1)).toEqual({ id: 2_000 });
+    expect(records.at(-1)).toEqual({ Id: '2000' });
   });
 
   it('retrieves every page and accepts an exactly-at-limit result', async () => {
     const batches = [
-      { records: Array.from({ length: 2_000 }, (_, id) => ({ id })), done: false, nextRecordsUrl: '/services/data/v59.0/query/next-1' },
-      { records: Array.from({ length: 2_000 }, (_, id) => ({ id: id + 2_000 })), done: false, nextRecordsUrl: '/services/data/v59.0/query/next-2' },
-      { records: Array.from({ length: 1_000 }, (_, id) => ({ id: id + 4_000 })), done: true },
+      { totalSize: 5000, records: Array.from({ length: 2_000 }, (_, id) => ({ Id: String(id) })), done: false, nextRecordsUrl: '/services/data/v59.0/query/next-1' },
+      { totalSize: 5000, records: Array.from({ length: 2_000 }, (_, id) => ({ Id: String(id + 2_000) })), done: false, nextRecordsUrl: '/services/data/v59.0/query/next-2' },
+      { totalSize: 5000, records: Array.from({ length: 1_000 }, (_, id) => ({ Id: String(id + 4_000) })), done: true },
     ];
     const fetchImpl = (async () => page(batches.shift())) as typeof fetch;
 
@@ -58,14 +58,14 @@ describe('Salesforce bounded query pagination', () => {
   });
 
   it('rejects results above the safe record limit', async () => {
-    const fetchImpl = (async () => page({ records: Array.from({ length: 5_001 }, (_, id) => ({ id })), done: true })) as typeof fetch;
+    const fetchImpl = (async () => page({ totalSize: 5001, records: Array.from({ length: 5_001 }, (_, id) => ({ Id: String(id) })), done: true })) as typeof fetch;
 
     await expect(fetchCompleteSalesforceQuery({ initialUrl, instanceUrl, accessToken: 'token', fetchImpl }))
       .rejects.toMatchObject({ code: SALESFORCE_RESULT_LIMIT_ERROR_CODE });
   });
 
   it('fails closed when Salesforce reports incomplete results without a locator', async () => {
-    const fetchImpl = (async () => page({ records: [{ id: 1 }], done: false })) as typeof fetch;
+    const fetchImpl = (async () => page({ totalSize: 2, records: [{ Id: '1' }], done: false })) as typeof fetch;
 
     await expect(fetchCompleteSalesforceQuery({ initialUrl, instanceUrl, accessToken: 'token', fetchImpl }))
       .rejects.toMatchObject({ code: SALESFORCE_PAGINATION_ERROR_CODE });
@@ -76,7 +76,7 @@ describe('Salesforce bounded query pagination', () => {
     const fetchImpl = (async () => {
       calls += 1;
       return calls === 1
-        ? page({ records: [{ id: 1 }], done: false, nextRecordsUrl: '/next' })
+        ? page({ totalSize: 2, records: [{ Id: '1' }], done: false, nextRecordsUrl: '/next' })
         : page([{ message: 'query locator expired' }], 404);
     }) as typeof fetch;
 
@@ -87,21 +87,21 @@ describe('Salesforce bounded query pagination', () => {
 
   it('rejects a repeated query locator', async () => {
     const repeated = '/services/data/v59.0/query/repeated';
-    const fetchImpl = (async (url: any) => page({ records: [{ id: String(url) }], done: false, nextRecordsUrl: repeated })) as typeof fetch;
+    const fetchImpl = (async (url: any) => page({ totalSize: 10, records: [{ Id: String(url) }], done: false, nextRecordsUrl: repeated })) as typeof fetch;
 
     await expect(fetchCompleteSalesforceQuery({ initialUrl, instanceUrl, accessToken: 'token', fetchImpl }))
       .rejects.toMatchObject({ code: SALESFORCE_PAGINATION_ERROR_CODE });
   });
 
   it('rejects a continuation after the final safe page', async () => {
-    const fetchImpl = (async () => page({ records: [{ id: 1 }], done: false, nextRecordsUrl: '/next' })) as typeof fetch;
+    const fetchImpl = (async () => page({ totalSize: 2, records: [{ Id: '1' }], done: false, nextRecordsUrl: '/next' })) as typeof fetch;
 
     await expect(fetchCompleteSalesforceQuery({ initialUrl, instanceUrl, accessToken: 'token', fetchImpl, maxPages: 1 }))
       .rejects.toMatchObject({ code: SALESFORCE_PAGINATION_ERROR_CODE });
   });
 
   it('rejects a query locator for a different host', async () => {
-    const fetchImpl = (async () => page({ records: [{ id: 1 }], done: false, nextRecordsUrl: 'https://attacker.example/next' })) as typeof fetch;
+    const fetchImpl = (async () => page({ totalSize: 2, records: [{ Id: '1' }], done: false, nextRecordsUrl: 'https://attacker.example/next' })) as typeof fetch;
 
     await expect(fetchCompleteSalesforceQuery({ initialUrl, instanceUrl, accessToken: 'token', fetchImpl }))
       .rejects.toMatchObject({ code: SALESFORCE_PAGINATION_ERROR_CODE });

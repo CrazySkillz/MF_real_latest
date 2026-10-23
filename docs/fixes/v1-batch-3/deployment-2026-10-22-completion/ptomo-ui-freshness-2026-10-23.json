@@ -1,0 +1,36 @@
+{
+  "id": "PTOMO-UI-FRESHNESS-2026-10-23-PM",
+  "source": "User-provided screenshot in this conversation, following the request for Ptomo Overview freshness labels; original image remains in the conversation.",
+  "campaignContext": "Ptomo, as supplied by user",
+  "status": "PASS for the requested bounded UI freshness follow-up",
+  "displayed": {
+    "ga4Metrics": {
+      "from": "2026-09-04",
+      "through": "2026-10-22",
+      "lastSuccessfulUpdate": "2026-10-23 14:08 GMT+2"
+    },
+    "financialFigures": {
+      "through": "2026-10-22",
+      "lastSuccessfulUpdate": "2026-10-23 14:09 GMT+2",
+      "qualification": "Applies to available figures"
+    },
+    "financialGa4Inputs": {
+      "from": "2026-09-04",
+      "through": "2026-10-22"
+    },
+    "timeZone": "Europe/Amsterdam",
+    "scheduledTimes": [
+      "08:00",
+      "14:00",
+      "20:00"
+    ]
+  },
+  "interpretation": "Both displayed successful-update dates advanced to October 23 and cover completed data through October 22. The later afternoon evidence satisfies the requested UI freshness follow-up without needing another morning screenshot.",
+  "limits": [
+    "Does not establish the exact October 23 08:00 run or which process/commit produced these values.",
+    "Times are consistent with the 14:00 schedule, but the screenshot alone does not identify the trigger or prove scheduler execution.",
+    "Does not reconcile underlying provider values, fractional precision, selected scope, every financial source, recovery or downstream reports.",
+    "Does not close Batch 3 finding acceptance or whole-V1 release gates."
+  ],
+  "actions": "Documentation only; no manual refresh, provider access, campaign change or production mutation."
+}

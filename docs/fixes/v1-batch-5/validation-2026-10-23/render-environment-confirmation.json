@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-23T17:44:04.944Z",
+  "source": "Explicit user confirmation in current conversation",
+  "setting": "SHOPIFY_API_VERSION",
+  "present": false,
+  "effectiveApplicationDefault": "2026-07",
+  "independentlyInspectedRenderEnvironment": false,
+  "changesRequestedOrMade": false
+}

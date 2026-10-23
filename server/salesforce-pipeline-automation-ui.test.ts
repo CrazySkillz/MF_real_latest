@@ -107,8 +107,8 @@ describe("Salesforce Pipeline Proxy automatic refresh and provenance", () => {
     );
 
     expect(pipelineRoute).toContain("cached >= 0");
-    expect(pipelineRoute).toContain("cached === 0 || cachedValueTotals.length > 0");
-    expect(pipelineRoute).toContain("!!cfg.pipelineLastUpdatedAt && !cfg.pipelineWarning");
+    expect(pipelineRoute).toContain("Math.abs(cachedValueTotals.reduce((sum: number, item: any) => sum + item.revenue, 0) - cached) < 0.01");
+    expect(pipelineRoute).toContain("Number.isFinite(Date.parse(cfg.pipelineLastUpdatedAt)) && !cfg.pipelineWarning");
     expect(pipelineQuery).toContain("refetchInterval: 60 * 1000");
     expect(pipelineQuery).toContain("salesforcePipelineProxyData?.lastUpdatedAt");
     expect(pipelineQuery).toContain(`/revenue-to-date`);

@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-23T17:42:24.306Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "currency-recovery-typecheck.log"
+    },
+    {
+      "name": "server-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "currency-recovery-server-build.log"
+    }
+  ]
+}

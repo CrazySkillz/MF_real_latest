@@ -950,7 +950,7 @@ export default function GoogleSheetsData() {
     },
   });
 
-  const { data: hubspotPipelineProxyData, isLoading: hubspotPipelineProxyLoading } = useQuery<any>({
+  const { data: hubspotPipelineProxyData, isLoading: hubspotPipelineProxyLoading, isError: hubspotPipelineProxyError } = useQuery<any>({
     queryKey: ["/api/hubspot", campaignId, "pipeline-proxy", "google_sheets"],
     enabled: !!campaignId,
     staleTime: 0,
@@ -959,12 +959,12 @@ export default function GoogleSheetsData() {
     retry: false,
     queryFn: async () => {
       const response = await fetch(`/api/hubspot/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=google_sheets`);
-      if (!response.ok) return null;
-      return response.json().catch(() => null);
+      if (!response.ok) throw new Error("Pipeline Proxy is unavailable");
+      return response.json();
     },
   });
 
-  const { data: salesforcePipelineProxyData, isLoading: salesforcePipelineProxyLoading } = useQuery<any>({
+  const { data: salesforcePipelineProxyData, isLoading: salesforcePipelineProxyLoading, isError: salesforcePipelineProxyError } = useQuery<any>({
     queryKey: ["/api/salesforce", campaignId, "pipeline-proxy", "google_sheets"],
     enabled: !!campaignId,
     staleTime: 0,
@@ -973,8 +973,8 @@ export default function GoogleSheetsData() {
     retry: false,
     queryFn: async () => {
       const response = await fetch(`/api/salesforce/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=google_sheets`);
-      if (!response.ok) return null;
-      return response.json().catch(() => null);
+      if (!response.ok) throw new Error("Pipeline Proxy is unavailable");
+      return response.json();
     },
   });
 
@@ -1066,35 +1066,44 @@ export default function GoogleSheetsData() {
   ], [googleSheetsRoas, googleSheetsRoi, googleSheetsTotalRevenue, googleSheetsTotalSpend, hasGoogleSheetsConfirmedRevenue, hasGoogleSheetsConfirmedSpend]);
 
   const googleSheetsPipelineProxySourceEntries = useMemo(() => {
-    const sourceForProvider = (provider: "hubspot" | "salesforce", endpointData: any) => {
+    const sourceForProvider = (provider: "hubspot" | "salesforce", endpointData: any, requestFailed: boolean) => {
       const source = activeGoogleSheetsRevenueSources
         .filter((item: any) => String(item?.sourceType || "").trim().toLowerCase() === provider)
         .map((item: any) => ({ source: item, cfg: parseRevenueSourceConfig(item) }))
         .filter(({ cfg }: any) => cfg?.pipelineEnabled === true && !!(cfg?.pipelineStageId || cfg?.pipelineStageName || cfg?.pipelineStageLabel))
         .sort((a: any, b: any) => new Date(b.source?.connectedAt || b.source?.createdAt || 0).getTime() - new Date(a.source?.connectedAt || a.source?.createdAt || 0).getTime())[0];
-      if (!source && !endpointData?.success) return null;
+      if (!source) return null;
       const cfg = source?.cfg || {};
       const providerLabel = provider === "salesforce" ? "Salesforce" : "HubSpot";
       const pipelineValueRevenueTotals = Array.isArray(endpointData?.pipelineValueRevenueTotals)
         ? endpointData.pipelineValueRevenueTotals
-        : Array.isArray(cfg?.pipelineValueRevenueTotals) ? cfg.pipelineValueRevenueTotals : [];
+        : [];
       const campaignValues = pipelineValueRevenueTotals.length > 0
         ? pipelineValueRevenueTotals.map((item: any) => String(item?.campaignValue || "").trim()).filter(Boolean)
-        : Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.map((value: any) => String(value || "").trim()).filter(Boolean) : [];
+        : [];
+      const available = !requestFailed && endpointData?.success === true && endpointData?.pipelineEnabled === true
+        && String(endpointData?.sourceId || "") === String(source.source.id) && endpointData?.mode === "current_stage"
+        && !endpointData?.warning && Number.isFinite(Date.parse(endpointData?.lastUpdatedAt))
+        && typeof endpointData?.totalToDate === "number" && Number.isFinite(endpointData.totalToDate)
+        && (endpointData.currency === googleSheetsRevenueCurrency || (endpointData.totalToDate === 0 && !endpointData.currency))
+        && Array.isArray(endpointData.pipelineValueRevenueTotals) && pipelineValueRevenueTotals.every((item: any) => typeof item?.revenue === "number" && Number.isFinite(item.revenue))
+        && Math.abs(pipelineValueRevenueTotals.reduce((sum: number, item: any) => sum + item.revenue, 0) - endpointData.totalToDate) < 0.01;
       return {
         sourceId: String(source?.source?.id || provider),
         providerLabel,
         pipelineStageLabel: endpointData?.pipelineStageLabel || cfg?.pipelineStageLabel || cfg?.pipelineStageName || cfg?.pipelineStageId || "Selected stage",
-        totalToDate: Number(endpointData?.success ? endpointData?.totalToDate || 0 : cfg?.pipelineTotalToDate || 0),
-        campaignValues,
+        totalToDate: available ? endpointData.totalToDate : null,
+        available, lastUpdatedAt: endpointData?.lastUpdatedAt || null, warning: available ? null : "Pipeline Proxy is unavailable.",
+        campaignValues: available ? campaignValues : [],
       };
     };
     return [
-      sourceForProvider("hubspot", hubspotPipelineProxyData),
-      sourceForProvider("salesforce", salesforcePipelineProxyData),
+      sourceForProvider("hubspot", hubspotPipelineProxyData, hubspotPipelineProxyError),
+      sourceForProvider("salesforce", salesforcePipelineProxyData, salesforcePipelineProxyError),
     ].filter(Boolean) as any[];
-  }, [activeGoogleSheetsRevenueSources, hubspotPipelineProxyData, salesforcePipelineProxyData]);
+  }, [activeGoogleSheetsRevenueSources, hubspotPipelineProxyData, hubspotPipelineProxyError, salesforcePipelineProxyData, salesforcePipelineProxyError, googleSheetsRevenueCurrency]);
   const googleSheetsPipelineProxyTotal = googleSheetsPipelineProxySourceEntries.reduce((sum: number, entry: any) => sum + Number(entry?.totalToDate || 0), 0);
+  const googleSheetsPipelineProxyUnavailable = googleSheetsRevenueSourcesError || googleSheetsPipelineProxySourceEntries.some((entry: any) => !entry.available);
   const refreshGoogleSheetsRevenueQueries = async () => {
     await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_sheets"] });
     await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=all`], exact: false });
@@ -1191,7 +1200,7 @@ export default function GoogleSheetsData() {
             <Target className="w-4 h-4 text-muted-foreground/70" />
           </div>
           <p className="text-2xl font-bold text-foreground">
-            {googleSheetsPipelineProxyInitialLoading ? renderGoogleSheetsCardValuePlaceholder() : googleSheetsPipelineProxySourceEntries.length > 0 ? fmtCurrency(googleSheetsPipelineProxyTotal) : "Not configured"}
+            {googleSheetsPipelineProxyInitialLoading ? renderGoogleSheetsCardValuePlaceholder() : googleSheetsPipelineProxyUnavailable ? "Unavailable" : googleSheetsPipelineProxySourceEntries.length > 0 ? fmtCurrency(googleSheetsPipelineProxyTotal) : "Not configured"}
           </p>
           {googleSheetsPipelineProxyInitialLoading ? renderGoogleSheetsCardHelperPlaceholder() : (
             <p className="text-xs text-muted-foreground mt-1">
@@ -4090,9 +4099,11 @@ export default function GoogleSheetsData() {
                   <div key={entry.sourceId} className="rounded-md border border-border p-3 text-sm">
                     <div className="flex items-center justify-between gap-3">
                       <p className="font-medium text-foreground">{entry.providerLabel}</p>
-                      <p className="font-medium tabular-nums text-foreground">{fmtCurrency(Number(entry.totalToDate || 0))}</p>
+                      <p className="font-medium tabular-nums text-foreground">{entry.available ? fmtCurrency(entry.totalToDate) : "Unavailable"}</p>
                     </div>
                     <div className="mt-1 space-y-0.5 text-xs text-muted-foreground/70">
+                      {entry.available && entry.lastUpdatedAt && <p>Last successful update: {new Date(entry.lastUpdatedAt).toLocaleString()}</p>}
+                      {entry.warning && <p>{entry.warning}</p>}
                       {Array.isArray(entry.campaignValues) && entry.campaignValues.length > 0 ? (
                         entry.campaignValues.map((value: any, index: number) => (
                           <p key={`${entry.sourceId}-${index}`}>

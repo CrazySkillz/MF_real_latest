@@ -1233,7 +1233,7 @@ Required reconciliation checks:
 - [ ] Confirm the final HubSpot review summary does not show a repeated account row or `Account name unavailable`
 - [ ] Verify deal count + revenue total match what you see in HubSpot
 - [ ] If Pipeline Proxy is enabled, select a real open deal stage and verify the review step and Overview `Pipeline Proxy` card show the same stage label and amount
-- [ ] Confirm the Overview `Pipeline Proxy` card appears because the saved HubSpot source is active, and does not depend only on a fresh proxy endpoint response
+- [ ] Confirm the active HubSpot source keeps Pipeline Proxy configured; display an amount only from a validated exact-source response. A current zero stays zero; a failed/mismatched read shows `Unavailable` and never restores an old mapping amount.
 - [ ] Verify the HubSpot Pipeline Proxy amount is not included in confirmed Total Revenue or downstream performance metrics
 - [ ] **Create a new deal in HubSpot** with known amount
 - [ ] Wait for next scheduler run → verify revenue increased by that amount
@@ -1250,7 +1250,7 @@ Salesforce is enabled. Use `GA4/CRM_REVENUE_SOURCE_PATTERN.md` for the current r
 - [ ] If the stored Salesforce access token is missing but the refresh token is still valid, the chooser/status path recovers the connection and does not incorrectly stay in `Reconnect required`
 - [ ] In disconnected edit mode, the Source step still shows the persisted Salesforce org/account label
 - [ ] If Pipeline Proxy is enabled, select a real open Opportunity stage and verify the review step and Overview `Pipeline Proxy` card show the same stage label and amount
-- [ ] Confirm the Overview `Pipeline Proxy` card appears because the saved Salesforce source is active, and does not depend only on a fresh proxy endpoint response
+- [ ] Confirm the active Salesforce source keeps Pipeline Proxy configured; display an amount only from a validated exact-source response. A current zero stays zero; a failed/mismatched read shows `Unavailable` and never restores an old mapping amount.
 - [ ] Verify the Salesforce Pipeline Proxy amount is not included in confirmed Total Revenue or downstream performance metrics
 - [ ] Create or select a known open-stage Opportunity, verify it contributes to Pipeline Proxy, then move it to Closed Won and wait for the five-minute CRM run
 - [ ] Verify the amount leaves Pipeline Proxy, enters Total Revenue exactly once, and appears as an itemized Salesforce Revenue Source without changing the provider source count

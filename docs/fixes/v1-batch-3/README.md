@@ -6,7 +6,7 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 3 status
 
-**All ten Batch 3 corrections are VERIFIED LOCALLY for their documented forward paths; release acceptance remains OPEN.** Six corrections were previously deployed in `5f251e0e` (runtime content `001ddfa8`). The final four corrections and the provider-timeout continuation are deployed in `ff3c5115` (runtime fixes `e7aebef8`). [Public deployment checks pass](#final-fix-deployment-verification-october-22); authenticated/provider and natural-refresh acceptance remain open. The [completion checkpoint](#completion-checkpoint-october-22) records current evidence and remaining acceptance.
+**All ten Batch 3 corrections are VERIFIED LOCALLY for their documented forward paths; release acceptance remains OPEN.** Six corrections were previously deployed in `5f251e0e` (runtime content `001ddfa8`). The final four corrections and the provider-timeout continuation are deployed in `ff3c5115` (runtime fixes `e7aebef8`). [Public deployment checks pass](#final-fix-deployment-verification-october-22). The [October 23 Ptomo UI freshness follow-up passes](#ptomo-afternoon-refresh-october-23): GA4 14:08 and financial figures 14:09, both through October 22. Provider reconciliation, exact scheduler/process attribution and full authenticated/downstream acceptance remain open. The [completion checkpoint](#completion-checkpoint-october-22) records current evidence and remaining acceptance.
 
 **Precision follow-up: V1-079 is VERIFIED LOCALLY for the documented forward paths.** Fractional credit now survives goals, history, snapshots, diagnostics and report rendering. Release acceptance remains OPEN. The [precision checkpoint manifest](validation-2026-10-21-goal-precision/candidate-manifest.json) and [assessment](validation-2026-10-21-goal-precision/assessment.json) supersede earlier hashes; see [V1-079](#v1-079).
 
@@ -15,6 +15,14 @@ This is the detailed home for this batch's assigned findings. Read the required 
 The four previously unfinished paths (source-aware recovery (V1-011), cancellation/late-write safety (V1-025), shared-property concurrency (V1-089) and provider-quality metadata (V1-090)) are now locally verified within the completion checkpoint. No known Batch 3 code correction remains queued in those four findings. Deployed/provider, historical-data and whole-V1 acceptance remain open.
 
 **Earlier precision commit boundary:** The 71 runtime/test/migration files match the final validated manifest. This checkpoint includes those fixes, both precision migrations, the four updated audit records and the three dated validation packets. Historical assessments retain their original pre-commit status. Production compatibility, backup and the precision-preserving fallback subsequently passed the bounded pre-push checks recorded below. No additional runtime changes or production actions were made while preparing the commit.
+
+## Ptomo afternoon refresh, October 23
+
+**Requested UI freshness follow-up: PASS.** The user supplied Ptomo Overview's freshness section: GA4 metrics show **October 23, 14:08 GMT+2**, covering September 4 through October 22; financial figures show **October 23, 14:09 GMT+2**, through October 22, applying to available figures. Financial GA4 inputs cover the same September 4?October 22 window. The displayed timezone is Europe/Amsterdam and the schedule is 08:00 / 14:00 / 20:00. [Exact screenshot transcription and limits](deployment-2026-10-22-completion/ptomo-ui-freshness-2026-10-23.json).
+
+This later afternoon evidence satisfies the UI follow-up requested after the final Batch 3 deployment. It replaces the need to obtain another screenshot specifically after the October 23 morning slot. It does **not** establish the exact 08:00 run, a particular deployment's process/commit, or the trigger behind either update. The times are consistent with the displayed 14:00 schedule; that inference is not scheduler-log evidence. The earlier October 22 screenshot remains separate historical evidence.
+
+No provider-value reconciliation, fractional-precision publication, source completeness, recovery or downstream output acceptance is inferred. All ten Batch 3 finding acceptances and the V1 NO-GO remain OPEN. No code, campaign, provider, manual refresh or production-data change was performed. The next implementation batch remains Batch 5; no further wait is needed for this bounded Ptomo UI check.
 
 ## Ptomo test-data policy, October 22
 
@@ -28,7 +36,7 @@ The remaining rollback concern is future processing: the old runtime would reint
 
 The GA4 scheduler is registered with Europe/Amsterdam runs at 08:00, 14:00 and 20:00. It started at 20:12:36 UTC, with `runOnStartup=false`; its next run is **October 23 at 08:00 Amsterdam**, covering data through October 22. It was idle with no completed run since this deployment. That is expected scheduling state, not evidence of refresh failure or success. The earlier October 22 morning UI check belongs to the earlier deployment and remains valid only for that checkpoint.
 
-**Deployment identity, public readiness, signed-out denial and scheduler registration pass.** Authenticated Ptomo UI and the first natural refresh on this revision, provider reconciliation, external-source recovery, hosted quotas/load and downstream output acceptance remain open. These requests did not query campaign data, trigger a refresh, call providers or mutate production state. All ten Batch 3 release acceptances, the 180 recorded test failures and whole-V1 NO-GO remain unchanged. This follow-up updates documentation and evidence only; it is not another deployment.
+**Deployment identity, public readiness, signed-out denial and scheduler registration pass at this October 22 checkpoint.** The later [October 23 screenshot](#ptomo-afternoon-refresh-october-23) passes the requested Ptomo UI freshness follow-up. The exact first run on this process/revision, provider reconciliation, external-source recovery, hosted quotas/load and full authenticated/downstream output acceptance remain open. These requests did not query campaign data, trigger a refresh, call providers or mutate production state. All ten Batch 3 release acceptances, the 180 recorded test failures and whole-V1 NO-GO remain unchanged. This follow-up updates documentation and evidence only; it is not another deployment.
 
 ## Deployed verification, October 22
 

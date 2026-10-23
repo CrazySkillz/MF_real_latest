@@ -12,6 +12,7 @@ export type DetectSalesforceCurrencyArgs = {
   currenciesFromRecords?: Set<string>;
   debug?: boolean;
   fetchImpl?: typeof fetch;
+  requireSingleCurrency?: boolean; // Pipeline fallback when Opportunity.CurrencyIsoCode is unavailable.
 };
 
 export type DetectSalesforceCurrencyResult = {
@@ -104,6 +105,15 @@ async function fetchSoapUserDefaultCurrencyIsoCode(fetchImpl: typeof fetch, args
 
 export async function detectSalesforceCurrency(args: DetectSalesforceCurrencyArgs): Promise<DetectSalesforceCurrencyResult> {
   const fetchImpl = args.fetchImpl || fetch;
+  if (args.requireSingleCurrency) {
+    // Never substitute a multi-currency user's default for an Opportunity's currency.
+    const { resp, text } = await fetchSoapUserDefaultCurrencyIsoCode(fetchImpl, args);
+    const result = text.match(/<(?:\w+:)?getUserInfoResponse\b[^>]*>\s*<(?:\w+:)?result\b[^>]*>([\s\S]*?)<\/(?:\w+:)?result>\s*<\/(?:\w+:)?getUserInfoResponse>/i)?.[1] || '';
+    const singleCurrency = /<(?:\w+:)?organizationMultiCurrency\b[^>]*>\s*(?:false|0)\s*<\/(?:\w+:)?organizationMultiCurrency>/i.test(result);
+    const currency = normCurrency(result.match(/<(?:\w+:)?orgDefaultCurrencyIsoCode\b[^>]*>([^<]+)<\/(?:\w+:)?orgDefaultCurrencyIsoCode>/i)?.[1]);
+    const verified = resp.ok && !/<(?:\w+:)?Fault\b/i.test(text) && singleCurrency && !!currency && /^[A-Z]{3}$/.test(currency);
+    return { detectedCurrency: verified ? currency : null, detectedCurrencies: verified ? [currency!] : [] };
+  }
   const steps: DebugStep[] = [];
   const inferredAuthBase =
     args.authBase ||

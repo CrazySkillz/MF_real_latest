@@ -233,6 +233,10 @@ Failure/zero rule:
 
 Pipeline Proxy rule:
 
+Batch 5 correction (local, October 23, 2026): a saved source establishes configuration only. Displayed amounts require a successful exact-source, current-stage response with a valid update timestamp, verified currency (or complete zero), and reconciled item totals. Current zero and empty items must remain zero/empty. Failed, warning-marked, mismatched or incomplete reads show `Unavailable`; never substitute mapping amounts. A failed provider cannot be omitted from a combined total. See [Batch 5 evidence and limits](../docs/fixes/v1-batch-5/README.md#correction-checkpoint-october-23). This supersedes historical guidance implying that configuration alone establishes an available amount.
+
+Salesforce compatibility follow-up (local, October 23): a positive Pipeline Proxy cache without matching currency must be recomputed. If Opportunity currency is unavailable, the existing save/read paths require Salesforce to confirm a single-currency organization and its default currency, matching the campaign. A user's default currency is not sufficient. Failed verification retains saved data and keeps the amount unavailable; a complete empty result stays zero. [Recovery evidence and outstanding provider acceptance](../docs/fixes/v1-batch-5/README.md#pre-deployment-compatibility-and-recovery-checkpoint-october-23).
+
 - Pipeline Proxy is a persistent separate Revenue subsection card. An eligible HubSpot or Salesforce `Total Revenue + Pipeline (Proxy)` source supplies its configured value; otherwise the card shows `Not configured`
 - it should show the card title, amount, and a compact `Sources` action
 - clicking `Sources` should open a read-only Pipeline Proxy sources modal with source provider, provider proxy amount, selected CRM stage label, and selected/contributing campaign values where available

@@ -1,0 +1,145 @@
+{
+  "at": "2026-10-23T16:40:48.814Z",
+  "baseHead": "67279e8e308959dae80e70b7edb1ca9e4ff684fe",
+  "candidate": "UNCOMMITTED working tree; no Batch 5 deployment",
+  "findings": [
+    "V1-042",
+    "V1-043",
+    "V1-044",
+    "V1-045",
+    "V1-083",
+    "V1-109"
+  ],
+  "fixStatus": "VERIFIED LOCALLY within documented boundaries",
+  "releaseAcceptance": "OPEN",
+  "releaseDecision": "NO-GO",
+  "baseline": {
+    "total": 41,
+    "passed": 8,
+    "failed": 33,
+    "skipped": 0
+  },
+  "final": {
+    "total": 451,
+    "passed": 431,
+    "failed": 20,
+    "skipped": 0
+  },
+  "newBatch5Checks": {
+    "total": 118,
+    "passed": 118,
+    "failed": 0,
+    "skipped": 0,
+    "realPostgres": 10,
+    "fullPageBrowser": 1
+  },
+  "builds": {
+    "at": "2026-10-23T16:36:42.802Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "verified-typecheck.log"
+      },
+      {
+        "name": "client-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "verified-client-build.log"
+      },
+      {
+        "name": "server-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "verified-server-build.log"
+      }
+    ]
+  },
+  "finalTestTypecheck": {
+    "at": "2026-10-23T16:38:37.463Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "final-tests-typecheck.log"
+      }
+    ]
+  },
+  "failureLedger": "failure-reconciliation.json",
+  "noProductionOrProviderMutation": true,
+  "isolation": "Environment allowlist removes application credentials; local-network-only preload; disposable schema on 127.0.0.1:55444/ga4_alignment_test; browser intercepts every request and blocks external hosts/mutations.",
+  "limits": [
+    "No authenticated deployed/provider acceptance",
+    "No full-app re-certification or repeated full suite",
+    "No historical corrupted-data inventory/cleanup",
+    "Currency fallback, OAuth scope and quotas need each provider/account validation",
+    "GA4/Custom proxy computations tested; full-page browser case is standalone Sheets only",
+    "CRM route owner/token/currency-discovery boundaries use explicit fixtures; real PostgreSQL replacement exercised for HubSpot and Salesforce, not Shopify"
+  ],
+  "manifest": [
+    {
+      "file": "server/routes-oauth.ts",
+      "sha256": "d621af67cea492d3e68117fe69e3d1b3cb54cf44e2a7a7e389d85f5b5d424cee"
+    },
+    {
+      "file": "server/utils/hubspot-pagination.ts",
+      "sha256": "1a9153fb9a858cf7d0c1ccb0de94bebacbcccc4ad341a31c7dbae99a686c857b"
+    },
+    {
+      "file": "server/utils/salesforce-pagination.ts",
+      "sha256": "8d79170f2881fa2b3238c3f08607f902788ae0842d1f4b95c89b719325cb66a3"
+    },
+    {
+      "file": "server/utils/shopify-provider.ts",
+      "sha256": "a6bd135f30a7779dceb0bcbd336b698aad659bf6c430266ea687bd11b3f54831"
+    },
+    {
+      "file": "server/utils/shopify-revenue.ts",
+      "sha256": "0a083c0d40d5accd5f0a05b805cc3f2dbea680e4ff23cb53321fe2277d77aaec"
+    },
+    {
+      "file": "client/src/pages/ga4-metrics.tsx",
+      "sha256": "9d5925937a11ef504691af3254d5b893ef56258c805fc4a6b9e41431519a103c"
+    },
+    {
+      "file": "client/src/pages/google-sheets-data.tsx",
+      "sha256": "ba396fce0300a4af96500571f54cfcc8636f3d659306b7ff7f29b1bbd38bd281"
+    },
+    {
+      "file": "client/src/pages/custom-integration-analytics.tsx",
+      "sha256": "eb1db3324d30ecef468dfc1553ad4f35b356c04a37e3d18360fd27ea56ff043a"
+    },
+    {
+      "file": "server/v1-batch5-provider-contract.test.ts",
+      "sha256": "9946e90f6ebead5369025906fb4aa99061033a4acd06227d9a4404d63d60f117"
+    },
+    {
+      "file": "server/v1-batch5-proxy-consumers.test.ts",
+      "sha256": "4855b8e769829d08e226a70485f2b656359333605d2d8b96bed662737064c88a"
+    },
+    {
+      "file": "server/v1-batch5-proxy-browser.test.ts",
+      "sha256": "0fa2edcf2ca6e3ba93e4c99a98a2ff9840ffb160c6444473eff5b6781861f2fb"
+    },
+    {
+      "file": "server/hubspot-pagination.test.ts",
+      "sha256": "a2b8791f0b1155351667a40af0fb075ee4ec1bc3f33c4be8d1700a6829c7131a"
+    },
+    {
+      "file": "server/hubspot-pipeline-automation-ui.test.ts",
+      "sha256": "7ad2c00ca5516e1466564ffb0c9be0bb91250c6d55b03481d635aa7795eaab60"
+    },
+    {
+      "file": "server/salesforce-pagination.test.ts",
+      "sha256": "c7baecf7c0b083fb5c2658bb5ddfd65c3c01d5d3175bd09629f47ab0e481a924"
+    },
+    {
+      "file": "server/salesforce-pipeline-automation-ui.test.ts",
+      "sha256": "ab243542af5a46d8308fe649c145506cf31cf92f64269f79173684a9b6fa758f"
+    }
+  ]
+}

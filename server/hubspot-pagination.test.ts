@@ -36,11 +36,11 @@ describe('HubSpot bounded pagination', () => {
     expect(routes).toContain('const requestedPipelineSaveCursors = new Set<string>();');
     expect(routes).toContain('const requestedPipelineCursors = new Set<string>();');
     expect(routes.match(/nextHubspotPageCursor\(/g)).toHaveLength(4);
-    expect(routes).toContain(`after = platformCtx === 'ga4'`);
-    expect(routes).toContain(`afterPipeline = platformCtx === 'ga4'`);
-    expect(routes).toContain(`after3 = platformCtx === 'ga4'`);
-    expect(routes).toContain('const requireCompletePipelinePagination = String(');
-    expect(routes).toContain(`if (error?.code === HUBSPOT_PAGINATION_ERROR_CODE || (platformCtx === 'ga4' && expectedSourceMappingConfig)) throw error;`);
+    expect(routes).toContain('after = nextHubspotPageCursor(');
+    expect(routes).toContain('afterPipeline = nextHubspotPageCursor(');
+    expect(routes).toContain('after3 = nextHubspotPageCursor(');
+    expect(routes).toContain('validateHubspotSearchPage(json, queryState);');
+    expect(routes).toContain(`if (error?.code === HUBSPOT_PAGINATION_ERROR_CODE || platformCtx === 'ga4') throw error;`);
     expect(routes).toContain('return res.status(413).json({ success: false, error: error.message, code: error.code });');
     expect(routes).toContain('res.status(paginationIncomplete ? 413 : sourceChanged ? 409 : 500).json({');
 

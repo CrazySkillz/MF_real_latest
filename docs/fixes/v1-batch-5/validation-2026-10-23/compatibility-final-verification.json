@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-23T17:49:44.155Z",
+  "manifestFiles": 16,
+  "manifestMismatches": [],
+  "finalTypecheck": true,
+  "fixtureCleanupVerified": true,
+  "productionWrites": false,
+  "commitPushOrDeployPerformed": false,
+  "releaseAcceptance": "OPEN; actual provider recovery and 20 broader failures remain required gates"
+}

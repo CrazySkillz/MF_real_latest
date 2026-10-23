@@ -1,0 +1,2 @@
+client/src/pages/ga4-metrics.tsx(2797,40): error TS18047: 'entry' is possibly 'null'.
+client/src/pages/ga4-metrics.tsx(2797,76): error TS18047: 'entry' is possibly 'null'.

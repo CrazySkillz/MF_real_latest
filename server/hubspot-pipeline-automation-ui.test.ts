@@ -53,7 +53,8 @@ describe("HubSpot Pipeline Proxy automatic stage transition", () => {
     );
 
     expect(stageDetector).toContain("const probability = Number((md as any)?.probability)");
-    expect(stageDetector).toContain("(isClosed && probability === 1) || looksLikeWon");
+    expect(stageDetector).toContain("if (isClosed && probability === 1)");
+    expect(stageDetector).not.toContain("looksLikeWon");
     expect(stageDetector).not.toContain("probability === '1'");
 
     const executableDetector = stageDetector
@@ -187,9 +188,9 @@ describe("HubSpot Pipeline Proxy automatic stage transition", () => {
     expect(saveRoute).toContain("(mappingConfig as any).pipelineValueRevenueTotals = Array.from(pipelineValueRevenueTotals.entries())");
     expect(saveRoute).toContain("existingHubspot ? String((existingHubspot as any).id) : null");
     expect(saveRoute).toContain("expectedSourceMappingConfig,");
-    expect(saveRoute).toContain("if (!pipelinesResp.ok && platformCtx === 'ga4' && expectedSourceMappingConfig)");
-    expect(saveRoute).toContain("if (platformCtx === 'ga4' && expectedSourceMappingConfig) throw error;");
-    expect(saveRoute).toContain("error?.code === HUBSPOT_PAGINATION_ERROR_CODE || (platformCtx === 'ga4' && expectedSourceMappingConfig)");
+    expect(saveRoute).toContain("if (!pipelinesResp.ok)");
+    expect(saveRoute).toContain("effectiveStageIds.some(id => !derived.includes(id))");
+    expect(saveRoute).toContain("error?.code === HUBSPOT_PAGINATION_ERROR_CODE || platformCtx === 'ga4'");
     expect(replacement).toContain("eq(revenueSources.mappingConfig, expectedSourceMappingConfig)");
     expect(replacement.indexOf("tx.delete(revenueRecords)")).toBeLessThan(replacement.indexOf("tx.insert(revenueRecords)"));
     expect(replacement).toContain("error.code = 'HUBSPOT_REVENUE_SOURCE_CHANGED'");
@@ -231,8 +232,8 @@ describe("HubSpot Pipeline Proxy automatic stage transition", () => {
     );
 
     expect(pipelineRoute).toContain("const cachedIsUsable = Number.isFinite(cached) && cached >= 0");
-    expect(pipelineRoute).toContain("cached === 0 || cachedValueTotals.length > 0");
-    expect(pipelineRoute).toContain("!!cfg.pipelineLastUpdatedAt && !cfg.pipelineWarning");
+    expect(pipelineRoute).toContain("Math.abs(cachedValueTotals.reduce((sum: number, item: any) => sum + item.revenue, 0) - cached) < 0.01");
+    expect(pipelineRoute).toContain("Number.isFinite(Date.parse(cfg.pipelineLastUpdatedAt)) && !cfg.pipelineWarning");
     expect(pipelineRoute.indexOf("if (cachedIsUsable)")).toBeLessThan(pipelineRoute.indexOf("getHubspotAccessTokenForCampaign(campaignId)"));
   });
 });

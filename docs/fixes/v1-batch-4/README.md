@@ -6,7 +6,13 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 4 status
 
-**IMPLEMENTATION CHECKPOINT COMPLETE; RELEASE ACCEPTANCE OPEN.** All 24 corrections are VERIFIED LOCALLY within their documented boundaries. The final transfer correction V1-069 is committed in `dc33df48` on base `62ec590b`; deployment verification remains pending. Earlier corrections retain their recorded deployment/acceptance status. All 24 release acceptances remain OPEN: authenticated/provider, downstream, historical-data and operational evidence is still required. Dated checkpoints below preserve earlier counts; this current status supersedes them.
+**IMPLEMENTATION CHECKPOINT COMPLETE; RELEASE ACCEPTANCE OPEN.** All 24 corrections are VERIFIED LOCALLY within their documented boundaries. The final transfer correction V1-069 is committed in `dc33df48` and deployed in `67279e8e`; public revision/health checks pass, while authenticated API/provider acceptance remains OPEN. Earlier corrections retain their recorded deployment/acceptance status. All 24 release acceptances remain OPEN: authenticated/provider, downstream, historical-data and operational evidence is still required. Dated checkpoints below preserve earlier counts; this current status supersedes them.
+
+## Transfer deployment verification, October 23
+
+The user reported deployment. A read-only public `/api/health` request returned HTTP 200, `ok:true`, `nodeEnv:production` and exact commit `67279e8e308959dae80e70b7edb1ca9e4ff684fe` at server timestamp `2026-10-23T15:35:49.905Z`. [Saved response and scope](validation-2026-10-23-transfers/deployment-health-2026-10-23.json). This confirms the intended revision is running and answers its public health check; authenticated transfer behavior, provider continuation and complete Batch 4 acceptance remain OPEN.
+
+No special UI test is required for V1-069: the four retained transfer routes have no current frontend caller. Their 121 local handler/database tests are recorded below. Deployed API safety checks, if performed, must use isolated owned drafts; no Ptomo edit, reconnect, transfer or deletion is needed. This public check performed no campaign/provider access or data mutation and supersedes the earlier checkpoint's pending public-deployment status.
 
 ## Transfer safeguards correction checkpoint, October 23
 

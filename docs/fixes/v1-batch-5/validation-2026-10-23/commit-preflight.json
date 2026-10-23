@@ -1,0 +1,49 @@
+{
+  "at": "2026-10-23T18:00:48.549Z",
+  "baseHead": "67279e8e308959dae80e70b7edb1ca9e4ff684fe",
+  "remoteHead": "67279e8e308959dae80e70b7edb1ca9e4ff684fe",
+  "branch": "main",
+  "manifestFilesVerified": 16,
+  "fileCountBeforeThisRecord": 92,
+  "knownSecretValueMatches": [],
+  "docsCheck": {
+    "mode": "documentation-only",
+    "documents": 10,
+    "findings": 130,
+    "open": 120,
+    "deferred": 10,
+    "closed": 0,
+    "localLinks": 1073,
+    "inboundLinks": 12,
+    "checks": "PASS",
+    "limitation": "Layout, assignment, status and local-link integrity only; no runtime or release certification."
+  },
+  "diffCheck": "PASS",
+  "noRuntimeChangeSinceValidation": true,
+  "validation": {
+    "newBatch5Checks": {
+      "total": 139,
+      "passed": 139,
+      "failed": 0,
+      "skipped": 0,
+      "realPostgres": 17,
+      "fullPageBrowser": 1
+    },
+    "relatedSuite": {
+      "total": 472,
+      "passed": 452,
+      "failed": 20,
+      "skipped": 0
+    },
+    "typecheck": "PASS",
+    "serverBuild": "PASS",
+    "unchangedClientBuild": "PASS"
+  },
+  "relatedDocumentationDependencies": [
+    "docs/fixes/v1-batch-3/deployment-2026-10-22-completion/ptomo-ui-freshness-2026-10-23.json",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-transfers/deployment-health-2026-10-23.json"
+  ],
+  "excluded": "Unrelated worktrees, assets, audit-temp, seed logs and scripts remain unstaged",
+  "releaseAcceptance": "OPEN",
+  "deploymentVerification": "PENDING"
+}

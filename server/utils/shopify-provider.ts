@@ -2,7 +2,7 @@ export const DEFAULT_SHOPIFY_API_VERSION = '2026-07';
 export const SHOPIFY_RECENT_ORDER_WINDOW_DAYS = 59;
 export const SHOPIFY_CAMPAIGN_WINDOW_ERROR_CODE = 'SHOPIFY_READ_ORDERS_CAMPAIGN_WINDOW_EXCEEDED';
 
-const SUPPORTED_SHOPIFY_API_VERSIONS = new Set(['2025-10', '2026-01', '2026-04', '2026-07']);
+const SUPPORTED_SHOPIFY_API_VERSIONS = new Set(['2026-01', '2026-04', '2026-07']);
 const SHOPIFY_HOST_PATTERN = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
 
 export function normalizeShopifyDomain(input: unknown): string {

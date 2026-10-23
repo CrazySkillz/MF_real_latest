@@ -1,0 +1,148 @@
+{
+  "at": "2026-10-23T17:45:07.466Z",
+  "baseHead": "67279e8e308959dae80e70b7edb1ca9e4ff684fe",
+  "candidate": "UNCOMMITTED working tree; not deployed",
+  "supersedesCandidateManifest": "assessment.json",
+  "findings": [
+    "V1-042",
+    "V1-043",
+    "V1-044",
+    "V1-045",
+    "V1-083",
+    "V1-109"
+  ],
+  "fixStatus": "VERIFIED LOCALLY within documented boundaries",
+  "releaseAcceptance": "OPEN",
+  "releaseDecision": "NO-GO",
+  "final": {
+    "total": 472,
+    "passed": 452,
+    "failed": 20,
+    "skipped": 0
+  },
+  "focused": {
+    "total": 149,
+    "passed": 149,
+    "failed": 0,
+    "skipped": 0
+  },
+  "newBatch5Checks": {
+    "total": 139,
+    "passed": 139,
+    "failed": 0,
+    "skipped": 0,
+    "realPostgres": 17,
+    "fullPageBrowser": 1
+  },
+  "builds": {
+    "at": "2026-10-23T17:42:24.306Z",
+    "nodeEnv": "production",
+    "checks": [
+      {
+        "name": "typecheck",
+        "exitCode": 0,
+        "error": null,
+        "log": "currency-recovery-typecheck.log"
+      },
+      {
+        "name": "server-build",
+        "exitCode": 0,
+        "error": null,
+        "log": "currency-recovery-server-build.log"
+      }
+    ]
+  },
+  "unchangedClientBuild": "verified-build-checks.json",
+  "changedSincePriorManifest": [
+    "server/routes-oauth.ts",
+    "server/v1-batch5-provider-contract.test.ts",
+    "server/utils/salesforceCurrency.ts"
+  ],
+  "manifest": [
+    {
+      "file": "server/routes-oauth.ts",
+      "sha256": "399ae3480020b24baa855a59cab13a89b891f16d9e154474ad26ec1ecc8c2db0"
+    },
+    {
+      "file": "server/utils/hubspot-pagination.ts",
+      "sha256": "1a9153fb9a858cf7d0c1ccb0de94bebacbcccc4ad341a31c7dbae99a686c857b"
+    },
+    {
+      "file": "server/utils/salesforce-pagination.ts",
+      "sha256": "8d79170f2881fa2b3238c3f08607f902788ae0842d1f4b95c89b719325cb66a3"
+    },
+    {
+      "file": "server/utils/shopify-provider.ts",
+      "sha256": "a6bd135f30a7779dceb0bcbd336b698aad659bf6c430266ea687bd11b3f54831"
+    },
+    {
+      "file": "server/utils/shopify-revenue.ts",
+      "sha256": "0a083c0d40d5accd5f0a05b805cc3f2dbea680e4ff23cb53321fe2277d77aaec"
+    },
+    {
+      "file": "client/src/pages/ga4-metrics.tsx",
+      "sha256": "9d5925937a11ef504691af3254d5b893ef56258c805fc4a6b9e41431519a103c"
+    },
+    {
+      "file": "client/src/pages/google-sheets-data.tsx",
+      "sha256": "ba396fce0300a4af96500571f54cfcc8636f3d659306b7ff7f29b1bbd38bd281"
+    },
+    {
+      "file": "client/src/pages/custom-integration-analytics.tsx",
+      "sha256": "eb1db3324d30ecef468dfc1553ad4f35b356c04a37e3d18360fd27ea56ff043a"
+    },
+    {
+      "file": "server/v1-batch5-provider-contract.test.ts",
+      "sha256": "072bcc99c884fc52ef210f95b92ef7707f4c85a7d21911389f151c1d89ce7dc1"
+    },
+    {
+      "file": "server/v1-batch5-proxy-consumers.test.ts",
+      "sha256": "4855b8e769829d08e226a70485f2b656359333605d2d8b96bed662737064c88a"
+    },
+    {
+      "file": "server/v1-batch5-proxy-browser.test.ts",
+      "sha256": "0fa2edcf2ca6e3ba93e4c99a98a2ff9840ffb160c6444473eff5b6781861f2fb"
+    },
+    {
+      "file": "server/hubspot-pagination.test.ts",
+      "sha256": "a2b8791f0b1155351667a40af0fb075ee4ec1bc3f33c4be8d1700a6829c7131a"
+    },
+    {
+      "file": "server/hubspot-pipeline-automation-ui.test.ts",
+      "sha256": "7ad2c00ca5516e1466564ffb0c9be0bb91250c6d55b03481d635aa7795eaab60"
+    },
+    {
+      "file": "server/salesforce-pagination.test.ts",
+      "sha256": "c7baecf7c0b083fb5c2658bb5ddfd65c3c01d5d3175bd09629f47ab0e481a924"
+    },
+    {
+      "file": "server/salesforce-pipeline-automation-ui.test.ts",
+      "sha256": "ab243542af5a46d8308fe649c145506cf31cf92f64269f79173684a9b6fa758f"
+    },
+    {
+      "file": "server/utils/salesforceCurrency.ts",
+      "sha256": "dd617bef72b22a05f15692c91fbf5984b3cc80ba29eb3f90cb3339087f4cd095"
+    }
+  ],
+  "scope": "V1-109 Salesforce missing-currency cache recovery; exact save and on-demand routes; additive opt-in single-currency SOAP verification in existing helper; no schema or response-shape changes",
+  "isolation": "Environment allowlist removes application credentials; local-network-only preload; disposable schema on 127.0.0.1:55444/ga4_alignment_test; browser intercepts every request and blocks external hosts/mutations.",
+  "productionWrites": false,
+  "providerCalls": false,
+  "readOnlyProductionInventory": "predeploy-compatibility-complete.json",
+  "renderEnvironmentEvidence": "render-environment-confirmation.json",
+  "intermediateFailure": {
+    "file": "currency-recovery.json",
+    "classification": "Two positive tests exposed missing actual stage-helper binding in the fixture; no runtime failure was hidden. Bound the actual helper and supplied complete stage metadata. Negative database assertions now require a currency-related error.",
+    "corrected": true
+  },
+  "limits": [
+    "Actual Salesforce single/multi-currency configuration and provider recovery remain unverified; failed verification retains stored data and displays unavailable.",
+    "One orphan HubSpot connection and aggregate CRM records without provider IDs were inventoried, not cleaned or certified.",
+    "No authenticated deployed/provider acceptance",
+    "No full-app re-certification or repeated full suite",
+    "Currency fallback, OAuth scope and quotas need each provider/account validation",
+    "GA4/Custom proxy computations tested; full-page browser case is standalone Sheets only",
+    "CRM route owner/token/currency-discovery boundaries use explicit fixtures; real PostgreSQL replacement exercised for HubSpot and Salesforce, not Shopify"
+  ],
+  "next": "Review current diff and commit/push candidate; after deployment verify exact revision, provider recovery and required release gates. No release GO."
+}

@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-23T21:26:59.079Z",
+  "nodeEnv": "production",
+  "checks": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "hubspot-pipeline-currency-typecheck.log"
+    },
+    {
+      "name": "server-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "hubspot-pipeline-currency-server-build.log"
+    }
+  ]
+}

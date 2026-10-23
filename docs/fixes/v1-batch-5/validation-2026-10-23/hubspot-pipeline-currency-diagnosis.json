@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-23T21:20:14.108Z",
+  "campaignName": "V1 Batch 5 Test",
+  "databaseWrites": false,
+  "providerWrites": false,
+  "oauthRefresh": false,
+  "live": {
+    "httpStatus": 200,
+    "commit": "de3ce82f9297d84f3571690a996c573543d6b0c4",
+    "ok": true
+  },
+  "campaign": {
+    "currency": "EUR",
+    "scope": "[\"yesop_prospecting\",\"yesop_paid_social\"]"
+  },
+  "source": {
+    "ref": "5980d609b3dabf806e1b2c4a1c04381e12977c430468818b550491502ca39bf8",
+    "pipelineTotalToDate": 3200,
+    "pipelineCurrency": null,
+    "pipelineProxyMode": "current_stage",
+    "pipelineLastUpdatedAt": "2026-10-23T21:18:04.182Z",
+    "pipelineWarning": null,
+    "items": [
+      {
+        "campaignValue": "yesop_prospecting",
+        "revenue": 3200
+      }
+    ]
+  },
+  "transactionEnded": "ROLLBACK",
+  "result": "CHECK_INCOMPLETE",
+  "errorCode": "ERR_ASSERTION"
+}

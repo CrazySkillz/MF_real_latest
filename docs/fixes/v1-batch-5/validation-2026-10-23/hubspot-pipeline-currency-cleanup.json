@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-23T21:29:16.891Z",
+  "host": "127.0.0.1",
+  "port": 55444,
+  "database": "ga4_alignment_test",
+  "productionAccess": false,
+  "remainingTestSchemas": 0,
+  "remainingOtherClientSessions": 0,
+  "fixtureClusterStopped": true
+}

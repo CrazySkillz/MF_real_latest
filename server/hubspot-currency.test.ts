@@ -13,5 +13,6 @@ describe("HubSpot revenue currency resolution", () => {
   it("exposes mixed and unavailable currency so persistence can fail closed", () => {
     expect(resolveHubspotRevenueCurrency(["EUR"], 1, "USD")).toEqual({ currency: "", currencies: ["EUR", "USD"] });
     expect(resolveHubspotRevenueCurrency([], 1, null)).toEqual({ currency: "", currencies: [] });
+    expect(resolveHubspotRevenueCurrency(["EUR"], 1, null)).toEqual({ currency: "", currencies: ["EUR"] });
   });
 });

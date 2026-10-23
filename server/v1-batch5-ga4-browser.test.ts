@@ -25,7 +25,7 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
   }, 60_000);
   afterAll(async () => { await browser?.close(); });
 
-  async function fixture(options: { state?: string; providers?: string[] } = {}) {
+  async function fixture(options: { state?: string; providers?: string[]; hubspotAmount?: number } = {}) {
     let state = options.state ?? "positive"; let providers = options.providers ?? ["hubspot", "salesforce", "shopify"];
     const context = await browser.newContext({ viewport: { width: 1400, height: 1000 }, serviceWorkers: "block", timezoneId: "Europe/Amsterdam", locale: "en-US" });
     const page = await context.newPage(); const errors: string[] = [], requests: string[] = [];
@@ -63,9 +63,9 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
       else if (url.pathname.endsWith("/revenue-breakdown")) data = { success: true, sources: sources().map(s => ({ sourceId: s.id, sourceType: s.sourceType, displayName: s.displayName, revenue: s.lastTotalRevenue })), endDate: day };
       else if (url.pathname.endsWith("/revenue-to-date")) data = { success: true, totalRevenue: imported, sourceIds: sources().map(s => s.id), endDate: day, currency: "EUR" };
       else if (url.pathname.endsWith("/pipeline-proxy")) {
-        const provider = url.pathname.split('/')[2]; const amount = state === "zero" ? 0 : provider === "hubspot" ? 12.75 : 7.25;
+        const provider = url.pathname.split('/')[2]; const amount = state === "zero" ? 0 : provider === "hubspot" ? (options.hubspotAmount ?? 12.75) : 7.25;
         if (provider === "salesforce" && state === "failed") { status = 503; data = { success: false, error: "Isolated provider failure" }; }
-        else data = { success: true, sourceId: state === "wrong-source" && provider === "salesforce" ? "other-source" : `${provider}-source`, pipelineEnabled: true, mode: "current_stage", pipelineStageLabel: "Open", currency: state === "wrong-currency" && provider === "salesforce" ? "USD" : "EUR", lastUpdatedAt: state === "missing-time" && provider === "salesforce" ? null : updatedAt, totalToDate: amount,
+        else data = { success: true, sourceId: state === "wrong-source" && provider === "salesforce" ? "other-source" : `${provider}-source`, pipelineEnabled: true, mode: "current_stage", pipelineStageLabel: "Open", currency: state === "hubspot-missing-currency" && provider === "hubspot" ? null : state === "wrong-currency" && provider === "salesforce" ? "USD" : "EUR", lastUpdatedAt: state === "missing-time" && provider === "salesforce" ? null : updatedAt, totalToDate: amount,
           pipelineValueRevenueTotals: amount === 0 ? [] : [{ campaignValue: selected, revenue: state === "incomplete-items" && provider === "salesforce" ? 1 : amount }] };
       } else if (url.pathname.includes("spend") || url.pathname.endsWith("/revenue-daily")) data = { success: true, sources: [], sourceIds: [], totalSpend: 0, spendToDate: 0, rows: [], endDate: day };
       else { errors.push(`Unmodelled API: ${url.pathname}${url.search}`); status = 501; data = { success: false }; }
@@ -89,6 +89,18 @@ describe("Batch 5 GA4 Revenue and Pipeline Proxy browser acceptance", () => {
       await f.page.keyboard.press("Escape"); await f.pipeline.getByRole("button", { name: "Sources (2)", exact: true }).click();
       await browserExpect(dialog).toContainText("€12.75"); await browserExpect(dialog).toContainText("€7.25");
       await browserExpect(dialog).toContainText("Last successful update:"); await browserExpect(dialog).toContainText("fixture-selected"); await browserExpect(dialog).not.toContainText("old-cache");
+    } finally { await f.close(); }
+  }, 30_000);
+  it("restores the HubSpot EUR3200 card and source modal after verified currency recovery", async () => {
+    const f = await fixture({ providers: ["hubspot"], hubspotAmount: 3200, state: "hubspot-missing-currency" });
+    try {
+      await browserExpect(f.pipeline).toContainText("Unavailable"); await browserExpect(f.revenue).toContainText("\u20ac125.00");
+      f.setState("positive"); await f.page.evaluate(() => (window as any).fixtureRefetch());
+      await browserExpect(f.pipeline).toContainText("\u20ac3,200.00"); await browserExpect(f.revenue).toContainText("\u20ac125.00");
+      await f.pipeline.getByRole("button", { name: "Sources (1)", exact: true }).click();
+      const dialog = f.page.getByRole("dialog"); await browserExpect(dialog).toContainText("\u20ac3,200.00");
+      await browserExpect(dialog).toContainText("HubSpot"); await browserExpect(dialog).toContainText("fixture-selected");
+      await browserExpect(dialog).not.toContainText("old-cache");
     } finally { await f.close(); }
   }, 30_000);
   it("shows current zero without resurrecting saved mapping amounts", async () => {

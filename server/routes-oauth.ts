@@ -19536,6 +19536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cachedMode = cfg.pipelineProxyMode ? String(cfg.pipelineProxyMode) : null;
       const cachedValueTotals = Array.isArray(cfg.pipelineValueRevenueTotals) ? cfg.pipelineValueRevenueTotals : [];
       const cachedIsUsable = Number.isFinite(cached) && cached >= 0 && cachedMode === 'current_stage'
+        && (String(cfg.pipelineCurrency || '').trim().toUpperCase() === String(campaign?.currency || 'USD').trim().toUpperCase() || (cached === 0 && !cfg.pipelineCurrency))
         && Number.isFinite(Date.parse(cfg.pipelineLastUpdatedAt)) && !cfg.pipelineWarning && Array.isArray(cfg.pipelineValueRevenueTotals)
         && cachedValueTotals.every((item: any) => typeof item?.revenue === 'number' && Number.isFinite(item.revenue))
         && Math.abs(cachedValueTotals.reduce((sum: number, item: any) => sum + item.revenue, 0) - cached) < 0.01;
@@ -19546,7 +19547,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pipelineEnabled: true,
           pipelineStageId: String(cfg.pipelineStageId),
           pipelineStageLabel: cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : null,
-          currency: cfg.pipelineCurrency ? String(cfg.pipelineCurrency) : null,
+          currency: cfg.pipelineCurrency ? String(cfg.pipelineCurrency).trim().toUpperCase() : null,
           lastUpdatedAt: String(cfg.pipelineLastUpdatedAt),
           totalToDate: cached,
           pipelineValueRevenueTotals: cachedValueTotals,
@@ -19571,6 +19572,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let totalToDate = 0;
           const pipelineValueRevenueTotals = new Map<string, number>();
           let currencies = new Set<string>();
+          let missingPipelineCurrencyCount = 0;
           const mode: 'current_stage' = 'current_stage';
           const warning: string | null = null;
 
@@ -19590,7 +19592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     ],
                   },
                 ],
-                properties: Array.from(new Set([campaignProp, revenueProp, 'hs_currency', 'dealstage'])),
+                properties: Array.from(new Set([campaignProp, revenueProp, 'deal_currency_code', 'hs_currency', 'dealstage'])),
                 limit: 100,
                 after: after3,
               };
@@ -19606,8 +19608,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const rRaw = props[revenueProp];
                 const amt = parseCrmRevenueAmount(rRaw, 'HubSpot');
                 if (!Number.isFinite(amt)) continue;
-                const c = props?.hs_currency ? String(props.hs_currency).trim() : '';
-                if (c) currencies.add(c);
+                const c = String(props?.deal_currency_code || props?.hs_currency || '').trim().toUpperCase();
+                if (c) currencies.add(c); else missingPipelineCurrencyCount += 1;
                 totalToDate += amt;
                 const campaignValue = String(props?.[campaignProp] || '').trim();
                 if (campaignValue) pipelineValueRevenueTotals.set(campaignValue, (pipelineValueRevenueTotals.get(campaignValue) || 0) + amt);
@@ -19617,6 +19619,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
+          let accountCurrency = '';
+          if (missingPipelineCurrencyCount > 0) {
+            const accountResp = await fetchWithTimeout('https://api.hubapi.com/account-info/v3/details', { headers: { Authorization: `Bearer ${accessToken}` } });
+            if (accountResp.ok) accountCurrency = String((await accountResp.json())?.companyCurrency || '').trim().toUpperCase();
+          }
+          const resolvedPipelineCurrency = resolveHubspotRevenueCurrency(currencies, missingPipelineCurrencyCount, accountCurrency);
+          if (currencies.size + missingPipelineCurrencyCount > 0 && resolvedPipelineCurrency.currency !== String(campaign?.currency || 'USD').trim().toUpperCase()) {
+            throw new Error('HubSpot Pipeline Proxy currency is missing, mixed or does not match the campaign. Saved data has been retained.');
+          }
+          currencies = new Set(resolvedPipelineCurrency.currencies);
           const lastUpdatedAt = new Date().toISOString();
           if (currencies.size > 1) {
             cfg.pipelineTotalToDate = 0;
@@ -19658,7 +19670,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pipelineEnabled: true,
         pipelineStageId: String(cfg.pipelineStageId),
         pipelineStageLabel: cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : null,
-        currency: cfg.pipelineCurrency ? String(cfg.pipelineCurrency) : null,
+        currency: cfg.pipelineCurrency ? String(cfg.pipelineCurrency).trim().toUpperCase() : null,
         lastUpdatedAt: cfg.pipelineLastUpdatedAt ? String(cfg.pipelineLastUpdatedAt) : null,
         totalToDate: Number(cfg.pipelineTotalToDate || 0),
         pipelineValueRevenueTotals: Array.isArray(cfg.pipelineValueRevenueTotals) ? cfg.pipelineValueRevenueTotals : [],
@@ -20005,6 +20017,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           properties: Array.from(new Set([
             campaignProp,
             revenueProp,
+            'deal_currency_code',
             'hs_currency',
             'dealname',
             'dealstage',
@@ -20067,7 +20080,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
-          const c = props?.hs_currency ? String(props.hs_currency).trim() : '';
+          const c = String(props?.deal_currency_code || props?.hs_currency || '').trim().toUpperCase();
           if (c) currencies.add(c.toUpperCase());
           else missingCurrencyDealCount += 1;
 
@@ -20148,6 +20161,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const computeHubspotPipelinePreview = async (): Promise<number | null> => {
         if (!pipelineEnabled || !pipelineStageId) return null;
         let total = 0;
+        const pipelineCurrencies = new Set<string>();
+        let missingPipelineCurrencyCount = 0;
         let afterPipeline: string | undefined;
         let pipelinePages = 0;
         const requestedPipelinePreviewCursors = new Set<string>();
@@ -20158,7 +20173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               { propertyName: campaignProp, operator: 'IN', values: selected },
               { propertyName: 'dealstage', operator: 'IN', values: [pipelineStageId] },
             ] }],
-            properties: [campaignProp, revenueProp, 'dealstage'],
+            properties: [campaignProp, revenueProp, 'deal_currency_code', 'hs_currency', 'dealstage'],
             limit: 100,
             after: afterPipeline,
           }, previewQueryState);
@@ -20166,10 +20181,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           for (const d of Array.isArray(json?.results) ? json.results : []) {
             const raw = d?.properties?.[revenueProp];
             const amt = parseCrmRevenueAmount(raw, 'HubSpot');
-            if (Number.isFinite(amt)) total += amt;
+            if (Number.isFinite(amt)) {
+              total += amt;
+              const c = String(d?.properties?.deal_currency_code || d?.properties?.hs_currency || '').trim().toUpperCase();
+              if (c) pipelineCurrencies.add(c); else missingPipelineCurrencyCount += 1;
+            }
           }
           afterPipeline = nextHubspotPageCursor(json?.paging?.next?.after, pipelinePages, requestedPipelinePreviewCursors);
           if (!afterPipeline) break;
+        }
+        if (platformCtx === 'ga4') {
+          if (missingPipelineCurrencyCount > 0 && !accountCurrency) {
+            const accountResp = await fetchWithTimeout('https://api.hubapi.com/account-info/v3/details', { headers: { Authorization: `Bearer ${accessToken}` } });
+            if (accountResp.ok) accountCurrency = String((await accountResp.json())?.companyCurrency || '').trim().toUpperCase();
+          }
+          const resolved = resolveHubspotRevenueCurrency(pipelineCurrencies, missingPipelineCurrencyCount, accountCurrency);
+          if (pipelineCurrencies.size + missingPipelineCurrencyCount > 0 && resolved.currency !== campaignCurrency) throw new Error('HubSpot Pipeline Proxy currency is missing, mixed or does not match the campaign.');
         }
         return Number(total.toFixed(2));
       };
@@ -20224,6 +20251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             let pipelineToDate = 0;
             let pipelineCurrencies = new Set<string>();
+            let missingPipelineCurrencyCount = 0;
             const pipelineValueRevenueTotals = new Map<string, number>();
             let pipelineProxyMode: 'current_stage' = 'current_stage';
             let pipelineProxyWarning: string | null = null;
@@ -20243,7 +20271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     ],
                   },
                 ],
-                properties: Array.from(new Set([campaignProp, revenueProp, 'hs_currency', 'dealstage'])),
+                properties: Array.from(new Set([campaignProp, revenueProp, 'deal_currency_code', 'hs_currency', 'dealstage'])),
                 limit: 100,
                 after: after3,
               };
@@ -20262,8 +20290,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const amt = parseCrmRevenueAmount(rRaw, 'HubSpot');
                 if (!Number.isFinite(amt)) continue;
 
-                const c = props?.hs_currency ? String(props.hs_currency).trim() : '';
-                if (c) pipelineCurrencies.add(c.toUpperCase());
+                const c = String(props?.deal_currency_code || props?.hs_currency || '').trim().toUpperCase();
+                if (c) pipelineCurrencies.add(c.toUpperCase()); else missingPipelineCurrencyCount += 1;
                 pipelineToDate += amt;
                 const campaignValue = String(props?.[campaignProp] || '').trim();
                 if (campaignValue) pipelineValueRevenueTotals.set(campaignValue, (pipelineValueRevenueTotals.get(campaignValue) || 0) + amt);
@@ -20273,6 +20301,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (!after3) break;
             }
 
+            if (platformCtx === 'ga4') {
+              if (missingPipelineCurrencyCount > 0 && !accountCurrency) {
+                const accountResp = await fetchWithTimeout('https://api.hubapi.com/account-info/v3/details', { headers: { Authorization: `Bearer ${accessToken}` } });
+                if (accountResp.ok) accountCurrency = String((await accountResp.json())?.companyCurrency || '').trim().toUpperCase();
+              }
+              const resolved = resolveHubspotRevenueCurrency(pipelineCurrencies, missingPipelineCurrencyCount, accountCurrency);
+              if (pipelineCurrencies.size + missingPipelineCurrencyCount > 0 && resolved.currency !== campaignCurrency) throw new Error('HubSpot Pipeline Proxy currency is missing, mixed or does not match the campaign. No revenue changes were saved.');
+              pipelineCurrencies = new Set(resolved.currencies);
+            }
             if (pipelineCurrencies.size > 1) {
               // Do not fail revenue setup; just omit the proxy if currency is mixed.
               (mappingConfig as any).pipelineCurrency = null;

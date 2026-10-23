@@ -9,6 +9,7 @@ export function resolveHubspotRevenueCurrency(
   if (missingCurrencyDealCount > 0) {
     const fallback = currencyCode(accountCurrency);
     if (fallback) currencies.add(fallback);
+    else return { currency: "", currencies: Array.from(currencies).sort() };
   }
   const values = Array.from(currencies).sort();
   return { currency: values.length === 1 ? values[0] : "", currencies: values };

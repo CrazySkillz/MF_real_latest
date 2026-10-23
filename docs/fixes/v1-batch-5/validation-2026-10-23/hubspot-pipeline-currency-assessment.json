@@ -1,0 +1,131 @@
+{
+  "at": "2026-10-23T21:30:57.309401+00:00",
+  "finding": "V1-109-F2",
+  "severity": "P1",
+  "status": "CURRENCY CORRECTION VERIFIED LOCALLY; NOT COMMITTED OR DEPLOYED; PREVIEW-ERROR UX AND LIVE ACCEPTANCE OPEN",
+  "baseCommit": "de3ce82f9297d84f3571690a996c573543d6b0c4",
+  "regressionIntroducedBy": "6f9db9b60d05affb3f80d9885085c71b75d32d3c",
+  "symptom": "GA4 Overview Expected Revenue became Unavailable after the Batch 5 validation change even though the saved HubSpot Contract Sent proxy amount is 3200.",
+  "rootCause": "Batch 5 made the GA4 card require matching provider currency, but HubSpot saved only hs_currency and omitted native deal_currency_code. Its positive cache could be considered usable with pipelineCurrency:null, preventing recovery and returning a response rejected by the frontend. Preview omitted currency entirely. Missing-currency rows were also not counted in pipeline validation; a known row could mask an unknown row.",
+  "officialProviderReference": {
+    "url": "https://developers.hubspot.com/changelog/deal-currenct-code-validation",
+    "claim": "HubSpot identifies deal_currency_code as the Deals currency property."
+  },
+  "productionDiagnosis": {
+    "file": "hubspot-pipeline-currency-diagnosis-confirmed.json",
+    "revision": "de3ce82f9297d84f3571690a996c573543d6b0c4",
+    "campaign": "V1 Batch 5 Test",
+    "oneActiveScopedSource": true,
+    "amount": 3200,
+    "savedCurrency": null,
+    "stage": "contractsent",
+    "selectedValues": [
+      "yesop_prospecting"
+    ],
+    "databaseWrites": false,
+    "providerWrites": false,
+    "providerReads": 0,
+    "result": "Saved metadata and code trace confirm the display rejection. Direct provider reading was unavailable because the production encryption key is not configured locally; no secret was requested or exposed and no token refresh was attempted."
+  },
+  "correction": [
+    "Read native deal_currency_code first with legacy hs_currency fallback in confirmed revenue, pipeline preview, save and on-demand recovery.",
+    "Pipeline preview/save/read verify all matching deal currencies. Missing record currency may use only provider-returned companyCurrency through the existing resolver; unresolved/mixed/mismatched currency rejects before publication.",
+    "Existing positive cache without matching currency is recomputed through the established exact-source read path. Existing normalized revenue records and source identity remain intact. Complete empty zero is retained without guessing a currency.",
+    "Normalize returned cached currency to uppercase. Preserve UI availability safeguards, response shapes, selection/stage filters, dates, page limits and source boundaries.",
+    "The existing resolver now refuses to infer a currency for missing rows merely because other rows supplied one. No new helper layer, dependency, schema or environment setting."
+  ],
+  "lifecycle": {
+    "preview": "Actual save-mappings preview branch tested with native currency, EUR/USD/GBP, mixed/missing values and legacy field; frontend preview-error catch remains separate OPEN work.",
+    "saveAndEdit": "Actual handler with provider fixtures; native-currency add/edit through real PostgreSQL atomic persistence and actual post-save recompute helpers; KPI jobs/current-value refresh remain stubbed in those integration cases.",
+    "existingDataRecovery": "Actual pipeline-proxy handler plus real PostgreSQL recovers exact saved currency cache, keeps source ID/normalized records and other campaigns/provider rows unchanged; repeat read uses repaired cache. Missing/mixed/provider failure preserves every stored row.",
+    "refresh": "auto-refresh-scheduler.ts:reprocessHubSpot passes stable sourceId, platformContext, selectedValues, property and stage to the corrected save endpoint. Code traced; a natural deployed scheduler cycle is still unverified.",
+    "display": "Actual GA4 page in Chromium transitions from missing-currency Unavailable to EUR3200, with one-source popup and unchanged confirmed revenue. API responses are synthetic.",
+    "downstream": "Pipeline remains separate from confirmed revenue and financial ratios; browser checks confirm displayed revenue is unchanged. No financial allocation, KPI/report formula or snapshot schema was changed. Full live downstream parity remains unverified.",
+    "deleteReconnect": "Unchanged and not recertified by this targeted correction.",
+    "concurrentMutation": "Existing on-demand connection/source write methods retained; simultaneous source edit/delete during recovery is not certified by this packet."
+  },
+  "validation": {
+    "before": {
+      "file": "hubspot-pipeline-currency-before.json",
+      "passed": 1,
+      "failed": 9,
+      "filtered": 95,
+      "classification": "Nine exact-handler currency/cache regressions reproduced; one valid-cache/zero case passed."
+    },
+    "firstAfter": {
+      "file": "hubspot-pipeline-currency-first-after.json",
+      "passed": 13,
+      "failed": 0,
+      "filtered": 95
+    },
+    "expanded": {
+      "file": "hubspot-pipeline-currency-after.json",
+      "passed": 355,
+      "failed": 0,
+      "skipped": 0
+    },
+    "final": {
+      "file": "hubspot-pipeline-currency-final.json",
+      "passed": 356,
+      "failed": 0,
+      "skipped": 0,
+      "suites": {
+        "ga4-derived-publication-postgres.test.ts": 186,
+        "ga4-source-lifecycle-recompute-regression.test.ts": 17,
+        "hubspot-currency.test.ts": 3,
+        "hubspot-pagination.test.ts": 5,
+        "hubspot-revenue-date-integrity.test.ts": 3,
+        "hubspot-revenue-transaction.test.ts": 7,
+        "hubspot-review-currency-browser.test.ts": 6,
+        "v1-batch5-ga4-browser.test.ts": 11,
+        "v1-batch5-provider-contract.test.ts": 118
+      }
+    },
+    "build": "hubspot-pipeline-currency-final-build-checks.json",
+    "typecheck": "PASS",
+    "serverBuild": "PASS",
+    "clientRuntimeUnchanged": true,
+    "cleanup": "hubspot-pipeline-currency-cleanup.json"
+  },
+  "initialDiagnosisFailure": {
+    "file": "hubspot-pipeline-currency-diagnosis.json",
+    "classification": "READ-ONLY PROVIDER ACCESS LIMIT",
+    "reason": "Assertion requiring a usable local token failed after safe database rollback. Confirmed second diagnosis shows encrypted access present, no local encryption key and no readable token. Neither script made a provider request or write."
+  },
+  "remaining": [
+    "Commit, push, deployment and exact live source recovery/card acceptance.",
+    "V1-109-F2 frontend preview errors are still silently caught; visible error/retry behavior is separate OPEN work.",
+    "Live native deal currency/provider fallback, natural refresh and complete source lifecycle/downstream acceptance.",
+    "Other existing V1-012 failures and release gates are not waived by this passing packet."
+  ],
+  "releaseDecision": "NO-GO; 130 assignments: 120 OPEN,10 DEFERRED,0 CLOSED unchanged.",
+  "fileSha256": {
+    "server/routes-oauth.ts": "4c6d5a2ea54a9166e3daf89cbfd3da756b4f748d0a744bf51dfa5d2ee60c329c",
+    "server/utils/hubspot-currency.ts": "415b313ec6a4a9908b9748a87ec597822e1c8ca0277077eeee41b0de3652fef4",
+    "server/hubspot-currency.test.ts": "c48e30cb35abd5af7c6c0d5cd89878d684c98883a897ad74f7eb39810e8cbc2e",
+    "server/v1-batch5-provider-contract.test.ts": "bcd64e0faaba0be0ca5b8f589a76150e333ab7cf19379b26b2a50b6f75426b89",
+    "server/v1-batch5-ga4-browser.test.ts": "e0551a3c28db408da8230bf89c8b0180dda1b638fb810d77b3394fb594e9968a"
+  },
+  "evidenceSha256": {
+    "hubspot-pipeline-currency-after.json": "a6c4715a35227604da490d188d13e441a1cff0be17d2fcb0e74f1fa094efd584",
+    "hubspot-pipeline-currency-after.log": "e70f60c281525eabae91ef5c7ece29be0bfe6c7f76487faee263dd1d10e1475d",
+    "hubspot-pipeline-currency-before.json": "4b82006d09d8064d0d3b21e97bfce7fa74ff04ae98dc57cc2b04d231d8607b11",
+    "hubspot-pipeline-currency-before.log": "f9074b59151b3a417fd1d73a91781be6ddd72b766e93a0b6c7a8e9fd7c77da42",
+    "hubspot-pipeline-currency-build-checks.json": "25d27d460d1783d58135775abeada06ba46046548543885479762d64363f90d1",
+    "hubspot-pipeline-currency-cleanup.cjs": "bb2531b8dd28eb68134d936e0c388650a9fc1a6df66766b53fcdb0359336517b",
+    "hubspot-pipeline-currency-cleanup.json": "221e172cd1985fef908b78508526d2eee95af8fa25c0fe6d8c3657f3293f50cf",
+    "hubspot-pipeline-currency-diagnosis-confirmed.cjs": "f9ffe8bc6642b2526f7fc88e9e4665cf2dc8fb48e0944df02e5dfd1b0bce40fe",
+    "hubspot-pipeline-currency-diagnosis-confirmed.json": "8f5a0eefc9d23557b163c3e87bf7de129c3eef52df395e9030930873c5667a36",
+    "hubspot-pipeline-currency-diagnosis.cjs": "73b66d4e48799ce20a7a14bfdc153b4cca7c25532c81e48113edb9c2154ed413",
+    "hubspot-pipeline-currency-diagnosis.json": "8d6a7041f9059c0a60510c3b27462e89b35edce237a94b6515e9d5b55e135d9e",
+    "hubspot-pipeline-currency-final-build-checks.json": "b3da095d4bf54e20c63993980e7eaa6334aa05bf6789184f04d7f0a5ce80c977",
+    "hubspot-pipeline-currency-final-server-build.log": "b434ef2f7f76fe4aecb9ff866e19ffc970d3d0b66af82c295db18aad73445a00",
+    "hubspot-pipeline-currency-final-typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "hubspot-pipeline-currency-final.json": "870df99844231fce613bb0f09f53e210ae113d6f28f65f6141fa5f0fabb2f1f5",
+    "hubspot-pipeline-currency-final.log": "a2e7011cdb443813fb27b011ae9d2242fc9e9d7fa20ea35ba6693bce559bdee7",
+    "hubspot-pipeline-currency-first-after.json": "94b471ea0f5c2f550ee299162791aae33a2b19e8df53680b135ad7cf739caa58",
+    "hubspot-pipeline-currency-first-after.log": "d2fd5131262012dbe939d541955f72b24f5c103337db445f145c49faaec7de2b",
+    "hubspot-pipeline-currency-server-build.log": "ee18e279f1099ed802b040a59705d4438b051ece4124e0a058aabbd65bff0240",
+    "hubspot-pipeline-currency-typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

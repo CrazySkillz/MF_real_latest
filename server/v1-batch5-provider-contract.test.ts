@@ -46,6 +46,7 @@ export async function runHubspotSave(pages: any[], options: any = {}) {
   let handler: any, writes: any[] = [], queries: any[] = [];
   const fetchFixture = async (url: string, init: any) => {
     if (url.includes('/pipelines/')) return { ok: options.pipelineOk !== false, json: async () => options.metadata ?? { results: [{ stages: [{ id: 'closedwon', metadata: { isClosed: true, probability: '1.0' } }, { id: 'open-stage', metadata: { isClosed: false, probability: '0.3' } }] }] } };
+    if (url.includes('/account-info/')) return { ok: !!options.accountCurrency, json: async () => ({ companyCurrency: options.accountCurrency }) };
     queries.push(JSON.parse(init.body));
     return { ok: true, json: async () => pages.shift() };
   };
@@ -60,7 +61,7 @@ export async function runHubspotSave(pages: any[], options: any = {}) {
     getInternalGA4RefreshWriteInput: () => ({}), ensureCampaignAccess: async () => true,
     sendBadRequest: () => { throw Error('Invalid fixture request'); }, getHubspotAccessTokenForCampaign: async () => ({ accessToken: 'fixture' }),
     fetch: fetchFixture, fetchWithTimeout: fetchFixture, googleAdsCampaignIdFromValueOrMapping: () => null, recomputeCampaignDerivedValues: options.recompute ?? (async () => {}),
-    storage: options.storage ?? { getCampaign: async () => ({ id: 'fixture', currency: 'USD' }), getHubspotConnection: async () => ({ id: 'fixture-connection' }), getSalesforceConnection: async () => ({ id: 'fixture-connection' }), getRevenueSources: async () => [], replaceGa4HubspotRevenueSourceWithRecords: async (...args: any[]) => { writes.push(args); return { id: 'fixture-source' }; }, replaceGa4SalesforceRevenueSourceWithRecords: async (...args: any[]) => { writes.push(args); return { id: 'fixture-source' }; } },
+    storage: options.storage ?? { getCampaign: async () => ({ id: 'fixture', currency: options.campaignCurrency ?? 'USD' }), getHubspotConnection: async () => ({ id: 'fixture-connection' }), getSalesforceConnection: async () => ({ id: 'fixture-connection' }), getRevenueSources: async () => [], replaceGa4HubspotRevenueSourceWithRecords: async (...args: any[]) => { writes.push(args); return { id: 'fixture-source' }; }, replaceGa4SalesforceRevenueSourceWithRecords: async (...args: any[]) => { writes.push(args); return { id: 'fixture-source' }; } },
     console: { error() {}, warn() {} },
   };
   for (const name of ['parseCrmRevenueAmount', 'hubspotSearchDeals', 'fetchOpenSalesforceOpportunityStages']) if (named.has(name)) env[name] = bind(named.get(name)!, env, `return ${name}`);
@@ -98,6 +99,100 @@ describe('Batch 5 HubSpot actual save contract', () => {
   it.each([{ body: { stageIds: ['open-stage'] } }, { pipelineOk: false }, { metadata: {} }, { metadata: { results: [{ stages: [{ id: 'closedwon', label: 'Closed Won', metadata: { isClosed: false, probability: '0.3' } }] }] } }])('requires verified closed-won metadata %j', async options => {
     const { res, writes } = await runHubspotSave([page([deal('10')])], options);
     expect(res.statusCode).toBeGreaterThanOrEqual(400); expect(writes).toEqual([]);
+  });
+});
+
+const pipelineDeal = (amount: number, code: string | null = 'EUR', id = 'open-1') => ({ id,
+  properties: { campaign: 'selected', amount: String(amount), dealstage: 'open-stage', hs_currency: null, deal_currency_code: code } });
+const currencyBody = { pipelineEnabled: true, pipelineStageId: 'open-stage', pipelineStageLabel: 'Contract Sent' };
+async function readHubspotCurrencyProxy(pages: any[], change: any = {}, options: any = {}) {
+  let handler: any; const writes: any[] = [], queries: any[] = [], accountReads: string[] = [];
+  const cfg = { platformContext: 'ga4', campaignProperty: 'campaign', revenueProperty: 'amount', selectedValues: ['selected'],
+    pipelineEnabled: true, pipelineStageId: 'open-stage', pipelineStageLabel: 'Contract Sent', pipelineProxyMode: 'current_stage',
+    pipelineTotalToDate: 3200, pipelineCurrency: null, pipelineLastUpdatedAt: '2026-10-23T21:00:00Z',
+    pipelineValueRevenueTotals: [{ campaignValue: 'selected', revenue: 3200 }], lastTotalRevenue: 0, ...change };
+  const fetchImpl = async (url: string, init: any) => {
+    if (url.includes('/account-info/')) { accountReads.push(url); return { ok: !!options.accountCurrency, json: async () => ({ companyCurrency: options.accountCurrency }) }; }
+    queries.push(JSON.parse(init.body));
+    return { ok: options.providerOk !== false, status: options.providerOk === false ? 503 : 200, json: async () => pages.shift() };
+  };
+  const env: any = { ...hubspotPagination, ...hubspotCurrency, MAX_HUBSPOT_RESULTS: 5000,
+    app: { get: (...args: any[]) => { handler = args.at(-1); } }, ensureCampaignAccess: async () => options.access !== false,
+    getGA4CampaignFilterValues: () => ['selected'], getHubspotAccessTokenForCampaign: async () => ({ accessToken: 'fixture' }),
+    fetch: fetchImpl, fetchWithTimeout: fetchImpl, console: { error() {} },
+    storage: options.storage ?? { getCampaign: async () => ({ currency: 'EUR', ga4CampaignFilter: 'selected' }),
+      getHubspotConnection: async () => ({ id: 'connection', mappingConfig: JSON.stringify(cfg) }),
+      getRevenueSources: async () => [{ id: 'source', sourceType: 'hubspot', mappingConfig: JSON.stringify(cfg) }],
+      updateHubspotConnection: async (...args: any[]) => writes.push(['connection', ...args]),
+      updateRevenueSource: async (...args: any[]) => writes.push(['source', ...args]) } };
+  for (const name of ['parseCrmRevenueAmount', 'hubspotSearchDeals']) env[name] = bind(named.get(name)!, env, `return ${name}`);
+  bind(proxyRoutes.get('/api/hubspot/:campaignId/pipeline-proxy')!, env);
+  const res: any = { statusCode: 200, setHeader() {}, status(n: number) { this.statusCode = n; return this; }, json(value: any) { this.payload = value; return this; } };
+  await handler({ params: { campaignId: 'fixture' }, query: { platformContext: 'ga4' } }, res);
+  return { res, writes, queries, accountReads };
+}
+describe('HubSpot Pipeline Proxy currency regression', () => {
+  it.each([null, 'USD'])('recovers the existing %s currency cache using exact selected deals', async pipelineCurrency => {
+    const {res,writes,queries,accountReads} = await readHubspotCurrencyProxy([page([pipelineDeal(200),pipelineDeal(3000,'EUR','open-2')])],{pipelineCurrency});
+    expect(res.statusCode,JSON.stringify(res.payload)).toBe(200);
+    expect(res.payload).toMatchObject({currency:'EUR',totalToDate:3200,sourceId:'source',warning:null,pipelineValueRevenueTotals:[{campaignValue:'selected',revenue:3200}]});
+    expect(queries).toHaveLength(1);expect(queries[0].properties).toContain('deal_currency_code');
+    expect(queries[0].filterGroups[0].filters).toEqual([{propertyName:'campaign',operator:'IN',values:['selected']},{propertyName:'dealstage',operator:'IN',values:['open-stage']}]);
+    expect(writes).toHaveLength(2);for(const write of writes)expect(JSON.parse(write[2].mappingConfig)).toMatchObject({pipelineCurrency:'EUR',pipelineTotalToDate:3200,lastTotalRevenue:0});
+    expect(accountReads).toHaveLength(0);
+  });
+  it.each([false,true])('uses provider deal currency in save and preview (preview=%s)', async previewOnly => {
+    const {res,writes,queries}=await runHubspotSave([page([]),page([pipelineDeal(200),pipelineDeal(3000,'EUR','open-2')])],{body:{...currencyBody,previewOnly},storage:undefined});
+    // Default save harness campaign is USD; actual EUR mismatch must fail before publishing.
+    expect(res.statusCode).toBeGreaterThanOrEqual(400);expect(writes).toEqual([]);expect(queries[1].properties).toContain('deal_currency_code');
+  });
+  it.each([false,true])('preserves EUR3200 and zero confirmed revenue in preview/save (preview=%s)',async previewOnly=>{
+    const {res,writes,queries}=await runHubspotSave([page([]),page([pipelineDeal(200),pipelineDeal(3000,'EUR','open-2')])],{campaignCurrency:'EUR',body:{...currencyBody,previewOnly}});
+    expect(res.statusCode,JSON.stringify(res.payload)).toBe(200);expect(res.payload.totalRevenue).toBe(0);
+    if(previewOnly){expect(res.payload).toMatchObject({currency:'EUR',pipelinePreviewTotal:3200});expect(writes).toEqual([]);}else expect(writes).toHaveLength(1);
+    expect(queries[1].properties).toContain('deal_currency_code');
+  });
+  it.each([false,true])('rejects incomplete, mixed and unknown preview/save currencies (preview=%s)',async previewOnly=>{
+    for(const code of [null,'USD']){const {res,writes}=await runHubspotSave([page([]),page([pipelineDeal(200),pipelineDeal(3000,code,'open-2')])],{campaignCurrency:'EUR',body:{...currencyBody,previewOnly}});expect(res.statusCode).toBeGreaterThanOrEqual(400);expect(writes).toEqual([]);}
+  });
+  it.each(['USD','GBP'])('dynamically respects %s campaign currency and explicit native currency',async currency=>{
+    const row=pipelineDeal(12.75,currency);row.properties.hs_currency='EUR' as any;
+    const {res}=await runHubspotSave([page([]),page([row])],{campaignCurrency:currency,body:{...currencyBody,previewOnly:true}});
+    expect(res.payload).toMatchObject({success:true,currency,pipelinePreviewTotal:12.75});
+  });
+  it('retains legacy hs_currency and a complete empty provider result',async()=>{
+    const row=pipelineDeal(12.75,null);row.properties.hs_currency='EUR' as any;
+    const legacy=await readHubspotCurrencyProxy([page([row])]);expect(legacy.res.payload).toMatchObject({currency:'EUR',totalToDate:12.75});
+    const zero=await readHubspotCurrencyProxy([page([])]);expect(zero.res.payload).toMatchObject({currency:null,totalToDate:0,pipelineValueRevenueTotals:[]});expect(zero.accountReads).toEqual([]);
+  });
+  it('reads native currency for confirmed revenue as well as the proxy',async()=>{
+    const row={...pipelineDeal(25),properties:{...pipelineDeal(25).properties,dealstage:'closedwon',closedate:'2026-10-18'}};
+    const {res,queries}=await runHubspotSave([page([row])],{campaignCurrency:'EUR'});expect(res.statusCode,JSON.stringify(res.payload)).toBe(200);expect(res.payload.totalRevenue).toBe(25);expect(queries[0].properties).toContain('deal_currency_code');
+  });
+  it('recovers complete paginated amounts and retains the source on a truncated next page',async()=>{
+    const recovered=await readHubspotCurrencyProxy([page([pipelineDeal(200)],2,'next'),page([pipelineDeal(3000,'EUR','open-2')],2)]);
+    expect(recovered.res.payload).toMatchObject({currency:'EUR',totalToDate:3200});expect(recovered.queries).toHaveLength(2);
+    const failed=await readHubspotCurrencyProxy([page([pipelineDeal(200)],2,'next'),{total:2}]);expect(failed.res.statusCode).toBeGreaterThanOrEqual(400);expect(failed.writes).toEqual([]);
+  });
+  it.each([null,'GBP'])('retains saved data if matching deal currency cannot be verified: %s',async code=>{
+    const {res,writes}=await readHubspotCurrencyProxy([page([pipelineDeal(3200,code)])]);
+    expect(res.statusCode).toBeGreaterThanOrEqual(400);expect(writes).toEqual([]);
+  });
+  it('rejects mixed currencies and a partial missing-currency response without overwriting the cache',async()=>{
+    for(const code of ['USD',null]){const {res,writes}=await readHubspotCurrencyProxy([page([pipelineDeal(200),pipelineDeal(3000,code,'open-2')])]);expect(res.statusCode).toBeGreaterThanOrEqual(400);expect(writes).toEqual([]);}
+  });
+  it('uses verified account currency only when selected deal currency is absent',async()=>{
+    const {res,accountReads,writes}=await readHubspotCurrencyProxy([page([pipelineDeal(3200,null)])],{},{accountCurrency:'EUR'});
+    expect(res.payload).toMatchObject({currency:'EUR',totalToDate:3200});expect(accountReads).toHaveLength(1);expect(writes).toHaveLength(2);
+  });
+  it('keeps verified currency caches and complete zero without provider calls',async()=>{
+    for(const change of [{pipelineCurrency:'EUR'},{pipelineCurrency:' eur '},{pipelineTotalToDate:0,pipelineValueRevenueTotals:[]}]){
+      const {res,writes,queries}=await readHubspotCurrencyProxy([],change);expect(res.statusCode).toBe(200);if(change.pipelineCurrency)expect(res.payload.currency).toBe('EUR');expect(writes).toEqual([]);expect(queries).toEqual([]);
+    }
+  });
+  it('does not use a missing-currency cached amount after provider failure or bypass access checks',async()=>{
+    const failed=await readHubspotCurrencyProxy([],{},{providerOk:false});expect(failed.res.statusCode).toBe(503);expect(failed.writes).toEqual([]);
+    const denied=await readHubspotCurrencyProxy([],{},{access:false});expect(denied.queries).toEqual([]);expect(denied.writes).toEqual([]);expect(denied.res.payload).toBeUndefined();
   });
 });
 
@@ -230,6 +325,23 @@ describe.skipIf(!testUrl)('Batch 5 real PostgreSQL preservation and replacement'
       }
     }
   });
+  it.each(['recover','missing','mixed','failed'])('HubSpot persisted proxy currency %s preserves exact records and other campaigns',async mode=>{
+    await pool.query("UPDATE campaigns SET currency='EUR' WHERE id='fixture'");
+    const cfg={platformContext:'ga4',campaignProperty:'campaign',revenueProperty:'amount',selectedValues:['selected'],pipelineEnabled:true,pipelineStageId:'open-stage',pipelineStageLabel:'Contract Sent',pipelineProxyMode:'current_stage',pipelineTotalToDate:3200,pipelineCurrency:null,pipelineLastUpdatedAt:'2026-10-23T21:00:00Z',pipelineValueRevenueTotals:[{campaignValue:'selected',revenue:3200}],lastTotalRevenue:100};
+    await pool.query("UPDATE revenue_sources SET mapping_config=$1 WHERE id='hubspot-fixture'",[JSON.stringify(cfg)]);
+    await pool.query("UPDATE hubspot_connections SET mapping_config=$1 WHERE id='hubspot-connection'",[JSON.stringify(cfg)]);
+    const before=await snapshot();
+    const {res}=await readHubspotCurrencyProxy([page([pipelineDeal(200),pipelineDeal(3000,mode==='missing'?null:mode==='mixed'?'USD':'EUR','open-2')])],{},{storage,providerOk:mode!=='failed'});
+    const after=await snapshot();
+    if(mode!=='recover'){expect(res.statusCode).toBeGreaterThanOrEqual(400);expect(after).toEqual(before);return;}
+    expect(res.statusCode,JSON.stringify(res.payload)).toBe(200);expect(res.payload).toMatchObject({sourceId:'hubspot-fixture',currency:'EUR',totalToDate:3200,warning:null});
+    expect(after.revenue_records).toEqual(before.revenue_records);
+    expect(after.revenue_sources.map((row:any)=>row.id)).toEqual(before.revenue_sources.map((row:any)=>row.id));
+    expect(JSON.parse(after.revenue_sources.find((row:any)=>row.id==='hubspot-fixture').mapping_config)).toMatchObject({...cfg,pipelineCurrency:'EUR',pipelineLastUpdatedAt:expect.any(String)});
+    for(const table of ['clients','campaigns','ga4_refresh_work','salesforce_connections','metric_snapshots'])expect(after[table]).toEqual(before[table]);
+    expect(after.revenue_sources.filter((row:any)=>row.id!=='hubspot-fixture')).toEqual(before.revenue_sources.filter((row:any)=>row.id!=='hubspot-fixture'));
+    const again=await readHubspotCurrencyProxy([],{},{storage});expect(again.res.payload).toMatchObject({currency:'EUR',totalToDate:3200});expect(again.queries).toEqual([]);expect(await snapshot()).toEqual(after);
+  });
   it.each(['add', 'edit'])('HubSpot %s completes its actual post-save recompute after prior GA4 publication', async mode => {
     await pool.query("UPDATE campaigns SET currency='EUR' WHERE id='fixture'");
     await seed(schema.ga4RefreshWork, { id: 'completed', campaignId: 'fixture', ownerId: 'owner', status: 'completed',
@@ -245,7 +357,7 @@ describe.skipIf(!testUrl)('Batch 5 real PostgreSQL preservation and replacement'
     const recompute = bind(named.get('recomputeCampaignDerivedValues')!, env, 'return recomputeCampaignDerivedValues');
     const body = { ...(mode === 'edit' ? { sourceId: 'hubspot-fixture' } : {}), pipelineEnabled: true, pipelineStageId: 'open-stage', pipelineStageLabel: 'Contract Sent' };
     const run = () => runHubspotSave([page([]), page([200, 3000].map((amount, index) => ({ id: `open-${index}`,
-      properties: { campaign: 'selected', amount: String(amount), dealstage: 'open-stage', hs_currency: 'EUR' } })))], { storage, recompute, body });
+      properties: { campaign: 'selected', amount: String(amount), dealstage: 'open-stage', hs_currency: null, deal_currency_code: 'EUR' } })))], { storage, recompute, body });
     const before = await snapshot();
     const { res } = await run();
     expect(res.statusCode, JSON.stringify(res.payload)).toBe(200);

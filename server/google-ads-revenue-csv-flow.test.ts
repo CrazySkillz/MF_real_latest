@@ -38,11 +38,11 @@ describe("Google Ads revenue CSV flow", () => {
     expect(csvRoute).toContain('platformContext === "linkedin" ? parseValueSource(mapping?.valueSource, "revenue") : "revenue"');
     expect(csvRoute).toContain('sourceType || "").trim().toLowerCase() !== "csv"');
     expect(csvRoute).toContain('platformContext || "ga4").trim().toLowerCase() !== platformContext');
-    expect(csvRoute).toContain("storage.updateRevenueSource(existingSourceIdOrNull");
-    expect(csvRoute).toContain("await storage.deleteRevenueRecordsBySource(existingSourceIdOrNull);");
-    expect(csvRoute).toContain("storage.createRevenueSource({");
-    expect(csvRoute).toContain("platformContext,");
-    expect(csvRoute).toContain("await storage.deleteRevenueRecordsBySource(source.id);");
+    expect(csvRoute).toContain("storage.replaceRevenueSourceWithRecords(campaignId, existingSourceIdOrNull, 'csv', platformContext");
+    expect(csvRoute).toContain("existingSourceForEdit ? existingSourceForEdit.mappingConfig : undefined");
+    expect(csvRoute).not.toContain("storage.updateRevenueSource(");
+    expect(csvRoute).not.toContain("storage.deleteRevenueRecordsBySource(");
+    expect(csvRoute).not.toContain("storage.createRevenueSource(");
   });
 
   it("materializes Google Ads CSV per-campaign revenue for exact IDs or explicit active campaign mappings", () => {

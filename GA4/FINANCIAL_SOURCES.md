@@ -575,6 +575,8 @@ Important meaning:
 
 ## Revenue Source 5: CSV Journey
 
+October 23 shared-route safety update: [Batch 4 V1-072](../docs/fixes/v1-batch-4/README.md#retained-csv-revenue-correction-checkpoint-october-23) extends the existing complete strict CSV parser to retained non-GA4 contexts and makes their source/record replacement atomic after validation. This fixes silent last-row loss and invalid-edit data loss; it does not enable deferred providers or change GA4 formulas. Verified locally, uncommitted and undeployed; deployed and whole-source acceptance remain open. Older source certificates below retain their historical exact-scope boundary.
+
 The user journey is:
 
 1. user clicks `+` on `Total Revenue`
@@ -762,7 +764,7 @@ These commits do not clean-certify Google Ads spend as production-ready. The rea
 
 ## Spend Source 2: Google Sheets Journey
 
-**October 23 V1 update:** [Batch 4 V1-041/070](../docs/fixes/v1-batch-4/README.md#sheets-spend-correction-checkpoint-october-23) is verified locally and committed in `b650b631`; deployment verification is pending. Preview/import/refresh now read every full-width chunk of the selected grid, capped at 50,000 rows including the header, with request/body deadlines and last-good retention on failure. Selected amounts use the existing strict CSV financial syntax and currency bounds; malformed or missing-only selections cannot publish measured zero, while explicit zero keeps its mapped date. Cleanup requires a fresh inspection token, exact platform/currency/mapping/record equivalence and transactional revalidation; inactive purge requires the inspected source to remain empty. No cleanup is automatic. These bounded corrections do not certify the complete source lifecycle, hosted load or downstream publication.
+**October 23 V1 update:** [Batch 4 V1-041/070](../docs/fixes/v1-batch-4/README.md#sheets-spend-correction-checkpoint-october-23) is verified locally and committed in `b650b631` and deployed in `eb3fca00`; public deployment checks pass, with source/provider acceptance still open. Preview/import/refresh now read every full-width chunk of the selected grid, capped at 50,000 rows including the header, with request/body deadlines and last-good retention on failure. Selected amounts use the existing strict CSV financial syntax and currency bounds; malformed or missing-only selections cannot publish measured zero, while explicit zero keeps its mapped date. Cleanup requires a fresh inspection token, exact platform/currency/mapping/record equivalence and transactional revalidation; inactive purge requires the inspected source to remain empty. No cleanup is automatic. These bounded corrections do not certify the complete source lifecycle, hosted load or downstream publication.
 
 The user journey is:
 

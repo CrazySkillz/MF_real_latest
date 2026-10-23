@@ -3000,6 +3000,10 @@ export class DatabaseStorage implements IStorage {
     const guarded = "refreshScope" in options;
     if (guarded && (options.refreshScope?.campaignId !== campaignId || platformContext !== 'ga4' || !existingSourceId || expectedSourceMappingConfig === undefined)) throw new Error("GA4_REFRESH_TARGET_SCOPE_CHANGED");
     const save = async (tx: any) => {
+      if (sourceType === 'csv' && platformContext !== 'ga4') {
+        const [parent] = await tx.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, campaignId)).for('update');
+        if (!parent) throw new Error('CAMPAIGN_NOT_FOUND');
+      }
       const contextCondition = platformContext === 'ga4'
         ? or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext))
         : eq(revenueSources.platformContext, platformContext as any);

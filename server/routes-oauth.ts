@@ -4761,18 +4761,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const csvText = Buffer.from(file.buffer).toString("utf-8");
         const platformContext = parseCsvRevenuePlatformContext((req.body as any)?.platformContext, "ga4", res);
         if (!platformContext) return;
-        if (platformContext !== "ga4") {
-          // Preserve the established parser behavior for non-GA4 revenue contexts.
-          const approxLines = countLinesUpTo(csvText, MAX_CSV_ROWS_PREVIEW + 5);
-          if (approxLines > MAX_CSV_ROWS_PREVIEW + 5) {
-            return res.status(413).json({
-              success: false,
-              error: `CSV too large. Please upload a smaller file (max ~${MAX_CSV_ROWS_PREVIEW.toLocaleString()} rows for preview).`,
-              code: "CSV_TOO_LARGE",
-            });
-          }
-        }
-        const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PREVIEW, { strict: platformContext === "ga4" });
+        const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PREVIEW, { strict: true });
         res.json({
           success: true,
           fileName: file.originalname,
@@ -4842,29 +4831,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let parsedHeaders: string[] = [];
         let rowCountForResponse = 0;
         let existingSourceForEdit: any = null;
-        if (platformContext === "ga4" && existingSourceId) {
+        if (existingSourceId) {
           existingSourceForEdit = await storage.getRevenueSource(campaignId, existingSourceId);
           if (
             !existingSourceForEdit
             || String(existingSourceForEdit?.sourceType || "").trim().toLowerCase() !== "csv"
-            || String(existingSourceForEdit?.platformContext || "ga4").trim().toLowerCase() !== "ga4"
+            || String(existingSourceForEdit?.platformContext || "ga4").trim().toLowerCase() !== platformContext
           ) {
             return res.status(404).json({ success: false, error: "Revenue source not found" });
           }
         }
         if (file) {
           const csvText = Buffer.from(file.buffer).toString("utf-8");
-          if (platformContext !== "ga4") {
-            const approxLines = countLinesUpTo(csvText, MAX_CSV_ROWS_PROCESS + 5);
-            if (approxLines > MAX_CSV_ROWS_PROCESS + 5) {
-              return res.status(413).json({
-                success: false,
-                error: `CSV too large. Please reduce rows (max ~${MAX_CSV_ROWS_PROCESS.toLocaleString()} rows).`,
-                code: "CSV_TOO_LARGE",
-              });
-            }
-          }
-          const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PROCESS, { strict: platformContext === "ga4" });
+          const parsed = parseCsvText(csvText, MAX_CSV_ROWS_PROCESS, { strict: true });
           parsedRows = parsed.rows;
           parsedHeaders = parsed.headers;
           rowCountForResponse = parsed.rows.length;
@@ -5185,44 +5164,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-      let source: any;
-      if (existingSourceIdOrNull) {
-        const existingSource = existingSourceForEdit || await storage.getRevenueSource(campaignId, existingSourceIdOrNull);
-        if (!existingSource) return res.status(404).json({ success: false, error: "Revenue source not found" });
-        if (String((existingSource as any)?.sourceType || "").trim().toLowerCase() !== "csv") {
-          return res.status(404).json({ success: false, error: "Revenue source not found" });
+        const sorted = conversionValues.filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
+        if (platformContext === 'linkedin' && valueSource === 'conversion_value' && sorted.length === 0) {
+          return res.status(400).json({ success: false, error: "No valid conversion values found in selected rows" });
         }
-        if (String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase() !== platformContext) {
-          return res.status(404).json({ success: false, error: "Revenue source not found" });
+        if (valueSource === 'revenue' && kept === 0) return sendBadRequest(res, "No valid revenue rows found for the selected mapping");
+        const totalRevenue = Number(totalRevenueToDate.toFixed(2));
+        const revenueRecordsToInsert: any[] = [];
+        if (dateCol && dailyRevenueMap.size > 0) {
+          revenueRecordsToInsert.push(...Array.from(dailyRevenueMap.entries())
+            .filter(([, rev]) => rev > 0)
+            .map(([date, rev]) => ({ campaignId, date, revenue: Number(rev.toFixed(2)).toFixed(2), currency })));
+        } else if (totalRevenue > 0) {
+          revenueRecordsToInsert.push({ campaignId, date: endDate, revenue: totalRevenue.toFixed(2), currency });
         }
-        // Edit mode: update existing source, delete old records
-        source = await storage.updateRevenueSource(existingSourceIdOrNull, {
-            sourceType: "csv",
-            platformContext,
-            displayName: mapping.displayName || file?.originalname || (existingSourceIdOrNull ? "CSV" : "CSV"),
-            currency,
-            mappingConfig: JSON.stringify(normalizedMapping),
-            isActive: true,
-          } as any);
-          if (!source) source = { id: existingSourceIdOrNull };
-          await storage.deleteRevenueRecordsBySource(existingSourceIdOrNull);
-        } else {
-          // New source
-          source = await storage.createRevenueSource({
-            campaignId,
-            sourceType: "csv",
-            platformContext,
-            displayName: mapping.displayName || file?.originalname || "CSV",
-            currency,
-            mappingConfig: JSON.stringify(normalizedMapping),
-            isActive: true,
-          } as any);
-          await storage.deleteRevenueRecordsBySource(source.id);
+        for (const [key, rev] of Array.from(revenueByDateAndCampaign.entries())) {
+          const [date, ...urnParts] = key.split(":");
+          const subCampaignUrn = urnParts.join(":");
+          if (date && subCampaignUrn && rev > 0) {
+            revenueRecordsToInsert.push({ campaignId, date, revenue: Number(rev.toFixed(2)).toFixed(2), currency, subCampaignUrn });
+          }
         }
+        const source = await storage.replaceRevenueSourceWithRecords(campaignId, existingSourceIdOrNull, 'csv', platformContext, {
+          campaignId,
+          sourceType: "csv",
+          platformContext,
+          displayName: mapping.displayName || file?.originalname || "CSV",
+          currency,
+          mappingConfig: JSON.stringify(normalizedMapping),
+          isActive: true,
+        } as any, revenueRecordsToInsert, existingSourceForEdit ? existingSourceForEdit.mappingConfig : undefined);
 
         if (platformContext === 'linkedin' && valueSource === 'conversion_value') {
-          const sorted = conversionValues.filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
-          if (sorted.length === 0) return res.status(400).json({ success: false, error: "No valid conversion values found in selected rows" });
           const mid = Math.floor(sorted.length / 2);
           const convValue = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
           try {
@@ -5253,61 +5226,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch {
             // ignore
           }
-          const totalRevenue = Number(totalRevenueToDate.toFixed(2));
-          // Create revenue records — daily granularity if date column provided, otherwise single record
-          if (dateCol && dailyRevenueMap.size > 0) {
-            const revenueRecordsToInsert = Array.from(dailyRevenueMap.entries())
-              .filter(([, rev]) => rev > 0)
-              .map(([date, rev]) => ({
-                campaignId,
-                revenueSourceId: source.id,
-                date,
-                revenue: Number(rev.toFixed(2)).toFixed(2) as any,
-                currency,
-              } as any)) as any[];
-            for (const [key, rev] of Array.from(revenueByDateAndCampaign.entries())) {
-              const [date, ...urnParts] = key.split(":");
-              const subCampaignUrn = urnParts.join(":");
-              if (date && subCampaignUrn && rev > 0) {
-                revenueRecordsToInsert.push({
-                  campaignId,
-                  revenueSourceId: source.id,
-                  date,
-                  revenue: Number(rev.toFixed(2)).toFixed(2) as any,
-                  currency,
-                  subCampaignUrn,
-                } as any);
-              }
-            }
-            if (revenueRecordsToInsert.length > 0) {
-              await storage.createRevenueRecords(revenueRecordsToInsert);
-            }
-          } else if (totalRevenue > 0) {
-            const revenueRecordsToInsert: any[] = [
-              {
-                campaignId,
-                revenueSourceId: source.id,
-                date: endDate,
-                revenue: totalRevenue.toFixed(2) as any,
-                currency,
-              } as any,
-            ];
-            for (const [key, rev] of Array.from(revenueByDateAndCampaign.entries())) {
-              const [date, ...urnParts] = key.split(":");
-              const subCampaignUrn = urnParts.join(":");
-              if (date && subCampaignUrn && rev > 0) {
-                revenueRecordsToInsert.push({
-                  campaignId,
-                  revenueSourceId: source.id,
-                  date,
-                  revenue: Number(rev.toFixed(2)).toFixed(2) as any,
-                  currency,
-                  subCampaignUrn,
-                } as any);
-              }
-            }
-            await storage.createRevenueRecords(revenueRecordsToInsert);
-          }
           await recomputeCampaignDerivedValues(campaignId, { platformContext });
           res.json({
             success: true,
@@ -5321,7 +5239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       } catch (e: any) {
-        const status = e?.code === "CSV_TOO_LARGE" ? 413 : e?.code === "CSV_MALFORMED" ? 400 : e?.code === "CSV_REVENUE_SOURCE_CHANGED" ? 409 : 500;
+        const status = e?.code === "CSV_TOO_LARGE" ? 413 : e?.code === "CSV_MALFORMED" ? 400 : (e?.code === "CSV_REVENUE_SOURCE_CHANGED" || e?.code === "REVENUE_SOURCE_CHANGED") ? 409 : 500;
         res.status(status).json({ success: false, error: e?.message || "Failed to process CSV revenue" });
       } finally {
         if (addRequestKey) inFlightGa4CsvRevenueAdds.delete(addRequestKey);

@@ -1,0 +1,29 @@
+{
+  "at": "2026-10-23T02:24:07.883Z",
+  "baseHead": "eb3fca00f62dd8229b12a972956fc06e026281a2",
+  "state": "uncommitted; undeployed",
+  "files": [
+    {
+      "file": "server/routes-oauth.ts",
+      "normalizedSha256": "bcfea3adf5899443f4755af8fd3be1419f0aadf717a31bfb56e428cf06e39a9e"
+    },
+    {
+      "file": "server/storage.ts",
+      "normalizedSha256": "a938b3e1cec267ce26a36f6fd2141f7bfc4dc789b229da9cdadd12d6f2db0320"
+    },
+    {
+      "file": "server/v1-batch4-retained-csv-revenue.test.ts",
+      "normalizedSha256": "66bb30aeae779a47daad546acaf986de01b36f16de12f654590e238918f153d1"
+    },
+    {
+      "file": "server/google-ads-revenue-csv-flow.test.ts",
+      "normalizedSha256": "30630d7944e5bc7bc1eb19f8ea03e204200f6fa038c57346699752ee13c484b7"
+    },
+    {
+      "file": "server/csv-revenue-validation.test.ts",
+      "normalizedSha256": "88983a02b9dacba1f5b872d6a74732de507fe8bbadf5fe0ab3881bc108c46e95"
+    }
+  ],
+  "checkpointNote": "534-test final.json preceded only the Map loop compatibility correction in routes-oauth.ts; verified-route.json reruns all 29 new cases on these final files and verified-build-checks.json passes.",
+  "routeHashFor534TestCheckpoint": "f31a6705977a724361fb70ef299e1b309acf2b0a9723eb0e38fa4090865f3bb4"
+}

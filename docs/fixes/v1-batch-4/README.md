@@ -6,15 +6,39 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 4 status
 
-**IN PROGRESS.** Nine corrections are VERIFIED LOCALLY: V1-040/041/065/066/067/070/071/073/126. Fifteen findings still need implementation; all 24 release acceptances remain OPEN. The latest Sheets Spend corrections (V1-041/070) are committed in `b650b631`; deployment verification is pending. The earlier seven are deployed in `e635fe50`; public deployment checks pass, authenticated import/provider acceptance remains open. No provider call or production-data cleanup was performed.
+**IN PROGRESS.** Ten corrections are VERIFIED LOCALLY: V1-040/041/065/066/067/070/071/072/073/126. Fourteen findings still need implementation; all 24 release acceptances remain OPEN. V1-072 is uncommitted and undeployed. The earlier nine corrections are deployed in `eb3fca00`; public checks pass, with authenticated import/provider acceptance still open. No provider call or production-data cleanup was performed.
+
+## Retained CSV Revenue correction checkpoint (October 23)
+
+**V1-072: VERIFIED LOCALLY; release acceptance OPEN.** The correction is uncommitted on base `eb3fca00f62dd8229b12a972956fc06e026281a2`. This protects the existing shared CSV API; LinkedIn, Instagram, Meta and TikTok provider-functional work remains deferred.
+
+**Confirmed root cause:** `POST /api/campaigns/:id/revenue/csv/preview` and `/process` used the non-strict parser outside GA4. Its limit counted the header and stopped parsing, silently dropping data row 50,000; a physical-line precheck also rejected valid multiline fields. The non-GA4 process branch updated/created a source and deleted its records before validating conversion values or inserting replacement records. Invalid conversion edits returned 400 after data loss, and insert failure could leave partial state. The existing shared wizard sends this context and source ID from `client/src/components/AddRevenueWizardModal.tsx:1507,1604`; retained API accessibility is not evidence of configured provider support.
+
+**Minimal correction:** `server/routes-oauth.ts:4752,4778,5167` now uses the existing complete strict parser for every CSV Revenue context: at most 50,000 data rows; oversized input returns 413 and malformed structure returns 400 before mutation. Preview response shape and the non-GA4 25-row sample remain unchanged. Exact campaign/type/context/active-source checks precede replacement. Empty selected revenue or conversion-value sets reject before writes. Existing daily/snapshot and exact active-campaign attribution records are prepared first, then saved with their source through `server/storage.ts:2999`'s existing transaction. Expected mapping comparison rejects concurrent stale edits with 409; a transaction-held parent lock prevents recreation after campaign deletion. The larger route diff removes the old separate mutations and duplicated record insertion; no new architecture, schema, dependency, schedule or UI was introduced.
+
+**Trace and lifecycle boundary:** File bytes -> complete parser -> selected rows -> retained raw mapping plus existing daily/snapshot and exact-campaign records -> atomic save -> existing recompute call -> wizard invalidation. `getRevenueSources`, `getRevenueTotalForRange` and `getRevenueBreakdownBySource` retain campaign/context/active-source/date filters and aggregate-versus-detail deduplication. The guarded `/revenue-sources` and `/revenue-totals` readers consume those methods. Actual handler-to-PostgreSQL add, re-upload edit, selection-only edit, source/breakdown/total reconciliation, unrelated-campaign retention, rejected edit, insert rollback and concurrent edit/deletion cases pass. Source deletion remains the existing guarded `deleteRevenueSourceWithRecords` path and is not newly certified here. CSV is a manually replaced snapshot, with no provider reconnect or scheduled file reread. Existing scheduler/downstream GA4 regression checks are supporting evidence, not full non-GA4 report/KPI/Benchmark/notification certification.
+
+**Validation:** [29 new tests pass](validation-2026-10-23-retained-csv/verified-route.json), including 12 actual PostgreSQL cases. [Wider packet](validation-2026-10-23-retained-csv/final.json): **534 tests, 516 passed, 18 failed, zero skipped**. [Assessment](validation-2026-10-23-retained-csv/assessment.json) preserves every failed ID, evidence and release impact; all 18 match previously recorded failure boundaries and remain OPEN, with no waiver. Five use incomplete GA4 transaction mocks, one asserts a stale Spend recompute count, two assert stale Google Ads validator/UI strings, and ten are retained-source safety assertions. No new failing identity remains. Two CSV structural assertions were updated after this correction removed the unsafe separate mutations; an adjacent Google Ads assertion now requires atomic replacement. Behavior is independently checked in the new route/database tests.
+
+The first [reproduction](validation-2026-10-23-retained-csv/before.json) records 14 failing defect cases, one passing median case and ten PostgreSQL cases not yet enabled. The final packet enables all PostgreSQL cases. TypeScript initially caught direct Map iteration incompatible with the existing compiler target; the loop now retains the original `Array.from(...entries())` pattern. The 534-test packet precedes only that compatibility change; all 29 new cases were rerun afterward and [TypeScript/server build pass](validation-2026-10-23-retained-csv/verified-build-checks.json). [File hashes](validation-2026-10-23-retained-csv/candidate-manifest.json) distinguish those checkpoints. [Fixture cleanup](validation-2026-10-23-retained-csv/fixture-cleanup.json) found zero remaining schemas, other clients or advisory locks; the isolated localhost cluster was stopped. No production/Ptomo access, provider call or application migration occurred.
+
+**Unvalidated and historical-data boundary:** No deployed/browser acceptance, full provider/source certification, hosted-load result or historical repair is claimed. This does not normalize every retained non-GA4 amount/date/currency variant; their existing formulas and parsing remain subject to their own acceptance. LinkedIn connection/session updates and downstream recompute still occur after the source transaction and their failure recovery is not certified by source/record atomicity. Truncated or previously erased CSV data cannot be reconstructed from missing retained rows: exact original files and a separately reviewed source inventory are required before repair. No automatic cleanup or guessed backfill was added.
+
+**Reusable safeguard:** Complete parsing, validation before mutation, scoped atomic replacement, expected mapping comparison, parent survival and rollback/concurrency regressions reuse existing GA4 patterns. CSV's manual cadence, 50,000-row cap, positive-value handling, date fallback and LinkedIn conversion median are source-specific; future providers still require independent permission, metric, attribution, date, pagination and quota validation.
+
+## Sheets Spend deployment verification (October 23)
+
+At 04:05 Europe/Amsterdam (02:05 UTC), three read-only `/api/health` responses independently confirmed `eb3fca00f62dd8229b12a972956fc06e026281a2`, `nodeEnv=production` and successful readiness. The homepage and `/health` returned 200; signed-out `/api/campaigns` returned 401. The GA4 scheduler is registered and healthy with the existing 08:00/14:00/20:00 Amsterdam configuration and `runOnStartup=false`. Its next run is October 23 at 08:00 Amsterdam, through October 22; it reports no completed natural run since deployment. [Recorded observations](deployment-2026-10-23-sheets-spend/public-verification.json) and [read-only checker](deployment-2026-10-23-sheets-spend/verify-public.cjs).
+
+This proves the deployed revision and listed public checks only. Authenticated imports, real provider values, natural refresh completion, hosted load/recovery and complete source/downstream acceptance remain open. No campaign read/mutation, upload, cleanup, manual refresh or provider failure was triggered. The nine corrections verified at this deployment checkpoint are deployed; the later V1-072 correction above is not included.
 
 ## Sheets Spend commit checkpoint (October 23)
 
-The authorized fixes, tests and validation documentation are committed in `b650b63150f2d38522c7f85c1f1fd2bee6d8b610`. [Commit verification](validation-2026-10-23-sheets-spend/commit-checkpoint.json) binds all five runtime/test files to the previously validated candidate. The dated validation manifests retain their original pre-commit state. No schema, dependency or environment-setting change is included. Tests were not repeated because committed content matches the tested files. Deployment verification and full release acceptance remain open.
+The authorized fixes, tests and validation documentation are committed in `b650b63150f2d38522c7f85c1f1fd2bee6d8b610`. [Commit verification](validation-2026-10-23-sheets-spend/commit-checkpoint.json) binds all five runtime/test files to the previously validated candidate. The dated validation manifests retain their original pre-commit state. No schema, dependency or environment-setting change is included. Tests were not repeated because committed content matches the tested files. The subsequent public deployment checks above pass; full release acceptance remains open.
 
 ## Sheets Spend correction checkpoint (October 23)
 
-V1-041 and V1-070 now have localized forward corrections on base `e635fe50`. The changes are **committed in `b650b631`; deployment verification is pending**. All 37 new tests pass, including nine real PostgreSQL cases; required release acceptance remains OPEN. No production/Ptomo reads, imports, refreshes or cleanup were performed.
+V1-041 and V1-070 now have localized forward corrections on base `e635fe50`. The changes are **committed in `b650b631` and deployed in `eb3fca00`; public deployment checks pass, with source/provider acceptance still open**. All 37 new tests pass, including nine real PostgreSQL cases; required release acceptance remains OPEN. No production/Ptomo reads, imports, refreshes or cleanup were performed.
 
 | Finding | Root cause and correction | Exact changed boundary |
 |---|---|---|
@@ -111,12 +135,11 @@ The user authorized Batch 4 while the deployed Batch 3 revision awaits its first
 
 | Remaining implementation group | Finding IDs |
 |---|---|
-| Retained non-GA4 Revenue CSV completeness and atomic edits | V1-072 |
 | Standalone Sheets scope, zero state, formulas and downstream reports | V1-051, V1-108, V1-112, V1-113, V1-114 |
 | Custom Integration parser/publication, transfers, XLSX bounds/selection and metric meaning | V1-028, V1-029, V1-031, V1-102, V1-103, V1-111, V1-120 |
 | Retained manual-Spend and cross-source transfer safeguards | V1-068, V1-069 |
 
-The next implementation group is retained non-GA4 Revenue CSV completeness and atomic edits (V1-072), followed by the remaining groups above. Sheets Spend V1-041/070 is now verified locally and committed in `b650b631`; deployment verification remains pending. Sheets Revenue V1-065/066/067 is now verified locally, with acceptance still open. Four-provider functional work remains deferred; shared retained-route safety remains required. No completion estimate or additional exclusion is inferred.
+The next implementation group is standalone Sheets (V1-051/108/112/113/114), followed by the remaining groups above. V1-072 is verified locally and awaits commit/deployment. The earlier nine corrections are deployed in `eb3fca00`; acceptance remains open. Four-provider functional work remains deferred; shared retained-route safety remains required. No completion estimate or additional exclusion is inferred.
 
 ## Scope and acceptance
 
@@ -155,7 +178,7 @@ These records retain their own dates and verification limits. Use the current fi
 | [V1-069](#v1-069) | P1 | OPEN | OPEN |
 | [V1-070](#v1-070) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-071](#v1-071) | P1 | VERIFIED LOCALLY | OPEN |
-| [V1-072](#v1-072) | P1 | OPEN | OPEN |
+| [V1-072](#v1-072) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-073](#v1-073) | P1 | VERIFIED LOCALLY | OPEN |
 | [V1-102](#v1-102) | P1 | OPEN | OPEN |
 | [V1-103](#v1-103) | P1 | OPEN | OPEN |
@@ -229,7 +252,7 @@ Custom imports persist and publish review-required metrics; latest-reader storag
 
 Routes6765/6905 fetch fixed `A1:ZZ5000` without completeness check; exact processing fixture with5,001 data rows persists4,999 and returns success. Permissive parseNum accepts12oops; entirely nonnumeric selected amounts write measured zero. Fetches lack abort signal. Auto-refresh reuses this route. Independent Revenue chunking safeguards do not cover Spend. Reject partial/invalid data and validate refresh/recovery/source totals.
 
-**Implementation / validation:** Forward correction VERIFIED LOCALLY in the [October 23 Sheets Spend checkpoint](#sheets-spend-correction-checkpoint-october-23). Committed in `b650b631` on base `e635fe50`; deployment verification is pending. See exact changed paths, failing/fixed/neighbor/PostgreSQL checks, intentional maintenance-API change and remaining provider/lifecycle/historical-data gates there. Release acceptance remains OPEN.
+**Implementation / validation:** Forward correction VERIFIED LOCALLY in the [October 23 Sheets Spend checkpoint](#sheets-spend-correction-checkpoint-october-23). Committed in `b650b631` on base `e635fe50` and deployed in `eb3fca00`; public checks pass, while required source/provider acceptance remains open. See exact changed paths, failing/fixed/neighbor/PostgreSQL checks, intentional maintenance-API change and remaining provider/lifecycle/historical-data gates there. Release acceptance remains OPEN.
 
 ### V1-051
 
@@ -313,7 +336,7 @@ Sheets Revenue amount helper accepts `$`; process1456 strips it while5719–5731
 
 `routes-oauth.ts:1571–1610,2520` groups Sheets Spend duplicates without platform/currency, reads all contexts and deletes all but earliest. Exact fixture deactivates legitimate LinkedIn EUR source beside GA4 USD using same mapping. Non-atomic delete steps and no expected-state check compound risk. Must prove exact damaged boundary before permitting cleanup; no live cleanup performed.
 
-**Implementation / validation:** Forward correction VERIFIED LOCALLY in the [October 23 Sheets Spend checkpoint](#sheets-spend-correction-checkpoint-october-23). Committed in `b650b631` on base `e635fe50`; deployment verification is pending. See exact changed paths, failing/fixed/neighbor/PostgreSQL checks, intentional maintenance-API change and remaining provider/lifecycle/historical-data gates there. Release acceptance remains OPEN.
+**Implementation / validation:** Forward correction VERIFIED LOCALLY in the [October 23 Sheets Spend checkpoint](#sheets-spend-correction-checkpoint-october-23). Committed in `b650b631` on base `e635fe50` and deployed in `eb3fca00`; public checks pass, while required source/provider acceptance remains open. See exact changed paths, failing/fixed/neighbor/PostgreSQL checks, intentional maintenance-API change and remaining provider/lifecycle/historical-data gates there. Release acceptance remains OPEN.
 
 ### V1-071
 
@@ -329,15 +352,13 @@ GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105
 
 ### V1-072
 
-**Severity:** P1. **Fix status:** OPEN. **Release acceptance:** OPEN.
+**Severity:** P1. **Fix status:** VERIFIED LOCALLY. **Release acceptance:** OPEN. See the [retained CSV correction checkpoint](#retained-csv-revenue-correction-checkpoint-october-23).
 
 **V1 applicability:** V1 required if current reachable/offered scope is retained; proposed exclusions require agreement and effective enforcement.
 
 **Original audit evidence** (baseline `777aae6f`; evidence classification: confirmed retained CSV loss/truncation):
 
 `routes-oauth.ts:4813,5154–5178`: non-GA4 Revenue CSV accepts50,000 rows but saves49,999; LinkedIn conversion-value edit updates source and deletes old records before returning400 for invalid replacement. Both exact-handler fixtures reproduced. Validate before mutation and replace atomically within the existing storage architecture.
-
-**Implementation / validation:** Queued; no fix or post-fix acceptance is claimed. Confirm the exact current path before editing; then record changed files, implementation revision, failing/fixed/neighbor checks and the remaining deployed/provider gates here.
 
 ### V1-073
 

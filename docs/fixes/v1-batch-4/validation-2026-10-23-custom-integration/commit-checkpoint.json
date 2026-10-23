@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-23T12:46:03.820980+00:00",
+  "commit": "ff5b1752d695511fb116bced861574942c9b11cd",
+  "parent": "221382da751b453b4d45411df65f15a62750c9b1",
+  "branch": "main",
+  "committedFiles": 72,
+  "validatedRuntimeTestFiles": 11,
+  "manifest": "compatibility-manifest.json",
+  "allCommittedHashesMatch": true,
+  "validation": {
+    "customBoundary": "87/87 passed",
+    "storageRecovery": "22/22 passed",
+    "expanded": "268 passed, six unwaived failures; unchanged runtime",
+    "typecheck": "PASS",
+    "clientServerBuilds": "PASS; runtime unchanged since validated builds",
+    "docsAndStagedDiffCheck": "PASS"
+  },
+  "compatibility": "User accepted unavailable old figures for the two identified Mailgun test campaigns only; records retained; Ptomo has no affected data",
+  "deploymentVerification": "PENDING",
+  "releaseDecision": "NO-GO; required release acceptance remains open",
+  "productionMutationDuringCommit": false
+}

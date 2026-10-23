@@ -1,0 +1,114 @@
+{
+  "at": "2026-10-23T18:03:04.814Z",
+  "commit": "6f9db9b60d05affb3f80d9885085c71b75d32d3c",
+  "baseHead": "67279e8e308959dae80e70b7edb1ca9e4ff684fe",
+  "branch": "main",
+  "committedFiles": 93,
+  "runtimeTestFilesVerified": 16,
+  "runtimeTests": [
+    {
+      "file": "server/routes-oauth.ts",
+      "validatedWorkingTreeSha256": "399ae3480020b24baa855a59cab13a89b891f16d9e154474ad26ec1ecc8c2db0",
+      "committedBlob": "460a13b8eef33a72541153a6620b06f4bb5ca87c"
+    },
+    {
+      "file": "server/utils/hubspot-pagination.ts",
+      "validatedWorkingTreeSha256": "1a9153fb9a858cf7d0c1ccb0de94bebacbcccc4ad341a31c7dbae99a686c857b",
+      "committedBlob": "071113aeb4a695acad6e98f54d34f55b54c87b63"
+    },
+    {
+      "file": "server/utils/salesforce-pagination.ts",
+      "validatedWorkingTreeSha256": "8d79170f2881fa2b3238c3f08607f902788ae0842d1f4b95c89b719325cb66a3",
+      "committedBlob": "19d4a29205938a912be19c72435b9a5e8456010d"
+    },
+    {
+      "file": "server/utils/shopify-provider.ts",
+      "validatedWorkingTreeSha256": "a6bd135f30a7779dceb0bcbd336b698aad659bf6c430266ea687bd11b3f54831",
+      "committedBlob": "008ce48d363e404fdb75befdc821048dd215d35d"
+    },
+    {
+      "file": "server/utils/shopify-revenue.ts",
+      "validatedWorkingTreeSha256": "0a083c0d40d5accd5f0a05b805cc3f2dbea680e4ff23cb53321fe2277d77aaec",
+      "committedBlob": "9c58e3c831cc5a283eefb8f2ceada54f8d0b302e"
+    },
+    {
+      "file": "client/src/pages/ga4-metrics.tsx",
+      "validatedWorkingTreeSha256": "9d5925937a11ef504691af3254d5b893ef56258c805fc4a6b9e41431519a103c",
+      "committedBlob": "d253683f33c965b6a9b6e51506351fb2b7a6b5dc"
+    },
+    {
+      "file": "client/src/pages/google-sheets-data.tsx",
+      "validatedWorkingTreeSha256": "ba396fce0300a4af96500571f54cfcc8636f3d659306b7ff7f29b1bbd38bd281",
+      "committedBlob": "70064c078eed90eacac158c856ddfa48eff0755f"
+    },
+    {
+      "file": "client/src/pages/custom-integration-analytics.tsx",
+      "validatedWorkingTreeSha256": "eb1db3324d30ecef468dfc1553ad4f35b356c04a37e3d18360fd27ea56ff043a",
+      "committedBlob": "c4656511525f3aca09ad2a84c2fbed4f240b5f30"
+    },
+    {
+      "file": "server/v1-batch5-provider-contract.test.ts",
+      "validatedWorkingTreeSha256": "072bcc99c884fc52ef210f95b92ef7707f4c85a7d21911389f151c1d89ce7dc1",
+      "committedBlob": "606945b634210ae1247405e8363e06240af6eb88"
+    },
+    {
+      "file": "server/v1-batch5-proxy-consumers.test.ts",
+      "validatedWorkingTreeSha256": "4855b8e769829d08e226a70485f2b656359333605d2d8b96bed662737064c88a",
+      "committedBlob": "97c553af777f0ec6962f788f2e85d33cdac4c90f"
+    },
+    {
+      "file": "server/v1-batch5-proxy-browser.test.ts",
+      "validatedWorkingTreeSha256": "0fa2edcf2ca6e3ba93e4c99a98a2ff9840ffb160c6444473eff5b6781861f2fb",
+      "committedBlob": "48525e4c44fee4b2a91b33a756bf626507c5145c"
+    },
+    {
+      "file": "server/hubspot-pagination.test.ts",
+      "validatedWorkingTreeSha256": "a2b8791f0b1155351667a40af0fb075ee4ec1bc3f33c4be8d1700a6829c7131a",
+      "committedBlob": "60248619dbc060c86fb810fccd0d687abe3c1027"
+    },
+    {
+      "file": "server/hubspot-pipeline-automation-ui.test.ts",
+      "validatedWorkingTreeSha256": "7ad2c00ca5516e1466564ffb0c9be0bb91250c6d55b03481d635aa7795eaab60",
+      "committedBlob": "ee8d7fbea57f9aa80792d22c4802c7c767710d23"
+    },
+    {
+      "file": "server/salesforce-pagination.test.ts",
+      "validatedWorkingTreeSha256": "c7baecf7c0b083fb5c2658bb5ddfd65c3c01d5d3175bd09629f47ab0e481a924",
+      "committedBlob": "c8851e532a544bc3835877a0046d5e9124b66358"
+    },
+    {
+      "file": "server/salesforce-pipeline-automation-ui.test.ts",
+      "validatedWorkingTreeSha256": "ab243542af5a46d8308fe649c145506cf31cf92f64269f79173684a9b6fa758f",
+      "committedBlob": "ba58b9bb5a86a387793f799de17047e13f44910f"
+    },
+    {
+      "file": "server/utils/salesforceCurrency.ts",
+      "validatedWorkingTreeSha256": "dd617bef72b22a05f15692c91fbf5984b3cc80ba29eb3f90cb3339087f4cd095",
+      "committedBlob": "7d6bc1f27f2d978b72a84aa8162fd466ea751cba"
+    }
+  ],
+  "validation": {
+    "total": 472,
+    "passed": 452,
+    "failed": 20,
+    "skipped": 0
+  },
+  "newBatch5Checks": {
+    "total": 139,
+    "passed": 139,
+    "failed": 0,
+    "skipped": 0,
+    "realPostgres": 17,
+    "fullPageBrowser": 1
+  },
+  "typecheck": "PASS",
+  "serverBuild": "PASS",
+  "unchangedClientBuild": "PASS",
+  "codeChangedDuringCommitPreparation": false,
+  "productionDataMutation": false,
+  "remoteDestination": "origin/main",
+  "deploymentVerification": "PENDING",
+  "releaseAcceptance": "OPEN",
+  "releaseDecision": "NO-GO",
+  "boundary": "Batch 5 fixes, tests, dated evidence and audit documentation; includes referenced pending Batch 3 Ptomo and Batch 4 deployment evidence. Unrelated workspace files excluded."
+}

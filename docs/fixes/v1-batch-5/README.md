@@ -6,7 +6,11 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 5 status
 
-**All six forward corrections are VERIFIED LOCALLY within the boundaries below, including the compatibility follow-up.** They are uncommitted on `67279e8e308959dae80e70b7edb1ca9e4ff684fe` and not deployed. All six release acceptances remain OPEN. The current related packet is **472 tests: 452 passed, 20 classified unresolved failures, zero skipped**. All **139 new Batch 5 checks pass**, including 17 real PostgreSQL cases and one isolated full-page browser case. TypeScript and server build pass; unchanged client files retain their passing production build. The read-only compatibility check found and prompted a localized Salesforce recovery correction. Actual provider recovery remains unverified. This is not whole-source or whole-app certification.
+**All six forward corrections are VERIFIED LOCALLY within the boundaries below, including the compatibility follow-up.** They are committed in **`6f9db9b60d05affb3f80d9885085c71b75d32d3c`**, based on `67279e8e308959dae80e70b7edb1ca9e4ff684fe`; deployment verification is pending. All six release acceptances remain OPEN. The current related packet is **472 tests: 452 passed, 20 classified unresolved failures, zero skipped**. All **139 new Batch 5 checks pass**, including 17 real PostgreSQL cases and one isolated full-page browser case. TypeScript and server build pass; unchanged client files retain their passing production build. The read-only compatibility check found and prompted a localized Salesforce recovery correction. Actual provider recovery remains unverified. This is not whole-source or whole-app certification.
+
+### Commit checkpoint October 23
+
+The [commit checkpoint](validation-2026-10-23/commit-checkpoint.json) binds all 16 runtime/test files to the validated candidate and records the exact 93-file commit boundary. The [preflight](validation-2026-10-23/commit-preflight.json) verified the unchanged candidate, current remote base, documentation integrity and publication-file secret scan. Related pending Ptomo freshness and Batch 4 public-deployment records are included because the audit index references them; unrelated worktrees, assets, seed logs and scripts remain excluded. No runtime edits, schema changes, production cleanup or new provider calls occurred during commit preparation. Historical pre-commit assessments retain their original dates/status; this checkpoint owns current delivery status. Next is verifying the deployed revision and required provider recovery, with all six acceptance gates still OPEN.
 
 ## Pre-deployment compatibility and recovery checkpoint October 23
 
@@ -24,7 +28,7 @@ The [read-only inventory](validation-2026-10-23/predeploy-compatibility-complete
 
 The [final test-file typecheck](validation-2026-10-23/compatibility-final-build-checks.json) also passes. [Cleanup](validation-2026-10-23/compatibility-cleanup.json) confirms zero Batch 5 fixture schemas, zero other test-database sessions and the localhost cluster stopped.
 
-The implementation gap is corrected locally. The final inventory intentionally still identifies the stored currency-less cache: it has not been rewritten. After deployment, its normal API/refresh path will attempt verified recovery; if the provider cannot prove the currency, the amount stays unavailable and saved data is retained. Actual provider recovery, all six finding acceptances and the V1 release decision remain OPEN/NO-GO. The next delivery step is committing/pushing the reviewed candidate, followed by exact-revision and provider acceptance; this check did not commit, push or deploy it.
+The implementation gap is corrected locally and committed in `6f9db9b6`. The final inventory intentionally still identifies the stored currency-less cache: it has not been rewritten. After deployment, its normal API/refresh path will attempt verified recovery; if the provider cannot prove the currency, the amount stays unavailable and saved data is retained. Actual provider recovery, all six finding acceptances and the V1 release decision remain OPEN/NO-GO. Deployment verification is pending. The read-only compatibility check itself did not commit, push or deploy code; the commit checkpoint above supersedes that earlier delivery status.
 
 Provider contract: Salesforce's [getUserInfoResult documentation](https://developer.salesforce.com/docs/platform/api/guide/sforce-api-calls-getuserinfo-getuserinforesult.html) distinguishes the single-currency organization's default from the multi-currency user's default. This is why a user-default or campaign-currency guess is not used for recovery.
 
@@ -122,7 +126,7 @@ Original evidence below is retained verbatim except relative link destinations. 
 
 HubSpot save20245, Salesforce save18830 and Shopify `utils/shopify-revenue.ts:145` remove arbitrary characters before numeric conversion. Exact HubSpot handler and Shopify helper fixtures accept12oops as12; nonnumeric HubSpot becomes measured0 and Shopify becomes excluded zero order. Salesforce code retains same digit-stripping behavior despite non-finite checks. Reject invalid provider values before publication; trace existing corruption separately.
 
-**Implementation / validation:** See the [October 23 correction checkpoint](#correction-checkpoint-october-23), exact path matrix and hashed evidence above. Uncommitted on `67279e8e`; locally verified forward correction only. Deployed/provider, full lifecycle/downstream and historical-data acceptance remain OPEN.
+**Implementation / validation:** See the [October 23 correction checkpoint](#correction-checkpoint-october-23), exact path matrix and hashed evidence above. Committed in `6f9db9b6` on `67279e8e`; locally verified forward correction only. See the [commit checkpoint](#commit-checkpoint-october-23). Deployed/provider, full lifecycle/downstream and historical-data acceptance remain OPEN.
 
 ### V1-043
 
@@ -134,7 +138,7 @@ HubSpot save20245, Salesforce save18830 and Shopify `utils/shopify-revenue.ts:14
 
 HubSpot search19976/save20235 substitutes missing results with[]; exact handler persists zero for HTTP-success{}. Salesforce `utils/salesforce-pagination.ts:43` accepts{} and ignores totalSize10 versus empty records, confirmed in exact helper fixtures. GA4 save19251 maps empty rows to zero. Incomplete/unavailable response must not overwrite last-good revenue as measured zero.
 
-**Implementation / validation:** See the [October 23 correction checkpoint](#correction-checkpoint-october-23), exact path matrix and hashed evidence above. Uncommitted on `67279e8e`; locally verified forward correction only. Deployed/provider, full lifecycle/downstream and historical-data acceptance remain OPEN.
+**Implementation / validation:** See the [October 23 correction checkpoint](#correction-checkpoint-october-23), exact path matrix and hashed evidence above. Committed in `6f9db9b6` on `67279e8e`; locally verified forward correction only. See the [commit checkpoint](#commit-checkpoint-october-23). Deployed/provider, full lifecycle/downstream and historical-data acceptance remain OPEN.
 
 ### V1-044
 
@@ -146,7 +150,7 @@ HubSpot search19976/save20235 substitutes missing results with[]; exact handler 
 
 Save20245 adds each result without deal-ID deduplication. Exact two-page fixture repeats the same10USD deal and persists20USD; cursor changes so pagination guard passes. Query completeness and aggregate/daily self-reconciliation do not detect duplicated provider identity. Require identity/revision policy before financial publication; Salesforce equivalent absence has code evidence, not separate handler fixture.
 
-**Implementation / validation:** See the [October 23 correction checkpoint](#correction-checkpoint-october-23), exact path matrix and hashed evidence above. Uncommitted on `67279e8e`; locally verified forward correction only. Deployed/provider, full lifecycle/downstream and historical-data acceptance remain OPEN.
+**Implementation / validation:** See the [October 23 correction checkpoint](#correction-checkpoint-october-23), exact path matrix and hashed evidence above. Committed in `6f9db9b6` on `67279e8e`; locally verified forward correction only. See the [commit checkpoint](#commit-checkpoint-october-23). Deployed/provider, full lifecycle/downstream and historical-data acceptance remain OPEN.
 
 ### V1-045
 
@@ -158,7 +162,7 @@ Save20245 adds each result without deal-ID deduplication. Exact two-page fixture
 
 Save20169 accepts explicit stageIds without checking closed-won metadata. Fixture supplies known open-stage metadata and shows that stage queried and10USD materialized as confirmed revenue. Default closed-won derivation does not protect caller override. Keep Pipeline Proxy separate and verify stage semantics for each account.
 
-**Implementation / validation:** See the [October 23 correction checkpoint](#correction-checkpoint-october-23), exact path matrix and hashed evidence above. Uncommitted on `67279e8e`; locally verified forward correction only. Deployed/provider, full lifecycle/downstream and historical-data acceptance remain OPEN.
+**Implementation / validation:** See the [October 23 correction checkpoint](#correction-checkpoint-october-23), exact path matrix and hashed evidence above. Committed in `6f9db9b6` on `67279e8e`; locally verified forward correction only. See the [commit checkpoint](#commit-checkpoint-october-23). Deployed/provider, full lifecycle/downstream and historical-data acceptance remain OPEN.
 
 ### V1-083
 
@@ -170,7 +174,7 @@ Save20169 accepts explicit stageIds without checking closed-won metadata. Fixtur
 
 `utils/shopify-provider.ts:5–20` accepts2025-10, officially retired Oct16,2026; default2026-07 remains supported. Response-version guard258–303 rejects provider fall-forward, preserving semantic safety but causing accepted old configuration to fail. Live override unknown. Restrict the final support manifest and validate any version-list change independently.
 
-**Implementation / validation:** See the [October 23 correction checkpoint](#correction-checkpoint-october-23), exact path matrix and hashed evidence above. Uncommitted on `67279e8e`; locally verified forward correction only. Deployed/provider, full lifecycle/downstream and historical-data acceptance remain OPEN.
+**Implementation / validation:** See the [October 23 correction checkpoint](#correction-checkpoint-october-23), exact path matrix and hashed evidence above. Committed in `6f9db9b6` on `67279e8e`; locally verified forward correction only. See the [commit checkpoint](#commit-checkpoint-october-23). Deployed/provider, full lifecycle/downstream and historical-data acceptance remain OPEN.
 
 ### V1-109
 
@@ -182,4 +186,4 @@ Save20169 accepts explicit stageIds without checking closed-won metadata. Fixtur
 
 `ga4-metrics.tsx:2728–2847,3006,3041–3056` replaces successful current0/empty items with mapping100 and can display old warning-marked mapping100 after a first failed endpoint read without unavailable/last-good state. [GA4 exact cases](../../audits/v1-2026-10-19/GA4_OVERVIEW_VALUE_INVENTORY.md). Custom Integration785–805 and standalone Sheets1063–1092 also display old mapping100 after a failed endpoint read while dropping warning/freshness; their successful-zero controls correctly preserve0. [Independent cases](../../audits/v1-2026-10-19/SHEETS_CUSTOM_VALUE_PROPAGATION.md). Preserve current zero, verified mode/source/currency/freshness and explicit error state through proxy consumers.
 
-**Implementation / validation:** See the [October 23 correction checkpoint](#correction-checkpoint-october-23), exact path matrix and hashed evidence above. Uncommitted on `67279e8e`; locally verified forward correction only. Deployed/provider, full lifecycle/downstream and historical-data acceptance remain OPEN.
+**Implementation / validation:** See the [October 23 correction checkpoint](#correction-checkpoint-october-23), exact path matrix and hashed evidence above. Committed in `6f9db9b6` on `67279e8e`; locally verified forward correction only. See the [commit checkpoint](#commit-checkpoint-october-23). Deployed/provider, full lifecycle/downstream and historical-data acceptance remain OPEN.

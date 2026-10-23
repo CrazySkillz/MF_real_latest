@@ -2837,6 +2837,7 @@ export function AddRevenueWizardModal(props: {
               <div className="w-full flex-1 min-h-0 flex flex-col">
                 <HubSpotRevenueWizard
                   campaignId={campaignId}
+                  currency={currency}
                   sourceId={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "hubspot" ? String(initialSource?.id || "") : undefined}
                   platformContext={platformContext}
                   mode={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "hubspot" ? "edit" : "connect"}

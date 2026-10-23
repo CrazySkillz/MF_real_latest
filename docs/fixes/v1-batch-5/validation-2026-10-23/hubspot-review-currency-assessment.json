@@ -1,0 +1,236 @@
+{
+  "at": "2026-10-23T20:24:11.496524+00:00",
+  "finding": "V1-109-F1",
+  "severity": "P2",
+  "baseCommit": "02dfa93b10bf1708c99028145d018d193863be8f",
+  "status": "LOCAL CORRECTION VERIFIED; NOT COMMITTED OR DEPLOYED",
+  "symptom": "EUR campaign header with $0.00 confirmed revenue and $3,200.00 Contract Sent pipeline in HubSpot review.",
+  "rootCause": "HubSpotRevenueWizard hard-coded $ in review totals, deal formatter, success toast and completion screen; neither caller supplied campaign currency.",
+  "correction": "Required campaign currency prop wired from both existing callers; existing formatter reused by every money display. Number, locale and two-decimal behavior retained; currency formatting changes only.",
+  "trace": [
+    "AddRevenueWizardModal currency already drives the modal header; now forwarded into HubSpotRevenueWizard.",
+    "POST /api/campaigns/:id/hubspot/save-mappings preview returns totalRevenue, currency, pipelinePreviewTotal and dealBreakdown; wizard retains the exact numeric amounts.",
+    "Closed-won verified stages supply confirmed revenue; selected Contract Sent stage supplies separate proxy. The screenshot shows two distinct same-name deals, EUR200 and EUR3000.",
+    "Frontend save request, server handler, ownership filters, mapping persistence, scheduler, aggregation and database contracts unchanged.",
+    "Legacy LinkedIn caller now passes its existing campaignCurrencyCode solely to satisfy the shared currency display contract. LinkedIn functional work remains deferred."
+  ],
+  "validation": {
+    "browser": {
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    "combined": {
+      "total": 62,
+      "passed": 52,
+      "failed": 10,
+      "skipped": 0
+    },
+    "results": "hubspot-review-currency-after.json",
+    "builds": "hubspot-review-currency-build-checks.json"
+  },
+  "initialFailures": [
+    {
+      "run": "hubspot-review-currency-before.log",
+      "classification": "ENVIRONMENT",
+      "reason": "Sandbox spawn EPERM before test execution; re-run via approved credential-stripped runner."
+    },
+    {
+      "run": "hubspot-review-currency-before-authorized.json",
+      "classification": "PRODUCT REGRESSION REPRODUCED + FIXTURE",
+      "reason": "Direct actual-wizard EUR case reproduced $125.75 instead of EUR125.75. Five modal cases also lacked the parent initial Google Sheets connection-list fixture; cleanup error hid their primary assertion results. These are not five proven product regressions."
+    },
+    {
+      "run": "hubspot-review-currency-fixture-check.json",
+      "classification": "FIXTURE",
+      "reason": "Single-case diagnostic identified /api/campaigns/a/google-sheets-connections. Added an empty connections response; no production code or assertion was weakened. Five intentionally filtered cases in diagnostic run only."
+    }
+  ],
+  "remainingPreviewBoundary": {
+    "finding": "V1-109-F2",
+    "severity": "P1",
+    "status": "OPEN; CODE-IDENTIFIED, NO NEW NEGATIVE HANDLER TEST IN THIS CHANGE",
+    "path": "server/routes-oauth.ts:computeHubspotPipelinePreview; client/src/components/HubSpotRevenueWizard.tsx:review preview effect",
+    "evidence": "Pipeline preview requests campaign property, amount and dealstage, omitting hs_currency; it sums without per-deal currency verification. The response labels currency from confirmed revenue or campaign. Preview errors are swallowed. Therefore arbitrary provider currencies/failure-state review acceptance is not proved by correcting the hard-coded display label.",
+    "requiredWork": "Validate preview pipeline currency and failure states against the saved/proxy contracts using isolated exact-handler fixtures before broad preview certification. Do not label this formatting fix as currency-data validation."
+  },
+  "openFailures": [
+    {
+      "id": "TEST-1bd59df04f",
+      "file": "server/google-ads-revenue-wizard-context.test.ts",
+      "name": "Google Ads revenue wizard context lets the shared revenue wizard carry a Google Ads context without changing GA4 defaults",
+      "classification": "STRUCTURAL_ASSERTION",
+      "reason": "Assertion compares current source text/shape. A changed string is neither proof of a runtime defect nor permission to waive the intended invariant. Behavioral replacement/confirmation required.",
+      "assertion": "expect(modal).toContain(\"type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets';\");",
+      "currentError": [
+        "AssertionError: expected 'import { useEffect, useMemo, useRef, \u2026' to contain 'type RevenuePlatformContext = \\'ga4\\'\u2026'\n    at C:/Users/me/Documents/MF_real_latest/server/google-ads-revenue-wizard-context.test.ts:11:19\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:145:11\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:915:26\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1243:20\n    at new Promise (<anonymous>)\n    at runWithTimeout (file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1209:10)\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1653:37\n    at Traces.$ (file:///C:/Users/me/Documents/MF_real_latest/node_modules/vitest/dist/chunks/traces.U4xDYhzZ.js:115:27)\n    at trace (file:///C:/Users/me/Documents/MF_real_latest/node_modules/vitest/dist/chunks/test.B8ej_ZHS.js:239:21)\n    at runTest (file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1653:12)"
+      ],
+      "status": "OPEN",
+      "finding": "V1-012",
+      "waived": false,
+      "releaseImpact": "The intended invariant remains a required validation gap. Historical occurrence does not waive this failure."
+    },
+    {
+      "id": "TEST-510874ac3f",
+      "file": "server/google-ads-revenue-wizard-context.test.ts",
+      "name": "Google Ads revenue wizard context passes Google Ads through provider wizard prop contracts",
+      "classification": "STRUCTURAL_ASSERTION",
+      "reason": "Assertion compares current source text/shape. A changed string is neither proof of a runtime defect nor permission to waive the intended invariant. Behavioral replacement/confirmation required.",
+      "assertion": "expect(source).toContain('platformContext?: \"ga4\" | \"linkedin\" | \"meta\" | \"google_ads\" | \"instagram\" | \"tiktok\" | \"google_sheets\";');",
+      "currentError": [
+        "AssertionError: expected 'import { useEffect, useMemo, useRef, \u2026' to contain 'platformContext?: \"ga4\" | \"linkedin\" \u2026'\n    at C:/Users/me/Documents/MF_real_latest/server/google-ads-revenue-wizard-context.test.ts:32:22\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:145:11\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:915:26\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1243:20\n    at new Promise (<anonymous>)\n    at runWithTimeout (file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1209:10)\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1653:37\n    at Traces.$ (file:///C:/Users/me/Documents/MF_real_latest/node_modules/vitest/dist/chunks/traces.U4xDYhzZ.js:115:27)\n    at trace (file:///C:/Users/me/Documents/MF_real_latest/node_modules/vitest/dist/chunks/test.B8ej_ZHS.js:239:21)\n    at runTest (file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1653:12)"
+      ],
+      "status": "OPEN",
+      "finding": "V1-012",
+      "waived": false,
+      "releaseImpact": "The intended invariant remains a required validation gap. Historical occurrence does not waive this failure."
+    },
+    {
+      "id": "TEST-892c5cf90d",
+      "file": "server/google-ads-revenue-wizard-context.test.ts",
+      "name": "Google Ads revenue wizard context allows Google Ads revenue Google Sheets purpose and shared write validation",
+      "classification": "STRUCTURAL_ASSERTION",
+      "reason": "Assertion compares current source text/shape. A changed string is neither proof of a runtime defect nor permission to waive the intended invariant. Behavioral replacement/confirmation required.",
+      "assertion": "expect(sheetsAuth).toContain(\"purpose === 'revenue' || purpose === 'linkedin_revenue' || purpose === 'google_ads_revenue' || purpose === 'instagram_revenue' || purpose === 'tiktok_revenue'\");",
+      "currentError": [
+        "AssertionError: expected 'import { useCallback, useEffect, useR\u2026' to contain 'purpose === \\'revenue\\' || purpose ==\u2026'\n    at C:/Users/me/Documents/MF_real_latest/server/google-ads-revenue-wizard-context.test.ts:41:24\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:145:11\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:915:26\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1243:20\n    at new Promise (<anonymous>)\n    at runWithTimeout (file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1209:10)\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1653:37\n    at Traces.$ (file:///C:/Users/me/Documents/MF_real_latest/node_modules/vitest/dist/chunks/traces.U4xDYhzZ.js:115:27)\n    at trace (file:///C:/Users/me/Documents/MF_real_latest/node_modules/vitest/dist/chunks/test.B8ej_ZHS.js:239:21)\n    at runTest (file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1653:12)"
+      ],
+      "status": "OPEN",
+      "finding": "V1-012",
+      "waived": false,
+      "releaseImpact": "The intended invariant remains a required validation gap. Historical occurrence does not waive this failure."
+    },
+    {
+      "id": "TEST-0dc0d4b436",
+      "file": "server/hubspot-mapping-downstream-matrix.test.ts",
+      "name": "HubSpot GA4 mapping and downstream variant matrix keeps identical add, distinct add, edit, and scheduler source identity explicit",
+      "classification": "STRUCTURAL_ASSERTION",
+      "reason": "Assertion compares current source text/shape. A changed string is neither proof of a runtime defect nor permission to waive the intended invariant. Behavioral replacement/confirmation required.",
+      "assertion": "expect(scheduler).toContain('reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id))');",
+      "currentError": [
+        "AssertionError: expected '/**\\n * Daily Auto-Refresh + Auto-Pro\u2026' to contain 'reprocessHubSpot(campaignId, hubCfg, \u2026'\n    at C:/Users/me/Documents/MF_real_latest/server/hubspot-mapping-downstream-matrix.test.ts:43:23\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:145:11\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:915:26\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1243:20\n    at new Promise (<anonymous>)\n    at runWithTimeout (file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1209:10)\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1653:37\n    at Traces.$ (file:///C:/Users/me/Documents/MF_real_latest/node_modules/vitest/dist/chunks/traces.U4xDYhzZ.js:115:27)\n    at trace (file:///C:/Users/me/Documents/MF_real_latest/node_modules/vitest/dist/chunks/test.B8ej_ZHS.js:239:21)\n    at runTest (file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1653:12)"
+      ],
+      "status": "OPEN",
+      "finding": "V1-012",
+      "waived": false,
+      "releaseImpact": "The intended invariant remains a required validation gap. Historical occurrence does not waive this failure."
+    },
+    {
+      "id": "TEST-e3ddb08faf",
+      "file": "server/hubspot-pipeline-automation-ui.test.ts",
+      "name": "HubSpot Pipeline Proxy automatic stage transition polls eligible GA4 HubSpot sources and requires a stage only when Pipeline Proxy is enabled",
+      "classification": "FIXTURE_CONTRACT",
+      "reason": "Fixture campaign is {id: campaign-1} with no status. Current auto-refresh-scheduler.ts:967/1007 filters active campaigns; the fixture is skipped before source lookup. Re-exercise intended stage/provenance behavior with valid campaign fixture.",
+      "assertion": "expect(storage.getRevenueSources).toHaveBeenCalledWith(\"campaign-1\", \"ga4\");",
+      "currentError": [
+        "AssertionError: expected \"getRevenueSources\" to be called with arguments: [ 'campaign-1', 'ga4' ]\u001b[90m\n\nNumber of calls: \u001b[1m0\u001b[22m\n\u001b[39m\n    at Proxy.<anonymous> (file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/expect/dist/index.js:1420:10)\n    at Proxy.<anonymous> (file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/expect/dist/index.js:1090:14)\n    at Proxy.methodWrapper (file:///C:/Users/me/Documents/MF_real_latest/node_modules/chai/index.js:1700:25)\n    at C:/Users/me/Documents/MF_real_latest/server/hubspot-pipeline-automation-ui.test.ts:107:39\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:915:20"
+      ],
+      "status": "OPEN",
+      "finding": "V1-012",
+      "waived": false,
+      "releaseImpact": "The intended invariant remains a required validation gap. Historical occurrence does not waive this failure."
+    },
+    {
+      "id": "TEST-002269dd20",
+      "file": "server/hubspot-revenue-ga4-overview-regression.test.ts",
+      "name": "HubSpot revenue GA4 Overview regression guard scheduler reprocesses saved HubSpot revenue mappings with platform context and stable source IDs",
+      "classification": "STRUCTURAL_ASSERTION",
+      "reason": "Assertion compares current source text/shape. A changed string is neither proof of a runtime defect nor permission to waive the intended invariant. Behavioral replacement/confirmation required.",
+      "assertion": "expect(hubspotLoop).toContain(\"const hubspotRevenueSources = (await storage.getRevenueSources(campaignId, ctx).catch(() => [] as any[]))\");",
+      "currentError": [
+        "AssertionError: expected '// HubSpot revenue sources are the so\u2026' to contain 'const hubspotRevenueSources = (await \u2026'\n    at C:/Users/me/Documents/MF_real_latest/server/hubspot-revenue-ga4-overview-regression.test.ts:265:25\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:145:11\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:915:26\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1243:20\n    at new Promise (<anonymous>)\n    at runWithTimeout (file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1209:10)\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1653:37\n    at Traces.$ (file:///C:/Users/me/Documents/MF_real_latest/node_modules/vitest/dist/chunks/traces.U4xDYhzZ.js:115:27)\n    at trace (file:///C:/Users/me/Documents/MF_real_latest/node_modules/vitest/dist/chunks/test.B8ej_ZHS.js:239:21)\n    at runTest (file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1653:12)"
+      ],
+      "status": "OPEN",
+      "finding": "V1-012",
+      "waived": false,
+      "releaseImpact": "The intended invariant remains a required validation gap. Historical occurrence does not waive this failure."
+    },
+    {
+      "id": "TEST-1a0a9922b7",
+      "file": "server/hubspot-revenue-ga4-overview-regression.test.ts",
+      "name": "HubSpot revenue GA4 Overview regression guard keeps HubSpot Pipeline Proxy scoped and separate from confirmed GA4 financial revenue",
+      "classification": "SOURCE_EXTRACTION",
+      "reason": "Source-slicing/order assertion cannot locate its expected boundary. Must map to current AST handler/function and retain the underlying intended safety requirement.",
+      "assertion": "expect(end).toBeGreaterThan(start);",
+      "currentError": [
+        "AssertionError: expected -1 to be greater than 124394\n    at sliceBetween (C:/Users/me/Documents/MF_real_latest/server/hubspot-revenue-ga4-overview-regression.test.ts:51:15)\n    at C:/Users/me/Documents/MF_real_latest/server/hubspot-revenue-ga4-overview-regression.test.ts:316:39\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:145:11\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:915:26\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1243:20\n    at new Promise (<anonymous>)\n    at runWithTimeout (file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1209:10)\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1653:37\n    at Traces.$ (file:///C:/Users/me/Documents/MF_real_latest/node_modules/vitest/dist/chunks/traces.U4xDYhzZ.js:115:27)\n    at trace (file:///C:/Users/me/Documents/MF_real_latest/node_modules/vitest/dist/chunks/test.B8ej_ZHS.js:239:21)"
+      ],
+      "status": "OPEN",
+      "finding": "V1-012",
+      "waived": false,
+      "releaseImpact": "The intended invariant remains a required validation gap. Historical occurrence does not waive this failure."
+    },
+    {
+      "id": "TEST-09ef66445c",
+      "file": "server/hubspot-revenue-ga4-overview-regression.test.ts",
+      "name": "HubSpot revenue GA4 Overview regression guard excludes Pipeline Proxy from GA4 report artifacts while retaining its operational Overview card",
+      "classification": "SOURCE_EXTRACTION",
+      "reason": "Source-slicing/order assertion cannot locate its expected boundary. Must map to current AST handler/function and retain the underlying intended safety requirement.",
+      "assertion": "expect(start).toBeGreaterThan(-1);",
+      "currentError": [
+        "AssertionError: expected -1 to be greater than -1\n    at sliceBetween (C:/Users/me/Documents/MF_real_latest/server/hubspot-revenue-ga4-overview-regression.test.ts:50:17)\n    at C:/Users/me/Documents/MF_real_latest/server/hubspot-revenue-ga4-overview-regression.test.ts:794:33\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:145:11\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:915:26\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1243:20\n    at new Promise (<anonymous>)\n    at runWithTimeout (file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1209:10)\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1653:37\n    at Traces.$ (file:///C:/Users/me/Documents/MF_real_latest/node_modules/vitest/dist/chunks/traces.U4xDYhzZ.js:115:27)\n    at trace (file:///C:/Users/me/Documents/MF_real_latest/node_modules/vitest/dist/chunks/test.B8ej_ZHS.js:239:21)"
+      ],
+      "status": "OPEN",
+      "finding": "V1-012",
+      "waived": false,
+      "releaseImpact": "The intended invariant remains a required validation gap. Historical occurrence does not waive this failure."
+    },
+    {
+      "id": "TEST-882fe8c0d7",
+      "file": "server/hubspot-revenue-ga4-overview-regression.test.ts",
+      "name": "HubSpot revenue GA4 Overview regression guard keeps HubSpot-backed GA4 KPI and Benchmark live formulas aligned with Overview financial revenue",
+      "classification": "STRUCTURAL_ASSERTION",
+      "reason": "Assertion compares current source text/shape. A changed string is neither proof of a runtime defect nor permission to waive the intended invariant. Behavioral replacement/confirmation required.",
+      "assertion": "expect(kpiLiveBlock).toContain(\"financialRevenue,\");",
+      "currentError": [
+        "AssertionError: expected 'const getLiveKpiValue = (kpi: any): s\u2026' to contain 'financialRevenue,'\n    at C:/Users/me/Documents/MF_real_latest/server/hubspot-revenue-ga4-overview-regression.test.ts:945:26\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:145:11\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:915:26\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1243:20\n    at new Promise (<anonymous>)\n    at runWithTimeout (file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1209:10)\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1653:37\n    at Traces.$ (file:///C:/Users/me/Documents/MF_real_latest/node_modules/vitest/dist/chunks/traces.U4xDYhzZ.js:115:27)\n    at trace (file:///C:/Users/me/Documents/MF_real_latest/node_modules/vitest/dist/chunks/test.B8ej_ZHS.js:239:21)\n    at runTest (file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1653:12)"
+      ],
+      "status": "OPEN",
+      "finding": "V1-012",
+      "waived": false,
+      "releaseImpact": "The intended invariant remains a required validation gap. Historical occurrence does not waive this failure."
+    },
+    {
+      "id": "TEST-354821eacd",
+      "file": "server/hubspot-revenue-ga4-overview-regression.test.ts",
+      "name": "HubSpot revenue GA4 Overview regression guard keeps server GA4 KPI and Benchmark persisted/current-value formulas additive with HubSpot imported revenue",
+      "classification": "SOURCE_EXTRACTION",
+      "reason": "Source-slicing/order assertion cannot locate its expected boundary. Must map to current AST handler/function and retain the underlying intended safety requirement.",
+      "assertion": "expect(start).toBeGreaterThan(-1);",
+      "currentError": [
+        "AssertionError: expected -1 to be greater than -1\n    at sliceBetween (C:/Users/me/Documents/MF_real_latest/server/hubspot-revenue-ga4-overview-regression.test.ts:50:17)\n    at C:/Users/me/Documents/MF_real_latest/server/hubspot-revenue-ga4-overview-regression.test.ts:975:33\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:145:11\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:915:26\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1243:20\n    at new Promise (<anonymous>)\n    at runWithTimeout (file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1209:10)\n    at file:///C:/Users/me/Documents/MF_real_latest/node_modules/@vitest/runner/dist/index.js:1653:37\n    at Traces.$ (file:///C:/Users/me/Documents/MF_real_latest/node_modules/vitest/dist/chunks/traces.U4xDYhzZ.js:115:27)\n    at trace (file:///C:/Users/me/Documents/MF_real_latest/node_modules/vitest/dist/chunks/test.B8ej_ZHS.js:239:21)"
+      ],
+      "status": "OPEN",
+      "finding": "V1-012",
+      "waived": false,
+      "releaseImpact": "The intended invariant remains a required validation gap. Historical occurrence does not waive this failure."
+    }
+  ],
+  "isolation": "Actual modal and wizard bundled into Chromium. Every browser HTTP request intercepted, unmodelled requests fail; external Node networking blocked; application credentials stripped. Save success/failure is simulated. No live/provider/production database write or Ptomo access.",
+  "unverified": [
+    "Deployed corrected screen",
+    "Real provider save and stored/downstream values",
+    "Edit/reconnect/cancel/delete and scheduled provider refresh",
+    "Preview mixed/missing currency and failed preview handling",
+    "Whole-source and whole-V1 acceptance"
+  ],
+  "files": [
+    {
+      "path": "client/src/components/HubSpotRevenueWizard.tsx",
+      "sha256": "876f120e29f8e01b6440364e6ff1de980231514d444d854d67b4fa2a408bf745"
+    },
+    {
+      "path": "client/src/components/AddRevenueWizardModal.tsx",
+      "sha256": "1a07fa0d99de4fb6f6a9fc4dfa23a3c90f61dfede94e9d19f8e41c0637d7cbda"
+    },
+    {
+      "path": "client/src/pages/linkedin-analytics.tsx",
+      "sha256": "652e0ff1ebc8a1a3b429b76d1a67172763044db665a3a1bd57992c4acd643b77"
+    },
+    {
+      "path": "server/hubspot-review-currency-browser.test.ts",
+      "sha256": "e9c3a4d3442f7bd5b978b65da5a53afa7e9bd4c981a226ef1e5720451b7cb2d1"
+    }
+  ]
+}

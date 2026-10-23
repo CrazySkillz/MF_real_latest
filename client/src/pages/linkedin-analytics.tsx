@@ -8165,6 +8165,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                 </DialogHeader>
                 <HubSpotRevenueWizard
                   campaignId={campaignId}
+                  currency={campaignCurrencyCode}
                   platformContext="linkedin"
                   onBack={() => setIsHubspotRevenueWizardOpen(false)}
                   onClose={() => {

@@ -1,0 +1,100 @@
+{
+  "at": "2026-10-23T19:42:26.599Z",
+  "campaignName": "V1 Batch 5 Test",
+  "productionWrites": false,
+  "providerCalls": false,
+  "liveHealth": {
+    "status": 200,
+    "ok": true,
+    "commit": "02dfa93b10bf1708c99028145d018d193863be8f"
+  },
+  "databaseTargetSha256": "073e11d852157bd3f4d53e8321ad28bc5564ff639fd4da814bf15f53575024e0",
+  "readOnly": true,
+  "campaign": {
+    "status": "active",
+    "currency": "EUR",
+    "reporting_time_zone": "Europe/Amsterdam",
+    "created_at": "2026-10-23T16:53:23.694Z",
+    "owned": true,
+    "ref": "de4775c3b435c3350ea24f5d538e60e639c9f9cd21de63d5432956b44551e722"
+  },
+  "daily": [
+    {
+      "rows": 30,
+      "first_date": "2026-09-23",
+      "last_date": "2026-10-22",
+      "revenue_sum": "7653.96",
+      "conversions": 40,
+      "updated_at": "2026-10-23T16:56:05.061Z"
+    }
+  ],
+  "overview": [
+    {
+      "window_start": "2026-09-23",
+      "window_end": "2026-10-22",
+      "updated_at": "2026-10-23T16:56:05.221Z",
+      "totals": {
+        "users": 602,
+        "revenue": 7653.96,
+        "sessions": 604,
+        "conversions": 40,
+        "sessionsRaw": 604,
+        "engagementRate": 0.5910596026490066,
+        "engagedSessions": 357
+      },
+      "meta": {
+        "rowCount": 2,
+        "dimensions": [
+          "campaignName"
+        ],
+        "propertyId": "542352127",
+        "currencyCode": "EUR",
+        "revenueMetric": "totalRevenue",
+        "dailyHistoryRefresh": {
+          "scope": "9d646d914c8c9e561688dfcb017ae5db72515fe416dd34c37f040fe5481a393a",
+          "version": 1,
+          "reportingDate": "2026-10-22"
+        },
+        "sessionsDerivedFromUsers": false,
+        "overviewCampaignAttribution": {
+          "selected": true,
+          "attempted": true,
+          "rebuiltRevenue": 7653.96,
+          "rebuiltSessions": 604,
+          "standardRevenue": 8885.09,
+          "standardSessions": 44,
+          "rebuiltConversions": 40,
+          "standardConversions": 47
+        }
+      }
+    }
+  ],
+  "snapshots": [],
+  "work": [
+    {
+      "status": "completed",
+      "reporting_date": "2026-10-22",
+      "due_at": "2026-10-23T18:55:08.938Z",
+      "completed_at": "2026-10-23T18:56:13.410Z",
+      "attempt_count": 1,
+      "next_attempt_at": null,
+      "retryable": true,
+      "last_error": null,
+      "lease_expires_at": null,
+      "kind": "initial_import"
+    }
+  ],
+  "sources": [],
+  "connections": [
+    {
+      "property_id": "542352127",
+      "is_primary": true,
+      "is_active": true,
+      "import_start_date": "2026-09-23",
+      "connected_at": "2026-10-23T16:54:01.756Z"
+    }
+  ],
+  "transactionEnded": "ROLLBACK",
+  "result": "READ_ONLY_DIAGNOSIS_COMPLETE",
+  "completedAt": "2026-10-23T19:42:29.905Z"
+}

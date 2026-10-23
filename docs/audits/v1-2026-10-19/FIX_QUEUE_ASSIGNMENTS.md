@@ -1,6 +1,8 @@
 # Finding-by-finding fix queue
 
-**October 23 recovery follow-up:** `c056ad50` is live, but the test campaign still lacks its financial snapshot. [Per-campaign startup discovery isolation](../../fixes/v1-batch-3/README.md#startup-recovery-isolation-follow-up-october-23) corrects an exception that can stop recovery before reaching healthy campaigns. All **289 targeted checks pass**; TypeScript/server build pass. Deployment and exact campaign recovery remain pending; no release gate is closed.
+**October 23 HubSpot review follow-up:** [V1-109-F1](../../fixes/v1-batch-5/README.md#hubspot-review-currency-follow-up-october-23), P2, fixes the hard-coded currency display locally (six browser cases pass; TypeScript/both builds pass; deployment verification pending). V1-109-F2, P1, keeps pipeline-preview provider-currency and failed-preview handling OPEN for targeted work. The 10 wider test failures remain individually classified under V1-012. These are follow-ups under existing assignments; no finding count or release-acceptance status is closed.
+
+**October 23 recovery follow-up: deployed repair VERIFIED.** `02dfa93b` is live. The exact `V1 Batch 5 Test` campaign now has one valid financial snapshot with **EUR 7,653.96**, matching saved native GA4 revenue, currency and September 23-October 22 window. Its durable recovery completed at **19:45:20 UTC**. [Evidence and remaining limits](../../fixes/v1-batch-3/README.md#startup-recovery-isolation-follow-up-october-23). All **289 targeted checks pass**; TypeScript/server build pass. The user screenshot now confirms the recovered Total Revenue card: EUR 7,653.96, Sources (1). Fresh deployed creation, HubSpot/provider acceptance and broader release gates remain open; no whole-app certification is issued.
 
 [Release index](../../V1_RELEASE_READINESS.md) · [Batch progress](../../V1_RELEASE_READINESS.md#fix-counts-and-progress-tracking)
 

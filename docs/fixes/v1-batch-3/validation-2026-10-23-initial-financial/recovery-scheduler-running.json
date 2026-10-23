@@ -1,0 +1,88 @@
+{
+  "at": "2026-10-23T19:42:55.108Z",
+  "ga4": {
+    "started": true,
+    "timerScheduled": true,
+    "inProgress": true,
+    "config": {
+      "reportingTimeZone": "Europe/Amsterdam",
+      "hour": 8,
+      "hours": [
+        8,
+        14,
+        20
+      ],
+      "minute": 0,
+      "runOnStartup": false
+    },
+    "startedAt": "2026-10-23T19:42:09.310Z",
+    "stoppedAt": null,
+    "nextRunAt": "2026-10-24T06:00:00.000Z",
+    "nextDataThroughDate": "2026-10-23",
+    "lastRunStartedAt": "2026-10-23T19:42:22.507Z",
+    "lastRunFinishedAt": null,
+    "lastRunTrigger": "snapshot_bootstrap",
+    "lastRunStatus": "running",
+    "lastSkippedAt": null,
+    "lastErrorTime": null,
+    "lastError": null,
+    "totalRuns": 1,
+    "totalStartupRuns": 0,
+    "totalScheduledRuns": 0,
+    "totalManualRuns": 0,
+    "totalSnapshotBootstrapRuns": 1,
+    "totalSkippedRuns": 0,
+    "lastRecomputeRecordedAt": null,
+    "lastRecomputeEvidence": null,
+    "lastExecutiveSummarySnapshotRequestedAt": null,
+    "lastExecutiveSummarySnapshotRequestFailures": [],
+    "lastAlignedRefreshFailures": [],
+    "alignedRefreshCampaigns": [
+      {
+        "campaignIdHash": "55d083f55e0c",
+        "reportingDate": "2026-10-22",
+        "completedAt": "2026-10-23T18:11:46.070Z"
+      },
+      {
+        "campaignIdHash": "b85505d40a0a",
+        "reportingDate": "2026-10-22",
+        "completedAt": "2026-10-23T18:15:15.791Z"
+      }
+    ],
+    "lastSnapshotBootstrapFailures": [
+      {
+        "campaignIdHash": "57141d52e81b",
+        "reason": "discovery: This provider resource is not approved for this customer"
+      },
+      {
+        "campaignIdHash": "b0f65e7c7bfb",
+        "reason": "discovery: This provider resource is not approved for this customer"
+      },
+      {
+        "campaignIdHash": "4ba3d83a9f51",
+        "reason": "discovery: This provider resource is not approved for this customer"
+      },
+      {
+        "campaignIdHash": "d9920c47fecf",
+        "reason": "discovery: This provider resource is not approved for this customer"
+      },
+      {
+        "campaignIdHash": "518aea3dc6ff",
+        "reason": "discovery: This provider resource is not approved for this customer"
+      }
+    ]
+  },
+  "financial": {
+    "mode": "gated_write",
+    "snapshotWritesEnabled": true,
+    "financialSourceEvidenceCampaigns": 0,
+    "ga4DailyEvidenceCampaigns": 0,
+    "observedCampaigns": 0,
+    "readyCampaigns": 0,
+    "blockedCampaigns": 0,
+    "writtenCampaigns": 0,
+    "writeFailedCampaigns": 0,
+    "blockingReasons": {},
+    "latestEvaluatedAt": null
+  }
+}

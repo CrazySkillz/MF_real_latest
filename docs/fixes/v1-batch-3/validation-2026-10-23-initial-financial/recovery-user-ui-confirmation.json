@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-23T19:49:18.504310+00:00",
+  "finding": "V1-011-F1",
+  "source": "User confirmation and screenshot in conversation",
+  "campaign": "V1 Batch 5 Test",
+  "observed": {
+    "totalRevenue": "EUR 7,653.96",
+    "sourceCount": 1,
+    "userStatement": "fixed; i will continue with the Hubspot test, what should i do?"
+  },
+  "result": "PASS for recovered Total Revenue card display",
+  "limits": [
+    "No new campaign creation demonstrated",
+    "HubSpot has not yet been imported or validated",
+    "No broader release gate closed"
+  ]
+}

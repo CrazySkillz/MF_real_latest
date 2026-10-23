@@ -1,0 +1,111 @@
+{
+  "at": "2026-10-23T19:45:38.560Z",
+  "ga4": {
+    "started": true,
+    "timerScheduled": true,
+    "inProgress": false,
+    "config": {
+      "reportingTimeZone": "Europe/Amsterdam",
+      "hour": 8,
+      "hours": [
+        8,
+        14,
+        20
+      ],
+      "minute": 0,
+      "runOnStartup": false
+    },
+    "startedAt": "2026-10-23T19:42:09.310Z",
+    "stoppedAt": null,
+    "nextRunAt": "2026-10-24T06:00:00.000Z",
+    "nextDataThroughDate": "2026-10-23",
+    "lastRunStartedAt": "2026-10-23T19:43:23.818Z",
+    "lastRunFinishedAt": "2026-10-23T19:45:27.303Z",
+    "lastRunTrigger": "snapshot_bootstrap",
+    "lastRunStatus": "success",
+    "lastSkippedAt": null,
+    "lastErrorTime": "2026-10-23T19:43:19.959Z",
+    "lastError": null,
+    "totalRuns": 2,
+    "totalStartupRuns": 0,
+    "totalScheduledRuns": 0,
+    "totalManualRuns": 0,
+    "totalSnapshotBootstrapRuns": 2,
+    "totalSkippedRuns": 0,
+    "lastRecomputeRecordedAt": "2026-10-23T19:44:38.119Z",
+    "lastRecomputeEvidence": {
+      "campaignIdsProcessed": [
+        "de4775c3b435"
+      ],
+      "campaignIdsSkipped": [],
+      "campaignIdsFailed": [],
+      "kpiIdsUpdated": [],
+      "kpiIdsSkipped": [],
+      "kpiIdsFailed": [],
+      "benchmarkIdsUpdated": [],
+      "benchmarkIdsSkipped": [],
+      "benchmarkIdsFailed": []
+    },
+    "lastExecutiveSummarySnapshotRequestedAt": "2026-10-23T19:45:07.724Z",
+    "lastExecutiveSummarySnapshotRequestFailures": [],
+    "lastAlignedRefreshFailures": [],
+    "alignedRefreshCampaigns": [
+      {
+        "campaignIdHash": "55d083f55e0c",
+        "reportingDate": "2026-10-22",
+        "completedAt": "2026-10-23T18:11:46.070Z"
+      },
+      {
+        "campaignIdHash": "b85505d40a0a",
+        "reportingDate": "2026-10-22",
+        "completedAt": "2026-10-23T18:15:15.791Z"
+      },
+      {
+        "campaignIdHash": "de4775c3b435",
+        "reportingDate": "2026-10-22",
+        "completedAt": "2026-10-23T19:45:20.739Z"
+      }
+    ],
+    "lastSnapshotBootstrapFailures": [
+      {
+        "campaignIdHash": "57141d52e81b",
+        "reason": "discovery: This provider resource is not approved for this customer"
+      },
+      {
+        "campaignIdHash": "b0f65e7c7bfb",
+        "reason": "discovery: This provider resource is not approved for this customer"
+      },
+      {
+        "campaignIdHash": "4ba3d83a9f51",
+        "reason": "discovery: This provider resource is not approved for this customer"
+      },
+      {
+        "campaignIdHash": "d9920c47fecf",
+        "reason": "discovery: This provider resource is not approved for this customer"
+      },
+      {
+        "campaignIdHash": "518aea3dc6ff",
+        "reason": "discovery: This provider resource is not approved for this customer"
+      },
+      {
+        "campaignIdHash": "6caf32c94dbe",
+        "reason": "GA4 financial refresh request failed (500)"
+      }
+    ]
+  },
+  "financial": {
+    "mode": "gated_write",
+    "snapshotWritesEnabled": true,
+    "financialSourceEvidenceCampaigns": 2,
+    "ga4DailyEvidenceCampaigns": 1,
+    "observedCampaigns": 1,
+    "readyCampaigns": 0,
+    "blockedCampaigns": 1,
+    "writtenCampaigns": 1,
+    "writeFailedCampaigns": 0,
+    "blockingReasons": {
+      "spend_unavailable": 1
+    },
+    "latestEvaluatedAt": "2026-10-23T19:45:07.722Z"
+  }
+}

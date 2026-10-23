@@ -27,6 +27,7 @@ const MAX_HUBSPOT_VALUE_SEARCH_LENGTH = 80;
 
 export function HubSpotRevenueWizard(props: {
   campaignId: string;
+  currency: string;
   sourceId?: string;
   mode?: "connect" | "edit";
   initialMappingConfig?: {
@@ -60,7 +61,7 @@ export function HubSpotRevenueWizard(props: {
    */
   platformContext?: "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "tiktok" | "google_sheets" | "custom_integration";
 }) {
-  const { campaignId, sourceId, mode = "connect", initialMappingConfig = null, onBack, onSuccess, onClose, externalBackNonce, platformContext = "ga4" } =
+  const { campaignId, currency, sourceId, mode = "connect", initialMappingConfig = null, onBack, onSuccess, onClose, externalBackNonce, platformContext = "ga4" } =
     props;
   const { toast } = useToast();
   const isGA4 = platformContext === "ga4";
@@ -133,7 +134,7 @@ export function HubSpotRevenueWizard(props: {
   }, [lastSaveResult, reviewPreviewRevenue, initialMappingConfig]);
 
   const formatReviewCurrency = (value: number) =>
-    `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    Number(value || 0).toLocaleString(undefined, { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const hasEditChanges = useMemo(() => {
     if (mode !== "edit" || !initialMappingConfig) return true;
@@ -657,7 +658,7 @@ export function HubSpotRevenueWizard(props: {
 
       toast({
         title: "HubSpot Mappings Saved",
-        description: `Revenue connected: $${Number(json?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
+        description: `Revenue connected: ${formatReviewCurrency(Number(json?.totalRevenue || 0))}.`,
       });
       setLastSaveResult(json);
       onSuccess?.(json);
@@ -1291,7 +1292,7 @@ export function HubSpotRevenueWizard(props: {
                         <div className="text-sm text-muted-foreground/70">Total Revenue (to date)</div>
                         <div className="text-xs font-medium text-foreground text-green-700 dark:text-green-400">
                           {reviewRevenue != null
-                            ? `$${Number(reviewRevenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            ? formatReviewCurrency(Number(reviewRevenue))
                             : "—"}
                         </div>
                       </div>
@@ -1321,7 +1322,7 @@ export function HubSpotRevenueWizard(props: {
                           </div>
                           <div className="mt-1 text-xs font-medium text-foreground">
                             {reviewPipelineProxyDisplayAmount != null
-                              ? `$${Number(reviewPipelineProxyDisplayAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              ? formatReviewCurrency(Number(reviewPipelineProxyDisplayAmount))
                               : "—"}
                           </div>
                           <div className="mt-1 text-xs text-muted-foreground/70">
@@ -1398,7 +1399,7 @@ export function HubSpotRevenueWizard(props: {
                 <div className="text-sm text-foreground/80">
                   Revenue connected:{" "}
                   <strong>
-                    ${Number(lastSaveResult?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {formatReviewCurrency(Number(lastSaveResult?.totalRevenue || 0))}
                   </strong>
                 </div>
                 <div className="flex items-center gap-2">

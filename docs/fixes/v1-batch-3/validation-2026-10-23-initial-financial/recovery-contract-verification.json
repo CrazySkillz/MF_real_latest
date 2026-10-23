@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-23T19:45:41.843Z",
+  "commit": "02dfa93b10bf1708c99028145d018d193863be8f",
+  "result": "PASS",
+  "campaignRef": "de4775c3b435c3350ea24f5d538e60e639c9f9cd21de63d5432956b44551e722",
+  "snapshotSchemaValid": true,
+  "nativeAmountCurrencyDateAndConversionMatch": true,
+  "financialRows": 1,
+  "actualPageValueExpression": {
+    "available": true,
+    "revenue": 7653.96,
+    "spendAvailable": false
+  },
+  "boundary": "Live saved campaign snapshot checked through actual shared schema and actual page value expressions. Authenticated live API/browser not available; isolated rendered-page regression passed separately. This does not certify the full application."
+}

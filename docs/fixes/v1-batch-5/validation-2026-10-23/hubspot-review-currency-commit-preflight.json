@@ -1,0 +1,177 @@
+{
+  "at": "2026-10-23T20:31:21.967783+00:00",
+  "baseCommit": "02dfa93b10bf1708c99028145d018d193863be8f",
+  "remoteMainVerified": "02dfa93b10bf1708c99028145d018d193863be8f",
+  "userAuthorized": "Commit and push dynamic campaign-currency display fix, tests and related audit updates.",
+  "validatedHashes": "4/4 match; application/test content unchanged since passing targeted validation",
+  "checks": {
+    "browser": "6/6 pass",
+    "combined": "52 pass / 10 classified OPEN / 0 skipped",
+    "typecheck": "PASS",
+    "clientBuild": "PASS",
+    "serverBuild": "PASS",
+    "secretPatternScan": "PASS; exact publication files only"
+  },
+  "deployment": "NOT VERIFIED; no production mutation or provider test during preparation",
+  "files": [
+    {
+      "path": "client/src/components/AddRevenueWizardModal.tsx",
+      "sha256": "1a07fa0d99de4fb6f6a9fc4dfa23a3c90f61dfede94e9d19f8e41c0637d7cbda",
+      "bytes": 169614
+    },
+    {
+      "path": "client/src/components/HubSpotRevenueWizard.tsx",
+      "sha256": "876f120e29f8e01b6440364e6ff1de980231514d444d854d67b4fa2a408bf745",
+      "bytes": 70464
+    },
+    {
+      "path": "client/src/pages/linkedin-analytics.tsx",
+      "sha256": "652e0ff1ebc8a1a3b429b76d1a67172763044db665a3a1bd57992c4acd643b77",
+      "bytes": 449954
+    },
+    {
+      "path": "docs/V1_RELEASE_READINESS.md",
+      "sha256": "fa08100a9845ede2b948c0139cf498e41fa10ba5e70551166d981aaf68074f91",
+      "bytes": 34919
+    },
+    {
+      "path": "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md",
+      "sha256": "0d13eb38e5af9f037e76d9102038c31090985a04ee8be0e73877390f05b7ff76",
+      "bytes": 43675
+    },
+    {
+      "path": "docs/fixes/v1-batch-3/README.md",
+      "sha256": "26af027b98aaefe3a55528f60f93b3633414d0df9159ffc089fe61bd37522219",
+      "bytes": 98149
+    },
+    {
+      "path": "docs/fixes/v1-batch-3/validation-2026-10-23-initial-financial/recovery-completed.json",
+      "sha256": "a8a4fcbcccef17fda464d981148f9acd9cf8a39cf7506d6126ddb940b8db3849",
+      "bytes": 4388
+    },
+    {
+      "path": "docs/fixes/v1-batch-3/validation-2026-10-23-initial-financial/recovery-contract-verification.json",
+      "sha256": "3771ae190d775b2f3e6c16bf4c807534a7afab24efacc5954eec4d957dbe2bdc",
+      "bytes": 681
+    },
+    {
+      "path": "docs/fixes/v1-batch-3/validation-2026-10-23-initial-financial/recovery-deployment-health.json",
+      "sha256": "6388fec5fb46ec997a35fbf986a588c32cb0260ed1526e3d7bafdcbf26d551d1",
+      "bytes": 1137
+    },
+    {
+      "path": "docs/fixes/v1-batch-3/validation-2026-10-23-initial-financial/recovery-first-observation.json",
+      "sha256": "7111b1ca0b7cfa0b7f86d47af0e7ae07f56a9f64bc71d917fd390df6c776b053",
+      "bytes": 2728
+    },
+    {
+      "path": "docs/fixes/v1-batch-3/validation-2026-10-23-initial-financial/recovery-scheduler-final.json",
+      "sha256": "3618618927cadb0c6581ccfcc46a5fcfbd1572df939f7445ddefeb32631b18b4",
+      "bytes": 3290
+    },
+    {
+      "path": "docs/fixes/v1-batch-3/validation-2026-10-23-initial-financial/recovery-scheduler-running.json",
+      "sha256": "2c617215c0ab5abe310a4d81a420d808aae3861951da8b091d58df143b812e36",
+      "bytes": 2568
+    },
+    {
+      "path": "docs/fixes/v1-batch-3/validation-2026-10-23-initial-financial/recovery-second-observation.json",
+      "sha256": "2678f8e1b391f5079353e497e1cad26b152a6e193863153c4a50c68e4f1d8b9f",
+      "bytes": 3059
+    },
+    {
+      "path": "docs/fixes/v1-batch-3/validation-2026-10-23-initial-financial/recovery-user-ui-confirmation.json",
+      "sha256": "298e57bb9d6f2f50af6a2cd656bfdcef1537cc0bb591e90b8328fce72a2ae378",
+      "bytes": 569
+    },
+    {
+      "path": "docs/fixes/v1-batch-3/validation-2026-10-23-initial-financial/recovery-verified.json",
+      "sha256": "1c05bdd2737d0460b12a462236e60339b4f21558ccf760b6af3dc65927c465ff",
+      "bytes": 4206
+    },
+    {
+      "path": "docs/fixes/v1-batch-3/validation-2026-10-23-initial-financial/verify-recovery.cjs",
+      "sha256": "1135314468d82b4ce516834ae7ab29bca21e8be31376e78a2e9d2291d2c28f1d",
+      "bytes": 4795
+    },
+    {
+      "path": "docs/fixes/v1-batch-5/README.md",
+      "sha256": "b898af2b05cde640e24148de8cc09ca28270598cd0e386eca66e603f59c97159",
+      "bytes": 41696
+    },
+    {
+      "path": "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-review-currency-after.json",
+      "sha256": "baf72dc38cdd3e0662458f317fb20521f0f8e6d6d3430f20fe8eef0b5883b357",
+      "bytes": 35678
+    },
+    {
+      "path": "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-review-currency-after.log",
+      "sha256": "fdce723182699c7de54e15a0e0a0a7fc709c1f3407916ba04ab0e0420391446e",
+      "bytes": 139
+    },
+    {
+      "path": "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-review-currency-assessment.json",
+      "sha256": "3c0d7895b093a3838c38f11ace06264f5365f87b836e268d3444e0d1e2d65023",
+      "bytes": 25059
+    },
+    {
+      "path": "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-review-currency-before-authorized.json",
+      "sha256": "70e1bc4a0cd328e49faaeec4b5d9cdb4ec18200158d97bfd08ea908ef34f0348",
+      "bytes": 5567
+    },
+    {
+      "path": "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-review-currency-before-authorized.log",
+      "sha256": "3dbd8f5d080803eb2fdf32fc6ebf6997855c223eea876c49727544b6b69a99b9",
+      "bytes": 151
+    },
+    {
+      "path": "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-review-currency-before.log",
+      "sha256": "c5695d2c9b45670c8c921d44a945d48b79fb437dd019a9a1bd80fbc06f2b3e2e",
+      "bytes": 1491
+    },
+    {
+      "path": "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-review-currency-build-checks.json",
+      "sha256": "e049c4ddcf366cf371031ae3f8627744e9dddec02f8b469f157da8f50d49a60e",
+      "bytes": 501
+    },
+    {
+      "path": "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-review-currency-client-build.log",
+      "sha256": "cbf681a7c6643e2628155aa80086004c8212ab150e167326bb47dfd379358a2f",
+      "bytes": 8685
+    },
+    {
+      "path": "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-review-currency-fixture-check.json",
+      "sha256": "eb499ffc40e02c9050d2a48bf1e455ab685840be495a6296b1785725472b511f",
+      "bytes": 3181
+    },
+    {
+      "path": "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-review-currency-fixture-check.log",
+      "sha256": "dfcc744088988cfb18b2882f5c6661cf76c63bc329d3821b8cbee23a5e8da9bc",
+      "bytes": 147
+    },
+    {
+      "path": "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-review-currency-server-build.log",
+      "sha256": "f039bb5934c9c20b5ce63bf61663e086170fee46f33ae69e01de70ef65c28084",
+      "bytes": 39
+    },
+    {
+      "path": "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-review-currency-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/fixes/v1-batch-8/README.md",
+      "sha256": "95bbcf19359548e3bdc772f3a7a8ff39222e247d69c68e1ed379366e091ac24e",
+      "bytes": 62288
+    },
+    {
+      "path": "server/hubspot-review-currency-browser.test.ts",
+      "sha256": "e9c3a4d3442f7bd5b978b65da5a53afa7e9bd4c981a226ef1e5720451b7cb2d1",
+      "bytes": 8878
+    }
+  ],
+  "self": "docs/fixes/v1-batch-5/validation-2026-10-23/hubspot-review-currency-commit-preflight.json",
+  "excluded": "All unrelated assets, worktrees, audit-temp files, seed logs and diagnostic scripts.",
+  "documentationChecks": "PASS; 10 records, 130 findings, 1122 local links; preserved LF in the two edited index files.",
+  "logNormalization": "Removed surplus blank EOF lines from the sandbox-startup log only; error evidence retained."
+}

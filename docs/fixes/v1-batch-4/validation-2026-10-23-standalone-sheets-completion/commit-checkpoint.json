@@ -1,0 +1,160 @@
+{
+  "at": "2026-10-23T10:55:48.292763+00:00",
+  "runtimeFixCommit": "5bc33828a6abb738dda75fd09d0196bc82c548e6",
+  "baseHead": "fb1132a256d05a271dcdbb21be863206f933d7b0",
+  "verifiedRuntimeTestFiles": [
+    {
+      "file": "client/src/pages/google-sheets-data.tsx",
+      "sha256": "aeda60a2ed49cc9a72bf0cf61607dd4a9570cb6281e58bbf224122a16ff5cd2d",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/routes-oauth.ts",
+      "sha256": "00b917cec0b319e70ab02625224e7ffea9707d83e9acf66a831bd21fee659e21",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/storage.ts",
+      "sha256": "94d358bf6f299ee2fcccb44e7285c5507c1290c600fa6a950d2501e14056865b",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/auto-refresh-scheduler.ts",
+      "sha256": "4370f0abf1384724a19df6ba832bd24b1e3bf055ca78e2eac2c41e6933d63c86",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/report-scheduler.ts",
+      "sha256": "f3a69c658a8d54dd61a00c0f6d3cf3caeb643483bb746c2352eb71f3cd1008bb",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/utils/google-sheets-aggregate-source.ts",
+      "sha256": "9616f5e655080af167f4a045ce885840e99ddf48115447a2ea9e313e2e1bdc3b",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/utils/google-sheets-revenue-ranges.ts",
+      "sha256": "234ee9485a559802b1d671763f46c2e812d4c9e73927c70c8a250964802bb2db",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/utils/googleSheetsSelection.ts",
+      "sha256": "0d48cc3a28a42a39fd8eef237de7321167582aa5c3b70eb393550a0125a4b3f3",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/v1-batch4-standalone-sheets-values.test.ts",
+      "sha256": "e99c52158a642d080f0ef3832fba10497df94013c64595a719e953a0b5fa98ae",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/v1-batch4-standalone-sheets-refresh.test.ts",
+      "sha256": "7d8d1b1aeef73b569f1f3c679d87667e65c212906d80b97cdc5e72faedf90bc9",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/v1-batch4-standalone-sheets-browser.test.ts",
+      "sha256": "3b43210928f23aed14652f4a4ba136d32dcce1e5e20b5e400bf85eade88c5fab",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+      "sha256": "2ee887d8d24b23d22a3c186027b813e14527fbc58c0523807bf73287f4a1a306",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/ga4-auto-refresh-regression.test.ts",
+      "sha256": "642c5cdb0ad85bf0d832886227608fe119cf012275b7e0205840eea508f9ef41",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/google-sheets-aggregate-source.test.ts",
+      "sha256": "7a2e4002bca2dbb65b0f2a9c940afe2387eff3551fdff12a699c68bda95bf211",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/google-sheets-revenue-validation.test.ts",
+      "sha256": "54b297812acd337a3b0c195ccd79b258c065879d1cc097a2eb370faed238261f",
+      "matchesValidatedCandidate": true
+    },
+    {
+      "file": "server/ga4-refresh-input-invalidation-postgres.test.ts",
+      "sha256": "5bf08aaebcec292ad5757cd73f5106ceea2c9593d5a1c4f9594eadac2131ca4f",
+      "matchesValidatedCandidate": true
+    }
+  ],
+  "committedFileCount": 65,
+  "committedFiles": [
+    "GOOGLE_SHEETS_CONNECTED_PLATFORM_PRODUCTION_READY.md",
+    "client/src/pages/google-sheets-data.tsx",
+    "docs/V1_RELEASE_READINESS.md",
+    "docs/audits/v1-2026-10-19/FIX_QUEUE_ASSIGNMENTS.md",
+    "docs/fixes/v1-batch-4/README.md",
+    "docs/fixes/v1-batch-4/deployment-2026-10-23-standalone-sheets-selection/public-verification.json",
+    "docs/fixes/v1-batch-4/deployment-2026-10-23-standalone-sheets-selection/verify-public.cjs",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/acceptance-local.json",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/acceptance-local.log",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/assessment.json",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/candidate-build-checks.json",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/candidate-client-build.log",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/candidate-manifest.json",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/candidate-server-build.log",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/candidate-typecheck.log",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/cleanup-fixtures.cjs",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/combined-local.json",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/combined-local.log",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/documentation-check.json",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/final-boundary.json",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/final-boundary.log",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/final-build-checks.json",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/final-client-build.log",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/final-server-build.log",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/final-typecheck.log",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/final-types-build-checks.json",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/final-types-server-build.log",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/final-types-typecheck.log",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/final.json",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/final.log",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/first-values.json",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/first-values.log",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/fixture-cleanup.json",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/intermediate-build-checks.json",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/intermediate-server-build.log",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/intermediate-typecheck.log",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/record-evidence.cjs",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/renewal-before.json",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/renewal-before.log",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/run-build-checks.cjs",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/run-tests.cjs",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/values-refresh-browser.json",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/values-refresh-browser.log",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/verified-build-checks.json",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/verified-client-build.log",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/verified-server-build.log",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/verified-typecheck.log",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/verified.json",
+    "docs/fixes/v1-batch-4/validation-2026-10-23-standalone-sheets-completion/verified.log",
+    "docs/fixes/v1-batch-8/README.md",
+    "server/auto-refresh-scheduler.ts",
+    "server/ga4-auto-refresh-regression.test.ts",
+    "server/ga4-refresh-input-invalidation-postgres.test.ts",
+    "server/google-sheets-aggregate-source.test.ts",
+    "server/google-sheets-revenue-validation.test.ts",
+    "server/report-scheduler.ts",
+    "server/routes-oauth.ts",
+    "server/storage.ts",
+    "server/utils/google-sheets-aggregate-source.ts",
+    "server/utils/google-sheets-revenue-ranges.ts",
+    "server/utils/googleSheetsSelection.ts",
+    "server/v1-batch4-standalone-sheets-browser.test.ts",
+    "server/v1-batch4-standalone-sheets-refresh.test.ts",
+    "server/v1-batch4-standalone-sheets-scope.test.ts",
+    "server/v1-batch4-standalone-sheets-values.test.ts"
+  ],
+  "result": "PASS: all 16 committed runtime/test files match the validated candidate",
+  "pushStateAtCheckpoint": "NOT YET PUSHED",
+  "deploymentState": "NOT VERIFIED",
+  "validation": "Existing final expanded 387 passed / one OPEN GA4 structural assertion / zero skipped; final boundary 129/129; final typecheck and client/server builds pass. No runtime tests repeated for unchanged files.",
+  "releaseAcceptance": "OPEN; V1 NO-GO"
+}

@@ -6,11 +6,11 @@ This is the detailed home for this batch's assigned findings. Read the required 
 
 ## Current Batch 4 status
 
-**IN PROGRESS.** Fifteen corrections are VERIFIED LOCALLY within their stated boundaries: V1-040/041/051/065/066/067/070/071/072/073/108/112/113/114/126. The latest five standalone Sheets corrections below are **uncommitted and undeployed**, on base `fb1132a256d05a271dcdbb21be863206f933d7b0`. Nine implementation findings remain: seven Custom Integration and two manual-Spend/transfer safeguards. All 24 release acceptances remain OPEN. The earlier selection correction is independently verified deployed in `fb1132a2`; that does not deploy or certify the new work. No production/Ptomo/provider access or historical-data cleanup was performed for this group.
+**IN PROGRESS.** Fifteen corrections are VERIFIED LOCALLY within their stated boundaries: V1-040/041/051/065/066/067/070/071/072/073/108/112/113/114/126. The latest five standalone Sheets corrections below are **committed in `5bc33828a6abb738dda75fd09d0196bc82c548e6`**, on base `fb1132a2`; deployment verification is pending. Nine implementation findings remain: seven Custom Integration and two manual-Spend/transfer safeguards. All 24 release acceptances remain OPEN. The earlier selection correction is independently verified deployed in `fb1132a2`; that does not deploy or certify the new work. No production/Ptomo/provider access or historical-data cleanup was performed for this group.
 
 ## Standalone Sheets completion checkpoint (October 23)
 
-**V1-051/108/112/113/114: VERIFIED LOCALLY for the corrections below; release acceptance OPEN.** V1-108's four-provider functional portions remain deferred under the existing scope decision. This completes the five-item implementation group, not whole-source or V1 certification. [Assessment](validation-2026-10-23-standalone-sheets-completion/assessment.json) records candidate hashes, every test failure and remaining boundaries; [candidate manifest](validation-2026-10-23-standalone-sheets-completion/candidate-manifest.json) identifies the uncommitted runtime/tests.
+**V1-051/108/112/113/114: VERIFIED LOCALLY for the corrections below; release acceptance OPEN.** V1-108's four-provider functional portions remain deferred under the existing scope decision. This completes the five-item implementation group, not whole-source or V1 certification. [Assessment](validation-2026-10-23-standalone-sheets-completion/assessment.json) records candidate hashes, every test failure and remaining boundaries; [candidate manifest](validation-2026-10-23-standalone-sheets-completion/candidate-manifest.json) identifies the originally validated runtime/tests. [Commit verification](validation-2026-10-23-standalone-sheets-completion/commit-checkpoint.json) binds all 16 unchanged runtime/test files to `5bc33828a6abb738dda75fd09d0196bc82c548e6`; dated pre-commit evidence remains unchanged. Deployment verification and source/provider acceptance remain pending.
 
 | Finding | Confirmed cause and exact changed path | Corrected behavior / local evidence |
 |---|---|---|
@@ -247,7 +247,7 @@ The user authorized Batch 4 while the deployed Batch 3 revision awaits its first
 
 **Execution method requested October 23:** finish related fixes within each group with fewer handoffs. Reuse isolated fixtures and traced paths; validate each changed behavior and its neighbors, then run the shared regression/build checks at the coherent group checkpoint. Repeat checks only for subsequent changes, failures or unresolved concerns. Update this record and the finding checklist as each item progresses. Consolidate reviewable commits/deployment checkpoints where dependencies permit; do not require a live refresh wait for independent local work or waive any required acceptance gate. No additional source exclusions or runtime changes accompany this scheduling clarification.
 
-The standalone Sheets implementation group is now verified locally and remains uncommitted/undeployed. The next implementation group is Custom Integration (V1-028/029/031/102/103/111/120), followed by manual Spend/transfers (V1-068/069). All 24 release acceptances stay OPEN. Four-provider functional work remains deferred; shared retained-route safety remains required. No completion estimate or additional exclusion is inferred.
+The standalone Sheets implementation group is verified locally and committed in `5bc33828`; deployment verification is pending. The next implementation group is Custom Integration (V1-028/029/031/102/103/111/120), followed by manual Spend/transfers (V1-068/069). All 24 release acceptances stay OPEN. Four-provider functional work remains deferred; shared retained-route safety remains required. No completion estimate or additional exclusion is inferred.
 
 ## Scope and acceptance
 
@@ -372,7 +372,7 @@ Routes6765/6905 fetch fixed `A1:ZZ5000` without completeness check; exact proces
 
 Main GET21785/21987 and `auto-refresh-scheduler.ts:813` read A1:Z1000. Exact refresh fixture caches999 rows as fresh without completeness check; page warns but aggregate consumers sum cached rows. Composite lookup can substitute another tab21834 and summary can broaden unmatched campaign to all rows22330. Scope/date/partial-data contracts must be enforced or effectively excluded.
 
-**Implementation / validation:** Complete bounded main-sheet reads, exact fresh cache, atomic identity/order/parent-guarded publication and selected aggregate inputs are VERIFIED LOCALLY. The earlier selection correction is deployed in fb1132a2; the new completeness/cache changes are uncommitted and undeployed. See the [October 23 completion checkpoint](#standalone-sheets-completion-checkpoint-october-23) for exact paths, files, tests, limits and remaining acceptance. New changes are uncommitted on fb1132a2; release acceptance remains OPEN.
+**Implementation / validation:** Complete bounded main-sheet reads, exact fresh cache, atomic identity/order/parent-guarded publication and selected aggregate inputs are VERIFIED LOCALLY. The earlier selection correction is deployed in fb1132a2; the new completeness/cache changes are committed in `5bc33828`, with deployment verification pending. See the [October 23 completion checkpoint](#standalone-sheets-completion-checkpoint-october-23) for exact paths, files, tests, limits and remaining acceptance. New changes are committed in `5bc33828`; deployment verification is pending and release acceptance remains OPEN.
 
 ### V1-065
 
@@ -514,7 +514,7 @@ GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105
 
 `routes-oauth.ts:25238–25258`, `tiktok-analytics.tsx:839` require positive Revenue for source availability. Exact case with an existing source and measured0 returns null/source-required. [Paid evidence](../../audits/v1-2026-10-19/RETAINED_PAID_VALUE_BOUNDARIES.md). Standalone Sheets `google-sheets-data.tsx:979–987,1130,1165` independently shows valid0 Revenue/Spend as Not connected and blocks derived values/options; [four zero/negative cases and positive control](../../audits/v1-2026-10-19/SHEETS_CUSTOM_VALUE_PROPAGATION.md). Distinguish zero, absent source and failed read before computing loss/zero ROAS.
 
-**Implementation / validation:** Standalone Sheets measured zero, loss, absent source and failed/incomplete read distinctions are VERIFIED LOCALLY in the page and scheduled PDFs. The four-provider functional portions remain deferred; no claim is made for those providers. See the [October 23 completion checkpoint](#standalone-sheets-completion-checkpoint-october-23) for exact paths, files, tests, limits and remaining acceptance. New changes are uncommitted on fb1132a2; release acceptance remains OPEN.
+**Implementation / validation:** Standalone Sheets measured zero, loss, absent source and failed/incomplete read distinctions are VERIFIED LOCALLY in the page and scheduled PDFs. The four-provider functional portions remain deferred; no claim is made for those providers. See the [October 23 completion checkpoint](#standalone-sheets-completion-checkpoint-october-23) for exact paths, files, tests, limits and remaining acceptance. New changes are committed in `5bc33828`; deployment verification is pending and release acceptance remains OPEN.
 
 ### V1-111
 
@@ -538,7 +538,7 @@ GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105
 
 `google-sheets-data.tsx:1479–1517` builds KPI/Benchmark options from raw summed metrics, ignoring server summaryValue. Spend190/Clicks110/CPC rows1+9 gives Summary1.72727 but options10 and actual browser PDF$10. Scheduled cached summary `report-scheduler.ts:3474–3522` also sums arbitrary metric/identifier columns. [Exact helpers and rendered artifact](../../audits/v1-2026-10-19/SHEETS_CUSTOM_VALUE_PROPAGATION.md). Preserve one verified aggregation contract through Summary, goals, Insights and every report; server refresh/alert propagation remains open.
 
-**Implementation / validation:** Shared summary values, including unavailable states, now propagate to current goal displays, Insights calculations and actual browser/scheduled PDFs. These corrections are VERIFIED LOCALLY; persisted goal/alert updates remain V1-122 and full artifact parity remains V1-060. See the [October 23 completion checkpoint](#standalone-sheets-completion-checkpoint-october-23) for exact paths, files, tests, limits and remaining acceptance. New changes are uncommitted on fb1132a2; release acceptance remains OPEN.
+**Implementation / validation:** Shared summary values, including unavailable states, now propagate to current goal displays, Insights calculations and actual browser/scheduled PDFs. These corrections are VERIFIED LOCALLY; persisted goal/alert updates remain V1-122 and full artifact parity remains V1-060. See the [October 23 completion checkpoint](#standalone-sheets-completion-checkpoint-october-23) for exact paths, files, tests, limits and remaining acceptance. New changes are committed in `5bc33828`; deployment verification is pending and release acceptance remains OPEN.
 
 ### V1-113
 
@@ -550,7 +550,7 @@ GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105
 
 `auto-refresh-scheduler.ts:865–881` caches unfiltered rows; `report-scheduler.ts:3474–3522,3572–3707` selects a connection but ignores its selected campaign values and report date window. Actual PDF labelled campaignA/October2026 printsSpend100 including campaignB/2020Spend90; mappedA amount is10. [PDF, fixture and scope controls](../../audits/v1-2026-10-19/SHEETS_CUSTOM_VALUE_PROPAGATION.md). Enforce saved selection and actual date coverage before generation, send or snapshot; do not silently apply an arbitrary date column.
 
-**Implementation / validation:** Exact saved connection/campaign selection and actual scheduled-report date windows, including confirmed financial reads and no-artifact failure behavior, are VERIFIED LOCALLY. Real scheduled sending/inbox and full snapshot lifecycle remain open. See the [October 23 completion checkpoint](#standalone-sheets-completion-checkpoint-october-23) for exact paths, files, tests, limits and remaining acceptance. New changes are uncommitted on fb1132a2; release acceptance remains OPEN.
+**Implementation / validation:** Exact saved connection/campaign selection and actual scheduled-report date windows, including confirmed financial reads and no-artifact failure behavior, are VERIFIED LOCALLY. Real scheduled sending/inbox and full snapshot lifecycle remain open. See the [October 23 completion checkpoint](#standalone-sheets-completion-checkpoint-october-23) for exact paths, files, tests, limits and remaining acceptance. New changes are committed in `5bc33828`; deployment verification is pending and release acceptance remains OPEN.
 
 ### V1-114
 
@@ -562,7 +562,7 @@ GA4 CSV Revenue amount validator `utils/csv.ts:43` accepts−10 but aggregate105
 
 `routes-oauth.ts:21722–21781` uses first matching financial header and unweighted rate averages. Actual helper cases choose Budget1000 before actual Spend100 (ROAS0.2 instead of2 for Revenue200), and unequal-impression CTR rows1%/100% produce50.5% instead of count-derived1.9802%. [Exact cases](../../audits/v1-2026-10-19/SHEETS_CUSTOM_VALUE_PROPAGATION.md). Define explicit metric/denominator mappings, fail closed on ambiguity and preserve bounded/undefined rates; column order must not redefine actual spend.
 
-**Implementation / validation:** Unambiguous mapped/header inputs, denominator-based ratios, weighted CTR, mapped conversion-value strategy and invalid/unavailable handling are VERIFIED LOCALLY. Broader currency propagation remains V1-106; provider/date/metric acceptance is not inferred. See the [October 23 completion checkpoint](#standalone-sheets-completion-checkpoint-october-23) for exact paths, files, tests, limits and remaining acceptance. New changes are uncommitted on fb1132a2; release acceptance remains OPEN.
+**Implementation / validation:** Unambiguous mapped/header inputs, denominator-based ratios, weighted CTR, mapped conversion-value strategy and invalid/unavailable handling are VERIFIED LOCALLY. Broader currency propagation remains V1-106; provider/date/metric acceptance is not inferred. See the [October 23 completion checkpoint](#standalone-sheets-completion-checkpoint-october-23) for exact paths, files, tests, limits and remaining acceptance. New changes are committed in `5bc33828`; deployment verification is pending and release acceptance remains OPEN.
 
 ### V1-120
 

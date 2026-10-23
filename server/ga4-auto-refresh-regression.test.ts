@@ -473,7 +473,8 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(dataRouteStart).toBeGreaterThan(-1);
     expect(dataRouteEnd).toBeGreaterThan(dataRouteStart);
     expect(dataRoute).not.toContain("deleteGoogleSheetsConnection");
-    expect(dataRoute).toContain("preserving connection for recovery");
+    expect(dataRoute).toContain("readCompleteGoogleSheetsData(connection");
+    expect(dataRoute).toContain("missingSpreadsheet: status === 404");
   });
   it("exposes campaign/source-scoped Google Sheets revenue and spend scheduler validation triggers", () => {
     const scheduler = schedulerFile();

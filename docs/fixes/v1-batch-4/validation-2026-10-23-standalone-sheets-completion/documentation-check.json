@@ -1,0 +1,14 @@
+{
+  "mode": "documentation-only",
+  "documents": 10,
+  "findings": 130,
+  "open": 120,
+  "deferred": 10,
+  "closed": 0,
+  "localLinks": 970,
+  "inboundLinks": 12,
+  "checks": "PASS",
+  "candidateFilesVerified": 16,
+  "diffCheck": "PASS",
+  "limitation": "Layout, assignment, status and local-link integrity only; no runtime or release certification."
+}

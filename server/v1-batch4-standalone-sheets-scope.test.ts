@@ -5,6 +5,9 @@ import * as transformation from "./utils/data-transformation";
 import { enrichRows } from "./utils/data-enrichment";
 import { toCanonicalFormatBatch } from "./utils/canonical-format";
 
+import * as sheetMetrics from "./utils/google-sheets-aggregate-source";
+import * as sheetRanges from "./utils/google-sheets-revenue-ranges";
+
 // Execute the registered handler and current helpers; isolate storage and Google only.
 const ast = ts.createSourceFile("routes.ts", readFileSync(new URL("./routes-oauth.ts", import.meta.url), "utf8"), ts.ScriptTarget.Latest, true);
 function extract(predicate: (node: ts.Node) => boolean) {
@@ -17,7 +20,7 @@ function extract(predicate: (node: ts.Node) => boolean) {
   if (!result) throw new Error("Current Sheets implementation not found");
   return result;
 }
-const declarations = ["normalizeGoogleSheetsSummaryHeader", "isGoogleSheetsSummaryIdentifierColumn", "isGoogleSheetsSummaryBreakdownIdentifierColumn", "isGoogleSheetsSummaryCampaignBreakdownColumn", "googleSheetsMetricTotal", "getGoogleSheetsSummaryDisplayValue"]
+const declarations = ["normalizeGoogleSheetsSummaryHeader", "isGoogleSheetsSummaryIdentifierColumn", "isGoogleSheetsSummaryBreakdownIdentifierColumn", "isGoogleSheetsSummaryCampaignBreakdownColumn"]
   .map(name => `const ${extract(n => ts.isVariableDeclaration(n) && n.name.getText(ast) === name)};`);
 const functions = ["getPlatformKeywords", "matchesPlatform", "generateInsights"].map(name =>
   extract(n => ts.isFunctionDeclaration(n) && n.name?.text === name));
@@ -30,14 +33,15 @@ const headers = ["Campaign Name", "Revenue", "Conversions"];
 const rows = [["Alpha", "10", "2"], ["Alpha extra", "900", "3"], ["Beta", "90", "1"]];
 const mapping = (values: string[] = ["Alpha"], extra = {}) => ({ targetFieldId: "campaign_name", sourceColumnIndex: 0, sourceColumnName: "Campaign Name", selectedValues: values, ...extra });
 
-function fixture(cached = true, options: any = {}) {
+export function fixture(cached = true, options: any = {}) {
   const values = [options.headers || headers, ...(options.rows || rows)];
   const primary: any = { id: "tab-a", campaignId: "a", spreadsheetId: "book", sheetName: "Main", spreadsheetName: "Fixture",
     isActive: true, isPrimary: true, purpose: "general", accessToken: "fixture-only",
-    lastDataRefreshAt: new Date(), cachedData: cached ? { headers: values[0], rows: values.slice(1) } : null,
+    lastDataRefreshAt: new Date(), cachedData: cached ? { headers: values[0], rows: values.slice(1), complete: true, spreadsheetId: "book", sheetName: "Main", totalRows: values.length - 1 } : null,
     columnMappings: options.mappings === undefined ? null : typeof options.mappings === "string" ? options.mappings : JSON.stringify(options.mappings) };
   const connections = options.connections || [primary];
-  const fetch = vi.fn(async () => new Response(JSON.stringify({ values }), { status: 200 }));
+  const fetch = vi.fn(async (url: any) => new Response(JSON.stringify(String(url).includes('/values/') ? { values: options.liveValues || values }
+    : { sheets: [{ properties: { title: primary.sheetName, gridProperties: { rowCount: values.length, columnCount: values[0].length } } }] }), { status: 200 }));
   const updateCampaign = vi.fn(async () => ({}));
   const updateGoogleSheetsConnection = vi.fn();
   const storage = { getCampaign: vi.fn(async () => ({ id: "a", name: options.name || "Alpha", platform: options.platform || "Google Sheets" })),
@@ -47,7 +51,7 @@ function fixture(cached = true, options: any = {}) {
   const transformData = vi.fn(transformation.transformData);
   let insights: any, handler: any, middleware: any[] = [];
   const auth = vi.fn(), rate = vi.fn();
-  const dependencies: any = { ...transformation, transformData, enrichRows, toCanonicalFormatBatch, storage, fetch,
+  const dependencies: any = { ...sheetMetrics, ...sheetRanges, ...transformation, transformData, enrichRows, toCanonicalFormatBatch, storage, fetch,
     googleSheetsRateLimiter: rate, requireCampaignAccessParamId: auth,
     app: { get: (_path: string, ...handlers: any[]) => { handler = handlers.at(-1); middleware = handlers.slice(0, -1); } },
     observeInsights: (fn: any) => { insights = vi.fn(fn); return insights; }, devLog: () => {},
@@ -80,7 +84,7 @@ describe.each([true, false])("V1-051 standalone Sheets selection (cached=%s)", c
     expect(result.statusCode, result.body.message).toBe(200);
     expect(result.body.data).toEqual([rows[0]]);
     expect(result.body.summary.metrics.Revenue).toBe(10);
-    expect(f.insights).toHaveBeenCalledWith([headers, rows[0]], expect.any(Array), expect.objectContaining({ Revenue: 10 }), expect.any(Array), headers);
+    expect(f.insights).toHaveBeenCalledWith([headers, rows[0]], expect.any(Array), expect.objectContaining({ Revenue: 10 }), expect.any(Array), headers, f.primary.columnMappings);
     expect(f.middleware).toEqual([f.rate, f.auth]);
   });
   it("keeps an unmatched campaign empty and does not overwrite its saved conversion value", async () => {
@@ -175,11 +179,10 @@ describe("standalone Sheets connection lifecycle boundaries", () => {
     expect(f.fetch).not.toHaveBeenCalled();
   });
   it("uses the same selection after forced refresh instead of old cached rows", async () => {
-    const f = fixture(true, { mappings: [mapping()] });
-    f.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ values: [headers, ["Alpha", "20", "2"], rows[2]] })));
+    const f = fixture(true, { mappings: [mapping()], liveValues: [headers, ["Alpha", "20", "2"], rows[2]] });
     const original = structuredClone(f.primary.cachedData);
     expect((await f.invoke("book:tab-a", { forceRefresh: "true" })).body.summary.metrics.Revenue).toBe(20);
-    expect(decodeURIComponent(String(f.fetch.mock.calls[0][0]))).toContain("'Main'!A1:Z1000");
+    expect(decodeURIComponent(String(f.fetch.mock.calls[1][0]))).toContain("'Main'!1:4");
     expect(f.primary.cachedData).toEqual(original);
   });
   it.each([403, 404, 429, 500])("keeps provider failure %s from becoming replacement data", async status => {

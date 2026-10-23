@@ -334,6 +334,49 @@ describe.skipIf(!testUrl)("GA4 refresh invalidation on ordinary input edits", ()
     expect(await storage.deleteGoogleSheetsConnection(second.id)).toBe(true);
     expect((await pool.query("SELECT is_primary FROM google_sheets_connections WHERE id=$1", [first.id])).rows[0].is_primary).toBe(true);
   });
+
+  it("V1-051 publishes complete cache atomically and rejects stale or replaced inputs", async () => {
+    const source = await storage.createGoogleSheetsConnection({ campaignId: "a", spreadsheetId: "book", sheetName: "Main", purpose: "general", method: "oauth" } as any);
+    const write = (started: string, value: number, expected = source) => storage.updateGoogleSheetsConnection(source.id, {
+      cachedData: { headers: ["Clicks"], rows: [[value]], totalRows: 1, complete: true, spreadsheetId: "book", sheetName: "Main", readStartedAt: started },
+      lastDataRefreshAt: new Date(),
+    } as any, { expectedConnection: expected });
+    await write("2026-10-23T10:00:00Z", 20);
+    await expect(write("2026-10-23T09:00:00Z", 10)).rejects.toThrow("GOOGLE_SHEETS_CACHE_INPUT_CHANGED");
+    expect((await pool.query("SELECT cached_data FROM google_sheets_connections WHERE id=$1", [source.id])).rows[0].cached_data.rows).toEqual([[20]]);
+    await storage.updateGoogleSheetsConnection(source.id, { sheetName: "Renamed", cachedData: null, lastDataRefreshAt: null } as any);
+    await expect(write("2026-10-23T11:00:00Z", 30)).rejects.toThrow("GOOGLE_SHEETS_CACHE_INPUT_CHANGED");
+    expect((await pool.query("SELECT cached_data FROM google_sheets_connections WHERE id=$1", [source.id])).rows[0].cached_data).toBeNull();
+  });
+  it("V1-051 cannot restore a deleted campaign or disconnected cache", async () => {
+    const source = await storage.createGoogleSheetsConnection({ campaignId: "a", spreadsheetId: "book", sheetName: "Main", purpose: "general", method: "oauth" } as any);
+    const values = { cachedData: { headers: [], rows: [], totalRows: 0, complete: true, spreadsheetId: "book", sheetName: "Main", readStartedAt: new Date().toISOString() }, lastDataRefreshAt: new Date() } as any;
+    await storage.updateGoogleSheetsConnection(source.id, { isActive: false, cachedData: null } as any);
+    await expect(storage.updateGoogleSheetsConnection(source.id, values, { expectedConnection: source })).rejects.toThrow("GOOGLE_SHEETS_CACHE_INPUT_CHANGED");
+    await pool.query("DELETE FROM campaigns WHERE id='a'");
+    await expect(storage.updateGoogleSheetsConnection(source.id, values, { expectedConnection: source })).rejects.toThrow("GA4_REFRESH_TARGET_SCOPE_CHANGED");
+    expect((await pool.query("SELECT cached_data FROM google_sheets_connections WHERE id=$1", [source.id])).rows[0].cached_data).toBeNull();
+  });
+  it("V1-051 serializes competing cache completions and keeps the newest read", async () => {
+    const source = await storage.createGoogleSheetsConnection({ campaignId: "a", spreadsheetId: "book", sheetName: "Main", purpose: "general", method: "oauth" } as any);
+    const write = (started: string, value: number) => storage.updateGoogleSheetsConnection(source.id, {
+      cachedData: { headers: ["Clicks"], rows: [[value]], totalRows: 1, complete: true, spreadsheetId: "book", sheetName: "Main", readStartedAt: started }, lastDataRefreshAt: new Date(),
+    } as any, { expectedConnection: source });
+    const results = await Promise.allSettled([write("2026-10-23T12:00:00Z", 20), write("2026-10-23T11:00:00Z", 10)]);
+    expect(results[0].status).toBe("fulfilled");
+    expect((await pool.query("SELECT cached_data FROM google_sheets_connections WHERE id=$1", [source.id])).rows[0].cached_data.rows).toEqual([[20]]);
+  });
+  it("V1-051 rolls back a failed cache publication without moving the successful timestamp", async () => {
+    const source = await storage.createGoogleSheetsConnection({ campaignId: "a", spreadsheetId: "book", sheetName: "Main", purpose: "general", method: "oauth" } as any);
+    await pool.query("CREATE FUNCTION reject_sheets_cache() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'forced cache failure'; END $$");
+    await pool.query("CREATE TRIGGER reject_sheets_cache BEFORE UPDATE ON google_sheets_connections FOR EACH ROW EXECUTE FUNCTION reject_sheets_cache()");
+    try {
+      await expect(storage.updateGoogleSheetsConnection(source.id, { cachedData: { headers: [], rows: [], totalRows: 0, complete: true, spreadsheetId: "book", sheetName: "Main", readStartedAt: new Date().toISOString() }, lastDataRefreshAt: new Date() } as any,
+        { expectedConnection: source })).rejects.toThrow("forced cache failure");
+      const saved = (await pool.query("SELECT cached_data, last_data_refresh_at FROM google_sheets_connections WHERE id=$1", [source.id])).rows[0];
+      expect(saved.cached_data).toBeNull(); expect(saved.last_data_refresh_at).toBeNull();
+    } finally { await pool.query("DROP TRIGGER reject_sheets_cache ON google_sheets_connections"); await pool.query("DROP FUNCTION reject_sheets_cache()"); }
+  });
   it("keeps legacy Sheets writes and work invalidation in the same transaction", async () => {
     await pool.query("ALTER TABLE google_sheets_connections DROP COLUMN sheet_name");
     try {

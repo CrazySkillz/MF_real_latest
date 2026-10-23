@@ -55,7 +55,7 @@ interface GoogleSheetsData {
       type: 'currency' | 'integer' | 'decimal';
       total: number;
       count?: number;
-      summaryValue?: number;
+      summaryValue?: number | null;
       aggregation?: string;
     }>;
     // Legacy fields for backward compatibility
@@ -697,6 +697,9 @@ export default function GoogleSheetsData() {
       return data;
     },
   });
+  const [sheetTablePage, setSheetTablePage] = useState(0);
+  useEffect(() => { setSheetTablePage(0); }, [activeSpreadsheetId, sheetsData?.data]);
+
   
   // Determine if we're in a loading state (initial load or refetch)
   // Show loading if: actively loading, fetching without data, or query is pending (hasn't started yet)
@@ -898,7 +901,7 @@ export default function GoogleSheetsData() {
     })),
   });
 
-  const { data: googleSheetsRevenueSourcesData, isLoading: googleSheetsRevenueSourcesLoading } = useQuery<{ success: boolean; sources: any[] }>({
+  const { data: googleSheetsRevenueSourcesData, isLoading: googleSheetsRevenueSourcesLoading, isError: googleSheetsRevenueSourcesError } = useQuery<{ success: boolean; sources: any[] }>({
     queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_sheets"],
     enabled: !!campaignId,
     staleTime: 0,
@@ -912,7 +915,7 @@ export default function GoogleSheetsData() {
     },
   });
 
-  const { data: googleSheetsRevenueTotalsData, isLoading: googleSheetsRevenueTotalsLoading } = useQuery<{ success: boolean; totalRevenue: number; currency?: string }>({
+  const { data: googleSheetsRevenueTotalsData, isLoading: googleSheetsRevenueTotalsLoading, isError: googleSheetsRevenueTotalsError } = useQuery<{ success: boolean; totalRevenue: number; currency?: string; sourceIds?: string[] }>({
     queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=all`],
     enabled: !!campaignId,
     staleTime: 0,
@@ -922,11 +925,11 @@ export default function GoogleSheetsData() {
       const response = await fetch(`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=all`);
       if (!response.ok) return { success: false, totalRevenue: 0 };
       const json = await response.json().catch(() => ({}));
-      return { success: !!json?.success, totalRevenue: Number(json?.totalRevenue || 0), currency: json?.currency };
+      return { success: !!json?.success, totalRevenue: json?.totalRevenue == null ? NaN : Number(json.totalRevenue), currency: json?.currency, sourceIds: Array.isArray(json?.sourceIds) ? json.sourceIds.map(String) : [] };
     },
   });
 
-  const { data: googleSheetsSpendTotalsData, isLoading: googleSheetsSpendTotalsLoading } = useQuery<{ success: boolean; totalSpend: number; currency?: string; sourceIds?: string[]; sources?: any[] }>({
+  const { data: googleSheetsSpendTotalsData, isLoading: googleSheetsSpendTotalsLoading, isError: googleSheetsSpendTotalsError } = useQuery<{ success: boolean; totalSpend: number; currency?: string; sourceIds?: string[]; sources?: any[]; configuredSourceIds?: string[] }>({
     queryKey: [`/api/campaigns/${campaignId}/spend-totals?platformContext=google_sheets&dateRange=all`],
     enabled: !!campaignId,
     staleTime: 0,
@@ -938,10 +941,11 @@ export default function GoogleSheetsData() {
       const json = await response.json().catch(() => ({}));
       return {
         success: !!json?.success,
-        totalSpend: Number(json?.totalSpend || 0),
+        totalSpend: json?.totalSpend == null ? NaN : Number(json.totalSpend),
         currency: json?.currency,
         sourceIds: Array.isArray(json?.sourceIds) ? json.sourceIds.map(String).filter(Boolean) : [],
         sources: Array.isArray(json?.sources) ? json.sources : [],
+        configuredSourceIds: Array.isArray(json?.configuredSourceIds) ? json.configuredSourceIds.map(String) : [],
       };
     },
   });
@@ -977,13 +981,13 @@ export default function GoogleSheetsData() {
   const activeGoogleSheetsRevenueSources = Array.isArray(googleSheetsRevenueSourcesData?.sources)
     ? googleSheetsRevenueSourcesData.sources.filter((source: any) => source?.isActive !== false)
     : [];
-  const googleSheetsTotalRevenue = Number(googleSheetsRevenueTotalsData?.totalRevenue || 0);
-  const hasGoogleSheetsConfirmedRevenue = googleSheetsTotalRevenue > 0 && activeGoogleSheetsRevenueSources.length > 0;
-  const googleSheetsTotalSpend = Number(googleSheetsSpendTotalsData?.totalSpend || 0);
+  const googleSheetsTotalRevenue = Number(googleSheetsRevenueTotalsData?.totalRevenue ?? NaN);
+  const hasGoogleSheetsConfirmedRevenue = !googleSheetsRevenueTotalsError && !googleSheetsRevenueSourcesError && googleSheetsRevenueTotalsData?.success === true && googleSheetsRevenueSourcesData?.success === true && Number.isFinite(googleSheetsTotalRevenue) && activeGoogleSheetsRevenueSources.length > 0 && activeGoogleSheetsRevenueSources.every((source: any) => googleSheetsRevenueTotalsData?.sourceIds?.includes(String(source.id)));
+  const googleSheetsTotalSpend = Number(googleSheetsSpendTotalsData?.totalSpend ?? NaN);
   const googleSheetsSpendSourceIds = Array.isArray(googleSheetsSpendTotalsData?.sourceIds) ? googleSheetsSpendTotalsData.sourceIds : [];
   const activeGoogleSheetsSpendSources = Array.isArray(googleSheetsSpendTotalsData?.sources) ? googleSheetsSpendTotalsData.sources : [];
-  const hasGoogleSheetsConfirmedSpend = googleSheetsTotalSpend > 0 && googleSheetsSpendSourceIds.length > 0;
-  const hasGoogleSheetsDerivedFinancials = hasGoogleSheetsConfirmedRevenue && hasGoogleSheetsConfirmedSpend;
+  const hasGoogleSheetsConfirmedSpend = !googleSheetsSpendTotalsError && googleSheetsSpendTotalsData?.success === true && Number.isFinite(googleSheetsTotalSpend) && googleSheetsSpendSourceIds.length > 0 && (googleSheetsSpendTotalsData?.configuredSourceIds || []).every(id => googleSheetsSpendSourceIds.includes(id));
+  const hasGoogleSheetsDerivedFinancials = hasGoogleSheetsConfirmedRevenue && hasGoogleSheetsConfirmedSpend && googleSheetsTotalSpend > 0 && googleSheetsRevenueTotalsData?.currency === googleSheetsSpendTotalsData?.currency;
   const googleSheetsRoas = hasGoogleSheetsDerivedFinancials ? googleSheetsTotalRevenue / googleSheetsTotalSpend : null;
   const googleSheetsRoi = hasGoogleSheetsDerivedFinancials ? ((googleSheetsTotalRevenue - googleSheetsTotalSpend) / googleSheetsTotalSpend) * 100 : null;
   const googleSheetsRevenueCurrency = googleSheetsRevenueTotalsData?.currency || googleSheetsSpendTotalsData?.currency || (campaign as any)?.currency || "USD";
@@ -1128,7 +1132,7 @@ export default function GoogleSheetsData() {
             </button>
           </div>
           <p className="text-2xl font-bold text-foreground">
-            {googleSheetsFinancialCardsInitialLoading ? renderGoogleSheetsCardValuePlaceholder() : hasGoogleSheetsConfirmedRevenue ? fmtCurrency(googleSheetsTotalRevenue) : "Not connected"}
+            {googleSheetsFinancialCardsInitialLoading ? renderGoogleSheetsCardValuePlaceholder() : hasGoogleSheetsConfirmedRevenue ? fmtCurrency(googleSheetsTotalRevenue) : (activeGoogleSheetsRevenueSources.length || googleSheetsRevenueTotalsError || googleSheetsRevenueSourcesError || googleSheetsRevenueTotalsData?.success === false || googleSheetsRevenueSourcesData?.success === false) ? "Unavailable" : "Not connected"}
           </p>
           {googleSheetsFinancialCardsInitialLoading ? renderGoogleSheetsCardHelperPlaceholder() : !hasGoogleSheetsConfirmedRevenue && (
             <p className="text-xs text-muted-foreground mt-1">Connect confirmed revenue</p>
@@ -1163,7 +1167,7 @@ export default function GoogleSheetsData() {
             </button>
           </div>
           <p className="text-2xl font-bold text-foreground">
-            {googleSheetsFinancialCardsInitialLoading ? renderGoogleSheetsCardValuePlaceholder() : hasGoogleSheetsConfirmedSpend ? fmtCurrency(googleSheetsTotalSpend) : "Not connected"}
+            {googleSheetsFinancialCardsInitialLoading ? renderGoogleSheetsCardValuePlaceholder() : hasGoogleSheetsConfirmedSpend ? fmtCurrency(googleSheetsTotalSpend) : (activeGoogleSheetsSpendSources.length || googleSheetsSpendTotalsData?.configuredSourceIds?.length || googleSheetsSpendTotalsError || googleSheetsSpendTotalsData?.success === false) ? "Unavailable" : "Not connected"}
           </p>
           {googleSheetsFinancialCardsInitialLoading ? renderGoogleSheetsCardHelperPlaceholder() : !hasGoogleSheetsConfirmedSpend && (
             <p className="text-xs text-muted-foreground mt-1">Connect confirmed spend</p>
@@ -1485,11 +1489,11 @@ export default function GoogleSheetsData() {
       .filter((col: any) => !GOOGLE_SHEETS_KPI_DATE_COLUMN_PATTERN.test(String(col?.name || "").trim()))
       .map((col: any) => {
         const key = String(col?.name || "").trim();
-        const sourceValue = parseSheetMetricNumber((metrics as any)[key] ?? col?.total);
+        const sourceValue = parseSheetMetricNumber(Object.prototype.hasOwnProperty.call(col, "summaryValue") ? col.summaryValue : (metrics as any)[key] ?? col?.total);
         const available = !!key && sourceValue !== null;
-        const unit = /roas|return on/i.test(key)
+        const unit = /roas|return on ad spend/i.test(key)
           ? "ratio"
-          : String(key).includes("%") || /rate|ctr|cvr/i.test(key)
+          : String(key).includes("%") || /rate|ctr|cvr|roi|return on investment/i.test(key)
           ? "%"
           : col?.type === "currency" || GOOGLE_SHEETS_KPI_CURRENCY_COLUMN_PATTERN.test(key)
             ? "$"
@@ -1504,7 +1508,7 @@ export default function GoogleSheetsData() {
           currentValue: sourceValue,
           available,
           reason: sourceValue === null
-            ? "Current value requires a mapped metric column with refreshed sheet rows"
+            ? col?.unavailableReason || "Current value requires a mapped metric column with refreshed sheet rows"
             : "",
           sourceLabel,
           sourceKind: "sheet_column",
@@ -1544,7 +1548,7 @@ export default function GoogleSheetsData() {
     if (!scope?.activeSpreadsheetId) {
       return { scope, options: [] as GoogleSheetsKpiMetricOption[], reason: "Saved Google Sheets source scope is missing" };
     }
-    const connectionExists = googleSheetsConnections.some((conn: any) => googleSheetsConnectionMatchesScopeValue(conn, scope.activeSpreadsheetId));
+    const connectionExists = googleSheetsConnections.filter((conn: any) => googleSheetsConnectionMatchesScopeValue(conn, scope.activeSpreadsheetId)).length === 1;
     if (!connectionExists) {
       return { scope, options: [] as GoogleSheetsKpiMetricOption[], reason: "Saved Google Sheets source is no longer connected" };
     }
@@ -1731,6 +1735,8 @@ export default function GoogleSheetsData() {
     const selectedConfig = parseGoogleSheetsReportConfiguration(opts.configuration || customReportConfig);
     const reportScopedMetrics = getGoogleSheetsMetricOptionsForSavedScope({ configuration: selectedConfig });
     const reportMetricOptions = reportScopedMetrics.options;
+    const reportSourceValue = reportScopedMetrics.scope?.activeSpreadsheetId;
+    const reportData = reportSourceValue === activeSpreadsheetId ? sheetsData : savedGoogleSheetsSourceQueries[savedGoogleSheetsSourceValues.indexOf(reportSourceValue || "")]?.data;
     const metricOptionsByKey = new Map(reportMetricOptions.map((metric) => [metric.key, metric]));
     const reportType = String(opts.reportType || "overview").toLowerCase();
 
@@ -1738,7 +1744,7 @@ export default function GoogleSheetsData() {
     y += 8;
     text(`Source: ${reportScopedMetrics.scope?.displayName || reportScopedMetrics.reason || activeGoogleSheetsSourceScope?.displayName || sheetsData?.spreadsheetName || "Google Sheets"}`, margin, y, 9);
     y += 6;
-    text(`Rows: ${(sheetsData?.filteredRows ?? sheetsData?.totalRows ?? 0).toLocaleString()} | Generated: ${new Date().toLocaleString()}`, margin, y, 9);
+    text(`Coverage: all selected rows | Rows: ${(reportData?.filteredRows ?? reportData?.totalRows ?? 0).toLocaleString()} | Generated: ${new Date().toLocaleString()}`, margin, y, 9);
     y += 10;
 
     const addMetrics = (metrics: GoogleSheetsKpiMetricOption[]) => {
@@ -1793,7 +1799,7 @@ export default function GoogleSheetsData() {
       y += 8;
       addRow("Detected metrics", reportMetricOptions.length);
       addRow("Top metric", reportMetricOptions[0]?.label || "Unavailable");
-      addRow("Current rows", sheetsData?.filteredRows ?? sheetsData?.totalRows ?? 0);
+      addRow("Current rows", reportData?.filteredRows ?? reportData?.totalRows ?? 0);
     }
 
     doc.setFontSize(8);
@@ -2062,6 +2068,7 @@ export default function GoogleSheetsData() {
   }
 
   function getSummaryMetricDisplayValue(col: GoogleSheetsSummaryColumn): number {
+    if ((col as any)?.summaryValue === null) return NaN;
     const summaryValue = Number((col as any)?.summaryValue);
     if (Number.isFinite(summaryValue)) return summaryValue;
     const total = Number(col?.total);
@@ -2095,8 +2102,9 @@ export default function GoogleSheetsData() {
   }
 
   function formatSummaryValue(value: number, colType: string, colName: string): string {
+    if (!Number.isFinite(value)) return "Unavailable";
     const n = colName.toLowerCase();
-    if (n.includes('%') || n.includes('rate') || n.includes('ctr') || n.includes('cvr') || n.includes('roi')) {
+    if (n.includes('%') || n.includes('rate') || n.includes('ctr') || n.includes('cvr') || n.includes('roi') || n.includes('return on investment')) {
       return value.toFixed(2) + '%';
     }
     if (n.includes('roas') || n.includes('return on ad spend')) {
@@ -2477,11 +2485,11 @@ export default function GoogleSheetsData() {
                                 </tr>
                               </thead>
                               <tbody className="[&_tr:last-child]:border-0">
-                                {sheetsData.data.map((row, rowIndex) => (
+                                {sheetsData.data.slice(sheetTablePage * 100, (sheetTablePage + 1) * 100).map((row, rowIndex) => (
                                   <tr key={rowIndex} className="border-b transition-colors hover:bg-muted/50">
                                     {row.map((cell, cellIndex) => (
                                       <td key={cellIndex} className="p-4 align-middle font-mono text-sm">
-                                        {cell || '-'}
+                                        {cell === '' ? '-' : cell ?? '-'}
                                       </td>
                                     ))}
                                   </tr>
@@ -2489,6 +2497,16 @@ export default function GoogleSheetsData() {
                               </tbody>
                             </table>
                           </div>
+                          {sheetsData.data.length > 100 && (
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-sm text-muted-foreground">Showing {sheetTablePage * 100 + 1} to {Math.min((sheetTablePage + 1) * 100, sheetsData.data.length)} of {sheetsData.data.length} rows. Totals use all selected rows.</span>
+                              <div className="flex gap-2">
+                                <Button variant="outline" size="sm" disabled={sheetTablePage === 0} onClick={() => setSheetTablePage(page => page - 1)}>Previous rows</Button>
+                                <Button variant="outline" size="sm" disabled={(sheetTablePage + 1) * 100 >= sheetsData.data.length} onClick={() => setSheetTablePage(page => page + 1)}>Next rows</Button>
+                              </div>
+                            </div>
+                          )}
+
                         </div>
                       ) : (
                         <div className="text-center py-8">
@@ -2516,7 +2534,7 @@ export default function GoogleSheetsData() {
                               name: (sheetsData as any).sheetName && sheetsData.spreadsheetName && (sheetsData as any).sheetName !== sheetsData.spreadsheetName
                                 ? `${sheetsData.spreadsheetName} — ${(sheetsData as any).sheetName}`
                                 : sheetsData.spreadsheetName || 'Sheet',
-                              rowCount: sheetsData.filteredRows || sheetsData.totalRows,
+                              rowCount: sheetsData.filteredRows ?? sheetsData.totalRows,
                               detectedColumns: sheetsData.summary.detectedColumns,
                               categoricalColumns: (sheetsData.summary as any).categoricalColumns || [],
                             }]
@@ -3195,7 +3213,7 @@ export default function GoogleSheetsData() {
                               <div>
                                 <CardTitle>Trends</CardTitle>
                                 <CardDescription>
-                                  {sheetsData.insights.dateColumn ? `Daily averages by ${sheetsData.insights.dateColumn}` : 'Metric trends over time'}
+                                  {sheetsData.insights.dateColumn ? `Daily totals and derived rates by ${sheetsData.insights.dateColumn}` : 'Metric trends over time'}
                                 </CardDescription>
                               </div>
                               <div className="min-w-[220px]">

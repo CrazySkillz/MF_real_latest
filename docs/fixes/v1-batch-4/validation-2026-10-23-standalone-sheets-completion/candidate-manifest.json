@@ -1,0 +1,79 @@
+{
+  "at": "2026-10-23T10:47:22.283Z",
+  "branch": "main",
+  "head": "fb1132a256d05a271dcdbb21be863206f933d7b0",
+  "remoteTrackingHead": "fb1132a256d05a271dcdbb21be863206f933d7b0",
+  "state": "UNCOMMITTED; NOT PUSHED OR DEPLOYED",
+  "hashEncoding": "SHA-256 of UTF-8 text with CRLF normalized to LF",
+  "files": [
+    {
+      "file": "client/src/pages/google-sheets-data.tsx",
+      "sha256": "aeda60a2ed49cc9a72bf0cf61607dd4a9570cb6281e58bbf224122a16ff5cd2d"
+    },
+    {
+      "file": "server/routes-oauth.ts",
+      "sha256": "00b917cec0b319e70ab02625224e7ffea9707d83e9acf66a831bd21fee659e21"
+    },
+    {
+      "file": "server/storage.ts",
+      "sha256": "94d358bf6f299ee2fcccb44e7285c5507c1290c600fa6a950d2501e14056865b"
+    },
+    {
+      "file": "server/auto-refresh-scheduler.ts",
+      "sha256": "4370f0abf1384724a19df6ba832bd24b1e3bf055ca78e2eac2c41e6933d63c86"
+    },
+    {
+      "file": "server/report-scheduler.ts",
+      "sha256": "f3a69c658a8d54dd61a00c0f6d3cf3caeb643483bb746c2352eb71f3cd1008bb"
+    },
+    {
+      "file": "server/utils/google-sheets-aggregate-source.ts",
+      "sha256": "9616f5e655080af167f4a045ce885840e99ddf48115447a2ea9e313e2e1bdc3b"
+    },
+    {
+      "file": "server/utils/google-sheets-revenue-ranges.ts",
+      "sha256": "234ee9485a559802b1d671763f46c2e812d4c9e73927c70c8a250964802bb2db"
+    },
+    {
+      "file": "server/utils/googleSheetsSelection.ts",
+      "sha256": "0d48cc3a28a42a39fd8eef237de7321167582aa5c3b70eb393550a0125a4b3f3"
+    },
+    {
+      "file": "server/v1-batch4-standalone-sheets-values.test.ts",
+      "sha256": "e99c52158a642d080f0ef3832fba10497df94013c64595a719e953a0b5fa98ae"
+    },
+    {
+      "file": "server/v1-batch4-standalone-sheets-refresh.test.ts",
+      "sha256": "7d8d1b1aeef73b569f1f3c679d87667e65c212906d80b97cdc5e72faedf90bc9"
+    },
+    {
+      "file": "server/v1-batch4-standalone-sheets-browser.test.ts",
+      "sha256": "3b43210928f23aed14652f4a4ba136d32dcce1e5e20b5e400bf85eade88c5fab"
+    },
+    {
+      "file": "server/v1-batch4-standalone-sheets-scope.test.ts",
+      "sha256": "2ee887d8d24b23d22a3c186027b813e14527fbc58c0523807bf73287f4a1a306"
+    },
+    {
+      "file": "server/ga4-auto-refresh-regression.test.ts",
+      "sha256": "642c5cdb0ad85bf0d832886227608fe119cf012275b7e0205840eea508f9ef41"
+    },
+    {
+      "file": "server/google-sheets-aggregate-source.test.ts",
+      "sha256": "7a2e4002bca2dbb65b0f2a9c940afe2387eff3551fdff12a699c68bda95bf211"
+    },
+    {
+      "file": "server/google-sheets-revenue-validation.test.ts",
+      "sha256": "54b297812acd337a3b0c195ccd79b258c065879d1cc097a2eb370faed238261f"
+    },
+    {
+      "file": "server/ga4-refresh-input-invalidation-postgres.test.ts",
+      "sha256": "5bf08aaebcec292ad5757cd73f5106ceea2c9593d5a1c4f9594eadac2131ca4f"
+    }
+  ],
+  "checkpoints": {
+    "final": "388 tests before only the compile-time tuple annotation and corrected euro fixture literal; all final runtime logic already present.",
+    "finalBoundary": "129 current-code tests rerun after those two changes; no runtime/test changes afterward.",
+    "build": "final-types typecheck/server build and final client build passed; last test-only euro fixture correction changes no production bundle."
+  }
+}

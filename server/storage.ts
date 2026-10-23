@@ -3838,11 +3838,12 @@ export class DatabaseStorage implements IStorage {
 
   async updateGoogleSheetsConnection(connectionId: string, connection: Partial<InsertGoogleSheetsConnection>, options: GA4RefreshConnectionWriteInput = {}): Promise<GoogleSheetsConnection | undefined> {
     const guarded = "refreshScope" in options;
+    const cacheWrite = (connection as any).cachedData?.complete === true;
     const write = async (db: any) => {
     if (!guarded) await db.execute(sql`SAVEPOINT sheets_connection_update`);
     try {
       const existingQuery = db.select().from(googleSheetsConnections).where(eq(googleSheetsConnections.id, connectionId));
-    const [existing] = await (guarded ? existingQuery.for("update") : existingQuery);
+    const [existing] = await (guarded || cacheWrite ? existingQuery.for("update") : existingQuery);
       if (guarded) {
       const expected = options.expectedConnection;
       if (existing && expected && !existing.encryptedTokens && !expected.encryptedTokens && existing.method !== "service_account"
@@ -3853,6 +3854,18 @@ export class DatabaseStorage implements IStorage {
         || fields.some(field => (existing[field] ?? null) !== (expected[field] ?? null))) throw new Error("GA4_REFRESH_CONNECTION_CHANGED");
     }
     if (!existing) return undefined;
+    if (cacheWrite) {
+      const expected = options.expectedConnection;
+      const cache = (connection as any).cachedData;
+      const currentTokens = hydrateDecryptedTokens(existing as any);
+      const started = Date.parse(cache.readStartedAt);
+      const previous = Date.parse((existing as any).cachedData?.readStartedAt || "");
+      if (!expected || existing.isActive === false || expected.id !== existing.id || !Number.isFinite(started)
+        || ["campaignId", "spreadsheetId", "sheetName", "purpose", "method", "clientId"].some(field => (existing[field] ?? null) !== (expected[field] ?? null))
+        || ["accessToken", "refreshToken", "clientSecret"].some(field => (currentTokens[field] ?? null) !== (expected[field] ?? null))
+        || cache.spreadsheetId !== existing.spreadsheetId || cache.sheetName !== existing.sheetName
+        || (Number.isFinite(previous) && previous > started)) throw new Error("GOOGLE_SHEETS_CACHE_INPUT_CHANGED");
+    }
       const method = String((connection as any).method || (existing as any).method || "access_token").trim().toLowerCase();
       const isServiceAccount = method === GOOGLE_SHEETS_SERVICE_ACCOUNT_METHOD;
 
@@ -3928,6 +3941,7 @@ export class DatabaseStorage implements IStorage {
         });
       return updated;
     } catch (error: any) {
+      if (cacheWrite) throw error;
       if (guarded) throw error;
       // If sheet_name column doesn't exist yet, use raw SQL update
       if (error.message?.includes('sheet_name') || error.message?.includes('column') || error.code === '42703') {

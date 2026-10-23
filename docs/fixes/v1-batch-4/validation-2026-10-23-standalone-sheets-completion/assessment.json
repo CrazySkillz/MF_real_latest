@@ -1,0 +1,429 @@
+{
+  "at": "2026-10-23T10:47:22.283Z",
+  "baseHead": "fb1132a256d05a271dcdbb21be863206f933d7b0",
+  "implementationState": "VERIFIED LOCALLY within the five documented correction boundaries; UNCOMMITTED/UNDEPLOYED",
+  "releaseDecision": "NO-GO; every required release acceptance remains OPEN",
+  "findings": [
+    "V1-051",
+    "V1-108",
+    "V1-112",
+    "V1-113",
+    "V1-114"
+  ],
+  "findingBoundary": "V1-108 only included standalone Sheets portion; LinkedIn/Instagram/Meta/TikTok provider functionality remains deferred.",
+  "tests": {
+    "expanded": {
+      "file": "final.json",
+      "total": 388,
+      "passed": 387,
+      "failed": 1,
+      "skipped": 0,
+      "files": [
+        {
+          "file": "server/endpoint-auth-audit.test.ts",
+          "total": 14,
+          "passed": 14,
+          "failed": 0
+        },
+        {
+          "file": "server/ga4-auto-refresh-regression.test.ts",
+          "total": 27,
+          "passed": 27,
+          "failed": 0
+        },
+        {
+          "file": "server/ga4-kpi-report-consumer-regression.test.ts",
+          "total": 10,
+          "passed": 10,
+          "failed": 0
+        },
+        {
+          "file": "server/ga4-overview-campaign-breakdown-regression.test.ts",
+          "total": 12,
+          "passed": 11,
+          "failed": 1
+        },
+        {
+          "file": "server/ga4-refresh-input-invalidation-postgres.test.ts",
+          "total": 64,
+          "passed": 64,
+          "failed": 0
+        },
+        {
+          "file": "server/google-sheets-aggregate-source.test.ts",
+          "total": 12,
+          "passed": 12,
+          "failed": 0
+        },
+        {
+          "file": "server/google-sheets-revenue-amount-validation.test.ts",
+          "total": 4,
+          "passed": 4,
+          "failed": 0
+        },
+        {
+          "file": "server/google-sheets-revenue-validation.test.ts",
+          "total": 12,
+          "passed": 12,
+          "failed": 0
+        },
+        {
+          "file": "server/report-email-regression.test.ts",
+          "total": 28,
+          "passed": 28,
+          "failed": 0
+        },
+        {
+          "file": "server/report-pdf-artifact.test.ts",
+          "total": 2,
+          "passed": 2,
+          "failed": 0
+        },
+        {
+          "file": "server/v1-batch4-sheets-revenue-contract.test.ts",
+          "total": 29,
+          "passed": 29,
+          "failed": 0
+        },
+        {
+          "file": "server/v1-batch4-sheets-spend-contract.test.ts",
+          "total": 37,
+          "passed": 37,
+          "failed": 0
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-browser.test.ts",
+          "total": 1,
+          "passed": 1,
+          "failed": 0
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-refresh.test.ts",
+          "total": 26,
+          "passed": 26,
+          "failed": 0
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-values.test.ts",
+          "total": 103,
+          "passed": 103,
+          "failed": 0
+        },
+        {
+          "file": "server/utils/googleSheetsSelection.test.ts",
+          "total": 7,
+          "passed": 7,
+          "failed": 0
+        }
+      ]
+    },
+    "lastBoundary": {
+      "file": "final-boundary.json",
+      "total": 129,
+      "passed": 129,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "builds": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "error": null,
+      "log": "final-types-typecheck.log"
+    },
+    {
+      "name": "server-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "final-types-server-build.log"
+    },
+    {
+      "name": "client-build",
+      "exitCode": 0,
+      "error": null,
+      "log": "final-client-build.log"
+    }
+  ],
+  "intermediateResults": [
+    {
+      "file": "first-values.json",
+      "total": 94,
+      "passed": 89,
+      "failed": 5,
+      "skipped": 0,
+      "failures": [
+        {
+          "file": "server/v1-batch4-standalone-sheets-values.test.ts",
+          "name": "V1-108/113 actual scheduled report builder renders correct actual overview PDF values",
+          "firstFailure": "TypeError: A dynamic import callback was not specified."
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-values.test.ts",
+          "name": "V1-108/113 actual scheduled report builder renders correct actual kpis PDF values",
+          "firstFailure": "TypeError: A dynamic import callback was not specified."
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-values.test.ts",
+          "name": "V1-108/113 actual scheduled report builder renders correct actual benchmarks PDF values",
+          "firstFailure": "TypeError: A dynamic import callback was not specified."
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-values.test.ts",
+          "name": "V1-108/113 actual scheduled report builder renders correct actual custom PDF values",
+          "firstFailure": "TypeError: A dynamic import callback was not specified."
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-values.test.ts",
+          "name": "V1-108/113 actual scheduled report builder renders correct actual insights PDF values",
+          "firstFailure": "TypeError: A dynamic import callback was not specified."
+        }
+      ],
+      "classification": "TEST_HARNESS: AST-extracted PDF function dynamic import had no callback. CommonJS transpilation/createRequire now exercises actual jsPDF bytes for every report type; no fake successful PDF substitute.",
+      "waived": false
+    },
+    {
+      "file": "values-refresh-browser.json",
+      "total": 177,
+      "passed": 172,
+      "failed": 5,
+      "skipped": 0,
+      "failures": [
+        {
+          "file": "server/ga4-auto-refresh-regression.test.ts",
+          "name": "GA4 external value auto-refresh regression guard preserves Google Sheets connections on every provider data-read failure",
+          "firstFailure": "AssertionError: expected 'app.get(\"/api/campaigns/:id/google-sh…' to contain 'preserving connection for recovery'"
+        },
+        {
+          "file": "server/google-sheets-aggregate-source.test.ts",
+          "name": "Google Sheets aggregate source adapter builds one main Google Sheets source from active general connections only",
+          "firstFailure": "AssertionError: expected [] to deeply equal [ 'clicks', 'conversions' ]"
+        },
+        {
+          "file": "server/google-sheets-aggregate-source.test.ts",
+          "name": "Google Sheets aggregate source adapter keeps Google Sheets Summary tab values display-safe for identifiers and non-additive metrics",
+          "firstFailure": "AssertionError: expected 'import type { Express } from \"express…' to contain 'isGoogleSheetsSummaryIdentifierColumn…'"
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-browser.test.ts",
+          "name": "standalone Sheets selection recovery in the rendered page shows selection errors without other-tab values and opens/cancels the existing mapping dialog",
+          "firstFailure": "Error: expect(locator).toBeVisible() failed"
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-refresh.test.ts",
+          "name": "V1-051 complete main Sheets reads and cache publication does not report all connections refreshed when any connection fails",
+          "firstFailure": "AssertionError: expected true to be false // Object.is equality"
+        }
+      ],
+      "classification": "One real multi-connection false-success was corrected by retaining the failure flag. Other failures were an old incomplete cache fixture, two source-text guards updated to the actual complete-read/metric helpers, and browser formatting expectation (-100%, not -100.0%). Source-preservation assertions and independent behavior tests retained.",
+      "waived": false
+    },
+    {
+      "file": "combined-local.json",
+      "total": 241,
+      "passed": 240,
+      "failed": 1,
+      "skipped": 0,
+      "failures": [
+        {
+          "file": "server/v1-batch4-standalone-sheets-browser.test.ts",
+          "name": "standalone Sheets selection recovery in the rendered page shows selection errors without other-tab values and opens/cancels the existing mapping dialog",
+          "firstFailure": "Error: expect(locator).toContainText(expected) failed"
+        }
+      ],
+      "classification": "TEST_LOCATOR: ROAS assertion selected the label parent instead of the metric-card parent; corrected locator, no production behavior change.",
+      "waived": false
+    },
+    {
+      "file": "acceptance-local.json",
+      "total": 368,
+      "passed": 367,
+      "failed": 1,
+      "skipped": 0,
+      "failures": [
+        {
+          "file": "server/google-sheets-revenue-validation.test.ts",
+          "name": "GA4 Overview Google Sheets revenue deterministic validation feeds the exact materialized source through current GA4 consumers",
+          "firstFailure": "AssertionError: expected 'import { normalizeGA4CampaignAllocati…' to contain 'const totals = Array.isArray(cfg?.cam…'"
+        }
+      ],
+      "classification": "TEST-2e4c19942f: obsolete literal GA4 breakdown implementation assertion. Replaced with actual exact source resolver cases, including zero/pending bounded values; no GA4 runtime change.",
+      "waived": false
+    },
+    {
+      "file": "verified.json",
+      "total": 384,
+      "passed": 383,
+      "failed": 1,
+      "skipped": 0,
+      "failures": [
+        {
+          "file": "server/ga4-overview-campaign-breakdown-regression.test.ts",
+          "name": "GA4 Overview Campaign Breakdown retains last-good rows and refetches on reload, focus, reconnect, and interval",
+          "firstFailure": "AssertionError: expected 'data: ga4Breakdown,\\r\\n    isLoading:…' to contain 'refetchOnWindowFocus: true'"
+        }
+      ],
+      "classification": "TEST-02680176f2 remains OPEN; see required failure disposition.",
+      "waived": false
+    },
+    {
+      "file": "renewal-before.json",
+      "total": 26,
+      "passed": 23,
+      "failed": 3,
+      "skipped": 0,
+      "failures": [
+        {
+          "file": "server/v1-batch4-standalone-sheets-refresh.test.ts",
+          "name": "V1-051 complete main Sheets reads and cache publication rejects a source changed during OAuth renewal: {\"spreadsheetId\":\"other-book\"}",
+          "firstFailure": "AssertionError: expected true to be false // Object.is equality"
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-refresh.test.ts",
+          "name": "V1-051 complete main Sheets reads and cache publication rejects a source changed during OAuth renewal: {\"purpose\":\"spend\"}",
+          "firstFailure": "AssertionError: expected true to be false // Object.is equality"
+        },
+        {
+          "file": "server/v1-batch4-standalone-sheets-refresh.test.ts",
+          "name": "V1-051 complete main Sheets reads and cache publication rejects a source changed during OAuth renewal: {\"isActive\":false}",
+          "firstFailure": "AssertionError: expected true to be false // Object.is equality"
+        }
+      ],
+      "classification": "CONFIRMED_CURRENT_GROUP_DEFECT: token-save return could replace the initial identity with a changed spreadsheet/purpose/inactive source, allowing wrong cache publication. Guard now rejects changed source identity before retry/cache write; same-tab token renewal still passes.",
+      "waived": false
+    },
+    {
+      "file": "final.json",
+      "total": 388,
+      "passed": 387,
+      "failed": 1,
+      "skipped": 0,
+      "failures": [
+        {
+          "file": "server/ga4-overview-campaign-breakdown-regression.test.ts",
+          "name": "GA4 Overview Campaign Breakdown retains last-good rows and refetches on reload, focus, reconnect, and interval",
+          "firstFailure": "AssertionError: expected 'data: ga4Breakdown,\\r\\n    isLoading:…' to contain 'refetchOnWindowFocus: true'"
+        }
+      ],
+      "classification": "TEST-02680176f2 remains OPEN; all current Sheets correction cases pass.",
+      "waived": false
+    }
+  ],
+  "intermediateCompileFailures": [
+    {
+      "file": "candidate-typecheck.log",
+      "reason": "Direct Map iteration conflicted with existing compiler target; use existing Array.from(entries()) pattern, no compiler setting change."
+    },
+    {
+      "file": "final-typecheck.log",
+      "reason": "New token-renewal identity guard indexed a typed connection using generic string; compile-time const tuple resolves the type without changing JavaScript behavior."
+    }
+  ],
+  "remainingFailure": {
+    "file": "server/ga4-overview-campaign-breakdown-regression.test.ts",
+    "name": "GA4 Overview Campaign Breakdown retains last-good rows and refetches on reload, focus, reconnect, and interval",
+    "firstFailure": "AssertionError: expected 'data: ga4Breakdown,\\r\\n    isLoading:…' to contain 'refetchOnWindowFocus: true'",
+    "id": "TEST-02680176f2",
+    "finding": "V1-012",
+    "classification": "STRUCTURAL_ASSERTION / BEHAVIORAL_CONTRACT_UNVERIFIED",
+    "status": "OPEN",
+    "waived": false,
+    "actualCode": "client/src/pages/ga4-metrics.tsx:2139: focus/reconnect are conditional on Insights/publication availability; interval off for valid Overview publication; background polling false.",
+    "required": "Behaviorally verify publication-driven freshness, last-good retention and focus/reconnect fallback before resolving the old polling contract. Unchanged GA4 page/test; no inference that it is harmless or a proven runtime defect.",
+    "releaseImpact": "Full-suite/CI verification remains open. This packet cannot certify V1 or close V1-012."
+  },
+  "repairedHistoricalFailure": {
+    "id": "TEST-2e4c19942f",
+    "status": "PASS in targeted current packet",
+    "reason": "Behavioral exact source resolver tests replace obsolete literal-source assertion; known zero/pending and positive source allocation boundaries verified.",
+    "historicalLedgersRewritten": false
+  },
+  "contracts": {
+    "read": "Exact saved tab; <=50000 grid rows incl header, <=200 columns, <=2000000 grid cells; full-width <=5000-row chunks; 45s overall signal; structural metadata consistency; partial failure never fresh.",
+    "cache": "Exact source identity, complete flag/row count, age <25h, active campaign/connection; atomic parent/row guard, reject older read and changed source/token identity. Empty complete read removes old cached rows.",
+    "calculations": "Validated unique mappings or unambiguous exact aliases; no implicit Budget-as-Spend; numerator/denominator ratios from same selected rows; unknown/malformed rates unavailable; zero preserved; mapped conversion-value median/latest with exact dates.",
+    "reportDate": "Scheduled report uses actual inclusive window and mapped Date or unique exact Date header, valid YYYY-MM-DD; browser report explicitly uses all selected rows, saved dataset for row count.",
+    "financialState": "Successful finite scoped reads with record IDs covering active sources; measured zero distinct from missing/failed contribution; zero denominator unavailable; loss retained."
+  },
+  "provenWithinFixtures": [
+    "Full-width and last-supported-row reads; no partial fresh cache",
+    "Source ownership/selection, empty no-match and zero preservation",
+    "Real storage atomic cache update, stale read/source conflict and parent/deactivation/rollback protection",
+    "Actual handler-to-Summary/options/Insights calculation agreement",
+    "Actual browser and scheduled PDF values, source/date failures and required-artifact gate",
+    "Interception-only browser tab switch, mapping open/cancel, zero/loss/failure states and table paging"
+  ],
+  "partiallyReviewed": [
+    "Full Insights/date/diagnostics semantics beyond changed calculations",
+    "Source-list and all mutation-to-output combinations",
+    "Existing connection/mapping lifecycle; dialog save transaction not exercised by browser fixture"
+  ],
+  "requiredUnverifiedOrExternal": [
+    "Real customer consent/permissions/quotas/provider-formatted values",
+    "Deployed changes and natural refresh/restart/reconnect recovery",
+    "Whole source lifecycle and historical damaged-data inventory",
+    "Persisted goal/alert propagation V1-122",
+    "Historical snapshot JSON/PDF parity V1-060",
+    "Broader currency propagation V1-106 and Pipeline Proxy V1-109",
+    "Real report delivery/inbox and hosted concurrent-user capacity",
+    "Whole-suite/CI, release backup/restore/rollback and every remaining V1 gate"
+  ],
+  "deferredPath": "Separate retained LinkedIn mapping-save conversion read is unchanged; requires LinkedIn connection/import context. No claim that every Sheets-related provider branch is corrected.",
+  "performance": {
+    "shape": "49999 data rows plus header last-row correctness; five concurrent synthetic 2000-row reads; table renders 100 rows per page",
+    "evidence": [
+      {
+        "name": "V1-112/114 actual endpoint and downstream calculations keeps the last supported row in totals and handles five concurrent local tester reads",
+        "durationMs": 1157.1067000000003,
+        "status": "passed"
+      }
+    ],
+    "limit": "Local in-memory fixture only; not provider quota, hosted capacity, or full 2-million-cell load acceptance."
+  },
+  "cleanup": {
+    "file": "fixture-cleanup.json",
+    "cluster": "audit-temp/v1-batch4-sheets-pg",
+    "endpoint": "127.0.0.1:55444",
+    "stopObserved": "pg_ctl -m fast -w stop returned exit code 0 and server stopped on 2026-10-23; no recursive file deletion."
+  },
+  "safety": {
+    "credentialsLoaded": false,
+    "dotenvLoaded": false,
+    "productionOrPtomoAccessForCompletionGroup": false,
+    "providerCalls": false,
+    "emailSent": false,
+    "schemaMigration": false,
+    "historicalDataCleanup": false,
+    "network": "Node runner blocks non-loopback network; Google responses are fixtures; Playwright routes intercepted."
+  },
+  "batch4": {
+    "assigned": 24,
+    "verifiedLocally": 15,
+    "implementationFindingsRemaining": 9,
+    "remainingGroups": {
+      "customIntegration": [
+        "V1-028",
+        "V1-029",
+        "V1-031",
+        "V1-102",
+        "V1-103",
+        "V1-111",
+        "V1-120"
+      ],
+      "manualSpendTransfers": [
+        "V1-068",
+        "V1-069"
+      ]
+    },
+    "releaseAcceptancesOpen": 24
+  },
+  "historicalFullSuite": {
+    "date": "2026-10-22",
+    "total": 4488,
+    "passed": 4309,
+    "failed": 179,
+    "skipped": 0,
+    "rerunForThisGroup": false,
+    "countAdjustedByInference": false
+  }
+}

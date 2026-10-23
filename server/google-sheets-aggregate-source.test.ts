@@ -31,12 +31,13 @@ describe("Google Sheets aggregate source adapter", () => {
             { targetFieldId: "revenue", sourceColumnIndex: 3 },
           ]),
           cachedData: {
+            complete: true, spreadsheetId: "sheet-main", sheetName: "Performance", totalRows: 2, headers: ["Dataset", "Clicks", "Conversions", "Revenue"],
             rows: [
               ["Campaign A", "10", "2", "1000"],
               ["Campaign B", "5", "3", "500"],
             ],
           },
-          lastDataRefreshAt: "2026-06-01T12:00:00.000Z",
+          lastDataRefreshAt: new Date().toISOString(),
         },
         {
           id: "child-sheet",
@@ -298,13 +299,14 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(routes).toContain("const isGoogleSheetsSummaryCampaignBreakdownColumn");
     expect(routes).toContain("h !== 'campaign id' && isGoogleSheetsSummaryIdentifierColumn(header)");
     expect(routes).toContain("getGoogleSheetsSummaryDisplayValue");
-    expect(routes).toContain("isGoogleSheetsSummaryIdentifierColumn(headerStr)");
+    expect(routes).toContain("buildGoogleSheetsMetricSummary(headers, rowsForSummary, connection.columnMappings)");
     expect(routes).toContain("isGoogleSheetsSummaryBreakdownIdentifierColumn(headerStr)");
     expect(routes).toContain("const isCampaignBreakdownColumn = isGoogleSheetsSummaryCampaignBreakdownColumn(headerStr);");
     expect(routes).toContain("(!isCampaignBreakdownColumn && uniqueCount === rowsForSummary.length)");
-    expect(routes).toContain("summaryValue: revenueTotal / spendTotal");
-    expect(routes).toContain("derived_profit_per_spend_pct");
-    expect(routes).toContain("derived_spend_per_customer");
+    const summary = readSource("server", "utils", "google-sheets-aggregate-source.ts");
+    expect(summary).toContain("derived_revenue_per_spend");
+    expect(summary).toContain("derived_profit_per_spend_pct");
+    expect(summary).toContain("derived_spend_per_${costDenominator}");
     expect(routes).toContain("detectedColumns: campaignData.detectedColumns");
     expect(routes).toContain("let mappedCampaignValues: string[] = [];");
     expect(routes).toContain("mapping?.selectedValues");

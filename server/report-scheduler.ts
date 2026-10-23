@@ -1,4 +1,7 @@
 import { formatConversionCredit } from "../shared/metric-math";
+import { buildGoogleSheetsMetricSummary } from "./utils/google-sheets-aggregate-source";
+import { filterGoogleSheetsRows } from "./utils/googleSheetsSelection";
+import { hasCompleteGoogleSheetsCache } from "./utils/google-sheets-revenue-ranges";
 import { db } from "./db";
 import { emailService } from "./services/email-service";
 import { storage } from "./storage";
@@ -3469,100 +3472,60 @@ function googleSheetsConnectionMatchesSavedScope(conn: any, scope: any | null): 
   const spreadsheetId = String(conn?.spreadsheetId || "");
   const connectionId = String(conn?.id || "");
   const sheetName = String(conn?.sheetName || "");
-  return scope.activeSpreadsheetId === `${spreadsheetId}:${connectionId}` ||
-    (!!sheetName && scope.activeSpreadsheetId === `${spreadsheetId}:${sheetName}`) ||
-    (!!scope.connectionId && String(scope.connectionId) === connectionId);
+  return (scope.activeSpreadsheetId === `${spreadsheetId}:${connectionId}` || (!!sheetName && scope.activeSpreadsheetId === `${spreadsheetId}:${sheetName}`))
+    && (!scope.connectionId || String(scope.connectionId) === connectionId)
+    && (!scope.spreadsheetId || String(scope.spreadsheetId) === spreadsheetId)
+    && (!scope.sheetName || String(scope.sheetName) === sheetName);
 }
 
-function buildGoogleSheetsCachedMetricSummary(connections: any[], sourceScope: any | null = null) {
-  const metrics = new Map<string, { label: string; total: number; type: string }>();
-  let rowCount = 0;
-  let latestRefresh = "";
-  const sourceNames: string[] = [];
-
-  for (const conn of Array.isArray(connections) ? connections : []) {
-    if (sourceScope && !googleSheetsConnectionMatchesSavedScope(conn, sourceScope)) continue;
+function buildGoogleSheetsCachedMetricSummary(connections: any[], sourceScope: any | null = null, campaignName = "", window?: { start: string; end: string }) {
+  const metrics = new Map<string, { label: string; total: number | null; type: string }>();
+  const selected = (Array.isArray(connections) ? connections : []).filter(conn => {
     const purpose = String(conn?.purpose || "").trim().toLowerCase();
-    if (conn?.isActive === false || !conn?.spreadsheetId || conn.spreadsheetId === "pending" || (purpose && purpose !== "general")) continue;
-    const cache = conn?.cachedData || {};
-    const headers = Array.isArray(cache.headers) ? cache.headers : [];
-    const rows = Array.isArray(cache.rows) ? cache.rows : [];
-    if (headers.length === 0 || rows.length === 0) continue;
-    rowCount += rows.length;
-    sourceNames.push(String(conn?.sheetName || conn?.spreadsheetName || conn?.spreadsheetId || "Google Sheets").trim());
-    if (conn?.lastDataRefreshAt) {
-      const refreshed = new Date(conn.lastDataRefreshAt);
-      if (Number.isFinite(refreshed.getTime()) && refreshed.toISOString() > latestRefresh) latestRefresh = refreshed.toISOString();
-    }
-
-    headers.forEach((header: any, index: number) => {
-      const label = String(header || "").trim();
-      if (!label || GOOGLE_SHEETS_REPORT_DATE_COLUMN_PATTERN.test(label)) return;
-      let total = 0;
-      let count = 0;
-      let hasDecimal = false;
-      let hasCurrency = GOOGLE_SHEETS_REPORT_CURRENCY_PATTERN.test(label);
-      for (const row of rows) {
-        const cell = Array.isArray(row) ? row[index] : null;
-        const parsed = parseGoogleSheetsReportNumber(cell);
-        if (parsed === null || Math.abs(parsed) >= 1e12) continue;
-        total += parsed;
-        count += 1;
-        if (String(cell || "").includes(".")) hasDecimal = true;
-        if (String(cell || "").includes("$") || String(cell || "").toUpperCase().includes("USD")) hasCurrency = true;
-      }
-      if (count === 0) return;
-      const key = normalizeGoogleSheetsReportKey(label);
-      const existing = metrics.get(key);
-      metrics.set(key, {
-        label,
-        total: Number(((existing?.total || 0) + total).toFixed(2)),
-        type: hasCurrency ? "currency" : hasDecimal ? "decimal" : "integer",
-      });
-    });
-  }
-
-  return { metrics, rowCount, latestRefresh, sourceNames };
+    return sourceScope && googleSheetsConnectionMatchesSavedScope(conn, sourceScope) && conn?.isActive !== false
+      && conn?.spreadsheetId && conn.spreadsheetId !== "pending" && (!purpose || purpose === "general");
+  });
+  if (selected.length !== 1) throw new Error("Saved Google Sheets report source is missing or ambiguous");
+  const conn = selected[0];
+  if (!hasCompleteGoogleSheetsCache(conn)) throw new Error("Google Sheets reports require a fresh complete dataset refresh");
+  const cache = conn.cachedData;
+  const rows = filterGoogleSheetsRows(conn, cache.headers, cache.rows, campaignName, window);
+  const summary = buildGoogleSheetsMetricSummary(cache.headers, rows, conn.columnMappings);
+  for (const col of summary.detectedColumns) metrics.set(normalizeGoogleSheetsReportKey(col.name), { label: col.name, total: col.summaryValue, type: col.type });
+  return { metrics, rowCount: rows.length, latestRefresh: new Date(conn.lastDataRefreshAt).toISOString(), sourceNames: [String(conn.sheetName)] };
 }
 
 function formatGoogleSheetsReportValue(value: any, label: string, type?: string): string {
   const parsed = parseGoogleSheetsReportNumber(value);
   if (parsed === null) return "Unavailable";
   const normalized = String(label || "").toLowerCase();
-  if (type === "currency" || GOOGLE_SHEETS_REPORT_CURRENCY_PATTERN.test(normalized)) {
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(parsed);
-  }
-  if (normalized.includes("%") || /rate|ctr|cvr|roi/.test(normalized)) {
+  if (normalized.includes("%") || /rate|ctr|cvr|roi|return on investment/.test(normalized)) {
     return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(parsed)}%`;
   }
-  if (/roas|return on/.test(normalized)) {
+  if (/roas|return on ad spend/.test(normalized)) {
     return `${new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(parsed)}x`;
+  }
+  if (type === "currency" || GOOGLE_SHEETS_REPORT_CURRENCY_PATTERN.test(normalized)) {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(parsed);
   }
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: type === "integer" ? 0 : 2 }).format(parsed);
 }
 
-async function buildGoogleSheetsConfirmedFinancialMetricSummary(campaignId: string) {
-  const startDate = "1900-01-01";
-  const endDate = "2999-12-31";
-  const revenueTotal = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, "google_sheets").catch(() => ({ totalRevenue: 0 }));
-  const [spendSources, spendBreakdown] = await Promise.all([
-    storage.getSpendSources(campaignId).catch(() => [] as any[]),
-    storage.getSpendBreakdownBySource(campaignId, startDate, endDate).catch(() => [] as any[]),
+async function buildGoogleSheetsConfirmedFinancialMetricSummary(campaignId: string, startDate: string, endDate: string) {
+  const [revenue, spend, revenueSources, spendSources] = await Promise.all([
+    storage.getRevenueTotalForRange(campaignId, startDate, endDate, "google_sheets"),
+    storage.getSpendTotalForRange(campaignId, startDate, endDate, "google_sheets"),
+    storage.getRevenueSources(campaignId, "google_sheets"),
+    storage.getSpendSources(campaignId, "google_sheets"),
   ]);
-  const eligibleSpendIds = new Set((Array.isArray(spendSources) ? spendSources : [])
-    .filter((source: any) => source?.isActive !== false && String(source?.platformContext || "").trim().toLowerCase() === "google_sheets")
-    .map((source: any) => String(source?.id || ""))
-    .filter(Boolean));
-  const totalSpend = (Array.isArray(spendBreakdown) ? spendBreakdown : [])
-    .filter((row: any) => eligibleSpendIds.has(String(row?.sourceId || "")))
-    .reduce((sum: number, row: any) => sum + Number(row?.spend || 0), 0);
-  const totalRevenue = Number((revenueTotal as any)?.totalRevenue || 0);
-  const metrics = new Map<string, { label: string; total: number; type: string }>();
-  if (totalRevenue > 0) metrics.set("overview.total_revenue", { label: "Total Revenue", total: totalRevenue, type: "currency" });
-  if (totalSpend > 0) metrics.set("overview.total_spend", { label: "Total Spend", total: totalSpend, type: "currency" });
-  if (totalRevenue > 0 && totalSpend > 0) {
-    metrics.set("overview.roas", { label: "ROAS", total: Number((totalRevenue / totalSpend).toFixed(2)), type: "decimal" });
-    metrics.set("overview.roi", { label: "ROI", total: Number((((totalRevenue - totalSpend) / totalSpend) * 100).toFixed(2)), type: "decimal" });
+  const metrics = new Map<string, { label: string; total: number | null; type: string }>();
+  const hasRevenue = revenue.sourceIds.length > 0 && Number.isFinite(revenue.totalRevenue) && revenueSources.filter(s => s.isActive !== false).every(s => revenue.sourceIds.includes(String(s.id)));
+  const hasSpend = spend.sourceIds.length > 0 && Number.isFinite(spend.totalSpend) && spendSources.filter(s => s.isActive !== false).every(s => spend.sourceIds.includes(String(s.id)));
+  if (hasRevenue) metrics.set("overview.total_revenue", { label: "Total Revenue", total: revenue.totalRevenue, type: "currency" });
+  if (hasSpend) metrics.set("overview.total_spend", { label: "Total Spend", total: spend.totalSpend, type: "currency" });
+  if (hasRevenue && hasSpend && spend.totalSpend > 0 && revenue.currency === spend.currency) {
+    metrics.set("overview.roas", { label: "ROAS", total: revenue.totalRevenue / spend.totalSpend, type: "decimal" });
+    metrics.set("overview.roi", { label: "ROI", total: (revenue.totalRevenue - spend.totalSpend) / spend.totalSpend * 100, type: "decimal" });
   }
   return metrics;
 }
@@ -3576,11 +3539,14 @@ async function buildGoogleSheetsScheduledPdfAttachment(args: {
   const { report, windowStart, windowEnd, campaignName } = args;
   const campaignId = String(report?.campaignId || "").trim();
   if (!campaignId) return null;
-  const connections = await storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[]);
+  const campaign = await storage.getCampaign(campaignId);
+  if (!campaign || !String(campaign.platform || "").split(",").some(p => ["google sheets", "google-sheets"].includes(p.trim().toLowerCase()))) return null;
+  const connections = (await storage.getGoogleSheetsConnections(campaignId)).filter(conn => conn.campaignId === campaignId);
+  const window = { start: windowStart, end: windowEnd };
   const cfg = parseReportConfiguration(report?.configuration);
   const reportSourceScope = getGoogleSheetsReportSourceScope(report?.configuration);
   if (!reportSourceScope) return null;
-  const source = buildGoogleSheetsCachedMetricSummary(connections, reportSourceScope);
+  const source = buildGoogleSheetsCachedMetricSummary(connections, reportSourceScope, campaign.name, window);
   if (source.metrics.size === 0) return null;
 
   const { jsPDF } = await import("jspdf");
@@ -3593,7 +3559,8 @@ async function buildGoogleSheetsScheduledPdfAttachment(args: {
   const selectedMetrics = new Set((Array.isArray(cfg.selectedMetrics) ? cfg.selectedMetrics : []).map((metric: any) => normalizeGoogleSheetsReportKey(metric)));
   const selectedKpiIds = new Set([...(Array.isArray(cfg.kpis) ? cfg.kpis : []), ...(Array.isArray(cfg.selectedKpiIds) ? cfg.selectedKpiIds : [])].map((id: any) => String(id)));
   const selectedBenchmarkIds = new Set([...(Array.isArray(cfg.benchmarks) ? cfg.benchmarks : []), ...(Array.isArray(cfg.selectedBenchmarkIds) ? cfg.selectedBenchmarkIds : [])].map((id: any) => String(id)));
-  const confirmedFinancialMetrics = await buildGoogleSheetsConfirmedFinancialMetricSummary(campaignId);
+  const confirmedFinancialMetrics = await buildGoogleSheetsConfirmedFinancialMetricSummary(campaignId, windowStart, windowEnd);
+  for (const [key, value] of Array.from(confirmedFinancialMetrics.entries())) source.metrics.set(key, value);
 
   const addText = (value: string, opts: { size?: number; bold?: boolean; indent?: number } = {}) => {
     const indent = opts.indent || 0;
@@ -3609,8 +3576,8 @@ async function buildGoogleSheetsScheduledPdfAttachment(args: {
       y += opts.size && opts.size >= 14 ? 8 : 6;
     });
   };
-  const addMetricRows = (filter?: (metric: { label: string; total: number; type: string }) => boolean) => {
-    const rows = Array.from(source.metrics.values()).filter((metric) => !filter || filter(metric));
+  const addMetricRows = (filter?: (metric: { label: string; total: number | null; type: string }, key: string) => boolean) => {
+    const rows = Array.from(source.metrics.entries()).filter(([key, metric]) => !filter || filter(metric, key)).map(([, metric]) => metric);
     if (rows.length === 0) {
       addText("- No selected Google Sheets metrics are available from refreshed cached rows.", { indent: 4 });
       return;
@@ -3632,7 +3599,7 @@ async function buildGoogleSheetsScheduledPdfAttachment(args: {
         ? { metrics: confirmedFinancialMetrics }
         : (() => {
           const rowScope = getGoogleSheetsReportSourceScope(row?.calculationConfig);
-          return rowScope ? buildGoogleSheetsCachedMetricSummary(connections, rowScope) : { metrics: new Map<string, { label: string; total: number; type: string }>() };
+          return rowScope ? buildGoogleSheetsCachedMetricSummary(connections, rowScope, campaign.name, window) : { metrics: new Map<string, { label: string; total: number | null; type: string }>() };
         })();
       const metric = rowSource.metrics.get(normalizeGoogleSheetsReportKey(row?.metric || row?.metricKey));
       const current = metric ? formatGoogleSheetsReportValue(metric.total, metric.label, metric.type) : "Unavailable";
@@ -3652,7 +3619,7 @@ async function buildGoogleSheetsScheduledPdfAttachment(args: {
         ? { metrics: confirmedFinancialMetrics }
         : (() => {
           const rowScope = getGoogleSheetsReportSourceScope(row?.calculationConfig);
-          return rowScope ? buildGoogleSheetsCachedMetricSummary(connections, rowScope) : { metrics: new Map<string, { label: string; total: number; type: string }>() };
+          return rowScope ? buildGoogleSheetsCachedMetricSummary(connections, rowScope, campaign.name, window) : { metrics: new Map<string, { label: string; total: number | null; type: string }>() };
         })();
       const metric = rowSource.metrics.get(normalizeGoogleSheetsReportKey(row?.metric || row?.metricKey));
       const current = metric ? formatGoogleSheetsReportValue(metric.total, metric.label, metric.type) : "Unavailable";
@@ -3682,7 +3649,7 @@ async function buildGoogleSheetsScheduledPdfAttachment(args: {
     addText("Custom Report", { size: 14, bold: true });
     if (selectedMetrics.size > 0 || cfg?.sections?.overview) {
       addText("Overview", { bold: true });
-      addMetricRows(selectedMetrics.size > 0 ? (metric) => selectedMetrics.has(normalizeGoogleSheetsReportKey(metric.label)) : undefined);
+      addMetricRows(selectedMetrics.size > 0 ? (metric, key) => selectedMetrics.has(key) || selectedMetrics.has(normalizeGoogleSheetsReportKey(metric.label)) : undefined);
     }
     if (selectedKpiIds.size > 0 || cfg?.sections?.kpis) {
       addText("KPIs", { bold: true });
@@ -3751,7 +3718,7 @@ export async function buildPdfAttachmentForReport(args: {
       return buildTikTokScheduledPdfAttachment({ report, windowStart, windowEnd, campaignName });
     }
     if (String((report as any)?.platformType || "") === "google_sheets") {
-      return buildGoogleSheetsScheduledPdfAttachment({ report, windowStart, windowEnd, campaignName });
+      return await buildGoogleSheetsScheduledPdfAttachment({ report, windowStart, windowEnd, campaignName });
     }
     if (String((report as any)?.platformType || "") === "custom-integration" || String((report as any)?.platformType || "") === "custom_integration") {
       return buildCustomIntegrationScheduledPdfAttachment({ report, windowStart, windowEnd, campaignName });

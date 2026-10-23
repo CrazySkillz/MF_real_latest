@@ -26,6 +26,7 @@ describe("standalone Sheets selection recovery in the rendered page", () => {
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({ serviceWorkers: "block" });
     const page = await context.newPage(); const errors: string[] = [], requests: string[] = [];
+    let financialState = "zero-revenue";
     let valid = false, releaseSecond: (() => void) | undefined;
     const secondResponse = new Promise<void>(resolve => { releaseSecond = resolve; });
     const connections = [{ id: "tab-a", spreadsheetId: "book", sheetName: "Main", spreadsheetName: "Fixture", purpose: "general", isActive: true, isPrimary: true }];
@@ -37,7 +38,7 @@ describe("standalone Sheets selection recovery in the rendered page", () => {
       if (!url.pathname.startsWith("/api/")) { await route.fulfill({ contentType: "text/html", body: '<html><body><div id="root"></div><script src="/fixture.js"></script></body></html>' }); return; }
       requests.push(`${request.method()} ${url.pathname}${url.search}`);
       if (request.method() !== "GET") { errors.push("Unexpected mutation"); await route.abort(); return; }
-      let data: any = { success: true, sources: [], sourceIds: [], totalRevenue: 0, totalSpend: 0 }; let status = 200;
+      let data: any = { success: financialState !== "failed", sources: [{ id: "fixture-source", isActive: true }], sourceIds: ["fixture-source"], totalRevenue: 0, totalSpend: financialState === "zero-spend" ? 0 : 100, currency: "USD" }; let status = 200;
       if (url.pathname === "/api/campaigns/a") data = { id: "a", name: "Fixture campaign", platform: "Google Sheets", status: "active" };
       else if (url.pathname.endsWith("google-sheets-connections")) data = { connections };
       else if (url.pathname.endsWith("google-sheets-data")) {
@@ -45,8 +46,8 @@ describe("standalone Sheets selection recovery in the rendered page", () => {
           const second = url.searchParams.get("spreadsheetId") === "book:tab-b";
           if (second) await secondResponse;
           data = { success: true, spreadsheetId: "book", spreadsheetName: "Fixture", sheetName: second ? "Second" : "Main",
-            totalRows: 2, filteredRows: 1, headers: ["Campaign Name", "Revenue"], data: [[second ? "Only Beta" : "Only Alpha", "10"]],
-            summary: { metrics: { Revenue: 10 }, detectedColumns: [{ name: "Revenue", index: 1, type: "currency", total: 10, summaryValue: 10, count: 1 }], categoricalColumns: [] }, lastUpdated: "2026-10-23T10:00:00Z" };
+            totalRows: second ? 2 : 202, filteredRows: second ? 1 : 201, headers: ["Campaign Name", "Revenue"], data: second ? [["Only Beta", "10"]] : Array.from({ length: 201 }, (_, i) => [i === 0 ? "Only Alpha" : `Fixture row ${i}`, 0]),
+            summary: { metrics: { Revenue: 10 }, detectedColumns: [{ name: "Revenue", index: 1, type: "currency", total: 10, summaryValue: 10, count: 1 }, { name: "CPC", index: 2, type: "currency", total: 10, summaryValue: 190 / 110, count: 2 }, { name: "CTR", index: 3, type: "decimal", total: 99, summaryValue: null, aggregation: "unavailable" }], categoricalColumns: [] }, lastUpdated: "2026-10-23T10:00:00Z" };
         } else if (url.searchParams.get("spreadsheetId") === "book:tab-a") {
           status = 400; data = { success: false, code: "GOOGLE_SHEETS_MAPPING_INVALID", error: "Saved Google Sheets selection is invalid or its columns changed. Review the dataset mappings." };
         } else { status = 404; data = { success: false, error: "Selected Google Sheets dataset is no longer connected. Select a connected tab." }; }
@@ -70,11 +71,32 @@ describe("standalone Sheets selection recovery in the rendered page", () => {
       connections.push({ ...connections[0], id: "tab-b", sheetName: "Second", isPrimary: false });
       await page.goto("http://sheets-fixture.test/campaigns/a/google-sheets-data?spreadsheetId=book:tab-a");
       await browserExpect(page.getByText("Only Alpha", { exact: true })).toBeVisible();
+      await browserExpect(page.locator("tbody tr")).toHaveCount(100);
+      await browserExpect(page.getByText("Only Alpha", { exact: true }).locator("..")).toContainText("0");
+      await page.getByRole("button", { name: "Next rows", exact: true }).click();
+      await browserExpect(page.getByText("Fixture row 100", { exact: true })).toBeVisible();
+      await browserExpect(page.getByText("Only Alpha", { exact: true })).toHaveCount(0);
+      await page.getByRole("button", { name: "Previous rows", exact: true }).click();
+      await browserExpect(page.getByText("Only Alpha", { exact: true })).toBeVisible();
       await page.getByRole("combobox").first().click();
       await page.getByRole("option", { name: "Second - Fixture", exact: true }).click();
       await browserExpect(page.getByText("Only Alpha", { exact: true })).toHaveCount(0);
       releaseSecond!();
       await browserExpect(page.getByText("Only Beta", { exact: true })).toBeVisible();
+      const revenueCard = page.getByText("Total Revenue", { exact: true }).locator("../..");
+      await browserExpect(revenueCard).toContainText("$0.00");
+      await browserExpect(page.getByText("0.00x", { exact: true })).toBeVisible();
+      await browserExpect(page.getByText("-100%", { exact: true })).toBeVisible();
+      await page.getByRole("tab", { name: "Summary", exact: true }).click();
+      await browserExpect(page.getByText("$1.73", { exact: true })).toBeVisible();
+      await browserExpect(page.getByText("CTR", { exact: true }).locator("..")).toContainText("Unavailable");
+      financialState = "zero-spend";
+      await page.reload();
+      await browserExpect(page.getByText("Total Spend", { exact: true }).locator("../..")).toContainText("$0.00");
+      await browserExpect(page.getByText("ROAS", { exact: true }).locator("../..")).toContainText("Unavailable");
+      financialState = "failed";
+      await page.reload();
+      await browserExpect(page.getByText("Total Revenue", { exact: true }).locator("../..")).toContainText("Unavailable");
       expect(errors).toEqual([]);
     } finally { releaseSecond?.(); await context.close(); await browser.close(); }
   }, 60_000);

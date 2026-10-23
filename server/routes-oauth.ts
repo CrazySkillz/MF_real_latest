@@ -40,7 +40,7 @@ import { transformData, filterRowsByCampaignAndPlatform, calculateConversionValu
 import { enrichRows, inferMissingFields } from "./utils/data-enrichment";
 import { toCanonicalFormatBatch } from "./utils/canonical-format";
 import { pickConversionValueFromRows } from "./utils/googleSheetsSelection";
-import { buildGoogleSheetsRevenueRowRanges, resolveGoogleSheetsRevenueGrid } from "./utils/google-sheets-revenue-ranges";
+import { buildGoogleSheetsRevenueRowRanges, resolveGoogleSheetsRevenueGrid, readCompleteGoogleSheetsData, hasCompleteGoogleSheetsCache } from "./utils/google-sheets-revenue-ranges";
 import { selectGoogleSheetsRevenuePreviewRows } from "./utils/google-sheets-revenue-preview";
 import { findInvalidGoogleSheetsRevenueAmountRows } from "./utils/google-sheets-revenue-amount";
 import { db } from "./db";
@@ -63,7 +63,7 @@ import {
   isGA4FinancialKpiMetricIdentity,
   resolveGA4KpiMetricIdentity,
 } from "../shared/ga4-kpi-metric-identity";
-import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
+import { buildGoogleSheetsPlatformSourceForAggregate, buildGoogleSheetsMetricSummary, googleSheetsMetricTotal, getGoogleSheetsSummaryDisplayValue, parseGoogleSheetsMetricNumber } from "./utils/google-sheets-aggregate-source";
 import { GA4_OVERVIEW_LEGACY_IMPORT_START_DATE, getExpectedDailyRefreshAt, getExpectedScheduledRefreshAt, getGA4HistoricalImportStartDate, getLatestCompleteReportingDate, getReportingDateWindow, isCreatedThroughReportingDate, normalizeReportingTimeZone, resolveGA4DailyFreshness, resolveGA4RefreshStatus, resolveGA4ImportToDateWindow } from "./utils/reporting-timezone";
 import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
 import { getCampaignMetricTotals, refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
@@ -2735,6 +2735,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currency,
           sourceIds: sourcesWithDetails.map((source: any) => String(source.sourceId || "")).filter(Boolean),
           sources: sourcesWithDetails,
+          ...(platformContext === "google_sheets" ? { configuredSourceIds: Array.from(eligibleSourceIds) } : {}),
         });
       }
       const totals = await storage.getSpendTotalForRange(campaignId, startDate, endDate);
@@ -20870,10 +20871,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Helper function to generate intelligent insights from spreadsheet data
   function generateInsights(
     rows: any[][],
-    detectedColumns: Array<{ name: string, index: number, type: string, total: number }>,
-    metrics: Record<string, number>,
+    detectedColumns: Array<{ name: string, index: number, type: string, total: number | null; aggregation?: string; summaryValue?: number | null }>,
+    metrics: Record<string, number | null>,
     categoricalColumns?: Array<{ name: string, index: number }>,
-    allHeaders?: any[]
+    allHeaders?: any[],
+    rawMappings?: any
   ) {
     const insights: any = {
       topPerformers: [],
@@ -20897,12 +20899,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       summary: { total: 0, high: 0, medium: 0, low: 0 }
     };
 
+    detectedColumns = detectedColumns.filter(col => col.summaryValue !== null && col.total !== null);
     if (rows.length <= 1 || detectedColumns.length === 0) {
       return insights;
     }
 
     const headerRow = rows[0];
     const dataRows = rows.slice(1); // Exclude header
+    const summaryByRows = (selected: any[][]) => new Map(buildGoogleSheetsMetricSummary(headerRow, selected, rawMappings).detectedColumns.map(col => [col.name, col.summaryValue]));
+    const perRow = new Map(dataRows.map(row => [row, summaryByRows([row])]));
     const totalDataPoints = dataRows.length * detectedColumns.length;
     insights.totalDataPoints = dataRows.length;
     let missingCount = 0;
@@ -20975,34 +20980,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // --- Build trend series (aggregate by date across all metrics) ---
     if (dateColIndex >= 0) {
-      const dateMap = new Map<string, { count: number, sums: Record<string, number> }>();
+      const dateMap = new Map<string, any[][]>();
       dataRows.forEach(row => {
-        const dateVal = String(row[dateColIndex] || '').trim();
-        if (!dateVal) return;
-        if (!dateMap.has(dateVal)) dateMap.set(dateVal, { count: 0, sums: {} });
-        const entry = dateMap.get(dateVal)!;
-        entry.count++;
-        detectedColumns.forEach(col => {
-          const cellVal = row[col.index];
-          if (cellVal !== undefined && cellVal !== null && cellVal !== '') {
-            const numVal = parseFloat(String(cellVal).replace(/[$,]/g, '').trim());
-            if (!isNaN(numVal)) {
-              entry.sums[col.name] = (entry.sums[col.name] || 0) + numVal;
-            }
-          }
-        });
+        const dateVal = String(row[dateColIndex] ?? '').trim();
+        if (dateVal) {
+          if (!dateMap.has(dateVal)) dateMap.set(dateVal, []);
+          dateMap.get(dateVal)!.push(row);
+        }
       });
-
-      const sortedDates = Array.from(dateMap.keys()).sort();
-      insights.trendSeries = sortedDates.map(date => {
-        const entry = dateMap.get(date)!;
+      insights.trendSeries = Array.from(dateMap.keys()).sort().map(date => {
+        const summary = summaryByRows(dateMap.get(date)!);
         const point: any = { date };
-        detectedColumns.forEach(col => {
-          // Average per date (divide sum by count of rows with that date)
-          point[col.name] = entry.sums[col.name] !== undefined
-            ? Math.round((entry.sums[col.name] / entry.count) * 100) / 100
-            : null;
-        });
+        detectedColumns.forEach(col => { point[col.name] = summary.get(col.name) ?? null; });
         return point;
       });
       insights.trendMetrics = detectedColumns.map(col => col.name);
@@ -21010,20 +20999,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // --- Analyze each numeric column ---
     detectedColumns.forEach(col => {
+      const derived = !!col.aggregation && col.aggregation !== "sum";
       const values: number[] = [];
       const rowData: Array<{ rowIndex: number, value: number, rowContent: any[], label: string, dateValue: string }> = [];
 
       dataRows.forEach((row, idx) => {
-        const cellValue = row[col.index];
-        if (!cellValue || cellValue === '') {
-          missingCount++;
-          return;
-        }
-
-        const cleanValue = String(cellValue).replace(/[$,]/g, '').trim();
-        const numValue = parseFloat(cleanValue);
-
-        if (!isNaN(numValue)) {
+        const numValue = perRow.get(row)?.get(col.name) ?? null;
+        if (numValue !== null) {
           values.push(numValue);
           rowData.push({
             rowIndex: idx + 2,
@@ -21087,8 +21069,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         const groupAvgs = Array.from(groups.entries()).map(([label, g]) => ({
-          label, avg: g.sum / g.count, total: g.sum, count: g.count
-        }));
+          label, avg: derived ? summaryByRows(rowData.filter(item => item.label === label).map(item => item.rowContent)).get(col.name) ?? NaN : g.sum / g.count,
+          total: g.sum, count: g.count
+        })).filter(g => Number.isFinite(g.avg));
 
         // Top 3 groups
         const qualifiedGroups = groupAvgs.filter(g => g.count >= minPerformanceDataPoints);
@@ -21102,13 +21085,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lowerIsBetter,
             severity: 'low',
             confidence: g.count >= 50 ? 'high' : g.count >= 10 ? 'medium' : 'low',
-            percentOfTotal: col.total > 0 ? (g.total / col.total) * 100 : 0,
+            percentOfTotal: !derived && col.total !== null && col.total > 0 ? (g.total / col.total) * 100 : 0,
             evidence: [
-              `Average: ${fmtVal(g.avg)}`,
+              `${derived ? "Derived value" : "Average"}: ${fmtVal(g.avg)}`,
               `${g.count} data points`,
-              col.total > 0 ? `${((g.total / col.total) * 100).toFixed(1)}% of total ${col.name}` : ''
+              !derived && col.total !== null && col.total > 0 ? `${((g.total / col.total) * 100).toFixed(1)}% of total ${col.name}` : ''
             ].filter(Boolean),
-            message: `${g.label} has the ${performanceVerb} average ${col.name} (${fmtVal(g.avg)}) across ${g.count} data points`
+            message: `${g.label} has the ${performanceVerb} ${derived ? "derived" : "average"} ${col.name} (${fmtVal(g.avg)}) across ${g.count} data points`
           });
         });
 
@@ -21123,13 +21106,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lowerIsBetter,
             severity: 'low',
             confidence: g.count >= 50 ? 'high' : g.count >= 10 ? 'medium' : 'low',
-            percentOfTotal: col.total > 0 ? (g.total / col.total) * 100 : 0,
+            percentOfTotal: !derived && col.total !== null && col.total > 0 ? (g.total / col.total) * 100 : 0,
             evidence: [
-              `Average: ${fmtVal(g.avg)}`,
+              `${derived ? "Derived value" : "Average"}: ${fmtVal(g.avg)}`,
               `${g.count} data points`,
-              col.total > 0 ? `${((g.total / col.total) * 100).toFixed(1)}% of total ${col.name}` : ''
+              !derived && col.total !== null && col.total > 0 ? `${((g.total / col.total) * 100).toFixed(1)}% of total ${col.name}` : ''
             ].filter(Boolean),
-            message: `${g.label} has the ${weaknessVerb} average ${col.name} (${fmtVal(g.avg)}) across ${g.count} data points`
+            message: `${g.label} has the ${weaknessVerb} ${derived ? "derived" : "average"} ${col.name} (${fmtVal(g.avg)}) across ${g.count} data points`
           });
         });
       } else if (!neutralCostMetric && values.length >= minPerformanceDataPoints) {
@@ -21145,10 +21128,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lowerIsBetter,
             severity: 'low',
             confidence: values.length >= 50 ? 'high' : values.length >= 10 ? 'medium' : 'low',
-            percentOfTotal: col.total > 0 ? (item.value / col.total) * 100 : 0,
+            percentOfTotal: !derived && col.total !== null && col.total > 0 ? (item.value / col.total) * 100 : 0,
             evidence: [
               `Value: ${fmtVal(item.value)}`,
-              col.total > 0 ? `${((item.value / col.total) * 100).toFixed(1)}% of total ${col.name}` : ''
+              !derived && col.total !== null && col.total > 0 ? `${((item.value / col.total) * 100).toFixed(1)}% of total ${col.name}` : ''
             ].filter(Boolean),
             message: `${label} has the ${performanceVerb} ${col.name} (${fmtVal(item.value)})`
           });
@@ -21165,10 +21148,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lowerIsBetter,
             severity: 'low',
             confidence: values.length >= 50 ? 'high' : values.length >= 10 ? 'medium' : 'low',
-            percentOfTotal: col.total > 0 ? (item.value / col.total) * 100 : 0,
+            percentOfTotal: !derived && col.total !== null && col.total > 0 ? (item.value / col.total) * 100 : 0,
             evidence: [
               `Value: ${fmtVal(item.value)}`,
-              col.total > 0 ? `${((item.value / col.total) * 100).toFixed(1)}% of total ${col.name}` : ''
+              !derived && col.total !== null && col.total > 0 ? `${((item.value / col.total) * 100).toFixed(1)}% of total ${col.name}` : ''
             ].filter(Boolean),
             message: `${label} has the ${weaknessVerb} ${col.name} (${fmtVal(item.value)})`
           });
@@ -21213,8 +21196,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const midpoint = Math.floor(sortedVals.length / 2);
         const firstHalf = sortedVals.slice(0, midpoint);
         const secondHalf = sortedVals.slice(midpoint);
-        const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
-        const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+        const firstAvg = derived ? summaryByRows(sortedRowData.slice(0, midpoint).map(item => item.rowContent)).get(col.name) ?? NaN : firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+        const secondAvg = derived ? summaryByRows(sortedRowData.slice(midpoint).map(item => item.rowContent)).get(col.name) ?? NaN : secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
         const percentChange = firstAvg > 0 ? ((secondAvg - firstAvg) / firstAvg) * 100 : 0;
 
         if (Math.abs(percentChange) > 10) {
@@ -21232,8 +21215,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             severity: neutralCostMetric ? 'medium' : adverseTrend && changePct > 30 ? 'high' : changePct > 20 ? 'medium' : 'low',
             confidence: values.length >= 50 ? 'high' : values.length >= 10 ? 'medium' : 'low',
             evidence: [
-              `First half avg: ${fmtVal(firstAvg)}`,
-              `Second half avg: ${fmtVal(secondAvg)}`,
+              `First half ${derived ? "derived value" : "avg"}: ${fmtVal(firstAvg)}`,
+              `Second half ${derived ? "derived value" : "avg"}: ${fmtVal(secondAvg)}`,
               `Change: ${percentChange >= 0 ? '+' : ''}${percentChange.toFixed(1)}%`,
               `Based on ${values.length} data points`
             ],
@@ -21279,17 +21262,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const values2: number[] = [];
 
           dataRows.forEach(row => {
-            const val1 = row[col1.index];
-            const val2 = row[col2.index];
-
-            if (val1 && val2) {
-              const num1 = parseFloat(String(val1).replace(/[$,]/g, '').trim());
-              const num2 = parseFloat(String(val2).replace(/[$,]/g, '').trim());
-
-              if (!isNaN(num1) && !isNaN(num2)) {
-                values1.push(num1);
-                values2.push(num2);
-              }
+            const num1 = perRow.get(row)?.get(col1.name) ?? null;
+            const num2 = perRow.get(row)?.get(col2.name) ?? null;
+            if (num1 !== null && num2 !== null) {
+              values1.push(num1);
+              values2.push(num2);
             }
           });
 
@@ -21451,67 +21428,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const isGoogleSheetsSummaryCampaignBreakdownColumn = (header: any) =>
     normalizeGoogleSheetsSummaryHeader(header) === 'campaign id';
 
-  const googleSheetsMetricTotal = (
-    metrics: Record<string, number>,
-    includes: RegExp[],
-    excludes: RegExp[] = []
-  ): number | null => {
-    for (const [name, value] of Object.entries(metrics || {})) {
-      const h = normalizeGoogleSheetsSummaryHeader(name);
-      if (includes.some((re) => re.test(h)) && !excludes.some((re) => re.test(h))) {
-        const n = Number(value);
-        return Number.isFinite(n) ? n : null;
-      }
-    }
-    return null;
-  };
-
-  const getGoogleSheetsSummaryDisplayValue = (
-    col: { name: string; total: number; count?: number },
-    metrics: Record<string, number>
-  ): { summaryValue: number; aggregation: string } => {
-    const h = normalizeGoogleSheetsSummaryHeader(col.name);
-    const total = Number(col.total || 0);
-    const count = Number(col.count || 0);
-    const average = count > 0 ? total / count : total;
-    const revenueTotal = googleSheetsMetricTotal(metrics, [/\brevenue\b/, /\bsales\b/, /\bconversion value\b/], [/roas/, /roi/, /rate/, /%/, /\bper\b/]);
-    const spendTotal = googleSheetsMetricTotal(metrics, [/\bspend\b/, /\bcost\b/, /\bbudget\b/], [/\bcost per\b/, /\bper\b/, /cac/, /cpc/, /cpm/, /cpa/, /cpl/]);
-    const customersTotal = googleSheetsMetricTotal(metrics, [/\bcustomers?\b/]);
-    const leadsTotal = googleSheetsMetricTotal(metrics, [/\bleads?\b/]);
-    const clicksTotal = googleSheetsMetricTotal(metrics, [/\bclicks?\b/]);
-    const impressionsTotal = googleSheetsMetricTotal(metrics, [/\bimpressions?\b/, /\breach\b/, /\bviews?\b/]);
-    const conversionsTotal = googleSheetsMetricTotal(metrics, [/\bconversions?\b/], [/\bvalue\b/]);
-
-    if (h.includes('roas') && revenueTotal !== null && spendTotal !== null && spendTotal > 0) {
-      return { summaryValue: revenueTotal / spendTotal, aggregation: 'derived_revenue_per_spend' };
-    }
-    if ((h.includes('roi') || h.includes('return on investment')) && revenueTotal !== null && spendTotal !== null && spendTotal > 0) {
-      return { summaryValue: ((revenueTotal - spendTotal) / spendTotal) * 100, aggregation: 'derived_profit_per_spend_pct' };
-    }
-    if (h.includes('cac') && spendTotal !== null && customersTotal !== null && customersTotal > 0) {
-      return { summaryValue: spendTotal / customersTotal, aggregation: 'derived_spend_per_customer' };
-    }
-    if (h.includes('cpl') && spendTotal !== null && leadsTotal !== null && leadsTotal > 0) {
-      return { summaryValue: spendTotal / leadsTotal, aggregation: 'derived_spend_per_lead' };
-    }
-    if (h.includes('cpc') && spendTotal !== null && clicksTotal !== null && clicksTotal > 0) {
-      return { summaryValue: spendTotal / clicksTotal, aggregation: 'derived_spend_per_click' };
-    }
-    if (h.includes('cpm') && spendTotal !== null && impressionsTotal !== null && impressionsTotal > 0) {
-      return { summaryValue: (spendTotal / impressionsTotal) * 1000, aggregation: 'derived_spend_per_thousand_impressions' };
-    }
-    if (h.includes('cpa') && spendTotal !== null) {
-      const denominator = conversionsTotal || customersTotal;
-      if (denominator !== null && denominator > 0) {
-        return { summaryValue: spendTotal / denominator, aggregation: 'derived_spend_per_acquisition' };
-      }
-    }
-    if (h.includes('%') || h.includes('rate') || h.includes('ctr') || h.includes('cvr') || h.includes('roas') || h.includes('roi') || h.includes('cac') || h.includes('cpc') || h.includes('cpm') || h.includes('cpa') || h.includes('cpl') || h.includes('cost per')) {
-      return { summaryValue: average, aggregation: 'average' };
-    }
-    return { summaryValue: total, aggregation: 'sum' };
-  };
-
   // Get spreadsheet data for a campaign
   app.get("/api/campaigns/:id/google-sheets-data", googleSheetsRateLimiter, requireCampaignAccessParamId, async (req, res) => {
     const campaignId = req.params.id;
@@ -21669,182 +21585,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return fetch(url, { ...options, signal: options.signal ? AbortSignal.any([options.signal, timeout]) : timeout });
       };
 
-      // Check for fresh cached data before making API call
-      const singleCachedData = (connection as any).cachedData;
-      const singleLastRefresh = (connection as any).lastDataRefreshAt;
-      const singleHasFreshCache = !skipCache && singleCachedData && singleLastRefresh &&
-        (Date.now() - new Date(singleLastRefresh).getTime()) < CACHE_MAX_AGE_MS;
-
       let rows: any[];
-      let rowLimitHit = false;
-
-      if (singleHasFreshCache && singleCachedData.headers && singleCachedData.rows) {
-        // Serve from cache
-        rows = [singleCachedData.headers, ...singleCachedData.rows];
-        rowLimitHit = rows.length >= 1000;
-        devLog(`[Google Sheets Data] Using cached data for ${connection.spreadsheetName || connection.spreadsheetId} (cached ${Math.round((Date.now() - new Date(singleLastRefresh).getTime()) / 3600000)}h ago, ${rows.length} rows)`);
+      if (!skipCache && hasCompleteGoogleSheetsCache(connection)) {
+        rows = [connection.cachedData.headers, ...connection.cachedData.rows];
       } else {
-      // Build range with sheet name if specified
-      const range = connection.sheetName ? `${toA1SheetPrefix(connection.sheetName)}A1:Z1000` : 'A1:Z1000';
-
-      let sheetResponse = await fetchWithTimeout(
-        `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/${encodeURIComponent(range)}`,
-        { headers: { 'Authorization': `Bearer ${accessToken}` } },
-        30000 // 30 second timeout
-      );
-
-      // If token expired despite proactive refresh, try reactive refresh
-      if (sheetResponse.status === 401 && connection.refreshToken) {
-        devLog('🔄 Access token expired, attempting automatic refresh...');
         try {
-          accessToken = await refreshGoogleSheetsToken(connection);
-
-          // Retry the request with new token (using same timeout helper)
-          const fetchWithTimeoutRetry = async (url: string, options: RequestInit, timeoutMs: number = 30000) => {
-            const timeout = AbortSignal.timeout(timeoutMs);
-            return fetch(url, { ...options, signal: options.signal ? AbortSignal.any([options.signal, timeout]) : timeout });
-          };
-
-          // Build range with sheet name if specified
-          const retryRange = connection.sheetName ? `${toA1SheetPrefix(connection.sheetName)}A1:Z1000` : 'A1:Z1000';
-
-          sheetResponse = await fetchWithTimeoutRetry(
-            `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/${encodeURIComponent(retryRange)}`,
-            { headers: { 'Authorization': `Bearer ${accessToken}` } },
-            30000
-          );
-        } catch (refreshError) {
-          console.error('❌ Automatic token refresh failed:', refreshError);
-
-          // For persistent connections, we need to handle refresh token expiration
-          // by requesting fresh OAuth authorization
-          devLog('🔄 Refresh token may have expired, connection needs re-authorization');
-
-          // Do NOT delete the connection — keep it so user can reauthorize
-          return res.status(401).json({
-            error: 'REFRESH_TOKEN_EXPIRED',
-            message: 'Connection expired. Please reconnect your Google Sheets account.',
-            requiresReauthorization: true,
-            campaignId: campaignId
-          });
-        }
-      }
-
-      if (!sheetResponse.ok) {
-        const errorText = await sheetResponse.text();
-        let errorData;
-        try {
-          errorData = JSON.parse(errorText);
-        } catch {
-          errorData = { error: errorText };
-        }
-
-        console.error('[Google Sheets Data] Google Sheets API error:', {
-          status: sheetResponse.status,
-          statusText: sheetResponse.statusText,
-          error: errorData,
-          spreadsheetId: connection.spreadsheetId
-        });
-
-        // Handle token expiration - try refresh before deleting connection
-        if (sheetResponse.status === 401) {
-          if (connection.refreshToken && connection.clientId && connection.clientSecret) {
-            devLog('🔄 401 from API — attempting token refresh before giving up...');
-            try {
-              const refreshedToken = await refreshGoogleSheetsToken(connection);
-              // Retry the request with the refreshed token
-              const retryRange = connection.sheetName ? `${toA1SheetPrefix(connection.sheetName)}A1:Z1000` : 'A1:Z1000';
-              const retryResponse = await fetchWithTimeout(
-                `https://sheets.googleapis.com/v4/spreadsheets/${connection.spreadsheetId}/values/${encodeURIComponent(retryRange)}`,
-                { headers: { 'Authorization': `Bearer ${refreshedToken}` } }
-              );
-              if (retryResponse.ok) {
-                // Refresh worked — use the retry response going forward
-                sheetResponse = retryResponse;
-                devLog('✅ Token refresh + retry succeeded on 401 safety net');
-              } else {
-                // Retry still failed — do NOT delete, let user reauthorize
-                devLog('❌ Retry after refresh still failed');
-                return res.status(401).json({
-                  success: false,
-                  error: 'ACCESS_TOKEN_EXPIRED',
-                  message: 'Connection expired. Please reconnect your Google Sheets account.',
-                  requiresReauthorization: true,
-                  campaignId: campaignId
-                });
-              }
-            } catch (refreshErr: any) {
-              devLog('❌ Token refresh failed in 401 safety net:', refreshErr.message);
-              // Do NOT delete the connection — keep it so user can reauthorize
-              return res.status(401).json({
-                success: false,
-                error: refreshErr.message === 'REFRESH_TOKEN_EXPIRED' ? 'REFRESH_TOKEN_EXPIRED' : 'ACCESS_TOKEN_EXPIRED',
-                message: 'Connection expired. Please reconnect your Google Sheets account.',
-                requiresReauthorization: true,
-                campaignId: campaignId
-              });
+          rows = await readCompleteGoogleSheetsData(connection, async (url, signal) => {
+            let response = await fetchWithTimeout(url, { headers: { Authorization: `Bearer ${accessToken}` }, signal });
+            if (response.status === 401 && connection.refreshToken) {
+              accessToken = await refreshGoogleSheetsToken(connection);
+              response = await fetchWithTimeout(url, { headers: { Authorization: `Bearer ${accessToken}` }, signal });
             }
-          } else {
-            // No refresh token — do NOT delete, let user reauthorize
-            devLog('🔄 Token expired without refresh capability');
-            return res.status(401).json({
-              success: false,
-              error: 'ACCESS_TOKEN_EXPIRED',
-              message: 'Connection expired. Please reconnect your Google Sheets account.',
-              requiresReauthorization: true,
-              campaignId: campaignId
-            });
-          }
-        }
-
-        // Handle 403 (Forbidden) - might be permissions issue
-        if (sheetResponse.status === 403) {
-          console.error('[Google Sheets Data] Permission denied - check spreadsheet sharing settings');
-          return res.status(403).json({
-            success: false,
-            error: 'PERMISSION_DENIED',
-            message: 'Access denied. Please ensure the Google Sheet is shared with the connected Google account and that the Google Sheets API is enabled.',
-            requiresReauthorization: false
+            return response;
           });
+          connection.lastDataRefreshAt = new Date();
+        } catch (error: any) {
+          const status = error?.status === 401 ? 401 : error?.status === 404 ? 404 : error?.status === 413 || error?.code === 'GOOGLE_SHEETS_REVENUE_TOO_LARGE' ? 413 : 502;
+          return res.status(status).json({ success: false, error: error?.message || 'Unable to read the complete Google Sheets tab',
+            message: error?.message, requiresReauthorization: status === 401, missingSpreadsheet: status === 404 });
         }
-
-        // Preserve the connection on read failures so a temporary provider response or
-        // access change cannot silently disconnect an active source.
-        if (sheetResponse.status === 404) {
-          console.error('[Google Sheets Data] Spreadsheet not found; preserving connection for recovery');
-          return res.status(404).json({
-            success: false,
-            error: 'SPREADSHEET_NOT_FOUND',
-            message: 'Spreadsheet not found. Verify that the spreadsheet still exists and that the connected account has access, then retry or reconnect.',
-            requiresReauthorization: false,
-            missingSpreadsheet: true
-          });
-        }
-
-        // Generic API error
-        const errorMessage = errorData.error?.message || errorData.error || errorText || 'Unknown Google Sheets API error';
-        throw new Error(`Google Sheets API Error (${sheetResponse.status}): ${errorMessage}`);
       }
-
-      let sheetData;
-      try {
-        sheetData = await sheetResponse.json();
-      } catch (jsonError) {
-        console.error('[Google Sheets Data] Failed to parse JSON response:', jsonError);
-        const responseText = await sheetResponse.text();
-        console.error('[Google Sheets Data] Response text:', responseText.substring(0, 500));
-        throw new Error(`Invalid JSON response from Google Sheets API: ${jsonError instanceof Error ? jsonError.message : 'Unknown error'}`);
-      }
-
-      if (!sheetData || typeof sheetData !== 'object') {
-        console.error('[Google Sheets Data] Invalid sheet data structure:', sheetData);
-        throw new Error('Invalid data structure received from Google Sheets API');
-      }
-
-      rows = sheetData.values || [];
-      rowLimitHit = rows.length >= 1000;
-      devLog(`[Google Sheets Data] Received ${rows.length} rows from Google Sheets${rowLimitHit ? ' (limit reached — sheet may have more data)' : ''}`);
-      } // end of live API fetch (else branch of cache check)
 
       // Get campaign name for filtering summary data
       const campaignName = campaign?.name || '';
@@ -22009,94 +21769,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         headers: headers,
         data: rowsForSummary,
         sampleData: rowsForSummary.slice(0, 6), // First 5 filtered data rows
-        metrics: {} as Record<string, number>,
-        detectedColumns: [] as Array<{ name: string, index: number, type: string, total: number, count?: number, summaryValue?: number, aggregation?: string }>
+        metrics: {} as Record<string, number | null>,
+        detectedColumns: [] as Array<{ name: string, index: number, type: string, total: number | null, count?: number, summaryValue?: number | null, aggregation?: string }>
       };
 
-      // Dynamically detect and aggregate numeric columns from FILTERED rows
-      if (rowsForSummary.length > 0 && headers.length > 0) {
-        devLog('📊 Detected spreadsheet headers:', { count: headers.length, sample: headers.slice(0, 30) });
-
-        // First pass: Identify which columns contain numeric data
-        const numericColumns: Array<{ name: string, index: number, type: 'currency' | 'integer' | 'decimal', samples: number[] }> = [];
-        const singleSheetDatePattern = /^(date|week|day|time|timestamp|period|month|year)/i;
-
-        headers.forEach((header: string, index: number) => {
-          const headerStr = String(header || '').trim();
-          if (!headerStr || singleSheetDatePattern.test(headerStr) || isGoogleSheetsSummaryIdentifierColumn(headerStr)) return; // Skip empty headers, IDs, and date columns
-
-          // Sample first 5 filtered data rows to determine if column is numeric
-          const samples: number[] = [];
-          let hasNumericData = false;
-          let hasCurrency = false;
-          let hasDecimals = false;
-
-          for (let i = 0; i < Math.min(6, rowsForSummary.length); i++) {
-            const cellValue = rowsForSummary[i]?.[index];
-            if (!cellValue) continue;
-
-            const cellStr = String(cellValue).trim();
-            if (cellStr.includes('$') || cellStr.includes('USD')) hasCurrency = true;
-
-            // Clean and parse the value
-            const cleanValue = cellStr.replace(/[$,]/g, '').trim();
-            const numValue = parseFloat(cleanValue);
-
-            if (!isNaN(numValue) && isFinite(numValue) && Math.abs(numValue) < 1e12) {
-              samples.push(numValue);
-              hasNumericData = true;
-              if (cleanValue.includes('.')) hasDecimals = true;
-            }
-          }
-
-          if (hasNumericData && samples.length > 0) {
-            const type = hasCurrency ? 'currency' : (hasDecimals ? 'decimal' : 'integer');
-            numericColumns.push({ name: headerStr, index, type, samples });
-          }
-        });
-
-        devLog('✅ Detected numeric columns:', {
-          count: numericColumns.length,
-          sample: numericColumns.slice(0, 30).map((col) => ({ name: col.name, type: col.type })),
-        });
-
-        // Second pass: Aggregate numeric columns from FILTERED rows only
-        numericColumns.forEach(col => {
-          let total = 0;
-          let count = 0;
-
-          for (let i = 0; i < rowsForSummary.length; i++) {
-            const cellValue = rowsForSummary[i]?.[col.index];
-            if (!cellValue) continue;
-
-            const cleanValue = String(cellValue).replace(/[$,]/g, '').trim();
-            const numValue = parseFloat(cleanValue);
-
-            if (!isNaN(numValue)) {
-              total += numValue;
-              count++;
-            }
-          }
-
-          if (count > 0) {
-            campaignData.metrics[col.name] = total;
-            campaignData.detectedColumns.push({
-              name: col.name,
-              index: col.index,
-              type: col.type,
-              total: total,
-              count
-            });
-
-            devLog(`  ✓ ${col.name}: ${total.toLocaleString()} (${count} filtered rows)`);
-          }
-        });
-
-        devLog(`📊 Successfully aggregated ${campaignData.detectedColumns.length} metrics from ${rowsForSummary.length} filtered rows (campaign: "${campaignName}")`);
-        campaignData.detectedColumns = campaignData.detectedColumns.map((col) => ({
-          ...col,
-          ...getGoogleSheetsSummaryDisplayValue(col, campaignData.metrics)
-        }));
+      try {
+        Object.assign(campaignData, buildGoogleSheetsMetricSummary(headers, rowsForSummary, connection.columnMappings));
+      } catch (error: any) {
+        return res.status(400).json({ success: false, code: 'GOOGLE_SHEETS_MAPPING_INVALID', error: error.message });
       }
 
       // Categorical column detection for single-sheet view
@@ -22140,7 +21820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         // Use filtered rows + header for insights generation
         const rowsForInsights = [headers, ...rowsForSummary];
-        insights = generateInsights(rowsForInsights, campaignData.detectedColumns, campaignData.metrics, categoricalColumns, headers);
+        insights = generateInsights(rowsForInsights, campaignData.detectedColumns, campaignData.metrics, categoricalColumns, headers, connection.columnMappings);
       } catch (insightsError) {
         console.error('[Google Sheets Data] Error generating insights:', insightsError);
         // Don't fail the request if insights generation fails
@@ -22765,7 +22445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Legacy fields for backward compatibility
           totalImpressions: campaignData.metrics['Impressions'] || campaignData.metrics['impressions'] || 0,
           totalClicks: campaignData.metrics['Clicks'] || campaignData.metrics['clicks'] || 0,
-          totalSpend: campaignData.metrics['Spend (USD)'] || campaignData.metrics['Budget'] || campaignData.metrics['Cost'] || 0,
+          totalSpend: googleSheetsMetricTotal(campaignData.metrics, [/^(?:total )?(?:spend|cost)(?: \([a-z]{3}\))?$/]) ?? 0,
           averageCTR: (() => {
             const impressions = campaignData.metrics['Impressions'] || campaignData.metrics['impressions'] || 0;
             const clicks = campaignData.metrics['Clicks'] || campaignData.metrics['clicks'] || 0;
@@ -22775,7 +22455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         insights: insights,
         matchingInfo: matchingInfo, // Add matching information for UX feedback
         calculatedConversionValues: calculatedConversionValues, // Add calculated conversion values per platform
-        rowLimitWarning: rowLimitHit ? 'Sheet contains 1,000+ rows. Only the first 1,000 rows are displayed. Summary metrics may be incomplete.' : undefined,
+        rowLimitWarning: undefined,
         lastUpdated: new Date().toISOString(),
         lastDataRefreshAt: (connection as any).lastDataRefreshAt ? new Date((connection as any).lastDataRefreshAt).toISOString() : null
       });
@@ -22811,7 +22491,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/campaigns/:id/google-sheets-refresh", googleSheetsRateLimiter, requireCampaignAccessParamId, async (req, res) => {
     const campaignId = req.params.id;
     try {
-      await refreshGoogleSheetsDataForCampaign(campaignId);
+      const refreshed = await refreshGoogleSheetsDataForCampaign(campaignId);
+      if (!refreshed) return res.status(502).json({ success: false, error: 'Google Sheets refresh did not complete. Saved data was preserved.' });
       res.json({ success: true, refreshedAt: new Date().toISOString() });
     } catch (error) {
       console.error('[Google Sheets Refresh] Error:', error);

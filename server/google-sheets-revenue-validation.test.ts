@@ -1,3 +1,4 @@
+import { resolveExactGA4CampaignBreakdownRevenue } from "../shared/ga4-campaign-breakdown";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { describe, expect, it } from "vitest";
@@ -207,7 +208,14 @@ describe("GA4 Overview Google Sheets revenue deterministic validation", () => {
     expect(scheduledReport).toContain('storage.getRevenueBreakdownBySource(campaignId, importedRevenueStartDate, importedRevenueEndDate, "ga4")');
     expect(ga4Page).toContain("const financialRevenue = ga4RevenueForFinancials + importedRevenueForFinancials;");
     expect(ga4Page).toContain("resolveExactGA4CampaignBreakdownRevenue(");
-    expect(campaignBreakdown).toContain("const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];");
+    const exactSource = { id: "fixture", sourceType: "google_sheets", currency: "EUR", revenue: 40,
+      mappingConfig: { campaignMappings: [{ crmValue: "sheet-A", linkedinCampaignName: "Alpha" }], campaignValueRevenueTotals: [{ campaignValue: "sheet-A", revenue: 40 }] } };
+    expect(resolveExactGA4CampaignBreakdownRevenue([{ name: "Alpha" }], [exactSource], "EUR").revenueByCampaign.get("Alpha")).toBe(40);
+    for (const state of [{ boundedRevenueZero: true }, { pendingCompletedDay: true }]) {
+      const result = resolveExactGA4CampaignBreakdownRevenue([{ name: "Alpha" }], [{ ...exactSource, ...state, revenue: 0 }], "EUR");
+      expect(result.revenueByCampaign.size).toBe(0);
+      expect(result.materializationMismatch).toBe(false);
+    }
     expect(campaignBreakdown).toContain("const targetKey = targetByValue.get(valueKey);");
 
     const invalidationStart = revenueModal.indexOf("const invalidateAfterRevenueChange");
